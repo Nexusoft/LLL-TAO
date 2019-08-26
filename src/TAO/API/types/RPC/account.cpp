@@ -39,6 +39,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/include/unpack.h>
+#include <TAO/Register/types/address.h>
 
 #include <Util/include/allocators.h>
 #include <Util/include/base64.h>
@@ -223,15 +224,17 @@ namespace TAO
             /* Extract the address, which will either be a legacy address or a sig chain account address */
             std::string strAddress = params[0].get<std::string>();
             Legacy::NexusAddress address(strAddress);
-            uint256_t hashAccount = 0;
+            TAO::Register::Address hashAccount;
 
             /* The script to contain the recipient */
             Legacy::Script scriptPubKey;
 
-            if(IsRegisterAddress(strAddress))
-            {
-                hashAccount.SetHex(strAddress);
+            /* Decode the address string */
+            hashAccount.SetBase58(strAddress);
 
+            /* Check the type */
+            if(hashAccount.IsValid() && (hashAccount.IsAccount() || hashAccount.IsTrust()))
+            {
                 /* Get the account object. */
                 TAO::Register::Object account;
                 if(!LLD::Register->ReadState(hashAccount, account))
@@ -254,10 +257,9 @@ namespace TAO
 
                 scriptPubKey.SetRegisterAddress(hashAccount);
             }
-            else
+            else if(hashAccount.IsValid() && hashAccount.IsLegacy())
                 scriptPubKey.SetNexusAddress(address);
-
-            if(hashAccount == 0 && !address.IsValid())
+            else
                 throw APIException(-5, "Invalid Nexus address");
 
             /* Amount */
@@ -731,15 +733,17 @@ namespace TAO
             /* Nexus Address (supports register addresses) */
             std::string strAddress = params[1].get<std::string>();
             Legacy::NexusAddress address(strAddress);
-            uint256_t hashAccount = 0;
+            TAO::Register::Address hashAccount;
 
             /* The script to contain the recipient */
             Legacy::Script scriptPubKey;
 
-            if(IsRegisterAddress(strAddress))
-            {
-                hashAccount.SetHex(strAddress);
+            /* Decode the address string */
+            hashAccount.SetBase58(strAddress);
 
+            /* Check the type */
+            if(hashAccount.IsValid() && (hashAccount.IsAccount() || hashAccount.IsTrust()))
+            {
                 /* Get the account object. */
                 TAO::Register::Object account;
                 if(!LLD::Register->ReadState(hashAccount, account))
@@ -762,10 +766,9 @@ namespace TAO
 
                 scriptPubKey.SetRegisterAddress(hashAccount);
             }
-            else
+            else if(hashAccount.IsValid() && hashAccount.IsLegacy())
                 scriptPubKey.SetNexusAddress(address);
-
-            if(hashAccount == 0 && !address.IsValid())
+            else
                 throw APIException(-5, "Invalid Nexus address");
 
             /* Amount */
@@ -907,19 +910,20 @@ namespace TAO
             /* Process address/amount list */
             std::set<Legacy::NexusAddress> setAddress;
             std::vector<std::pair<Legacy::Script, int64_t> > vecSend;
-            uint256_t hashAccount;
+            TAO::Register::Address hashAccount;
 
             int64_t totalAmount = 0;
             for(json::json::iterator it = sendTo.begin(); it != sendTo.end(); ++it)
             {
                 Legacy::Script scriptPubKey;
                 std::string strAddress = it.key();
+ 
+                /* Decode the address string */
+                hashAccount.SetBase58(strAddress);
 
                 /* handle recipient being a register address */
-                if(IsRegisterAddress(strAddress))
+                if(hashAccount.IsValid() && (hashAccount.IsAccount() || hashAccount.IsTrust()))
                 {
-                    hashAccount.SetHex(strAddress);
-
                     /* Get the account object. */
                     TAO::Register::Object account;
                     if(!LLD::Register->ReadState(hashAccount, account))
@@ -1341,13 +1345,13 @@ namespace TAO
 
                 const Legacy::TxOut& txout = wtx.vout[0];
                 Legacy::NexusAddress address;
-                uint256_t hashRegister;
+                TAO::Register::Address hashRegister;
 
                 /* Get the Nexus address from the txout public key */
                 if(ExtractAddress(txout.scriptPubKey, address))
                     entry["address"] = address.ToString();
                 else if(ExtractRegister(txout.scriptPubKey, hashRegister))
-                    entry["address"] = hashRegister.GetHex();
+                    entry["address"] = hashRegister.ToString();
                 else
                 {
                     debug::log(0, FUNCTION, "Unknown transaction type found, txid ", wtx.GetHash().ToString());
@@ -1426,7 +1430,7 @@ namespace TAO
                     Legacy::NexusAddress address;
                     Legacy::ExtractAddress( s.first, address);
 
-                    uint256_t hashRegister;
+                    TAO::Register::Address hashRegister;
                     Legacy::ExtractRegister( s.first, hashRegister);
 
                     if(mapExclude.count(address))
@@ -1437,7 +1441,7 @@ namespace TAO
 
                     json::json entry;
                     entry["account"] = strSentAccount;
-                    entry["address"] = address.IsValid() ? address.ToString() : hashRegister.GetHex(); // handle sending to register address
+                    entry["address"] = address.IsValid() ? address.ToString() : hashRegister.ToString(); // handle sending to register address
                     entry["category"] = "send";
                     entry["amount"] = Legacy::SatoshisToAmount(-s.second);
                     entry["fee"] = Legacy::SatoshisToAmount(-nFee);
@@ -1455,7 +1459,7 @@ namespace TAO
                     Legacy::NexusAddress address;
                     Legacy::ExtractAddress( r.first, address);
 
-                    uint256_t hashRegister;
+                    TAO::Register::Address hashRegister;
                     Legacy::ExtractRegister( r.first, hashRegister);
 
                     if(mapExclude.count(address))
@@ -1478,7 +1482,7 @@ namespace TAO
 
                         json::json entry;
                         entry["account"] = account;
-                        entry["address"] = address.IsValid() ? address.ToString() : hashRegister.GetHex(); // handle sending to register address
+                        entry["address"] = address.IsValid() ? address.ToString() : hashRegister.ToString(); // handle sending to register address
                         entry["category"] = "receive";
                         entry["amount"] = Legacy::SatoshisToAmount(r.second);
                         if(fLong)
@@ -2000,7 +2004,7 @@ namespace TAO
             /* Extract the address, which will either be a legacy address or a sig chain account address */
             std::string strAddress = params[0].get<std::string>();
             Legacy::NexusAddress address(strAddress);
-            uint256_t hashAccount = 0;
+            TAO::Register::Address hashAccount;
 
             /* Whether the address is considered valid */
             bool isValid = false;
@@ -2008,12 +2012,13 @@ namespace TAO
             /* Flag indicating that this is a legacy (UTXO) address as opposed to a tritium register address */
             bool isLegacy = false;
 
-            /* Check to see if they have passed in a 256-bit register address (in 64-char hex) */
-            if(IsRegisterAddress(strAddress))
+            /* Decode the address string */
+            hashAccount.SetBase58(strAddress);
+
+            /* handle recipient being a register address */
+            if(hashAccount.IsValid() && (hashAccount.IsAccount() || hashAccount.IsTrust()))
             {
                 isLegacy = false;
-
-                hashAccount.SetHex(strAddress);
 
                 /* Get the account object. */
                 TAO::Register::Object account;
@@ -2079,7 +2084,7 @@ namespace TAO
             }
             else if (isValid)
             {
-                ret["address"] = hashAccount.GetHex();
+                ret["address"] = hashAccount.ToString();
             }
             return ret;
 

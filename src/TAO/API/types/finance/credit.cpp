@@ -75,7 +75,7 @@ namespace TAO
                 throw APIException(-17, "Failed to create transaction.");
 
             /* Submit the transaction payload. */
-            uint256_t hashAccountTo = 0;
+            TAO::Register::Address hashAccountTo;
 
             /* If name_to is provided then use this to deduce the register address */
             if(params.find("name") != params.end())
@@ -83,21 +83,21 @@ namespace TAO
 
             /* Otherwise try to find the raw hex encoded address. */
             else if(params.find("address") != params.end())
-                hashAccountTo.SetHex(params["address"].get<std::string>());
+                hashAccountTo.SetBase58(params["address"].get<std::string>());
 
             /* Get the transaction id. */
             uint512_t hashTx;
             hashTx.SetHex(params["txid"].get<std::string>());
 
             /* Check for the proof parameter parameter. */
-            uint256_t hashProof = 0;
+            TAO::Register::Address hashProof;
             if(params.find("name_proof") != params.end())
             {
                 /* If name_proof is provided then use this to deduce the register address */
                 hashProof = Names::ResolveAddress(params, params["name_proof"].get<std::string>());
             }
             else if(params.find("address_proof") != params.end())
-                hashProof.SetHex(params["address_proof"].get<std::string>());
+                hashProof.SetBase58(params["address_proof"].get<std::string>());
 
             /* The debit transaction (if tritium) */
             TAO::Ledger::Transaction txDebit;
@@ -132,11 +132,11 @@ namespace TAO
                     if(nType == TAO::Operation::OP::DEBIT)
                     {
                         /* Get the hashFrom from the debit transaction. */
-                        uint256_t hashFrom = 0;
+                        TAO::Register::Address hashFrom;
                         contract >> hashFrom;
 
                         /* Get the hashTo from the debit transaction. */
-                        uint256_t hashTo = 0;
+                        TAO::Register::Address hashTo;
                         contract >> hashTo;
 
                         /* Get the amount to respond to. */
@@ -281,9 +281,6 @@ namespace TAO
                         uint64_t nAmount = 0;
                         contract >> nAmount;
 
-                        /* The proof for coinbase is the user's genesis hash, as you can only credit a coinbase that you mined */
-                        hashProof = user->Genesis();
-
                         /* If the caller has not specified an account to credit then we will use the default account. */
                         if(hashAccountTo == 0)
                         {
@@ -312,7 +309,7 @@ namespace TAO
 
 
                         /* if we passed all of these checks then insert the credit contract into the tx */
-                        tx[++nCurrent] << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract) << hashAccountTo <<  hashProof << nAmount;
+                        tx[++nCurrent] << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract) << hashAccountTo <<  user->Genesis() << nAmount;
 
                     }
 
@@ -327,7 +324,7 @@ namespace TAO
                     const Legacy::TxOut& txout = txSend.vout[nContract];
 
                     /* The hash of the receiving account. */
-                    uint256_t hashAccount;
+                    TAO::Register::Address hashAccount;
                     
                     /* Extract the sig chain account register address  from the legacy script */ 
                     if(!Legacy::ExtractRegister(txout.scriptPubKey, hashAccount))

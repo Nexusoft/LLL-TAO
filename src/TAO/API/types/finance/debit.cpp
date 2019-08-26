@@ -79,7 +79,7 @@ namespace TAO
                 throw APIException(-17, "Failed to create transaction.");
 
             /* The register address of the recipient acccount. */
-            uint256_t hashTo = 0;
+            TAO::Register::Address hashTo;
 
             /* legacy recipient address if this is a sig chain to UTXO transaction */
             Legacy::NexusAddress legacyAddress;
@@ -95,9 +95,16 @@ namespace TAO
             {
                 std::string strAddressTo = params["address_to"].get<std::string>();
                 
+                /* Decode the base58 register address */
                 if(IsRegisterAddress(strAddressTo))
-                    hashTo.SetHex(strAddressTo);
-                else
+                    hashTo.SetBase58(strAddressTo);
+
+                /* Check that it is valid */
+                if(!hashTo.IsValid())
+                    throw APIException(-165, "Invalid address_to");
+
+                /* Check to see if it is a legacy address */
+                if(hashTo.IsLegacy())
                 {
                     legacyAddress.SetString(strAddressTo);
                     fLegacy = true;
@@ -110,14 +117,14 @@ namespace TAO
                 throw APIException(-64, "Missing recipient account name_to / address_to");
 
             /* The account to debit from. */
-            uint256_t hashFrom = 0;
+            TAO::Register::Address hashFrom;
 
             /* If name is provided then use this to deduce the register address,
              * otherwise try to find the raw hex encoded address. */
             if(params.find("name") != params.end())
                 hashFrom = Names::ResolveAddress(params, params["name"].get<std::string>());
             else if(params.find("address") != params.end())
-                hashFrom.SetHex(params["address"].get<std::string>());
+                hashFrom.SetBase58(params["address"].get<std::string>());
             else
                 throw APIException(-33, "Missing name or address");
 

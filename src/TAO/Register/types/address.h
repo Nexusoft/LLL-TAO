@@ -39,16 +39,22 @@ namespace TAO
                 RESERVED  = 0xa1,
                 RESERVED2 = 0xa2,
 
-                /* Standard register type bytes. */
-                READONLY  = 0xd0,
-                APPEND    = 0xd1,
-                RAW       = 0xd2,
-                OBJECT    = 0xd3,
-                ACCOUNT   = 0xd4,
-                TOKEN     = 0xd5,
-                TRUST     = 0xd6,
-                NAME      = 0xd7,
-                NAMESPACE = 0xd8,
+                /* To identify legacy addresses */
+                LEGACY = 0x2a,
+                LEGACY_TESTNET = 0x6f,
+
+                /* Standard register type bytes. 
+                   NOTE: These MUST be between 0xd1 and 0xed for the base58 encoded string to start with 8 
+                */
+                READONLY  = 0xd1,
+                APPEND    = 0xd2,
+                RAW       = 0xd3,
+                OBJECT    = 0xd4,
+                ACCOUNT   = 0xd5,
+                TOKEN     = 0xd6,
+                TRUST     = 0xd7,
+                NAME      = 0xd8,
+                NAMESPACE = 0xd9,
 
                 WILDCARD  = 0xff
             };
@@ -58,16 +64,31 @@ namespace TAO
             Address();
 
 
-            /** Build from type and random address. */
+            /** Address Constructor
+             *
+             *  Build from uint256_t hash.
+             *
+             *  @param[in] nAddress The hash. 
+             *
+             **/
+            Address(const uint256_t& nAddress);
+
+
+            /** Address Constructor
+             *
+             *  Build from type and random address.
+             *
+             *  @param[in] nType The type enum to create . 
+             *
+             **/
             Address(const uint8_t nType);
 
 
             /** Address Constructor
              *
-             *  Build an address from a hex encoded string.
+             *  Build an address from a base58 encoded string.
              *
-             *  @param[in] strName The name to assign to this address.
-             *  @param[in] nType The type of the address (Name or Namespace)
+             *  @param[in] strName The name to assign to this address. 
              *
              **/
             Address(const std::string& strAddress);
@@ -103,9 +124,17 @@ namespace TAO
             Address& operator=(const Address& addr);
 
 
+            /** Assignment operator.
+             *
+             *  @param[in] value The value to assign this to.
+             *
+             **/
+            Address& operator=(const uint256_t& value);
+
+
             /** IsValid
              *
-             *  Check if address has a valid type assoicated.
+             *  Check if address has a valid type associated.
              *
              *  @return True if type has valid header byte.
              *
@@ -211,6 +240,40 @@ namespace TAO
              *
              **/
             bool IsWildcard() const;
+
+
+            /** IsLegacy
+             *
+             *  Check if type is set to LEGACY or LEGACY_TESTNET.
+             *
+             *  @return True if using LEGACY or LEGACY_TESTNET type.
+             *
+             **/
+            bool IsLegacy() const;
+
+
+            /** SetBase58
+             *
+             *  Sets the uint256_t value of this address from a base58 encoded string.
+             *
+             *  @param[in] str The base58 encoded string representation of the address.
+             *
+             **/
+            void SetBase58(const std::string& str);
+
+            /** ToBase58
+             *
+             *  Returns a Base58 encoded string representation of the 256-bit address hash.
+             *
+             **/
+            std::string ToBase58() const;
+
+            /** ToString
+             *
+             *  Returns a base58 encoded string representation of the address .
+             *
+             **/
+            std::string ToString() const;
         };
     }
 }

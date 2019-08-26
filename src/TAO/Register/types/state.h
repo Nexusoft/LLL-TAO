@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #define NEXUS_TAO_REGISTER_INCLUDE_STATE_H
 
 #include <LLC/hash/SK.h>
+#include <TAO/Register/types/address.h>
 #include <Util/include/hex.h>
 #include <Util/templates/serialize.h>
 #include <Util/include/runtime.h>
@@ -51,7 +52,7 @@ namespace TAO
 
 
             /** The owner of the register. **/
-            uint256_t hashOwner;
+            TAO::Register::Address hashOwner;
 
 
             /** The created timestamp of the register. **/

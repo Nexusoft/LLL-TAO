@@ -36,7 +36,7 @@ namespace TAO
             json::json ret;
 
             /* Get the Register ID. */
-            uint256_t hashRegister = 0;
+            TAO::Register::Address hashRegister ;
 
             /* The Object to get history for */
             TAO::Register::State state;
@@ -57,7 +57,7 @@ namespace TAO
 
             /* Otherwise try to find the raw hex encoded address. */
             else if(params.find("address") != params.end())
-                hashRegister.SetHex(params["address"]);
+                hashRegister.SetBase58(params["address"]);
 
             /* Fail if no required parameters supplied. */
             else
@@ -103,7 +103,7 @@ namespace TAO
                         case TAO::Operation::OP::CREATE:
                         {
                             /* Get the Address of the Register. */
-                            uint256_t hashAddress = 0;
+                            TAO::Register::Address hashAddress;
                             contract >> hashAddress;
 
                             /* Check for same address. */
@@ -177,7 +177,7 @@ namespace TAO
                         case TAO::Operation::OP::WRITE:
                         {
                             /* Get the address. */
-                            uint256_t hashAddress = 0;
+                            TAO::Register::Address hashAddress;
                             contract >> hashAddress;
 
                             /* Check for same address. */
@@ -238,7 +238,7 @@ namespace TAO
                         case TAO::Operation::OP::APPEND:
                         {
                             /* Get the address. */
-                            uint256_t hashAddress = 0;
+                            TAO::Register::Address hashAddress;
                             contract >> hashAddress;
 
                             /* Check for same address. */
@@ -296,7 +296,7 @@ namespace TAO
                             contract >> nContract;
 
                             /* Extract the address from the contract. */
-                            uint256_t hashAddress = 0;
+                            TAO::Register::Address hashAddress;
                             contract >> hashAddress;
 
                             /* Check for same address. */
@@ -352,7 +352,7 @@ namespace TAO
                         case TAO::Operation::OP::TRANSFER:
                         {
                             /* Extract the address from the contract. */
-                            uint256_t hashAddress = 0;
+                            TAO::Register::Address hashAddress;
                             contract >> hashAddress;
 
                             /* Check for same address. */
@@ -360,7 +360,7 @@ namespace TAO
                                 break;
 
                             /* Read the register transfer recipient. */
-                            uint256_t hashTransfer = 0;
+                            TAO::Register::Address hashTransfer;
                             contract >> hashTransfer;
 
                             /* Generate return object. */

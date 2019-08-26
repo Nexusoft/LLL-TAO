@@ -84,7 +84,7 @@ namespace TAO
             TAO::Register::Object trust;
 
             /* First get the list of registers owned by this sig chain so we can work out which ones are NXS accounts */
-            std::vector<uint256_t> vRegisters;
+            std::vector<TAO::Register::Address> vRegisters;
             if(!ListRegisters(hashGenesis, vRegisters))
                 throw APIException(-74, "No registers found");
 
@@ -142,7 +142,8 @@ namespace TAO
             GetImmature(hashGenesis, nImmatureMined, nImmatureStake);
 
             /* Get the stake amount */
-            nStake = trust.get<uint64_t>("stake");
+            if(!trust.IsNull())
+                nStake = trust.get<uint64_t>("stake");
 
             /* Populate the response object */
             ret["available"] = (double)nAvailable / TAO::Ledger::NXS_COIN;

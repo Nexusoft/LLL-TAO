@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #include <Util/include/json.h>
 
 #include <TAO/Register/types/object.h>
+#include <TAO/Register/types/address.h>
 #include <TAO/Ledger/types/transaction.h>
 
 /* Global TAO namespace. */
@@ -27,13 +28,13 @@ namespace TAO
 
         /** IsRegisterAddress
          *
-         *  Determins whether a string value is a register address.
-         *  This only checks to see if the value is 64 characters in length and all hex characters (i.e. can be converted to a uint256).
-         *  It does not check to see whether the register address exists in the database
+         *  Determines whether a string value is a valid base58 encoded register address.
+        *  This only checks to see if the value an be decoded into a valid Register::Address with a valid Type.
+        *  It does not check to see whether the register address exists in the database
          *
          *  @param[in] strValueToCheck The value to check
          *
-         *  @return True if the value is 64 characters in length and all hex characters (i.e. can be converted to a uint256).
+         *  @return True if the value can be decoded into a valid Register::Address with a valid Type.
          **/
         bool IsRegisterAddress(const std::string& strValueToCheck);
 
@@ -63,7 +64,7 @@ namespace TAO
          *  @return A vector of register addresses owned by the sig chain
          *
          **/
-        bool ListRegisters(const uint256_t& hashGenesis, std::vector<uint256_t>& vRegisters);
+        bool ListRegisters(const uint256_t& hashGenesis, std::vector<TAO::Register::Address>& vRegisters);
 
 
         /** AddFee

@@ -14,6 +14,7 @@ ________________________________________________________________________________
 
 #include <Util/include/json.h>
 #include <TAO/Register/types/object.h>
+#include <TAO/Register/types/address.h>
 #include <Legacy/types/transaction.h>
 
 
@@ -109,7 +110,7 @@ namespace TAO
          **/
         json::json ObjectToJSON(const json::json& params,
                                 const TAO::Register::Object& object,
-                                const uint256_t& hashRegister,
+                                const TAO::Register::Address& hashRegister,
                                 bool fLookupName = true);
 
     }

@@ -169,7 +169,7 @@ TEST_CASE( "Test Tokens API - debit token", "[tokens/debit/token]")
         params["pin"] = PIN;
         params["session"] = SESSION1;
         params["amount"] = "100";
-        params["address_to"] = LLC::GetRand256().GetHex();
+        params["address_to"] = TAO::Register::Address(TAO::Register::Address::ACCOUNT).ToString();
 
         /* Invoke the API */
         ret = APICall("tokens/debit/token", params);
@@ -204,8 +204,8 @@ TEST_CASE( "Test Tokens API - debit token", "[tokens/debit/token]")
         params["pin"] = PIN;
         params["session"] = SESSION1;
         params["amount"] = "100";
-        params["address_to"] = LLC::GetRand256().GetHex();
-        params["address"] = LLC::GetRand256().GetHex();
+        params["address_to"] = TAO::Register::Address(TAO::Register::Address::ACCOUNT).ToString();
+        params["address"] = TAO::Register::Address(TAO::Register::Address::TOKEN).ToString();
 
         /* Invoke the API */
         ret = APICall("tokens/debit/token", params);
@@ -353,7 +353,7 @@ TEST_CASE( "Test Tokens API - credit token", "[tokens/credit/token]")
         params["session"] = SESSION1;
         params["name"] = strToken;
         params["amount"] = "100";
-        params["address_to"] = LLC::GetRand256().GetHex();
+        params["address_to"] = TAO::Register::Address(TAO::Register::Address::ACCOUNT).ToString();
 
         /* Invoke the API */
         ret = APICall("tokens/debit/token", params);
@@ -485,7 +485,7 @@ TEST_CASE( "Test Tokens API - get token", "[tokens/get/token]")
         params.clear();
         params["pin"] = PIN;
         params["session"] = SESSION1;
-        params["address"] = LLC::GetRand256().GetHex();
+        params["address"] = TAO::Register::Address(TAO::Register::Address::TOKEN).ToString();
 
         /* Invoke the API */
         ret = APICall("tokens/get/token", params);
@@ -683,9 +683,9 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens/debit/account]")
 
     /* Generate random token name */
     std::string strToken = "TOKEN" +std::to_string(LLC::GetRand());
-    uint256_t hashToken = TAO::Register::Address(TAO::Register::Address::TOKEN);
+    TAO::Register::Address hashToken = TAO::Register::Address(TAO::Register::Address::TOKEN);
     std::string strAccount = "ACCOUNT" +std::to_string(LLC::GetRand());
-    uint256_t hashAccount = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
+    TAO::Register::Address hashAccount = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
 
     uint512_t hashDebitTx;
 
@@ -777,7 +777,7 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens/debit/account]")
         params["pin"] = PIN;
         params["session"] = SESSION1;
         params["amount"] = "100";
-        params["address_to"] = LLC::GetRand256().GetHex();
+        params["address_to"] = TAO::Register::Address(TAO::Register::Address::ACCOUNT).ToString();
 
         /* Invoke the API */
         ret = APICall("tokens/debit/account", params);
@@ -812,8 +812,8 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens/debit/account]")
         params["pin"] = PIN;
         params["session"] = SESSION1;
         params["amount"] = "100";
-        params["address_to"] = LLC::GetRand256().GetHex();
-        params["address"] = LLC::GetRand256().GetHex();
+        params["address_to"] = TAO::Register::Address(TAO::Register::Address::ACCOUNT).ToString();
+        params["address"] = TAO::Register::Address(TAO::Register::Address::ACCOUNT).ToString();
 
         /* Invoke the API */
         ret = APICall("tokens/debit/account", params);
@@ -829,7 +829,7 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens/debit/account]")
         params.clear();
         params["pin"] = PIN;
         params["session"] = SESSION1;
-        params["address"] = hashAccount.GetHex();
+        params["address"] = hashAccount.ToString();
         params["amount"] = "100";
 
         /* Invoke the API */
@@ -846,7 +846,7 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens/debit/account]")
         params.clear();
         params["pin"] = PIN;
         params["session"] = SESSION1;
-        params["address"] = hashAccount.GetHex();
+        params["address"] = hashAccount.ToString();
         params["amount"] = "100";
         params["name_to"] = "random";
 
@@ -864,7 +864,7 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens/debit/account]")
         params.clear();
         params["pin"] = PIN;
         params["session"] = SESSION1;
-        params["address"] = hashAccount.GetHex();
+        params["address"] = hashAccount.ToString();
         params["amount"] = "100";
         params["address_to"] = hashToken.GetHex();
 
@@ -954,9 +954,9 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens/debit/account]")
         params.clear();
         params["pin"] = PIN;
         params["session"] = SESSION1;
-        params["address"] = hashAccount.GetHex();
+        params["address"] = hashAccount.ToString();
         params["amount"] = "100";
-        params["address_to"] = hashToken.GetHex();
+        params["address_to"] = hashToken.ToString();
 
         /* Invoke the API */
         ret = APICall("tokens/debit/account", params);
@@ -977,9 +977,9 @@ TEST_CASE( "Test Tokens API - credit account", "[tokens/credit/account]")
 
     /* Generate random token name */
     std::string strToken = "TOKEN" + std::to_string(LLC::GetRand());
-    uint256_t hashToken = TAO::Register::Address(TAO::Register::Address::TOKEN);
+    TAO::Register::Address hashToken = TAO::Register::Address(TAO::Register::Address::TOKEN);
     std::string strAccount = "ACCOUNT" + std::to_string(LLC::GetRand());
-    uint256_t hashAccount = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
+    TAO::Register::Address hashAccount = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
 
     std::string strTXID;
 
@@ -1138,9 +1138,9 @@ TEST_CASE( "Test Tokens API - get account", "[tokens/get/account]")
 
     /* Generate random token name */
     std::string strToken = "TOKEN" +std::to_string(LLC::GetRand());
-    uint256_t hashToken = TAO::Register::Address(TAO::Register::Address::TOKEN);
+    TAO::Register::Address hashToken = TAO::Register::Address(TAO::Register::Address::TOKEN);
     std::string strAccount = "ACCOUNT" +std::to_string(LLC::GetRand());
-    uint256_t hashAccount = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
+    TAO::Register::Address hashAccount = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
 
     std::string strTXID;
 
@@ -1167,7 +1167,7 @@ TEST_CASE( "Test Tokens API - get account", "[tokens/get/account]")
 
         REQUIRE(result.find("txid") != result.end());
         REQUIRE(result.find("address") != result.end());
-        hashToken.SetHex( result["address"].get<std::string>());
+        hashToken.SetBase58( result["address"].get<std::string>());
     }
 
     /* tokens/create/account by token address success */
@@ -1178,7 +1178,7 @@ TEST_CASE( "Test Tokens API - get account", "[tokens/get/account]")
         params["pin"] = PIN;
         params["session"] = SESSION1;
         params["name"] = strAccount;
-        params["token"] = hashToken.GetHex();
+        params["token"] = hashToken.ToString();
 
         /* Invoke the API */
         ret = APICall("tokens/create/account", params);
@@ -1189,7 +1189,7 @@ TEST_CASE( "Test Tokens API - get account", "[tokens/get/account]")
 
         REQUIRE(result.find("txid") != result.end());
         REQUIRE(result.find("address") != result.end());
-        hashAccount.SetHex( result["address"].get<std::string>());
+        hashAccount.SetBase58( result["address"].get<std::string>());
     }
 
     /* Test fail with missing name / address */
@@ -1229,7 +1229,7 @@ TEST_CASE( "Test Tokens API - get account", "[tokens/get/account]")
         params.clear();
         params["pin"] = PIN;
         params["session"] = SESSION1;
-        params["address"] = LLC::GetRand256().GetHex();
+        params["address"] = TAO::Register::Address(TAO::Register::Address::ACCOUNT).ToString();
 
         /* Invoke the API */
         ret = APICall("tokens/get/account", params);
@@ -1271,7 +1271,7 @@ TEST_CASE( "Test Tokens API - get account", "[tokens/get/account]")
         params.clear();
         params["pin"] = PIN;
         params["session"] = SESSION1;
-        params["address"] = hashAccount.GetHex();
+        params["address"] = hashAccount.ToString();
 
         /* Invoke the API */
         ret = APICall("tokens/get/account", params);

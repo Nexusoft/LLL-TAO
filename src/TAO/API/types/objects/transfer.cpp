@@ -59,7 +59,7 @@ namespace TAO
                 throw APIException(-113, "Destination user doesn't exist");
 
             /* Get the register address. */
-            uint256_t hashRegister = 0;
+            TAO::Register::Address hashRegister ;
 
             /* The Object to get history for */
             TAO::Register::Object object;
@@ -79,7 +79,7 @@ namespace TAO
             }
             /* Otherwise try to find the raw hex encoded address. */
             else if(params.find("address") != params.end())
-                hashRegister.SetHex(params["address"]);
+                hashRegister.SetBase58(params["address"]);
             /* Fail if no required parameters supplied. */
             else
                 throw APIException(-33, "Missing name / address");

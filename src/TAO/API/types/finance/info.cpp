@@ -50,7 +50,7 @@ namespace TAO
                 throw APIException(-10, "Invalid session ID");
 
             /* Retrieve the trust register address from the trust account name */
-            uint256_t hashRegister = Names::ResolveAddress(params, std::string("trust"));
+            TAO::Register::Address hashRegister = Names::ResolveAddress(params, std::string("trust"));
 
             /* Get trust account. Any trust account that has completed Genesis will be indexed. */
             TAO::Register::Object trust;

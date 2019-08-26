@@ -29,7 +29,7 @@ namespace TAO
         : vchState()
         , nVersion(0)
         , nType(0)
-        , hashOwner(0)
+        , hashOwner(uint256_t(0))
         , nCreated(runtime::unifiedtimestamp())
         , nModified(runtime::unifiedtimestamp())
         , hashChecksum(0)
@@ -44,7 +44,7 @@ namespace TAO
         : vchState()
         , nVersion(1)
         , nType(nTypeIn)
-        , hashOwner(0)
+        , hashOwner(uint256_t(0))
         , nCreated(runtime::unifiedtimestamp())
         , nModified(runtime::unifiedtimestamp())
         , hashChecksum(0)
@@ -59,7 +59,7 @@ namespace TAO
         : vchState(vchData)
         , nVersion(1)
         , nType(0)
-        , hashOwner(0)
+        , hashOwner(uint256_t(0))
         , nCreated(runtime::unifiedtimestamp())
         , nModified(runtime::unifiedtimestamp())
         , nReadPos(0)
@@ -100,7 +100,7 @@ namespace TAO
         : vchState()
         , nVersion(1)
         , nType(0)
-        , hashOwner(0)
+        , hashOwner(uint256_t(0))
         , nCreated(runtime::unifiedtimestamp())
         , nModified(runtime::unifiedtimestamp())
         , hashChecksum(hashChecksumIn)
@@ -134,7 +134,7 @@ namespace TAO
         {
             nVersion     = 0;
             nType        = 0;
-            hashOwner    = 0;
+            hashOwner    = uint256_t(0);
             nCreated     = 0;
             nModified    = 0;
             hashChecksum = 0;

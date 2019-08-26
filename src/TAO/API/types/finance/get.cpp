@@ -37,7 +37,7 @@ namespace TAO
             json::json ret;
 
             /* Get the Register ID. */
-            uint256_t hashRegister = 0;
+            TAO::Register::Address hashRegister;
 
             /* Attempt to deduce the register address from name. */
             if(params.find("name") != params.end())
@@ -45,7 +45,7 @@ namespace TAO
 
             /* Get the RAW address from hex. */
             else if(params.find("address") != params.end())
-                hashRegister.SetHex(params["address"].get<std::string>());
+                hashRegister.SetBase58(params["address"].get<std::string>());
             else
                 throw APIException(-33, "Missing name / address");
 
@@ -69,7 +69,7 @@ namespace TAO
 
 
             /* Populate the response JSON */
-            ret["owner"]    = object.hashOwner.GetHex();
+            ret["owner"]    = object.hashOwner.ToString();
             ret["created"]  = object.nCreated;
             ret["modified"] = object.nModified;
 

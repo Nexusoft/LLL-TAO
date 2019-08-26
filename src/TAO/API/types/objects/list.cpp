@@ -71,7 +71,7 @@ namespace TAO
                 nLimit = std::stoul(params["limit"].get<std::string>());
 
             /* Get the list of registers owned by this sig chain */
-            std::vector<uint256_t> vRegisters;
+            std::vector<TAO::Register::Address> vRegisters;
             if(!ListRegisters(hashGenesis, vRegisters))
                 throw APIException(-74, "No registers found");
 

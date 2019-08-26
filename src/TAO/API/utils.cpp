@@ -43,13 +43,19 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
-        /* Determins whether a string value is a register address.
-        *  This only checks to see if the value is 64 characters in length and all hex characters (i.e. can be converted to a uint256).
+        /* Determines whether a string value is a valid base58 encoded register address.
+        *  This only checks to see if the value an be decoded into a valid Register::Address with a valid Type.
         *  It does not check to see whether the register address exists in the database
         */
         bool IsRegisterAddress(const std::string& strValueToCheck)
         {
-            return strValueToCheck.length() == 64 && strValueToCheck.find_first_not_of("0123456789abcdefABCDEF", 0) == std::string::npos;
+            /* Decode the incoming string into a register address */
+            TAO::Register::Address address;
+            address.SetBase58(strValueToCheck);
+
+            /* Check to see whether it is valid */
+            return address.IsValid();
+
         }
 
 
@@ -84,7 +90,7 @@ namespace TAO
                 case TAO::Register::OBJECTS::ACCOUNT:
                 {
                     /* If debiting an account we need to look at the token definition in order to get the digits. */
-                    uint256_t nIdentifier = object.get<uint256_t>("token");
+                    TAO::Register::Address nIdentifier = object.get<uint256_t>("token");
 
                     /* Edge case for NXS token which has identifier 0, so no look up needed */
                     if(nIdentifier == 0)
@@ -124,7 +130,7 @@ namespace TAO
          * Similarly if we find a transfer transaction for a register before any other transaction
          * then we must know we currently to NOT own it.
          */
-        bool ListRegisters(const uint256_t& hashGenesis, std::vector<uint256_t>& vRegisters)
+        bool ListRegisters(const uint256_t& hashGenesis, std::vector<TAO::Register::Address>& vRegisters)
         {
             /* Get the last transaction. */
             uint512_t hashLast = 0;
@@ -202,7 +208,7 @@ namespace TAO
                         case TAO::Operation::OP::DEBIT:
                         {
                             /* Extract the address from the contract. */
-                            uint256_t hashAddress = 0;
+                            TAO::Register::Address hashAddress;
                             contract >> hashAddress;
 
                             /* for these operations, if the address is NOT in the transferred list
@@ -228,7 +234,7 @@ namespace TAO
                             contract.Seek(68);
 
                             /* The account that is being credited. */
-                            uint256_t hashAddress = 0;
+                            TAO::Register::Address hashAddress;
                             contract >> hashAddress;
 
                             /* If we find a credit before a transfer transaction for this register then
@@ -252,11 +258,11 @@ namespace TAO
                         case TAO::Operation::OP::TRANSFER:
                         {
                             /* Extract the address from the contract. */
-                            uint256_t hashAddress = 0;
+                            TAO::Register::Address hashAddress;
                             contract >> hashAddress;
 
                             /* Read the register transfer recipient. */
-                            uint256_t hashTransfer = 0;
+                            TAO::Register::Address hashTransfer;
                             contract >> hashTransfer;
 
                             /* Read the force transfer flag */
@@ -290,7 +296,7 @@ namespace TAO
                             contract.Seek(68);
 
                             /* Extract the address from the contract. */
-                            uint256_t hashAddress = 0;
+                            TAO::Register::Address hashAddress;
                             contract >> hashAddress;
 
                             /* If we find a CLAIM transaction before a TRANSFER, then we know that we must currently own this register */
@@ -331,7 +337,7 @@ namespace TAO
                     throw TAO::API::APIException(-163, "Could not retrieve default NXS account to debit fees.");
 
                 /* Get the address of the default account */
-                uint256_t hashFeeAccount = defaultNameRegister.get<uint256_t>("address");
+                TAO::Register::Address hashFeeAccount = defaultNameRegister.get<uint256_t>("address");
 
                 /* Retrieve the account */
                 TAO::Register::Object object;
@@ -450,7 +456,7 @@ namespace TAO
                 for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
                 {
                     /* The proof to check for this contract */
-                    uint256_t hashProof = 0;
+                    TAO::Register::Address hashProof;
 
                     /* Reset the op stream */
                     tx[nContract].Reset();
@@ -466,7 +472,7 @@ namespace TAO
                         tx[nContract] >> hashProof;
                         
                         /* Get the recipient account */
-                        uint256_t hashTo = 0;
+                        TAO::Register::Address hashTo;
                         tx[nContract] >> hashTo; 
 
                         /* Check the account filter */
@@ -487,7 +493,7 @@ namespace TAO
                             continue;
 
                         /* Get the token address */
-                        uint256_t token = account.get<uint256_t>("token");
+                        TAO::Register::Address token = account.get<uint256_t>("token");
                         
                         /* Check the account token matches the one passed in*/
                         if(token != hashToken)
@@ -560,7 +566,7 @@ namespace TAO
                     refContract >> OPERATION;
 
                     /* Get the genesis hash */
-                    uint256_t hashFrom = 0;
+                    TAO::Register::Address hashFrom;
                     refContract >> hashFrom;
 
                     /* Get the amount */
@@ -594,7 +600,7 @@ namespace TAO
                     refContract >> OPERATION;
 
                     /* Get the token/account we are debiting from */
-                    uint256_t hashFrom = 0;
+                    TAO::Register::Address hashFrom;
                     refContract >> hashFrom;
 
                     /* REtrieve the account/token the debit was from */
@@ -611,7 +617,7 @@ namespace TAO
                         continue;
 
                     /* Retrieve the proof account so we can work out the partial claim amount */
-                    uint256_t hashProof = std::get<2>(contract);
+                    TAO::Register::Address hashProof = std::get<2>(contract);
 
                     /* Read the object register, which is the proof account . */
                     TAO::Register::Object account;
@@ -627,7 +633,7 @@ namespace TAO
                         continue;
 
                     /* Get the token address */
-                    uint256_t hashProofToken = account.get<uint256_t>("token");                    
+                    TAO::Register::Address hashProofToken = account.get<uint256_t>("token");                    
 
                     /* Read the token register. */
                     TAO::Register::Object token;
@@ -693,11 +699,11 @@ namespace TAO
                         if(nOp == TAO::Operation::OP::DEBIT)
                         {   
                             /* Get the source address which is the proof for the debit */
-                            uint256_t hashFrom = 0;
+                            TAO::Register::Address hashFrom;
                             tx[nContract] >> hashFrom;
                             
                             /* Get the recipient account */
-                            uint256_t hashTo = 0;
+                            TAO::Register::Address hashTo;
                             tx[nContract] >> hashTo; 
 
                             /* Get the amount */
@@ -729,7 +735,7 @@ namespace TAO
                                     continue;
 
                                 /* Get the token address */
-                                uint256_t token = account.get<uint256_t>("token");
+                                TAO::Register::Address token = account.get<uint256_t>("token");
                                 
                                 /* Check the account token matches the one passed in*/
                                 if(token != hashToken)
@@ -755,7 +761,7 @@ namespace TAO
                                     continue;
 
                                 /* Get the token address */
-                                uint256_t token = account.get<uint256_t>("token");
+                                TAO::Register::Address token = account.get<uint256_t>("token");
                                 
                                 /* Check the account token matches the one passed in*/
                                 if(token != hashToken)
@@ -786,11 +792,11 @@ namespace TAO
                             tx[nContract] >> nID;
 
                             /* Get the account address. */
-                            uint256_t hashTo = 0;
+                            TAO::Register::Address hashTo;
                             tx[nContract] >> hashTo;
 
                             /* Get the proof address. */
-                            uint256_t hashProof = 0;
+                            TAO::Register::Address hashProof;
                             tx[nContract] >> hashProof;
 
                             /* Get the credit amount. */
@@ -815,7 +821,7 @@ namespace TAO
                                 continue;
 
                             /* Get the token address */
-                            uint256_t token = account.get<uint256_t>("token");
+                            TAO::Register::Address token = account.get<uint256_t>("token");
                             
                             /* Check the account token matches the one passed in*/
                             if(token != hashToken)
@@ -836,7 +842,7 @@ namespace TAO
                                 continue;
 
                             /* Get the source address which is the proof for the debit */
-                            uint256_t hashFrom = 0;
+                            TAO::Register::Address hashFrom;
                             tx[nContract] >> hashFrom;
                             
                             /* Get the amount */
@@ -910,8 +916,14 @@ namespace TAO
                             /* Get the amount */
                             TAO::Register::Unpack(tx[nContract], nAmount);
 
-                            /* Add it to our return values */
-                            nCoinbase += nAmount;
+                            /* Get the genesis of the coinbase recipient*/
+                            TAO::Register::Address hashRecipient;
+                            TAO::Register::Unpack(tx[nContract], hashRecipient);
+
+                            /* Check that the contract was for us */
+                            if(hashRecipient == hashGenesis)
+                                /* Add it to our return values */
+                                nCoinbase += nAmount;
 
                         }
                         else if(nOp == Operation::OP::TRUST || nOp == Operation::OP::GENESIS)

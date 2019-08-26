@@ -110,11 +110,11 @@ namespace TAO
                     if(nType == TAO::Operation::OP::DEBIT)
                     {
                         /* Get the hashFrom from the debit transaction. This is the account we are going to return the credit to*/
-                        uint256_t hashFrom = 0;
+                        TAO::Register::Address hashFrom;
                         contract >> hashFrom;
 
                         /* Get the hashTo from the debit transaction. */
-                        uint256_t hashTo = 0;
+                        TAO::Register::Address hashTo;
                         contract >> hashTo;
 
                         /* Get the amount to respond to. */
@@ -150,7 +150,7 @@ namespace TAO
                     else if(nType == TAO::Operation::OP::TRANSFER)
                     {
                         /* Get the address of the asset being transferred from the transaction. */
-                        uint256_t hashAddress = 0;
+                        TAO::Register::Address hashAddress;
                         contract >> hashAddress;
 
                         /* Get the genesis hash (recipient) of the transfer*/

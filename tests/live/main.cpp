@@ -49,38 +49,34 @@ ________________________________________________________________________________
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
-    TAO::Register::Address address = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
-    debug::log(0, address.ToString());
+    //debug::log(0, TAO::Register::Address(TAO::Register::Address::RESERVED).ToBase58());
+    //debug::log(0, TAO::Register::Address(TAO::Register::Address::RESERVED2).ToBase58());
+    debug::log(0, TAO::Register::Address(TAO::Register::Address::LEGACY).ToBase58());
+    debug::log(0, TAO::Register::Address(TAO::Register::Address::LEGACY_TESTNET).ToBase58());
+    debug::log(0, TAO::Register::Address(TAO::Register::Address::READONLY).ToBase58());
+    debug::log(0, TAO::Register::Address(TAO::Register::Address::APPEND).ToBase58());
+    debug::log(0, TAO::Register::Address(TAO::Register::Address::RAW).ToBase58());
+    debug::log(0, TAO::Register::Address(TAO::Register::Address::OBJECT).ToBase58());
+    debug::log(0, TAO::Register::Address(TAO::Register::Address::ACCOUNT).ToBase58());
+    debug::log(0, TAO::Register::Address(TAO::Register::Address::TOKEN).ToBase58());
+    debug::log(0, TAO::Register::Address(TAO::Register::Address::TRUST).ToBase58());
+    debug::log(0, TAO::Register::Address(TAO::Register::Address::NAME).ToBase58());
+    debug::log(0, TAO::Register::Address(TAO::Register::Address::NAMESPACE).ToBase58());
+    debug::log(0, TAO::Register::Address(TAO::Register::Address::WILDCARD).ToBase58());
 
-    Legacy::NexusAddress legacy;
-    legacy.SetHash256(address);
-    if(!legacy.IsValid())
-        return debug::error("Invalid address");
+    //Legacy::NexusAddress legacy("4iwPaoaCYdrQ5hX88K4TRdrTuRRtGn931qW66spaGgNiWe2dGRp");
 
-    debug::log(0, legacy.GetHash256().ToString());
+    // for(uint8_t n = 0; n<255; n++)
+    // {
+    //     std::string str = TAO::Register::Address(n).ToBase58();
+    //     debug::log(0, str + " - " +std::to_string(n));
+    // }
 
-    return 0;
-
-    uint256_t hashTest = LLC::GetRand256();
-
-    TAO::Ledger::Genesis genesis = TAO::Ledger::Genesis(hashTest);
-
-    debug::log(0, "Genesis ", genesis.ToString());
-
-    debug::log(0, "Hash: ", hashTest.ToString());
-
-    TAO::Register::Address addr = TAO::Register::Address(TAO::Register::Address::NAME);
-
-    debug::log(0, "Hash: ", addr.ToString());
-
-    printf("BYTE: %x\n", addr.GetType());
-
-    debug::log(0, "Valid: ", addr.IsValid() ? "Yes" : "No");
-
-    TAO::Register::Address name = TAO::Register::Address("colin2", TAO::Register::Address::NAMESPACE);
-
-    debug::log(0, "Hash: ", name.ToString());
-
+    // TAO::Register::Address tritium;
+    // tritium.SetBase58("4iwPaoaCYdrQ5hX88K4TRdrTuRRtGn931qW66spaGgNiWe2dGRp");
+    // debug::log(0, tritium.ToBase58());
+    // debug::log(0, std::to_string(tritium.GetType()));
+  
 
     return 0;
 }

@@ -99,7 +99,7 @@ namespace TAO
                 for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
                 {
                     /* The proof to check for this contract */
-                    uint256_t hashProof = 0;
+                    TAO::Register::Address hashProof;
 
                     /* REset the op stream */
                     tx[nContract].Reset();
@@ -115,7 +115,7 @@ namespace TAO
                         tx[nContract] >> hashProof;
                         
                         /* Get the recipient account */
-                        uint256_t hashTo = 0;
+                        TAO::Register::Address hashTo;
                         tx[nContract] >> hashTo;
                         
                         /* Retrieve the account. */
@@ -130,7 +130,7 @@ namespace TAO
                     else if(nOp == TAO::Operation::OP::TRANSFER)
                     {
                         /* The register address being transferred */
-                        uint256_t hashRegister;
+                        TAO::Register::Address hashRegister;
                         tx[nContract] >> hashRegister;
                         
                         /* Get recipient genesis hash */
@@ -197,7 +197,7 @@ namespace TAO
                 for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
                 {
                     /* check the script to see if it contains a register address */
-                    uint256_t hashTo;
+                    TAO::Register::Address hashTo;
                     if(!Legacy::ExtractRegister(ptx->vout[nContract].scriptPubKey, hashTo))
                         continue;
                     
@@ -257,7 +257,7 @@ namespace TAO
                         tx[nContract].Seek(1);
 
                         /* Get the proof to check coinbase. */
-                        uint256_t hashProof;
+                        TAO::Register::Address hashProof;
                         tx[nContract] >> hashProof;
 
                         /* Check that the proof is to your genesis. */
@@ -286,7 +286,7 @@ namespace TAO
                 std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> &vContracts)
         {
             /* Get the list of registers owned by this sig chain */
-            std::vector<uint256_t> vRegisters;
+            std::vector<TAO::Register::Address> vRegisters;
             if(!ListRegisters(hashGenesis, vRegisters))
                 throw APIException(-74, "No registers found");
 
@@ -307,7 +307,7 @@ namespace TAO
                     continue;
 
                 /* Get the token address */
-                uint256_t hashToken = object.get<uint256_t>("token");
+                TAO::Register::Address hashToken = object.get<uint256_t>("token");
                 
                 /* Check the account is a not NXS account */
                 if(hashToken == 0)
@@ -355,7 +355,7 @@ namespace TAO
                             continue;
                         
                         /* The account/token the debit came from  */
-                        uint256_t hashFrom = 0;
+                        TAO::Register::Address hashFrom;
 
                         /* Seek to the hash from. */
                         contract.Seek(1, Operation::Contract::OPERATIONS);
@@ -449,7 +449,7 @@ namespace TAO
 
                 /* Check to see if there is a proof for the contract, indicating this is a split dividend payment and the
                    hashProof is the account the proves the ownership of it*/
-                uint256_t hashProof = std::get<2>(contract);
+                TAO::Register::Address hashProof = std::get<2>(contract);
                 
                 if(hashProof != 0)
                 {
@@ -467,7 +467,7 @@ namespace TAO
                         throw APIException(-65, "Object is not an account");
 
                     /* Get the token address */
-                    uint256_t hashToken = account.get<uint256_t>("token");                    
+                    TAO::Register::Address hashToken = account.get<uint256_t>("token");                    
 
                     /* Read the token register. */
                     TAO::Register::Object token;
@@ -495,7 +495,7 @@ namespace TAO
                     obj["amount"] = (double) nPartial / pow(10, GetDigits(token));
 
                     /* Add the token account to the notification */
-                    obj["proof"] = hashProof.GetHex();
+                    obj["proof"] = hashProof.ToString();
 
                     std::string strProof = Names::ResolveName(hashCaller, hashProof);
                     if(!strProof.empty())
@@ -532,13 +532,13 @@ namespace TAO
                     break;
 
                 /* The register address of the recipient account */
-                uint256_t hashTo;
+                TAO::Register::Address hashTo;
                 Legacy::ExtractRegister(tx.first->vout[tx.second].scriptPubKey, hashTo);
 
                 /* Get transaction JSON data. */
                 json::json obj; 
                 obj["OP"]       = "LEGACY";
-                obj["address"]  = hashTo.GetHex();
+                obj["address"]  = hashTo.ToString();
 
                 /* Resolve the name of the token/account/register that the debit is to */
                 std::string strTo = Names::ResolveName(hashCaller, hashTo);

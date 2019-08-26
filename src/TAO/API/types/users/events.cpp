@@ -180,8 +180,8 @@ namespace TAO
                     uint512_t hashTx;
 
                     /* hash from, hash to, and amount for operations. */
-                    uint256_t hashFrom;
-                    uint256_t hashTo;
+                    TAO::Register::Address hashFrom;
+                    TAO::Register::Address hashTo;
 
 
                     uint64_t nAmount = 0;
@@ -219,7 +219,8 @@ namespace TAO
                             {
                                 /* Check to see if there is a proof for the contract, indicating this is a split dividend payment 
                                    and the hashProof is the account the proves the ownership of it*/
-                                uint256_t hashProof = std::get<2>(contract);
+                                TAO::Register::Address hashProof;
+                                hashProof = std::get<2>(contract);
                                 
                                 if(hashProof != 0)
                                 {                                    
@@ -260,7 +261,7 @@ namespace TAO
                                         continue;
 
                                     /* Get the token address */
-                                    uint256_t hashToken = account.get<uint256_t>("token");                    
+                                    TAO::Register::Address hashToken = account.get<uint256_t>("token");                    
 
                                     /* Read the token register. */
                                     TAO::Register::Object token;
@@ -395,7 +396,7 @@ namespace TAO
                         const Legacy::TxOut& txLegacy = contract.first->vout[nContract];
 
                         /* The hash of the receiving account. */
-                        uint256_t hashAccount;
+                        TAO::Register::Address hashAccount;
                         
                         /* Extract the sig chain account register address  from the legacy script */ 
                         if(!Legacy::ExtractRegister(txLegacy.scriptPubKey, hashAccount))
