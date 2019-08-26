@@ -323,6 +323,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_finance_info.o \
 		build/API_types_finance_initialize.o \
 		build/API_types_finance_list.o \
+		build/API_types_finance_migrate.o \
 		build/API_types_finance_stake.o \
 		build/API_types_ledger_block.o \
 		build/API_types_ledger_initialize.o \
