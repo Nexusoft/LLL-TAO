@@ -143,4 +143,19 @@ namespace LLD
     {
         return Read(std::make_pair(hashAddress, nSequence), tx);
     }
+
+
+    /* Writes the hash of a trust key to record that it has been converted from Legacy to Tritium. */
+    bool LegacyDB::WriteTrustConversion(const uint512_t& hashTrust)
+    {
+        return Write(hashTrust);
+    }
+
+
+    /* Checks if a Legacy trust key has already been converted to Tritium. */
+    bool LegacyDB::HasTrustConversion(const uint512_t& hashTrust)
+    {
+        return Exists(hashTrust);
+    }
+
 }
