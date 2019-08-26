@@ -646,11 +646,11 @@ namespace LLD
         {
             /* Find the file stream for LRU cache. */
             std::fstream* pstream;
-            if(!fileCache->Get(std::make_pair(nShard, hashmap->at(nBucket)), pstream))
+            if(!fileCache->Get(std::make_pair(nShard, i), pstream))
             {
                 /* Set the new stream pointer. */
                 std::string filename = debug::safe_printstr(strBaseLocation, "_hashmap.",
-                    std::setfill('0'), std::setw(3), nShard, ".", std::setfill('0'), std::setw(5), hashmap->at(nBucket));
+                    std::setfill('0'), std::setw(3), nShard, ".", std::setfill('0'), std::setw(5), i);
 
                 /* Set the new stream pointer. */
                 pstream = new std::fstream(filename, std::ios::in | std::ios::out | std::ios::binary);
@@ -661,7 +661,7 @@ namespace LLD
                 }
 
                 /* If not in cache, add to the LRU. */
-                fileCache->Put(std::make_pair(nShard, hashmap->at(nBucket)), pstream);
+                fileCache->Put(std::make_pair(nShard, i), pstream);
             }
 
             /* Seek to the hashmap index in file. */

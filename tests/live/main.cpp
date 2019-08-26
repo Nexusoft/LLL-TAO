@@ -84,6 +84,12 @@ public:
     {
         return Read(std::make_pair(std::string("hash"), hash), hash2);
     }
+
+
+    bool EraseHash(const uint1024_t& hash)
+    {
+        return Erase(std::make_pair(std::string("hash"), hash));
+    }
 };
 
 
@@ -120,8 +126,6 @@ int main(int argc, char** argv)
     //uint1024_t hash = ;
 
     TestDB* testDB = new TestDB();
-
-
     for(int t = 0; t < 1000; ++t)
     {
         uint1024_t last = 0;
