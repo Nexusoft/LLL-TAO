@@ -202,6 +202,30 @@ namespace LLD
          **/
         bool ReadEvent(const uint256_t& hashAddress, const uint32_t nSequence, Legacy::Transaction &tx);
 
+
+        /** WriteTrustConversion
+         *
+         *  Writes the hash of a trust key to record that it has been converted from Legacy to Tritium.
+         *
+         *  @param[in] hashTrust The trust key hash.
+         *
+         *  @return True if the trust hash is written, false otherwise.
+         *
+         **/
+        bool WriteTrustConversion(const uint512_t& hashTrust);
+
+
+        /** HasTrustConversion
+         *
+         *  Checks if a Legacy trust key has already been converted to Tritium.
+         *
+         *  @param[in] hashTrust The trust key hash.
+         *
+         *  @return True if the trust key converted, false otherwise.
+         *
+         **/
+        bool HasTrustConversion(const uint512_t& hashTrust);
+
     };
 }
 

@@ -32,6 +32,8 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/create.h>
 
+#include <TAO/Register/include/unpack.h>
+
 #include <Util/include/args.h>
 #include <Util/include/convert.h>
 #include <Util/include/hex.h>
@@ -640,6 +642,18 @@ namespace TAO
 
                         /* Output the json information. */
                         ret["OP"]      = "CREDIT";
+
+                        /* Determine the transaction type that this credit is made for */
+                        std::string strInput;
+                        if(hashTx.GetType() == TAO::Ledger::LEGACY)
+                            strInput = "LEGACY";
+                        else if(hashProof == hashCaller)
+                            strInput = "COINBASE";
+                        else
+                            strInput = "DEBIT";
+
+                        ret["for"]      = strInput;
+
                         ret["txid"]    = hashTx.ToString();
                         ret["output"]  = nID;
                         ret["proof"]   = hashProof.ToString();
@@ -682,26 +696,45 @@ namespace TAO
                         if(!strToken.empty())
                             ret["token_name"] = strToken;
 
-                        /* The debit transaction being credited */
-                        TAO::Ledger::Transaction txDebit;
-
-                        /* Read the corresponding debit transaction to look up the reference field */
-                        if(LLD::Ledger->ReadTx(hashTx, txDebit))
+                        /* Check type transaction that was credited */
+                        if(hashTx.GetType() == TAO::Ledger::TRITIUM)
                         {
-                            /* Get the contract. */
-                            const TAO::Operation::Contract& debitContract = txDebit[nID];
+                            /* The debit transaction being credited */
+                            TAO::Ledger::Transaction txDebit;
 
-                            /* Reset the operation stream position in case it was loaded from mempool and therefore still in previous state */
-                            debitContract.Reset();
+                            /* Read the corresponding debit/coinbase transaction */
+                            if(LLD::Ledger->ReadTx(hashTx, txDebit))
+                            {
+                                /* Get the contract. */
+                                const TAO::Operation::Contract& debitContract = txDebit[nID];
 
-                            /* Seek to reference. */
-                            debitContract.Seek(73);
+                                /* Only add reference if the credit is for a debit (rather than a coinbase) */
+                                if( TAO::Register::Unpack(debitContract, TAO::Operation::OP::DEBIT))
+                                {
+                                    /* Get the address the debit came from */
+                                    TAO::Register::Address hashFrom;
+                                    TAO::Register::Unpack(debitContract, hashFrom);
 
-                            /* The reference */
-                            uint64_t nReference = 0;
-                            debitContract >> nReference;
+                                    ret["from"]     = hashFrom.ToString();
 
-                            ret["reference"] = nReference;
+                                    /* Resolve the name of the token/account that the debit is from */
+                                    std::string strFrom = Names::ResolveName(hashCaller, hashFrom);
+                                    if(!strFrom.empty())
+                                        ret["from_name"] = strFrom;
+                                        
+                                    /* Reset the operation stream position in case it was loaded from mempool and therefore still in previous state */
+                                    debitContract.Reset();
+
+                                    /* Seek to reference. */
+                                    debitContract.Seek(73);
+
+                                    /* The reference */
+                                    uint64_t nReference = 0;
+                                    debitContract >> nReference;
+
+                                    ret["reference"] = nReference;
+                                }
+                            }
 
                         }
 
@@ -859,7 +892,7 @@ namespace TAO
                 ret["address"]    = hashRegister.ToString();
                 ret["created"]    = object.nCreated;
                 ret["modified"]   = object.nModified;
-                ret["owner"]      = object.hashOwner.ToString();
+                ret["owner"]      = TAO::Register::Address(object.hashOwner).ToString();
 
                 /* If this is an append register we need to grab the data from the end of the stream which will be the most recent data */
                 while(!object.end())

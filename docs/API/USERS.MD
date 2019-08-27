@@ -21,6 +21,7 @@ The following methods are currently supported by this API
 [`logout/user`](#logoutuser)   
 [`unlock/user`](#unlockuser)  
 [`lock/user`](#lockuser)  
+[`get/status`](#getstatus)  
 [`list/accounts`](#listaccounts)   
 [`list/assets`](#listassets)    
 [`list/items`](#listitems)    
@@ -240,6 +241,50 @@ The minting/transactions parameters are optional and, if supplied, allow the sig
 ### Return values:
 
 `success` : Flag indicating if the call was successful
+
+
+****
+
+
+# `get/status`
+
+Only available in single-user API mode (multiuser=0), this method will return status information for the currently logged in user
+   
+
+### Endpoint:
+
+`/users/get/status`
+
+
+### Parameters:
+
+````
+NONE
+````
+
+
+### Return value JSON object:
+```
+{
+    "username": "trust",
+    "unlocked": {
+        "minting": true,
+        "transactions": true
+    }
+}
+
+```
+
+### Return values:
+
+`username` : The username of the currently logged in user
+
+`unlocked` : This will contain two child elements describing which functions the session is currently unlocked for
+
+`minting` : Boolean flag indicating whether the users sig chain is unlocked for minting (staking or mining).
+
+`transactions` : Boolean flag indicating whether the users sig chain is unlocked for creating any transactions.
+
 
 
 ****
@@ -781,6 +826,8 @@ This will list off all of the transactions for the requested signature chain gen
 {    
 &nbsp;&nbsp;&nbsp;`OP` : The contract operation. Can be `APPEND`, `CLAIM`, `COINBASE`, `CREATE`, `CREDIT`, `DEBIT`, `FEE`, `GENESIS`, `LEGACY`, `TRANSFER`, `TRUST`, `STAKE`, `UNSTAKE`, `WRITE`.
 
+&nbsp;&nbsp;&nbsp;`for` : For `CREDIT` transactions, the contract that this credit was created for . Can be `COINBASE`, `DEBIT`, or`LEGACY`.
+
 &nbsp;&nbsp;&nbsp;`txid` : The transaction that was credited / claimed.
 
 &nbsp;&nbsp;&nbsp;`proof` : The register address proving the credit.
@@ -789,9 +836,9 @@ This will list off all of the transactions for the requested signature chain gen
 
 &nbsp;&nbsp;&nbsp;`account_name` : For `CREDIT` transactions, the name of the account that the transaction relates to.  Only included if the name can be resolved.
 
-&nbsp;&nbsp;&nbsp;`from` : For `DEBIT` transactions, the register address of the account that the debit is being made from.
+&nbsp;&nbsp;&nbsp;`from` : For `DEBIT` and `CREDIT` transactions, the register address of the account that the debit is being made from.
 
-&nbsp;&nbsp;&nbsp;`from_name` : For `DEBIT` transactions, the name of the account that the debit is being made from.  Only included if the name can be resolved.
+&nbsp;&nbsp;&nbsp;`from_name` : For `DEBIT` and `CREDIT` transactions, the name of the account that the debit is being made from.  Only included if the name can be resolved.
 
 &nbsp;&nbsp;&nbsp;`to` : For `DEBIT` transactions, the register address of the account that the debit is being made to.
 

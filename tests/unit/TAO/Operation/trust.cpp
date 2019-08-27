@@ -34,10 +34,41 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
     using namespace TAO::Register;
     using namespace TAO::Operation;
 
-    uint256_t hashTrust    = TAO::Register::Address(TAO::Register::Address::TRUST);
+    /* Generate random genesis */
     uint256_t hashGenesis  = LLC::GetRand256();
 
+    /* Generate trust address deterministically */
+    TAO::Register::Address hashTrust = TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
+
     uint512_t hashLastTrust;
+
+    /* Test failure case with invalid trust address */
+    {
+        //create the transaction object
+        TAO::Ledger::Transaction tx;
+        tx.hashGenesis = hashGenesis;
+        tx.nSequence   = 0;
+        tx.nTimestamp  = runtime::timestamp();
+
+        /* generate random address */
+        TAO::Register::Address hashRandom  = TAO::Register::Address(TAO::Register::Address::TRUST);
+
+        //create object
+        Object object = CreateTrust();
+        object << std::string("testing") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << uint256_t(555);
+
+        //payload
+        tx[0] << uint8_t(OP::CREATE) << hashRandom << uint8_t(REGISTER::OBJECT) << object.GetState();
+
+        //generate the prestates and poststates
+        REQUIRE(tx.Build());
+
+        //verify the prestates and poststates
+        REQUIRE(tx.Verify());
+
+        //commit to disk
+        REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+    }
 
     //create a trust account register
     {

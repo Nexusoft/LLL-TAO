@@ -116,6 +116,18 @@ namespace TAO
             Address(const std::vector<uint8_t>& vName, const uint8_t nType);
 
 
+            /** Address Constructor
+             *
+             *  Build an address deterministically from a name and hash.
+             *
+             *  @param[in] strKey The key to combine with the hash to generate this address.
+             *  @param[in] hash The hash to combine with the key to generate this address.
+             *  @param[in] nType The type of the address (Name or Namespace)
+             *
+             **/
+            Address(const std::string& strKey, const uint256_t& hash, const uint8_t nType);
+
+
             /** Assignment operator.
              *
              *  @param[in] addr Address to assign this to.

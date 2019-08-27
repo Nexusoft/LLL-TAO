@@ -81,8 +81,8 @@ namespace TAO
                 throw APIException(-17, "Failed to create transaction");
             }
 
-            /* Generate a random hash for this objects register address */
-            TAO::Register::Address hashRegister = TAO::Register::Address(TAO::Register::Address::TRUST);
+            /* Generate register address for the trust account deterministically so that we can retrieve it easily later. */
+            TAO::Register::Address hashRegister = TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
 
             /* Add a Name record for the trust account */
             tx[0] = Names::CreateName(user->Genesis(), "trust", "", hashRegister);
