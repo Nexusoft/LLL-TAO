@@ -496,7 +496,7 @@ namespace TAO
             static bool GetOutstanding(const uint256_t& hashGenesis,
                 std::vector<std::pair<std::shared_ptr<Legacy::Transaction>, uint32_t>> &vContracts);
 
-            
+
             /** get_tokenized_debits
              *
              *  Get the outstanding debit transactions made to assets owned by tokens you hold.
@@ -536,6 +536,7 @@ namespace TAO
             static bool get_events(const uint256_t& hashGenesis,
                 std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> &vContracts);
 
+
             /** get_events
              *
              *  Get the outstanding legacy UTXO to register transactions.
@@ -548,7 +549,7 @@ namespace TAO
                 std::vector<std::pair<std::shared_ptr<Legacy::Transaction>, uint32_t>> &vContracts);
 
 
-        
+
 
         };
     }

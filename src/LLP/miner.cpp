@@ -50,7 +50,6 @@ namespace LLP
     Miner::Miner()
     : Connection()
     , CoinbaseTx()
-    , MUTEX()
     , mapBlocks()
     , nBestHeight(0)
     , nSubscribed(0)
@@ -108,6 +107,9 @@ namespace LLP
             pMiningKey->ReturnKey();
             delete pMiningKey;
         }
+
+        /* Send a notification to wake up sleeping thread to finish shutdown process. */
+        //this->NotifyEvent();
     }
 
 
@@ -284,8 +286,8 @@ namespace LLP
     }
 
 
-    /** This function is necessary for a template LLP server. It handles your
-        custom messaging system, and how to interpret it from raw packets. **/
+    /* This function is necessary for a template LLP server. It handles your custom messaging system, and how to interpret it
+     * from raw packets. */
     bool Miner::ProcessPacket()
     {
         /* Get the incoming packet. */
@@ -667,31 +669,33 @@ namespace LLP
 
         /* For Tritium, check the mempool to make sure recent transactions don't orphan outdated Tritium blocks. This is handled by
          * setting best height to zero, forcing miner clients to check height and request a new block if it's different. */
-         if(TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 7) || TAO::Ledger::CurrentVersion() > 7)
-         {
+         //if(TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 7) || TAO::Ledger::CurrentVersion() > 7)
+         //{
+
+
              /* Get the hash genesis. */
-             uint256_t hashGenesis = TAO::API::users->GetGenesis(0);
+             //uint256_t hashGenesis = TAO::API::users->GetGenesis(0);
 
              /* Read hashLast from hashGenesis' sigchain and also check mempool. */
-             uint512_t hashLast;
-             if(LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
-             {
+             //uint512_t hashLast;
+             //if(LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
+             //{
                  /* Update nHashLast if it changed. */
-                if(nHashLast != hashLast)
-                {
-                    nHashLast = hashLast;
-                    nBestHeight = 0;
+            //    if(nHashLast != hashLast)
+            //    {
+            //        nHashLast = hashLast;
+            //        nBestHeight = 0;
 
-                    if(nHashLast != 0)
-                        debug::log(2, FUNCTION, "Mining height stale");
+            //        if(nHashLast != 0)
+            //            debug::log(2, FUNCTION, "Mining height stale");
 
                     /* Clear the map of stale blocks. */
-                    clear_map();
+            //        clear_map();
 
-                    return true;
-                }
-             }
-         }
+            //        return true;
+            //    }
+            // }
+         //}
 
          uint32_t nChainStateHeight = TAO::Ledger::ChainState::nBestHeight.load();
 
@@ -705,6 +709,13 @@ namespace LLP
         /* Set the new best height. */
         nBestHeight = nChainStateHeight;
         debug::log(2, FUNCTION, "Mining best height changed to ", nBestHeight);
+
+        /* Wake up events processor and wait for a signal to guarantee added transactions won't orphan a mined block. */
+        if(TAO::API::users)
+        {
+            TAO::API::users->NotifyEvent();
+            WaitEvent();
+        }
 
         return true;
     }

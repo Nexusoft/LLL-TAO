@@ -52,8 +52,6 @@ namespace LLP
         std::map<BaseAddress, DDOS_Filter *> DDOS_MAP;
         std::atomic<bool> fDDOS;
 
-        std::condition_variable MANAGER;
-
         /* Basic Socket Handle Variables. */
         std::thread          LISTEN_THREAD_V4;
         std::thread          LISTEN_THREAD_V6;
@@ -201,6 +199,15 @@ namespace LLP
         *
         **/
         void DisconnectAll();
+
+
+        /** NotifyEvent
+         *
+         *  Tell the server an event has occured to wake up thread if it is sleeping. This can be used to orchestrate communication
+         *  among threads if a strong ordering needs to be guaranteed.
+         *
+         **/
+        void NotifyEvent();
 
 
     private:

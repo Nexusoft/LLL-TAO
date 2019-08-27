@@ -13,6 +13,8 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <LLP/include/global.h>
+
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/json.h>
 #include <TAO/API/include/utils.h>
@@ -196,7 +198,7 @@ namespace TAO
                     for(const auto& contract : vContracts)
                     {
                         /* Get a reference to the contract */
-                        const TAO::Operation::Contract& refContract = std::get<0>(contract); 
+                        const TAO::Operation::Contract& refContract = std::get<0>(contract);
 
                         /* Set the transaction hash. */
                         hashTx = refContract.Hash();
@@ -217,16 +219,16 @@ namespace TAO
                             /* Check for Debits. */
                             case Operation::OP::DEBIT:
                             {
-                                /* Check to see if there is a proof for the contract, indicating this is a split dividend payment 
+                                /* Check to see if there is a proof for the contract, indicating this is a split dividend payment
                                    and the hashProof is the account the proves the ownership of it*/
                                 TAO::Register::Address hashProof;
                                 hashProof = std::get<2>(contract);
-                                
+
                                 if(hashProof != 0)
-                                {                                    
-                                    /* If this is a split dividend payment then we can only (currently) process it if it is NXS.  
+                                {
+                                    /* If this is a split dividend payment then we can only (currently) process it if it is NXS.
                                        Therefore we need to retrieve the account/token the debit is from so that we can check */
-                                    
+
                                     /* Get the token/account we are debiting from */
                                     refContract >> hashFrom;
                                     TAO::Register::Object from;
@@ -236,14 +238,14 @@ namespace TAO
                                     /* Parse the object register. */
                                     if(!from.Parse())
                                         continue;
-                                    
+
                                     /* Check the token type */
                                     if( from.get<uint256_t>("token") != 0)
                                     {
                                         debug::log(2, FUNCTION, "Skipping split dividend DEBIT as token is not NXS");
                                         continue;
                                     }
-                                    
+
                                     /* If this is a NXS debit then process the credit to the default account */
                                     hashTo = defaultAccount.get<uint256_t>("address");
 
@@ -261,7 +263,7 @@ namespace TAO
                                         continue;
 
                                     /* Get the token address */
-                                    TAO::Register::Address hashToken = account.get<uint256_t>("token");                    
+                                    TAO::Register::Address hashToken = account.get<uint256_t>("token");
 
                                     /* Read the token register. */
                                     TAO::Register::Object token;
@@ -290,7 +292,7 @@ namespace TAO
                                     txout[nOut] << hashTx << std::get<1>(contract);
                                     txout[nOut] << hashTo << hashProof;
                                     txout[nOut] << nPartial;
-                                    
+
                                 }
                                 else
                                 {
@@ -311,7 +313,7 @@ namespace TAO
 
                                 /* Log debug message. */
                                 debug::log(0, FUNCTION, "Matching DEBIT with CREDIT");
-                                
+
                                 break;
                             }
 
@@ -391,14 +393,14 @@ namespace TAO
 
                         /* The index of the output in the legacy transaction */
                         uint32_t nContract = contract.second;
-                        
+
                         /* The TxOut to be checked */
                         const Legacy::TxOut& txLegacy = contract.first->vout[nContract];
 
                         /* The hash of the receiving account. */
                         TAO::Register::Address hashAccount;
-                        
-                        /* Extract the sig chain account register address  from the legacy script */ 
+
+                        /* Extract the sig chain account register address  from the legacy script */
                         if(!Legacy::ExtractRegister(txLegacy.scriptPubKey, hashAccount))
                             continue;
 
@@ -464,6 +466,11 @@ namespace TAO
 
                 /* Reset the events flag. */
                 fEvent = false;
+
+                /* If mining is enabled, notify miner LLP that events processor is finished processing transactions so mined blocks
+                   can include these transactions and not orphan a mined block. */
+                if(LLP::MINING_SERVER)
+                    LLP::MINING_SERVER->NotifyEvent();
             }
         }
 
