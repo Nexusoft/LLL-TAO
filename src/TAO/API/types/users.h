@@ -455,6 +455,19 @@ namespace TAO
             json::json Items(const json::json& params, bool fHelp);
 
 
+            /** Status
+             *
+             *  Get status information for the currently logged in user
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json Status(const json::json& params, bool fHelp);
+
+
             /** EventsThread
              *
              *  Background thread to handle/suppress sigchain notifications.

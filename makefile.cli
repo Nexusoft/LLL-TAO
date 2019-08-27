@@ -377,6 +377,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_users_names.o \
 		build/API_types_users_namespaces.o \
 		build/API_types_users_notifications.o \
+		build/API_types_users_status.o \
 		build/API_types_users_tokens.o \
 		build/API_types_users_transactions.o \
 		build/API_types_users_unlock.o \

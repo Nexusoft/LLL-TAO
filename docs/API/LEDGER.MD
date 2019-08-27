@@ -556,9 +556,9 @@ Retrieves mining related data for the ledger.
 
 
 ### Parameters:
-
+````
 NONE
-
+````
 
 ### Return value JSON object:
 ```    

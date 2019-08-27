@@ -21,6 +21,7 @@ The following methods are currently supported by this API
 [`logout/user`](#logoutuser)   
 [`unlock/user`](#unlockuser)  
 [`lock/user`](#lockuser)  
+[`get/status`](#getstatus)  
 [`list/accounts`](#listaccounts)   
 [`list/assets`](#listassets)    
 [`list/items`](#listitems)    
@@ -240,6 +241,50 @@ The minting/transactions parameters are optional and, if supplied, allow the sig
 ### Return values:
 
 `success` : Flag indicating if the call was successful
+
+
+****
+
+
+# `get/status`
+
+Only available in single-user API mode (multiuser=0), this method will return status information for the currently logged in user
+   
+
+### Endpoint:
+
+`/users/get/status`
+
+
+### Parameters:
+
+````
+NONE
+````
+
+
+### Return value JSON object:
+```
+{
+    "username": "trust",
+    "unlocked": {
+        "minting": true,
+        "transactions": true
+    }
+}
+
+```
+
+### Return values:
+
+`username` : The username of the currently logged in user
+
+`unlocked` : This will contain two child elements describing which functions the session is currently unlocked for
+
+`minting` : Boolean flag indicating whether the users sig chain is unlocked for minting (staking or mining).
+
+`transactions` : Boolean flag indicating whether the users sig chain is unlocked for creating any transactions.
+
 
 
 ****

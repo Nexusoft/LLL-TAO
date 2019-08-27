@@ -26,9 +26,9 @@ Returns a summary of information about this node
 
 
 ### Parameters:
-
-**NONE**
-
+````
+NONE
+````
 
 ### Return value JSON object:
 ```
@@ -97,9 +97,9 @@ Returns a summary of information about the peers currently connected to this nod
 
 
 ### Parameters:
-
-**NONE**
-
+````
+NONE
+````
 
 ### Return value JSON object:
 ```
@@ -165,9 +165,9 @@ This will return the LISP Endpoint Indentifers (EID's) currently configured for 
 
 
 ### Parameters:
-
+````
 NONE
-
+````
 ### Return value JSON object:
 ```
 [
