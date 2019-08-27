@@ -781,6 +781,8 @@ This will list off all of the transactions for the requested signature chain gen
 {    
 &nbsp;&nbsp;&nbsp;`OP` : The contract operation. Can be `APPEND`, `CLAIM`, `COINBASE`, `CREATE`, `CREDIT`, `DEBIT`, `FEE`, `GENESIS`, `LEGACY`, `TRANSFER`, `TRUST`, `STAKE`, `UNSTAKE`, `WRITE`.
 
+&nbsp;&nbsp;&nbsp;`for` : For `CREDIT` transactions, the contract that this credit was created for . Can be `COINBASE`, `DEBIT`, or`LEGACY`.
+
 &nbsp;&nbsp;&nbsp;`txid` : The transaction that was credited / claimed.
 
 &nbsp;&nbsp;&nbsp;`proof` : The register address proving the credit.
@@ -789,9 +791,9 @@ This will list off all of the transactions for the requested signature chain gen
 
 &nbsp;&nbsp;&nbsp;`account_name` : For `CREDIT` transactions, the name of the account that the transaction relates to.  Only included if the name can be resolved.
 
-&nbsp;&nbsp;&nbsp;`from` : For `DEBIT` transactions, the register address of the account that the debit is being made from.
+&nbsp;&nbsp;&nbsp;`from` : For `DEBIT` and `CREDIT` transactions, the register address of the account that the debit is being made from.
 
-&nbsp;&nbsp;&nbsp;`from_name` : For `DEBIT` transactions, the name of the account that the debit is being made from.  Only included if the name can be resolved.
+&nbsp;&nbsp;&nbsp;`from_name` : For `DEBIT` and `CREDIT` transactions, the name of the account that the debit is being made from.  Only included if the name can be resolved.
 
 &nbsp;&nbsp;&nbsp;`to` : For `DEBIT` transactions, the register address of the account that the debit is being made to.
 
