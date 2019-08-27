@@ -1146,11 +1146,15 @@ namespace Legacy
          *
          *  @param[in] nSpendTime Time of send. Results only include transactions before this time
          *
-         *  @param[in,out] setCoinsRet Set to be populated with selected pairs of transaction and vout index (each identifies selected txout)
+         *  @param[in,out] mapCoinsRet Map to be populated with unspent txouts as pairs consisting of transaction and vout index
          *
          *  @param[out] nValueRet Total value of selected unspent txouts in the result set
          *
          *  @param[in] strAccount (optional) Only include outputs for this account label, "default" for wallet default account
+         *
+         *  @param[in] pfromAddress (optional) Only include outputs for this Nexus Address.
+         *                                     Set nullptr (default) for all addresses.
+         *                                     If an address is present, overrides strAccount (which is ignored)
          *
          *  @param[in] nMinDepth (optional) Only include outputs with at least this many confirms
          *
@@ -1159,7 +1163,8 @@ namespace Legacy
          **/
         bool SelectCoins(const int64_t nTargetValue, const uint32_t nSpendTime,
             std::map<std::pair<uint512_t, uint32_t>, const WalletTx*>& mapCoinsRet,
-            int64_t& nValueRet, const std::string& strAccount = "*", const uint32_t nMinDepth = 1);
+            int64_t& nValueRet, const std::string& strAccount = "*",
+            const NexusAddress* pfromAddress = nullptr, const uint32_t nMinDepth = 1);
 
 
         /** SelectCoinsMinConf
@@ -1172,7 +1177,7 @@ namespace Legacy
          *  @param[in] nSpendTime Time of send. Results only include transactions before this time
          *
          *  @param[in] nConfMine Require this number of confirmations if transaction with unspent output was from this wallet
-         *                       (eg, spending a change transaction),
+         *                       (eg, spending a change transaction)
          *
          *  @param[in] nConfTheirs Require this number of confirmations if transaction with unspent output was received from elsewhere
          *
@@ -1182,13 +1187,17 @@ namespace Legacy
          *
          *  @param[in] strAccount (optional) Only include outputs for this account label, "default" for wallet default account
          *
+         *  @param[in] pfromAddress (optional) Only include outputs for this Nexus Address.
+         *                                     Set nullptr (default) for all addresses.
+         *                                     If an address is present, overrides strAccount (which is ignored)
+         *
          *  @return true if script was successfully added
          *
          **/
         bool SelectCoinsMinConf(const int64_t nTargetValue, const uint32_t nSpendTime,
             const uint32_t nConfMine, const uint32_t nConfTheirs,
             std::map<std::pair<uint512_t, uint32_t>, const WalletTx*>& mapCoinsRet,
-            int64_t& nValueRet, const std::string& strAccount = "*");
+            int64_t& nValueRet, const std::string& strAccount = "*", const NexusAddress* pfromAddress = nullptr);
 
     };
 

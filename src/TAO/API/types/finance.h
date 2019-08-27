@@ -91,9 +91,9 @@ namespace TAO
             json::json Create(const json::json& params, bool fHelp);
 
 
-            /** Get
+            /** Credit
              *
-             *  Get an account or token object register
+             *  Claim a balance from an account or token object register.
              *
              *  @param[in] params The parameters from the API call.
              *  @param[in] fHelp Trigger for help data.
@@ -101,7 +101,7 @@ namespace TAO
              *  @return The return object in JSON.
              *
              **/
-            json::json Get(const json::json& params, bool fHelp);
+            json::json Credit(const json::json& params, bool fHelp);
 
 
             /** Debit
@@ -117,22 +117,9 @@ namespace TAO
             json::json Debit(const json::json& params, bool fHelp);
 
 
-            /** Credit
+            /** Get
              *
-             *  Claim a balance from an account or token object register.
-             *
-             *  @param[in] params The parameters from the API call.
-             *  @param[in] fHelp Trigger for help data.
-             *
-             *  @return The return object in JSON.
-             *
-             **/
-            json::json Credit(const json::json& params, bool fHelp);
-
-
-            /** List
-             *
-             *  List all NXS accounts
+             *  Get an account or token object register
              *
              *  @param[in] params The parameters from the API call.
              *  @param[in] fHelp Trigger for help data.
@@ -140,7 +127,21 @@ namespace TAO
              *  @return The return object in JSON.
              *
              **/
-            json::json List(const json::json& params, bool fHelp);
+            json::json Get(const json::json& params, bool fHelp);
+
+
+
+            /** GetBalances
+             *
+             *  Get a summary of balance information for all NXS accounts belonging to the currently logged in signature chain
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json GetBalances(const json::json& params, bool fHelp);
 
 
             /** Info
@@ -156,9 +157,9 @@ namespace TAO
             json::json Info(const json::json& params, bool fHelp);
 
 
-            /** Stake
+            /** List
              *
-             *  Set the stake amount for trust account (add/remove stake).
+             *  List all NXS accounts
              *
              *  @param[in] params The parameters from the API call.
              *  @param[in] fHelp Trigger for help data.
@@ -166,7 +167,7 @@ namespace TAO
              *  @return The return object in JSON.
              *
              **/
-            json::json Stake(const json::json& params, bool fHelp);
+            json::json List(const json::json& params, bool fHelp);
 
 
             /** ListTransactions
@@ -182,9 +183,9 @@ namespace TAO
             json::json ListTransactions(const json::json& params, bool fHelp);
 
 
-            /** GetBalances
+            /** Migrate
              *
-             *  Get a summary of balance information for all NXS accounts belonging to the currently logged in signature chain
+             *  Migrate a trust key from a Legacy wallet to the trust accout for a signature chain.
              *
              *  @param[in] params The parameters from the API call.
              *  @param[in] fHelp Trigger for help data.
@@ -192,7 +193,20 @@ namespace TAO
              *  @return The return object in JSON.
              *
              **/
-            json::json GetBalances(const json::json& params, bool fHelp);
+            json::json Migrate(const json::json& params, bool fHelp);
+
+
+            /** Stake
+             *
+             *  Set the stake amount for trust account (add/remove stake).
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json Stake(const json::json& params, bool fHelp);
 
         };
     }
