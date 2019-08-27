@@ -168,6 +168,14 @@ namespace LLP
         uint32_t GetConnectionCount();
 
 
+        /** NotifyEvent
+         *
+         *  Tell the data thread an event has occured and notify each connection.
+         *
+         **/
+        void NotifyEvent();
+
+
       private:
 
 

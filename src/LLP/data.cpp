@@ -203,7 +203,7 @@ namespace LLP
              * While loop catches potential for spurious wakeups. Also has the effect of skipping the wait() call after connections established.
              */
             std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
-            CONDITION.wait(CONDITION_LOCK, [this]{ return fDestruct.load() || config::fShutdown || nConnections.load() > 0; });
+            CONDITION.wait(CONDITION_LOCK, [this]{ return fDestruct.load() || config::fShutdown.load() || nConnections.load() > 0; });
 
             /* Check for close. */
             if(fDestruct.load() || config::fShutdown.load())
@@ -369,7 +369,26 @@ namespace LLP
     }
 
 
-    /*  Get the number of active connection pointers from data threads. */
+    /* Tell the data thread an event has occured and notify each connection. */
+    template<class ProtocolType>
+    void DataThread<ProtocolType>::NotifyEvent()
+    {
+        /* Loop through each connection. */
+        uint32_t nSize = static_cast<uint32_t>(CONNECTIONS->size());
+        for(uint32_t i = 0; i < nSize; ++i)
+        {
+            ProtocolType* connection = CONNECTIONS->at(i).load();
+
+            if(!connection)
+                continue;
+
+            /* Notify the connection that an event has occurred. */
+            connection->NotifyEvent();
+        }
+    }
+
+
+    /* Get the number of active connection pointers from data threads. */
     template <class ProtocolType>
     uint32_t DataThread<ProtocolType>::GetConnectionCount()
     {
@@ -377,8 +396,7 @@ namespace LLP
     }
 
 
-    /*  Fires off a Disconnect event with the given disconnect reason
-     *  and also removes the data thread connection. */
+    /* Fires off a Disconnect event with the given disconnect reason and also removes the data thread connection. */
     template <class ProtocolType>
     void DataThread<ProtocolType>::disconnect_remove_event(uint32_t index, uint8_t reason)
     {
@@ -389,8 +407,7 @@ namespace LLP
     }
 
 
-    /*  Removes given connection from current Data Thread.
-     *  This happens with a timeout/error, graceful close, or disconnect command. */
+    /* Removes given connection from current Data Thread. This happens on timeout/error, graceful close, or disconnect command. */
     template <class ProtocolType>
     void DataThread<ProtocolType>::remove(int index)
     {
@@ -403,14 +420,12 @@ namespace LLP
     }
 
 
-    /*  Returns the index of a component of the CONNECTIONS vector that
-     *  has been flagged Disconnected */
+    /* Returns the index of a component of the CONNECTIONS vector that has been flagged Disconnected */
     template <class ProtocolType>
     int DataThread<ProtocolType>::find_slot()
     {
-        /* Get the total connections. */
+        /* Loop through each connection. */
         uint32_t nSize = static_cast<uint32_t>(CONNECTIONS->size());
-
         for(int index = 0; index < nSize; ++index)
         {
             if(!CONNECTIONS->at(index))
