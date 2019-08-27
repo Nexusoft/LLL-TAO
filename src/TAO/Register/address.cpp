@@ -85,8 +85,30 @@ namespace TAO
         : uint256_t(LLC::SK256(vName))
         {
             /* Check for valid types. */
-            if(nType != NAME && nType!= NAMESPACE)
+            if(nType != NAME && nType != NAMESPACE)
                 throw debug::exception(FUNCTION, "invalid type for names");
+
+            SetType(nType);
+        }
+
+        /* Build an address deterministically from a name or namespace. */
+        Address::Address(const std::string& strKey, const uint256_t& hash, const uint8_t nType)
+        {
+            /* The data to hash into this address */
+            std::vector<uint8_t> vData;
+
+            /* Insert the key */
+            vData.insert(vData.end(), strKey.begin(), strKey.end());
+
+            /* Insert the genessis hash */
+            vData.insert(vData.end(), (uint8_t*)&hash, (uint8_t*)&hash + 32);
+
+            /* Set the internal uin256 data based on the SK hash of the vData */
+            *this = LLC::SK256(vData);
+
+            /* Check for valid types. */
+            if(nType != TRUST)
+                throw debug::exception(FUNCTION, "invalid type for deterministic address");
 
             SetType(nType);
         }

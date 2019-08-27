@@ -1023,8 +1023,8 @@ TEST_CASE( "Register Rollback Tests", "[register]")
 
     //create a trust register from inputs spent on coinbase
     {
-        uint256_t hashTrust    = TAO::Register::Address(TAO::Register::Address::TRUST);
         uint256_t hashGenesis  = TAO::Ledger::Genesis(LLC::GetRand256(), true);
+        TAO::Register::Address hashTrust = TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
 
         uint512_t hashCoinbaseTx = 0;
         uint512_t hashLastTrust = LLC::GetRand512();

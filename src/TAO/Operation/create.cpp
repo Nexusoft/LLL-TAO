@@ -112,6 +112,13 @@ namespace TAO
                             if(!address.IsTrust())
                                 return debug::error(FUNCTION, "address type mismatch with object type");
 
+                            /* Enforce the hash of trust accounts to be deterministically generated from genesis hash */
+                            TAO::Register::Address trust = TAO::Register::Address(std::string("trust"), state.hashOwner, TAO::Register::Address::TRUST);
+
+                            /* Fail if trust address was not generated deterministically based on callers genesis. */
+                            if(trust != address)
+                                return debug::error(FUNCTION, "trust address mismatch");
+
                             break;
                         }
 
