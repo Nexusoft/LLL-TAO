@@ -29,19 +29,6 @@ namespace TAO
     /* Register Layer namespace. */
     namespace Register
     {
-        class Address;
-
-        /** GetNameAddress
-         *
-         *  Retrieve the address of the name register for a namespace/name combination.
-         *
-         *  @param[in] hashNamespace
-         *  @param[in] strName
-         *  @param[out] hashAddress the name register address
-         *
-         **/
-        void GetNameAddress(const uint256_t& hashNamespace, const std::string& strName, uint256_t& hashAddress);
-
 
         /** GetNameRegister
          *

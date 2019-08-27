@@ -160,14 +160,8 @@ namespace TAO
                                 /* Otherwise we use the owner genesis Hash */
                                 hashNamespace = state.hashOwner;
 
-                            /* Build vector to hold the genesis + name data for hashing */
-                            std::vector<uint8_t> vData((uint8_t*)&hashNamespace, (uint8_t*)&hashNamespace + 32);
-
-                            /* Insert the name of from the Name object */
-                            vData.insert(vData.end(), strName.begin(), strName.end());
-
-                            /* Hash this in the same was as the caller would have to generate hashAddress */
-                            uint256_t name = TAO::Register::Address(vData, TAO::Register::Address::NAME);
+                            /* Create an address in the same was as the caller would have to generate hashAddress */
+                            TAO::Register::Address name = TAO::Register::Address(strName, hashNamespace, TAO::Register::Address::NAME);
 
                             /* Fail if caller didn't user their own genesis to create name. */
                             if(name != address)

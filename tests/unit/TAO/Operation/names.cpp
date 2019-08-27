@@ -50,7 +50,7 @@ TEST_CASE( "Names / Namespaces Tests", "[operation]")
             tx.nSequence   = 0;
             tx.nTimestamp  = runtime::timestamp();
 
-            TAO::Register::GetNameAddress(hashGenesis, strName, hashNameAddress);
+            hashNameAddress = TAO::Register::Address(strName, hashGenesis, TAO::Register::Address::NAME);
 
             //create name object
             Object name = CreateName("", strName, hashAddress);
@@ -77,7 +77,7 @@ TEST_CASE( "Names / Namespaces Tests", "[operation]")
             tx.nTimestamp  = runtime::timestamp();
 
             /* Generate an address for a random sig chain genesis */
-            TAO::Register::GetNameAddress(LLC::GetRand256(), strName, hashNameAddress);
+            hashNameAddress = TAO::Register::Address(strName, LLC::GetRand256(), TAO::Register::Address::NAME);
 
             //create name object
             Object name = CreateName("", strName, hashAddress);
@@ -164,7 +164,7 @@ TEST_CASE( "Names / Namespaces Tests", "[operation]")
             uint256_t hashNamespace = TAO::Register::Address(strNamespace, TAO::Register::Address::NAMESPACE);
 
             /* Generate  */
-            TAO::Register::GetNameAddress(hashNamespace, strName, hashNameAddress);
+            hashNameAddress = TAO::Register::Address(strName, hashNamespace, TAO::Register::Address::NAME);
 
             //create name object
             Object name = CreateName(strNamespace, strName, hashAddress);
@@ -196,7 +196,7 @@ TEST_CASE( "Names / Namespaces Tests", "[operation]")
             uint256_t hashNamespace  = TAO::Register::Address(strNamespace, TAO::Register::Address::NAMESPACE);
 
             /* Generate  */
-            TAO::Register::GetNameAddress(hashNamespace, strName, hashNameAddress);
+            hashNameAddress = TAO::Register::Address(strName, hashNamespace, TAO::Register::Address::NAME);
 
             //create name object
             Object name = CreateName(strNamespace, strName, hashAddress);

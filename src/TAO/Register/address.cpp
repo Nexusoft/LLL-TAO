@@ -60,39 +60,24 @@ namespace TAO
 
             /* Check for valid address types. */
             if(!IsValid())
-                throw debug::exception(FUNCTION, "invalid type for string");
+                throw debug::exception(FUNCTION, "invalid type for address");
         }
 
 
-        /* Build an address from a name or namespace.*/
+        /* Build an address deterministically from a namespace name*/
         Address::Address(const std::string& strName, const uint8_t nType)
         : uint256_t(LLC::SK256(strName))
         {
             /* Check for valid types. */
-            if(nType != NAME && nType!= NAMESPACE)
-                throw debug::exception(FUNCTION, "invalid type for names");
-
-            /* Check for testnet. */
-            //if(nType != 0xff && config::fTestNet.load())
-            //    nType += 0x10;
+            if(nType!= NAMESPACE)
+                throw debug::exception(FUNCTION, "invalid type for namespace");
 
             SetType(nType);
         }
 
 
-        /* Build an address from a name or namespace. */
-        Address::Address(const std::vector<uint8_t>& vName, const uint8_t nType)
-        : uint256_t(LLC::SK256(vName))
-        {
-            /* Check for valid types. */
-            if(nType != NAME && nType != NAMESPACE)
-                throw debug::exception(FUNCTION, "invalid type for names");
-
-            SetType(nType);
-        }
-
-        /* Build an address deterministically from a name or namespace. */
-        Address::Address(const std::string& strKey, const uint256_t& hash, const uint8_t nType)
+        /* Build an address deterministically from a key and namespace hash. */
+        Address::Address(const std::string& strKey, const uint256_t& hashNamespace, const uint8_t nType)
         {
             /* The data to hash into this address */
             std::vector<uint8_t> vData;
@@ -101,13 +86,13 @@ namespace TAO
             vData.insert(vData.end(), strKey.begin(), strKey.end());
 
             /* Insert the genessis hash */
-            vData.insert(vData.end(), (uint8_t*)&hash, (uint8_t*)&hash + 32);
+            vData.insert(vData.end(), (uint8_t*)&hashNamespace, (uint8_t*)&hashNamespace + 32);
 
-            /* Set the internal uin256 data based on the SK hash of the vData */
+            /* Set the internal uint256 data based on the SK hash of the vData */
             *this = LLC::SK256(vData);
 
             /* Check for valid types. */
-            if(nType != TRUST)
+            if(nType != TRUST && nType != NAME)
                 throw debug::exception(FUNCTION, "invalid type for deterministic address");
 
             SetType(nType);

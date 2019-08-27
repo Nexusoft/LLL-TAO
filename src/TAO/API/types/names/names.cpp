@@ -92,7 +92,7 @@ namespace TAO
 
 
             /* Obtain the name register address for the genesis/name combination */
-            TAO::Register::GetNameAddress(hashNamespace, strName, hashNameAddress);
+            hashNameAddress = TAO::Register::Address(strName, hashNamespace, TAO::Register::Address::NAME);
 
             /* Check to see whether the name already exists  */
             TAO::Register::Object object;
@@ -253,7 +253,7 @@ namespace TAO
                 throw APIException(-101, debug::safe_printstr("Unknown name: ", strObjectName));
                 
             /* Get the address of the Name object to return */
-            TAO::Register::GetNameAddress(hashNamespace, strName, hashNameObject);
+            hashNameObject = TAO::Register::Address(strName, hashNamespace, TAO::Register::Address::NAME);
 
             return nameObject;
         }
