@@ -859,7 +859,7 @@ namespace TAO
                 ret["address"]    = hashRegister.ToString();
                 ret["created"]    = object.nCreated;
                 ret["modified"]   = object.nModified;
-                ret["owner"]      = object.hashOwner.ToString();
+                ret["owner"]      = TAO::Register::Address(object.hashOwner).ToString();
 
                 /* If this is an append register we need to grab the data from the end of the stream which will be the most recent data */
                 while(!object.end())

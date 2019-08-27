@@ -35,9 +35,6 @@ namespace TAO
         Address::Address(const uint256_t& nAddress)
         : uint256_t(nAddress)
         {
-            /* Check for valid. */
-            if(nAddress != 0 && !IsValid())
-                throw debug::exception(FUNCTION, "invalid type for random ", GetHex());
         }
 
 

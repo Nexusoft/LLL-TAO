@@ -74,7 +74,7 @@ namespace TAO
                 throw APIException(-92, "Name not found.");
 
             /* Populate the json response */
-            jsonRet["owner"]    = name.hashOwner.ToString();
+            jsonRet["owner"]    = TAO::Register::Address(name.hashOwner).ToString();
             jsonRet["created"]  = name.nCreated;
             jsonRet["modified"] = name.nModified;
 
@@ -126,7 +126,7 @@ namespace TAO
                 throw APIException(-94, "Invalid namespace");
 
             /* Populate the json response */
-            jsonRet["owner"]    = namespaceObject.hashOwner.ToString();
+            jsonRet["owner"]    = TAO::Register::Address(namespaceObject.hashOwner).ToString();
             jsonRet["created"]  = namespaceObject.nCreated;
 
             json::json data  =TAO::API::ObjectToJSON(params, namespaceObject, hashRegister, false);
