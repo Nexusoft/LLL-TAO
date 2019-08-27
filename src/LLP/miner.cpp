@@ -666,37 +666,6 @@ namespace LLP
     /* Checks the current height index and updates best height. Clears the block map if the height is outdated or stale. */
     bool Miner::check_best_height()
     {
-
-        /* For Tritium, check the mempool to make sure recent transactions don't orphan outdated Tritium blocks. This is handled by
-         * setting best height to zero, forcing miner clients to check height and request a new block if it's different. */
-         //if(TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 7) || TAO::Ledger::CurrentVersion() > 7)
-         //{
-
-
-             /* Get the hash genesis. */
-             //uint256_t hashGenesis = TAO::API::users->GetGenesis(0);
-
-             /* Read hashLast from hashGenesis' sigchain and also check mempool. */
-             //uint512_t hashLast;
-             //if(LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
-             //{
-                 /* Update nHashLast if it changed. */
-            //    if(nHashLast != hashLast)
-            //    {
-            //        nHashLast = hashLast;
-            //        nBestHeight = 0;
-
-            //        if(nHashLast != 0)
-            //            debug::log(2, FUNCTION, "Mining height stale");
-
-                    /* Clear the map of stale blocks. */
-            //        clear_map();
-
-            //        return true;
-            //    }
-            // }
-         //}
-
          uint32_t nChainStateHeight = TAO::Ledger::ChainState::nBestHeight.load();
 
         /* Return early if the height doesn't change. */
