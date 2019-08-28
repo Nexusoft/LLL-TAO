@@ -370,8 +370,8 @@ namespace LLP
                 /* Byte 0 is the number of records. */
                 uint8_t nSize = PACKET.DATA[0];
 
-                /* Bytes 1 - 8 is the Pool Fee for that Round. */
-                uint64_t nPoolFee  = convert::bytes2uint64(PACKET.DATA, 1);
+                /* Bytes 1 - 8 is the Wallet Operator Fee for that Round. */
+                uint64_t nWalletFee  = convert::bytes2uint64(PACKET.DATA, 1);
 
                 /* Iterator offset for map deserialization. */
                 uint32_t nIterator = 9;
@@ -382,7 +382,7 @@ namespace LLP
                 /* Loop through every Record. */
                 for(uint8_t nIndex = 0; nIndex < nSize; ++nIndex)
                 {
-                    /* Get the length. */
+                    /* Get the string length. */
                     uint32_t nLength = PACKET.DATA[nIterator];
 
                     /* Get the string address for coinbase output. */
@@ -427,7 +427,7 @@ namespace LLP
                 LOCK(MUTEX);
 
                 /* Update the coinbase transaction. */
-                CoinbaseTx = Legacy::Coinbase(vOutputs, nMaxValue, nPoolFee);
+                CoinbaseTx = Legacy::Coinbase(vOutputs, nMaxValue, nWalletFee);
 
                 /* Check the consistency of the coibase transaction. */
                 if(!CoinbaseTx.IsValid())
