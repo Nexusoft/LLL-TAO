@@ -135,7 +135,6 @@ namespace TAO
 
             /* When trust key found, verify data stored against actual last trust block.
              * Older versions of code did not revert trust key data after an orphan and it may be out of date.
-             * The GetLastTrust method can be slow, so only do it the first time after minter is started.
              */
             if(!trustKey.IsNull() && !config::fShutdown.load())
             {
@@ -212,11 +211,8 @@ namespace TAO
             /* Retrieve the name register for the user's trust account */
             TAO::Register::Object name;
 
-            if(!TAO::Register::GetNameRegister(user->Genesis(), std::string("trust"), name))
-                return debug::error(FUNCTION, "Migrate Trust unknown trust account name.");
-
             /* Retrieve the trust account address from the name register mapping. */
-            uint256_t hashRegister = name.get<uint256_t>("address");
+            TAO::Register::Address hashRegister = TAO::Register::Address(std::string("trust"), user->Genesis(), TAO::Register::Address::TRUST);
 
             /* Retrieve the trust account */
             TAO::Register::Object reg;

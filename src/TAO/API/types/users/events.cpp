@@ -29,11 +29,15 @@ ________________________________________________________________________________
 #include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/include/create.h>
+#include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/types/transaction.h>
 
+#include <Legacy/include/enum.h>
 #include <Legacy/include/evaluate.h>
+#include <Legacy/types/transaction.h>
 
 #include <Util/include/debug.h>
 
@@ -400,7 +404,7 @@ namespace TAO
                         /* The hash of the receiving account. */
                         TAO::Register::Address hashAccount;
 
-                        /* Extract the sig chain account register address  from the legacy script */
+                        /* Extract the sig chain account register address from the legacy script */
                         if(!Legacy::ExtractRegister(txLegacy.scriptPubKey, hashAccount))
                             continue;
 
@@ -416,6 +420,138 @@ namespace TAO
                         /* Check for the owner to make sure this was a send to the current users account */
                         if(debit.hashOwner == user->Genesis())
                         {
+                            /* Identify trust migration to create OP::MIGRATE instead of OP::CREDIT */
+
+                            /* Check if output is new trust account (no stake or balance) */
+                            if(debit.Standard() == TAO::Register::OBJECTS::TRUST
+                                    && debit.get<uint64_t>("stake") == 0 && debit.get<uint64_t>("trust") == 0)
+                            {
+                                /* Need to check for migration.
+                                 * Trust migration converts a legacy trust key to a trust account.
+                                 * It will send all inputs from an existing trust key, with one output to a new trust account.
+                                 */
+                                bool fMigration = true; //if this gets set false, not a migration, fall through to OP::CREDIT
+                                Legacy::TrustKey trustKey;
+                                std::vector<uint8_t> vchPubKey; //pub key for trust key
+
+                                /* Trust account output must be only output for the transaction */
+                                if(nContract != 0 || contract.first->vout.size() > 1)
+                                    fMigration = false;
+
+                                /* Check that all inputs are from same key and extract the pub key for it */
+                                if(fMigration)
+                                {
+
+                                    for(uint32_t nInput = 0; nInput < contract.first->vin.size(); ++nInput)
+                                    {
+                                        const Legacy::TxIn& txin = contract.first->vin[nInput];
+
+                                        /* Get prevout for the txin */
+                                        Legacy::Transaction txPrev;
+                                        if(!LLD::Legacy->ReadTx(txin.prevout.hash, txPrev))
+                                        {
+                                            fMigration = false;
+                                            break;
+                                        }
+
+                                        /* Extract from prevout */
+                                        std::vector<std::vector<uint8_t> > vSolutions;
+                                        Legacy::TransactionType whichType;
+                                        if(!Solver(txPrev.vout[txin.prevout.n].scriptPubKey, whichType, vSolutions))
+                                        {
+                                            fMigration = false;
+                                            break;
+                                        }
+
+                                        /* Check for public key type. */
+                                        if(whichType == Legacy::TX_PUBKEY)
+                                        {
+                                            if(nInput == 0)
+                                                vchPubKey = vSolutions[0]; //Save this as the pub key for the trust key
+
+                                            else if(vchPubKey != vSolutions[0])
+                                            {
+                                                /* Inputs not all from same address */
+                                                fMigration = false;
+                                                break;
+                                            }
+                                        }
+                                        else
+                                        {
+                                            fMigration = false;
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                /* Retrieve trust key using vchPubKey from inputs */
+                                if(fMigration)
+                                {
+                                    uint576_t cKey;
+                                    cKey.SetBytes(vchPubKey);
+
+                                    if(!LLD::Trust->ReadTrustKey(cKey, trustKey))
+                                        fMigration = false; //vchPubKey is not a trust key
+                                }
+
+                                /* Verify trust key not already converted () */
+                                if(fMigration && LLD::Legacy->HasTrustConversion(trustKey.GetHash()))
+                                    fMigration = false;
+
+                                /* Get last trust for the legacy trust key */
+                                TAO::Ledger::BlockState stateLast;
+                                if(fMigration && !LLD::Ledger->ReadBlock(trustKey.hashLastBlock, stateLast))
+                                    fMigration = false;
+
+                                /* Last trust must be at least v5 and coinstake must be a legacy transaction */
+                                if(fMigration && stateLast.nVersion < 5)
+                                    fMigration = false;
+
+                                if(fMigration && stateLast.vtx[0].first != TAO::Ledger::LEGACY)
+                                    fMigration = false;
+
+                                /* Extract the coinstake from the last trust block */
+                                Legacy::Transaction txPrev;
+                                if(fMigration && !LLD::Legacy->ReadTx(stateLast.vtx[0].second, txPrev))
+                                    fMigration = false;
+
+                                /* Extract the trust score from the coinstake */
+                                uint32_t nTrustScore;
+                                if(fMigration)
+                                {
+                                    uint1024_t hashLastBlock;
+                                    uint32_t nSequence;
+
+                                    if(!txPrev.ExtractTrust(hashLastBlock, nSequence, nTrustScore))
+                                        fMigration = false;
+                                }
+
+                                /* Everything verified for migration and we have the data we need. Set up OP::MIGRATE */
+                                if(fMigration)
+                                {
+                                    /* The amount to migrate */
+                                    uint64_t nAmount = txLegacy.nValue;
+
+                                    /*** TODO Need to set up OP::MIGRATE here, data will include nAmount, nTrustScore,
+                                         vchPubKey (of trust key, to mark when complete), hashAccount of trust account.
+                                         Check other OP::CREDIT inputs for what is needed
+                                     ***/
+
+                                    txout[nOut] << uint8_t(TAO::Operation::OP::MIGRATE) << hashTx << hashAccount << nAmount << nTrustScore << vchPubKey;
+                                    //txout[nOut] << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract) << hashAccount <<  TAO::Register::WILDCARD_ADDRESS << nAmount;
+
+                                    /* Increment the contract ID. */
+                                    ++nOut;
+
+                                    /* Log debug message. */
+                                    debug::log(0, FUNCTION, "Matching LEGACY SEND with trust key MIGRATE");
+
+                                    continue;
+                                }
+                            }
+
+                            /* No migration. Use normal credit process */
+
                             /* Check the object base to see whether it is an account. */
                             if(debit.Base() == TAO::Register::OBJECTS::ACCOUNT)
                             {
