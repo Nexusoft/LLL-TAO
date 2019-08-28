@@ -79,6 +79,24 @@ namespace TAO
         }
 
 
+        /* Generate new crypto settings object. */
+        Object CreateCrypto(const uint256_t& hashAuth, const uint256_t& hashLisp, const uint256_t& hashNetwork,
+            const uint256_t& hashSign, const uint256_t& hashVerify)
+        {
+            /* Create an token object register. */
+            TAO::Register::Object crypto;
+
+            /* Generate the object register values. */
+            crypto   << std::string("Auth")      << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << hashAuth
+                     << std::string("Lisp")      << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << hashLisp
+                     << std::string("Network")   << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << hashNetwork
+                     << std::string("Sign")      << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << hashSign
+                     << std::string("Verify")    << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << hashVerify;
+
+            return crypto;
+        }
+
+
         /* Generate a new namespace object register. */
         Object CreateNamespace(const std::string& strName)
         {

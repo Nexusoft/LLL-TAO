@@ -73,6 +73,16 @@ namespace TAO
                 nType = OBJECTS::NAMESPACE;
 
             }
+            else if(mapData.size() == 5
+            && Check("Auth", TYPES::UINT256_T, true)
+            && Check("Lisp", TYPES::UINT256_T, true)
+            && Check("Network", TYPES::UINT256_T, true)
+            && Check("Sign", TYPES::UINT256_T, true)
+            && Check("Verify", TYPES::UINT256_T, true))
+            {
+                /* Set the return value. */
+                nType = OBJECTS::CRYPTO;
+            }
             else if(mapData.size() == 3
             && Check("namespace", TYPES::STRING, false)
             && Check("name", TYPES::STRING, false)

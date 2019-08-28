@@ -71,6 +71,23 @@ namespace TAO
         Object CreateAsset();
 
 
+        /** CreateCrypto
+         *
+         *  Generate new crypto settings.
+         *
+         *  @param[in] hashAuth The authorization hash for third party services.
+         *  @param[in] hashLisp The lisp signing key for map server authentication
+         *  @param[in] hashNetwork The network signing key for authenticating network identity.
+         *  @param[in] hashSign The signing key for external contracts.
+         *  @param[in] hashVerify The verification key for witnessing that certain events have happened.
+         *
+         *  @return The object register just created.
+         *
+         **/
+        Object CreateCrypto(const uint256_t& hashAuth, const uint256_t& hashLisp, const uint256_t& hashNetwork,
+            const uint256_t& hashSign, const uint256_t& hashVerify);
+
+
         /** CreateName
          *
          *  Generate a new name object register.
