@@ -123,6 +123,7 @@ _name.shard.file
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
+
     //uint1024_t hash = ;
 
     TestDB* testDB = new TestDB();

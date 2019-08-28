@@ -53,6 +53,10 @@ namespace LLD
         std::vector<uint8_t> vKey;
 
 
+        /* MEMORY ONLY: The timestamp for timestamped hash tables. */
+        mutable uint64_t nTimestamp;
+
+
         /* Serialization Macro. */
         IMPLEMENT_SERIALIZE
         (
@@ -69,11 +73,11 @@ namespace LLD
 
 
         /** Constructor **/
-        SectorKey(uint8_t nStateIn,
-                  std::vector<uint8_t> vKeyIn,
-                  uint16_t nSectorFileIn,
-                  uint32_t nSectorStartIn,
-                  uint32_t nSectorSizeIn);
+        SectorKey(const uint8_t nStateIn,
+                  const std::vector<uint8_t>& vKeyIn,
+                  const uint16_t nSectorFileIn,
+                  const uint32_t nSectorStartIn,
+                  const uint32_t nSectorSizeIn);
 
 
         /** Default Destructor **/

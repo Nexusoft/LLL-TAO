@@ -25,22 +25,24 @@ namespace LLD
     , nSectorSize(0)
     , nSectorStart(0)
     , vKey()
+    , nTimestamp(0)
     {
     }
 
 
     /* Constructor */
-    SectorKey::SectorKey(uint8_t nStateIn,
-              std::vector<uint8_t> vKeyIn,
-              uint16_t nSectorFileIn,
-              uint32_t nSectorStartIn,
-              uint32_t nSectorSizeIn)
+    SectorKey::SectorKey(const uint8_t nStateIn,
+              const std::vector<uint8_t>& vKeyIn,
+              const uint16_t nSectorFileIn,
+              const uint32_t nSectorStartIn,
+              const uint32_t nSectorSizeIn)
     : nState(nStateIn)
     , nLength(static_cast<uint16_t>(vKeyIn.size()))
     , nSectorFile(nSectorFileIn)
     , nSectorSize(nSectorSizeIn)
     , nSectorStart(nSectorStartIn)
     , vKey(vKeyIn)
+    , nTimestamp(0)
     {
     }
 
@@ -61,6 +63,7 @@ namespace LLD
         nSectorSize     = key.nSectorSize;
         nSectorStart    = key.nSectorStart;
         vKey            = key.vKey;
+        nTimestamp  = key.nTimestamp;
 
         return *this;
     }
@@ -75,6 +78,7 @@ namespace LLD
         nSectorSize     = key.nSectorSize;
         nSectorStart    = key.nSectorStart;
         vKey            = key.vKey;
+        nTimestamp  = key.nTimestamp;
 
         return *this;
     }
@@ -89,6 +93,7 @@ namespace LLD
         nSectorSize     = key.nSectorSize;
         nSectorStart    = key.nSectorStart;
         vKey            = key.vKey;
+        nTimestamp  = key.nTimestamp;
     }
 
 
