@@ -242,19 +242,6 @@ namespace TAO
                 TAO::Operation::Cost(contract, nRet);
             }
 
-            /* Check for frequency throttling. NOTE: Not applicable to coinbase/stake transactions*/
-            if(!IsFirst() && !IsCoinBase() && !IsCoinStake())
-            {
-                /* Make sure the previous transaction is on disk or mempool. */
-                TAO::Ledger::Transaction txPrev;
-                if(!LLD::Ledger->ReadTx(hashPrevTx, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw debug::exception(FUNCTION, "couldn't read previous transaction");
-
-                /* Check the timestamps. */
-                if(nTimestamp - txPrev.nTimestamp < 60)
-                    nRet += TAO::Ledger::THRESHOLD_FEE; //0.1 NXS per transaction above threshold.
-            }
-
             return nRet;
         }
 
@@ -819,14 +806,6 @@ namespace TAO
                 contract.Bind(this);
 
                 nCost += contract.Cost();
-            }
-
-            /* Check for frequency throttling. NOTE: Not applicable to coinbase/stake transactions*/
-            if(!IsFirst() && !IsCoinBase() && !IsCoinStake())
-            {
-                /* Check the timestamps. */
-                if(nTimestamp - txPrev.nTimestamp < 60)
-                    nCost += TAO::Ledger::THRESHOLD_FEE; //0.1 NXS per transaction above threshold
             }
 
             return nCost;
