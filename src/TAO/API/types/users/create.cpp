@@ -101,9 +101,27 @@ namespace TAO
             tx[3] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister
                   << uint8_t(TAO::Register::REGISTER::OBJECT) << TAO::Register::CreateAccount(0).GetState();
 
+            /* Generate a random hash for this objects register address */
+            hashRegister = TAO::Register::Address(TAO::Register::Address::CRYPTO);
+
+            /* Add a Name record for the trust account */
+            tx[4] = Names::CreateName(user->Genesis(), "crypto", "", hashRegister);
+
+            /* Create the crypto object. */
+            TAO::Register::Object crypto = TAO::Register::CreateCrypto(
+                                                user->Generate("Auth", 0, params["pin"].get<std::string>().c_str()),
+                                                0, //Lisp - this key is disabled for now
+                                                user->Generate("Network", 0, params["pin"].get<std::string>().c_str()),
+                                                user->Generate("Sign", 0, params["pin"].get<std::string>().c_str()),
+                                                0); //Verify - this key is disabled for now
+
+            /* Add the default account register operation to the transaction */
+            tx[5] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister
+                  << uint8_t(TAO::Register::REGISTER::OBJECT) << crypto.GetState();
+
             /* Add the fee */
             AddFee(tx);
-            
+
             /* Calculate the prestates and poststates. */
             if(!tx.Build())
             {
