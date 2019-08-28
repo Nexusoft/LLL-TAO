@@ -418,9 +418,9 @@ This will tokenize an asset into fungible tokens that represent ownership.  This
 
 `address` : The register address of the asset to be tokenized. This is optional if the name is provided.
 
-`token_name` : The name of a token to use to tokenize the asset. The name should be in username:token name format.  `token_address` can be supplied as an alternative to `token_name`.
+`token_name` : The name of a token to use to tokenize the asset. The name should be in username:token name format.  `token` can be supplied as an alternative to `token_name`.
 
-`token_address` : The register address of a token to use to tokenize the asset. `token_name` can be supplied as an alternative to `token_address`.
+`token` : The register address of a token to use to tokenize the asset. `token_name` can be supplied as an alternative to `token`.
 
 
 ### Return value JSON object:

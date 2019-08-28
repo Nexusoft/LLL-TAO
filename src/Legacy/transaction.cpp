@@ -54,17 +54,14 @@ namespace Legacy
     , vout()
     , nLockTime(0)
     {
-        SetNull();
-
         /* Loop through the contracts. */
         for(uint32_t n = 0; n < tx.Size(); ++n)
         {
             /* Get legacy converted output.*/
             TxOut txout;
-            tx[n].Legacy(txout); //a failure here will result in a null output
-
-            /* Add the output. */
-            vout.push_back(txout);
+            if(tx[n].Legacy(txout)) 
+                /* Add the output. */
+                vout.push_back(txout);
         }
     }
 

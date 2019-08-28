@@ -72,7 +72,7 @@ namespace TAO
                 throw APIException(-17, "Failed to create transaction");
 
             /* Get the register address. */
-            uint256_t hashRegister = 0;
+            TAO::Register::Address hashRegister ;
 
             /* name of the object, default to blank */
             std::string strName = "";
@@ -90,7 +90,7 @@ namespace TAO
 
             /* Otherwise try to find the raw hex encoded address. */
             else if(params.find("address") != params.end())
-                hashRegister.SetHex(params["address"]);
+                hashRegister.SetBase58(params["address"]);
 
             /* Fail if no required parameters supplied. */
             else

@@ -35,15 +35,15 @@ ________________________________________________________________________________
 
 /* Declare names / hashes in global scope so that we can reuse them for the update/get */
 std::string strName = "NAME" +std::to_string(LLC::GetRand());
-uint256_t hashName = 0;
+TAO::Register::Address hashName;
 uint512_t hashNameTransfer = 0;
 std::string strNamespace = "NAMESPACE" +std::to_string(LLC::GetRand());
-uint256_t hashNamespace = 0;
+TAO::Register::Address hashNamespace;
 uint512_t hashNamespaceTransfer = 0;
 
 std::string strGlobalName = "GLOBALNAME" +std::to_string(LLC::GetRand());
 
-uint256_t hashRegisterAddress = LLC::GetRand256();
+TAO::Register::Address hashRegisterAddress(TAO::Register::Address::OBJECT);
 
 TEST_CASE( "Test Names API - create namespace", "[names/create/namespace]")
 {
@@ -137,7 +137,7 @@ TEST_CASE( "Test Names API - create namespace", "[names/create/namespace]")
         REQUIRE(result.find("address") != result.end());
 
         /* Grab the namespace hash for later use */
-        hashNamespace.SetHex(result["address"].get<std::string>());
+        hashNamespace.SetBase58(result["address"].get<std::string>());
     }
 
     /* fail with already exists */
@@ -322,7 +322,7 @@ TEST_CASE( "Test Names API - transfer namespace", "[names/transfer/namespace]")
         params.clear();
         params["session"] = SESSION1;
         params["pin"] = PIN;
-        params["address"] = LLC::GetRand256().GetHex();
+        params["address"] = TAO::Register::Address(TAO::Register::Address::NAMESPACE).ToString();
         params["destination"] = GENESIS2.GetHex();
 
         /* Invoke the API */
@@ -339,7 +339,7 @@ TEST_CASE( "Test Names API - transfer namespace", "[names/transfer/namespace]")
         params.clear();
         params["session"] = SESSION1;
         params["pin"] = PIN;
-        params["address"] = hashNamespace.GetHex();
+        params["address"] = hashNamespace.ToString();
         params["destination"] = GENESIS2.GetHex();
 
         /* Invoke the API */
@@ -520,7 +520,7 @@ TEST_CASE( "Test Names API - list namespace history", "[names/list/namespace/his
         /* Build the parameters to pass to the API */
         params.clear();
         params["session"] = SESSION2;
-        params["address"] = LLC::GetRand256().GetHex();
+        params["address"] = TAO::Register::Address(TAO::Register::Address::NAMESPACE).ToString();
 
         /* Invoke the API */
         ret = APICall("names/list/namespace/history", params);
@@ -537,7 +537,7 @@ TEST_CASE( "Test Names API - list namespace history", "[names/list/namespace/his
         /* Build the parameters to pass to the API */
         params.clear();
         params["session"] = SESSION2;
-        params["address"] = hashNamespace.GetHex();
+        params["address"] = hashNamespace.ToString();
 
         /* Invoke the API */
         ret = APICall("names/list/namespace/history", params);
@@ -651,7 +651,7 @@ TEST_CASE( "Test Names API - create name", "[names/create/name]")
         params["session"] = SESSION1;
         params["pin"] = PIN;
         params["name"] = ":notallowed";
-        params["register_address"] = hashRegisterAddress.GetHex();
+        params["register_address"] = hashRegisterAddress.ToString();
 
         /* Invoke the API */
         ret = APICall("names/create/name", params);
@@ -669,7 +669,7 @@ TEST_CASE( "Test Names API - create name", "[names/create/name]")
         params["pin"] = PIN;
         params["name"] = strName;
         params["namespace"] = "notanamespace";
-        params["register_address"] = hashRegisterAddress.GetHex();
+        params["register_address"] = hashRegisterAddress.ToString();
 
         /* Invoke the API */
         ret = APICall("names/create/name", params);
@@ -687,7 +687,7 @@ TEST_CASE( "Test Names API - create name", "[names/create/name]")
         params["pin"] = PIN;
         params["name"] = strName;
         params["namespace"] = strNamespace;
-        params["register_address"] = hashRegisterAddress.GetHex();
+        params["register_address"] = hashRegisterAddress.ToString();
 
         /* Invoke the API */
         ret = APICall("names/create/name", params);
@@ -704,7 +704,7 @@ TEST_CASE( "Test Names API - create name", "[names/create/name]")
         params["session"] = SESSION1;
         params["pin"] = PIN;
         params["name"] = strName;
-        params["register_address"] = hashRegisterAddress.GetHex();
+        params["register_address"] = hashRegisterAddress.ToString();
 
         /* Invoke the API */
         ret = APICall("names/create/name", params);
@@ -717,7 +717,7 @@ TEST_CASE( "Test Names API - create name", "[names/create/name]")
         REQUIRE(result.find("address") != result.end());
 
         /* Grab the name hash for later use */
-        hashName.SetHex(result["address"].get<std::string>());
+        hashName.SetBase58(result["address"].get<std::string>());
     }
 
     /* success case in namespace (SESSION2 owns strNamespace)*/
@@ -728,7 +728,7 @@ TEST_CASE( "Test Names API - create name", "[names/create/name]")
         params["pin"] = PIN;
         params["name"] = strName;
         params["namespace"] = strNamespace;
-        params["register_address"] = hashRegisterAddress.GetHex();
+        params["register_address"] = hashRegisterAddress.ToString();
 
         /* Invoke the API */
         ret = APICall("names/create/name", params);
@@ -741,7 +741,7 @@ TEST_CASE( "Test Names API - create name", "[names/create/name]")
         REQUIRE(result.find("address") != result.end());
 
         /* Grab the name hash for later use */
-        hashName.SetHex(result["address"].get<std::string>());
+        hashName.SetBase58(result["address"].get<std::string>());
     }
 
         /* success case creating global name */
@@ -752,7 +752,7 @@ TEST_CASE( "Test Names API - create name", "[names/create/name]")
         params["pin"] = PIN;
         params["name"] = strGlobalName;
         params["global"] = "true";
-        params["register_address"] = hashRegisterAddress.GetHex();
+        params["register_address"] = hashRegisterAddress.ToString();
 
         /* Invoke the API */
         ret = APICall("names/create/name", params);
@@ -814,7 +814,7 @@ TEST_CASE( "Test Names API - get name", "[names/get/name]")
         /* Build the parameters to pass to the API */
         params.clear();
         params["session"] = SESSION1;
-        params["register_address"] = LLC::GetRand256().GetHex();
+        params["register_address"] = TAO::Register::Address(TAO::Register::Address::OBJECT).ToString();
 
         /* Invoke the API */
         ret = APICall("names/get/name", params);
@@ -872,7 +872,7 @@ TEST_CASE( "Test Names API - get name", "[names/get/name]")
         /* Build the parameters to pass to the API */
         params.clear();
         params["session"] = SESSION1; // session is required so that we know which sig chain to search
-        params["register_address"] = hashRegisterAddress.GetHex();
+        params["register_address"] = hashRegisterAddress.ToString();
 
         /* Invoke the API */
         ret = APICall("names/get/name", params);
@@ -924,7 +924,7 @@ TEST_CASE( "Test Names API - update name", "[names/update/name]")
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
 
-    hashRegisterAddress = LLC::GetRand256();
+    hashRegisterAddress = TAO::Register::Address(TAO::Register::Address::OBJECT);
 
     /* fail with missing register_address  */
     {
@@ -932,7 +932,7 @@ TEST_CASE( "Test Names API - update name", "[names/update/name]")
         params.clear();
         params["session"] = SESSION1;
         params["pin"] = PIN;
-        params["address"] = hashName.GetHex();
+        params["address"] = hashName.ToString();
 
         /* Invoke the API */
         ret = APICall("names/update/name", params);
@@ -948,7 +948,7 @@ TEST_CASE( "Test Names API - update name", "[names/update/name]")
         params.clear();
         params["session"] = SESSION1;
         params["pin"] = PIN;
-        params["register_address"] = hashRegisterAddress.GetHex();
+        params["register_address"] = hashRegisterAddress.ToString();
 
         /* Invoke the API */
         ret = APICall("names/update/name", params);
@@ -965,7 +965,7 @@ TEST_CASE( "Test Names API - update name", "[names/update/name]")
         params["session"] = SESSION1;
         params["pin"] = PIN;
         params["name"] = "invalid name";
-        params["register_address"] = hashRegisterAddress.GetHex();
+        params["register_address"] = hashRegisterAddress.ToString();
 
         /* Invoke the API */
         ret = APICall("names/update/name", params);
@@ -981,8 +981,8 @@ TEST_CASE( "Test Names API - update name", "[names/update/name]")
         params.clear();
         params["session"] = SESSION1;
         params["pin"] = PIN;
-        params["address"] = LLC::GetRand256().GetHex();
-        params["register_address"] = hashRegisterAddress.GetHex();
+        params["address"] = TAO::Register::Address(TAO::Register::Address::NAME).ToString();
+        params["register_address"] = hashRegisterAddress.ToString();
 
         /* Invoke the API */
         ret = APICall("names/update/name", params);
@@ -998,8 +998,8 @@ TEST_CASE( "Test Names API - update name", "[names/update/name]")
         params.clear();
         params["session"] = SESSION2;
         params["pin"] = PIN;
-        params["address"] = hashName.GetHex();
-        params["register_address"] = hashRegisterAddress.GetHex();
+        params["address"] = hashName.ToString();
+        params["register_address"] = hashRegisterAddress.ToString();
 
         /* Invoke the API */
         ret = APICall("names/update/name", params);
@@ -1021,7 +1021,7 @@ TEST_CASE( "Test Names API - update name", "[names/update/name]")
 
         /* Check all of the fields */
         REQUIRE(result.find("register_address") != result.end());
-        REQUIRE(result["register_address"].get<std::string>() == hashRegisterAddress.GetHex());
+        REQUIRE(result["register_address"].get<std::string>() == hashRegisterAddress.ToString());
     }
 }
 
@@ -1123,7 +1123,7 @@ TEST_CASE( "Test Names API - transfer name", "[names/transfer/name]")
         params.clear();
         params["session"] = SESSION1;
         params["pin"] = PIN;
-        params["address"] = LLC::GetRand256().GetHex();
+        params["address"] = TAO::Register::Address(TAO::Register::Address::OBJECT).ToString();
         params["destination"] = GENESIS2.GetHex();
 
         /* Invoke the API */
@@ -1369,7 +1369,7 @@ TEST_CASE( "Test Names API - list name history", "[names/list/name/history]")
         /* Build the parameters to pass to the API */
         params.clear();
         params["session"] = SESSION2;
-        params["address"] = LLC::GetRand256().GetHex();
+        params["address"] = TAO::Register::Address(TAO::Register::Address::OBJECT).ToString();
 
         /* Invoke the API */
         ret = APICall("names/list/name/history", params);

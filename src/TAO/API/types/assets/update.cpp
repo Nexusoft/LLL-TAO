@@ -70,7 +70,7 @@ namespace TAO
 
 
             /* Get the Register ID. */
-            uint256_t hashRegister = 0;
+            TAO::Register::Address hashRegister ;
 
             /* Check whether the caller has provided the asset name parameter. */
             if(params.find("name") != params.end())
@@ -79,9 +79,9 @@ namespace TAO
                 hashRegister = Names::ResolveAddress(params, params["name"].get<std::string>());
             }
 
-            /* Otherwise try to find the raw hex encoded address. */
+            /* Otherwise try to find the raw base58 encoded address. */
             else if(params.find("address") != params.end())
-                hashRegister.SetHex(params["address"].get<std::string>());
+                hashRegister.SetBase58(params["address"].get<std::string>());
 
             /* Fail if no required parameters supplied. */
             else

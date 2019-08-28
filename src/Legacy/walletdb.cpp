@@ -477,11 +477,15 @@ namespace Legacy
                 WalletTx& wtx = wallet.mapWallet[hash];
                 ssValue >> wtx;
 
+                /* flag to indicate we are ok to bind */
+                bool fBind = true;
+
                 if(config::GetBoolArg("-walletclean", false))
                 {
                     /* Add all transactions to remove list if -walletclean argument is set */
                     vRemove.push_back(hash);
 
+                    fBind = false;
                 }
                 else if(config::GetBoolArg("-walletcheck", true))
                 {
@@ -502,10 +506,16 @@ namespace Legacy
                                 debug::error(FUNCTION, "Error in ", strWalletFile, ", hash mismatch, resolving");
 
                                 vRemove.push_back(hash);
+
+                                fBind = false;
                             }
                         }
                         else
+                        {
                             vRemove.push_back(hash);
+
+                            fBind = false;
+                        }
                     }
                     else if(wtx.GetHash() != hash)
                     {
@@ -513,11 +523,12 @@ namespace Legacy
 
                         /* Add mismatched transaction to list of transactions to remove from database */
                         vRemove.push_back(hash);
+                        fBind = false;
                     }
                 }
 
-                /* Bind the transaction to the wallet. */
-                wtx.BindWallet(wallet);
+                if(fBind)
+                    wtx.BindWallet(wallet);
             }
 
             else if(strType == "defaultkey")

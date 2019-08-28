@@ -86,7 +86,7 @@ namespace TAO
             bool fGlobal = false;
 
             /* The register address to create the name for */
-            uint256_t hashRegister = 0;
+            TAO::Register::Address hashRegister ;
 
             /* Get the name from the params */
             strName = params["name"].get<std::string>();
@@ -99,7 +99,7 @@ namespace TAO
                     throw APIException(-89, "Invalid register_address");
 
 
-                hashRegister.SetHex(params["register_address"].get<std::string>());
+                hashRegister.SetBase58(params["register_address"].get<std::string>());
             }
 
             /* Check to see caller has provided the namespace parameter */
@@ -145,8 +145,8 @@ namespace TAO
             tx[0].Reset();
             uint8_t OPERATION = 0;
             tx[0] >> OPERATION;
-            uint256_t hashAddress = 0;
-            tx[0]  >> hashAddress;
+            TAO::Register::Address hashAddress;
+            tx[0] >> hashAddress;
 
             ret["address"] = hashAddress.ToString();
 
@@ -196,7 +196,7 @@ namespace TAO
 
 
             /* Generate register address for namespace, which must be a hash of the name */
-            uint256_t hashRegister = TAO::Register::Address(strNamespace, TAO::Register::Address::NAMESPACE);
+            TAO::Register::Address hashRegister = TAO::Register::Address(strNamespace, TAO::Register::Address::NAMESPACE);
 
             /* check that the namespace object doesn't already exist*/
             TAO::Register::Object namespaceObject;

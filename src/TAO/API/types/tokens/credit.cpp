@@ -71,7 +71,7 @@ namespace TAO
                 throw APIException(-17, "Failed to create transaction.");
 
             /* Submit the transaction payload. */
-            uint256_t hashAccountTo = 0;
+            TAO::Register::Address hashAccountTo;
 
             /* Check for data parameter. */
             if(params.find("name") != params.end())
@@ -82,21 +82,21 @@ namespace TAO
 
             /* Otherwise try to find the raw hex encoded address. */
             else if(params.find("address") != params.end())
-                hashAccountTo.SetHex(params["address"].get<std::string>());
+                hashAccountTo.SetBase58(params["address"].get<std::string>());
 
             /* Get the transaction id. */
             uint512_t hashTx;
             hashTx.SetHex(params["txid"].get<std::string>());
 
             /* Check for the proof parameter parameter. */
-            uint256_t hashProof = 0;
+            TAO::Register::Address hashProof;
             if(params.find("name_proof") != params.end())
             {
                 /* If name_proof is provided then use this to deduce the register address */
                 hashProof = Names::ResolveAddress(params, params["name_proof"].get<std::string>());
             }
             else if(params.find("address_proof") != params.end())
-                hashProof.SetHex(params["address_proof"].get<std::string>());
+                hashProof.SetBase58(params["address_proof"].get<std::string>());
 
             /* Read the debit transaction that is being credited. */
             TAO::Ledger::Transaction txDebit;
@@ -141,11 +141,11 @@ namespace TAO
                     continue;
 
                 /* Get the hashFrom from the debit transaction. */
-                uint256_t hashFrom = 0;
+                TAO::Register::Address hashFrom;
                 contract >> hashFrom;
 
                 /* Get the hashTo from the debit transaction. */
-                uint256_t hashTo = 0;
+                TAO::Register::Address hashTo;
                 contract >> hashTo;
 
                 /* Get the amount to respond to. */

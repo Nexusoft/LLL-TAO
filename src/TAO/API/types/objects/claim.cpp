@@ -101,7 +101,7 @@ namespace TAO
                     continue;
 
                 /* Get the address of the asset being transferred from the transaction. */
-                uint256_t hashAddress = 0;
+                TAO::Register::Address hashAddress;
                 contract >> hashAddress;
 
                 /* Get the genesis hash (recipient) of the transfer*/
@@ -141,7 +141,7 @@ namespace TAO
                 tx[++nCurrent] << (uint8_t)TAO::Operation::OP::CLAIM << hashTx << uint32_t(nContract) << hashAddress;
 
                 /* Add the address to the return JSON */
-                jsonClaimed.push_back(hashAddress.GetHex() );
+                jsonClaimed.push_back(hashAddress.ToString() );
 
                 /* Create a name object for the claimed object unless this is a Name or Namespace already */
                 if(nType != TAO::Register::OBJECTS::NAME && nType != TAO::Register::OBJECTS::NAMESPACE)

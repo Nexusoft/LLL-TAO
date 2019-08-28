@@ -62,7 +62,7 @@ namespace TAO
             uint256_t hashCaller = users->GetCallersGenesis(params);
 
             /* The register address of the object to get the transactions for. */
-            uint256_t hashRegister = 0;
+            TAO::Register::Address hashRegister ;
 
             /* Flag indicating that the register is a trust account, as we need to process trust-related transactions differently */
             bool fTrust = false;
@@ -72,7 +72,7 @@ namespace TAO
             if(params.find("name") != params.end())
                 hashRegister = Names::ResolveAddress(params, params["name"].get<std::string>());
             else if(params.find("address") != params.end())
-                hashRegister.SetHex(params["address"].get<std::string>());
+                hashRegister.SetBase58(params["address"].get<std::string>());
             else
                 throw APIException(-33, "Missing name or address");
 
@@ -137,7 +137,7 @@ namespace TAO
                 for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
                 {
                     /* The register address that this contract relates to, if any  */
-                    uint256_t hashAddress = 0;
+                    TAO::Register::Address hashAddress;
 
                     /* Retrieve the contract from the transaction for easier processing */
                     const TAO::Operation::Contract& contract = tx[nContract];

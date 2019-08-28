@@ -70,7 +70,7 @@ namespace TAO
                 throw APIException(-17, "Failed to create transaction");
 
             /* Generate a random hash for this objects register address */
-            uint256_t hashRegister = 0;
+            TAO::Register::Address hashRegister;
 
             /* Check for format parameter. */
             std::string strFormat = "basic"; // default to basic format if no foramt is specified

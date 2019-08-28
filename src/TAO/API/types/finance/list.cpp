@@ -60,7 +60,7 @@ namespace TAO
                 nLimit = std::stoul(params["limit"].get<std::string>());
 
             /* Get the list of registers owned by this sig chain */
-            std::vector<uint256_t> vRegisters;
+            std::vector<TAO::Register::Address> vRegisters;
             if(!ListRegisters(user->Genesis(), vRegisters))
                 throw APIException(-74, "No registers found");
 
@@ -117,14 +117,14 @@ namespace TAO
         json::json Finance::ListTransactions(const json::json& params, bool fHelp)
         {
             /* The account to list transactions for. */
-            uint256_t hashAccount = 0;
+            TAO::Register::Address hashAccount;
 
             /* If name is provided then use this to deduce the register address,
              * otherwise try to find the raw hex encoded address. */
             if(params.find("name") != params.end())
                 hashAccount = Names::ResolveAddress(params, params["name"].get<std::string>());
             else if(params.find("address") != params.end())
-                hashAccount.SetHex(params["address"].get<std::string>());
+                hashAccount.SetBase58(params["address"].get<std::string>());
             else
                 throw APIException(-33, "Missing name or address");
 

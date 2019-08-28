@@ -107,6 +107,7 @@ namespace TAO
                 {
                     /* Create a new register. */
                     case TAO::Operation::OP::DEBIT:
+                    case TAO::Operation::OP::LEGACY:
                     case TAO::Operation::OP::TRANSFER:
                     case TAO::Operation::OP::COINBASE:
                     {
@@ -239,6 +240,16 @@ namespace TAO
                         return true;
                     }
 
+                    case TAO::Operation::OP::LEGACY:
+                    {
+                        /* Seek to debit amount. */
+                        contract.Seek(32);
+
+                        contract >> nAmount;
+
+                        return true;
+                    }
+
                     default:
                     {
                         nAmount = 0;
@@ -259,6 +270,47 @@ namespace TAO
         bool Unpack(const TAO::Operation::Contract& contract, const uint8_t nCode)
         {
             return contract.Primitive() == nCode;
+        }
+
+        /* Unpack an op legacy contract to find it's output script. */
+        bool Unpack(const TAO::Operation::Contract& contract, Legacy::Script& script)
+        {
+            /* Reset the contract. */
+            contract.Reset();
+
+            /* Make sure no exceptions are thrown. */
+            try
+            {
+                /* Deserialize the operation. */
+                uint8_t OPERATION = 0;
+                contract >> OPERATION;
+
+                /* Check the current opcode. */
+                switch(OPERATION)
+                {
+                    /* Check the op code. */
+                    case TAO::Operation::OP::LEGACY:
+
+                    {
+                        /* Seek to output script. */
+                        contract.Seek(40);
+
+                        contract >> script;
+
+                        return true;
+                    }
+
+                    default:
+                    {
+                        return false;
+                    }
+                }
+            }
+            catch(const std::exception& e)
+            {
+            }
+
+            return false;
         }
     }
 }

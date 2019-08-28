@@ -39,7 +39,7 @@ namespace TAO
             TAO::Register::Object name;
 
             /* Register address of Name object */
-            uint256_t hashNameRegister = 0;
+            TAO::Register::Address hashNameRegister;
 
             /* If the caller has provided a name parameter then retrieve it by name */
             if(params.find("name") != params.end())
@@ -59,8 +59,8 @@ namespace TAO
                 memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
 
                 /* The register address that the name points to */
-                uint256_t hashRegister;
-                hashRegister.SetHex(params["register_address"].get<std::string>());
+                TAO::Register::Address hashRegister;
+                hashRegister.SetBase58(params["register_address"].get<std::string>());
 
                 /* Get the name object based on the register address it points to*/
                 name = Names::GetName(user->Genesis(), hashRegister, hashNameRegister);
@@ -74,7 +74,7 @@ namespace TAO
                 throw APIException(-92, "Name not found.");
 
             /* Populate the json response */
-            jsonRet["owner"]    = name.hashOwner.GetHex();
+            jsonRet["owner"]    = name.hashOwner.ToString();
             jsonRet["created"]  = name.nCreated;
             jsonRet["modified"] = name.nModified;
 
@@ -108,7 +108,7 @@ namespace TAO
             json::json jsonRet;
 
             /* Register address of Namespace object */
-            uint256_t hashRegister = 0;
+            TAO::Register::Address hashRegister ;
 
             /* If the caller has provided a name parameter then retrieve it by name */
             if(params.find("name") == params.end())
@@ -126,7 +126,7 @@ namespace TAO
                 throw APIException(-94, "Invalid namespace");
 
             /* Populate the json response */
-            jsonRet["owner"]    = namespaceObject.hashOwner.GetHex();
+            jsonRet["owner"]    = namespaceObject.hashOwner.ToString();
             jsonRet["created"]  = namespaceObject.nCreated;
 
             json::json data  =TAO::API::ObjectToJSON(params, namespaceObject, hashRegister, false);

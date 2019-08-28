@@ -68,7 +68,7 @@ namespace TAO
                 throw APIException(-17, "Failed to create transaction");
 
             /* Get the Register ID. */
-            uint256_t hashRegister = 0;
+            TAO::Register::Address hashRegister ;
 
             /* name object to update */
             TAO::Register::Object name;
@@ -80,7 +80,7 @@ namespace TAO
             /* Otherwise try to find the raw hex encoded address. */
             else if(params.find("address") != params.end())
             {
-                hashRegister.SetHex(params["address"].get<std::string>());
+                hashRegister.SetBase58(params["address"].get<std::string>());
 
                 /* Retrieve the name by hash */
                 if(!LLD::Register->ReadState(hashRegister, name, TAO::Ledger::FLAGS::MEMPOOL))
@@ -104,8 +104,8 @@ namespace TAO
             TAO::Operation::Stream ssOperationStream;
 
             /* The new register address to set for the name object */
-            uint256_t hashNewRegisterAddress = 0;
-            hashNewRegisterAddress.SetHex(params["register_address"].get<std::string>());
+            TAO::Register::Address hashNewRegisterAddress;
+            hashNewRegisterAddress.SetBase58(params["register_address"].get<std::string>());
 
             /* Write the new register address value into the operation stream */
             ssOperationStream << std::string("address") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T) << hashNewRegisterAddress;

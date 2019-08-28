@@ -16,6 +16,7 @@ ________________________________________________________________________________
 
 #include <TAO/Register/types/address.h>
 
+#include <Util/include/base58.h>
 #include <Util/include/debug.h>
 
 namespace TAO
@@ -30,6 +31,15 @@ namespace TAO
         {
         }
 
+        /* Build from uint256_t.. */
+        Address::Address(const uint256_t& nAddress)
+        : uint256_t(nAddress)
+        {
+            /* Check for valid. */
+            if(nAddress != 0 && !IsValid())
+                throw debug::exception(FUNCTION, "invalid type for random ", GetHex());
+        }
+
 
         /* Default constructor. */
         Address::Address(const uint8_t nType)
@@ -40,14 +50,17 @@ namespace TAO
 
             /* Check for valid. */
             if(!IsValid())
-                throw debug::exception(FUNCTION, "invalid type for random ", ToString());
+                throw debug::exception(FUNCTION, "invalid type for random ", GetHex());
         }
 
 
-        /*Build an address from a hex encoded string.*/
+        /*Build an address from a base58 encoded string.*/
         Address::Address(const std::string& strAddress)
-        : uint256_t(strAddress)
+        : uint256_t()
         {
+            /* Set the internal value from the incoming base58 encoded address */
+            SetBase58(strAddress);
+
             /* Check for valid address types. */
             if(!IsValid())
                 throw debug::exception(FUNCTION, "invalid type for string");
@@ -92,6 +105,14 @@ namespace TAO
             return *this;
         }
 
+        /* Assignment operator. */
+        Address& Address::operator=(const uint256_t& value)
+        {
+            uint256_t::operator=(value);
+
+            return *this;
+        }
+
 
         /* Check if address has a valid type assoicated. */
         bool Address::IsValid() const
@@ -102,6 +123,8 @@ namespace TAO
             /* Return on valid types. */
             switch(nType)
             {
+                case LEGACY:
+                case LEGACY_TESTNET:
                 case READONLY:
                 case APPEND:
                 case RAW:
@@ -186,6 +209,57 @@ namespace TAO
         bool Address::IsWildcard() const
         {
             return GetType() == WILDCARD;
+        }
+
+
+        /* Check if type is set to LEGACY or LEGACY_TESTNET. */
+        bool Address::IsLegacy() const
+        {
+            return GetType() == LEGACY || GetType() == LEGACY_TESTNET;
+        }
+
+
+        /* Sets the uint256_t value of this address from a base58 encoded string. */
+        void Address::SetBase58(const std::string& str)
+        {
+            /* The decoded bytes  */
+            std::vector<uint8_t> bytes;
+
+            /* Decode the incoming string */
+            if(encoding::DecodeBase58Check(str, bytes))
+            {
+                /* Set the internal value based on the remainder of the decoded bytes after the leading type byte */
+                SetBytes(std::vector<uint8_t>(bytes.begin() +1, bytes.end()));
+
+                /* Set the type */
+                SetType(bytes[0]);
+
+            }
+        }
+
+
+        /* Returns a Base58 encoded string representation of the 256-bit address hash. */
+        std::string Address::ToBase58() const
+        {
+            /* Get the bytes for the 256-bit hash */
+            std::vector<uint8_t> vch = GetBytes();
+
+            /* Insert the type identifier byte */
+            vch.insert(vch.begin(), GetType());
+
+            /* encode the bytes and return the resultant string */
+            return encoding::EncodeBase58Check(vch);
+        }
+
+        /* Returns a base58 encoded string representation of the address. */
+        std::string Address::ToString() const
+        {
+            if(*this == 0)
+                return "0";
+            else if(GetType() == RESERVED || GetType() == RESERVED2)
+                return GetHex();
+            else
+                return ToBase58();
         }
     }
 }

@@ -39,7 +39,7 @@ namespace TAO
         TAO::Operation::Contract Names::CreateName(const uint256_t& hashGenesis,
                                                    const std::string& strName,
                                                    const std::string& strNamespace,
-                                                   const uint256_t& hashRegister)
+                                                   const TAO::Register::Address& hashRegister)
         {
             /* Check name length */
             if(strName.length() == 0)
@@ -54,7 +54,7 @@ namespace TAO
 
             /* The hash representing the namespace that the Name will be created in.  For user local this will be the genesis hash
                of the callers sig chain.  For global namespace this will be a SK256 hash of the namespace name. */
-            uint256_t hashNamespace = 0;
+            TAO::Register::Address hashNamespace;
 
             /* The register address of the Name object. */
             TAO::Register::Address hashNameAddress;
@@ -148,7 +148,7 @@ namespace TAO
                         continue;
 
                     /* Extract the object register address  */
-                    uint256_t hashAddress = 0;
+                    TAO::Register::Address hashAddress;
                     check >> hashAddress;
 
                     /* Now check the previous owners Name records to see if there was a Name for this object */
@@ -167,7 +167,7 @@ namespace TAO
         }
 
         /* Retrieves a Name object by name. */
-        TAO::Register::Object Names::GetName(const json::json& params, const std::string& strObjectName, uint256_t& hashNameObject)
+        TAO::Register::Object Names::GetName(const json::json& params, const std::string& strObjectName, TAO::Register::Address& hashNameObject)
         {
             /* Declare the name object to return */
             TAO::Register::Object nameObject;
@@ -185,7 +185,7 @@ namespace TAO
             std::string strNamespace = "";
 
             /* Declare the namespace hash to use for this object. */
-            uint256_t hashNamespace = 0;
+            TAO::Register::Address hashNamespace;
 
             /* First check the callers local namespace to see if it exists */
             /* Get the session to be used for this API call.  Note we pass in false for fThrow here so that we can check the 
@@ -260,13 +260,13 @@ namespace TAO
 
 
         /* Scans the Name records associated with the hashGenesis sig chain to find an entry with a matching hashObject address */
-        TAO::Register::Object Names::GetName(const uint256_t& hashGenesis, const uint256_t& hashObject, uint256_t& hashNameObject)
+        TAO::Register::Object Names::GetName(const uint256_t& hashGenesis, const TAO::Register::Address& hashObject, TAO::Register::Address& hashNameObject)
         {
             /* Declare the return val */
             TAO::Register::Object nameObject;
 
             /* Get all object registers owned by this sig chain */
-            std::vector<uint256_t> vRegisters;
+            std::vector<TAO::Register::Address> vRegisters;
             if(ListRegisters(hashGenesis, vRegisters))
             {
                 /* Iterate through these to find all Name registers */
@@ -307,13 +307,13 @@ namespace TAO
 
 
         /* Resolves a register address from a name by looking up the Name object. */
-        uint256_t Names::ResolveAddress(const json::json& params, const std::string& strName)
+        TAO::Register::Address Names::ResolveAddress(const json::json& params, const std::string& strName)
         {
             /* Declare the return register address hash */
-            uint256_t hashRegister = 0;
+            TAO::Register::Address hashRegister ;
 
             /* Register address of nameObject.  Not used by this method */
-            uint256_t hashNameObject = 0;
+            TAO::Register::Address hashNameObject;
 
             /* Get the Name object by name */
             TAO::Register::Object name = Names::GetName(params, strName, hashNameObject);
@@ -327,13 +327,13 @@ namespace TAO
 
 
         /* Scans the Name records associated with the hashGenesis sig chain to find an entry with a matching hashRegister address */
-        std::string Names::ResolveName(const uint256_t& hashGenesis, const uint256_t& hashRegister)
+        std::string Names::ResolveName(const uint256_t& hashGenesis, const TAO::Register::Address& hashRegister)
         {
             /* Declare the return val */
             std::string strName = "";
 
             /* Register address of nameObject.  Not used by this method */
-            uint256_t hashNameObject = 0;
+            TAO::Register::Address hashNameObject;
 
             /* The resolved name record  */
             TAO::Register::Object name; 
@@ -391,7 +391,7 @@ namespace TAO
             {
                 /* The token name is obtained by first looking at the token field int the account,
                    which contains the register address of the issuing token */
-                uint256_t hashToken = account.get<uint256_t>("token");
+                TAO::Register::Address hashToken = account.get<uint256_t>("token");
 
                 /* Edge case for NXS token which has identifier 0, so no look up needed */
                 if(hashToken == 0)

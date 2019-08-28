@@ -17,6 +17,8 @@ ________________________________________________________________________________
 
 #include <unit/catch2/catch.hpp>
 
+#include <TAO/Register/types/address.h>
+
 
 TEST_CASE( "Test Finance API - create acccount", "[finance/create/account]")
 {
@@ -91,7 +93,7 @@ TEST_CASE( "Test Finance API - get acccount", "[finance/get/account]")
     json::json error;
 
     std::string strAccount = "ACCOUNT" +std::to_string(LLC::GetRand());
-    uint256_t hashAccount = 0;
+    TAO::Register::Address hashAccount;
     
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
@@ -114,7 +116,7 @@ TEST_CASE( "Test Finance API - get acccount", "[finance/get/account]")
         REQUIRE(result.find("txid") != result.end());
         REQUIRE(result.find("address") != result.end());
 
-        hashAccount.SetHex(result["address"].get<std::string>());
+        hashAccount.SetBase58(result["address"].get<std::string>());
     }
 
     /* Failure case with missing name / address */
@@ -148,7 +150,7 @@ TEST_CASE( "Test Finance API - get acccount", "[finance/get/account]")
         /* Build the parameters to pass to the API */
         params.clear();
         params["session"] = SESSION1;
-        params["address"] = LLC::GetRand256().GetHex();
+        params["address"] = TAO::Register::Address(TAO::Register::Address::ACCOUNT).ToString();
 
         /* Invoke the API */
         ret = APICall("finance/get/account", params);
@@ -183,7 +185,7 @@ TEST_CASE( "Test Finance API - get acccount", "[finance/get/account]")
         /* Build the parameters to pass to the API */
         params.clear();
         params["session"] = SESSION1;
-        params["address"] = hashAccount.GetHex();
+        params["address"] = hashAccount.ToString();
 
         /* Invoke the API */
         ret = APICall("finance/get/account", params);
@@ -212,7 +214,7 @@ TEST_CASE( "Test Finance API - list acccounts", "[finance/list/accounts]")
     json::json error;
 
     std::string strAccount = "ACCOUNT" +std::to_string(LLC::GetRand());
-    uint256_t hashAccount = 0;
+    TAO::Register::Address hashAccount;
     
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
@@ -234,7 +236,7 @@ TEST_CASE( "Test Finance API - list acccounts", "[finance/list/accounts]")
         REQUIRE(result.find("txid") != result.end());
         REQUIRE(result.find("address") != result.end());
 
-        hashAccount.SetHex(result["address"].get<std::string>());
+        hashAccount.SetBase58(result["address"].get<std::string>());
     }
 
     /* Successful get for logged in user*/
@@ -275,7 +277,7 @@ TEST_CASE( "Test Finance API - get stakeinfo", "[finance/get/stakeinfo]")
     json::json error;
 
     std::string strAccount = "ACCOUNT" +std::to_string(LLC::GetRand());
-    uint256_t hashAccount = 0;
+    TAO::Register::Address hashAccount ;
     
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
@@ -316,7 +318,7 @@ TEST_CASE( "Test Finance API - set stake", "[finance/set/stake]")
     json::json error;
 
     std::string strAccount = "ACCOUNT" +std::to_string(LLC::GetRand());
-    uint256_t hashAccount = 0;
+    TAO::Register::Address hashAccount ;
     
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);

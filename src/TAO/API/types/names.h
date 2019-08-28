@@ -243,7 +243,7 @@ namespace TAO
             static TAO::Operation::Contract CreateName(const uint256_t& hashGenesis,
                                                        const std::string& strName,
                                                        const std::string& strNamespace,
-                                                       const uint256_t& hashRegister);
+                                                       const TAO::Register::Address& hashRegister);
 
 
             /** CreateName
@@ -274,7 +274,7 @@ namespace TAO
              **/
             static TAO::Register::Object GetName(const json::json& params,
                                                  const std::string& strObjectName,
-                                                 uint256_t& hashRegister);
+                                                 TAO::Register::Address& hashRegister);
 
 
             /** GetName
@@ -288,8 +288,8 @@ namespace TAO
              *  @return The Name object .
              **/
             static TAO::Register::Object GetName(const uint256_t& hashGenesis,
-                                                 const uint256_t& hashObject,
-                                                 uint256_t& hashNameObject);
+                                                 const TAO::Register::Address& hashObject,
+                                                 TAO::Register::Address& hashNameObject);
 
 
 
@@ -302,7 +302,7 @@ namespace TAO
              *
              *  @return The 256 bit hash of the object name.
              **/
-            static uint256_t ResolveAddress(const json::json& params, const std::string& strName);
+            static TAO::Register::Address ResolveAddress(const json::json& params, const std::string& strName);
 
 
             /** ResolveName
@@ -315,7 +315,7 @@ namespace TAO
              *  @return the name of the object, if one is found
              *
              **/
-            static std::string ResolveName(const uint256_t& hashGenesis, const uint256_t& hashRegister);
+            static std::string ResolveName(const uint256_t& hashGenesis, const TAO::Register::Address& hashRegister);
 
 
             /** ResolveAccountTokenName

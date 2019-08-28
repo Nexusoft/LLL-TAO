@@ -73,7 +73,7 @@ namespace TAO
             std::string strName = "";
 
             /* Hash identifier is 0 for NXS tokens */
-            uint256_t hashIdentifier = 0;
+            TAO::Register::Address hashIdentifier;
 
             /* Create an account object register. */
             TAO::Register::Object account = TAO::Register::CreateAccount(hashIdentifier);

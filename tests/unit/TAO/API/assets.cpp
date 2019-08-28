@@ -33,13 +33,13 @@ ________________________________________________________________________________
 
 /* Declare asset names / hashes in global scope so that we can reuse them for the update/get */
 std::string strBasicAsset = "ASSET" +std::to_string(LLC::GetRand());
-uint256_t hashBasicAsset = 0;
+TAO::Register::Address hashBasicAsset;
 std::string strRawAsset = "ASSET" +std::to_string(LLC::GetRand());
-uint256_t hashRawAsset = 0;
+TAO::Register::Address hashRawAsset;
 std::string strJSONAsset = "ASSET" +std::to_string(LLC::GetRand());
-uint256_t hashJSONAsset = 0;
+TAO::Register::Address hashJSONAsset;
 
-uint512_t hashTransfer = 0;
+uint512_t hashTransfer;
 
 TEST_CASE( "Test Assets API - create asset - basic", "[assets/create/asset]")
 {
@@ -156,7 +156,7 @@ TEST_CASE( "Test Assets API - create asset - basic", "[assets/create/asset]")
         REQUIRE(result.find("address") != result.end());
 
         /* Grab the asset hash for later use */
-        hashBasicAsset.SetHex(result["address"].get<std::string>());
+        hashBasicAsset.SetBase58(result["address"].get<std::string>());
     }
 }
 
@@ -228,7 +228,7 @@ TEST_CASE( "Test Assets API - create asset - raw", "[assets/create/asset]")
         REQUIRE(result.find("address") != result.end());
 
         /* Grab the asset hash for later use */
-        hashRawAsset.SetHex(result["address"].get<std::string>());
+        hashRawAsset.SetBase58(result["address"].get<std::string>());
     }
 }
 
@@ -524,7 +524,7 @@ TEST_CASE( "Test Assets API - create asset - json", "[assets/create/asset]")
         REQUIRE(result.find("address") != result.end());
 
         /* Grab the address for later tests */
-        hashJSONAsset.SetHex(result["address"].get<std::string>());
+        hashJSONAsset.SetBase58(result["address"].get<std::string>());
     }
 
 }
@@ -594,7 +594,7 @@ TEST_CASE( "Test Assets API - get asset", "[assets/get/asset]")
         params.clear();
         params["session"] = SESSION1;
         params["pin"] = PIN;
-        params["address"] = hashJSONAsset.GetHex();
+        params["address"] = hashJSONAsset.ToString();
 
         /* Invoke the API */
         ret = APICall("assets/get/asset", params);
@@ -673,7 +673,7 @@ TEST_CASE( "Test Assets API - update asset", "[assets/update/asset]")
         params.clear();
         params["session"] = SESSION1;
         params["pin"] = PIN;
-        params["address"] = LLC::GetRand256().GetHex();
+        params["address"] = TAO::Register::Address(TAO::Register::Address::OBJECT).ToString();
 
         /* Invoke the API */
         ret = APICall("assets/update/asset", params);
@@ -689,7 +689,7 @@ TEST_CASE( "Test Assets API - update asset", "[assets/update/asset]")
         params.clear();
         params["session"] = SESSION1;
         params["pin"] = PIN;
-        params["address"] = hashRawAsset.GetHex();
+        params["address"] = hashRawAsset.ToString();
 
         /* Invoke the API */
         ret = APICall("assets/update/asset", params);
@@ -705,7 +705,7 @@ TEST_CASE( "Test Assets API - update asset", "[assets/update/asset]")
         params.clear();
         params["session"] = SESSION1;
         params["pin"] = PIN;
-        params["address"] = hashJSONAsset.GetHex();
+        params["address"] = hashJSONAsset.ToString();
         params["notafield"] = "xxxx";
 
         /* Invoke the API */
@@ -722,7 +722,7 @@ TEST_CASE( "Test Assets API - update asset", "[assets/update/asset]")
         params.clear();
         params["session"] = SESSION1;
         params["pin"] = PIN;
-        params["address"] = hashJSONAsset.GetHex();
+        params["address"] = hashJSONAsset.ToString();
         params["uint8field"] = "0";
 
         /* Invoke the API */
@@ -739,7 +739,7 @@ TEST_CASE( "Test Assets API - update asset", "[assets/update/asset]")
         params.clear();
         params["session"] = SESSION1;
         params["pin"] = PIN;
-        params["address"] = hashJSONAsset.GetHex();
+        params["address"] = hashJSONAsset.ToString();
         params["stringfield"] = "0123456789012345678901234567890";
 
         /* Invoke the API */
@@ -756,7 +756,7 @@ TEST_CASE( "Test Assets API - update asset", "[assets/update/asset]")
         params.clear();
         params["session"] = SESSION1;
         params["pin"] = PIN;
-        params["address"] = hashJSONAsset.GetHex();
+        params["address"] = hashJSONAsset.ToString();
         params["stringfield"] = 1234;
 
         /* Invoke the API */
@@ -773,7 +773,7 @@ TEST_CASE( "Test Assets API - update asset", "[assets/update/asset]")
         params.clear();
         params["session"] = SESSION1;
         params["pin"] = PIN;
-        params["address"] = hashJSONAsset.GetHex();
+        params["address"] = hashJSONAsset.ToString();
         params["stringfield"] = "newstringdata";
 
         /* Invoke the API */
@@ -899,7 +899,7 @@ TEST_CASE( "Test Assets API - transfer asset", "[assets/transfer/asset]")
         params.clear();
         params["session"] = SESSION1;
         params["pin"] = PIN;
-        params["address"] = LLC::GetRand256().GetHex();
+        params["address"] = TAO::Register::Address(TAO::Register::Address::OBJECT).ToString();
         params["destination"] = GENESIS2.GetHex();
 
         /* Invoke the API */
@@ -916,7 +916,7 @@ TEST_CASE( "Test Assets API - transfer asset", "[assets/transfer/asset]")
         params.clear();
         params["session"] = SESSION1;
         params["pin"] = PIN;
-        params["address"] = hashBasicAsset.GetHex();
+        params["address"] = hashBasicAsset.ToString();
         params["destination"] = GENESIS2.GetHex();
 
         /* Invoke the API */
@@ -979,7 +979,7 @@ TEST_CASE( "Test Assets API - claim asset", "[assets/claim/asset]")
 
     /* Success case */
     {
-        uint256_t hashAsset = TAO::Register::Address(TAO::Register::Address::OBJECT);
+        TAO::Register::Address hashAsset = TAO::Register::Address(TAO::Register::Address::OBJECT);
 
         {
             TAO::Ledger::Transaction tx;
@@ -1039,7 +1039,7 @@ TEST_CASE( "Test Assets API - claim asset", "[assets/claim/asset]")
         params.clear();
         params["session"] = SESSION2;
         params["pin"] = PIN;
-        params["txid"] = hashTransfer.GetHex();
+        params["txid"] = hashTransfer.ToString();
 
         /* Invoke the API */
         ret = APICall("assets/claim/asset", params);
@@ -1100,7 +1100,7 @@ TEST_CASE( "Test Assets API - list asset history", "[assets/list/asset/history]"
         /* Build the parameters to pass to the API */
         params.clear();
         params["session"] = SESSION2;
-        params["address"] = LLC::GetRand256().GetHex();
+        params["address"] = TAO::Register::Address(TAO::Register::Address::OBJECT).ToString();
 
         /* Invoke the API */
         ret = APICall("assets/list/asset/history", params);
@@ -1115,7 +1115,7 @@ TEST_CASE( "Test Assets API - list asset history", "[assets/list/asset/history]"
         /* Build the parameters to pass to the API */
         params.clear();
         params["session"] = SESSION2;
-        params["address"] = hashJSONAsset.GetHex();
+        params["address"] = hashJSONAsset.ToString();
 
         /* Invoke the API */
         ret = APICall("assets/list/asset/history", params);

@@ -72,26 +72,26 @@ namespace TAO
                 throw APIException(-17, "Failed to create transaction.");
 
             /* Submit the transaction payload. */
-            uint256_t hashTo = 0;
+            TAO::Register::Address hashTo;
 
             /* If name_to is provided then use this to deduce the register address,
              * otherwise try to find the raw hex encoded address. */
             if(params.find("name_to") != params.end())
                 hashTo = Names::ResolveAddress(params, params["name_to"].get<std::string>());
             else if(params.find("address_to") != params.end())
-                hashTo.SetHex(params["address_to"].get<std::string>());
+                hashTo.SetBase58(params["address_to"].get<std::string>());
             else
                 throw APIException(-64, "Missing recipient account name_to / address_to");
 
             /* Get the transaction id. */
-            uint256_t hashFrom = 0;
+            TAO::Register::Address hashFrom;
 
             /* If name is provided then use this to deduce the register address,
              * otherwise try to find the raw hex encoded address. */
             if(params.find("name") != params.end())
                 hashFrom = Names::ResolveAddress(params, params["name"].get<std::string>());
             else if(params.find("address") != params.end())
-                hashFrom.SetHex(params["address"].get<std::string>());
+                hashFrom.SetBase58(params["address"].get<std::string>());
             else
                 throw APIException(-33, "Missing name / address");
 

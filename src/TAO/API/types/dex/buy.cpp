@@ -54,11 +54,11 @@ namespace TAO
                 throw APIException(-50, "Missing txid.");
 
             /* Check for from parameter. */
-            uint256_t hashFrom = 0;
+            TAO::Register::Address hashFrom;
             if(params.find("name_from") != params.end())
                 hashFrom = Names::ResolveAddress(params, params["name_from"].get<std::string>());
             else if(params.find("address_from") != params.end())
-                hashFrom.SetHex(params["address_from"].get<std::string>());
+                hashFrom.SetBase58(params["address_from"].get<std::string>());
             else
                 throw APIException(-39, "Missing name_from / address_from");
 

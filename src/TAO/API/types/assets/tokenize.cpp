@@ -46,7 +46,7 @@ namespace TAO
             uint64_t nSession = users->GetSession(params);
 
             /* Get the register address. */
-            uint256_t hashToken = 0;
+            TAO::Register::Address hashToken;
 
             /* Check for data parameter. */
             if(params.find("token_name") != params.end())
@@ -57,14 +57,14 @@ namespace TAO
 
             /* Otherwise try to find the raw hex encoded address. */
             else if(params.find("token") != params.end() && IsRegisterAddress(params["token"]))
-                hashToken.SetHex(params["token"]);
+                hashToken.SetBase58(params["token"]);
 
             /* Fail if no required parameters supplied. */
             else
                 throw APIException(-37, "Missing token name / address");
 
             /* Get the register address. */
-            uint256_t hashRegister = 0;
+            TAO::Register::Address hashRegister ;
 
             /* Check whether the caller has provided the asset name parameter. */
             if(params.find("name") != params.end())
@@ -75,7 +75,7 @@ namespace TAO
 
             /* Otherwise try to find the raw hex encoded address. */
             else if(params.find("address") != params.end())
-                hashRegister.SetHex(params["address"]);
+                hashRegister.SetBase58(params["address"]);
 
             /* Fail if no required parameters supplied. */
             else

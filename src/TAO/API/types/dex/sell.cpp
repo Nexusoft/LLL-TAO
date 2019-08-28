@@ -52,7 +52,7 @@ namespace TAO
             uint64_t nSession = users->GetSession(params);
 
             /* Check for from parameter. */
-            uint256_t hashFrom = 0;
+            TAO::Register::Address hashFrom;
             if(params.find("name_from") != params.end())
                 hashFrom = Names::ResolveAddress(params, params["name_from"].get<std::string>());
             else if(params.find("address_from") != params.end())
@@ -61,7 +61,7 @@ namespace TAO
                 throw APIException(-39, "Missing name_from / address_from");
 
             /* Check for from parameter. */
-            uint256_t hashTo = 0;
+            TAO::Register::Address hashTo;
             if(params.find("name_to") != params.end())
                 hashTo = Names::ResolveAddress(params, params["name_to"].get<std::string>());
             else if(params.find("address_to") != params.end())

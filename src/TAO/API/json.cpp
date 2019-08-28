@@ -196,11 +196,11 @@ namespace TAO
 
                         /* Extract the Nexus Address. */
                         Legacy::NexusAddress address;
-                        uint256_t hashRegister;
+                        TAO::Register::Address hashRegister;
                         if(Legacy::ExtractAddress(txprev.vout[txin.prevout.n].scriptPubKey, address))
                             input["address"] = address.ToString();
                         else if(Legacy::ExtractRegister(txprev.vout[txin.prevout.n].scriptPubKey, hashRegister))
-                            input["address"] = hashRegister.GetHex();
+                            input["address"] = hashRegister.ToString();
                         else
                             throw APIException(-8, "Unable to Extract Input Address");
 
@@ -221,11 +221,11 @@ namespace TAO
                     json::json output;
                     /* Extract the Nexus Address. */
                     Legacy::NexusAddress address;
-                    uint256_t hashRegister;
+                    TAO::Register::Address hashRegister;
                     if(Legacy::ExtractAddress(txout.scriptPubKey, address))
                         output["address"] = address.ToString();
                     else if(Legacy::ExtractRegister(txout.scriptPubKey, hashRegister))
-                        output["address"] = hashRegister.GetHex();
+                        output["address"] = hashRegister.ToString();
                     else
                         throw APIException(-8, "Unable to Extract Output Address");
 
@@ -280,7 +280,7 @@ namespace TAO
                     case TAO::Operation::OP::WRITE:
                     {
                         /* Get the Address of the Register. */
-                        uint256_t hashAddress = 0;
+                        TAO::Register::Address hashAddress;
                         contract >> hashAddress;
 
                         /* Deserialize the register from contract. */
@@ -300,7 +300,7 @@ namespace TAO
                     case TAO::Operation::OP::APPEND:
                     {
                         /* Get the Address of the Register. */
-                        uint256_t hashAddress = 0;
+                        TAO::Register::Address hashAddress;
                         contract >> hashAddress;
 
                         /* Deserialize the register from contract. */
@@ -320,7 +320,7 @@ namespace TAO
                     case TAO::Operation::OP::CREATE:
                     {
                         /* Extract the address from the contract. */
-                        uint256_t hashAddress = 0;
+                        TAO::Register::Address hashAddress;
                         contract >> hashAddress;
 
                         /* Extract the register type from contract. */
@@ -366,11 +366,11 @@ namespace TAO
                     case TAO::Operation::OP::TRANSFER:
                     {
                         /* Extract the address from the contract. */
-                        uint256_t hashAddress = 0;
+                        TAO::Register::Address hashAddress;
                         contract >> hashAddress;
 
                         /* Read the register transfer recipient. */
-                        uint256_t hashTransfer = 0;
+                        TAO::Register::Address hashTransfer;
                         contract >> hashTransfer;
 
                         /* Get the flag byte. */
@@ -414,7 +414,7 @@ namespace TAO
                         contract >> nContract;
 
                         /* Extract the address from the contract. */
-                        uint256_t hashAddress = 0;
+                        TAO::Register::Address hashAddress;
                         contract >> hashAddress;
 
                         /* Output the json information. */
@@ -544,11 +544,11 @@ namespace TAO
                     case TAO::Operation::OP::DEBIT:
                     {
                         /* Get the register address. */
-                        uint256_t hashFrom = 0;
+                        TAO::Register::Address hashFrom;
                         contract >> hashFrom;
 
                         /* Get the transfer address. */
-                        uint256_t hashTo = 0;
+                        TAO::Register::Address hashTo;
                         contract >> hashTo;
 
                         /* Get the transfer amount. */
@@ -600,10 +600,10 @@ namespace TAO
                             throw APIException(-15, "Object is not an account or token");
 
                         /* Get the token address */
-                        uint256_t hashToken = object.get<uint256_t>("token");
+                        TAO::Register::Address hashToken = object.get<uint256_t>("token");
 
                         /* Add the token address to the response */
-                        ret["token"]   = hashToken.GetHex();
+                        ret["token"]   = hashToken.ToString();
 
                         /* Resolve the name of the token name */
                         std::string strToken = hashToken != 0 ? Names::ResolveName(hashCaller, hashToken) : "NXS";
@@ -627,11 +627,11 @@ namespace TAO
                         contract >> nID;
 
                         /* Get the transfer address. */
-                        uint256_t hashAddress = 0;
+                        TAO::Register::Address hashAddress;
                         contract >> hashAddress;
 
                         /* Get the transfer address. */
-                        uint256_t hashProof = 0;
+                        TAO::Register::Address hashProof;
                         contract >> hashProof;
 
                         /* Get the transfer amount. */
@@ -672,10 +672,10 @@ namespace TAO
                             throw APIException(-15, "Object is not an account or token");
 
                         /* Get the token address */
-                        uint256_t hashToken = account.get<uint256_t>("token");
+                        TAO::Register::Address hashToken = account.get<uint256_t>("token");
 
                         /* Add the token address to the response */
-                        ret["token"]   = hashToken.GetHex();
+                        ret["token"]   = hashToken.ToString();
 
                         /* Resolve the name of the token name */
                         std::string strToken = hashToken != 0 ? Names::ResolveName(hashCaller, hashToken) : "NXS";
@@ -730,7 +730,7 @@ namespace TAO
                     case TAO::Operation::OP::FEE:
                     {
                         /* Get the address of the account the fee came from. */
-                        uint256_t hashAccount = 0;
+                        TAO::Register::Address hashAccount;
                         contract >> hashAccount;
 
                         /* The fee amount. */
@@ -755,7 +755,7 @@ namespace TAO
                     case TAO::Operation::OP::LEGACY:
                     {
                         /* Get the register address. */
-                        uint256_t hashFrom = 0;
+                        TAO::Register::Address hashFrom;
                         contract >> hashFrom;
 
 
@@ -806,10 +806,10 @@ namespace TAO
                             throw APIException(-15, "Object is not an account or token");
 
                         /* Get the token address */
-                        uint256_t hashToken = object.get<uint256_t>("token");
+                        TAO::Register::Address hashToken = object.get<uint256_t>("token");
 
                         /* Add the token address to the response */
-                        ret["token"]   = hashToken.GetHex();
+                        ret["token"]   = hashToken.ToString();
                         ret["token_name"] = "NXS";
 
 
@@ -829,7 +829,7 @@ namespace TAO
         /* Converts an Object Register to formattted JSON */
         json::json ObjectToJSON(const json::json& params,
                                 const TAO::Register::Object& object,
-                                const uint256_t& hashRegister,
+                                const TAO::Register::Address& hashRegister,
                                 bool fLookupName /*= true*/)
         {
             /* Declare the return JSON object */
@@ -892,8 +892,8 @@ namespace TAO
                             ret["token_name"] = strTokenName;
 
                         /* Set the value to the token contract address. */
-                        uint256_t hashToken = object.get<uint256_t>("token");
-                        ret["token"] = hashToken.GetHex();
+                        TAO::Register::Address hashToken = object.get<uint256_t>("token");
+                        ret["token"] = hashToken.ToString();
 
                         /* Handle digit conversion. */
                         uint64_t nDigits = GetDigits(object);
@@ -1010,7 +1010,7 @@ namespace TAO
                         }
                         
                         
-                        ret["register_address"] = object.get<uint256_t>("address").GetHex();
+                        ret["register_address"] = TAO::Register::Address(object.get<uint256_t>("address")).ToString();
 
                         break;
                     }

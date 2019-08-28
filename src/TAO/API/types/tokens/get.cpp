@@ -32,7 +32,7 @@ namespace TAO
             json::json ret;
 
             /* Get the Register ID. */
-            uint256_t hashRegister = 0;
+            TAO::Register::Address hashRegister ;
 
             /* If name is provided then use this to deduce the register address,
              * otherwise try to find the raw hex encoded address.
@@ -40,7 +40,7 @@ namespace TAO
             if(params.find("name") != params.end())
                 hashRegister = Names::ResolveAddress(params, params["name"].get<std::string>());
             else if(params.find("address") != params.end())
-                hashRegister.SetHex(params["address"].get<std::string>());
+                hashRegister.SetBase58(params["address"].get<std::string>());
             else
                 throw APIException(-33, "Missing name / address");
 
@@ -80,7 +80,7 @@ namespace TAO
                 throw APIException(-122, "Token/account not found");
 
             /* Populate the response JSON */
-            ret["owner"]    = object.hashOwner.GetHex();
+            ret["owner"]    = object.hashOwner.ToString();
             ret["created"]  = object.nCreated;
             ret["modified"] = object.nModified;
 

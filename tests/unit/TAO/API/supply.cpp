@@ -34,7 +34,7 @@ ________________________________________________________________________________
 
 /* Declare item names / hashes in global scope so that we can reuse them for the update/get */
 std::string strItem = "ITEM" +std::to_string(LLC::GetRand());
-uint256_t hashItem = 0;
+TAO::Register::Address hashItem ;
 uint512_t hashItemTransfer = 0;
 
 
@@ -132,7 +132,7 @@ TEST_CASE( "Test Supply API - create item", "[supply/create/item]")
         REQUIRE(result.find("address") != result.end());
 
         /* Grab the item hash for later use */
-        hashItem.SetHex(result["address"].get<std::string>());
+        hashItem.SetBase58(result["address"].get<std::string>());
     }
 }
 
@@ -185,7 +185,7 @@ TEST_CASE( "Test Supply API - get item", "[supply/get/item]")
         params.clear();
         params["session"] = SESSION1;
         params["pin"] = PIN;
-        params["address"] = LLC::GetRand256().GetHex();
+        params["address"] = TAO::Register::Address(TAO::Register::Address::RAW).ToString();
 
         /* Invoke the API */
         ret = APICall("supply/get/item", params);
@@ -201,7 +201,7 @@ TEST_CASE( "Test Supply API - get item", "[supply/get/item]")
         params.clear();
         params["session"] = SESSION1;
         params["pin"] = PIN;
-        params["address"] = hashItem.GetHex();
+        params["address"] = hashItem.ToString();
 
         /* Invoke the API */
         ret = APICall("supply/get/item", params);
@@ -242,7 +242,7 @@ TEST_CASE( "Test Supply API - update item", "[supply/update/item]")
         params.clear();
         params["session"] = SESSION1;
         params["pin"] = PIN;
-        params["address"] = hashItem.GetHex();
+        params["address"] = hashItem.ToString();
 
         /* Invoke the API */
         ret = APICall("supply/update/item", params);
@@ -258,7 +258,7 @@ TEST_CASE( "Test Supply API - update item", "[supply/update/item]")
         params.clear();
         params["session"] = SESSION1;
         params["pin"] = PIN;
-        params["address"] = hashItem.GetHex();
+        params["address"] = hashItem.ToString();
         params["data"] = 12345;
 
         /* Invoke the API */
@@ -308,7 +308,7 @@ TEST_CASE( "Test Supply API - update item", "[supply/update/item]")
         params.clear();
         params["session"] = SESSION1;
         params["pin"] = PIN;
-        params["address"] = LLC::GetRand256().GetHex();
+        params["address"] = TAO::Register::Address(TAO::Register::Address::RAW).ToString();
         params["data"] = "newitemdata";
 
         /* Invoke the API */
@@ -325,7 +325,7 @@ TEST_CASE( "Test Supply API - update item", "[supply/update/item]")
         params.clear();
         params["session"] = SESSION1;
         params["pin"] = PIN;
-        params["address"] = hashItem.GetHex();
+        params["address"] = hashItem.ToString();
         params["data"] = "newitemdata";
 
         /* Invoke the API */
@@ -451,7 +451,7 @@ TEST_CASE( "Test Assets API - transfer item", "[supply/transfer/item]")
         params.clear();
         params["session"] = SESSION1;
         params["pin"] = PIN;
-        params["address"] = LLC::GetRand256().GetHex();
+        params["address"] = TAO::Register::Address(TAO::Register::Address::RAW).ToString();
         params["destination"] = GENESIS2.GetHex();
 
         /* Invoke the API */
@@ -468,7 +468,7 @@ TEST_CASE( "Test Assets API - transfer item", "[supply/transfer/item]")
         params.clear();
         params["session"] = SESSION1;
         params["pin"] = PIN;
-        params["address"] = hashItem.GetHex();
+        params["address"] = hashItem.ToString();
         params["destination"] = GENESIS2.GetHex();
 
         /* Invoke the API */
@@ -650,7 +650,7 @@ TEST_CASE( "Test Assets API - list item history", "[supply/list/item/history]")
         /* Build the parameters to pass to the API */
         params.clear();
         params["session"] = SESSION2;
-        params["address"] = LLC::GetRand256().GetHex();
+        params["address"] = TAO::Register::Address(TAO::Register::Address::RAW).ToString();
 
         /* Invoke the API */
         ret = APICall("supply/list/item/history", params);
@@ -665,7 +665,7 @@ TEST_CASE( "Test Assets API - list item history", "[supply/list/item/history]")
         params.clear();
         params["session"] = SESSION2;
         params["pin"] = PIN;
-        params["address"] = hashItem.GetHex();
+        params["address"] = hashItem.ToString();
         params["data"] = "newitemdata";
 
         /* Invoke the API */
@@ -681,7 +681,7 @@ TEST_CASE( "Test Assets API - list item history", "[supply/list/item/history]")
         /* Build the parameters to pass to the API */
         params.clear();
         params["session"] = SESSION2;
-        params["address"] = hashItem.GetHex();
+        params["address"] = hashItem.ToString();
 
         /* Invoke the API */
         ret = APICall("supply/list/item/history", params);

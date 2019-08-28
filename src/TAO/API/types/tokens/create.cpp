@@ -71,7 +71,7 @@ namespace TAO
                 throw APIException(-17, "Failed to create transaction");
 
             /* Generate a random hash for this objects register address */
-            uint256_t hashRegister = 0;
+            TAO::Register::Address hashRegister ;
 
             /* name of the object, default to blank */
             std::string strName = "";
@@ -91,14 +91,14 @@ namespace TAO
                 else
                     throw APIException(-37, "Missing token name / address");
 
-                uint256_t hashIdentifier = 0;
+                TAO::Register::Address hashIdentifier;
 
                 /* Convert token name to a register address if a name has been passed in */
                 /* Edge case to allow identifer NXS or 0 to be specified for NXS token */
                 if(strTokenIdentifier == "NXS" || strTokenIdentifier == "0")
                     hashIdentifier = uint256_t(0);
                 else if(IsRegisterAddress(strTokenIdentifier))
-                    hashIdentifier = uint256_t(strTokenIdentifier);
+                    hashIdentifier.SetBase58(strTokenIdentifier);
                 else
                     hashIdentifier = Names::ResolveAddress(params, strTokenIdentifier);
 
@@ -124,7 +124,7 @@ namespace TAO
                     nSupply = std::stoll(params["supply"].get<std::string>());
 
                 /* For tokens being created without a global namespaced name, the identifier is equal to the register address */
-                uint256_t hashIdentifier = hashRegister;
+                TAO::Register::Address hashIdentifier = hashRegister;
 
                 /* Check for nDigits parameter. */
                 uint64_t nDigits = 0;
