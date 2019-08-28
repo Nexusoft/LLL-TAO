@@ -67,6 +67,7 @@ namespace TAO
 
                 //legacy operations
                 LEGACY     = 0x50,
+                MIGRATE    = 0x51,
 
                 //0x31 = 0x6f RESERVED
 
