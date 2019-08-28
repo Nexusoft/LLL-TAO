@@ -74,11 +74,11 @@ namespace TAO
 
             }
             else if(mapData.size() == 5
-            && Check("Auth", TYPES::UINT256_T, true)
-            && Check("Lisp", TYPES::UINT256_T, true)
-            && Check("Network", TYPES::UINT256_T, true)
-            && Check("Sign", TYPES::UINT256_T, true)
-            && Check("Verify", TYPES::UINT256_T, true))
+            && Check("auth", TYPES::UINT256_T, true)
+            && Check("lisp", TYPES::UINT256_T, true)
+            && Check("network", TYPES::UINT256_T, true)
+            && Check("sign", TYPES::UINT256_T, true)
+            && Check("verify", TYPES::UINT256_T, true))
             {
                 /* Set the return value. */
                 nType = OBJECTS::CRYPTO;

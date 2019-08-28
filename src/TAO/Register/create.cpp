@@ -87,11 +87,11 @@ namespace TAO
             TAO::Register::Object crypto;
 
             /* Generate the object register values. */
-            crypto   << std::string("Auth")      << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << hashAuth
-                     << std::string("Lisp")      << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << hashLisp
-                     << std::string("Network")   << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << hashNetwork
-                     << std::string("Sign")      << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << hashSign
-                     << std::string("Verify")    << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << hashVerify;
+            crypto   << std::string("auth")      << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << hashAuth
+                     << std::string("lisp")      << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << hashLisp
+                     << std::string("network")   << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << hashNetwork
+                     << std::string("sign")      << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << hashSign
+                     << std::string("verify")    << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << hashVerify;
 
             return crypto;
         }
