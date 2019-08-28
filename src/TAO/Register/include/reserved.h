@@ -56,16 +56,7 @@ namespace TAO
             "system",
 
             /* Used for object register names. Reserved to never be changed. */
-            "name",
-
-            /* Used for Authorizing a sigchain into third-party services. */
-            "AUTH",
-
-            /* Used for signing messages for LISP. */
-            "LISP",
-
-            /* Used for signing netowkr LLP messages. */
-            "LLP"
+            "name"
         };
 
 
