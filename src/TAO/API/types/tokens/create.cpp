@@ -121,7 +121,22 @@ namespace TAO
                 /* Extract the supply parameter */
                 uint64_t nSupply = 0;
                 if(params.find("supply") != params.end())
-                    nSupply = std::stoll(params["supply"].get<std::string>());
+                {
+                    /* Attempt to convert the supplied value to a 64-bit unsigned integer, catching argument/range exceptions */
+                    try
+                    {
+                        nSupply = std::stoull(params["supply"].get<std::string>());
+                    }
+                    catch(const std::invalid_argument& e)
+                    {
+                        throw APIException(-175, "Invalid supply amount.  Supply must be whole number value");
+                    }
+                    catch(const std::out_of_range& e)
+                    {
+                        throw APIException(-176, "Invalid supply amount.  The maximum token supply is 18446744073709551615");
+                    }
+
+                }
 
                 /* For tokens being created without a global namespaced name, the identifier is equal to the register address */
                 TAO::Register::Address hashIdentifier = hashRegister;
@@ -129,11 +144,35 @@ namespace TAO
                 /* Check for nDigits parameter. */
                 uint64_t nDigits = 0;
                 if(params.find("digits") != params.end())
-                    nDigits = std::stod(params["digits"].get<std::string>());
+                {
+                    bool fValid = false;
+                    /* Attempt to convert the supplied value to a 64-bit unsigned integer, catching argument/range exceptions */
+                    try
+                    {
+                        nDigits = std::stoull(params["digits"].get<std::string>());
+                        fValid = nDigits <= 8;
+                    }
+                    catch(const std::invalid_argument& e)
+                    {
+                        fValid = false;
+                    }
+                    catch(const std::out_of_range& e)
+                    {
+                        fValid = false;
+                    }
+
+                    if(!fValid)
+                        throw APIException(-177, "Invalid digits amount.  Digits must be whole number value between 0 and 8");
+                    
+                }
+
+                /* Sanitize the supply/digits combination for uint64 overflow */
+                if(nDigits > 0 && nSupply > std::numeric_limits<uint64_t>::max() / pow(10, nDigits))
+                    throw APIException(-178, "Invalid supply / digits.  The maximum combination of supply and digits (supply * 10^digits) cannot exceed 18446744073709551615");
 
                 /* Multiply the supply by 10^digits to give the supply in the divisible units */
                 nSupply = nSupply * pow(10, nDigits);
-
+                    
                 /* Create a token object register. */
                 TAO::Register::Object token = TAO::Register::CreateToken(hashIdentifier,
                                                                          nSupply,

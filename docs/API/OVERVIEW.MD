@@ -295,7 +295,10 @@ Error Codes
 | -172 | Cannot void a transaction that does not belong to you |
 | -173 | Cannot void debit transaction as it has already been fully credited by all recipients |
 | -174 | Transaction contains no contracts that can be voided |
-
+| -175 | Invalid supply amount.  Supply must be whole number value |
+| -176 | Invalid supply amount.  The maximum token supply is 18446744073709551615 |
+| -177 | Invalid digits amount.  Digits must be whole number value between 0 and 8 |
+| -178 | Invalid supply / digits.  The maximum combination of supply and digits (supply * 10^digits) cannot exceed 18446744073709551615 |
 
 
 
