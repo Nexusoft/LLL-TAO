@@ -33,6 +33,8 @@ ________________________________________________________________________________
 #include <TAO/Register/include/unpack.h>
 #include <TAO/Register/include/names.h>
 
+#include <TAO/Register/types/address.h>
+
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/stake.h>
@@ -213,11 +215,8 @@ namespace TAO
                 /* Retrieve the name register for the user's trust account */
                 TAO::Register::Object name;
 
-                if(!TAO::Register::GetNameRegister(user->Genesis(), std::string("trust"), name))
-                    return debug::error(FUNCTION, "Stake Minter unknown trust account name.");
-
                 /* Retrieve the trust account address from the name register mapping. */
-                uint256_t hashRegister = name.get<uint256_t>("address");
+                TAO::Register::Address hashRegister = TAO::Register::Address(std::string("trust"), user->Genesis(), TAO::Register::Address::TRUST);
 
                 /* Retrieve the trust account */
                 TAO::Register::Object reg;
