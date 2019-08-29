@@ -151,10 +151,11 @@ namespace TAO
              *  @param[in] strType The type of signing key used.
              *  @param[in] nKeyID The key number in the keychian
              *  @param[in] strSecret The secret phrase to use
+             *  @param[in] nType The key type to use.
              *
              *  @return The 256 bit hash of this key in the series.
              **/
-            uint256_t KeyHash(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret) const;
+            uint256_t KeyHash(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret, const uint8_t nType) const;
 
 
             /** UserName

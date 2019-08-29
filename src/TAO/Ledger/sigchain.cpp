@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <LLC/hash/argon2.h>
 
 #include <LLC/include/flkey.h>
+#include <LLC/include/eckey.h>
 
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/genesis.h>
@@ -346,7 +347,7 @@ namespace TAO
 
 
         /* This function generates a hash of a public key generated from random seed phrase. */
-        uint256_t SignatureChain::KeyHash(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret) const
+        uint256_t SignatureChain::KeyHash(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret, const uint8_t nType) const
         {
             /* Get the private key. */
             uint512_t hashSecret = Generate(strType, nKeyID, strSecret);
@@ -355,14 +356,49 @@ namespace TAO
             std::vector<uint8_t> vBytes = hashSecret.GetBytes();
             LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
-            /* Create the FL Key object. */
-            LLC::FLKey key;
+            /* Switch based on signature type. */
+            switch(nType)
+            {
+                /* Support for the FALCON signature scheeme. */
+                case SIGNATURE::FALCON:
+                {
+                    /* Create the FL Key object. */
+                    LLC::FLKey key;
 
-            /* Set the secret key. */
-            if(!key.SetSecret(vchSecret, true))
-                return false;
+                    /* Set the secret key. */
+                    if(!key.SetSecret(vchSecret, true))
+                        throw debug::exception(FUNCTION, "failed to set falcon secret key");
 
-            return LLC::SK256(key.GetPubKey());
+                    /* Calculate the next hash. */
+                    uint256_t hashRet = LLC::SK256(key.GetPubKey());
+
+                    /* Set the leading byte. */
+                    hashRet.SetType(nType);
+
+                    return hashRet;
+                }
+
+                /* Support for the BRAINPOOL signature scheme. */
+                case SIGNATURE::BRAINPOOL:
+                {
+                    /* Create EC Key object. */
+                    LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
+
+                    /* Set the secret key. */
+                    if(!key.SetSecret(vchSecret, true))
+                        throw debug::exception(FUNCTION, "failed to set brainpool secret key");
+
+                    /* Calculate the next hash. */
+                    uint256_t hashRet = LLC::SK256(key.GetPubKey());
+
+                    /* Set the leading byte. */
+                    hashRet.SetType(nType);
+
+                    return hashRet;
+                }
+            }
+
+            return 0;
         }
 
 

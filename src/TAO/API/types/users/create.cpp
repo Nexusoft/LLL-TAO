@@ -109,10 +109,14 @@ namespace TAO
 
             /* Create the crypto object. */
             TAO::Register::Object crypto = TAO::Register::CreateCrypto(
-                                                user->KeyHash("auth", 0, params["pin"].get<std::string>().c_str()),
+                                                user->KeyHash("auth", 0,
+                                                    params["pin"].get<std::string>().c_str(), TAO::Ledger::SIGNATURE::FALCON),
                                                 0, //lisp key disabled for now
-                                                user->KeyHash("network", 0, params["pin"].get<std::string>().c_str()),
-                                                user->KeyHash("sign", 0, params["pin"].get<std::string>().c_str()),
+
+                                                user->KeyHash("network", 0,
+                                                    params["pin"].get<std::string>().c_str(), TAO::Ledger::SIGNATURE::FALCON),
+                                                user->KeyHash("sign", 0,
+                                                    params["pin"].get<std::string>().c_str(), TAO::Ledger::SIGNATURE::FALCON),
                                                 0); //verify key disabled for now
 
             /* Add the default account register operation to the transaction */

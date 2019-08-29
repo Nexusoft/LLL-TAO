@@ -60,8 +60,6 @@ namespace TAO
         , hashGenesis(0)
         , hashPrevTx(0)
         , hashNextTx(0)
-        , nKeyType(0)
-        , nNextType(0)
         , vchPubKey()
         , vchSig()
         {
@@ -326,7 +324,7 @@ namespace TAO
                 }
             }
             else
-            {   
+            {
                 /* Make sure the previous transaction is on disk or mempool. */
                 TAO::Ledger::Transaction txPrev;
                 if(!LLD::Ledger->ReadTx(hashPrevTx, txPrev, nFlags))
@@ -403,7 +401,7 @@ namespace TAO
                 /* Check that the fees match. NOTE: There are no fees required in private mode */
                 if(!config::GetBoolArg("-private", false) && nCost > nFees)
                     return debug::error(FUNCTION, "not enough fees supplied ", nFees);
-            }     
+            }
 
             /* Run through all the contracts. */
             for(const auto& contract : vContracts)
