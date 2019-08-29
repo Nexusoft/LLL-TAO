@@ -266,7 +266,10 @@ NONE
 ### Return value JSON object:
 ```
 {
-    "username": "trust",
+    "username": "bob",
+    "genesis": "a2e51edcd41a8152bfedb24e3c22ee5a65d6d7d524146b399145bced269ae000",
+    "transactions": 272,
+    "notifications": 10,
     "unlocked": {
         "minting": true,
         "transactions": true
@@ -278,6 +281,12 @@ NONE
 ### Return values:
 
 `username` : The username of the currently logged in user
+
+`genesis` : The signature chain genesis hash for the currently logged in user.
+
+`transactions` : The total transaction count in this sig chain
+
+`notifications` : The number of outstanding notifications for this user
 
 `unlocked` : This will contain two child elements describing which functions the session is currently unlocked for
 
