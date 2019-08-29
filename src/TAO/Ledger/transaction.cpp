@@ -379,17 +379,6 @@ namespace TAO
                     if(!LLD::Ledger->WriteTx(hash, *this))
                         return debug::error(FUNCTION, "failed to write valid next pointer");
                 }
-
-                /* The fee applied to this transaction */
-                uint64_t nFees = Fees();
-
-                /* The total cost of this transaction.  We use the cached cost for this as the individual contract costs would
-                   have already been calculated prior to connect, so no need to */
-                uint64_t nCost = CachedCost(txPrev);
-
-                /* Check that the fees match. NOTE: There are no fees required in private mode */
-                if(!config::GetBoolArg("-private", false) && nCost > nFees)
-                    return debug::error(FUNCTION, "not enough fees supplied ", nFees);
             }     
 
             /* Run through all the contracts. */
@@ -401,6 +390,23 @@ namespace TAO
                 /* Execute the contracts to final state. */
                 if(!TAO::Operation::Execute(contract, nFlags))
                     return false;
+            }
+
+            /* Once we have executed the contracts we need to check the fees.  
+               NOTE there are no fees on the genesis transaction.
+               NOTE: There are no fees required in private mode. */
+            if(!IsFirst() && !config::GetBoolArg("-private", false))
+            {
+                /* The fee applied to this transaction */
+                uint64_t nFees = Fees();
+
+                /* The total cost of this transaction.  We use the calculated cost for this as the individual contract costs would
+                   have already been calculated during the execution of each contract (Operation::Execute)*/
+                uint64_t nCost = CalculatedCost();
+
+                /* Check that the fees match.  */
+                if(nCost > nFees)
+                    return debug::error(FUNCTION, "not enough fees supplied ", nFees);
             }
 
             return true;
@@ -794,7 +800,7 @@ namespace TAO
 
 
         /* Calculates the cost of this transaction from the contracts within it */
-        uint64_t Transaction::CachedCost(const TAO::Ledger::Transaction& txPrev) const
+        uint64_t Transaction::CalculatedCost() const
         {
             /* The calculated cost */
             uint64_t nCost = 0;
