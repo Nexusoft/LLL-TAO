@@ -299,10 +299,10 @@ namespace TAO
                         for(const auto&entry : mapOutputs)
                         {
                             /* Build the recipient address from a hex string. */
-                            uint256_t recipientAddr = uint256_t(entry.first);
+                            uint256_t hashGenesis = uint256_t(entry.first);
 
                             /* Ensure the address is valid. */
-                            if(recipientAddr == 0)
+                            if(!LLD::Ledger->HasGenesis(hashGenesis))
                                 return debug::error(FUNCTION, "Invaild recipient address: ", entry.first, " (", nTx, ")");
 
                             /* Set coinbase operation. */
@@ -310,7 +310,7 @@ namespace TAO
                             block.producer[nTx] << uint8_t(TAO::Operation::OP::COINBASE);
 
                             /* Set sigchain recipient. */
-                            block.producer[nTx] << recipientAddr;
+                            block.producer[nTx] << hashGenesis;
 
                             /* Set coinbase amount for associated recipent. */
                             block.producer[nTx] << entry.second;
@@ -404,17 +404,17 @@ namespace TAO
                         for(const auto&entry : mapOutputs)
                         {
                             /* Build the recipient address from a hex string. */
-                            uint256_t recipientAddr = uint256_t(entry.first);
+                            uint256_t hashGenesis = uint256_t(entry.first);
 
                             /* Ensure the address is valid. */
-                            if(recipientAddr == 0)
+                            if(!LLD::Ledger->HasGenesis(hashGenesis))
                                 return debug::error(FUNCTION, "Invaild recipient address: ", entry.first, " (", nTx, ")");
 
                             /* Set coinbase operation. */
                             block.producer[nTx] << uint8_t(TAO::Operation::OP::COINBASE);
 
                             /* Set sigchain recipient. */
-                            block.producer[nTx] << recipientAddr;
+                            block.producer[nTx] << hashGenesis;
 
                             /* Set coinbase amount for associated recipent. */
                             block.producer[nTx] << entry.second;

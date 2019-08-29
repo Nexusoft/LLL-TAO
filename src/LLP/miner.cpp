@@ -46,7 +46,7 @@ ________________________________________________________________________________
 namespace LLP
 {
 
-    /** Default Constructor **/
+    /* Default Constructor */
     Miner::Miner()
     : Connection()
     , CoinbaseTx()
@@ -62,7 +62,7 @@ namespace LLP
     }
 
 
-    /** Constructor **/
+    /* Constructor */
     Miner::Miner(const Socket& SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS)
     : Connection(SOCKET_IN, DDOS_IN, isDDOS)
     , CoinbaseTx()
@@ -79,7 +79,7 @@ namespace LLP
     }
 
 
-    /** Constructor **/
+    /* Constructor */
     Miner::Miner(DDOS_Filter* DDOS_IN, bool isDDOS)
     : Connection(DDOS_IN, isDDOS)
     , CoinbaseTx()
@@ -96,7 +96,7 @@ namespace LLP
     }
 
 
-    /** Default Destructor **/
+    /* Default Destructor */
     Miner::~Miner()
     {
         LOCK(MUTEX);
@@ -113,11 +113,7 @@ namespace LLP
     }
 
 
-    /** Event
-     *
-     *  Handle custom message events.
-     *
-     **/
+    /* Handle custom message events. */
     void Miner::Event(uint8_t EVENT, uint32_t LENGTH)
     {
 
@@ -286,8 +282,7 @@ namespace LLP
     }
 
 
-    /* This function is necessary for a template LLP server. It handles your custom messaging system, and how to interpret it
-     * from raw packets. */
+    /* This function is necessary for a template LLP server. It handles a custom message system, interpreting from raw packets. */
     bool Miner::ProcessPacket()
     {
         /* Get the incoming packet. */
@@ -402,19 +397,32 @@ namespace LLP
                          return debug::error(FUNCTION, "Invalid coinbase recipient reward.");
                      }
 
-                    /* Validate the address */
-                    Legacy::NexusAddress address;
-                    address.SetPubKey(vAddress);
+                     /* Get the string address. */
+                     std::string strAddress = convert::bytes2string(vAddress);
 
-                    /* Get the string address. */
-                    std::string strAddress = convert::bytes2string(vAddress);
+                     /* Validate the address. Disconnect immediately if an invalid address is provided. */
+                     if(TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 7) || TAO::Ledger::CurrentVersion() > 7)
+                     {
+                         uint256_t hashGenesis(strAddress);
 
-                    if(!address.IsValid())
-                    {
-                        /* Disconnect immediately if an invalid address is provided. */
-                        respond(COINBASE_FAIL);
-                        return debug::error(FUNCTION, "Invalid Address in Coinbase Tx: ", strAddress);
-                    }
+                         if(!LLD::Ledger->HasGenesis(hashGenesis))
+                         {
+                             respond(COINBASE_FAIL);
+                             return debug::error(FUNCTION, "Invalid Tritium Address in Coinbase Tx: ", strAddress);
+                         }
+                     }
+                     else
+                     {
+                         Legacy::NexusAddress address;
+                         address.SetPubKey(vAddress);
+
+                         if(!address.IsValid())
+                         {
+                             respond(COINBASE_FAIL);
+                             return debug::error(FUNCTION, "Invalid Legacy Address in Coinbase Tx: ", strAddress);
+                         }
+                     }
+
 
                     /* Add the transaction as an output. */
                     vOutputs[strAddress] = nValue;
@@ -765,7 +773,7 @@ namespace LLP
            TAO::Ledger::TritiumBlock *pBlock = new TAO::Ledger::TritiumBlock();
 
            /* Create a new block and loop for prime channel if minimum bit target length isn't met */
-           while(TAO::Ledger::CreateBlock(pSigChain, PIN, nChannel.load(), *pBlock, ++nBlockIterator))
+           while(TAO::Ledger::CreateBlock(pSigChain, PIN, nChannel.load(), *pBlock, ++nBlockIterator, &CoinbaseTx))
            {
                /* Break out of loop when block is ready for prime mod. */
                if(is_prime_mod(nBitMask, pBlock))
