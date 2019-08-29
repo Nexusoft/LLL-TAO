@@ -45,6 +45,19 @@ namespace Legacy
      *
      **/
     bool FindGenesis(const uint576_t& cKey, const uint1024_t& hashTrustBlock, TrustKey& trustKey);
+
+    /** FindMigratedTrustKey
+     *
+     *  Extract the trust key being migrated from a Legacy migration transaction.
+     *
+     *  @param[in] tx The Legacy transaction sending from trust key to trust account register
+     *  @param[out] trustKey The trust key being migrated
+     *
+     *  @return True if the trust key was found
+     *          False if not a migration tx or could not retrieve trust key from tx
+     *
+     **/
+    bool FindMigratedTrustKey(const Transaction& tx, TrustKey& trustKey);
 }
 
 #endif

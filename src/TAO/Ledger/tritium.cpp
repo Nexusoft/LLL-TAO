@@ -485,6 +485,14 @@ namespace TAO
                 uint64_t nClaimedReward = 0;
                 producer[0] >> nClaimedReward;
 
+                /* Validate the hash last trust */
+                uint512_t hashLast;
+                if(!LLD::Ledger->ReadStake(producer.hashGenesis, hashLast))
+                    return debug::error(FUNCTION, "last trust not in database");
+
+                if(hashLast != hashLastTrust)
+                    return debug::error(FUNCTION, "claimed last trust ", hashLastTrust.SubString(), " does not match actual last trust");
+
                 /* Get the last stake block. */
                 TAO::Ledger::BlockState stateLast;
                 if(!LLD::Ledger->ReadBlock(hashLastTrust, stateLast))
