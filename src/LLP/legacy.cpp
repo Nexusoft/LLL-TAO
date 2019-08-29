@@ -63,7 +63,6 @@ namespace LLP
     {
         /* Normal case of asking for a getblocks inventory message. */
         memory::atomic_ptr<LegacyNode>& pBest = LEGACY_SERVER->GetConnection(LegacyNode::addrFastSync.load());
-
         if(pBest != nullptr)
         {
             /* Send out another getblocks request. */

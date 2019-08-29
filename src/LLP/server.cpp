@@ -365,6 +365,8 @@ namespace LLP
         if(!pAddressManager)
             return;
 
+        debug::log(0, FUNCTION, Name(), " Connection Manager Started");
+
         /* Address to select. */
         BaseAddress addr = BaseAddress();
 

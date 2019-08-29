@@ -345,6 +345,9 @@ namespace LLD
         bool GetBatch(uint64_t nStart, uint32_t nFile, const std::string& strType,
             std::vector<Type>& vValues, int32_t nLimit = 1000)
         {
+            /* Clear any remaining data. */
+            vValues.clear();
+
             /* Scan until limit is reached. */
             while(nLimit == -1 || nLimit > 0)
             {
