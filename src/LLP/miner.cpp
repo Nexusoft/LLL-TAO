@@ -28,6 +28,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/timelocks.h>
+#include <TAO/Ledger/include/process.h>
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/transaction.h>
@@ -938,8 +939,7 @@ namespace LLP
        }
 
        /* If the block dynamically casts to a tritium block, validate the tritium block. */
-       TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock *>(mapBlocks[hashMerkleRoot]);
-
+       TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock*>(mapBlocks[hashMerkleRoot]);
        if(pBlock)
        {
            debug::log(2, FUNCTION, "Tritium");
@@ -979,8 +979,12 @@ namespace LLP
            LOCK(TAO::API::users->CREATE_MUTEX);
 
            /* Process the block and relay to network if it gets accepted into main chain. */
-           if(!TritiumNode::Process(*pBlock, nullptr))
-               return debug::error(FUNCTION, "Generated block not accepted");
+           uint8_t nStatus = 0;
+           TAO::Ledger::Process(*pBlock, nStatus);
+
+           /* Check the statues. */
+           if(!(nStatus & TAO::Ledger::PROCESS::ACCEPTED))
+               return debug::error(FUNCTION, "generated block not accepted");
 
            return true;
        }

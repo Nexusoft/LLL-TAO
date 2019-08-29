@@ -38,6 +38,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/process.h>
 
 #include <iomanip>
 
@@ -511,7 +512,75 @@ namespace LLP
             ssMessage >> block;
 
             /* Process the block. */
-            return LegacyNode::Process(block, this);
+            uint8_t nStatus = 0;
+            TAO::Ledger::Process(block, nStatus);
+
+            /* Check for specific status messages. */
+            if(nStatus & TAO::Ledger::PROCESS::ACCEPTED)
+            {
+                /* Reset the fails and orphans. */
+                nConsecutiveFails   = 0;
+                nConsecutiveOrphans = 0;
+            }
+
+            /* Check for failure status messages. */
+            if(nStatus & TAO::Ledger::PROCESS::REJECTED)
+                ++nConsecutiveFails;
+
+            /* Check for orphan status messages. */
+            if(nStatus & TAO::Ledger::PROCESS::ORPHAN)
+            {
+                ++nConsecutiveOrphans;
+
+                /* Check for duplicate. */
+                if(!(nStatus & TAO::Ledger::PROCESS::DUPLICATE)
+                && !(nStatus & TAO::Ledger::PROCESS::IGNORE))
+                {
+                    /* Inventory requests. */
+                    std::vector<CInv> vInv = { CInv(block.hashPrevBlock, LLP::MSG_BLOCK_LEGACY) };
+
+                    /* Get batch of inventory. */
+                    PushMessage("getdata", vInv);
+
+                    /* Run a getblocks to be sure. */
+                    PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
+                }
+            }
+
+            /* Check for failure limit on node. */
+            if(nConsecutiveFails >= 500)
+            {
+                /* Fast Sync node switch. */
+                if(TAO::Ledger::ChainState::Synchronizing())
+                {
+                    /* Find a new fast sync node if too many failures. */
+                    if(addrFastSync == GetAddress())
+                    {
+                        /* Switch to a new node. */
+                        SwitchNode();
+                    }
+                }
+
+                /* Drop pesky nodes. */
+                return false;
+            }
+
+
+            /* Detect large orphan chains and ask for new blocks from origin again. */
+            if(nConsecutiveOrphans >= 500)
+            {
+                LOCK(TAO::Ledger::PROCESSING_MUTEX);
+
+                debug::log(0, FUNCTION, "node reached orphan limit... closing");
+
+                /* Clear the memory to prevent DoS attacks. */
+                TAO::Ledger::mapOrphans.clear();
+
+                /* Disconnect from a node with large orphan chain. */
+                return false;
+            }
+
+            return true;
         }
 
 
@@ -841,142 +910,6 @@ namespace LLP
             /* Send the addresses off. */
             if(nCount > 0)
                 PushMessage("addr", vSend);
-        }
-
-        return true;
-    }
-
-
-    /* pnode = Node we received block from, nullptr if we are originating the block (mined or staked) */
-    bool LegacyNode::Process(const Legacy::LegacyBlock& block, LegacyNode* pnode)
-    {
-        LOCK(PROCESSING_MUTEX);
-
-        const uint32_t nMaxFailures = 500;
-
-        /* Check if the block is valid. */
-        if(!block.Check())
-            return debug::error(FUNCTION, "invalid block: ", block.GetHash().SubString(), " height: ", block.nHeight);
-
-        /* Check for orphan. */
-        if(!LLD::Ledger->HasBlock(block.hashPrevBlock))
-        {
-            /* Increment the consecutive orphans. */
-            if(pnode)
-                ++pnode->nConsecutiveOrphans;
-
-            /* Detect large orphan chains and ask for new blocks from origin again. */
-            if(pnode && pnode->nConsecutiveOrphans >= nMaxFailures)
-            {
-                debug::log(0, FUNCTION, "node reached orphan limit... closing");
-
-                /* Clear the memory to prevent DoS attacks. */
-                mapLegacyOrphans.clear();
-
-                /* Disconnect from a node with large orphan chain. */
-                return false;
-            }
-
-            /* Skip if already in orphan queue. */
-            if(!mapLegacyOrphans.count(block.hashPrevBlock))
-            {
-                /* Fast sync block requests. */
-                if(!TAO::Ledger::ChainState::Synchronizing())
-                {
-                    /* Check the checkpoint height. */
-                    if(block.nHeight < TAO::Ledger::ChainState::nCheckpointHeight)
-                        return false;
-
-                    /* Inventory requests. */
-                    std::vector<CInv> vInv = { CInv(block.hashPrevBlock, LLP::MSG_BLOCK_LEGACY) };
-
-                    /* Get batch of inventory. */
-                    pnode->PushMessage("getdata", vInv);
-
-                    /* Run a getblocks to be sure. */
-                    pnode->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
-                }
-
-                /* Add to the orphans map. */
-                mapLegacyOrphans[block.hashPrevBlock] = block;
-
-                /* Debug output. */
-                debug::log(0, FUNCTION, "ORPHAN height=", block.nHeight, " prev=", block.hashPrevBlock.ToString().substr(0, 20));
-            }
-
-            return true;
-        }
-
-
-        /* Check if valid in the chain. */
-        if(!block.Accept())
-        {
-            /* Increment the consecutive failures. */
-            if(pnode)
-                ++pnode->nConsecutiveFails;
-
-            /* Check for failure limit on node. */
-            if(pnode && pnode->nConsecutiveFails >= nMaxFailures)
-            {
-
-                /* Fast Sync node switch. */
-                if(TAO::Ledger::ChainState::Synchronizing())
-                {
-                    /* Find a new fast sync node if too many failures. */
-                    if(addrFastSync == pnode->GetAddress())
-                    {
-                        /* Switch to a new node. */
-                        SwitchNode();
-                    }
-                }
-
-                /* Drop pesky nodes. */
-                return false;
-            }
-
-            return true;
-        }
-        else
-        {
-            /* Special meter for synchronizing. */
-            if(block.nHeight % 1000 == 0 && TAO::Ledger::ChainState::Synchronizing())
-            {
-                uint64_t nElapsed = runtime::timestamp(true) - nTimer;
-                debug::log(0, FUNCTION,
-                    "Processed 1000 blocks in ", nElapsed, " ms [", std::setw(2),
-                    TAO::Ledger::ChainState::PercentSynchronized(), " %]",
-                    " height=", TAO::Ledger::ChainState::nBestHeight.load(),
-                    " trust=", TAO::Ledger::ChainState::nBestChainTrust.load(),
-                    " [", 1000000 / nElapsed, " blocks/s]");
-
-                nTimer = runtime::timestamp(true);
-            }
-
-            /* Update the last time received. */
-            nLastTimeReceived = runtime::timestamp();
-
-            /* Reset the consecutive failures and orphans. */
-            if(pnode)
-            {
-                pnode->nConsecutiveFails = 0;
-                pnode->nConsecutiveOrphans = 0;
-            }
-        }
-
-        uint1024_t hash = block.GetHash();
-
-        /* Process orphan if found. */
-        while(mapLegacyOrphans.count(hash))
-        {
-            uint1024_t hashPrev = mapLegacyOrphans[hash].GetHash();
-
-            debug::log(0, FUNCTION, "processing ORPHAN prev=", hashPrev.SubString(), " size=", mapLegacyOrphans.size());
-
-            if(!mapLegacyOrphans[hash].Accept())
-                return true;
-
-            mapLegacyOrphans.erase(hash);
-            hash = hashPrev;
         }
 
         return true;

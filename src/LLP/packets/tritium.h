@@ -29,37 +29,6 @@ ________________________________________________________________________________
 namespace LLP
 {
 
-    /** Message format enumeration. **/
-    enum
-    {
-        DAT_VERSION     = 0,
-        GET_OFFSET      = 1,
-        DAT_OFFSET      = 2,
-
-        DAT_DUPE_DISCONNECT = 5,
-
-        DAT_HAS_TX      = 10,
-        GET_TRANSACTION = 11,
-
-        DAT_HAS_BLOCK   = 12,
-        GET_BLOCK       = 13,
-
-        GET_INVENTORY   = 14,
-        DAT_INVENTORY   = 15,
-
-        GET_DATA        = 16,
-
-        GET_ADDRESSES   = 20,
-        DAT_ADDRESSES   = 21,
-
-        DAT_TRANSACTION = 30,
-        DAT_BLOCK       = 31,
-
-        DAT_PING        = 65533,
-        DAT_PONG        = 65534,
-        DAT_NULL        = 65535
-    };
-
 
     /** TritiumPacket
      *
@@ -75,10 +44,16 @@ namespace LLP
     class TritiumPacket
     {
     public:
+        /* Message enumeration. */
         uint16_t       MESSAGE;
-        uint32_t	    LENGTH;
-        uint32_t	    CHECKSUM;
 
+        /* Flags to determine packet information. */
+        uint16_t       FLAGS;
+
+        /* Size of the packet. */
+        uint32_t	   LENGTH;
+
+        /* Binary data of the packet. */
         std::vector<uint8_t> DATA;
 
 
@@ -102,8 +77,8 @@ namespace LLP
         IMPLEMENT_SERIALIZE
         (
             READWRITE(MESSAGE);
+            READWRITE(FLAGS);
             READWRITE(LENGTH);
-            READWRITE(CHECKSUM);
         )
 
 
@@ -114,9 +89,8 @@ namespace LLP
          **/
         void SetNull()
         {
-            MESSAGE   = DAT_NULL;
+            MESSAGE   = 0;
             LENGTH    = 0;
-            CHECKSUM  = 0;
 
             DATA.clear();
         }
@@ -129,7 +103,7 @@ namespace LLP
          **/
         bool IsNull() const
         {
-            return (MESSAGE == DAT_NULL && LENGTH == 0 && CHECKSUM == 0 && DATA.size() == 0);
+            return (MESSAGE == 0 && FLAGS == 0 && LENGTH == 0 && DATA.size() == 0);
         }
 
 
@@ -151,7 +125,7 @@ namespace LLP
          **/
         bool Header() const
         {
-            return IsNull() ? false : (CHECKSUM > 0 && MESSAGE != DAT_NULL);
+            return IsNull() ? false : (MESSAGE != 0);
         }
 
 
@@ -162,21 +136,10 @@ namespace LLP
          *  @param[in] BYTES the byte buffer to set the length of.
          *
          **/
-        void SetLength(const std::vector<uint8_t> &vBytes)
+        void SetLength(const std::vector<uint8_t>& vBytes)
         {
             DataStream ssLength(vBytes, SER_NETWORK, MIN_PROTO_VERSION);
             ssLength >> LENGTH;
-        }
-
-
-        /** SetChecksum
-         *
-         *  Set the Packet Checksum Data.
-         *
-         **/
-        void SetChecksum()
-        {
-            CHECKSUM = LLC::SK32(DATA.begin(), DATA.end());
         }
 
 
@@ -193,8 +156,6 @@ namespace LLP
 
             LENGTH = static_cast<uint32_t>(vData.size());
             DATA   = vData;
-
-            SetChecksum();
         }
 
 
@@ -212,12 +173,6 @@ namespace LLP
             /* Make sure Packet length is within bounds. (Max 2 MB Packet Size) */
             if(LENGTH > (1024 * 1024 * 2))
                 return debug::error("Tritium Packet (", MESSAGE, ", ", LENGTH, " bytes) : Message too Large");
-
-            /* Double check the Message Checksum. */
-            if(LLC::SK32(DATA.begin(), DATA.end()) != CHECKSUM)
-                return debug::error("Tritium Packet (", MESSAGE, ", ", LENGTH,
-                    " bytes) : CHECKSUM MISMATCH nChecksum=", LLC::SK32(DATA.begin(), DATA.end()),
-                    " hdr.nChecksum=", CHECKSUM);
 
             return true;
         }

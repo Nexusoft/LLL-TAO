@@ -119,10 +119,8 @@ namespace TAO
 
                     /* Ask for the missing transaction. */
                     if(pnode)
-                    {
-                        std::vector<LLP::CInv> vInv = { LLP::CInv(tx.hashPrevTx, LLP::MSG_TX_TRITIUM) };
-                        pnode->PushMessage(LLP::GET_DATA, vInv);
-                    }
+                        pnode->PushMessage(uint8_t(LLP::ACTION::GET), uint8_t(LLP::TYPES::TRANSACTION),
+                                           uint8_t(LLP::TYPES::UINT512_T), tx.hashPrevTx);
 
                     return true;
                 }
@@ -167,9 +165,9 @@ namespace TAO
             debug::log(2, FUNCTION, "tx ", hashTx.SubString(), " ACCEPTED in ", std::dec, time.ElapsedMilliseconds(), " ms");
 
             /* Relay the transaction. */
-            std::vector<LLP::CInv> vInv = { LLP::CInv(hashTx, LLP::MSG_TX_TRITIUM) };
-            if(LLP::TRITIUM_SERVER)
-                LLP::TRITIUM_SERVER->Relay(LLP::DAT_INVENTORY, vInv);
+            //if(LLP::TRITIUM_SERVER)
+                //LLP::TRITIUM_SERVER->Relay(uint8_t(LLP::ACTION::NOTIFY), uint8_t(LLP::TYPES::TRANSACTION),
+                //                           uint8_t(LLP::TYPES::UINT512_T), hashTx);
 
             /* Check orphan queue. */
             {

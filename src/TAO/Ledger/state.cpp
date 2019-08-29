@@ -741,12 +741,12 @@ namespace TAO
                     };
 
                     /* Relay the new block to all connected nodes. */
-                    if(LLP::LEGACY_SERVER)
-                        LLP::LEGACY_SERVER->Relay("inv", vInv);
+                    //if(LLP::LEGACY_SERVER)
+                    //    LLP::LEGACY_SERVER->Relay("inv", vInv);
 
                     /* If using Tritium server then we need to include the blocks transactions in the inventory before the block. */
-                    if(LLP::TRITIUM_SERVER)
-                        LLP::TRITIUM_SERVER->Relay(LLP::DAT_INVENTORY, vInv);
+                    //if(LLP::TRITIUM_SERVER)
+                    //    LLP::TRITIUM_SERVER->Relay(LLP::DAT_INVENTORY, vInv);
                 }
             }
 
