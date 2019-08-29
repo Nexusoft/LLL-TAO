@@ -116,7 +116,7 @@ namespace Legacy
     {
             /* Retrieve the coinstake transaction for the block state. */
             Legacy::Transaction coinstakeTx;
-            if(!LLD::legacyDB->ReadTx(block.vtx[0].second, coinstakeTx))
+            if(!LLD::Legacy->ReadTx(block.vtx[0].second, coinstakeTx))
                 return debug::error(FUNCTION, "Failed to read coinstake from legacy DB");
 
             return StakeRate(coinstakeTx, block.nVersion, nTime);
