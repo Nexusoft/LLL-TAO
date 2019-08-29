@@ -207,6 +207,7 @@ ifdef UNIT_TESTS
 		   build/Tests_TAO_Operation_conditions.o \
 		   build/Tests_TAO_Operation_contract.o \
 		   build/Tests_TAO_Operation_debit.o \
+		   build/Tests_TAO_Operation_fees.o \
 		   build/Tests_TAO_Operation_names.o \
 		   build/Tests_TAO_Operation_register.o \
 		   build/Tests_TAO_Operation_transfer.o \
