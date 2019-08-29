@@ -34,6 +34,9 @@ ________________________________________________________________________________
 #include <iostream>
 
 #include <TAO/Register/types/address.h>
+#include <TAO/Register/types/object.h>
+
+#include <TAO/Register/include/create.h>
 
 #include <TAO/Ledger/types/genesis.h>
 #include <TAO/Ledger/types/sigchain.h>
@@ -121,6 +124,10 @@ _name.shard.file
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
+
+
+
+    return 0;
 
     //uint1024_t hash = ;
 

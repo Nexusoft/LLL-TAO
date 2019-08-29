@@ -138,11 +138,23 @@ namespace TAO
              *  @param[in] strType The type of signing key used.
              *  @param[in] nKeyID The key number in the keychian
              *  @param[in] strSecret The secret phrase to use
-             *  @param[in] fCache Use the cache on hand for keys.
              *
              *  @return The 512 bit hash of this key in the series.
              **/
             uint512_t Generate(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret) const;
+
+
+            /** KeyHash
+             *
+             *  This function generates a hash of a public key generated from random seed phrase.
+             *
+             *  @param[in] strType The type of signing key used.
+             *  @param[in] nKeyID The key number in the keychian
+             *  @param[in] strSecret The secret phrase to use
+             *
+             *  @return The 256 bit hash of this key in the series.
+             **/
+            uint256_t KeyHash(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret) const;
 
 
             /** UserName

@@ -16,6 +16,8 @@ ________________________________________________________________________________
 #include <LLC/hash/macro.h>
 #include <LLC/hash/argon2.h>
 
+#include <LLC/include/flkey.h>
+
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/genesis.h>
 
@@ -340,6 +342,27 @@ namespace TAO
             hashKey.SetBytes(hash);
 
             return hashKey;
+        }
+
+
+        /* This function generates a hash of a public key generated from random seed phrase. */
+        uint256_t SignatureChain::KeyHash(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret) const
+        {
+            /* Get the private key. */
+            uint512_t hashSecret = Generate(strType, nKeyID, strSecret);
+
+            /* Get the secret from new key. */
+            std::vector<uint8_t> vBytes = hashSecret.GetBytes();
+            LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
+
+            /* Create the FL Key object. */
+            LLC::FLKey key;
+
+            /* Set the secret key. */
+            if(!key.SetSecret(vchSecret, true))
+                return false;
+
+            return LLC::SK256(key.GetPubKey());
         }
 
 

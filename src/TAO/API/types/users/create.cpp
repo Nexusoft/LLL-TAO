@@ -101,6 +101,24 @@ namespace TAO
             tx[3] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister
                   << uint8_t(TAO::Register::REGISTER::OBJECT) << TAO::Register::CreateAccount(0).GetState();
 
+            /* Generate a random hash for this objects register address */
+            hashRegister = TAO::Register::Address(TAO::Register::Address::CRYPTO);
+
+            /* Add a Name record for the trust account */
+            tx[4] = Names::CreateName(user->Genesis(), "crypto", "", hashRegister);
+
+            /* Create the crypto object. */
+            TAO::Register::Object crypto = TAO::Register::CreateCrypto(
+                                                user->KeyHash("auth", 0, params["pin"].get<std::string>().c_str()),
+                                                0, //lisp key disabled for now
+                                                user->KeyHash("network", 0, params["pin"].get<std::string>().c_str()),
+                                                user->KeyHash("sign", 0, params["pin"].get<std::string>().c_str()),
+                                                0); //verify key disabled for now
+
+            /* Add the default account register operation to the transaction */
+            tx[5] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister
+                  << uint8_t(TAO::Register::REGISTER::OBJECT) << crypto.GetState();
+
             /* Add the fee */
             AddFee(tx);
 
@@ -124,6 +142,7 @@ namespace TAO
             /* Execute the operations layer. */
             if(!TAO::Ledger::mempool.Accept(tx))
                 throw APIException(-32, "Failed to accept");
+
 
             /* Build a JSON response object. */
             ret["version"]   = tx.nVersion;

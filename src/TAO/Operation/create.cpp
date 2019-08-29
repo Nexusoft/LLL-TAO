@@ -135,8 +135,8 @@ namespace TAO
                             {
                                 /* Namespace hash is a SK256 hash of the namespace name */
                                 hashNamespace = TAO::Register::Address(strNamespace, TAO::Register::Address::NAMESPACE);
-                                
-                                /* If the namespace is NOT the global namespace then retrieve the namespace object 
+
+                                /* If the namespace is NOT the global namespace then retrieve the namespace object
                                    and check that the hashGenesis is the owner */
                                 if(strNamespace != TAO::Register::NAMESPACE::GLOBAL)
                                 {
@@ -190,6 +190,18 @@ namespace TAO
                             break;
                         }
 
+
+                        /* Check for readonly types. */
+                        case TAO::Register::OBJECTS::CRYPTO:
+                        {
+                            /* Check the address type to expected type. */
+                            if(!address.IsCrypto())
+                                return debug::error(FUNCTION, "address type mismatch with object type");
+
+                            break;
+                        }
+
+
                         /* Check for non-standard types. */
                         default:
                         {
@@ -201,7 +213,6 @@ namespace TAO
 
                     break;
                 }
-
 
                 /* Check for readonly types. */
                 case TAO::Register::REGISTER::READONLY:
@@ -337,7 +348,7 @@ namespace TAO
 
                         /* Get the name. */
                         std::string strName = object.get<std::string>("name");
-                        
+
                         /* Global names must not contain a : or :: */
                         if(strNamespace == TAO::Register::NAMESPACE::GLOBAL)
                         {
