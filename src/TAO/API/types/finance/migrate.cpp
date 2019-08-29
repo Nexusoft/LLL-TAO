@@ -91,8 +91,9 @@ namespace TAO
                      * This addresses an issue that some v4 keys produced one v5 block during grace period, but then incorrectly
                      * "expired" and were replaced with a new v5 key.
                      */
-                    uint64_t nCutoff = TAO::Ledger::EndTimelock(4) + (uint64_t)(config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET
-                                                                                                 : TAO::Ledger::TRUST_KEY_TIMESPAN);
+                    const uint64_t nCutoff = TAO::Ledger::EndTimelock(4)
+                                             + (uint64_t)(config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET
+                                                                           : TAO::Ledger::TRUST_KEY_TIMESPAN);
 
                     /* Search through the trust keys. */
                     for(const auto& trustKeyCheck : vKeys)
@@ -199,7 +200,7 @@ namespace TAO
 
         /* Local utility function to get the trust account for a signature chain.
          * Can only migrate to a Trust account that has not staked Genesis, so this function always looks up the account
-         * using the name register.
+         * using the derived register address.
          */
         bool FindTrustAccount(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, TAO::Register::Address& hashAddress)
         {
@@ -207,9 +208,6 @@ namespace TAO
             /* If trust account has already staked Genesis, it should be indexed */
             if(LLD::Register->HasTrust(user->Genesis()))
                 throw APIException(-17, "Failed to create transaction. Trust account already established for staking.");
-
-            /* Retrieve the name register for the user's trust account */
-            TAO::Register::Object name;
 
             /* Retrieve the trust account address from the name register mapping. */
             TAO::Register::Address hashRegister = TAO::Register::Address(std::string("trust"), user->Genesis(), TAO::Register::Address::TRUST);
@@ -311,6 +309,7 @@ namespace TAO
             {
                 if(entry.first == address)
                 {
+                    /* Found address entry for trust key address */
                     nAmount = entry.second;
                     break;
                 }

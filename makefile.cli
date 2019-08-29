@@ -401,6 +401,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Operation_fee.o \
 		build/Operation_genesis.o \
 		build/Operation_legacy.o \
+		build/Operation_migrate.o \
 		build/Operation_stake.o \
 		build/Operation_transfer.o \
 		build/Operation_trust.o \
