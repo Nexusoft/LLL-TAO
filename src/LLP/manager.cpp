@@ -516,8 +516,7 @@ namespace LLP
     /* Gets the cumulative count of each address nState nFlags. */
     uint32_t AddressManager::total_count(const uint8_t nFlags)
     {
-        uint32_t total = 0;
-
+        uint32_t nTotal = 0;
         for(const auto& addr : mapTrustAddress)
         {
             /* If the address is on the ban list, skip it. */
@@ -526,14 +525,14 @@ namespace LLP
 
             /* Sum up the total stats of each category */
             if(nFlags & ConnectState::CONNECTED)
-                total += addr.second.nConnected;
+                nTotal += addr.second.nConnected;
             if(nFlags & ConnectState::DROPPED)
-                total += addr.second.nDropped;
+                nTotal += addr.second.nDropped;
             if(nFlags & ConnectState::FAILED)
-                total += addr.second.nFailed;
+                nTotal += addr.second.nFailed;
         }
 
-        return total;
+        return nTotal;
     }
 
 
