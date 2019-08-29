@@ -21,7 +21,7 @@ namespace Legacy
     Coinbase::Coinbase()
     : vOutputs()
 	, nMaxValue(0)
-	, nPoolFee(0)
+	, nWalletFee(0)
 	{
 	}
 
@@ -30,7 +30,7 @@ namespace Legacy
     Coinbase::Coinbase(const std::map<std::string, uint64_t>& vTxOutputs, uint64_t nValue, uint64_t nLocalFee)
     : vOutputs(vTxOutputs)
 	, nMaxValue(nValue)
-	, nPoolFee(nLocalFee)
+	, nWalletFee(nLocalFee)
 	{
 	}
 
@@ -39,7 +39,7 @@ namespace Legacy
     Coinbase::Coinbase(const Coinbase& rhs)
     : vOutputs(rhs.vOutputs)
     , nMaxValue(rhs.nMaxValue)
-    , nPoolFee(rhs.nPoolFee)
+    , nWalletFee(rhs.nWalletFee)
 	{
 	}
 
@@ -49,7 +49,7 @@ namespace Legacy
 	{
         vOutputs = rhs.vOutputs;
         nMaxValue = rhs.nMaxValue;
-        nPoolFee = rhs.nPoolFee;
+        nWalletFee = rhs.nWalletFee;
 
         return *this;
 	}
@@ -70,7 +70,7 @@ namespace Legacy
     {
         vOutputs.clear();
         nMaxValue = 0;
-        nPoolFee = 0;
+        nWalletFee = 0;
     }
 
 
@@ -81,7 +81,7 @@ namespace Legacy
 	 **/
 	bool Coinbase::IsNull() const
 	{
-		return vOutputs.empty() && nPoolFee == 0;
+		return vOutputs.empty() && nWalletFee == 0;
 	}
 
 
@@ -94,7 +94,7 @@ namespace Legacy
      **/
     bool Coinbase::IsValid() const
     {
-        uint64_t nCurrentValue = nPoolFee;
+        uint64_t nCurrentValue = nWalletFee;
         for(const auto& entry : vOutputs)
             nCurrentValue += entry.second;
 
@@ -119,8 +119,23 @@ namespace Legacy
 
         debug::log(0, "Total Value of Coinbase = ", static_cast<double>(nTotal) / 1000000.0);
         debug::log(0, "Set Value of Coinbase = ", static_cast<double>(nMaxValue) / 1000000.0);
-        debug::log(0, "PoolFee in Coinbase ", static_cast<double>(nPoolFee) / 1000000.0);
+        debug::log(0, "WalletFee in Coinbase ", static_cast<double>(nWalletFee) / 1000000.0);
         debug::log(0, "Is Complete: ", IsValid() ? "TRUE" : "FALSE");
         debug::log(0, "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
     }
+
+
+    /* Returns the reward payed out to wallet operator. */
+    uint64_t Coinbase::WalletReward() const
+    {
+        return nWalletFee;
+    }
+
+
+    /* Returns a copy of the outputs used for this coinbase. */
+    std::map<std::string, uint64_t> Coinbase::Outputs() const
+    {
+        return vOutputs;
+    }
+
 }

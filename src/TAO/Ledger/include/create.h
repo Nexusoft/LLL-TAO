@@ -15,6 +15,8 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEDGER_INCLUDE_CREATE_H
 #define NEXUS_TAO_LEDGER_INCLUDE_CREATE_H
 
+#include <Legacy/types/coinbase.h>
+
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/tritium.h>
 #include <TAO/Ledger/types/sigchain.h>
@@ -85,10 +87,12 @@ namespace TAO
          *  @param[in] nChannel The channel to create block for.
          *  @param[out] block The block object being created.
          *  @param[in] nExtraNonce An extra nonce to use for double iterating.
+         *  @param[in] pCoinbaseRecipients The coinbase recipients, if any.
          *
          **/
         bool CreateBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin,
-                         const uint32_t nChannel, TAO::Ledger::TritiumBlock& block, const uint64_t nExtraNonce = 0);
+                         const uint32_t nChannel, TAO::Ledger::TritiumBlock& block, const uint64_t nExtraNonce = 0,
+                         Legacy::Coinbase *pCoinbaseRecipients = nullptr);
 
 
         /** CreateStakeBlock

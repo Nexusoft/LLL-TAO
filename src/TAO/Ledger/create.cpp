@@ -52,6 +52,9 @@ namespace TAO
         /* Condition variable for private blocks. */
         std::condition_variable PRIVATE_CONDITION;
 
+        /* Create a new block object from the chain.*/
+        static memory::atomic<TAO::Ledger::TritiumBlock> blockCache[4];
+
 
         /* Create a new transaction object from signature chain. */
         bool CreateTransaction(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin,
@@ -138,12 +141,11 @@ namespace TAO
                 block.vtx.push_back(std::make_pair(TRITIUM_TX, hash));
             }
 
-            //add legacy
+            /* Add legacy */
             std::vector<uint512_t> vLegacyMempool;
 
-            /* Retrieve list of transaction hashes from mempool.
-            * Limit list to a sane size that would typically more than fill a legacy block, rather than pulling entire pool if it is very large
-            */
+            /* Retrieve list of transaction hashes from mempool. Limit list to a sane size that would typically more than fill a
+             * legacy block, rather than pulling entire pool if it is very large. */
             TAO::Ledger::mempool.ListLegacy(vLegacyMempool, 1000);
 
             /* Loop through the list of transactions. */
@@ -210,15 +212,14 @@ namespace TAO
         }
 
 
-        /* Create a new block object from the chain.*/
-        static memory::atomic<TAO::Ledger::TritiumBlock> blockCache[4];
-
+        /* Create a new block object from the chain. */
         bool CreateBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin,
-            const uint32_t nChannel, TAO::Ledger::TritiumBlock& block, const uint64_t nExtraNonce)
+            const uint32_t nChannel, TAO::Ledger::TritiumBlock& block, const uint64_t nExtraNonce,
+            Legacy::Coinbase *pCoinbaseRecipients)
         {
             /* Only allow prime, hash, and private channels. */
             if (nChannel < 1 || nChannel > 3)
-                return debug::error(FUNCTION, "invalid channel: ", nChannel);
+                return debug::error(FUNCTION, "Invalid channel: ", nChannel);
 
             /* Set the block to null. */
             block.SetNull();
@@ -240,11 +241,11 @@ namespace TAO
                 if(mempool.Get(block.producer.hashGenesis, tx) && block.producer.hashPrevTx != tx.GetHash())
                 {
                     /* Handle for STALE producer. */
-                    debug::log(0, FUNCTION, "producer is stale, rebuilding...");
+                    debug::log(0, FUNCTION, "Producer is stale, rebuilding...");
 
                     /* Setup the producer transaction. */
                     if(!CreateTransaction(user, pin, block.producer))
-                        return debug::error(FUNCTION, "failed to create producer transactions");
+                        return debug::error(FUNCTION, "Failed to create producer transactions.");
 
                     /* Store new block cache. */
                     blockCache[nChannel].store(block);
@@ -258,6 +259,9 @@ namespace TAO
                 /* Use the extra nonce if block is coinbase. */
                 if(nChannel == 1 || nChannel == 2)
                 {
+                    /* Output type 0 is mining/minting reward */
+                    uint64_t nBlockReward = GetCoinbaseReward(ChainState::stateBest.load(), nChannel, 0);
+
                     /* Create coinbase transaction. */
                     block.producer[0].Clear();
                     block.producer[0] << uint8_t(TAO::Operation::OP::COINBASE);
@@ -266,11 +270,57 @@ namespace TAO
                     block.producer[0] << user->Genesis();
 
                     /* The total to be credited. */
-                    uint64_t  nCredit = GetCoinbaseReward(ChainState::stateBest.load(), nChannel, 0);
+                    uint64_t  nCredit = nBlockReward;
+
+                    /* If there are coinbase recipients, set the reward to the coinbase wallet reward. */
+                    if(pCoinbaseRecipients && !pCoinbaseRecipients->IsNull())
+                        nCredit = pCoinbaseRecipients->WalletReward();
+
+                    /* Check to make sure credit is non-zero. */
+                    if(nCredit == 0)
+                        return debug::error(FUNCTION, "Empty block producer reward.");
+
                     block.producer[0] << nCredit;
 
                     /* The extra nonce to coinbase. */
                     block.producer[0] << nExtraNonce;
+
+                    /* Add coinbase recipient amounts to block producer transaction if any. */
+                    if(pCoinbaseRecipients && !pCoinbaseRecipients->IsNull())
+                    {
+                        /* Ensure wallet reward and recipient amounts add up to correct block reward. */
+                        if(!pCoinbaseRecipients->IsValid())
+                            return debug::error(FUNCTION, "Coinbase recipients contain invalid amounts.");
+
+                        /* Get the map of outputs for this coinbase. */
+                        std::map<std::string, uint64_t> mapOutputs = pCoinbaseRecipients->Outputs();
+                        uint32_t nTx = 1;
+
+                        for(const auto&entry : mapOutputs)
+                        {
+                            /* Build the recipient address from a hex string. */
+                            uint256_t recipientAddr = uint256_t(entry.first);
+
+                            /* Ensure the address is valid. */
+                            if(recipientAddr == 0)
+                                return debug::error(FUNCTION, "Invaild recipient address: ", entry.first, " (", nTx, ")");
+
+                            /* Set coinbase operation. */
+                            block.producer[nTx].Clear();
+                            block.producer[nTx] << uint8_t(TAO::Operation::OP::COINBASE);
+
+                            /* Set sigchain recipient. */
+                            block.producer[nTx] << recipientAddr;
+
+                            /* Set coinbase amount for associated recipent. */
+                            block.producer[nTx] << entry.second;
+
+                            /* The extra nonce to coinbase. */
+                            block.producer[nTx] << nExtraNonce;
+
+                            ++nTx;
+                        }
+                    }
                 }
                 else if(nChannel == 3)
                 {
@@ -309,11 +359,14 @@ namespace TAO
 
                 /* Setup the producer transaction. */
                 if(!CreateTransaction(user, pin, block.producer))
-                    return debug::error(FUNCTION, "failed to create producer transactions");
+                    return debug::error(FUNCTION, "Failed to create producer transactions.");
 
                 /* Create the Coinbase Transaction if the Channel specifies. */
                 if(nChannel == 1 || nChannel == 2)
                 {
+                    /* Output type 0 is mining/minting reward */
+                    uint64_t nBlockReward = GetCoinbaseReward(stateBest, nChannel, 0);
+
                     /* Create coinbase transaction. */
                     block.producer[0] << uint8_t(TAO::Operation::OP::COINBASE);
 
@@ -321,11 +374,57 @@ namespace TAO
                     block.producer[0] << user->Genesis();
 
                     /* The total to be credited. */
-                    uint64_t nCredit = GetCoinbaseReward(stateBest, nChannel, 0);
+                    uint64_t  nCredit = nBlockReward;
+
+                    /* If there are coinbase recipients, set the reward to the coinbase wallet reward. */
+                    if(pCoinbaseRecipients && !pCoinbaseRecipients->IsNull())
+                        nCredit = pCoinbaseRecipients->WalletReward();
+
+                    /* Check to make sure credit is non-zero. */
+                    if(nCredit == 0)
+                        return debug::error(FUNCTION, "Empty block producer reward.");
+
+
                     block.producer[0] << nCredit;
 
                     /* The extra nonce to coinbase. */
                     block.producer[0] << nExtraNonce;
+
+                    /* Add coinbase recipient amounts to block producer transaction if any. */
+                    if(pCoinbaseRecipients && !pCoinbaseRecipients->IsNull())
+                    {
+                        /* Ensure wallet reward and recipient amounts add up to correct block reward. */
+                        if(!pCoinbaseRecipients->IsValid())
+                            return debug::error(FUNCTION, "Coinbase recipients contain invalid amounts.");
+
+                        /* Get the map of outputs for this coinbase. */
+                        std::map<std::string, uint64_t> mapOutputs = pCoinbaseRecipients->Outputs();
+                        uint32_t nTx = 1;
+
+                        for(const auto&entry : mapOutputs)
+                        {
+                            /* Build the recipient address from a hex string. */
+                            uint256_t recipientAddr = uint256_t(entry.first);
+
+                            /* Ensure the address is valid. */
+                            if(recipientAddr == 0)
+                                return debug::error(FUNCTION, "Invaild recipient address: ", entry.first, " (", nTx, ")");
+
+                            /* Set coinbase operation. */
+                            block.producer[nTx] << uint8_t(TAO::Operation::OP::COINBASE);
+
+                            /* Set sigchain recipient. */
+                            block.producer[nTx] << recipientAddr;
+
+                            /* Set coinbase amount for associated recipent. */
+                            block.producer[nTx] << entry.second;
+
+                            /* The extra nonce to coinbase. */
+                            block.producer[nTx] << nExtraNonce;
+
+                            ++nTx;
+                        }
+                    }
 
                     /* Get the last state block for channel. */
                     TAO::Ledger::BlockState statePrev = stateBest;
@@ -390,6 +489,7 @@ namespace TAO
         }
 
 
+        /* Create a new Proof of Stake (channel 0) block object from the chain. */
         bool CreateStakeBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin,
                               TAO::Ledger::TritiumBlock& block, const uint64_t isGenesis)
         {
@@ -615,6 +715,5 @@ namespace TAO
                 debug::log(0, FUNCTION, "Private Block Cleared in ", TIMER.ElapsedMilliseconds(), " ms");
             }
         }
-
     }
 }

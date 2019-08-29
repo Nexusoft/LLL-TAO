@@ -149,22 +149,22 @@ namespace Legacy
         /* Previous block state is current best state on chain */
         TAO::Ledger::BlockState prevBlockState = TAO::Ledger::ChainState::stateBest.load();
 
-        /* Output type 0 is minting of mining/minting reward */
+        /* Output type 0 is mining/minting reward */
         uint64_t nBlockReward = TAO::Ledger::GetCoinbaseReward(prevBlockState, nChannel, 0);
 
-        /* Initialize vin */
+        /* Initialize vin. */
         coinbaseTx.vin.resize(1);
         coinbaseTx.vin[0].prevout.SetNull();
 
         /* Set the Proof of Work Script Signature. */
         coinbaseTx.vin[0].scriptSig = (Legacy::Script() << ((uint64_t)nID * 513513512151));
 
-        /* calculate the reward for this wallet */
+        /* Calculate the reward for this wallet */
         uint64_t nReward = 0;
         if(coinbaseRecipients.IsNull())
             nReward = nBlockReward;
         else
-            nReward = coinbaseRecipients.nPoolFee;
+            nReward = coinbaseRecipients.WalletReward();
 
         if(nReward > 0)
         {
@@ -173,12 +173,15 @@ namespace Legacy
             coinbaseTx.vout[0].nValue = nReward;
         }
 
-        /* if additional coinbase recipients have been provided them add them to vout*/
+        /* If additional coinbase recipients have been provided them add them to vout*/
         if(!coinbaseRecipients.IsNull())
         {
+            /* Get the map of outputs for this coinbase. */
+            std::map<std::string, uint64_t> mapOutputs = coinbaseRecipients.Outputs();
             uint32_t nTx = 1;
-            coinbaseTx.vout.resize(coinbaseRecipients.vOutputs.size() + coinbaseTx.vout.size());
-            for(const auto& entry : coinbaseRecipients.vOutputs)
+
+            coinbaseTx.vout.resize(mapOutputs.size() + coinbaseTx.vout.size());
+            for(const auto& entry : mapOutputs)
             {
                 /* Set the Appropriate Outputs. */
                 coinbaseTx.vout[nTx].scriptPubKey.SetNexusAddress(NexusAddress(entry.first));
@@ -218,10 +221,10 @@ namespace Legacy
         coinbaseTx.vout[coinbaseTx.vout.size() - 2].scriptPubKey.SetNexusAddress(ambassadorKeyAddress);
         coinbaseTx.vout[coinbaseTx.vout.size() - 1].scriptPubKey.SetNexusAddress(devKeyAddress);
 
-        /* Output type 1 is ambassador mint. */
+        /* Output type 1 is ambassador reward. */
         coinbaseTx.vout[coinbaseTx.vout.size() - 2].nValue = TAO::Ledger::GetCoinbaseReward(prevBlockState, nChannel, 1);
 
-        /* Output type 2 is dev mint */
+        /* Output type 2 is dev reward. */
         coinbaseTx.vout[coinbaseTx.vout.size() - 1].nValue = TAO::Ledger::GetCoinbaseReward(prevBlockState, nChannel, 2);
 
         return true;
@@ -230,7 +233,7 @@ namespace Legacy
 
     void AddTransactions(std::vector<Transaction>& vtx)
     {
-        /* Previous block state is current best state on chain */
+        /* Previous block state is current best state on chain. */
         TAO::Ledger::BlockState prevBlockState = TAO::Ledger::ChainState::stateBest.load();
 
         std::vector<uint512_t> vMemPoolHashes;           // legacy tx hashes currently in mempool
@@ -238,16 +241,15 @@ namespace Legacy
         std::multimap<double, Transaction> mapPriority; // processing priority for mempool tx
         uint64_t nFees = 0;
 
-        /* Retrieve list of transaction hashes from mempool.
-         * Limit list to a sane size that would typically more than fill a legacy block, rather than pulling entire pool if it is very large
-         */
+        /* Retrieve list of transaction hashes from mempool. Limit list to a sane size that would typically more than fill a
+         * legacy block, rather than pulling entire pool if it is very large. */
         if(TAO::Ledger::mempool.ListLegacy(vMemPoolHashes, 1000))
         {
             /* Mempool was empty */
             return;
         }
 
-        /* Process the mempool transactions and load them into mapPriority for processing */
+        /* Process the mempool transactions and load them into mapPriority for processing. */
         for(const uint512_t& txHash : vMemPoolHashes)
         {
             Transaction tx;
@@ -255,14 +257,14 @@ namespace Legacy
             /* Retrieve next transaction from the mempool */
             if(!TAO::Ledger::mempool.Get(txHash, tx))
             {
-                /* Should never have free floating Coinbase or Coinstake transaction in the mempool */
+                /* Should never have free floating Coinbase or Coinstake transaction in the mempool. */
                 debug::error(FUNCTION, "Unable to read transaction from mempool ", txHash.SubString(10));
                 continue;
             }
 
             if(tx.IsCoinBase() || tx.IsCoinStake())
             {
-                /* Should never have free floating Coinbase or Coinstake transaction in the mempool */
+                /* Should never have free floating Coinbase or Coinstake transaction in the mempool. */
                 debug::log(2, FUNCTION, "Mempool transaction is Coinbase/Coinstake ", txHash.SubString(10));
                 continue;
             }
@@ -273,15 +275,15 @@ namespace Legacy
                 continue;
             }
 
-            /* Calculate priority using transaction inputs */
+            /* Calculate priority using transaction inputs. */
             double dPriority = 0;
             for(const TxIn& txin : tx.vin)
             {
-                /* Check if we have previous transaction */
+                /* Check if we have previous transaction. */
                 Transaction txPrev;
                 if(!LLD::Legacy->ReadTx(txin.prevout.hash, txPrev))
                 {
-                    /* Skip any orphan transactions in the mempool until the prevout tx is confirmed */
+                    /* Skip any orphan transactions in the mempool until the prevout tx is confirmed. */
                     debug::log(2, FUNCTION, "Found orphan transaction in mempool ", txHash.SubString(10));
                     continue;
                 }
