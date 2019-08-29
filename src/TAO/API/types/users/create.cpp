@@ -98,7 +98,7 @@ namespace TAO
             tx[2] = Names::CreateName(user->Genesis(), "default", "", hashRegister);
 
             /* Add the default account register operation to the transaction */
-            tx[3] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister
+            tx[3] << uint8_t(TAO::Operation::OP::CREATE)      << hashRegister
                   << uint8_t(TAO::Register::REGISTER::OBJECT) << TAO::Register::CreateAccount(0).GetState();
 
             /* Generate a random hash for this objects register address */
@@ -120,7 +120,7 @@ namespace TAO
                                                 0); //verify key disabled for now
 
             /* Add the default account register operation to the transaction */
-            tx[5] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister
+            tx[5] << uint8_t(TAO::Operation::OP::CREATE)      << hashRegister
                   << uint8_t(TAO::Register::REGISTER::OBJECT) << crypto.GetState();
 
             /* Add the fee */
