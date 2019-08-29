@@ -280,7 +280,7 @@ namespace TAO
                         /* Check the account balance. */
                         uint64_t nBalance = object.get<uint64_t>("balance");
                         if(nBalance != 0)
-                            return debug::error(FUNCTION, "account balance msut be zero ", nBalance);
+                            return debug::error(FUNCTION, "account balance must be zero ", nBalance);
 
                         break;
                     }
