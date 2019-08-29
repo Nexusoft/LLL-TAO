@@ -33,6 +33,9 @@ ________________________________________________________________________________
 #include <Util/templates/datastream.h>
 
 #include <Legacy/include/evaluate.h>
+#include <Legacy/include/trust.h>
+#include <Legacy/types/transaction.h>
+#include <Legacy/types/trustkey.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -101,14 +104,14 @@ namespace TAO
 
             /* The debit transaction (if tritium) */
             TAO::Ledger::Transaction txDebit;
-            
+
             /* The legacy send transaction (if legacy) */
             Legacy::Transaction txSend;
 
             /* Read the debit transaction. This may be a tritium or legacy transaction so we need to check both database
                and process it accordingly. */
             if(LLD::Ledger->ReadTx(hashTx, txDebit))
-            { 
+            {
 
                 /* Loop through all transactions. */
                 int32_t nCurrent = -1;
@@ -325,8 +328,8 @@ namespace TAO
 
                     /* The hash of the receiving account. */
                     TAO::Register::Address hashAccount;
-                    
-                    /* Extract the sig chain account register address  from the legacy script */ 
+
+                    /* Extract the sig chain account register address  from the legacy script */
                     if(!Legacy::ExtractRegister(txout.scriptPubKey, hashAccount))
                         continue;
 
@@ -341,10 +344,88 @@ namespace TAO
 
                     /* Get the object standard. */
                     uint8_t nStandard = debit.Base();
-                        
+
                     /* Check for the owner to make sure this was a send to the current users account */
                     if(debit.hashOwner == user->Genesis())
                     {
+                        /* Identify trust migration to create OP::MIGRATE instead of OP::CREDIT */
+
+                        /* Check if output is new trust account (no stake or balance) */
+                        if(debit.Standard() == TAO::Register::OBJECTS::TRUST
+                                && debit.get<uint64_t>("stake") == 0 && debit.get<uint64_t>("trust") == 0)
+                        {
+                            /* Need to check for migration.
+                             * Trust migration converts a legacy trust key to a trust account register.
+                             * It will send all inputs from an existing trust key, with one output to a new trust account.
+                             */
+                            bool fMigration = false; //if this stays false, not a migration, fall through to OP::CREDIT
+
+                            /* Trust key data we need for OP::MIGRATE */
+                            uint32_t nScore;
+                            uint576_t hashKey;
+                            uint512_t hashLast;
+
+                            /* This loop will only have one iteration. If it breaks out before end, fMigration stays false */
+                            while(1)
+                            {
+                                Legacy::TrustKey trustKey;
+
+                                /* Trust account output must be only output for the transaction */
+                                if(nContract != 0 || txSend.vout.size() > 1)
+                                    break;
+
+                                /* Retrieve the trust key being converted */
+                                if(!Legacy::FindMigratedTrustKey(txSend, trustKey))
+                                    break;
+
+                                /* Verify trust key not already converted */
+                                hashKey = trustKey.GetHash();
+                                if(LLD::Legacy->HasTrustConversion(hashKey))
+                                    break;
+
+                                /* Get last trust for the legacy trust key */
+                                TAO::Ledger::BlockState stateLast;
+                                if(!LLD::Ledger->ReadBlock(trustKey.hashLastBlock, stateLast))
+                                    break;
+
+                                /* Last stake block must be at least v5 and coinstake must be a legacy transaction */
+                                if(stateLast.nVersion < 5 || stateLast.vtx[0].first != TAO::Ledger::LEGACY)
+                                    break;
+
+                                /* Extract the coinstake from the last trust block */
+                                Legacy::Transaction txLast;
+                                if(!LLD::Legacy->ReadTx(stateLast.vtx[0].second, txLast))
+                                    break;
+
+                                hashLast = txLast.GetHash();
+
+                                /* Extract the trust score from the coinstake */
+                                uint1024_t hashLastBlock;
+                                uint32_t nSequence;
+
+                                if(!txLast.ExtractTrust(hashLastBlock, nSequence, nScore))
+                                    break;
+
+                                fMigration = true;
+                                break;
+                            }
+
+                            /* Everything verified for migration and we have the data we need. Set up OP::MIGRATE */
+                            if(fMigration)
+                            {
+                                /* The amount to migrate */
+                                const uint64_t nAmount = txout.nValue;
+
+                                /* Set up the OP::MIGRATE */
+                                tx[tx.Size()] << uint8_t(TAO::Operation::OP::MIGRATE) << hashTx << hashAccount << hashKey
+                                            << nAmount << nScore << hashLast;
+
+                                continue;
+                            }
+                        }
+
+                        /* No migration. Use normal credit process */
+
                         /* Check the object base to see whether it is an account. */
                         if(debit.Base() == TAO::Register::OBJECTS::ACCOUNT)
                         {
@@ -370,14 +451,14 @@ namespace TAO
                             continue;
                     }
 
-                    
+
                 }
             }
             else
             {
                 throw APIException(-40, "Previous transaction not found.");
             }
-                
+
 
             /* Check that output was found. */
             if(tx.Size() == 0)
@@ -385,7 +466,7 @@ namespace TAO
 
             /* Add the fee */
             AddFee(tx);
-            
+
             /* Execute the operations layer. */
             if(!tx.Build())
                 throw APIException(-44, "Transaction failed to build");

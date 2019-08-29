@@ -35,10 +35,10 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/types/transaction.h>
 
-#include <Legacy/include/enum.h>
 #include <Legacy/include/evaluate.h>
 #include <Legacy/include/trust.h>
 #include <Legacy/types/transaction.h>
+#include <Legacy/types/trustkey.h>
 
 #include <Util/include/debug.h>
 
@@ -461,7 +461,6 @@ namespace TAO
                                     if(!LLD::Ledger->ReadBlock(trustKey.hashLastBlock, stateLast))
                                         break;
 
-//TODO move to ledger sanitization
                                     /* Last stake block must be at least v5 and coinstake must be a legacy transaction */
                                     if(stateLast.nVersion < 5 || stateLast.vtx[0].first != TAO::Ledger::LEGACY)
                                         break;
