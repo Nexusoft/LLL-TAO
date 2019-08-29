@@ -254,8 +254,13 @@ namespace TAO
                                           TAO::Ledger::Transaction& tx)
         {
             uint512_t hashLast = 0;
+            if(LLD::Ledger->ReadStake(user->Genesis(), hashLast) && LLD::Ledger->ReadTx(hashLast, tx))
+                return true;
 
-            /* Get the most recent tx hash for the user account. */
+            /* Last stake is missing from Ledger. Will need to retrieve manually.
+             * Begin by getting the most recent tx hash for the user account.
+             */
+            hashLast = 0;
             if(!LLD::Ledger->ReadLast(user->Genesis(), hashLast))
                 return false;
 
@@ -273,6 +278,10 @@ namespace TAO
                 {
                     /* Found last stake transaction. */
                     tx = txCheck;
+
+                    /* Update the Ledger with found last stake */
+                    LLD::Ledger->WriteStake(user->Genesis(), hashLast);
+
                     return true;
                 }
 
