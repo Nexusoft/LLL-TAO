@@ -24,6 +24,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/system.h>
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/types/mempool.h>
 
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
@@ -95,7 +96,7 @@ namespace TAO
                 jsonRet["synccomplete"] = (int)TAO::Ledger::ChainState::PercentSynchronized();
             }
             /* Number of transactions in the node's mempool*/
-            jsonRet["txtotal"] =(int)Legacy::Wallet::GetInstance().mapWallet.size();
+            jsonRet["txtotal"] =TAO::Ledger::mempool.Size() + TAO::Ledger::mempool.SizeLegacy();
 
             /* Number of peer connections*/
             if(LLP::TRITIUM_SERVER  && LLP::TRITIUM_SERVER->pAddressManager)
