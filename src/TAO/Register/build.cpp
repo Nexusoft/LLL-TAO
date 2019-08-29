@@ -25,6 +25,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/fee.h>
 #include <TAO/Operation/include/genesis.h>
 #include <TAO/Operation/include/legacy.h>
+#include <TAO/Operation/include/migrate.h>
 #include <TAO/Operation/include/stake.h>
 #include <TAO/Operation/include/transfer.h>
 #include <TAO/Operation/include/trust.h>
@@ -610,6 +611,59 @@ namespace TAO
 
                         /* Write the state to memory map. */
                         mapStates[hashAddress] = TAO::Register::State(object);
+
+                        break;
+                    }
+
+
+                    /* Migrate a trust key to a trust account register. */
+                    case TAO::Operation::OP::MIGRATE:
+                    {
+                        /* Seek to address. */
+                        contract.Seek(64);
+
+                        /* Get the trust register address. (hash to) */
+                        TAO::Register::Address hashAccount;
+                        contract >> hashAccount;
+
+                        /* Seek to amount. */
+                        contract.Seek(72);
+
+                        /* Get the amount to migrate. */
+                        uint64_t nAmount = 0;
+                        contract >> nAmount;
+
+                        /* Get the trust score to migrate. */
+                        uint32_t nScore = 0;
+                        contract >> nScore;
+
+                        /* Serialize the pre-state byte into contract. */
+                        contract <<= uint8_t(TAO::Register::STATES::PRESTATE);
+
+                        /* Check temporary memory states first. */
+                        Object object;
+                        if(mapStates.find(hashAccount) != mapStates.end())
+                            object = TAO::Register::Object(mapStates[hashAccount]);
+
+                        /* Read the register from database. */
+                        else if(!LLD::Register->ReadState(hashAccount, object, TAO::Ledger::FLAGS::MEMPOOL))
+                            return debug::error(FUNCTION, "OP::MIGRATE: register pre-state doesn't exist");
+
+                        /* Serialize the pre-state into contract. */
+                        contract <<= object;
+
+                        /* Calculate the new operation. */
+                        if(!TAO::Operation::Migrate::Execute(object, nAmount, nScore, contract.Timestamp()))
+                            return debug::error(FUNCTION, "OP::MIGRATE: cannot generate post-state");
+
+                        /* Serialize the post-state byte into contract. */
+                        contract <<= uint8_t(TAO::Register::STATES::POSTSTATE);
+
+                        /* Serialize the checksum into contract. */
+                        contract <<= object.GetHash();
+
+                        /* Write the state to memory map. */
+                        mapStates[hashAccount] = TAO::Register::State(object);
 
                         break;
                     }

@@ -27,6 +27,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/fee.h>
 #include <TAO/Operation/include/genesis.h>
 #include <TAO/Operation/include/legacy.h>
+#include <TAO/Operation/include/migrate.h>
 #include <TAO/Operation/include/stake.h>
 #include <TAO/Operation/include/transfer.h>
 #include <TAO/Operation/include/trust.h>
@@ -912,6 +913,89 @@ namespace TAO
 
                         /* Commit the register to disk. */
                         if(!Credit::Commit(object, debit, hashAddress, hashProof, hashTx, nContract, nAmount, nFlags))
+                            return false;
+
+                        break;
+                    }
+
+
+                    /* Migrate a trust key to a trust account register. */
+                    case OP::MIGRATE:
+                    {
+                        /* Make sure there are no conditions. */
+                        if(!contract.Empty(Contract::CONDITIONS))
+                            return debug::error(FUNCTION, "OP::MIGRATE: conditions not allowed on migrate");
+
+                        /* Extract the transaction from contract. */
+                        uint512_t hashTx = 0;
+                        contract >> hashTx;
+
+                        /* Retrieve a debit for the Legacy tx output. Migrate tx will only have one output (index 0) */
+                        const Contract debit = LLD::Ledger->ReadContract(hashTx, 0);
+
+                        /* Verify the operation rules. */
+                        if(!Migrate::Verify(contract, debit))
+                            return false;
+
+                        /* After Verify, reset streams */
+                        contract.Reset();
+
+                        contract.Seek(65);
+
+                        /* Get the trust register address. (hash to) */
+                        TAO::Register::Address hashAccount;
+                        contract >> hashAccount;
+
+                        /* Get the Legacy trust key hash (hash from) */
+                        uint576_t hashKey = 0;
+                        contract >> hashKey;
+
+                        /* Get the amount to migrate. */
+                        uint64_t nAmount = 0;
+                        contract >> nAmount;
+
+                        /* Get the trust score to migrate. */
+                        uint32_t nScore = 0;
+                        contract >> nScore;
+
+                        /* Get the hash last trust. */
+                        uint512_t hashLast = 0;
+                        contract >> hashLast;
+
+                        /* Deserialize the pre-state byte from the contract. */
+                        uint8_t nState = 0;
+                        contract >>= nState;
+
+                        /* Check for pre-state. */
+                        if(nState != TAO::Register::STATES::PRESTATE)
+                            return debug::error(FUNCTION, "OP::MIGRATE: register pre-state doesn't exist");
+
+                        /* Retrieve the register pre-state. */
+                        TAO::Register::Object object;
+                        contract >>= object;
+
+                        /* Calculate the new operation. */
+                        if(!Migrate::Execute(object, nAmount, nScore, contract.Timestamp()))
+                            return false;
+
+                        /* Deserialize the post-state byte from contract. */
+                        nState = 0;
+                        contract >>= nState;
+
+                        /* Check for pre-state. */
+                        if(nState != TAO::Register::STATES::POSTSTATE)
+                            return debug::error(FUNCTION, "OP::MIGRATE: register post-state doesn't exist");
+
+                        /* Deserialize the checksum from contract. */
+                        uint64_t nChecksum = 0;
+                        contract >>= nChecksum;
+
+                        /* Check the post-state to register state. */
+                        if(nChecksum != object.GetHash())
+                            return debug::error(FUNCTION, "OP::MIGRATE: invalid register post-state");
+
+                        /* Commit the migration updates to disk. */
+                        if(!Migrate::Commit(object, hashAccount, contract.Caller(), hashTx, hashKey, hashLast, nFlags))
                             return false;
 
                         break;
