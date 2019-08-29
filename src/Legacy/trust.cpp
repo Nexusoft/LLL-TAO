@@ -12,7 +12,13 @@
 ____________________________________________________________________________________________*/
 
 #include <Legacy/include/trust.h>
+
+#include <Legacy/include/enum.h>
+#include <Legacy/include/evaluate.h>
+
 #include <Legacy/types/transaction.h>
+#include <Legacy/types/trustkey.h>
+#include <Legacy/types/txin.h>
 
 #include <LLD/include/global.h>
 
@@ -20,6 +26,8 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/state.h>
 
 #include <Util/include/debug.h>
+
+#include <vector>
 
 /* Global TAO namespace. */
 namespace Legacy
@@ -104,6 +112,50 @@ namespace Legacy
         }
 
         return false;
+    }
+
+
+    /* Extract the trust key being migrated from the Legacy migration transaction. */
+    bool FindMigratedTrustKey(const Transaction& tx, TrustKey& trustKey)
+    {
+        std::vector<uint8_t> vchTrustKey;
+
+        /* Check that all inputs are from the same key and extract the pub key for it.
+         * Typical migration transaction will have one input, but it is feasible to have multiple.
+         * If more than one, they all must be from the same key.
+         */
+        for(uint32_t nInput = 0; nInput < tx.vin.size(); ++nInput)
+        {
+            const Legacy::TxIn& txin = tx.vin[nInput];
+
+            /* Get prevout for the txin */
+            Legacy::Transaction txPrev;
+            if(!LLD::Legacy->ReadTx(txin.prevout.hash, txPrev))
+                return false;
+
+            /* Extract from prevout */
+            std::vector<std::vector<uint8_t> > vSolutions;
+            Legacy::TransactionType whichType;
+            if(!Solver(txPrev.vout[txin.prevout.n].scriptPubKey, whichType, vSolutions))
+                return false;
+
+            /* Check for public key type. */
+            if(whichType == Legacy::TX_PUBKEY)
+            {
+                if(nInput == 0)
+                    vchTrustKey = vSolutions[0]; //Save this as the pub key for the trust key
+
+                else if(vchTrustKey != vSolutions[0])
+                    return false; // Inputs not all from same address
+            }
+            else
+                return false;
+        }
+
+        uint576_t cKey;
+        cKey.SetBytes(vchTrustKey);
+
+        return LLD::Trust->ReadTrustKey(cKey, trustKey);
     }
 
 }
