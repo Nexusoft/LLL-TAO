@@ -23,6 +23,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/fee.h>
 #include <TAO/Operation/include/genesis.h>
 #include <TAO/Operation/include/legacy.h>
+#include <TAO/Operation/include/migrate.h>
 #include <TAO/Operation/include/stake.h>
 #include <TAO/Operation/include/transfer.h>
 #include <TAO/Operation/include/trust.h>
@@ -32,6 +33,8 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/verify.h>
 #include <TAO/Register/include/enum.h>
+
+#include <TAO/Register/types/address.h>
 #include <TAO/Register/types/object.h>
 
 /* Global TAO namespace. */
@@ -648,6 +651,67 @@ namespace TAO
 
                         /* Write the state to memory map. */
                         mapStates[hashAddress] = TAO::Register::State(object);
+
+                        break;
+                    }
+
+
+                    /* Credit tokens to an account you own. */
+                    case TAO::Operation::OP::MIGRATE:
+                    {
+                        /* Seek to address. */
+                        contract.Seek(64);
+
+                        /* Get the trust register address. (hash to) */
+                        TAO::Register::Address hashAccount;
+                        contract >> hashAccount;
+
+                        /* Skip hashKey (hash from) */
+                        contract.Seek(72);
+
+                        /* Get the amount to migrate. */
+                        uint64_t nAmount = 0;
+                        contract >> nAmount;
+
+                        /* Get the trust score to migrate. */
+                        uint32_t nScore = 0;
+                        contract >> nScore;
+
+                        /* Verify the first register code. */
+                        uint8_t nState = 0;
+                        contract >>= nState;
+
+                        /* Check the state is prestate. */
+                        if(nState != STATES::PRESTATE)
+                            return debug::error(FUNCTION, "OP::MIGRATE: register state not in pre-state");
+
+                        /* Verify the register's prestate. */
+                        State prestate;
+                        contract >>= prestate;
+
+                        /* Check temporary memory states first. */
+                        Object object;
+                        if(mapStates.find(hashAccount) != mapStates.end())
+                            object = TAO::Register::Object(mapStates[hashAccount]);
+
+                        /* Read the register from database. */
+                        else if(!LLD::Register->ReadState(hashAccount, object, nFlags))
+                            return debug::error(FUNCTION, "OP::MIGRATE: failed to read pre-state");
+
+                        /* Check that the checksums match. */
+                        if(prestate != object)
+                            return debug::error(FUNCTION, "OP::MIGRATE: pre-state verification failed");
+
+                        /* Check contract account */
+                        if(contract.Caller() != prestate.hashOwner)
+                            return debug::error(FUNCTION, "OP::MIGRATE: not authorized ", contract.Caller().SubString());
+
+                        /* Calculate the new operation. */
+                        if(!TAO::Operation::Migrate::Execute(object, nAmount, nScore, contract.Timestamp()))
+                            return false;
+
+                        /* Write the state to memory map. */
+                        mapStates[hashAccount] = TAO::Register::State(object);
 
                         break;
                     }
