@@ -174,25 +174,25 @@ namespace TAO
             /* Validate the trust key can be migrated */
             TAO::Ledger::BlockState state;
             if(!LLD::Ledger->ReadBlock(trustKey.hashLastBlock, state))
-                throw APIException(-40, "Previous transaction not found. Unable to retrieve last stake block.");
+                throw APIException(-40, "Previous transaction not found");
 
             if(state.vtx[0].first != TAO::Ledger::LEGACY)
-                throw APIException(-137, "Couldn't get previous transaction. Not a Legacy transaction.");
+                throw APIException(-184, "Previous stake transaction is not a Legacy transaction");
 
             uint512_t txHash = state.vtx[0].second;
             if(wallet.mapWallet.count(txHash) == 0)
-                throw APIException(-137, "Couldn't get previous transaction. Stake does not belong to current wallet.");
+                throw APIException(-186, "Previous stake does not belong to current wallet");
 
             Legacy::WalletTx wtx = wallet.mapWallet[txHash];
 
             if(!wtx.IsCoinStake())
-                throw APIException(-137, "Couldn't get previous transaction. Transaction is not a coinstake transaction.");
+                throw APIException(-185, "Previous transaction is not a stake transaction");
 
             if(wtx.GetBlocksToMaturity() > 0)
-                throw APIException(-17, "Failed to create transaction. Previous stake transaction immature.");
+                throw APIException(-183, "Previous stake transaction immature");
 
             if(LLD::Legacy->HasTrustConversion(trustKey.GetHash()))
-                throw APIException(-17, "Failed to create transaction. Trust key previously migrated.");
+                throw APIException(-182, "Trust key previously migrated");
 
             return true;
         }
@@ -207,7 +207,7 @@ namespace TAO
 
             /* If trust account has already staked Genesis, it should be indexed */
             if(LLD::Register->HasTrust(user->Genesis()))
-                throw APIException(-17, "Failed to create transaction. Trust account already established for staking.");
+                throw APIException(-188, "Trust account already has genesis");
 
             /* Retrieve the trust account address from the name register mapping. */
             TAO::Register::Address hashRegister = TAO::Register::Address(std::string("trust"), user->Genesis(), TAO::Register::Address::TRUST);
@@ -224,15 +224,16 @@ namespace TAO
             if(reg.Standard() != TAO::Register::OBJECTS::TRUST)
                 throw APIException(-72, "Register is not a trust account");
 
-            /* Validate that this is a new trust account */
+            /* Check the account is a NXS account */
+            if(reg.get<uint256_t>("token") != 0)
+                throw APIException(-73, "Trust account is not a NXS account.");
 
-            /* Check that there is no stake. */
+            /* Validate that the trust account is new (no stake or trust) */
             if(reg.get<uint64_t>("stake") != 0)
-                throw APIException(-17, "Failed to create transaction. Trust account already has stake.");
+                throw APIException(-189, "Failed to create transaction. Trust account already has stake.");
 
-            /* Check that there is no trust. */
             if(reg.get<uint64_t>("trust") != 0)
-                throw APIException(-17, "Failed to create transaction. Trust account already has trust.");
+                throw APIException(-190, "Failed to create transaction. Trust account already has trust.");
 
             hashAddress = hashRegister;
 
@@ -272,7 +273,7 @@ namespace TAO
             if(wallet.IsCrypted() && (fLocked || fMintOnly))
             {
                 if(strWalletPass.length() == 0)
-                    throw APIException(-128, "Wallet is locked. walletpassphrase required");
+                    throw APIException(-179, "Legacy wallet is locked. walletpassphrase required");
 
                 /* Unlock returns true if already unlocked, but passphrase must be validated for mint only so must lock first */
                 if(fMintOnly)
@@ -285,13 +286,13 @@ namespace TAO
                  * An incorrect passphrase will leave the wallet locked, even if it was previously unlocked for minting.
                  */
                 if(!wallet.Unlock(strWalletPass, 0, false))
-                    throw APIException(-139, "The walletpassphrase was incorrect.");
+                    throw APIException(-180, "Incorrect walletpassphrase for Legacy wallet");
             }
 
             /* Retrieve the trust key to migrate from */
             Legacy::TrustKey trustKey;
             if(!FindTrustKey(wallet, trustKey))
-                throw APIException(-70, "Trust key not found for current wallet");
+                throw APIException(-181, "Trust key not found for Legacy wallet");
 
             /* Trust key checks complete. Now can use trust key address as input to migration transaction */
             Legacy::WalletTx wtx;
@@ -301,7 +302,7 @@ namespace TAO
             /* Get the available addresses from the wallet with their balances */
             std::map<Legacy::NexusAddress, int64_t> mapAddresses;
             if(!wallet.GetAddressBook().AvailableAddresses(wtx.nTime, mapAddresses))
-                throw APIException(-3, "Error extracting the address balances from wallet.");
+                throw APIException(-187, "Could not get addresses for Legacy wallet");
 
             /* Amount is current trust address balance less fee to send */
             int64_t nAmount = 0;
@@ -318,7 +319,7 @@ namespace TAO
             nAmount -= Legacy::TRANSACTION_FEE;
 
             if(nAmount < Legacy::MIN_TXOUT_AMOUNT)
-                throw APIException(-68, "Trust address balance too small");
+                throw APIException(-68, "Amount too small");
 
             /* Lock the signature chain. */
             LOCK(users->CREATE_MUTEX);
@@ -351,7 +352,7 @@ namespace TAO
 
             /* Check result of SendToNexusAddress only after returning to prior lock state */
             if(strError != "")
-                throw APIException(-17, strError);
+                throw APIException(-3, strError);
 
             /* Build a JSON response object. */
             ret["txid"] = wtx.GetHash().GetHex();

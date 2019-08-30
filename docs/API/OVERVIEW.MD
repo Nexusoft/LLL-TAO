@@ -313,6 +313,17 @@ Error Codes
 | -176 | Invalid supply amount.  The maximum token supply is 18446744073709551615 |
 | -177 | Invalid decimals amount.  Decimals must be whole number value between 0 and 8 |
 | -178 | Invalid supply / decimals.  The maximum combination of supply and decimals (supply * 10^decimals) cannot exceed 18446744073709551615 |
-
+| -179 | Legacy wallet is locked. walletpassphrase required |
+| -180 | Incorrect walletpassphrase for Legacy wallet |
+| -181 | Trust key not found for Legacy wallet |
+| -182 | Trust key previously migrated |
+| -183 | Previous stake transaction immature |
+| -184 | Previous stake transaction is not a Legacy transaction |
+| -185 | Previous transaction is not a stake transaction |
+| -186 | Previous stake does not belong to current wallet |
+| -187 | Could not get addresses for Legacy wallet |
+| -188 | Trust account already has genesis |
+| -189 | Trust account already has stake |
+| -190 | Trust account already has trust |
 
 
