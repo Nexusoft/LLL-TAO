@@ -44,6 +44,10 @@ namespace TAO
             if(!object.Parse())
                 return debug::error(FUNCTION, "Failed to parse account object register");
 
+            /* Check it is a trust account register. */
+            if(object.Standard() != TAO::Register::OBJECTS::TRUST)
+                return debug::error(FUNCTION, "cannot add stake to non-trust account");
+
             /* Get account starting values */
             uint64_t nStakePrev = object.get<uint64_t>("stake");
             uint64_t nBalancePrev = object.get<uint64_t>("balance");

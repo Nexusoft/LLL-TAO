@@ -53,6 +53,10 @@ namespace TAO
             if(!trust.Parse())
                 return debug::error(FUNCTION, "failed to parse trust account object register");
 
+            /* Check it is a trust account register. */
+            if(trust.Standard() != TAO::Register::OBJECTS::TRUST)
+                return debug::error(FUNCTION, "no genesis for non-trust account");
+
             /* Check that there is no stake. */
             if(trust.get<uint64_t>("stake") != 0)
                 return debug::error(FUNCTION, "cannot create genesis with already existing stake");
