@@ -517,14 +517,16 @@ namespace LLD
         if(!filesystem::exists(file))
         {
             /* Blank vector to write empty space in new disk file. */
-            std::vector<uint8_t> vSpace(HASHMAP_TOTAL_BUCKETS * HASHMAP_KEY_ALLOCATION, 0);
+            std::vector<uint8_t> vSpace(HASHMAP_KEY_ALLOCATION, 0);
 
             /* Write the blank data to the new file handle. */
-            std::fstream stream(file, std::ios::out | std::ios::binary | std::ios::trunc);
+            std::ofstream stream(file, std::ios::out | std::ios::binary | std::ios::app);
             if(!stream)
                 return debug::error(FUNCTION, strerror(errno));
 
-            stream.write((char*)&vSpace[0], vSpace.size());
+            for(uint32_t i = 0; i < HASHMAP_TOTAL_BUCKETS; ++i)
+                stream.write((char*)&vSpace[0], vSpace.size());
+
             stream.flush();
             stream.close();
 

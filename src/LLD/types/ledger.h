@@ -19,7 +19,7 @@ ________________________________________________________________________________
 
 #include <LLD/templates/sector.h>
 #include <LLD/cache/binary_lru.h>
-#include <LLD/keychain/shard_hashmap.h>
+#include <LLD/keychain/hashmap.h>
 
 #include <TAO/Operation/types/contract.h>
 
@@ -51,7 +51,7 @@ namespace LLD
      *  The database class for the Ledger Layer.
      *
      **/
-    class LedgerDB : public SectorDatabase<ShardHashMap, BinaryLRU>
+    class LedgerDB : public SectorDatabase<BinaryHashMap, BinaryLRU>
     {
         std::mutex MEMORY_MUTEX;
 

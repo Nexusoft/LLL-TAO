@@ -35,13 +35,13 @@ namespace LLD
         Ledger    = new LedgerDB(
                         FLAGS::CREATE | FLAGS::WRITE,
                         256 * 256 * 64,
-                        config::GetArg("-maxcache", 64) * 1024 * 512);
+                        4 * 1024 * 1024);
 
         /* Create the legacy database instance. */
         Legacy = new LegacyDB(
                         FLAGS::CREATE | FLAGS::WRITE,
                         256 * 256 * 64,
-                        config::GetArg("-maxcache", 64) * 1024 * 512);
+                        4 * 1024 * 1024);
 
         /* Create the trust database instance. */
         Trust  = new TrustDB(
