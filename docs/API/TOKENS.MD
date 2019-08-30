@@ -53,7 +53,7 @@ Create a new token object register. The API supports an alternative endpoint tha
 
 `supply` : The initial token supply amount.  Must be a whole number amount.
 
-`digits` : The maximum number of decimal places that can be applied to token amounts.  For example digits=2 will allow a token amount to be given to 2 decimal places.
+`decimals` : The maximum number of decimal places that can be applied to token amounts.  For example decimals=2 will allow a token amount to be given to 2 decimal places.
 
 ### Example:
 
@@ -63,7 +63,7 @@ Create a new token object register. The API supports an alternative endpoint tha
     "session": "16953804956473956578",
     "name": "ABC",
     "supply": 1000000,
-    "digits": 4
+    "decimals": 4
 }
 ```
 
@@ -225,7 +225,7 @@ Additionally the API supports passing a field name in the URL after the token na
     "unconfirmed": 0,
     "maxsupply": 1000,
     "currentsupply": 10,
-    "digits": 0
+    "decimals": 0
 }
 ```   
 
@@ -251,7 +251,7 @@ Additionally the API supports passing a field name in the URL after the token na
 
 `currentsupply` : The current amount of tokens that have been distributed to token accounts.
 
-`digits` : The maximum number of decimal places that can be applied to token amounts.  For example digits=2 will allow a token amount to be given to 2 decimal places.
+`decimals` : The maximum number of decimal places that can be applied to token amounts.  For example decimals=2 will allow a token amount to be given to 2 decimal places.
 
 ****
 

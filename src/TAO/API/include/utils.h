@@ -39,19 +39,19 @@ namespace TAO
         bool IsRegisterAddress(const std::string& strValueToCheck);
 
 
-        /** GetDigits
+        /** GetDecimals
          *
-         *  Retrieves the number of digits that applies to amounts for this token or account object.
+         *  Retrieves the number of decimals that applies to amounts for this token or account object.
          *  If the object register passed in is a token account then we need to look at the token definition
-         *  in order to get the digits.  The token is obtained by looking at the token_address field,
+         *  in order to get the decimals.  The token is obtained by looking at the token_address field,
          *  which contains the register address of the issuing token
          *
-         *  @param[in] object The Object Register to determine the digits for
+         *  @param[in] object The Object Register to determine the decimals for
          *
-         *  @return the number of digits that apply to amounts for this token or account
+         *  @return the number of decimals that apply to amounts for this token or account
          *
          **/
-        uint64_t GetDigits(const TAO::Register::Object& object);
+        uint64_t GetDecimals(const TAO::Register::Object& object);
 
 
         /** GetRegistersOwnedBySigChain

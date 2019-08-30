@@ -59,15 +59,15 @@ namespace TAO
         }
 
 
-        /* Retrieves the number of digits that applies to amounts for this token or account object.
+        /* Retrieves the number of decimals that applies to amounts for this token or account object.
         *  If the object register passed in is a token account then we need to look at the token definition
-        *  in order to get the digits.  The token is obtained by looking at the identifier field,
+        *  in order to get the decimals.  The token is obtained by looking at the identifier field,
         *  which contains the register address of the issuing token
         */
-        uint64_t GetDigits(const TAO::Register::Object& object)
+        uint64_t GetDecimals(const TAO::Register::Object& object)
         {
-            /* Declare the nDigits to return */
-            uint64_t nDigits = 0;
+            /* Declare the nDecimals to return */
+            uint64_t nDecimals = 0;
 
             /* Get the object standard. */
             uint8_t nStandard = object.Standard();
@@ -77,13 +77,13 @@ namespace TAO
             {
                 case TAO::Register::OBJECTS::TOKEN:
                 {
-                    nDigits = object.get<uint64_t>("digits");
+                    nDecimals = object.get<uint64_t>("decimals");
                     break;
                 }
 
                 case TAO::Register::OBJECTS::TRUST:
                 {
-                    nDigits = TAO::Ledger::NXS_DIGITS; // NXS token default digits
+                    nDecimals = TAO::Ledger::NXS_DIGITS; // NXS token default digits
                     break;
                 }
 
@@ -94,7 +94,7 @@ namespace TAO
 
                     /* Edge case for NXS token which has identifier 0, so no look up needed */
                     if(nIdentifier == 0)
-                        nDigits = TAO::Ledger::NXS_DIGITS;
+                        nDecimals = TAO::Ledger::NXS_DIGITS;
                     else
                     {
 
@@ -106,7 +106,7 @@ namespace TAO
                         if(!token.Parse())
                             throw APIException(-14, "Object failed to parse");
 
-                        nDigits = token.get<uint64_t>("digits");
+                        nDecimals = token.get<uint64_t>("decimals");
                     }
                     break;
                 }
@@ -118,7 +118,7 @@ namespace TAO
 
             }
 
-            return nDigits;
+            return nDecimals;
         }
 
 

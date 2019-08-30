@@ -149,13 +149,13 @@ namespace TAO
                 throw APIException(-66, "Account is not a NXS account.  Please use the tokens API for debiting non-NXS token accounts.");
 
 
-            uint64_t nDigits = TAO::Ledger::NXS_DIGITS;
+            uint64_t nDecimals = TAO::Ledger::NXS_DIGITS;
             uint64_t nCurrentBalance = object.get<uint64_t>("balance");
 
             /* Get the amount to debit. */
-            uint64_t nAmount = std::stod(params["amount"].get<std::string>()) * pow(10, nDigits);
+            uint64_t nAmount = std::stod(params["amount"].get<std::string>()) * pow(10, nDecimals);
 
-            /* Check the amount is not too small once converted by the token digits */
+            /* Check the amount is not too small once converted by the token Decimals */
             if(nAmount == 0)
                 throw APIException(-68, "Amount too small");
 

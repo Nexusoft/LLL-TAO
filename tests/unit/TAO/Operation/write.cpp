@@ -198,7 +198,7 @@ TEST_CASE( "Write Primitive Tests", "[operation]")
 
             //build stream
             Stream stream;
-            stream << std::string("digits") << uint8_t(OP::TYPES::UINT8_T) << uint8_t(99);
+            stream << std::string("decimals") << uint8_t(OP::TYPES::UINT8_T) << uint8_t(99);
 
             //build transaction object
             tx[0] << uint8_t(OP::WRITE) << hash << stream.Bytes();

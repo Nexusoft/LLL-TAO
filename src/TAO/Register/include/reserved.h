@@ -43,8 +43,8 @@ namespace TAO
             /* Used for token domain parameters for max supply. */
             "supply",
 
-            /* Used to determine digits of a token. */
-            "digits",
+            /* Used to determine decimals of a token. */
+            "decimals",
 
             /* Used to determine collective trust in a register. */
             "trust",

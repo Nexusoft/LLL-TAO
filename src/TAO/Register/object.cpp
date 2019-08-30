@@ -90,7 +90,7 @@ namespace TAO
 
                 /* Make the supply immutable for now (add continued distribution later). */
                 if(Check("supply", TYPES::UINT64_T, false)
-                && Check("digits", TYPES::UINT64_T, false))
+                && Check("decimals", TYPES::UINT64_T, false))
                 {
                     /* Set the return value. */
                     nType = OBJECTS::TOKEN;

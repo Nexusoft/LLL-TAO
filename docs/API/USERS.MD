@@ -715,7 +715,7 @@ This will list off all of the tokens that were created by a particular signature
         "balance": 0,
         "maxsupply": 26738388,
         "currentsupply": 26738388,
-        "digits": 2
+        "decimals": 2
     },
     {
         "name": "mytoken2",
@@ -723,7 +723,7 @@ This will list off all of the tokens that were created by a particular signature
         "balance": 990,
         "maxsupply": 1000,
         "currentsupply": 10,
-        "digits": 8
+        "decimals": 8
     }
 
 
@@ -745,7 +745,7 @@ This will list off all of the tokens that were created by a particular signature
 
 `currentsupply` : The current number of tokens that have been distributed from this token register.
 
-`digits` : The maximum number of decimal places that can be applied to token amounts.  For example digits=2 will allow a token amount to be given to 2 decimal places.
+`decimals` : The maximum number of decimal places that can be applied to token amounts.  For example decimals=2 will allow a token amount to be given to 2 decimal places.
 
 
 ****

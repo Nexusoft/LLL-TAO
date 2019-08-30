@@ -53,12 +53,12 @@ namespace TAO
          *
          *  @param[in] hashIdentifier The type of token this is
          *  @param[in] nSupply The total supply for token
-         *  @param[in] nDigits The total significant figures
+         *  @param[in] nDecimals The total significant figures
          *
          *  @return The object register just created.
          *
          **/
-        Object CreateToken(const uint256_t& hashIdentifier, const uint64_t nSupply, const uint64_t nDigits);
+        Object CreateToken(const uint256_t& hashIdentifier, const uint64_t nSupply, const uint64_t nDecimals);
 
 
         /** CreateAsset

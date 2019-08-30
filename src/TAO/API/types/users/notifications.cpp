@@ -492,7 +492,7 @@ namespace TAO
                     uint64_t nPartial = (nAmount * nBalance) / nSupply;
 
                     /* Update the JSON with the partial amount */
-                    obj["amount"] = (double) nPartial / pow(10, GetDigits(token));
+                    obj["amount"] = (double) nPartial / pow(10, GetDecimals(token));
 
                     /* Add the token account to the notification */
                     obj["proof"] = hashProof.ToString();

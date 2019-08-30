@@ -587,7 +587,7 @@ namespace TAO
                             throw APIException(-14, "Object failed to parse");
 
                         /* Add the amount to the response */
-                        ret["amount"]  = (double) nAmount / pow(10, GetDigits(object));
+                        ret["amount"]  = (double) nAmount / pow(10, GetDecimals(object));
 
                         /* Add the reference to the response */
                         ret["reference"] = nReference;
@@ -674,7 +674,7 @@ namespace TAO
                             throw APIException(-14, "Object failed to parse");
 
                         /* Add the amount to the response */
-                        ret["amount"]  = (double) nCredit / pow(10, GetDigits(account));
+                        ret["amount"]  = (double) nCredit / pow(10, GetDecimals(account));
 
                         /* Get the object standard. */
                         uint8_t nStandard = account.Standard();
@@ -827,7 +827,7 @@ namespace TAO
                             throw APIException(-14, "Object failed to parse");
 
                         /* Add the amount to the response */
-                        ret["amount"]  = (double) nAmount / pow(10, GetDigits(object));
+                        ret["amount"]  = (double) nAmount / pow(10, GetDecimals(object));
 
                         /* Get the object standard. */
                         uint8_t nStandard = object.Standard();
@@ -929,7 +929,7 @@ namespace TAO
                         ret["token"] = hashToken.ToString();
 
                         /* Handle digit conversion. */
-                        uint64_t nDigits = GetDigits(object);
+                        uint64_t nDecimals = GetDecimals(object);
 
                         /* In order to get the balance for this account we need to ensure that we use the state from disk, which 
                            will contain the confirmed balance.  If this is a new account then it won't be on disk yet so the 
@@ -957,21 +957,21 @@ namespace TAO
                         /* Calculate the available balance which is the last confirmed balance minus and mempool debits */
                         uint64_t nAvailable = nConfirmedBalance - nUnconfirmedOutgoing;
 
-                        ret["balance"]      = (double)nAvailable / pow(10, nDigits);
-                        ret["pending"]      = (double)nPending / pow(10, nDigits);
-                        ret["unconfirmed"]  = (double)nUnconfirmed / pow(10, nDigits);
+                        ret["balance"]      = (double)nAvailable / pow(10, nDecimals);
+                        ret["pending"]      = (double)nPending / pow(10, nDecimals);
+                        ret["unconfirmed"]  = (double)nUnconfirmed / pow(10, nDecimals);
 
                         /* Add Trust specific fields */
                         if(nStandard == TAO::Register::OBJECTS::TRUST)
                         {
                             /* The amount being staked */
-                            ret["stake"]    = (double)object.get<uint64_t>("stake") / pow(10, nDigits);
+                            ret["stake"]    = (double)object.get<uint64_t>("stake") / pow(10, nDecimals);
 
                             /* Get immature mined / staked */
                             uint64_t nImmatureMined, nImmatureStake;
                             GetImmature(object.hashOwner, nImmatureMined, nImmatureStake);
 
-                            ret["immature"]  = (double)nImmatureStake / pow(10, nDigits);
+                            ret["immature"]  = (double)nImmatureStake / pow(10, nDecimals);
                         }
 
 
@@ -982,8 +982,8 @@ namespace TAO
                     /* Handle for a token contract. */
                     case TAO::Register::OBJECTS::TOKEN:
                     {
-                        /* Handle digit conversion. */
-                        uint64_t nDigits = GetDigits(object);
+                        /* Handle decimals conversion. */
+                        uint64_t nDecimals = GetDecimals(object);
 
                         /* In order to get the balance for this account we need to ensure that we use the state from disk, which 
                            will contain the confirmed balance.  If this is a new account then it won't be on disk yet so the 
@@ -1012,14 +1012,14 @@ namespace TAO
                         uint64_t nAvailable = nConfirmedBalance - nUnconfirmedOutgoing;
 
                         ret["address"]          = hashRegister.ToString();
-                        ret["balance"]          = (double)nAvailable / pow(10, nDigits);
-                        ret["pending"]          = (double)nPending / pow(10, nDigits);
-                        ret["unconfirmed"]      = (double)nUnconfirmed / pow(10, nDigits);
+                        ret["balance"]          = (double)nAvailable / pow(10, nDecimals);
+                        ret["pending"]          = (double)nPending / pow(10, nDecimals);
+                        ret["unconfirmed"]      = (double)nUnconfirmed / pow(10, nDecimals);
                         
-                        ret["maxsupply"]        = (double) object.get<uint64_t>("supply") / pow(10, nDigits);
+                        ret["maxsupply"]        = (double) object.get<uint64_t>("supply") / pow(10, nDecimals);
                         ret["currentsupply"]    = (double) (object.get<uint64_t>("supply")
-                                                - object.get<uint64_t>("balance")) / pow(10, nDigits); // current supply is based on unconfirmed balance
-                        ret["digits"]           = nDigits;
+                                                - object.get<uint64_t>("balance")) / pow(10, nDecimals); // current supply is based on unconfirmed balance
+                        ret["decimals"]           = nDecimals;
 
                         break;
                     }

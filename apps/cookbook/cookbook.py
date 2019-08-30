@@ -1424,7 +1424,7 @@ def do_assets_list_asset_history_address():
 # build_accounts_html
 #
 tokens_create_token = \
-    '{}tokens/create/token?pin={}&session={}&name={}&supply={}&digits={}{}'
+    '{}tokens/create/token?pin={}&session={}&name={}&supply={}&decimals={}{}'
 tokens_create_account = \
     '{}tokens/create/account?pin={}&session={}&name={}&token_name={}{}'
 tokens_get_token_name = '{}tokens/get/token?session={}&name={}{}'
@@ -1466,7 +1466,7 @@ def build_tokens_html(sid, genid, o):
     session = form_parm.format("session", sid)
     name = form_parm.format("name", "")
     supply = form_parm.format("supply", "")
-    d = form_parm.format("digits", "2")
+    d = form_parm.format("decimals", "2")
     o += hl(tokens_create_token).format(h, pin, session, name, supply, d, f)
     o += "</td></tr>"
 
@@ -1549,8 +1549,8 @@ def do_tokens_create_token():
     session = bottle.request.forms.get("session")
     name = bottle.request.forms.get("name")
     supply = bottle.request.forms.get("supply")
-    digits = bottle.request.forms.get("digits")
-    if (no_parms(pin, session, name, supply, digits)):
+    decimals = bottle.request.forms.get("decimals")
+    if (no_parms(pin, session, name, supply, decimals)):
         m = red("tokens/create/token needs more input parameters")
         return(show(m, session))
     #endif
@@ -1561,11 +1561,11 @@ def do_tokens_create_token():
     if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
         if (sdk == None): return(output)
-        output = sdk.nexus_tokens_create_token(name, supply, digits)
+        output = sdk.nexus_tokens_create_token(name, supply, decimals)
         genid = sdk.genesis_id
     else:
         output = curl(tokens_create_token.format("", pin, session, name,
-            supply, digits, ""))
+            supply, decimals, ""))
         genid = ""
     #endif            
     output = json.dumps(output)
