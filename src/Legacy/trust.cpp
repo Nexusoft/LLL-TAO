@@ -158,4 +158,43 @@ namespace Legacy
         return LLD::Trust->ReadTrustKey(cKey, trustKey);
     }
 
+
+    /* Build the debit operation for a trust key migration with data from Legacy migrate transaction */
+    bool BuildMigrateDebit(TAO::Operation::Contract debit, const uint512_t hashTx)
+    {
+        /* Retrieve the Legacy tx corresponds to the debit */
+        Transaction tx;
+        if(!LLD::Legacy->ReadTx(hashTx, tx))
+            return debug::error(FUNCTION, "legacy migrate transaction not found");
+
+        /* Retrieve the trust key from the Legacy transaction */
+        TrustKey trustKey;
+        if(!FindMigratedTrustKey(tx, trustKey))
+            return debug::error(FUNCTION, "debit is not a trust key migration");
+
+        /* Retrieve the last coinstake for the trust key */
+        TAO::Ledger::BlockState state;
+        if(!LLD::Ledger->ReadBlock(trustKey.hashLastBlock, state))
+            return debug::error(FUNCTION, "debit trust key hash last missing");
+
+        if(state.vtx[0].first != TAO::Ledger::LEGACY)
+            return debug::error(FUNCTION, "debit last stake is not a legacy transaction");
+
+        Transaction txLast;
+        if(!LLD::Legacy->ReadTx(state.vtx[0].second, txLast))
+            return debug::error(FUNCTION, "debit missing last stake");
+
+        uint32_t nScore;
+        uint1024_t hashLastBlock;
+        uint32_t nSequence;
+
+        /* Extract the trust score */
+        if(!txLast.ExtractTrust(hashLastBlock, nSequence, nScore))
+            return debug::error(FUNCTION, "debit missing trust score");
+
+        debit << nScore << txLast.GetHash() << trustKey.GetHash();
+
+        return true;
+    }
+
 }

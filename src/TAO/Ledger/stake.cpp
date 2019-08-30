@@ -86,15 +86,15 @@ namespace TAO
 
 
         /* Calculate new trust score from parameters. */
-        uint64_t GetTrustScore(const uint64_t nTrustPrev, const uint64_t nStake, const uint64_t nBlockAge)
+        uint64_t GetTrustScore(const uint64_t nScorePrev, const uint64_t nBlockAge)
         {
-            uint64_t nTrust = 0;
+            uint64_t nScore = 0;
             uint64_t nBlockAgeMax = MaxBlockAge();
 
             /* Block age less than maximum awards trust score increase equal to the current block age. */
             if(nBlockAge <= nBlockAgeMax)
             {
-                nTrust = nTrustPrev + nBlockAge;
+                nScore = nScorePrev + nBlockAge;
             }
             else
             {
@@ -104,18 +104,18 @@ namespace TAO
                 uint64_t nPenalty = (nBlockAge - nBlockAgeMax) * (uint64_t)3;
 
                 /* Trust back to zero if penalty more than previous score. */
-                if(nPenalty < nTrustPrev)
-                    nTrust = nTrustPrev - nPenalty;
+                if(nPenalty < nScorePrev)
+                    nScore = nScorePrev - nPenalty;
                 else
-                    nTrust = 0;
+                    nScore = 0;
             }
 
-            return nTrust;
+            return nScore;
         }
 
 
         /* Calculate trust score penalty that results from unstaking a portion of stake balance. */
-        uint64_t GetUnstakePenalty(const uint64_t nTrustPrev, const uint64_t nStakePrev,
+        uint64_t GetUnstakePenalty(const uint64_t nScorePrev, const uint64_t nStakePrev,
                                    const uint64_t nStakeNew, const uint256_t& hashGenesis)
         {
             /* Unstake penalty only applies if stake balance is reduced */
@@ -199,10 +199,10 @@ namespace TAO
              * so the if-check above is true and penalty is 0 because have only removed a portion of the stake added
              * during the grace period.
              */
-            uint64_t nTrustNew = ((nStakeNew + (uint64_t)nStakeAdded) * nTrustPrev) / nStakePrev;
+            uint64_t nScore = ((nStakeNew + (uint64_t)nStakeAdded) * nScorePrev) / nStakePrev;
 
             /* Penalty is amount of trust reduction */
-            return (nTrustPrev - nTrustNew);
+            return (nScorePrev - nScore);
         }
 
 

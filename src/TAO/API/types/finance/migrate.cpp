@@ -230,10 +230,10 @@ namespace TAO
 
             /* Validate that the trust account is new (no stake or trust) */
             if(reg.get<uint64_t>("stake") != 0)
-                throw APIException(-189, "Failed to create transaction. Trust account already has stake.");
+                throw APIException(-189, "Trust account already has stake.");
 
             if(reg.get<uint64_t>("trust") != 0)
-                throw APIException(-190, "Failed to create transaction. Trust account already has trust.");
+                throw APIException(-190, "Trust account already has trust.");
 
             hashAddress = hashRegister;
 

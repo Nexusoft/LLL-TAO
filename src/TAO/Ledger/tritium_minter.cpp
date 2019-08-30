@@ -339,7 +339,7 @@ namespace TAO
                 nBlockAge = TAO::Ledger::ChainState::stateBest.load().GetBlockTime() - stateLast.GetBlockTime();
 
                 /* Calculate the new trust score */
-                nTrust = GetTrustScore(nTrustPrev, nStake, nBlockAge);
+                nTrust = GetTrustScore(nTrustPrev, nBlockAge);
 
                 /* Initialize block producer for Trust operation with hashLastTrust, new trust score.
                  * The coinstake reward will be added based on time when block is found.
