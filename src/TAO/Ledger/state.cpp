@@ -803,6 +803,10 @@ namespace TAO
                     /* Write the last to disk. */
                     if(!LLD::Ledger->WriteLast(tx.hashGenesis, hash))
                         return debug::error(FUNCTION, "failed to write last hash");
+
+                    /* If tx is coinstake, also write the last stake. */
+                    if(tx.IsCoinStake() && !LLD::Ledger->WriteStake(tx.hashGenesis, hash))
+                        return debug::error(FUNCTION, "failed to write last stake");
                 }
                 else if(proof.first == TYPE::LEGACY_TX)
                 {

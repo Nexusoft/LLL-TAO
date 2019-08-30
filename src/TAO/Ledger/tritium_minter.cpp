@@ -210,12 +210,7 @@ namespace TAO
             {
                 fGenesis = true;
 
-                /* Staking Genesis for trust account. Trust account is not indexed, look up using name register. */
-
-                /* Retrieve the name register for the user's trust account */
-                TAO::Register::Object name;
-
-                /* Retrieve the trust account address from the name register mapping. */
+                /* Staking Genesis for trust account. Trust account is not indexed, need to use trust account address. */
                 TAO::Register::Address hashRegister = TAO::Register::Address(std::string("trust"), user->Genesis(), TAO::Register::Address::TRUST);
 
                 /* Retrieve the trust account */
