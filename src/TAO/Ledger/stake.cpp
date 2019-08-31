@@ -206,6 +206,19 @@ namespace TAO
         }
 
 
+        /* Calculate trust score penalty from unstaking an amount from a trustAccout */
+        uint64_t GetUnstakePenalty(const TAO::Register::Object trustAccount, const uint64_t nUnstake)
+        {
+            uint64_t nStake = trustAccount.get<uint64_t>("stake");
+
+            uint64_t nStakeNew = 0;
+            if(nUnstake < nStake)
+                nStakeNew = nStake - nUnstake;
+
+            return GetUnstakePenalty(trustAccount.get<uint64_t>("trust"), nStake, nStakeNew, trustAccount.hashOwner);
+        }
+
+
         /* Calculate the proof of stake block weight for a given block age. */
         double BlockWeight(const uint64_t nBlockAge)
         {

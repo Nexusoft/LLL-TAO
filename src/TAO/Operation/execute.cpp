@@ -705,6 +705,10 @@ namespace TAO
                         if(!Unstake::Verify(contract))
                             return false;
 
+                        contract.Reset();
+
+                        contract.Seek(1);
+
                         /* Amount of funds to move. */
                         uint64_t nAmount = 0;
                         contract >> nAmount;

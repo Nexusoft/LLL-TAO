@@ -11,9 +11,12 @@
 
 ____________________________________________________________________________________________*/
 
+#include <TAO/Operation/include/unstake.h>
+
 #include <LLD/include/global.h>
 
-#include <TAO/Operation/include/unstake.h>
+#include <TAO/Ledger/include/stake.h>
+
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/types/object.h>
@@ -43,10 +46,6 @@ namespace TAO
             /* Parse the account object register. */
             if(!object.Parse())
                 return debug::error(FUNCTION, "Failed to parse account object register");
-
-            /* Check it is a trust account register. */
-            if(object.Standard() != TAO::Register::OBJECTS::TRUST)
-                return debug::error(FUNCTION, "cannot unstake from non-trust account");
 
             /* Get account starting values */
             uint64_t nTrustPrev    = object.get<uint64_t>("trust");
@@ -93,6 +92,14 @@ namespace TAO
             uint8_t OP = 0;
             contract >> OP;
 
+            /* Amount of funds to move. */
+            uint64_t nAmount = 0;
+            contract >> nAmount;
+
+            /* Trust score penalty from unstake. */
+            uint64_t nPenalty = 0;
+            contract >> nPenalty;
+
             /* Check operation byte. */
             if(OP != OP::UNSTAKE)
                 return debug::error(FUNCTION, "called with incorrect OP");
@@ -106,19 +113,30 @@ namespace TAO
                 return debug::error(FUNCTION, "register script not in pre-state");
 
             /* Get the pre-state. */
-            TAO::Register::State state;
-            contract >>= state;
+            TAO::Register::Object object;
+            contract >>= object;
 
             /* Check that pre-state is valid. */
-            if(!state.IsValid())
+            if(!object.IsValid())
                 return debug::error(FUNCTION, "pre-state is in invalid state");
 
             /* Check ownership of register. */
-            if(state.hashOwner != contract.Caller())
+            if(object.hashOwner != contract.Caller())
                 return debug::error(FUNCTION, "caller not authorized ", contract.Caller().SubString());
 
-            /* Reset the register streams. */
-            contract.Reset(Contract::REGISTERS);
+            /* Parse the account object register. */
+            if(!object.Parse())
+                return debug::error(FUNCTION, "Failed to parse account object register");
+
+            /* Check it is a trust account register. */
+            if(object.Standard() != TAO::Register::OBJECTS::TRUST)
+                return debug::error(FUNCTION, "cannot unstake from non-trust account");
+
+            if(nAmount > object.get<uint64_t>("stake"))
+                return debug::error(FUNCTION, "cannot unstake more than existing stake balance");
+
+            if(nPenalty != TAO::Ledger::GetUnstakePenalty(object, nAmount))
+                return debug::error(FUNCTION, "unstake penalty mismatch");
 
             return true;
         }
