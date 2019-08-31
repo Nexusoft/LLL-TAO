@@ -17,6 +17,7 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
+#include <TAO/Register/types/object.h>
 
 /**
  *  The functions defined here provide a single source for settings and calculations related to Nexus Proof of Stake.
@@ -109,6 +110,19 @@ namespace TAO
          **/
         uint64_t GetUnstakePenalty(const uint64_t nScorePrev, const uint64_t nStakePrev,
                                    const uint64_t nStakeNew, const uint256_t& hashGenesis);
+
+
+        /** GetUnstakePenalty
+         *
+         *  Calculate amount of trust score reduction from unstaking an amount from a trustAccout.
+         *
+         *  @param[in] trustAccount - the trust account to unstake from
+         *  @param[in] nUnstake - the amount to unstake
+         *
+         *  @return value trust score penalty
+         *
+         **/
+        uint64_t GetUnstakePenalty(const TAO::Register::Object trustAccount, const uint64_t nUnstake);
 
 
         /** BlockWeight
