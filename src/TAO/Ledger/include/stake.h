@@ -85,21 +85,21 @@ namespace TAO
          *
          *  Calculate new trust score from parameters.
          *
-         *  @param[in] nTrustPrev - previous trust score of trust account
+         *  @param[in] nScorePrev - previous trust score of trust account
          *  @param[in] nStake - current stake balance
          *  @param[in] nBlockAge - current block age (time since last stake block for trust account)
          *
          *  @return new value for trust score
          *
          **/
-        uint64_t GetTrustScore(const uint64_t nTrustPrev, const uint64_t nStake, const uint64_t nBlockAge);
+        uint64_t GetTrustScore(const uint64_t nScorePrev, const uint64_t nBlockAge);
 
 
         /** GetUnstakePenalty
          *
          *  Calculate amount of trust score reduction that results from unstaking a portion of stake balance.
          *
-         *  @param[in] nTrustPrev - previous trust score of trust account
+         *  @param[in] nScorePrev - previous trust score of trust account
          *  @param[in] nStakePrev - previous stake amount for trust account
          *  @param[in] nStakeNew - new stake amount for trust account
          *  @param[in] hashGenesis - user genesis of trust account owner
@@ -107,7 +107,7 @@ namespace TAO
          *  @return value trust score penalty
          *
          **/
-        uint64_t GetUnstakePenalty(const uint64_t nTrustPrev, const uint64_t nStakePrev,
+        uint64_t GetUnstakePenalty(const uint64_t nScorePrev, const uint64_t nStakePrev,
                                    const uint64_t nStakeNew, const uint256_t& hashGenesis);
 
 

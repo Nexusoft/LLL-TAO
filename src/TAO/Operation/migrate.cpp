@@ -118,11 +118,21 @@ namespace TAO
             TAO::Register::Address hashAccount;
             contract >> hashAccount;
 
-            contract.Seek(72);
+            /* Get the trust key hash. (hash from) */
+            uint576_t hashKey;
+            contract >> hashKey;
 
             /* Get the amount to migrate. */
             uint64_t nAmount = 0;
             contract >> nAmount;
+
+            /* Get the trust score to migrate. */
+            uint32_t nScore = 0;
+            contract >> nScore;
+
+            /* Get the hash last stake. */
+            uint512_t hashLast = 0;
+            contract >> hashLast;
 
             /* Get the byte from pre-state. */
             uint8_t nState = 0;
@@ -167,6 +177,21 @@ namespace TAO
             uint64_t nDebit = 0;
             debit >> nDebit;
 
+            /* Skip placeholder */
+            debit.Seek(8);
+
+            /* Get the debit trust score */
+            uint32_t nScoreDebit = 0;
+            contract >> nScoreDebit;
+
+            /* Get the debit last stake hash */
+            uint512_t hashLastDebit = 0;
+            contract >> hashLastDebit;
+
+            /* Get the trust key hash */
+            uint576_t hashKeyDebit;
+            contract >> hashKeyDebit;
+
             /* Check for reserved values. */
             if(TAO::Register::Reserved(hashTo))
                 return debug::error(FUNCTION, "cannot credit register with reserved address");
@@ -177,11 +202,23 @@ namespace TAO
 
             /* Validate migrate is to address in UTXO output */
             if(hashTo != hashAccount)
-                return debug::error(FUNCTION, "must have same address as UTXO output");
+                return debug::error(FUNCTION, "trust account register address must match debit");
 
             /* Check the debit amount. */
             if(nDebit != nAmount)
                 return debug::error(FUNCTION, "debit and credit value mismatch");
+
+            /* Verify the trust score */
+            if(nScoreDebit != nScore)
+                return debug::error(FUNCTION, "debit and credit trust score mismatch");
+
+            /* Verify the hash last stake */
+            if(hashLastDebit != hashLast)
+                return debug::error(FUNCTION, "debit and credit hash last stake mismatch");
+
+            /* Verify the trust key hash */
+            if(hashKeyDebit != hashKey)
+                return debug::error(FUNCTION, "debit and credit trust key mismatch");
 
             return true;
         }

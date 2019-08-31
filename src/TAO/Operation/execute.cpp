@@ -13,6 +13,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <Legacy/include/trust.h>
 #include <Legacy/types/script.h>
 
 #include <TAO/Operation/include/enum.h>
@@ -933,6 +934,10 @@ namespace TAO
                         /* Retrieve a debit for the Legacy tx output. Migrate tx will only have one output (index 0) */
                         const Contract debit = LLD::Ledger->ReadContract(hashTx, 0);
 
+                        /* Add migrate data from Legacy tx to debit (base ReadContract returns generic Legacy send to register) */
+                        if(!::Legacy::BuildMigrateDebit(debit, hashTx))
+                            return false;
+
                         /* Verify the operation rules. */
                         if(!Migrate::Verify(contract, debit))
                             return false;
@@ -958,7 +963,7 @@ namespace TAO
                         uint32_t nScore = 0;
                         contract >> nScore;
 
-                        /* Get the hash last trust. */
+                        /* Get the hash last stake. */
                         uint512_t hashLast = 0;
                         contract >> hashLast;
 

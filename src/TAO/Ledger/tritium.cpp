@@ -524,7 +524,7 @@ namespace TAO
                 nBlockAge = statePrev.GetBlockTime() - stateLast.GetBlockTime();
 
                 /* Calculate the new trust score */
-                nTrust = GetTrustScore(nTrustPrev, nStake, nBlockAge);
+                nTrust = GetTrustScore(nTrustPrev, nBlockAge);
 
                 /* Validate the trust score calculation */
                 if(nClaimedTrust != nTrust)
