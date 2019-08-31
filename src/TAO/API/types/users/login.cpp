@@ -41,6 +41,9 @@ namespace TAO
             /* JSON return value. */
             json::json ret;
 
+            /* Pin parameter. */
+            SecureString strPin;
+
             /* Check for username parameter. */
             if(params.find("username") == params.end())
                 throw APIException(-127, "Missing username");
@@ -63,12 +66,13 @@ namespace TAO
             if(strPass.size() == 0)
                 throw APIException(-134, "Zero-length password");
 
-            /* Check for pin parameter. */
-            if(params.find("pin") == params.end())
+            /* Check for pin parameter. Parse the pin parameter. */
+            if(params.find("pin") != params.end())
+                strPin = SecureString(params["pin"].get<std::string>().c_str());
+            else if(params.find("PIN") != params.end())
+                strPin = SecureString(params["PIN"].get<std::string>().c_str());
+            else
                 throw APIException(-129, "Missing PIN");
-
-            /* Parse out pin. */
-            SecureString strPin  = SecureString(params["pin"].get<std::string>().c_str());
 
             /* Check for pin size. */
             if(strPin.size() == 0)

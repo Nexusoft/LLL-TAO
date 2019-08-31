@@ -37,6 +37,9 @@ namespace TAO
             /* JSON return value. */
             json::json ret;
 
+            /* Pin parameter. */
+            SecureString strPin;
+
             /* Restrict Unlock to sessionless API */
             if(config::fMultiuser.load())
                 throw APIException(-145, "Unlock not supported in multiuser mode");
@@ -45,12 +48,13 @@ namespace TAO
             if(!mapSessions.count(0))
                 throw APIException(-11, "User not logged in.");
 
-            /* Check for pin parameter. */
-            if(params.find("pin") == params.end())
+            /* Check for pin parameter. Parse the pin parameter. */
+            if(params.find("pin") != params.end())
+                strPin = SecureString(params["pin"].get<std::string>().c_str());
+            else if(params.find("PIN") != params.end())
+                strPin = SecureString(params["PIN"].get<std::string>().c_str());
+            else
                 throw APIException(-129, "Missing PIN");
-
-            /* Parse the pin parameter. */
-            SecureString strPin = SecureString(params["pin"].get<std::string>().c_str());
 
             if(strPin.size() == 0)
                 throw APIException(-135, "Zero-length PIN");

@@ -45,6 +45,9 @@ namespace TAO
             /* JSON return value. */
             json::json ret;
 
+            /* Pin parameter. */
+            SecureString strPin;
+
             /* Check for username parameter. */
             if(params.find("username") == params.end())
                 throw APIException(-127, "Missing username");
@@ -56,8 +59,12 @@ namespace TAO
             if(params.find("password") == params.end())
                 throw APIException(-128, "Missing password");
 
-            /* Check for pin parameter. */
-            if(params.find("pin") == params.end())
+            /* Check for pin parameter. Parse the pin parameter. */
+            if(params.find("pin") != params.end())
+                strPin = SecureString(params["pin"].get<std::string>().c_str());
+            else if(params.find("PIN") != params.end())
+                strPin = SecureString(params["PIN"].get<std::string>().c_str());
+            else
                 throw APIException(-129, "Missing PIN");
 
             /* Generate the signature chain. */
@@ -75,7 +82,7 @@ namespace TAO
             }
 
             /* Create the transaction. */
-            if(!TAO::Ledger::CreateTransaction(user, params["pin"].get<std::string>().c_str(), tx))
+            if(!TAO::Ledger::CreateTransaction(user, strPin, tx))
             {
                 user.free();
                 throw APIException(-17, "Failed to create transaction");
@@ -103,7 +110,7 @@ namespace TAO
 
             /* Add the fee */
             AddFee(tx);
-            
+
             /* Calculate the prestates and poststates. */
             if(!tx.Build())
             {
@@ -112,7 +119,7 @@ namespace TAO
             }
 
             /* Sign the transaction. */
-            if(!tx.Sign(user->Generate(tx.nSequence, params["pin"].get<std::string>().c_str())))
+            if(!tx.Sign(user->Generate(tx.nSequence, strPin)))
             {
                 user.free();
                 throw APIException(-31, "Ledger failed to sign transaction");

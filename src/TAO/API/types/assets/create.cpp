@@ -117,6 +117,7 @@ namespace TAO
                 {
                     /* Skip any incoming parameters that are keywords used by this API method*/
                     if(it.key() == "pin"
+                    || it.key() == "PIN"
                     || it.key() == "session"
                     || it.key() == "name"
                     || it.key() == "format"
