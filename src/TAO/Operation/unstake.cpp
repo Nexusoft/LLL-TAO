@@ -55,6 +55,16 @@ namespace TAO
             if(nAmount > nStakePrev)
                 return debug::error(FUNCTION, "cannot unstake more than existing stake balance");
 
+            /* Check it is a trust account register. */
+            if(object.Standard() != TAO::Register::OBJECTS::TRUST)
+                return debug::error(FUNCTION, "cannot unstake from non-trust account");
+
+            if(nAmount > nStakePrev)
+                return debug::error(FUNCTION, "cannot unstake more than existing stake balance");
+
+            if(nPenalty != TAO::Ledger::GetUnstakePenalty(object, nAmount))
+                return debug::error(FUNCTION, "unstake penalty mismatch");
+
             /* Write the new trust to object register. */
             if(!object.Write("trust", std::max((nTrustPrev - nPenalty), uint64_t(0))))
                 return debug::error(FUNCTION, "trust could not be written to object register");
@@ -92,14 +102,6 @@ namespace TAO
             uint8_t OP = 0;
             contract >> OP;
 
-            /* Amount of funds to move. */
-            uint64_t nAmount = 0;
-            contract >> nAmount;
-
-            /* Trust score penalty from unstake. */
-            uint64_t nPenalty = 0;
-            contract >> nPenalty;
-
             /* Check operation byte. */
             if(OP != OP::UNSTAKE)
                 return debug::error(FUNCTION, "called with incorrect OP");
@@ -123,20 +125,6 @@ namespace TAO
             /* Check ownership of register. */
             if(object.hashOwner != contract.Caller())
                 return debug::error(FUNCTION, "caller not authorized ", contract.Caller().SubString());
-
-            /* Parse the account object register. */
-            if(!object.Parse())
-                return debug::error(FUNCTION, "Failed to parse account object register");
-
-            /* Check it is a trust account register. */
-            if(object.Standard() != TAO::Register::OBJECTS::TRUST)
-                return debug::error(FUNCTION, "cannot unstake from non-trust account");
-
-            if(nAmount > object.get<uint64_t>("stake"))
-                return debug::error(FUNCTION, "cannot unstake more than existing stake balance");
-
-            if(nPenalty != TAO::Ledger::GetUnstakePenalty(object, nAmount))
-                return debug::error(FUNCTION, "unstake penalty mismatch");
 
             return true;
         }
