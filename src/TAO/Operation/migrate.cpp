@@ -31,8 +31,8 @@ namespace TAO
     {
 
         /* Commit the final state to disk. */
-        bool Migrate::Commit(const TAO::Register::Object& account, const TAO::Register::Address& hashAddress,
-                             const uint256_t& hashCaller, const uint512_t& hashTx, const uint576_t& hashKey,
+        bool Migrate::Commit(const TAO::Register::Object& trust, const TAO::Register::Address& hashAddress,
+                             const uint256_t& hashCaller, const uint512_t& hashTx, const uint512_t& hashKey,
                              const uint512_t& hashLast, const uint8_t nFlags)
         {
             /* Check if this transfer is already claimed. Trust migration is always a send from a Legacy trust key,
@@ -47,7 +47,7 @@ namespace TAO
                 return debug::error(FUNCTION, "failed to write migrate credit proof");
 
             /* Write the new register's state. */
-            if(!LLD::Register->WriteState(hashAddress, account, nFlags))
+            if(!LLD::Register->WriteState(hashAddress, trust, nFlags))
                 return debug::error(FUNCTION, "failed to write post-state to disk");
 
             /* Set hash last trust for trust account to hash last trust for Legacy trust key. */
@@ -63,32 +63,32 @@ namespace TAO
 
 
         /* Migrate trust key data to trust account register. */
-        bool Migrate::Execute(TAO::Register::Object &account, const uint64_t nAmount,
+        bool Migrate::Execute(TAO::Register::Object &trust, const uint64_t nAmount,
                               const uint32_t nScore, const uint64_t nTimestamp)
         {
             /* Parse the account object register. */
-            if(!account.Parse())
+            if(!trust.Parse())
                 return debug::error(FUNCTION, "failed to parse account object register");
 
             /* Check migrating to a trust account register. */
-            if(account.Standard() != TAO::Register::OBJECTS::TRUST)
+            if(trust.Standard() != TAO::Register::OBJECTS::TRUST)
                 return debug::error(FUNCTION, "cannot migrate to a non-trust account");
 
             /* Write the migrated stake to trust account register. */
-            if(!account.Write("stake", nAmount))
-                return debug::error(FUNCTION, "stake could not be written to trust account register");
+            if(!trust.Write("stake", nAmount))
+                return debug::error(FUNCTION, "stake could not be written to object register");
 
             /* Write the migrated trust to trust account register. Also converts old trust score from uint32_t to uint64_t */
-            if(!account.Write("trust", static_cast<uint64_t>(nScore)))
-                return debug::error(FUNCTION, "trust could not be written to trust account register");
+            if(!trust.Write("trust", static_cast<uint64_t>(nScore)))
+                return debug::error(FUNCTION, "trust could not be written to object register");
 
             /* Update the state register's timestamp. */
-            account.nModified = nTimestamp;
-            account.SetChecksum();
+            trust.nModified = nTimestamp;
+            trust.SetChecksum();
 
             /* Check that the register is in a valid state. */
-            if(!account.IsValid())
-                return debug::error(FUNCTION, "memory address is in invalid state");
+            if(!trust.IsValid())
+                return debug::error(FUNCTION, "trust account is in invalid state");
 
             return true;
         }
@@ -119,7 +119,7 @@ namespace TAO
             contract >> hashAccount;
 
             /* Get the trust key hash. (hash from) */
-            uint576_t hashKey;
+            uint512_t hashKey;
             contract >> hashKey;
 
             /* Get the amount to migrate. */
@@ -143,15 +143,15 @@ namespace TAO
                 return debug::error(FUNCTION, "register contract not in pre-state");
 
             /* Read pre-states. */
-            TAO::Register::Object account;
-            contract >>= account;
+            TAO::Register::Object trust;
+            contract >>= trust;
 
             /* Check contract account */
-            if(contract.Caller() != account.hashOwner)
+            if(contract.Caller() != trust.hashOwner)
                 return debug::error(FUNCTION, "no write permissions for caller ", contract.Caller().SubString());
 
             /* Parse the account. */
-            if(!account.Parse())
+            if(!trust.Parse())
                 return debug::error(FUNCTION, "failed to parse account");
 
             /* Reset debit streams */
@@ -189,7 +189,7 @@ namespace TAO
             contract >> hashLastDebit;
 
             /* Get the trust key hash */
-            uint576_t hashKeyDebit;
+            uint512_t hashKeyDebit;
             contract >> hashKeyDebit;
 
             /* Check for reserved values. */

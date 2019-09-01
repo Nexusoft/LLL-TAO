@@ -41,48 +41,49 @@ namespace TAO
 
 
         /* Move from stake to balance for trust account (unlock stake). */
-        bool Unstake::Execute(TAO::Register::Object &object, const uint64_t nAmount, const uint64_t nPenalty, const uint64_t nTimestamp)
+        bool Unstake::Execute(TAO::Register::Object &trust, const uint64_t nAmount, const uint64_t nPenalty, const uint64_t nTimestamp)
         {
             /* Parse the account object register. */
-            if(!object.Parse())
+            if(!trust.Parse())
                 return debug::error(FUNCTION, "Failed to parse account object register");
 
-            /* Get account starting values */
-            uint64_t nTrustPrev    = object.get<uint64_t>("trust");
-            uint64_t nBalancePrev  = object.get<uint64_t>("balance");
-            uint64_t nStakePrev    = object.get<uint64_t>("stake");
-
-            if(nAmount > nStakePrev)
-                return debug::error(FUNCTION, "cannot unstake more than existing stake balance");
-
             /* Check it is a trust account register. */
-            if(object.Standard() != TAO::Register::OBJECTS::TRUST)
+            if(trust.Standard() != TAO::Register::OBJECTS::TRUST)
                 return debug::error(FUNCTION, "cannot unstake from non-trust account");
 
+            /* Get account starting values */
+            uint64_t nTrustPrev    = trust.get<uint64_t>("trust");
+            uint64_t nBalancePrev  = trust.get<uint64_t>("balance");
+            uint64_t nStakePrev    = trust.get<uint64_t>("stake");
+
             if(nAmount > nStakePrev)
                 return debug::error(FUNCTION, "cannot unstake more than existing stake balance");
 
-            if(nPenalty != TAO::Ledger::GetUnstakePenalty(object, nAmount))
+            if(nPenalty != TAO::Ledger::GetUnstakePenalty(trust, nAmount))
                 return debug::error(FUNCTION, "unstake penalty mismatch");
 
             /* Write the new trust to object register. */
-            if(!object.Write("trust", std::max((nTrustPrev - nPenalty), uint64_t(0))))
+            uint64_t nTrust = 0;
+            if(nPenalty < nTrust)
+                nTrust = nTrustPrev - nPenalty;
+
+            if(!trust.Write("trust", nTrust))
                 return debug::error(FUNCTION, "trust could not be written to object register");
 
             /* Write the new balance to object register. */
-            if(!object.Write("balance", nBalancePrev + nAmount))
+            if(!trust.Write("balance", nBalancePrev + nAmount))
                 return debug::error(FUNCTION, "balance could not be written to object register");
 
             /* Write the new stake to object register. */
-            if(!object.Write("stake", nStakePrev - nAmount))
+            if(!trust.Write("stake", nStakePrev - nAmount))
                 return debug::error(FUNCTION, "stake could not be written to object register");
 
             /* Update the state register's timestamp. */
-            object.nModified = nTimestamp;
-            object.SetChecksum();
+            trust.nModified = nTimestamp;
+            trust.SetChecksum();
 
             /* Check that the register is in a valid state. */
-            if(!object.IsValid())
+            if(!trust.IsValid())
                 return debug::error(FUNCTION, "trust account is in invalid state");
 
             return true;

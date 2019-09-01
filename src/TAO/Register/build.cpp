@@ -627,7 +627,7 @@ namespace TAO
                         contract >> hashAccount;
 
                         /* Seek to amount. */
-                        contract.Seek(72);
+                        contract.Seek(64);
 
                         /* Get the amount to migrate. */
                         uint64_t nAmount = 0;
