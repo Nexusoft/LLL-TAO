@@ -20,7 +20,6 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/include/timelocks.h>
-#include <TAO/Ledger/types/transaction.h>
 
 #include <TAO/Operation/include/enum.h>
 
@@ -306,6 +305,39 @@ namespace TAO
             uint64_t nStakeReward = (nStake * nStakeRate * nStakeTime) / ONE_YEAR;
 
             return nStakeReward;
+        }
+
+
+        /** Retrieves the most recent stake transaction for a user account. */
+        bool FindLastStake(const Genesis& hashGenesis, Transaction& tx)
+        {
+            /* Start with most recent signature chain transaction. */
+            uint512_t hashLast = 0;
+            if(!LLD::Ledger->ReadLast(hashGenesis, hashLast))
+                return false;
+
+            /* Loop until find stake transaction or reach first transaction on user acount (hashLast == 0). */
+            while(hashLast != 0)
+            {
+                /* Get the transaction for the current hashLast. */
+                Transaction txCheck;
+                if(!LLD::Ledger->ReadTx(hashLast, txCheck))
+                    return false;
+
+                /* Test whether the transaction contains a staking operation */
+                if(txCheck.IsCoinStake())
+                {
+                    /* Found last stake transaction. */
+                    tx = txCheck;
+
+                    return true;
+                }
+
+                /* Stake tx not found, yet, iterate to next previous user tx */
+                hashLast = txCheck.hashPrevTx;
+            }
+
+            return false;
         }
 
     }

@@ -50,6 +50,10 @@ namespace TAO
             if(!LLD::Register->WriteState(hashAddress, trust, nFlags))
                 return debug::error(FUNCTION, "failed to write post-state to disk");
 
+            /* Update the register database to index the trust account. (migrated trust account is post-Genesis) */
+            if(!LLD::Register->IndexTrust(hashCaller, hashAddress))
+                return debug::error(FUNCTION, "could not index the trust account genesis");
+
             /* Set hash last trust for trust account to hash last trust for Legacy trust key. */
             if(!LLD::Ledger->WriteStake(hashCaller, hashLast))
                 return debug::error(FUNCTION, "failed to write last trust to disk");
@@ -73,6 +77,14 @@ namespace TAO
             /* Check migrating to a trust account register. */
             if(trust.Standard() != TAO::Register::OBJECTS::TRUST)
                 return debug::error(FUNCTION, "cannot migrate to a non-trust account");
+
+            /* Check that there is no stake. */
+            if(trust.get<uint64_t>("stake") != 0)
+                return debug::error(FUNCTION, "cannot migrate with already existing stake");
+
+            /* Check that there is no trust. */
+            if(trust.get<uint64_t>("trust") != 0)
+                return debug::error(FUNCTION, "cannot migrate with already existing trust");
 
             /* Write the migrated stake to trust account register. */
             if(!trust.Write("stake", nAmount))
@@ -153,6 +165,10 @@ namespace TAO
             /* Parse the account. */
             if(!trust.Parse())
                 return debug::error(FUNCTION, "failed to parse account");
+
+            /* Check whether a trust account Genesis already indexed. */
+            if(LLD::Register->HasTrust(contract.Caller()))
+                return debug::error(FUNCTION, "trust account is not new");
 
             /* Reset debit streams */
             debit.Reset();

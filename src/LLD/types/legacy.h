@@ -226,6 +226,18 @@ namespace LLD
          **/
         bool HasTrustConversion(const uint512_t& hashTrust);
 
+
+        /** EraseTrustConversion
+         *
+         *  Erase a Legacy trust key conversion.
+         *
+         *  @param[in] hashTrust The trust key hash.
+         *
+         *  @return True if the trust key erased, false otherwise.
+         *
+         **/
+        bool EraseTrustConversion(const uint512_t& hashTrust);
+
     };
 }
 
