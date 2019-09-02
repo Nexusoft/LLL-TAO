@@ -38,7 +38,7 @@ namespace TAO
 
             /* Read the Name Object */
             if(!LLD::Register->ReadState(hashAddress, nameRegister, TAO::Ledger::FLAGS::MEMPOOL))
-                return debug::error(FUNCTION, "Name register not found: ", strName);
+                return false; /* Don't log an error if it is not in the DB as the caller might have provided an invalid name */
 
             /* Check that the name object is proper type. */
             if(nameRegister.nType != TAO::Register::REGISTER::OBJECT)
