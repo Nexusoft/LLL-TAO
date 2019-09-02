@@ -16,7 +16,7 @@ std::string USERNAME1 = "USERNAME" +std::to_string(LLC::GetRand());
 std::string USERNAME2 = "USERNAME" +std::to_string(LLC::GetRand());
 uint256_t GENESIS1 = 0;
 uint256_t GENESIS2 = 0;
-std::string PASSWORD = "pw";
+std::string PASSWORD = "password";
 std::string PIN = "1234";
 std::string SESSION1;
 std::string SESSION2;

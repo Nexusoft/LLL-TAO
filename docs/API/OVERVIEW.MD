@@ -325,5 +325,8 @@ Error Codes
 | -188 | Trust account already has genesis |
 | -189 | Trust account already has stake |
 | -190 | Trust account already has trust |
+| -191 | Username must be a minimum of 3 characters |
+| -192 | Password must be a minimum of 8 characters |
+| -193 | Pin must be a minimum of 4 characters |
 
 
