@@ -64,7 +64,7 @@ namespace TAO
 
             /* Write the new trust to object register. */
             uint64_t nTrust = 0;
-            if(nPenalty < nTrust)
+            if(nPenalty < nTrustPrev)
                 nTrust = nTrustPrev - nPenalty;
 
             if(!trust.Write("trust", nTrust))
