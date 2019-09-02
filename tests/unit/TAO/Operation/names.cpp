@@ -68,6 +68,30 @@ TEST_CASE( "Names / Namespaces Tests", "[operation]")
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
         }
 
+        /* Test can't create a reserved global name */
+        {
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis;
+            tx.nSequence   = 0;
+            tx.nTimestamp  = runtime::timestamp();
+
+            std::string strReserved = "NXS";
+            TAO::Register::Address hashNamespace = TAO::Register::Address(TAO::Register::NAMESPACE::GLOBAL, TAO::Register::Address::NAMESPACE);
+
+            hashNameAddress = TAO::Register::Address(strReserved, hashNamespace, TAO::Register::Address::NAME);
+
+            //create name object
+            Object name = CreateName(TAO::Register::NAMESPACE::GLOBAL, strReserved, hashAddress);
+
+            //payload
+            tx[0] << uint8_t(OP::CREATE) << hashNameAddress << uint8_t(REGISTER::OBJECT) << name.GetState();
+
+            //generate the prestates and poststates
+            REQUIRE_FALSE(tx.Build());
+            
+        }
+
         /* Test that we are not allowed to create a name in another sig chain's namespace */
         {
             //create the transaction object
@@ -120,6 +144,28 @@ TEST_CASE( "Names / Namespaces Tests", "[operation]")
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+        }
+
+        /* Test can't create reserved namespace name */
+        {
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis;
+            tx.nSequence   = 1;
+            tx.nTimestamp  = runtime::timestamp();
+
+            /* Generate register address for namespace, which must be a hash of the name */
+            uint256_t hashNamespace = TAO::Register::Address("~GLOBAL~", TAO::Register::Address::NAMESPACE);
+
+            //create name object
+            Object namespaceObject = CreateNamespace("~GLOBAL~");
+
+            //payload
+            tx[0] << uint8_t(OP::CREATE) << hashNamespace << uint8_t(REGISTER::OBJECT) << namespaceObject.GetState();
+
+            //generate the prestates and poststates
+            REQUIRE_FALSE(tx.Build());
+
         }
 
         /* Test that the namespace hash must be a hash of the namespace name */

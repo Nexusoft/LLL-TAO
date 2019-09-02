@@ -107,6 +107,65 @@ namespace TAO
         {
             return (nType > REGISTER::RESERVED && nType < REGISTER::SYSTEM);
         }
+
+
+        namespace NAME
+        {
+            /** Hold list of reserved global names. **/
+            const std::vector<std::string> RESERVED =
+            {
+                /* native token name. */
+                "NXS"
+            };
+
+            /** Reserved
+             *
+             *  Object register keys that are reserved
+             *
+             *  @param[in] strValue The value to check.
+             *
+             *  @return True if value is object register reserved value.
+             *
+             **/
+            inline bool Reserved(const std::string& strValue)
+            {
+                return std::find(RESERVED.begin(), RESERVED.end(), strValue) != RESERVED.end();
+            }
+        }
+
+
+        namespace NAMESPACE
+        {
+            /** Hold list of reserved global names. **/
+            const std::vector<std::string> RESERVED =
+            {
+                /* Global namspace name has to be reserved */
+                TAO::Register::NAMESPACE::GLOBAL
+                
+                /* reserved to avoid confusion or scam attempts. */
+                // "nexus",
+                // "NEXUS",
+                // "nxs",
+                // "NXS"
+                // "nexus.io",
+                // "nexusearth.com",
+
+            };
+
+            /** Reserved
+             *
+             *  Object register keys that are reserved
+             *
+             *  @param[in] strValue The value to check.
+             *
+             *  @return True if value is object register reserved value.
+             *
+             **/
+            inline bool Reserved(const std::string& strValue)
+            {
+                return std::find(RESERVED.begin(), RESERVED.end(), strValue) != RESERVED.end();
+            }
+        }
     }
 }
 
