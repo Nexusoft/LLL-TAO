@@ -64,10 +64,10 @@ namespace TAO
         *  in order to get the decimals.  The token is obtained by looking at the identifier field,
         *  which contains the register address of the issuing token
         */
-        uint64_t GetDecimals(const TAO::Register::Object& object)
+        uint8_t GetDecimals(const TAO::Register::Object& object)
         {
             /* Declare the nDecimals to return */
-            uint64_t nDecimals = 0;
+            uint8_t nDecimals = 0;
 
             /* Get the object standard. */
             uint8_t nStandard = object.Standard();
@@ -77,7 +77,7 @@ namespace TAO
             {
                 case TAO::Register::OBJECTS::TOKEN:
                 {
-                    nDecimals = object.get<uint64_t>("decimals");
+                    nDecimals = object.get<uint8_t>("decimals");
                     break;
                 }
 
@@ -106,7 +106,7 @@ namespace TAO
                         if(!token.Parse())
                             throw APIException(-14, "Object failed to parse");
 
-                        nDecimals = token.get<uint64_t>("decimals");
+                        nDecimals = token.get<uint8_t>("decimals");
                     }
                     break;
                 }

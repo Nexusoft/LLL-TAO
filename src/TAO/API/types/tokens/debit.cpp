@@ -107,7 +107,7 @@ namespace TAO
             /* Get the object standard. */
             uint8_t nStandard = object.Standard();
 
-            uint64_t nDecimals = 0;
+            uint8_t nDecimals = 0;
             uint64_t nCurrentBalance = 0;
 
             /* Check the object standard. */

@@ -54,7 +54,7 @@ namespace TAO
 
 
         /* Generate a new token object register. */
-        Object CreateToken(const uint256_t& hashIdentifier, const uint64_t nSupply, const uint64_t nDecimals)
+        Object CreateToken(const uint256_t& hashIdentifier, const uint64_t nSupply, const uint8_t nDecimals)
         {
             /* Create an token object register. */
             TAO::Register::Object token;
@@ -63,7 +63,7 @@ namespace TAO
             token   << std::string("balance")       << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << nSupply
                     << std::string("token")         << uint8_t(TYPES::UINT256_T) << hashIdentifier
                     << std::string("supply")        << uint8_t(TYPES::UINT64_T) << nSupply
-                    << std::string("decimals")        << uint8_t(TYPES::UINT64_T) << nDecimals;
+                    << std::string("decimals")        << uint8_t(TYPES::UINT8_T) << nDecimals;
 
             return token;
         }

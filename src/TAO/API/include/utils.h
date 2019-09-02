@@ -51,7 +51,7 @@ namespace TAO
          *  @return the number of decimals that apply to amounts for this token or account
          *
          **/
-        uint64_t GetDecimals(const TAO::Register::Object& object);
+        uint8_t GetDecimals(const TAO::Register::Object& object);
 
 
         /** GetRegistersOwnedBySigChain

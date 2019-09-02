@@ -142,14 +142,14 @@ namespace TAO
                 TAO::Register::Address hashIdentifier = hashRegister;
 
                 /* Check for nDecimals parameter. */
-                uint64_t nDecimals = 0;
+                uint8_t nDecimals = 0;
                 if(params.find("decimals") != params.end())
                 {
                     bool fValid = false;
-                    /* Attempt to convert the supplied value to a 64-bit unsigned integer, catching argument/range exceptions */
+                    /* Attempt to convert the supplied value to a 8-bit unsigned integer, catching argument/range exceptions */
                     try
                     {
-                        nDecimals = std::stoull(params["decimals"].get<std::string>());
+                        nDecimals = std::stoul(params["decimals"].get<std::string>());
                         fValid = nDecimals <= 8;
                     }
                     catch(const std::invalid_argument& e)

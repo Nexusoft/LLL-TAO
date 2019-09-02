@@ -149,7 +149,7 @@ namespace TAO
                 throw APIException(-66, "Account is not a NXS account.  Please use the tokens API for debiting non-NXS token accounts.");
 
 
-            uint64_t nDecimals = TAO::Ledger::NXS_DIGITS;
+            uint8_t nDecimals = TAO::Ledger::NXS_DIGITS;
             uint64_t nCurrentBalance = object.get<uint64_t>("balance");
 
             /* Get the amount to debit. */

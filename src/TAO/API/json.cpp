@@ -929,7 +929,7 @@ namespace TAO
                         ret["token"] = hashToken.ToString();
 
                         /* Handle digit conversion. */
-                        uint64_t nDecimals = GetDecimals(object);
+                        uint8_t nDecimals = GetDecimals(object);
 
                         /* In order to get the balance for this account we need to ensure that we use the state from disk, which 
                            will contain the confirmed balance.  If this is a new account then it won't be on disk yet so the 
@@ -983,7 +983,7 @@ namespace TAO
                     case TAO::Register::OBJECTS::TOKEN:
                     {
                         /* Handle decimals conversion. */
-                        uint64_t nDecimals = GetDecimals(object);
+                        uint8_t nDecimals = GetDecimals(object);
 
                         /* In order to get the balance for this account we need to ensure that we use the state from disk, which 
                            will contain the confirmed balance.  If this is a new account then it won't be on disk yet so the 

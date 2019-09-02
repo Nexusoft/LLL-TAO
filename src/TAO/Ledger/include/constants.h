@@ -140,7 +140,7 @@ namespace TAO
 
 
         /** NXS token default digits. **/
-        const uint64_t NXS_DIGITS = 6;
+        const uint8_t NXS_DIGITS = 6;
 
 
         /** Integral value for one NXS coin (1 * 10 ^ NXS_DIGITS). **/
