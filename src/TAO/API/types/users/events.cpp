@@ -144,8 +144,8 @@ namespace TAO
 
                 try
                 {
-                    /* Ensure that the user is logged, in, wallet unlocked, and able to transact. */
-                    if(!LoggedIn() || Locked() || !CanTransact())
+                    /* Ensure that the user is logged, in, wallet unlocked, and unlocked for notifications. */
+                    if(!LoggedIn() || Locked() || !CanProcessNotifications())
                         continue;
 
                     /* Get the session to be used for this API call */

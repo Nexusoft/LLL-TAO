@@ -125,6 +125,16 @@ namespace TAO
             return false;
         }
 
+        /* In sessionless API mode this method checks that the active sig chain has
+         *  been unlocked to allow notifications to be processed */
+        bool Users::CanProcessNotifications() const
+        {
+            if(config::fMultiuser.load() || (!pActivePIN.IsNull() && pActivePIN->ProcessNotifications()))
+                return true;
+
+            return false;
+        }
+
 
         /* Returns a key from the account logged in. */
         uint512_t Users::GetKey(uint32_t nKey, SecureString strSecret, uint64_t nSession) const

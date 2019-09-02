@@ -140,6 +140,15 @@ namespace TAO
             bool CanMint() const;
 
 
+            /** CanProcessNotifications
+             *
+             *  In sessionless API mode this method checks that the active sig chain has
+             *  been unlocked to allow notifications to be processed.
+             *
+             **/
+            bool CanProcessNotifications() const;
+
+
             /** GetKey
              *
              *  Returns a key from the account logged in.
