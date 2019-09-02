@@ -8,8 +8,8 @@
 #            
 alias cn "/nexus/curl-nexus"
 
-cn "accounts/create?username=dino&password=dino-pw&pin=1234"
-cn "accounts/login?pin=1234&username=dino&password=dino-pw"
+cn "accounts/create?username=dino&password=dinopassword&pin=1234"
+cn "accounts/login?pin=1234&username=dino&password=dino-password"
 cn "accounts/transactions?genesis=$GENID&page=0&limit=3&verbose=1"
 cn "accounts/notifications?genesis=$GENID&page=0&limit=3&verbose=0"
 
