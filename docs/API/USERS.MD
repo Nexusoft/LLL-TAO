@@ -343,7 +343,7 @@ This will list off all of the assets owned by a signature chain.
 [
     {
         "name": "myasset1",
-        "address": "8195384518cc4daf2da54479a38c9d93fde145be0bbcd129f420054ff777917c",
+        "address": "88dFaTWNYpoGuXtgkWrbQVfsJJ3Sfth5AP9yWqioxCLhHmTu6xo",
         "timestamp": "1553227256"
         "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1"
         "serial_number": "123456",
@@ -352,7 +352,7 @@ This will list off all of the assets owned by a signature chain.
     },
     {
         "name": "myasset2",
-        "address": "2673bd356146d1b7ab34dac8f6503cd0c587158b6a017fb9e8ff3e627be8f01c",
+        "address": "8B7SMKmECgYU1ydBQbzp5FCSe4AnkU2EwLE59D7eQDBpixmLZ2c",
         "timestamp": "1553227128"
         "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1"
         "serial_number": "78901234",
@@ -370,6 +370,8 @@ This will list off all of the assets owned by a signature chain.
 `name` : The name identifying the asset.  For privacy purposes, this is only included in the response if the caller is the owner of the asset
 
 `address` : The register address of the asset.
+
+`ownership` : Only included for tokenized assets, this is the percentage of the asset owned by the caller, based on the number of tokens owned
 
 `timestamp` : The Unix timestamp of when the asset was last updated.
 
