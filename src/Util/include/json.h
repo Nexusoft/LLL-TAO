@@ -1287,9 +1287,11 @@ void from_json(const BasicJsonType& j, typename BasicJsonType::string_t& s)
 {
     if(JSON_UNLIKELY(not j.is_string()))
     {
-        JSON_THROW(type_error::create(302, "type must be string, but is " + std::string(j.type_name())));
+        /* If the caller has requested a string but it is not a string in the JSON, use dump() to convert the value to a string */
+        s = j.dump();
     }
-    s = *j.template get_ptr<const typename BasicJsonType::string_t*>();
+    else
+        s = *j.template get_ptr<const typename BasicJsonType::string_t*>();
 }
 
 template <
