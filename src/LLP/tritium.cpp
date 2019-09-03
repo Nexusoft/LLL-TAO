@@ -193,7 +193,6 @@ namespace LLP
         DataStream ssPacket(INCOMING.DATA, SER_NETWORK, PROTOCOL_VERSION);
         switch(INCOMING.MESSAGE)
         {
-
             /* Handle for auth command. */
             case ACTION::AUTH:
             {
@@ -317,6 +316,10 @@ namespace LLP
                 break;
             }
         }
+
+        /* Check for authorization. */
+        if(DDOS && !Authorized())
+            DDOS->rSCORE += 5; //untrusted nodes get less requests
 
         return true;
     }
