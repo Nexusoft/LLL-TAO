@@ -231,7 +231,7 @@ namespace TAO
                 return debug::error(FUNCTION, "cannot allocate system memory");
 
             /* Check for duplicate txid's */
-            std::set<uint512_t> setUniqueTx;
+            std::set<uint512_t> setUnique;
             std::vector<uint512_t> vHashes;
 
             /* Get the signature operations for legacy tx's. */
@@ -242,7 +242,7 @@ namespace TAO
             for(uint32_t i = 0; i < nSize; ++i)
             {
                 /* Insert txid into set to check for duplicates. */
-                setUniqueTx.insert(vtx[i].second);
+                setUnique.insert(vtx[i].second);
                 vHashes.push_back(vtx[i].second);
 
                 /* Basic checks for legacy transactions. */
@@ -251,7 +251,12 @@ namespace TAO
                     /* Check the memory pool. */
                     Legacy::Transaction tx;
                     if(!LLD::Legacy->ReadTx(vtx[i].second, tx, FLAGS::MEMPOOL))
-                        return debug::error(FUNCTION, "missing tx ", vtx[i].second.SubString());
+                    {
+                        /* Push missing transaction to memory. */
+                        vMissing.push_back(vtx[i]);
+
+                        continue;
+                    }
 
                     /* Check for coinbase / coinstake. */
                     if(tx.IsCoinBase() || tx.IsCoinStake())
@@ -276,7 +281,12 @@ namespace TAO
                     /* Check the memory pool. */
                     TAO::Ledger::Transaction tx;
                     if(!LLD::Ledger->ReadTx(vtx[i].second, tx, FLAGS::MEMPOOL))
-                        return debug::error(FUNCTION, "missing tx ", vtx[i].second.SubString());
+                    {
+                        /* Push missing transaction to memory. */
+                        vMissing.push_back(vtx[i]);
+
+                        continue;
+                    }
 
                     /* Check for coinbase / coinstake. */
                     if(tx.IsCoinBase() || tx.IsCoinStake())
@@ -291,7 +301,7 @@ namespace TAO
             }
 
             /* Check that the producer isn't going to orphan any transactions. */
-            TAO::Ledger::Transaction tx;
+            TAO::Ledger::Transaction tx; //TODO: remove this
             if(mempool.Get(producer.hashGenesis, tx) && producer.hashPrevTx != tx.GetHash())
                 return debug::error(FUNCTION, "producer is STALE");
 
@@ -300,10 +310,14 @@ namespace TAO
 
             /* Add producer to merkle tree list. */
             vHashes.push_back(hashProducer);
-            setUniqueTx.insert(hashProducer);
+            setUnique.insert(hashProducer);
+
+            /* Check for missing transactions. */
+            if(vMissing.size() != 0)
+                return debug::error(FUNCTION, "missing ", vMissing.size(), " transactions");
 
             /* Check for duplicate txid's. */
-            if(setUniqueTx.size() != vHashes.size())
+            if(setUnique.size() != vHashes.size())
                 return debug::error(FUNCTION, "duplicate transaction");
 
             /* Check the signature operations for legacy. */

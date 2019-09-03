@@ -43,6 +43,10 @@ namespace TAO
             /* Check if the block is valid. */
             if(!block.Check())
             {
+                /* Check for missing transactions. */
+                if(block.vMissing.size() != 0)
+                    nStatus |= PROCESS::INCOMPLETE;
+
                 /* Set the status. */
                 nStatus |= PROCESS::REJECTED;
 

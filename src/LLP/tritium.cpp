@@ -25,6 +25,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/process.h>
+#include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/types/mempool.h>
 
 #include <Legacy/wallet/wallet.h>
@@ -740,16 +741,33 @@ namespace LLP
                     nConsecutiveOrphans = 0;
                 }
 
-                /* Check for missing transactions. */
-                if(nStatus & TAO::Ledger::PROCESS::INCOMPLETE)
-                {
-                    //TODO: ask for the missing transactions
-                    //keep this block stashed for processing after complete
-                }
-
                 /* Check for failure status messages. */
                 if(nStatus & TAO::Ledger::PROCESS::REJECTED)
                     ++nConsecutiveFails;
+
+                /* Check for missing transactions. */
+                if(nStatus & TAO::Ledger::PROCESS::INCOMPLETE)
+                {
+                    /* Create response data stream. */
+                    DataStream ssResponse(INCOMING.DATA, SER_NETWORK, PROTOCOL_VERSION);
+
+                    /* Create a list of requested transactions. */
+                    for(const auto& tx : block.vMissing)
+                    {
+                        /* Check for legacy. */
+                        if(tx.first == TAO::Ledger::TYPE::LEGACY_TX)
+                            ssResponse << uint8_t(TYPES::LEGACY);
+
+                        /* Push to stream. */
+                        ssResponse << uint8_t(TYPES::TRANSACTION) << tx.second;
+                    }
+
+                    /* Ask for the block again last TODO: this can be cached for further optimization. */
+                    ssResponse << uint8_t(TYPES::BLOCK) << block.GetHash();
+
+                    /* Push the packet response. */
+                    WritePacket(NewMessage(ACTION::GET, ssResponse));
+                }
 
                 /* Check for orphan status messages. */
                 if(nStatus & TAO::Ledger::PROCESS::ORPHAN)

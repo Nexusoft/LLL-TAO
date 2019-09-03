@@ -85,6 +85,10 @@ namespace TAO
             std::vector<uint8_t> vchBlockSig;
 
 
+            /** MEMORY ONLY: list of missing transactions if processing failed. **/
+            mutable std::vector<std::pair<uint8_t, uint512_t> > vMissing;
+
+
 
             /** The default constructor. Sets block state to Null. **/
             Block();
