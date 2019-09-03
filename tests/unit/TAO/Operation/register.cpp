@@ -65,13 +65,16 @@ TEST_CASE( "Register Primitive Tests", "[operation]")
 
     //test trust register
     {
+        /* random genesis */
+        uint256_t hashGenesis = LLC::GetRand256();
+
         //object register address
-        uint256_t hashAddress = TAO::Register::Address(TAO::Register::Address::TRUST);
+        TAO::Register::Address hashTrust = TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
 
         {
             TAO::Ledger::Transaction tx;
             tx.nTimestamp  = 989798;
-            tx.hashGenesis = LLC::GetRand256();
+            tx.hashGenesis = hashGenesis;
 
             TAO::Register::Object object;
             object << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
@@ -80,7 +83,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]")
                    << std::string("token") << uint8_t(TYPES::UINT256_T) << uint256_t(0);
 
                //build the tx
-               tx[0] << uint8_t(OP::CREATE) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
+               tx[0] << uint8_t(OP::CREATE) << hashTrust << uint8_t(REGISTER::OBJECT) << object.GetState();
 
                //run tests
                REQUIRE(tx.Build());
@@ -93,7 +96,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]")
         {
             //check values all match
             TAO::Register::Object object;
-            REQUIRE(LLD::Register->ReadState(hashAddress, object));
+            REQUIRE(LLD::Register->ReadState(hashTrust, object));
 
             //parse
             REQUIRE(object.Parse());
@@ -127,7 +130,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]")
             object  << std::string("balance")    << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << uint64_t(5555)
                     << std::string("token")      << uint8_t(TYPES::UINT256_T) << hashAddress
                     << std::string("supply")     << uint8_t(TYPES::UINT64_T)  << uint64_t(5555)
-                    << std::string("digits")     << uint8_t(TYPES::UINT64_T)  << uint64_t(10);
+                    << std::string("decimals")     << uint8_t(TYPES::UINT8_T)  << uint8_t(10);
 
             //build the tx
             tx[0] << uint8_t(OP::CREATE) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
@@ -156,7 +159,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]")
             REQUIRE(object.get<uint64_t>("balance")    == 5555);
             REQUIRE(object.get<uint64_t>("supply")     == 5555);
             REQUIRE(object.get<uint256_t>("token")     == hashAddress);
-            REQUIRE(object.get<uint64_t>("digits")     == 10);
+            REQUIRE(object.get<uint8_t>("decimals")     == 10);
         }
 
         {
@@ -168,7 +171,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]")
             object  << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(5555)
                     << std::string("token")      << uint8_t(TYPES::UINT256_T) << hashAddress
                     << std::string("supply")     << uint8_t(TYPES::UINT64_T) << uint64_t(5555)
-                    << std::string("digits")     << uint8_t(TYPES::UINT64_T) << uint64_t(10);
+                    << std::string("decimals")     << uint8_t(TYPES::UINT8_T) << uint8_t(10);
 
             //run tests
             REQUIRE(tx.Build());
@@ -327,7 +330,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]")
             object  << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
                     << std::string("token") << uint8_t(TYPES::UINT256_T) << uint256_t(55)
                     << std::string("supply")     << uint8_t(TYPES::UINT64_T) << uint64_t(5555)
-                    << std::string("digits")     << uint8_t(TYPES::UINT64_T) << uint64_t(10);
+                    << std::string("decimals")     << uint8_t(TYPES::UINT8_T) << uint8_t(10);
 
             //run tests
             REQUIRE(tx.Build());
@@ -350,7 +353,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]")
             object  << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(5555)
                     << std::string("token") << uint8_t(TYPES::UINT256_T) << uint256_t(0)
                     << std::string("supply")     << uint8_t(TYPES::UINT64_T) << uint64_t(5555)
-                    << std::string("digits")     << uint8_t(TYPES::UINT64_T) << uint64_t(10);
+                    << std::string("decimals")     << uint8_t(TYPES::UINT8_T) << uint8_t(10);
 
             //run tests
             REQUIRE(tx.Build());

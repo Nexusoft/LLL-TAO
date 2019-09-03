@@ -38,6 +38,58 @@ TEST_CASE( "Test Users API", "[API/users]")
     if(!config::fMultiuser.load())
         LogoutUser(GENESIS1, SESSION1);
 
+
+    /* Test failure with username too short */
+    {
+
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["username"] = "X";
+        params["password"] = "X";
+        params["pin"] = "X";
+
+        /* Invoke the API */
+        ret = APICall("users/create/user", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -191);
+    }
+
+    /* Test failure with password too short */
+    {
+
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["username"] = strUsername;
+        params["password"] = "X";
+        params["pin"] = "X";
+
+        /* Invoke the API */
+        ret = APICall("users/create/user", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -192);
+    }
+
+    /* Test failure with pin too short */
+    {
+
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["username"] = strUsername;
+        params["password"] = PASSWORD;
+        params["pin"] = "X";
+
+        /* Invoke the API */
+        ret = APICall("users/create/user", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -193);
+    }
+
     /* Test creating a new user */
     {
 

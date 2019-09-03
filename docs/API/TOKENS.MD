@@ -53,7 +53,7 @@ Create a new token object register. The API supports an alternative endpoint tha
 
 `supply` : The initial token supply amount.  Must be a whole number amount.
 
-`digits` : The maximum number of decimal places that can be applied to token amounts.  For example digits=2 will allow a token amount to be given to 2 decimal places.
+`decimals` : The maximum number of decimal places that can be applied to token amounts.  For example decimals=2 will allow a token amount to be given to 2 decimal places.
 
 ### Example:
 
@@ -63,7 +63,7 @@ Create a new token object register. The API supports an alternative endpoint tha
     "session": "16953804956473956578",
     "name": "ABC",
     "supply": 1000000,
-    "digits": 4
+    "decimals": 4
 }
 ```
 
@@ -225,7 +225,7 @@ Additionally the API supports passing a field name in the URL after the token na
     "unconfirmed": 0,
     "maxsupply": 1000,
     "currentsupply": 10,
-    "digits": 0
+    "decimals": 0
 }
 ```   
 
@@ -251,7 +251,7 @@ Additionally the API supports passing a field name in the URL after the token na
 
 `currentsupply` : The current amount of tokens that have been distributed to token accounts.
 
-`digits` : The maximum number of decimal places that can be applied to token amounts.  For example digits=2 will allow a token amount to be given to 2 decimal places.
+`decimals` : The maximum number of decimal places that can be applied to token amounts.  For example decimals=2 will allow a token amount to be given to 2 decimal places.
 
 ****
 
@@ -351,6 +351,8 @@ This will list off all of the transactions related to a given token. You DO NOT 
 {    
 &nbsp;&nbsp;&nbsp;`OP` : The contract operation. Can be `APPEND`, `CLAIM`, `COINBASE`, `CREATE`, `CREDIT`, `DEBIT`, `FEE`, `GENESIS`, `LEGACY`, `TRANSFER`, `TRUST`, `STAKE`, `UNSTAKE`, `WRITE`.
 
+&nbsp;&nbsp;&nbsp;`for` : For `CREDIT` transactions, the contract that this credit was created for . Always `DEBIT` for token transactions.
+
 &nbsp;&nbsp;&nbsp;`txid` : The transaction that was credited / claimed.
 
 &nbsp;&nbsp;&nbsp;`proof` : The register address proving the credit.
@@ -359,9 +361,9 @@ This will list off all of the transactions related to a given token. You DO NOT 
 
 &nbsp;&nbsp;&nbsp;`account_name` : For `CREDIT` transactions, the name of the account that the transaction relates to.  Only included if the name can be resolved.
 
-&nbsp;&nbsp;&nbsp;`from` : For `DEBIT` transactions, the register address of the account that the debit is being made from.
+&nbsp;&nbsp;&nbsp;`from` : For `DEBIT` and `CREDIT` transactions, the register address of the account that the debit is being made from.
 
-&nbsp;&nbsp;&nbsp;`from_name` : For `DEBIT` transactions, the name of the account that the debit is being made from.  Only included if the name can be resolved.
+&nbsp;&nbsp;&nbsp;`from_name` : For `DEBIT` and `CREDIT` transactions, the name of the account that the debit is being made from.  Only included if the name can be resolved.
 
 &nbsp;&nbsp;&nbsp;`to` : For `DEBIT` transactions, the register address of the account that the debit is being made to.
 
@@ -373,7 +375,7 @@ This will list off all of the transactions related to a given token. You DO NOT 
 
 &nbsp;&nbsp;&nbsp;`token_name` : The name of the token that the transaction relates to.
 
-&nbsp;&nbsp;&nbsp;`reference` : For `DEBIT` and `CREDIT` transactions this is the user supplied reference used by the recipient to relate the transaction to an order or invoice number.  
+&nbsp;&nbsp;&nbsp;`reference` : For `DEBIT` and `CREDIT` transactions this is the user supplied reference used by the recipient to relate the transaction to an order or invoice number.
 
 }
 
@@ -716,6 +718,8 @@ This will list off all of the transactions related to a given account. You DO NO
 {    
 &nbsp;&nbsp;&nbsp;`OP` : The contract operation. Can be `APPEND`, `CLAIM`, `COINBASE`, `CREATE`, `CREDIT`, `DEBIT`, `FEE`, `GENESIS`, `LEGACY`, `TRANSFER`, `TRUST`, `STAKE`, `UNSTAKE`, `WRITE`.
 
+&nbsp;&nbsp;&nbsp;`for` : For `CREDIT` transactions, the contract that this credit was created for . Always `DEBIT` for token transactions.
+
 &nbsp;&nbsp;&nbsp;`txid` : The transaction that was credited / claimed.
 
 &nbsp;&nbsp;&nbsp;`proof` : The register address proving the credit.
@@ -724,9 +728,9 @@ This will list off all of the transactions related to a given account. You DO NO
 
 &nbsp;&nbsp;&nbsp;`account_name` : For `CREDIT` transactions, the name of the account that the transaction relates to.  Only included if the name can be resolved.
 
-&nbsp;&nbsp;&nbsp;`from` : For `DEBIT` transactions, the register address of the account that the debit is being made from.
+&nbsp;&nbsp;&nbsp;`from` : For `DEBIT` and `CREDIT` transactions, the register address of the account that the debit is being made from.
 
-&nbsp;&nbsp;&nbsp;`from_name` : For `DEBIT` transactions, the name of the account that the debit is being made from.  Only included if the name can be resolved.
+&nbsp;&nbsp;&nbsp;`from_name` : For `DEBIT` and `CREDIT` transactions, the name of the account that the debit is being made from.  Only included if the name can be resolved.
 
 &nbsp;&nbsp;&nbsp;`to` : For `DEBIT` transactions, the register address of the account that the debit is being made to.
 

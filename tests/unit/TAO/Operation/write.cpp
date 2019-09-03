@@ -190,7 +190,7 @@ TEST_CASE( "Write Primitive Tests", "[operation]")
             REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
         }
 
-        {
+        {/* Failure case as decimals is a uint8_t not uint64_t */
             //create the mock transaction object
             TAO::Ledger::Transaction tx;
             tx.nTimestamp  = 989798;
@@ -198,7 +198,7 @@ TEST_CASE( "Write Primitive Tests", "[operation]")
 
             //build stream
             Stream stream;
-            stream << std::string("digits") << uint8_t(OP::TYPES::UINT8_T) << uint8_t(99);
+            stream << std::string("decimals") << uint8_t(OP::TYPES::UINT64_T) << uint64_t(99);
 
             //build transaction object
             tx[0] << uint8_t(OP::WRITE) << hash << stream.Bytes();
@@ -208,7 +208,7 @@ TEST_CASE( "Write Primitive Tests", "[operation]")
             REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
         }
 
-        {
+        { 
             //create the mock transaction object
             TAO::Ledger::Transaction tx;
             tx.nTimestamp  = 989798;

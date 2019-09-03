@@ -222,9 +222,9 @@ CLASSES
      |      Create a token account associated with previously create token
      |      with token name 'token_name'.
      |  
-     |  nexus_tokens_create_token(self, token_name, supply, digits=2)
+     |  nexus_tokens_create_token(self, token_name, supply, decimals=2)
      |      Create a token by name with with an initial reserve supply of 
-     |      'supply'. Give the token accuracy precision specified in 'digits'.
+     |      'supply'. Give the token accuracy precision specified in 'decimals'.
      |  
      |  nexus_tokens_credit_account_by_address(self, to_address, amount, txid, address_proof)
      |      Credit token account by address specified in 'to_address' for the 

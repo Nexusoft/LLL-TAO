@@ -112,6 +112,13 @@ namespace TAO
                             if(!address.IsTrust())
                                 return debug::error(FUNCTION, "address type mismatch with object type");
 
+                            /* Enforce the hash of trust accounts to be deterministically generated from genesis hash */
+                            TAO::Register::Address trust = TAO::Register::Address(std::string("trust"), state.hashOwner, TAO::Register::Address::TRUST);
+
+                            /* Fail if trust address was not generated deterministically based on callers genesis. */
+                            if(trust != address)
+                                return debug::error(FUNCTION, "trust address mismatch");
+
                             break;
                         }
 
@@ -153,14 +160,8 @@ namespace TAO
                                 /* Otherwise we use the owner genesis Hash */
                                 hashNamespace = state.hashOwner;
 
-                            /* Build vector to hold the genesis + name data for hashing */
-                            std::vector<uint8_t> vData((uint8_t*)&hashNamespace, (uint8_t*)&hashNamespace + 32);
-
-                            /* Insert the name of from the Name object */
-                            vData.insert(vData.end(), strName.begin(), strName.end());
-
-                            /* Hash this in the same was as the caller would have to generate hashAddress */
-                            uint256_t name = TAO::Register::Address(vData, TAO::Register::Address::NAME);
+                            /* Create an address in the same was as the caller would have to generate hashAddress */
+                            TAO::Register::Address name = TAO::Register::Address(strName, hashNamespace, TAO::Register::Address::NAME);
 
                             /* Fail if caller didn't user their own genesis to create name. */
                             if(name != address)
@@ -290,7 +291,7 @@ namespace TAO
                         /* Check the account balance. */
                         uint64_t nBalance = object.get<uint64_t>("balance");
                         if(nBalance != 0)
-                            return debug::error(FUNCTION, "account balance msut be zero ", nBalance);
+                            return debug::error(FUNCTION, "account balance must be zero ", nBalance);
 
                         break;
                     }
@@ -354,6 +355,10 @@ namespace TAO
                         {
                             if(strName.find(":") != strName.npos)
                                 return debug::error(FUNCTION, "Global names cannot contain colons: ", strName);
+
+                            /* Check for reserved global names. */
+                            if(TAO::Register::NAME::Reserved(strName) )
+                                return debug::error(FUNCTION, "names can't be created with reserved name ", strName);
                         }
                         else
                         {
@@ -372,7 +377,7 @@ namespace TAO
                         std::string strNamespace = object.get<std::string>("namespace");
 
                         /* Check for reserved names. */
-                        if(strNamespace == TAO::Register::NAMESPACE::GLOBAL)
+                        if(TAO::Register::NAMESPACE::Reserved(strNamespace) )
                             return debug::error(FUNCTION, "namespace can't be created with reserved name ", strNamespace);
 
                         /* Check that name doesn't contain colons */

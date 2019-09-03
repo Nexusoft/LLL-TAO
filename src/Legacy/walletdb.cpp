@@ -490,7 +490,7 @@ namespace Legacy
                 else if(config::GetBoolArg("-walletcheck", true))
                 {
                     /* Skip check for tritium transactions. */
-                    if((TAO::Ledger::VersionActive(wtx.nTime, 7) || TAO::Ledger::CurrentVersion() >= 7) && hash.GetType() == TAO::Ledger::TRITIUM)
+                    if((TAO::Ledger::VersionActive(wtx.nTime, 7) || TAO::Ledger::CurrentVersion() > 7) && hash.GetType() == TAO::Ledger::TRITIUM)
                     {
                         /* Read the transaction from ledger database. */
                         TAO::Ledger::Transaction tx;

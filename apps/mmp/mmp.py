@@ -1244,7 +1244,7 @@ def create_music_tokens():
     #
     # Need to create/use an account to create the token.
     #
-    api = nexus.sdk_init("admin-admin", "pw", "1234")
+    api = nexus.sdk_init("admin-admin", "password", "1234")
     admin_account = api
     login = api.nexus_users_login_user()
     if (login.has_key("error")):

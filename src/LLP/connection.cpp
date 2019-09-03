@@ -17,33 +17,28 @@ ________________________________________________________________________________
 namespace LLP
 {
 
-    /** Default Constructor **/
+    /* Default Constructor */
     Connection::Connection()
     : BaseConnection()
     {
     }
 
 
-    /** Constructor **/
-    Connection::Connection(const Socket &SOCKET_IN,
-                           DDOS_Filter* DDOS_IN,
-                           bool isDDOS,
-                           bool fOutgoing)
+    /* Constructor */
+    Connection::Connection(const Socket &SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS, bool fOutgoing)
     : BaseConnection(SOCKET_IN, DDOS_IN, isDDOS, fOutgoing)
     {
     }
 
 
-    /** Constructor **/
-    Connection::Connection(DDOS_Filter* DDOS_IN,
-                           bool isDDOS,
-                           bool fOutgoing)
+    /* Constructor */
+    Connection::Connection(DDOS_Filter* DDOS_IN, bool isDDOS, bool fOutgoing)
    : BaseConnection(DDOS_IN, isDDOS, fOutgoing)
    {
    }
 
 
-    /** Default destructor **/
+    /* Default destructor */
     Connection::~Connection()
     {
     }

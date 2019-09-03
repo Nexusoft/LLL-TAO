@@ -38,12 +38,12 @@ This will allow you to integrate the Nexus API into existing web forms.
 This allows you to harness the power of the Nexus Blockchain in all your existing web services.
 
 
-### Use the the nexus command-line by specifying the -api flag:
+### Use the the nexus command-line :
 
 The Nexus Daemon must already be running for this to work. Make sure you are in the same directory as the Nexus Daemon.
 
 ```
-./nexus -api <api>/<method> <key>=<value> <key1>=<value1>
+./nexus <api>/<method> <key>=<value> <key1>=<value1>
 ```
 
 This will return all data in JSON format into your console.

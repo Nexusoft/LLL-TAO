@@ -936,15 +936,15 @@ class sdk_init():
         return(json_data)
     #enddef
 
-    def nexus_tokens_create_token(self, token_name, supply, digits=2):
+    def nexus_tokens_create_token(self, token_name, supply, decimals=2):
         """
         Create a token by name with with an initial reserve supply of 
-        'supply'. Give the token accuracy precision specified in 'digits'.
+        'supply'. Give the token accuracy precision specified in 'decimals'.
         """
         if (self.session_id == None): return(self.__error("Not logged in"))
 
-        parms = "?pin={}&session={}&name={}&supply={}&digits={}".format( \
-            self.pin, self.session_id, token_name, supply, digits)
+        parms = "?pin={}&session={}&name={}&supply={}&decimals={}".format( \
+            self.pin, self.session_id, token_name, supply, decimals)
 
         url = tokens_url.format(sdk_url, "create/token") + parms
         json_data = self.__get(url)

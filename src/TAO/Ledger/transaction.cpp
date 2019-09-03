@@ -240,19 +240,6 @@ namespace TAO
                 TAO::Operation::Cost(contract, nRet);
             }
 
-            /* Check for frequency throttling. NOTE: Not applicable to coinbase/stake transactions*/
-            if(!IsFirst() && !IsCoinBase() && !IsCoinStake())
-            {
-                /* Make sure the previous transaction is on disk or mempool. */
-                TAO::Ledger::Transaction txPrev;
-                if(!LLD::Ledger->ReadTx(hashPrevTx, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw debug::exception(FUNCTION, "couldn't read previous transaction");
-
-                /* Check the timestamps. */
-                if(nTimestamp - txPrev.nTimestamp < 60)
-                    nRet += TAO::Ledger::THRESHOLD_FEE; //0.1 NXS per transaction above threshold.
-            }
-
             return nRet;
         }
 
@@ -390,17 +377,6 @@ namespace TAO
                     if(!LLD::Ledger->WriteTx(hash, *this))
                         return debug::error(FUNCTION, "failed to write valid next pointer");
                 }
-
-                /* The fee applied to this transaction */
-                uint64_t nFees = Fees();
-
-                /* The total cost of this transaction.  We use the cached cost for this as the individual contract costs would
-                   have already been calculated prior to connect, so no need to */
-                uint64_t nCost = CachedCost(txPrev);
-
-                /* Check that the fees match. NOTE: There are no fees required in private mode */
-                if(!config::GetBoolArg("-private", false) && nCost > nFees)
-                    return debug::error(FUNCTION, "not enough fees supplied ", nFees);
             }
 
             /* Run through all the contracts. */
@@ -412,6 +388,23 @@ namespace TAO
                 /* Execute the contracts to final state. */
                 if(!TAO::Operation::Execute(contract, nFlags))
                     return false;
+            }
+
+            /* Once we have executed the contracts we need to check the fees.
+               NOTE there are no fees on the genesis transaction.
+               NOTE: There are no fees required in private mode. */
+            if(!IsFirst() && !config::GetBoolArg("-private", false))
+            {
+                /* The fee applied to this transaction */
+                uint64_t nFees = Fees();
+
+                /* The total cost of this transaction.  We use the calculated cost for this as the individual contract costs would
+                   have already been calculated during the execution of each contract (Operation::Execute)*/
+                uint64_t nCost = CalculatedCost();
+
+                /* Check that the fees match.  */
+                if(nCost > nFees)
+                    return debug::error(FUNCTION, "not enough fees supplied ", nFees);
             }
 
             return true;
@@ -445,6 +438,27 @@ namespace TAO
                 if(!LLD::Ledger->WriteLast(hashGenesis, hashPrevTx))
                     return debug::error(FUNCTION, "failed to write last hash");
 
+            }
+
+            /* Revert last stake whan disconnect a coinstake tx */
+            if(IsCoinStake())
+            {
+                if(IsTrust())
+                {
+                    /* Revert saved last stake to the prior stake transaction */
+                    Transaction txLast;
+                    if(!TAO::Ledger::FindLastStake(hashGenesis, txLast))
+                        return debug::error(FUNCTION, "failed to find previous stake");
+
+                    if(!LLD::Ledger->WriteStake(hashGenesis, txLast.GetHash()))
+                        return debug::error(FUNCTION, "failed to write last stake");
+                }
+                else
+                {
+                    if(!LLD::Ledger->EraseStake(hashGenesis))
+                        return debug::error(FUNCTION, "failed to erase last stake");
+
+                }
             }
 
             /* Run through all the contracts. */
@@ -805,7 +819,7 @@ namespace TAO
 
 
         /* Calculates the cost of this transaction from the contracts within it */
-        uint64_t Transaction::CachedCost(const TAO::Ledger::Transaction& txPrev) const
+        uint64_t Transaction::CalculatedCost() const
         {
             /* The calculated cost */
             uint64_t nCost = 0;
@@ -817,14 +831,6 @@ namespace TAO
                 contract.Bind(this);
 
                 nCost += contract.Cost();
-            }
-
-            /* Check for frequency throttling. NOTE: Not applicable to coinbase/stake transactions*/
-            if(!IsFirst() && !IsCoinBase() && !IsCoinStake())
-            {
-                /* Check the timestamps. */
-                if(nTimestamp - txPrev.nTimestamp < 60)
-                    nCost += TAO::Ledger::THRESHOLD_FEE; //0.1 NXS per transaction above threshold
             }
 
             return nCost;

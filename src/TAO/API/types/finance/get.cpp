@@ -69,7 +69,7 @@ namespace TAO
 
 
             /* Populate the response JSON */
-            ret["owner"]    = object.hashOwner.ToString();
+            ret["owner"]    = TAO::Register::Address(object.hashOwner).ToString();
             ret["created"]  = object.nCreated;
             ret["modified"] = object.nModified;
 

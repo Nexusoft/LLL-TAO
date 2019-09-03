@@ -38,33 +38,37 @@ namespace TAO
 
 
         /* Move balance to stake for trust account. */
-        bool Stake::Execute(TAO::Register::Object &object, const uint64_t nAmount, const uint64_t nTimestamp)
+        bool Stake::Execute(TAO::Register::Object &trust, const uint64_t nAmount, const uint64_t nTimestamp)
         {
             /* Parse the account object register. */
-            if(!object.Parse())
+            if(!trust.Parse())
                 return debug::error(FUNCTION, "Failed to parse account object register");
 
+            /* Check it is a trust account register. */
+            if(trust.Standard() != TAO::Register::OBJECTS::TRUST)
+                return debug::error(FUNCTION, "cannot add stake to non-trust account");
+
             /* Get account starting values */
-            uint64_t nStakePrev = object.get<uint64_t>("stake");
-            uint64_t nBalancePrev = object.get<uint64_t>("balance");
+            uint64_t nStakePrev = trust.get<uint64_t>("stake");
+            uint64_t nBalancePrev = trust.get<uint64_t>("balance");
 
             if(nAmount > nBalancePrev)
                 return debug::error(FUNCTION, "cannot add stake exceeding existing trust account balance");
 
             /* Write the new balance to object register. */
-            if(!object.Write("balance", nBalancePrev - nAmount))
+            if(!trust.Write("balance", nBalancePrev - nAmount))
                 return debug::error(FUNCTION, "balance could not be written to object register");
 
             /* Write the new stake to object register. */
-            if(!object.Write("stake", nStakePrev + nAmount))
+            if(!trust.Write("stake", nStakePrev + nAmount))
                 return debug::error(FUNCTION, "stake could not be written to object register");
 
             /* Update the state register's timestamp. */
-            object.nModified = nTimestamp;
-            object.SetChecksum();
+            trust.nModified = nTimestamp;
+            trust.SetChecksum();
 
             /* Check that the register is in a valid state. */
-            if(!object.IsValid())
+            if(!trust.IsValid())
                 return debug::error(FUNCTION, "trust account is in invalid state");
 
             return true;

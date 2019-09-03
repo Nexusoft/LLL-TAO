@@ -20,7 +20,6 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/include/timelocks.h>
-#include <TAO/Ledger/types/transaction.h>
 
 #include <TAO/Operation/include/enum.h>
 
@@ -86,15 +85,15 @@ namespace TAO
 
 
         /* Calculate new trust score from parameters. */
-        uint64_t GetTrustScore(const uint64_t nTrustPrev, const uint64_t nStake, const uint64_t nBlockAge)
+        uint64_t GetTrustScore(const uint64_t nScorePrev, const uint64_t nBlockAge)
         {
-            uint64_t nTrust = 0;
+            uint64_t nScore = 0;
             uint64_t nBlockAgeMax = MaxBlockAge();
 
             /* Block age less than maximum awards trust score increase equal to the current block age. */
             if(nBlockAge <= nBlockAgeMax)
             {
-                nTrust = nTrustPrev + nBlockAge;
+                nScore = nScorePrev + nBlockAge;
             }
             else
             {
@@ -104,18 +103,18 @@ namespace TAO
                 uint64_t nPenalty = (nBlockAge - nBlockAgeMax) * (uint64_t)3;
 
                 /* Trust back to zero if penalty more than previous score. */
-                if(nPenalty < nTrustPrev)
-                    nTrust = nTrustPrev - nPenalty;
+                if(nPenalty < nScorePrev)
+                    nScore = nScorePrev - nPenalty;
                 else
-                    nTrust = 0;
+                    nScore = 0;
             }
 
-            return nTrust;
+            return nScore;
         }
 
 
         /* Calculate trust score penalty that results from unstaking a portion of stake balance. */
-        uint64_t GetUnstakePenalty(const uint64_t nTrustPrev, const uint64_t nStakePrev,
+        uint64_t GetUnstakePenalty(const uint64_t nScorePrev, const uint64_t nStakePrev,
                                    const uint64_t nStakeNew, const uint256_t& hashGenesis)
         {
             /* Unstake penalty only applies if stake balance is reduced */
@@ -199,10 +198,23 @@ namespace TAO
              * so the if-check above is true and penalty is 0 because have only removed a portion of the stake added
              * during the grace period.
              */
-            uint64_t nTrustNew = ((nStakeNew + (uint64_t)nStakeAdded) * nTrustPrev) / nStakePrev;
+            uint64_t nScore = ((nStakeNew + (uint64_t)nStakeAdded) * nScorePrev) / nStakePrev;
 
             /* Penalty is amount of trust reduction */
-            return (nTrustPrev - nTrustNew);
+            return (nScorePrev - nScore);
+        }
+
+
+        /* Calculate trust score penalty from unstaking an amount from a trustAccout */
+        uint64_t GetUnstakePenalty(const TAO::Register::Object trustAccount, const uint64_t nUnstake)
+        {
+            uint64_t nStake = trustAccount.get<uint64_t>("stake");
+
+            uint64_t nStakeNew = 0;
+            if(nUnstake < nStake)
+                nStakeNew = nStake - nUnstake;
+
+            return GetUnstakePenalty(trustAccount.get<uint64_t>("trust"), nStake, nStakeNew, trustAccount.hashOwner);
         }
 
 
@@ -293,6 +305,39 @@ namespace TAO
             uint64_t nStakeReward = (nStake * nStakeRate * nStakeTime) / ONE_YEAR;
 
             return nStakeReward;
+        }
+
+
+        /** Retrieves the most recent stake transaction for a user account. */
+        bool FindLastStake(const Genesis& hashGenesis, Transaction& tx)
+        {
+            /* Start with most recent signature chain transaction. */
+            uint512_t hashLast = 0;
+            if(!LLD::Ledger->ReadLast(hashGenesis, hashLast))
+                return false;
+
+            /* Loop until find stake transaction or reach first transaction on user acount (hashLast == 0). */
+            while(hashLast != 0)
+            {
+                /* Get the transaction for the current hashLast. */
+                Transaction txCheck;
+                if(!LLD::Ledger->ReadTx(hashLast, txCheck))
+                    return false;
+
+                /* Test whether the transaction contains a staking operation */
+                if(txCheck.IsCoinStake())
+                {
+                    /* Found last stake transaction. */
+                    tx = txCheck;
+
+                    return true;
+                }
+
+                /* Stake tx not found, yet, iterate to next previous user tx */
+                hashLast = txCheck.hashPrevTx;
+            }
+
+            return false;
         }
 
     }

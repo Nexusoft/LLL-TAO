@@ -34,10 +34,41 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
     using namespace TAO::Register;
     using namespace TAO::Operation;
 
-    uint256_t hashTrust    = TAO::Register::Address(TAO::Register::Address::TRUST);
+    /* Generate random genesis */
     uint256_t hashGenesis  = LLC::GetRand256();
 
+    /* Generate trust address deterministically */
+    TAO::Register::Address hashTrust = TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
+
     uint512_t hashLastTrust;
+
+    /* Test failure case with invalid trust address */
+    {
+        //create the transaction object
+        TAO::Ledger::Transaction tx;
+        tx.hashGenesis = hashGenesis;
+        tx.nSequence   = 0;
+        tx.nTimestamp  = runtime::timestamp();
+
+        /* generate random address */
+        TAO::Register::Address hashRandom  = TAO::Register::Address(TAO::Register::Address::TRUST);
+
+        //create object
+        Object object = CreateTrust();
+        object << std::string("testing") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << uint256_t(555);
+
+        //payload
+        tx[0] << uint8_t(OP::CREATE) << hashRandom << uint8_t(REGISTER::OBJECT) << object.GetState();
+
+        //generate the prestates and poststates
+        REQUIRE(tx.Build());
+
+        //verify the prestates and poststates
+        REQUIRE(tx.Verify());
+
+        //commit to disk
+        REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+    }
 
     //create a trust account register
     {
@@ -258,25 +289,6 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             REQUIRE(trust.get<uint64_t>("stake")   == 5000);
             REQUIRE(trust.get<uint256_t>("token")  == 0);
         }
-
-
-        //check register values
-        {
-            //check trust indexed
-            REQUIRE(LLD::Register->HasState(hashTrust));
-
-            TAO::Register::Object trust;
-            REQUIRE(LLD::Register->ReadState(hashTrust, trust));
-
-            //parse register
-            REQUIRE(trust.Parse());
-
-            //check values
-            REQUIRE(trust.get<uint64_t>("balance") == 5);
-            REQUIRE(trust.get<uint64_t>("trust")   == 0);
-            REQUIRE(trust.get<uint64_t>("stake")   == 5000);
-            REQUIRE(trust.get<uint256_t>("token")  == 0);
-        }
     }
 
 
@@ -425,7 +437,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
     }
 
 
-    //Test Stake
+    //Test Unstake exceeds stake NOTE: intended failure
     {
         //create the transaction object
         TAO::Ledger::Transaction tx;
@@ -433,45 +445,8 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
         tx.nSequence   = 4;
         tx.nTimestamp  = runtime::timestamp();
 
-        //payload with added stake amount
-        tx[0] << uint8_t(OP::STAKE) << uint64_t(15);
-
-        //generate the prestates and poststates
-        REQUIRE(tx.Build());
-
-        //verify the prestates and poststates
-        REQUIRE(tx.Verify());
-
-        //commit to disk
-        REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
-
-        //check register values
-        {
-            TAO::Register::Object trust;
-            REQUIRE(LLD::Register->ReadTrust(hashGenesis, trust));
-
-            //parse register
-            REQUIRE(trust.Parse());
-
-            //check values
-            REQUIRE(trust.get<uint64_t>("balance") == 3);
-            REQUIRE(trust.get<uint64_t>("trust")   == 2000);
-            REQUIRE(trust.get<uint64_t>("stake")   == 5015);
-            REQUIRE(trust.get<uint256_t>("token")  == 0);
-        }
-    }
-
-
-    //Test Unstake exceeds stake NOTE: intended failure
-    {
-        //create the transaction object
-        TAO::Ledger::Transaction tx;
-        tx.hashGenesis = hashGenesis;
-        tx.nSequence   = 5;
-        tx.nTimestamp  = runtime::timestamp();
-
         //payload with removed stake amount and trust penalty
-        tx[0] << uint8_t(OP::UNSTAKE) << uint64_t(15000) << uint64_t(2320);
+        tx[0] << uint8_t(OP::UNSTAKE) << uint64_t(15000) << uint64_t(2000);
 
         //generate the prestates and poststates
         REQUIRE_FALSE(tx.Build());
@@ -485,9 +460,40 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             REQUIRE(trust.Parse());
 
             //check values
-            REQUIRE(trust.get<uint64_t>("balance") == 3);
+            REQUIRE(trust.get<uint64_t>("balance") == 18);
             REQUIRE(trust.get<uint64_t>("trust")   == 2000);
-            REQUIRE(trust.get<uint64_t>("stake")   == 5015);
+            REQUIRE(trust.get<uint64_t>("stake")   == 5000);
+            REQUIRE(trust.get<uint256_t>("token")  == 0);
+        }
+    }
+
+
+    //Test Unstake incorrect penalty NOTE: intended failure
+    {
+        //create the transaction object
+        TAO::Ledger::Transaction tx;
+        tx.hashGenesis = hashGenesis;
+        tx.nSequence   = 4;
+        tx.nTimestamp  = runtime::timestamp();
+
+        //payload with removed stake amount and trust penalty
+        tx[0] << uint8_t(OP::UNSTAKE) << uint64_t(2000) << uint64_t(100);
+
+        //generate the prestates and poststates
+        REQUIRE_FALSE(tx.Build());
+
+        //check register values
+        {
+            TAO::Register::Object trust;
+            REQUIRE(LLD::Register->ReadTrust(hashGenesis, trust));
+
+            //parse register
+            REQUIRE(trust.Parse());
+
+            //check values
+            REQUIRE(trust.get<uint64_t>("balance") == 18);
+            REQUIRE(trust.get<uint64_t>("trust")   == 2000);
+            REQUIRE(trust.get<uint64_t>("stake")   == 5000);
             REQUIRE(trust.get<uint256_t>("token")  == 0);
         }
     }
@@ -498,7 +504,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
         //create the transaction object
         TAO::Ledger::Transaction tx;
         tx.hashGenesis = hashGenesis;
-        tx.nSequence   = 5;
+        tx.nSequence   = 4;
         tx.nTimestamp  = runtime::timestamp();
 
         //payload with removed stake amount and trust penalty
@@ -522,9 +528,46 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             REQUIRE(trust.Parse());
 
             //check values
-            REQUIRE(trust.get<uint64_t>("balance") == 2003);
+            REQUIRE(trust.get<uint64_t>("balance") == 2018);
             REQUIRE(trust.get<uint64_t>("trust")   == 1200);
-            REQUIRE(trust.get<uint64_t>("stake")   == 3015);
+            REQUIRE(trust.get<uint64_t>("stake")   == 3000);
+            REQUIRE(trust.get<uint256_t>("token")  == 0);
+        }
+    }
+
+
+    //Test Stake
+    {
+        //create the transaction object
+        TAO::Ledger::Transaction tx;
+        tx.hashGenesis = hashGenesis;
+        tx.nSequence   = 5;
+        tx.nTimestamp  = runtime::timestamp();
+
+        //payload with added stake amount
+        tx[0] << uint8_t(OP::STAKE) << uint64_t(18);
+
+        //generate the prestates and poststates
+        REQUIRE(tx.Build());
+
+        //verify the prestates and poststates
+        REQUIRE(tx.Verify());
+
+        //commit to disk
+        REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+
+        //check register values
+        {
+            TAO::Register::Object trust;
+            REQUIRE(LLD::Register->ReadTrust(hashGenesis, trust));
+
+            //parse register
+            REQUIRE(trust.Parse());
+
+            //check values
+            REQUIRE(trust.get<uint64_t>("balance") == 2000);
+            REQUIRE(trust.get<uint64_t>("trust")   == 1200);
+            REQUIRE(trust.get<uint64_t>("stake")   == 3018);
             REQUIRE(trust.get<uint256_t>("token")  == 0);
         }
     }
@@ -562,9 +605,9 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             REQUIRE(trust.Parse());
 
             //check values
-            REQUIRE(trust.get<uint64_t>("balance") == 2008);
+            REQUIRE(trust.get<uint64_t>("balance") == 2005);
             REQUIRE(trust.get<uint64_t>("trust")   == 2200);
-            REQUIRE(trust.get<uint64_t>("stake")   == 3015);
+            REQUIRE(trust.get<uint64_t>("stake")   == 3018);
             REQUIRE(trust.get<uint256_t>("token")  == 0);
         }
     }

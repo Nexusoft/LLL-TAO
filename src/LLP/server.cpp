@@ -52,7 +52,6 @@ namespace LLP
                          uint32_t cScore, uint32_t rScore, uint32_t nTimespan, bool fListen,
                          bool fMeter, bool fManager, uint32_t nSleepTimeIn)
     : fDDOS(fDDOS_)
-    , MANAGER()
     , PORT(nPort)
     , MAX_THREADS(nMaxThreads)
     , DDOS_TIMESPAN(nTimespan)
@@ -106,8 +105,6 @@ namespace LLP
         /* Wait for address manager. */
         if(pAddressManager)
         {
-            MANAGER.notify_all();
-
             if(MANAGER_THREAD.joinable())
                 MANAGER_THREAD.join();
         }
@@ -354,6 +351,17 @@ namespace LLP
     {
         for(uint16_t index = 0; index < MAX_THREADS; ++index)
             DATA_THREADS[index]->DisconnectAll();
+    }
+
+
+    /*  Tell the server an event has occured to wake up thread if it is sleeping. This can be used to orchestrate communication
+     *  among threads if a strong ordering needs to be guaranteed. */
+    template <class ProtocolType>
+    void Server<ProtocolType>::NotifyEvent()
+    {
+        /* Notify the connection of each data thread that an event has occurred. */
+        for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
+            DATA_THREADS[nThread]->NotifyEvent();
     }
 
 

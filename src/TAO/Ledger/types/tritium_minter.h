@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #define NEXUS_TAO_LEDGER_TYPES_TRITIUM_MINTER_H
 
 #include <TAO/Ledger/types/base_minter.h>
+#include <TAO/Ledger/types/genesis.h>
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/types/transaction.h>
@@ -208,25 +209,25 @@ namespace TAO
          *
          *  Gets the trust account for the current active signature chain and stores it into account.
          *
-         *  @param[in] user - the currently active signature chain
+         *  @param[in] hashGenesis - genesis of user account signature chain
          *
          *  @return true if the trust account was successfully retrieved
          *
          **/
-        bool FindTrustAccount(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user);
+        bool FindTrustAccount(const Genesis& hashGenesis);
 
 
         /** FindLastStake
          *
          *  Retrieves the most recent stake transaction for a user account.
          *
-         *  @param[in] user - the user account signature chain
+         *  @param[in] hashGenesis - genesis of user account signature chain
          *  @param[out] tx - the most recent stake transaction
          *
          *  @return true if the last stake transaction was successfully retrieved
          *
          **/
-        bool FindLastStake(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, TAO::Ledger::Transaction& tx);
+        bool FindLastStake(const Genesis& hashGenesis, Transaction& tx);
 
 
         /** CreateCandidateBlock

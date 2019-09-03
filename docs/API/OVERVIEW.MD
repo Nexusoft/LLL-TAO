@@ -4,16 +4,26 @@
 Nexus provides several APIs to allow users and developers to easily interact with the functionality of the Nexus software stack. Each API is a logically grouped collection of methods that either interact with a specific part of the stack (e.g. ledger, registers), by functional area (accounts, assets, tokens), or by industry specific use case (supply, music).
 
 
-### `Protocol`
+## `Protocol`
 The API server uses the `HTTP` protocol and supports both **`GET`** and **`POST`** request methods.  
 
 The API's use **`JSON`** (JavaScript Object Notation) as their primary data transport mechanism for both input and output.  However the API server also supports URL encoded requests (**`application/x-www-form-urlencoded`**).   
 
-### `Port`
+## `Port`
 By default the API server runs on port 8080. This can be changed by setting `apiport=xxxx` in your nexus.conf or starting your daemon with the `-apiport=xxxx` parameter.
 
+## `Security`
+The Nexus API uses the `HTTP Basic` authentication scheme.  This requires the caller to set an `Authorization` HTTP header with the value `Basic <credentials>` with the `<credendtials>` portion set to `apiuser:apipassword` and `base58` encoded. On the API server side the authentication is configured by adding `apiuser=<username>` and `apipassword=<password>` to the nexus.conf.   
+**NOTE**:  If you wish to disable authentication entirely, you can do so by setting `apiauth=0` in your nexus.conf 
 
-### `Endpoint`
+
+The authentication mechanism is complemented by the implementation of `SSL` encryption (`HTTPS`).  By default the API server is started with SSL disabled.  To enable it, please add `apissl=1` to your nexus.conf   
+
+
+## `Multi-user Sessions`
+The Nexus API can be configured to run in multiuser mode, allowing multiple signature chains to be logged in and use the API simultaneously.  This feature can be enabled by setting `multiuser=1` in your nexus.conf (default off).  When multiuser is enabled, the initial login response will include a session ID value.  This session ID must be then be included in all subsequent API calls to endpoints that require a user to be logged in. 
+
+## `Endpoint`
 
 Each API endpoint can be invoked through the following semantics:
 
@@ -26,9 +36,10 @@ http://127.0.0.1:8080/ledger/get/block
 
 **NOTE**:  URI's are always in lowercase.
 
-****
+-----------------------------------
+***
 
-## `Verbs (actions)`
+# `Verbs (actions)`
 The following list of verbs are used throughout the Nexus APIs.  While the action is generic in nature (i.e. list, get, create), implementations of these actions will adhere to certain semantics or mandatory parameters regardless of the noun (resource).
 
 * `list`
@@ -61,9 +72,10 @@ The following list of verbs are used throughout the Nexus APIs.  While the actio
 * `lock`
 * `subscribe`
 
-****
+-----------------------------------
+***
 
-## `Nouns (resources)`
+# `Nouns (resources)`
 
 Within each API endpoint, a noun is used to describe the resource or object upon which the action is taking place.  
 
@@ -102,8 +114,10 @@ The commonly used resources are described below:
     An asset is an object register of a specialized type.
 
 
-****
-## `Error Handling`
+-----------------------------------
+***
+
+# `Error Handling`
 
 In the event that an API call results in an error, a JSON object will be returned with the following format:
 ```
@@ -295,7 +309,25 @@ Error Codes
 | -172 | Cannot void a transaction that does not belong to you |
 | -173 | Cannot void debit transaction as it has already been fully credited by all recipients |
 | -174 | Transaction contains no contracts that can be voided |
-
-
+| -175 | Invalid supply amount.  Supply must be whole number value |
+| -176 | Invalid supply amount.  The maximum token supply is 18446744073709551615 |
+| -177 | Invalid decimals amount.  Decimals must be whole number value between 0 and 8 |
+| -178 | Invalid supply / decimals.  The maximum combination of supply and decimals (supply * 10^decimals) cannot exceed 18446744073709551615 |
+| -179 | Legacy wallet is locked. walletpassphrase required |
+| -180 | Incorrect walletpassphrase for Legacy wallet |
+| -181 | Trust key not found for Legacy wallet |
+| -182 | Trust key previously migrated |
+| -183 | Previous stake transaction immature |
+| -184 | Previous stake transaction is not a Legacy transaction |
+| -185 | Previous transaction is not a stake transaction |
+| -186 | Previous stake does not belong to current wallet |
+| -187 | Could not get addresses for Legacy wallet |
+| -188 | Trust account already has genesis |
+| -189 | Trust account already has stake |
+| -190 | Trust account already has trust |
+| -191 | Username must be a minimum of 3 characters |
+| -192 | Password must be a minimum of 8 characters |
+| -193 | Pin must be a minimum of 4 characters |
+| -194 | Account already unlocked for notifications |
 
 

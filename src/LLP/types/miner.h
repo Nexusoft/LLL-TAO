@@ -87,7 +87,7 @@ namespace LLP
         /* Externally set coinbase to be set on mined blocks */
         Legacy::Coinbase CoinbaseTx;
 
-        /* Used for synchronization */
+        /** Mutex for thread safe data access **/
         std::mutex MUTEX;
 
         /** The map to hold the list of blocks that are being mined. */

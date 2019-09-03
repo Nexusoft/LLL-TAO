@@ -50,6 +50,7 @@ namespace Legacy
     , mapValue()
     , vOrderForm()
     , strFromAccount()
+    , pfromAddress(nullptr)
     , vfSpent(false, vout.size())
     , fTimeReceivedIsTxTime(false)
     , nTimeReceived(0)
@@ -75,6 +76,7 @@ namespace Legacy
     , mapValue()
     , vOrderForm()
     , strFromAccount()
+    , pfromAddress(nullptr)
     , vfSpent(false, vout.size())
     , fTimeReceivedIsTxTime(false)
     , nTimeReceived(0)
@@ -100,6 +102,7 @@ namespace Legacy
     , mapValue()
     , vOrderForm()
     , strFromAccount()
+    , pfromAddress(nullptr)
     , vfSpent(false, vout.size())
     , fTimeReceivedIsTxTime(false)
     , nTimeReceived(0)
@@ -125,6 +128,7 @@ namespace Legacy
     , mapValue()
     , vOrderForm()
     , strFromAccount()
+    , pfromAddress(nullptr)
     , vfSpent(false, vout.size())
     , fTimeReceivedIsTxTime(false)
     , nTimeReceived(0)
@@ -150,6 +154,7 @@ namespace Legacy
     , mapValue()
     , vOrderForm()
     , strFromAccount()
+    , pfromAddress(nullptr)
     , vfSpent(false, vout.size())
     , fTimeReceivedIsTxTime(false)
     , nTimeReceived(0)
@@ -169,6 +174,10 @@ namespace Legacy
     /* Destructor */
     WalletTx::~WalletTx()
     {
+        pWallet = nullptr; //don't delete the wallet instance, just null the pointer
+
+        if(pfromAddress != nullptr)
+            delete pfromAddress;
     }
 
 
@@ -180,6 +189,12 @@ namespace Legacy
         vOrderForm.clear();
         strFromAccount.clear();
         vfSpent.clear();
+
+        if(pfromAddress != nullptr)
+        {
+            delete pfromAddress;
+            pfromAddress = nullptr;
+        }
 
         fTimeReceivedIsTxTime = false;
         nTimeReceived = 0;

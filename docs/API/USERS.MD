@@ -21,6 +21,7 @@ The following methods are currently supported by this API
 [`logout/user`](#logoutuser)   
 [`unlock/user`](#unlockuser)  
 [`lock/user`](#lockuser)  
+[`get/status`](#getstatus)  
 [`list/accounts`](#listaccounts)   
 [`list/assets`](#listassets)    
 [`list/items`](#listitems)    
@@ -116,7 +117,7 @@ This will start a session for your user account with this specific API instance.
 
 `password` : The password to be associated with this signature chain.
 
-`PIN` : The PIN for this signature chain.
+`pin` : The PIN for this signature chain.
 
 
 ### Return value JSON object:    
@@ -174,10 +175,10 @@ in encrypted memory.
 
 This will unlock your signature chain and cache the PIN in encrypted memory to be used for all subsequent API calls. This method is only available when using single-user API mode (multiuser=0).    
 
-The PIN field is mandatory for unlock. The minting/transactions parameters are optional and, if supplied, allow the signature chain to be used for either mining/staking or creating transactions (or both) when in single-user API mode.
+The `pin` field is mandatory for unlock. The minting/transactions/notifications parameters are optional and, if supplied, allow the signature chain to be used for either mining/staking, creating transactions, or processing notifications (or all three ) when in single-user API mode.
 
-**NOTE** : If the minting/transactions parameters are not supplied then it is assumed that the signature chain can be used for both.
-**NOTE** : If the Unlock method is called once with either `minting` or `transactions`=1 (but not both) then it can be called a second time to unlock the other option.  
+**NOTE** : If the minting/transactions/notifications parameters are not supplied then it is assumed that the signature chain can be used for all.
+**NOTE** : If the Unlock method is called once with either `minting=1`, `transactions-1`, or `notifications=1` (but not all) then it can be called a second time to unlock the other options.  
 
 
 ### Endpoint:
@@ -188,24 +189,35 @@ The PIN field is mandatory for unlock. The minting/transactions parameters are o
 ### Parameters:
 
 
-`PIN` : The PIN for this signature chain.
+`pin` : The PIN for this signature chain.
 
-`minting` : This boolean value determines whether the user account can be used for minting (staking or mining).
+`minting` : This boolean value determines whether the logged in users signature chain can be used for minting (staking or mining).
 
-`transactions` : This boolean value determines whether the user account can be used for creating or claiming transactions.
+`transactions` : This boolean value determines whether the logged in users signature chain can be used for creating or claiming transactions.
 
+`notifications` : This boolean value determines whether the logged in users signature chain can be used for processing notifications. 
 
 
 ### Return value JSON object:
 ```
 {
-    "success": true
+    "unlocked": {
+        "minting": true,
+        "transactions": true,
+        "notifications": true
+    }
 }
 ```
 
 ### Return values:
 
-`success` : Flag indicating if the call was successful
+`unlocked` : This will contain child elements describing which functions the session is currently unlocked for
+
+`minting` : Boolean flag indicating whether the users sig chain is unlocked for minting (staking or mining).
+
+`transactions` : Boolean flag indicating whether the users sig chain is unlocked for creating any transactions (except those automatically created through minting/processing notifications if those are unlocked).
+
+`notifications` : Bool flag indicating whether the users sig chain is unlocked for processing notifications.
 
 ****
 
@@ -215,7 +227,6 @@ The PIN field is mandatory for unlock. The minting/transactions parameters are o
 This will lock your signature chain, making it unavailable for use unless it is
 either unlocked or the PIN is passed in to all API requests. Only available in single-user API mode (multiuser=0).
 
-The minting/transactions parameters are optional and, if supplied, allow the signature chain to be locked for either mining/staking or creating transactions.  This allows, for example, a signature chain to be continually unlocked for minting, but only temporarily unlocked for sending a transaction.    
 
 ### Endpoint:
 
@@ -224,10 +235,9 @@ The minting/transactions parameters are optional and, if supplied, allow the sig
 
 ### Parameters:
 
-`minting` : If set this will lock the users sig chain for minting (staking or mining).
-
-`transactions` : If set this will lock the users sig chain from creating any transactions.
-
+````
+NONE
+````
 
 
 ### Return value JSON object:
@@ -240,6 +250,62 @@ The minting/transactions parameters are optional and, if supplied, allow the sig
 ### Return values:
 
 `success` : Flag indicating if the call was successful
+
+
+****
+
+
+# `get/status`
+
+Only available in single-user API mode (multiuser=0), this method will return status information for the currently logged in user
+   
+
+### Endpoint:
+
+`/users/get/status`
+
+
+### Parameters:
+
+````
+NONE
+````
+
+
+### Return value JSON object:
+```
+{
+    "username": "bob",
+    "genesis": "a2e51edcd41a8152bfedb24e3c22ee5a65d6d7d524146b399145bced269ae000",
+    "transactions": 272,
+    "notifications": 10,
+    "unlocked": {
+        "minting": true,
+        "transactions": true,
+        "notifications": true
+    }
+}
+
+```
+
+### Return values:
+
+`username` : The username of the currently logged in user
+
+`genesis` : The signature chain genesis hash for the currently logged in user.
+
+`transactions` : The total transaction count in this sig chain
+
+`notifications` : The number of outstanding notifications for this user
+
+`unlocked` : This will contain child elements describing which functions the session is currently unlocked for
+
+`minting` : Boolean flag indicating whether the users sig chain is unlocked for minting (staking or mining).
+
+`transactions` : Boolean flag indicating whether the users sig chain is unlocked for creating any transactions (except those automatically created through minting/processing notifications if those are unlocked).
+
+`notifications` : Bool flag indicating whether the users sig chain is unlocked for processing notifications.
+
 
 
 ****
@@ -273,7 +339,7 @@ This will list off all of the assets owned by a signature chain.
 [
     {
         "name": "myasset1",
-        "address": "8195384518cc4daf2da54479a38c9d93fde145be0bbcd129f420054ff777917c",
+        "address": "88dFaTWNYpoGuXtgkWrbQVfsJJ3Sfth5AP9yWqioxCLhHmTu6xo",
         "timestamp": "1553227256"
         "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1"
         "serial_number": "123456",
@@ -282,7 +348,7 @@ This will list off all of the assets owned by a signature chain.
     },
     {
         "name": "myasset2",
-        "address": "2673bd356146d1b7ab34dac8f6503cd0c587158b6a017fb9e8ff3e627be8f01c",
+        "address": "8B7SMKmECgYU1ydBQbzp5FCSe4AnkU2EwLE59D7eQDBpixmLZ2c",
         "timestamp": "1553227128"
         "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1"
         "serial_number": "78901234",
@@ -300,6 +366,8 @@ This will list off all of the assets owned by a signature chain.
 `name` : The name identifying the asset.  For privacy purposes, this is only included in the response if the caller is the owner of the asset
 
 `address` : The register address of the asset.
+
+`ownership` : Only included for tokenized assets, this is the percentage of the asset owned by the caller, based on the number of tokens owned
 
 `timestamp` : The Unix timestamp of when the asset was last updated.
 
@@ -661,7 +729,7 @@ This will list off all of the tokens that were created by a particular signature
         "balance": 0,
         "maxsupply": 26738388,
         "currentsupply": 26738388,
-        "digits": 2
+        "decimals": 2
     },
     {
         "name": "mytoken2",
@@ -669,7 +737,7 @@ This will list off all of the tokens that were created by a particular signature
         "balance": 990,
         "maxsupply": 1000,
         "currentsupply": 10,
-        "digits": 8
+        "decimals": 8
     }
 
 
@@ -691,7 +759,7 @@ This will list off all of the tokens that were created by a particular signature
 
 `currentsupply` : The current number of tokens that have been distributed from this token register.
 
-`digits` : The maximum number of decimal places that can be applied to token amounts.  For example digits=2 will allow a token amount to be given to 2 decimal places.
+`decimals` : The maximum number of decimal places that can be applied to token amounts.  For example decimals=2 will allow a token amount to be given to 2 decimal places.
 
 
 ****
@@ -781,6 +849,8 @@ This will list off all of the transactions for the requested signature chain gen
 {    
 &nbsp;&nbsp;&nbsp;`OP` : The contract operation. Can be `APPEND`, `CLAIM`, `COINBASE`, `CREATE`, `CREDIT`, `DEBIT`, `FEE`, `GENESIS`, `LEGACY`, `TRANSFER`, `TRUST`, `STAKE`, `UNSTAKE`, `WRITE`.
 
+&nbsp;&nbsp;&nbsp;`for` : For `CREDIT` transactions, the contract that this credit was created for . Can be `COINBASE`, `DEBIT`, or`LEGACY`.
+
 &nbsp;&nbsp;&nbsp;`txid` : The transaction that was credited / claimed.
 
 &nbsp;&nbsp;&nbsp;`proof` : The register address proving the credit.
@@ -789,9 +859,9 @@ This will list off all of the transactions for the requested signature chain gen
 
 &nbsp;&nbsp;&nbsp;`account_name` : For `CREDIT` transactions, the name of the account that the transaction relates to.  Only included if the name can be resolved.
 
-&nbsp;&nbsp;&nbsp;`from` : For `DEBIT` transactions, the register address of the account that the debit is being made from.
+&nbsp;&nbsp;&nbsp;`from` : For `DEBIT` and `CREDIT` transactions, the register address of the account that the debit is being made from.
 
-&nbsp;&nbsp;&nbsp;`from_name` : For `DEBIT` transactions, the name of the account that the debit is being made from.  Only included if the name can be resolved.
+&nbsp;&nbsp;&nbsp;`from_name` : For `DEBIT` and `CREDIT` transactions, the name of the account that the debit is being made from.  Only included if the name can be resolved.
 
 &nbsp;&nbsp;&nbsp;`to` : For `DEBIT` transactions, the register address of the account that the debit is being made to.
 

@@ -122,7 +122,7 @@ namespace LLP
                     if(config::GetArg("-verbose", 0) >= 5)
                         PrintHex(INCOMING.GetBytes());
                 }
-                
+
                 break;
             }
 
@@ -188,6 +188,53 @@ namespace LLP
         {
             /* Check for flags. */
 
+
+            /* Handle for auth command. */
+            case ACTION::AUTH:
+            {
+                /* Hard requirement for genesis. */
+                uint256_t hashGenesis = 0;
+                ssPacket >> hashGenesis;
+
+                /* Debug logging. */
+                debug::log(0, NODE, "new connection from ", hashGenesis.SubString());
+
+                /* Get the signature information. */
+                if(hashGenesis == 0)
+                {
+                    //untrusted node here
+                }
+
+                break;
+            }
+
+
+            /* Handle for list command. */
+            case ACTION::LIST:
+            {
+                break;
+            }
+
+
+            /* Handle for get command. */
+            case ACTION::GET:
+            {
+                break;
+            }
+
+
+            /* Handle for notify command. */
+            case ACTION::NOTIFY:
+            {
+                break;
+            }
+
+
+            /* Handle for ping command. */
+            case ACTION::PING:
+            {
+                break;
+            }
         }
 
         return true;

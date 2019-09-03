@@ -325,7 +325,7 @@ namespace TAO
 
             /* Check result of SendToNexusAddress only after returning to prior lock state */
             if(strError != "")
-                throw APIException(-4, strError);
+                throw APIException(-3, strError);
 
             return wtx.GetHash().GetHex();
         }
@@ -696,7 +696,7 @@ namespace TAO
                 throw APIException(-6, "Account has insufficient funds");
 
             if(strError != "")
-                throw APIException(-4, strError);
+                throw APIException(-3, strError);
 
             return wtx.GetHash().GetHex();
         }
@@ -855,7 +855,7 @@ namespace TAO
                 throw APIException(-6, "Account has insufficient funds");
 
             if(strError != "")
-                throw APIException(-4, strError);
+                throw APIException(-3, strError);
 
             return wtx.GetHash().GetHex();
         }
@@ -917,7 +917,7 @@ namespace TAO
             {
                 Legacy::Script scriptPubKey;
                 std::string strAddress = it.key();
- 
+
                 /* Decode the address string */
                 hashAccount.SetBase58(strAddress);
 
@@ -1304,13 +1304,13 @@ namespace TAO
             if(wtx.vin.size() == 0 && !wtx.IsCoinBase() && !wtx.IsCoinStake())
             {
                 /* use lamda shortcut with find_if to find the entry for this wtx */
-                auto it = std::find_if(std::begin(Legacy::Wallet::GetInstance().mapWallet), 
+                auto it = std::find_if(std::begin(Legacy::Wallet::GetInstance().mapWallet),
                                        std::end(Legacy::Wallet::GetInstance().mapWallet),
                                        [&](const std::pair<uint512_t, Legacy::WalletTx> &p) { return p.second == wtx; });
 
                 if(it != std::end(Legacy::Wallet::GetInstance().mapWallet))
                     entry["txid"] = it->first.GetHex();
-                
+
             }
             else
                 entry["txid"] = wtx.GetHash().GetHex();
@@ -1729,7 +1729,7 @@ namespace TAO
 
             /* Add TX ID */
             ret["txid"]   = hash.GetHex();
-                
+
             /* Legacy transaction object */
             Legacy::Transaction txLegacy;
 
@@ -1739,7 +1739,7 @@ namespace TAO
             /* Get the transaction object. */
             if(TAO::Ledger::mempool.Get(hash, txLegacy) || LLD::Legacy->ReadTx(hash, txLegacy))
             {
-                /* Fill other relevant data. */   
+                /* Fill other relevant data. */
                 ret["type"]   = txLegacy.TypeString();
                 ret["time"]   = txLegacy.nTime;
                 ret["amount"] = Legacy::SatoshisToAmount(txLegacy.GetValueOut());
@@ -1813,7 +1813,7 @@ namespace TAO
                         TAO::Register::Unpack(txTritium[nContract], nAmount );
 
                         /* add to our total */
-                        nTotal += nAmount;                    
+                        nTotal += nAmount;
 
                         /* Get the output script from the op legacy */
                         Legacy::Script script;
@@ -1825,7 +1825,7 @@ namespace TAO
                         /* Add this address/amout to the outputs */
                         outputs.push_back(debug::safe_printstr(address.ToString(), ":", std::fixed, Legacy::SatoshisToAmount(nAmount)));
                     }
-                    
+
                     /* If we found any op legacy contracts then add the rest of the data */
                     if(outputs.size() > 0)
                     {
@@ -1840,19 +1840,19 @@ namespace TAO
                     {
                         throw APIException(-1, "This is a Tritium transaction.  Please use the Tritium API to retrieve data for this transaction" );
                     }
-                    
+
 
                 }
-                
+
             }
             else
             {
                 throw APIException(-5, "No information available about transaction" );
             }
-            
 
-            
-            
+
+
+
             return ret;
         }
 

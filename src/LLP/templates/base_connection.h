@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <LLP/templates/socket.h>
 #include <Util/include/mutex.h>
 #include <vector>
+#include <condition_variable>
 
 
 namespace LLP
@@ -25,6 +26,7 @@ namespace LLP
 
     /* Forward declarations. */
     class DDOS_Filter;
+
 
     /** BaseConnection
      *
@@ -59,6 +61,7 @@ namespace LLP
          **/
         virtual bool ProcessPacket() = 0;
 
+
     public:
 
         /** Incoming Packet Being Built. **/
@@ -85,13 +88,32 @@ namespace LLP
         std::atomic<bool> fCONNECTED;
 
 
+    private:
+
+        /** Flag to determine if event occurred. **/
+        std::atomic<bool> fEVENT;
+
+        /** Mutex used for event condition variable **/
+        std::mutex EVENT_MUTEX;
+
+        /** event condition variable to wake up sleeping connection. **/
+        std::condition_variable EVENT_CONDITION;
+
+
+    public:
+
+
         /** Build Base Connection with no parameters **/
         BaseConnection();
 
 
         /** Build Base Connection with all Parameters. **/
         BaseConnection(const Socket &SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false, bool fOutgoing = false);
+
+
+        /** Build Base Connection with all Parameters. **/
         BaseConnection(DDOS_Filter* DDOS_IN, bool isDDOS = false, bool fOutgoing = false);
+
 
         /* Default destructor */
         virtual ~BaseConnection();
@@ -100,6 +122,7 @@ namespace LLP
         /** SetNull
          *
          *  Sets the object to an invalid state.
+
          *
          **/
         void SetNull();
@@ -162,14 +185,28 @@ namespace LLP
         bool Connect(const BaseAddress &addrConnect);
 
 
-
         /** Disconnect
          *
-         *  Disconnect Socket. Cleans up memory usage to prevent "memory runs"
-         *  from poor memory management.
+         *  Disconnect Socket. Cleans up memory usage to prevent "memory runs" from poor memory management.
          *
          **/
         void Disconnect();
+
+
+        /** NotifyEvent
+         *
+         *  Notify connection an event occured to wake up a sleeping connection.
+         *
+         **/
+        void NotifyEvent();
+
+
+        /** WaitEvent
+         *
+         *  Have connection wait for a notify signal to wake up.
+         *
+         **/
+        void WaitEvent();
 
     };
 

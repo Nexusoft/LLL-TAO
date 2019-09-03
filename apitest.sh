@@ -53,8 +53,8 @@
 
 
 ## TOKENS ##
-#Create a new token called ABC with initial supply 1000 and digits 2
-./nexus tokens/create/token/abc supply=1000 digits=2 pin=1234
+#Create a new token called ABC with initial supply 1000 and decimals 2
+./nexus tokens/create/token/abc supply=1000 decimals=2 pin=1234
 
 #Create an account called abc_main to use with the abc token (note this example assumes that YOU created the token so it is in your namespace)
 ./nexus tokens/create/account/abc_main token_name=abc pin=1234

@@ -26,7 +26,7 @@ namespace Legacy
      **/
 	class Coinbase
 	{
-	public:
+	private:
 
         /** The Transaction Outputs to be Serialized to Mining LLP. **/
         std::map<std::string, uint64_t> vOutputs;
@@ -36,9 +36,10 @@ namespace Legacy
         uint64_t nMaxValue;
 
 
-        /** The pool fee issued by the pool server. */
-        uint64_t nPoolFee;
+        /** The amount that will be sent to wallet operator. */
+        uint64_t nWalletFee;
 
+    public:
 
         /** Default constructor **/
         Coinbase();
@@ -92,5 +93,22 @@ namespace Legacy
          *
          **/
         void Print() const;
+
+
+        /** WalletReward
+         *
+         *  Returns the reward payed out to wallet operator.
+         *
+         **/
+        uint64_t WalletReward() const;
+
+
+        /** Outputs
+         *
+         *  Returns a copy of the outputs used for this coinbase.
+         *
+         **/
+        std::map<std::string, uint64_t> Outputs() const;
+
 	};
 }

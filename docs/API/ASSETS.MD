@@ -68,9 +68,6 @@ This will create a new asset or object register. The API supports an alternative
 - `mutable` : The boolean field to indicate whether the field is writable (true) or read-only (false).
 - `maxlength`: Only applicable to `string` or `bytes` fields where `mutable`=true, this is the maximum number of characters (bytes) that can be stored in the field.  If no maxlength parameter is provided then we will default the field size to the length of the default value rounded up to the nearest 64 bytes.  
 
-`token_name` : The name of a token to use to tokenize the asset. If provided, this will immediately tokenize the asset into fungible tokens that represent ownership of the asset.
-`token_address` : The register address of a token to use to tokenize the asset. If provided, this will immediately tokenize the asset into fungible tokens that represent ownership of the asset.  `token_name` can be supplied as an alternative to `token_address`.
-
 
 ### Example:
 
@@ -168,7 +165,7 @@ Additionally the API supports passing a field name in the URL after the asset na
 ```
 {
     "name": "watch",
-    "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9",
+    "address": "8B7SMKmECgYU1ydBQbzp5FCSe4AnkU2EwLE59D7eQDBpixmLZ2c",
     "timestamp": "1553227128",
     "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1",
     "serial_number": "123456789123456789",
@@ -187,6 +184,8 @@ Additionally the API supports passing a field name in the URL after the asset na
 `name` : The name identifying the asset. For privacy purposes, this is only included in the response if the caller is the owner of the asset
 
 `address` : The register address of the asset.  
+
+`ownership` : Only included for tokenized assets, this is the percentage of the asset owned by the caller, based on the number of tokens owned  
 
 `<fieldname>=<value>` : The key-value pair for each piece of data stored in the asset.
 

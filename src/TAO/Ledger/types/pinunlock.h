@@ -40,9 +40,10 @@ namespace TAO
             {
                 TRANSACTIONS    = (1 << 1),
                 MINTING         = (1 << 2),
+                NOTIFICATIONS   = (1 << 4),
                 NONE            = (0 << 0),
 
-                ALL = TRANSACTIONS | MINTING
+                ALL = TRANSACTIONS | MINTING | NOTIFICATIONS
             };
 
 
@@ -87,6 +88,18 @@ namespace TAO
                 return nUnlockedActions & MINTING;
             }
 
+            /** ProcessNotifications
+             *
+             *  Determins if the PIN can be used for processing notifications.
+             *
+             *  @return True if the PIN can be used for processing notifications.
+             *
+             **/
+            bool ProcessNotifications() const
+            {
+                return nUnlockedActions & NOTIFICATIONS;
+            }
+
 
             /** PIN
              *
@@ -109,6 +122,17 @@ namespace TAO
             void Encrypt()
             {
                 encrypt(strPIN);
+            }
+
+
+            /** UnlockedActions
+             *
+             *  Provides access to the current unlocked actions set on this PIN
+             *
+             **/
+            uint8_t UnlockedActions()
+            {
+                return nUnlockedActions;
             }
 
 

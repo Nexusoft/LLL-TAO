@@ -136,6 +136,14 @@ namespace TAO
                         /* Get recipient genesis hash */
                         tx[nContract] >> hashProof;
 
+                        /* Read the force transfer flag */
+                        uint8_t nType = 0;
+                        tx[nContract] >> nType;
+
+                        /* Ensure this wasn't a forced transfer (which requires no Claim) */
+                        if(nType == TAO::Operation::TRANSFER::FORCE)
+                            continue;
+
                         /* Check that we are the recipient */
                         if(hashGenesis != hashProof) 
                             continue;
@@ -492,7 +500,7 @@ namespace TAO
                     uint64_t nPartial = (nAmount * nBalance) / nSupply;
 
                     /* Update the JSON with the partial amount */
-                    obj["amount"] = (double) nPartial / pow(10, GetDigits(token));
+                    obj["amount"] = (double) nPartial / pow(10, GetDecimals(token));
 
                     /* Add the token account to the notification */
                     obj["proof"] = hashProof.ToString();

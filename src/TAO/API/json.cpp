@@ -32,6 +32,8 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/create.h>
 
+#include <TAO/Register/include/unpack.h>
+
 #include <Util/include/args.h>
 #include <Util/include/convert.h>
 #include <Util/include/hex.h>
@@ -585,7 +587,7 @@ namespace TAO
                             throw APIException(-14, "Object failed to parse");
 
                         /* Add the amount to the response */
-                        ret["amount"]  = (double) nAmount / pow(10, GetDigits(object));
+                        ret["amount"]  = (double) nAmount / pow(10, GetDecimals(object));
 
                         /* Add the reference to the response */
                         ret["reference"] = nReference;
@@ -640,6 +642,18 @@ namespace TAO
 
                         /* Output the json information. */
                         ret["OP"]      = "CREDIT";
+
+                        /* Determine the transaction type that this credit is made for */
+                        std::string strInput;
+                        if(hashTx.GetType() == TAO::Ledger::LEGACY)
+                            strInput = "LEGACY";
+                        else if(hashProof == hashCaller)
+                            strInput = "COINBASE";
+                        else
+                            strInput = "DEBIT";
+
+                        ret["for"]      = strInput;
+
                         ret["txid"]    = hashTx.ToString();
                         ret["output"]  = nID;
                         ret["proof"]   = hashProof.ToString();
@@ -660,7 +674,7 @@ namespace TAO
                             throw APIException(-14, "Object failed to parse");
 
                         /* Add the amount to the response */
-                        ret["amount"]  = (double) nCredit / pow(10, GetDigits(account));
+                        ret["amount"]  = (double) nCredit / pow(10, GetDecimals(account));
 
                         /* Get the object standard. */
                         uint8_t nStandard = account.Standard();
@@ -682,26 +696,45 @@ namespace TAO
                         if(!strToken.empty())
                             ret["token_name"] = strToken;
 
-                        /* The debit transaction being credited */
-                        TAO::Ledger::Transaction txDebit;
-
-                        /* Read the corresponding debit transaction to look up the reference field */
-                        if(LLD::Ledger->ReadTx(hashTx, txDebit))
+                        /* Check type transaction that was credited */
+                        if(hashTx.GetType() == TAO::Ledger::TRITIUM)
                         {
-                            /* Get the contract. */
-                            const TAO::Operation::Contract& debitContract = txDebit[nID];
+                            /* The debit transaction being credited */
+                            TAO::Ledger::Transaction txDebit;
 
-                            /* Reset the operation stream position in case it was loaded from mempool and therefore still in previous state */
-                            debitContract.Reset();
+                            /* Read the corresponding debit/coinbase transaction */
+                            if(LLD::Ledger->ReadTx(hashTx, txDebit))
+                            {
+                                /* Get the contract. */
+                                const TAO::Operation::Contract& debitContract = txDebit[nID];
 
-                            /* Seek to reference. */
-                            debitContract.Seek(73);
+                                /* Only add reference if the credit is for a debit (rather than a coinbase) */
+                                if( TAO::Register::Unpack(debitContract, TAO::Operation::OP::DEBIT))
+                                {
+                                    /* Get the address the debit came from */
+                                    TAO::Register::Address hashFrom;
+                                    TAO::Register::Unpack(debitContract, hashFrom);
 
-                            /* The reference */
-                            uint64_t nReference = 0;
-                            debitContract >> nReference;
+                                    ret["from"]     = hashFrom.ToString();
 
-                            ret["reference"] = nReference;
+                                    /* Resolve the name of the token/account that the debit is from */
+                                    std::string strFrom = Names::ResolveName(hashCaller, hashFrom);
+                                    if(!strFrom.empty())
+                                        ret["from_name"] = strFrom;
+                                        
+                                    /* Reset the operation stream position in case it was loaded from mempool and therefore still in previous state */
+                                    debitContract.Reset();
+
+                                    /* Seek to reference. */
+                                    debitContract.Seek(73);
+
+                                    /* The reference */
+                                    uint64_t nReference = 0;
+                                    debitContract >> nReference;
+
+                                    ret["reference"] = nReference;
+                                }
+                            }
 
                         }
 
@@ -794,7 +827,7 @@ namespace TAO
                             throw APIException(-14, "Object failed to parse");
 
                         /* Add the amount to the response */
-                        ret["amount"]  = (double) nAmount / pow(10, GetDigits(object));
+                        ret["amount"]  = (double) nAmount / pow(10, GetDecimals(object));
 
                         /* Get the object standard. */
                         uint8_t nStandard = object.Standard();
@@ -835,12 +868,12 @@ namespace TAO
             /* Declare the return JSON object */
             json::json ret;
 
+            /* Get callers hashGenesis . */
+            uint256_t hashGenesis = users->GetCallersGenesis(params);
+
             /* If the caller has specified to look up the name */
             if(fLookupName)
             {
-                /* Get callers hashGenesis . */
-                uint256_t hashGenesis = users->GetCallersGenesis(params);
-
                 /* Look up the object name based on the Name records in the caller's sig chain */
                 std::string strName = Names::ResolveName(hashGenesis, hashRegister);
 
@@ -859,7 +892,7 @@ namespace TAO
                 ret["address"]    = hashRegister.ToString();
                 ret["created"]    = object.nCreated;
                 ret["modified"]   = object.nModified;
-                ret["owner"]      = object.hashOwner.ToString();
+                ret["owner"]      = TAO::Register::Address(object.hashOwner).ToString();
 
                 /* If this is an append register we need to grab the data from the end of the stream which will be the most recent data */
                 while(!object.end())
@@ -896,7 +929,7 @@ namespace TAO
                         ret["token"] = hashToken.ToString();
 
                         /* Handle digit conversion. */
-                        uint64_t nDigits = GetDigits(object);
+                        uint8_t nDecimals = GetDecimals(object);
 
                         /* In order to get the balance for this account we need to ensure that we use the state from disk, which 
                            will contain the confirmed balance.  If this is a new account then it won't be on disk yet so the 
@@ -924,21 +957,21 @@ namespace TAO
                         /* Calculate the available balance which is the last confirmed balance minus and mempool debits */
                         uint64_t nAvailable = nConfirmedBalance - nUnconfirmedOutgoing;
 
-                        ret["balance"]      = (double)nAvailable / pow(10, nDigits);
-                        ret["pending"]      = (double)nPending / pow(10, nDigits);
-                        ret["unconfirmed"]  = (double)nUnconfirmed / pow(10, nDigits);
+                        ret["balance"]      = (double)nAvailable / pow(10, nDecimals);
+                        ret["pending"]      = (double)nPending / pow(10, nDecimals);
+                        ret["unconfirmed"]  = (double)nUnconfirmed / pow(10, nDecimals);
 
                         /* Add Trust specific fields */
                         if(nStandard == TAO::Register::OBJECTS::TRUST)
                         {
                             /* The amount being staked */
-                            ret["stake"]    = (double)object.get<uint64_t>("stake") / pow(10, nDigits);
+                            ret["stake"]    = (double)object.get<uint64_t>("stake") / pow(10, nDecimals);
 
                             /* Get immature mined / staked */
                             uint64_t nImmatureMined, nImmatureStake;
                             GetImmature(object.hashOwner, nImmatureMined, nImmatureStake);
 
-                            ret["immature"]  = (double)nImmatureStake / pow(10, nDigits);
+                            ret["immature"]  = (double)nImmatureStake / pow(10, nDecimals);
                         }
 
 
@@ -949,8 +982,8 @@ namespace TAO
                     /* Handle for a token contract. */
                     case TAO::Register::OBJECTS::TOKEN:
                     {
-                        /* Handle digit conversion. */
-                        uint64_t nDigits = GetDigits(object);
+                        /* Handle decimals conversion. */
+                        uint8_t nDecimals = GetDecimals(object);
 
                         /* In order to get the balance for this account we need to ensure that we use the state from disk, which 
                            will contain the confirmed balance.  If this is a new account then it won't be on disk yet so the 
@@ -979,14 +1012,14 @@ namespace TAO
                         uint64_t nAvailable = nConfirmedBalance - nUnconfirmedOutgoing;
 
                         ret["address"]          = hashRegister.ToString();
-                        ret["balance"]          = (double)nAvailable / pow(10, nDigits);
-                        ret["pending"]          = (double)nPending / pow(10, nDigits);
-                        ret["unconfirmed"]      = (double)nUnconfirmed / pow(10, nDigits);
+                        ret["balance"]          = (double)nAvailable / pow(10, nDecimals);
+                        ret["pending"]          = (double)nPending / pow(10, nDecimals);
+                        ret["unconfirmed"]      = (double)nUnconfirmed / pow(10, nDecimals);
                         
-                        ret["maxsupply"]        = (double) object.get<uint64_t>("supply") / pow(10, nDigits);
+                        ret["maxsupply"]        = (double) object.get<uint64_t>("supply") / pow(10, nDecimals);
                         ret["currentsupply"]    = (double) (object.get<uint64_t>("supply")
-                                                - object.get<uint64_t>("balance")) / pow(10, nDigits); // current supply is based on unconfirmed balance
-                        ret["digits"]           = nDigits;
+                                                - object.get<uint64_t>("balance")) / pow(10, nDecimals); // current supply is based on unconfirmed balance
+                        ret["decimals"]           = nDecimals;
 
                         break;
                     }
@@ -1028,6 +1061,14 @@ namespace TAO
                     default:
                     {
                         ret["address"]    = hashRegister.ToString();
+
+                        /* Add ownership details */
+                        TAO::Register::Address hashOwner = TAO::Register::Address(object.hashOwner);
+                        ret["owner"]    = hashOwner.ToString();
+
+                        /* If this is a tokenized asset then work out what % the caller owns */
+                        if(hashOwner.IsToken())
+                            ret["ownership"] = GetTokenOwnership(hashOwner, hashGenesis);
 
                         /* Get List of field names in this asset object */
                         std::vector<std::string> vFieldNames = object.GetFieldNames();

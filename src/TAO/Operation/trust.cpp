@@ -44,6 +44,10 @@ namespace TAO
             if(!trust.Parse())
                 return debug::error(FUNCTION, "Failed to parse account object register");
 
+            /* Check it is a trust account register. */
+            if(trust.Standard() != TAO::Register::OBJECTS::TRUST)
+                return debug::error(FUNCTION, "no trust for non-trust account");
+
             /* Write the new trust to object register. */
             if(!trust.Write("trust", nScore))
                 return debug::error(FUNCTION, "trust could not be written to object register");

@@ -97,24 +97,26 @@ namespace TAO
 
             /** Address Constructor
              *
-             *  Build an address from a name or namespace.
+             *  Build an address deterministically from a namespace name.
              *
              *  @param[in] strName The name to assign to this address.
-             *  @param[in] nType The type of the address (Name or Namespace)
+             *  @param[in] nType The type of the address (NAMESPACE)
              *
              **/
             Address(const std::string& strName, const uint8_t nType);
 
 
+
             /** Address Constructor
              *
-             *  Build an address from a name or namespace.
+             *  Build an address deterministically from a key and namespace hash.
              *
-             *  @param[in] vName The name to assign to this address.
-             *  @param[in] nType The type of the address (Name or Namespace)
+             *  @param[in] strKey The key to combine with the hash to generate this address.
+             *  @param[in] hashNamespace The hash to combine with the key to generate this address.
+             *  @param[in] nType The type of the address (NAME or TRUST)
              *
              **/
-            Address(const std::vector<uint8_t>& vName, const uint8_t nType);
+            Address(const std::string& strKey, const uint256_t& hashNamespace, const uint8_t nType);
 
 
             /** Assignment operator.

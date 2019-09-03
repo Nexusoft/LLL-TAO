@@ -47,11 +47,10 @@ ________________________________________________________________________________
 namespace LLP
 {
 
-    /** Default Constructor **/
+    /* Default Constructor */
     Miner::Miner()
     : Connection()
     , CoinbaseTx()
-    , MUTEX()
     , mapBlocks()
     , nBestHeight(0)
     , nSubscribed(0)
@@ -64,7 +63,7 @@ namespace LLP
     }
 
 
-    /** Constructor **/
+    /* Constructor */
     Miner::Miner(const Socket& SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS)
     : Connection(SOCKET_IN, DDOS_IN, isDDOS)
     , CoinbaseTx()
@@ -81,7 +80,7 @@ namespace LLP
     }
 
 
-    /** Constructor **/
+    /* Constructor */
     Miner::Miner(DDOS_Filter* DDOS_IN, bool isDDOS)
     : Connection(DDOS_IN, isDDOS)
     , CoinbaseTx()
@@ -98,7 +97,7 @@ namespace LLP
     }
 
 
-    /** Default Destructor **/
+    /* Default Destructor */
     Miner::~Miner()
     {
         LOCK(MUTEX);
@@ -109,14 +108,13 @@ namespace LLP
             pMiningKey->ReturnKey();
             delete pMiningKey;
         }
+
+        /* Send a notification to wake up sleeping thread to finish shutdown process. */
+        //this->NotifyEvent();
     }
 
 
-    /** Event
-     *
-     *  Handle custom message events.
-     *
-     **/
+    /* Handle custom message events. */
     void Miner::Event(uint8_t EVENT, uint32_t LENGTH)
     {
 
@@ -285,8 +283,7 @@ namespace LLP
     }
 
 
-    /** This function is necessary for a template LLP server. It handles your
-        custom messaging system, and how to interpret it from raw packets. **/
+    /* This function is necessary for a template LLP server. It handles a custom message system, interpreting from raw packets. */
     bool Miner::ProcessPacket()
     {
         /* Get the incoming packet. */
@@ -369,8 +366,8 @@ namespace LLP
                 /* Byte 0 is the number of records. */
                 uint8_t nSize = PACKET.DATA[0];
 
-                /* Bytes 1 - 8 is the Pool Fee for that Round. */
-                uint64_t nPoolFee  = convert::bytes2uint64(PACKET.DATA, 1);
+                /* Bytes 1 - 8 is the Wallet Operator Fee for that Round. */
+                uint64_t nWalletFee  = convert::bytes2uint64(PACKET.DATA, 1);
 
                 /* Iterator offset for map deserialization. */
                 uint32_t nIterator = 9;
@@ -381,7 +378,7 @@ namespace LLP
                 /* Loop through every Record. */
                 for(uint8_t nIndex = 0; nIndex < nSize; ++nIndex)
                 {
-                    /* Get the length. */
+                    /* Get the string length. */
                     uint32_t nLength = PACKET.DATA[nIterator];
 
                     /* Get the string address for coinbase output. */
@@ -401,19 +398,32 @@ namespace LLP
                          return debug::error(FUNCTION, "Invalid coinbase recipient reward.");
                      }
 
-                    /* Validate the address */
-                    Legacy::NexusAddress address;
-                    address.SetPubKey(vAddress);
+                     /* Get the string address. */
+                     std::string strAddress = convert::bytes2string(vAddress);
 
-                    /* Get the string address. */
-                    std::string strAddress = convert::bytes2string(vAddress);
+                     /* Validate the address. Disconnect immediately if an invalid address is provided. */
+                     if(TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 7) || TAO::Ledger::CurrentVersion() > 7)
+                     {
+                         uint256_t hashGenesis(strAddress);
 
-                    if(!address.IsValid())
-                    {
-                        /* Disconnect immediately if an invalid address is provided. */
-                        respond(COINBASE_FAIL);
-                        return debug::error(FUNCTION, "Invalid Address in Coinbase Tx: ", strAddress);
-                    }
+                         if(!LLD::Ledger->HasGenesis(hashGenesis))
+                         {
+                             respond(COINBASE_FAIL);
+                             return debug::error(FUNCTION, "Invalid Tritium Address in Coinbase Tx: ", strAddress);
+                         }
+                     }
+                     else
+                     {
+                         Legacy::NexusAddress address;
+                         address.SetPubKey(vAddress);
+
+                         if(!address.IsValid())
+                         {
+                             respond(COINBASE_FAIL);
+                             return debug::error(FUNCTION, "Invalid Legacy Address in Coinbase Tx: ", strAddress);
+                         }
+                     }
+
 
                     /* Add the transaction as an output. */
                     vOutputs[strAddress] = nValue;
@@ -426,7 +436,7 @@ namespace LLP
                 LOCK(MUTEX);
 
                 /* Update the coinbase transaction. */
-                CoinbaseTx = Legacy::Coinbase(vOutputs, nMaxValue, nPoolFee);
+                CoinbaseTx = Legacy::Coinbase(vOutputs, nMaxValue, nWalletFee);
 
                 /* Check the consistency of the coibase transaction. */
                 if(!CoinbaseTx.IsValid())
@@ -665,35 +675,6 @@ namespace LLP
     /* Checks the current height index and updates best height. Clears the block map if the height is outdated or stale. */
     bool Miner::check_best_height()
     {
-
-        /* For Tritium, check the mempool to make sure recent transactions don't orphan outdated Tritium blocks. This is handled by
-         * setting best height to zero, forcing miner clients to check height and request a new block if it's different. */
-         if(TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 7) || TAO::Ledger::CurrentVersion() > 7)
-         {
-             /* Get the hash genesis. */
-             uint256_t hashGenesis = TAO::API::users->GetGenesis(0);
-
-             /* Read hashLast from hashGenesis' sigchain and also check mempool. */
-             uint512_t hashLast;
-             if(LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
-             {
-                 /* Update nHashLast if it changed. */
-                if(nHashLast != hashLast)
-                {
-                    nHashLast = hashLast;
-                    nBestHeight = 0;
-
-                    if(nHashLast != 0)
-                        debug::log(2, FUNCTION, "Mining height stale");
-
-                    /* Clear the map of stale blocks. */
-                    clear_map();
-
-                    return true;
-                }
-             }
-         }
-
          uint32_t nChainStateHeight = TAO::Ledger::ChainState::nBestHeight.load();
 
         /* Return early if the height doesn't change. */
@@ -706,6 +687,13 @@ namespace LLP
         /* Set the new best height. */
         nBestHeight = nChainStateHeight;
         debug::log(2, FUNCTION, "Mining best height changed to ", nBestHeight);
+
+        /* Wake up events processor and wait for a signal to guarantee added transactions won't orphan a mined block. */
+        if(TAO::API::users)
+        {
+            TAO::API::users->NotifyEvent();
+            WaitEvent();
+        }
 
         return true;
     }
@@ -786,7 +774,7 @@ namespace LLP
            TAO::Ledger::TritiumBlock *pBlock = new TAO::Ledger::TritiumBlock();
 
            /* Create a new block and loop for prime channel if minimum bit target length isn't met */
-           while(TAO::Ledger::CreateBlock(pSigChain, PIN, nChannel.load(), *pBlock, ++nBlockIterator))
+           while(TAO::Ledger::CreateBlock(pSigChain, PIN, nChannel.load(), *pBlock, ++nBlockIterator, &CoinbaseTx))
            {
                /* Break out of loop when block is ready for prime mod. */
                if(is_prime_mod(nBitMask, pBlock))

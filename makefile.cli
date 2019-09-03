@@ -207,6 +207,7 @@ ifdef UNIT_TESTS
 		   build/Tests_TAO_Operation_conditions.o \
 		   build/Tests_TAO_Operation_contract.o \
 		   build/Tests_TAO_Operation_debit.o \
+		   build/Tests_TAO_Operation_fees.o \
 		   build/Tests_TAO_Operation_names.o \
 		   build/Tests_TAO_Operation_register.o \
 		   build/Tests_TAO_Operation_transfer.o \
@@ -324,6 +325,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_finance_info.o \
 		build/API_types_finance_initialize.o \
 		build/API_types_finance_list.o \
+		build/API_types_finance_migrate.o \
 		build/API_types_finance_stake.o \
 		build/API_types_ledger_block.o \
 		build/API_types_ledger_initialize.o \
@@ -377,6 +379,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_users_names.o \
 		build/API_types_users_namespaces.o \
 		build/API_types_users_notifications.o \
+		build/API_types_users_status.o \
 		build/API_types_users_tokens.o \
 		build/API_types_users_transactions.o \
 		build/API_types_users_unlock.o \
@@ -399,6 +402,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Operation_fee.o \
 		build/Operation_genesis.o \
 		build/Operation_legacy.o \
+		build/Operation_migrate.o \
 		build/Operation_stake.o \
 		build/Operation_transfer.o \
 		build/Operation_trust.o \

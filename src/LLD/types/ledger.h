@@ -449,6 +449,45 @@ namespace LLD
         bool ReadLast(const uint256_t& hashGenesis, uint512_t& hashLast, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
+        /** WriteStake
+         *
+         *  Writes the last stake transaction of sigchain to disk indexed by genesis.
+         *
+         *  @param[in] hashGenesis The genesis hash to write.
+         *  @param[in] hashLast The last stake hash (txid) to write.
+         *
+         *  @return True if successfully written, false otherwise.
+         *
+         **/
+        bool WriteStake(const uint256_t& hashGenesis, const uint512_t& hashLast);
+
+
+        /** EraseStake
+         *
+         *  Erase the last stake transaction of sigchain.
+         *
+         *  @param[in] hashGenesis The genesis hash to erase.
+         *
+         *  @return True if successfully erased, false otherwise.
+         *
+         **/
+        bool EraseStake(const uint256_t& hashGenesis);
+
+
+        /** ReadStake
+         *
+         *  Reads the last stake transaction of sigchain.
+         *
+         *  @param[in] hashGenesis The genesis hash to read.
+         *  @param[out] hashLast The last stake hash (txid)
+         *  @param[in] nFlags Determines if mempool transactions should be included (MEMPOOL) or only those in a block (BLOCK)
+         *
+         *  @return True if successfully read, false otherwise.
+         *
+         **/
+        bool ReadStake(const uint256_t& hashGenesis, uint512_t& hashLast, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
+
+
         /** WriteProof
          *
          *  Writes a proof to disk. Proofs are used to keep track of spent temporal proofs.
@@ -597,7 +636,7 @@ namespace LLD
          **/
         bool ReadGenesis(const uint256_t& hashGenesis, uint512_t& hashTx);
 
-    };
+   };
 }
 
 #endif

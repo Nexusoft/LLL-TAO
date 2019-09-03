@@ -140,6 +140,15 @@ namespace TAO
             bool CanMint() const;
 
 
+            /** CanProcessNotifications
+             *
+             *  In sessionless API mode this method checks that the active sig chain has
+             *  been unlocked to allow notifications to be processed.
+             *
+             **/
+            bool CanProcessNotifications() const;
+
+
             /** GetKey
              *
              *  Returns a key from the account logged in.
@@ -455,6 +464,19 @@ namespace TAO
             json::json Items(const json::json& params, bool fHelp);
 
 
+            /** Status
+             *
+             *  Get status information for the currently logged in user
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json Status(const json::json& params, bool fHelp);
+
+
             /** EventsThread
              *
              *  Background thread to handle/suppress sigchain notifications.
@@ -496,7 +518,7 @@ namespace TAO
             static bool GetOutstanding(const uint256_t& hashGenesis,
                 std::vector<std::pair<std::shared_ptr<Legacy::Transaction>, uint32_t>> &vContracts);
 
-            
+
             /** get_tokenized_debits
              *
              *  Get the outstanding debit transactions made to assets owned by tokens you hold.
@@ -536,6 +558,7 @@ namespace TAO
             static bool get_events(const uint256_t& hashGenesis,
                 std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> &vContracts);
 
+
             /** get_events
              *
              *  Get the outstanding legacy UTXO to register transactions.
@@ -548,7 +571,7 @@ namespace TAO
                 std::vector<std::pair<std::shared_ptr<Legacy::Transaction>, uint32_t>> &vContracts);
 
 
-        
+
 
         };
     }

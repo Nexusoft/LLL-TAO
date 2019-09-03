@@ -1260,7 +1260,7 @@ TEST_CASE( "Test Names API - claim name", "[names/claim/name]")
             strName = "name";
 
             /* Get the address of the name register based on the namespace and name */
-            TAO::Register::GetNameAddress(hashNamespace, "name", hashName);
+            hashName = TAO::Register::Address(strName, hashNamespace, TAO::Register::Address::NAME);
 
             //payload
             tx[0] = TAO::API::Names::CreateName(GENESIS1, strName, strNamespace, hashRegisterAddress);

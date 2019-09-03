@@ -72,7 +72,11 @@ namespace TAO
 
             /* Get the list of registers owned by this sig chain */
             std::vector<TAO::Register::Address> vRegisters;
-            if(!ListRegisters(hashGenesis, vRegisters))
+            ListRegisters(hashGenesis, vRegisters);
+
+            /* Get list of tokenized assets owned by this sig chain */
+            ListPartial(hashGenesis, vRegisters);
+            if(vRegisters.size() == 0)
                 throw APIException(-74, "No registers found");
 
             /* We pass false for fLookupName if the requested type is a name of namesace object,

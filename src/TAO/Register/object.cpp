@@ -100,7 +100,7 @@ namespace TAO
 
                 /* Make the supply immutable for now (add continued distribution later). */
                 if(Check("supply", TYPES::UINT64_T, false)
-                && Check("digits", TYPES::UINT64_T, false))
+                && Check("decimals", TYPES::UINT8_T, false))
                 {
                     /* Set the return value. */
                     nType = OBJECTS::TOKEN;
@@ -151,9 +151,17 @@ namespace TAO
             uint8_t nStandard = Standard();
             switch(nStandard)
             {
-                /* Tokens cost 1000 NXS */
+
                 case TAO::Register::OBJECTS::TOKEN:
-                    return TAO::Ledger::TOKEN_FEE;
+                {
+                    /* Get the supply from the token object */
+                    uint64_t nSupply = get<uint64_t>("supply");
+
+                    /* Fee = (log10(nSupply) - 2) * 100 NXS 
+                       which equates to 100 NXS for each significant figure, which the first 2sf (100 supply)  being free*/
+                    uint64_t nBase = (std::log10(nSupply));
+                    return std::max(int64_t(0), int64_t(nBase - 2)) * TAO::Ledger::TOKEN_FEE;
+                }
 
                 case TAO::Register::OBJECTS::NAME:
                 {

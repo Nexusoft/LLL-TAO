@@ -121,23 +121,62 @@ namespace TAO
                 /* Extract the supply parameter */
                 uint64_t nSupply = 0;
                 if(params.find("supply") != params.end())
-                    nSupply = std::stoll(params["supply"].get<std::string>());
+                {
+                    /* Attempt to convert the supplied value to a 64-bit unsigned integer, catching argument/range exceptions */
+                    try
+                    {
+                        nSupply = std::stoull(params["supply"].get<std::string>());
+                    }
+                    catch(const std::invalid_argument& e)
+                    {
+                        throw APIException(-175, "Invalid supply amount.  Supply must be whole number value");
+                    }
+                    catch(const std::out_of_range& e)
+                    {
+                        throw APIException(-176, "Invalid supply amount.  The maximum token supply is 18446744073709551615");
+                    }
+
+                }
 
                 /* For tokens being created without a global namespaced name, the identifier is equal to the register address */
                 TAO::Register::Address hashIdentifier = hashRegister;
 
-                /* Check for nDigits parameter. */
-                uint64_t nDigits = 0;
-                if(params.find("digits") != params.end())
-                    nDigits = std::stod(params["digits"].get<std::string>());
+                /* Check for nDecimals parameter. */
+                uint8_t nDecimals = 0;
+                if(params.find("decimals") != params.end())
+                {
+                    bool fValid = false;
+                    /* Attempt to convert the supplied value to a 8-bit unsigned integer, catching argument/range exceptions */
+                    try
+                    {
+                        nDecimals = std::stoul(params["decimals"].get<std::string>());
+                        fValid = nDecimals <= 8;
+                    }
+                    catch(const std::invalid_argument& e)
+                    {
+                        fValid = false;
+                    }
+                    catch(const std::out_of_range& e)
+                    {
+                        fValid = false;
+                    }
 
-                /* Multiply the supply by 10^digits to give the supply in the divisible units */
-                nSupply = nSupply * pow(10, nDigits);
+                    if(!fValid)
+                        throw APIException(-177, "Invalid decimals amount.  Decimals must be whole number value between 0 and 8");
+                    
+                }
 
+                /* Sanitize the supply/decimals combination for uint64 overflow */
+                if(nDecimals > 0 && nSupply > std::numeric_limits<uint64_t>::max() / pow(10, nDecimals))
+                    throw APIException(-178, "Invalid supply / decimals.  The maximum combination of supply and decimals (supply * 10^decimals) cannot exceed 18446744073709551615");
+
+                /* Multiply the supply by 10^Decimals to give the supply in the divisible units */
+                nSupply = nSupply * pow(10, nDecimals);
+                    
                 /* Create a token object register. */
                 TAO::Register::Object token = TAO::Register::CreateToken(hashIdentifier,
                                                                          nSupply,
-                                                                         nDigits);
+                                                                         nDecimals);
 
                 /* Submit the payload object. */
                 tx[0] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << token.GetState();

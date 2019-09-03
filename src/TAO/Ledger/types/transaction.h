@@ -416,16 +416,14 @@ namespace TAO
             uint64_t Fees() const;
 
 
-            /** CachedCost
+            /** CalculatedCost
             *
             *  Calculates the cost of this transaction from the contracts within it
-            *
-            *  @param[in] txPrev The previous transaction - used to throttle the cost based on last transaction time
             *
             *  @return The calculated cost.
             *
             **/
-            uint64_t CachedCost(const TAO::Ledger::Transaction& txPrev) const;
+            uint64_t CalculatedCost() const;
 
         };
     }

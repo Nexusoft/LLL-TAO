@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_WALLET_WALLETTX_H
 #define NEXUS_LEGACY_WALLET_WALLETTX_H
 
+#include <Legacy/types/address.h>
 #include <Legacy/types/merkle.h>
 #include <Legacy/wallet/wallet.h>
 
@@ -92,8 +93,12 @@ namespace Legacy
         std::vector<std::pair<std::string, std::string> > vOrderForm;
 
 
-        /** The sending account label for this tranasction **/
+        /** The sending account label for this tranasction (optional, if send from specific account) **/
         std::string strFromAccount;
+
+
+        /** The sending Nexus Address for this tranasction (optional, if send from specific address) **/
+        NexusAddress* pfromAddress;
 
 
         /** char vector with true/false values indicating spent outputs.
@@ -227,7 +232,11 @@ namespace Legacy
         virtual ~WalletTx();
 
 
-        /* Wallet transaction serialize/unserialize needs some customization to set up data*/
+        /* Wallet transaction serialize/unserialize needs some customization to set up data
+         *
+         * 2019/08/23 - Added fromAddress. Older transactions won't have this field so mapValue
+         * is used to conditionally serialize/deserialize only when present.
+         */
         IMPLEMENT_SERIALIZE
         (
             WalletTx* pthis = const_cast<WalletTx*>(this);
@@ -242,6 +251,9 @@ namespace Legacy
             if(!fRead)
             {
                 pthis->mapValue["fromaccount"] = pthis->strFromAccount;
+
+                if(pthis->pfromAddress != nullptr && pthis->pfromAddress->IsValid())
+                    pthis->mapValue["fromaddress"] = pthis->pfromAddress->ToString();
 
                 std::string str;
                 for(bool f : vfSpent)
@@ -266,6 +278,13 @@ namespace Legacy
             if(fRead)
             {
                 pthis->strFromAccount = pthis->mapValue["fromaccount"];
+
+                if(mapValue.count("fromaddress"))
+                {
+                    NexusAddress fromAddress(pthis->mapValue["fromaddress"]);
+                    pthis->pfromAddress = &fromAddress;
+                    pthis->mapValue.erase("fromaddress");
+                }
 
                 if(mapValue.count("spent"))
                     for(char c : pthis->mapValue["spent"])

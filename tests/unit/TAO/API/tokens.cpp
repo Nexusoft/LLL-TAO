@@ -97,7 +97,7 @@ TEST_CASE( "Test Tokens API - create token", "[tokens/create/token]")
         params["session"] = SESSION1;
         params["name"] = strToken;
         params["supply"] = "10000";
-        params["digits"] = "2";
+        params["decimals"] = "2";
 
         /* Invoke the API */
         ret = APICall("tokens/create/token", params);
@@ -134,7 +134,7 @@ TEST_CASE( "Test Tokens API - debit token", "[tokens/debit/token]")
         params["session"] = SESSION1;
         params["name"] = strToken;
         params["supply"] = "10000";
-        params["digits"] = "2";
+        params["decimals"] = "2";
 
         /* Invoke the API */
         ret = APICall("tokens/create/token", params);
@@ -332,7 +332,7 @@ TEST_CASE( "Test Tokens API - credit token", "[tokens/credit/token]")
         params["session"] = SESSION1;
         params["name"] = strToken;
         params["supply"] = "10000";
-        params["digits"] = "2";
+        params["decimals"] = "2";
 
         /* Invoke the API */
         ret = APICall("tokens/create/token", params);
@@ -434,7 +434,7 @@ TEST_CASE( "Test Tokens API - get token", "[tokens/get/token]")
         params["session"] = SESSION1;
         params["name"] = strToken;
         params["supply"] = "10000";
-        params["digits"] = "2";
+        params["decimals"] = "2";
 
         /* Invoke the API */
         ret = APICall("tokens/create/token", params);
@@ -518,7 +518,7 @@ TEST_CASE( "Test Tokens API - get token", "[tokens/get/token]")
         REQUIRE(result.find("balance") != result.end());
         REQUIRE(result.find("maxsupply") != result.end());
         REQUIRE(result.find("currentsupply") != result.end());
-        REQUIRE(result.find("digits") != result.end());
+        REQUIRE(result.find("decimals") != result.end());
     }
 
     /* Test successful get by address  */
@@ -544,7 +544,7 @@ TEST_CASE( "Test Tokens API - get token", "[tokens/get/token]")
         REQUIRE(result.find("balance") != result.end());
         REQUIRE(result.find("maxsupply") != result.end());
         REQUIRE(result.find("currentsupply") != result.end());
-        REQUIRE(result.find("digits") != result.end());
+        REQUIRE(result.find("decimals") != result.end());
     }
 }
 
@@ -572,7 +572,7 @@ TEST_CASE( "Test Tokens API - create account", "[tokens/create/account]")
         params["session"] = SESSION1;
         params["name"] = strToken;
         params["supply"] = "10000";
-        params["digits"] = "2";
+        params["decimals"] = "2";
 
         /* Invoke the API */
         ret = APICall("tokens/create/token", params);
@@ -1156,7 +1156,7 @@ TEST_CASE( "Test Tokens API - get account", "[tokens/get/account]")
         params["session"] = SESSION1;
         params["name"] = strToken;
         params["supply"] = "10000";
-        params["digits"] = "2";
+        params["decimals"] = "2";
 
         /* Invoke the API */
         ret = APICall("tokens/create/token", params);

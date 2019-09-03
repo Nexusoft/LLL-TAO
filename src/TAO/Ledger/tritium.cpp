@@ -37,6 +37,9 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/include/timelocks.h>
 
+#include <TAO/Register/include/enum.h>
+#include <TAO/Register/types/address.h>
+
 #include <Util/include/args.h>
 #include <Util/include/hex.h>
 
@@ -193,6 +196,10 @@ namespace TAO
                 /* Make Sure Trust Transaction Time is Before Block. */
                 if(producer.nTimestamp > GetBlockTime())
                     return debug::error(FUNCTION, "coinstake timestamp is after block timestamp");
+
+                /* Check the Proof of Stake Claims. */
+                if(!VerifyWork())
+                    return debug::error(FUNCTION, "invalid proof of stake");
             }
 
             /* Proof of work specific checks. */
@@ -204,7 +211,7 @@ namespace TAO
 
                 /* Check the Proof of Work Claims. */
                 if(!VerifyWork())
-                    return debug::error(FUNCTION, "invalid proof of stake");
+                    return debug::error(FUNCTION, "invalid proof of work");
             }
 
             /* Private specific checks. */
@@ -434,7 +441,7 @@ namespace TAO
         bool TritiumBlock::CheckStake() const
         {
             /* Reset the coinstake contract streams. */
-            producer[0].Reset(TAO::Operation::Contract::ALL);
+            producer[0].Reset();
 
             /* Get the trust object register. */
             TAO::Register::Object account;
@@ -449,6 +456,10 @@ namespace TAO
             /* Parse the object. */
             if(!account.Parse())
                 return debug::error(FUNCTION, "failed to parse object register from pre-state");
+
+            /* Validate that it is a trust account. */
+            if(account.Standard() != TAO::Register::OBJECTS::TRUST)
+                return debug::error(FUNCTION, "stake producer account is not a trust account");
 
             /* Get previous block. Block time used for block age/coin age calculation */
             TAO::Ledger::BlockState statePrev;
@@ -476,8 +487,8 @@ namespace TAO
                     return debug::error(FUNCTION, "invalid producer operation for trust");
 
                 /* Get last trust hash. */
-                uint512_t hashLastTrust = 0;
-                producer[0] >> hashLastTrust;
+                uint512_t hashLastClaimed = 0;
+                producer[0] >> hashLastClaimed;
 
                 uint64_t nClaimedTrust = 0;
                 producer[0] >> nClaimedTrust;
@@ -485,9 +496,18 @@ namespace TAO
                 uint64_t nClaimedReward = 0;
                 producer[0] >> nClaimedReward;
 
+                /* Validate the claimed hash last stake */
+                uint512_t hashLast;
+                if(!LLD::Ledger->ReadStake(producer.hashGenesis, hashLast))
+                    return debug::error(FUNCTION, "last stake not in database");
+
+                if(hashLast != hashLastClaimed)
+                    return debug::error(FUNCTION, "claimed last stake ", hashLastClaimed.SubString(),
+                                                  " does not match actual last stake");
+
                 /* Get the last stake block. */
                 TAO::Ledger::BlockState stateLast;
-                if(!LLD::Ledger->ReadBlock(hashLastTrust, stateLast))
+                if(!LLD::Ledger->ReadBlock(hashLastClaimed, stateLast))
                     return debug::error(FUNCTION, "last block not in database");
 
                 /* Enforce the minimum interval between stake blocks. */
@@ -504,11 +524,12 @@ namespace TAO
                 nBlockAge = statePrev.GetBlockTime() - stateLast.GetBlockTime();
 
                 /* Calculate the new trust score */
-                nTrust = GetTrustScore(nTrustPrev, nStake, nBlockAge);
+                nTrust = GetTrustScore(nTrustPrev, nBlockAge);
 
                 /* Validate the trust score calculation */
                 if(nClaimedTrust != nTrust)
-                    return debug::error(FUNCTION, "claimed trust score ", nClaimedTrust, " does not match calculated trust score ", nTrust);
+                    return debug::error(FUNCTION, "claimed trust score ", nClaimedTrust,
+                                                  " does not match calculated trust score ", nTrust);
 
                 /* Calculate the coinstake reward */
                 const uint64_t nTime = GetBlockTime() - stateLast.GetBlockTime();
@@ -516,7 +537,8 @@ namespace TAO
 
                 /* Validate the coinstake reward calculation */
                 if(nClaimedReward != nReward)
-                    return debug::error(FUNCTION, "claimed stake reward ", nClaimedReward, " does not match calculated reward ", nReward);
+                    return debug::error(FUNCTION, "claimed stake reward ", nClaimedReward,
+                                                  " does not match calculated reward ", nReward);
 
                 /* Calculate Trust Weight corresponding to new trust score. */
                 nTrustWeight = TrustWeight(nTrust);
@@ -540,6 +562,13 @@ namespace TAO
 
                 uint64_t nClaimedReward = 0;
                 producer[0] >> nClaimedReward;
+
+                /* Verify that hashAddress of trust account is for producer hashGenesis */
+                TAO::Register::Address hashRegister =
+                    TAO::Register::Address(std::string("trust"), producer.hashGenesis, TAO::Register::Address::TRUST);
+
+                if(hashAddress != hashRegister)
+                    return debug::error(FUNCTION, "genesis for trust account address not owned by producer hashGenesis");
 
                 /* Get Genesis stake from the trust account pre-state balance. Genesis reward based on balance (that will move to stake) */
                 nStake = account.get<uint64_t>("balance");
@@ -590,7 +619,7 @@ namespace TAO
             debug::log(2, FUNCTION,
                 "stake hash=", StakeHash().SubString(), ", ",
                 "target=", bnTarget.getuint1024().SubString(), ", ",
-                "type=", (producer.IsTrust()?"Trust":"Genesis"), ", ",
+                "type=", (producer.IsTrust() ? "Trust":"Genesis"), ", ",
                 "trust score=", nTrust, ", ",
                 "prev trust score=", nTrustPrev, ", ",
                 "trust change=", int64_t(nTrust - nTrustPrev), ", ",

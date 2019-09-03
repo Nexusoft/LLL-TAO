@@ -12,7 +12,13 @@
 ____________________________________________________________________________________________*/
 
 #include <Legacy/include/trust.h>
+
+#include <Legacy/include/enum.h>
+#include <Legacy/include/evaluate.h>
+
 #include <Legacy/types/transaction.h>
+#include <Legacy/types/trustkey.h>
+#include <Legacy/types/txin.h>
 
 #include <LLD/include/global.h>
 
@@ -20,6 +26,8 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/state.h>
 
 #include <Util/include/debug.h>
+
+#include <vector>
 
 /* Global TAO namespace. */
 namespace Legacy
@@ -104,6 +112,89 @@ namespace Legacy
         }
 
         return false;
+    }
+
+
+    /* Extract the trust key being migrated from the Legacy migration transaction. */
+    bool FindMigratedTrustKey(const Transaction& tx, TrustKey& trustKey)
+    {
+        std::vector<uint8_t> vchTrustKey;
+
+        /* Check that all inputs are from the same key and extract the pub key for it.
+         * Typical migration transaction will have one input, but it is feasible to have multiple.
+         * If more than one, they all must be from the same key.
+         */
+        for(uint32_t nInput = 0; nInput < tx.vin.size(); ++nInput)
+        {
+            const Legacy::TxIn& txin = tx.vin[nInput];
+
+            /* Get prevout for the txin */
+            Legacy::Transaction txPrev;
+            if(!LLD::Legacy->ReadTx(txin.prevout.hash, txPrev))
+                return false;
+
+            /* Extract from prevout */
+            std::vector<std::vector<uint8_t> > vSolutions;
+            Legacy::TransactionType whichType;
+            if(!Solver(txPrev.vout[txin.prevout.n].scriptPubKey, whichType, vSolutions))
+                return false;
+
+            /* Check for public key type. */
+            if(whichType == Legacy::TX_PUBKEY)
+            {
+                if(nInput == 0)
+                    vchTrustKey = vSolutions[0]; //Save this as the pub key for the trust key
+
+                else if(vchTrustKey != vSolutions[0])
+                    return false; // Inputs not all from same address
+            }
+            else
+                return false;
+        }
+
+        uint576_t cKey;
+        cKey.SetBytes(vchTrustKey);
+
+        return LLD::Trust->ReadTrustKey(cKey, trustKey);
+    }
+
+
+    /* Build the debit operation for a trust key migration with data from Legacy migrate transaction */
+    bool BuildMigrateDebit(TAO::Operation::Contract debit, const uint512_t hashTx)
+    {
+        /* Retrieve the Legacy tx corresponds to the debit */
+        Transaction tx;
+        if(!LLD::Legacy->ReadTx(hashTx, tx))
+            return debug::error(FUNCTION, "legacy migrate transaction not found");
+
+        /* Retrieve the trust key from the Legacy transaction */
+        TrustKey trustKey;
+        if(!FindMigratedTrustKey(tx, trustKey))
+            return debug::error(FUNCTION, "debit is not a trust key migration");
+
+        /* Retrieve the last coinstake for the trust key */
+        TAO::Ledger::BlockState state;
+        if(!LLD::Ledger->ReadBlock(trustKey.hashLastBlock, state))
+            return debug::error(FUNCTION, "debit trust key hash last missing");
+
+        if(state.vtx[0].first != TAO::Ledger::LEGACY)
+            return debug::error(FUNCTION, "debit last stake is not a legacy transaction");
+
+        Transaction txLast;
+        if(!LLD::Legacy->ReadTx(state.vtx[0].second, txLast))
+            return debug::error(FUNCTION, "debit missing last stake");
+
+        uint32_t nScore;
+        uint1024_t hashLastBlock;
+        uint32_t nSequence;
+
+        /* Extract the trust score */
+        if(!txLast.ExtractTrust(hashLastBlock, nSequence, nScore))
+            return debug::error(FUNCTION, "debit missing trust score");
+
+        debit << nScore << txLast.GetHash() << trustKey.GetHash();
+
+        return true;
     }
 
 }

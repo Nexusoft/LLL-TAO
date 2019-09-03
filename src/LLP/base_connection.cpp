@@ -40,6 +40,9 @@ namespace LLP
     , fDDOS(false)
     , fOUTGOING(false)
     , fCONNECTED(false)
+    , fEVENT(false)
+    , EVENT_MUTEX()
+    , EVENT_CONDITION()
     {
         INCOMING.SetNull();
     }
@@ -54,6 +57,9 @@ namespace LLP
     , fDDOS(isDDOS)
     , fOUTGOING(fOutgoing)
     , fCONNECTED(false)
+    , fEVENT(false)
+    , EVENT_MUTEX()
+    , EVENT_CONDITION()
     {
     }
 
@@ -68,6 +74,9 @@ namespace LLP
     , fDDOS(isDDOS)
     , fOUTGOING(fOutgoing)
     , fCONNECTED(false)
+    , fEVENT(false)
+    , EVENT_MUTEX()
+    , EVENT_CONDITION()
     {
     }
 
@@ -144,7 +153,6 @@ namespace LLP
     template <class PacketType>
     bool BaseConnection<PacketType>::Connect(const BaseAddress &addrConnect)
     {
-
         std::string connectStr = addrConnect.ToStringIP();
 
         /* Check for connect to self */
@@ -168,14 +176,41 @@ namespace LLP
     }
 
 
+    /* Disconnect Socket. Cleans up memory usage to prevent "memory runs" from poor memory management. */
     template <class PacketType>
     void BaseConnection<PacketType>::Disconnect()
     {
+        /* Wake any potential sleeping connections up on disconnect. */
+        NotifyEvent();
+
         if(fCONNECTED.load())
         {
             Close();
             fCONNECTED = false;
         }
+    }
+
+
+    /* Notify connection an event occured to wake up a sleeping connection. */
+    template <class PacketType>
+    void BaseConnection<PacketType>::NotifyEvent()
+    {
+        /* Set the events flag and notify. */
+        fEVENT = true;
+        EVENT_CONDITION.notify_one();
+    }
+
+
+    /* Have connection wait for a notify signal to wake up. */
+    template <class PacketType>
+    void BaseConnection<PacketType>::WaitEvent()
+    {
+        /* Reset the events flag. */
+        fEVENT = false;
+
+        /* Wait for a notify signal. */
+        std::unique_lock<std::mutex> lk(EVENT_MUTEX);
+        EVENT_CONDITION.wait(lk, [this]{return fEVENT.load() || config::fShutdown.load(); });
     }
 
 

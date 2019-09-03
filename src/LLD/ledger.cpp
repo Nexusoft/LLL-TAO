@@ -506,6 +506,40 @@ namespace LLD
     }
 
 
+    /* Writes the last stake transaction of sigchain to disk indexed by genesis. */
+    bool LedgerDB::WriteStake(const uint256_t& hashGenesis, const uint512_t& hashLast)
+    {
+        return Write(std::make_pair(std::string("stake"), hashGenesis), hashLast);
+    }
+
+
+    /* Erase the last stake transaction of sigchain. */
+    bool LedgerDB::EraseStake(const uint256_t& hashGenesis)
+    {
+        return Erase(std::make_pair(std::string("stake"), hashGenesis));
+    }
+
+
+    /* Reads the last stake transaction of sigchain. */
+    bool LedgerDB::ReadStake(const uint256_t& hashGenesis, uint512_t& hashLast, const uint8_t nFlags)
+    {
+        /* If the caller has requested to include mempool transactions then check there first*/
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        {
+            TAO::Ledger::Transaction mempoolTx;
+            if(TAO::Ledger::mempool.Get(hashGenesis, mempoolTx))
+            {
+                hashLast = mempoolTx.GetHash();
+
+                return true;
+            }
+        }
+
+        /* If we haven't checked the mempool or haven't found one in the mempool then read the last from the ledger DB */
+        return Read(std::make_pair(std::string("stake"), hashGenesis), hashLast);
+    }
+
+
     /* Writes a proof to disk. Proofs are used to keep track of spent temporal proofs. */
     bool LedgerDB::WriteProof(const uint256_t& hashProof, const uint512_t& hashTx,
                               const uint32_t nContract, const uint8_t nFlags)

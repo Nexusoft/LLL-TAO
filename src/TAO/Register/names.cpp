@@ -30,36 +30,15 @@ namespace TAO
     /* Register Layer namespace. */
     namespace Register
     {
-
-
-        /* Retrieve the address of the name register for a namespace/name combination. */
-        void GetNameAddress(const uint256_t& hashNamespace, const std::string& strName, uint256_t& address)
-        {
-            /* Build vector to hold the namespace + name data for hashing */
-            std::vector<uint8_t> vData;
-
-            /* Insert the namespace hash */
-            vData.insert(vData.end(), (uint8_t*)&hashNamespace, (uint8_t*)&hashNamespace + 32);
-
-            /* Insert the name */
-            vData.insert(vData.end(), strName.begin(), strName.end());
-
-            /* Build the name register address from the SK256 hash of namespace + name. */
-            address = Address(vData, Address::NAME);
-        }
-
-
         /* Retrieve the name register for a namespace/name combination. */
         bool GetNameRegister(const uint256_t& hashNamespace, const std::string& strName, Object& nameRegister)
         {
-            Address hashAddress;
-
             /* Get the register address for the Name object */
-            GetNameAddress(hashNamespace, strName, hashAddress);
+            Address hashAddress = Address(strName, hashNamespace, Address::NAME);
 
             /* Read the Name Object */
             if(!LLD::Register->ReadState(hashAddress, nameRegister, TAO::Ledger::FLAGS::MEMPOOL))
-                return debug::error(FUNCTION, "Name register not found: ", strName);
+                return false; /* Don't log an error if it is not in the DB as the caller might have provided an invalid name */
 
             /* Check that the name object is proper type. */
             if(nameRegister.nType != TAO::Register::REGISTER::OBJECT)

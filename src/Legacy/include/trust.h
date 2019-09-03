@@ -45,6 +45,33 @@ namespace Legacy
      *
      **/
     bool FindGenesis(const uint576_t& cKey, const uint1024_t& hashTrustBlock, TrustKey& trustKey);
+
+    /** FindMigratedTrustKey
+     *
+     *  Extract the trust key being migrated from a Legacy migration transaction.
+     *
+     *  @param[in] tx The Legacy transaction sending from trust key to trust account register
+     *  @param[out] trustKey The trust key being migrated
+     *
+     *  @return True if the trust key was found
+     *          False if not a migration tx or could not retrieve trust key from tx
+     *
+     **/
+    bool FindMigratedTrustKey(const Transaction& tx, TrustKey& trustKey);
+
+    /** BuildMigrateDebit
+     *
+     * Build the debit operation for a trust key migration with data from Legacy migrate transaction.
+     * This will extract trust key data from the legacy transaction and add it to the migration debit.
+     *
+     *  @param[in,out] debit The debit contract we are building, base for a general legacy send to register should already be built
+     *  @param[in] hashTx The Legacy transaction sending from trust key to trust account register
+     *
+     *  @return True if the debit could be built, false otherwise
+     *
+     **/
+    bool BuildMigrateDebit(TAO::Operation::Contract debit, const uint512_t hashTx);
+
 }
 
 #endif

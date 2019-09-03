@@ -1,8 +1,8 @@
 #Login
 ./api_call.sh users/login/user/jack password=jack pin=1234
 
-#Create a new token called ABC with initial supply 1000 and digits 2
-./api_call.sh tokens/create/token/abc supply=1000 digits=2 pin=1234
+#Create a new token called ABC with initial supply 1000 and decimals 2
+./api_call.sh tokens/create/token/abc supply=1000 decimals=2 pin=1234
 
 #Logout
 ./api_call.sh users/logout/user/jack
