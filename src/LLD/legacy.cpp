@@ -158,4 +158,12 @@ namespace LLD
         return Exists(hashTrust);
     }
 
+
+    /* Erase a Legacy trust key conversion. */
+    bool LegacyDB::EraseTrustConversion(const uint512_t& hashTrust)
+    {
+        //TODO: this is never used. Might consdier removing since transactions are never erased
+        return EraseTrustConversion(hashTrust);
+    }
+
 }
