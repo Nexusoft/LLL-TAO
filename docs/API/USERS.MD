@@ -227,7 +227,6 @@ The `pin` field is mandatory for unlock. The minting/transactions/notifications 
 This will lock your signature chain, making it unavailable for use unless it is
 either unlocked or the PIN is passed in to all API requests. Only available in single-user API mode (multiuser=0).
 
-The minting/transactions/notifications parameters are optional and, if supplied, allow the signature chain to be locked for either mining/staking, creating transactions, or processing notifications. This allows, for example, a signature chain to be continually unlocked for minting, but only temporarily unlocked for sending a transaction.    
 
 ### Endpoint:
 
@@ -236,12 +235,9 @@ The minting/transactions/notifications parameters are optional and, if supplied,
 
 ### Parameters:
 
-`minting` : If set this will lock the users sig chain for minting (staking or mining).
-
-`transactions` : If set this will lock the users sig chain from creating any transactions, except those required for minting or processing notifications which are controlled separately.
-
-`notifications` : If set this will lock the users sig chain from processing notifications.
-
+````
+NONE
+````
 
 
 ### Return value JSON object:
