@@ -868,12 +868,12 @@ namespace TAO
             /* Declare the return JSON object */
             json::json ret;
 
+            /* Get callers hashGenesis . */
+            uint256_t hashGenesis = users->GetCallersGenesis(params);
+
             /* If the caller has specified to look up the name */
             if(fLookupName)
             {
-                /* Get callers hashGenesis . */
-                uint256_t hashGenesis = users->GetCallersGenesis(params);
-
                 /* Look up the object name based on the Name records in the caller's sig chain */
                 std::string strName = Names::ResolveName(hashGenesis, hashRegister);
 
@@ -1061,6 +1061,14 @@ namespace TAO
                     default:
                     {
                         ret["address"]    = hashRegister.ToString();
+
+                        /* Add ownership details */
+                        TAO::Register::Address hashOwner = TAO::Register::Address(object.hashOwner);
+                        ret["owner"]    = hashOwner.ToString();
+
+                        /* If this is a tokenized asset then work out what % the caller owns */
+                        if(hashOwner.IsToken())
+                            ret["ownership"] = GetTokenOwnership(hashOwner, hashGenesis);
 
                         /* Get List of field names in this asset object */
                         std::vector<std::string> vFieldNames = object.GetFieldNames();

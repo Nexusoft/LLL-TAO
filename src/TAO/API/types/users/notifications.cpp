@@ -136,6 +136,14 @@ namespace TAO
                         /* Get recipient genesis hash */
                         tx[nContract] >> hashProof;
 
+                        /* Read the force transfer flag */
+                        uint8_t nType = 0;
+                        tx[nContract] >> nType;
+
+                        /* Ensure this wasn't a forced transfer (which requires no Claim) */
+                        if(nType == TAO::Operation::TRANSFER::FORCE)
+                            continue;
+
                         /* Check that we are the recipient */
                         if(hashGenesis != hashProof) 
                             continue;

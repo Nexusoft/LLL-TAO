@@ -54,7 +54,7 @@ namespace TAO
         uint8_t GetDecimals(const TAO::Register::Object& object);
 
 
-        /** GetRegistersOwnedBySigChain
+        /** ListRegisters
          *
          *  Scans a signature chain to work out all registers that it owns
          *
@@ -65,6 +65,33 @@ namespace TAO
          *
          **/
         bool ListRegisters(const uint256_t& hashGenesis, std::vector<TAO::Register::Address>& vRegisters);
+
+
+        /** ListObjects
+         *
+         *  Scans a signature chain to work out all non-standard object that it owns
+         *
+         *  @param[in] hashGenesis The genesis hash of the signature chain to scan
+         *  @param[out] vObjects The list of object register addresses from sigchain.
+         *
+         *  @return A vector of register addresses owned by the sig chain
+         *
+         **/
+        bool ListObjects(const uint256_t& hashOwner, std::vector<TAO::Register::Address>& vObjects);
+
+
+        /** ListAccounts
+         *
+         *  Scans a signature chain to work out all assets that it owns
+         *
+         *  @param[in] hashGenesis The genesis hash of the signature chain to scan
+         *  @param[in] fTokens If set then this will include tokens in the list
+         *  @param[out] vAccounts The list of account register addresses from sigchain.
+         *
+         *  @return A vector of register addresses owned by the sig chain
+         *
+         **/
+        bool ListAccounts(const uint256_t& hashGenesis, std::vector<TAO::Register::Address>& vAccounts, bool fTokens);
 
 
         /** AddFee
@@ -131,7 +158,10 @@ namespace TAO
          *  @return The sum of all pending debits
          *
          **/
-        uint64_t GetUnconfirmed(const uint256_t& hashGenesis, const uint256_t& hashToken, bool fOutgoing, const uint256_t& hashAccount = 0);
+        uint64_t GetUnconfirmed(const uint256_t& hashGenesis, 
+                                const uint256_t& hashToken, 
+                                bool fOutgoing, 
+                                const uint256_t& hashAccount = 0);
 
 
         /** GetImmature
@@ -144,6 +174,46 @@ namespace TAO
          *
          **/
         void GetImmature(const uint256_t& hashGenesis, uint64_t& nCoinbase, uint64_t& nCoinstake);
+
+
+        /** GetTokenOwnership
+        *
+        *  Calculates the percentage of tokens owned from the total supply.
+        *
+        *  @param[in] hashToken The address of the token to check
+        *  @param[in] hashGenesis The genesis hash for the sig chain to check
+        *
+        *  @return The percentage of tokens owned from the total supply
+        *
+        **/
+        double GetTokenOwnership(const TAO::Register::Address& hashToken, const uint256_t& hashGenesis);
+
+
+        /** ListPartial
+         *
+         *  Lists all object registers partially owned by way of tokens that the sig chain owns 
+         *
+         *  @param[in] hashGenesis The genesis hash of the signature chain to scan
+         *  @param[out] vObjects The list of object register addresses from sigchain.
+         *
+         *  @return A vector of register addresses partially owned by the sig chain
+         *
+         **/
+        bool ListPartial(const uint256_t& hashGenesis, std::vector<TAO::Register::Address>& vRegisters);
+
+
+        /** ListTokenizedObjects
+         *
+         *  Finds all objects that have been tokenized and therefore owned by hashToken
+         *
+         *  @param[in] hashToken The token to find objects for
+         *  @param[out] vObjects The list of object register addresses owned by the token.
+         *
+         *  @return A vector of register addresses owned by the token
+         *
+         **/
+        bool ListTokenizedObjects(const TAO::Register::Address& hashToken, 
+                                  std::vector<TAO::Register::Address>& vObjects);
 
 
     }
