@@ -46,17 +46,11 @@ ________________________________________________________________________________
 namespace LLP
 {
 
-    /* Static instantiation of orphan blocks in queue to process. */
-    std::map<uint1024_t, Legacy::LegacyBlock> mapLegacyOrphans;
-
-    /* Mutex to protect checking more than one block at a time. */
-    std::mutex PROCESSING_MUTEX;
-
     /* Mutex to protect connected sessions. */
-    std::mutex SESSIONS_MUTEX;
+    std::mutex LegacyNode::SESSIONS_MUTEX;
 
     /* Map to keep track of duplicate nonce sessions. */
-    std::map<uint64_t, LegacyNode*> mapConnectedSessions;
+    std::map<uint64_t, LegacyNode*> LegacyNode::mapSessions;
 
     /* Helper function to switch the nodes on sync. */
     void SwitchNode()
@@ -98,10 +92,6 @@ namespace LLP
 
     /* The time since last getblocks. */
     std::atomic<uint64_t> LegacyNode::nLastGetBlocks;
-
-
-    /* the session identifier. */
-    const uint64_t LegacyNode::nSessionID = LLC::GetRand();
 
 
     /* The fast sync average speed. */
@@ -199,7 +189,7 @@ namespace LLP
 
         /* Push the Message to receiving node. */
         PushMessage("version", LLP::PROTOCOL_VERSION, nLocalServices, nTime, addrYou, addrMe,
-                    LegacyNode::nSessionID, version::CLIENT_VERSION_BUILD_STRING, TAO::Ledger::ChainState::nBestHeight.load());
+                    SESSION_ID, version::CLIENT_VERSION_BUILD_STRING, TAO::Ledger::ChainState::nBestHeight.load());
     }
 
 
@@ -379,9 +369,9 @@ namespace LLP
                 /** Free this session, if it is this connection that we mapped.
                     When we disconnect a duplicate session then it will not have been added to the map,
                     so we need to skip removing the session ID **/
-                if(mapConnectedSessions.count(nCurrentSession)
-                && mapConnectedSessions[nCurrentSession] == this)
-                    mapConnectedSessions.erase(nCurrentSession);
+                if(mapSessions.count(nCurrentSession)
+                && mapSessions[nCurrentSession] == this)
+                    mapSessions.erase(nCurrentSession);
             }
 
             /* Update address manager that this connection was dropped. */
@@ -425,7 +415,7 @@ namespace LLP
             debug::log(1, NODE, "version message: version ", nCurrentVersion, ", blocks=",  nStartingHeight);
 
             /* Check for a connect to self. */
-            if(nCurrentSession == LegacyNode::nSessionID)
+            if(nCurrentSession == SESSION_ID)
             {
                 debug::log(0, FUNCTION, "connected to self");
 
@@ -440,7 +430,7 @@ namespace LLP
             /* Check for duplicate connections. */
             {
                 LOCK(SESSIONS_MUTEX);
-                if(mapConnectedSessions.count(nCurrentSession))
+                if(mapSessions.count(nCurrentSession))
                 {
                     debug::log(0, FUNCTION, "duplicate connection");
 
@@ -448,7 +438,7 @@ namespace LLP
                 }
 
                 /* Claim this connection's session ID. */
-                mapConnectedSessions[nCurrentSession] = this;
+                mapSessions[nCurrentSession] = this;
             }
 
 
@@ -473,11 +463,6 @@ namespace LLP
         {
             return false;
         }
-        else if(message == "drop")
-        {
-            return debug::drop(NODE, "FORCE disconnect protocol message");
-        }
-
 
         /* Push a transaction into the Node's Received Transaction Queue. */
         else if(message == "tx")
@@ -957,4 +942,16 @@ namespace LLP
         }
     }
 
+
+    /* Get a node by connected session. */
+    LegacyNode* LegacyNode::GetNode(const uint64_t nSession)
+    {
+        LOCK(SESSIONS_MUTEX);
+
+        /* Check for connected session. */
+        if(!mapSessions.count(nSession))
+            return nullptr;
+
+        return mapSessions[nSession];
+    }
 }

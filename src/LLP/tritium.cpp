@@ -40,6 +40,14 @@ ________________________________________________________________________________
 namespace LLP
 {
 
+    /* Declaration of sessions mutex. (private). */
+    std::mutex TritiumNode::SESSIONS_MUTEX;
+
+
+    /* Declaration of sessions sets. (private). */
+    std::map<uint64_t, TritiumNode*> TritiumNode::mapSessions;
+
+
     /** Default Constructor **/
     TritiumNode::TritiumNode()
     : BaseConnection<TritiumPacket>()
@@ -50,6 +58,7 @@ namespace LLP
     , hashGenesis(0)
     , nTrust(0)
     , nProtocolVersion(0)
+    , nCurrentSession(0)
     {
     }
 
@@ -64,6 +73,7 @@ namespace LLP
     , hashGenesis(0)
     , nTrust(0)
     , nProtocolVersion(0)
+    , nCurrentSession(0)
     {
     }
 
@@ -78,6 +88,7 @@ namespace LLP
     , hashGenesis(0)
     , nTrust(0)
     , nProtocolVersion(0)
+    , nCurrentSession(0)
     {
     }
 
@@ -187,6 +198,17 @@ namespace LLP
                 if(TRITIUM_SERVER && TRITIUM_SERVER->pAddressManager)
                     TRITIUM_SERVER->pAddressManager->AddAddress(GetAddress(), ConnectState::DROPPED);
 
+                {
+                    LOCK(SESSIONS_MUTEX);
+
+                    /* Free this session, if it is this connection that we mapped.
+                     * When we disconnect a duplicate session then it will not have been added to the map,
+                     * so we need to skip removing the session ID */
+                    if(mapSessions.count(nCurrentSession) && mapSessions[nCurrentSession] == this)
+                        mapSessions.erase(nCurrentSession);
+                }
+
+
                 break;
             }
         }
@@ -196,7 +218,6 @@ namespace LLP
     /** Main message handler once a packet is recieved. **/
     bool TritiumNode::ProcessPacket()
     {
-
         /* Deserialize the packeet from incoming packet payload. */
         DataStream ssPacket(INCOMING.DATA, SER_NETWORK, PROTOCOL_VERSION);
         switch(INCOMING.MESSAGE)
@@ -209,7 +230,6 @@ namespace LLP
                 ssPacket >> nProtocolVersion;
 
                 /* Get the current session-id. */
-                uint64_t nCurrentSession = 0;
                 ssPacket >> nCurrentSession;
 
                 /* Check for a connect to self. */
@@ -217,6 +237,19 @@ namespace LLP
                     return debug::drop(NODE, "connected to self");
 
                 /* Check if session is already connected. */
+                {
+                    LOCK(SESSIONS_MUTEX);
+                    if(mapSessions.count(nCurrentSession))
+                        return debug::drop(NODE, "duplicate connection");
+
+                    /* Set this to the current session. */
+                    mapSessions[nCurrentSession] = this;
+                }
+
+                /* Get the current connected legacy node. */
+                LegacyNode* pnode = LegacyNode::GetNode(nCurrentSession);
+                if(pnode != nullptr) //if connected, send a drop message.
+                    pnode->Disconnect(); //NOTE: this may cause a segfault since this pointer is not an atomic_ptr
 
                 /* Check versions. */
                 if(nProtocolVersion < MIN_PROTO_VERSION)
@@ -406,9 +439,19 @@ namespace LLP
         }
     }
 
+
     /* Determine if a node is authorized and therfore trusted. */
     bool TritiumNode::Authorized() const
     {
         return hashGenesis != 0 && fAuthorized;
+    }
+
+
+    /* Determine whether a session is connected. */
+    bool TritiumNode::SessionActive(const uint64_t nSession) const
+    {
+        LOCK(SESSIONS_MUTEX);
+
+        return mapSessions.count(nSession);
     }
 }

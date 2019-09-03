@@ -266,8 +266,15 @@ namespace LLP
                     ProtocolType* connection = CONNECTIONS->at(nIndex).load();
 
                     /* Skip over Inactive Connections. */
-                    if(!connection || !connection->Connected())
+                    if(!connection)
                         continue;
+
+                    /* Check if connected. */
+                    if(!connection->Connected())
+                    {
+                        disconnect_remove_event(nIndex, DISCONNECT_FORCE);
+                        continue;
+                    }
 
                     /* Disconnect if there was a polling error */
                     if((POLLFDS.at(nIndex).revents & POLLERR))

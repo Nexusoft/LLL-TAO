@@ -132,6 +132,10 @@ namespace LLP
         /** Mutex for connected sessions. **/
         static std::mutex SESSIONS_MUTEX;
 
+
+        /** Set for connected session. **/
+        static std::map<uint64_t, TritiumNode*> mapSessions;
+
     public:
 
       /** Name
@@ -182,6 +186,10 @@ namespace LLP
         uint64_t nProtocolVersion;
 
 
+        /** This node's session-id. **/
+        uint64_t nCurrentSession;
+
+
         /** Event
          *
          *  Virtual Functions to Determine Behavior of Message LLP.
@@ -218,6 +226,18 @@ namespace LLP
          *
          **/
         bool Authorized() const;
+
+
+        /** SessionActive
+         *
+         *  Determine whether a session is connected.
+         *
+         *  @param[in] nSession The session to check for
+         *
+         *  @return true if session is connected.
+         *
+         **/
+        bool SessionActive(const uint64_t nSession) const;
 
 
         /** NewMessage
