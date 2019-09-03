@@ -61,7 +61,6 @@ The following is an example of an object defined using the `JSON` format:
 ```
 {
     "pin": "1234",
-    "session": "16953804956473956578",
     "name": "watch",
     "format": "JSON",
     "json" :

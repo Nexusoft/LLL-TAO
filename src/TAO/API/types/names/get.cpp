@@ -53,7 +53,7 @@ namespace TAO
                     throw APIException(-89, "Invalid register_address");
 
                 /* Get the session to be used for this API call. */
-                uint64_t nSession = users->GetSession(params, true);
+                uint256_t nSession = users->GetSession(params, true);
 
                 /* Get the account. */
                 memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);

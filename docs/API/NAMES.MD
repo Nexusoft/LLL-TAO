@@ -395,7 +395,6 @@ The following example updates the register_address field for the name "asset1.ou
 ```
 {
     "pin": "1234",
-    "session": "16953804956473956578",
     "name": "asset1.ourcompany",
     "register_address": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1"
 }
