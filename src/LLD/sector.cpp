@@ -754,6 +754,9 @@ namespace LLD
                 return debug::error(FUNCTION, "failed to write indexing entry");
         }
 
+        /* Flush the keychain buffers. */
+        //pSectorKeys->Flush();
+
         /* Cleanup the transaction object. */
         delete pTransaction;
         pTransaction = nullptr;
@@ -873,8 +876,8 @@ namespace LLD
 
     /* Explicity instantiate all template instances needed for compiler. */
     template class SectorDatabase<BinaryHashMap,  BinaryLRU>;
-    template class SectorDatabase<ShardHashMap,   BinaryLRU>;
+    //template class SectorDatabase<ShardHashMap,   BinaryLRU>;
     template class SectorDatabase<BinaryHashMap,  BinaryLFU>;
-    template class SectorDatabase<BinaryHashTree, BinaryLRU>;
+    //template class SectorDatabase<BinaryHashTree, BinaryLRU>;
 
 }

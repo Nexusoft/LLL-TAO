@@ -273,85 +273,6 @@ namespace LLD
     }
 
 
-    /*  Read a key index from the disk hashmaps.
-     *  This method iterates all maps to find all keys. */
-    bool BinaryHashMap::Get(const std::vector<uint8_t>& vKey, std::vector<SectorKey>& vKeys)
-    {
-        LOCK(KEY_MUTEX);
-
-        /* Get the assigned bucket for the hashmap. */
-        uint32_t nBucket = GetBucket(vKey);
-
-        /* Get the file binary position. */
-        uint32_t nFilePos = nBucket * HASHMAP_KEY_ALLOCATION;
-
-        /* Compress any keys larger than max size. */
-        std::vector<uint8_t> vKeyCompressed = vKey;
-        CompressKey(vKeyCompressed, HASHMAP_MAX_KEY_SIZE);
-
-        /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
-        std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
-        for(int16_t i = hashmap[nBucket] - 1; i >= 0; --i)
-        {
-            /* Find the file stream for LRU cache. */
-            std::fstream* pstream;
-            if(!fileCache->Get(i, pstream))
-            {
-                std::string filename = debug::safe_printstr(strBaseLocation, "_hashmap.", std::setfill('0'), std::setw(5), i);
-
-                /* Set the new stream pointer. */
-                pstream = new std::fstream(filename, std::ios::in | std::ios::out | std::ios::binary);
-                if(!pstream->is_open())
-                {
-                    delete pstream;
-                    continue;
-                }
-
-                /* If file not found add to LRU cache. */
-                fileCache->Put(i, pstream);
-            }
-
-            /* Seek to the hashmap index in file. */
-            pstream->seekg (nFilePos, std::ios::beg);
-
-            /* Read the bucket binary data from file stream */
-            pstream->read((char*) &vBucket[0], vBucket.size());
-
-            /* Check if this bucket has the key */
-            if(std::equal(vBucket.begin() + 13, vBucket.begin() + 13 + vKeyCompressed.size(), vKeyCompressed.begin()))
-            {
-                /* Deserialize key and return if found. */
-                DataStream ssKey(vBucket, SER_LLD, DATABASE_VERSION);
-                SectorKey cKey;
-                ssKey >> cKey;
-
-                /* Check if the key is in ready state. */
-                if(!cKey.Ready())
-                    continue;
-
-                /* Assign the binary key. */
-                cKey.vKey = vKey;
-
-                /* Add key to return vector. */
-                vKeys.push_back(cKey);
-
-                /* Debug Output of Sector Key Information. */
-                debug::log(4, FUNCTION, "Found State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
-                    " | Length: ", cKey.nLength,
-                    " | Bucket ", nBucket,
-                    " | Location: ", nFilePos,
-                    " | File: ", hashmap[nBucket] - 1,
-                    " | Sector File: ", cKey.nSectorFile,
-                    " | Sector Size: ", cKey.nSectorSize,
-                    " | Sector Start: ", cKey.nSectorStart, "\n",
-                    HexStr(vKeyCompressed.begin(), vKeyCompressed.end(), true));
-            }
-        }
-
-        return (vKeys.size() > 0);
-    }
-
-
     /*  Write a key to the disk hashmaps. */
     bool BinaryHashMap::Put(const SectorKey& cKey)
     {
@@ -466,7 +387,7 @@ namespace LLD
             for(uint32_t i = 0; i < HASHMAP_TOTAL_BUCKETS; ++i)
                 stream.write((char*)&vSpace[0], vSpace.size());
 
-            stream.flush();
+            //stream.flush();
             stream.close();
 
             ++nTotalHashmaps;
@@ -534,6 +455,25 @@ namespace LLD
             " | Key: ",  HexStr(vKeyCompressed.begin(), vKeyCompressed.end()));
 
         return true;
+    }
+
+
+    /* Flush all buffers to disk if using ACID transaction. */
+    void BinaryHashMap::Flush()
+    {
+        /* Flush the index files. */
+        pindex->flush();
+
+        /* Iterate the linked list until end. */
+        TemplateNode<uint16_t, std::fstream*>* pnode = fileCache->pfirst;
+        while(pnode && pnode->pnext)
+        {
+            /* Flush to disk. */
+            pnode->Data->flush();
+
+            /* Set to next. */
+            pnode = pnode->pnext;
+        }
     }
 
 

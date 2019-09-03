@@ -106,6 +106,8 @@ namespace LLD
         std::map<KeyType, TemplateNode<KeyType, DataType>* > cache;
 
 
+    public:
+
         /* Keep track of the first object in linked list. */
         TemplateNode<KeyType, DataType>* pfirst;
 
@@ -113,8 +115,6 @@ namespace LLD
         /* Keep track of the last object in linked list. */
         TemplateNode<KeyType, DataType>* plast;
 
-
-    public:
 
         /** Base Constructor.
          *

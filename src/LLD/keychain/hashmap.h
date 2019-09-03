@@ -12,10 +12,10 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_LLD_TEMPLATES_HASHMAP_H
-#define NEXUS_LLD_TEMPLATES_HASHMAP_H
+#ifndef NEXUS_LLD_KEYCHAIN_HASHMAP_H
+#define NEXUS_LLD_KEYCHAIN_HASHMAP_H
 
-#include <LLD/templates/key.h>
+#include <LLD/keychain/keychain.h>
 #include <LLD/cache/template_lru.h>
 #include <LLD/include/enum.h>
 
@@ -38,7 +38,7 @@ namespace LLD
      *  when there is a collision that is found.
      *
      **/
-    class BinaryHashMap
+    class BinaryHashMap : public Keychain
     {
     protected:
 
@@ -98,7 +98,7 @@ namespace LLD
 
 
         /** Default Destructor **/
-        ~BinaryHashMap();
+        virtual ~BinaryHashMap();
 
 
         /** CompressKey
@@ -146,20 +146,6 @@ namespace LLD
         bool Get(const std::vector<uint8_t>& vKey, SectorKey &cKey);
 
 
-        /** Get
-         *
-         *  Read a key index from the disk hashmaps.
-         *  This method iterates all maps to find all keys.
-         *
-         *  @param[in] vKey The binary data of the key.
-         *  @param[out] vKeys The list of keys to return.
-         *
-         *  @return True if the key was found, false otherwise.
-         *
-         **/
-        bool Get(const std::vector<uint8_t>& vKey, std::vector<SectorKey>& vKeys);
-
-
         /** Put
          *
          *  Write a key to the disk hashmaps.
@@ -170,6 +156,14 @@ namespace LLD
          *
          **/
         bool Put(const SectorKey& cKey);
+
+
+        /** Flush
+         *
+         *  Flush all buffers to disk if using ACID transaction.
+         *
+         **/
+        void Flush();
 
 
         /** Restore
