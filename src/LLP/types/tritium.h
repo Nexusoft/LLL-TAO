@@ -173,6 +173,10 @@ namespace LLP
         uint64_t nTrust;
 
 
+        /** This node's protocol version. **/
+        uint64_t nProtocolVersion;
+
+
         /** Event
          *
          *  Virtual Functions to Determine Behavior of Message LLP.
