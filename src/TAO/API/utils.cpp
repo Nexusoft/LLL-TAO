@@ -64,10 +64,10 @@ namespace TAO
         *  in order to get the decimals.  The token is obtained by looking at the identifier field,
         *  which contains the register address of the issuing token
         */
-        uint64_t GetDecimals(const TAO::Register::Object& object)
+        uint8_t GetDecimals(const TAO::Register::Object& object)
         {
             /* Declare the nDecimals to return */
-            uint64_t nDecimals = 0;
+            uint8_t nDecimals = 0;
 
             /* Get the object standard. */
             uint8_t nStandard = object.Standard();
@@ -77,7 +77,7 @@ namespace TAO
             {
                 case TAO::Register::OBJECTS::TOKEN:
                 {
-                    nDecimals = object.get<uint64_t>("decimals");
+                    nDecimals = object.get<uint8_t>("decimals");
                     break;
                 }
 
@@ -106,7 +106,7 @@ namespace TAO
                         if(!token.Parse())
                             throw APIException(-14, "Object failed to parse");
 
-                        nDecimals = token.get<uint64_t>("decimals");
+                        nDecimals = token.get<uint8_t>("decimals");
                     }
                     break;
                 }
@@ -317,6 +317,44 @@ namespace TAO
                             continue;
                     }
                 }
+            }
+
+            return true;
+        }
+
+
+        /* Scans a signature chain to work out all assets that it owns */
+        bool ListObjects(const uint256_t& hashGenesis, std::vector<TAO::Register::Address>& vObjects)
+        {
+            /* Get all registers owned by the sig chain */
+            std::vector<TAO::Register::Address> vRegisters;
+            ListRegisters(hashGenesis, vRegisters);
+
+            /* Filter out only those that are objects */
+            for(const auto& address : vRegisters)
+            {
+                /* Check that the address is for an object */
+                if(address.IsObject())
+                    vObjects.push_back(address);
+            }
+
+            return true;
+        }
+
+
+        /* Scans a signature chain to work out all accounts that it owns */
+        bool ListAccounts(const uint256_t& hashGenesis, std::vector<TAO::Register::Address>& vAccounts, bool fTokens)
+        {
+            /* Get all registers owned by the sig chain */
+            std::vector<TAO::Register::Address> vRegisters;
+            ListRegisters(hashGenesis, vRegisters);
+
+            /* Filter out only those that are accounts */
+            for(const auto& address : vRegisters)
+            {
+                /* Check that the address is for an account or token */
+                if(address.IsAccount() || (fTokens && address.IsToken()))
+                    vAccounts.push_back(address);
             }
 
             return true;
@@ -941,6 +979,185 @@ namespace TAO
                     hashLast = tx.hashPrevTx;
                 }
             }
+        }
+
+
+        /* Calculates the percentage of tokens owned from the total supply. */
+        double GetTokenOwnership(const TAO::Register::Address& hashToken, const uint256_t& hashGenesis)
+        {
+            /* Find all token accounts owned by the caller for the token */
+            std::vector<TAO::Register::Address> vAccounts;
+            ListAccounts(hashGenesis, vAccounts, true);
+
+            /* The balance of tokens owned for this asset */
+            uint64_t nBalance = 0;
+
+            for(const auto& hashAccount : vAccounts)
+            {
+                /* Make sure it is an account or the token itself (in case not all supply has been distributed)*/
+                if(!hashAccount.IsAccount() && !hashAccount.IsToken())
+                    continue;
+
+                /* Get the account from the register DB. */
+                TAO::Register::Object object;
+                if(!LLD::Register->ReadState(hashAccount, object, TAO::Ledger::FLAGS::MEMPOOL))
+                    throw APIException(-13, "Account not found");
+
+                /* Check that this is a non-standard object type so that we can parse it and check the type*/
+                if(object.nType != TAO::Register::REGISTER::OBJECT)
+                    continue;
+
+                /* parse object so that the data fields can be accessed */
+                if(!object.Parse())
+                    throw APIException(-36, "Failed to parse object register");
+
+                /* Check that this is an account or token */
+                if(object.Base() != TAO::Register::OBJECTS::ACCOUNT)
+                    continue;
+
+                /* Check the token*/
+                if(object.get<uint256_t>("token") != hashToken)
+                    continue;
+
+                /* Get the balance */
+                nBalance += object.get<uint64_t>("balance");
+            }
+
+            /* If we have a balance > 0 then we have some ownership, so work out the % */
+            if(nBalance > 0)
+            {
+                /* Retrieve the token itself so we can get the supply */
+                TAO::Register::Object token;
+                if(!LLD::Register->ReadState(hashToken, token, TAO::Ledger::FLAGS::MEMPOOL))
+                    throw APIException(-125, "Token not found");
+
+                /* Parse the object register. */
+                if(!token.Parse())
+                    throw APIException(-14, "Object failed to parse");
+
+                /* Get the total supply */
+                uint64_t nSupply = token.get<uint64_t>("supply");
+                
+                /* Calculate the ownership % */
+                return (double)nBalance / (double)nSupply * 100.0;
+            }
+            else
+            {
+                return 0.0;
+            }
+            
+        }
+
+
+        /* Lists all object registers partially owned by way of tokens that the sig chain owns  */
+        bool ListPartial(const uint256_t& hashGenesis, std::vector<TAO::Register::Address>& vRegisters)
+        {
+            /* Find all token accounts owned by the caller */
+            std::vector<TAO::Register::Address> vAccounts;
+            ListAccounts(hashGenesis, vAccounts, true);
+
+            for(const auto& hashAccount : vAccounts)
+            {
+                /* Make sure it is an account or the token itself (in case not all supply has been distributed)*/
+                if(!hashAccount.IsAccount() && !hashAccount.IsToken())
+                    continue;
+
+                /* Get the account from the register DB. */
+                TAO::Register::Object object;
+                if(!LLD::Register->ReadState(hashAccount, object, TAO::Ledger::FLAGS::MEMPOOL))
+                    throw APIException(-13, "Account not found");
+
+                /* Check that this is a non-standard object type so that we can parse it and check the type*/
+                if(object.nType != TAO::Register::REGISTER::OBJECT)
+                    continue;
+
+                /* parse object so that the data fields can be accessed */
+                if(!object.Parse())
+                    throw APIException(-36, "Failed to parse object register");
+
+                /* Check that this is an account or token */
+                if(object.Base() != TAO::Register::OBJECTS::ACCOUNT)
+                    continue;
+
+                /* Get the token*/
+                TAO::Register::Address hashToken = object.get<uint256_t>("token") ;
+                
+                /* Get all objects owned by this token */
+                std::vector<TAO::Register::Address> vTokenizedObjects;
+                ListTokenizedObjects(hashToken, vTokenizedObjects);
+
+                /* Add them to the list if they are not already in there */
+                for(const auto& address : vTokenizedObjects)
+                {
+                    if(std::find(vRegisters.begin(), vRegisters.end(), address) == vRegisters.end())
+                        vRegisters.push_back(address);
+                }
+            }
+
+            return vRegisters.size() > 0;
+        }
+
+
+        /* Finds all objects that have been tokenized and therefore owned by hashToken */
+        bool ListTokenizedObjects(const TAO::Register::Address& hashToken, 
+                                  std::vector<TAO::Register::Address>& vObjects)
+        {
+            /* There is no index of the assets owned by a token.  Therefore, to determine which assets the token owns, we can scan 
+               through the events for the token itself to find all object transfers where the new owner is the token. */
+            
+            /* Transaction for the event. */
+            TAO::Ledger::Transaction tx;
+
+            /* Iterate all events in the sig chain */
+            uint32_t nSequence = 0;
+            while(LLD::Ledger->ReadEvent(hashToken, nSequence, tx))
+            {
+                /* Loop through transaction contracts. */
+                uint32_t nContracts = tx.Size();
+                for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
+                {
+                    /* Reset the op stream */
+                    tx[nContract].Reset();
+
+                    /* The operation */
+                    uint8_t nOp;
+                    tx[nContract] >> nOp;
+
+                    if(nOp == TAO::Operation::OP::TRANSFER)
+                    {
+                        /* The register address being transferred */
+                        TAO::Register::Address hashRegister;
+                        tx[nContract] >> hashRegister;
+                        
+                        /* Get the new owner hash */
+                        TAO::Register::Address hashTo;
+                        tx[nContract] >> hashTo;
+
+                        /* Read the force transfer flag */
+                        uint8_t nType = 0;
+                        tx[nContract] >> nType;
+
+                        /* Ensure this was a forced transfer (which tokenized asset transfers must be) */
+                        if(nType != TAO::Operation::TRANSFER::FORCE)
+                            continue;
+
+                        /* Check that the recipient of the transfer is the token */
+                        if(hashToken != hashTo) 
+                            continue;
+
+                        vObjects.push_back(hashRegister);
+                    }
+                    
+                    else 
+                        continue;
+                }
+
+                /* Iterate the sequence id forward. */
+                ++nSequence;
+            }
+
+            /* Return true if we found any objects owned by the token */
+            return vObjects.size() > 0;
         }
 
 

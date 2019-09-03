@@ -344,6 +344,10 @@ namespace TAO
                         {
                             if(strName.find(":") != strName.npos)
                                 return debug::error(FUNCTION, "Global names cannot contain colons: ", strName);
+
+                            /* Check for reserved global names. */
+                            if(TAO::Register::NAME::Reserved(strName) )
+                                return debug::error(FUNCTION, "names can't be created with reserved name ", strName);
                         }
                         else
                         {
@@ -362,7 +366,7 @@ namespace TAO
                         std::string strNamespace = object.get<std::string>("namespace");
 
                         /* Check for reserved names. */
-                        if(strNamespace == TAO::Register::NAMESPACE::GLOBAL)
+                        if(TAO::Register::NAMESPACE::Reserved(strNamespace) )
                             return debug::error(FUNCTION, "namespace can't be created with reserved name ", strNamespace);
 
                         /* Check that name doesn't contain colons */

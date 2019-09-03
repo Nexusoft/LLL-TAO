@@ -63,7 +63,7 @@ namespace TAO
              *
              **/
             bool Commit(const TAO::Register::Object& account, const TAO::Register::Address& hashAddress,
-                        const uint256_t& hashCaller, const uint512_t& hashTx, const uint576_t& hashKey,
+                        const uint256_t& hashCaller, const uint512_t& hashTx, const uint512_t& hashKey,
                         const uint512_t& hashLast, const uint8_t nFlags);
 
 

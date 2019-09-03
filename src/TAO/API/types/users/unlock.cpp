@@ -62,6 +62,10 @@ namespace TAO
             /* Check for unlock actions */
             uint8_t nUnlockedActions = TAO::Ledger::PinUnlock::UnlockActions::NONE; // default to ALL actions
 
+            /* If it has already been unlocked then set the Unlocked actions to the current unlocked actions */
+            if(!Locked())
+                nUnlockedActions = pActivePIN->UnlockedActions();
+
             /* Check for minting flag. */
             if(params.find("minting") != params.end())
             {
@@ -77,7 +81,7 @@ namespace TAO
                 }
             }
 
-            /* Check unlocked actions. */
+            /* Check transactions flag. */
             if(params.find("transactions") != params.end())
             {
                 std::string strTransactions = params["transactions"].get<std::string>();
@@ -92,6 +96,20 @@ namespace TAO
                 }
             }
 
+            /* Check for notifications. */
+            if(params.find("notifications") != params.end())
+            {
+                std::string strNotifications = params["notifications"].get<std::string>();
+
+                if(strNotifications == "1" || strNotifications == "true")
+                {
+                     /* Check if already unlocked. */
+                    if(!pActivePIN.IsNull() && pActivePIN->ProcessNotifications())
+                        throw APIException(-194, "Account already unlocked for notifications");
+                    else
+                        nUnlockedActions |= TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS;
+                }
+            }
 
             /* If no unlock actions have been specifically set then default it to all */
             if(nUnlockedActions == TAO::Ledger::PinUnlock::UnlockActions::NONE)
@@ -155,7 +173,14 @@ namespace TAO
                     stakeMinter.Start();
             }
 
-            ret["success"] = true;
+            /* populate unlocked status */
+            json::json jsonUnlocked;
+
+            jsonUnlocked["minting"] = !pActivePIN.IsNull() && pActivePIN->CanMint();
+            jsonUnlocked["transactions"] = !pActivePIN.IsNull() && pActivePIN->CanTransact();
+            jsonUnlocked["notifications"] = !pActivePIN.IsNull() && pActivePIN->ProcessNotifications();
+
+            ret["unlocked"] = jsonUnlocked;
             return ret;
         }
     }

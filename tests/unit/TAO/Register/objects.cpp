@@ -153,7 +153,7 @@ TEST_CASE( "Object Register Tests", "[register]")
         object << std::string("balance") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT64_T) << uint64_t(55)
                << std::string("token") << uint8_t(TYPES::UINT256_T) << uint256_t(0)
                << std::string("supply") << uint8_t(TYPES::UINT64_T) << uint64_t(888888)
-               << std::string("decimals") << uint8_t(TYPES::UINT64_T) << uint64_t(100);
+               << std::string("decimals") << uint8_t(TYPES::UINT8_T) << uint8_t(100);
 
         //parse object
         REQUIRE(object.Parse());
@@ -169,7 +169,7 @@ TEST_CASE( "Object Register Tests", "[register]")
         object << std::string("balance") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT64_T) << uint64_t(55)
                << std::string("token") << uint8_t(TYPES::UINT256_T) << uint64_t(0)
                << std::string("supply") << uint8_t(TYPES::UINT64_T) << uint64_t(888888)
-               << std::string("decimals") << uint8_t(TYPES::UINT64_T) << uint64_t(100);
+               << std::string("decimals") << uint8_t(TYPES::UINT8_T) << uint8_t(100);
 
         //parse object.  This should fail as identifier value is suppled as uint64_t instead of uint256_t
         REQUIRE_THROWS(!object.Parse());

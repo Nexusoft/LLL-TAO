@@ -956,7 +956,7 @@ namespace TAO
                         contract >> hashAccount;
 
                         /* Get the Legacy trust key hash (hash from) */
-                        uint576_t hashKey = 0;
+                        uint512_t hashKey = 0;
                         contract >> hashKey;
 
                         /* Get the amount to migrate. */

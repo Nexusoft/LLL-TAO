@@ -52,14 +52,11 @@ namespace TAO
             if(params.find("username") == params.end())
                 throw APIException(-127, "Missing username");
 
-            /* Extract the username and check for allowed characters / length */
-            std::string strUsername = params["username"].get<std::string>();
-
             /* Check for password parameter. */
             if(params.find("password") == params.end())
                 throw APIException(-128, "Missing password");
 
-            /* Check for pin parameter. Parse the pin parameter. */
+            /* Check for pin parameter. Extract the pin. */
             if(params.find("pin") != params.end())
                 strPin = SecureString(params["pin"].get<std::string>().c_str());
             else if(params.find("PIN") != params.end())
@@ -67,8 +64,26 @@ namespace TAO
             else
                 throw APIException(-129, "Missing PIN");
 
+            /* Extract the username  */
+            std::string strUsername = params["username"].get<std::string>();
+
+            /* Extract the password */
+            std::string strPassword = params["password"].get<std::string>();
+
+            /* Check username length */
+            if(strUsername.length() < 3)
+                throw APIException(-191, "Username must be a minimum of 3 characters");
+
+            /* Check password length */
+            if(strPassword.length() < 8)
+                throw APIException(-192, "Password must be a minimum of 8 characters");
+
+            /* Check pin length */
+            if(strPin.length() < 4)
+                throw APIException(-193, "Pin must be a minimum of 4 characters");
+
             /* Generate the signature chain. */
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain> user = new TAO::Ledger::SignatureChain(strUsername.c_str(), params["password"].get<std::string>().c_str());
+            memory::encrypted_ptr<TAO::Ledger::SignatureChain> user = new TAO::Ledger::SignatureChain(strUsername.c_str(), strPassword.c_str());
 
             /* Get the Genesis ID. */
             uint256_t hashGenesis = user->Genesis();

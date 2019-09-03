@@ -144,8 +144,8 @@ namespace TAO
 
                 try
                 {
-                    /* Ensure that the user is logged, in, wallet unlocked, and able to transact. */
-                    if(!LoggedIn() || Locked() || !CanTransact())
+                    /* Ensure that the user is logged, in, wallet unlocked, and unlocked for notifications. */
+                    if(!LoggedIn() || Locked() || !CanProcessNotifications())
                         continue;
 
                     /* Get the session to be used for this API call */
@@ -435,7 +435,7 @@ namespace TAO
 
                                 /* Trust key data we need for OP::MIGRATE */
                                 uint32_t nScore;
-                                uint576_t hashKey;
+                                uint512_t hashKey;
                                 uint512_t hashLast;
 
                                 /* This loop will only have one iteration. If it breaks out before end, fMigration stays false */

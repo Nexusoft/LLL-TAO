@@ -474,7 +474,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]")
             token   << std::string("balance")    << uint8_t(TYPES::UINT64_T) << uint64_t(1000)
                     << std::string("token") << uint8_t(TYPES::UINT256_T) << uint256_t(11)
                     << std::string("supply")     << uint8_t(TYPES::UINT64_T) << uint64_t(1000)
-                    << std::string("decimals")     << uint8_t(TYPES::UINT64_T) << uint64_t(100);
+                    << std::string("decimals")     << uint8_t(TYPES::UINT8_T) << uint8_t(100);
 
             //payload
             tx[0] << uint8_t(OP::CREATE) << hashToken << uint8_t(REGISTER::RAW) << token.GetState();
@@ -540,7 +540,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]")
             token   << std::string("balance")    << uint8_t(TYPES::UINT64_T) << uint64_t(1000)
                     << std::string("token")      << uint8_t(TYPES::UINT256_T) << uint256_t(11)
                     << std::string("supply")     << uint8_t(TYPES::UINT64_T) << uint64_t(1000)
-                    << std::string("decimals")     << uint8_t(TYPES::UINT64_T) << uint64_t(100);
+                    << std::string("decimals")     << uint8_t(TYPES::UINT8_T) << uint8_t(100);
 
             //payload
             tx[0] << uint8_t(OP::CREATE) << hashToken << uint8_t(REGISTER::OBJECT) << token.GetState();

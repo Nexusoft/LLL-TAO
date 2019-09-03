@@ -313,7 +313,7 @@ namespace TAO
                 }
             }
             else
-            {   
+            {
                 /* Make sure the previous transaction is on disk or mempool. */
                 TAO::Ledger::Transaction txPrev;
                 if(!LLD::Ledger->ReadTx(hashPrevTx, txPrev, nFlags))
@@ -379,7 +379,7 @@ namespace TAO
                     if(!LLD::Ledger->WriteTx(hash, *this))
                         return debug::error(FUNCTION, "failed to write valid next pointer");
                 }
-            }     
+            }
 
             /* Run through all the contracts. */
             for(const auto& contract : vContracts)
@@ -392,7 +392,7 @@ namespace TAO
                     return false;
             }
 
-            /* Once we have executed the contracts we need to check the fees.  
+            /* Once we have executed the contracts we need to check the fees.
                NOTE there are no fees on the genesis transaction.
                NOTE: There are no fees required in private mode. */
             if(!IsFirst() && !config::GetBoolArg("-private", false))
@@ -440,6 +440,27 @@ namespace TAO
                 if(!LLD::Ledger->WriteLast(hashGenesis, hashPrevTx))
                     return debug::error(FUNCTION, "failed to write last hash");
 
+            }
+
+            /* Revert last stake whan disconnect a coinstake tx */
+            if(IsCoinStake())
+            {
+                if(IsTrust())
+                {
+                    /* Revert saved last stake to the prior stake transaction */
+                    Transaction txLast;
+                    if(!TAO::Ledger::FindLastStake(hashGenesis, txLast))
+                        return debug::error(FUNCTION, "failed to find previous stake");
+
+                    if(!LLD::Ledger->WriteStake(hashGenesis, txLast.GetHash()))
+                        return debug::error(FUNCTION, "failed to write last stake");
+                }
+                else
+                {
+                    if(!LLD::Ledger->EraseStake(hashGenesis))
+                        return debug::error(FUNCTION, "failed to erase last stake");
+
+                }
             }
 
             /* Run through all the contracts. */

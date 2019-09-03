@@ -667,7 +667,7 @@ namespace TAO
                         contract >> hashAccount;
 
                         /* Skip hashKey (hash from) */
-                        contract.Seek(72);
+                        contract.Seek(64);
 
                         /* Get the amount to migrate. */
                         uint64_t nAmount = 0;

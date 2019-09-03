@@ -25,7 +25,7 @@ except:
 #endtry
 
 entries = 100 if len(sys.argv) < 2 else int(sys.argv[1])
-sdk = nexus.sdk_init("dino", "pw", "1234")
+sdk = nexus.sdk_init("dino", "password", "1234")
 
 print "Login with username dino ..."
 status = sdk.nexus_accounts_login()

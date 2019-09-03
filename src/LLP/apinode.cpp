@@ -13,6 +13,7 @@ ________________________________________________________________________________
 
 
 #include <LLP/types/apinode.h>
+#include <LLP/templates/events.h>
 
 #include <TAO/API/types/exception.h>
 #include <TAO/API/include/global.h>
@@ -55,8 +56,18 @@ namespace LLP
     /* Custom Events for Core API */
     void APINode::Event(uint8_t EVENT, uint32_t LENGTH)
     {
-        //no events for now
-        //TODO: see if at all possible to call from down in inheritance heirarchy
+        
+        if(EVENT == EVENT_CONNECT)
+        {
+            /* Reset the error log for this thread */
+            debug::GetLastError();
+
+            /* Log API request event */
+            debug::log(5, NODE, fOUTGOING ? "Outgoing" : "Incoming",
+                       " API Request connected at timestamp ",   runtime::unifiedtimestamp());
+
+            return;
+        }
     }
 
 

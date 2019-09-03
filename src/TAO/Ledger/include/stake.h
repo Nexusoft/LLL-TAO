@@ -17,6 +17,9 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
+#include <TAO/Ledger/types/genesis.h>
+#include <TAO/Ledger/types/transaction.h>
+
 #include <TAO/Register/types/object.h>
 
 /**
@@ -219,6 +222,19 @@ namespace TAO
          **/
         uint64_t GetCoinstakeReward(const uint64_t nStake, const uint64_t nStakeTime,
                                     const uint64_t nTrust, const bool isGenesis = false);
+
+
+        /** FindLastStake
+         *
+         *  Find the last stake transaction for a user signature chain.
+         *
+         *  @param[in] hashGenesis - User genesis of signature chain to search
+         *  @param[out] tx - Last stake transaction for user
+         *
+         *  @return True if last stake found, false otherwise
+         *
+         **/
+        bool FindLastStake(const Genesis& hashGenesis, Transaction& tx);
 
     }
 }

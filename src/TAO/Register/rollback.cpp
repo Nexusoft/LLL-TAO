@@ -279,7 +279,7 @@ namespace TAO
                         State state;
                         contract >>= state;
 
-                        /* Write the register from database. */
+                        /* Write the register prestate to database. */
                         if(!LLD::Register->WriteTrust(contract.Caller(), state))
                             return debug::error(FUNCTION, "OP::TRUST: failed to rollback to pre-state");
 
@@ -290,7 +290,7 @@ namespace TAO
                     /* Coinstake operation. Requires an account. */
                     case TAO::Operation::OP::GENESIS:
                     {
-                        /* Get last trust block. */
+                        /* Get trust account register address. */
                         uint256_t hashAddress = 0;
                         contract >> hashAddress;
 
@@ -309,7 +309,7 @@ namespace TAO
                         State state;
                         contract >>= state;
 
-                        /* Write the register from database. */
+                        /* Write the register prestate to database. */
                         if(!LLD::Register->WriteState(hashAddress, state))
                             return debug::error(FUNCTION, "OP::GENESIS: failed to rollback to pre-state");
 
@@ -339,7 +339,7 @@ namespace TAO
                         State state;
                         contract >>= state;
 
-                        /* Write the register from database. */
+                        /* Write the register prestate to database. */
                         if(!LLD::Register->WriteTrust(contract.Caller(), state))
                             return debug::error(FUNCTION, "OP::STAKE: failed to rollback to pre-state");
 
@@ -365,7 +365,7 @@ namespace TAO
                         State state;
                         contract >>= state;
 
-                        /* Write the register from database. */
+                        /* Write the register prestate to database. */
                         if(!LLD::Register->WriteTrust(contract.Caller(), state))
                             return debug::error(FUNCTION, "OP::UNSTAKE: failed to rollback to pre-state");
 
@@ -483,6 +483,59 @@ namespace TAO
                             if(!LLD::Ledger->WriteClaimed(hashTx, nContract, (nClaimed - nAmount)))
                                 return debug::error(FUNCTION, "OP::CREDIT: failed to rollback claimed amount");
                         }
+
+                        break;
+                    }
+
+                    /* Migrate a trust key to a trust account register. */
+                    case TAO::Operation::OP::MIGRATE:
+                    {
+                        /* Extract the transaction from contract. */
+                        uint512_t hashTx = 0;
+                        contract >> hashTx;
+
+                        /* Get the trust register address. (hash to) */
+                        TAO::Register::Address hashAccount;
+                        contract >> hashAccount;
+
+                        /* Get the Legacy trust key hash (hash from) */
+                        uint512_t hashKey = 0;
+                        contract >> hashKey;
+
+                        /* Seek to end. */
+                        contract.Seek(76);
+
+                        /* Verify the first register code. */
+                        uint8_t nState = 0;
+                        contract >>= nState;
+
+                        /* Check the state is prestate. */
+                        if(nState != STATES::PRESTATE)
+                            return debug::error(FUNCTION, "OP::MIGRATE: register state not in pre-state");
+
+                        /* Verify the register's prestate. */
+                        State state;
+                        contract >>= state;
+
+                        /* Write the register prestate to database. */
+                        if(!LLD::Register->WriteState(hashAccount, state))
+                            return debug::error(FUNCTION, "OP::MIGRATE: failed to rollback to pre-state");
+
+                        /* Erase the migrate proof. */
+                        if(!LLD::Ledger->EraseProof(TAO::Register::WILDCARD_ADDRESS, hashTx, 0))
+                            return debug::error(FUNCTION, "OP::MIGRATE: failed to erase migrate proof");
+
+                        /* Erase the trust index. */
+                        if(!LLD::Register->EraseTrust(contract.Caller()))
+                            return debug::error(FUNCTION, "OP::MIGRATE: failed to erase trust index");
+
+                        /* Erase the last stake. */
+                        if(!LLD::Ledger->EraseStake(contract.Caller()))
+                            return debug::error(FUNCTION, "OP::MIGRATE: failed to erase last stake");
+
+                        /* Erase the trust key conversion. */
+                        if(!LLD::Legacy->EraseTrustConversion(hashKey))
+                            return debug::error(FUNCTION, "OP::MIGRATE: failed to record trust key migration to disk");
 
                         break;
                     }

@@ -86,6 +86,7 @@ namespace TAO
 
             jsonUnlocked["minting"] = !pActivePIN.IsNull() && pActivePIN->CanMint();
             jsonUnlocked["transactions"] = !pActivePIN.IsNull() && pActivePIN->CanTransact();
+            jsonUnlocked["notifications"] = !pActivePIN.IsNull() && pActivePIN->ProcessNotifications();
 
             ret["unlocked"] = jsonUnlocked;
             

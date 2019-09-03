@@ -171,7 +171,7 @@ namespace TAO
 
 
         /*  Retrieves the most recent stake transaction for a user account. */
-        bool TritiumMinter::FindTrustAccount(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user)
+        bool TritiumMinter::FindTrustAccount(const Genesis& hashGenesis)
         {
 
             /* Reset saved trust account data */
@@ -187,7 +187,7 @@ namespace TAO
              * This is logged as an error and the stake minter should be suspended pending stop/shutdown.
              */
 
-            if(LLD::Register->HasTrust(user->Genesis()))
+            if(LLD::Register->HasTrust(hashGenesis))
             {
                 fGenesis = false;
 
@@ -195,7 +195,7 @@ namespace TAO
 
                 /* Retrieve the trust account register */
                 TAO::Register::Object reg;
-                if(!LLD::Register->ReadTrust(user->Genesis(), reg))
+                if(!LLD::Register->ReadTrust(hashGenesis, reg))
                    return debug::error(FUNCTION, "Stake Minter unable to retrieve trust account.");
 
                 if(!reg.Parse())
@@ -211,7 +211,7 @@ namespace TAO
                 fGenesis = true;
 
                 /* Staking Genesis for trust account. Trust account is not indexed, need to use trust account address. */
-                TAO::Register::Address hashRegister = TAO::Register::Address(std::string("trust"), user->Genesis(), TAO::Register::Address::TRUST);
+                TAO::Register::Address hashRegister = TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
 
                 /* Retrieve the trust account */
                 TAO::Register::Object reg;
@@ -245,43 +245,19 @@ namespace TAO
 
 
         /** Retrieves the most recent stake transaction for a user account. */
-        bool TritiumMinter::FindLastStake(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user,
-                                          TAO::Ledger::Transaction& tx)
+        bool TritiumMinter::FindLastStake(const Genesis& hashGenesis, Transaction& tx)
         {
             uint512_t hashLast = 0;
-            if(LLD::Ledger->ReadStake(user->Genesis(), hashLast) && LLD::Ledger->ReadTx(hashLast, tx))
+            if(LLD::Ledger->ReadStake(hashGenesis, hashLast) && LLD::Ledger->ReadTx(hashLast, tx))
                 return true;
 
-            /* Last stake is missing from Ledger. Will need to retrieve manually.
-             * Begin by getting the most recent tx hash for the user account.
-             */
-            hashLast = 0;
-            if(!LLD::Ledger->ReadLast(user->Genesis(), hashLast))
-                return false;
-
-            /* Loop until find stake transaction or reach first transaction on user acount (hashLast == 0). */
-            while(hashLast != 0)
+            /* If last stake is not directly available, search for it */
+            if(TAO::Ledger::FindLastStake(hashGenesis, tx))
             {
-                /* Get the transaction for the current hashLast. */
-                TAO::Ledger::Transaction txCheck;
-                if(!LLD::Ledger->ReadTx(hashLast, txCheck))
-                    return false;
+                /* Update the Ledger with found last stake */
+                LLD::Ledger->WriteStake(hashGenesis, tx.GetHash());
 
-                /* Test whether the transaction contains a staking operation */
-                if(TAO::Register::Unpack(txCheck[0], TAO::Operation::OP::TRUST)
-                    || TAO::Register::Unpack(txCheck[0], TAO::Operation::OP::GENESIS))
-                {
-                    /* Found last stake transaction. */
-                    tx = txCheck;
-
-                    /* Update the Ledger with found last stake */
-                    LLD::Ledger->WriteStake(user->Genesis(), hashLast);
-
-                    return true;
-                }
-
-                /* Stake tx not found, yet, iterate to next previous user tx */
-                hashLast = txCheck.hashPrevTx;
+                return true;
             }
 
             return false;
@@ -327,7 +303,7 @@ namespace TAO
 
                 /* Get the previous stake tx for the trust account. */
                 txLast = Transaction();
-                if(!FindLastStake(user, txLast))
+                if(!FindLastStake(user->Genesis(), txLast))
                     return debug::error(FUNCTION, "Failed to get last stake for trust account");
 
                 /* Get the block containing the last stake tx for the trust account. */
@@ -790,7 +766,7 @@ namespace TAO
                 SecureString strPIN = TAO::API::users->GetActivePin();
 
                 /* Retrieve the latest trust account data */
-                if(!pTritiumMinter->FindTrustAccount(user))
+                if(!pTritiumMinter->FindTrustAccount(user->Genesis()))
                     break;
 
                 /* Set up the candidate block the minter is attempting to mine */

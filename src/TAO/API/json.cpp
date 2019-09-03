@@ -868,12 +868,12 @@ namespace TAO
             /* Declare the return JSON object */
             json::json ret;
 
+            /* Get callers hashGenesis . */
+            uint256_t hashGenesis = users->GetCallersGenesis(params);
+
             /* If the caller has specified to look up the name */
             if(fLookupName)
             {
-                /* Get callers hashGenesis . */
-                uint256_t hashGenesis = users->GetCallersGenesis(params);
-
                 /* Look up the object name based on the Name records in the caller's sig chain */
                 std::string strName = Names::ResolveName(hashGenesis, hashRegister);
 
@@ -929,7 +929,7 @@ namespace TAO
                         ret["token"] = hashToken.ToString();
 
                         /* Handle digit conversion. */
-                        uint64_t nDecimals = GetDecimals(object);
+                        uint8_t nDecimals = GetDecimals(object);
 
                         /* In order to get the balance for this account we need to ensure that we use the state from disk, which 
                            will contain the confirmed balance.  If this is a new account then it won't be on disk yet so the 
@@ -983,7 +983,7 @@ namespace TAO
                     case TAO::Register::OBJECTS::TOKEN:
                     {
                         /* Handle decimals conversion. */
-                        uint64_t nDecimals = GetDecimals(object);
+                        uint8_t nDecimals = GetDecimals(object);
 
                         /* In order to get the balance for this account we need to ensure that we use the state from disk, which 
                            will contain the confirmed balance.  If this is a new account then it won't be on disk yet so the 
@@ -1061,6 +1061,14 @@ namespace TAO
                     default:
                     {
                         ret["address"]    = hashRegister.ToString();
+
+                        /* Add ownership details */
+                        TAO::Register::Address hashOwner = TAO::Register::Address(object.hashOwner);
+                        ret["owner"]    = hashOwner.ToString();
+
+                        /* If this is a tokenized asset then work out what % the caller owns */
+                        if(hashOwner.IsToken())
+                            ret["ownership"] = GetTokenOwnership(hashOwner, hashGenesis);
 
                         /* Get List of field names in this asset object */
                         std::vector<std::string> vFieldNames = object.GetFieldNames();

@@ -58,7 +58,7 @@ namespace TAO
          *  @return The object register just created.
          *
          **/
-        Object CreateToken(const uint256_t& hashIdentifier, const uint64_t nSupply, const uint64_t nDecimals);
+        Object CreateToken(const uint256_t& hashIdentifier, const uint64_t nSupply, const uint8_t nDecimals);
 
 
         /** CreateAsset
