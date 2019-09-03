@@ -41,7 +41,7 @@ namespace LLP
 
 
         /** Map to keep track of duplicate nonce sessions. **/
-        static std::map<uint64_t, LegacyNode*> mapSessions;
+        static std::map<uint64_t, std::pair<uint32_t, uint32_t>> mapSessions;
 
 
     public:
@@ -182,7 +182,7 @@ namespace LLP
          *  @return a pointer to connected node.
          *
          **/
-        static LegacyNode* GetNode(const uint64_t nSession);
+        static memory::atomic_ptr<LegacyNode>& GetNode(const uint64_t nSession);
 
 
         /** DoS

@@ -270,9 +270,15 @@ namespace LLP
                 }
 
                 /* Get the current connected legacy node. */
-                LegacyNode* pnode = LegacyNode::GetNode(nCurrentSession);
-                if(pnode != nullptr) //if connected, send a drop message.
-                    pnode->Disconnect(); //NOTE: this may cause a segfault since this pointer is not an atomic_ptr
+                memory::atomic_ptr<LegacyNode>& pnode = LegacyNode::GetNode(nCurrentSession);
+                try //we want to catch exceptions thrown by atomic_ptr in the case there was a free on another thread
+                {
+                    /* if connected, send a drop message. */
+                    if(pnode != nullptr)
+                        pnode->Disconnect();
+                }
+                catch(const std::exception& e) {}
+
 
                 /* Check versions. */
                 if(nProtocolVersion < MIN_PROTO_VERSION)

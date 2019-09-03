@@ -168,6 +168,14 @@ namespace LLP
         memory::atomic_ptr<ProtocolType>& GetConnection(const BaseAddress& addrExclude);
 
 
+        /** Get Connection
+         *
+         *  Get the best connection based on data thread index.
+         *
+         **/
+        memory::atomic_ptr<ProtocolType>& GetConnection(const uint32_t nDataThread, const uint32_t nDataIndex);
+
+
         /** Relay
          *
          *  Relays data to all nodes on the network.

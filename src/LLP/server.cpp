@@ -307,6 +307,14 @@ namespace LLP
     }
 
 
+    /* Get the best connection based on data thread index. */
+    template<class ProtocolType>
+    memory::atomic_ptr<ProtocolType>& Server<ProtocolType>::GetConnection(const uint32_t nDataThread, const uint32_t nDataIndex)
+    {
+        return DATA_THREADS[nDataThread]->CONNECTIONS->at(nDataIndex);
+    }
+
+
     /*  Get the active connection pointers from data threads. */
     template <class ProtocolType>
     std::vector<LegacyAddress> Server<ProtocolType>::GetAddresses()

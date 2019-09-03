@@ -50,7 +50,7 @@ namespace LLP
     std::mutex LegacyNode::SESSIONS_MUTEX;
 
     /* Map to keep track of duplicate nonce sessions. */
-    std::map<uint64_t, LegacyNode*> LegacyNode::mapSessions;
+    std::map<uint64_t, std::pair<uint32_t, uint32_t>> LegacyNode::mapSessions;
 
     /* Helper function to switch the nodes on sync. */
     void SwitchNode()
@@ -366,16 +366,18 @@ namespace LLP
             {
                 LOCK(SESSIONS_MUTEX);
 
-                /** Free this session, if it is this connection that we mapped.
-                    When we disconnect a duplicate session then it will not have been added to the map,
-                    so we need to skip removing the session ID **/
-                if(mapSessions.count(nCurrentSession)
-                && mapSessions[nCurrentSession] == this)
-                    mapSessions.erase(nCurrentSession);
+                /* Check for sessions to free. */
+                if(mapSessions.count(nCurrentSession))
+                {
+                    /* Make sure that we aren't freeing our already connected session if handling duplicate connections. */
+                    const std::pair<uint32_t, uint32_t>& pair = mapSessions[nCurrentSession];
+                    if(pair.first == nDataThread && pair.second == nDataIndex)
+                        mapSessions.erase(nCurrentSession);
+                }
             }
 
             /* Update address manager that this connection was dropped. */
-            if(LEGACY_SERVER && LEGACY_SERVER->pAddressManager)
+            if(LEGACY_SERVER->pAddressManager)
                 LEGACY_SERVER->pAddressManager->AddAddress(GetAddress(), ConnectState::DROPPED);
 
             /* Debug output for node disconnect. */
@@ -420,7 +422,7 @@ namespace LLP
                 debug::log(0, FUNCTION, "connected to self");
 
                 /* Cache self-address in the banned list of the Address Manager. */
-                if(LEGACY_SERVER && LEGACY_SERVER->pAddressManager)
+                if(LEGACY_SERVER->pAddressManager)
                     LEGACY_SERVER->pAddressManager->Ban(addrMe);
 
                 return false;
@@ -442,12 +444,12 @@ namespace LLP
                 }
 
                 /* Claim this connection's session ID. */
-                mapSessions[nCurrentSession] = this;
+                mapSessions[nCurrentSession] = std::make_pair(nDataThread, nDataIndex);
             }
 
 
             /* Update the block height in the Address Manager. */
-            if(LEGACY_SERVER && LEGACY_SERVER->pAddressManager)
+            if(LEGACY_SERVER->pAddressManager)
                 LEGACY_SERVER->pAddressManager->SetHeight(nStartingHeight, addrFrom);
 
             /* Push version in response. */
@@ -948,14 +950,17 @@ namespace LLP
 
 
     /* Get a node by connected session. */
-    LegacyNode* LegacyNode::GetNode(const uint64_t nSession)
+    memory::atomic_ptr<LegacyNode>& LegacyNode::GetNode(const uint64_t nSession)
     {
         LOCK(SESSIONS_MUTEX);
 
         /* Check for connected session. */
+        static memory::atomic_ptr<LegacyNode> pNULL;
         if(!mapSessions.count(nSession))
-            return nullptr;
+            return pNULL;
 
-        return mapSessions[nSession];
+        /* Get a reference of session. */
+        const std::pair<uint32_t, uint32_t>& pair = mapSessions[nSession];
+        return LEGACY_SERVER->GetConnection(pair.first, pair.second);
     }
 }
