@@ -226,7 +226,7 @@ namespace LLP
                     {
                         /* Make sure that we aren't freeing our session if handling duplicate connections. */
                         const std::pair<uint32_t, uint32_t>& pair = mapSessions[nCurrentSession];
-                        if(pair.first != nDataThread && pair.second != nDataIndex)
+                        if(pair.first == nDataThread && pair.second == nDataIndex)
                             mapSessions.erase(nCurrentSession);
                     }
                 }
@@ -295,6 +295,10 @@ namespace LLP
             /* Handle for auth command. */
             case ACTION::AUTH:
             {
+                /* Disable AUTH messages when synchronizing. */
+                if(TAO::Ledger::ChainState::Synchronizing())
+                    return true;
+
                 /* Hard requirement for genesis. */
                 ssPacket >> hashGenesis;
 
