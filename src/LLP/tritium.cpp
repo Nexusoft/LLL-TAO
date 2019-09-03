@@ -227,90 +227,90 @@ namespace LLP
                 debug::log(0, NODE, "new auth request from ", hashGenesis.SubString());
 
                 /* Get the signature information. */
-                if(hashGenesis != 0)
+                if(hashGenesis == 0)
+                    return debug::drop(NODE, "cannot authorize with reserved genesis");
+
+                /* Get the crypto register. */
+                TAO::Register::Object crypto;
+                if(!TAO::Register::GetNameRegister(hashGenesis, "crypto", crypto))
+                    return debug::drop(NODE, "authorization failed, missing crypto register");
+
+                /* Parse the object. */
+                if(!crypto.Parse())
+                    return debug::drop(NODE, "failed to parse crypto register");
+
+                /* Check the authorization hash. */
+                uint256_t hashCheck = crypto.get<uint256_t>("auth");
+                if(hashCheck != 0) //a hash of 0 is a disabled authorization hash
                 {
-                    /* Get the crypto register. */
-                    TAO::Register::Object crypto;
-                    if(!TAO::Register::GetNameRegister(hashGenesis, "crypto", crypto))
-                        return debug::drop(NODE, "authorization failed, missing crypto register");
+                    /* Verify the signature information. */
+                    uint8_t nType = 0;
+                    ssPacket >> nType;
 
-                    /* Parse the object. */
-                    if(!crypto.Parse())
-                        return debug::drop(NODE, "failed to parse crypto register");
+                    /* Get the public key. */
+                    std::vector<uint8_t> vchPubKey;
+                    ssPacket >> vchPubKey;
 
-                    /* Check the authorization hash. */
-                    uint256_t hashCheck = crypto.get<uint256_t>("auth");
-                    if(hashCheck != 0) //a hash of 0 is a disabled authorization hash
+                    /* Check the public key to expected authorization key. */
+                    uint256_t hashAuth = LLC::SK256(vchPubKey);
+
+                    /* Check for matching authorization hash. */
+                    if(hashAuth != hashCheck)
+                        return debug::drop(NODE, "failed to authorize, invalid public key");
+
+                    /* Get the signature. */
+                    std::vector<uint8_t> vchSig;
+                    ssPacket >> vchSig;
+
+                    /* Switch based on signature type. */
+                    switch(nType)
                     {
-                        /* Verify the signature information. */
-                        uint8_t nType = 0;
-                        ssPacket >> nType;
-
-                        /* Get the public key. */
-                        std::vector<uint8_t> vchPubKey;
-                        ssPacket >> vchPubKey;
-
-                        /* Check the public key to expected authorization key. */
-                        uint256_t hashAuth = LLC::SK256(vchPubKey);
-
-                        /* Check for matching authorization hash. */
-                        if(hashAuth != hashCheck)
-                            return debug::drop(NODE, "failed to authorize, invalid public key");
-
-                        /* Get the signature. */
-                        std::vector<uint8_t> vchSig;
-                        ssPacket >> vchSig;
-
-                        /* Switch based on signature type. */
-                        switch(nType)
+                        /* Support for the FALCON signature scheeme. */
+                        case TAO::Ledger::SIGNATURE::FALCON:
                         {
-                            /* Support for the FALCON signature scheeme. */
-                            case TAO::Ledger::SIGNATURE::FALCON:
-                            {
-                                /* Create the FL Key object. */
-                                LLC::FLKey key;
+                            /* Create the FL Key object. */
+                            LLC::FLKey key;
 
-                                /* Set the public key and verify. */
-                                key.SetPubKey(vchPubKey);
-                                if(!key.Verify(hashGenesis.GetBytes(), vchSig))
-                                    return debug::drop(NODE, "invalid transaction signature");
+                            /* Set the public key and verify. */
+                            key.SetPubKey(vchPubKey);
+                            if(!key.Verify(hashGenesis.GetBytes(), vchSig))
+                                return debug::drop(NODE, "invalid transaction signature");
 
-                                break;
-                            }
-
-                            /* Support for the BRAINPOOL signature scheme. */
-                            case TAO::Ledger::SIGNATURE::BRAINPOOL:
-                            {
-                                /* Create EC Key object. */
-                                LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
-
-                                /* Set the public key and verify. */
-                                key.SetPubKey(vchPubKey);
-                                if(!key.Verify(hashGenesis.GetBytes(), vchSig))
-                                    return debug::drop(NODE, "invalid transaction signature");
-
-                                break;
-                            }
-
-                            default:
-                                return debug::drop(NODE, "invalid signature type");
+                            break;
                         }
 
-                        /* Get the crypto register. */
-                        TAO::Register::Object trust;
-                        if(!TAO::Register::GetNameRegister(hashGenesis, "trust", trust))
-                            return debug::drop(NODE, "authorization failed, missing trust register");
+                        /* Support for the BRAINPOOL signature scheme. */
+                        case TAO::Ledger::SIGNATURE::BRAINPOOL:
+                        {
+                            /* Create EC Key object. */
+                            LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
 
-                        /* Parse the object. */
-                        if(!trust.Parse())
-                            return debug::drop(NODE, "failed to parse trust register");
+                            /* Set the public key and verify. */
+                            key.SetPubKey(vchPubKey);
+                            if(!key.Verify(hashGenesis.GetBytes(), vchSig))
+                                return debug::drop(NODE, "invalid transaction signature");
 
-                        /* Set the node's current trust score. */
-                        nTrust = trust.get<uint64_t>("trust");
+                            break;
+                        }
 
-                        /* Set to authorized node if passed all cryptographic checks. */
-                        fAuthorized = true;
+                        default:
+                            return debug::drop(NODE, "invalid signature type");
                     }
+
+                    /* Get the crypto register. */
+                    TAO::Register::Object trust;
+                    if(!TAO::Register::GetNameRegister(hashGenesis, "trust", trust))
+                        return debug::drop(NODE, "authorization failed, missing trust register");
+
+                    /* Parse the object. */
+                    if(!trust.Parse())
+                        return debug::drop(NODE, "failed to parse trust register");
+
+                    /* Set the node's current trust score. */
+                    nTrust = trust.get<uint64_t>("trust");
+
+                    /* Set to authorized node if passed all cryptographic checks. */
+                    fAuthorized = true;
                 }
 
                 break;
