@@ -740,6 +740,13 @@ namespace LLP
                     nConsecutiveOrphans = 0;
                 }
 
+                /* Check for missing transactions. */
+                if(nStatus & TAO::Ledger::PROCESS::INCOMPLETE)
+                {
+                    //TODO: ask for the missing transactions
+                    //keep this block stashed for processing after complete
+                }
+
                 /* Check for failure status messages. */
                 if(nStatus & TAO::Ledger::PROCESS::REJECTED)
                     ++nConsecutiveFails;
