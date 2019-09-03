@@ -52,6 +52,7 @@ namespace LLP
         /* Destructor flag. */
         std::atomic<bool> fDestruct;
         std::atomic<uint32_t> nConnections;
+
         uint32_t ID;
         uint32_t REQUESTS;
         uint32_t TIMEOUT;

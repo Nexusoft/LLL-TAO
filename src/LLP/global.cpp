@@ -28,7 +28,7 @@ namespace LLP
 
 
     /* Current session identifier. */
-    uint64_t SESSION_ID = LLC::GetRand();
+    const uint64_t SESSION_ID = LLC::GetRand();
 
 
     /*  Initialize the LLP. */

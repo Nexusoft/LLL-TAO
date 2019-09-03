@@ -36,7 +36,7 @@ namespace LLP
 
 
     /** Current session identifier. **/
-    extern uint64_t SESSION_ID;
+    const extern uint64_t SESSION_ID;
 
 
     /** Initialize

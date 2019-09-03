@@ -60,10 +60,10 @@ namespace LLP
     , nSleepTime(nSleepTimeIn)
     , hListenSocket(-1, -1)
     {
-        for(uint16_t index = 0; index < MAX_THREADS; ++index)
+        for(uint16_t nIndex = 0; nIndex < MAX_THREADS; ++nIndex)
         {
             DATA_THREADS.push_back(new DataThread<ProtocolType>(
-                index, fDDOS_, rScore, cScore, nTimeout, fMeter));
+                nIndex, fDDOS_, rScore, cScore, nTimeout, fMeter));
         }
 
         /* Initialize the address manager. */

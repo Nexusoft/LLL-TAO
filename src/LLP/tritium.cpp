@@ -45,7 +45,7 @@ namespace LLP
 
 
     /* Declaration of sessions sets. (private). */
-    std::map<uint64_t, TritiumNode*> TritiumNode::mapSessions;
+    std::map<uint64_t, std::pair<uint32_t, uint32_t>> TritiumNode::mapSessions;
 
 
     /** Default Constructor **/
@@ -221,11 +221,14 @@ namespace LLP
                 {
                     LOCK(SESSIONS_MUTEX);
 
-                    /* Free this session, if it is this connection that we mapped.
-                     * When we disconnect a duplicate session then it will not have been added to the map,
-                     * so we need to skip removing the session ID */
-                    if(mapSessions.count(nCurrentSession) && mapSessions[nCurrentSession] == this)
-                        mapSessions.erase(nCurrentSession);
+                    /* Check for sessions to free. */
+                    if(mapSessions.count(nCurrentSession))
+                    {
+                        /* Make sure that we aren't freeing our session if handling duplicate connections. */
+                        const std::pair<uint32_t, uint32_t>& pair = mapSessions[nCurrentSession];
+                        if(pair.first != nDataThread && pair.second != nDataIndex)
+                            mapSessions.erase(nCurrentSession);
+                    }
                 }
 
 
@@ -263,7 +266,7 @@ namespace LLP
                         return debug::drop(NODE, "duplicate connection");
 
                     /* Set this to the current session. */
-                    mapSessions[nCurrentSession] = this;
+                    mapSessions[nCurrentSession] = std::make_pair(nDataThread, nDataIndex);
                 }
 
                 /* Get the current connected legacy node. */
@@ -306,7 +309,7 @@ namespace LLP
                     return debug::drop(NODE, "failed to parse crypto register");
 
                 /* Check the authorization hash. */
-                uint256_t hashCheck = crypto.get<uint256_t>("auth");
+                uint256_t hashCheck = crypto.get<uint256_t>("network");
                 if(hashCheck != 0) //a hash of 0 is a disabled authorization hash
                 {
                     /* Verify the signature information. */

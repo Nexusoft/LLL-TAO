@@ -134,7 +134,7 @@ namespace LLP
 
 
         /** Set for connected session. **/
-        static std::map<uint64_t, TritiumNode*> mapSessions;
+        static std::map<uint64_t, std::pair<uint32_t, uint32_t>> mapSessions;
 
     public:
 
