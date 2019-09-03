@@ -19,10 +19,8 @@ ________________________________________________________________________________
 #include <LLP/include/global.h>
 #include <LLP/templates/events.h>
 #include <LLP/include/manager.h>
-#include <LLP/include/inv.h>
 
-#include <TAO/Operation/include/execute.h>
-
+#include <TAO/Register/include/names.h>
 #include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/include/chainstate.h>
@@ -45,6 +43,7 @@ namespace LLP
     /** Default Constructor **/
     TritiumNode::TritiumNode()
     : BaseConnection<TritiumPacket>()
+    , fAuthorized(false)
     , nLastPing(0)
     , nLastSamples(0)
     , mapLatencyTracker()
@@ -56,6 +55,7 @@ namespace LLP
     /** Constructor **/
     TritiumNode::TritiumNode(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS)
     : BaseConnection<TritiumPacket>(SOCKET_IN, DDOS_IN, isDDOS)
+    , fAuthorized(false)
     , nLastPing(0)
     , nLastSamples(0)
     , mapLatencyTracker()
@@ -67,6 +67,7 @@ namespace LLP
     /** Constructor **/
     TritiumNode::TritiumNode(DDOS_Filter* DDOS_IN, bool isDDOS)
     : BaseConnection<TritiumPacket>(DDOS_IN, isDDOS)
+    , fAuthorized(false)
     , nLastPing(0)
     , nLastSamples(0)
     , mapLatencyTracker()
@@ -202,9 +203,74 @@ namespace LLP
                 debug::log(0, NODE, "new connection from ", hashGenesis.SubString());
 
                 /* Get the signature information. */
-                if(hashGenesis == 0)
+                if(hashGenesis != 0)
                 {
-                    //untrusted node here
+                    /* Verify the signature information. */
+                    uint8_t nType = 0;
+                    ssPacket >> nType;
+
+                    /* Get the public key. */
+                    std::vector<uint8_t> vchPubKey;
+                    ssPacket >> vchPubKey;
+
+                    /* Check the public key to expected authorization key. */
+                    uint256_t hashAuth = LLC::SK256(vchPubKey);
+
+                    /* Get the crypto register. */
+                    TAO::Register::Object object;
+                    if(!TAO::Register::GetNameRegister(hashGenesis, "crypto", object))
+                        return debug::error(NODE, "authorization failed, missing crypto register");
+
+                    /* Parse the object. */
+                    if(!object.Parse())
+                        return debug::error(NODE, "failed to parse crypto register");
+
+                    /* Check the authorization hash. */
+                    uint256_t hashCheck = object.get<uint256_t>("auth");
+                    if(hashAuth != hashCheck)
+                        return debug::error(NODE, "failed to authorize, invalid public key");
+
+                    /* Get the signature. */
+                    std::vector<uint8_t> vchSig;
+                    ssPacket >> vchSig;
+
+                    /* Switch based on signature type. */
+                    switch(nType)
+                    {
+                        /* Support for the FALCON signature scheeme. */
+                        case TAO::Ledger::SIGNATURE::FALCON:
+                        {
+                            /* Create the FL Key object. */
+                            LLC::FLKey key;
+
+                            /* Set the public key and verify. */
+                            key.SetPubKey(vchPubKey);
+                            if(!key.Verify(hashGenesis.GetBytes(), vchSig))
+                                return debug::error(NODE, "invalid transaction signature");
+
+                            break;
+                        }
+
+                        /* Support for the BRAINPOOL signature scheme. */
+                        case TAO::Ledger::SIGNATURE::BRAINPOOL:
+                        {
+                            /* Create EC Key object. */
+                            LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
+
+                            /* Set the public key and verify. */
+                            key.SetPubKey(vchPubKey);
+                            if(!key.Verify(hashGenesis.GetBytes(), vchSig))
+                                return debug::error(NODE, "invalid transaction signature");
+
+                            break;
+                        }
+
+                        default:
+                            return debug::error(NODE, "invalid signature type");
+                    }
+
+                    /* Set to authorized node if passed all cryptographic checks. */
+                    fAuthorized = true;
                 }
 
                 break;
@@ -277,5 +343,11 @@ namespace LLP
                 }
             }
         }
+    }
+
+    /* Determine if a node is authorized and therfore trusted. */
+    bool TritiumNode::Authorized() const
+    {
+        return hashGenesis != 0 && fAuthorized;
     }
 }

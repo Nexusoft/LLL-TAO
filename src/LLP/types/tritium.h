@@ -122,6 +122,10 @@ namespace LLP
             message_args(s, std::forward<Tail>(tail)...);
         }
 
+
+        /** State of if node has currently verified signature. **/
+        std::atomic<bool> fAuthorized;
+
     public:
 
       /** Name
@@ -192,6 +196,14 @@ namespace LLP
          *
          **/
         void ReadPacket() final;
+
+
+        /** Authorized
+         *
+         *  Determine if a node is authorized and therfore trusted.
+         *
+         **/
+        bool Authorized() const;
 
 
         /** NewMessage
