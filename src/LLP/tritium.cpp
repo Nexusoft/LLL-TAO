@@ -154,6 +154,24 @@ namespace LLP
 
             case EVENT_GENERIC:
             {
+                /* Handle sending the pings to remote node.. */
+                if(nLastPing + 15 < runtime::unifiedtimestamp())
+                {
+                    /* Create a random nonce. */
+                    uint64_t nNonce = LLC::GetRand();
+                    nLastPing = runtime::unifiedtimestamp();
+
+                    /* Keep track of latency for this ping. */
+                    mapLatencyTracker.insert(std::pair<uint64_t, runtime::timer>(nNonce, runtime::timer()));
+                    mapLatencyTracker[nNonce].Start();
+
+                    /* Push new message. */
+                    PushMessage(ACTION::PING, nNonce);
+
+                    /* Rebroadcast transactions. */
+                    if(!TAO::Ledger::ChainState::Synchronizing())
+                        Legacy::Wallet::GetInstance().ResendWalletTransactions();
+                }
 
                 break;
             }
@@ -259,7 +277,7 @@ namespace LLP
 
                 /* Respond with version message if incoming connection. */
                 if(!fOUTGOING)
-                    PushMessage(ACTION::VERSION, PROTOCOL_VERSION);
+                    PushMessage(ACTION::VERSION, PROTOCOL_VERSION, SESSION_ID);
 
                 break;
             }
@@ -390,6 +408,48 @@ namespace LLP
             /* Handle for ping command. */
             case ACTION::PING:
             {
+                /* Get the nonce. */
+                uint64_t nNonce = 0;
+                ssPacket >> nNonce;
+
+                /* Push the pong response. */
+                PushMessage(ACTION::PONG, nNonce);
+
+                /* Bump DDOS score. */
+                if(DDOS) //a ping shouldn't be sent too much
+                    DDOS->rSCORE += 10;
+
+                break;
+            }
+
+
+            /* Handle a pong command. */
+            case ACTION::PONG:
+            {
+                /* Get the nonce. */
+                uint64_t nNonce = 0;
+                ssPacket >> nNonce;
+
+                /* If the nonce was not received or known from pong. */
+                if(!mapLatencyTracker.count(nNonce))
+                {
+                    if(DDOS)
+                        DDOS->rSCORE += 10;
+
+                    return true;
+                }
+
+                /* Calculate the Average Latency of the Connection. */
+                nLatency = mapLatencyTracker[nNonce].ElapsedMilliseconds();
+                mapLatencyTracker.erase(nNonce);
+
+                /* Set the latency used for address manager within server */
+                if(TRITIUM_SERVER->pAddressManager)
+                    TRITIUM_SERVER->pAddressManager->SetLatency(nLatency, GetAddress());
+
+                /* Debug Level 3: output Node Latencies. */
+                debug::log(3, NODE, "Latency (Nonce ", std::hex, nNonce, " - ", std::dec, nLatency, " ms)");
+
                 break;
             }
         }

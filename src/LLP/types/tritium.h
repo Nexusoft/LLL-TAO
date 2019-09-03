@@ -42,7 +42,8 @@ namespace LLP
             VERSION      = 0x14,
 
             /* Protocol. */
-            PING         = 0x1a
+            PING         = 0x1a,
+            PONG         = 0x1b
 
         };
     }
@@ -80,7 +81,6 @@ namespace LLP
             ACCEPTED    = 0x40,
             REJECTED    = 0x41,
             STALE       = 0x42,
-            PONG        = 0x43,
         };
     }
 
