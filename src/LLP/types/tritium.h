@@ -90,6 +90,38 @@ namespace LLP
      **/
     class TritiumNode : public BaseConnection<TritiumPacket>
     {
+
+        /** message_args
+         *
+         *  Overload of variadic templates
+         *
+         *  @param[out] s The data stream to write to
+         *  @param[in] head The object being written
+         *
+         **/
+        template<class Head>
+        void message_args(DataStream& s, Head&& head)
+        {
+            s << std::forward<Head>(head);
+        }
+
+
+        /** message_args
+         *
+         *  Variadic template pack to handle any message size of any type.
+         *
+         *  @param[out] s The data stream to write to
+         *  @param[in] head The object being written
+         *  @param[in] tail The variadic paramters
+         *
+         **/
+        template<class Head, class... Tail>
+        void message_args(DataStream& s, Head&& head, Tail&&... tail)
+        {
+            s << std::forward<Head>(head);
+            message_args(s, std::forward<Tail>(tail)...);
+        }
+
     public:
 
       /** Name
@@ -126,6 +158,10 @@ namespace LLP
 
         /** timer object to keep track of ping latency. **/
         std::map<uint64_t, runtime::timer> mapLatencyTracker;
+
+
+        /** The current genesis-id of connected peer. **/
+        uint256_t hashGenesis;
 
 
         /** Event
@@ -187,21 +223,7 @@ namespace LLP
         void PushMessage(const uint16_t nMsg)
         {
             TritiumPacket RESPONSE(nMsg);
-            this->WritePacket(RESPONSE);
-        }
-
-        /** PushMessage
-         *
-         *  Adds a tritium packet to the queue to write to the socket.
-         *
-         **/
-        template<typename T1>
-        void PushMessage(const uint16_t nMsg, const T1& t1)
-        {
-            DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
-            ssData << t1;
-
-            this->WritePacket(NewMessage(nMsg, ssData));
+            WritePacket(RESPONSE);
         }
 
 
@@ -210,118 +232,13 @@ namespace LLP
          *  Adds a tritium packet to the queue to write to the socket.
          *
          **/
-        template<typename T1, typename T2>
-        void PushMessage(const uint16_t nMsg, const T1& t1, const T2& t2)
+        template<typename... Args>
+        void PushMessage(const uint16_t nMsg, Args&&... args)
         {
             DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
-            ssData << t1 << t2;
+            message_args(ssData, std::forward<Args>(args)...);
 
-            this->WritePacket(NewMessage(nMsg, ssData));
-        }
-
-
-        /** PushMessage
-         *
-         *  Adds a tritium packet to the queue to write to the socket.
-         *
-         **/
-        template<typename T1, typename T2, typename T3>
-        void PushMessage(const uint16_t nMsg, const T1& t1, const T2& t2, const T3& t3)
-        {
-            DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
-            ssData << t1 << t2 << t3;
-
-            this->WritePacket(NewMessage(nMsg, ssData));
-        }
-
-
-        /** PushMessage
-         *
-         *  Adds a tritium packet to the queue to write to the socket.
-         *
-         **/
-        template<typename T1, typename T2, typename T3, typename T4>
-        void PushMessage(const uint16_t nMsg, const T1& t1, const T2& t2, const T3& t3, const T4& t4)
-        {
-            DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
-            ssData << t1 << t2 << t3 << t4;
-
-            this->WritePacket(NewMessage(nMsg, ssData));
-        }
-
-
-        /** PushMessage
-         *
-         *  Adds a tritium packet to the queue to write to the socket.
-         *
-         **/
-        template<typename T1, typename T2, typename T3, typename T4, typename T5>
-        void PushMessage(const uint16_t nMsg, const T1& t1, const T2& t2, const T3& t3, const T4& t4, const T5& t5)
-        {
-            DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
-            ssData << t1 << t2 << t3 << t4 << t5;
-
-            this->WritePacket(NewMessage(nMsg, ssData));
-        }
-
-
-        /** PushMessage
-         *
-         *  Adds a tritium packet to the queue to write to the socket.
-         *
-         **/
-        template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6>
-        void PushMessage(const uint16_t nMsg, const T1& t1, const T2& t2, const T3& t3, const T4& t4, const T5& t5, const T6& t6)
-        {
-            DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
-            ssData << t1 << t2 << t3 << t4 << t5 << t6;
-
-            this->WritePacket(NewMessage(nMsg, ssData));
-        }
-
-
-        /** PushMessage
-         *
-         *  Adds a tritium packet to the queue to write to the socket.
-         *
-         **/
-        template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7>
-        void PushMessage(const uint16_t nMsg, const T1& t1, const T2& t2, const T3& t3, const T4& t4, const T5& t5, const T6& t6, const T7& t7)
-        {
-            DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
-            ssData << t1 << t2 << t3 << t4 << t5 << t6 << t7;
-
-            this->WritePacket(NewMessage(nMsg, ssData));
-        }
-
-
-        /** PushMessage
-         *
-         *  Adds a tritium packet to the queue to write to the socket.
-         *
-         **/
-        template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7, typename T8>
-        void PushMessage(const uint16_t nMsg, const T1& t1, const T2& t2, const T3& t3, const T4& t4, const T5& t5, const T6& t6, const T7& t7, const T8& t8)
-        {
-            DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
-            ssData << t1 << t2 << t3 << t4 << t5 << t6 << t7 << t8;
-
-            this->WritePacket(NewMessage(nMsg, ssData));
-        }
-
-
-        /** PushMessage
-         *
-         *  Adds a tritium packet to the queue to write to the socket.
-         *
-         **/
-        template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7, typename T8, typename T9>
-        void PushMessage(const uint16_t nMsg, const T1& t1, const T2& t2, const T3& t3, const T4& t4, const T5& t5, const T6& t6, const T7& t7, const T8& t8, const T9& t9)
-        {
-            DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
-            ssData << t1 << t2 << t3 << t4 << t5 << t6 << t7 << t8 << t9;
-
-            this->WritePacket(NewMessage(nMsg, ssData));
+            WritePacket(NewMessage(nMsg, ssData));
         }
 
     };

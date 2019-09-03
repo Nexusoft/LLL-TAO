@@ -48,6 +48,7 @@ namespace LLP
     , nLastPing(0)
     , nLastSamples(0)
     , mapLatencyTracker()
+    , hashGenesis(0)
     {
     }
 
@@ -58,6 +59,7 @@ namespace LLP
     , nLastPing(0)
     , nLastSamples(0)
     , mapLatencyTracker()
+    , hashGenesis(0)
     {
     }
 
@@ -68,6 +70,7 @@ namespace LLP
     , nLastPing(0)
     , nLastSamples(0)
     , mapLatencyTracker()
+    , hashGenesis(0)
     {
     }
 
@@ -193,7 +196,6 @@ namespace LLP
             case ACTION::AUTH:
             {
                 /* Hard requirement for genesis. */
-                uint256_t hashGenesis = 0;
                 ssPacket >> hashGenesis;
 
                 /* Debug logging. */
