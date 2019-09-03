@@ -13,8 +13,6 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
-#include <TAO/Ledger/include/stake.h>
-
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/types/contract.h>
 
@@ -285,14 +283,6 @@ namespace TAO
                         if(!LLD::Register->WriteTrust(contract.Caller(), state))
                             return debug::error(FUNCTION, "OP::TRUST: failed to rollback to pre-state");
 
-                        /* Revert saved last stake to the prior stake transaction */
-                        TAO::Ledger::Transaction txLast;
-                        if(!TAO::Ledger::FindLastStake(contract.Caller(), txLast))
-                            return debug::error(FUNCTION, "OP::TRUST: failed to find previous stake");
-
-                        if(!LLD::Ledger->WriteStake(contract.Caller(), txLast.GetHash()))
-                            return debug::error(FUNCTION, "OP::TRUST: failed to rollback last stake");
-
                         break;
                     }
 
@@ -326,10 +316,6 @@ namespace TAO
                         /* Erase the trust index. */
                         if(!LLD::Register->EraseTrust(contract.Caller()))
                             return debug::error(FUNCTION, "OP::GENESIS: failed to erase trust index");
-
-                        /* Erase the last stake. */
-                        if(!LLD::Ledger->EraseStake(contract.Caller()))
-                            return debug::error(FUNCTION, "OP::GENESIS: failed to erase last stake");
 
                         break;
                     }
