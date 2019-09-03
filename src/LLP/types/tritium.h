@@ -290,19 +290,6 @@ namespace LLP
          *
          *  Adds a tritium packet to the queue to write to the socket.
          *
-         *  @param[in] nMsg The message type.
-         *
-         **/
-        void PushMessage(const uint16_t nMsg, const DataStream& ssData)
-        {
-            WritePacket(NewMessage(nMsg, ssData));
-        }
-
-
-        /** PushMessage
-         *
-         *  Adds a tritium packet to the queue to write to the socket.
-         *
          **/
         template<typename... Args>
         void PushMessage(const uint16_t nMsg, Args&&... args)

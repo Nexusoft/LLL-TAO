@@ -551,6 +551,10 @@ namespace LLP
                     }
                 }
 
+                /* Push a request for the data from notifications. */
+                if(!ssResponse.size() != 0)
+                    WritePacket(NewMessage(ACTION::GET, ssResponse));
+
                 break;
             }
 
