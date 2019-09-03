@@ -128,6 +128,10 @@ namespace LLP
         /** State of if node has currently verified signature. **/
         std::atomic<bool> fAuthorized;
 
+
+        /** Mutex for connected sessions. **/
+        static std::mutex SESSIONS_MUTEX;
+
     public:
 
       /** Name

@@ -98,6 +98,9 @@ namespace LLP
                 debug::log(1, NODE, fOUTGOING ? "Outgoing" : "Incoming",
                        " Connected at timestamp ",   runtime::unifiedtimestamp());
 
+                /* Set the laset ping time. */
+                nLastPing    = runtime::unifiedtimestamp();
+
                 break;
             }
 
@@ -204,6 +207,16 @@ namespace LLP
             {
                 /* Hard requirement for version. */
                 ssPacket >> nProtocolVersion;
+
+                /* Get the current session-id. */
+                uint64_t nCurrentSession = 0;
+                ssPacket >> nCurrentSession;
+
+                /* Check for a connect to self. */
+                if(nCurrentSession == SESSION_ID)
+                    return debug::drop(NODE, "connected to self");
+
+                /* Check if session is already connected. */
 
                 /* Check versions. */
                 if(nProtocolVersion < MIN_PROTO_VERSION)

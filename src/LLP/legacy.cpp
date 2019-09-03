@@ -473,6 +473,10 @@ namespace LLP
         {
             return false;
         }
+        else if(message == "drop")
+        {
+            return debug::drop(NODE, "FORCE disconnect protocol message");
+        }
 
 
         /* Push a transaction into the Node's Received Transaction Queue. */

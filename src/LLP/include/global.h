@@ -35,6 +35,10 @@ namespace LLP
     extern Server<Miner>*        MINING_SERVER;
 
 
+    /** Current session identifier. **/
+    extern uint64_t SESSION_ID;
+
+
     /** Initialize
      *
      *  Initialize the LLP.
