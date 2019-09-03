@@ -881,7 +881,7 @@ namespace LLP
         }
 
 
-        /* TODO: Change this Algorithm. */
+        /* Get a list of addresses from another node. */
         else if(message == "getaddr")
         {
             /* Get addresses from manager. */
