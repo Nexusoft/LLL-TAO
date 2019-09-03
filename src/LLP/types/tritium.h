@@ -237,7 +237,7 @@ namespace LLP
          *  @return true if session is connected.
          *
          **/
-        bool SessionActive(const uint64_t nSession) const;
+        static bool SessionActive(const uint64_t nSession);
 
 
         /** NewMessage

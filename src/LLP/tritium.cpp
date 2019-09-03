@@ -117,6 +117,10 @@ namespace LLP
 
             case EVENT_HEADER:
             {
+                /* Check for initialization. */
+                if(nCurrentSession == 0 && nProtocolVersion == 0 && INCOMING.MESSAGE != ACTION::VERSION && DDOS)
+                    DDOS->rSCORE += 25;
+
                 break;
             }
 
@@ -129,14 +133,12 @@ namespace LLP
                     /* Give higher score for Bad Packets. */
                     if(INCOMING.Complete() && !INCOMING.IsValid())
                     {
-
                         debug::log(3, NODE "Dropped Packet (Complete: ", INCOMING.Complete() ? "Y" : "N",
                             " - Valid:)",  INCOMING.IsValid() ? "Y" : "N");
 
                         if(DDOS)
                             DDOS->rSCORE += 15;
                     }
-
                 }
 
                 if(INCOMING.Complete())
@@ -366,6 +368,7 @@ namespace LLP
             /* Handle for list command. */
             case ACTION::LIST:
             {
+
                 break;
             }
 
@@ -396,7 +399,7 @@ namespace LLP
             DDOS->rSCORE += 5; //untrusted nodes get less requests
 
         /* Check for a version message. */
-        if(nProtocolVersion == 0)
+        if(nProtocolVersion == 0 || nCurrentSession == 0)
             return debug::drop(NODE, "first message wasn't a version message");
 
         return true;
@@ -448,7 +451,7 @@ namespace LLP
 
 
     /* Determine whether a session is connected. */
-    bool TritiumNode::SessionActive(const uint64_t nSession) const
+    bool TritiumNode::SessionActive(const uint64_t nSession)
     {
         LOCK(SESSIONS_MUTEX);
 

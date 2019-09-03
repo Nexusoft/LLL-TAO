@@ -428,6 +428,10 @@ namespace LLP
 
 
             /* Check for duplicate connections. */
+            if(TritiumNode::SessionActive(nCurrentSession))
+                return debug::drop(NODE, "already have tritium connection");
+
+            /* Check legacy connected sessions. */
             {
                 LOCK(SESSIONS_MUTEX);
                 if(mapSessions.count(nCurrentSession))
