@@ -332,10 +332,10 @@ namespace LLP
         if(!INCOMING.Complete())
         {
             /** Handle Reading Packet Length Header. **/
-            if(INCOMING.IsNull() && Available() >= 10)
+            if(INCOMING.IsNull() && Available() >= 8)
             {
-                std::vector<uint8_t> BYTES(10, 0);
-                if(Read(BYTES, 10) == 10)
+                std::vector<uint8_t> BYTES(8, 0);
+                if(Read(BYTES, 8) == 8)
                 {
                     DataStream ssHeader(BYTES, SER_NETWORK, MIN_PROTO_VERSION);
                     ssHeader >> INCOMING;
