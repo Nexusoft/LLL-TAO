@@ -209,6 +209,10 @@ namespace LLP
                 if(nProtocolVersion < MIN_PROTO_VERSION)
                     return debug::drop(NODE, "connection using obsolete protocol version");
 
+                /* Respond with version message if incoming connection. */
+                if(!fOUTGOING)
+                    PushMessage(ACTION::VERSION, PROTOCOL_VERSION);
+
                 break;
             }
 
