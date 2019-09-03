@@ -39,6 +39,7 @@ namespace LLP
             GET          = 0x11,
             NOTIFY       = 0x12,
             AUTH         = 0x13,
+            VERSION      = 0x14,
 
             /* Protocol. */
             PING         = 0x1a

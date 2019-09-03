@@ -198,21 +198,29 @@ namespace LLP
         DataStream ssPacket(INCOMING.DATA, SER_NETWORK, PROTOCOL_VERSION);
         switch(INCOMING.MESSAGE)
         {
+
+            /* Handle for the version command. */
+            case ACTION::VERSION:
+            {
+                /* Hard requirement for version. */
+                ssPacket >> nProtocolVersion;
+
+                /* Check versions. */
+                if(nProtocolVersion < MIN_PROTO_VERSION)
+                    return debug::drop(NODE, "connection using obsolete protocol version");
+
+                break;
+            }
+
+
             /* Handle for auth command. */
             case ACTION::AUTH:
             {
                 /* Hard requirement for genesis. */
                 ssPacket >> hashGenesis;
 
-                /* Hard requirement for version. */
-                ssPacket >> nProtocolVersion;
-
-                /* Check versions. */
-                if(nProtocolVersion < MIN_PROTO_VERSION)
-                    return debug::error(NODE, "connection using obsolete protocol version");
-
                 /* Debug logging. */
-                debug::log(0, NODE, "new connection from ", hashGenesis.SubString());
+                debug::log(0, NODE, "new auth request from ", hashGenesis.SubString());
 
                 /* Get the signature information. */
                 if(hashGenesis != 0)
@@ -220,11 +228,11 @@ namespace LLP
                     /* Get the crypto register. */
                     TAO::Register::Object crypto;
                     if(!TAO::Register::GetNameRegister(hashGenesis, "crypto", crypto))
-                        return debug::error(NODE, "authorization failed, missing crypto register");
+                        return debug::drop(NODE, "authorization failed, missing crypto register");
 
                     /* Parse the object. */
                     if(!crypto.Parse())
-                        return debug::error(NODE, "failed to parse crypto register");
+                        return debug::drop(NODE, "failed to parse crypto register");
 
                     /* Check the authorization hash. */
                     uint256_t hashCheck = crypto.get<uint256_t>("auth");
@@ -243,7 +251,7 @@ namespace LLP
 
                         /* Check for matching authorization hash. */
                         if(hashAuth != hashCheck)
-                            return debug::error(NODE, "failed to authorize, invalid public key");
+                            return debug::drop(NODE, "failed to authorize, invalid public key");
 
                         /* Get the signature. */
                         std::vector<uint8_t> vchSig;
@@ -261,7 +269,7 @@ namespace LLP
                                 /* Set the public key and verify. */
                                 key.SetPubKey(vchPubKey);
                                 if(!key.Verify(hashGenesis.GetBytes(), vchSig))
-                                    return debug::error(NODE, "invalid transaction signature");
+                                    return debug::drop(NODE, "invalid transaction signature");
 
                                 break;
                             }
@@ -275,30 +283,29 @@ namespace LLP
                                 /* Set the public key and verify. */
                                 key.SetPubKey(vchPubKey);
                                 if(!key.Verify(hashGenesis.GetBytes(), vchSig))
-                                    return debug::error(NODE, "invalid transaction signature");
+                                    return debug::drop(NODE, "invalid transaction signature");
 
                                 break;
                             }
 
                             default:
-                                return debug::error(NODE, "invalid signature type");
+                                return debug::drop(NODE, "invalid signature type");
                         }
 
                         /* Get the crypto register. */
                         TAO::Register::Object trust;
                         if(!TAO::Register::GetNameRegister(hashGenesis, "trust", trust))
-                            return debug::error(NODE, "authorization failed, missing trust register");
+                            return debug::drop(NODE, "authorization failed, missing trust register");
 
                         /* Parse the object. */
                         if(!trust.Parse())
-                            return debug::error(NODE, "failed to parse trust register");
+                            return debug::drop(NODE, "failed to parse trust register");
 
                         /* Set the node's current trust score. */
                         nTrust = trust.get<uint64_t>("trust");
 
                         /* Set to authorized node if passed all cryptographic checks. */
                         fAuthorized = true;
-
                     }
                 }
 
@@ -337,6 +344,10 @@ namespace LLP
         /* Check for authorization. */
         if(DDOS && !Authorized())
             DDOS->rSCORE += 5; //untrusted nodes get less requests
+
+        /* Check for a version message. */
+        if(nProtocolVersion == 0)
+            return debug::drop(NODE, "first message wasn't a version message");
 
         return true;
     }
