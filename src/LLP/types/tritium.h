@@ -63,6 +63,7 @@ namespace LLP
             BLOCK       = 0x30,
             TRANSACTION = 0x31,
             TIMESEED    = 0x32,
+            HEIGHT      = 0x33,
 
             /* Specifier. */
             LEGACY      = 0x3a
@@ -166,6 +167,10 @@ namespace LLP
 
         /** The current genesis-id of connected peer. **/
         uint256_t hashGenesis;
+
+
+        /** The current trust of the connected peer. **/
+        uint64_t nTrust;
 
 
         /** Event

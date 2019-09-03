@@ -48,6 +48,7 @@ namespace LLP
     , nLastSamples(0)
     , mapLatencyTracker()
     , hashGenesis(0)
+    , nTrust(0)
     {
     }
 
@@ -60,6 +61,7 @@ namespace LLP
     , nLastSamples(0)
     , mapLatencyTracker()
     , hashGenesis(0)
+    , nTrust(0)
     {
     }
 
@@ -72,6 +74,7 @@ namespace LLP
     , nLastSamples(0)
     , mapLatencyTracker()
     , hashGenesis(0)
+    , nTrust(0)
     {
     }
 
@@ -190,8 +193,6 @@ namespace LLP
         DataStream ssPacket(INCOMING.DATA, SER_NETWORK, PROTOCOL_VERSION);
         switch(INCOMING.MESSAGE)
         {
-            /* Check for flags. */
-
 
             /* Handle for auth command. */
             case ACTION::AUTH:
@@ -217,16 +218,16 @@ namespace LLP
                     uint256_t hashAuth = LLC::SK256(vchPubKey);
 
                     /* Get the crypto register. */
-                    TAO::Register::Object object;
-                    if(!TAO::Register::GetNameRegister(hashGenesis, "crypto", object))
+                    TAO::Register::Object crypto;
+                    if(!TAO::Register::GetNameRegister(hashGenesis, "crypto", crypto))
                         return debug::error(NODE, "authorization failed, missing crypto register");
 
                     /* Parse the object. */
-                    if(!object.Parse())
+                    if(!crypto.Parse())
                         return debug::error(NODE, "failed to parse crypto register");
 
                     /* Check the authorization hash. */
-                    uint256_t hashCheck = object.get<uint256_t>("auth");
+                    uint256_t hashCheck = crypto.get<uint256_t>("auth");
                     if(hashAuth != hashCheck)
                         return debug::error(NODE, "failed to authorize, invalid public key");
 
@@ -268,6 +269,18 @@ namespace LLP
                         default:
                             return debug::error(NODE, "invalid signature type");
                     }
+
+                    /* Get the crypto register. */
+                    TAO::Register::Object trust;
+                    if(!TAO::Register::GetNameRegister(hashGenesis, "trust", trust))
+                        return debug::error(NODE, "authorization failed, missing trust register");
+
+                    /* Parse the object. */
+                    if(!trust.Parse())
+                        return debug::error(NODE, "failed to parse trust register");
+
+                    /* Set the node's current trust score. */
+                    nTrust = trust.get<uint64_t>("trust");
 
                     /* Set to authorized node if passed all cryptographic checks. */
                     fAuthorized = true;
