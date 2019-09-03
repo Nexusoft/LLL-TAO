@@ -412,8 +412,16 @@ namespace LLD
 
 
     /* Checks LedgerDB if a transaction exists. */
-    bool LedgerDB::HasTx(const uint512_t& hashTx)
+    bool LedgerDB::HasTx(const uint512_t& hashTx, const uint8_t nFlags)
     {
+        /* Special check for memory pool. */
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        {
+            /* Get the transaction. */
+            if(TAO::Ledger::mempool.Has(hashTx))
+                return true;
+        }
+
         return Exists(hashTx);
     }
 

@@ -428,6 +428,9 @@ namespace LLP
             /* Handle for notify command. */
             case ACTION::NOTIFY:
             {
+                /* Create response data stream. */
+                DataStream ssResponse(INCOMING.DATA, SER_NETWORK, PROTOCOL_VERSION);
+
                 /* Loop through the binary stream. */
                 while(!ssPacket.End())
                 {
@@ -452,12 +455,42 @@ namespace LLP
                         /* Standard type for a block. */
                         case TYPES::BLOCK:
                         {
+                            /* Check for legacy. */
+                            if(fLegacy)
+                                return debug::drop(NODE, "block notify can't have legacy specifier");
+
+                            /* Get the index of block. */
+                            uint1024_t hashBlock;
+                            ssPacket >> hashBlock;
+
+                            /* Check the database for the block. */
+                            if(!LLD::Ledger->HasBlock(hashBlock))
+                                ssResponse << uint8_t(TYPES::BLOCK) << hashBlock;
+
                             break;
                         }
 
                         /* Standard type for a block. */
                         case TYPES::TRANSACTION:
                         {
+                            /* Get the index of transaction. */
+                            uint512_t hashTx;
+                            ssPacket >> hashTx;
+
+                            /* Check for legacy. */
+                            if(fLegacy)
+                            {
+                                /* Check legacy database. */
+                                if(!LLD::Legacy->HasTx(hashTx, TAO::Ledger::FLAGS::MEMPOOL))
+                                    ssResponse << uint8_t(TYPES::LEGACY) << uint8_t(TYPES::TRANSACTION) << hashTx;
+                            }
+                            else
+                            {
+                                /* Check ledger database. */
+                                if(!LLD::Ledger->HasTx(hashTx, TAO::Ledger::FLAGS::MEMPOOL))
+                                    ssResponse << uint8_t(TYPES::TRANSACTION) << hashTx;
+                            }
+
                             break;
                         }
 

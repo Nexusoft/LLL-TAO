@@ -263,7 +263,7 @@ namespace LLP
          *  @return Returns a filled out tritium packet.
          *
          **/
-        TritiumPacket NewMessage(const uint16_t nMsg, const DataStream &ssData)
+        TritiumPacket NewMessage(const uint16_t nMsg, const DataStream& ssData)
         {
             TritiumPacket RESPONSE(nMsg);
             RESPONSE.SetData(ssData);
@@ -283,6 +283,19 @@ namespace LLP
         {
             TritiumPacket RESPONSE(nMsg);
             WritePacket(RESPONSE);
+        }
+
+
+        /** PushMessage
+         *
+         *  Adds a tritium packet to the queue to write to the socket.
+         *
+         *  @param[in] nMsg The message type.
+         *
+         **/
+        void PushMessage(const uint16_t nMsg, const DataStream& ssData)
+        {
+            WritePacket(NewMessage(nMsg, ssData));
         }
 
 
