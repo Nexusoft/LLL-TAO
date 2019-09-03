@@ -724,6 +724,68 @@ namespace LLP
             /* Handle incoming block. */
             case TYPES::BLOCK:
             {
+                /* Get the block from the stream. */
+                TAO::Ledger::TritiumBlock block;
+                ssPacket >> block;
+
+                /* Process the block. */
+                uint8_t nStatus = 0;
+                TAO::Ledger::Process(block, nStatus);
+
+                /* Check for specific status messages. */
+                if(nStatus & TAO::Ledger::PROCESS::ACCEPTED)
+                {
+                    /* Reset the fails and orphans. */
+                    nConsecutiveFails   = 0;
+                    nConsecutiveOrphans = 0;
+                }
+
+                /* Check for failure status messages. */
+                if(nStatus & TAO::Ledger::PROCESS::REJECTED)
+                    ++nConsecutiveFails;
+
+                /* Check for orphan status messages. */
+                if(nStatus & TAO::Ledger::PROCESS::ORPHAN)
+                {
+                    ++nConsecutiveOrphans;
+
+                    /* Check for duplicate and ask for previous block. */
+                    if(!(nStatus & TAO::Ledger::PROCESS::DUPLICATE)
+                    && !(nStatus & TAO::Ledger::PROCESS::IGNORE))
+                    {
+                        /* Ask for previous block. */
+                        PushMessage(ACTION::GET, uint8_t(TYPES::BLOCK), block.hashPrevBlock);
+
+                        //TODO: ACTION::LIST from best to 0
+                    }
+                }
+
+                /* Check for failure limit on node. */
+                if(nConsecutiveFails >= 500)
+                {
+                    /* Fast Sync node switch. */
+                    if(TAO::Ledger::ChainState::Synchronizing())
+                    {
+                        //TODO: fine a new fast sync node
+                    }
+
+                    /* Drop pesky nodes. */
+                    return debug::drop(NODE, "node reached failure limit");
+                }
+
+
+                /* Detect large orphan chains and ask for new blocks from origin again. */
+                if(nConsecutiveOrphans >= 500)
+                {
+                    LOCK(TAO::Ledger::PROCESSING_MUTEX);
+
+                    /* Clear the memory to prevent DoS attacks. */
+                    TAO::Ledger::mapOrphans.clear();
+
+                    /* Disconnect from a node with large orphan chain. */
+                    return debug::drop(NODE, "node reached orphan limit");
+                }
+
                 break;
             }
 
