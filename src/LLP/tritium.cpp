@@ -322,19 +322,12 @@ namespace LLP
                 uint256_t hashCheck = crypto.get<uint256_t>("network");
                 if(hashCheck != 0) //a hash of 0 is a disabled authorization hash
                 {
-                    /* Verify the signature information. */
-                    uint8_t nType = 0;
-                    ssPacket >> nType;
-
                     /* Get the public key. */
                     std::vector<uint8_t> vchPubKey;
                     ssPacket >> vchPubKey;
 
                     /* Check the public key to expected authorization key. */
-                    uint256_t hashAuth = LLC::SK256(vchPubKey);
-
-                    /* Check for matching authorization hash. */
-                    if(hashAuth != hashCheck)
+                    if(LLC::SK256(vchPubKey) != hashCheck)
                         return debug::drop(NODE, "failed to authorize, invalid public key");
 
                     /* Get the signature. */
@@ -342,7 +335,7 @@ namespace LLP
                     ssPacket >> vchSig;
 
                     /* Switch based on signature type. */
-                    switch(nType)
+                    switch(hashCheck.GetType())
                     {
                         /* Support for the FALCON signature scheeme. */
                         case TAO::Ledger::SIGNATURE::FALCON:
