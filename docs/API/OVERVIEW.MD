@@ -280,7 +280,7 @@ Error Codes
 | -143 | No notifications available |
 | -144 | No transactions found |
 | -145 | Unlock not supported in multiuser mode |
-| -146 | Account already unlocked for minting |
+| -146 | Account already unlocked for mining |
 | -147 | Account already unlocked for transactions |
 | -148 | Account already unlocked |
 | -149 | Invalid PIN |
@@ -329,5 +329,10 @@ Error Codes
 | -192 | Password must be a minimum of 8 characters |
 | -193 | Pin must be a minimum of 4 characters |
 | -194 | Account already unlocked for notifications |
+| -195 | Account already unlocked for staking |
+| -196 | Account already locked for mining |
+| -197 | Account already locked for staking |
+| -198 | Account already locked for transactions |
+| -199 | Account already locked for notifications |
 
 

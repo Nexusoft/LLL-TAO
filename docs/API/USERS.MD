@@ -175,10 +175,10 @@ in encrypted memory.
 
 This will unlock your signature chain and cache the PIN in encrypted memory to be used for all subsequent API calls. This method is only available when using single-user API mode (multiuser=0).    
 
-The `pin` field is mandatory for unlock. The minting/transactions/notifications parameters are optional and, if supplied, allow the signature chain to be used for either mining/staking, creating transactions, or processing notifications (or all three ) when in single-user API mode.
+The `pin` field is mandatory for unlock. The mining/staking/transactions/notifications parameters are optional and, if supplied, allow the signature chain to be used for either mining,staking, creating transactions, or processing notifications (or all three ) when in single-user API mode.
 
-**NOTE** : If the minting/transactions/notifications parameters are not supplied then it is assumed that the signature chain can be used for all.
-**NOTE** : If the Unlock method is called once with either `minting=1`, `transactions-1`, or `notifications=1` (but not all) then it can be called a second time to unlock the other options.  
+**NOTE** : If the mining/staking/transactions/notifications parameters are not supplied then it is assumed that the signature chain can be used for all.
+**NOTE** : This method can be called multiple times to unlock the options not previously unlocked.  
 
 
 ### Endpoint:
@@ -191,42 +191,51 @@ The `pin` field is mandatory for unlock. The minting/transactions/notifications 
 
 `pin` : The PIN for this signature chain.
 
-`minting` : This boolean value determines whether the logged in users signature chain can be used for minting (staking or mining).
-
-`transactions` : This boolean value determines whether the logged in users signature chain can be used for creating or claiming transactions.
+`mining` : This boolean value determines whether the logged in users signature chain can be used for mining.
 
 `notifications` : This boolean value determines whether the logged in users signature chain can be used for processing notifications. 
 
+`staking` : This boolean value determines whether the logged in users signature chain can be used for staking.
+
+`transactions` : This boolean value determines whether the logged in users signature chain can be used for creating or claiming transactions.
 
 ### Return value JSON object:
 ```
 {
     "unlocked": {
-        "minting": true,
-        "transactions": true,
-        "notifications": true
+        "mining": true,
+        "notifications": true,
+        "staking": false,
+        "transactions": false
     }
 }
+
 ```
 
 ### Return values:
 
 `unlocked` : This will contain child elements describing which functions the session is currently unlocked for
 
-`minting` : Boolean flag indicating whether the users sig chain is unlocked for minting (staking or mining).
+`mining` : Boolean flag indicating whether the users sig chain is unlocked for mining.
 
-`transactions` : Boolean flag indicating whether the users sig chain is unlocked for creating any transactions (except those automatically created through minting/processing notifications if those are unlocked).
+`notifications` : Boolean flag indicating whether the users sig chain is unlocked for processing notifications.
 
-`notifications` : Bool flag indicating whether the users sig chain is unlocked for processing notifications.
+`staking` : Boolean flag indicating whether the users sig chain is unlocked for staking.
+
+`transactions` : Boolean flag indicating whether the users sig chain is unlocked for creating any transactions (except those automatically created through mining/processing notifications if those are unlocked).
+
+
 
 ****
 
 
 # `lock/user`
 
-This will lock your signature chain, making it unavailable for use unless it is
-either unlocked or the PIN is passed in to all API requests. Only available in single-user API mode (multiuser=0).
+This will lock your signature chain, making it unavailable for use unless it is either unlocked or the PIN is passed in to all API requests. Only available in single-user API mode (multiuser=0).
 
+The mining/staking/transactions/notifications parameters are optional and, if supplied, allow the signature chain to be locked for either mining, staking, creating transactions, or processing notifications. This allows, for example, a signature chain to be continually unlocked for mining, but only temporarily unlocked for sending a transaction. 
+
+**NOTE** : This method can be called multiple times to lock the options not previously locked.
 
 ### Endpoint:
 
@@ -235,22 +244,42 @@ either unlocked or the PIN is passed in to all API requests. Only available in s
 
 ### Parameters:
 
-````
-NONE
-````
+`mining` : If set this will lock the users sig chain for mining.
+
+`notifications` : If set this will lock the users sig chain from processing notifications.
+
+`staking` : If set this will lock the users sig chain for staking.
+
+`transactions` : If set this will lock the users sig chain from creating any transactions, except those required for mining or processing notifications which are controlled separately.
+
+
+
 
 
 ### Return value JSON object:
 ```
 {
-    "success": true
+    "unlocked": {
+        "mining": true,
+        "notifications": true,
+        "staking": false,
+        "transactions": false
+    }
 }
+
 ```
 
 ### Return values:
 
-`success` : Flag indicating if the call was successful
+`unlocked` : This will contain child elements describing which functions the session is currently unlocked for
 
+`mining` : Boolean flag indicating whether the users sig chain is unlocked for mining.
+
+`notifications` : Boolean flag indicating whether the users sig chain is unlocked for processing notifications.
+
+`staking` : Boolean flag indicating whether the users sig chain is unlocked for staking.
+
+`transactions` : Boolean flag indicating whether the users sig chain is unlocked for creating any transactions (except those automatically created through mining/processing notifications if those are unlocked).
 
 ****
 
@@ -280,9 +309,10 @@ NONE
     "transactions": 272,
     "notifications": 10,
     "unlocked": {
-        "minting": true,
-        "transactions": true,
-        "notifications": true
+        "mining": false,
+        "notifications": false,
+        "staking": false,
+        "transactions": false
     }
 }
 
@@ -300,11 +330,13 @@ NONE
 
 `unlocked` : This will contain child elements describing which functions the session is currently unlocked for
 
-`minting` : Boolean flag indicating whether the users sig chain is unlocked for minting (staking or mining).
+`mining` : Boolean flag indicating whether the users sig chain is unlocked for mining.
 
-`transactions` : Boolean flag indicating whether the users sig chain is unlocked for creating any transactions (except those automatically created through minting/processing notifications if those are unlocked).
+`notifications` : Boolean flag indicating whether the users sig chain is unlocked for processing notifications.
 
-`notifications` : Bool flag indicating whether the users sig chain is unlocked for processing notifications.
+`staking` : Boolean flag indicating whether the users sig chain is unlocked for staking.
+
+`transactions` : Boolean flag indicating whether the users sig chain is unlocked for creating any transactions (except those automatically created through mining/processing notifications if those are unlocked).
 
 
 

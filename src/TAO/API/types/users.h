@@ -131,13 +131,22 @@ namespace TAO
             bool CanTransact() const;
 
 
-            /** CanMint
+            /** CanMine
              *
              *  In sessionless API mode this method checks that the active sig chain has
-             *  been unlocked to allow minting.
+             *  been unlocked to allow mining.
              *
              **/
-            bool CanMint() const;
+            bool CanMine() const;
+
+
+            /** CanStake
+             *
+             *  In sessionless API mode this method checks that the active sig chain has
+             *  been unlocked to allow staking.
+             *
+             **/
+            bool CanStake() const;
 
 
             /** CanProcessNotifications

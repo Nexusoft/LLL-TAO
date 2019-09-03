@@ -159,10 +159,10 @@ namespace TAO
                 return false;
             }
 
-            /* Check that the account is unlocked for minting */
-            if(!TAO::API::users->CanMint())
+            /* Check that the account is unlocked for staking */
+            if(!TAO::API::users->CanStake())
             {
-                debug::log(0, FUNCTION, "Account has not been unlocked for minting");
+                debug::log(0, FUNCTION, "Account has not been unlocked for staking");
                 return false;
             }
 

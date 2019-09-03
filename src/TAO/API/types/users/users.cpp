@@ -116,10 +116,21 @@ namespace TAO
 
 
         /* In sessionless API mode this method checks that the active sig chain has
-         *  been unlocked to allow minting */
-        bool Users::CanMint() const
+         *  been unlocked to allow mining */
+        bool Users::CanMine() const
         {
-            if(config::fMultiuser.load() || (!pActivePIN.IsNull() && pActivePIN->CanMint()))
+            if(config::fMultiuser.load() || (!pActivePIN.IsNull() && pActivePIN->CanMine()))
+                return true;
+
+            return false;
+        }
+
+
+        /* In sessionless API mode this method checks that the active sig chain has
+         *  been unlocked to allow staking */
+        bool Users::CanStake() const
+        {
+            if(config::fMultiuser.load() || (!pActivePIN.IsNull() && pActivePIN->CanStake()))
                 return true;
 
             return false;
