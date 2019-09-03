@@ -38,5 +38,5 @@ verbose=2
 #OPTIONAL: if your application requires multiple users
 #multiuser=1
 
-#OPTIONAL: allows you to specifically disable the events processor (on by default)
-#eventsprocessor=0
+#OPTIONAL: allows you to specifically disable the processing of notifications (on by default)
+#processnotifications=0
