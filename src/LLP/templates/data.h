@@ -16,9 +16,12 @@ ________________________________________________________________________________
 #define NEXUS_LLP_TEMPLATES_DATA_H
 
 #include <LLP/include/network.h>
+#include <LLP/include/version.h>
 
 #include <Util/include/mutex.h>
 #include <Util/include/memory.h>
+
+#include <Util/templates/datastream.h>
 
 #include <atomic>
 #include <vector>
@@ -43,6 +46,37 @@ namespace LLP
     template <class ProtocolType>
     class DataThread
     {
+        /** message_args
+         *
+         *  Overload of variadic templates
+         *
+         *  @param[out] s The data stream to write to
+         *  @param[in] head The object being written
+         *
+         **/
+        template<class Head>
+        void message_args(DataStream& s, Head&& head)
+        {
+            s << std::forward<Head>(head);
+        }
+
+
+        /** message_args
+         *
+         *  Variadic template pack to handle any message size of any type.
+         *
+         *  @param[out] s The data stream to write to
+         *  @param[in] head The object being written
+         *  @param[in] tail The variadic paramters
+         *
+         **/
+        template<class Head, class... Tail>
+        void message_args(DataStream& s, Head&& head, Tail&&... tail)
+        {
+            s << std::forward<Head>(head);
+            message_args(s, std::forward<Tail>(tail)...);
+        }
+
     public:
 
         /* Variables to track Connection / Request Count. */
@@ -134,9 +168,12 @@ namespace LLP
          *  Relays data to all nodes on the network.
          *
          **/
-        template<typename MessageType, typename DataType>
-        void Relay(MessageType message, DataType data)
+        template<typename MessageType, typename... Args>
+        void Relay(const MessageType& message, Args&&... args)
         {
+            DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
+            message_args(ssData, std::forward<Args>(args)...);
+
             /* Get the size of the vector. */
             uint16_t nSize = static_cast<uint16_t>(CONNECTIONS->size());
 
@@ -150,7 +187,7 @@ namespace LLP
                         continue;
 
                     /* Push the active connection. */
-                    CONNECTIONS->at(nIndex)->PushMessage(message, data);
+                    CONNECTIONS->at(nIndex)->WritePacket(CONNECTIONS->at(nIndex)->NewMessage(message, ssData));
                 }
                 catch(const std::runtime_error& e)
                 {

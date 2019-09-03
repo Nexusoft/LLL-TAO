@@ -67,6 +67,7 @@ namespace LLP
             TIMESEED    = 0x32,
             HEIGHT      = 0x33,
             CHECKPOINT  = 0x34,
+            ADDRESS     = 0x35,
 
             /* Specifier. */
             LEGACY      = 0x3a
@@ -197,6 +198,14 @@ namespace LLP
 
         /** This node's current checkpoint. **/
         uint1024_t hashCheckpoint;
+
+
+        /** Counter of total orphans. **/
+        uint32_t nConsecutiveOrphans;
+
+
+        /** Counter of total failures. **/
+        uint32_t nConsecutiveFails;
 
 
         /** The node's full version string. **/

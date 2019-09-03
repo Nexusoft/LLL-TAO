@@ -48,6 +48,7 @@ namespace LLP
     class Server
     {
     private:
+
         /* The DDOS variables. */
         std::map<BaseAddress, DDOS_Filter *> DDOS_MAP;
         std::atomic<bool> fDDOS;
@@ -181,13 +182,12 @@ namespace LLP
          *  Relays data to all nodes on the network.
          *
          **/
-        template<typename MessageType, typename DataType>
-        void Relay(MessageType message, DataType data)
+        template<typename MessageType, typename... Args>
+        void Relay(const MessageType& message, Args&&... args)
         {
-            /* Relay message to each data thread, which will relay message to
-               each connection of each data thread */
+            /* Relay message to each data thread, which will relay message to each connection of each data thread */
             for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
-                DATA_THREADS[nThread]->Relay(message, data);
+                DATA_THREADS[nThread]->Relay(message, args...);
         }
 
 
