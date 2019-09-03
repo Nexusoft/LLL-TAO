@@ -157,7 +157,7 @@ namespace TAO
                     /* Get the supply from the token object */
                     uint64_t nSupply = get<uint64_t>("supply");
 
-                    /* Fee = (log10(nSupply) - 2) * 100 NXS 
+                    /* Fee = (log10(nSupply) - 2) * 100 NXS
                        which equates to 100 NXS for each significant figure, which the first 2sf (100 supply)  being free*/
                     uint64_t nBase = (std::log10(nSupply));
                     return std::max(int64_t(0), int64_t(nBase - 2)) * TAO::Ledger::TOKEN_FEE;

@@ -66,6 +66,7 @@ namespace LLP
             TRANSACTION = 0x31,
             TIMESEED    = 0x32,
             HEIGHT      = 0x33,
+            CHECKPOINT  = 0x34,
 
             /* Specifier. */
             LEGACY      = 0x3a
@@ -188,6 +189,14 @@ namespace LLP
 
         /** This node's session-id. **/
         uint64_t nCurrentSession;
+
+
+        /** This node's current height. **/
+        uint32_t nCurrentHeight;
+
+
+        /** This node's current checkpoint. **/
+        uint1024_t hashCheckpoint;
 
 
         /** The node's full version string. **/

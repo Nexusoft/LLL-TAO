@@ -31,6 +31,7 @@ ________________________________________________________________________________
 #include <Util/include/runtime.h>
 #include <Util/include/args.h>
 #include <Util/include/debug.h>
+#include <Util/include/version.h>
 
 
 #include <climits>
@@ -59,6 +60,8 @@ namespace LLP
     , nTrust(0)
     , nProtocolVersion(0)
     , nCurrentSession(0)
+    , nCurrentHeight(0)
+    , hashCheckpoint(0)
     , strFullVersion()
     {
     }
@@ -75,6 +78,8 @@ namespace LLP
     , nTrust(0)
     , nProtocolVersion(0)
     , nCurrentSession(0)
+    , nCurrentHeight(0)
+    , hashCheckpoint(0)
     , strFullVersion()
     {
     }
@@ -91,6 +96,8 @@ namespace LLP
     , nTrust(0)
     , nProtocolVersion(0)
     , nCurrentSession(0)
+    , nCurrentHeight(0)
+    , hashCheckpoint(0)
     , strFullVersion()
     {
     }
@@ -292,7 +299,15 @@ namespace LLP
 
                 /* Respond with version message if incoming connection. */
                 if(!fOUTGOING)
-                    PushMessage(ACTION::VERSION, PROTOCOL_VERSION, SESSION_ID);
+                {
+                    /* Respond with version message. */
+                    PushMessage(uint8_t(ACTION::VERSION), PROTOCOL_VERSION, SESSION_ID, version::CLIENT_VERSION_BUILD_STRING);
+
+                    /* Notify node of current block height. */
+                    PushMessage(ACTION::NOTIFY,
+                        uint8_t(TYPES::HEIGHT),     TAO::Ledger::ChainState::nBestHeight.load(),
+                        uint8_t(TYPES::CHECKPOINT), TAO::Ledger::ChainState::hashCheckpoint.load());
+                }
 
                 break;
             }
@@ -413,6 +428,96 @@ namespace LLP
             /* Handle for notify command. */
             case ACTION::NOTIFY:
             {
+                /* Loop through the binary stream. */
+                while(!ssPacket.End())
+                {
+                    /* Get the next type in stream. */
+                    uint8_t nType = 0;
+                    ssPacket >> nType;
+
+                    /* Check for legacy specifier. */
+                    bool fLegacy = false;
+                    if(nType == TYPES::LEGACY)
+                    {
+                        /* Set legacy specifier. */
+                        fLegacy = true;
+
+                        /* Go to next type in stream. */
+                        ssPacket >> nType;
+                    }
+
+                    /* Switch based on codes. */
+                    switch(nType)
+                    {
+                        /* Standard type for a block. */
+                        case TYPES::BLOCK:
+                        {
+                            break;
+                        }
+
+                        /* Standard type for a block. */
+                        case TYPES::TRANSACTION:
+                        {
+                            break;
+                        }
+
+                        /* Standard type for a timeseed. */
+                        case TYPES::TIMESEED:
+                        {
+                            /* Check for legacy. */
+                            if(fLegacy)
+                                return debug::drop(NODE, "timeseed can't have legacy specifier");
+
+                            /* Check for authorized node. */
+                            if(!Authorized())
+                                return debug::drop(NODE, "cannot send timeseed if not authorized");
+
+                            /* Check trust threshold. */
+                            if(nTrust < 60 * 60)
+                                return debug::drop(NODE, "cannot send timeseed with no trust");
+
+                            /* Get the time seed from network. */
+                            int64_t nTimeSeed = 0;
+                            ssPacket >> nTimeSeed;
+
+                            /* Keep track of the time seeds if accepted. */
+                            debug::log(2, NODE, "timeseed ", nTimeSeed, " ACCEPTED");
+
+                            break;
+                        }
+
+                        /* Standard type for a timeseed. */
+                        case TYPES::HEIGHT:
+                        {
+                            /* Check for legacy. */
+                            if(fLegacy)
+                                return debug::drop(NODE, "height can't have legacy specifier");
+
+                            /* Keep track of current height. */
+                            ssPacket >> nCurrentHeight;
+
+                            break;
+                        }
+
+                        /* Standard type for a checkpoint. */
+                        case TYPES::CHECKPOINT:
+                        {
+                            /* Check for legacy. */
+                            if(fLegacy)
+                                return debug::drop(NODE, "checkpoint can't have legacy specifier");
+
+                            /* Keep track of current checkpoint. */
+                            ssPacket >> hashCheckpoint;
+
+                            break;
+                        }
+
+                        /* Catch malformed notify binary streams. */
+                        default:
+                            return debug::drop(NODE, "ACTION::NOTIFY malformed binary stream");
+                    }
+                }
+
                 break;
             }
 
@@ -445,6 +550,7 @@ namespace LLP
                 /* If the nonce was not received or known from pong. */
                 if(!mapLatencyTracker.count(nNonce))
                 {
+                    /* Bump DDOS score for spammed PONG messages. */
                     if(DDOS)
                         DDOS->rSCORE += 10;
 
