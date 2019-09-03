@@ -59,6 +59,7 @@ namespace LLP
     , nTrust(0)
     , nProtocolVersion(0)
     , nCurrentSession(0)
+    , strFullVersion()
     {
     }
 
@@ -74,6 +75,7 @@ namespace LLP
     , nTrust(0)
     , nProtocolVersion(0)
     , nCurrentSession(0)
+    , strFullVersion()
     {
     }
 
@@ -89,6 +91,7 @@ namespace LLP
     , nTrust(0)
     , nProtocolVersion(0)
     , nCurrentSession(0)
+    , strFullVersion()
     {
     }
 
@@ -254,6 +257,9 @@ namespace LLP
 
                 /* Get the current session-id. */
                 ssPacket >> nCurrentSession;
+
+                /* Get the version string. */
+                ssPacket >> strFullVersion;
 
                 /* Check for a connect to self. */
                 if(nCurrentSession == SESSION_ID)

@@ -190,6 +190,10 @@ namespace LLP
         uint64_t nCurrentSession;
 
 
+        /** The node's full version string. **/
+        std::string strFullVersion;
+
+
         /** Event
          *
          *  Virtual Functions to Determine Behavior of Message LLP.
