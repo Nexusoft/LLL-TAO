@@ -37,11 +37,11 @@ ________________________________________________________________________________
 std::string strName = "NAME" +std::to_string(LLC::GetRand());
 TAO::Register::Address hashName;
 uint512_t hashNameTransfer = 0;
-std::string strNamespace = "NAMESPACE" +std::to_string(LLC::GetRand());
+std::string strNamespace = "namespace" +std::to_string(LLC::GetRand());
 TAO::Register::Address hashNamespace;
 uint512_t hashNamespaceTransfer = 0;
 
-std::string strGlobalName = "GLOBALNAME" +std::to_string(LLC::GetRand());
+std::string strGlobalName = "globalname" +std::to_string(LLC::GetRand());
 
 TAO::Register::Address hashRegisterAddress(TAO::Register::Address::OBJECT);
 
@@ -115,6 +115,38 @@ TEST_CASE( "Test Names API - create namespace", "[names/create/namespace]")
         /* Check response is an error and validate error code */
         REQUIRE(ret.find("error") != ret.end());
         REQUIRE(ret["error"]["code"].get<int32_t>() == -162);
+    }
+
+    /* fail with invalid uppercase name */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["session"] = SESSION1;
+        params["pin"] = PIN;
+        params["name"] = "NOTALLOWED";
+
+        /* Invoke the API */
+        ret = APICall("names/create/namespace", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -162);
+    }
+
+    /* fail with reserved name */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["session"] = SESSION1;
+        params["pin"] = PIN;
+        params["name"] = "nxs";
+
+        /* Invoke the API */
+        ret = APICall("names/create/namespace", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -200);
     }
 
     /* success case */
@@ -411,7 +443,7 @@ TEST_CASE( "Test Names API - claim namespace", "[names/claim/namespace]")
             tx.nTimestamp  = runtime::timestamp();
 
             //create object
-            strNamespace = "NAMESPACE" +std::to_string(LLC::GetRand());
+            strNamespace = "namespace" +std::to_string(LLC::GetRand());
             hashNamespace = TAO::Register::Address(strNamespace, TAO::Register::Address::NAMESPACE);
             TAO::Register::Object namespaceObject = TAO::Register::CreateNamespace(strNamespace);
 
@@ -659,6 +691,24 @@ TEST_CASE( "Test Names API - create name", "[names/create/name]")
         /* Check response is an error and validate error code */
         REQUIRE(ret.find("error") != ret.end());
         REQUIRE(ret["error"]["code"].get<int32_t>() == -161);
+    }
+
+    /* fail with reserved global name */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["session"] = SESSION1;
+        params["pin"] = PIN;
+        params["global"] = true;
+        params["name"] = "NXS";
+        params["register_address"] = hashRegisterAddress.ToString();
+
+        /* Invoke the API */
+        ret = APICall("names/create/name", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -201);
     }
 
     /* fail with invalid namespace  */
@@ -1230,7 +1280,7 @@ TEST_CASE( "Test Names API - claim name", "[names/claim/name]")
             tx.nTimestamp  = runtime::timestamp();
 
             //create object
-            strNamespace = "NAMESPACE" +std::to_string(LLC::GetRand());
+            strNamespace = "namespace" +std::to_string(LLC::GetRand());
             hashNamespace = TAO::Register::Address(strNamespace, TAO::Register::Address::NAMESPACE);
             TAO::Register::Object namespaceObject = TAO::Register::CreateNamespace(strNamespace);
 

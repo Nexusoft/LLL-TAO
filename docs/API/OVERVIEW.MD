@@ -296,7 +296,7 @@ Error Codes
 | -159 | Values must be passed in as strings |
 | -160 | Username contains invalid characters |
 | -161 | Name contains invalid characters |
-| -162 | Name contains invalid characters |
+| -162 | Namespace can only contain lowercase letters, numbers, periods (.) |
 | -163 | Could not retrieve default NXS account to debit fees |
 | -164 | Account 'default' is not a NXS account |
 | -165 | Invalid address_to |
@@ -334,5 +334,7 @@ Error Codes
 | -197 | Account already locked for staking |
 | -198 | Account already locked for transactions |
 | -199 | Account already locked for notifications |
+| -200 | Namespace can't be created with reserved name |
+| -201 | Global names can't be created with reserved name |
 
 
