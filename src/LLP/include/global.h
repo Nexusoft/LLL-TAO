@@ -119,7 +119,7 @@ namespace LLP
             static_cast<uint32_t>(config::GetArg(std::string("-timeout"), 30)),
 
             /* The DDOS if enabled. */
-            config::GetBoolArg(std::string("-ddos"), false),
+            config::GetBoolArg(std::string("-ddos"), true),
 
             /* The connection score (total connections per second). */
             static_cast<uint32_t>(config::GetArg(std::string("-cscore"), 1)),
@@ -128,7 +128,7 @@ namespace LLP
             static_cast<uint32_t>(config::GetArg(std::string("-rscore"), 50)),
 
             /* The DDOS moving average timespan (default: 60 seconds). */
-            static_cast<uint32_t>(config::GetArg(std::string("-timespan"), 60)),
+            static_cast<uint32_t>(config::GetArg(std::string("-timespan"), 30)),
 
             /* Flag to determine if server should listen. */
             config::GetBoolArg(std::string("-listen"), true),
