@@ -111,11 +111,11 @@ namespace LLP
          *  address
          *
          *  @param[in] addr The address to add
-         *
          *  @param[in] nState The nState of the connection for the address
+         *  @param[in] nSession The session lenght for address to give it higher score.
          *
          **/
-        void AddAddress(const BaseAddress &addr, const uint8_t nState = ConnectState::NEW);
+        void AddAddress(const BaseAddress &addr, const uint8_t nState = ConnectState::NEW, const uint32_t nSession = 0);
 
 
         /** AddAddresses
@@ -225,14 +225,6 @@ namespace LLP
          *
          **/
         void ReadDatabase();
-
-
-        /** WriteDatabase
-         *
-         *  Write the addresses from the manager into the address database
-         *
-         **/
-        void WriteDatabase();
 
 
         /** ToString

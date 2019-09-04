@@ -106,7 +106,7 @@ namespace LLP
 
 
     /*  Adds the address to the manager and sets it's connect nState. */
-    void AddressManager::AddAddress(const BaseAddress &addr, const uint8_t nState)
+    void AddressManager::AddAddress(const BaseAddress &addr, const uint8_t nState, const uint32_t nSession)
     {
         /* Reject adding invalid addresses. */
         if(!addr.IsValid())
@@ -123,20 +123,20 @@ namespace LLP
         if(is_banned(hash))
             return;
 
+        /* Add address to map if not already added. */
         if(mapTrustAddress.find(hash) == mapTrustAddress.end())
             mapTrustAddress[hash] = addr;
 
         /* Set the port number to match this server */
         TrustAddress& trust_addr = mapTrustAddress[hash];
         trust_addr.SetPort(nPort);
+        trust_addr.nSession = nSession;
 
         /* Update the stats for this address based on the nState. */
         update_state(&trust_addr, nState);
 
         /* Update the LLD Address database for this entry */
-        //pDatabase->TxnBegin();
         pDatabase->WriteTrustAddress(hash, trust_addr);
-        //pDatabase->TxnCommit();
     }
 
 
@@ -162,7 +162,7 @@ namespace LLP
             /* Create a DNS lookup address to resolve to IP address. */
             BaseAddress lookup_address = BaseAddress(addrs[i], nPort, true);
 
-            AddAddress(lookup_address, nState);
+            AddAddress(lookup_address, nState, 120);
 
             LOCK(MUTEX);
 
@@ -233,9 +233,7 @@ namespace LLP
             it->second.nLatency = lat;
 
             /* Update the LLD Address database for this entry */
-            //pDatabase->TxnBegin();
             pDatabase->WriteTrustAddress(hash, it->second);
-            //pDatabase->TxnCommit();
         }
     }
 
@@ -252,9 +250,7 @@ namespace LLP
             it->second.nHeight = height;
 
             /* Update the LLD Address database for this entry */
-            //pDatabase->TxnBegin();
             pDatabase->WriteTrustAddress(hash, it->second);
-            //pDatabase->TxnCommit();
         }
 
     }
@@ -440,32 +436,6 @@ namespace LLP
     }
 
 
-    /*  Write the addresses from the manager into the address database. */
-    void AddressManager::WriteDatabase()
-    {
-        /* DEPRECATED */
-        /* Make sure the database exists. */
-        //if(!pDatabase)
-        //{
-        //    debug::error(FUNCTION, "database null");
-        //    return;
-        //}
-
-        //LOCK(MUTEX);
-
-        //if(!mapTrustAddress.size())
-        //  return;
-
-        //pDatabase->TxnBegin();
-
-        /* Write the keys and addresses. */
-        //for(auto it = mapTrustAddress.begin(); it != mapTrustAddress.end(); ++it)
-        //    pDatabase->WriteTrustAddress(it->first, it->second);
-
-        //pDatabase->TxnCommit();
-    }
-
-
     /*  Gets an array of trust addresses specified by the nState nFlags. */
     void AddressManager::get_addresses(std::vector<TrustAddress> &vInfo, const uint8_t nFlags)
     {
@@ -568,7 +538,7 @@ namespace LLP
     /*  Updates the nState of the given Trust address. */
     void AddressManager::update_state(TrustAddress *pAddr, uint8_t nState)
     {
-        uint64_t ms = runtime::unifiedtimestamp(true);
+        uint64_t nTimestamp = runtime::unifiedtimestamp(true);
 
         switch(nState)
         {
@@ -586,7 +556,7 @@ namespace LLP
               ++pAddr->nConnected;
               pAddr->nSession = 0;
               pAddr->nFails = 0;
-              pAddr->nLastSeen = ms;
+              pAddr->nLastSeen = nTimestamp;
               pAddr->nState = nState;
               break;
 
@@ -598,8 +568,8 @@ namespace LLP
                   break;
 
               ++pAddr->nDropped;
-              pAddr->nSession = ms - pAddr->nLastSeen;
-              pAddr->nLastSeen = ms;
+              pAddr->nSession = nTimestamp - pAddr->nLastSeen;
+              pAddr->nLastSeen = nTimestamp;
               pAddr->nState = nState;
               break;
 

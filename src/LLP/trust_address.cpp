@@ -17,6 +17,7 @@ namespace
 {
     /* constant variables to tweak score */
     const double nConnectedWeight = 100.0;
+    const double nSessionWeight   = 80.0;
     const double nDroppedWeight = 2.0;
     const double nFailedWeight = 5.0;
     const double nFailsWeight = 10.0;
@@ -139,21 +140,22 @@ namespace LLP
     /* Calculates a score based on stats. A higher score is better. */
     double TrustAddress::Score() const
     {
-        double nLat = static_cast<double>(nLatency);
+        double dLat = static_cast<double>(nLatency);
 
-        double nLatencyScore = ::nMaxLatency - std::min(::nMaxLatency, nLat);
+        double dLatencyScore = ::nMaxLatency - std::min(::nMaxLatency, dLat);
 
         /* Add up the good stats. */
-        double good = ::nConnectedWeight * std::min(nConnected, ::nMaxConnected) +
-                      nLatencyScore * ::nLatencyWeight;
+        double dGood = (::nConnectedWeight * std::min(nConnected, ::nMaxConnected)) +
+                       (::nLatencyWeight * dLatencyScore) +
+                       (::nSessionWeight * nSession);
 
         /* Add up the bad stats. */
-        double bad = ::nDroppedWeight * std::min(nDropped, ::nMaxDropped) +
-                     ::nFailedWeight  * std::min(nFailed,  ::nMaxFailed)  +
-                     ::nFailsWeight   * std::min(nFails,   ::nMaxFails);
+        double dBad = (::nDroppedWeight * std::min(nDropped, ::nMaxDropped)) +
+                      (::nFailedWeight  * std::min(nFailed,  ::nMaxFailed))  +
+                      (::nFailsWeight   * std::min(nFails,   ::nMaxFails));
 
-        /* Subtract the bad stats from the good stats. */
-        return good - bad;
+        /* Subtract the bad stats from the dGood stats. */
+        return dGood - dBad;
     }
 
     /* Prints information about this address. */
