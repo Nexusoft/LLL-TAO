@@ -583,6 +583,31 @@ namespace LLP
                             break;
                         }
 
+
+                        /* Standard type for a block. */
+                        case TYPES::ADDRESS:
+                        {
+                            /* Get the total list amount. */
+                            uint32_t nTotal;
+                            ssPacket >> nTotal;
+
+                            /* Check for size constraints. */
+                            if(nTotal > 10000)
+                                nTotal = 10000;
+
+                            /* Get addresses from manager. */
+                            std::vector<BaseAddress> vAddr;
+                            if(TRITIUM_SERVER->pAddressManager)
+                                TRITIUM_SERVER->pAddressManager->GetAddresses(vAddr);
+
+                            /* Add the best 1000 (or less) addresses. */
+                            const uint32_t nCount = std::min((uint32_t)vAddr.size(), nTotal);
+                            for(uint32_t n = 0; n < nCount; ++n)
+                                PushMessage(TYPES::ADDRESS, vAddr[n]);
+
+                            break;
+                        }
+
                         /* Catch malformed notify binary streams. */
                         default:
                             return debug::drop(NODE, "ACTION::LIST malformed binary stream");
@@ -862,6 +887,21 @@ namespace LLP
 
                 /* Keep track of the time seeds if accepted. */
                 debug::log(2, NODE, "timeseed ", nTimeSeed, " ACCEPTED");
+
+                break;
+            }
+
+
+            /* Standard type for a block. */
+            case TYPES::ADDRESS:
+            {
+                /* Get the base address. */
+                BaseAddress addr;
+                ssPacket >> addr;
+
+                /* Add addresses to manager.. */
+                if(TRITIUM_SERVER->pAddressManager)
+                    TRITIUM_SERVER->pAddressManager->AddAddress(addr);
 
                 break;
             }
