@@ -529,7 +529,7 @@ namespace LLP
 
                 /* Check for duplicate. */
                 if(!(nStatus & TAO::Ledger::PROCESS::DUPLICATE)
-                && !(nStatus & TAO::Ledger::PROCESS::IGNORE))
+                && !(nStatus & TAO::Ledger::PROCESS::IGNORED))
                 {
                     /* Inventory requests. */
                     std::vector<CInv> vInv = { CInv(block.hashPrevBlock, LLP::MSG_BLOCK_LEGACY) };

@@ -40,7 +40,7 @@ namespace TAO
                 DUPLICATE  = (1 << 2), //already in database
                 ACCEPTED   = (1 << 3), //processed fully
                 REJECTED   = (1 << 4), //block was rejected
-                IGNORE     = (1 << 5), //ignore protocol requests
+                IGNORED     = (1 << 5), //ignore protocol requests
                 INCOMPLETE = (1 << 6), //block contains missing transactions
             };
         }

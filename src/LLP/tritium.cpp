@@ -1031,7 +1031,7 @@ namespace LLP
 
                             /* Check for duplicate and ask for previous block. */
                             if(!(nStatus & TAO::Ledger::PROCESS::DUPLICATE)
-                            && !(nStatus & TAO::Ledger::PROCESS::IGNORE))
+                            && !(nStatus & TAO::Ledger::PROCESS::IGNORED))
                             {
                                 /* Ask for previous block. */
                                 PushMessage(ACTION::GET, uint8_t(TYPES::LEGACY), uint8_t(TYPES::BLOCK), block.hashPrevBlock);
@@ -1154,7 +1154,7 @@ namespace LLP
 
                     /* Check for duplicate and ask for previous block. */
                     if(!(nStatus & TAO::Ledger::PROCESS::DUPLICATE)
-                    && !(nStatus & TAO::Ledger::PROCESS::IGNORE))
+                    && !(nStatus & TAO::Ledger::PROCESS::IGNORED))
                     {
                         /* Ask for previous block. */
                         PushMessage(ACTION::GET,
