@@ -433,6 +433,162 @@ namespace LLP
             /* Handle for list command. */
             case ACTION::LIST:
             {
+                /* Set the limits. */
+                uint32_t nLimits = 1000;
+
+                /* Loop through the binary stream. */
+                while(!ssPacket.End() && nLimits != 0)
+                {
+                    /* Get the next type in stream. */
+                    uint8_t nType = 0;
+                    ssPacket >> nType;
+
+                    /* Check for legacy specifier. */
+                    bool fLegacy = false;
+                    if(nType == TYPES::LEGACY)
+                    {
+                        /* Set legacy specifier. */
+                        fLegacy = true;
+
+                        /* Go to next type in stream. */
+                        ssPacket >> nType;
+                    }
+
+                    /* Switch based on codes. */
+                    switch(nType)
+                    {
+                        /* Standard type for a block. */
+                        case TYPES::BLOCK:
+                        {
+                            /* Get the index of block. */
+                            uint1024_t hashStart;
+                            ssPacket >> hashStart;
+
+                            /* Get the ending hash. */
+                            uint1024_t hashStop;
+                            ssPacket >> hashStop;
+
+                            /* Do a sequential read to obtain the list. */
+                            std::vector<TAO::Ledger::BlockState> vStates;
+                            while(LLD::Ledger->BatchRead(hashStart, "block", vStates, 100))
+                            {
+                                /* Loop through all available states. */
+                                for(const auto& state : vStates)
+                                {
+                                    /* Cache the block hash. */
+                                    hashStart = state.GetHash();
+
+                                    /* Skip if not in main chain. */
+                                    if(!state.IsInMainChain())
+                                        continue;
+
+                                    /* Check for legacy. */
+                                    if(fLegacy)
+                                    {
+                                        /* Build the legacy block from state. */
+                                        Legacy::LegacyBlock block(state);
+
+                                        /* Push message in response. */
+                                        PushMessage(TYPES::LEGACY, uint8_t(TYPES::BLOCK), block);
+                                    }
+                                    else
+                                    {
+                                        /* Build the legacy block from state. */
+                                        TAO::Ledger::TritiumBlock block(state);
+
+                                        /* Push message in response. */
+                                        PushMessage(TYPES::BLOCK, block);
+                                    }
+
+                                    /* Check for stop hash. */
+                                    if(--nLimits == 0 || hashStart == hashStop)
+                                        break;
+                                }
+
+                                /* Check for stop or limits. */
+                                if(nLimits == 0 || hashStart == hashStop)
+                                    break;
+                            }
+
+                            break;
+                        }
+
+                        /* Standard type for a block. */
+                        case TYPES::TRANSACTION:
+                        {
+                            /* Get the index of block. */
+                            uint512_t hashStart;
+                            ssPacket >> hashStart;
+
+                            /* Get the ending hash. */
+                            uint512_t hashStop;
+                            ssPacket >> hashStop;
+
+                            /* Check for legacy. */
+                            if(fLegacy)
+                            {
+                                /* Do a sequential read to obtain the list. */
+                                std::vector<Legacy::Transaction> vtx;
+                                while(LLD::Legacy->BatchRead(hashStart, "tx", vtx, 100))
+                                {
+                                    /* Loop through all available states. */
+                                    for(const auto& tx : vtx)
+                                    {
+                                        /* Cache the block hash. */
+                                        hashStart = tx.GetHash();
+
+                                        /* Push the transaction. */
+                                        PushMessage(TYPES::LEGACY, uint8_t(TYPES::TRANSACTION), tx);
+
+                                        /* Check for stop hash. */
+                                        if(--nLimits == 0 || hashStart == hashStop)
+                                            break;
+                                    }
+
+                                    /* Check for stop or limits. */
+                                    if(nLimits == 0 || hashStart == hashStop)
+                                        break;
+                                }
+                            }
+                            else
+                            {
+                                /* Do a sequential read to obtain the list. */
+                                std::vector<TAO::Ledger::Transaction> vtx;
+                                while(LLD::Ledger->BatchRead(hashStart, "tx", vtx, 100))
+                                {
+                                    /* Loop through all available states. */
+                                    for(const auto& tx : vtx)
+                                    {
+                                        /* Cache the block hash. */
+                                        hashStart = tx.GetHash();
+
+                                        /* Skip if not in main chain. */
+                                        if(!tx.IsConfirmed())
+                                            continue;
+
+                                        /* Push the transaction. */
+                                        PushMessage(TYPES::TRANSACTION, tx);
+
+                                        /* Check for stop hash. */
+                                        if(--nLimits == 0 || hashStart == hashStop)
+                                            break;
+                                    }
+
+                                    /* Check for stop or limits. */
+                                    if(nLimits == 0 || hashStart == hashStop)
+                                        break;
+                                }
+                            }
+
+                            break;
+                        }
+
+                        /* Catch malformed notify binary streams. */
+                        default:
+                            return debug::drop(NODE, "ACTION::LIST malformed binary stream");
+                    }
+
+                }
 
                 break;
             }
@@ -441,9 +597,6 @@ namespace LLP
             /* Handle for get command. */
             case ACTION::GET:
             {
-                /* Create response data stream. */
-                DataStream ssResponse(INCOMING.DATA, SER_NETWORK, PROTOCOL_VERSION);
-
                 /* Loop through the binary stream. */
                 while(!ssPacket.End())
                 {
@@ -517,7 +670,7 @@ namespace LLP
                                 /* Check ledger database. */
                                 TAO::Ledger::Transaction tx;
                                 if(!LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
-                                    PushMessage(TYPES::TRANSACTION, hashTx);
+                                    PushMessage(TYPES::TRANSACTION, tx);
                             }
 
                             break;
@@ -525,7 +678,7 @@ namespace LLP
 
                         /* Catch malformed notify binary streams. */
                         default:
-                            return debug::drop(NODE, "ACTION::NOTIFY malformed binary stream");
+                            return debug::drop(NODE, "ACTION::GET malformed binary stream");
                     }
                 }
 

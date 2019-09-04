@@ -534,10 +534,10 @@ namespace LLD
         /* If the caller has requested to include mempool transactions then check there first*/
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
-            TAO::Ledger::Transaction mempoolTx;
-            if(TAO::Ledger::mempool.Get(hashGenesis, mempoolTx))
+            TAO::Ledger::Transaction tx;
+            if(TAO::Ledger::mempool.Get(hashGenesis, tx))
             {
-                hashLast = mempoolTx.GetHash();
+                hashLast = tx.GetHash();
 
                 return true;
             }
