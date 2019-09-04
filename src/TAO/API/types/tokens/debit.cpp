@@ -48,7 +48,7 @@ namespace TAO
             SecureString strPIN = users->GetPin(params);
 
             /* Get the session to be used for this API call */
-            uint64_t nSession = users->GetSession(params);
+            uint256_t nSession = users->GetSession(params);
 
             /* Check for credit parameter. */
             if(params.find("amount") == params.end())

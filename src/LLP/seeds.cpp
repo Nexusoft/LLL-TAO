@@ -113,6 +113,7 @@ namespace LLP
         "test3.mercuryminer.com",
         "test4.mercuryminer.com",
         "test5.mercuryminer.com",
-        "test.nexusminingpool.com",
+        "test1.nexusminingpool.com",
+        "test2.nexusminingpool.com",
     };
 }

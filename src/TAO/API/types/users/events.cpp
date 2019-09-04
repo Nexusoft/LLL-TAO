@@ -150,7 +150,7 @@ namespace TAO
 
                     /* Get the session to be used for this API call */
                     json::json params;
-                    uint64_t nSession = users->GetSession(params);
+                    uint256_t nSession = users->GetSession(params);
 
                     /* Get the account. */
                     memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);

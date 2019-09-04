@@ -124,7 +124,7 @@ This will start a session for your user account with this specific API instance.
 ```
 {
     "genesis": "27ef3f31499b6f55482088ba38b7ec7cb02bd4383645d3fd43745ef7fa3db3d1",
-    "session": "16953804956473956578"
+    "session": "5e9d8aa625a1838f60f30e12058089169e32c968389f365428f7b0c878bb47f8"
 }
 
 ```
