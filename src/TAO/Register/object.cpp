@@ -158,9 +158,9 @@ namespace TAO
                     uint64_t nSupply = get<uint64_t>("supply");
 
                     /* Fee = (log10(nSupply) - 2) * 100 NXS
-                       which equates to 100 NXS for each significant figure, which the first 2sf (100 supply)  being free*/
+                       which equates to 100 NXS for each significant figure, with the first 2sf (100 supply) being 1 NXS*/
                     uint64_t nBase = (std::log10(nSupply));
-                    return std::max(int64_t(0), int64_t(nBase - 2)) * TAO::Ledger::TOKEN_FEE;
+                    return std::max(int64_t(TAO::Ledger::NXS_COIN),  int64_t(std::max(int64_t(0), int64_t(nBase - 2)) * TAO::Ledger::TOKEN_FEE));
                 }
 
                 case TAO::Register::OBJECTS::NAME:
