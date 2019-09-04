@@ -130,6 +130,18 @@ namespace LLP
                 /* Set the laset ping time. */
                 nLastPing    = runtime::unifiedtimestamp();
 
+                /* Respond with version message if incoming connection. */
+                if(fOUTGOING)
+                {
+                    /* Respond with version message. */
+                    PushMessage(uint8_t(ACTION::VERSION), PROTOCOL_VERSION, SESSION_ID, version::CLIENT_VERSION_BUILD_STRING);
+
+                    /* Notify node of current block height. */
+                    PushMessage(ACTION::NOTIFY,
+                        uint8_t(TYPES::HEIGHT),     TAO::Ledger::ChainState::nBestHeight.load(),
+                        uint8_t(TYPES::CHECKPOINT), TAO::Ledger::ChainState::hashCheckpoint.load());
+                }
+
                 break;
             }
 
@@ -429,6 +441,94 @@ namespace LLP
             /* Handle for get command. */
             case ACTION::GET:
             {
+                /* Create response data stream. */
+                DataStream ssResponse(INCOMING.DATA, SER_NETWORK, PROTOCOL_VERSION);
+
+                /* Loop through the binary stream. */
+                while(!ssPacket.End())
+                {
+                    /* Get the next type in stream. */
+                    uint8_t nType = 0;
+                    ssPacket >> nType;
+
+                    /* Check for legacy specifier. */
+                    bool fLegacy = false;
+                    if(nType == TYPES::LEGACY)
+                    {
+                        /* Set legacy specifier. */
+                        fLegacy = true;
+
+                        /* Go to next type in stream. */
+                        ssPacket >> nType;
+                    }
+
+                    /* Switch based on codes. */
+                    switch(nType)
+                    {
+                        /* Standard type for a block. */
+                        case TYPES::BLOCK:
+                        {
+                            /* Get the index of block. */
+                            uint1024_t hashBlock;
+                            ssPacket >> hashBlock;
+
+                            /* Check for legacy. */
+                            if(fLegacy)
+                            {
+                                /* Check the database for the block. */
+                                TAO::Ledger::BlockState state;
+                                if(LLD::Ledger->ReadBlock(hashBlock, state))
+                                {
+                                    Legacy::LegacyBlock block(state);
+                                    PushMessage(TYPES::LEGACY, uint8_t(TYPES::BLOCK), block);
+                                }
+                            }
+                            else
+                            {
+                                /* Check the database for the block. */
+                                TAO::Ledger::BlockState state;
+                                if(LLD::Ledger->ReadBlock(hashBlock, state))
+                                {
+                                    TAO::Ledger::TritiumBlock block(state);
+                                    PushMessage(TYPES::BLOCK, block);
+                                }
+                            }
+
+                            break;
+                        }
+
+                        /* Standard type for a block. */
+                        case TYPES::TRANSACTION:
+                        {
+                            /* Get the index of transaction. */
+                            uint512_t hashTx;
+                            ssPacket >> hashTx;
+
+                            /* Check for legacy. */
+                            if(fLegacy)
+                            {
+                                /* Check legacy database. */
+                                Legacy::Transaction tx;
+                                if(LLD::Legacy->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                                    PushMessage(TYPES::LEGACY, uint8_t(TYPES::TRANSACTION), tx);
+                            }
+                            else
+                            {
+                                /* Check ledger database. */
+                                TAO::Ledger::Transaction tx;
+                                if(!LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                                    PushMessage(TYPES::TRANSACTION, hashTx);
+                            }
+
+                            break;
+                        }
+
+                        /* Catch malformed notify binary streams. */
+                        default:
+                            return debug::drop(NODE, "ACTION::NOTIFY malformed binary stream");
+                    }
+                }
+
                 break;
             }
 
@@ -502,32 +602,7 @@ namespace LLP
                             break;
                         }
 
-                        /* Standard type for a timeseed. */
-                        case TYPES::TIMESEED:
-                        {
-                            /* Check for legacy. */
-                            if(fLegacy)
-                                return debug::drop(NODE, "timeseed can't have legacy specifier");
-
-                            /* Check for authorized node. */
-                            if(!Authorized())
-                                return debug::drop(NODE, "cannot send timeseed if not authorized");
-
-                            /* Check trust threshold. */
-                            if(nTrust < 60 * 60)
-                                return debug::drop(NODE, "cannot send timeseed with no trust");
-
-                            /* Get the time seed from network. */
-                            int64_t nTimeSeed = 0;
-                            ssPacket >> nTimeSeed;
-
-                            /* Keep track of the time seeds if accepted. */
-                            debug::log(2, NODE, "timeseed ", nTimeSeed, " ACCEPTED");
-
-                            break;
-                        }
-
-                        /* Standard type for a timeseed. */
+                        /* Standard type for height. */
                         case TYPES::HEIGHT:
                         {
                             /* Check for legacy. */
@@ -612,6 +687,28 @@ namespace LLP
 
                 /* Debug Level 3: output Node Latencies. */
                 debug::log(3, NODE, "Latency (Nonce ", std::hex, nNonce, " - ", std::dec, nLatency, " ms)");
+
+                break;
+            }
+
+
+            /* Standard type for a timeseed. */
+            case TYPES::TIMESEED:
+            {
+                /* Check for authorized node. */
+                if(!Authorized())
+                    return debug::drop(NODE, "cannot send timeseed if not authorized");
+
+                /* Check trust threshold. */
+                if(nTrust < 60 * 60)
+                    return debug::drop(NODE, "cannot send timeseed with no trust");
+
+                /* Get the time seed from network. */
+                int64_t nTimeSeed = 0;
+                ssPacket >> nTimeSeed;
+
+                /* Keep track of the time seeds if accepted. */
+                debug::log(2, NODE, "timeseed ", nTimeSeed, " ACCEPTED");
 
                 break;
             }
