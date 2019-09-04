@@ -50,8 +50,7 @@ namespace TAO
 
 
         /* Claims a register from a transfer. */
-        bool Claim::Execute(TAO::Register::State &state,
-            const uint256_t& hashClaim, const uint64_t nTimestamp)
+        bool Claim::Execute(TAO::Register::State &state, const uint256_t& hashClaim, const uint64_t nTimestamp)
         {
             /* Make sure the register claim is in SYSTEM pending from a transfer. */
             if(state.hashOwner != 0)

@@ -130,8 +130,8 @@ namespace TAO
 
             /* Add expiration condition if caller has passed an expires value */
             if(params.find("expires") != params.end())
-                AddExpires( params, user->Genesis(), tx[0]);
-            
+                AddExpires(params, user->Genesis(), tx[0]);
+
             /* Add the fee */
             AddFee(tx);
 

@@ -290,8 +290,7 @@ TEST_CASE( "Credit Primitive Tests", "[operation]")
             tx[0].Clear();
             tx2[0].Clear();
         }
-
-
+        
     }
 
 }

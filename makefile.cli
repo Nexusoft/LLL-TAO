@@ -212,6 +212,7 @@ ifdef UNIT_TESTS
 		   build/Tests_TAO_Operation_names.o \
 		   build/Tests_TAO_Operation_register.o \
 		   build/Tests_TAO_Operation_transfer.o \
+           build/Tests_TAO_Operation_claim.o \
 		   build/Tests_TAO_Operation_trust.o \
 		   build/Tests_TAO_Operation_validate.o \
 		   build/Tests_TAO_Operation_write.o \
