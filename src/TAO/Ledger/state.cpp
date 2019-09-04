@@ -1208,7 +1208,14 @@ namespace TAO
                 return LLC::SK1024(ss.begin(), ss.end());
             }
 
-            return LLC::SK1024(BEGIN(nVersion), END(nTime));
+            /* Create a data stream to get the hash. */
+            DataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
+            ss.reserve(256);
+
+            /* Serialize the data to hash into a stream. */
+            ss << nVersion << hashPrevBlock << hashMerkleRoot << nChannel << nHeight << nBits << nNonce << uint32_t(nTime);
+
+            return LLC::SK1024(ss.begin(), ss.end());
         }
 
 
