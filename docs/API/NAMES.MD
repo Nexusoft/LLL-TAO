@@ -41,7 +41,7 @@ The following methods are currently supported by this API
 
 This will create a new namespace.  The API supports an alternative endpoint that can include the new namespace name in the URL.  For example `/names/create/namespace/mynamespace` will resolve to `names/create/namespace?name=mynamespace`.  
 
-**NOTE** : Namespace names cannot contain colon `:` characters
+**NOTE** : Namespace names cannot can only contain **lowercase letters, numbers, and periods (.)**.
 
 
 ### Endpoint:
@@ -395,7 +395,6 @@ The following example updates the register_address field for the name "asset1.ou
 ```
 {
     "pin": "1234",
-    "session": "16953804956473956578",
     "name": "asset1.ourcompany",
     "register_address": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1"
 }

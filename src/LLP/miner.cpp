@@ -28,6 +28,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/timelocks.h>
+#include <TAO/Ledger/include/process.h>
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/transaction.h>
@@ -123,7 +124,7 @@ namespace LLP
             /* Handle for a Packet Header Read. */
             case EVENT_HEADER:
             {
-                if(fDDOS)
+                if(fDDOS && !fOUTGOING)
                 {
                     Packet PACKET   = this->INCOMING;
                     if(PACKET.HEADER == BLOCK_DATA)
@@ -762,10 +763,10 @@ namespace LLP
                return nullptr;
            }
 
-           /* Check that the account is unlocked for minting */
-           if(!TAO::API::users->CanMint())
+           /* Check that the account is unlocked for mining */
+           if(!TAO::API::users->CanMine())
            {
-               debug::error(FUNCTION, "Account has not been unlocked for minting");
+               debug::error(FUNCTION, "Account has not been unlocked for mining");
                return nullptr;
            }
 
@@ -811,17 +812,17 @@ namespace LLP
 
       /* Update block with the nonce and time. */
       if(pBaseBlock)
-      {
           pBaseBlock->nNonce = nNonce;
-          pBaseBlock->UpdateTime();
-      }
 
       /* If the block dynamically casts to a legacy block, validate the legacy block. */
       {
           Legacy::LegacyBlock *pBlock = dynamic_cast<Legacy::LegacyBlock *>(pBaseBlock);
-
           if(pBlock)
           {
+              /* Update the block's timestamp. */
+              pBlock->UpdateTime();
+
+              /* Sign the block with a key from wallet. */
               if(!Legacy::SignBlock(*pBlock, Legacy::Wallet::GetInstance()))
                   return debug::error(FUNCTION, "Unable to Sign Legacy Block ", hashMerkleRoot.SubString());
 
@@ -831,12 +832,14 @@ namespace LLP
 
       /* If the block dynamically casts to a tritium block, validate the tritium block. */
       TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock *>(pBaseBlock);
-
       if(pBlock)
       {
+          /* Update the block's timestamp. */
+          pBlock->UpdateTime();
+
           /* Check that the account is unlocked for minting */
-          if(!TAO::API::users->CanMint())
-              return debug::error(FUNCTION, "Account has not been unlocked for minting");
+          if(!TAO::API::users->CanMine())
+              return debug::error(FUNCTION, "Account has not been unlocked for mining");
 
           /* Get the sigchain and the PIN. */
           SecureString PIN = TAO::API::users->GetActivePin();
@@ -926,8 +929,7 @@ namespace LLP
        }
 
        /* If the block dynamically casts to a tritium block, validate the tritium block. */
-       TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock *>(mapBlocks[hashMerkleRoot]);
-
+       TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock*>(mapBlocks[hashMerkleRoot]);
        if(pBlock)
        {
            debug::log(2, FUNCTION, "Tritium");
@@ -967,8 +969,12 @@ namespace LLP
            LOCK(TAO::API::users->CREATE_MUTEX);
 
            /* Process the block and relay to network if it gets accepted into main chain. */
-           if(!TritiumNode::Process(*pBlock, nullptr))
-               return debug::error(FUNCTION, "Generated block not accepted");
+           uint8_t nStatus = 0;
+           TAO::Ledger::Process(*pBlock, nStatus);
+
+           /* Check the statues. */
+           if(!(nStatus & TAO::Ledger::PROCESS::ACCEPTED))
+               return debug::error(FUNCTION, "generated block not accepted");
 
            return true;
        }

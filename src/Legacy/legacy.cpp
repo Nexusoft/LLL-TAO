@@ -71,6 +71,7 @@ namespace Legacy
     /** The default constructor. **/
     LegacyBlock::LegacyBlock()
     : Block()
+    , nTime(static_cast<uint32_t>(runtime::unifiedtimestamp()))
     , vtx()
     {
         SetNull();
@@ -79,6 +80,7 @@ namespace Legacy
     /** Copy Constructor. **/
     LegacyBlock::LegacyBlock(const LegacyBlock& block)
     : Block(block)
+    , nTime(block.nTime)
     , vtx(block.vtx)
     {
     }
@@ -86,6 +88,7 @@ namespace Legacy
     /** Copy Constructor. **/
     LegacyBlock::LegacyBlock(const TAO::Ledger::BlockState& state)
     : Block(state)
+    , nTime(state.nTime)
     , vtx()
     {
         /* Push back all the transactions from the state object. */
@@ -115,6 +118,20 @@ namespace Legacy
         Block::SetNull();
 
         vtx.clear();
+    }
+
+
+    /* Update the nTime of the current block. */
+    void LegacyBlock::UpdateTime()
+    {
+        nTime = static_cast<uint32_t>(std::max(TAO::Ledger::ChainState::stateBest.load().GetBlockTime() + 1, runtime::unifiedtimestamp()));
+    }
+
+
+    /* Return the Block's current UNIX timestamp. */
+    uint64_t LegacyBlock::GetBlockTime() const
+    {
+        return uint64_t(nTime);
     }
 
 
@@ -414,12 +431,14 @@ namespace Legacy
         }
 
         /* Check that Transactions are Finalized. */
-        for(const auto & tx : vtx)
+        for(const auto& tx : vtx)
             if(!tx.IsFinal(nHeight, nBlockTime))
                 return debug::error(FUNCTION, "contains a non-final transaction");
 
         /* Process the block state. */
         TAO::Ledger::BlockState state(*this);
+        if(state.GetHash() != GetHash())
+            return debug::error(FUNCTION, "Hash mismatch expected ", GetHash().ToString(), " actual ", state.GetHash().ToString());
 
         /* Add to the memory pool. */
         for(const auto& tx : vtx)
@@ -428,19 +447,19 @@ namespace Legacy
         /* Accept the block state. */
         if(!state.Index())
         {
-            uint512_t nTxHash;
+            uint512_t hashTx;
 
             /* Remove from the memory pool. */
             for(const auto& tx : vtx)
             {
                 /* Get the transaction hash. */
-                nTxHash = tx.GetHash();
+                hashTx = tx.GetHash();
 
                 /* Keep transactions in memory pool that aren't on disk. */
-                if(!LLD::Legacy->HasTx(nTxHash))
+                if(!LLD::Legacy->HasTx(hashTx))
                     continue;
 
-                TAO::Ledger::mempool.Remove(nTxHash);
+                TAO::Ledger::mempool.Remove(hashTx);
             }
 
             return false;
@@ -617,6 +636,33 @@ namespace Legacy
         nScore = nTrustScore;
 
         return true;
+    }
+
+
+    /* Get the Signarture Hash of the block. Used to verify work claims. */
+    uint1024_t LegacyBlock::SignatureHash() const
+    {
+        /* Signature hash for version 7 blocks. */
+        if(nVersion >= 7)
+        {
+            /* Create a data stream to get the hash. */
+            DataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
+            ss.reserve(256);
+
+            /* Serialize the data to hash into a stream. */
+            ss << nVersion << hashPrevBlock << hashMerkleRoot << nChannel << nHeight << nBits << nNonce << nTime << vOffsets;
+
+            return LLC::SK1024(ss.begin(), ss.end());
+        }
+
+        /* Create a data stream to get the hash. */
+        DataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
+        ss.reserve(256);
+
+        /* Serialize the data to hash into a stream. */
+        ss << nVersion << hashPrevBlock << hashMerkleRoot << nChannel << nHeight << nBits << nNonce << uint32_t(nTime);
+
+        return LLC::SK1024(ss.begin(), ss.end());
     }
 
 

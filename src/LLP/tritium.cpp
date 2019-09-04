@@ -19,13 +19,14 @@ ________________________________________________________________________________
 #include <LLP/include/global.h>
 #include <LLP/templates/events.h>
 #include <LLP/include/manager.h>
-#include <LLP/include/inv.h>
 
-#include <TAO/Operation/include/execute.h>
-
+#include <TAO/Register/include/names.h>
 #include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/process.h>
+#include <TAO/Ledger/include/enum.h>
+#include <TAO/Ledger/types/locator.h>
 #include <TAO/Ledger/types/mempool.h>
 
 #include <Legacy/wallet/wallet.h>
@@ -33,6 +34,7 @@ ________________________________________________________________________________
 #include <Util/include/runtime.h>
 #include <Util/include/args.h>
 #include <Util/include/debug.h>
+#include <Util/include/version.h>
 
 
 #include <climits>
@@ -41,74 +43,33 @@ ________________________________________________________________________________
 
 namespace LLP
 {
-    std::atomic<uint32_t> TritiumNode::nAsked(0);
 
-
-    /* Static instantiation of orphan blocks in queue to process. */
-    std::map<uint1024_t, std::unique_ptr<TAO::Ledger::Block>> TritiumNode::mapOrphans;
-
-
-    /* Mutex to protect checking more than one block at a time. */
-    std::mutex TritiumNode::PROCESSING_MUTEX;
-
-
-    /* Mutex to protect the legacy orphans map. */
-    std::mutex TritiumNode::ORPHAN_MUTEX;
-
-
-    /* Mutex to protect connected sessions. */
+    /* Declaration of sessions mutex. (private). */
     std::mutex TritiumNode::SESSIONS_MUTEX;
 
-    /* global map connections to session ID's to be used to prevent duplicate connections to the same
-           sever, but via a different RLOC / EID */
-    std::map<uint64_t, TritiumNode*> TritiumNode::mapConnectedSessions;
 
-
-    /* Static initialization of last get blocks. */
-    memory::atomic<uint1024_t> TritiumNode::hashLastGetblocks;
-
-
-    /* The time since last getblocks. */
-    std::atomic<uint64_t> TritiumNode::nLastGetBlocks;
-
-
-    /* The fast sync average speed. */
-    std::atomic<uint32_t> TritiumNode::nFastSyncAverage;
-
-
-    /* The current node that is being used for fast sync */
-    memory::atomic<BaseAddress> TritiumNode::addrFastSync;
-
-
-    /* The last time a block was received. */
-    std::atomic<uint64_t> TritiumNode::nLastTimeReceived;
-
-
-    /* Timer for sync metrics. */
-    static uint64_t nTimer = runtime::timestamp(true);
-
-
-    /* The local relay inventory cache. */
-    LLD::KeyLRU TritiumNode::cacheInventory = LLD::KeyLRU(1024 * 1024);
-
-
-    /* The session identifier. */
-    uint64_t TritiumNode::nSessionID = LLC::GetRand();
+    /* Declaration of sessions sets. (private). */
+    std::map<uint64_t, std::pair<uint32_t, uint32_t>> TritiumNode::mapSessions;
 
 
     /** Default Constructor **/
     TritiumNode::TritiumNode()
     : BaseConnection<TritiumPacket>()
-    , nCurrentSession(0)
-    , nStartingHeight(0)
+    , fAuthorized(false)
     , nLastPing(0)
     , nLastSamples(0)
     , mapLatencyTracker()
-    , mapSentRequests()
-    , hashContinue(0)
-    , nConsecutiveFails(0)
+    , hashGenesis(0)
+    , nTrust(0)
+    , nProtocolVersion(0)
+    , nCurrentSession(0)
+    , nCurrentHeight(0)
+    , hashCheckpoint(0)
     , nConsecutiveOrphans(0)
-    , fInbound(false)
+    , nConsecutiveFails(0)
+    , strFullVersion()
+    , hashLastBlock(0)
+    , hashLastTx({0, 0})
     {
     }
 
@@ -116,16 +77,21 @@ namespace LLP
     /** Constructor **/
     TritiumNode::TritiumNode(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS)
     : BaseConnection<TritiumPacket>(SOCKET_IN, DDOS_IN, isDDOS)
-    , nCurrentSession(0)
-    , nStartingHeight(0)
+    , fAuthorized(false)
     , nLastPing(0)
     , nLastSamples(0)
     , mapLatencyTracker()
-    , mapSentRequests()
-    , hashContinue(0)
-    , nConsecutiveFails(0)
+    , hashGenesis(0)
+    , nTrust(0)
+    , nProtocolVersion(0)
+    , nCurrentSession(0)
+    , nCurrentHeight(0)
+    , hashCheckpoint(0)
     , nConsecutiveOrphans(0)
-    , fInbound(false)
+    , nConsecutiveFails(0)
+    , strFullVersion()
+    , hashLastBlock(0)
+    , hashLastTx({0, 0})
     {
     }
 
@@ -133,16 +99,21 @@ namespace LLP
     /** Constructor **/
     TritiumNode::TritiumNode(DDOS_Filter* DDOS_IN, bool isDDOS)
     : BaseConnection<TritiumPacket>(DDOS_IN, isDDOS)
-    , nCurrentSession(0)
-    , nStartingHeight(0)
+    , fAuthorized(false)
     , nLastPing(0)
     , nLastSamples(0)
     , mapLatencyTracker()
-    , mapSentRequests()
-    , hashContinue(0)
-    , nConsecutiveFails(0)
+    , hashGenesis(0)
+    , nTrust(0)
+    , nProtocolVersion(0)
+    , nCurrentSession(0)
+    , nCurrentHeight(0)
+    , hashCheckpoint(0)
     , nConsecutiveOrphans(0)
-    , fInbound(false)
+    , nConsecutiveFails(0)
+    , strFullVersion()
+    , hashLastBlock(0)
+    , hashLastTx({0, 0})
     {
     }
 
@@ -153,29 +124,6 @@ namespace LLP
     }
 
 
-    /* Helper function to switch the nodes on sync. */
-    void TritiumNode::SwitchNode()
-    {
-        /* Normal case of asking for a getblocks inventory message. */
-        memory::atomic_ptr<TritiumNode>& pBest = TRITIUM_SERVER->GetConnection(TritiumNode::addrFastSync.load());
-
-        /* Null check the pointer. */
-        if(pBest != nullptr)
-        {
-            try
-            {
-                /* Switch to a new node for fast sync. */
-                pBest->PushGetInventory(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
-            }
-            catch(const std::runtime_error& e)
-            {
-                debug::error(FUNCTION, e.what());
-
-                SwitchNode();
-            }
-        }
-    }
-
     /** Virtual Functions to Determine Behavior of Message LLP. **/
     void TritiumNode::Event(uint8_t EVENT, uint32_t LENGTH)
     {
@@ -183,16 +131,22 @@ namespace LLP
         {
             case EVENT_CONNECT:
             {
-                /* Setup the variables for this node. */
-                nLastPing    = runtime::unifiedtimestamp();
-
                 debug::log(1, NODE, fOUTGOING ? "Outgoing" : "Incoming",
                        " Connected at timestamp ",   runtime::unifiedtimestamp());
 
+                /* Set the laset ping time. */
+                nLastPing    = runtime::unifiedtimestamp();
+
+                /* Respond with version message if incoming connection. */
                 if(fOUTGOING)
                 {
-                    /* Send version if making the connection. */
-                    PushMessage(DAT_VERSION, TritiumNode::nSessionID, GetAddress());
+                    /* Respond with version message. */
+                    PushMessage(uint8_t(ACTION::VERSION), PROTOCOL_VERSION, SESSION_ID, version::CLIENT_VERSION_BUILD_STRING);
+
+                    /* Notify node of current block height. */
+                    PushMessage(ACTION::NOTIFY,
+                        uint8_t(TYPES::HEIGHT),     TAO::Ledger::ChainState::nBestHeight.load(),
+                        uint8_t(TYPES::CHECKPOINT), TAO::Ledger::ChainState::hashCheckpoint.load());
                 }
 
                 break;
@@ -200,6 +154,10 @@ namespace LLP
 
             case EVENT_HEADER:
             {
+                /* Check for initialization. */
+                if(nCurrentSession == 0 && nProtocolVersion == 0 && INCOMING.MESSAGE != ACTION::VERSION && DDOS)
+                    DDOS->rSCORE += 25;
+
                 break;
             }
 
@@ -212,14 +170,12 @@ namespace LLP
                     /* Give higher score for Bad Packets. */
                     if(INCOMING.Complete() && !INCOMING.IsValid())
                     {
-
                         debug::log(3, NODE "Dropped Packet (Complete: ", INCOMING.Complete() ? "Y" : "N",
                             " - Valid:)",  INCOMING.IsValid() ? "Y" : "N");
 
                         if(DDOS)
                             DDOS->rSCORE += 15;
                     }
-
                 }
 
                 if(INCOMING.Complete())
@@ -229,58 +185,29 @@ namespace LLP
                     if(config::GetArg("-verbose", 0) >= 5)
                         PrintHex(INCOMING.GetBytes());
                 }
+
                 break;
             }
 
             case EVENT_GENERIC:
             {
-                /* Generic event - pings. */
+                /* Handle sending the pings to remote node.. */
                 if(nLastPing + 15 < runtime::unifiedtimestamp())
                 {
+                    /* Create a random nonce. */
                     uint64_t nNonce = LLC::GetRand();
                     nLastPing = runtime::unifiedtimestamp();
 
-
+                    /* Keep track of latency for this ping. */
                     mapLatencyTracker.insert(std::pair<uint64_t, runtime::timer>(nNonce, runtime::timer()));
                     mapLatencyTracker[nNonce].Start();
 
+                    /* Push new message. */
+                    PushMessage(ACTION::PING, nNonce);
 
-                    /* Push a ping request. */
-                    PushMessage(DAT_PING, nNonce);
-
-                }
-
-                /* Generic events - unified time. */
-                if(runtime::timestamp() - nLastSamples > 30)
-                {
-                    /* Generate the request identification. */
-                    uint32_t nRequestID = LLC::GetRand(std::numeric_limits<uint32_t>::max());
-
-                    /* Add sent requests. */
-                    mapSentRequests[nRequestID] = runtime::timestamp();
-
-                    /* Request time samples. */
-                    PushMessage(GET_OFFSET, nRequestID, runtime::timestamp(true));
-
-                    /* Update the samples timer. */
-                    nLastSamples = runtime::timestamp();
-                }
-
-                /* Unreliabilitiy re-requesting (max time since getblocks) */
-                if(config::GetBoolArg("-fastsync", true)
-                && TAO::Ledger::ChainState::Synchronizing()
-                && addrFastSync == GetAddress()
-                && nLastTimeReceived.load() + 10 < runtime::timestamp()
-                && nLastGetBlocks.load() + 10 < runtime::timestamp())
-                {
-                    debug::log(0, NODE "fast sync event timeout");
-
-                    /* Switch to a new node. */
-                    SwitchNode();
-
-                    /* Reset the event timeouts. */
-                    nLastTimeReceived = runtime::timestamp();
-                    nLastGetBlocks    = runtime::timestamp();
+                    /* Rebroadcast transactions. */
+                    if(!TAO::Ledger::ChainState::Synchronizing())
+                        Legacy::Wallet::GetInstance().ResendWalletTransactions();
                 }
 
                 break;
@@ -289,33 +216,36 @@ namespace LLP
             case EVENT_DISCONNECT:
             {
                 /* Debut output. */
-                uint8_t reason = LENGTH;
                 std::string strReason;
-
-                switch(reason)
+                switch(LENGTH)
                 {
                     case DISCONNECT_TIMEOUT:
-                        strReason = "DISCONNECT_TIMEOUT";
+                        strReason = "Timeout";
                         break;
-                    case DISCONNECT_ERRORS:
-                        strReason = "DISCONNECT_ERRORS";
-                        break;
-                    case DISCONNECT_DDOS:
-                        strReason = "DISCONNECT_DDOS";
-                        break;
-                    case DISCONNECT_FORCE:
-                        strReason = "DISCONNECT_FORCE";
-                        break;
-                    default:
-                        strReason = "UNKNOWN";
-                        break;
-                }
 
-                /* Detect if the fast sync node was disconnected. */
-                if(addrFastSync == GetAddress())
-                {
-                    /* Switch the node. */
-                    SwitchNode();
+                    case DISCONNECT_ERRORS:
+                        strReason = "Errors";
+                        break;
+
+                    case DISCONNECT_POLL_ERROR:
+                        strReason = "Poll Error";
+                        break;
+
+                    case DISCONNECT_POLL_EMPTY:
+                        strReason = "Unavailable";
+                        break;
+
+                    case DISCONNECT_DDOS:
+                        strReason = "DDOS";
+                        break;
+
+                    case DISCONNECT_FORCE:
+                        strReason = "Force";
+                        break;
+
+                    default:
+                        strReason = "Unknown";
+                        break;
                 }
 
                 /* Debug output for node disconnect. */
@@ -325,17 +255,19 @@ namespace LLP
                 if(TRITIUM_SERVER && TRITIUM_SERVER->pAddressManager)
                     TRITIUM_SERVER->pAddressManager->AddAddress(GetAddress(), ConnectState::DROPPED);
 
-                /* Finally remove this connection from the global map by session*/
                 {
                     LOCK(SESSIONS_MUTEX);
 
-                    /* Free this session, if it is this connection that we mapped.
-                       When we disconnect a duplicate session then it will not have been added to the map,
-                       so we need to skip removing the session ID*/
-                    if(TritiumNode::mapConnectedSessions.count(nCurrentSession)
-                    && TritiumNode::mapConnectedSessions[nCurrentSession] == this)
-                        TritiumNode::mapConnectedSessions.erase(nCurrentSession);
+                    /* Check for sessions to free. */
+                    if(mapSessions.count(nCurrentSession))
+                    {
+                        /* Make sure that we aren't freeing our session if handling duplicate connections. */
+                        const std::pair<uint32_t, uint32_t>& pair = mapSessions[nCurrentSession];
+                        if(pair.first == nDataThread && pair.second == nDataIndex)
+                            mapSessions.erase(nCurrentSession);
+                    }
                 }
+
 
                 break;
             }
@@ -346,633 +278,663 @@ namespace LLP
     /** Main message handler once a packet is recieved. **/
     bool TritiumNode::ProcessPacket()
     {
-
+        /* Deserialize the packeet from incoming packet payload. */
         DataStream ssPacket(INCOMING.DATA, SER_NETWORK, PROTOCOL_VERSION);
         switch(INCOMING.MESSAGE)
         {
-            case DAT_DUPE_DISCONNECT:
-            {
-                /* The disconnect message is sent by peers when they want to gracefully close a connection
-                   when they have detected more than one connection to the same node.
-                   We send the same message in reply and then return false from ProcessPacket which will
-                   in turn issue a FORCE_DISCONNECT event on this connection to gracefully close the
-                   connection at our end.  By responding with a DAT_DUPE_DISCONNECT message the same will occur
-                   at the calling end to ensure both ends close gracefully. */
-                   debug::log(0, NODE "Disconnecting duplicate connection.");
-                   PushMessage(DAT_DUPE_DISCONNECT);
-                return false;
-                break;
-            }
 
-
-            case DAT_VERSION:
+            /* Handle for the version command. */
+            case ACTION::VERSION:
             {
-                /* Deserialize the session identifier. */
+                /* Hard requirement for version. */
+                ssPacket >> nProtocolVersion;
+
+                /* Get the current session-id. */
                 ssPacket >> nCurrentSession;
 
-                /* Get your address. */
-                BaseAddress addr;
-                ssPacket >> addr;
+                /* Get the version string. */
+                ssPacket >> strFullVersion;
 
                 /* Check for a connect to self. */
+                if(nCurrentSession == SESSION_ID)
+                    return debug::drop(NODE, "connected to self");
+
+                /* Check if session is already connected. */
                 {
                     LOCK(SESSIONS_MUTEX);
-                    if(nCurrentSession == TritiumNode::nSessionID)
-                    {
-                        debug::log(0, NODE "connected to self");
+                    if(mapSessions.count(nCurrentSession))
+                        return debug::drop(NODE, "duplicate connection");
 
-                        /* Cache self-address in the banned list of the Address Manager. */
-                        if(TRITIUM_SERVER && TRITIUM_SERVER->pAddressManager)
-                            TRITIUM_SERVER->pAddressManager->Ban(addr);
-
-                        return false;
-                    }
-                    /* Check for existing connection to same node*/
-                    else if(TritiumNode::mapConnectedSessions.count(nCurrentSession) > 0)
-                    {
-                        TritiumNode* pConnection = TritiumNode::mapConnectedSessions.at(nCurrentSession);
-
-                        /* If the existing connection is via LISP then we make a preference for it and disallow the
-                        incoming connection. Otherwise if the incoming is via LISP and the existing is not we
-                        disconnect the the existing connection in favour of the LISP route */
-                        if(!GetAddress().IsEID() || pConnection->GetAddress().IsEID())
-                        {
-                            /* don't allow new connection */
-                            debug::log(0, NODE "duplicate connection attempt to same server prevented (session ID ", nCurrentSession, ").  Existing: ", pConnection->GetAddress().ToStringIP(), " New: ", GetAddress().ToStringIP());
-
-                            /* If we attempted to connect via a different IP to the existing connection then
-                               notify the AddressManager to ban the second IP so that we favour the existing one */
-                            if(GetAddress() != pConnection->GetAddress() && TRITIUM_SERVER && TRITIUM_SERVER->pAddressManager)
-                                TRITIUM_SERVER->pAddressManager->Ban(addr);
-
-                            return false;
-                        }
-                        else
-                        {
-                            /* initiate disconnect of existing connection in favour of new one */
-                            debug::log(0, NODE "duplicate connection attempt to same server (session ID ", nCurrentSession, ").  Switching to EID connection.  Existing: ", pConnection->GetAddress().ToStringIP(), " New: ", GetAddress().ToStringIP());
-
-                            /* Notify the peer to disconnect the existing connection */
-                            pConnection->PushMessage(DAT_DUPE_DISCONNECT);
-
-                            /* Notify the AddressManager to ban the underlay IP so that we favour the EID */
-                            if(TRITIUM_SERVER && TRITIUM_SERVER->pAddressManager)
-                                TRITIUM_SERVER->pAddressManager->Ban(pConnection->GetAddress());
-                        }
-                    }
-
-
-                    /* Add this connection into the global map once we have verified the DAT_VERSION message and
-                        are happy to allow the connection */
-                    TritiumNode::mapConnectedSessions[nCurrentSession] = this;
+                    /* Set this to the current session. */
+                    mapSessions[nCurrentSession] = std::make_pair(nDataThread, nDataIndex);
                 }
 
-                /* Debug output for offsets. */
-                debug::log(3, NODE "received session identifier ",nCurrentSession);
+                /* Get the current connected legacy node. */
+                memory::atomic_ptr<LegacyNode>& pnode = LegacyNode::GetNode(nCurrentSession);
+                try //we want to catch exceptions thrown by atomic_ptr in the case there was a free on another thread
+                {
+                    /* if connected, send a drop message. */
+                    if(pnode != nullptr)
+                        pnode->Disconnect();
+                }
+                catch(const std::exception& e) {}
 
 
-                /* Send version message if connection is inbound. */
+                /* Check versions. */
+                if(nProtocolVersion < MIN_PROTO_VERSION)
+                    return debug::drop(NODE, "connection using obsolete protocol version");
+
+                /* Respond with version message if incoming connection. */
                 if(!fOUTGOING)
-                    PushMessage(DAT_VERSION, TritiumNode::nSessionID, GetAddress());
-                else
-                    PushMessage(GET_ADDRESSES);
+                {
+                    /* Respond with version message. */
+                    PushMessage(uint8_t(ACTION::VERSION), PROTOCOL_VERSION, SESSION_ID, version::CLIENT_VERSION_BUILD_STRING);
 
-                /* Ask the new node for their inventory*/
-                PushGetInventory(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
-
-                // if(fOUTGOING && nAsked == 0)
-                // {
-                //     ++nAsked;
-                //    PushGetInventory(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
-                // }
-
+                    /* Notify node of current block height. */
+                    PushMessage(ACTION::NOTIFY,
+                        uint8_t(TYPES::HEIGHT),     TAO::Ledger::ChainState::nBestHeight.load(),
+                        uint8_t(TYPES::CHECKPOINT), TAO::Ledger::ChainState::hashCheckpoint.load());
+                }
 
                 break;
             }
 
 
-            case GET_OFFSET:
+            /* Handle for auth command. */
+            case ACTION::AUTH:
             {
-                /* Deserialize request id. */
-                uint32_t nRequestID;
-                ssPacket >> nRequestID;
-
-                /* Deserialize the timestamp. */
-                uint64_t nTimestamp;
-                ssPacket >> nTimestamp;
-
-                /* Find the sample offset. */
-                int32_t nOffset = (runtime::timestamp(true) - nTimestamp);
-
-                /* Debug output for offsets. */
-                debug::log(3, NODE "received timestamp of ", nTimestamp, " sending offset ", nOffset);
-
-                /* Push a timestamp in response. */
-                PushMessage(DAT_OFFSET, nRequestID, nOffset);
-
-                break;
-            }
-
-
-            case DAT_OFFSET:
-            {
-                /* Deserialize the request id. */
-                uint32_t nRequestID;
-                ssPacket >> nRequestID;
-
-                /* Check map known requests. */
-                if(!mapSentRequests.count(nRequestID))
-                {
-                    if(DDOS)
-                        DDOS->rSCORE += 5;
-
-                    debug::log(3, NODE "Invalid Request : Message Not Requested [", nRequestID, "][", nLatency, " ms]");
-
-                    break;
-                }
-
-                /* Check the time since request was sent. */
-                if(runtime::timestamp() - mapSentRequests[nRequestID] > 10)
-                {
-                    debug::log(3, NODE "Invalid Request : Message Stale [", nRequestID, "][", nLatency, " ms]");
-
-                    if(DDOS)
-                        DDOS->rSCORE += 15;
-
-                    mapSentRequests.erase(nRequestID);
-
-                    break;
-                }
-
-                /* Deserialize the offset. */
-                int32_t nOffset;
-                ssPacket >> nOffset;
-
-                /* Adjust the Offset for Latency. */
-                nOffset -= nLatency;
-
-                /* Debug output for offsets. */
-                debug::log(3, NODE "Received Unified Offset ", nOffset, " [", nRequestID, "][", nLatency, " ms]");
-
-                /* Remove sent requests from mpa. */
-                mapSentRequests.erase(nRequestID);
-
-                break;
-            }
-
-
-            case GET_INVENTORY:
-            {
-                TAO::Ledger::Locator locator;
-                uint1024_t hashStop;
-                ssPacket >> locator >> hashStop;
-
-                /* Return if nothing in locator. */
-                if(locator.vHave.size() == 0)
-                    return false;
-
-                /* Get the block state from. */
-                std::vector<TAO::Ledger::BlockState> vStates;
-                for(const auto& have : locator.vHave)
-                {
-                    /* Check the database for the ancestor block. */
-                    if(LLD::Ledger->BatchRead(have, "block", vStates, 1000))
-                        break;
-                }
-
-                /* If no ancestor blocks were found. */
-                if(vStates.size() == 0)
+                /* Disable AUTH messages when synchronizing. */
+                if(TAO::Ledger::ChainState::Synchronizing())
                     return true;
 
-                /* Set the search from search limit. */
-                int32_t nLimit = 1000;
-                debug::log(2, NODE "getblocks ", vStates[0].nHeight, " to ", hashStop.SubString(), " limit ", nLimit);
+                /* Hard requirement for genesis. */
+                ssPacket >> hashGenesis;
 
-                /* Iterate forward the blocks required. */
-                std::vector<CInv> vInv;
-                bool fIsLegacy = false;
+                /* Debug logging. */
+                debug::log(0, NODE, "new auth request from ", hashGenesis.SubString());
 
-                /* Loop through found states. */
-                for(const auto& state : vStates)
+                /* Get the signature information. */
+                if(hashGenesis == 0)
+                    return debug::drop(NODE, "cannot authorize with reserved genesis");
+
+                /* Get the crypto register. */
+                TAO::Register::Object crypto;
+                if(!TAO::Register::GetNameRegister(hashGenesis, "crypto", crypto))
+                    return debug::drop(NODE, "authorization failed, missing crypto register");
+
+                /* Parse the object. */
+                if(!crypto.Parse())
+                    return debug::drop(NODE, "failed to parse crypto register");
+
+                /* Check the authorization hash. */
+                uint256_t hashCheck = crypto.get<uint256_t>("network");
+                if(hashCheck != 0) //a hash of 0 is a disabled authorization hash
                 {
-                    /* Check if in main chain. */
-                    if(!state.IsInMainChain())
-                        continue;
+                    /* Get the public key. */
+                    std::vector<uint8_t> vchPubKey;
+                    ssPacket >> vchPubKey;
 
-                    fIsLegacy = state.vtx[0].first == TAO::Ledger::TYPE::LEGACY_TX;
+                    /* Check the public key to expected authorization key. */
+                    if(LLC::SK256(vchPubKey) != hashCheck)
+                        return debug::drop(NODE, "failed to authorize, invalid public key");
 
-                    /* Check for hash stop. */
-                    if(state.GetHash() == hashStop)
+                    /* Get the signature. */
+                    std::vector<uint8_t> vchSig;
+                    ssPacket >> vchSig;
+
+                    /* Switch based on signature type. */
+                    switch(hashCheck.GetType())
                     {
-                        debug::log(3, NODE "getblocks stopping at ", state.nHeight, " to ", state.GetHash().SubString());
-
-                        /* Tell about latest block if hash stop is found. */
-                        if(hashStop != TAO::Ledger::ChainState::hashBestChain.load())
+                        /* Support for the FALCON signature scheeme. */
+                        case TAO::Ledger::SIGNATURE::FALCON:
                         {
-                            /* First add all of the transactions hashes from the block.
-                               Start at index 1 so that we dont' include producer, as that is sent as part of the block */
-                            for(int i=1; i < state.vtx.size(); i++)
-                                vInv.push_back(CInv(state.vtx[i].second, state.vtx[i].first == TAO::Ledger::TYPE::LEGACY_TX ? MSG_TX_LEGACY : MSG_TX_TRITIUM));
+                            /* Create the FL Key object. */
+                            LLC::FLKey key;
 
-                            /* lastly add the block hash */
-                            vInv.push_back(CInv(TAO::Ledger::ChainState::hashBestChain.load(), fIsLegacy ? MSG_BLOCK_LEGACY : MSG_BLOCK_TRITIUM));
-                        }
-
-
-                        break;
-                    }
-
-                    /* Push new item to inventory. */
-                    /* First add all of the transactions hashes from the block.
-                        Start at index 1 so that we dont' include producer, as that is sent as part of the block */
-                    for(int i=1; i < state.vtx.size(); i++)
-                        vInv.push_back(CInv(state.vtx[i].second, state.vtx[i].first == TAO::Ledger::TYPE::LEGACY_TX ? MSG_TX_LEGACY : MSG_TX_TRITIUM));
-
-                    /* lastly add the block hash */
-                    vInv.push_back(CInv(state.GetHash(), fIsLegacy ? MSG_BLOCK_LEGACY : MSG_BLOCK_TRITIUM));
-
-                    /* Stop at limits. */
-                    if(--nLimit <= 0 || vInv.size() > 50000)
-                    {
-                        // When this block is requested, we'll send an inv that'll make them
-                        // getblocks the next batch of inventory.
-                        debug::log(3, NODE "getblocks stopping at limit ", state.nHeight, " to ", state.GetHash().SubString());
-
-                        hashContinue = state.GetHash();
-                        break;
-                    }
-                }
-
-                /* Push the inventory. */
-                if(vInv.size() > 0)
-                    PushMessage(DAT_INVENTORY, vInv);
-
-                break;
-            }
-
-            /* Handle new Inventory Messages.
-            * This is used to know what other nodes have in their inventory to compare to our own.
-            */
-            case DAT_INVENTORY:
-            {
-                std::vector<CInv> vInv;
-                ssPacket >> vInv;
-
-                debug::log(3, NODE "Inventory Message of ", vInv.size(), " elements");
-
-                /* Make sure the inventory size is not too large. */
-                if(vInv.size() > 100000)
-                {
-                    if(DDOS)
-                        DDOS->rSCORE += 20;
-
-                    return true;
-                }
-
-                /* Fast sync mode. */
-                if(config::GetBoolArg("-fastsync", true)
-                && addrFastSync == GetAddress()
-                && TAO::Ledger::ChainState::Synchronizing()
-                && (vInv.back().GetType() == MSG_BLOCK_LEGACY || vInv.back().GetType() == MSG_BLOCK_TRITIUM)
-                && vInv.size() > 100) //an assumption that a getblocks batch will be at least 100 blocks or more.
-                {
-                    /* Normal case of asking for a getblocks inventory message. */
-                    PushGetInventory(vInv.back().GetHash(), uint1024_t(0));
-                }
-
-                std::vector<CInv> vGet;
-
-                /* Make a copy of the data to request that is not in inventory. */
-                if(!TAO::Ledger::ChainState::Synchronizing())
-                {
-                    /* Filter duplicates if not synchronizing. */
-
-                    /* Reverse iterate for blocks in inventory. */
-                    std::reverse(vInv.begin(), vInv.end());
-                    for(const auto& inv : vInv)
-                    {
-                        /* If this is a block type, only request if not in database. */
-                        if(inv.GetType() == MSG_BLOCK_LEGACY || inv.GetType() == MSG_BLOCK_TRITIUM)
-                        {
-                            /* Check the LLD for block. */
-                            if(!LLD::Ledger->HasBlock(inv.GetHash()))
-                            {
-                                /* Add this item to request queue. */
-                                vGet.push_back(inv);
-
-                                /* Add this item to cached relay inventory (key only). */
-                                cacheInventory.Add(inv.GetHash());
-                            }
-                            else
-                                break; //break since iterating backwards (searching newest to oldest)
-                                    //the assumtion here is that if you have newer inventory, you have older
-                        }
-
-                        /* Check the memory pool for transactions being relayed. */
-                        else if(!TAO::Ledger::mempool.Has(uint512_t(inv.GetHash())))
-                        {
-                            /* Add this item to request queue. */
-                            vGet.push_back(inv);
-
-                            /* Add this item to cached relay inventory (key only). */
-                            cacheInventory.Add(uint512_t(inv.GetHash()));
-                        }
-                    }
-
-                    /* Reverse inventory to get to receive data in proper order. */
-                    std::reverse(vGet.begin(), vGet.end());
-
-                }
-                else
-                    vGet = vInv; /* just request data for all inventory*/
-
-                /* Ask your friendly neighborhood node for the data */
-                if(vGet.size() > 0)
-                    PushMessage(GET_DATA, vGet);
-
-                break;
-            }
-
-            /* Get the Data for either a transaction or a block. */
-            case GET_DATA:
-            {
-                std::vector<CInv> vInv;
-                ssPacket >> vInv;
-
-                if(vInv.size() > 100000)
-                {
-                    if(DDOS)
-                        DDOS->rSCORE += 20;
-
-                    return true;
-                }
-
-                debug::log(3, NODE "received getdata of ", vInv.size(), " elements");
-
-                /* Loop the inventory and deliver messages. */
-                for(const auto& inv : vInv)
-                {
-
-                    /* Log the inventory message receive. */
-                    debug::log(3, NODE "processing getdata ", inv.ToString());
-
-                    /* Handle the block message. */
-                    if(inv.GetType() == MSG_BLOCK_LEGACY || inv.GetType() == MSG_BLOCK_TRITIUM)
-                    {
-                        /* Don't send genesis if asked for. */
-                        if(inv.GetHash() == TAO::Ledger::ChainState::Genesis())
-                            continue;
-
-                        /* Read the block from disk. */
-                        TAO::Ledger::BlockState state;
-                        if(!LLD::Ledger->ReadBlock(inv.GetHash(), state))
-                        {
-                            debug::log(3, NODE "getdata readblock failed ", inv.GetHash().SubString());
-                            continue;
-                        }
-
-                        /* Push the response message. */
-                        if(inv.GetType() == MSG_BLOCK_TRITIUM)
-                        {
-                            TAO::Ledger::TritiumBlock block(state);
-                            PushMessage(DAT_BLOCK, (uint8_t)MSG_BLOCK_TRITIUM, block);
-                        }
-                        else
-                        {
-                            Legacy::LegacyBlock block(state);
-                            PushMessage(DAT_BLOCK, (uint8_t)MSG_BLOCK_LEGACY, block);
-                        }
-
-
-                        /* Trigger a new getblocks if hash continue is set. */
-                        if(inv.GetHash() == hashContinue)
-                        {
-                            PushMessage(GET_INVENTORY, TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()), uint1024_t(0));
-                            hashContinue = 0;
-                        }
-                    }
-                    else if(inv.GetType() == LLP::MSG_TX_TRITIUM)
-                    {
-                        TAO::Ledger::Transaction tx;
-                        if(!TAO::Ledger::mempool.Get(uint512_t(inv.GetHash()), tx)
-                        && !LLD::Ledger->ReadTx(uint512_t(inv.GetHash()), tx))
-                            continue;
-
-                        PushMessage(DAT_TRANSACTION, (uint8_t)LLP::MSG_TX_TRITIUM, tx);
-                    }
-                    else if(inv.GetType() == LLP::MSG_TX_LEGACY)
-                    {
-                        Legacy::Transaction tx;
-                        if(!TAO::Ledger::mempool.Get((uint512_t)inv.GetHash(), tx)
-                        && !LLD::Legacy->ReadTx((uint512_t)inv.GetHash(), tx))
-                            continue;
-
-                        PushMessage(DAT_TRANSACTION, (uint8_t)LLP::MSG_TX_LEGACY, tx);
-                    }
-                }
-
-                break;
-            }
-
-
-            case DAT_TRANSACTION:
-            {
-                /* Deserialize the tx. */
-                uint8_t type;
-                ssPacket >> type;
-
-                //PS TODO See if we can't refactor this if...else since most of the code is cloned
-                if(type == LLP::MSG_TX_TRITIUM)
-                {
-                    TAO::Ledger::Transaction tx;
-                    ssPacket >> tx;
-
-
-                    /* Check if we have it. */
-                    if(!LLD::Ledger->HasTx(tx.GetHash()))
-                    {
-                        /* Debug output for tx. */
-                        debug::log(3, NODE "Received tx ", tx.GetHash().SubString());
-
-                        /* Add the transaction to the memory pool. */
-                        if(TAO::Ledger::mempool.Accept(tx, this))
-                        {
-                            std::vector<CInv> vInv = { CInv(tx.GetHash(), MSG_TX_TRITIUM) };
-                            TRITIUM_SERVER->Relay(DAT_INVENTORY, vInv);
-                        }
-                        else
-                        {
-                            /* Give this item a time penalty in the relay cache to make it ignored from here forward. */
-                            //cacheInventory.Ban(tx.GetHash());
-                        }
-                    }
-                    else
-                    {
-                        /* Debug output for offsets. */
-                       debug::log(3, NODE "already have tx ", tx.GetHash().SubString());
-                    }
-
-                }
-                else if(type == LLP::MSG_TX_LEGACY)
-                {
-                    Legacy::Transaction tx;
-                    ssPacket >> tx;
-
-
-                    /* Check if we have it. */
-                    if(!LLD::Legacy->HasTx(tx.GetHash()))
-                    {
-                        /* Debug output for tx. */
-                        debug::log(3, NODE "Received tx ", tx.GetHash().SubString());
-
-                        /* Check if tx is valid. */
-                        if(!tx.CheckTransaction())
-                        {
-                            debug::error(NODE "tx ", tx.GetHash().SubString(), " REJECTED");
+                            /* Set the public key and verify. */
+                            key.SetPubKey(vchPubKey);
+                            if(!key.Verify(hashGenesis.GetBytes(), vchSig))
+                                return debug::drop(NODE, "invalid transaction signature");
 
                             break;
                         }
 
-                        /* Add the transaction to the memory pool. */
-                        if(TAO::Ledger::mempool.Accept(tx))
+                        /* Support for the BRAINPOOL signature scheme. */
+                        case TAO::Ledger::SIGNATURE::BRAINPOOL:
                         {
-                            TAO::Ledger::BlockState notUsed;
-                            Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, notUsed, true);
+                            /* Create EC Key object. */
+                            LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
 
-                            std::vector<CInv> vInv = { CInv(tx.GetHash(), MSG_TX_LEGACY) };
-                            TRITIUM_SERVER->Relay(DAT_INVENTORY, vInv);
+                            /* Set the public key and verify. */
+                            key.SetPubKey(vchPubKey);
+                            if(!key.Verify(hashGenesis.GetBytes(), vchSig))
+                                return debug::drop(NODE, "invalid transaction signature");
+
+                            break;
                         }
-                        else
+
+                        default:
+                            return debug::drop(NODE, "invalid signature type");
+                    }
+
+                    /* Get the crypto register. */
+                    TAO::Register::Object trust;
+                    if(!TAO::Register::GetNameRegister(hashGenesis, "trust", trust))
+                        return debug::drop(NODE, "authorization failed, missing trust register");
+
+                    /* Parse the object. */
+                    if(!trust.Parse())
+                        return debug::drop(NODE, "failed to parse trust register");
+
+                    /* Set the node's current trust score. */
+                    nTrust = trust.get<uint64_t>("trust");
+
+                    /* Set to authorized node if passed all cryptographic checks. */
+                    fAuthorized = true;
+                }
+
+                break;
+            }
+
+
+            /* Handle for list command. */
+            case ACTION::LIST:
+            {
+                /* Set the limits. */
+                uint32_t nLimits = 1000;
+
+                /* Loop through the binary stream. */
+                while(!ssPacket.End() && nLimits != 0)
+                {
+                    /* Get the next type in stream. */
+                    uint8_t nType = 0;
+                    ssPacket >> nType;
+
+                    /* Check for legacy specifier. */
+                    bool fLegacy = false;
+                    if(nType == TYPES::LEGACY)
+                    {
+                        /* Set legacy specifier. */
+                        fLegacy = true;
+
+                        /* Go to next type in stream. */
+                        ssPacket >> nType;
+                    }
+
+
+                    /* Switch based on codes. */
+                    switch(nType)
+                    {
+                        /* Standard type for a block. */
+                        case TYPES::BLOCK:
                         {
-                            /* Give this item a time penalty in the relay cache to make it ignored from here forward. */
-                            cacheInventory.Ban(tx.GetHash());
+                            /* Get the index of block. */
+                            uint1024_t hashStart;
+
+                            /* Get the object type. */
+                            uint8_t nObject = 0;
+                            ssPacket >> nObject;
+
+                            /* Switch based on object. */
+                            switch(nObject)
+                            {
+                                /* Check for start from uint1024 type. */
+                                case TYPES::UINT1024_T:
+                                {
+                                    /* Deserialize start. */
+                                    ssPacket >> hashStart;
+
+                                    break;
+                                }
+
+                                /* Check for start from a locator. */
+                                case TYPES::LOCATOR:
+                                {
+                                    /* Deserialize locator. */
+                                    TAO::Ledger::Locator locator;
+                                    ssPacket >> locator;
+
+                                    /* Check locator size. */
+                                    uint32_t nSize = locator.vHave.size();
+                                    if(nSize > 30)
+                                        return debug::drop(NODE, "locator size ", nSize, " is too large");
+
+                                    /* Find common ancestor block. */
+                                    for(const auto& have : locator.vHave)
+                                    {
+                                        /* Check the database for the ancestor block. */
+                                        if(LLD::Ledger->HasBlock(have))
+                                        {
+                                            /* Set the starting hash. */
+                                            hashStart = have;
+
+                                            break;
+                                        }
+                                    }
+
+                                    break;
+                                }
+
+                                default:
+                                    return debug::drop(NODE, "malformed starting index");
+                            }
+
+                            /* Check for search from last. */
+                            if(hashStart == 0)
+                                hashStart = hashLastBlock;
+
+                            /* Get the ending hash. */
+                            uint1024_t hashStop;
+                            ssPacket >> hashStop;
+
+                            /* Do a sequential read to obtain the list. */
+                            std::vector<TAO::Ledger::BlockState> vStates;
+                            while(LLD::Ledger->BatchRead(hashStart, "block", vStates, 100))
+                            {
+                                /* Loop through all available states. */
+                                for(const auto& state : vStates)
+                                {
+                                    /* Cache the block hash. */
+                                    hashStart = state.GetHash();
+
+                                    /* Skip if not in main chain. */
+                                    if(!state.IsInMainChain())
+                                        continue;
+
+                                    /* Check for legacy. */
+                                    if(fLegacy)
+                                    {
+                                        /* Check for version 7. */
+                                        if(state.nVersion >= 7)
+                                            break;
+
+                                        /* Build the legacy block from state. */
+                                        Legacy::LegacyBlock block(state);
+
+                                        /* Push message in response. */
+                                        PushMessage(TYPES::LEGACY, uint8_t(TYPES::BLOCK), block);
+                                    }
+                                    else
+                                    {
+                                        /* Check for version 7. */
+                                        if(state.nVersion < 7)
+                                            continue;
+
+                                        /* Build the legacy block from state. */
+                                        TAO::Ledger::TritiumBlock block(state);
+
+                                        /* Push message in response. */
+                                        PushMessage(TYPES::BLOCK, block);
+                                    }
+
+                                    /* Check for stop hash. */
+                                    if(--nLimits == 0 || hashStart == hashStop)
+                                        break;
+                                }
+
+                                /* Check for stop or limits. */
+                                if(nLimits == 0 || hashStart == hashStop)
+                                    break;
+                            }
+
+                            /* Set the last block. */
+                            hashLastBlock = hashStart;
+
+                            break;
                         }
+
+                        /* Standard type for a block. */
+                        case TYPES::TRANSACTION:
+                        {
+                            /* Get the index of block. */
+                            uint512_t hashStart;
+                            ssPacket >> hashStart;
+
+                            /* Get the ending hash. */
+                            uint512_t hashStop;
+                            ssPacket >> hashStop;
+
+                            /* Check for legacy. */
+                            if(fLegacy)
+                            {
+                                /* Check for search from last. */
+                                if(hashStart == 0)
+                                    hashStart = hashLastTx[0];
+
+                                /* Do a sequential read to obtain the list. */
+                                std::vector<Legacy::Transaction> vtx;
+                                while(LLD::Legacy->BatchRead(hashStart, "tx", vtx, 100))
+                                {
+                                    /* Loop through all available states. */
+                                    for(const auto& tx : vtx)
+                                    {
+                                        /* Cache the block hash. */
+                                        hashStart = tx.GetHash();
+
+                                        /* Push the transaction. */
+                                        PushMessage(TYPES::LEGACY, uint8_t(TYPES::TRANSACTION), tx);
+
+                                        /* Check for stop hash. */
+                                        if(--nLimits == 0 || hashStart == hashStop)
+                                            break;
+                                    }
+
+                                    /* Check for stop or limits. */
+                                    if(nLimits == 0 || hashStart == hashStop)
+                                        break;
+                                }
+
+                                /* Set the last transction. */
+                                hashLastTx[0] = hashStart;
+                            }
+                            else
+                            {
+                                /* Check for search from last. */
+                                if(hashStart == 0)
+                                    hashStart = hashLastTx[1];
+
+                                /* Do a sequential read to obtain the list. */
+                                std::vector<TAO::Ledger::Transaction> vtx;
+                                while(LLD::Ledger->BatchRead(hashStart, "tx", vtx, 100))
+                                {
+                                    /* Loop through all available states. */
+                                    for(const auto& tx : vtx)
+                                    {
+                                        /* Cache the block hash. */
+                                        hashStart = tx.GetHash();
+
+                                        /* Skip if not in main chain. */
+                                        if(!tx.IsConfirmed())
+                                            continue;
+
+                                        /* Push the transaction. */
+                                        PushMessage(TYPES::TRANSACTION, tx);
+
+                                        /* Check for stop hash. */
+                                        if(--nLimits == 0 || hashStart == hashStop)
+                                            break;
+                                    }
+
+                                    /* Check for stop or limits. */
+                                    if(nLimits == 0 || hashStart == hashStop)
+                                        break;
+                                }
+
+                                /* Set the last transction. */
+                                hashLastTx[1] = hashStart;
+                            }
+
+                            break;
+                        }
+
+
+                        /* Standard type for a block. */
+                        case TYPES::ADDRESS:
+                        {
+                            /* Get the total list amount. */
+                            uint32_t nTotal;
+                            ssPacket >> nTotal;
+
+                            /* Check for size constraints. */
+                            if(nTotal > 10000)
+                                nTotal = 10000;
+
+                            /* Get addresses from manager. */
+                            std::vector<BaseAddress> vAddr;
+                            if(TRITIUM_SERVER->pAddressManager)
+                                TRITIUM_SERVER->pAddressManager->GetAddresses(vAddr);
+
+                            /* Add the best 1000 (or less) addresses. */
+                            const uint32_t nCount = std::min((uint32_t)vAddr.size(), nTotal);
+                            for(uint32_t n = 0; n < nCount; ++n)
+                                PushMessage(TYPES::ADDRESS, vAddr[n]);
+
+                            break;
+                        }
+
+                        /* Catch malformed notify binary streams. */
+                        default:
+                            return debug::drop(NODE, "ACTION::LIST malformed binary stream");
                     }
-                    else
+
+                }
+
+                break;
+            }
+
+
+            /* Handle for get command. */
+            case ACTION::GET:
+            {
+                /* Loop through the binary stream. */
+                while(!ssPacket.End())
+                {
+                    /* Get the next type in stream. */
+                    uint8_t nType = 0;
+                    ssPacket >> nType;
+
+                    /* Check for legacy specifier. */
+                    bool fLegacy = false;
+                    if(nType == TYPES::LEGACY)
                     {
-                        /* Debug output for offsets. */
-                        debug::log(3, NODE "already have tx ", tx.GetHash().SubString());
+                        /* Set legacy specifier. */
+                        fLegacy = true;
+
+                        /* Go to next type in stream. */
+                        ssPacket >> nType;
                     }
 
-                }
-
-                break;
-            }
-
-
-
-            case DAT_BLOCK:
-            {
-                uint8_t type;
-                ssPacket >> type;
-
-                if(type == MSG_BLOCK_LEGACY)
-                {
-                    /* Deserialize the block. */
-                    Legacy::LegacyBlock block;
-                    ssPacket >> block;
-
-                    debug::log(3, NODE "Received legacy block data ", block.GetHash().SubString());
-
-                    /* Process the block. */
-                    LegacyNode::Process(block, nullptr);
-                }
-                else if(type == MSG_BLOCK_TRITIUM)
-                {
-                    /* Deserialize the block. */
-                    TAO::Ledger::TritiumBlock block;
-                    ssPacket >> block;
-
-                    debug::log(3, NODE "Received tritium block data ", block.GetHash().SubString());
-
-                    /* Process the block. */
-                    TritiumNode::Process(block, this);
-                }
-
-                break;
-            }
-
-
-            case GET_ADDRESSES:
-            {
-                /* Grab the connections. */
-                if(TRITIUM_SERVER)
-                {
-                    std::vector<LegacyAddress> vAddr = TRITIUM_SERVER->GetAddresses();
-                    std::vector<LegacyAddress> vLegacyAddr;
-
-                    for(auto it = vAddr.begin(); it != vAddr.end(); ++it)
-                        vLegacyAddr.push_back(*it);
-
-                    /* Push the response addresses. */
-                    PushMessage(DAT_ADDRESSES, vLegacyAddr);
-                }
-
-                break;
-            }
-
-
-            case DAT_ADDRESSES:
-            {
-                /* De-Serialize the Addresses. */
-                std::vector<LegacyAddress> vLegacyAddr;
-                std::vector<BaseAddress> vAddr;
-                ssPacket >> vLegacyAddr;
-
-                /* Don't want addr from older versions unless seeding */
-                if(vLegacyAddr.size() > 2000)
-                {
-                    if(DDOS)
-                        DDOS->rSCORE += 20;
-
-                    return debug::error(NODE, "message addr size() = ", vLegacyAddr.size(), "... Dropping Connection");
-                }
-
-                if(TRITIUM_SERVER)
-                {
-                    /* try to establish the connection on the port the server is listening to */
-                    for(auto it = vLegacyAddr.begin(); it != vLegacyAddr.end(); ++it)
+                    /* Switch based on codes. */
+                    switch(nType)
                     {
-                        it->SetPort(TRITIUM_SERVER->GetPort());
+                        /* Standard type for a block. */
+                        case TYPES::BLOCK:
+                        {
+                            /* Get the index of block. */
+                            uint1024_t hashBlock;
+                            ssPacket >> hashBlock;
 
-                        /* Create a base address vector from legacy addresses */
-                        vAddr.push_back(*it);
+                            /* Check for legacy. */
+                            if(fLegacy)
+                            {
+                                /* Check the database for the block. */
+                                TAO::Ledger::BlockState state;
+                                if(LLD::Ledger->ReadBlock(hashBlock, state))
+                                {
+                                    Legacy::LegacyBlock block(state);
+                                    PushMessage(TYPES::LEGACY, uint8_t(TYPES::BLOCK), block);
+                                }
+                            }
+                            else
+                            {
+                                /* Check the database for the block. */
+                                TAO::Ledger::BlockState state;
+                                if(LLD::Ledger->ReadBlock(hashBlock, state))
+                                {
+                                    TAO::Ledger::TritiumBlock block(state);
+                                    PushMessage(TYPES::BLOCK, block);
+                                }
+                            }
+
+                            break;
+                        }
+
+                        /* Standard type for a block. */
+                        case TYPES::TRANSACTION:
+                        {
+                            /* Get the index of transaction. */
+                            uint512_t hashTx;
+                            ssPacket >> hashTx;
+
+                            /* Check for legacy. */
+                            if(fLegacy)
+                            {
+                                /* Check legacy database. */
+                                Legacy::Transaction tx;
+                                if(LLD::Legacy->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                                    PushMessage(TYPES::LEGACY, uint8_t(TYPES::TRANSACTION), tx);
+                            }
+                            else
+                            {
+                                /* Check ledger database. */
+                                TAO::Ledger::Transaction tx;
+                                if(!LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                                    PushMessage(TYPES::TRANSACTION, tx);
+                            }
+
+                            break;
+                        }
+
+                        /* Catch malformed notify binary streams. */
+                        default:
+                            return debug::drop(NODE, "ACTION::GET malformed binary stream");
                     }
-
-
-                    /* Add the connections to Tritium Server. */
-                    if(TRITIUM_SERVER->pAddressManager)
-                        TRITIUM_SERVER->pAddressManager->AddAddresses(vAddr);
                 }
 
                 break;
             }
 
-            case DAT_PING:
+
+            /* Handle for notify command. */
+            case ACTION::NOTIFY:
             {
-                /* Deserialize the nOnce. */
-                uint64_t nNonce;
+                /* Create response data stream. */
+                DataStream ssResponse(INCOMING.DATA, SER_NETWORK, PROTOCOL_VERSION);
+
+                /* Loop through the binary stream. */
+                while(!ssPacket.End())
+                {
+                    /* Get the next type in stream. */
+                    uint8_t nType = 0;
+                    ssPacket >> nType;
+
+                    /* Check for legacy specifier. */
+                    bool fLegacy = false;
+                    if(nType == TYPES::LEGACY)
+                    {
+                        /* Set legacy specifier. */
+                        fLegacy = true;
+
+                        /* Go to next type in stream. */
+                        ssPacket >> nType;
+                    }
+
+                    /* Switch based on codes. */
+                    switch(nType)
+                    {
+                        /* Standard type for a block. */
+                        case TYPES::BLOCK:
+                        {
+                            /* Check for legacy. */
+                            if(fLegacy)
+                                return debug::drop(NODE, "block notify can't have legacy specifier");
+
+                            /* Get the index of block. */
+                            uint1024_t hashBlock;
+                            ssPacket >> hashBlock;
+
+                            /* Check the database for the block. */
+                            if(!LLD::Ledger->HasBlock(hashBlock))
+                                ssResponse << uint8_t(TYPES::BLOCK) << hashBlock;
+
+                            break;
+                        }
+
+                        /* Standard type for a block. */
+                        case TYPES::TRANSACTION:
+                        {
+                            /* Get the index of transaction. */
+                            uint512_t hashTx;
+                            ssPacket >> hashTx;
+
+                            /* Check for legacy. */
+                            if(fLegacy)
+                            {
+                                /* Check legacy database. */
+                                if(!LLD::Legacy->HasTx(hashTx, TAO::Ledger::FLAGS::MEMPOOL))
+                                    ssResponse << uint8_t(TYPES::LEGACY) << uint8_t(TYPES::TRANSACTION) << hashTx;
+                            }
+                            else
+                            {
+                                /* Check ledger database. */
+                                if(!LLD::Ledger->HasTx(hashTx, TAO::Ledger::FLAGS::MEMPOOL))
+                                    ssResponse << uint8_t(TYPES::TRANSACTION) << hashTx;
+                            }
+
+                            break;
+                        }
+
+                        /* Standard type for height. */
+                        case TYPES::HEIGHT:
+                        {
+                            /* Check for legacy. */
+                            if(fLegacy)
+                                return debug::drop(NODE, "height can't have legacy specifier");
+
+                            /* Keep track of current height. */
+                            ssPacket >> nCurrentHeight;
+
+                            break;
+                        }
+
+                        /* Standard type for a checkpoint. */
+                        case TYPES::CHECKPOINT:
+                        {
+                            /* Check for legacy. */
+                            if(fLegacy)
+                                return debug::drop(NODE, "checkpoint can't have legacy specifier");
+
+                            /* Keep track of current checkpoint. */
+                            ssPacket >> hashCheckpoint;
+
+                            break;
+                        }
+
+                        /* Catch malformed notify binary streams. */
+                        default:
+                            return debug::drop(NODE, "ACTION::NOTIFY malformed binary stream");
+                    }
+                }
+
+                /* Push a request for the data from notifications. */
+                if(!ssResponse.size() != 0)
+                    WritePacket(NewMessage(ACTION::GET, ssResponse));
+
+                break;
+            }
+
+
+            /* Handle for ping command. */
+            case ACTION::PING:
+            {
+                /* Get the nonce. */
+                uint64_t nNonce = 0;
                 ssPacket >> nNonce;
 
-                debug::log(3, NODE "Ping (Nonce ", std::hex, nNonce, ")");
+                /* Push the pong response. */
+                PushMessage(ACTION::PONG, nNonce);
 
-                /* Push a pong as a response. */
-                PushMessage(DAT_PONG, nNonce);
+                /* Bump DDOS score. */
+                if(DDOS) //a ping shouldn't be sent too much
+                    DDOS->rSCORE += 10;
 
                 break;
             }
 
-            case DAT_PONG:
+
+            /* Handle a pong command. */
+            case ACTION::PONG:
             {
-                /* Deserialize the nOnce. */
-                uint64_t nNonce;
+                /* Get the nonce. */
+                uint64_t nNonce = 0;
                 ssPacket >> nNonce;
 
                 /* If the nonce was not received or known from pong. */
                 if(!mapLatencyTracker.count(nNonce))
                 {
+                    /* Bump DDOS score for spammed PONG messages. */
                     if(DDOS)
-                        DDOS->rSCORE += 5;
+                        DDOS->rSCORE += 10;
 
                     return true;
                 }
@@ -982,223 +944,348 @@ namespace LLP
                 mapLatencyTracker.erase(nNonce);
 
                 /* Set the latency used for address manager within server */
-                if(TRITIUM_SERVER && TRITIUM_SERVER->pAddressManager)
+                if(TRITIUM_SERVER->pAddressManager)
                     TRITIUM_SERVER->pAddressManager->SetLatency(nLatency, GetAddress());
 
-                /* Debug output for latency. */
-                debug::log(3, NODE "Latency (Nonce ", std::hex, nNonce, " - ", std::dec, nLatency, " ms)");
-
-                /* Clear the latency tracker record. */
-                mapLatencyTracker.erase(nNonce);
+                /* Debug Level 3: output Node Latencies. */
+                debug::log(3, NODE, "Latency (Nonce ", std::hex, nNonce, " - ", std::dec, nLatency, " ms)");
 
                 break;
             }
-        }
 
-        return true;
-    }
 
-    /* pnode = Node we received block from, nullptr if we are originating the block (mined or staked) */
-    bool TritiumNode::Process(const TAO::Ledger::Block& block, TritiumNode* pnode)
-    {
-        uint1024_t hash = block.GetHash();
-
-        /* Check if the block is valid. */
-        if(!block.Check())
-            return false;
-
-        /* Check for orphan. */
-        if(!LLD::Ledger->HasBlock(block.hashPrevBlock))
-        {
-            /* Fast sync block requests. */
-            if(!TAO::Ledger::ChainState::Synchronizing())
-                pnode->PushGetInventory(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
-            else if(!config::GetBoolArg("-fastsync", true))
+            /* Standard type for a timeseed. */
+            case TYPES::TIMESEED:
             {
-                /* Switch to a new node. */
-                SwitchNode();
+                /* Check for authorized node. */
+                if(!Authorized())
+                    return debug::drop(NODE, "cannot send timeseed if not authorized");
+
+                /* Check trust threshold. */
+                if(nTrust < 60 * 60)
+                    return debug::drop(NODE, "cannot send timeseed with no trust");
+
+                /* Get the time seed from network. */
+                int64_t nTimeSeed = 0;
+                ssPacket >> nTimeSeed;
+
+                /* Keep track of the time seeds if accepted. */
+                debug::log(2, NODE, "timeseed ", nTimeSeed, " ACCEPTED");
+
+                break;
             }
 
-            LOCK(ORPHAN_MUTEX);
 
-            /* Continue if already have this orphan. */
-            if(mapOrphans.count(block.hashPrevBlock))
-                return true;
-
-            /* Increment the consecutive orphans. */
-            if(pnode)
-                ++pnode->nConsecutiveOrphans;
-
-            /* Detect large orphan chains and ask for new blocks from origin again. */
-            if(pnode
-            && pnode->nConsecutiveOrphans > 1000)
+            /* Standard type for a block. */
+            case TYPES::ADDRESS:
             {
-                debug::log(0, FUNCTION, "node reached orphan limit... closing");
+                /* Get the base address. */
+                BaseAddress addr;
+                ssPacket >> addr;
 
-                /* Clear the memory to prevent DoS attacks. */
-                mapOrphans.clear();
+                /* Add addresses to manager.. */
+                if(TRITIUM_SERVER->pAddressManager)
+                    TRITIUM_SERVER->pAddressManager->AddAddress(addr);
 
-                /* Disconnect from a node with large orphan chain. */
-                return false;
+                break;
             }
 
-            /* Skip if already in orphan queue. */
-            if(!mapOrphans.count(block.hashPrevBlock))
-                mapOrphans.insert(std::make_pair(block.hashPrevBlock, std::unique_ptr<TAO::Ledger::Block>(block.Clone())));
 
-            /* Debug output. */
-            debug::log(0, FUNCTION, "ORPHAN height=", block.nHeight, " prev=", block.hashPrevBlock.SubString());
-
-            return true;
-        }
-
-        /* Check if valid in the chain. */
-        LOCK(PROCESSING_MUTEX);
-        if(!block.Accept())
-        {
-            /* Increment the consecutive failures. */
-            if(pnode)
-                ++pnode->nConsecutiveFails;
-
-            /* Check for failure limit on node. */
-            if(pnode
-            && pnode->nConsecutiveFails > 1000)
+            /* Handle legacy data types. */
+            case TYPES::LEGACY:
             {
+                /* Get the type. */
+                uint8_t nType = 0;
+                ssPacket >> nType;
 
-                /* Fast Sync node switch. */
-                if(config::GetBoolArg("-fastsync", true)
-                && TAO::Ledger::ChainState::Synchronizing())
+                /* Switch based on type. */
+                switch(nType)
                 {
-                    /* Find a new fast sync node if too many failures. */
-                    if(addrFastSync == pnode->GetAddress())
+                    /* Handle for legacy block. */
+                    case TYPES::BLOCK:
                     {
-                        SwitchNode();
+                        /* Get the block from the stream. */
+                        Legacy::LegacyBlock block;
+                        ssPacket >> block;
+
+                        /* Process the block. */
+                        uint8_t nStatus = 0;
+                        TAO::Ledger::Process(block, nStatus);
+
+                        /* Check for specific status messages. */
+                        if(nStatus & TAO::Ledger::PROCESS::ACCEPTED)
+                        {
+                            /* Reset the fails and orphans. */
+                            nConsecutiveFails   = 0;
+                            nConsecutiveOrphans = 0;
+                        }
+
+                        /* Check for failure status messages. */
+                        if(nStatus & TAO::Ledger::PROCESS::REJECTED)
+                            ++nConsecutiveFails;
+
+                        /* Check for orphan status messages. */
+                        if(nStatus & TAO::Ledger::PROCESS::ORPHAN)
+                        {
+                            ++nConsecutiveOrphans;
+
+                            /* Check for duplicate and ask for previous block. */
+                            if(!(nStatus & TAO::Ledger::PROCESS::DUPLICATE)
+                            && !(nStatus & TAO::Ledger::PROCESS::IGNORED))
+                            {
+                                /* Ask for previous block. */
+                                PushMessage(ACTION::GET, uint8_t(TYPES::LEGACY), uint8_t(TYPES::BLOCK), block.hashPrevBlock);
+
+                                /* Ask for list of blocks. */
+                                PushMessage(ACTION::LIST,
+                                    uint8_t(TYPES::LEGACY), uint8_t(TYPES::BLOCK),
+                                    uint8_t(TYPES::LOCATOR), TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
+                                    uint1024_t(0));
+                            }
+                        }
+
+                        /* Check for failure limit on node. */
+                        if(nConsecutiveFails >= 500)
+                        {
+                            /* Fast Sync node switch. */
+                            if(TAO::Ledger::ChainState::Synchronizing())
+                            {
+                                //TODO: fine a new fast sync node
+                            }
+
+                            /* Drop pesky nodes. */
+                            return debug::drop(NODE, "node reached failure limit");
+                        }
+
+
+                        /* Detect large orphan chains and ask for new blocks from origin again. */
+                        if(nConsecutiveOrphans >= 500)
+                        {
+                            LOCK(TAO::Ledger::PROCESSING_MUTEX);
+
+                            /* Clear the memory to prevent DoS attacks. */
+                            TAO::Ledger::mapOrphans.clear();
+
+                            /* Disconnect from a node with large orphan chain. */
+                            return debug::drop(NODE, "node reached orphan limit");
+                        }
+
+                        break;
+                    }
+
+                    /* Handle for legacy transaction. */
+                    case TYPES::TRANSACTION:
+                    {
+                        /* Get the transction from the stream. */
+                        Legacy::Transaction tx;
+                        ssPacket >> tx;
+
+                        /* Accept into memory pool. */
+                        if(TAO::Ledger::mempool.Accept(tx))
+                        {
+                            TRITIUM_SERVER->Relay(uint16_t(ACTION::NOTIFY),
+                                uint8_t(TYPES::LEGACY), uint8_t(TYPES::TRANSACTION), tx.GetHash());
+
+                            //TODO: relay to legacy nodes.
+                        }
+
+                        break;
+                    }
+
+                    default:
+                        return debug::drop(NODE, "invalid legacy primitive type");
+                }
+
+                break;
+            }
+
+
+            /* Handle incoming block. */
+            case TYPES::BLOCK:
+            {
+                /* Get the block from the stream. */
+                TAO::Ledger::TritiumBlock block;
+                ssPacket >> block;
+
+                /* Process the block. */
+                uint8_t nStatus = 0;
+                TAO::Ledger::Process(block, nStatus);
+
+                /* Check for specific status messages. */
+                if(nStatus & TAO::Ledger::PROCESS::ACCEPTED)
+                {
+                    /* Reset the fails and orphans. */
+                    nConsecutiveFails   = 0;
+                    nConsecutiveOrphans = 0;
+                }
+
+                /* Check for failure status messages. */
+                if(nStatus & TAO::Ledger::PROCESS::REJECTED)
+                    ++nConsecutiveFails;
+
+                /* Check for missing transactions. */
+                if(nStatus & TAO::Ledger::PROCESS::INCOMPLETE)
+                {
+                    /* Create response data stream. */
+                    DataStream ssResponse(INCOMING.DATA, SER_NETWORK, PROTOCOL_VERSION);
+
+                    /* Create a list of requested transactions. */
+                    for(const auto& tx : block.vMissing)
+                    {
+                        /* Check for legacy. */
+                        if(tx.first == TAO::Ledger::TYPE::LEGACY_TX)
+                            ssResponse << uint8_t(TYPES::LEGACY);
+
+                        /* Push to stream. */
+                        ssResponse << uint8_t(TYPES::TRANSACTION) << tx.second;
+                    }
+
+                    /* Ask for the block again last TODO: this can be cached for further optimization. */
+                    ssResponse << uint8_t(TYPES::BLOCK) << block.GetHash();
+
+                    /* Push the packet response. */
+                    WritePacket(NewMessage(ACTION::GET, ssResponse));
+                }
+
+                /* Check for orphan status messages. */
+                if(nStatus & TAO::Ledger::PROCESS::ORPHAN)
+                {
+                    ++nConsecutiveOrphans;
+
+                    /* Check for duplicate and ask for previous block. */
+                    if(!(nStatus & TAO::Ledger::PROCESS::DUPLICATE)
+                    && !(nStatus & TAO::Ledger::PROCESS::IGNORED))
+                    {
+                        /* Ask for previous block. */
+                        PushMessage(ACTION::GET,
+                            uint8_t(TYPES::BLOCK),
+                            block.hashPrevBlock
+                        );
+
+                        /* Ask for list of blocks. */
+                        PushMessage(ACTION::LIST,
+                            uint8_t(TYPES::BLOCK),
+                            uint8_t(TYPES::LOCATOR),
+                            TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
+                            uint1024_t(0)
+                        );
                     }
                 }
 
-                /* Drop pesky nodes. */
-                return false;
+                /* Check for failure limit on node. */
+                if(nConsecutiveFails >= 500)
+                {
+                    /* Fast Sync node switch. */
+                    if(TAO::Ledger::ChainState::Synchronizing())
+                    {
+                        //TODO: fine a new fast sync node
+                    }
+
+                    /* Drop pesky nodes. */
+                    return debug::drop(NODE, "node reached failure limit");
+                }
+
+
+                /* Detect large orphan chains and ask for new blocks from origin again. */
+                if(nConsecutiveOrphans >= 500)
+                {
+                    LOCK(TAO::Ledger::PROCESSING_MUTEX);
+
+                    /* Clear the memory to prevent DoS attacks. */
+                    TAO::Ledger::mapOrphans.clear();
+
+                    /* Disconnect from a node with large orphan chain. */
+                    return debug::drop(NODE, "node reached orphan limit");
+                }
+
+                break;
             }
 
-            return true;
-        }
-        else
-        {
-            /* Special meter for synchronizing. */
-            if(TAO::Ledger::ChainState::Synchronizing()
-            && block.nHeight % 1000 == 0)
+
+            /* Handle incoming transaction. */
+            case TYPES::TRANSACTION:
             {
-                uint64_t nElapsed = runtime::timestamp(true) - nTimer;
-                debug::log(0, FUNCTION,
-                    "Processed 1000 blocks in ", nElapsed, " ms [", std::setw(2),
-                    TAO::Ledger::ChainState::PercentSynchronized(), " %]",
-                    " height=", TAO::Ledger::ChainState::nBestHeight.load(),
-                    " trust=", TAO::Ledger::ChainState::nBestChainTrust.load(),
-                    " [", 1000000 / nElapsed, " blocks/s]");
+                /* Get the transction from the stream. */
+                TAO::Ledger::Transaction tx;
+                ssPacket >> tx;
 
-                nTimer = runtime::timestamp(true);
+                /* Accept into memory pool. */
+                if(TAO::Ledger::mempool.Accept(tx))
+                {
+                    TRITIUM_SERVER->Relay(uint16_t(ACTION::NOTIFY),
+                        uint8_t(TYPES::TRANSACTION), tx.GetHash());
+
+                    //TODO: relay to legacy nodes
+                }
+
+                break;
             }
 
-            /* Update the last time received. */
-            nLastTimeReceived = runtime::timestamp();
-
-            /* Reset the consecutive failures. */
-            if(pnode)
-                pnode->nConsecutiveFails = 0;
-
-            /* Reset the consecutive orphans. */
-            if(pnode)
-                pnode->nConsecutiveOrphans = 0;
+            default:
+                return debug::drop(NODE, "invalid protocol message ", INCOMING.MESSAGE);
         }
 
-        /* Process orphan if found. */
-        std::unique_lock<std::mutex> lock(ORPHAN_MUTEX);
-        while(mapOrphans.count(hash))
-        {
-            uint1024_t hashPrev = mapOrphans[hash]->GetHash();
+        /* Check for authorization. */
+        if(DDOS && !Authorized())
+            DDOS->rSCORE += 5; //untrusted nodes get less requests
 
-            debug::log(0, FUNCTION, "processing ORPHAN prev=", hashPrev.SubString(), " size=", mapOrphans.size());
-
-            if(!mapOrphans[hash]->Accept())
-                return true;
-
-            mapOrphans.erase(hash);
-            hash = hashPrev;
-        }
+        /* Check for a version message. */
+        if(nProtocolVersion == 0 || nCurrentSession == 0)
+            return debug::drop(NODE, "first message wasn't a version message");
 
         return true;
-    }
-
-
-    /* Send a request to get recent inventory from remote node. */
-    void TritiumNode::PushGetInventory(const uint1024_t& hashBlockFrom, const uint1024_t& hashBlockTo)
-    {
-        /* Filter out duplicate requests. */
-        if(hashLastGetblocks.load() == hashBlockFrom && nLastGetBlocks.load() + 1 > runtime::timestamp())
-            return;
-
-        /* Set the fast sync address. */
-        if(addrFastSync != GetAddress())
-        {
-            /* Set the new sync address. */
-            addrFastSync = GetAddress();
-
-            /* Reset the last time received. */
-            nLastTimeReceived = runtime::timestamp();
-
-            debug::log(0, NODE, "New sync address set");
-        }
-
-        /* Calculate the fast sync average. */
-        nFastSyncAverage = std::min((uint64_t)25, (nFastSyncAverage.load() + (runtime::timestamp() - nLastGetBlocks.load())) / 2);
-
-        /* Update the last timestamp this was called. */
-        nLastGetBlocks = runtime::timestamp();
-
-        /* Update the hash that was used for last request. */
-        hashLastGetblocks = hashBlockFrom;
-
-        /* Push the request to the node. */
-        PushMessage(GET_INVENTORY, TAO::Ledger::Locator(hashBlockFrom), hashBlockTo);
-
-        /* Debug output for monitoring. */
-        debug::log(0, NODE, "(", nFastSyncAverage.load(), ") requesting getinventory from ", hashBlockFrom.SubString(), " to ", hashBlockTo.SubString());
     }
 
 
     /*  Non-Blocking Packet reader to build a packet from TCP Connection.
      *  This keeps thread from spending too much time for each Connection. */
-   void TritiumNode::ReadPacket()
-   {
-       if(!INCOMING.Complete())
-       {
-           /** Handle Reading Packet Length Header. **/
-           if(INCOMING.IsNull() && Available() >= 10)
-           {
-               std::vector<uint8_t> BYTES(10, 0);
-               if(Read(BYTES, 10) == 10)
-               {
-                   DataStream ssHeader(BYTES, SER_NETWORK, MIN_PROTO_VERSION);
-                   ssHeader >> INCOMING;
+    void TritiumNode::ReadPacket()
+    {
+        if(!INCOMING.Complete())
+        {
+            /** Handle Reading Packet Length Header. **/
+            if(INCOMING.IsNull() && Available() >= 8)
+            {
+                std::vector<uint8_t> BYTES(8, 0);
+                if(Read(BYTES, 8) == 8)
+                {
+                    DataStream ssHeader(BYTES, SER_NETWORK, MIN_PROTO_VERSION);
+                    ssHeader >> INCOMING;
 
-                   Event(EVENT_HEADER);
-               }
-           }
+                    Event(EVENT_HEADER);
+                }
+            }
 
-           /** Handle Reading Packet Data. **/
-           uint32_t nAvailable = Available();
-           if(nAvailable > 0 && !INCOMING.IsNull() && INCOMING.DATA.size() < INCOMING.LENGTH)
-           {
-               /* Create the packet data object. */
-               std::vector<uint8_t> DATA(std::min(nAvailable, (uint32_t)(INCOMING.LENGTH - INCOMING.DATA.size())), 0);
+            /** Handle Reading Packet Data. **/
+            uint32_t nAvailable = Available();
+            if(nAvailable > 0 && !INCOMING.IsNull() && INCOMING.DATA.size() < INCOMING.LENGTH)
+            {
+                /* Create the packet data object. */
+                std::vector<uint8_t> DATA(std::min(nAvailable, (uint32_t)(INCOMING.LENGTH - INCOMING.DATA.size())), 0);
 
-               /* Read up to 512 bytes of data. */
-               if(Read(DATA, DATA.size()) == DATA.size())
-               {
-                   INCOMING.DATA.insert(INCOMING.DATA.end(), DATA.begin(), DATA.end());
-                   Event(EVENT_PACKET, static_cast<uint32_t>(DATA.size()));
-               }
-           }
-       }
-   }
+                /* Read up to 512 bytes of data. */
+                if(Read(DATA, DATA.size()) == DATA.size())
+                {
+                    INCOMING.DATA.insert(INCOMING.DATA.end(), DATA.begin(), DATA.end());
+                    Event(EVENT_PACKET, static_cast<uint32_t>(DATA.size()));
+                }
+            }
+        }
+    }
+
+
+    /* Determine if a node is authorized and therfore trusted. */
+    bool TritiumNode::Authorized() const
+    {
+        return hashGenesis != 0 && fAuthorized;
+    }
+
+
+    /* Determine whether a session is connected. */
+    bool TritiumNode::SessionActive(const uint64_t nSession)
+    {
+        LOCK(SESSIONS_MUTEX);
+
+        return mapSessions.count(nSession);
+    }
 }

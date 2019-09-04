@@ -277,6 +277,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLD_filemap.o \
 		build/LLD_global.o \
 		build/LLD_hashmap.o \
+		build/LLD_shard_hashmap.o \
 		build/LLD_hashtree.o \
 		build/LLD_key.o \
 		build/LLD_sector.o \
@@ -430,6 +431,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Ledger_locator.o \
 		build/Ledger_mempool.o \
 		build/Ledger_prime.o \
+		build/Ledger_process.o \
 		build/Ledger_retarget.o \
 		build/Ledger_sigchain.o \
 		build/Ledger_stake.o \

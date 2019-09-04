@@ -132,6 +132,10 @@ namespace TAO
                 debug::log(0, FUNCTION, "database successfully recovered");
             }
 
+            /* Check database consistency. */
+            if(stateBest.load().GetHash() != hashBestChain.load())
+                return debug::error(FUNCTION, "disk index inconsistent with best chain");
+
             /* Rewind the chain a total number of blocks. */
             if(config::GetArg("-forkblocks", 0) > 0)
             {

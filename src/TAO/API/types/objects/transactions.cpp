@@ -45,7 +45,7 @@ namespace TAO
             uint256_t hashGenesis = 0;
 
             /* The session to use */
-            uint64_t nSession = users->GetSession(params, false);
+            uint256_t nSession = users->GetSession(params, false);
 
             /* Check to see if caller has supplied a specific genesis or username. */
             if(params.find("genesis") != params.end())

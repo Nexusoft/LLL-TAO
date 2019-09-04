@@ -224,19 +224,6 @@ namespace LLD
          **/
         bool HasState(const uint256_t& hashRegister, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
-
-        /** GetStates
-         *
-         *  Get the previous states of a register.
-         *
-         *  @param[in] hashRegister The register address.
-         *  @param[out] states The states vector to return.
-         *
-         *  @return True if any states were found, false otherwise.
-         *
-         **/
-        bool GetStates(const uint256_t& hashRegister, std::vector<TAO::Register::State>& states, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
-
     };
 
 }

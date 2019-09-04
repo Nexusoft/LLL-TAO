@@ -118,8 +118,8 @@ namespace TAO
 
             /** Generate
              *
-             *  This function is responsible for genearting the private key in the keychain of a specific account.
-             *  The keychain is a series of keys seeded from a secret phrase and a PIN number.
+             *  This function is responsible for genearting the private key in the sigchain of a specific account.
+             *  The sigchain is a series of keys seeded from a secret phrase and a PIN number.
              *
              *  @param[in] nKeyID The key number in the keychian
              *  @param[in] strSecret The secret phrase to use
@@ -128,6 +128,34 @@ namespace TAO
              *  @return The 512 bit hash of this key in the series.
              **/
             uint512_t Generate(const uint32_t nKeyID, const SecureString& strSecret, bool fCache = true) const;
+
+
+            /** Generate
+             *
+             *  This function is responsible for genearting the private key in the sigchain of a specific account.
+             *  The sigchain is a series of keys seeded from a secret phrase and a PIN number.
+             *
+             *  @param[in] strType The type of signing key used.
+             *  @param[in] nKeyID The key number in the keychian
+             *  @param[in] strSecret The secret phrase to use
+             *
+             *  @return The 512 bit hash of this key in the series.
+             **/
+            uint512_t Generate(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret) const;
+
+
+            /** KeyHash
+             *
+             *  This function generates a hash of a public key generated from random seed phrase.
+             *
+             *  @param[in] strType The type of signing key used.
+             *  @param[in] nKeyID The key number in the keychian
+             *  @param[in] strSecret The secret phrase to use
+             *  @param[in] nType The key type to use.
+             *
+             *  @return The 256 bit hash of this key in the series.
+             **/
+            uint256_t KeyHash(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret, const uint8_t nType) const;
 
 
             /** UserName

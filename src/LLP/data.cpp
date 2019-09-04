@@ -75,17 +75,17 @@ namespace LLP
         try
         {
             /* Create a new pointer on the heap. */
-            ProtocolType* node = new ProtocolType(SOCKET, DDOS, fDDOS);
-            node->fCONNECTED.store(true);
+            ProtocolType* pnode = new ProtocolType(SOCKET, DDOS, fDDOS);
+            pnode->fCONNECTED.store(true);
 
             /* Find an available slot. */
             int nSlot = find_slot();
 
             /* Find a slot that is empty. */
             if(nSlot == CONNECTIONS->size())
-                CONNECTIONS->push_back(memory::atomic_ptr<ProtocolType>(node));
+                CONNECTIONS->push_back(memory::atomic_ptr<ProtocolType>(pnode));
             else
-                CONNECTIONS->at(nSlot).store(node);
+                CONNECTIONS->at(nSlot).store(pnode);
 
             /* Fire the connected event. */
             CONNECTIONS->at(nSlot)->Event(EVENT_CONNECT);
@@ -96,6 +96,10 @@ namespace LLP
 
             /* Bump the total connections atomic counter. */
             ++nConnections;
+
+            /* Set the indexes. */
+            pnode->nDataThread = ID;
+            pnode->nDataIndex  = nSlot;
 
             /* Notify data thread to wake up. */
             CONDITION.notify_all();
@@ -114,26 +118,26 @@ namespace LLP
         try
         {
             /* Create a new pointer on the heap. */
-            ProtocolType* node = new ProtocolType(DDOS, fDDOS);
-            if(!node->Connect(addr))
+            ProtocolType* pnode = new ProtocolType(DDOS, false); //turn off DDOS for outgoing connections
+            if(!pnode->Connect(addr))
             {
-                node->Disconnect();
-                delete node;
+                pnode->Disconnect();
+                delete pnode;
 
                 return false;
             }
 
-            /* Set the node to outgoing. */
-            node->fOUTGOING = true;
+            /* Set the pnode to outgoing. */
+            pnode->fOUTGOING = true;
 
             /* Search for an available slot. */
             int nSlot = find_slot();
 
             /* Find a slot that is empty. */
             if(nSlot == CONNECTIONS->size())
-                CONNECTIONS->push_back(memory::atomic_ptr<ProtocolType>(node));
+                CONNECTIONS->push_back(memory::atomic_ptr<ProtocolType>(pnode));
             else
-                CONNECTIONS->at(nSlot).store(node);
+                CONNECTIONS->at(nSlot).store(pnode);
 
             /* Fire the connected event. */
             CONNECTIONS->at(nSlot)->Event(EVENT_CONNECT);
@@ -144,6 +148,10 @@ namespace LLP
 
             /* Bump the total connections atomic counter. */
             ++nConnections;
+
+            /* Set the indexes. */
+            pnode->nDataThread = ID;
+            pnode->nDataIndex  = nSlot;
 
             /* Notify data thread to wake up. */
             CONDITION.notify_all();
@@ -263,11 +271,18 @@ namespace LLP
                 try
                 {
                     /* Load the atomic pointer raw data. */
-                    ProtocolType* connection = CONNECTIONS->at(nIndex).load();
+                    ProtocolType* pConnection = CONNECTIONS->at(nIndex).load();
 
                     /* Skip over Inactive Connections. */
-                    if(!connection || !connection->Connected())
+                    if(!pConnection)
                         continue;
+
+                    /* Check if connected. */
+                    if(!pConnection->Connected())
+                    {
+                        disconnect_remove_event(nIndex, DISCONNECT_FORCE);
+                        continue;
+                    }
 
                     /* Disconnect if there was a polling error */
                     if((POLLFDS.at(nIndex).revents & POLLERR))
@@ -287,36 +302,36 @@ namespace LLP
 
                     /* Disconnect if pollin signaled with no data (This happens on Linux). */
                     if((POLLFDS.at(nIndex).revents & POLLIN)
-                    && connection->Available() == 0)
+                    && pConnection->Available() == 0)
                     {
                         disconnect_remove_event(nIndex, DISCONNECT_POLL_EMPTY);
                         continue;
                     }
 
-                    /* Remove Connection if it has Timed out or had any read/write Errors. */
-                    if(connection->Errors())
+                    /* Remove connection if it has Timed out or had any read/write Errors. */
+                    if(pConnection->Errors())
                     {
                         disconnect_remove_event(nIndex, DISCONNECT_ERRORS);
                         continue;
                     }
 
-                    /* Remove Connection if it has Timed out or had any Errors. */
-                    if(connection->Timeout(TIMEOUT))
+                    /* Remove connection if it has Timed out or had any Errors. */
+                    if(pConnection->Timeout(TIMEOUT))
                     {
                         disconnect_remove_event(nIndex, DISCONNECT_TIMEOUT);
                         continue;
                     }
 
                     /* Handle any DDOS Filters. */
-                    if(fDDOS && connection->DDOS)
+                    if(fDDOS && pConnection->DDOS)
                     {
                         /* Ban a node if it has too many Requests per Second. **/
-                        if(connection->DDOS->rSCORE.Score() > DDOS_rSCORE
-                        || connection->DDOS->cSCORE.Score() > DDOS_cSCORE)
-                            connection->DDOS->Ban();
+                        if(pConnection->DDOS->rSCORE.Score() > DDOS_rSCORE
+                        || pConnection->DDOS->cSCORE.Score() > DDOS_cSCORE)
+                            pConnection->DDOS->Ban();
 
                         /* Remove a connection if it was banned by DDOS Protection. */
-                        if(connection->DDOS->Banned())
+                        if(pConnection->DDOS->Banned())
                         {
                             disconnect_remove_event(nIndex, DISCONNECT_DDOS);
                             continue;
@@ -324,38 +339,38 @@ namespace LLP
                     }
 
                     /* Generic event for Connection. */
-                    connection->Event(EVENT_GENERIC);
+                    pConnection->Event(EVENT_GENERIC);
 
                     /* Flush the write buffer. */
-                    connection->Flush();
+                    pConnection->Flush();
 
                     /* Work on Reading a Packet. **/
-                    connection->ReadPacket();
+                    pConnection->ReadPacket();
 
                     /* If a Packet was received successfully, increment request count [and DDOS count if enabled]. */
-                    if(connection->PacketComplete())
+                    if(pConnection->PacketComplete())
                     {
                         /* Debug dump of message type. */
-                        debug::log(4, FUNCTION, "Recieved Message (", connection->INCOMING.GetBytes().size(), " bytes)");
+                        debug::log(4, FUNCTION, "Recieved Message (", pConnection->INCOMING.GetBytes().size(), " bytes)");
 
                         /* Debug dump of packet data. */
                         if(config::GetArg("-verbose", 0) >= 5)
-                            PrintHex(connection->INCOMING.GetBytes());
+                            PrintHex(pConnection->INCOMING.GetBytes());
 
                         /* Handle Meters and DDOS. */
                         if(fMETER)
                             ++REQUESTS;
                         if(fDDOS)
-                            connection->DDOS->rSCORE += 1;
+                            pConnection->DDOS->rSCORE += 1;
 
                         /* Packet Process return value of False will flag Data Thread to Disconnect. */
-                        if(!connection->ProcessPacket())
+                        if(!pConnection->ProcessPacket())
                         {
                             disconnect_remove_event(nIndex, DISCONNECT_FORCE);
                             continue;
                         }
 
-                        connection->ResetPacket();
+                        pConnection->ResetPacket();
                     }
                 }
                 catch(const std::exception& e)

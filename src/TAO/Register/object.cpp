@@ -73,6 +73,16 @@ namespace TAO
                 nType = OBJECTS::NAMESPACE;
 
             }
+            else if(mapData.size() == 5
+            && Check("auth", TYPES::UINT256_T, true)
+            && Check("lisp", TYPES::UINT256_T, true)
+            && Check("network", TYPES::UINT256_T, true)
+            && Check("sign", TYPES::UINT256_T, true)
+            && Check("verify", TYPES::UINT256_T, true))
+            {
+                /* Set the return value. */
+                nType = OBJECTS::CRYPTO;
+            }
             else if(mapData.size() == 3
             && Check("namespace", TYPES::STRING, false)
             && Check("name", TYPES::STRING, false)
@@ -147,10 +157,10 @@ namespace TAO
                     /* Get the supply from the token object */
                     uint64_t nSupply = get<uint64_t>("supply");
 
-                    /* Fee = (log10(nSupply) - 2) * 100 NXS 
-                       which equates to 100 NXS for each significant figure, which the first 2sf (100 supply)  being free*/
+                    /* Fee = (log10(nSupply) - 2) * 100 NXS
+                       which equates to 100 NXS for each significant figure, with the first 2sf (100 supply) being 1 NXS*/
                     uint64_t nBase = (std::log10(nSupply));
-                    return std::max(int64_t(0), int64_t(nBase - 2)) * TAO::Ledger::TOKEN_FEE;
+                    return std::max(int64_t(TAO::Ledger::MIN_TOKEN_FEE),  int64_t(std::max(int64_t(0), int64_t(nBase - 2)) * TAO::Ledger::TOKEN_FEE));
                 }
 
                 case TAO::Register::OBJECTS::NAME:
@@ -169,9 +179,9 @@ namespace TAO
                 case TAO::Register::OBJECTS::ACCOUNT:
                     return TAO::Ledger::ACCOUNT_FEE;
 
-                /* objects cost 1 NXS. */
+                /* non standard object cost is dependant on the data size. */
                 case TAO::Register::OBJECTS::NONSTANDARD:
-                    return TAO::Ledger::OBJECT_FEE;
+                    return std::max(TAO::Ledger::MIN_DATA_FEE, vchState.size() * TAO::Ledger::DATA_FEE);
 
                 default:
                     return 0;

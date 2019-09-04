@@ -39,11 +39,12 @@ namespace TAO
             enum UnlockActions
             {
                 TRANSACTIONS    = (1 << 1),
-                MINTING         = (1 << 2),
+                MINING          = (1 << 2),
+                STAKING         = (1 << 3),
                 NOTIFICATIONS   = (1 << 4),
                 NONE            = (0 << 0),
 
-                ALL = TRANSACTIONS | MINTING | NOTIFICATIONS
+                ALL = TRANSACTIONS | MINING | STAKING | NOTIFICATIONS
             };
 
 
@@ -76,17 +77,31 @@ namespace TAO
             }
 
 
-            /** CanMint
+            /** CanMine
              *
-             *  Determins if the PIN can be used for minting.
+             *  Determins if the PIN can be used for mining.
              *
-             *  @return True if the PIN can be used for minting.
+             *  @return True if the PIN can be used for mining.
              *
              **/
-            bool CanMint() const
+            bool CanMine() const
             {
-                return nUnlockedActions & MINTING;
+                return nUnlockedActions & MINING;
             }
+
+
+            /** CanStake
+             *
+             *  Determins if the PIN can be used for staking.
+             *
+             *  @return True if the PIN can be used for staking.
+             *
+             **/
+            bool CanStake() const
+            {
+                return nUnlockedActions & STAKING;
+            }
+
 
             /** ProcessNotifications
              *

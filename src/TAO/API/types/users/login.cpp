@@ -131,7 +131,7 @@ namespace TAO
 
                         ret["genesis"] = hashGenesis.ToString();
                         if(config::fMultiuser.load())
-                            ret["session"] = debug::safe_printstr(std::dec, session.first);
+                            ret["session"] = session.first.ToString();
 
                         return ret;
                     }
@@ -143,11 +143,11 @@ namespace TAO
                 throw APIException(-140, "Already logged in with a different username.");
 
             /* For sessionless API use the active sig chain which is stored in session 0 */
-            uint64_t nSession = config::fMultiuser.load() ? LLC::GetRand() : 0;
+            uint256_t nSession = config::fMultiuser.load() ? LLC::GetRand256() : 0;
             ret["genesis"] = hashGenesis.ToString();
 
             if(config::fMultiuser.load())
-                ret["session"] = debug::safe_printstr(std::dec, nSession);
+                ret["session"] = nSession.ToString();
 
             /* Setup the account. */
             {

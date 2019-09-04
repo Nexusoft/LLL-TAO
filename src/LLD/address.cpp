@@ -33,30 +33,30 @@ namespace LLD
 
 
     /*  Writes the Trust Address to the database. */
-    bool AddressDB::WriteTrustAddress(uint64_t key, const LLP::TrustAddress &addr)
+    bool AddressDB::WriteTrustAddress(uint64_t nKey, const LLP::TrustAddress &addr)
     {
-        return Write(std::make_pair(std::string("addr"), key), addr);
+        return Write(std::make_pair(std::string("addr"), nKey), addr, "addr");
     }
 
 
     /*  Reads the Trust Address from the database. */
-    bool AddressDB::ReadTrustAddress(uint64_t key, LLP::TrustAddress &addr)
+    bool AddressDB::ReadTrustAddress(uint64_t nKey, LLP::TrustAddress &addr)
     {
-        return Read(std::make_pair(std::string("addr"), key), addr);
+        return Read(std::make_pair(std::string("addr"), nKey), addr);
     }
 
 
     /*  Writes this address to the database. */
-    bool AddressDB::WriteThisAddress(uint64_t key, const LLP::BaseAddress &this_addr)
+    bool AddressDB::WriteThisAddress(uint64_t nKey, const LLP::BaseAddress &this_addr)
     {
-        return Write(std::make_pair(std::string("this"), key), this_addr);
+        return Write(std::make_pair(std::string("this"), nKey), this_addr);
     }
 
 
     /*  Reads the this address from the database. */
-    bool AddressDB::ReadThisAddress(uint64_t key, LLP::BaseAddress &this_addr)
+    bool AddressDB::ReadThisAddress(uint64_t nKey, LLP::BaseAddress &this_addr)
     {
-        return Read(std::make_pair(std::string("this"), key), this_addr);
+        return Read(std::make_pair(std::string("this"), nKey), this_addr);
     }
 
 

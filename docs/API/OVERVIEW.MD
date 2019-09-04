@@ -280,7 +280,7 @@ Error Codes
 | -143 | No notifications available |
 | -144 | No transactions found |
 | -145 | Unlock not supported in multiuser mode |
-| -146 | Account already unlocked for minting |
+| -146 | Account already unlocked for mining |
 | -147 | Account already unlocked for transactions |
 | -148 | Account already unlocked |
 | -149 | Invalid PIN |
@@ -296,7 +296,7 @@ Error Codes
 | -159 | Values must be passed in as strings |
 | -160 | Username contains invalid characters |
 | -161 | Name contains invalid characters |
-| -162 | Name contains invalid characters |
+| -162 | Namespace can only contain lowercase letters, numbers, periods (.) |
 | -163 | Could not retrieve default NXS account to debit fees |
 | -164 | Account 'default' is not a NXS account |
 | -165 | Invalid address_to |
@@ -329,5 +329,12 @@ Error Codes
 | -192 | Password must be a minimum of 8 characters |
 | -193 | Pin must be a minimum of 4 characters |
 | -194 | Account already unlocked for notifications |
+| -195 | Account already unlocked for staking |
+| -196 | Account already locked for mining |
+| -197 | Account already locked for staking |
+| -198 | Account already locked for transactions |
+| -199 | Account already locked for notifications |
+| -200 | Namespace can't be created with reserved name |
+| -201 | Global names can't be created with reserved name |
 
 

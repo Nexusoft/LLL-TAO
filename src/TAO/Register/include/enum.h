@@ -99,7 +99,10 @@ namespace TAO
                 NAME         = 16,
 
                 /* Namespace Object Register. */
-                NAMESPACE    = 32
+                NAMESPACE    = 32,
+
+                /* Crypto Object Register. */
+                CRYPTO       = 64
             };
         }
 
@@ -149,8 +152,8 @@ namespace TAO
         }
 
         /** NAMESPACE
-         *  
-         *  The NAMESPACE namespace to hold constants for Namespace Object registers 
+         *
+         *  The NAMESPACE namespace to hold constants for Namespace Object registers
          *
          **/
         namespace NAMESPACE

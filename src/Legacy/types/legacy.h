@@ -35,8 +35,13 @@ namespace Legacy
     {
     public:
 
+        /** The Block's timestamp. This number is locked into the signature hash. **/
+        uint32_t nTime; //NOTE: this is 32-bit for backwards compatability
+
+
         /** The transactions of the block. **/
         std::vector<Transaction> vtx;
+
 
         IMPLEMENT_SERIALIZE
         (
@@ -98,6 +103,24 @@ namespace Legacy
         void SetNull() override;
 
 
+        /** UpdateTime
+         *
+         *  Update the blocks timestamp.
+         *
+         **/
+        void UpdateTime();
+
+
+        /** GetBlockTime
+         *
+         *  Returns the current UNIX timestamp of the block.
+         *
+         *  @return 64-bit integer of timestamp.
+         *
+         **/
+        uint64_t GetBlockTime() const;
+
+
         /** Check
          *
          *  Check a legacy block for consistency.
@@ -144,6 +167,16 @@ namespace Legacy
          *
          **/
         bool TrustScore(uint32_t& nScore) const;
+
+
+        /** SignatureHash
+         *
+         *  Get the Signature Hash of the block. Used to verify work claims.
+         *
+         *  @return Returns a 1024-bit signature hash.
+         *
+         **/
+        uint1024_t SignatureHash() const;
 
 
         /** Stake Hash

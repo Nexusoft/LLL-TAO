@@ -105,6 +105,14 @@ namespace LLP
          **/
         DDOS_Score &operator+=(const uint32_t& nScore);
 
+
+        /** print
+         *
+         *  Print out the internal data inside the score object.
+         *
+         **/
+        void print();
+
     };
 
 

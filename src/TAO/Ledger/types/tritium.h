@@ -55,6 +55,10 @@ namespace TAO
         {
         public:
 
+            /** The Block's timestamp. This number is locked into the signature hash. **/
+            uint64_t nTime;
+
+
             /** Verifier Transaction.
              *
              *  Transaction responsible for the block producer.
@@ -96,7 +100,7 @@ namespace TAO
                 READWRITE(ssSystem);
                 READWRITE(vOffsets);
                 READWRITE(vtx);
-          )
+            )
 
 
             /** The default constructor. **/
@@ -140,6 +144,24 @@ namespace TAO
             void SetNull() override;
 
 
+            /** UpdateTime
+             *
+             *  Update the blocks timestamp.
+             *
+             **/
+            void UpdateTime();
+
+
+            /** GetBlockTime
+             *
+             *  Returns the current UNIX timestamp of the block.
+             *
+             *  @return 64-bit integer of timestamp.
+             *
+             **/
+            uint64_t GetBlockTime() const;
+
+
             /** Check
              *
              *  Check a tritium block for consistency.
@@ -172,6 +194,16 @@ namespace TAO
              *
              **/
             bool VerifyWork() const override;
+
+
+            /** SignatureHash
+             *
+             *  Get the Signature Hash of the block. Used to verify work claims.
+             *
+             *  @return Returns a 1024-bit signature hash.
+             *
+             **/
+            uint1024_t SignatureHash() const override;
 
 
             /** StakeHash

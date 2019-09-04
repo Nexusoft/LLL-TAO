@@ -76,7 +76,6 @@ The following is an example of an asset defined using the `basic` format:
 ```
 {
     "pin": "1234",
-    "session": "16953804956473956578",
     "name": "watch",
     "format": "basic",
     "serial_number": "123456789123456789",
@@ -90,7 +89,6 @@ The following is an example of an asset defined using the `JSON` format:
 ```
 {
     "pin": "1234",
-    "session": "16953804956473956578",
     "name": "watch",
     "format": "JSON",
     "json" :
@@ -225,7 +223,6 @@ The following is an example JSON payload to update two fields in an asset called
 ```
 {
     "pin": "1234",
-    "session": "16953804956473956578",
     "name": "mysong",
     "last_downloaded": "2019/02/03 14:22:08",
     "download_count": "428"

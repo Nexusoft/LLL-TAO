@@ -17,7 +17,6 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <Legacy/types/transaction.h>
-#include <Legacy/types/locator.h>
 #include <Legacy/wallet/wallet.h>
 
 #include <LLP/include/hosts.h>
@@ -37,7 +36,10 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/types/locator.h>
+
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/process.h>
 
 #include <iomanip>
 
@@ -45,24 +47,17 @@ ________________________________________________________________________________
 namespace LLP
 {
 
-    /* Static instantiation of orphan blocks in queue to process. */
-    std::map<uint1024_t, Legacy::LegacyBlock> mapLegacyOrphans;
-
-    /* Mutex to protect checking more than one block at a time. */
-    std::mutex PROCESSING_MUTEX;
-
     /* Mutex to protect connected sessions. */
-    std::mutex SESSIONS_MUTEX;
+    std::mutex LegacyNode::SESSIONS_MUTEX;
 
     /* Map to keep track of duplicate nonce sessions. */
-    std::map<uint64_t, LegacyNode*> mapConnectedSessions;
+    std::map<uint64_t, std::pair<uint32_t, uint32_t>> LegacyNode::mapSessions;
 
     /* Helper function to switch the nodes on sync. */
     void SwitchNode()
     {
         /* Normal case of asking for a getblocks inventory message. */
         memory::atomic_ptr<LegacyNode>& pBest = LEGACY_SERVER->GetConnection(LegacyNode::addrFastSync.load());
-
         if(pBest != nullptr)
         {
             /* Send out another getblocks request. */
@@ -98,10 +93,6 @@ namespace LLP
 
     /* The time since last getblocks. */
     std::atomic<uint64_t> LegacyNode::nLastGetBlocks;
-
-
-    /* the session identifier. */
-    const uint64_t LegacyNode::nSessionID = LLC::GetRand();
 
 
     /* The fast sync average speed. */
@@ -199,7 +190,7 @@ namespace LLP
 
         /* Push the Message to receiving node. */
         PushMessage("version", LLP::PROTOCOL_VERSION, nLocalServices, nTime, addrYou, addrMe,
-                    LegacyNode::nSessionID, version::CLIENT_VERSION_BUILD_STRING, TAO::Ledger::ChainState::nBestHeight.load());
+                    SESSION_ID, version::CLIENT_VERSION_BUILD_STRING, TAO::Ledger::ChainState::nBestHeight.load());
     }
 
 
@@ -210,9 +201,9 @@ namespace LLP
         if(EVENT == EVENT_HEADER)
         {
             const std::string message = INCOMING.GetMessage();
-            uint32_t length = INCOMING.LENGTH;
+            uint32_t nLenght = INCOMING.LENGTH;
 
-            debug::log(3, NODE, "Received Message (", message, ", ", length, ")");
+            debug::log(3, NODE, "Received Message (", message, ", ", nLenght, ")");
 
             if(fDDOS)
             {
@@ -223,9 +214,9 @@ namespace LLP
                         DDOS->rSCORE += 25;
 
                 /* Check the Packet Sizes to Unified Time Commands. */
-                if((message == "getoffset" || message == "offset") && length != 16)
+                if((message == "getoffset" || message == "offset") && nLenght != 16)
                     if(DDOS)
-                        DDOS->Ban(debug::safe_printstr("INVALID PACKET SIZE | OFFSET/GETOFFSET | LENGTH ", length));
+                        DDOS->Ban(debug::safe_printstr("INVALID PACKET SIZE | OFFSET/GETOFFSET | LENGTH ", nLenght));
             }
 
             return;
@@ -376,16 +367,18 @@ namespace LLP
             {
                 LOCK(SESSIONS_MUTEX);
 
-                /** Free this session, if it is this connection that we mapped.
-                    When we disconnect a duplicate session then it will not have been added to the map,
-                    so we need to skip removing the session ID **/
-                if(mapConnectedSessions.count(nCurrentSession)
-                && mapConnectedSessions[nCurrentSession] == this)
-                    mapConnectedSessions.erase(nCurrentSession);
+                /* Check for sessions to free. */
+                if(mapSessions.count(nCurrentSession))
+                {
+                    /* Make sure that we aren't freeing our already connected session if handling duplicate connections. */
+                    const std::pair<uint32_t, uint32_t>& pair = mapSessions[nCurrentSession];
+                    if(pair.first == nDataThread && pair.second == nDataIndex)
+                        mapSessions.erase(nCurrentSession);
+                }
             }
 
             /* Update address manager that this connection was dropped. */
-            if(LEGACY_SERVER && LEGACY_SERVER->pAddressManager)
+            if(LEGACY_SERVER->pAddressManager)
                 LEGACY_SERVER->pAddressManager->AddAddress(GetAddress(), ConnectState::DROPPED);
 
             /* Debug output for node disconnect. */
@@ -425,12 +418,12 @@ namespace LLP
             debug::log(1, NODE, "version message: version ", nCurrentVersion, ", blocks=",  nStartingHeight);
 
             /* Check for a connect to self. */
-            if(nCurrentSession == LegacyNode::nSessionID)
+            if(nCurrentSession == SESSION_ID)
             {
                 debug::log(0, FUNCTION, "connected to self");
 
                 /* Cache self-address in the banned list of the Address Manager. */
-                if(LEGACY_SERVER && LEGACY_SERVER->pAddressManager)
+                if(LEGACY_SERVER->pAddressManager)
                     LEGACY_SERVER->pAddressManager->Ban(addrMe);
 
                 return false;
@@ -438,9 +431,13 @@ namespace LLP
 
 
             /* Check for duplicate connections. */
+            if(TritiumNode::SessionActive(nCurrentSession))
+                return debug::drop(NODE, "already have tritium connection");
+
+            /* Check legacy connected sessions. */
             {
                 LOCK(SESSIONS_MUTEX);
-                if(mapConnectedSessions.count(nCurrentSession))
+                if(mapSessions.count(nCurrentSession))
                 {
                     debug::log(0, FUNCTION, "duplicate connection");
 
@@ -448,12 +445,12 @@ namespace LLP
                 }
 
                 /* Claim this connection's session ID. */
-                mapConnectedSessions[nCurrentSession] = this;
+                mapSessions[nCurrentSession] = std::make_pair(nDataThread, nDataIndex);
             }
 
 
             /* Update the block height in the Address Manager. */
-            if(LEGACY_SERVER && LEGACY_SERVER->pAddressManager)
+            if(LEGACY_SERVER->pAddressManager)
                 LEGACY_SERVER->pAddressManager->SetHeight(nStartingHeight, addrFrom);
 
             /* Push version in response. */
@@ -473,7 +470,6 @@ namespace LLP
         {
             return false;
         }
-
 
         /* Push a transaction into the Node's Received Transaction Queue. */
         else if(message == "tx")
@@ -511,7 +507,75 @@ namespace LLP
             ssMessage >> block;
 
             /* Process the block. */
-            return LegacyNode::Process(block, this);
+            uint8_t nStatus = 0;
+            TAO::Ledger::Process(block, nStatus);
+
+            /* Check for specific status messages. */
+            if(nStatus & TAO::Ledger::PROCESS::ACCEPTED)
+            {
+                /* Reset the fails and orphans. */
+                nConsecutiveFails   = 0;
+                nConsecutiveOrphans = 0;
+            }
+
+            /* Check for failure status messages. */
+            if(nStatus & TAO::Ledger::PROCESS::REJECTED)
+                ++nConsecutiveFails;
+
+            /* Check for orphan status messages. */
+            if(nStatus & TAO::Ledger::PROCESS::ORPHAN)
+            {
+                ++nConsecutiveOrphans;
+
+                /* Check for duplicate. */
+                if(!(nStatus & TAO::Ledger::PROCESS::DUPLICATE)
+                && !(nStatus & TAO::Ledger::PROCESS::IGNORED))
+                {
+                    /* Inventory requests. */
+                    std::vector<CInv> vInv = { CInv(block.hashPrevBlock, LLP::MSG_BLOCK_LEGACY) };
+
+                    /* Get batch of inventory. */
+                    PushMessage("getdata", vInv);
+
+                    /* Run a getblocks to be sure. */
+                    PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
+                }
+            }
+
+            /* Check for failure limit on node. */
+            if(nConsecutiveFails >= 500)
+            {
+                /* Fast Sync node switch. */
+                if(TAO::Ledger::ChainState::Synchronizing())
+                {
+                    /* Find a new fast sync node if too many failures. */
+                    if(addrFastSync == GetAddress())
+                    {
+                        /* Switch to a new node. */
+                        SwitchNode();
+                    }
+                }
+
+                /* Drop pesky nodes. */
+                return false;
+            }
+
+
+            /* Detect large orphan chains and ask for new blocks from origin again. */
+            if(nConsecutiveOrphans >= 500)
+            {
+                LOCK(TAO::Ledger::PROCESSING_MUTEX);
+
+                debug::log(0, FUNCTION, "node reached orphan limit... closing");
+
+                /* Clear the memory to prevent DoS attacks. */
+                TAO::Ledger::mapOrphans.clear();
+
+                /* Disconnect from a node with large orphan chain. */
+                return false;
+            }
+
+            return true;
         }
 
 
@@ -761,13 +825,12 @@ namespace LLP
         else if(message == "getblocks")
         {
             /* Get the locator. */
-            Legacy::Locator locator;
+            TAO::Ledger::Locator locator;
+            ssMessage >> locator;
 
             /* Get the stopping hash. */
             uint1024_t hashStop;
-
-            /* De-serialize the values. */
-            ssMessage >> locator >> hashStop;
+            ssMessage >> hashStop;
 
             /* Return if nothing in locator. */
             if(locator.vHave.size() == 0)
@@ -824,7 +887,7 @@ namespace LLP
         }
 
 
-        /* TODO: Change this Algorithm. */
+        /* Get a list of addresses from another node. */
         else if(message == "getaddr")
         {
             /* Get addresses from manager. */
@@ -841,142 +904,6 @@ namespace LLP
             /* Send the addresses off. */
             if(nCount > 0)
                 PushMessage("addr", vSend);
-        }
-
-        return true;
-    }
-
-
-    /* pnode = Node we received block from, nullptr if we are originating the block (mined or staked) */
-    bool LegacyNode::Process(const Legacy::LegacyBlock& block, LegacyNode* pnode)
-    {
-        LOCK(PROCESSING_MUTEX);
-
-        const uint32_t nMaxFailures = 500;
-
-        /* Check if the block is valid. */
-        if(!block.Check())
-            return debug::error(FUNCTION, "invalid block: ", block.GetHash().SubString(), " height: ", block.nHeight);
-
-        /* Check for orphan. */
-        if(!LLD::Ledger->HasBlock(block.hashPrevBlock))
-        {
-            /* Increment the consecutive orphans. */
-            if(pnode)
-                ++pnode->nConsecutiveOrphans;
-
-            /* Detect large orphan chains and ask for new blocks from origin again. */
-            if(pnode && pnode->nConsecutiveOrphans >= nMaxFailures)
-            {
-                debug::log(0, FUNCTION, "node reached orphan limit... closing");
-
-                /* Clear the memory to prevent DoS attacks. */
-                mapLegacyOrphans.clear();
-
-                /* Disconnect from a node with large orphan chain. */
-                return false;
-            }
-
-            /* Skip if already in orphan queue. */
-            if(!mapLegacyOrphans.count(block.hashPrevBlock))
-            {
-                /* Fast sync block requests. */
-                if(!TAO::Ledger::ChainState::Synchronizing())
-                {
-                    /* Check the checkpoint height. */
-                    if(block.nHeight < TAO::Ledger::ChainState::nCheckpointHeight)
-                        return false;
-
-                    /* Inventory requests. */
-                    std::vector<CInv> vInv = { CInv(block.hashPrevBlock, LLP::MSG_BLOCK_LEGACY) };
-
-                    /* Get batch of inventory. */
-                    pnode->PushMessage("getdata", vInv);
-
-                    /* Run a getblocks to be sure. */
-                    pnode->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
-                }
-
-                /* Add to the orphans map. */
-                mapLegacyOrphans[block.hashPrevBlock] = block;
-
-                /* Debug output. */
-                debug::log(0, FUNCTION, "ORPHAN height=", block.nHeight, " prev=", block.hashPrevBlock.ToString().substr(0, 20));
-            }
-
-            return true;
-        }
-
-
-        /* Check if valid in the chain. */
-        if(!block.Accept())
-        {
-            /* Increment the consecutive failures. */
-            if(pnode)
-                ++pnode->nConsecutiveFails;
-
-            /* Check for failure limit on node. */
-            if(pnode && pnode->nConsecutiveFails >= nMaxFailures)
-            {
-
-                /* Fast Sync node switch. */
-                if(TAO::Ledger::ChainState::Synchronizing())
-                {
-                    /* Find a new fast sync node if too many failures. */
-                    if(addrFastSync == pnode->GetAddress())
-                    {
-                        /* Switch to a new node. */
-                        SwitchNode();
-                    }
-                }
-
-                /* Drop pesky nodes. */
-                return false;
-            }
-
-            return true;
-        }
-        else
-        {
-            /* Special meter for synchronizing. */
-            if(block.nHeight % 1000 == 0 && TAO::Ledger::ChainState::Synchronizing())
-            {
-                uint64_t nElapsed = runtime::timestamp(true) - nTimer;
-                debug::log(0, FUNCTION,
-                    "Processed 1000 blocks in ", nElapsed, " ms [", std::setw(2),
-                    TAO::Ledger::ChainState::PercentSynchronized(), " %]",
-                    " height=", TAO::Ledger::ChainState::nBestHeight.load(),
-                    " trust=", TAO::Ledger::ChainState::nBestChainTrust.load(),
-                    " [", 1000000 / nElapsed, " blocks/s]");
-
-                nTimer = runtime::timestamp(true);
-            }
-
-            /* Update the last time received. */
-            nLastTimeReceived = runtime::timestamp();
-
-            /* Reset the consecutive failures and orphans. */
-            if(pnode)
-            {
-                pnode->nConsecutiveFails = 0;
-                pnode->nConsecutiveOrphans = 0;
-            }
-        }
-
-        uint1024_t hash = block.GetHash();
-
-        /* Process orphan if found. */
-        while(mapLegacyOrphans.count(hash))
-        {
-            uint1024_t hashPrev = mapLegacyOrphans[hash].GetHash();
-
-            debug::log(0, FUNCTION, "processing ORPHAN prev=", hashPrev.SubString(), " size=", mapLegacyOrphans.size());
-
-            if(!mapLegacyOrphans[hash].Accept())
-                return true;
-
-            mapLegacyOrphans.erase(hash);
-            hash = hashPrev;
         }
 
         return true;
@@ -1021,4 +948,19 @@ namespace LLP
         }
     }
 
+
+    /* Get a node by connected session. */
+    memory::atomic_ptr<LegacyNode>& LegacyNode::GetNode(const uint64_t nSession)
+    {
+        LOCK(SESSIONS_MUTEX);
+
+        /* Check for connected session. */
+        static memory::atomic_ptr<LegacyNode> pNULL;
+        if(!mapSessions.count(nSession))
+            return pNULL;
+
+        /* Get a reference of session. */
+        const std::pair<uint32_t, uint32_t>& pair = mapSessions[nSession];
+        return LEGACY_SERVER->GetConnection(pair.first, pair.second);
+    }
 }

@@ -65,8 +65,16 @@ namespace LLD
 
 
     /* Checks if a transaction exists. */
-    bool LegacyDB::HasTx(const uint512_t& hashTx)
+    bool LegacyDB::HasTx(const uint512_t& hashTx, const uint8_t nFlags)
     {
+        /* Special check for memory pool. */
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        {
+            /* Get the transaction. */
+            if(TAO::Ledger::mempool.Has(hashTx))
+                return true;
+        }
+
         return Exists(std::make_pair(std::string("tx"), hashTx));
     }
 

@@ -16,6 +16,9 @@ ________________________________________________________________________________
 #include <LLC/hash/macro.h>
 #include <LLC/hash/argon2.h>
 
+#include <LLC/include/flkey.h>
+#include <LLC/include/eckey.h>
+
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/genesis.h>
 
@@ -258,6 +261,144 @@ namespace TAO
             hashKey.SetBytes(hash);
 
             return hashKey;
+        }
+
+
+        /*
+         *  This function is responsible for genearting the private key in the keychain of a specific account.
+         *  The keychain is a series of keys seeded from a secret phrase and a PIN number.
+         */
+        uint512_t SignatureChain::Generate(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret) const
+        {
+            /* Generate the Secret Phrase */
+            std::vector<uint8_t> vUsername(strUsername.begin(), strUsername.end());
+            vUsername.insert(vUsername.end(), (uint8_t*)&nKeyID, (uint8_t*)&nKeyID + sizeof(nKeyID));
+
+            /* Set to minimum salt limits. */
+            if(vUsername.size() < 8)
+                vUsername.resize(8);
+
+            /* Generate the Secret Phrase */
+            std::vector<uint8_t> vPassword(strPassword.begin(), strPassword.end());
+            vPassword.insert(vPassword.end(), (uint8_t*)&nKeyID, (uint8_t*)&nKeyID + sizeof(nKeyID));
+
+            /* Generate the secret data. */
+            std::vector<uint8_t> vSecret(strSecret.begin(), strSecret.end());
+            vSecret.insert(vSecret.end(), (uint8_t*)&nKeyID, (uint8_t*)&nKeyID + sizeof(nKeyID));
+
+            /* Seed secret data with the key type. */
+            vSecret.insert(vSecret.end(), strType.begin(), strType.end());
+
+            // low-level API
+            std::vector<uint8_t> hash(64);
+
+            /* Create the hash context. */
+            argon2_context context =
+            {
+                /* Hash Return Value. */
+                &hash[0],
+                64,
+
+                /* Password input data. */
+                &vPassword[0],
+                static_cast<uint32_t>(vPassword.size()),
+
+                /* Username and key ID as the salt. */
+                &vUsername[0],
+                static_cast<uint32_t>(vUsername.size()),
+
+                /* The secret phrase as secret data. */
+                &vSecret[0],
+                static_cast<uint32_t>(vSecret.size()),
+
+                /* Optional associated data */
+                NULL, 0,
+
+                /* Computational Cost. */
+                std::max(1u, uint32_t(config::GetArg("-argon2", 12))),
+
+                /* Memory Cost (64 MB). */
+                uint32_t(1 << std::max(4u, uint32_t(config::GetArg("-argon2_memory", 16)))),
+
+                /* The number of threads and lanes */
+                1, 1,
+
+                /* Algorithm Version */
+                ARGON2_VERSION_13,
+
+                /* Custom memory allocation / deallocation functions. */
+                NULL, NULL,
+
+                /* By default only internal memory is cleared (pwd is not wiped) */
+                ARGON2_DEFAULT_FLAGS
+            };
+
+            /* Run the argon2 computation. */
+            int nRet = argon2id_ctx(&context);
+            if(nRet != ARGON2_OK)
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, "Argon2 failed with code ", nRet));
+
+            /* Set the bytes for the key. */
+            uint512_t hashKey;
+            hashKey.SetBytes(hash);
+
+            return hashKey;
+        }
+
+
+        /* This function generates a hash of a public key generated from random seed phrase. */
+        uint256_t SignatureChain::KeyHash(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret, const uint8_t nType) const
+        {
+            /* Get the private key. */
+            uint512_t hashSecret = Generate(strType, nKeyID, strSecret);
+
+            /* Get the secret from new key. */
+            std::vector<uint8_t> vBytes = hashSecret.GetBytes();
+            LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
+
+            /* Switch based on signature type. */
+            switch(nType)
+            {
+                /* Support for the FALCON signature scheeme. */
+                case SIGNATURE::FALCON:
+                {
+                    /* Create the FL Key object. */
+                    LLC::FLKey key;
+
+                    /* Set the secret key. */
+                    if(!key.SetSecret(vchSecret, true))
+                        throw debug::exception(FUNCTION, "failed to set falcon secret key");
+
+                    /* Calculate the next hash. */
+                    uint256_t hashRet = LLC::SK256(key.GetPubKey());
+
+                    /* Set the leading byte. */
+                    hashRet.SetType(nType);
+
+                    return hashRet;
+                }
+
+                /* Support for the BRAINPOOL signature scheme. */
+                case SIGNATURE::BRAINPOOL:
+                {
+                    /* Create EC Key object. */
+                    LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
+
+                    /* Set the secret key. */
+                    if(!key.SetSecret(vchSecret, true))
+                        throw debug::exception(FUNCTION, "failed to set brainpool secret key");
+
+                    /* Calculate the next hash. */
+                    uint256_t hashRet = LLC::SK256(key.GetPubKey());
+
+                    /* Set the leading byte. */
+                    hashRet.SetType(nType);
+
+                    return hashRet;
+                }
+            }
+
+            return 0;
         }
 
 

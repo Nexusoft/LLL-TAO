@@ -43,18 +43,19 @@ namespace TAO
                 LEGACY = 0x2a,
                 LEGACY_TESTNET = 0x6f,
 
-                /* Standard register type bytes. 
-                   NOTE: These MUST be between 0xd1 and 0xed for the base58 encoded string to start with 8 
+                /* Standard register type bytes.
+                   NOTE: These MUST be between 0xd1 and 0xed for the base58 encoded string to start with 8
                 */
                 READONLY  = 0xd1,
                 APPEND    = 0xd2,
                 RAW       = 0xd3,
                 OBJECT    = 0xd4,
-                ACCOUNT   = 0xd5,
-                TOKEN     = 0xd6,
-                TRUST     = 0xd7,
-                NAME      = 0xd8,
-                NAMESPACE = 0xd9,
+                CRYPTO    = 0xd5,
+                ACCOUNT   = 0xd6,
+                TOKEN     = 0xd7,
+                TRUST     = 0xd8,
+                NAME      = 0xd9,
+                NAMESPACE = 0xda,
 
                 WILDCARD  = 0xff
             };
@@ -68,7 +69,7 @@ namespace TAO
              *
              *  Build from uint256_t hash.
              *
-             *  @param[in] nAddress The hash. 
+             *  @param[in] nAddress The hash.
              *
              **/
             Address(const uint256_t& nAddress);
@@ -78,7 +79,7 @@ namespace TAO
              *
              *  Build from type and random address.
              *
-             *  @param[in] nType The type enum to create . 
+             *  @param[in] nType The type enum to create .
              *
              **/
             Address(const uint8_t nType);
@@ -88,7 +89,7 @@ namespace TAO
              *
              *  Build an address from a base58 encoded string.
              *
-             *  @param[in] strName The name to assign to this address. 
+             *  @param[in] strName The name to assign to this address.
              *
              **/
             Address(const std::string& strAddress);
@@ -182,6 +183,16 @@ namespace TAO
              *
              **/
             bool IsObject() const;
+
+
+            /** IsCrypto
+             *
+             *  Check if type is set to CRYPTO.
+             *
+             *  @return True if using CRYPTO type.
+             *
+             **/
+            bool IsCrypto() const;
 
 
             /** IsAccount

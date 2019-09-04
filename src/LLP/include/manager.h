@@ -48,7 +48,7 @@ namespace LLP
          *  Default constructor
          *
          */
-        AddressManager(uint16_t port);
+        AddressManager(uint16_t nPort);
 
 
         /** AddressManager
@@ -71,14 +71,14 @@ namespace LLP
 
         /** GetAddresses
          *
-         *  Get a list of addresses in the manager that have the flagged state.
+         *  Get a list of addresses in the manager that have the flagged nState.
          *
-         *  @param[in] flags the types of connect state
+         *  @param[in] nFlags the types of connect nState
          *
          *  @return A list of addresses in the manager
          *
          **/
-        void GetAddresses(std::vector<BaseAddress> &vAddr, const uint8_t flags = CONNECT_FLAGS_ALL);
+        void GetAddresses(std::vector<BaseAddress> &vAddr, const uint8_t nFlags = CONNECT_FLAGS_ALL);
 
 
         /** GetAddresses
@@ -87,59 +87,59 @@ namespace LLP
          *
          *  @param[out] vAddrInfo The vector of address info output
          *
-         *  @param[in] flags the types of connect state
+         *  @param[in] nFlags the types of connect nState
          *
          **/
-        void GetAddresses(std::vector<TrustAddress> &vAddrInfo, const uint8_t flags = CONNECT_FLAGS_ALL);
+        void GetAddresses(std::vector<TrustAddress> &vAddrInfo, const uint8_t nFlags = CONNECT_FLAGS_ALL);
 
 
         /** Count
          *
          *  Gets the count of addresses info in the manager
          *
-         *  @param[in] flags the types of connect state
+         *  @param[in] nFlags the types of connect nState
          *
          *  @return Count of addresss info with connect state flags
          *
          **/
-        uint32_t Count(const uint8_t flags = CONNECT_FLAGS_ALL);
+        uint32_t Count(const uint8_t nFlags = CONNECT_FLAGS_ALL);
 
 
         /** AddAddress
          *
-         *  Adds the address to the manager and sets the connect state for that
+         *  Adds the address to the manager and sets the connect nState for that
          *  address
          *
          *  @param[in] addr The address to add
-         *
-         *  @param[in] state The state of the connection for the address
+         *  @param[in] nState The nState of the connection for the address
+         *  @param[in] nSession The session lenght for address to give it higher score.
          *
          **/
-        void AddAddress(const BaseAddress &addr, const uint8_t state = ConnectState::NEW);
+        void AddAddress(const BaseAddress &addr, const uint8_t nState = ConnectState::NEW, const uint32_t nSession = 0);
 
 
         /** AddAddresses
          *
-         *  Adds the addresses to the manager and sets the connect state for that
+         *  Adds the addresses to the manager and sets the connect nState for that
          *  address
          *
          *  @param[in] addrs The addresses to add (as a vector of BaseAddress).
-         *  @param[in] state The state of the connection for the address
+         *  @param[in] nState The nState of the connection for the address
          *
          **/
-        void AddAddresses(const std::vector<BaseAddress> &addrs, const uint8_t state = ConnectState::NEW);
+        void AddAddresses(const std::vector<BaseAddress> &addrs, const uint8_t nState = ConnectState::NEW);
 
 
         /** AddAddresses
          *
-         *  Adds the addresses to the manager and sets the connect state for that
+         *  Adds the addresses to the manager and sets the connect nState for that
          *  address
          *
          *  @param[in] addrs The addresses to add (as a vector of strings).
-         *  @param[in] state The state of the connection for the address
+         *  @param[in] nState The nState of the connection for the address
          *
          **/
-        void AddAddresses(const std::vector<std::string> &addrs, const uint8_t state = ConnectState::NEW);
+        void AddAddresses(const std::vector<std::string> &addrs, const uint8_t nState = ConnectState::NEW);
 
 
         /** RemoveAddress
@@ -157,10 +157,10 @@ namespace LLP
          *  Adds the seed node addresses to the addressmanager if they aren't
          *  already in there.
          *
-         *  @param[in] testnet Flag for if testnet seed nodes should be added.
+         *  @param[in] fTestnet Flag for if fTestnet seed nodes should be added.
          *
          **/
-        void AddSeedAddresses(bool testnet = false);
+        void AddSeedAddresses(bool fTestnet = false);
 
 
         /** Has
@@ -179,7 +179,7 @@ namespace LLP
          *
          *  @param[in] addr The address to get the state from.
          *
-         *  @return Returns the connect state of the address.
+         *  @return Returns the connect nState of the address.
          *
          **/
         uint8_t GetState(const BaseAddress &addr) const;
@@ -227,17 +227,9 @@ namespace LLP
         void ReadDatabase();
 
 
-        /** WriteDatabase
-         *
-         *  Write the addresses from the manager into the address database
-         *
-         **/
-        void WriteDatabase();
-
-
         /** ToString
          *
-         *  Print the current state of the address manager.
+         *  Print the current nState of the address manager.
          *
          **/
         std::string ToString();
@@ -248,7 +240,7 @@ namespace LLP
          *  Set the port number for all addresses in the manager.
          *
          **/
-        void SetPort(uint16_t port);
+        void SetPort(uint16_t nPortIn);
 
 
         /** Ban
@@ -257,10 +249,10 @@ namespace LLP
          *  behavior is to ban indefinitely.
          *
          *  @param[in] addr The address to ban.
-         *  @param[in] banTime The time to ban for(or zero for indefinite ban)
+         *  @param[in] nBanTime The time to ban for(or zero for indefinite ban)
          *
          **/
-         void Ban(const BaseAddress &addr, uint32_t banTime = 0);
+         void Ban(const BaseAddress &addr, uint32_t nBanTime = 0);
 
 
          /** GetDNSName
@@ -268,12 +260,12 @@ namespace LLP
           *  Gets the DNS name associated with the given address.
           *
           *  @param[in] addr The address to determine DNS from.
-          *  @param[out] dns The DNS name, if any.
+          *  @param[out] strDNS The DNS name, if any.
           *
           *  @return Returns true if the address has a DNS name.
           *
           **/
-         bool GetDNSName(const BaseAddress &addr, std::string &dns);
+         bool GetDNSName(const BaseAddress &addr, std::string &strDNS);
 
 
     private:
@@ -285,30 +277,30 @@ namespace LLP
          *
          *  @param[out] info The resulting outputted address info vector
          *
-         *  @param[in] flags Specify which types of connections to get the info from.
+         *  @param[in] nFlags Specify which types of connections to get the info from.
          *
          **/
-        void get_addresses(std::vector<TrustAddress> &vInfo, const uint8_t flags = CONNECT_FLAGS_ALL);
+        void get_addresses(std::vector<TrustAddress> &vInfo, const uint8_t nFlags = CONNECT_FLAGS_ALL);
 
 
         /** count
          *
          *  Helper function to get the number of addresses of the connect type
          *
-         *  @param[in] flags Specify which types of connections to get the info from.
+         *  @param[in] nFlags Specify which types of connections to get the info from.
          *
          **/
-        uint32_t count(const uint8_t flags = CONNECT_FLAGS_ALL);
+        uint32_t count(const uint8_t nFlags = CONNECT_FLAGS_ALL);
 
 
         /** total_count
          *
          *  Gets the cumulative count of each address state flags.
          *
-         *  @param[in] flags Specify which types of connections to get the info from.
+         *  @param[in] nFlags Specify which types of connections to get the info from.
          *
          **/
-        uint32_t total_count(const uint8_t flags);
+        uint32_t total_count(const uint8_t nFlags);
 
 
         /** remove_address
@@ -352,13 +344,13 @@ namespace LLP
 
         /** update_state
          *
-         *  Updates the state of the given Trust address.
+         *  Updates the nState of the given Trust address.
          *
          *  @param[out] pAddr The pointer to the trust address to update.
-         *  @param[in] state The state the address should be updated to.
+         *  @param[in] nState The nState the address should be updated to.
          *
          **/
-        void update_state(TrustAddress *pAddr, uint8_t state);
+        void update_state(TrustAddress *pAddr, uint8_t nState);
 
 
     private:

@@ -60,8 +60,6 @@ namespace TAO
         , hashGenesis(0)
         , hashPrevTx(0)
         , hashNextTx(0)
-        , nKeyType(0)
-        , nNextType(0)
         , vchPubKey()
         , vchSig()
         {

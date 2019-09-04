@@ -88,6 +88,14 @@ namespace LLP
         std::atomic<bool> fCONNECTED;
 
 
+        /** Index for the current data thread processing. **/
+        int32_t nDataThread;
+
+
+        /** Index for the current slot in data thread. **/
+        int32_t nDataIndex;
+
+
     private:
 
         /** Flag to determine if event occurred. **/

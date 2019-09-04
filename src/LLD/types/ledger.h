@@ -337,11 +337,12 @@ namespace LLD
          *  Checks LedgerDB if a transaction exists.
          *
          *  @param[in] hashTx The txid of transaction to check.
+         *  @param[in] nFlags The flags to determine memory pool or disk
          *
          *  @return True if the transaction exists, false otherwise.
          *
          **/
-        bool HasTx(const uint512_t& hashTx);
+        bool HasTx(const uint512_t& hashTx, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
         /** WriteSequence

@@ -20,14 +20,73 @@ ________________________________________________________________________________
 #include <LLP/packets/tritium.h>
 #include <LLP/templates/base_connection.h>
 #include <LLP/templates/events.h>
-#include <LLD/cache/binary_key.h>
-#include <TAO/Ledger/types/locator.h>
-#include <Util/include/memory.h>
 #include <LLP/templates/ddos.h>
+
 #include <TAO/Ledger/types/tritium.h>
 
 namespace LLP
 {
+
+    /** Actions invoke behavior in remote node. **/
+    namespace ACTION
+    {
+        enum
+        {
+            RESERVED     = 0,
+
+            /* Verbs. */
+            LIST         = 0x10,
+            GET          = 0x11,
+            NOTIFY       = 0x12,
+            AUTH         = 0x13,
+            VERSION      = 0x14,
+
+            /* Protocol. */
+            PING         = 0x1a,
+            PONG         = 0x1b
+
+        };
+    }
+
+
+    /** Types are objects that can be sent in packets. **/
+    namespace TYPES
+    {
+        enum
+        {
+            /* Key Types. */
+            UINT256_T   = 0x20,
+            UINT512_T   = 0x21,
+            UINT1024_T  = 0x22,
+            STRING      = 0x23,
+            BYTES       = 0x24,
+            LOCATOR     = 0x25,
+
+            /* Object Types. */
+            BLOCK       = 0x30,
+            TRANSACTION = 0x31,
+            TIMESEED    = 0x32,
+            HEIGHT      = 0x33,
+            CHECKPOINT  = 0x34,
+            ADDRESS     = 0x35,
+
+            /* Specifier. */
+            LEGACY      = 0x3a
+        };
+    }
+
+
+    /** Status returns available states. **/
+    namespace RESPONSE
+    {
+        enum
+        {
+            ACCEPTED    = 0x40,
+            REJECTED    = 0x41,
+            STALE       = 0x42,
+        };
+    }
+
 
     /** TritiumNode
      *
@@ -36,6 +95,50 @@ namespace LLP
      **/
     class TritiumNode : public BaseConnection<TritiumPacket>
     {
+
+        /** message_args
+         *
+         *  Overload of variadic templates
+         *
+         *  @param[out] s The data stream to write to
+         *  @param[in] head The object being written
+         *
+         **/
+        template<class Head>
+        void message_args(DataStream& s, Head&& head)
+        {
+            s << std::forward<Head>(head);
+        }
+
+
+        /** message_args
+         *
+         *  Variadic template pack to handle any message size of any type.
+         *
+         *  @param[out] s The data stream to write to
+         *  @param[in] head The object being written
+         *  @param[in] tail The variadic paramters
+         *
+         **/
+        template<class Head, class... Tail>
+        void message_args(DataStream& s, Head&& head, Tail&&... tail)
+        {
+            s << std::forward<Head>(head);
+            message_args(s, std::forward<Tail>(tail)...);
+        }
+
+
+        /** State of if node has currently verified signature. **/
+        std::atomic<bool> fAuthorized;
+
+
+        /** Mutex for connected sessions. **/
+        static std::mutex SESSIONS_MUTEX;
+
+
+        /** Set for connected session. **/
+        static std::map<uint64_t, std::pair<uint32_t, uint32_t>> mapSessions;
+
     public:
 
       /** Name
@@ -62,17 +165,9 @@ namespace LLP
         virtual ~TritiumNode();
 
 
-        /** Randomly genearted session ID. **/
-        static uint64_t nSessionID;
-
-        /** The current session ID. **/
-        uint64_t nCurrentSession;
-
-        /** The height of this node given at the version message. **/
-        uint32_t nStartingHeight;
-
         /** Counter to keep track of the last time a ping was made. **/
         std::atomic<uint64_t> nLastPing;
+
 
         /** Counter to keep track of last time sample request. */
         std::atomic<uint64_t> nLastSamples;
@@ -82,63 +177,48 @@ namespace LLP
         std::map<uint64_t, runtime::timer> mapLatencyTracker;
 
 
-        /** Map to keep track of sent request ID's while witing for them to return. **/
-        std::map<uint64_t, uint64_t> mapSentRequests;
+        /** The current genesis-id of connected peer. **/
+        uint256_t hashGenesis;
 
-        /** The trigger hash to send a continue inv message to remote node. **/
-        uint1024_t hashContinue;
 
-        /* Duplicates connection reset. */
-        uint32_t nConsecutiveFails;
+        /** The current trust of the connected peer. **/
+        uint64_t nTrust;
 
-        /* Orphans connection reset. */
+
+        /** This node's protocol version. **/
+        uint64_t nProtocolVersion;
+
+
+        /** This node's session-id. **/
+        uint64_t nCurrentSession;
+
+
+        /** This node's current height. **/
+        uint32_t nCurrentHeight;
+
+
+        /** This node's current checkpoint. **/
+        uint1024_t hashCheckpoint;
+
+
+        /** Counter of total orphans. **/
         uint32_t nConsecutiveOrphans;
 
-        static std::atomic<uint32_t> nAsked;
 
-        /* Static instantiation of orphan blocks in queue to process. */
-        static std::map<uint1024_t, std::unique_ptr<TAO::Ledger::Block>> mapOrphans;
-
-        /* Mutex to protect checking more than one block at a time. */
-        static std::mutex PROCESSING_MUTEX;
-
-        /* Mutex to protect the legacy orphans map. */
-        static std::mutex ORPHAN_MUTEX;
-
-        /* Mutex to protect connected sessions. */
-        static std::mutex SESSIONS_MUTEX;
-
-        /* global map connections to session ID's to be used to prevent duplicate connections to the same
-            sever, but via a different RLOC / EID */
-        static std::map<uint64_t, TritiumNode*> mapConnectedSessions;
-
-        /** The last getblocks call this node has received. **/
-        static memory::atomic<uint1024_t> hashLastGetblocks;
-
-        /** The time since last getblocks call. **/
-        static std::atomic<uint64_t> nLastGetBlocks;
-
-        /** Handle an average calculation of fast sync blocks. */
-        static std::atomic<uint32_t> nFastSyncAverage;
-
-        /** The current node that is being used for fast sync.l **/
-        static memory::atomic<BaseAddress> addrFastSync;
-
-        /** The last time a block was accepted. **/
-        static std::atomic<uint64_t> nLastTimeReceived;
-
-        static LLD::KeyLRU cacheInventory;
-
-        /** Flag to determine if a connection is Inbound. **/
-        bool fInbound;
+        /** Counter of total failures. **/
+        uint32_t nConsecutiveFails;
 
 
-        /** SwitchNode
-        *
-        *  Helper function to switch the nodes on sync.
-        *
-        **/
-        static void SwitchNode();
+        /** The node's full version string. **/
+        std::string strFullVersion;
+
+
+        /** The last block index listed. **/
+        uint1024_t hashLastBlock;
+
+
+        /** The last transaction index listed. **/
+        uint512_t hashLastTx[2];
 
 
         /** Event
@@ -162,25 +242,6 @@ namespace LLP
         bool ProcessPacket() final;
 
 
-        /** DoS
-         *
-         *  Send the DoS Score to DDOS Filte
-         *
-         *  @param[in] nDoS The score to add for DoS banning
-         *  @param[in] fReturn The value to return (False disconnects this node)
-         *
-         *  @return fReturn
-         *
-         */
-        inline bool DoS(int nDoS, bool fReturn)
-        {
-            if(fDDOS)
-                DDOS->rSCORE += nDoS;
-
-            return fReturn;
-        }
-
-
         /** ReadPacket
          *
          *  Non-Blocking Packet reader to build a packet from TCP Connection.
@@ -190,25 +251,24 @@ namespace LLP
         void ReadPacket() final;
 
 
-        /** PushGetInventory
+        /** Authorized
          *
-         *  Send a request to get recent inventory from remote node.
-         *
-         *  @param[in] hashBlockFrom The block to start from
-         *  @param[in] hashBlockTo The block to search to
+         *  Determine if a node is authorized and therfore trusted.
          *
          **/
-        void PushGetInventory(const uint1024_t& hashBlockFrom, const uint1024_t& hashBlockTo);
+        bool Authorized() const;
 
 
-        /** Process
+        /** SessionActive
          *
-         *  Verify a block and accept it into the block chain
+         *  Determine whether a session is connected.
          *
-         *  @return True is no errors, false otherwise.
+         *  @param[in] nSession The session to check for
+         *
+         *  @return true if session is connected.
          *
          **/
-        static bool Process(const TAO::Ledger::Block& block, TritiumNode* pnode);
+        static bool SessionActive(const uint64_t nSession);
 
 
         /** NewMessage
@@ -221,7 +281,7 @@ namespace LLP
          *  @return Returns a filled out tritium packet.
          *
          **/
-        TritiumPacket NewMessage(const uint16_t nMsg, const DataStream &ssData)
+        TritiumPacket NewMessage(const uint16_t nMsg, const DataStream& ssData)
         {
             TritiumPacket RESPONSE(nMsg);
             RESPONSE.SetData(ssData);
@@ -240,23 +300,7 @@ namespace LLP
         void PushMessage(const uint16_t nMsg)
         {
             TritiumPacket RESPONSE(nMsg);
-            RESPONSE.SetChecksum();
-
-            this->WritePacket(RESPONSE);
-        }
-
-        /** PushMessage
-         *
-         *  Adds a tritium packet to the queue to write to the socket.
-         *
-         **/
-        template<typename T1>
-        void PushMessage(const uint16_t nMsg, const T1& t1)
-        {
-            DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
-            ssData << t1;
-
-            this->WritePacket(NewMessage(nMsg, ssData));
+            WritePacket(RESPONSE);
         }
 
 
@@ -265,118 +309,13 @@ namespace LLP
          *  Adds a tritium packet to the queue to write to the socket.
          *
          **/
-        template<typename T1, typename T2>
-        void PushMessage(const uint16_t nMsg, const T1& t1, const T2& t2)
+        template<typename... Args>
+        void PushMessage(const uint16_t nMsg, Args&&... args)
         {
             DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
-            ssData << t1 << t2;
+            message_args(ssData, std::forward<Args>(args)...);
 
-            this->WritePacket(NewMessage(nMsg, ssData));
-        }
-
-
-        /** PushMessage
-         *
-         *  Adds a tritium packet to the queue to write to the socket.
-         *
-         **/
-        template<typename T1, typename T2, typename T3>
-        void PushMessage(const uint16_t nMsg, const T1& t1, const T2& t2, const T3& t3)
-        {
-            DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
-            ssData << t1 << t2 << t3;
-
-            this->WritePacket(NewMessage(nMsg, ssData));
-        }
-
-
-        /** PushMessage
-         *
-         *  Adds a tritium packet to the queue to write to the socket.
-         *
-         **/
-        template<typename T1, typename T2, typename T3, typename T4>
-        void PushMessage(const uint16_t nMsg, const T1& t1, const T2& t2, const T3& t3, const T4& t4)
-        {
-            DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
-            ssData << t1 << t2 << t3 << t4;
-
-            this->WritePacket(NewMessage(nMsg, ssData));
-        }
-
-
-        /** PushMessage
-         *
-         *  Adds a tritium packet to the queue to write to the socket.
-         *
-         **/
-        template<typename T1, typename T2, typename T3, typename T4, typename T5>
-        void PushMessage(const uint16_t nMsg, const T1& t1, const T2& t2, const T3& t3, const T4& t4, const T5& t5)
-        {
-            DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
-            ssData << t1 << t2 << t3 << t4 << t5;
-
-            this->WritePacket(NewMessage(nMsg, ssData));
-        }
-
-
-        /** PushMessage
-         *
-         *  Adds a tritium packet to the queue to write to the socket.
-         *
-         **/
-        template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6>
-        void PushMessage(const uint16_t nMsg, const T1& t1, const T2& t2, const T3& t3, const T4& t4, const T5& t5, const T6& t6)
-        {
-            DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
-            ssData << t1 << t2 << t3 << t4 << t5 << t6;
-
-            this->WritePacket(NewMessage(nMsg, ssData));
-        }
-
-
-        /** PushMessage
-         *
-         *  Adds a tritium packet to the queue to write to the socket.
-         *
-         **/
-        template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7>
-        void PushMessage(const uint16_t nMsg, const T1& t1, const T2& t2, const T3& t3, const T4& t4, const T5& t5, const T6& t6, const T7& t7)
-        {
-            DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
-            ssData << t1 << t2 << t3 << t4 << t5 << t6 << t7;
-
-            this->WritePacket(NewMessage(nMsg, ssData));
-        }
-
-
-        /** PushMessage
-         *
-         *  Adds a tritium packet to the queue to write to the socket.
-         *
-         **/
-        template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7, typename T8>
-        void PushMessage(const uint16_t nMsg, const T1& t1, const T2& t2, const T3& t3, const T4& t4, const T5& t5, const T6& t6, const T7& t7, const T8& t8)
-        {
-            DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
-            ssData << t1 << t2 << t3 << t4 << t5 << t6 << t7 << t8;
-
-            this->WritePacket(NewMessage(nMsg, ssData));
-        }
-
-
-        /** PushMessage
-         *
-         *  Adds a tritium packet to the queue to write to the socket.
-         *
-         **/
-        template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7, typename T8, typename T9>
-        void PushMessage(const uint16_t nMsg, const T1& t1, const T2& t2, const T3& t3, const T4& t4, const T5& t5, const T6& t6, const T7& t7, const T8& t8, const T9& t9)
-        {
-            DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
-            ssData << t1 << t2 << t3 << t4 << t5 << t6 << t7 << t8 << t9;
-
-            this->WritePacket(NewMessage(nMsg, ssData));
+            WritePacket(NewMessage(nMsg, ssData));
         }
 
     };

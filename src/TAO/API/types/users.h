@@ -50,7 +50,7 @@ namespace TAO
         private:
 
             /** The signature chain for login and logout. */
-            mutable std::map<uint64_t, memory::encrypted_ptr<TAO::Ledger::SignatureChain> > mapSessions;
+            mutable std::map<uint256_t, memory::encrypted_ptr<TAO::Ledger::SignatureChain> > mapSessions;
 
 
             /** The active pin for sessionless API use **/
@@ -131,13 +131,22 @@ namespace TAO
             bool CanTransact() const;
 
 
-            /** CanMint
+            /** CanMine
              *
              *  In sessionless API mode this method checks that the active sig chain has
-             *  been unlocked to allow minting.
+             *  been unlocked to allow mining.
              *
              **/
-            bool CanMint() const;
+            bool CanMine() const;
+
+
+            /** CanStake
+             *
+             *  In sessionless API mode this method checks that the active sig chain has
+             *  been unlocked to allow staking.
+             *
+             **/
+            bool CanStake() const;
 
 
             /** CanProcessNotifications
@@ -158,7 +167,7 @@ namespace TAO
              *  @param[in] nSession The session identifier.
              *
              **/
-            uint512_t GetKey(uint32_t nKey, SecureString strSecret, uint64_t nSession) const;
+            uint512_t GetKey(uint32_t nKey, SecureString strSecret, uint256_t nSession) const;
 
 
             /** GetGenesis
@@ -171,7 +180,7 @@ namespace TAO
              *  @return The genesis ID if logged in.
              *
              **/
-            uint256_t GetGenesis(uint64_t nSession, bool fThrow = false) const;
+            uint256_t GetGenesis(uint256_t nSession, bool fThrow = false) const;
 
 
             /** GetCallersGenesis
@@ -195,7 +204,7 @@ namespace TAO
              *  @return the signature chain.
              *
              **/
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& GetAccount(uint64_t nSession) const;
+            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& GetAccount(uint256_t nSession) const;
 
 
             /** GetActivePin
@@ -233,10 +242,10 @@ namespace TAO
              *  @param[in] fThrow Flag to indicate whether this method should throw an exception
              *             if a valid session ID cannot be found.
              *
-             *  @return the pin.
+             *  @return the session id.
              *
              **/
-            uint64_t GetSession(const json::json params, bool fThrow = true) const;
+            uint256_t GetSession(const json::json params, bool fThrow = true) const;
 
 
 

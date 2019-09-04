@@ -31,6 +31,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/include/retarget.h>
 #include <TAO/Ledger/include/supply.h>
+#include <TAO/Ledger/include/process.h>
 #include <TAO/Ledger/include/timelocks.h>
 
 #include <TAO/Ledger/types/mempool.h>
@@ -708,7 +709,11 @@ namespace TAO
                 }
 
                 /* Verify the block object. */
-                if(!LLP::TritiumNode::Process(block, nullptr))
+                uint8_t nStatus = 0;
+                TAO::Ledger::Process(block, nStatus);
+
+                /* Check the statues. */
+                if(!(nStatus & PROCESS::ACCEPTED))
                     continue;
 
                 /* Debug output. */

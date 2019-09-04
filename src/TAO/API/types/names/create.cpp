@@ -24,6 +24,7 @@ ________________________________________________________________________________
 #include <TAO/Register/types/object.h>
 #include <TAO/Register/include/create.h>
 #include <TAO/Register/include/names.h>
+#include <TAO/Register/include/reserved.h>
 #include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/include/create.h>
@@ -53,7 +54,7 @@ namespace TAO
             SecureString strPIN = users->GetPin(params);
 
             /* Get the session to be used for this API call */
-            uint64_t nSession = users->GetSession(params);
+            uint256_t nSession = users->GetSession(params);
 
             /* Get the account. */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
@@ -114,6 +115,10 @@ namespace TAO
             if(fGlobal && strNamespace.length() > 0)
                 throw APIException(-170, "Global names cannot be created in a namespace");
 
+            /* Check for reserved global names. */
+            if(fGlobal && TAO::Register::NAME::Reserved(strName) )
+                throw APIException(-201, "Global names can't be created with reserved name");
+
             /* If the caller has specified the global flag then set the namespace to the reserved global namespace name */
             if(fGlobal)
                 strNamespace = TAO::Register::NAMESPACE::GLOBAL;
@@ -164,7 +169,7 @@ namespace TAO
             SecureString strPIN = users->GetPin(params);
 
             /* Get the session to be used for this API call */
-            uint64_t nSession = users->GetSession(params);
+            uint256_t nSession = users->GetSession(params);
 
             /* Get the account. */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
@@ -190,9 +195,21 @@ namespace TAO
             /* Get the namespace name */
             std::string strNamespace = params["name"].get<std::string>();
 
-            /* Don't allow : and . */
-            if(strNamespace.find(":") != strNamespace.npos )
-                throw APIException(-162, "Namespace contains invalid characters");
+            /* Check namespace for case/allowed characters */
+            if (!std::all_of(strNamespace.cbegin(), strNamespace.cend(), 
+                [](char c)
+                { 
+                    /* Check for lower case or numeric or allowed characters */
+                    return std::islower(c) || std::isdigit(c) || c == '.'; 
+                }
+                )) 
+            {
+                throw APIException(-162, "Namespace can only contain lowercase letters, numbers, periods (.)");
+            }
+
+            /* Check for reserved names. */
+            if(TAO::Register::NAMESPACE::Reserved(strNamespace) )
+                throw APIException(-200, "Namespaces can't contain reserved names");
 
 
             /* Generate register address for namespace, which must be a hash of the name */
