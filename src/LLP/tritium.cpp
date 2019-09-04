@@ -1157,13 +1157,18 @@ namespace LLP
                     && !(nStatus & TAO::Ledger::PROCESS::IGNORE))
                     {
                         /* Ask for previous block. */
-                        PushMessage(ACTION::GET, uint8_t(TYPES::BLOCK), block.hashPrevBlock);
+                        PushMessage(ACTION::GET,
+                            uint8_t(TYPES::BLOCK),
+                            block.hashPrevBlock
+                        );
 
                         /* Ask for list of blocks. */
                         PushMessage(ACTION::LIST,
                             uint8_t(TYPES::BLOCK),
-                            uint8_t(TYPES::LOCATOR), TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
-                            uint1024_t(0));
+                            uint8_t(TYPES::LOCATOR),
+                            TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
+                            uint1024_t(0)
+                        );
                     }
                 }
 

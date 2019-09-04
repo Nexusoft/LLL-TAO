@@ -13,6 +13,9 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
+#include <LLP/include/global.h>
+#include <LLP/types/tritium.h>
+
 #include <Legacy/include/money.h>
 
 #include <TAO/Ledger/types/mempool.h>
@@ -144,10 +147,16 @@ namespace TAO
             mapLegacy[hashTx] = tx;
 
             /* Relay the transaction. */
-            //if(LLP::TRITIUM_SERVER)
-            //    LLP::TRITIUM_SERVER->Relay(
-            //        uint8_t(LLP::ACTION::NOTIFY),
-            //        uint8_t(LLP::TYPES::LEGACY), uint8_t(LLP::TYPES::TRANSACTION), uint8_t(LLP::TYPES::UINT512_T), hashTx);
+            if(LLP::TRITIUM_SERVER)
+            {
+                LLP::TRITIUM_SERVER->Relay
+                (
+                    LLP::ACTION::NOTIFY,
+                    uint8_t(LLP::TYPES::LEGACY),
+                    uint8_t(LLP::TYPES::TRANSACTION),
+                    hashTx
+                );
+            }
 
             /* Log outputs. */
             debug::log(2, FUNCTION, "tx ", hashTx.SubString(), " ACCEPTED");

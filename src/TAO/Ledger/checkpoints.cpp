@@ -13,6 +13,8 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <LLP/include/global.h>
+
 #include <TAO/Ledger/types/state.h>
 
 #include <TAO/Ledger/include/chainstate.h>
@@ -113,6 +115,17 @@ namespace TAO
             /* Only Harden New Checkpoint if it Fits new timestamp. */
             if(!IsNewTimespan(state))
                 return false;
+
+            /* Notify nodes of the checkpoint. */
+            if(LLP::TRITIUM_SERVER)
+            {
+                LLP::TRITIUM_SERVER->Relay
+                (
+                    LLP::ACTION::NOTIFY,
+                    uint8_t(LLP::TYPES::CHECKPOINT),
+                    state.hashCheckpoint
+                );
+            }
 
             /* Update the Checkpoints into Memory. */
             ChainState::hashCheckpoint    = state.hashCheckpoint;

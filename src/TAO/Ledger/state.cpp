@@ -752,12 +752,34 @@ namespace TAO
                     };
 
                     /* Relay the new block to all connected nodes. */
-                    //if(LLP::LEGACY_SERVER)
-                    //    LLP::LEGACY_SERVER->Relay("inv", vInv);
+                    if(LLP::LEGACY_SERVER && nVersion < 7)
+                        LLP::LEGACY_SERVER->Relay("inv", vInv);
 
                     /* If using Tritium server then we need to include the blocks transactions in the inventory before the block. */
-                    //if(LLP::TRITIUM_SERVER)
-                    //    LLP::TRITIUM_SERVER->Relay(LLP::DAT_INVENTORY, vInv);
+                    if(LLP::TRITIUM_SERVER)
+                    {
+                        /* Check for version 7 blocks. */
+                        if(nVersion >= 7)
+                        {
+                            LLP::TRITIUM_SERVER->Relay
+                            (
+                                LLP::ACTION::NOTIFY,
+                                uint8_t(LLP::TYPES::BLOCK),
+                                hash
+                            );
+                        }
+                        else
+                        {
+                            LLP::TRITIUM_SERVER->Relay
+                            (
+                                LLP::ACTION::NOTIFY,
+                                uint8_t(LLP::TYPES::LEGACY),
+                                uint8_t(LLP::TYPES::BLOCK),
+                                hash
+                            );
+                        }
+                    }
+
                 }
             }
 

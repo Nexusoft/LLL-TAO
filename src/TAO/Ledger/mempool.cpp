@@ -165,9 +165,15 @@ namespace TAO
             debug::log(2, FUNCTION, "tx ", hashTx.SubString(), " ACCEPTED in ", std::dec, time.ElapsedMilliseconds(), " ms");
 
             /* Relay the transaction. */
-            //if(LLP::TRITIUM_SERVER)
-                //LLP::TRITIUM_SERVER->Relay(uint8_t(LLP::ACTION::NOTIFY), uint8_t(LLP::TYPES::TRANSACTION),
-                //                           uint8_t(LLP::TYPES::UINT512_T), hashTx);
+            if(LLP::TRITIUM_SERVER)
+            {
+                LLP::TRITIUM_SERVER->Relay
+                (
+                    LLP::ACTION::NOTIFY,
+                    uint8_t(LLP::TYPES::TRANSACTION),
+                    hashTx
+                );
+            }
 
             /* Check orphan queue. */
             {
