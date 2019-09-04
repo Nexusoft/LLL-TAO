@@ -60,12 +60,11 @@ namespace LLP
     {
         LOCK(MUTEX);
 
-        int32_t nMovingAverage = 0;
-        int32_t s = static_cast<int32_t>(SCORE.size());
-        for(int32_t i = 0; i < s; ++i)
+        uint32_t nMovingAverage = 0;
+        for(int32_t i = 0; i < SCORE.size(); ++i)
             nMovingAverage += SCORE[i].second;
 
-        return nMovingAverage / s;
+        return nMovingAverage / SCORE.size();
     }
 
 
