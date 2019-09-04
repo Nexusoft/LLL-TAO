@@ -63,14 +63,14 @@ namespace TAO
                     if(block.nHeight < TAO::Ledger::ChainState::nCheckpointHeight)
                     {
                         /* Set the status. */
-                        nStatus |= PROCESS::IGNORE;
+                        nStatus |= PROCESS::IGNORED;
 
                         return;
                     }
 
                     /* Fast sync block requests. */
                     if(TAO::Ledger::ChainState::Synchronizing())
-                        nStatus |= PROCESS::IGNORE;
+                        nStatus |= PROCESS::IGNORED;
 
                     /* Add to the orphans map. */
                     mapOrphans.insert(std::make_pair(block.hashPrevBlock, std::unique_ptr<TAO::Ledger::Block>(block.Clone())));
