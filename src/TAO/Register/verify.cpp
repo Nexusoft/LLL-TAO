@@ -677,6 +677,9 @@ namespace TAO
                         uint32_t nScore = 0;
                         contract >> nScore;
 
+                        /* Seek to end */
+                        contract.Seek(64);
+
                         /* Verify the first register code. */
                         uint8_t nState = 0;
                         contract >>= nState;

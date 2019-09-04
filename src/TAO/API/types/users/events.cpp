@@ -490,7 +490,10 @@ namespace TAO
                                 if(fMigration)
                                 {
                                     /* The amount to migrate */
-                                    const uint64_t nAmount = txLegacy.nValue;
+                                    const int64_t nLegacyAmount = txLegacy.nValue;
+                                    uint64_t nAmount = 0;
+                                    if(nLegacyAmount > 0)
+                                        nAmount = nLegacyAmount;
 
                                     /* Set up the OP::MIGRATE */
                                     txout[nOut] << uint8_t(TAO::Operation::OP::MIGRATE) << hashTx << hashAccount << hashKey
