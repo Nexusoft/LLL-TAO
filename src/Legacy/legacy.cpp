@@ -437,6 +437,8 @@ namespace Legacy
 
         /* Process the block state. */
         TAO::Ledger::BlockState state(*this);
+        if(state.GetHash() != GetHash())
+            return debug::error(FUNCTION, "Hash mismatch expected ", GetHash().ToString(), " actual ", state.GetHash().ToString());
 
         /* Add to the memory pool. */
         for(const auto& tx : vtx)

@@ -104,6 +104,20 @@ namespace LLP
     }
 
 
+    /** print
+     *
+     *  Print out the internal data inside the score object.
+     *
+     **/
+    void DDOS_Score::print()
+    {
+        for(int32_t i = 0; i < SCORE.size(); ++i)
+            printf(" %s %u |", SCORE[i].first ? "T" : "F", SCORE[i].second);
+
+        printf("\n");
+    }
+
+
     /* Default Constructor */
     DDOS_Filter::DDOS_Filter(uint32_t nTimespan)
     : MUTEX()
@@ -124,11 +138,13 @@ namespace LLP
         if((TIMER.Elapsed() < BANTIME))
             return;
 
+        rSCORE.print();
+
         TIMER.Start();
 
-        ++TOTALBANS;
+        //++TOTALBANS;
 
-        BANTIME = std::max(TOTALBANS * (rSCORE.Score() + 1) * (cSCORE.Score() + 1), TOTALBANS * 1200u);
+        //BANTIME = std::max(TOTALBANS * (rSCORE.Score() + 1) * (cSCORE.Score() + 1), TOTALBANS * 1200u);
 
         debug::log(0, "XXXXX DDOS Filter cScore = ", cSCORE.Score(),
             " rScore = ", rSCORE.Score(),

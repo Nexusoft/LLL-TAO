@@ -124,7 +124,7 @@ namespace LLP
             /* Handle for a Packet Header Read. */
             case EVENT_HEADER:
             {
-                if(fDDOS)
+                if(fDDOS && !fOUTGOING)
                 {
                     Packet PACKET   = this->INCOMING;
                     if(PACKET.HEADER == BLOCK_DATA)

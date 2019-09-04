@@ -201,9 +201,9 @@ namespace LLP
         if(EVENT == EVENT_HEADER)
         {
             const std::string message = INCOMING.GetMessage();
-            uint32_t length = INCOMING.LENGTH;
+            uint32_t nLenght = INCOMING.LENGTH;
 
-            debug::log(3, NODE, "Received Message (", message, ", ", length, ")");
+            debug::log(3, NODE, "Received Message (", message, ", ", nLenght, ")");
 
             if(fDDOS)
             {
@@ -214,9 +214,9 @@ namespace LLP
                         DDOS->rSCORE += 25;
 
                 /* Check the Packet Sizes to Unified Time Commands. */
-                if((message == "getoffset" || message == "offset") && length != 16)
+                if((message == "getoffset" || message == "offset") && nLenght != 16)
                     if(DDOS)
-                        DDOS->Ban(debug::safe_printstr("INVALID PACKET SIZE | OFFSET/GETOFFSET | LENGTH ", length));
+                        DDOS->Ban(debug::safe_printstr("INVALID PACKET SIZE | OFFSET/GETOFFSET | LENGTH ", nLenght));
             }
 
             return;

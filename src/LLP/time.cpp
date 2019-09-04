@@ -61,22 +61,37 @@ namespace LLP
         /* Handle any DDOS Packet Filters. */
         if(EVENT == EVENT_HEADER)
         {
+            /* Checks for incoming connections only. */
             if(fDDOS)
             {
+                /* Get the incoming packet. */
                 Packet PACKET   = this->INCOMING;
 
+                /* Incoming connection should never send time data. */
                 if(PACKET.HEADER == TIME_DATA)
-                    DDOS->Ban();
+                    DDOS->Ban("INVALID HEADER: TIME_DATA");
 
+                /* Incoming connection should never receive address data. */
                 if(PACKET.HEADER == ADDRESS_DATA)
-                    DDOS->Ban();
+                    DDOS->Ban("INVALID HEADER: ADDRESS_DATA");
 
+                /* Check for incoming data fields that are unsolicited. */
                 if(PACKET.HEADER == TIME_OFFSET)
-                    DDOS->Ban();
+                    DDOS->Ban("INVALID HEADER: TIME_OFFSET");
 
+                /* Check for expected get time sizes. */
+                if(PACKET.HEADER == GET_ADDRESS)
+                    DDOS->Ban("INVALID HEADER: GET_ADDRESS");
+
+                /* Check for expected get offset sizes. */
                 if(PACKET.HEADER == GET_OFFSET && PACKET.LENGTH > 4)
-                    DDOS->Ban();
+                    DDOS->Ban("INVALID SIZE: GET_OFFSET");
 
+                /* Check for expected get time sizes. */
+                if(PACKET.HEADER == GET_TIME && PACKET.LENGTH > 4)
+                    DDOS->Ban("INVALID SIZE: GET_TIME");
+
+                /* Return if banned. */
                 if(DDOS->Banned())
                     return;
 
@@ -135,14 +150,14 @@ namespace LLP
 
         if(PACKET.HEADER == GET_TIME)
         {
-            uint32_t time_sample = static_cast<uint32_t>(runtime::unifiedtimestamp());
+            uint32_t nTimestamp = static_cast<uint32_t>(runtime::unifiedtimestamp());
 
             Packet RESPONSE;
             RESPONSE.HEADER = TIME_DATA;
             RESPONSE.LENGTH = 4;
-            RESPONSE.DATA = convert::uint2bytes(time_sample);
+            RESPONSE.DATA = convert::uint2bytes(nTimestamp);
 
-            debug::log(4, NODE, "Sent time sample ", time_sample);
+            debug::log(4, NODE, "Sent time sample ", nTimestamp);
 
             WritePacket(RESPONSE);
             return true;
