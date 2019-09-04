@@ -403,7 +403,10 @@ namespace TAO
                                 uint1024_t hashLastBlock;
                                 uint32_t nSequence;
 
-                                if(!txLast.ExtractTrust(hashLastBlock, nSequence, nScore))
+                                if(txLast.IsGenesis())
+                                    nScore = 0;
+
+                                else if(!txLast.ExtractTrust(hashLastBlock, nSequence, nScore))
                                     break;
 
                                 fMigration = true;

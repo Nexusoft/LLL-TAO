@@ -189,7 +189,10 @@ namespace Legacy
         uint32_t nSequence;
 
         /* Extract the trust score */
-        if(!txLast.ExtractTrust(hashLastBlock, nSequence, nScore))
+        if(txLast.IsGenesis())
+            nScore = 0;
+
+        else if(!txLast.ExtractTrust(hashLastBlock, nSequence, nScore))
             return debug::error(FUNCTION, "debit missing trust score");
 
         debit << nScore << txLast.GetHash() << trustKey.GetHash();
