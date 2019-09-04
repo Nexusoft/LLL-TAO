@@ -62,15 +62,15 @@ namespace TAO
             /* Flag indicating this is a return to self credit, i.e. the hashFrom account is the same as the hashAddress account */
             bool fIsReturn = hashFrom == hashAddress;
 
-            /* Check if there are any partial claims against the debit and update the the claimed amount to reflect this credit. 
+            /* Check if there are any partial claims against the debit and update the the claimed amount to reflect this credit.
                NOTE we can skip this check for coinbase transactions or for regular account to account transactions, unless
-               we are returning to self. 
+               we are returning to self.
                NOTE We cannot rely on the IsPartial flag if IsReturn is true because, when returning to self (voiding), the only way
                we can know for sure that this is a potential partial credit is by checking the object type of the hashTo in the debit
                to see if it is a non-account and then checking that the owner is a token (e.g. a tokenized asset).  However we do
                not want to incur the overhead of a DB read to check this for every credit, so instead we will incur the hit of
                reading the claimed and writing the claimed whenever we are returning to self, which occurs far less often. */
-            if(nType != OP::COINBASE 
+            if(nType != OP::COINBASE
             && (fIsPartial || fIsReturn))
             {
                 /* Get the partial amount. */
@@ -341,7 +341,7 @@ namespace TAO
                         /* Check to see if debit has been fully credited */
                         if(nClaimed == nDebit)
                             return debug::error(FUNCTION, "credit is already claimed");
-                            
+
                         /* Check the partial to the debit amount. */
                         if(nDebit != (nClaimed + nCredit))
                             return debug::error(FUNCTION, "debit and partial credit value mismatch");

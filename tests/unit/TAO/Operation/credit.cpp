@@ -29,7 +29,6 @@ ________________________________________________________________________________
 
 TEST_CASE( "Credit Primitive Tests", "[operation]")
 {
-    /* check a credit from token */
     {
         /* create object */
         TAO::Register::Address hashToken = TAO::Register::Address(TAO::Register::Address::TOKEN);
@@ -64,7 +63,7 @@ TEST_CASE( "Credit Primitive Tests", "[operation]")
             REQUIRE(tx.Verify());
 
             /* commit to disk */
-            REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+            REQUIRE(TAO::Operation::Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
         }
 
 
@@ -88,13 +87,12 @@ TEST_CASE( "Credit Primitive Tests", "[operation]")
             REQUIRE(tx.Verify());
 
             /* commit to disk */
-            REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+            REQUIRE(TAO::Operation::Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
         }
 
 
         /* create the first token account object */
         {
-
             TAO::Ledger::Transaction tx;
             tx.hashGenesis = hashGenesis;
             tx.nSequence = 1;
@@ -116,9 +114,9 @@ TEST_CASE( "Credit Primitive Tests", "[operation]")
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
         }
 
+
         /* create the second token account object */
         {
-
             TAO::Ledger::Transaction tx;
             tx.hashGenesis = hashGenesis2;
             tx.nSequence = 1;
@@ -137,37 +135,163 @@ TEST_CASE( "Credit Primitive Tests", "[operation]")
             REQUIRE(tx.Verify());
 
             /* commit to disk */
-            REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+            REQUIRE(TAO::Operation::Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
         }
 
+        TAO::Ledger::Transaction tx;
+        TAO::Ledger::Transaction tx2;
 
-        /* create a token debit transaction. */
+        uint64_t nReference = 0;
+        uint64_t nAmount = 0;
+
+
+        /* check a token credit from a debit with an improper credit amount. */
         {
-            TAO::Ledger::Transaction tx;
             tx.hashGenesis = hashGenesis;
             tx.nSequence = 2;
             tx.nTimestamp = runtime::timestamp();
             tx.hashNextTx = TAO::Ledger::STATE::HEAD;
 
-            tx[0] << uint8_t(TAO::Operation::OP::DEBIT) << hashToken << hashAccount << uint64_t(500) << uint64_t(0);
+            tx2.hashGenesis = hashGenesis;
+            tx2.nSequence = 3;
+            tx2.nTimestamp = runtime::timestamp();
+            tx2.hashNextTx = TAO::Ledger::STATE::HEAD;
 
-            /* generate prestates and poststates */
+            nReference = 0;
+            nAmount = 500;
+
+            /* create a token debit transaction. */
+            tx[0] << uint8_t(TAO::Operation::OP::DEBIT) << hashToken << hashAccount << nAmount << nReference;
             REQUIRE(tx.Build());
+
+            /* create a token credit transaction. */
+            tx2[0] << uint8_t(TAO::Operation::OP::CREDIT) << tx.GetHash() << uint32_t(0) << hashAccount << hashToken << nAmount + 1;
+            REQUIRE(tx2.Build());
 
             /* verify prestates and poststates */
             REQUIRE(tx.Verify());
+            REQUIRE(tx2.Verify());
 
             /* write transaction */
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
+            REQUIRE(LLD::Ledger->WriteTx(tx2.GetHash(), tx2));
 
             /* commit to disk */
-            REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+            REQUIRE(TAO::Operation::Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+            REQUIRE_FALSE(TAO::Operation::Execute(tx2[0], TAO::Ledger::FLAGS::BLOCK));
+
+            tx2[0].Clear();
         }
 
 
+        /* check a token credit return back to a token register. */
+        {
+            tx2.hashGenesis = hashGenesis;
+            tx2.nSequence = 3;
+            tx2.nTimestamp = runtime::timestamp();
+            tx2.hashNextTx = TAO::Ledger::STATE::HEAD;
+
+            nAmount = 500;
+
+            /* create a token credit transaction. */
+            tx2[0] << uint8_t(TAO::Operation::OP::CREDIT) << tx.GetHash() << uint32_t(0) << hashToken << hashToken << nAmount;
+            REQUIRE(tx2.Build());
+
+            /* verify prestates and poststates, write tx, commit to disk */
+            REQUIRE(tx2.Verify());
+            REQUIRE(LLD::Ledger->WriteTx(tx2.GetHash(), tx2));
+            REQUIRE(TAO::Operation::Execute(tx2[0], TAO::Ledger::FLAGS::BLOCK));
+
+            /* cleanup */
+            tx[0].Clear();
+            tx2[0].Clear();
+        }
+
+
+        /* check a token credit from a debit with proper amount. */
+        {
+            tx.hashGenesis = hashGenesis;
+            tx.nSequence = 4;
+            tx.nTimestamp = runtime::timestamp();
+            tx.hashNextTx = TAO::Ledger::STATE::HEAD;
+
+            tx2.hashGenesis = hashGenesis;
+            tx2.nSequence = 5;
+            tx2.nTimestamp = runtime::timestamp();
+            tx2.hashNextTx = TAO::Ledger::STATE::HEAD;
+
+            nReference = 0;
+            nAmount = 500;
+
+            /* create a token debit transaction. */
+            tx[0] << uint8_t(TAO::Operation::OP::DEBIT) << hashToken << hashAccount << nAmount << nReference;
+            REQUIRE(tx.Build());
+
+            /* create a token credit transaction. */
+            tx2[0] << uint8_t(TAO::Operation::OP::CREDIT) << tx.GetHash() << uint32_t(0) << hashAccount << hashToken << nAmount;
+            REQUIRE(tx2.Build());
+
+            /* verify prestates and poststates, write tx, commit to disk */
+            REQUIRE(tx.Verify());
+            REQUIRE(tx2.Verify());
+
+            REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
+            REQUIRE(LLD::Ledger->WriteTx(tx2.GetHash(), tx2));
+
+            REQUIRE(TAO::Operation::Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+            REQUIRE(TAO::Operation::Execute(tx2[0], TAO::Ledger::FLAGS::BLOCK));
+
+            /* cleanup */
+            //tx[0].Clear();
+            tx2[0].Clear();
+        }
+
+
+        /* attempt a spent token credit return back to a token register. */
+        {
+            tx2.hashGenesis = hashGenesis;
+            tx2.nSequence = 5;
+            tx2.nTimestamp = runtime::timestamp();
+            tx2.hashNextTx = TAO::Ledger::STATE::HEAD;
+
+            nAmount = 500;
+
+            /* create a token credit transaction. */
+            tx2[0] << uint8_t(TAO::Operation::OP::CREDIT) << tx.GetHash() << uint32_t(0) << hashToken << hashToken << nAmount;
+            REQUIRE(tx2.Build());
+
+            /* verify prestates and poststates, write tx, commit to disk */
+            REQUIRE(tx2.Verify());
+            REQUIRE(LLD::Ledger->WriteTx(tx2.GetHash(), tx2));
+            REQUIRE_FALSE(TAO::Operation::Execute(tx2[0], TAO::Ledger::FLAGS::BLOCK));
+
+            /* cleanup */
+            tx2[0].Clear();
+        }
+
+
+        /* attempt a double credit. */
+        {
+            tx2.hashGenesis = hashGenesis;
+            tx2.nSequence = 5;
+            tx2.nTimestamp = runtime::timestamp();
+            tx2.hashNextTx = TAO::Ledger::STATE::HEAD;
+
+            /* create a token credit transaction. */
+            tx2[0] << uint8_t(TAO::Operation::OP::CREDIT) << tx.GetHash() << uint32_t(0) << hashAccount << hashToken << nAmount;
+            REQUIRE(tx2.Build());
+
+            /* verify prestates and poststates, write tx, commit to disk */
+            REQUIRE(tx2.Verify());
+            REQUIRE(LLD::Ledger->WriteTx(tx2.GetHash(), tx2));
+            REQUIRE_FALSE(TAO::Operation::Execute(tx2[0], TAO::Ledger::FLAGS::BLOCK));
+
+            /* cleanup */
+            tx[0].Clear();
+            tx2[0].Clear();
+        }
 
 
     }
 
-    //
 }

@@ -123,7 +123,7 @@ namespace TAO
                 }
 
 
-                /* Check the current opcode. */
+                /* Check the current opcode after checking for conditions or validation. */
                 switch(nOP)
                 {
 
@@ -249,9 +249,7 @@ namespace TAO
                     }
 
 
-                    /*
-                     * This does not contain any prestates.
-                     */
+                    /* This does not contain any prestates. */
                     case OP::CREATE:
                     {
                         /* Make sure there are no conditions. */

@@ -75,7 +75,7 @@ namespace TAO
 
             /* set the cached cost */
             nCost = contract.nCost;
-            
+
             /* Set the transaction reference. */
             hashCaller  = contract.hashCaller;
             nTimestamp  = contract.nTimestamp;

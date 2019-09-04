@@ -86,12 +86,12 @@ namespace TAO
             uint8_t nNextType;
 
 
-            //memory only, to be disposed once fully locked into the chain behind a checkpoint
-            //this is for the segregated keys from transaction data.
+            /* Memory only, to be disposed once fully locked into the chain behind a checkpoint
+             * this is for the segregated keys from transaction data. */
             std::vector<uint8_t> vchPubKey;
             std::vector<uint8_t> vchSig;
 
-            //serialization macros
+            /* serialization macros */
             IMPLEMENT_SERIALIZE
             (
                 /* Contracts layers. */
