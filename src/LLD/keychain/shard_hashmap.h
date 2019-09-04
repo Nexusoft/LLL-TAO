@@ -12,10 +12,10 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_LLD_KEYCHAIN_HASHMAP_H
-#define NEXUS_LLD_KEYCHAIN_HASHMAP_H
+#ifndef NEXUS_LLD_TEMPLATES_SHARD_HASHMAP_H
+#define NEXUS_LLD_TEMPLATES_SHARD_HASHMAP_H
 
-#include <LLD/keychain/keychain.h>
+#include <LLD/templates/key.h>
 #include <LLD/cache/template_lru.h>
 #include <LLD/include/enum.h>
 
@@ -29,7 +29,7 @@ ________________________________________________________________________________
 namespace LLD
 {
 
-    /** BinaryHashMap
+    /** ShardHashMap
      *
      *  This class is responsible for managing the keys to the sector database.
      *
@@ -38,7 +38,7 @@ namespace LLD
      *  when there is a collision that is found.
      *
      **/
-    class BinaryHashMap : public Keychain
+    class ShardHashMap
     {
     protected:
 
@@ -51,19 +51,23 @@ namespace LLD
 
 
         /** Keychain stream object. **/
-        TemplateLRU<uint16_t, std::fstream*> *fileCache;
+        TemplateLRU<std::pair<uint16_t, uint16_t>, std::fstream*>* fileCache;
+
+
+        /** Disk index shard LRU cache **/
+        TemplateLRU<uint16_t, std::vector<uint16_t>*>* diskShards;
 
 
         /** Keychain index stream. **/
-        std::fstream* pindex;
-
-
-        /** Total elements in hashmap for quick inserts. **/
-        std::vector<uint16_t> hashmap;
+        TemplateLRU<uint16_t, std::fstream*>* indexCache;
 
 
         /** The Maximum buckets allowed in the hashmap. */
         uint32_t HASHMAP_TOTAL_BUCKETS;
+
+
+        /** The Maximum shards allowed in the hashmap. */
+        uint32_t HASHMAP_TOTAL_SHARDS;
 
 
         /** The Maximum key size for static key sectors. **/
@@ -86,19 +90,20 @@ namespace LLD
 
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        BinaryHashMap(std::string strBaseLocationIn, uint8_t nFlagsIn = FLAGS::APPEND, uint64_t nBucketsIn = 256 * 256 * 64);
+        ShardHashMap(const std::string& strBaseLocationIn, const uint8_t nFlagsIn = FLAGS::APPEND,
+            const uint64_t nBucketsIn = 256 * 256 * 64, const uint32_t nShardsIn = 4);
 
 
         /** Copy Assignment Operator **/
-        BinaryHashMap& operator=(const BinaryHashMap& map);
+        ShardHashMap& operator=(const ShardHashMap& map);
 
 
         /** Copy Constructor **/
-        BinaryHashMap(const BinaryHashMap& map);
+        ShardHashMap(const ShardHashMap& map);
 
 
         /** Default Destructor **/
-        virtual ~BinaryHashMap();
+        ~ShardHashMap();
 
 
         /** CompressKey
@@ -118,11 +123,22 @@ namespace LLD
          *  Calculates a bucket to be used for the hashmap allocation.
          *
          *  @param[in] vKey The key object to calculate with.
-         *Hashmap
+         *  @param[in] nShard The shard assigned to hashmap object.
+         *
          *  @return The bucket assigned to the key.
          *
          **/
-        uint32_t GetBucket(const std::vector<uint8_t>& vKey);
+        uint32_t GetBucket(const std::vector<uint8_t>& vKey, uint32_t& nShard);
+
+
+        /** LoadShardIndex
+         *
+         *  Loads a disk index containing shard data into memory.
+         *
+         *  @param[in] The shard to load index for.
+         *
+         **/
+        void LoadShardIndex(const uint32_t nShard);
 
 
         /** Initialize
@@ -146,6 +162,20 @@ namespace LLD
         bool Get(const std::vector<uint8_t>& vKey, SectorKey &cKey);
 
 
+        /** Get
+         *
+         *  Read a key index from the disk hashmaps.
+         *  This method iterates all maps to find all keys.
+         *
+         *  @param[in] vKey The binary data of the key.
+         *  @param[out] vKeys The list of keys to return.
+         *
+         *  @return True if the key was found, false otherwise.
+         *
+         **/
+        bool Get(const std::vector<uint8_t>& vKey, std::vector<SectorKey>& vKeys);
+
+
         /** Put
          *
          *  Write a key to the disk hashmaps.
@@ -156,14 +186,6 @@ namespace LLD
          *
          **/
         bool Put(const SectorKey& cKey);
-
-
-        /** Flush
-         *
-         *  Flush all buffers to disk if using ACID transaction.
-         *
-         **/
-        void Flush();
 
 
         /** Restore

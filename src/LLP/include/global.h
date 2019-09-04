@@ -35,6 +35,10 @@ namespace LLP
     extern Server<Miner>*        MINING_SERVER;
 
 
+    /** Current session identifier. **/
+    const extern uint64_t SESSION_ID;
+
+
     /** Initialize
      *
      *  Initialize the LLP.
@@ -100,13 +104,13 @@ namespace LLP
      *
      **/
     template <class ProtocolType>
-    Server<ProtocolType>* CreateTAOServer(uint16_t port)
+    Server<ProtocolType>* CreateTAOServer(uint16_t nPort)
     {
         /* Create the new server object. */
         return new Server<ProtocolType>(
 
             /* The port this server listens on. */
-            port,
+            nPort,
 
             /* The total data I/O threads. */
             static_cast<uint16_t>(config::GetArg(std::string("-threads"), 8)),
@@ -121,7 +125,7 @@ namespace LLP
             static_cast<uint32_t>(config::GetArg(std::string("-cscore"), 1)),
 
             /* The request score (total packets per second.) */
-            static_cast<uint32_t>(config::GetArg(std::string("-rscore"), 50)),
+            static_cast<uint32_t>(config::GetArg(std::string("-rscore"), 4000)),
 
             /* The DDOS moving average timespan (default: 60 seconds). */
             static_cast<uint32_t>(config::GetArg(std::string("-timespan"), 60)),

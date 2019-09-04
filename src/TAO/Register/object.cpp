@@ -73,6 +73,16 @@ namespace TAO
                 nType = OBJECTS::NAMESPACE;
 
             }
+            else if(mapData.size() == 5
+            && Check("auth", TYPES::UINT256_T, true)
+            && Check("lisp", TYPES::UINT256_T, true)
+            && Check("network", TYPES::UINT256_T, true)
+            && Check("sign", TYPES::UINT256_T, true)
+            && Check("verify", TYPES::UINT256_T, true))
+            {
+                /* Set the return value. */
+                nType = OBJECTS::CRYPTO;
+            }
             else if(mapData.size() == 3
             && Check("namespace", TYPES::STRING, false)
             && Check("name", TYPES::STRING, false)
@@ -147,7 +157,7 @@ namespace TAO
                     /* Get the supply from the token object */
                     uint64_t nSupply = get<uint64_t>("supply");
 
-                    /* Fee = (log10(nSupply) - 2) * 100 NXS 
+                    /* Fee = (log10(nSupply) - 2) * 100 NXS
                        which equates to 100 NXS for each significant figure, which the first 2sf (100 supply)  being free*/
                     uint64_t nBase = (std::log10(nSupply));
                     return std::max(int64_t(0), int64_t(nBase - 2)) * TAO::Ledger::TOKEN_FEE;

@@ -877,13 +877,16 @@ namespace Legacy
         {
             runtime::sleep(1000);
 
+            /* Check for shutdown. */
+            if(WalletDB::fShutdownFlushThread.load() && nLastFlushed == nLastSeen)
+                break;
+
             /* Skip flush if multi-step DB operation (cursor, transaction, etc.) in progress. Wait for it to complete */
             if(WalletDB::fDbInProgress.load())
                 continue;
 
             /* Copy the atomic value to a local variable so we can use it without any chance that it will change */
             const uint32_t nWalletUpdatedCount = WalletDB::nWalletDBUpdated.load();
-
             if(nLastSeen != nWalletUpdatedCount)
             {
                 /* Database is updated since last checked. Record time update recognized */
@@ -910,7 +913,7 @@ namespace Legacy
             }
         }
 
-        debug::log(1, FUNCTION, "Shutting down wallet flush thread");
+        debug::log(0, FUNCTION, "Shutting down wallet flush thread");
 
         /* Reset flags */
         WalletDB::fShutdownFlushThread.store(false);

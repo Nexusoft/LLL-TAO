@@ -38,6 +38,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/stake.h>
+#include <TAO/Ledger/include/process.h>
 
 #include <TAO/Ledger/types/mempool.h>
 
@@ -641,11 +642,12 @@ namespace TAO
              * After all is approved, BlockState::Index() will call BlockState::SetBest()
              * to set the new best chain. This method relays the new block to the network.
              */
-            if(!LLP::TritiumNode::Process(block, nullptr))
-            {
-                debug::log(0, FUNCTION, "Generated block not accepted");
-                return false;
-            }
+            uint8_t nStatus = 0;
+            TAO::Ledger::Process(block, nStatus);
+
+            /* Check the statues. */
+            if(!(nStatus & PROCESS::ACCEPTED))
+                return debug::error(FUNCTION, "generated block not accepted");
 
             if(fGenesis)
                 fGenesis = false;

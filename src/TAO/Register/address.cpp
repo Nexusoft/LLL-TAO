@@ -133,6 +133,7 @@ namespace TAO
                 case APPEND:
                 case RAW:
                 case OBJECT:
+                case CRYPTO:
                 case ACCOUNT:
                 case TOKEN:
                 case TRUST:
@@ -171,6 +172,12 @@ namespace TAO
         bool Address::IsObject() const
         {
             return GetType() == OBJECT;
+        }
+
+        /* Check if type is set to CRYPTO. */
+        bool Address::IsCrypto() const
+        {
+            return GetType() == CRYPTO;
         }
 
 

@@ -79,8 +79,8 @@ namespace TAO
         /* Accepts a transaction with validation rules. */
         bool Mempool::Accept(TAO::Ledger::Transaction& tx, LLP::TritiumNode* pnode)
         {
-            /* Check for activation timestamp (2 hours after v7 timelock activation). */
-            if(!(TAO::Ledger::VersionActive((tx.nTimestamp - 7200), 7) || TAO::Ledger::CurrentVersion() > 7))
+            /* Check for version 7 activation timestamp. */
+            if(!(TAO::Ledger::VersionActive((tx.nTimestamp), 7) || TAO::Ledger::CurrentVersion() > 7))
                 return debug::error(FUNCTION, "tritium transaction not accepted until 2 hours after time-lock");
 
             /* Get the transaction hash. */
@@ -92,7 +92,6 @@ namespace TAO
 
             /* Get ehe next hash being claimed. */
             uint256_t hashClaim = tx.PrevHash();
-
             {
                 RLOCK(MUTEX);
 
@@ -120,10 +119,8 @@ namespace TAO
 
                     /* Ask for the missing transaction. */
                     if(pnode)
-                    {
-                        std::vector<LLP::CInv> vInv = { LLP::CInv(tx.hashPrevTx, LLP::MSG_TX_TRITIUM) };
-                        pnode->PushMessage(LLP::GET_DATA, vInv);
-                    }
+                        pnode->PushMessage(uint8_t(LLP::ACTION::GET), uint8_t(LLP::TYPES::TRANSACTION),
+                                           uint8_t(LLP::TYPES::UINT512_T), tx.hashPrevTx);
 
                     return true;
                 }
@@ -168,9 +165,9 @@ namespace TAO
             debug::log(2, FUNCTION, "tx ", hashTx.SubString(), " ACCEPTED in ", std::dec, time.ElapsedMilliseconds(), " ms");
 
             /* Relay the transaction. */
-            std::vector<LLP::CInv> vInv = { LLP::CInv(hashTx, LLP::MSG_TX_TRITIUM) };
-            if(LLP::TRITIUM_SERVER)
-                LLP::TRITIUM_SERVER->Relay(LLP::DAT_INVENTORY, vInv);
+            //if(LLP::TRITIUM_SERVER)
+                //LLP::TRITIUM_SERVER->Relay(uint8_t(LLP::ACTION::NOTIFY), uint8_t(LLP::TYPES::TRANSACTION),
+                //                           uint8_t(LLP::TYPES::UINT512_T), hashTx);
 
             /* Check orphan queue. */
             {

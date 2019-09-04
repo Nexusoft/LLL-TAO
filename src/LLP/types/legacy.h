@@ -36,6 +36,14 @@ namespace LLP
      **/
     class LegacyNode : public BaseConnection<LegacyPacket>
     {
+        /** Mutex to protect connected sessions. **/
+        static std::mutex SESSIONS_MUTEX;
+
+
+        /** Map to keep track of duplicate nonce sessions. **/
+        static std::map<uint64_t, std::pair<uint32_t, uint32_t>> mapSessions;
+
+
     public:
 
         /** Name
@@ -44,16 +52,6 @@ namespace LLP
          *
          **/
         static std::string Name() { return "Legacy"; }
-
-
-        /** Process
-         *
-         *  Verify a block and accept it into the block chain
-         *
-         *  @return True is no errors, false otherwise.
-         *
-         **/
-        static bool Process(const Legacy::LegacyBlock& block, LegacyNode* pnode);
 
 
         /** Default Constructor **/
@@ -70,10 +68,6 @@ namespace LLP
 
         /* Virtual destructor. */
         virtual ~LegacyNode();
-
-
-        /** Randomly generated session ID. **/
-        static const uint64_t nSessionID;
 
 
         /** String version of this Node's Version. **/
@@ -177,6 +171,18 @@ namespace LLP
          *
          **/
         void PushAddress(const LegacyAddress& addr);
+
+
+        /** GetNode
+         *
+         *  Get a node by connected session.
+         *
+         *  @param[in] nSession The session to receive
+         *
+         *  @return a pointer to connected node.
+         *
+         **/
+        static memory::atomic_ptr<LegacyNode>& GetNode(const uint64_t nSession);
 
 
         /** DoS

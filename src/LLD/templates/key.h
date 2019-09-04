@@ -34,23 +34,32 @@ namespace LLD
     {
     public:
 
-        /** The Key Header:
-            Byte 0: nState
-            Byte 1 - 3: nLength (The Size of the Sector)
-            Byte 3 - 5: nSector (The Sector Number [0 - x])
-        **/
+        /** The current state of the sector (eg. WRITE, EMTPY, READ). **/
         uint8_t   		   	nState;
+
+
+        /** The length of the sector key on disk. **/
         uint16_t 		    nLength;
 
-        /** These three hold the location of
-            Sector in the Sector Database of
-            Given Sector Key. **/
+
+        /** The file number that data is stored in. **/
         uint16_t 		   nSectorFile;
+
+
+        /** The size of the sector data. **/
         uint32_t   		   nSectorSize;
+
+
+        /** The binary position of the sector. **/
         uint32_t   		   nSectorStart;
 
-        /* The binary data of the Sector key. */
+
+        /** The binary data of the Sector key. **/
         std::vector<uint8_t> vKey;
+
+
+        /** MEMORY ONLY: The timestamp for timestamped hash tables. **/
+        mutable uint64_t nTimestamp;
 
 
         /* Serialization Macro. */
@@ -61,7 +70,7 @@ namespace LLD
             READWRITE(nSectorFile);
             READWRITE(nSectorSize);
             READWRITE(nSectorStart);
-      )
+        )
 
 
         /** Default Constructor. **/
@@ -69,11 +78,11 @@ namespace LLD
 
 
         /** Constructor **/
-        SectorKey(uint8_t nStateIn,
-                  std::vector<uint8_t> vKeyIn,
-                  uint16_t nSectorFileIn,
-                  uint32_t nSectorStartIn,
-                  uint32_t nSectorSizeIn);
+        SectorKey(const uint8_t nStateIn,
+                  const std::vector<uint8_t>& vKeyIn,
+                  const uint16_t nSectorFileIn,
+                  const uint32_t nSectorStartIn,
+                  const uint32_t nSectorSizeIn);
 
 
         /** Default Destructor **/

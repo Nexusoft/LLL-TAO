@@ -83,6 +83,7 @@ namespace TAO
         /** Default Constructor. **/
         BlockState::BlockState()
         : Block()
+        , nTime(runtime::unifiedtimestamp())
         , ssSystem()
         , vtx()
         , nChainTrust(0)
@@ -100,6 +101,7 @@ namespace TAO
         /** Default Constructor. **/
         BlockState::BlockState(const TritiumBlock& block)
         : Block(block)
+        , nTime(block.nTime)
         , ssSystem()
         , vtx(block.vtx.begin(), block.vtx.end())
         , nChainTrust(0)
@@ -125,6 +127,7 @@ namespace TAO
         /* Construct a block state from a legacy block. */
         BlockState::BlockState(const Legacy::LegacyBlock& block)
         : Block(block)
+        , nTime(block.nTime)
         , ssSystem()
         , vtx()
         , nChainTrust(0)
@@ -156,6 +159,7 @@ namespace TAO
         BlockState::BlockState(const BlockState& state)
         : Block(state)
         {
+            nTime               = state.nTime;
             vtx                 = state.vtx;
 
             nChainTrust         = state.nChainTrust;
@@ -182,9 +186,9 @@ namespace TAO
             nHeight             = state.nHeight;
             nBits               = state.nBits;
             nNonce              = state.nNonce;
-            nTime               = state.nTime;
             vchBlockSig         = state.vchBlockSig;
 
+            nTime               = state.nTime;
             vtx                 = state.vtx;
 
             nChainTrust         = state.nChainTrust;
@@ -224,6 +228,13 @@ namespace TAO
         }
 
 
+        /* Return the Block's current UNIX timestamp. */
+        uint64_t BlockState::GetBlockTime() const
+        {
+            return nTime;
+        }
+
+
         /* Get the previous block state in chain. */
         BlockState BlockState::Prev() const
         {
@@ -259,6 +270,10 @@ namespace TAO
         /* Accept a block state into chain. */
         bool BlockState::Index()
         {
+            /* Runtime calculations. */
+            runtime::timer timer;
+            timer.Start();
+
             /* Read leger DB for previous block. */
             BlockState statePrev = Prev();
             if(!statePrev)
@@ -536,8 +551,26 @@ namespace TAO
             else if(nChainTrust > ChainState::nBestChainTrust.load() && !SetBest())
                 return debug::error(FUNCTION, "failed to set best chain");
 
+            /* Check timer. */
+            if(timer.ElapsedMilliseconds() > 100)
+            {
+                debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_RED, "!!!SLOW BLOCK ", ANSI_COLOR_RESET, timer.ElapsedMilliseconds(), " ms ", GetHash().SubString());
+
+                debug::log(0, ToString(debug::flags::header | debug::flags::tx));
+            }
+
+            timer.Reset();
+
             /* Commit the transaction to database. */
             LLD::TxnCommit();
+
+            /* Check timer. */
+            if(timer.ElapsedMilliseconds() > 100)
+            {
+                debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_RED, "!!!SLOW BLOCK WRITE ", ANSI_COLOR_RESET, timer.ElapsedMilliseconds(), " ms ", GetHash().SubString());
+
+                debug::log(0, ToString(debug::flags::header | debug::flags::tx));
+            }
 
             /* Debug output. */
             debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION, "ACCEPTED");
@@ -719,12 +752,12 @@ namespace TAO
                     };
 
                     /* Relay the new block to all connected nodes. */
-                    if(LLP::LEGACY_SERVER)
-                        LLP::LEGACY_SERVER->Relay("inv", vInv);
+                    //if(LLP::LEGACY_SERVER)
+                    //    LLP::LEGACY_SERVER->Relay("inv", vInv);
 
                     /* If using Tritium server then we need to include the blocks transactions in the inventory before the block. */
-                    if(LLP::TRITIUM_SERVER)
-                        LLP::TRITIUM_SERVER->Relay(LLP::DAT_INVENTORY, vInv);
+                    //if(LLP::TRITIUM_SERVER)
+                    //    LLP::TRITIUM_SERVER->Relay(LLP::DAT_INVENTORY, vInv);
                 }
             }
 
@@ -1136,6 +1169,28 @@ namespace TAO
             debug::log(0, ToString(debug::flags::header | debug::flags::chain));
         }
 
+
+        /* Get the Signarture Hash of the block. Used to verify work claims. */
+        uint1024_t BlockState::SignatureHash() const
+        {
+            /* Signature hash for version 7 blocks. */
+            if(nVersion >= 7)
+            {
+                /* Create a data stream to get the hash. */
+                DataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
+                ss.reserve(256);
+
+                /* Serialize the data to hash into a stream. */
+                ss << nVersion << hashPrevBlock << hashMerkleRoot << nChannel << nHeight << nBits << nNonce << nTime << vOffsets;
+
+                return LLC::SK1024(ss.begin(), ss.end());
+            }
+
+            return LLC::SK1024(BEGIN(nVersion), END(nTime));
+        }
+
+
+        /* Prove that you staked a number of seconds based on weight. */
         uint1024_t BlockState::StakeHash() const
         {
             if(vtx[0].first == TYPE::TRITIUM_TX)
@@ -1161,7 +1216,7 @@ namespace TAO
                 return Block::StakeHash(tx.IsGenesis(), keyTrust);
             }
             else
-                return debug::error(FUNCTION, "StakeHash called on invalid BlockState");
+                throw debug::exception(FUNCTION, "StakeHash called on invalid BlockState");
         }
     }
 }

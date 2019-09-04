@@ -15,7 +15,9 @@ ________________________________________________________________________________
 #include <LLC/hash/SK.h>
 #include <LLC/include/random.h>
 
-#include <LLD/cache/binary_lfu.h>
+#include <LLD/cache/binary_lru.h>
+#include <LLD/keychain/shard_hashmap.h>
+#include <LLD/templates/sector.h>
 
 #include <Util/include/debug.h>
 #include <Util/include/base64.h>
@@ -32,6 +34,9 @@ ________________________________________________________________________________
 #include <iostream>
 
 #include <TAO/Register/types/address.h>
+#include <TAO/Register/types/object.h>
+
+#include <TAO/Register/include/create.h>
 
 #include <TAO/Ledger/types/genesis.h>
 #include <TAO/Ledger/types/sigchain.h>
@@ -46,37 +51,143 @@ ________________________________________________________________________________
 #include <variant>
 
 
+class TestDB : public LLD::SectorDatabase<LLD::ShardHashMap, LLD::BinaryLRU>
+{
+public:
+    TestDB()
+    : SectorDatabase("testdb"
+    , LLD::FLAGS::CREATE | LLD::FLAGS::FORCE
+    , 256 * 256 * 64
+    , 1024 * 1024 * 4)
+    {
+    }
+
+    ~TestDB()
+    {
+
+    }
+
+    bool WriteLast(const uint1024_t& last)
+    {
+        return Write(std::string("last"), last);
+    }
+
+    bool ReadLast(uint1024_t& last)
+    {
+        return Read(std::string("last"), last);
+    }
+
+
+    bool WriteHash(const uint1024_t& hash)
+    {
+        return Write(std::make_pair(std::string("hash"), hash), hash, "hash");
+    }
+
+    bool ReadHash(const uint1024_t& hash, uint1024_t& hash2)
+    {
+        return Read(std::make_pair(std::string("hash"), hash), hash2);
+    }
+
+
+    bool EraseHash(const uint1024_t& hash)
+    {
+        return Erase(std::make_pair(std::string("hash"), hash));
+    }
+};
+
+
+/*
+Hash Tables:
+
+Set max tables per timestamp.
+
+Keep disk index of all timestamps in memory.
+
+Keep caches of Disk Index files (LRU) for low memory footprint
+
+Check the timestamp range of bucket whether to iterate forwards or backwards
+
+
+_hashmap.000.0000
+_name.shard.file
+  t0 t1 t2
+  |  |  |
+
+  timestamp each hashmap file if specified
+  keep indexes in TemplateLRU
+
+  search from nTimestamp < timestamp[nShard][nHashmap]
+
+*/
+
+
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
-    //debug::log(0, TAO::Register::Address(TAO::Register::Address::RESERVED).ToBase58());
-    //debug::log(0, TAO::Register::Address(TAO::Register::Address::RESERVED2).ToBase58());
-    debug::log(0, TAO::Register::Address(TAO::Register::Address::LEGACY).ToBase58());
-    debug::log(0, TAO::Register::Address(TAO::Register::Address::LEGACY_TESTNET).ToBase58());
-    debug::log(0, TAO::Register::Address(TAO::Register::Address::READONLY).ToBase58());
-    debug::log(0, TAO::Register::Address(TAO::Register::Address::APPEND).ToBase58());
-    debug::log(0, TAO::Register::Address(TAO::Register::Address::RAW).ToBase58());
-    debug::log(0, TAO::Register::Address(TAO::Register::Address::OBJECT).ToBase58());
-    debug::log(0, TAO::Register::Address(TAO::Register::Address::ACCOUNT).ToBase58());
-    debug::log(0, TAO::Register::Address(TAO::Register::Address::TOKEN).ToBase58());
-    debug::log(0, TAO::Register::Address(TAO::Register::Address::TRUST).ToBase58());
-    debug::log(0, TAO::Register::Address(TAO::Register::Address::NAME).ToBase58());
-    debug::log(0, TAO::Register::Address(TAO::Register::Address::NAMESPACE).ToBase58());
-    debug::log(0, TAO::Register::Address(TAO::Register::Address::WILDCARD).ToBase58());
 
-    //Legacy::NexusAddress legacy("4iwPaoaCYdrQ5hX88K4TRdrTuRRtGn931qW66spaGgNiWe2dGRp");
 
-    // for(uint8_t n = 0; n<255; n++)
-    // {
-    //     std::string str = TAO::Register::Address(n).ToBase58();
-    //     debug::log(0, str + " - " +std::to_string(n));
-    // }
 
-    // TAO::Register::Address tritium;
-    // tritium.SetBase58("4iwPaoaCYdrQ5hX88K4TRdrTuRRtGn931qW66spaGgNiWe2dGRp");
-    // debug::log(0, tritium.ToBase58());
-    // debug::log(0, std::to_string(tritium.GetType()));
-  
+    return 0;
+
+    //uint1024_t hash = ;
+
+    TestDB* testDB = new TestDB();
+
+    std::vector<uint1024_t> vRecords;
+    if(!testDB->BatchRead("hash", vRecords, 10))
+        return debug::error("failed to batch read");
+
+    for(const auto& a : vRecords)
+    {
+        debug::log(0, "Record ", a.Get64());
+        if(!testDB->Erase(std::make_pair(std::string("hash"), a)))
+            return debug::error("failed to erase");
+    }
+
+    return 0;
+
+    for(int t = 0; t < 1000; ++t)
+    {
+        uint1024_t last = 0;
+        testDB->ReadLast(last);
+
+        debug::log(0, "Last is ", last.Get64());
+
+        runtime::timer timer;
+        timer.Start();
+        for(uint1024_t i = 1 ; i < last; ++i)
+        {
+            if(i.Get64() % 10000 == 0)
+            {
+                uint64_t nElapsed = timer.ElapsedMilliseconds();
+                debug::log(0, "Read ", i.Get64(), " Total Records in ", nElapsed, " ms (", i.Get64() * 1000 / nElapsed, " per / s)");
+            }
+
+            uint1024_t hash;
+            testDB->ReadHash(i, hash);
+        }
+
+
+        timer.Reset();
+        uint32_t nTotal = 0;
+        for(uint1024_t i = last + 1 ; i < last + 100000; ++i)
+        {
+            if(++nTotal % 10000 == 0)
+            {
+                uint64_t nElapsed = timer.ElapsedMilliseconds();
+                debug::log(0, "Wrote ", nTotal, " Total Records in ", nElapsed, " ms (", nTotal * 1000 / nElapsed, " per / s)");
+            }
+
+            testDB->WriteHash(i);
+        }
+
+        testDB->WriteLast(last + 100000);
+
+    }
+
+    delete testDB;
+
+
 
     return 0;
 }

@@ -726,8 +726,9 @@ namespace Legacy
                     if(LLP::LEGACY_SERVER)
                         LLP::LEGACY_SERVER->Relay("inv", vInv);
 
-                    if(LLP::TRITIUM_SERVER)
-                        LLP::TRITIUM_SERVER->Relay(LLP::DAT_INVENTORY, vInv);
+                    //if(LLP::TRITIUM_SERVER)
+                    //    LLP::TRITIUM_SERVER->Relay(uint8_t(LLP::ACTION::NOTIFY), uint8_t(LLP::TYPES::LEGACY),
+                    //                               uint8_t(LLP::TYPES::TRANSACTION), uint8_t(LLP::TYPES::UINT512_T), hashTx);
 
                     //Add to the memory pool
                     return TAO::Ledger::mempool.Accept((Transaction)tx);
@@ -748,8 +749,9 @@ namespace Legacy
                 if(LLP::LEGACY_SERVER)
                     LLP::LEGACY_SERVER->Relay("inv", vInv);
 
-                if(LLP::TRITIUM_SERVER)
-                    LLP::TRITIUM_SERVER->Relay(LLP::DAT_INVENTORY, vInv);
+                //if(LLP::TRITIUM_SERVER)
+                //    LLP::TRITIUM_SERVER->Relay(uint8_t(LLP::ACTION::NOTIFY), uint8_t(LLP::TYPES::LEGACY),
+                //                               uint8_t(LLP::TYPES::TRANSACTION), uint8_t(LLP::TYPES::UINT512_T), hashTx);
 
                 //Add to the memory pool
                 return TAO::Ledger::mempool.Accept((Transaction)*this);

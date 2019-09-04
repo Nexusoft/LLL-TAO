@@ -11,6 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
+#include <LLC/include/random.h>
+
 #include <LLP/include/global.h>
 #include <LLP/include/network.h>
 
@@ -23,6 +25,10 @@ namespace LLP
     Server<APINode>*     API_SERVER;
     Server<RPCNode>*     RPC_SERVER;
     Server<Miner>*       MINING_SERVER;
+
+
+    /* Current session identifier. */
+    const uint64_t SESSION_ID = LLC::GetRand();
 
 
     /*  Initialize the LLP. */

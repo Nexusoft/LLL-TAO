@@ -54,7 +54,6 @@ namespace TAO
         , nHeight(nHeightIn)
         , nBits(0)
         , nNonce(0)
-        , nTime(static_cast<uint32_t>(runtime::unifiedtimestamp()))
         , vchBlockSig()
         {
         }
@@ -69,7 +68,6 @@ namespace TAO
         , nHeight(block.nHeight)
         , nBits(block.nBits)
         , nNonce(block.nNonce)
-        , nTime(block.nTime)
         , vchBlockSig(block.vchBlockSig.begin(), block.vchBlockSig.end())
         {
         }
@@ -99,7 +97,6 @@ namespace TAO
             nHeight = 0;
             nBits = 0;
             nNonce = 0;
-            nTime = 0;
             vchBlockSig.clear();
         }
 
@@ -139,13 +136,6 @@ namespace TAO
         }
 
 
-        /* Return the Block's current UNIX timestamp. */
-        uint64_t Block::GetBlockTime() const
-        {
-            return (uint64_t)nTime;
-        }
-
-
         /* Get the prime number of the block. */
         uint1024_t Block::GetPrime() const
         {
@@ -168,20 +158,7 @@ namespace TAO
         /* Get the Signarture Hash of the block. Used to verify work claims. */
         uint1024_t Block::SignatureHash() const
         {
-            /* Signature hash for version 7 blocks. */
-            if(nVersion >= 7)
-            {
-                /* Create a data stream to get the hash. */
-                DataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
-                ss.reserve(256);
-
-                /* Serialize the data to hash into a stream. */
-                ss << nVersion << hashPrevBlock << hashMerkleRoot << nChannel << nHeight << nBits << nNonce << nTime << vOffsets;
-
-                return LLC::SK1024(ss.begin(), ss.end());
-            }
-
-            return LLC::SK1024(BEGIN(nVersion), END(nTime));
+            return 0; //base block signature hash is unused since it relies on nTime
         }
 
 
@@ -193,13 +170,6 @@ namespace TAO
                 return ProofHash();
 
             return SignatureHash();
-        }
-
-
-        /* Update the nTime of the current block. */
-        void Block::UpdateTime()
-        {
-            nTime = static_cast<uint32_t>(std::max(ChainState::stateBest.load().GetBlockTime() + 1, runtime::unifiedtimestamp()));
         }
 
 
@@ -256,7 +226,6 @@ namespace TAO
                 ", ver=", nVersion,
                 ", hashPrevBlock=", hashPrevBlock.SubString(),
                 ", hashMerkleRoot=", hashMerkleRoot.SubString(10),
-                ", nTime=", nTime,
                 std::hex, std::setfill('0'), std::setw(8), ", nBits=", nBits,
                 std::dec, std::setfill(' '), std::setw(0), ", nChannel = ", nChannel,
                 ", nHeight= ", nHeight,

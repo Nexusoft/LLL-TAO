@@ -18,6 +18,7 @@ ________________________________________________________________________________
 
 #include <LLD/keychain/filemap.h>
 #include <LLD/keychain/hashmap.h>
+#include <LLD/keychain/shard_hashmap.h>
 #include <LLD/keychain/hashtree.h>
 
 #include <Util/include/filesystem.h>
@@ -342,7 +343,11 @@ namespace LLD
                     ++nCurrentFile;
                     nCurrentFileSize = 0;
 
-                    std::ofstream stream(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), nCurrentFile), std::ios::out | std::ios::binary);
+                    std::ofstream stream
+                    (
+                        debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), nCurrentFile),
+                        std::ios::out | std::ios::binary | std::ios::trunc
+                    );
                     stream.close();
                 }
 
@@ -427,6 +432,63 @@ namespace LLD
 
         /* Notify if buffer was added to. */
         CONDITION.notify_all();
+
+        return true;
+    }
+
+
+    /*  Update a record on disk. */
+    template<class KeychainType, class CacheType>
+    bool SectorDatabase<KeychainType, CacheType>::Delete(const std::vector<uint8_t>& vKey)
+    {
+        /* Check the keychain for key. */
+        SectorKey key;
+        if(!pSectorKeys->Get(vKey, key))
+            return false;
+
+        /* Return the Key existance in the Keychain Database. */
+        if(!pSectorKeys->Erase(vKey))
+            return false;
+
+        {
+            LOCK(SECTOR_MUTEX);
+
+            /* Find the file stream for LRU cache. */
+            std::fstream* pstream;
+            if(!fileCache->Get(key.nSectorFile, pstream))
+            {
+                /* Set the new stream pointer. */
+                pstream = new std::fstream(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), key.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
+                if(!pstream->is_open())
+                {
+                    delete pstream;
+                    return false;
+                }
+
+                /* If file not found add to LRU cache. */
+                fileCache->Put(key.nSectorFile, pstream);
+            }
+
+            /* If it is a New Sector, Assign a Binary Position. */
+            pstream->seekg(key.nSectorStart, std::ios::beg);
+
+            /* Write the size of record. */
+            uint64_t nSize = ReadCompactSize(*pstream);
+
+            /* Seek to write at specific location. */
+            pstream->seekp(key.nSectorStart + GetSizeOfCompactSize(nSize), std::ios::beg);
+
+            /* Update the record with blank data. */
+            DataStream ssData(SER_LLD, DATABASE_VERSION);
+            ssData << std::string("NONE");
+
+            /* Write the data record. */
+            if(!pstream->write((char*)ssData.data(), ssData.size()))
+                return debug::error(FUNCTION, "only ", pstream->gcount(), " bytes written");
+
+            /* Flush the rest of the write buffer in stream. */
+            pstream->flush();
+        }
 
         return true;
     }
@@ -654,7 +716,7 @@ namespace LLD
 
         /* Erase data set to be removed. */
         for(const auto& item : pTransaction->mapEraseData)
-            if(!pSectorKeys->Erase(item.first))
+            if(!Delete(item.first))
                 return debug::error(FUNCTION, "failed to erase from keychain");
 
         /* Commit the sector data. */
@@ -691,6 +753,9 @@ namespace LLD
             if(!pSectorKeys->Put(cKey))
                 return debug::error(FUNCTION, "failed to write indexing entry");
         }
+
+        /* Flush the keychain buffers. */
+        //pSectorKeys->Flush();
 
         /* Cleanup the transaction object. */
         delete pTransaction;
@@ -811,7 +876,8 @@ namespace LLD
 
     /* Explicity instantiate all template instances needed for compiler. */
     template class SectorDatabase<BinaryHashMap,  BinaryLRU>;
+    //template class SectorDatabase<ShardHashMap,   BinaryLRU>;
     template class SectorDatabase<BinaryHashMap,  BinaryLFU>;
-    template class SectorDatabase<BinaryHashTree, BinaryLRU>;
+    //template class SectorDatabase<BinaryHashTree, BinaryLRU>;
 
 }

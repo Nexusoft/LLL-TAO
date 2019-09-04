@@ -223,44 +223,4 @@ namespace LLD
 
         return Exists(std::make_pair(std::string("state"), hashRegister));
     }
-
-
-    /* Get the previous states of a register. */
-    bool RegisterDB::GetStates(const uint256_t& hashRegister, std::vector<TAO::Register::State>& states, const uint8_t nFlags)
-    {
-        /* Memory mode for pre-database commits. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
-        {
-            LOCK(MEMORY_MUTEX);
-
-            /* Set the state in the memory map. */
-            if(mapStates.count(hashRegister))
-                states.push_back(mapStates[hashRegister]);
-        }
-
-        /* Serialize the key to search for. */
-        DataStream ssKey(SER_LLD, DATABASE_VERSION);
-        ssKey << std::make_pair(std::string("state"), hashRegister);
-
-        /* Get the list of sector keys. */
-        std::vector<SectorKey> vKeys;
-        if(!pSectorKeys->Get(ssKey.Bytes(), vKeys))
-            return false;
-
-        /* Iterate the list of keys. */
-        for(const auto& key : vKeys)
-        {
-            std::vector<uint8_t> vData;
-            if(!Get(key, vData))
-                continue;
-
-            TAO::Register::State state;
-            DataStream ssData(vData, SER_LLD, DATABASE_VERSION);
-            ssData >> state;
-
-            states.push_back(state);
-        }
-
-        return (states.size() > 0);
-    }
 }

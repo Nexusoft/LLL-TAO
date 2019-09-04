@@ -205,7 +205,23 @@ namespace debug
 
         log(0, ANSI_COLOR_BRIGHT_RED, "ERROR: ", ANSI_COLOR_RESET, args...);
 
+        return false;
+    }
 
+
+    /** drop
+     *
+     *  Safe constant format debugging network drror logs.
+     *
+     *  @param[in] args The variadic template arguments in.
+     *
+     *  @return Returns false always. (Assumed to return an error.)
+     *
+     **/
+    template<class... Args>
+    bool drop(Args&&... args)
+    {
+        log(0, ANSI_COLOR_BRIGHT_YELLOW, "DROPPED: ", ANSI_COLOR_RESET, args...);
 
         return false;
     }

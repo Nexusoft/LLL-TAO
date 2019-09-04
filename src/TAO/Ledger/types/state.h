@@ -45,6 +45,10 @@ namespace TAO
 
         public:
 
+            /** The Block's timestamp. This number is locked into the signature hash. **/
+            uint64_t nTime;
+
+
             /** System Script
              *
              *  The critical system level pre-states and post-states.
@@ -174,6 +178,16 @@ namespace TAO
             bool operator!(void) const;
 
 
+            /** GetBlockTime
+             *
+             *  Returns the current UNIX timestamp of the block.
+             *
+             *  @return 64-bit integer of timestamp.
+             *
+             **/
+            uint64_t GetBlockTime() const;
+
+
             /** Prev
              *
              *  Get the previous block state in chain.
@@ -229,7 +243,7 @@ namespace TAO
              *  Remove a block state from the chain.
              *
              *  @return true if disconnected.
-             *Block
+             *
              **/
             bool Disconnect();
 
@@ -284,6 +298,16 @@ namespace TAO
              *
              **/
             virtual void print() const;
+
+
+            /** SignatureHash
+             *
+             *  Get the Signature Hash of the block. Used to verify work claims.
+             *
+             *  @return Returns a 1024-bit signature hash.
+             *
+             **/
+            uint1024_t SignatureHash() const;
 
 
             /** StakeHash

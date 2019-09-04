@@ -254,7 +254,7 @@ namespace Legacy
         /* Flush database activity from memory pool to disk log */
         uint32_t nMinutes = 0;
 
-        dbenv->txn_checkpoint(nMinutes ? config::GetArg("-dblogsize", 100)*1024 : 0, nMinutes, 0);
+        dbenv->txn_checkpoint(nMinutes ? config::GetArg("-dblogsize", 100) * 1024 : 0, nMinutes, 0);
 
         pdb->close(0);
 

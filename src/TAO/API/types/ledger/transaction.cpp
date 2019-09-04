@@ -134,18 +134,17 @@ namespace TAO
             if(params.find("data") == params.end())
                 throw APIException(-18, "Missing data");
 
-
             /* Extract the data out of the JSON params*/
             std::vector<uint8_t> vData = ParseHex(params["data"].get<std::string>());
 
             DataStream ssData(vData, SER_NETWORK, LLP::PROTOCOL_VERSION);
 
             /* Deserialize the tx. */
-            uint8_t type;
-            ssData >> type;
+            uint8_t nType;
+            ssData >> nType;
 
             /* Check the transaction type so that we can deserialize the correct class */
-            if(type == LLP::MSG_TX_TRITIUM)
+            if(nType == LLP::MSG_TX_TRITIUM)
             {
                 TAO::Ledger::Transaction tx;
                 ssData >> tx;
@@ -155,13 +154,7 @@ namespace TAO
                 {
                     /* Add the transaction to the memory pool. */
                     if(TAO::Ledger::mempool.Accept(tx, nullptr))
-                    {
-                        /* Relay the transaction to other nodes */
-                        std::vector<LLP::CInv> vInv = { LLP::CInv(tx.GetHash(), LLP::MSG_TX_TRITIUM) };
-                        LLP::TRITIUM_SERVER->Relay(LLP::DAT_INVENTORY, vInv);
-
                         ret["hash"] = tx.GetHash().ToString();
-                    }
                     else
                         throw APIException(-150, "Transaction rejected.");
                 }
@@ -169,7 +162,7 @@ namespace TAO
                     throw APIException(-151, "Transaction already in database.");
 
             }
-            else if(type == LLP::MSG_TX_LEGACY)
+            else if(nType == LLP::MSG_TX_LEGACY)
             {
                 Legacy::Transaction tx;
                 ssData >> tx;
@@ -188,10 +181,6 @@ namespace TAO
                         /* Add tx to legacy wallet */
                         TAO::Ledger::BlockState notUsed;
                         Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, notUsed, true);
-
-                        /* Relay it to other nodes */
-                        std::vector<LLP::CInv> vInv = { LLP::CInv(tx.GetHash(), LLP::MSG_TX_LEGACY) };
-                        LLP::TRITIUM_SERVER->Relay(LLP::DAT_INVENTORY, vInv);
 
                         ret["hash"] = tx.GetHash().ToString();
                     }

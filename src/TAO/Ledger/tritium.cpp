@@ -56,6 +56,7 @@ namespace TAO
         /** The default constructor. **/
         TritiumBlock::TritiumBlock()
         : Block()
+        , nTime(runtime::unifiedtimestamp())
         , producer()
         , ssSystem()
         , vtx()
@@ -67,6 +68,7 @@ namespace TAO
         /** Copy constructor from base block. **/
         TritiumBlock::TritiumBlock(const Block& block)
         : Block(block)
+        , nTime(runtime::unifiedtimestamp())
         , producer()
         , ssSystem()
         , vtx(0)
@@ -78,6 +80,7 @@ namespace TAO
         /** Copy Constructor. **/
         TritiumBlock::TritiumBlock(const TritiumBlock& block)
         : Block(block)
+        , nTime(block.nTime)
         , producer(block.producer)
         , ssSystem(block.ssSystem)
         , vtx(block.vtx)
@@ -88,6 +91,7 @@ namespace TAO
         /** Copy Constructor. **/
         TritiumBlock::TritiumBlock(const BlockState& state)
         : Block(state)
+        , nTime(state.nTime)
         , producer()
         , ssSystem(state.ssSystem)
         , vtx(state.vtx)
@@ -122,6 +126,20 @@ namespace TAO
 
             vtx.clear();
             producer = Transaction();
+        }
+
+
+        /* Update the nTime of the current block. */
+        void TritiumBlock::UpdateTime()
+        {
+            nTime = static_cast<uint32_t>(std::max(ChainState::stateBest.load().GetBlockTime() + 1, runtime::unifiedtimestamp()));
+        }
+
+
+        /* Return the Block's current UNIX timestamp. */
+        uint64_t TritiumBlock::GetBlockTime() const
+        {
+            return nTime;
         }
 
 
@@ -231,7 +249,7 @@ namespace TAO
                 return debug::error(FUNCTION, "cannot allocate system memory");
 
             /* Check for duplicate txid's */
-            std::set<uint512_t> setUniqueTx;
+            std::set<uint512_t> setUnique;
             std::vector<uint512_t> vHashes;
 
             /* Get the signature operations for legacy tx's. */
@@ -242,7 +260,7 @@ namespace TAO
             for(uint32_t i = 0; i < nSize; ++i)
             {
                 /* Insert txid into set to check for duplicates. */
-                setUniqueTx.insert(vtx[i].second);
+                setUnique.insert(vtx[i].second);
                 vHashes.push_back(vtx[i].second);
 
                 /* Basic checks for legacy transactions. */
@@ -251,7 +269,12 @@ namespace TAO
                     /* Check the memory pool. */
                     Legacy::Transaction tx;
                     if(!LLD::Legacy->ReadTx(vtx[i].second, tx, FLAGS::MEMPOOL))
-                        return debug::error(FUNCTION, "missing tx ", vtx[i].second.SubString());
+                    {
+                        /* Push missing transaction to memory. */
+                        vMissing.push_back(vtx[i]);
+
+                        continue;
+                    }
 
                     /* Check for coinbase / coinstake. */
                     if(tx.IsCoinBase() || tx.IsCoinStake())
@@ -276,7 +299,12 @@ namespace TAO
                     /* Check the memory pool. */
                     TAO::Ledger::Transaction tx;
                     if(!LLD::Ledger->ReadTx(vtx[i].second, tx, FLAGS::MEMPOOL))
-                        return debug::error(FUNCTION, "missing tx ", vtx[i].second.SubString());
+                    {
+                        /* Push missing transaction to memory. */
+                        vMissing.push_back(vtx[i]);
+
+                        continue;
+                    }
 
                     /* Check for coinbase / coinstake. */
                     if(tx.IsCoinBase() || tx.IsCoinStake())
@@ -291,7 +319,7 @@ namespace TAO
             }
 
             /* Check that the producer isn't going to orphan any transactions. */
-            TAO::Ledger::Transaction tx;
+            TAO::Ledger::Transaction tx; //TODO: remove this
             if(mempool.Get(producer.hashGenesis, tx) && producer.hashPrevTx != tx.GetHash())
                 return debug::error(FUNCTION, "producer is STALE");
 
@@ -300,10 +328,14 @@ namespace TAO
 
             /* Add producer to merkle tree list. */
             vHashes.push_back(hashProducer);
-            setUniqueTx.insert(hashProducer);
+            setUnique.insert(hashProducer);
+
+            /* Check for missing transactions. */
+            if(vMissing.size() != 0)
+                return debug::error(FUNCTION, "missing ", vMissing.size(), " transactions");
 
             /* Check for duplicate txid's. */
-            if(setUniqueTx.size() != vHashes.size())
+            if(setUnique.size() != vHashes.size())
                 return debug::error(FUNCTION, "duplicate transaction");
 
             /* Check the signature operations for legacy. */
@@ -658,6 +690,27 @@ namespace TAO
 
             return Block::VerifyWork();
         }
+
+
+        /* Get the Signarture Hash of the block. Used to verify work claims. */
+        uint1024_t TritiumBlock::SignatureHash() const
+        {
+            /* Signature hash for version 7 blocks. */
+            if(nVersion >= 7)
+            {
+                /* Create a data stream to get the hash. */
+                DataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
+                ss.reserve(256);
+
+                /* Serialize the data to hash into a stream. */
+                ss << nVersion << hashPrevBlock << hashMerkleRoot << nChannel << nHeight << nBits << nNonce << nTime << vOffsets;
+
+                return LLC::SK1024(ss.begin(), ss.end());
+            }
+
+            return LLC::SK1024(BEGIN(nVersion), END(nTime));
+        }
+
 
         /* Prove that you staked a number of seconds based on weight */
         uint1024_t TritiumBlock::StakeHash() const

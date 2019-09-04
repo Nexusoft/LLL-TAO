@@ -40,6 +40,8 @@ namespace LLP
     , fDDOS(false)
     , fOUTGOING(false)
     , fCONNECTED(false)
+    , nDataThread(-1)
+    , nDataIndex(-1)
     , fEVENT(false)
     , EVENT_MUTEX()
     , EVENT_CONDITION()
@@ -57,6 +59,8 @@ namespace LLP
     , fDDOS(isDDOS)
     , fOUTGOING(fOutgoing)
     , fCONNECTED(false)
+    , nDataThread(-1)
+    , nDataIndex(-1)
     , fEVENT(false)
     , EVENT_MUTEX()
     , EVENT_CONDITION()
@@ -74,6 +78,8 @@ namespace LLP
     , fDDOS(isDDOS)
     , fOUTGOING(fOutgoing)
     , fCONNECTED(false)
+    , nDataThread(-1)
+    , nDataIndex(-1)
     , fEVENT(false)
     , EVENT_MUTEX()
     , EVENT_CONDITION()
@@ -101,6 +107,8 @@ namespace LLP
         fDDOS = false;
         fOUTGOING = false;
         fCONNECTED = false;
+        nDataThread = -1;
+        nDataIndex  = -1;
     }
 
 

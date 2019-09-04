@@ -91,11 +91,12 @@ namespace LLD
          *  Checks if a transaction exists.
          *
          *  @param[in] hashTx The txid of transaction to check.
+         *  @param[in] nFlags The flags to check from
          *
          *  @return True if the transaction exists, false otherwise.
          *
          **/
-        bool HasTx(const uint512_t& hashTx);
+        bool HasTx(const uint512_t& hashTx, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
         /** WriteSpend

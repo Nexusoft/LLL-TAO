@@ -75,17 +75,17 @@ namespace LLP
         try
         {
             /* Create a new pointer on the heap. */
-            ProtocolType* node = new ProtocolType(SOCKET, DDOS, fDDOS);
-            node->fCONNECTED.store(true);
+            ProtocolType* pnode = new ProtocolType(SOCKET, DDOS, fDDOS);
+            pnode->fCONNECTED.store(true);
 
             /* Find an available slot. */
             int nSlot = find_slot();
 
             /* Find a slot that is empty. */
             if(nSlot == CONNECTIONS->size())
-                CONNECTIONS->push_back(memory::atomic_ptr<ProtocolType>(node));
+                CONNECTIONS->push_back(memory::atomic_ptr<ProtocolType>(pnode));
             else
-                CONNECTIONS->at(nSlot).store(node);
+                CONNECTIONS->at(nSlot).store(pnode);
 
             /* Fire the connected event. */
             CONNECTIONS->at(nSlot)->Event(EVENT_CONNECT);
@@ -96,6 +96,10 @@ namespace LLP
 
             /* Bump the total connections atomic counter. */
             ++nConnections;
+
+            /* Set the indexes. */
+            pnode->nDataThread = ID;
+            pnode->nDataIndex  = nSlot;
 
             /* Notify data thread to wake up. */
             CONDITION.notify_all();
@@ -114,26 +118,26 @@ namespace LLP
         try
         {
             /* Create a new pointer on the heap. */
-            ProtocolType* node = new ProtocolType(DDOS, fDDOS);
-            if(!node->Connect(addr))
+            ProtocolType* pnode = new ProtocolType(DDOS, fDDOS);
+            if(!pnode->Connect(addr))
             {
-                node->Disconnect();
-                delete node;
+                pnode->Disconnect();
+                delete pnode;
 
                 return false;
             }
 
-            /* Set the node to outgoing. */
-            node->fOUTGOING = true;
+            /* Set the pnode to outgoing. */
+            pnode->fOUTGOING = true;
 
             /* Search for an available slot. */
             int nSlot = find_slot();
 
             /* Find a slot that is empty. */
             if(nSlot == CONNECTIONS->size())
-                CONNECTIONS->push_back(memory::atomic_ptr<ProtocolType>(node));
+                CONNECTIONS->push_back(memory::atomic_ptr<ProtocolType>(pnode));
             else
-                CONNECTIONS->at(nSlot).store(node);
+                CONNECTIONS->at(nSlot).store(pnode);
 
             /* Fire the connected event. */
             CONNECTIONS->at(nSlot)->Event(EVENT_CONNECT);
@@ -144,6 +148,10 @@ namespace LLP
 
             /* Bump the total connections atomic counter. */
             ++nConnections;
+
+            /* Set the indexes. */
+            pnode->nDataThread = ID;
+            pnode->nDataIndex  = nSlot;
 
             /* Notify data thread to wake up. */
             CONDITION.notify_all();
@@ -266,8 +274,15 @@ namespace LLP
                     ProtocolType* connection = CONNECTIONS->at(nIndex).load();
 
                     /* Skip over Inactive Connections. */
-                    if(!connection || !connection->Connected())
+                    if(!connection)
                         continue;
+
+                    /* Check if connected. */
+                    if(!connection->Connected())
+                    {
+                        disconnect_remove_event(nIndex, DISCONNECT_FORCE);
+                        continue;
+                    }
 
                     /* Disconnect if there was a polling error */
                     if((POLLFDS.at(nIndex).revents & POLLERR))

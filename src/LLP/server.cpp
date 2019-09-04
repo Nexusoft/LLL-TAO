@@ -60,10 +60,10 @@ namespace LLP
     , nSleepTime(nSleepTimeIn)
     , hListenSocket(-1, -1)
     {
-        for(uint16_t index = 0; index < MAX_THREADS; ++index)
+        for(uint16_t nIndex = 0; nIndex < MAX_THREADS; ++nIndex)
         {
             DATA_THREADS.push_back(new DataThread<ProtocolType>(
-                index, fDDOS_, rScore, cScore, nTimeout, fMeter));
+                nIndex, fDDOS_, rScore, cScore, nTimeout, fMeter));
         }
 
         /* Initialize the address manager. */
@@ -307,6 +307,14 @@ namespace LLP
     }
 
 
+    /* Get the best connection based on data thread index. */
+    template<class ProtocolType>
+    memory::atomic_ptr<ProtocolType>& Server<ProtocolType>::GetConnection(const uint32_t nDataThread, const uint32_t nDataIndex)
+    {
+        return DATA_THREADS[nDataThread]->CONNECTIONS->at(nDataIndex);
+    }
+
+
     /*  Get the active connection pointers from data threads. */
     template <class ProtocolType>
     std::vector<LegacyAddress> Server<ProtocolType>::GetAddresses()
@@ -372,6 +380,8 @@ namespace LLP
         /* If manager is disabled, close down manager thread. */
         if(!pAddressManager)
             return;
+
+        debug::log(0, FUNCTION, Name(), " Connection Manager Started");
 
         /* Address to select. */
         BaseAddress addr = BaseAddress();

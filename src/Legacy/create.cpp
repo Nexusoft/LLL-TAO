@@ -31,6 +31,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/difficulty.h>
 #include <TAO/Ledger/include/retarget.h>
+#include <TAO/Ledger/include/process.h>
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -411,10 +412,10 @@ namespace Legacy
         //nLastBlockSize = nBlockSize;
 
         /* Remove any invalid transactions from the mempool */
-        for(const uint512_t& txHashToRemove : vRemoveFromPool)
+        for(const uint512_t& hashRemove : vRemoveFromPool)
         {
-            debug::log(0, FUNCTION, "Removed invalid tx ", txHashToRemove.SubString(10), " from mempool");
-            TAO::Ledger::mempool.RemoveLegacy(txHashToRemove);
+            debug::log(0, FUNCTION, "Removed invalid tx ", hashRemove.SubString(10), " from mempool");
+            TAO::Ledger::mempool.RemoveLegacy(hashRemove);
         }
 
     }
@@ -478,13 +479,18 @@ namespace Legacy
      */
     bool CheckWork(const LegacyBlock& block, Legacy::Wallet& wallet)
     {
+        /* Precompute the block's channel. */
         uint32_t nChannel = block.GetChannel();
-        uint1024_t blockHash = (block.nVersion < 5 ? block.GetHash() : nChannel == 0 ? block.StakeHash() : block.ProofHash());
+
+        /* Precompute the block's hash based on proof hash, get hash, or stake hash. */
+        uint1024_t hashBlock = (block.nVersion < 5 ? block.GetHash() : nChannel == 0 ? block.StakeHash() : block.ProofHash());
         uint1024_t hashTarget = LLC::CBigNum().SetCompact(block.nBits).getuint1024();
 
+        /* Verify the work completed. */
         if(nChannel > 0 && !block.VerifyWork())
             return debug::error(FUNCTION, "Nexus Miner: Proof of work not meeting target.");
 
+        /* Check stake targets based on version. */
         if(nChannel == 0)
         {
             LLC::CBigNum bnTarget;
@@ -494,33 +500,40 @@ namespace Legacy
                 return debug::error(FUNCTION, "Nexus Stake Minter: Proof of stake not meeting target");
         }
 
+        /* Output for stake channel. */
         std::string strTimestamp(convert::DateTimeStrFormat(runtime::unifiedtimestamp()));
         if(nChannel == 0)
         {
             debug::log(1, FUNCTION, "Nexus Stake Minter: new nPoS channel block found at unified time ", strTimestamp);
-            debug::log(1, " blockHash: ", blockHash.SubString(30), " block height: ", block.nHeight);
+            debug::log(1, " hashBlock: ", hashBlock.SubString(30), " block height: ", block.nHeight);
         }
+
+        /* Output for prime channel. */
         else if(nChannel == 1)
         {
             debug::log(1, FUNCTION, "Nexus Miner: new Prime channel block found at unified time ", strTimestamp);
-            debug::log(1, "  blockHash: ", blockHash.SubString(30), " block height: ", block.nHeight);
+            debug::log(1, "  hashBlock: ", hashBlock.SubString(30), " block height: ", block.nHeight);
             debug::log(1, "  prime cluster verified of size ", TAO::Ledger::GetDifficulty(block.nBits, 1));
         }
+
+        /* Output for hashing channel. */
         else if(nChannel == 2)
         {
             debug::log(1, FUNCTION, "Nexus Miner: new Hashing channel block found at unified time ", strTimestamp);
-            debug::log(1, "  blockHash: ", blockHash.SubString(30), " block height: ", block.nHeight);
+            debug::log(1, "  hashBlock: ", hashBlock.SubString(30), " block height: ", block.nHeight);
             debug::log(1, "  target: ", hashTarget.SubString(30));
         }
 
+        /* Check for a stale block. */
         if(block.hashPrevBlock != TAO::Ledger::ChainState::hashBestChain.load())
             return debug::error(FUNCTION, "Generated block is stale");
 
-        /* Print the newly found block. Accept() prints a duplicate if verbose >= 2 because it prints all blocks, not just mined ones */
-        block.print();
-
         /* Process the Block and relay to network if it gets Accepted into Blockchain. */
-        if(!LLP::LegacyNode::Process(block, nullptr))
+        uint8_t nStatus = 0;
+        TAO::Ledger::Process(block, nStatus);
+
+        /* Check the statues. */
+        if(!(nStatus & TAO::Ledger::PROCESS::ACCEPTED))
             return debug::error(FUNCTION, "Generated block not accepted");
 
         return true;

@@ -274,8 +274,7 @@ namespace LLD
                 }
             }
 
-            /* Return the Key existance in the Keychain Database. */
-            return pSectorKeys->Erase(ssKey.Bytes());
+            return Delete(ssKey.Bytes());
         }
 
 
@@ -346,6 +345,9 @@ namespace LLD
         bool GetBatch(uint64_t nStart, uint32_t nFile, const std::string& strType,
             std::vector<Type>& vValues, int32_t nLimit = 1000)
         {
+            /* Clear any remaining data. */
+            vValues.clear();
+
             /* Scan until limit is reached. */
             while(nLimit == -1 || nLimit > 0)
             {
@@ -386,8 +388,8 @@ namespace LLD
 
                             /* Read compact size. */
                             uint64_t nSize = ReadCompactSize(ssData);
-                            if(nSize == 0)
-                                return debug::error(FUNCTION, "malformed batch read, size cannot be zero");
+                            if(nSize == 0) //reached end of current file
+                                break;
 
                             /* Deserialize the String. */
                             std::string strThis;
@@ -735,6 +737,19 @@ namespace LLD
          *
          **/
         bool Put(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vData);
+
+
+        /** Delete
+         *
+         *  Delete a record from the sector database
+         *
+         *  @param[in] vKey The binary data of the key to get.
+         *  @param[out] vData The binary data of the record to get.
+         *
+         *  @return True if the record was deleted successfully.
+         *
+         **/
+        bool Delete(const std::vector<uint8_t>& vKey);
 
 
         /** CacheWriter
