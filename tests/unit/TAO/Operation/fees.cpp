@@ -195,8 +195,8 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
         /* Add the operations payload */
         tx[0] << uint8_t(OP::CREATE) << hashAddress << uint8_t(REGISTER::OBJECT) << token.GetState();
         
-        /* Token with 100 units - should be free */
-        REQUIRE(tx.Cost() == 0);
+        /* Token with 100 units - should be 1 NXS */
+        REQUIRE(tx.Cost() == 1 * TAO::Ledger::NXS_COIN);
     }
 
     /* Test token fee - for 1000 units*/
