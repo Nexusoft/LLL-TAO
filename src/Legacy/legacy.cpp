@@ -438,10 +438,6 @@ namespace Legacy
         /* Process the block state. */
         TAO::Ledger::BlockState state(*this);
 
-        /* Check for consistent hashes. */
-        if(state.GetHash() != GetHash())
-            return debug::error(FUNCTION, "hash mismatches");
-
         /* Add to the memory pool. */
         for(const auto& tx : vtx)
             TAO::Ledger::mempool.AddUnchecked(tx);

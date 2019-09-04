@@ -17,7 +17,6 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <Legacy/types/transaction.h>
-#include <Legacy/types/locator.h>
 #include <Legacy/wallet/wallet.h>
 
 #include <LLP/include/hosts.h>
@@ -37,6 +36,8 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/types/locator.h>
+
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/process.h>
 
@@ -824,13 +825,12 @@ namespace LLP
         else if(message == "getblocks")
         {
             /* Get the locator. */
-            Legacy::Locator locator;
+            TAO::Ledger::Locator locator;
+            ssMessage >> locator;
 
             /* Get the stopping hash. */
             uint1024_t hashStop;
-
-            /* De-serialize the values. */
-            ssMessage >> locator >> hashStop;
+            ssMessage >> hashStop;
 
             /* Return if nothing in locator. */
             if(locator.vHave.size() == 0)
