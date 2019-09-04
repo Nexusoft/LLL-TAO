@@ -812,17 +812,17 @@ namespace LLP
 
       /* Update block with the nonce and time. */
       if(pBaseBlock)
-      {
           pBaseBlock->nNonce = nNonce;
-          pBaseBlock->UpdateTime();
-      }
 
       /* If the block dynamically casts to a legacy block, validate the legacy block. */
       {
           Legacy::LegacyBlock *pBlock = dynamic_cast<Legacy::LegacyBlock *>(pBaseBlock);
-
           if(pBlock)
           {
+              /* Update the block's timestamp. */
+              pBlock->UpdateTime();
+
+              /* Sign the block with a key from wallet. */
               if(!Legacy::SignBlock(*pBlock, Legacy::Wallet::GetInstance()))
                   return debug::error(FUNCTION, "Unable to Sign Legacy Block ", hashMerkleRoot.SubString());
 
@@ -832,9 +832,11 @@ namespace LLP
 
       /* If the block dynamically casts to a tritium block, validate the tritium block. */
       TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock *>(pBaseBlock);
-
       if(pBlock)
       {
+          /* Update the block's timestamp. */
+          pBlock->UpdateTime();
+
           /* Check that the account is unlocked for minting */
           if(!TAO::API::users->CanMint())
               return debug::error(FUNCTION, "Account has not been unlocked for minting");

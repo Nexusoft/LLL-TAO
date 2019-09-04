@@ -73,10 +73,6 @@ namespace TAO
             uint64_t nNonce;
 
 
-            /** The Block's timestamp. This number is locked into the signature hash. **/
-            uint32_t nTime; //TODO: make this 64 bit
-
-
             /** The prime origin offsets. **/
             std::vector<uint8_t> vOffsets;
 
@@ -178,16 +174,6 @@ namespace TAO
             bool IsNull() const;
 
 
-            /** GetBlockTime
-             *
-             *  Returns the current UNIX timestamp of the block.
-             *
-             *  @return 64-bit uint32_teger of timestamp.
-             *
-             **/
-            uint64_t GetBlockTime() const;
-
-
             /** GetPrime
              *
              *  Get the Prime number for the block (hash + nNonce).
@@ -226,14 +212,6 @@ namespace TAO
              *
              **/
             uint1024_t GetHash() const;
-
-
-            /** UpdateTime
-             *
-             *  Update the blocks timestamp.
-             *
-             **/
-            void UpdateTime();
 
 
             /** IsProofOfStake

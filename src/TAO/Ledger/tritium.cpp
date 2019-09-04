@@ -56,6 +56,7 @@ namespace TAO
         /** The default constructor. **/
         TritiumBlock::TritiumBlock()
         : Block()
+        , nTime(runtime::unifiedtimestamp())
         , producer()
         , ssSystem()
         , vtx()
@@ -67,6 +68,7 @@ namespace TAO
         /** Copy constructor from base block. **/
         TritiumBlock::TritiumBlock(const Block& block)
         : Block(block)
+        , nTime(runtime::unifiedtimestamp())
         , producer()
         , ssSystem()
         , vtx(0)
@@ -78,6 +80,7 @@ namespace TAO
         /** Copy Constructor. **/
         TritiumBlock::TritiumBlock(const TritiumBlock& block)
         : Block(block)
+        , nTime(block.nTime)
         , producer(block.producer)
         , ssSystem(block.ssSystem)
         , vtx(block.vtx)
@@ -88,6 +91,7 @@ namespace TAO
         /** Copy Constructor. **/
         TritiumBlock::TritiumBlock(const BlockState& state)
         : Block(state)
+        , nTime(state.nTime)
         , producer()
         , ssSystem(state.ssSystem)
         , vtx(state.vtx)
@@ -122,6 +126,20 @@ namespace TAO
 
             vtx.clear();
             producer = Transaction();
+        }
+
+
+        /* Update the nTime of the current block. */
+        void TritiumBlock::UpdateTime()
+        {
+            nTime = static_cast<uint32_t>(std::max(ChainState::stateBest.load().GetBlockTime() + 1, runtime::unifiedtimestamp()));
+        }
+
+
+        /* Return the Block's current UNIX timestamp. */
+        uint64_t TritiumBlock::GetBlockTime() const
+        {
+            return nTime;
         }
 
 
@@ -672,6 +690,27 @@ namespace TAO
 
             return Block::VerifyWork();
         }
+
+
+        /* Get the Signarture Hash of the block. Used to verify work claims. */
+        uint1024_t TritiumBlock::SignatureHash() const
+        {
+            /* Signature hash for version 7 blocks. */
+            if(nVersion >= 7)
+            {
+                /* Create a data stream to get the hash. */
+                DataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
+                ss.reserve(256);
+
+                /* Serialize the data to hash into a stream. */
+                ss << nVersion << hashPrevBlock << hashMerkleRoot << nChannel << nHeight << nBits << nNonce << nTime << vOffsets;
+
+                return LLC::SK1024(ss.begin(), ss.end());
+            }
+
+            return LLC::SK1024(BEGIN(nVersion), END(nTime));
+        }
+
 
         /* Prove that you staked a number of seconds based on weight */
         uint1024_t TritiumBlock::StakeHash() const

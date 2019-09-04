@@ -71,6 +71,7 @@ namespace Legacy
     /** The default constructor. **/
     LegacyBlock::LegacyBlock()
     : Block()
+    , nTime(static_cast<uint32_t>(runtime::unifiedtimestamp()))
     , vtx()
     {
         SetNull();
@@ -79,6 +80,7 @@ namespace Legacy
     /** Copy Constructor. **/
     LegacyBlock::LegacyBlock(const LegacyBlock& block)
     : Block(block)
+    , nTime(block.nTime)
     , vtx(block.vtx)
     {
     }
@@ -86,6 +88,7 @@ namespace Legacy
     /** Copy Constructor. **/
     LegacyBlock::LegacyBlock(const TAO::Ledger::BlockState& state)
     : Block(state)
+    , nTime(state.nTime)
     , vtx()
     {
         /* Push back all the transactions from the state object. */
@@ -115,6 +118,20 @@ namespace Legacy
         Block::SetNull();
 
         vtx.clear();
+    }
+
+
+    /* Update the nTime of the current block. */
+    void LegacyBlock::UpdateTime()
+    {
+        nTime = static_cast<uint32_t>(std::max(TAO::Ledger::ChainState::stateBest.load().GetBlockTime() + 1, runtime::unifiedtimestamp()));
+    }
+
+
+    /* Return the Block's current UNIX timestamp. */
+    uint64_t LegacyBlock::GetBlockTime() const
+    {
+        return uint64_t(nTime);
     }
 
 
@@ -617,6 +634,26 @@ namespace Legacy
         nScore = nTrustScore;
 
         return true;
+    }
+
+
+    /* Get the Signarture Hash of the block. Used to verify work claims. */
+    uint1024_t LegacyBlock::SignatureHash() const
+    {
+        /* Signature hash for version 7 blocks. */
+        if(nVersion >= 7)
+        {
+            /* Create a data stream to get the hash. */
+            DataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
+            ss.reserve(256);
+
+            /* Serialize the data to hash into a stream. */
+            ss << nVersion << hashPrevBlock << hashMerkleRoot << nChannel << nHeight << nBits << nNonce << nTime << vOffsets;
+
+            return LLC::SK1024(ss.begin(), ss.end());
+        }
+
+        return LLC::SK1024(BEGIN(nVersion), END(nTime));
     }
 
 
