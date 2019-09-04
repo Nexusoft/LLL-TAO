@@ -496,6 +496,10 @@ namespace LLP
                                     /* Check for legacy. */
                                     if(fLegacy)
                                     {
+                                        /* Check for version 7. */
+                                        if(state.nVersion >= 7)
+                                            break;
+
                                         /* Build the legacy block from state. */
                                         Legacy::LegacyBlock block(state);
 
@@ -504,6 +508,10 @@ namespace LLP
                                     }
                                     else
                                     {
+                                        /* Check for version 7. */
+                                        if(state.nVersion < 7)
+                                            continue;
+
                                         /* Build the legacy block from state. */
                                         TAO::Ledger::TritiumBlock block(state);
 
