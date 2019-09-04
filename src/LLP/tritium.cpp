@@ -67,6 +67,8 @@ namespace LLP
     , nConsecutiveOrphans(0)
     , nConsecutiveFails(0)
     , strFullVersion()
+    , hashLastBlock(0)
+    , hashLastTx({0, 0})
     {
     }
 
@@ -87,6 +89,8 @@ namespace LLP
     , nConsecutiveOrphans(0)
     , nConsecutiveFails(0)
     , strFullVersion()
+    , hashLastBlock(0)
+    , hashLastTx({0, 0})
     {
     }
 
@@ -107,6 +111,8 @@ namespace LLP
     , nConsecutiveOrphans(0)
     , nConsecutiveFails(0)
     , strFullVersion()
+    , hashLastBlock(0)
+    , hashLastTx({0, 0})
     {
     }
 
@@ -454,6 +460,7 @@ namespace LLP
                         ssPacket >> nType;
                     }
 
+
                     /* Switch based on codes. */
                     switch(nType)
                     {
@@ -463,6 +470,10 @@ namespace LLP
                             /* Get the index of block. */
                             uint1024_t hashStart;
                             ssPacket >> hashStart;
+
+                            /* Check for search from last. */
+                            if(hashStart == 0)
+                                hashStart = hashLastBlock;
 
                             /* Get the ending hash. */
                             uint1024_t hashStop;
@@ -510,6 +521,9 @@ namespace LLP
                                     break;
                             }
 
+                            /* Set the last block. */
+                            hashLastBlock = hashStart;
+
                             break;
                         }
 
@@ -527,6 +541,10 @@ namespace LLP
                             /* Check for legacy. */
                             if(fLegacy)
                             {
+                                /* Check for search from last. */
+                                if(hashStart == 0)
+                                    hashStart = hashLastTx[0];
+
                                 /* Do a sequential read to obtain the list. */
                                 std::vector<Legacy::Transaction> vtx;
                                 while(LLD::Legacy->BatchRead(hashStart, "tx", vtx, 100))
@@ -549,9 +567,16 @@ namespace LLP
                                     if(nLimits == 0 || hashStart == hashStop)
                                         break;
                                 }
+
+                                /* Set the last transction. */
+                                hashLastTx[0] = hashStart;
                             }
                             else
                             {
+                                /* Check for search from last. */
+                                if(hashStart == 0)
+                                    hashStart = hashLastTx[1];
+
                                 /* Do a sequential read to obtain the list. */
                                 std::vector<TAO::Ledger::Transaction> vtx;
                                 while(LLD::Ledger->BatchRead(hashStart, "tx", vtx, 100))
@@ -578,6 +603,9 @@ namespace LLP
                                     if(nLimits == 0 || hashStart == hashStop)
                                         break;
                                 }
+
+                                /* Set the last transction. */
+                                hashLastTx[1] = hashStart;
                             }
 
                             break;

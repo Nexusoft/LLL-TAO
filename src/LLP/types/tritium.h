@@ -212,6 +212,14 @@ namespace LLP
         std::string strFullVersion;
 
 
+        /** The last block index listed. **/
+        uint1024_t hashLastBlock;
+
+
+        /** The last transaction index listed. **/
+        uint512_t hashLastTx[2];
+
+
         /** Event
          *
          *  Virtual Functions to Determine Behavior of Message LLP.

@@ -323,7 +323,7 @@ namespace LLP
                     }
 
                     /* Handle any DDOS Filters. */
-                    if(fDDOS && connection->DDOS)
+                    if(fDDOS && !connection->fOUTGOING && connection->DDOS)
                     {
                         /* Ban a node if it has too many Requests per Second. **/
                         if(connection->DDOS->rSCORE.Score() > DDOS_rSCORE
