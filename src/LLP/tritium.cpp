@@ -17,6 +17,7 @@ ________________________________________________________________________________
 
 #include <LLP/types/tritium.h>
 #include <LLP/include/global.h>
+#include <LLP/include/locator.h>
 #include <LLP/templates/events.h>
 #include <LLP/include/manager.h>
 
@@ -469,7 +470,54 @@ namespace LLP
                         {
                             /* Get the index of block. */
                             uint1024_t hashStart;
-                            ssPacket >> hashStart;
+
+                            /* Get the object type. */
+                            uint8_t nObject = 0;
+                            ssPacket >> nObject;
+
+                            /* Switch based on object. */
+                            switch(nObject)
+                            {
+                                /* Check for start from uint1024 type. */
+                                case TYPES::UINT1024_T:
+                                {
+                                    /* Deserialize start. */
+                                    ssPacket >> hashStart;
+
+                                    break;
+                                }
+
+                                /* Check for start from a locator. */
+                                case TYPES::LOCATOR:
+                                {
+                                    /* Deserialize locator. */
+                                    Locator locator;
+                                    ssPacket >> locator;
+
+                                    /* Check locator size. */
+                                    uint32_t nSize = locator.vHave.size();
+                                    if(nSize > 30)
+                                        return debug::drop(NODE, "locator size ", nSize, " is too large");
+
+                                    /* Find common ancestor block. */
+                                    for(const auto& have : locator.vHave)
+                                    {
+                                        /* Check the database for the ancestor block. */
+                                        if(LLD::Ledger->HasBlock(have))
+                                        {
+                                            /* Set the starting hash. */
+                                            hashStart = have;
+
+                                            break;
+                                        }
+                                    }
+
+                                    break;
+                                }
+
+                                default:
+                                    return debug::drop(NODE, "malformed starting index");
+                            }
 
                             /* Check for search from last. */
                             if(hashStart == 0)

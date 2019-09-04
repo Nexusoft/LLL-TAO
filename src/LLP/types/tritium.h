@@ -60,6 +60,7 @@ namespace LLP
             UINT1024_T  = 0x22,
             STRING      = 0x23,
             BYTES       = 0x24,
+            LOCATOR     = 0x25,
 
             /* Object Types. */
             BLOCK       = 0x30,
