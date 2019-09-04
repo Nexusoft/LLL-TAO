@@ -33,31 +33,31 @@ namespace LLD
 
         /* Create the ledger database instance. */
         Ledger    = new LedgerDB(
-                        FLAGS::CREATE | FLAGS::WRITE,
+                        FLAGS::CREATE | FLAGS::FORCE,
                         256 * 256 * 64,
                         16 * 1024 * 1024);
 
         /* Create the legacy database instance. */
         Legacy = new LegacyDB(
-                        FLAGS::CREATE | FLAGS::WRITE,
+                        FLAGS::CREATE | FLAGS::FORCE,
                         256 * 256 * 64,
                         16 * 1024 * 1024);
 
         /* Create the trust database instance. */
         Trust  = new TrustDB(
-                        FLAGS::CREATE | FLAGS::WRITE);
+                        FLAGS::CREATE | FLAGS::FORCE);
 
         /* Create the contract database instance. */
         Contract = new ContractDB(
-                        FLAGS::CREATE | FLAGS::WRITE);
+                        FLAGS::CREATE | FLAGS::FORCE);
 
         /* Create the contract database instance. */
         Register = new RegisterDB(
-                        FLAGS::CREATE | FLAGS::WRITE);
+                        FLAGS::CREATE | FLAGS::FORCE);
 
         /* Create the local database instance. */
         Local    = new LocalDB(
-                        FLAGS::CREATE | FLAGS::WRITE);
+                        FLAGS::CREATE | FLAGS::FORCE);
 
         /* Handle database recovery mode. */
         TxnRecovery();

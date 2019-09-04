@@ -431,12 +431,16 @@ namespace Legacy
         }
 
         /* Check that Transactions are Finalized. */
-        for(const auto & tx : vtx)
+        for(const auto& tx : vtx)
             if(!tx.IsFinal(nHeight, nBlockTime))
                 return debug::error(FUNCTION, "contains a non-final transaction");
 
         /* Process the block state. */
         TAO::Ledger::BlockState state(*this);
+
+        /* Check for consistent hashes. */
+        if(state.GetHash() != GetHash())
+            return debug::error(FUNCTION, "hash mismatches");
 
         /* Add to the memory pool. */
         for(const auto& tx : vtx)
@@ -445,19 +449,19 @@ namespace Legacy
         /* Accept the block state. */
         if(!state.Index())
         {
-            uint512_t nTxHash;
+            uint512_t hashTx;
 
             /* Remove from the memory pool. */
             for(const auto& tx : vtx)
             {
                 /* Get the transaction hash. */
-                nTxHash = tx.GetHash();
+                hashTx = tx.GetHash();
 
                 /* Keep transactions in memory pool that aren't on disk. */
-                if(!LLD::Legacy->HasTx(nTxHash))
+                if(!LLD::Legacy->HasTx(hashTx))
                     continue;
 
-                TAO::Ledger::mempool.Remove(nTxHash);
+                TAO::Ledger::mempool.Remove(hashTx);
             }
 
             return false;

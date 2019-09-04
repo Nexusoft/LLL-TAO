@@ -17,7 +17,6 @@ ________________________________________________________________________________
 
 #include <LLP/types/tritium.h>
 #include <LLP/include/global.h>
-#include <LLP/include/locator.h>
 #include <LLP/templates/events.h>
 #include <LLP/include/manager.h>
 
@@ -27,6 +26,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/process.h>
 #include <TAO/Ledger/include/enum.h>
+#include <TAO/Ledger/types/locator.h>
 #include <TAO/Ledger/types/mempool.h>
 
 #include <Legacy/wallet/wallet.h>
@@ -491,7 +491,7 @@ namespace LLP
                                 case TYPES::LOCATOR:
                                 {
                                     /* Deserialize locator. */
-                                    Locator locator;
+                                    TAO::Ledger::Locator locator;
                                     ssPacket >> locator;
 
                                     /* Check locator size. */
@@ -1036,7 +1036,11 @@ namespace LLP
                                 /* Ask for previous block. */
                                 PushMessage(ACTION::GET, uint8_t(TYPES::LEGACY), uint8_t(TYPES::BLOCK), block.hashPrevBlock);
 
-                                //TODO: ACTION::LIST from best to 0
+                                /* Ask for list of blocks. */
+                                PushMessage(ACTION::LIST,
+                                    uint8_t(TYPES::LEGACY), uint8_t(TYPES::BLOCK),
+                                    uint8_t(TYPES::LOCATOR), TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
+                                    uint1024_t(0));
                             }
                         }
 
@@ -1155,7 +1159,11 @@ namespace LLP
                         /* Ask for previous block. */
                         PushMessage(ACTION::GET, uint8_t(TYPES::BLOCK), block.hashPrevBlock);
 
-                        //TODO: ACTION::LIST from best to 0
+                        /* Ask for list of blocks. */
+                        PushMessage(ACTION::LIST,
+                            uint8_t(TYPES::BLOCK),
+                            uint8_t(TYPES::LOCATOR), TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
+                            uint1024_t(0));
                     }
                 }
 
