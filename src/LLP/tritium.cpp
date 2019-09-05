@@ -54,7 +54,7 @@ namespace LLP
 
 
     /* The current sync node. */
-    std::atomic<uint64_t> TritiumNode::nSyncSession;
+    std::atomic<uint64_t> TritiumNode::nSyncSession(0);
 
 
     /** Default Constructor **/
@@ -267,6 +267,7 @@ namespace LLP
                 if(nCurrentSession == nSyncSession.load())
                 {
                     //TODO: find another node
+                    nSyncSession.store(0);
                 }
 
 
@@ -355,18 +356,18 @@ namespace LLP
                     /* Subscribe to this node. */
                     Subscribe(SUBSCRIPTION::LAST);
 
-                    /* Ask for list of blocks. */
-                    PushMessage(ACTION::LIST,
-                        uint8_t(TYPES::LEGACY),
-                        uint8_t(TYPES::BLOCK),
-                        uint8_t(TYPES::LOCATOR),
-                        TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
-                        uint1024_t(0)
-                    );
-
                     /* Set the sync session-id. */
                     nSyncSession.store(nCurrentSession);
                 }
+
+                /* Ask for list of blocks. This should be done regardless of whether the connection is incoming or not as 
+                   either node could have the longer chain. */
+                PushMessage(ACTION::LIST,
+                    uint8_t(TYPES::BLOCK),
+                    uint8_t(TYPES::LOCATOR),
+                    TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
+                    uint1024_t(0)
+                );
 
                 break;
             }
@@ -683,13 +684,9 @@ namespace LLP
                                     if(!state.IsInMainChain())
                                         continue;
 
-                                    /* Check for legacy. */
-                                    if(fLegacy)
+                                    /* Check for version to send correct type */
+                                    if(state.nVersion < 7)
                                     {
-                                        /* Check for version 7. */
-                                        if(state.nVersion >= 7)
-                                            break;
-
                                         /* Build the legacy block from state. */
                                         Legacy::LegacyBlock block(state);
 
@@ -698,10 +695,6 @@ namespace LLP
                                     }
                                     else
                                     {
-                                        /* Check for version 7. */
-                                        if(state.nVersion < 7)
-                                            continue;
-
                                         /* Build the legacy block from state. */
                                         TAO::Ledger::TritiumBlock block(state);
 
@@ -920,7 +913,7 @@ namespace LLP
                             {
                                 /* Check ledger database. */
                                 TAO::Ledger::Transaction tx;
-                                if(!LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                                if(LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
                                     PushMessage(TYPES::TRANSACTION, tx);
                             }
 
@@ -941,7 +934,7 @@ namespace LLP
             case ACTION::NOTIFY:
             {
                 /* Create response data stream. */
-                DataStream ssResponse(INCOMING.DATA, SER_NETWORK, PROTOCOL_VERSION);
+                DataStream ssResponse(SER_NETWORK, PROTOCOL_VERSION);
 
                 /* Loop through the binary stream. */
                 int32_t nLimits = 1000;
@@ -1083,7 +1076,7 @@ namespace LLP
                 }
 
                 /* Push a request for the data from notifications. */
-                if(!ssResponse.size() != 0)
+                if(ssResponse.size() != 0)
                     WritePacket(NewMessage(ACTION::GET, ssResponse));
 
                 break;
@@ -1313,7 +1306,7 @@ namespace LLP
                 if(nStatus & TAO::Ledger::PROCESS::INCOMPLETE)
                 {
                     /* Create response data stream. */
-                    DataStream ssResponse(INCOMING.DATA, SER_NETWORK, PROTOCOL_VERSION);
+                    DataStream ssResponse(SER_NETWORK, PROTOCOL_VERSION);
 
                     /* Create a list of requested transactions. */
                     for(const auto& tx : block.vMissing)
