@@ -363,7 +363,7 @@ namespace LLP
                     /* Ask for list of blocks. This should be done regardless of whether the connection is incoming or not as
                        either node could have the longer chain. */
                     PushMessage(ACTION::LIST,
-                        uint8_t(TYPES::SYNC),
+                        uint8_t(SPECIFIER::SYNC),
                         uint8_t(TYPES::BLOCK),
                         uint8_t(TYPES::LOCATOR),
                         TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
@@ -592,7 +592,7 @@ namespace LLP
 
                     /* Check for legacy specifier. */
                     bool fLegacy = false;
-                    if(nType == TYPES::LEGACY)
+                    if(nType == SPECIFIER::LEGACY)
                     {
                         /* Set legacy specifier. */
                         fLegacy = true;
@@ -604,7 +604,7 @@ namespace LLP
 
                     /* Check for legacy specifier. */
                     bool fSyncBlock = false;
-                    if(nType == TYPES::SYNC)
+                    if(nType == SPECIFIER::SYNC)
                     {
                         /* Check for invalid legacy type. */
                         if(fLegacy)
@@ -708,7 +708,7 @@ namespace LLP
                                         TAO::Ledger::SyncBlock block(state);
 
                                         /* Push message in response. */
-                                        PushMessage(TYPES::SYNC, uint8_t(TYPES::BLOCK), block);
+                                        PushMessage(SPECIFIER::SYNC, uint8_t(TYPES::BLOCK), block);
                                     }
                                     else
                                     {
@@ -719,7 +719,7 @@ namespace LLP
                                             Legacy::LegacyBlock block(state);
 
                                             /* Push message in response. */
-                                            PushMessage(TYPES::LEGACY, uint8_t(TYPES::BLOCK), block);
+                                            PushMessage(SPECIFIER::LEGACY, uint8_t(TYPES::BLOCK), block);
                                         }
                                         else
                                         {
@@ -760,7 +760,7 @@ namespace LLP
 
                             /* Check for invalid specifiers. */
                             if(fSyncBlock)
-                                return debug::drop(NODE, "cannot use TYPES::SYNC for transaction lists");
+                                return debug::drop(NODE, "cannot use SPECIFIER::SYNC for transaction lists");
 
                             /* Check for legacy. */
                             if(fLegacy)
@@ -780,7 +780,7 @@ namespace LLP
                                         hashStart = tx.GetHash();
 
                                         /* Push the transaction. */
-                                        PushMessage(TYPES::LEGACY, uint8_t(TYPES::TRANSACTION), tx);
+                                        PushMessage(SPECIFIER::LEGACY, uint8_t(TYPES::TRANSACTION), tx);
 
                                         /* Check for stop hash. */
                                         if(--nLimits == 0 || hashStart == hashStop)
@@ -883,7 +883,7 @@ namespace LLP
 
                     /* Check for legacy specifier. */
                     bool fLegacy = false;
-                    if(nType == TYPES::LEGACY)
+                    if(nType == SPECIFIER::LEGACY)
                     {
                         /* Set legacy specifier. */
                         fLegacy = true;
@@ -910,7 +910,7 @@ namespace LLP
                                 if(LLD::Ledger->ReadBlock(hashBlock, state))
                                 {
                                     Legacy::LegacyBlock block(state);
-                                    PushMessage(TYPES::LEGACY, uint8_t(TYPES::BLOCK), block);
+                                    PushMessage(SPECIFIER::LEGACY, uint8_t(TYPES::BLOCK), block);
                                 }
                             }
                             else
@@ -940,7 +940,7 @@ namespace LLP
                                 /* Check legacy database. */
                                 Legacy::Transaction tx;
                                 if(LLD::Legacy->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
-                                    PushMessage(TYPES::LEGACY, uint8_t(TYPES::TRANSACTION), tx);
+                                    PushMessage(SPECIFIER::LEGACY, uint8_t(TYPES::TRANSACTION), tx);
                             }
                             else
                             {
@@ -979,7 +979,7 @@ namespace LLP
 
                     /* Check for legacy specifier. */
                     bool fLegacy = false;
-                    if(nType == TYPES::LEGACY)
+                    if(nType == SPECIFIER::LEGACY)
                     {
                         /* Set legacy specifier. */
                         fLegacy = true;
@@ -1024,7 +1024,7 @@ namespace LLP
                             {
                                 /* Check legacy database. */
                                 if(!LLD::Legacy->HasTx(hashTx, TAO::Ledger::FLAGS::MEMPOOL))
-                                    ssResponse << uint8_t(TYPES::LEGACY) << uint8_t(TYPES::TRANSACTION) << hashTx;
+                                    ssResponse << uint8_t(SPECIFIER::LEGACY) << uint8_t(TYPES::TRANSACTION) << hashTx;
                             }
                             else
                             {
@@ -1088,7 +1088,7 @@ namespace LLP
                             {
                                 /* Ask for list of blocks. */
                                 PushMessage(ACTION::LIST,
-                                    uint8_t(TYPES::LEGACY),
+                                    uint8_t(SPECIFIER::LEGACY),
                                     uint8_t(TYPES::BLOCK),
                                     uint8_t(TYPES::UINT1024_T),
                                     uint1024_t(0),
@@ -1203,220 +1203,6 @@ namespace LLP
             }
 
 
-            /* Handle sync data types. */
-            case TYPES::SYNC:
-            {
-                /* Get the type. */
-                uint8_t nType = 0;
-                ssPacket >> nType;
-
-                /* Switch based on type. */
-                switch(nType)
-                {
-                    /* Handle for legacy block. */
-                    case TYPES::BLOCK:
-                    {
-                        /* Get the block from the stream. */
-                        TAO::Ledger::SyncBlock block;
-                        ssPacket >> block;
-
-                        /* Check version switch. */
-                        uint8_t nStatus = 0;
-                        if(block.nVersion >= 7)
-                        {
-                            /* Build a tritium block from sync block. */
-                            TAO::Ledger::TritiumBlock tritium(block);
-
-                            /* Process the block. */
-                            TAO::Ledger::Process(tritium, nStatus);
-                        }
-                        else
-                        {
-                            /* Build a tritium block from sync block. */
-                            Legacy::LegacyBlock legacy(block);
-
-                            /* Process the block. */
-                            TAO::Ledger::Process(legacy, nStatus);
-                        }
-
-                        /* Check for specific status messages. */
-                        if(nStatus & TAO::Ledger::PROCESS::ACCEPTED)
-                        {
-                            /* Reset the fails and orphans. */
-                            nConsecutiveFails   = 0;
-                            nConsecutiveOrphans = 0;
-                        }
-
-                        /* Check for failure status messages. */
-                        if(nStatus & TAO::Ledger::PROCESS::REJECTED)
-                            ++nConsecutiveFails;
-
-                        /* Check for orphan status messages. */
-                        if(nStatus & TAO::Ledger::PROCESS::ORPHAN)
-                        {
-                            ++nConsecutiveOrphans;
-
-                            /* Check for duplicate and ask for previous block. */
-                            if(!(nStatus & TAO::Ledger::PROCESS::DUPLICATE)
-                            && !(nStatus & TAO::Ledger::PROCESS::IGNORED))
-                            {
-                                /* Ask for previous block. */
-                                PushMessage(ACTION::GET, uint8_t(TYPES::LEGACY), uint8_t(TYPES::BLOCK), block.hashPrevBlock);
-
-                                /* Ask for list of blocks. */
-                                PushMessage(ACTION::LIST,
-                                    uint8_t(TYPES::LEGACY), uint8_t(TYPES::BLOCK),
-                                    uint8_t(TYPES::LOCATOR), TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
-                                    uint1024_t(0));
-                            }
-                        }
-
-                        /* Check for failure limit on node. */
-                        if(nConsecutiveFails >= 500)
-                        {
-                            /* Fast Sync node switch. */
-                            if(TAO::Ledger::ChainState::Synchronizing())
-                            {
-                                //TODO: fine a new fast sync node
-                            }
-
-                            /* Drop pesky nodes. */
-                            return debug::drop(NODE, "node reached failure limit");
-                        }
-
-
-                        /* Detect large orphan chains and ask for new blocks from origin again. */
-                        if(nConsecutiveOrphans >= 500)
-                        {
-                            LOCK(TAO::Ledger::PROCESSING_MUTEX);
-
-                            /* Clear the memory to prevent DoS attacks. */
-                            TAO::Ledger::mapOrphans.clear();
-
-                            /* Disconnect from a node with large orphan chain. */
-                            return debug::drop(NODE, "node reached orphan limit");
-                        }
-
-                        break;
-                    }
-
-                    default:
-                        return debug::drop(NODE, "invalid sync primitive type");
-                }
-
-                break;
-            }
-
-
-            /* Handle legacy data types. */
-            case TYPES::LEGACY:
-            {
-                /* Get the type. */
-                uint8_t nType = 0;
-                ssPacket >> nType;
-
-                /* Switch based on type. */
-                switch(nType)
-                {
-                    /* Handle for legacy block. */
-                    case TYPES::BLOCK:
-                    {
-                        /* Get the block from the stream. */
-                        Legacy::LegacyBlock block;
-                        ssPacket >> block;
-
-                        /* Process the block. */
-                        uint8_t nStatus = 0;
-                        TAO::Ledger::Process(block, nStatus);
-
-                        /* Check for specific status messages. */
-                        if(nStatus & TAO::Ledger::PROCESS::ACCEPTED)
-                        {
-                            /* Reset the fails and orphans. */
-                            nConsecutiveFails   = 0;
-                            nConsecutiveOrphans = 0;
-                        }
-
-                        /* Check for failure status messages. */
-                        if(nStatus & TAO::Ledger::PROCESS::REJECTED)
-                            ++nConsecutiveFails;
-
-                        /* Check for orphan status messages. */
-                        if(nStatus & TAO::Ledger::PROCESS::ORPHAN)
-                        {
-                            ++nConsecutiveOrphans;
-
-                            /* Check for duplicate and ask for previous block. */
-                            if(!(nStatus & TAO::Ledger::PROCESS::DUPLICATE)
-                            && !(nStatus & TAO::Ledger::PROCESS::IGNORED))
-                            {
-                                /* Ask for previous block. */
-                                PushMessage(ACTION::GET, uint8_t(TYPES::LEGACY), uint8_t(TYPES::BLOCK), block.hashPrevBlock);
-
-                                /* Ask for list of blocks. */
-                                PushMessage(ACTION::LIST,
-                                    uint8_t(TYPES::LEGACY), uint8_t(TYPES::BLOCK),
-                                    uint8_t(TYPES::LOCATOR), TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
-                                    uint1024_t(0));
-                            }
-                        }
-
-                        /* Check for failure limit on node. */
-                        if(nConsecutiveFails >= 500)
-                        {
-                            /* Fast Sync node switch. */
-                            if(TAO::Ledger::ChainState::Synchronizing())
-                            {
-                                //TODO: fine a new fast sync node
-                            }
-
-                            /* Drop pesky nodes. */
-                            return debug::drop(NODE, "node reached failure limit");
-                        }
-
-
-                        /* Detect large orphan chains and ask for new blocks from origin again. */
-                        if(nConsecutiveOrphans >= 500)
-                        {
-                            LOCK(TAO::Ledger::PROCESSING_MUTEX);
-
-                            /* Clear the memory to prevent DoS attacks. */
-                            TAO::Ledger::mapOrphans.clear();
-
-                            /* Disconnect from a node with large orphan chain. */
-                            return debug::drop(NODE, "node reached orphan limit");
-                        }
-
-                        break;
-                    }
-
-                    /* Handle for legacy transaction. */
-                    case TYPES::TRANSACTION:
-                    {
-                        /* Get the transction from the stream. */
-                        Legacy::Transaction tx;
-                        ssPacket >> tx;
-
-                        /* Accept into memory pool. */
-                        if(TAO::Ledger::mempool.Accept(tx))
-                        {
-                            TRITIUM_SERVER->Relay(uint16_t(ACTION::NOTIFY),
-                                uint8_t(TYPES::LEGACY), uint8_t(TYPES::TRANSACTION), tx.GetHash());
-
-                            //TODO: relay to legacy nodes.
-                        }
-
-                        break;
-                    }
-
-                    default:
-                        return debug::drop(NODE, "invalid legacy primitive type");
-                }
-
-                break;
-            }
-
-
             /* Handle incoming block. */
             case TYPES::BLOCK:
             {
@@ -1451,7 +1237,7 @@ namespace LLP
                     {
                         /* Check for legacy. */
                         if(tx.first == TAO::Ledger::TRANSACTION::LEGACY)
-                            ssResponse << uint8_t(TYPES::LEGACY);
+                            ssResponse << uint8_t(SPECIFIER::LEGACY);
 
                         /* Push to stream. */
                         ssResponse << uint8_t(TYPES::TRANSACTION) << tx.second;
@@ -1529,10 +1315,226 @@ namespace LLP
                 /* Accept into memory pool. */
                 if(TAO::Ledger::mempool.Accept(tx))
                 {
-                    TRITIUM_SERVER->Relay(uint16_t(ACTION::NOTIFY),
-                        uint8_t(TYPES::TRANSACTION), tx.GetHash());
+                    /* Relay the transaction notification. */
+                    TRITIUM_SERVER->Relay
+                    (
+                        ACTION::NOTIFY,
+                        uint8_t(TYPES::TRANSACTION),
+                        tx.GetHash()
+                    );
+                }
 
-                    //TODO: relay to legacy nodes
+                break;
+            }
+
+            /* Handle sync data types. */
+            case SPECIFIER::SYNC:
+            {
+                /* Get the type. */
+                uint8_t nType = 0;
+                ssPacket >> nType;
+
+                /* Switch based on type. */
+                switch(nType)
+                {
+                    /* Handle for legacy block. */
+                    case TYPES::BLOCK:
+                    {
+                        /* Get the block from the stream. */
+                        TAO::Ledger::SyncBlock block;
+                        ssPacket >> block;
+
+                        /* Check version switch. */
+                        uint8_t nStatus = 0;
+                        if(block.nVersion >= 7)
+                        {
+                            /* Build a tritium block from sync block. */
+                            TAO::Ledger::TritiumBlock tritium(block);
+
+                            /* Process the block. */
+                            TAO::Ledger::Process(tritium, nStatus);
+                        }
+                        else
+                        {
+                            /* Build a tritium block from sync block. */
+                            Legacy::LegacyBlock legacy(block);
+
+                            /* Process the block. */
+                            TAO::Ledger::Process(legacy, nStatus);
+                        }
+
+                        /* Check for specific status messages. */
+                        if(nStatus & TAO::Ledger::PROCESS::ACCEPTED)
+                        {
+                            /* Reset the fails and orphans. */
+                            nConsecutiveFails   = 0;
+                            nConsecutiveOrphans = 0;
+                        }
+
+                        /* Check for failure status messages. */
+                        if(nStatus & TAO::Ledger::PROCESS::REJECTED)
+                            ++nConsecutiveFails;
+
+                        /* Check for orphan status messages. */
+                        if(nStatus & TAO::Ledger::PROCESS::ORPHAN)
+                        {
+                            ++nConsecutiveOrphans;
+
+                            /* Check for duplicate and ask for previous block. */
+                            if(!(nStatus & TAO::Ledger::PROCESS::DUPLICATE)
+                            && !(nStatus & TAO::Ledger::PROCESS::IGNORED))
+                            {
+                                /* Ask for previous block. */
+                                PushMessage(ACTION::GET, uint8_t(SPECIFIER::LEGACY), uint8_t(TYPES::BLOCK), block.hashPrevBlock);
+
+                                /* Ask for list of blocks. */
+                                PushMessage(ACTION::LIST,
+                                    uint8_t(SPECIFIER::LEGACY), uint8_t(TYPES::BLOCK),
+                                    uint8_t(TYPES::LOCATOR), TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
+                                    uint1024_t(0));
+                            }
+                        }
+
+                        /* Check for failure limit on node. */
+                        if(nConsecutiveFails >= 500)
+                        {
+                            /* Fast Sync node switch. */
+                            if(TAO::Ledger::ChainState::Synchronizing())
+                            {
+                                //TODO: fine a new fast sync node
+                            }
+
+                            /* Drop pesky nodes. */
+                            return debug::drop(NODE, "node reached failure limit");
+                        }
+
+
+                        /* Detect large orphan chains and ask for new blocks from origin again. */
+                        if(nConsecutiveOrphans >= 500)
+                        {
+                            LOCK(TAO::Ledger::PROCESSING_MUTEX);
+
+                            /* Clear the memory to prevent DoS attacks. */
+                            TAO::Ledger::mapOrphans.clear();
+
+                            /* Disconnect from a node with large orphan chain. */
+                            return debug::drop(NODE, "node reached orphan limit");
+                        }
+
+                        break;
+                    }
+
+                    default:
+                        return debug::drop(NODE, "invalid sync primitive type");
+                }
+
+                break;
+            }
+
+
+            /* Handle legacy data types. */
+            case SPECIFIER::LEGACY:
+            {
+                /* Get the type. */
+                uint8_t nType = 0;
+                ssPacket >> nType;
+
+                /* Switch based on type. */
+                switch(nType)
+                {
+                    /* Handle for legacy block. */
+                    case TYPES::BLOCK:
+                    {
+                        /* Get the block from the stream. */
+                        Legacy::LegacyBlock block;
+                        ssPacket >> block;
+
+                        /* Process the block. */
+                        uint8_t nStatus = 0;
+                        TAO::Ledger::Process(block, nStatus);
+
+                        /* Check for specific status messages. */
+                        if(nStatus & TAO::Ledger::PROCESS::ACCEPTED)
+                        {
+                            /* Reset the fails and orphans. */
+                            nConsecutiveFails   = 0;
+                            nConsecutiveOrphans = 0;
+                        }
+
+                        /* Check for failure status messages. */
+                        if(nStatus & TAO::Ledger::PROCESS::REJECTED)
+                            ++nConsecutiveFails;
+
+                        /* Check for orphan status messages. */
+                        if(nStatus & TAO::Ledger::PROCESS::ORPHAN)
+                        {
+                            ++nConsecutiveOrphans;
+
+                            /* Check for duplicate and ask for previous block. */
+                            if(!(nStatus & TAO::Ledger::PROCESS::DUPLICATE)
+                            && !(nStatus & TAO::Ledger::PROCESS::IGNORED))
+                            {
+                                /* Ask for previous block. */
+                                PushMessage(ACTION::GET, uint8_t(SPECIFIER::LEGACY), uint8_t(TYPES::BLOCK), block.hashPrevBlock);
+
+                                /* Ask for list of blocks. */
+                                PushMessage(ACTION::LIST,
+                                    uint8_t(SPECIFIER::LEGACY), uint8_t(TYPES::BLOCK),
+                                    uint8_t(TYPES::LOCATOR), TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
+                                    uint1024_t(0));
+                            }
+                        }
+
+                        /* Check for failure limit on node. */
+                        if(nConsecutiveFails >= 500)
+                        {
+                            /* Fast Sync node switch. */
+                            if(TAO::Ledger::ChainState::Synchronizing())
+                            {
+                                //TODO: fine a new fast sync node
+                            }
+
+                            /* Drop pesky nodes. */
+                            return debug::drop(NODE, "node reached failure limit");
+                        }
+
+
+                        /* Detect large orphan chains and ask for new blocks from origin again. */
+                        if(nConsecutiveOrphans >= 500)
+                        {
+                            LOCK(TAO::Ledger::PROCESSING_MUTEX);
+
+                            /* Clear the memory to prevent DoS attacks. */
+                            TAO::Ledger::mapOrphans.clear();
+
+                            /* Disconnect from a node with large orphan chain. */
+                            return debug::drop(NODE, "node reached orphan limit");
+                        }
+
+                        break;
+                    }
+
+                    /* Handle for legacy transaction. */
+                    case TYPES::TRANSACTION:
+                    {
+                        /* Get the transction from the stream. */
+                        Legacy::Transaction tx;
+                        ssPacket >> tx;
+
+                        /* Accept into memory pool. */
+                        if(TAO::Ledger::mempool.Accept(tx))
+                        {
+                            TRITIUM_SERVER->Relay(uint16_t(ACTION::NOTIFY),
+                                uint8_t(SPECIFIER::LEGACY), uint8_t(TYPES::TRANSACTION), tx.GetHash());
+
+                            //TODO: relay to legacy nodes.
+                        }
+
+                        break;
+                    }
+
+                    default:
+                        return debug::drop(NODE, "invalid legacy primitive type");
                 }
 
                 break;

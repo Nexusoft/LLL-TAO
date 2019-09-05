@@ -71,10 +71,18 @@ namespace LLP
             HEIGHT      = 0x33,
             CHECKPOINT  = 0x34,
             ADDRESS     = 0x35,
+        };
+    }
 
+
+    /** Specifiers describe object type in greater detail. **/
+    namespace SPECIFIER
+    {
+        enum
+        {
             /* Specifier. */
-            LEGACY      = 0x3a,
-            SYNC        = 0x3b //specify a sync block for types
+            LEGACY      = 0x40, //specify for legacy block types
+            SYNC        = 0x41 //specify a sync block for types
         };
     }
 
@@ -84,9 +92,9 @@ namespace LLP
     {
         enum
         {
-            ACCEPTED    = 0x40,
-            REJECTED    = 0x41,
-            STALE       = 0x42,
+            ACCEPTED    = 0x50,
+            REJECTED    = 0x51,
+            STALE       = 0x52,
         };
     }
 
