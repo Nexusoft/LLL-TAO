@@ -43,7 +43,6 @@ ________________________________________________________________________________
 
 int main(int argc, char** argv)
 {
-
     /* Setup the timer timer. */
     runtime::timer timer;
     timer.Start();
@@ -97,6 +96,7 @@ int main(int argc, char** argv)
             return nRet;
         }
     }
+
 
     /* Log the startup information now. */
     debug::LogStartup();
