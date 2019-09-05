@@ -39,6 +39,7 @@ ________________________________________________________________________________
 #include <climits>
 #include <memory>
 #include <iomanip>
+#include <bitset>
 
 namespace LLP
 {
@@ -51,10 +52,16 @@ namespace LLP
     std::map<uint64_t, std::pair<uint32_t, uint32_t>> TritiumNode::mapSessions;
 
 
+    /* The current sync node. */
+    std::atomic<uint64_t> TritiumNode::nSyncSession;
+
+
     /** Default Constructor **/
     TritiumNode::TritiumNode()
     : BaseConnection<TritiumPacket>()
     , fAuthorized(false)
+    , nSubscriptions(0)
+    , nNotifications(0)
     , nLastPing(0)
     , nLastSamples(0)
     , mapLatencyTracker()
@@ -64,6 +71,7 @@ namespace LLP
     , nCurrentSession(0)
     , nCurrentHeight(0)
     , hashCheckpoint(0)
+    , hashLastBlock(0)
     , nConsecutiveOrphans(0)
     , nConsecutiveFails(0)
     , strFullVersion()
@@ -75,6 +83,8 @@ namespace LLP
     TritiumNode::TritiumNode(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS)
     : BaseConnection<TritiumPacket>(SOCKET_IN, DDOS_IN, isDDOS)
     , fAuthorized(false)
+    , nSubscriptions(0)
+    , nNotifications(0)
     , nLastPing(0)
     , nLastSamples(0)
     , mapLatencyTracker()
@@ -84,6 +94,7 @@ namespace LLP
     , nCurrentSession(0)
     , nCurrentHeight(0)
     , hashCheckpoint(0)
+    , hashLastBlock(0)
     , nConsecutiveOrphans(0)
     , nConsecutiveFails(0)
     , strFullVersion()
@@ -95,6 +106,8 @@ namespace LLP
     TritiumNode::TritiumNode(DDOS_Filter* DDOS_IN, bool isDDOS)
     : BaseConnection<TritiumPacket>(DDOS_IN, isDDOS)
     , fAuthorized(false)
+    , nSubscriptions(0)
+    , nNotifications(0)
     , nLastPing(0)
     , nLastSamples(0)
     , mapLatencyTracker()
@@ -104,6 +117,7 @@ namespace LLP
     , nCurrentSession(0)
     , nCurrentHeight(0)
     , hashCheckpoint(0)
+    , hashLastBlock(0)
     , nConsecutiveOrphans(0)
     , nConsecutiveFails(0)
     , strFullVersion()
@@ -248,6 +262,13 @@ namespace LLP
                 if(TRITIUM_SERVER && TRITIUM_SERVER->pAddressManager)
                     TRITIUM_SERVER->pAddressManager->AddAddress(GetAddress(), ConnectState::DROPPED);
 
+                /* Handle if sync node is disconnected. */
+                if(nCurrentSession == nSyncSession.load())
+                {
+                    //TODO: find another node
+                }
+
+
                 {
                     LOCK(SESSIONS_MUTEX);
 
@@ -318,7 +339,7 @@ namespace LLP
                     return debug::drop(NODE, "connection using obsolete protocol version");
 
                 /* Respond with version message if incoming connection. */
-                if(!fOUTGOING)
+                if(Incoming())
                 {
                     /* Respond with version message. */
                     PushMessage(uint8_t(ACTION::VERSION), PROTOCOL_VERSION, SESSION_ID, version::CLIENT_VERSION_BUILD_STRING);
@@ -327,6 +348,23 @@ namespace LLP
                     PushMessage(ACTION::NOTIFY,
                         uint8_t(TYPES::HEIGHT),     TAO::Ledger::ChainState::nBestHeight.load(),
                         uint8_t(TYPES::CHECKPOINT), TAO::Ledger::ChainState::hashCheckpoint.load());
+                }
+                else if(nSyncSession == 0)
+                {
+                    /* Subscribe to this node. */
+                    Subscribe(SUBSCRIPTION::LAST);
+
+                    /* Ask for list of blocks. */
+                    PushMessage(ACTION::LIST,
+                        uint8_t(TYPES::LEGACY),
+                        uint8_t(TYPES::BLOCK),
+                        uint8_t(TYPES::LOCATOR),
+                        TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
+                        uint1024_t(0)
+                    );
+
+                    /* Set the sync session-id. */
+                    nSyncSession.store(nCurrentSession);
                 }
 
                 break;
@@ -430,11 +468,116 @@ namespace LLP
             }
 
 
+            /* Handle for the subscribe command. */
+            case ACTION::SUBSCRIBE:
+            {
+                /* Set the limits. */
+                int32_t nLimits = 16;
+
+                /* Loop through the binary stream. */
+                while(!ssPacket.End() && nLimits-- > 0)
+                {
+                    /* Read the type. */
+                    uint8_t nType = 0;
+                    ssPacket >> nType;
+
+                    /* Switch based on type. */
+                    switch(nType)
+                    {
+                        /* Subscribe to getting blocks. */
+                        case TYPES::BLOCK:
+                        {
+                            /* Set the block flag. */
+                            nNotifications |= SUBSCRIPTION::BLOCK;
+
+                            /* Debug output. */
+                            debug::log(3, NODE, "ACTION::SUBSCRIBE: added block subscrption ", std::bitset<16>(nNotifications));
+
+                            break;
+                        }
+
+                        /* Subscribe to getting transactions. */
+                        case TYPES::TRANSACTION:
+                        {
+                            /* Set the transaction flag. */
+                            nNotifications |= SUBSCRIPTION::TRANSACTION;
+
+                            /* Debug output. */
+                            debug::log(3, NODE, "ACTION::SUBSCRIBE: added tx subscrption ", std::bitset<16>(nNotifications));
+
+                            break;
+                        }
+
+                        /* Subscribe to getting best height. */
+                        case TYPES::HEIGHT:
+                        {
+                            /* Set the best height flag. */
+                            nNotifications |= SUBSCRIPTION::HEIGHT;
+
+                            /* Debug output. */
+                            debug::log(3, NODE, "ACTION::SUBSCRIBE: added height subscrption ", std::bitset<16>(nNotifications));
+
+                            break;
+                        }
+
+                        /* Subscribe to getting checkpoints. */
+                        case TYPES::CHECKPOINT:
+                        {
+                            /* Set the checkpoints flag. */
+                            nNotifications |= SUBSCRIPTION::CHECKPOINT;
+
+                            /* Debug output. */
+                            debug::log(3, NODE, "ACTION::SUBSCRIBE: added checkpoint subscrption ", std::bitset<16>(nNotifications));
+
+                            break;
+                        }
+
+                        /* Subscribe to getting addresses. */
+                        case TYPES::ADDRESS:
+                        {
+                            /* Set the address flag. */
+                            nNotifications |= SUBSCRIPTION::ADDRESS;
+
+                            /* Debug output. */
+                            debug::log(3, NODE, "ACTION::SUBSCRIBE: added address subscrption ", std::bitset<16>(nNotifications));
+
+                            break;
+                        }
+
+                        /* Subscribe to getting last index on list commands. */
+                        case TYPES::LAST:
+                        {
+                            /* Set the last flag. */
+                            nNotifications |= SUBSCRIPTION::LAST;
+
+                            /* Debug output. */
+                            debug::log(3, NODE, "ACTION::SUBSCRIBE: added last subscrption ", std::bitset<16>(nNotifications));
+
+                            break;
+                        }
+
+                        /* Catch unsupported types. */
+                        default:
+                        {
+                            /* Give score for bad types. */
+                            if(DDOS)
+                                DDOS->rSCORE += 50;
+                        }
+                    }
+                }
+
+                /* Debug output. */
+                debug::log(3, NODE, "ACTION::SUBSCRIBE: node subscribed to flags ", std::bitset<16>(nNotifications));
+
+                break;
+            }
+
+
             /* Handle for list command. */
             case ACTION::LIST:
             {
                 /* Set the limits. */
-                uint32_t nLimits = 1000;
+                int32_t nLimits = 1001;
 
                 /* Loop through the binary stream. */
                 while(!ssPacket.End() && nLimits != 0)
@@ -462,7 +605,61 @@ namespace LLP
                         {
                             /* Get the index of block. */
                             uint1024_t hashStart;
-                            ssPacket >> hashStart;
+
+                            /* Get the object type. */
+                            uint8_t nObject = 0;
+                            ssPacket >> nObject;
+
+                            /* Switch based on object. */
+                            switch(nObject)
+                            {
+                                /* Check for start from uint1024 type. */
+                                case TYPES::UINT1024_T:
+                                {
+                                    /* Deserialize start. */
+                                    ssPacket >> hashStart;
+
+                                    break;
+                                }
+
+                                /* Check for start from a locator. */
+                                case TYPES::LOCATOR:
+                                {
+                                    /* Deserialize locator. */
+                                    TAO::Ledger::Locator locator;
+                                    ssPacket >> locator;
+
+                                    /* Check locator size. */
+                                    uint32_t nSize = locator.vHave.size();
+                                    if(nSize > 30)
+                                        return debug::drop(NODE, "locator size ", nSize, " is too large");
+
+                                    /* Find common ancestor block. */
+                                    for(const auto& have : locator.vHave)
+                                    {
+                                        /* Check the database for the ancestor block. */
+                                        if(LLD::Ledger->HasBlock(have))
+                                        {
+                                            /* Set the starting hash. */
+                                            hashStart = have;
+
+                                            break;
+                                        }
+                                    }
+
+                                    /* Debug output. */
+                                    debug::log(3, NODE, "ACTION::LIST: Locator ", hashStart.SubString(), " found");
+
+                                    break;
+                                }
+
+                                default:
+                                    return debug::drop(NODE, "malformed starting index");
+                            }
+
+                            /* Check for search from last. */
+                            if(hashStart == 0)
+                                hashStart = hashLastBlock;
 
                             /* Get the ending hash. */
                             uint1024_t hashStop;
@@ -470,11 +667,13 @@ namespace LLP
 
                             /* Do a sequential read to obtain the list. */
                             std::vector<TAO::Ledger::BlockState> vStates;
-                            while(LLD::Ledger->BatchRead(hashStart, "block", vStates, 100))
+                            while(--nLimits > 0 && hashStart != hashStop &&
+                                LLD::Ledger->BatchRead(hashStart, "block", vStates, 1000))
                             {
                                 /* Loop through all available states. */
                                 for(const auto& state : vStates)
                                 {
+
                                     /* Cache the block hash. */
                                     hashStart = state.GetHash();
 
@@ -501,14 +700,17 @@ namespace LLP
                                     }
 
                                     /* Check for stop hash. */
-                                    if(--nLimits == 0 || hashStart == hashStop)
+                                    if(--nLimits <= 0 || hashStart == hashStop)
                                         break;
                                 }
-
-                                /* Check for stop or limits. */
-                                if(nLimits == 0 || hashStart == hashStop)
-                                    break;
                             }
+
+                            /* Set the last block. */
+                            hashLastBlock = hashStart;
+
+                            /* Check for last subscription. */
+                            if(nNotifications & SUBSCRIPTION::LAST)
+                                PushMessage(ACTION::NOTIFY, uint8_t(TYPES::LAST), hashLastBlock);
 
                             break;
                         }
@@ -612,7 +814,6 @@ namespace LLP
                         default:
                             return debug::drop(NODE, "ACTION::LIST malformed binary stream");
                     }
-
                 }
 
                 break;
@@ -802,6 +1003,37 @@ namespace LLP
 
                             /* Keep track of current checkpoint. */
                             ssPacket >> hashCheckpoint;
+
+                            break;
+                        }
+
+
+                        /* Standard type for a checkpoint. */
+                        case TYPES::LAST:
+                        {
+                            /* Check for subscription. */
+                            if(!(nSubscriptions & TYPES::LAST))
+                                return debug::drop(NODE, "unsolicited notification");
+
+                            /* Keep track of current checkpoint. */
+                            uint1024_t hashLast;
+                            ssPacket >> hashLast;
+
+                            /* Check if is sync node. */
+                            if(nCurrentSession == nSyncSession.load())
+                            {
+                                /* Ask for list of blocks. */
+                                PushMessage(ACTION::LIST,
+                                    uint8_t(TYPES::LEGACY),
+                                    uint8_t(TYPES::BLOCK),
+                                    uint8_t(TYPES::UINT1024_T),
+                                    uint1024_t(0),
+                                    uint1024_t(0)
+                                );
+                            }
+
+                            /* Debug output. */
+                            debug::log(3, NODE, "ACTION::NOTIFY: received last index ", hashLast.SubString());
 
                             break;
                         }
@@ -1181,6 +1413,73 @@ namespace LLP
     bool TritiumNode::Authorized() const
     {
         return hashGenesis != 0 && fAuthorized;
+    }
+
+
+    /* Subscribe to another node for notifications. */
+    void TritiumNode::Subscribe(const uint16_t nFlags)
+    {
+        /* Build subscription message. */
+        DataStream ssMessage(SER_NETWORK, MIN_PROTO_VERSION);
+
+        /* Check for block. */
+        if(nFlags & SUBSCRIPTION::BLOCK)
+        {
+            /* Build the message. */
+            ssMessage << uint8_t(TYPES::BLOCK);
+            nSubscriptions |= SUBSCRIPTION::BLOCK;
+        }
+
+        /* Check for transaction. */
+        if(nFlags & SUBSCRIPTION::TRANSACTION)
+        {
+            /* Build the message. */
+            ssMessage << uint8_t(TYPES::TRANSACTION);
+            nSubscriptions |= SUBSCRIPTION::TRANSACTION;
+        }
+
+        /* Check for time seed. */
+        if(nFlags & SUBSCRIPTION::TIMESEED)
+        {
+            /* Build the message. */
+            ssMessage << uint8_t(TYPES::TIMESEED);
+            nSubscriptions |= SUBSCRIPTION::TIMESEED;
+        }
+
+        /* Check for height. */
+        if(nFlags & SUBSCRIPTION::HEIGHT)
+        {
+            /* Build the message. */
+            ssMessage << uint8_t(TYPES::HEIGHT);
+            nSubscriptions |= SUBSCRIPTION::HEIGHT;
+        }
+
+        /* Check for checkpoint. */
+        if(nFlags & SUBSCRIPTION::CHECKPOINT)
+        {
+            /* Build the message. */
+            ssMessage << uint8_t(TYPES::CHECKPOINT);
+            nSubscriptions |= SUBSCRIPTION::CHECKPOINT;
+        }
+
+        /* Check for address. */
+        if(nFlags & SUBSCRIPTION::ADDRESS)
+        {
+            /* Build the message. */
+            ssMessage << uint8_t(TYPES::ADDRESS);
+            nSubscriptions |= SUBSCRIPTION::ADDRESS;
+        }
+
+        /* Check for last. */
+        if(nFlags & SUBSCRIPTION::LAST)
+        {
+            /* Build the message. */
+            ssMessage << uint8_t(TYPES::LAST);
+            nSubscriptions |= SUBSCRIPTION::LAST;
+        }
+
+        /* Write the subscription packet. */
+        WritePacket(NewMessage(ACTION::SUBSCRIBE, ssMessage));
     }
 
 

@@ -119,6 +119,13 @@ namespace LLP
         return fCONNECTED.load();
     }
 
+    /* Flag to detect if connection is an inbound connection. */
+    template <class PacketType>
+    bool BaseConnection<PacketType>::Incoming() const
+    {
+        return !fOUTGOING.load();
+    }
+
 
     /*  Handles two types of packets, requests which are of header >= 128,
      *  and data which are of header < 128. */

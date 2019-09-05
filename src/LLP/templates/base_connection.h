@@ -144,6 +144,14 @@ namespace LLP
         bool Connected() const;
 
 
+        /** Incoming
+         *
+         *  Flag to detect if connection is an inbound connection.
+         *
+         **/
+        bool Incoming() const;
+
+
         /** PacketComplete
          *
          *  Handles two types of packets, requests which are of header >= 128,

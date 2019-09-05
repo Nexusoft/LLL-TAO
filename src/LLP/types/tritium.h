@@ -40,6 +40,7 @@ namespace LLP
             NOTIFY       = 0x12,
             AUTH         = 0x13,
             VERSION      = 0x14,
+            SUBSCRIBE    = 0x15,
 
             /* Protocol. */
             PING         = 0x1a,
@@ -60,6 +61,8 @@ namespace LLP
             UINT1024_T  = 0x22,
             STRING      = 0x23,
             BYTES       = 0x24,
+            LOCATOR     = 0x25,
+            LAST        = 0x26, //sends a last index notify after list
 
             /* Object Types. */
             BLOCK       = 0x30,
@@ -83,6 +86,22 @@ namespace LLP
             ACCEPTED    = 0x40,
             REJECTED    = 0x41,
             STALE       = 0x42,
+        };
+    }
+
+
+    /** Subscription flags. */
+    namespace SUBSCRIPTION
+    {
+        enum
+        {
+            BLOCK       = (1 << 1),
+            TRANSACTION = (1 << 2),
+            TIMESEED    = (1 << 3),
+            HEIGHT      = (1 << 4),
+            CHECKPOINT  = (1 << 5),
+            ADDRESS     = (1 << 6),
+            LAST        = (1 << 7),
         };
     }
 
@@ -138,13 +157,26 @@ namespace LLP
         /** Set for connected session. **/
         static std::map<uint64_t, std::pair<uint32_t, uint32_t>> mapSessions;
 
+
+        /** The current sync node. **/
+        static std::atomic<uint64_t> nSyncSession;
+
+
+        /** The current subscriptions. **/
+        uint16_t nSubscriptions;
+
+
+        /** The current notifications. **/
+        uint16_t nNotifications;
+
     public:
 
-      /** Name
-       *
-       *  Returns a string for the name of this type of Node.
-       *
-       **/
+
+        /** Name
+         *
+         *  Returns a string for the name of this type of Node.
+         *
+         **/
         static std::string Name() { return "Tritium"; }
 
 
@@ -185,7 +217,7 @@ namespace LLP
 
 
         /** This node's protocol version. **/
-        uint64_t nProtocolVersion;
+        uint32_t nProtocolVersion;
 
 
         /** This node's session-id. **/
@@ -198,6 +230,10 @@ namespace LLP
 
         /** This node's current checkpoint. **/
         uint1024_t hashCheckpoint;
+
+
+        /** Keep track of the last block. **/
+        uint1024_t hashLastBlock;
 
 
         /** Counter of total orphans. **/
@@ -248,6 +284,16 @@ namespace LLP
          *
          **/
         bool Authorized() const;
+
+
+        /** Subscribe
+         *
+         *  Subscribe to another node for notifications.
+         *
+         *  @param[in] nFlags The subscription flags.
+         *
+         **/
+        void Subscribe(const uint16_t nFlags);
 
 
         /** SessionActive
