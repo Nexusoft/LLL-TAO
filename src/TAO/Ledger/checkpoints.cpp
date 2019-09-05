@@ -117,7 +117,7 @@ namespace TAO
                 return false;
 
             /* Notify nodes of the checkpoint. */
-            if(LLP::TRITIUM_SERVER)
+            if(LLP::TRITIUM_SERVER && !ChainState::Synchronizing())
             {
                 LLP::TRITIUM_SERVER->Relay
                 (

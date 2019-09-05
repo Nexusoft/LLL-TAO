@@ -165,9 +165,6 @@ namespace LLP
 
             case EVENT_HEADER:
             {
-                /* Debug output. */
-                debug::log(3, NODE, "received message ", std::hex, INCOMING.MESSAGE, " of ", std::dec, INCOMING.LENGTH, " bytes");
-
                 /* Check for initialization. */
                 if(nCurrentSession == 0 && nProtocolVersion == 0 && INCOMING.MESSAGE != ACTION::VERSION && DDOS)
                     DDOS->rSCORE += 25;
