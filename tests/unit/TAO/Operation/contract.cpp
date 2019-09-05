@@ -48,7 +48,7 @@ TEST_CASE( "Contract::Bind", "[operation]" )
     REQUIRE(contract.Timestamp() == tx.nTimestamp);
     REQUIRE(contract.Caller() == tx.hashGenesis);
 
-    // check for erroneous inputs
+    // check for erroneous input
     contract.Bind(nullptr);
 
     //check for error

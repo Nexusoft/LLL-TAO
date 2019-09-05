@@ -49,7 +49,7 @@ namespace TAO
     namespace Ledger
     {
 
-        /** Default Constructor. **/
+        /* Default Constructor. */
         Transaction::Transaction()
         : vContracts()
         , nVersion(1)
@@ -66,27 +66,27 @@ namespace TAO
         }
 
 
-        /** Default Destructor. **/
+        /* Default Destructor. */
         Transaction::~Transaction()
         {
         }
 
 
-        /*  Used for sorting transactions by sequence. */
+        /* Used for sorting transactions by sequence. */
         bool Transaction::operator>(const Transaction& tx) const
         {
             return nSequence > tx.nSequence;
         }
 
 
-        /*  Used for sorting transactions by sequence. */
+        /* Used for sorting transactions by sequence. */
         bool  Transaction::operator<(const Transaction& tx) const
         {
             return nSequence < tx.nSequence;
         }
 
 
-        /*  Access for the contract operator overload. This is for read-only objects. */
+        /* Access for the contract operator overload. This is for read-only objects. */
         const TAO::Operation::Contract& Transaction::operator[](const uint32_t n) const
         {
             /* Check contract bounds. */
@@ -100,7 +100,7 @@ namespace TAO
         }
 
 
-        /*  Write access fot the contract operator overload. This handles writes to create new contracts. */
+        /* Write access fot the contract operator overload. This handles writes to create new contracts. */
         TAO::Operation::Contract& Transaction::operator[](const uint32_t n)
         {
             /* Allocate a new contract if on write. */
@@ -114,7 +114,7 @@ namespace TAO
         }
 
 
-        /*  Get the total contracts in transaction. */
+        /* Get the total contracts in transaction. */
         uint32_t Transaction::Size() const
         {
             return vContracts.size();
