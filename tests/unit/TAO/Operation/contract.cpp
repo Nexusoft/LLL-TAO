@@ -27,14 +27,43 @@ ________________________________________________________________________________
 
 #include <unit/catch2/catch.hpp>
 
+using namespace TAO::Register;
+using namespace TAO::Operation;
+using namespace TAO::Ledger;
+
+TEST_CASE( "Contract::Bind", "[operation]" )
+{
+    //build contract
+    Contract contract;
+
+    Transaction tx;
+
+    tx.hashGenesis = LLC::GetRand256();
+    tx.nTimestamp = runtime::timestamp();
+
+    // check for expected output
+    contract.Bind(&tx);
+
+    REQUIRE(contract.Hash() == tx.GetHash());
+    REQUIRE(contract.Timestamp() == tx.nTimestamp);
+    REQUIRE(contract.Caller() == tx.hashGenesis);
+
+    // check for erroneous inputs
+    contract.Bind(nullptr);
+
+    //check for error
+    std::string error = debug::GetLastError();
+    REQUIRE(error.find("null transaction") != std::string::npos);
+}
+
+
 TEST_CASE( "Contract Tests", "[operation]" )
 {
-    using namespace TAO::Register;
-    using namespace TAO::Operation;
 
     {
         //build contract
         Contract contract;
+
         contract << uint8_t(OP::TRANSFER);
 
         //get op

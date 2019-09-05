@@ -148,6 +148,10 @@ namespace TAO
             if(hashGenesis.GetType() != (config::fTestNet.load() ? 0xa2 : 0xa1))
                 return debug::error(FUNCTION, "genesis using incorrect leading byte");
 
+            /* Check for max contracts. */
+            if(vContracts.size() > 100)
+                return debug::error(FUNCTION, "too many contracts for this transaction");
+
             /* Run through all the contracts. */
             for(const auto& contract : vContracts)
             {
@@ -155,10 +159,6 @@ namespace TAO
                 if(contract.Empty(TAO::Operation::Contract::OPERATIONS))
                     return debug::error(FUNCTION, "contract is empty");
             }
-
-            /* Check for max contracts. */
-            if(vContracts.size() > 100)
-                return debug::error(FUNCTION, "too many contracts for this transactions");
 
             /* Switch based on signature type. */
             switch(nKeyType)
@@ -253,6 +253,10 @@ namespace TAO
         {
             /* Create a temporary map for pre-states. */
             std::map<uint256_t, TAO::Register::State> mapStates;
+
+            /* Check for max contracts. */
+            if(vContracts.size() > 100)
+                return debug::error(FUNCTION, "too many contracts for this transaction");
 
             /* Run through all the contracts. */
             for(auto& contract : vContracts)
