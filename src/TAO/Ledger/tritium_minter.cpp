@@ -464,6 +464,22 @@ namespace TAO
 
                 return;
             }
+            /* Genesis blocks do not include mempool transactions.  Therefore if there are already any transactions in the mempool
+               for this sig chain the genesis block will fail to be accepted because the producer.prevTX would not be on disk. 
+               Therefore if this is a genesis block, skip until there are no mempool transactions for this sig chain. */
+            else if(fGenesis && mempool.Has(user->Genesis())) 
+            {
+                /* 5 second wait is reset below (can't sleep too long or will hang until wakes up on shutdown) */
+                nSleepTime = 5000; 
+
+                /* Update log every 10 iterations (50 seconds, which is average block time) */
+                if((nCounter % 10) == 0)
+                    debug::log(0, FUNCTION, "Stake Minter: Skipping genesis as mempool transactions would be orphaned.");
+                
+                ++nCounter;
+
+                return;
+            }
             else if(nSleepTime == 5000)
             {
                 /* Reset sleep time after coin age meets requirement. */
