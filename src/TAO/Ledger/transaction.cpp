@@ -80,7 +80,7 @@ namespace TAO
 
 
         /* Used for sorting transactions by sequence. */
-        bool  Transaction::operator<(const Transaction& tx) const
+        bool Transaction::operator<(const Transaction& tx) const
         {
             return nSequence < tx.nSequence;
         }
@@ -91,7 +91,7 @@ namespace TAO
         {
             /* Check contract bounds. */
             if(n >= vContracts.size())
-                throw std::runtime_error(debug::safe_printstr(FUNCTION, "Contract read out of bounds"));
+                throw debug::exception(FUNCTION, "Contract read out of bounds");
 
             /* Bind this transaction. */
             vContracts[n].Bind(this);
@@ -103,6 +103,10 @@ namespace TAO
         /* Write access fot the contract operator overload. This handles writes to create new contracts. */
         TAO::Operation::Contract& Transaction::operator[](const uint32_t n)
         {
+            /* Check for contract bounds. */
+            if(n >= MAX_TRANSACTION_CONTRACTS)
+                throw debug::exception(FUNCTION, "contract create out of bounds");
+
             /* Allocate a new contract if on write. */
             if(n >= vContracts.size())
                 vContracts.resize(n + 1);
@@ -149,7 +153,7 @@ namespace TAO
                 return debug::error(FUNCTION, "genesis using incorrect leading byte");
 
             /* Check for max contracts. */
-            if(vContracts.size() > 100)
+            if(vContracts.size() > MAX_TRANSACTION_CONTRACTS)
                 return debug::error(FUNCTION, "too many contracts for this transaction");
 
             /* Run through all the contracts. */
