@@ -91,7 +91,7 @@ namespace TAO
         {
             /* Check contract bounds. */
             if(n >= vContracts.size())
-                throw debug::exception(FUNCTION, "Contract read out of bounds");
+                throw debug::exception(FUNCTION, "contract read out of bounds");
 
             /* Bind this transaction. */
             vContracts[n].Bind(this);
