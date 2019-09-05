@@ -198,15 +198,15 @@ namespace TAO
 
             /* Get the debit trust score */
             uint32_t nScoreDebit = 0;
-            contract >> nScoreDebit;
+            debit >> nScoreDebit;
 
             /* Get the debit last stake hash */
             uint512_t hashLastDebit = 0;
-            contract >> hashLastDebit;
+            debit >> hashLastDebit;
 
             /* Get the trust key hash */
             uint512_t hashKeyDebit;
-            contract >> hashKeyDebit;
+            debit >> hashKeyDebit;
 
             /* Check for reserved values. */
             if(TAO::Register::Reserved(hashTo))

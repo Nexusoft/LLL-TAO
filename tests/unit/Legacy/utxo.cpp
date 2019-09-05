@@ -54,6 +54,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
         //make the coinbase tx
         Legacy::Transaction tx;
         REQUIRE(Legacy::CreateCoinbase(*pReserveKey, coinbase, 1, 0, 7, tx));
+        tx.vout[0].nValue = 1000000; //1 NXS
 
         //add the data into input script
         tx.vin[0].scriptSig << uint32_t(555);
@@ -64,14 +65,14 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
 
         //write to disk
         REQUIRE(LLD::Legacy->WriteTx(tx.GetHash(), tx));
-        
+
         //conect tx
         REQUIRE(tx.Connect(inputs, TAO::Ledger::ChainState::stateGenesis, Legacy::FLAGS::BLOCK));
-        
+
         REQUIRE(LLD::Ledger->IndexBlock(tx.GetHash(), TAO::Ledger::ChainState::stateGenesis.GetHash()));
 
         //add to wallet
-        Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::stateGenesis, true);
+        REQUIRE(Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::stateGenesis, true));
 
         //check balance
         REQUIRE(Legacy::Wallet::GetInstance().GetBalance() == 1000000);
@@ -348,7 +349,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
 
             //conect tx
             REQUIRE(wtx.Connect(inputs, state, Legacy::FLAGS::BLOCK));
-            
+
             REQUIRE(LLD::Ledger->IndexBlock(wtx.GetHash(), state.GetHash()));
 
             //add to wallet
@@ -448,7 +449,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
 
             //write to disk
             REQUIRE(LLD::Legacy->WriteTx(wtx.GetHash(), wtx));
-            
+
             //conect tx
             REQUIRE(wtx.Connect(inputs, state, Legacy::FLAGS::BLOCK));
 

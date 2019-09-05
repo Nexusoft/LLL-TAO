@@ -98,7 +98,7 @@ namespace Legacy
 
 
         /** The sending Nexus Address for this tranasction (optional, if send from specific address) **/
-        NexusAddress* pfromAddress;
+        NexusAddress fromAddress;
 
 
         /** char vector with true/false values indicating spent outputs.
@@ -252,8 +252,8 @@ namespace Legacy
             {
                 pthis->mapValue["fromaccount"] = pthis->strFromAccount;
 
-                if(pthis->pfromAddress != nullptr && pthis->pfromAddress->IsValid())
-                    pthis->mapValue["fromaddress"] = pthis->pfromAddress->ToString();
+                if(fromAddress.IsValid())
+                    pthis->mapValue["fromaddress"] = pthis->fromAddress.ToString();
 
                 std::string str;
                 for(bool f : vfSpent)
@@ -282,7 +282,7 @@ namespace Legacy
                 if(mapValue.count("fromaddress"))
                 {
                     NexusAddress fromAddress(pthis->mapValue["fromaddress"]);
-                    pthis->pfromAddress = &fromAddress;
+                    pthis->fromAddress = fromAddress;
                     pthis->mapValue.erase("fromaddress");
                 }
 

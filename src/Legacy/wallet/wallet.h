@@ -1152,9 +1152,8 @@ namespace Legacy
          *
          *  @param[in] strAccount (optional) Only include outputs for this account label, "default" for wallet default account
          *
-         *  @param[in] pfromAddress (optional) Only include outputs for this Nexus Address.
-         *                                     Set nullptr (default) for all addresses.
-         *                                     If an address is present, overrides strAccount (which is ignored)
+         *  @param[in] fromAddress (optional) Only include outputs for this Nexus Address.
+         *                                    If an address is present, overrides strAccount (which is ignored)
          *
          *  @param[in] nMinDepth (optional) Only include outputs with at least this many confirms
          *
@@ -1164,7 +1163,7 @@ namespace Legacy
         bool SelectCoins(const int64_t nTargetValue, const uint32_t nSpendTime,
             std::map<std::pair<uint512_t, uint32_t>, const WalletTx*>& mapCoinsRet,
             int64_t& nValueRet, const std::string& strAccount = "*",
-            const NexusAddress* pfromAddress = nullptr, const uint32_t nMinDepth = 1);
+            const NexusAddress fromAddress = NexusAddress(), const uint32_t nMinDepth = 1);
 
 
         /** SelectCoinsMinConf
@@ -1187,9 +1186,8 @@ namespace Legacy
          *
          *  @param[in] strAccount (optional) Only include outputs for this account label, "default" for wallet default account
          *
-         *  @param[in] pfromAddress (optional) Only include outputs for this Nexus Address.
-         *                                     Set nullptr (default) for all addresses.
-         *                                     If an address is present, overrides strAccount (which is ignored)
+         *  @param[in] fromAddress (optional) Only include outputs for this Nexus Address.
+         *                                    If an address is present, overrides strAccount (which is ignored)
          *
          *  @return true if script was successfully added
          *
@@ -1197,7 +1195,7 @@ namespace Legacy
         bool SelectCoinsMinConf(const int64_t nTargetValue, const uint32_t nSpendTime,
             const uint32_t nConfMine, const uint32_t nConfTheirs,
             std::map<std::pair<uint512_t, uint32_t>, const WalletTx*>& mapCoinsRet,
-            int64_t& nValueRet, const std::string& strAccount = "*", const NexusAddress* pfromAddress = nullptr);
+            int64_t& nValueRet, const std::string& strAccount = "*", const NexusAddress fromAddress = NexusAddress());
 
     };
 

@@ -296,8 +296,8 @@ namespace TAO
 
             /* Trust key checks complete. Now can use trust key address as input to migration transaction */
             Legacy::WalletTx wtx;
-            Legacy::NexusAddress address(trustKey.vchPubKey);
-            wtx.pfromAddress = &address;
+            Legacy::NexusAddress trustAddress(trustKey.vchPubKey);
+            wtx.fromAddress = trustAddress;
 
             /* Get the available addresses from the wallet with their balances */
             std::map<Legacy::NexusAddress, int64_t> mapAddresses;
@@ -308,7 +308,7 @@ namespace TAO
             int64_t nAmount = 0;
             for(const auto& entry : mapAddresses)
             {
-                if(entry.first == address)
+                if(entry.first == trustAddress)
                 {
                     /* Found address entry for trust key address */
                     nAmount = entry.second;

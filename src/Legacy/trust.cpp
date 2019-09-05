@@ -160,7 +160,7 @@ namespace Legacy
 
 
     /* Build the debit operation for a trust key migration with data from Legacy migrate transaction */
-    bool BuildMigrateDebit(TAO::Operation::Contract debit, const uint512_t hashTx)
+    bool BuildMigrateDebit(TAO::Operation::Contract& debit, const uint512_t hashTx)
     {
         /* Retrieve the Legacy tx corresponds to the debit */
         Transaction tx;
@@ -189,11 +189,13 @@ namespace Legacy
         uint32_t nSequence;
 
         /* Extract the trust score */
-        if(txLast.IsGenesis())
+        if(txLast.IsTrust())
+        {
+            if(!txLast.ExtractTrust(hashLastBlock, nSequence, nScore))
+                return debug::error(FUNCTION, "debit missing trust score");
+        }
+        else
             nScore = 0;
-
-        else if(!txLast.ExtractTrust(hashLastBlock, nSequence, nScore))
-            return debug::error(FUNCTION, "debit missing trust score");
 
         debit << nScore << txLast.GetHash() << trustKey.GetHash();
 
