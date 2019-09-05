@@ -88,9 +88,15 @@ namespace TAO
         /* Bind the contract to a transaction. */
         void Contract::Bind(const TAO::Ledger::Transaction* tx) const
         {
-            hashCaller = tx->hashGenesis;
-            nTimestamp = tx->nTimestamp;
-            hashTx     = tx->GetHash();
+            if(tx)
+            {
+                hashCaller = tx->hashGenesis;
+                nTimestamp = tx->nTimestamp;
+                hashTx     = tx->GetHash();
+                return;
+            }
+
+            debug::error(FUNCTION, "null transaction");
         }
 
 

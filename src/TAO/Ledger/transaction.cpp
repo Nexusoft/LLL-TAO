@@ -49,7 +49,7 @@ namespace TAO
     namespace Ledger
     {
 
-        /** Default Constructor. **/
+        /* Default Constructor. */
         Transaction::Transaction()
         : vContracts()
         , nVersion(1)
@@ -66,27 +66,27 @@ namespace TAO
         }
 
 
-        /** Default Destructor. **/
+        /* Default Destructor. */
         Transaction::~Transaction()
         {
         }
 
 
-        /*  Used for sorting transactions by sequence. */
+        /* Used for sorting transactions by sequence. */
         bool Transaction::operator>(const Transaction& tx) const
         {
             return nSequence > tx.nSequence;
         }
 
 
-        /*  Used for sorting transactions by sequence. */
+        /* Used for sorting transactions by sequence. */
         bool  Transaction::operator<(const Transaction& tx) const
         {
             return nSequence < tx.nSequence;
         }
 
 
-        /*  Access for the contract operator overload. This is for read-only objects. */
+        /* Access for the contract operator overload. This is for read-only objects. */
         const TAO::Operation::Contract& Transaction::operator[](const uint32_t n) const
         {
             /* Check contract bounds. */
@@ -100,7 +100,7 @@ namespace TAO
         }
 
 
-        /*  Write access fot the contract operator overload. This handles writes to create new contracts. */
+        /* Write access fot the contract operator overload. This handles writes to create new contracts. */
         TAO::Operation::Contract& Transaction::operator[](const uint32_t n)
         {
             /* Allocate a new contract if on write. */
@@ -114,7 +114,7 @@ namespace TAO
         }
 
 
-        /*  Get the total contracts in transaction. */
+        /* Get the total contracts in transaction. */
         uint32_t Transaction::Size() const
         {
             return vContracts.size();
@@ -148,6 +148,10 @@ namespace TAO
             if(hashGenesis.GetType() != (config::fTestNet.load() ? 0xa2 : 0xa1))
                 return debug::error(FUNCTION, "genesis using incorrect leading byte");
 
+            /* Check for max contracts. */
+            if(vContracts.size() > 100)
+                return debug::error(FUNCTION, "too many contracts for this transaction");
+
             /* Run through all the contracts. */
             for(const auto& contract : vContracts)
             {
@@ -155,10 +159,6 @@ namespace TAO
                 if(contract.Empty(TAO::Operation::Contract::OPERATIONS))
                     return debug::error(FUNCTION, "contract is empty");
             }
-
-            /* Check for max contracts. */
-            if(vContracts.size() > 100)
-                return debug::error(FUNCTION, "too many contracts for this transactions");
 
             /* Switch based on signature type. */
             switch(nKeyType)
@@ -253,6 +253,10 @@ namespace TAO
         {
             /* Create a temporary map for pre-states. */
             std::map<uint256_t, TAO::Register::State> mapStates;
+
+            /* Check for max contracts. */
+            if(vContracts.size() > 100)
+                return debug::error(FUNCTION, "too many contracts for this transaction");
 
             /* Run through all the contracts. */
             for(auto& contract : vContracts)
