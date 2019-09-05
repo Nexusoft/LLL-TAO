@@ -91,6 +91,10 @@ namespace Legacy
         LegacyBlock(const TAO::Ledger::BlockState& state);
 
 
+        /** Copy Constructor. **/
+        LegacyBlock(const TAO::Ledger::SyncBlock& block);
+
+
         /** Default Destructor **/
         virtual ~LegacyBlock();
 

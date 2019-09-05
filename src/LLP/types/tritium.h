@@ -73,7 +73,8 @@ namespace LLP
             ADDRESS     = 0x35,
 
             /* Specifier. */
-            LEGACY      = 0x3a
+            LEGACY      = 0x3a,
+            SYNC        = 0x3b //specify a sync block for types
         };
     }
 

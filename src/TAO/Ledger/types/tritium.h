@@ -31,8 +31,8 @@ namespace TAO
     /* Ledger Layer namespace. */
     namespace Ledger
     {
-
         class BlockState;
+        class SyncBlock;
 
 
         /** TritiumBlock
@@ -109,6 +109,10 @@ namespace TAO
 
             /** Copy Constructor. **/
             TritiumBlock(const BlockState& state);
+
+
+            /** Copy Constructor. **/
+            TritiumBlock(const SyncBlock& block);
 
 
             /** Default Destructor **/

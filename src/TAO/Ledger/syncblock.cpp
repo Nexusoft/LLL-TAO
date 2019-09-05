@@ -27,6 +27,7 @@ namespace TAO
     /* Ledger Layer namespace. */
     namespace Ledger
     {
+
         /* The default constructor. */
         SyncBlock::SyncBlock()
         : Block()
@@ -100,6 +101,13 @@ namespace TAO
                     /* Check for checkpoint. */
                     case TRANSACTION::CHECKPOINT:
                     {
+                        /* Serialize stream. */
+                        DataStream ssData(SER_DISK, LLD::DATABASE_VERSION);
+                        ssData << proof.second;
+
+                        /* Add transaction to binary data. */
+                        vtx.push_back(std::make_pair(proof.first, ssData.Bytes()));
+
                         break;
                     }
                 }
