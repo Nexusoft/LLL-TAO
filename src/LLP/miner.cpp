@@ -689,7 +689,7 @@ namespace LLP
         debug::log(2, FUNCTION, "Mining best height changed to ", nBestHeight);
 
         /* Wake up events processor and wait for a signal to guarantee added transactions won't orphan a mined block. */
-        if(TAO::API::users)
+        if(TAO::API::users && TAO::API::users->CanProcessNotifications())
         {
             TAO::API::users->NotifyEvent();
             WaitEvent();
