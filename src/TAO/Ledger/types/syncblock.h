@@ -43,20 +43,12 @@ namespace TAO
          *  When a block is recieved to break up processing requirements.
          *
          **/
-        class TritiumBlock : public Block
+        class SyncBlock : public Block
         {
         public:
 
             /** The Block's timestamp. This number is locked into the signature hash. **/
             uint64_t nTime;
-
-
-            /** Verifier Transaction.
-             *
-             *  Transaction responsible for the block producer.
-             *
-             **/
-            Transaction producer;
 
 
             /** System Script
@@ -69,9 +61,9 @@ namespace TAO
 
             /** The transaction history.
              *  uint8_t = TransactionType (per enum)
-             *  uint512_t = Tx hash
+             *  std::vector = Serialized byte level data
              **/
-            std::vector<std::pair<uint8_t, uint512_t> > vtx;
+            std::vector<std::pair<uint8_t, std::vector<uint8_t> > > vtx;
 
 
             /** Serialization **/
@@ -88,7 +80,6 @@ namespace TAO
                 READWRITE(nTime);
                 READWRITE(vchBlockSig);
 
-                READWRITE(producer);
                 READWRITE(ssSystem);
                 READWRITE(vOffsets);
                 READWRITE(vtx);
@@ -96,36 +87,19 @@ namespace TAO
 
 
             /** The default constructor. **/
-            TritiumBlock();
+            SyncBlock();
 
 
             /** Copy constructor from base block. **/
-            TritiumBlock(const Block& block);
+            SyncBlock(const Block& block);
 
 
             /** Copy Constructor. **/
-            TritiumBlock(const TritiumBlock& block);
-
-
-            /** Copy Constructor. **/
-            TritiumBlock(const BlockState& state);
+            SyncBlock(const BlockState& state);
 
 
             /** Default Destructor **/
-            virtual ~TritiumBlock();
-
-
-            /** Clone
-             *
-             *  Allows polymorphic copying of blocks
-             *  Overridden to return an instance of the TritiumBlock class.
-             *  Return-type covariance allows us to return the more derived type whilst
-             *  still overriding the virtual base-class method
-             *
-             *  @return A pointer to a copy of this TritiumBlock.
-             *
-             **/
-            virtual TritiumBlock* Clone() const override;
+            virtual ~SyncBlock();
 
 
             /** SetNull
@@ -134,78 +108,6 @@ namespace TAO
              *
              **/
             void SetNull() override;
-
-
-            /** UpdateTime
-             *
-             *  Update the blocks timestamp.
-             *
-             **/
-            void UpdateTime();
-
-
-            /** GetBlockTime
-             *
-             *  Returns the current UNIX timestamp of the block.
-             *
-             *  @return 64-bit integer of timestamp.
-             *
-             **/
-            uint64_t GetBlockTime() const;
-
-
-            /** Check
-             *
-             *  Check a tritium block for consistency.
-             *
-             **/
-            bool Check() const override;
-
-
-            /** Accept
-             *
-             *  Accept a tritium block with chain state parameters.
-             *
-             **/
-            bool Accept() const override;
-
-
-            /** CheckStake
-             *
-             *  Check the proof of stake calculations.
-             *
-             **/
-            bool CheckStake() const;
-
-
-            /** VerifyWork
-             *
-             *  Verify the work was completed by miners as advertised.
-             *
-             *  @return True if work is valid, false otherwise.
-             *
-             **/
-            bool VerifyWork() const override;
-
-
-            /** SignatureHash
-             *
-             *  Get the Signature Hash of the block. Used to verify work claims.
-             *
-             *  @return Returns a 1024-bit signature hash.
-             *
-             **/
-            uint1024_t SignatureHash() const override;
-
-
-            /** StakeHash
-             *
-             *  Prove that you staked a number of seconds based on weight
-             *
-             *  @return 1024-bit stake hash
-             *
-             **/
-            uint1024_t StakeHash() const;
 
 
             /** ToString

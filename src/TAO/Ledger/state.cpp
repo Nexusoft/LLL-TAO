@@ -116,7 +116,7 @@ namespace TAO
         , hashCheckpoint(0)
         {
             /* Set producer to be last transaction. */
-            vtx.push_back(std::make_pair(TYPE::TRITIUM_TX, block.producer.GetHash()));
+            vtx.push_back(std::make_pair(TRANSACTION::TRITIUM, block.producer.GetHash()));
 
             /* Check that sizes are expected. */
             if(vtx.size() != block.vtx.size() + 1)
@@ -142,7 +142,7 @@ namespace TAO
         , hashCheckpoint(0)
         {
             for(const auto& tx : block.vtx)
-                vtx.push_back(std::make_pair(TYPE::LEGACY_TX, tx.GetHash()));
+                vtx.push_back(std::make_pair(TRANSACTION::LEGACY, tx.GetHash()));
 
             if(vtx.size() != block.vtx.size())
                 throw std::runtime_error(debug::safe_printstr(FUNCTION, "legacy block to state incorrect sizes"));
@@ -465,7 +465,7 @@ namespace TAO
             /* Write the transactions. */
             for(const auto& proof : vtx)
             {
-                if(proof.first == TYPE::TRITIUM_TX)
+                if(proof.first == TRANSACTION::TRITIUM)
                 {
                     /* Get the transaction hash. */
                     uint512_t hash = proof.second;
@@ -483,7 +483,7 @@ namespace TAO
                     mempool.Remove(hash);
 
                 }
-                else if(proof.first == TYPE::LEGACY_TX)
+                else if(proof.first == TRANSACTION::LEGACY)
                 {
                     /* Get the transaction hash. */
                     uint512_t hash = proof.second;
@@ -743,7 +743,7 @@ namespace TAO
                     }
 
                     /* Create the inventory object. */
-                    bool fLegacy = TAO::Ledger::ChainState::stateBest.load().vtx[0].first == TAO::Ledger::TYPE::LEGACY_TX;
+                    bool fLegacy = TAO::Ledger::ChainState::stateBest.load().vtx[0].first == TAO::Ledger::TRANSACTION::LEGACY;
 
                     /* Relay the block that was just found. */
                     std::vector<LLP::CInv> vInv =
@@ -797,7 +797,7 @@ namespace TAO
             for(const auto& proof : vtx)
             {
                 /* Only work on tritium transactions for now. */
-                if(proof.first == TYPE::TRITIUM_TX)
+                if(proof.first == TRANSACTION::TRITIUM)
                 {
                     /* Get the transaction hash. */
                     uint512_t hash = proof.second;
@@ -863,7 +863,7 @@ namespace TAO
                     if(tx.IsCoinStake() && !LLD::Ledger->WriteStake(tx.hashGenesis, hash))
                         return debug::error(FUNCTION, "failed to write last stake");
                 }
-                else if(proof.first == TYPE::LEGACY_TX)
+                else if(proof.first == TRANSACTION::LEGACY)
                 {
                     /* Get the transaction hash. */
                     uint512_t hash = proof.second;
@@ -936,7 +936,7 @@ namespace TAO
             for(const auto& proof : vtx)
             {
                 /* Only work on tritium transactions for now. */
-                if(proof.first == TYPE::TRITIUM_TX)
+                if(proof.first == TRANSACTION::TRITIUM)
                 {
                     /* Get the transaction hash. */
                     uint512_t hash = proof.second;
@@ -950,7 +950,7 @@ namespace TAO
                     if(!tx.Disconnect())
                         return debug::error(FUNCTION, "failed to disconnect transaction");
                 }
-                else if(proof.first == TYPE::LEGACY_TX)
+                else if(proof.first == TRANSACTION::LEGACY)
                 {
                     /* Get the transaction hash. */
                     uint512_t hash = proof.second;
@@ -1222,7 +1222,7 @@ namespace TAO
         /* Prove that you staked a number of seconds based on weight. */
         uint1024_t BlockState::StakeHash() const
         {
-            if(vtx[0].first == TYPE::TRITIUM_TX)
+            if(vtx[0].first == TRANSACTION::TRITIUM)
             {
                 /* Get the tritium transaction  from the database*/
                 TAO::Ledger::Transaction tx;
@@ -1231,7 +1231,7 @@ namespace TAO
 
                 return Block::StakeHash(tx.IsGenesis(), tx.hashGenesis);
             }
-            else if(vtx[0].first == TYPE::LEGACY_TX)
+            else if(vtx[0].first == TRANSACTION::LEGACY)
             {
                 /* Get the legacy transaction from the database. */
                 Legacy::Transaction tx;

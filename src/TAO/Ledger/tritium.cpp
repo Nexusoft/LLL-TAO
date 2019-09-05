@@ -264,7 +264,7 @@ namespace TAO
                 vHashes.push_back(vtx[i].second);
 
                 /* Basic checks for legacy transactions. */
-                if(vtx[i].first == TYPE::LEGACY_TX)
+                if(vtx[i].first == TRANSACTION::LEGACY)
                 {
                     /* Check the memory pool. */
                     Legacy::Transaction tx;
@@ -294,7 +294,7 @@ namespace TAO
                 }
 
                 /* Basic checks for tritium transactions. */
-                else if(vtx[i].first == TYPE::TRITIUM_TX)
+                else if(vtx[i].first == TRANSACTION::TRITIUM)
                 {
                     /* Check the memory pool. */
                     TAO::Ledger::Transaction tx;

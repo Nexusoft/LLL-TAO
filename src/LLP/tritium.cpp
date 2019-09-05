@@ -360,7 +360,7 @@ namespace LLP
                     nSyncSession.store(nCurrentSession);
                 }
 
-                /* Ask for list of blocks. This should be done regardless of whether the connection is incoming or not as 
+                /* Ask for list of blocks. This should be done regardless of whether the connection is incoming or not as
                    either node could have the longer chain. */
                 PushMessage(ACTION::LIST,
                     uint8_t(TYPES::BLOCK),
@@ -1312,7 +1312,7 @@ namespace LLP
                     for(const auto& tx : block.vMissing)
                     {
                         /* Check for legacy. */
-                        if(tx.first == TAO::Ledger::TYPE::LEGACY_TX)
+                        if(tx.first == TAO::Ledger::TRANSACTION::LEGACY)
                             ssResponse << uint8_t(TYPES::LEGACY);
 
                         /* Push to stream. */

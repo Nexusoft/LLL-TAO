@@ -94,7 +94,7 @@ namespace Legacy
         /* Push back all the transactions from the state object. */
         for(const auto& item : state.vtx)
         {
-            if(item.first == TAO::Ledger::LEGACY_TX)
+            if(item.first == TAO::Ledger::TRANSACTION::LEGACY)
             {
                 /* Read transaction from database */
                 Transaction tx;

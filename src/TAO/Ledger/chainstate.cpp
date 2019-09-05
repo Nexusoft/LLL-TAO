@@ -172,7 +172,7 @@ namespace TAO
                     for(const auto& item : state.vtx)
                     {
                         vHashes.push_back(item.second);
-                        if(item.first == TAO::Ledger::LEGACY_TX)
+                        if(item.first == TAO::Ledger::TRANSACTION::LEGACY)
                         {
                             /* Read transaction from database */
                             if(!LLD::Legacy->ReadTx(item.second, tx))

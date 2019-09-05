@@ -29,9 +29,9 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/timelocks.h>
+#include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/include/stake.h>
 #include <TAO/Ledger/types/state.h>
-#include <TAO/Ledger/types/tritium.h> //for LEGACY_TX enum
 
 #include <Util/include/args.h>
 #include <Util/include/debug.h>
@@ -443,7 +443,7 @@ namespace Legacy
             uint32_t nPrevScore = 0;
 
             /* Validate that previous trust block was a legacy coinstake */
-            if(statePrev.vtx[0].first != TAO::Ledger::TYPE::LEGACY_TX)
+            if(statePrev.vtx[0].first != TAO::Ledger::TRANSACTION::LEGACY)
             {
                 debug::error(FUNCTION, "Trust key for Legacy Stake Minter does not have Legacy transaction in Genesis coinstake.");
 

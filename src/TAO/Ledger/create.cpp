@@ -139,7 +139,7 @@ namespace TAO
                     continue;
 
                 /* Add the transaction to the block. */
-                block.vtx.push_back(std::make_pair(TRITIUM_TX, hash));
+                block.vtx.push_back(std::make_pair(TRANSACTION::TRITIUM, hash));
             }
 
             /* Add legacy */
@@ -170,7 +170,7 @@ namespace TAO
                     continue;
 
                 /* Add the transaction to the block. */
-                block.vtx.push_back(std::make_pair(LEGACY_TX, hash));
+                block.vtx.push_back(std::make_pair(TRANSACTION::LEGACY, hash));
             }
 
         }
