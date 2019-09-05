@@ -440,6 +440,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Ledger_stake.o \
 		build/Ledger_state.o \
 		build/Ledger_supply.o \
+		build/Ledger_syncblock.o \
 		build/Ledger_timelocks.o \
 		build/Ledger_transaction.o \
 		build/Ledger_tritium.o \

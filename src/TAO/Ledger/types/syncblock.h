@@ -12,8 +12,8 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_TAO_LEDGER_TYPES_TRITIUM_H
-#define NEXUS_TAO_LEDGER_TYPES_TRITIUM_H
+#ifndef NEXUS_TAO_LEDGER_TYPES_SYNCBLOCK_H
+#define NEXUS_TAO_LEDGER_TYPES_SYNCBLOCK_H
 
 #include <LLC/include/flkey.h>
 
@@ -100,23 +100,6 @@ namespace TAO
 
             /** Default Destructor **/
             virtual ~SyncBlock();
-
-
-            /** SetNull
-             *
-             *  Set the block to Null state.
-             *
-             **/
-            void SetNull() override;
-
-
-            /** ToString
-             *
-             *  For debugging Purposes seeing block state data dump
-             *
-             **/
-            std::string ToString() const override;
-
 
         };
     }
