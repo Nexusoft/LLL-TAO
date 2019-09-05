@@ -90,6 +90,7 @@ namespace LLP
         void SetNull()
         {
             MESSAGE   = 0;
+            FLAGS     = 0;
             LENGTH    = 0;
 
             DATA.clear();
@@ -103,7 +104,7 @@ namespace LLP
          **/
         bool IsNull() const
         {
-            return (MESSAGE == 0 && FLAGS == 0 && LENGTH == 0 && DATA.size() == 0);
+            return (MESSAGE == 0 && LENGTH == 0 && DATA.size() == 0);
         }
 
 
@@ -125,15 +126,15 @@ namespace LLP
          **/
         bool Header() const
         {
-            return IsNull() ? false : (MESSAGE != 0);
+            return IsNull() ? false : (MESSAGE != 0 && LENGTH > 0);
         }
 
 
         /** SetLength
          *
-         * Sets the size of the packet from Byte Vector.
+         *  Sets the size of the packet from Byte Vector.
          *
-         *  @param[in] BYTES the byte buffer to set the length of.
+         *  @param[in] vBytes the byte buffer to set the length of.
          *
          **/
         void SetLength(const std::vector<uint8_t>& vBytes)
@@ -150,7 +151,7 @@ namespace LLP
          *  @param[in] ssData The datastream with the data to set.
          *
          **/
-        void SetData(const DataStream &ssData)
+        void SetData(const DataStream& ssData)
         {
             std::vector<uint8_t> vData(ssData.begin(), ssData.end());
 

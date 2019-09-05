@@ -118,7 +118,7 @@ namespace LLP
         try
         {
             /* Create a new pointer on the heap. */
-            ProtocolType* pnode = new ProtocolType(DDOS, false); //turn off DDOS for outgoing connections
+            ProtocolType* pnode = new ProtocolType(nullptr, false); //turn off DDOS for outgoing connections
             if(!pnode->Connect(addr))
             {
                 pnode->Disconnect();
@@ -285,7 +285,7 @@ namespace LLP
                     }
 
                     /* Disconnect if there was a polling error */
-                    if((POLLFDS.at(nIndex).revents & POLLERR))
+                    if(POLLFDS.at(nIndex).revents & POLLERR)
                     {
                         disconnect_remove_event(nIndex, DISCONNECT_POLL_ERROR);
                         continue;
@@ -293,7 +293,7 @@ namespace LLP
 
 #ifdef WIN32
                     /* Disconnect if the socket was disconnected by peer (need for Windows) */
-                    if((POLLFDS.at(nIndex).revents & POLLHUP))
+                    if(POLLFDS.at(nIndex).revents & POLLHUP)
                     {
                         disconnect_remove_event(nIndex, DISCONNECT_PEER);
                         continue;
@@ -351,7 +351,7 @@ namespace LLP
                     if(pConnection->PacketComplete())
                     {
                         /* Debug dump of message type. */
-                        debug::log(4, FUNCTION, "Recieved Message (", pConnection->INCOMING.GetBytes().size(), " bytes)");
+                        debug::log(4, FUNCTION, "recieved packet (", pConnection->INCOMING.GetBytes().size(), " bytes)");
 
                         /* Debug dump of packet data. */
                         if(config::GetArg("-verbose", 0) >= 5)
@@ -360,7 +360,9 @@ namespace LLP
                         /* Handle Meters and DDOS. */
                         if(fMETER)
                             ++REQUESTS;
-                        if(fDDOS)
+
+                        /* Handle default rscore. */
+                        if(pConnection->DDOS)
                             pConnection->DDOS->rSCORE += 1;
 
                         /* Packet Process return value of False will flag Data Thread to Disconnect. */

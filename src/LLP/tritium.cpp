@@ -141,7 +141,7 @@ namespace LLP
                 if(fOUTGOING)
                 {
                     /* Respond with version message. */
-                    PushMessage(uint8_t(ACTION::VERSION), PROTOCOL_VERSION, SESSION_ID, version::CLIENT_VERSION_BUILD_STRING);
+                    PushMessage(ACTION::VERSION, PROTOCOL_VERSION, SESSION_ID, version::CLIENT_VERSION_BUILD_STRING);
 
                     /* Notify node of current block height. */
                     PushMessage(ACTION::NOTIFY,
@@ -154,6 +154,9 @@ namespace LLP
 
             case EVENT_HEADER:
             {
+                /* Debug output. */
+                debug::log(3, NODE, "received message ", std::hex, INCOMING.MESSAGE, " of ", std::dec, INCOMING.LENGTH, " bytes");
+
                 /* Check for initialization. */
                 if(nCurrentSession == 0 && nProtocolVersion == 0 && INCOMING.MESSAGE != ACTION::VERSION && DDOS)
                     DDOS->rSCORE += 25;
@@ -166,11 +169,10 @@ namespace LLP
                 /* Check a packet's validity once it is finished being read. */
                 if(fDDOS)
                 {
-
                     /* Give higher score for Bad Packets. */
                     if(INCOMING.Complete() && !INCOMING.IsValid())
                     {
-                        debug::log(3, NODE "Dropped Packet (Complete: ", INCOMING.Complete() ? "Y" : "N",
+                        debug::log(3, NODE "dropped packet (complete: ", INCOMING.Complete() ? "Y" : "N",
                             " - Valid:)",  INCOMING.IsValid() ? "Y" : "N");
 
                         if(DDOS)
@@ -180,8 +182,6 @@ namespace LLP
 
                 if(INCOMING.Complete())
                 {
-                    debug::log(4, NODE "Received Packet (", INCOMING.LENGTH, ", ", INCOMING.GetBytes().size(), ")");
-
                     if(config::GetArg("-verbose", 0) >= 5)
                         PrintHex(INCOMING.GetBytes());
                 }
@@ -206,8 +206,8 @@ namespace LLP
                     PushMessage(ACTION::PING, nNonce);
 
                     /* Rebroadcast transactions. */
-                    if(!TAO::Ledger::ChainState::Synchronizing())
-                        Legacy::Wallet::GetInstance().ResendWalletTransactions();
+                    //if(!TAO::Ledger::ChainState::Synchronizing())
+                    //    Legacy::Wallet::GetInstance().ResendWalletTransactions();
                 }
 
                 break;
@@ -707,7 +707,8 @@ namespace LLP
             case ACTION::GET:
             {
                 /* Loop through the binary stream. */
-                while(!ssPacket.End())
+                int32_t nLimits = 1000;
+                while(!ssPacket.End() && --nLimits > 0)
                 {
                     /* Get the next type in stream. */
                     uint8_t nType = 0;
@@ -802,7 +803,8 @@ namespace LLP
                 DataStream ssResponse(INCOMING.DATA, SER_NETWORK, PROTOCOL_VERSION);
 
                 /* Loop through the binary stream. */
-                while(!ssPacket.End())
+                int32_t nLimits = 1000;
+                while(!ssPacket.End() && --nLimits > 0)
                 {
                     /* Get the next type in stream. */
                     uint8_t nType = 0;
@@ -837,6 +839,9 @@ namespace LLP
                             if(!LLD::Ledger->HasBlock(hashBlock))
                                 ssResponse << uint8_t(TYPES::BLOCK) << hashBlock;
 
+                            /* Debug output. */
+                            debug::log(3, NODE, "ACTION::NOTIFY: received block ", hashBlock.SubString());
+
                             break;
                         }
 
@@ -861,6 +866,9 @@ namespace LLP
                                     ssResponse << uint8_t(TYPES::TRANSACTION) << hashTx;
                             }
 
+                            /* Debug output. */
+                            debug::log(3, NODE, "ACTION::NOTIFY: received tx ", hashTx.SubString());
+
                             break;
                         }
 
@@ -874,6 +882,9 @@ namespace LLP
                             /* Keep track of current height. */
                             ssPacket >> nCurrentHeight;
 
+                            /* Debug output. */
+                            debug::log(3, NODE, "ACTION::NOTIFY: received height ", nCurrentHeight);
+
                             break;
                         }
 
@@ -886,6 +897,9 @@ namespace LLP
 
                             /* Keep track of current checkpoint. */
                             ssPacket >> hashCheckpoint;
+
+                            /* Debug output. */
+                            debug::log(3, NODE, "ACTION::NOTIFY: received checkpoint ", hashCheckpoint.SubString());
 
                             break;
                         }
@@ -1244,7 +1258,7 @@ namespace LLP
         if(!INCOMING.Complete())
         {
             /** Handle Reading Packet Length Header. **/
-            if(INCOMING.IsNull() && Available() >= 8)
+            if(!INCOMING.Header() && Available() >= 8)
             {
                 std::vector<uint8_t> BYTES(8, 0);
                 if(Read(BYTES, 8) == 8)
@@ -1262,6 +1276,8 @@ namespace LLP
             {
                 /* Create the packet data object. */
                 std::vector<uint8_t> DATA(std::min(nAvailable, (uint32_t)(INCOMING.LENGTH - INCOMING.DATA.size())), 0);
+
+
 
                 /* Read up to 512 bytes of data. */
                 if(Read(DATA, DATA.size()) == DATA.size())

@@ -186,7 +186,7 @@ namespace LLP
 
 
         /** This node's protocol version. **/
-        uint64_t nProtocolVersion;
+        uint32_t nProtocolVersion;
 
 
         /** This node's session-id. **/
@@ -316,6 +316,8 @@ namespace LLP
             message_args(ssData, std::forward<Args>(args)...);
 
             WritePacket(NewMessage(nMsg, ssData));
+
+            debug::log(3, NODE, "sent message ", std::hex, nMsg, " of ", std::dec, ssData.size(), " bytes");
         }
 
     };

@@ -117,9 +117,7 @@ int main(int argc, char** argv)
     }
 
     /* Handle the beta server. */
-    uint16_t nPort = 0;
-
-    nPort = static_cast<uint16_t>(config::fTestNet.load() ? TESTNET_CORE_LLP_PORT : MAINNET_CORE_LLP_PORT);
+    uint16_t nPort = static_cast<uint16_t>(config::fTestNet.load() ? TESTNET_CORE_LLP_PORT : MAINNET_CORE_LLP_PORT);
 
     /* Startup the time server. */
     LLP::TIME_SERVER = new LLP::Server<LLP::TimeNode>(

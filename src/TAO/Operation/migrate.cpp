@@ -42,6 +42,10 @@ namespace TAO
             if(LLD::Ledger->HasProof(TAO::Register::WILDCARD_ADDRESS, hashTx, 0, nFlags))
                 return debug::error(FUNCTION, "migrate credit is already claimed");
 
+            /* Record that the legacy trust key has completed migration. */
+            if(LLD::Legacy->HasTrustConversion(hashKey))
+                return debug::error(FUNCTION, "trust key is already converted");
+
             /* Write the claimed proof. */
             if(!LLD::Ledger->WriteProof(TAO::Register::WILDCARD_ADDRESS, hashTx, 0, nFlags))
                 return debug::error(FUNCTION, "failed to write migrate credit proof");
