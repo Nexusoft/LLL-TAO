@@ -124,7 +124,7 @@ namespace LLP
             /* Handle for a Packet Header Read. */
             case EVENT_HEADER:
             {
-                if(fDDOS)
+                if(fDDOS && !fOUTGOING)
                 {
                     Packet PACKET   = this->INCOMING;
                     if(PACKET.HEADER == BLOCK_DATA)
@@ -763,10 +763,10 @@ namespace LLP
                return nullptr;
            }
 
-           /* Check that the account is unlocked for minting */
-           if(!TAO::API::users->CanMint())
+           /* Check that the account is unlocked for mining */
+           if(!TAO::API::users->CanMine())
            {
-               debug::error(FUNCTION, "Account has not been unlocked for minting");
+               debug::error(FUNCTION, "Account has not been unlocked for mining");
                return nullptr;
            }
 
@@ -838,8 +838,8 @@ namespace LLP
           pBlock->UpdateTime();
 
           /* Check that the account is unlocked for minting */
-          if(!TAO::API::users->CanMint())
-              return debug::error(FUNCTION, "Account has not been unlocked for minting");
+          if(!TAO::API::users->CanMine())
+              return debug::error(FUNCTION, "Account has not been unlocked for mining");
 
           /* Get the sigchain and the PIN. */
           SecureString PIN = TAO::API::users->GetActivePin();

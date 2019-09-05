@@ -160,10 +160,10 @@ namespace TAO
                 return false;
             }
 
-            /* Check that the account is unlocked for minting */
-            if(!TAO::API::users->CanMint())
+            /* Check that the account is unlocked for staking */
+            if(!TAO::API::users->CanStake())
             {
-                debug::log(0, FUNCTION, "Account has not been unlocked for minting");
+                debug::log(0, FUNCTION, "Account has not been unlocked for staking");
                 return false;
             }
 
@@ -460,6 +460,22 @@ namespace TAO
                     debug::log(0, FUNCTION, "Stake Minter: Too soon after mining last stake block. ",
                                (MinStakeInterval() - nInterval + 1), " blocks remaining until staking available.");
 
+                ++nCounter;
+
+                return;
+            }
+            /* Genesis blocks do not include mempool transactions.  Therefore if there are already any transactions in the mempool
+               for this sig chain the genesis block will fail to be accepted because the producer.prevTX would not be on disk. 
+               Therefore if this is a genesis block, skip until there are no mempool transactions for this sig chain. */
+            else if(fGenesis && mempool.Has(user->Genesis())) 
+            {
+                /* 5 second wait is reset below (can't sleep too long or will hang until wakes up on shutdown) */
+                nSleepTime = 5000; 
+
+                /* Update log every 10 iterations (50 seconds, which is average block time) */
+                if((nCounter % 10) == 0)
+                    debug::log(0, FUNCTION, "Stake Minter: Skipping genesis as mempool transactions would be orphaned.");
+                
                 ++nCounter;
 
                 return;

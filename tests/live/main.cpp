@@ -72,6 +72,7 @@ public:
         return Write(std::string("last"), last);
     }
 
+
     bool ReadLast(uint1024_t& last)
     {
         return Read(std::string("last"), last);
@@ -82,6 +83,7 @@ public:
     {
         return Write(std::make_pair(std::string("hash"), hash), hash, "hash");
     }
+    
 
     bool ReadHash(const uint1024_t& hash, uint1024_t& hash2)
     {

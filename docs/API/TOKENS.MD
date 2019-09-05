@@ -60,7 +60,6 @@ Create a new token object register. The API supports an alternative endpoint tha
 ```
 {
     "pin": "1234",
-    "session": "16953804956473956578",
     "name": "ABC",
     "supply": 1000000,
     "decimals": 4
@@ -115,12 +114,12 @@ Deduct a token amount from a token's initial supply and send it to a token accou
 
 ### Example:
 
-The following example shows the json payload for a debit of 10.5 ABC tokens (that itself was created by the sig chain logged into session "16953804956473956578") being sent to a token account identified by the name "jack:savings".  In the name_to field, "jack" refers to the username of the account holder and "savings" is their token account.  If jack is concerned about privacy he could have provided the register address of his token account instead
+The following example shows the json payload for a debit of 10.5 ABC tokens (that itself was created by the sig chain logged into session "5e9d8aa625a1838f60f30e12058089169e32c968389f365428f7b0c878bb47f8") being sent to a token account identified by the name "jack:savings".  In the name_to field, "jack" refers to the username of the account holder and "savings" is their token account.  If jack is concerned about privacy he could have provided the register address of his token account instead
 
 ```
 {
     "pin": "1234",
-    "session": "16953804956473956578",
+    "session": "5e9d8aa625a1838f60f30e12058089169e32c968389f365428f7b0c878bb47f8",
     "name": "bob:ABC",
     "amount": 10.5,
     "name_to": "jack:savings"
@@ -166,12 +165,12 @@ Increment the token balance by an amount received from a token account. This met
 
 ### Example:
 
-The following example shows the json payload for a credit to a token called "mytoken" (that itself was created by the sig chain logged into session "16953804956473956578").  
+The following example shows the json payload for a credit to a token called "mytoken" (that itself was created by the sig chain logged into session "5e9d8aa625a1838f60f30e12058089169e32c968389f365428f7b0c878bb47f8").  
 
 ```
 {
     "pin": "1234",
-    "session": "16953804956473956578",
+    "session": "5e9d8aa625a1838f60f30e12058089169e32c968389f365428f7b0c878bb47f8",
     "name": "mytoken",
     "txid": "f9dcd28bce2563ab288fab76cf3ee5149ea938c735894ce4833b55e474e08e8a519e8005e09e2fc19623577a8839a280ca72b6430ee0bdf13b3d9f785bc7397d"
 }
@@ -412,7 +411,6 @@ This example creates a token account called "main" for a token identified by the
 ```
 {
     "pin": "1234",
-    "session": "16953804956473956578",
     "name": "main",
     "token_name": "bob:ABC"
 }
@@ -425,7 +423,6 @@ This example creates a token account called "savings" for a token identified by 
 ```
 {
     "pin": "1234",
-    "session": "16953804956473956578",
     "name": "savings",
     "token": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9"
 }
@@ -480,12 +477,12 @@ Deduct a token amount from a token account and send it to another token account.
 
 ### Example:
 
-The following example shows the json payload for a debit of 10.5 tokens from an account called "main" (that itself was created by the sig chain logged into session "16953804956473956578") being sent to a token account identified by the name "bob:savings".  In the name_to field, "bob" refers to the username of the account holder and "savings" is their token account.  If Bob is concerned about privacy he could have provided the register address of his token account instead
+The following example shows the json payload for a debit of 10.5 tokens from an account called "main" (that itself was created by the sig chain logged into session "5e9d8aa625a1838f60f30e12058089169e32c968389f365428f7b0c878bb47f8") being sent to a token account identified by the name "bob:savings".  In the name_to field, "bob" refers to the username of the account holder and "savings" is their token account.  If Bob is concerned about privacy he could have provided the register address of his token account instead
 
 ```
 {
     "pin": "1234",
-    "session": "16953804956473956578",
+    "session": "5e9d8aa625a1838f60f30e12058089169e32c968389f365428f7b0c878bb47f8",
     "name": "main",
     "amount": 10.5,
     "name_to": "bob:savings"
@@ -533,12 +530,12 @@ Increment an amount received from another token account to an account owned by y
 
 ### Example:
 
-The following example shows the json payload for a credit to an account called "savings" (that itself was created by the sig chain logged into session "16953804956473956578") identified by the name "bob:savings".  In the name field, "bob" refers to the username of the account holder and "savings" is their token account.  
+The following example shows the json payload for a credit to an account called "savings" (that itself was created by the sig chain logged into session "5e9d8aa625a1838f60f30e12058089169e32c968389f365428f7b0c878bb47f8") identified by the name "bob:savings".  In the name field, "bob" refers to the username of the account holder and "savings" is their token account.  
 
 ```
 {
     "pin": "1234",
-    "session": "16953804956473956578",
+    "session": "5e9d8aa625a1838f60f30e12058089169e32c968389f365428f7b0c878bb47f8",
     "name": "bob:savings",
     "txid": "f9dcd28bce2563ab288fab76cf3ee5149ea938c735894ce4833b55e474e08e8a519e8005e09e2fc19623577a8839a280ca72b6430ee0bdf13b3d9f785bc7397d"
 }

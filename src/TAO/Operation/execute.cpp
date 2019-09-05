@@ -936,7 +936,7 @@ namespace TAO
                         contract >> hashTx;
 
                         /* Retrieve a debit for the Legacy tx output. Migrate tx will only have one output (index 0) */
-                        const Contract debit = LLD::Ledger->ReadContract(hashTx, 0);
+                        Contract debit = LLD::Ledger->ReadContract(hashTx, 0);
 
                         /* Add migrate data from Legacy tx to debit (base ReadContract returns generic Legacy send to register) */
                         if(!::Legacy::BuildMigrateDebit(debit, hashTx))

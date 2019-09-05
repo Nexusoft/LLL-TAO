@@ -41,7 +41,9 @@ namespace TAO
                 throw APIException(-12, "Missing Session ID");
 
             /* For sessionless API use the active sig chain which is stored in session 0 */
-            uint64_t nSession = config::fMultiuser.load() ? std::stoull(params["session"].get<std::string>()) : 0;
+            uint256_t nSession = 0;
+            if(config::fMultiuser.load())
+                nSession.SetHex(params["session"].get<std::string>());
 
             /* Delete the sigchan. */
             {

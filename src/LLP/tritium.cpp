@@ -26,6 +26,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/process.h>
 #include <TAO/Ledger/include/enum.h>
+#include <TAO/Ledger/types/locator.h>
 #include <TAO/Ledger/types/mempool.h>
 
 #include <Legacy/wallet/wallet.h>
@@ -71,10 +72,11 @@ namespace LLP
     , nCurrentSession(0)
     , nCurrentHeight(0)
     , hashCheckpoint(0)
-    , hashLastBlock(0)
     , nConsecutiveOrphans(0)
     , nConsecutiveFails(0)
     , strFullVersion()
+    , hashLastBlock(0)
+    , hashLastTx({0, 0})
     {
     }
 
@@ -94,10 +96,11 @@ namespace LLP
     , nCurrentSession(0)
     , nCurrentHeight(0)
     , hashCheckpoint(0)
-    , hashLastBlock(0)
     , nConsecutiveOrphans(0)
     , nConsecutiveFails(0)
     , strFullVersion()
+    , hashLastBlock(0)
+    , hashLastTx({0, 0})
     {
     }
 
@@ -117,10 +120,11 @@ namespace LLP
     , nCurrentSession(0)
     , nCurrentHeight(0)
     , hashCheckpoint(0)
-    , hashLastBlock(0)
     , nConsecutiveOrphans(0)
     , nConsecutiveFails(0)
     , strFullVersion()
+    , hashLastBlock(0)
+    , hashLastTx({0, 0})
     {
     }
 
@@ -148,7 +152,7 @@ namespace LLP
                 if(fOUTGOING)
                 {
                     /* Respond with version message. */
-                    PushMessage(uint8_t(ACTION::VERSION), PROTOCOL_VERSION, SESSION_ID, version::CLIENT_VERSION_BUILD_STRING);
+                    PushMessage(ACTION::VERSION, PROTOCOL_VERSION, SESSION_ID, version::CLIENT_VERSION_BUILD_STRING);
 
                     /* Notify node of current block height. */
                     PushMessage(ACTION::NOTIFY,
@@ -161,6 +165,9 @@ namespace LLP
 
             case EVENT_HEADER:
             {
+                /* Debug output. */
+                debug::log(3, NODE, "received message ", std::hex, INCOMING.MESSAGE, " of ", std::dec, INCOMING.LENGTH, " bytes");
+
                 /* Check for initialization. */
                 if(nCurrentSession == 0 && nProtocolVersion == 0 && INCOMING.MESSAGE != ACTION::VERSION && DDOS)
                     DDOS->rSCORE += 25;
@@ -173,11 +180,10 @@ namespace LLP
                 /* Check a packet's validity once it is finished being read. */
                 if(fDDOS)
                 {
-
                     /* Give higher score for Bad Packets. */
                     if(INCOMING.Complete() && !INCOMING.IsValid())
                     {
-                        debug::log(3, NODE "Dropped Packet (Complete: ", INCOMING.Complete() ? "Y" : "N",
+                        debug::log(3, NODE "dropped packet (complete: ", INCOMING.Complete() ? "Y" : "N",
                             " - Valid:)",  INCOMING.IsValid() ? "Y" : "N");
 
                         if(DDOS)
@@ -187,8 +193,6 @@ namespace LLP
 
                 if(INCOMING.Complete())
                 {
-                    debug::log(4, NODE "Received Packet (", INCOMING.LENGTH, ", ", INCOMING.GetBytes().size(), ")");
-
                     if(config::GetArg("-verbose", 0) >= 5)
                         PrintHex(INCOMING.GetBytes());
                 }
@@ -213,8 +217,8 @@ namespace LLP
                     PushMessage(ACTION::PING, nNonce);
 
                     /* Rebroadcast transactions. */
-                    if(!TAO::Ledger::ChainState::Synchronizing())
-                        Legacy::Wallet::GetInstance().ResendWalletTransactions();
+                    //if(!TAO::Ledger::ChainState::Synchronizing())
+                    //    Legacy::Wallet::GetInstance().ResendWalletTransactions();
                 }
 
                 break;
@@ -597,6 +601,7 @@ namespace LLP
                         ssPacket >> nType;
                     }
 
+
                     /* Switch based on codes. */
                     switch(nType)
                     {
@@ -684,6 +689,10 @@ namespace LLP
                                     /* Check for legacy. */
                                     if(fLegacy)
                                     {
+                                        /* Check for version 7. */
+                                        if(state.nVersion >= 7)
+                                            break;
+
                                         /* Build the legacy block from state. */
                                         Legacy::LegacyBlock block(state);
 
@@ -692,6 +701,10 @@ namespace LLP
                                     }
                                     else
                                     {
+                                        /* Check for version 7. */
+                                        if(state.nVersion < 7)
+                                            continue;
+
                                         /* Build the legacy block from state. */
                                         TAO::Ledger::TritiumBlock block(state);
 
@@ -729,6 +742,10 @@ namespace LLP
                             /* Check for legacy. */
                             if(fLegacy)
                             {
+                                /* Check for search from last. */
+                                if(hashStart == 0)
+                                    hashStart = hashLastTx[0];
+
                                 /* Do a sequential read to obtain the list. */
                                 std::vector<Legacy::Transaction> vtx;
                                 while(LLD::Legacy->BatchRead(hashStart, "tx", vtx, 100))
@@ -751,9 +768,16 @@ namespace LLP
                                     if(nLimits == 0 || hashStart == hashStop)
                                         break;
                                 }
+
+                                /* Set the last transction. */
+                                hashLastTx[0] = hashStart;
                             }
                             else
                             {
+                                /* Check for search from last. */
+                                if(hashStart == 0)
+                                    hashStart = hashLastTx[1];
+
                                 /* Do a sequential read to obtain the list. */
                                 std::vector<TAO::Ledger::Transaction> vtx;
                                 while(LLD::Ledger->BatchRead(hashStart, "tx", vtx, 100))
@@ -780,6 +804,9 @@ namespace LLP
                                     if(nLimits == 0 || hashStart == hashStop)
                                         break;
                                 }
+
+                                /* Set the last transction. */
+                                hashLastTx[1] = hashStart;
                             }
 
                             break;
@@ -824,7 +851,8 @@ namespace LLP
             case ACTION::GET:
             {
                 /* Loop through the binary stream. */
-                while(!ssPacket.End())
+                int32_t nLimits = 1000;
+                while(!ssPacket.End() && --nLimits > 0)
                 {
                     /* Get the next type in stream. */
                     uint8_t nType = 0;
@@ -919,7 +947,8 @@ namespace LLP
                 DataStream ssResponse(INCOMING.DATA, SER_NETWORK, PROTOCOL_VERSION);
 
                 /* Loop through the binary stream. */
-                while(!ssPacket.End())
+                int32_t nLimits = 1000;
+                while(!ssPacket.End() && --nLimits > 0)
                 {
                     /* Get the next type in stream. */
                     uint8_t nType = 0;
@@ -954,6 +983,9 @@ namespace LLP
                             if(!LLD::Ledger->HasBlock(hashBlock))
                                 ssResponse << uint8_t(TYPES::BLOCK) << hashBlock;
 
+                            /* Debug output. */
+                            debug::log(3, NODE, "ACTION::NOTIFY: received block ", hashBlock.SubString());
+
                             break;
                         }
 
@@ -978,6 +1010,9 @@ namespace LLP
                                     ssResponse << uint8_t(TYPES::TRANSACTION) << hashTx;
                             }
 
+                            /* Debug output. */
+                            debug::log(3, NODE, "ACTION::NOTIFY: received tx ", hashTx.SubString());
+
                             break;
                         }
 
@@ -991,6 +1026,9 @@ namespace LLP
                             /* Keep track of current height. */
                             ssPacket >> nCurrentHeight;
 
+                            /* Debug output. */
+                            debug::log(3, NODE, "ACTION::NOTIFY: received height ", nCurrentHeight);
+
                             break;
                         }
 
@@ -1003,6 +1041,9 @@ namespace LLP
 
                             /* Keep track of current checkpoint. */
                             ssPacket >> hashCheckpoint;
+
+                            /* Debug output. */
+                            debug::log(3, NODE, "ACTION::NOTIFY: received checkpoint ", hashCheckpoint.SubString());
 
                             break;
                         }
@@ -1179,12 +1220,16 @@ namespace LLP
 
                             /* Check for duplicate and ask for previous block. */
                             if(!(nStatus & TAO::Ledger::PROCESS::DUPLICATE)
-                            && !(nStatus & TAO::Ledger::PROCESS::IGNORE))
+                            && !(nStatus & TAO::Ledger::PROCESS::IGNORED))
                             {
                                 /* Ask for previous block. */
                                 PushMessage(ACTION::GET, uint8_t(TYPES::LEGACY), uint8_t(TYPES::BLOCK), block.hashPrevBlock);
 
-                                //TODO: ACTION::LIST from best to 0
+                                /* Ask for list of blocks. */
+                                PushMessage(ACTION::LIST,
+                                    uint8_t(TYPES::LEGACY), uint8_t(TYPES::BLOCK),
+                                    uint8_t(TYPES::LOCATOR), TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
+                                    uint1024_t(0));
                             }
                         }
 
@@ -1298,12 +1343,21 @@ namespace LLP
 
                     /* Check for duplicate and ask for previous block. */
                     if(!(nStatus & TAO::Ledger::PROCESS::DUPLICATE)
-                    && !(nStatus & TAO::Ledger::PROCESS::IGNORE))
+                    && !(nStatus & TAO::Ledger::PROCESS::IGNORED))
                     {
                         /* Ask for previous block. */
-                        PushMessage(ACTION::GET, uint8_t(TYPES::BLOCK), block.hashPrevBlock);
+                        PushMessage(ACTION::GET,
+                            uint8_t(TYPES::BLOCK),
+                            block.hashPrevBlock
+                        );
 
-                        //TODO: ACTION::LIST from best to 0
+                        /* Ask for list of blocks. */
+                        PushMessage(ACTION::LIST,
+                            uint8_t(TYPES::BLOCK),
+                            uint8_t(TYPES::LOCATOR),
+                            TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
+                            uint1024_t(0)
+                        );
                     }
                 }
 
@@ -1379,7 +1433,7 @@ namespace LLP
         if(!INCOMING.Complete())
         {
             /** Handle Reading Packet Length Header. **/
-            if(INCOMING.IsNull() && Available() >= 8)
+            if(!INCOMING.Header() && Available() >= 8)
             {
                 std::vector<uint8_t> BYTES(8, 0);
                 if(Read(BYTES, 8) == 8)
@@ -1397,6 +1451,8 @@ namespace LLP
             {
                 /* Create the packet data object. */
                 std::vector<uint8_t> DATA(std::min(nAvailable, (uint32_t)(INCOMING.LENGTH - INCOMING.DATA.size())), 0);
+
+
 
                 /* Read up to 512 bytes of data. */
                 if(Read(DATA, DATA.size()) == DATA.size())

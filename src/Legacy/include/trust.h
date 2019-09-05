@@ -70,7 +70,7 @@ namespace Legacy
      *  @return True if the debit could be built, false otherwise
      *
      **/
-    bool BuildMigrateDebit(TAO::Operation::Contract debit, const uint512_t hashTx);
+    bool BuildMigrateDebit(TAO::Operation::Contract& debit, const uint512_t hashTx);
 
 }
 

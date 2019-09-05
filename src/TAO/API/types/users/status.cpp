@@ -84,9 +84,10 @@ namespace TAO
             /* populate unlocked status */
             json::json jsonUnlocked;
 
-            jsonUnlocked["minting"] = !pActivePIN.IsNull() && pActivePIN->CanMint();
-            jsonUnlocked["transactions"] = !pActivePIN.IsNull() && pActivePIN->CanTransact();
+            jsonUnlocked["mining"] = !pActivePIN.IsNull() && pActivePIN->CanMine();
             jsonUnlocked["notifications"] = !pActivePIN.IsNull() && pActivePIN->ProcessNotifications();
+            jsonUnlocked["staking"] = !pActivePIN.IsNull() && pActivePIN->CanStake();
+            jsonUnlocked["transactions"] = !pActivePIN.IsNull() && pActivePIN->CanTransact();
 
             ret["unlocked"] = jsonUnlocked;
             

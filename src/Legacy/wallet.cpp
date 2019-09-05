@@ -1060,6 +1060,7 @@ namespace Legacy
         if(IsMine(tx) || IsFromMe(tx))
         {
             WalletTx wtx(this, tx);
+
             if(fRescan || TAO::Ledger::ChainState::Synchronizing())
             {
                 /* On rescan or initial download, set wtx time to transaction time instead of time tx received.
@@ -1845,20 +1846,23 @@ namespace Legacy
                 /* Choose coins to use for transaction input */
                 bool fSelectCoinsSuccessful = false;
 
-                if(wtxNew.pfromAddress != nullptr && wtxNew.pfromAddress->IsValid())
+                if(wtxNew.fromAddress.IsValid())
                 {
                     /* No value for strFromAccount, so use default for SelectCoins */
-                    fSelectCoinsSuccessful = SelectCoins(nTotalValue, wtxNew.nTime, mapSelectedCoins, nValueIn, "*", wtxNew.pfromAddress, nMinDepth);
+                    fSelectCoinsSuccessful = SelectCoins(nTotalValue, wtxNew.nTime, mapSelectedCoins, nValueIn,
+                                                         "*", wtxNew.fromAddress, nMinDepth);
                 }
                 else if(wtxNew.strFromAccount == "")
                 {
                     /* No value for strFromAccount, so use default for SelectCoins */
-                    fSelectCoinsSuccessful = SelectCoins(nTotalValue, wtxNew.nTime, mapSelectedCoins, nValueIn, "*", nullptr, nMinDepth);
+                    fSelectCoinsSuccessful = SelectCoins(nTotalValue, wtxNew.nTime, mapSelectedCoins, nValueIn,
+                                                         "*", NexusAddress(), nMinDepth);
                 }
                 else
                 {
                     /* RPC server calls do use strFromAccount, so pass this value forward */
-                    fSelectCoinsSuccessful = SelectCoins(nTotalValue, wtxNew.nTime, mapSelectedCoins, nValueIn, wtxNew.strFromAccount, nullptr, nMinDepth);
+                    fSelectCoinsSuccessful = SelectCoins(nTotalValue, wtxNew.nTime, mapSelectedCoins, nValueIn,
+                                                         wtxNew.strFromAccount, NexusAddress(), nMinDepth);
                 }
 
                 if(!fSelectCoinsSuccessful)
@@ -2144,15 +2148,15 @@ namespace Legacy
     /* Selects the unspent transaction outputs to use as inputs when creating a transaction that sends balance from this wallet. */
     bool Wallet::SelectCoins(const int64_t nTargetValue, const uint32_t nSpendTime,
         std::map<std::pair<uint512_t, uint32_t>, const WalletTx*>& mapCoinsRet,
-        int64_t& nValueRet, const std::string& strAccount, const NexusAddress* pfromAddress , uint32_t nMinDepth)
+        int64_t& nValueRet, const std::string& strAccount, const NexusAddress fromAddress , uint32_t nMinDepth)
     {
         /* Call detailed select up to 3 times if it fails, using the returns from the first successful call.
          * This allows it to attempt multiple input sets if it doesn't find a workable one on the first try.
          * (example, it chooses an input set with total value exceeding maximum allowed value)
          */
-        return (SelectCoinsMinConf(nTargetValue, nSpendTime, nMinDepth, nMinDepth, mapCoinsRet, nValueRet, strAccount, pfromAddress) ||
-                SelectCoinsMinConf(nTargetValue, nSpendTime, nMinDepth, nMinDepth, mapCoinsRet, nValueRet, strAccount, pfromAddress) ||
-                SelectCoinsMinConf(nTargetValue, nSpendTime, nMinDepth, nMinDepth, mapCoinsRet, nValueRet, strAccount, pfromAddress));
+        return (SelectCoinsMinConf(nTargetValue, nSpendTime, nMinDepth, nMinDepth, mapCoinsRet, nValueRet, strAccount, fromAddress) ||
+                SelectCoinsMinConf(nTargetValue, nSpendTime, nMinDepth, nMinDepth, mapCoinsRet, nValueRet, strAccount, fromAddress) ||
+                SelectCoinsMinConf(nTargetValue, nSpendTime, nMinDepth, nMinDepth, mapCoinsRet, nValueRet, strAccount, fromAddress));
     }
 
 
@@ -2162,7 +2166,7 @@ namespace Legacy
     bool Wallet::SelectCoinsMinConf(const int64_t nTargetValue, const uint32_t nSpendTime,
         const uint32_t nConfMine, const uint32_t nConfTheirs,
         std::map<std::pair<uint512_t, uint32_t>, const WalletTx*>& mapCoinsRet,
-        int64_t& nValueRet, const std::string& strAccount, const NexusAddress* pfromAddress)
+        int64_t& nValueRet, const std::string& strAccount, const NexusAddress fromAddress)
     {
         /* cs_wallet should already be locked when this is called (CreateTransaction) */
         mapCoinsRet.clear();
@@ -2215,13 +2219,13 @@ namespace Legacy
                     continue;
 
                 /* Handle send from specific address here. */
-                if(pfromAddress != nullptr && pfromAddress->IsValid())
+                if(fromAddress.IsValid())
                 {
                     NexusAddress address;
                     if(!ExtractAddress(wtx->vout[i].scriptPubKey, address) || !address.IsValid())
                         continue;
 
-                    if(address == *pfromAddress)
+                    if(address == fromAddress)
                     {
                             /* Address for transaction matches request, include in result */
                             mapCoinsRet[std::make_pair(hash, i)] = wtx;

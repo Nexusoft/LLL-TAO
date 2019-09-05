@@ -50,7 +50,7 @@ namespace Legacy
     , mapValue()
     , vOrderForm()
     , strFromAccount()
-    , pfromAddress(nullptr)
+    , fromAddress()
     , vfSpent(false, vout.size())
     , fTimeReceivedIsTxTime(false)
     , nTimeReceived(0)
@@ -76,7 +76,7 @@ namespace Legacy
     , mapValue()
     , vOrderForm()
     , strFromAccount()
-    , pfromAddress(nullptr)
+    , fromAddress()
     , vfSpent(false, vout.size())
     , fTimeReceivedIsTxTime(false)
     , nTimeReceived(0)
@@ -102,7 +102,7 @@ namespace Legacy
     , mapValue()
     , vOrderForm()
     , strFromAccount()
-    , pfromAddress(nullptr)
+    , fromAddress()
     , vfSpent(false, vout.size())
     , fTimeReceivedIsTxTime(false)
     , nTimeReceived(0)
@@ -128,7 +128,7 @@ namespace Legacy
     , mapValue()
     , vOrderForm()
     , strFromAccount()
-    , pfromAddress(nullptr)
+    , fromAddress()
     , vfSpent(false, vout.size())
     , fTimeReceivedIsTxTime(false)
     , nTimeReceived(0)
@@ -154,7 +154,7 @@ namespace Legacy
     , mapValue()
     , vOrderForm()
     , strFromAccount()
-    , pfromAddress(nullptr)
+    , fromAddress()
     , vfSpent(false, vout.size())
     , fTimeReceivedIsTxTime(false)
     , nTimeReceived(0)
@@ -175,9 +175,6 @@ namespace Legacy
     WalletTx::~WalletTx()
     {
         pWallet = nullptr; //don't delete the wallet instance, just null the pointer
-
-        if(pfromAddress != nullptr)
-            delete pfromAddress;
     }
 
 
@@ -188,14 +185,8 @@ namespace Legacy
         mapValue.clear();
         vOrderForm.clear();
         strFromAccount.clear();
+        fromAddress = NexusAddress();
         vfSpent.clear();
-
-        if(pfromAddress != nullptr)
-        {
-            delete pfromAddress;
-            pfromAddress = nullptr;
-        }
-
         fTimeReceivedIsTxTime = false;
         nTimeReceived = 0;
         fFromMe = false;
@@ -726,9 +717,17 @@ namespace Legacy
                     if(LLP::LEGACY_SERVER)
                         LLP::LEGACY_SERVER->Relay("inv", vInv);
 
-                    //if(LLP::TRITIUM_SERVER)
-                    //    LLP::TRITIUM_SERVER->Relay(uint8_t(LLP::ACTION::NOTIFY), uint8_t(LLP::TYPES::LEGACY),
-                    //                               uint8_t(LLP::TYPES::TRANSACTION), uint8_t(LLP::TYPES::UINT512_T), hashTx);
+                    /* Relay the transaction. */
+                    if(LLP::TRITIUM_SERVER)
+                    {
+                        LLP::TRITIUM_SERVER->Relay
+                        (
+                            LLP::ACTION::NOTIFY,
+                            uint8_t(LLP::TYPES::LEGACY),
+                            uint8_t(LLP::TYPES::TRANSACTION),
+                            hash
+                        );
+                    }
 
                     //Add to the memory pool
                     return TAO::Ledger::mempool.Accept((Transaction)tx);
@@ -749,9 +748,17 @@ namespace Legacy
                 if(LLP::LEGACY_SERVER)
                     LLP::LEGACY_SERVER->Relay("inv", vInv);
 
-                //if(LLP::TRITIUM_SERVER)
-                //    LLP::TRITIUM_SERVER->Relay(uint8_t(LLP::ACTION::NOTIFY), uint8_t(LLP::TYPES::LEGACY),
-                //                               uint8_t(LLP::TYPES::TRANSACTION), uint8_t(LLP::TYPES::UINT512_T), hashTx);
+                /* Relay the transaction. */
+                if(LLP::TRITIUM_SERVER)
+                {
+                    LLP::TRITIUM_SERVER->Relay
+                    (
+                        LLP::ACTION::NOTIFY,
+                        uint8_t(LLP::TYPES::LEGACY),
+                        uint8_t(LLP::TYPES::TRANSACTION),
+                        hash
+                    );
+                }
 
                 //Add to the memory pool
                 return TAO::Ledger::mempool.Accept((Transaction)*this);

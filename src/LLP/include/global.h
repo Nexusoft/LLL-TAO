@@ -119,13 +119,13 @@ namespace LLP
             static_cast<uint32_t>(config::GetArg(std::string("-timeout"), 30)),
 
             /* The DDOS if enabled. */
-            config::GetBoolArg(std::string("-ddos"), false),
+            config::GetBoolArg(std::string("-ddos"), true),
 
             /* The connection score (total connections per second). */
             static_cast<uint32_t>(config::GetArg(std::string("-cscore"), 1)),
 
             /* The request score (total packets per second.) */
-            static_cast<uint32_t>(config::GetArg(std::string("-rscore"), 4000)),
+            static_cast<uint32_t>(config::GetArg(std::string("-rscore"), 1000)),
 
             /* The DDOS moving average timespan (default: 60 seconds). */
             static_cast<uint32_t>(config::GetArg(std::string("-timespan"), 60)),

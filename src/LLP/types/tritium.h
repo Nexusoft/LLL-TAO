@@ -232,10 +232,6 @@ namespace LLP
         uint1024_t hashCheckpoint;
 
 
-        /** Keep track of the last block. **/
-        uint1024_t hashLastBlock;
-
-
         /** Counter of total orphans. **/
         uint32_t nConsecutiveOrphans;
 
@@ -246,6 +242,14 @@ namespace LLP
 
         /** The node's full version string. **/
         std::string strFullVersion;
+
+
+        /** The last block index listed. **/
+        uint1024_t hashLastBlock;
+
+
+        /** The last transaction index listed. **/
+        uint512_t hashLastTx[2];
 
 
         /** Event
@@ -353,6 +357,8 @@ namespace LLP
             message_args(ssData, std::forward<Args>(args)...);
 
             WritePacket(NewMessage(nMsg, ssData));
+
+            debug::log(3, NODE, "sent message ", std::hex, nMsg, " of ", std::dec, ssData.size(), " bytes");
         }
 
     };

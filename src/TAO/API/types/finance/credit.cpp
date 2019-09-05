@@ -54,7 +54,7 @@ namespace TAO
             SecureString strPIN = users->GetPin(params);
 
             /* Get the session to be used for this API call */
-            uint64_t nSession = users->GetSession(params);
+            uint256_t nSession = users->GetSession(params);
 
             /* Check for txid parameter. */
             if(params.find("txid") == params.end())
@@ -403,7 +403,10 @@ namespace TAO
                                 uint1024_t hashLastBlock;
                                 uint32_t nSequence;
 
-                                if(!txLast.ExtractTrust(hashLastBlock, nSequence, nScore))
+                                if(txLast.IsGenesis())
+                                    nScore = 0;
+
+                                else if(!txLast.ExtractTrust(hashLastBlock, nSequence, nScore))
                                     break;
 
                                 fMigration = true;
@@ -414,7 +417,10 @@ namespace TAO
                             if(fMigration)
                             {
                                 /* The amount to migrate */
-                                const uint64_t nAmount = txout.nValue;
+                                const int64_t nLegacyAmount = txout.nValue;
+                                uint64_t nAmount = 0;
+                                if(nLegacyAmount > 0)
+                                    nAmount = nLegacyAmount;
 
                                 /* Set up the OP::MIGRATE */
                                 tx[tx.Size()] << uint8_t(TAO::Operation::OP::MIGRATE) << hashTx << hashAccount << hashKey

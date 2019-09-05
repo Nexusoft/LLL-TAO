@@ -695,20 +695,14 @@ namespace TAO
         /* Get the Signarture Hash of the block. Used to verify work claims. */
         uint1024_t TritiumBlock::SignatureHash() const
         {
-            /* Signature hash for version 7 blocks. */
-            if(nVersion >= 7)
-            {
-                /* Create a data stream to get the hash. */
-                DataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
-                ss.reserve(256);
+            /* Create a data stream to get the hash. */
+            DataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
+            ss.reserve(256);
 
-                /* Serialize the data to hash into a stream. */
-                ss << nVersion << hashPrevBlock << hashMerkleRoot << nChannel << nHeight << nBits << nNonce << nTime << vOffsets;
+            /* Serialize the data to hash into a stream. */
+            ss << nVersion << hashPrevBlock << hashMerkleRoot << nChannel << nHeight << nBits << nNonce << nTime << vOffsets;
 
-                return LLC::SK1024(ss.begin(), ss.end());
-            }
-
-            return LLC::SK1024(BEGIN(nVersion), END(nTime));
+            return LLC::SK1024(ss.begin(), ss.end());
         }
 
 

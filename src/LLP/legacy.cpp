@@ -17,7 +17,6 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <Legacy/types/transaction.h>
-#include <Legacy/types/locator.h>
 #include <Legacy/wallet/wallet.h>
 
 #include <LLP/include/hosts.h>
@@ -37,6 +36,8 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/types/locator.h>
+
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/process.h>
 
@@ -200,9 +201,9 @@ namespace LLP
         if(EVENT == EVENT_HEADER)
         {
             const std::string message = INCOMING.GetMessage();
-            uint32_t length = INCOMING.LENGTH;
+            uint32_t nLenght = INCOMING.LENGTH;
 
-            debug::log(3, NODE, "Received Message (", message, ", ", length, ")");
+            debug::log(3, NODE, "Received Message (", message, ", ", nLenght, ")");
 
             if(fDDOS)
             {
@@ -213,9 +214,9 @@ namespace LLP
                         DDOS->rSCORE += 25;
 
                 /* Check the Packet Sizes to Unified Time Commands. */
-                if((message == "getoffset" || message == "offset") && length != 16)
+                if((message == "getoffset" || message == "offset") && nLenght != 16)
                     if(DDOS)
-                        DDOS->Ban(debug::safe_printstr("INVALID PACKET SIZE | OFFSET/GETOFFSET | LENGTH ", length));
+                        DDOS->Ban(debug::safe_printstr("INVALID PACKET SIZE | OFFSET/GETOFFSET | LENGTH ", nLenght));
             }
 
             return;
@@ -528,7 +529,7 @@ namespace LLP
 
                 /* Check for duplicate. */
                 if(!(nStatus & TAO::Ledger::PROCESS::DUPLICATE)
-                && !(nStatus & TAO::Ledger::PROCESS::IGNORE))
+                && !(nStatus & TAO::Ledger::PROCESS::IGNORED))
                 {
                     /* Inventory requests. */
                     std::vector<CInv> vInv = { CInv(block.hashPrevBlock, LLP::MSG_BLOCK_LEGACY) };
@@ -824,13 +825,12 @@ namespace LLP
         else if(message == "getblocks")
         {
             /* Get the locator. */
-            Legacy::Locator locator;
+            TAO::Ledger::Locator locator;
+            ssMessage >> locator;
 
             /* Get the stopping hash. */
             uint1024_t hashStop;
-
-            /* De-serialize the values. */
-            ssMessage >> locator >> hashStop;
+            ssMessage >> hashStop;
 
             /* Return if nothing in locator. */
             if(locator.vHave.size() == 0)

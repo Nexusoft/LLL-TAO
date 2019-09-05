@@ -51,7 +51,7 @@ namespace TAO
             Initialize();
 
             /* Events processor only enabled if enabled in conf and multi-user session is disabled. */
-            if(config::fEventsProcessor.load() && config::fMultiuser.load() == false)
+            if(config::fProcessNotifications.load() && config::fMultiuser.load() == false)
                 EVENTS_THREAD = std::thread(std::bind(&Users::EventsThread, this));
         }
 
@@ -116,10 +116,21 @@ namespace TAO
 
 
         /* In sessionless API mode this method checks that the active sig chain has
-         *  been unlocked to allow minting */
-        bool Users::CanMint() const
+         *  been unlocked to allow mining */
+        bool Users::CanMine() const
         {
-            if(config::fMultiuser.load() || (!pActivePIN.IsNull() && pActivePIN->CanMint()))
+            if(config::fMultiuser.load() || (!pActivePIN.IsNull() && pActivePIN->CanMine()))
+                return true;
+
+            return false;
+        }
+
+
+        /* In sessionless API mode this method checks that the active sig chain has
+         *  been unlocked to allow staking */
+        bool Users::CanStake() const
+        {
+            if(config::fMultiuser.load() || (!pActivePIN.IsNull() && pActivePIN->CanStake()))
                 return true;
 
             return false;
@@ -137,17 +148,17 @@ namespace TAO
 
 
         /* Returns a key from the account logged in. */
-        uint512_t Users::GetKey(uint32_t nKey, SecureString strSecret, uint64_t nSession) const
+        uint512_t Users::GetKey(uint32_t nKey, SecureString strSecret, uint256_t nSession) const
         {
             LOCK(MUTEX);
 
             /* For sessionless API use the active sig chain which is stored in session 0 */
-            uint64_t nSessionToUse = config::fMultiuser.load() ? nSession : 0;
+            uint256_t nSessionToUse = config::fMultiuser.load() ? nSession : 0;
 
             if(!mapSessions.count(nSessionToUse))
             {
                 if(config::fMultiuser.load())
-                    throw APIException(-9, debug::safe_printstr("Session ", nSessionToUse, " doesn't exist"));
+                    throw APIException(-9, debug::safe_printstr("Session ", nSessionToUse.ToString(), " doesn't exist"));
                 else
                     throw APIException(-11, "User not logged in");
             }
@@ -157,19 +168,19 @@ namespace TAO
 
 
         /* Returns the genesis ID from the account logged in. */
-        uint256_t Users::GetGenesis(uint64_t nSession, bool fThrow) const
+        uint256_t Users::GetGenesis(uint256_t nSession, bool fThrow) const
         {
             LOCK(MUTEX);
 
             /* For sessionless API use the active sig chain which is stored in session 0 */
-            uint64_t nSessionToUse = config::fMultiuser.load() ? nSession : 0;
+            uint256_t nSessionToUse = config::fMultiuser.load() ? nSession : 0;
 
             if(!mapSessions.count(nSessionToUse))
             {
                 if(fThrow)
                 {
                     if(config::fMultiuser.load())
-                        throw APIException(-9, debug::safe_printstr("Session ", nSessionToUse, " doesn't exist"));
+                        throw APIException(-9, debug::safe_printstr("Session ", nSessionToUse.ToString(), " doesn't exist"));
                     else
                         throw APIException(-11, "User not logged in");
                 }
@@ -187,22 +198,22 @@ namespace TAO
         uint256_t Users::GetCallersGenesis(const json::json & params) const
         {
             /* default to session 0 unless using multiuser mode */
-            uint64_t nSession = 0;
+            uint256_t nSession = 0;
 
             if(config::fMultiuser.load() && params.find("session") != params.end())
-                nSession = std::stoull(params["session"].get<std::string>());
+                nSession.SetHex(params["session"].get<std::string>());
 
             return GetGenesis(nSession, false);
         }
 
 
         /*  Returns the sigchain the account logged in. */
-        memory::encrypted_ptr<TAO::Ledger::SignatureChain>& Users::GetAccount(uint64_t nSession) const
+        memory::encrypted_ptr<TAO::Ledger::SignatureChain>& Users::GetAccount(uint256_t nSession) const
         {
             LOCK(MUTEX);
 
             /* For sessionless API use the active sig chain which is stored in session 0 */
-            uint64_t nUse = config::fMultiuser.load() ? nSession : 0;
+            uint256_t nUse = config::fMultiuser.load() ? nSession : 0;
 
             /* Check if you are logged in. */
             if(!mapSessions.count(nUse))
@@ -245,10 +256,10 @@ namespace TAO
          * logged in than an APIException is thrown, if fThrow is true.
          * If not in sessionless mode then the method will return the session from the params.
          * If the session is not is available in the params then an APIException is thrown, if fThrow is true. */
-        uint64_t Users::GetSession(const json::json params, bool fThrow) const
+        uint256_t Users::GetSession(const json::json params, bool fThrow) const
         {
             /* Check for session parameter. */
-            uint64_t nSession = 0; // ID 0 is used for sessionless API
+            uint256_t nSession = 0; // ID 0 is used for sessionless API
 
             if(!config::fMultiuser.load() && !users->LoggedIn())
             {
@@ -267,7 +278,7 @@ namespace TAO
                         return -1;
                 }
                 else
-                    nSession = std::stoull(params["session"].get<std::string>());
+                    nSession.SetHex(params["session"].get<std::string>());
             }
 
             return nSession;

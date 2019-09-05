@@ -44,9 +44,9 @@ namespace TAO
     namespace API
     {
         /* Determines whether a string value is a valid base58 encoded register address.
-        *  This only checks to see if the value an be decoded into a valid Register::Address with a valid Type.
-        *  It does not check to see whether the register address exists in the database
-        */
+         *  This only checks to see if the value an be decoded into a valid Register::Address with a valid Type.
+         *  It does not check to see whether the register address exists in the database
+         */
         bool IsRegisterAddress(const std::string& strValueToCheck)
         {
             /* Decode the incoming string into a register address */
@@ -60,10 +60,10 @@ namespace TAO
 
 
         /* Retrieves the number of decimals that applies to amounts for this token or account object.
-        *  If the object register passed in is a token account then we need to look at the token definition
-        *  in order to get the decimals.  The token is obtained by looking at the identifier field,
-        *  which contains the register address of the issuing token
-        */
+         *  If the object register passed in is a token account then we need to look at the token definition
+         *  in order to get the decimals.  The token is obtained by looking at the identifier field,
+         *  which contains the register address of the issuing token
+         */
         uint8_t GetDecimals(const TAO::Register::Object& object)
         {
             /* Declare the nDecimals to return */
@@ -1037,7 +1037,7 @@ namespace TAO
 
                 /* Get the total supply */
                 uint64_t nSupply = token.get<uint64_t>("supply");
-                
+
                 /* Calculate the ownership % */
                 return (double)nBalance / (double)nSupply * 100.0;
             }
@@ -1045,7 +1045,7 @@ namespace TAO
             {
                 return 0.0;
             }
-            
+
         }
 
 
@@ -1081,7 +1081,7 @@ namespace TAO
 
                 /* Get the token*/
                 TAO::Register::Address hashToken = object.get<uint256_t>("token") ;
-                
+
                 /* Get all objects owned by this token */
                 std::vector<TAO::Register::Address> vTokenizedObjects;
                 ListTokenizedObjects(hashToken, vTokenizedObjects);
@@ -1099,12 +1099,12 @@ namespace TAO
 
 
         /* Finds all objects that have been tokenized and therefore owned by hashToken */
-        bool ListTokenizedObjects(const TAO::Register::Address& hashToken, 
+        bool ListTokenizedObjects(const TAO::Register::Address& hashToken,
                                   std::vector<TAO::Register::Address>& vObjects)
         {
-            /* There is no index of the assets owned by a token.  Therefore, to determine which assets the token owns, we can scan 
+            /* There is no index of the assets owned by a token.  Therefore, to determine which assets the token owns, we can scan
                through the events for the token itself to find all object transfers where the new owner is the token. */
-            
+
             /* Transaction for the event. */
             TAO::Ledger::Transaction tx;
 
@@ -1128,7 +1128,7 @@ namespace TAO
                         /* The register address being transferred */
                         TAO::Register::Address hashRegister;
                         tx[nContract] >> hashRegister;
-                        
+
                         /* Get the new owner hash */
                         TAO::Register::Address hashTo;
                         tx[nContract] >> hashTo;
@@ -1142,13 +1142,13 @@ namespace TAO
                             continue;
 
                         /* Check that the recipient of the transfer is the token */
-                        if(hashToken != hashTo) 
+                        if(hashToken != hashTo)
                             continue;
 
                         vObjects.push_back(hashRegister);
                     }
-                    
-                    else 
+
+                    else
                         continue;
                 }
 

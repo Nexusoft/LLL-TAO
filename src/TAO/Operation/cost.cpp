@@ -15,6 +15,8 @@ ________________________________________________________________________________
 
 #include <Legacy/types/script.h>
 
+#include <TAO/Ledger/include/constants.h>
+
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/cost.h>
 
@@ -112,27 +114,33 @@ namespace TAO
                     uint8_t nType = 0;
                     contract >> nType;
 
-                    /* Check for object type. */
-                    if(nType != TAO::Register::REGISTER::OBJECT)
-                        return;
-
                     /* Get the register data. */
                     std::vector<uint8_t> vchData;
                     contract >> vchData;
 
-                    /* Create the register object. */
-                    TAO::Register::Object object;
-                    object.nVersion   = 1;
-                    object.nType      = nType;
-                    object.hashOwner  = contract.Caller();
-                    object.SetState(vchData);
+                    /* Check for register type. For Object registers there may be a specific fee based on the object type. */
+                    if(nType == TAO::Register::REGISTER::OBJECT)
+                    {
+                        /* Create the register object. */
+                        TAO::Register::Object object;
+                        object.nVersion   = 1;
+                        object.nType      = nType;
+                        object.hashOwner  = contract.Caller();
+                        object.SetState(vchData);
 
-                    /* Parse the object. */
-                    if(!object.Parse())
-                        throw debug::exception(FUNCTION, "malformed object register");
+                        /* Parse the object. */
+                        if(!object.Parse())
+                            throw debug::exception(FUNCTION, "malformed object register");
 
-                    /* Set the fee cost to the contract. */
-                    nCost += object.Cost();
+                        /* Add the object cost to the overall cost. */
+                        nCost += object.Cost();
+ 
+                    }
+                    else
+                    {
+                        /* For all other register types the fee is based on the data size */
+                        nCost += std::max(TAO::Ledger::MIN_DATA_FEE,  vchData.size() * TAO::Ledger::DATA_FEE);
+                    }
 
                     break;
                 }
@@ -193,6 +201,8 @@ namespace TAO
                         if(conditions.nCost > CONDITION_LIMIT_FREE)
                             nCost += (conditions.nCost - CONDITION_LIMIT_FREE);
                     }
+
+                    break;
                 }
             }
         }

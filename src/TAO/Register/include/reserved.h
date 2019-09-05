@@ -115,7 +115,10 @@ namespace TAO
             const std::vector<std::string> RESERVED =
             {
                 /* native token name. */
-                "NXS"
+                "NXS",
+                "nxs",
+                "NEXUS",
+                "nexus"
             };
 
             /** Reserved
@@ -140,15 +143,13 @@ namespace TAO
             const std::vector<std::string> RESERVED =
             {
                 /* Global namspace name has to be reserved */
-                TAO::Register::NAMESPACE::GLOBAL
-                
+                TAO::Register::NAMESPACE::GLOBAL,
+
                 /* reserved to avoid confusion or scam attempts. */
-                // "nexus",
-                // "NEXUS",
-                // "nxs",
-                // "NXS"
-                // "nexus.io",
-                // "nexusearth.com",
+                 "nxs",
+                 "nexus.io",
+                 "nexus.com",
+                 "nexusearth.com",
 
             };
 
@@ -163,7 +164,14 @@ namespace TAO
              **/
             inline bool Reserved(const std::string& strValue)
             {
-                return std::find(RESERVED.begin(), RESERVED.end(), strValue) != RESERVED.end();
+                /* For namespaces the reserved word can't exist anywhere in the name.  */
+                return std::any_of(RESERVED.begin(), RESERVED.end(), 
+                    [&](std::string strReserved)
+                    {
+                        return strValue.find(strReserved) != std::string::npos;
+                    }
+                );
+                
             }
         }
     }

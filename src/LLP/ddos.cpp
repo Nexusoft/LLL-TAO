@@ -79,14 +79,14 @@ namespace LLP
 
         uint32_t nTime = TIMER.Elapsed();
 
-        /** If the Time has been greater than Moving Average Timespan, Set to Add Score on Time Overlap. **/
+        /* If the Time has been greater than Moving Average Timespan, Set to Add Score on Time Overlap. */
         if(nTime >= SCORE.size())
         {
             Reset();
             nTime = nTime % static_cast<int32_t>(SCORE.size());
         }
 
-        /** Iterate as many seconds as needed, flagging that each has been iterated. **/
+        /* Iterate as many seconds as needed, flagging that each has been iterated. */
         for(uint32_t i = nIterator; i <= nTime; ++i)
         {
             if(!SCORE[i].first)
@@ -96,11 +96,25 @@ namespace LLP
             }
         }
 
-        /** Update the Moving Average Iterator and Score for that Second Instance. **/
+        /* Update the Moving Average Iterator and Score for that Second Instance. */
         SCORE[nTime].second += nScore;
         nIterator = nTime;
 
         return *this;
+    }
+
+
+    /** print
+     *
+     *  Print out the internal data inside the score object.
+     *
+     **/
+    void DDOS_Score::print()
+    {
+        for(int32_t i = 0; i < SCORE.size(); ++i)
+            printf(" %s %u |", SCORE[i].first ? "T" : "F", SCORE[i].second);
+
+        printf("\n");
     }
 
 
@@ -124,11 +138,13 @@ namespace LLP
         if((TIMER.Elapsed() < BANTIME))
             return;
 
+        rSCORE.print();
+
         TIMER.Start();
 
-        ++TOTALBANS;
+        //++TOTALBANS;
 
-        BANTIME = std::max(TOTALBANS * (rSCORE.Score() + 1) * (cSCORE.Score() + 1), TOTALBANS * 1200u);
+        //BANTIME = std::max(TOTALBANS * (rSCORE.Score() + 1) * (cSCORE.Score() + 1), TOTALBANS * 1200u);
 
         debug::log(0, "XXXXX DDOS Filter cScore = ", cSCORE.Score(),
             " rScore = ", rSCORE.Score(),

@@ -43,7 +43,7 @@ namespace TAO
             SecureString strPIN = users->GetPin(params);
 
             /* Get the session to be used for this API call */
-            uint64_t nSession = users->GetSession(params);
+            uint256_t nSession = users->GetSession(params);
 
             /* Watch for destination genesis. */
             uint256_t hashTo = 0;

@@ -19,7 +19,6 @@ ________________________________________________________________________________
 #include <TAO/Register/include/constants.h>
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/include/reserved.h>
-#include <TAO/Register/include/reserved.h>
 #include <TAO/Register/include/names.h>
 #include <TAO/Register/types/object.h>
 #include <TAO/Register/types/address.h>
@@ -354,17 +353,17 @@ namespace TAO
                         if(strNamespace == TAO::Register::NAMESPACE::GLOBAL)
                         {
                             if(strName.find(":") != strName.npos)
-                                return debug::error(FUNCTION, "Global names cannot contain colons: ", strName);
+                                return debug::error(FUNCTION, "global names cannot contain colons: ", strName);
 
                             /* Check for reserved global names. */
                             if(TAO::Register::NAME::Reserved(strName) )
-                                return debug::error(FUNCTION, "names can't be created with reserved name ", strName);
+                                return debug::error(FUNCTION, "global names can't be created with reserved name: ", strName);
                         }
                         else
                         {
                             /* Local and namespaced names must not start with a : or :: */
                             if(strName[0] == ':')
-                                return debug::error(FUNCTION, "Names cannot start with a colon: ", strName);
+                                return debug::error(FUNCTION, "names cannot start with a colon: ", strName);
                         }
 
                         break;
@@ -376,13 +375,21 @@ namespace TAO
                         /* Get the token identifier. */
                         std::string strNamespace = object.get<std::string>("namespace");
 
+                        /* Check namespace for case/allowed characters */
+                        if (!std::all_of(strNamespace.cbegin(), strNamespace.cend(), 
+                            [](char c)
+                            { 
+                                /* Check for lower case or numeric or allowed characters */
+                                return std::islower(c) || std::isdigit(c) || c == '.'; 
+                            }
+                            )) 
+                        {
+                            return debug::error(FUNCTION, "namespace can only contain lowercase letters, numbers, periods (.): ", strNamespace);
+                        }
+
                         /* Check for reserved names. */
                         if(TAO::Register::NAMESPACE::Reserved(strNamespace) )
-                            return debug::error(FUNCTION, "namespace can't be created with reserved name ", strNamespace);
-
-                        /* Check that name doesn't contain colons */
-                        if(strNamespace.find(":") != strNamespace.npos)
-                            return debug::error(FUNCTION, "Namespace names cannot contain colons: ", strNamespace);
+                            return debug::error(FUNCTION, "namespaces can't contain reserved names: ", strNamespace);
 
                         break;
                     }

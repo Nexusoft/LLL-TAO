@@ -208,6 +208,7 @@ ifdef UNIT_TESTS
 		   build/Tests_TAO_Operation_contract.o \
 		   build/Tests_TAO_Operation_debit.o \
 		   build/Tests_TAO_Operation_fees.o \
+		   build/Tests_TAO_Operation_migrate.o \
 		   build/Tests_TAO_Operation_names.o \
 		   build/Tests_TAO_Operation_register.o \
 		   build/Tests_TAO_Operation_transfer.o \
@@ -646,7 +647,7 @@ build/Tests_TAO_Ledger_%.o: ./tests/unit/TAO/Ledger/%.cpp $(HEADERS)
 build/Tests_TAO_Operation_%.o: ./tests/unit/TAO/Operation/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/Tests_TAO_Register%.o: ./tests/unit/TAO/Register/%.cpp $(HEADERS)
+build/Tests_TAO_Register_%.o: ./tests/unit/TAO/Register/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/Tests_Util_%.o: ./tests/unit/Util/%.cpp $(HEADERS)
