@@ -156,6 +156,10 @@ namespace TAO
                     return debug::error(FUNCTION, "contract is empty");
             }
 
+            /* Check for max contracts. */
+            if(vContracts.size() > 100)
+                return debug::error(FUNCTION, "too many contracts for this transactions");
+
             /* Switch based on signature type. */
             switch(nKeyType)
             {

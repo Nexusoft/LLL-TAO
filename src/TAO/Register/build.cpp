@@ -637,6 +637,9 @@ namespace TAO
                         uint32_t nScore = 0;
                         contract >> nScore;
 
+                        /* Seek to end */
+                        contract.Seek(64);
+
                         /* Serialize the pre-state byte into contract. */
                         contract <<= uint8_t(TAO::Register::STATES::PRESTATE);
 

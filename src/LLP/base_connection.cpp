@@ -119,6 +119,13 @@ namespace LLP
         return fCONNECTED.load();
     }
 
+    /* Flag to detect if connection is an inbound connection. */
+    template <class PacketType>
+    bool BaseConnection<PacketType>::Incoming() const
+    {
+        return !fOUTGOING.load();
+    }
+
 
     /*  Handles two types of packets, requests which are of header >= 128,
      *  and data which are of header < 128. */
@@ -146,7 +153,7 @@ namespace LLP
         std::vector<uint8_t> vBytes = PACKET.GetBytes();
 
         /* Debug dump of message type. */
-        debug::log(3, NODE "Sent Message (", vBytes.size(), " bytes)");
+        debug::log(4, NODE "sent packet (", vBytes.size(), " bytes)");
 
         /* Debug dump of packet data. */
         if(config::GetArg("-verbose", 0) >= 5)

@@ -564,10 +564,6 @@ namespace TAO
                 ++nTotal;
             }
 
-            /* Check for size. */
-            if(ret.empty())
-                throw APIException(-143, "No notifications available");
-
             return ret;
         }
     }

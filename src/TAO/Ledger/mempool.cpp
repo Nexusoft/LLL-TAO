@@ -119,8 +119,7 @@ namespace TAO
 
                     /* Ask for the missing transaction. */
                     if(pnode)
-                        pnode->PushMessage(uint8_t(LLP::ACTION::GET), uint8_t(LLP::TYPES::TRANSACTION),
-                                           uint8_t(LLP::TYPES::UINT512_T), tx.hashPrevTx);
+                        pnode->PushMessage(uint8_t(LLP::ACTION::GET), uint8_t(LLP::TYPES::TRANSACTION), tx.hashPrevTx);
 
                     return true;
                 }
