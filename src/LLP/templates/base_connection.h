@@ -127,6 +127,18 @@ namespace LLP
         virtual ~BaseConnection();
 
 
+        /** Subscribed
+         *
+         *  Determine if a node is subscribed to receive relay message.
+         *
+         **/
+        template<typename MessageType>
+        bool Subscribed(const MessageType& message)
+        {
+            return true;
+        }
+
+
         /** SetNull
          *
          *  Sets the object to an invalid state.

@@ -773,7 +773,7 @@ namespace TAO
                             LLP::TRITIUM_SERVER->Relay
                             (
                                 LLP::ACTION::NOTIFY,
-                                uint8_t(LLP::TYPES::LEGACY),
+                                uint8_t(LLP::SPECIFIER::LEGACY),
                                 uint8_t(LLP::TYPES::BLOCK),
                                 hash
                             );
