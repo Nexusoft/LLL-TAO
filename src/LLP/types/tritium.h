@@ -358,7 +358,7 @@ namespace LLP
 
             WritePacket(NewMessage(nMsg, ssData));
 
-            debug::log(3, NODE, "sent message ", std::hex, nMsg, " of ", std::dec, ssData.size(), " bytes");
+            debug::log(4, NODE, "sent message ", std::hex, nMsg, " of ", std::dec, ssData.size(), " bytes");
         }
 
     };

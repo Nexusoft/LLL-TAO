@@ -1053,7 +1053,7 @@ namespace LLP
                         case TYPES::LAST:
                         {
                             /* Check for subscription. */
-                            if(!(nSubscriptions & TYPES::LAST))
+                            if(!(nSubscriptions & SUBSCRIPTION::LAST))
                                 return debug::drop(NODE, "unsolicited notification");
 
                             /* Keep track of current checkpoint. */
@@ -1365,9 +1365,9 @@ namespace LLP
                 if(nConsecutiveFails >= 500)
                 {
                     /* Fast Sync node switch. */
-                    if(TAO::Ledger::ChainState::Synchronizing())
+                    if(TAO::Ledger::ChainState::Synchronizing() && nSyncSession.load() == nCurrentSession)
                     {
-                        //TODO: fine a new fast sync node
+                        //TODO: find a new fast sync node
                     }
 
                     /* Drop pesky nodes. */
@@ -1536,6 +1536,8 @@ namespace LLP
 
         /* Write the subscription packet. */
         WritePacket(NewMessage(ACTION::SUBSCRIBE, ssMessage));
+
+        debug::log(0, "Subscribed to ", std::bitset<16>(nSubscriptions));
     }
 
 
