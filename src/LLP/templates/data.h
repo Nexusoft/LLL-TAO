@@ -186,12 +186,10 @@ namespace LLP
                     if(!CONNECTIONS->at(nIndex))
                         continue;
 
-                    /* Check if subscribed. */
-                    if(!CONNECTIONS->at(nIndex)->Subscribed(message))
-                        continue;
-
-                    /* Push the active connection. */
-                    CONNECTIONS->at(nIndex)->WritePacket(CONNECTIONS->at(nIndex)->NewMessage(message, ssData));
+                    /* Relay if there are active subscriptions. */
+                    const DataStream ssRelay = CONNECTIONS->at(nIndex)->Notifications(message, ssData);
+                    if(ssRelay.size() != 0)
+                        CONNECTIONS->at(nIndex)->WritePacket(CONNECTIONS->at(nIndex)->NewMessage(message, ssRelay));
                 }
                 catch(const std::runtime_error& e)
                 {

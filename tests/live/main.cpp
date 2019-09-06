@@ -123,11 +123,57 @@ _name.shard.file
 */
 
 
+class Test
+{
+public:
+
+    Test()
+    {
+
+    }
+
+    /** Subscribed
+     *
+     *  Determine if a node is subscribed to receive relay message.
+     *
+     **/
+    template<typename MessageType>
+    bool Subscribed(const MessageType& message)
+    {
+        return debug::error("lower order function ", message);
+    }
+};
+
+
+class Test2 : public Test
+{
+public:
+
+    Test2()
+    {
+
+    }
+
+    /** Subscribed
+     *
+     *  Determine if a node is subscribed to receive relay message.
+     *
+     **/
+    bool Subscribed(const uint16_t& message)
+    {
+        return debug::error("Higher order function ", message);
+    }
+};
+
+
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
 
+    Test2* test = new Test2();
+    test->Subscribed(55);
 
+    dynamic_cast<Test*>(test)->Subscribed("TEST!!!");
 
     return 0;
 

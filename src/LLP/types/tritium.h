@@ -81,8 +81,9 @@ namespace LLP
         enum
         {
             /* Specifier. */
-            LEGACY      = 0x40, //specify for legacy block types
-            SYNC        = 0x41 //specify a sync block for types
+            LEGACY      = 0x40, //specify for legacy data types
+            TRITIUM     = 0x41, //specify for tritium data types
+            SYNC        = 0x42  //specify a sync block type
         };
     }
 
@@ -307,6 +308,18 @@ namespace LLP
          *
          **/
         void Subscribe(const uint16_t nFlags);
+
+
+        /** Notifications
+         *
+         *  Checks if a node is subscribed to receive a notification.
+         *
+         *  @param[in] nMsg The message to check for
+         *
+         *  @return a data stream with relevant relay information
+         *
+         **/
+        const DataStream Notifications(const uint16_t nMsg, const DataStream& ssData) const;
 
 
         /** SessionActive
