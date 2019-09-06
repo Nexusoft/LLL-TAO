@@ -375,7 +375,13 @@ namespace LLP
 
                 /* Subscribe to receive notifications. */
                 if(fSynchronized.load())
-                    Subscribe(SUBSCRIPTION::HEIGHT | SUBSCRIPTION::CHECKPOINT | SUBSCRIPTION::BLOCK | SUBSCRIPTION::TRANSACTION);
+                    Subscribe(
+                        SUBSCRIPTION::HEIGHT
+                      | SUBSCRIPTION::CHECKPOINT
+                      | SUBSCRIPTION::BLOCK
+                      | SUBSCRIPTION::TRANSACTION
+                      | SUBSCRIPTION::BESTCHAIN
+                  );
 
                 break;
             }
@@ -1161,17 +1167,31 @@ namespace LLP
                             /* Check best chain. */
                             if(hashBestChain == TAO::Ledger::ChainState::hashBestChain.load())
                             {
-                                /* Set state to synchronized. */
-                                TritiumNode::fSynchronized.store(true);
+                                /* Reset the sychronization if this is current sync node. */
+                                if(nSyncSession == nCurrentSession)
+                                {
+                                    /* Set state to synchronized. */
+                                    TritiumNode::fSynchronized.store(true);
 
-                                /* Set the sync session. */
-                                nSyncSession.store(0);
+                                    /* Set the sync session. */
+                                    nSyncSession.store(0);
 
-                                /* Subscribe to notifications. */
-                                Subscribe(SUBSCRIPTION::HEIGHT | SUBSCRIPTION::CHECKPOINT | SUBSCRIPTION::BLOCK | SUBSCRIPTION::TRANSACTION);
+                                    /* Subscribe to notifications. */
+                                    Subscribe(SUBSCRIPTION::HEIGHT | SUBSCRIPTION::CHECKPOINT | SUBSCRIPTION::BLOCK | SUBSCRIPTION::TRANSACTION);
 
-                                /* Log that sync is complete. */
-                                debug::log(0, NODE, "ACTION::BLOCK: Synchonization COMPLETE at ", hashBestChain.SubString());
+                                    /* Log that sync is complete. */
+                                    debug::log(0, NODE, "ACTION::BLOCK: Synchonization COMPLETE at ", hashBestChain.SubString());
+                                }
+                            }
+                            else
+                            {
+                                /* Ask for list of blocks. */
+                                PushMessage(ACTION::LIST,
+                                    uint8_t(TYPES::BLOCK),
+                                    uint8_t(TYPES::LOCATOR),
+                                    TAO::Ledger::ChainState::hashBestChain.load(),
+                                    hashBestChain
+                                );
                             }
 
                             /* Debug output. */
