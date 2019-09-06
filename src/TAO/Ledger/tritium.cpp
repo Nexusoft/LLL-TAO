@@ -135,8 +135,8 @@ namespace TAO
                         ssData >> tx;
 
                         /* Accept into memory pool. */
-                        if(!mempool.Accept(tx))
-                            throw debug::exception(FUNCTION, "sync block contains invalid transaction");
+                        mempool.AddUnchecked(tx);
+                        //throw debug::exception(FUNCTION, "sync block contains invalid transaction");
 
                         /* Add transaction to binary data. */
                         if(n == block.vtx.size() - 1)
@@ -158,8 +158,8 @@ namespace TAO
                         ssData >> tx;
 
                         /* Accept into memory pool. */
-                        if(!mempool.Accept(tx))
-                            throw debug::exception(FUNCTION, "sync block contains invalid transaction");
+                        mempool.AddUnchecked(tx);
+                        //throw debug::exception(FUNCTION, "sync block contains invalid transaction");
 
                         /* Add transaction to binary data. */
                         vtx.push_back(std::make_pair(block.vtx[n].first, tx.GetHash()));
