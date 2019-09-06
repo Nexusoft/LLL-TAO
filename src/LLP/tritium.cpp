@@ -357,7 +357,7 @@ namespace LLP
                 else if(nSyncSession == 0 && !fSynchronized.load())
                 {
                     /* Subscribe to this node. */
-                    Subscribe(SUBSCRIPTION::LAST | SUBSCRIPTION::BESTCHAIN);
+                    Subscribe(SUBSCRIPTION::LASTINDEX | SUBSCRIPTION::BESTCHAIN);
 
                     /* Set the sync session-id. */
                     nSyncSession.store(nCurrentSession);
@@ -620,13 +620,13 @@ namespace LLP
                         }
 
                         /* Subscribe to getting last index on list commands. */
-                        case TYPES::LAST:
+                        case TYPES::LASTINDEX:
                         {
                             /* Subscribe. */
                             if(INCOMING.MESSAGE == ACTION::SUBSCRIBE)
                             {
                                 /* Set the last flag. */
-                                nNotifications |= SUBSCRIPTION::LAST;
+                                nNotifications |= SUBSCRIPTION::LASTINDEX;
 
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::SUBSCRIBE: LAST ", std::bitset<16>(nNotifications));
@@ -634,7 +634,7 @@ namespace LLP
                             else
                             {
                                 /* Unset the last flag. */
-                                nNotifications &= ~SUBSCRIPTION::LAST;
+                                nNotifications &= ~SUBSCRIPTION::LASTINDEX;
 
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::UNSUBSCRIBE: LAST ", std::bitset<16>(nNotifications));
@@ -849,8 +849,8 @@ namespace LLP
                             hashLastBlock = hashStart;
 
                             /* Check for last subscription. */
-                            if(nNotifications & SUBSCRIPTION::LAST)
-                                PushMessage(ACTION::NOTIFY, uint8_t(TYPES::LAST), hashLastBlock);
+                            if(nNotifications & SUBSCRIPTION::LASTINDEX)
+                                PushMessage(ACTION::NOTIFY, uint8_t(TYPES::LASTINDEX), hashLastBlock);
 
                             break;
                         }
@@ -1119,7 +1119,7 @@ namespace LLP
                                 ssResponse << uint8_t(TYPES::BLOCK) << hashBlock;
 
                             /* Debug output. */
-                            debug::log(3, NODE, "ACTION::NOTIFY: received block ", hashBlock.SubString());
+                            debug::log(3, NODE, "ACTION::NOTIFY: BLOCK ", hashBlock.SubString());
 
                             break;
                         }
@@ -1150,7 +1150,7 @@ namespace LLP
                             }
 
                             /* Debug output. */
-                            debug::log(3, NODE, "ACTION::NOTIFY: received tx ", hashTx.SubString());
+                            debug::log(3, NODE, "ACTION::NOTIFY: TRANSACTION ", hashTx.SubString());
 
                             break;
                         }
@@ -1170,7 +1170,7 @@ namespace LLP
                             ssPacket >> nCurrentHeight;
 
                             /* Debug output. */
-                            debug::log(3, NODE, "ACTION::NOTIFY: received height ", nCurrentHeight);
+                            debug::log(3, NODE, "ACTION::NOTIFY: HEIGHT ", nCurrentHeight);
 
                             break;
                         }
@@ -1190,17 +1190,17 @@ namespace LLP
                             ssPacket >> hashCheckpoint;
 
                             /* Debug output. */
-                            debug::log(3, NODE, "ACTION::NOTIFY: received checkpoint ", hashCheckpoint.SubString());
+                            debug::log(3, NODE, "ACTION::NOTIFY: CHECKPOINT ", hashCheckpoint.SubString());
 
                             break;
                         }
 
 
                         /* Standard type for a checkpoint. */
-                        case TYPES::LAST:
+                        case TYPES::LASTINDEX:
                         {
                             /* Check for subscription. */
-                            if(!(nSubscriptions & SUBSCRIPTION::LAST))
+                            if(!(nSubscriptions & SUBSCRIPTION::LASTINDEX))
                                 return debug::drop(NODE, "LAST: unsolicited notification");
 
                             /* Keep track of current checkpoint. */
@@ -1221,7 +1221,7 @@ namespace LLP
                                     Subscribe(SUBSCRIPTION::HEIGHT | SUBSCRIPTION::CHECKPOINT | SUBSCRIPTION::BLOCK | SUBSCRIPTION::TRANSACTION);
 
                                     /* Unsubcribe from last. */
-                                    Unsubscribe(SUBSCRIPTION::LAST);
+                                    Unsubscribe(SUBSCRIPTION::LASTINDEX);
 
                                     /* Log that sync is complete. */
                                     debug::log(0, NODE, "ACTION::NOTIFY: Synchonization COMPLETE at ", hashBestChain.SubString());
@@ -1239,7 +1239,7 @@ namespace LLP
                             }
 
                             /* Debug output. */
-                            debug::log(3, NODE, "ACTION::NOTIFY: received last index ", hashLast.SubString());
+                            debug::log(3, NODE, "ACTION::NOTIFY: LASTINDEX ", hashLast.SubString());
 
                             break;
                         }
@@ -1262,14 +1262,14 @@ namespace LLP
                                 if(nSyncSession == nCurrentSession)
                                 {
                                     /* Set state to synchronized. */
-                                    TritiumNode::fSynchronized.store(true);
+                                    fSynchronized.store(true);
                                     nSyncSession.store(0);
 
                                     /* Subscribe to notifications. */
                                     Subscribe(SUBSCRIPTION::HEIGHT | SUBSCRIPTION::CHECKPOINT | SUBSCRIPTION::BLOCK | SUBSCRIPTION::TRANSACTION);
 
                                     /* Unsubcribe from last. */
-                                    Unsubscribe(SUBSCRIPTION::LAST);
+                                    Unsubscribe(SUBSCRIPTION::LASTINDEX);
 
                                     /* Log that sync is complete. */
                                     debug::log(0, NODE, "ACTION::NOTIFY: Synchonization COMPLETE at ", hashBestChain.SubString());
@@ -1303,7 +1303,7 @@ namespace LLP
                             }
 
                             /* Debug output. */
-                            debug::log(3, NODE, "ACTION::NOTIFY: received best chain ", hashBestChain.SubString());
+                            debug::log(3, NODE, "ACTION::NOTIFY: BESTCHAIN ", hashBestChain.SubString());
 
                             break;
                         }
@@ -1873,27 +1873,27 @@ namespace LLP
         }
 
         /* Check for last. */
-        if(nFlags & SUBSCRIPTION::LAST)
+        if(nFlags & SUBSCRIPTION::LASTINDEX)
         {
             /* Build the message. */
-            ssMessage << uint8_t(TYPES::LAST);
+            ssMessage << uint8_t(TYPES::LASTINDEX);
 
             /* Check for subscription. */
             if(fSubscribe)
             {
                 /* Set the flag. */
-                nSubscriptions |=  SUBSCRIPTION::LAST;
+                nSubscriptions |=  SUBSCRIPTION::LASTINDEX;
 
                 /* Debug output. */
-                debug::log(3, NODE, "SUBSCRIBING TO LAST ", std::bitset<16>(nSubscriptions));
+                debug::log(3, NODE, "SUBSCRIBING TO LASTINDEX ", std::bitset<16>(nSubscriptions));
             }
             else
             {
                 /* Set the flag. */
-                nSubscriptions &= ~SUBSCRIPTION::LAST;
+                nSubscriptions &= ~SUBSCRIPTION::LASTINDEX;
 
                 /* Debug output. */
-                debug::log(3, NODE, "UNSUBSCRIBING FROM LAST ", std::bitset<16>(nSubscriptions));
+                debug::log(3, NODE, "UNSUBSCRIBING FROM LASTINDEX ", std::bitset<16>(nSubscriptions));
             }
         }
 

@@ -63,7 +63,7 @@ namespace LLP
             STRING      = 0x23,
             BYTES       = 0x24,
             LOCATOR     = 0x25,
-            LAST        = 0x26, //sends a last index notify after list
+            LASTINDEX   = 0x26, //sends a last index notify after list
 
             /* Object Types. */
             BLOCK       = 0x30,
@@ -113,7 +113,7 @@ namespace LLP
             HEIGHT      = (1 << 4),
             CHECKPOINT  = (1 << 5),
             ADDRESS     = (1 << 6),
-            LAST        = (1 << 7),
+            LASTINDEX   = (1 << 7),
             BESTCHAIN   = (1 << 8),
         };
     }
