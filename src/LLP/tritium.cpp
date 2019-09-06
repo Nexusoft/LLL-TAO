@@ -58,6 +58,10 @@ namespace LLP
     std::atomic<uint64_t> TritiumNode::nSyncSession(0);
 
 
+    /* If node is completely sychronized. */
+    std::atomic<bool> TritiumNode::fSynchronized(false);
+
+
     /** Default Constructor **/
     TritiumNode::TritiumNode()
     : BaseConnection<TritiumPacket>()
@@ -310,6 +314,10 @@ namespace LLP
                 /* Get the version string. */
                 ssPacket >> strFullVersion;
 
+                /* Check for invalid session-id. */
+                if(nCurrentSession == 0)
+                    return debug::drop(NODE, "invalid session-id");
+
                 /* Check for a connect to self. */
                 if(nCurrentSession == SESSION_ID)
                     return debug::drop(NODE, "connected to self");
@@ -346,7 +354,7 @@ namespace LLP
                     PushMessage(uint8_t(ACTION::VERSION), PROTOCOL_VERSION, SESSION_ID, version::CLIENT_VERSION_BUILD_STRING);
 
                 }
-                else if(nSyncSession == 0)
+                else if(nSyncSession == 0 && !fSynchronized.load())
                 {
                     /* Subscribe to this node. */
                     Subscribe(SUBSCRIPTION::LAST | SUBSCRIPTION::BESTCHAIN);
@@ -366,7 +374,8 @@ namespace LLP
                 }
 
                 /* Subscribe to receive notifications. */
-                Subscribe(SUBSCRIPTION::HEIGHT | SUBSCRIPTION::CHECKPOINT | SUBSCRIPTION::BLOCK | SUBSCRIPTION::TRANSACTION);
+                if(fSynchronized.load())
+                    Subscribe(SUBSCRIPTION::HEIGHT | SUBSCRIPTION::CHECKPOINT | SUBSCRIPTION::BLOCK | SUBSCRIPTION::TRANSACTION);
 
                 break;
             }
@@ -517,7 +526,7 @@ namespace LLP
 
                             /* Notify node of current block height. */
                             PushMessage(ACTION::NOTIFY,
-                                uint8_t(TYPES::HEIGHT),     TAO::Ledger::ChainState::nBestHeight.load());
+                                uint8_t(TYPES::HEIGHT), TAO::Ledger::ChainState::nBestHeight.load());
 
                             /* Debug output. */
                             debug::log(3, NODE, "ACTION::SUBSCRIBE: added height subscrption ", std::bitset<16>(nNotifications));
@@ -533,7 +542,7 @@ namespace LLP
 
                             /* Notify node of current block height. */
                             PushMessage(ACTION::NOTIFY,
-                                uint8_t(TYPES::CHECKPOINT),     TAO::Ledger::ChainState::hashCheckpoint.load());
+                                uint8_t(TYPES::CHECKPOINT), TAO::Ledger::ChainState::hashCheckpoint.load());
 
                             /* Debug output. */
                             debug::log(3, NODE, "ACTION::SUBSCRIBE: added checkpoint subscrption ", std::bitset<16>(nNotifications));
@@ -570,6 +579,10 @@ namespace LLP
                         {
                             /* Set the best chain flag. */
                             nNotifications |= SUBSCRIPTION::BESTCHAIN;
+
+                            /* Notify node of current block height. */
+                            PushMessage(ACTION::NOTIFY,
+                                uint8_t(TYPES::BESTCHAIN), TAO::Ledger::ChainState::hashBestChain.load());
 
                             /* Debug output. */
                             debug::log(3, NODE, "ACTION::SUBSCRIBE: added best chain ", std::bitset<16>(nNotifications));
@@ -1117,13 +1130,13 @@ namespace LLP
                             ssPacket >> hashLast;
 
                             /* Check if is sync node. */
-                            if(nCurrentSession == nSyncSession.load())
+                            if(nCurrentSession == nSyncSession.load() && !fSynchronized.load())
                             {
                                 /* Ask for list of blocks. */
                                 PushMessage(ACTION::LIST,
                                     uint8_t(TYPES::BLOCK),
                                     uint8_t(TYPES::UINT1024_T),
-                                    uint1024_t(0),
+                                    hashLast,
                                     uint1024_t(0)
                                 );
                             }
@@ -1144,6 +1157,22 @@ namespace LLP
 
                             /* Keep track of current checkpoint. */
                             ssPacket >> hashBestChain;
+
+                            /* Check best chain. */
+                            if(hashBestChain == TAO::Ledger::ChainState::hashBestChain.load())
+                            {
+                                /* Set state to synchronized. */
+                                TritiumNode::fSynchronized.store(true);
+
+                                /* Set the sync session. */
+                                nSyncSession.store(0);
+
+                                /* Subscribe to notifications. */
+                                Subscribe(SUBSCRIPTION::HEIGHT | SUBSCRIPTION::CHECKPOINT | SUBSCRIPTION::BLOCK | SUBSCRIPTION::TRANSACTION);
+
+                                /* Log that sync is complete. */
+                                debug::log(0, NODE, "ACTION::BLOCK: Synchonization COMPLETE at ", hashBestChain.SubString());
+                            }
 
                             /* Debug output. */
                             debug::log(3, NODE, "ACTION::NOTIFY: received best chain ", hashBestChain.SubString());
@@ -1347,6 +1376,10 @@ namespace LLP
                     /* Handle for a tritium transaction. */
                     case SPECIFIER::SYNC:
                     {
+                        /* Check if this is an unsolicited sync block. */
+                        if(nCurrentSession != nSyncSession)
+                            return debug::drop(FUNCTION, "unsolicted sync block");
+
                         /* Get the block from the stream. */
                         TAO::Ledger::SyncBlock block;
                         ssPacket >> block;
@@ -1360,11 +1393,31 @@ namespace LLP
 
                             /* Process the block. */
                             TAO::Ledger::Process(tritium, nStatus);
+
+                            /* Check the synchronization status. */
+                            if(tritium.GetHash() == hashBestChain)
+                            {
+                                /* Set state to synchronized. */
+                                TritiumNode::fSynchronized.store(true);
+
+                                /* Set the sync session. */
+                                nSyncSession.store(0);
+
+                                /* Subscribe to notifications. */
+                                Subscribe(SUBSCRIPTION::HEIGHT | SUBSCRIPTION::CHECKPOINT | SUBSCRIPTION::BLOCK | SUBSCRIPTION::TRANSACTION);
+
+                                /* Log that sync is complete. */
+                                debug::log(0, NODE, "ACTION::BLOCK: Synchonization COMPLETE at ", hashBestChain.SubString());
+                            }
                         }
                         else
                         {
                             /* Build a tritium block from sync block. */
                             Legacy::LegacyBlock legacy(block);
+
+                            /* Check if we reached sync node's best block. */
+                            if(legacy.GetHash() == hashBestChain)
+                                TritiumNode::fSynchronized.store(true);
 
                             /* Process the block. */
                             TAO::Ledger::Process(legacy, nStatus);

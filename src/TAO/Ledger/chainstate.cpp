@@ -13,6 +13,8 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <LLP/types/tritium.h>
+
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/create.h>
@@ -55,8 +57,13 @@ namespace TAO
 
 
         /* Flag to tell if initial blocks are downloading. */
+        static bool fSynchronizing = true;
         bool ChainState::Synchronizing()
         {
+            /* Persistent switch once synchronized. */
+            if(!fSynchronizing)
+                return false;
+
             #ifndef UNIT_TESTS
 
             /* Check for null best state. */
@@ -74,10 +81,25 @@ namespace TAO
 
             /* Special testnet rule. */
             if(config::fTestNet.load())
-                return (stateBest.load().GetBlockTime() < runtime::unifiedtimestamp() - 20 * 60) && (runtime::unifiedtimestamp() - nLastTime < 30);
+            {
+                /* Set the synchronizing flag. */
+                fSynchronizing =
+                (
+                    (stateBest.load().GetBlockTime() < runtime::unifiedtimestamp() - 20 * 60) &&
+                    (runtime::unifiedtimestamp() - nLastTime < 30)
+                );
+
+                return fSynchronizing;
+            }
 
             /* Check if block has been created within 60 minutes. */
-            return (stateBest.load().GetBlockTime() < runtime::unifiedtimestamp() - 60 * 60);
+            fSynchronizing =
+            (
+                (!LLP::TritiumNode::fSynchronized.load() &&
+                (stateBest.load().GetBlockTime() < runtime::unifiedtimestamp() - 60 * 60))
+            );
+
+            return fSynchronizing;
 
             /* On unit tests, always keep Synchronizing off. */
             #else

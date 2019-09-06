@@ -192,6 +192,10 @@ namespace LLP
         static std::string Name() { return "Tritium"; }
 
 
+        /** Keeps track of if this node is fully synchronized. **/
+        static std::atomic<bool> fSynchronized;
+
+
         /** Default Constructor **/
         TritiumNode();
 
