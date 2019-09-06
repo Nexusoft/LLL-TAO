@@ -73,6 +73,7 @@ namespace LLP
     , nCurrentSession(0)
     , nCurrentHeight(0)
     , hashCheckpoint(0)
+    , hashBestChain(0)
     , nConsecutiveOrphans(0)
     , nConsecutiveFails(0)
     , strFullVersion()
@@ -97,6 +98,7 @@ namespace LLP
     , nCurrentSession(0)
     , nCurrentHeight(0)
     , hashCheckpoint(0)
+    , hashBestChain(0)
     , nConsecutiveOrphans(0)
     , nConsecutiveFails(0)
     , strFullVersion()
@@ -121,6 +123,7 @@ namespace LLP
     , nCurrentSession(0)
     , nCurrentHeight(0)
     , hashCheckpoint(0)
+    , hashBestChain(0)
     , nConsecutiveOrphans(0)
     , nConsecutiveFails(0)
     , strFullVersion()
@@ -346,7 +349,7 @@ namespace LLP
                 else if(nSyncSession == 0)
                 {
                     /* Subscribe to this node. */
-                    Subscribe(SUBSCRIPTION::LAST);
+                    Subscribe(SUBSCRIPTION::LAST | SUBSCRIPTION::BESTCHAIN);
 
                     /* Set the sync session-id. */
                     nSyncSession.store(nCurrentSession);
@@ -558,6 +561,18 @@ namespace LLP
 
                             /* Debug output. */
                             debug::log(3, NODE, "ACTION::SUBSCRIBE: added last subscrption ", std::bitset<16>(nNotifications));
+
+                            break;
+                        }
+
+                        /* Subscribe to getting transactions. */
+                        case TYPES::BESTCHAIN:
+                        {
+                            /* Set the best chain flag. */
+                            nNotifications |= SUBSCRIPTION::BESTCHAIN;
+
+                            /* Debug output. */
+                            debug::log(3, NODE, "ACTION::SUBSCRIBE: added best chain ", std::bitset<16>(nNotifications));
 
                             break;
                         }
@@ -1119,6 +1134,23 @@ namespace LLP
                             break;
                         }
 
+
+                        /* Standard type for a checkpoint. */
+                        case TYPES::BESTCHAIN:
+                        {
+                            /* Check for subscription. */
+                            if(!(nSubscriptions & SUBSCRIPTION::BESTCHAIN))
+                                return debug::drop(NODE, "BESTCHAIN: unsolicited notification");
+
+                            /* Keep track of current checkpoint. */
+                            ssPacket >> hashBestChain;
+
+                            /* Debug output. */
+                            debug::log(3, NODE, "ACTION::NOTIFY: received best chain ", hashBestChain.SubString());
+
+                            break;
+                        }
+
                         /* Catch malformed notify binary streams. */
                         default:
                             return debug::drop(NODE, "ACTION::NOTIFY malformed binary stream");
@@ -1577,6 +1609,14 @@ namespace LLP
             nSubscriptions |= SUBSCRIPTION::LAST;
         }
 
+        /* Check for last. */
+        if(nFlags & SUBSCRIPTION::BESTCHAIN)
+        {
+            /* Build the message. */
+            ssMessage << uint8_t(TYPES::BESTCHAIN);
+            nSubscriptions |= SUBSCRIPTION::BESTCHAIN;
+        }
+
         /* Write the subscription packet. */
         WritePacket(NewMessage(ACTION::SUBSCRIBE, ssMessage));
 
@@ -1587,14 +1627,12 @@ namespace LLP
     /* Checks if a node is subscribed to receive a notification. */
     const DataStream TritiumNode::Notifications(const uint16_t nMsg, const DataStream& ssData) const
     {
-        /* Only relay when message is notify. */
+        /* Only filter relays when message is notify. */
         if(nMsg != ACTION::NOTIFY)
-            return DataStream(SER_NETWORK, MIN_PROTO_VERSION);
+            return ssData;
 
         /* Build a response data stream. */
         DataStream ssRelay(SER_NETWORK, MIN_PROTO_VERSION);
-
-        /* Loop until reached end of stream. */
         while(!ssData.End())
         {
             /* Get the first notify type. */
@@ -1701,6 +1739,29 @@ namespace LLP
                         /* Write transaction to stream. */
                         ssRelay << uint8_t(TYPES::CHECKPOINT);
                         ssRelay << hashCheck;
+                    }
+
+                    break;
+                }
+
+
+                /* Check for checkpoint subscription. */
+                case TYPES::BESTCHAIN:
+                {
+                    /* Get the index. */
+                    uint1024_t hashBest;
+                    ssData >> hashBest;
+
+                    /* Skip malformed requests. */
+                    if(fLegacy)
+                        continue;
+
+                    /* Check subscription. */
+                    if(nNotifications & SUBSCRIPTION::BESTCHAIN)
+                    {
+                        /* Write transaction to stream. */
+                        ssRelay << uint8_t(TYPES::BESTCHAIN);
+                        ssRelay << hashBest;
                     }
 
                     break;

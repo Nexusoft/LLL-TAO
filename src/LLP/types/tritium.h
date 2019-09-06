@@ -71,6 +71,7 @@ namespace LLP
             HEIGHT      = 0x33,
             CHECKPOINT  = 0x34,
             ADDRESS     = 0x35,
+            BESTCHAIN   = 0x36,
         };
     }
 
@@ -112,6 +113,7 @@ namespace LLP
             CHECKPOINT  = (1 << 5),
             ADDRESS     = (1 << 6),
             LAST        = (1 << 7),
+            BESTCHAIN   = (1 << 8),
         };
     }
 
@@ -240,6 +242,10 @@ namespace LLP
 
         /** This node's current checkpoint. **/
         uint1024_t hashCheckpoint;
+
+
+        /** This node's best block. **/
+        uint1024_t hashBestChain;
 
 
         /** Counter of total orphans. **/
