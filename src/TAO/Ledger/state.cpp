@@ -758,30 +758,15 @@ namespace TAO
                     /* If using Tritium server then we need to include the blocks transactions in the inventory before the block. */
                     if(LLP::TRITIUM_SERVER)
                     {
-                        /* Check for version 7 blocks. */
-                        if(nVersion >= 7)
-                        {
-                            LLP::TRITIUM_SERVER->Relay
-                            (
-                                LLP::ACTION::NOTIFY,
-                                uint8_t(LLP::TYPES::BLOCK),
-                                hash,
-                                uint8_t(LLP::TYPES::BESTCHAIN),
-                                hash
-                            );
-                        }
-                        else
-                        {
-                            LLP::TRITIUM_SERVER->Relay
-                            (
-                                LLP::ACTION::NOTIFY,
-                                uint8_t(LLP::SPECIFIER::LEGACY),
-                                uint8_t(LLP::TYPES::BLOCK),
-                                hash,
-                                uint8_t(LLP::TYPES::BESTCHAIN),
-                                hash
-                            );
-                        }
+                        /* Relay the block and bestchain. */
+                        LLP::TRITIUM_SERVER->Relay
+                        (
+                            LLP::ACTION::NOTIFY,
+                            uint8_t(LLP::TYPES::BLOCK),
+                            hash,
+                            uint8_t(LLP::TYPES::BESTCHAIN),
+                            hash
+                        );
                     }
 
                 }
