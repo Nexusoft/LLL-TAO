@@ -371,7 +371,7 @@ namespace TAO
                     return debug::error(FUNCTION, "prev transaction prevhash mismatch");
 
                 /* Sig chain maturity check.  If the previous tx is a coinbase/stake and this is NOT a coinbase/stake then 
-                   ensure that the previous transaction is mature (has 6 confs) */
+                   ensure that the previous transaction is mature (has 33 confs) */
                 if((txPrev.IsCoinBase() || txPrev.IsCoinStake()) && !(IsCoinBase() || IsCoinStake()))
                 {
                     /* Get number of confirmations of previous TX */
