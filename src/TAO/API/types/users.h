@@ -220,14 +220,17 @@ namespace TAO
             /** GetPin
              *
              *  If the API is running in sessionless mode this method will return the currently
-             *  active PIN (if logged in) or the pin from the params.  If not in sessionless mode
-             *  then the method will return the pin from the params.  If no pin is available then
-             *  an APIException is thrown
+             *  active PIN (if logged in and unlocked for the requested action) or the pin from the params.  
+             *  If not in sessionless mode then the method will return the pin from the params.  If no pin is available for the 
+             *  given unlock action then an appropriate APIException is thrown
+             * 
+             *  @param[in] params The API method parameters.
+             *  @param[in] nUnlockAction The unlock 
              *
              *  @return the pin.
              *
              **/
-            SecureString GetPin(const json::json params) const;
+            SecureString GetPin(const json::json params, uint8_t nUnlockAction) const;
 
 
             /** GetSession

@@ -234,17 +234,25 @@ namespace TAO
          * active PIN (if logged in) or the pin from the params.  If not in sessionless mode
          * then the method will return the pin from the params.  If no pin is available then
          * an APIException is thrown */
-        SecureString Users::GetPin(const json::json params) const
+        SecureString Users::GetPin(const json::json params, uint8_t nUnlockAction) const
         {
+            
             /* Check for pin parameter. */
             SecureString strPIN;
-            bool fNeedPin = users->Locked();
 
-            if(fNeedPin && params.find("pin") == params.end())
-                throw APIException(-129, "Missing PIN");
-            else if(fNeedPin)
-                strPIN = params["pin"].get<std::string>().c_str();
+            /* If we have a pin already, check we are allowed to use it for the requested action */
+            bool fNeedPin = pActivePIN.IsNull() || pActivePIN->PIN().empty() || !(pActivePIN->UnlockedActions() & nUnlockAction); 
+            
+            if(fNeedPin)
+            {
+                /* If we need a pin then check it is in the params */
+                if(params.find("pin") == params.end())
+                    throw APIException(-129, "Missing PIN");
+                else
+                    strPIN = params["pin"].get<std::string>().c_str();
+            }
             else
+                /* If we don't need the pin then use the current active one */
                 strPIN = users->GetActivePin();
 
             return strPIN;

@@ -167,7 +167,7 @@ namespace TAO
                     params["genesis"] = hashGenesis.ToString();
 
                     /* Get the PIN to be used for this API call */
-                    SecureString strPIN = users->GetPin(params);
+                    SecureString strPIN = users->GetPin(params, TAO::Ledger::PinUnlock::NOTIFICATIONS);
 
                     /* Retrieve user's default NXS account. */
                     std::string strAccount = "default";

@@ -46,7 +46,7 @@ namespace TAO
             json::json ret;
 
             /* Get the PIN to be used for this API call */
-            SecureString strPIN = users->GetPin(params);
+            SecureString strPIN = users->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
 
             /* Get the session to be used for this API call */
             uint256_t nSession = users->GetSession(params);
@@ -90,10 +90,6 @@ namespace TAO
 
             /* Lock the signature chain. */
             LOCK(users->CREATE_MUTEX);
-
-            /* Check that the account is unlocked for creating transactions */
-            if(!users->CanTransact())
-                throw APIException(-16, "Account has not been unlocked for transactions.");
 
             /* Get the from register. */
             TAO::Register::Object objectTo;
