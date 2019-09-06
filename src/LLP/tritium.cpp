@@ -361,16 +361,6 @@ namespace LLP
 
                     /* Set the sync session-id. */
                     nSyncSession.store(nCurrentSession);
-
-                    /* Ask for list of blocks. This should be done regardless of whether the connection is incoming or not as
-                       either node could have the longer chain. */
-                    PushMessage(ACTION::LIST,
-                        uint8_t(SPECIFIER::SYNC),
-                        uint8_t(TYPES::BLOCK),
-                        uint8_t(TYPES::LOCATOR),
-                        TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
-                        uint1024_t(0)
-                    );
                 }
 
                 /* Subscribe to receive notifications. */
@@ -486,6 +476,7 @@ namespace LLP
 
             /* Handle for the subscribe command. */
             case ACTION::SUBSCRIBE:
+            case ACTION::UNSUBSCRIBE:
             {
                 /* Set the limits. */
                 int32_t nLimits = 16;
@@ -503,11 +494,23 @@ namespace LLP
                         /* Subscribe to getting blocks. */
                         case TYPES::BLOCK:
                         {
-                            /* Set the block flag. */
-                            nNotifications |= SUBSCRIPTION::BLOCK;
+                            /* Subscribe. */
+                            if(INCOMING.MESSAGE == ACTION::SUBSCRIBE)
+                            {
+                                /* Set the block flag. */
+                                nNotifications |= SUBSCRIPTION::BLOCK;
 
-                            /* Debug output. */
-                            debug::log(3, NODE, "ACTION::SUBSCRIBE: added block subscrption ", std::bitset<16>(nNotifications));
+                                /* Debug output. */
+                                debug::log(3, NODE, "ACTION::SUBSCRIBE: BLOCK ", std::bitset<16>(nNotifications));
+                            }
+                            else
+                            {
+                                /* Unset the block flag. */
+                                nNotifications &= ~SUBSCRIPTION::BLOCK;
+
+                                /* Debug output. */
+                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE: BLOCK ", std::bitset<16>(nNotifications));
+                            }
 
                             break;
                         }
@@ -515,11 +518,23 @@ namespace LLP
                         /* Subscribe to getting transactions. */
                         case TYPES::TRANSACTION:
                         {
-                            /* Set the transaction flag. */
-                            nNotifications |= SUBSCRIPTION::TRANSACTION;
+                            /* Subscribe. */
+                            if(INCOMING.MESSAGE == ACTION::SUBSCRIBE)
+                            {
+                                /* Set the block flag. */
+                                nNotifications |= SUBSCRIPTION::TRANSACTION;
 
-                            /* Debug output. */
-                            debug::log(3, NODE, "ACTION::SUBSCRIBE: added tx subscrption ", std::bitset<16>(nNotifications));
+                                /* Debug output. */
+                                debug::log(3, NODE, "ACTION::SUBSCRIBE: TRANSACTION ", std::bitset<16>(nNotifications));
+                            }
+                            else
+                            {
+                                /* Unset the transactiopn flag. */
+                                nNotifications &= ~SUBSCRIPTION::TRANSACTION;
+
+                                /* Debug output. */
+                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE: TRANSACTION ", std::bitset<16>(nNotifications));
+                            }
 
                             break;
                         }
@@ -527,15 +542,27 @@ namespace LLP
                         /* Subscribe to getting best height. */
                         case TYPES::HEIGHT:
                         {
-                            /* Set the best height flag. */
-                            nNotifications |= SUBSCRIPTION::HEIGHT;
+                            /* Subscribe. */
+                            if(INCOMING.MESSAGE == ACTION::SUBSCRIBE)
+                            {
+                                /* Set the best height flag. */
+                                nNotifications |= SUBSCRIPTION::HEIGHT;
 
-                            /* Notify node of current block height. */
-                            PushMessage(ACTION::NOTIFY,
-                                uint8_t(TYPES::HEIGHT), TAO::Ledger::ChainState::nBestHeight.load());
+                                /* Notify node of current block height. */
+                                PushMessage(ACTION::NOTIFY,
+                                    uint8_t(TYPES::HEIGHT), TAO::Ledger::ChainState::nBestHeight.load());
 
-                            /* Debug output. */
-                            debug::log(3, NODE, "ACTION::SUBSCRIBE: added height subscrption ", std::bitset<16>(nNotifications));
+                                /* Debug output. */
+                                debug::log(3, NODE, "ACTION::SUBSCRIBE: HEIGHT ", std::bitset<16>(nNotifications));
+                            }
+                            else
+                            {
+                                /* Unset the height flag. */
+                                nNotifications &= ~SUBSCRIPTION::HEIGHT;
+
+                                /* Debug output. */
+                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE: HEIGHT ", std::bitset<16>(nNotifications));
+                            }
 
                             break;
                         }
@@ -543,15 +570,27 @@ namespace LLP
                         /* Subscribe to getting checkpoints. */
                         case TYPES::CHECKPOINT:
                         {
-                            /* Set the checkpoints flag. */
-                            nNotifications |= SUBSCRIPTION::CHECKPOINT;
+                            /* Subscribe. */
+                            if(INCOMING.MESSAGE == ACTION::SUBSCRIBE)
+                            {
+                                /* Set the checkpoints flag. */
+                                nNotifications |= SUBSCRIPTION::CHECKPOINT;
 
-                            /* Notify node of current block height. */
-                            PushMessage(ACTION::NOTIFY,
-                                uint8_t(TYPES::CHECKPOINT), TAO::Ledger::ChainState::hashCheckpoint.load());
+                                /* Notify node of current block height. */
+                                PushMessage(ACTION::NOTIFY,
+                                    uint8_t(TYPES::CHECKPOINT), TAO::Ledger::ChainState::hashCheckpoint.load());
 
-                            /* Debug output. */
-                            debug::log(3, NODE, "ACTION::SUBSCRIBE: added checkpoint subscrption ", std::bitset<16>(nNotifications));
+                                /* Debug output. */
+                                debug::log(3, NODE, "ACTION::SUBSCRIBE: CHECKPOINT ", std::bitset<16>(nNotifications));
+                            }
+                            else
+                            {
+                                /* Unset the checkpoints flag. */
+                                nNotifications &= ~SUBSCRIPTION::CHECKPOINT;
+
+                                /* Debug output. */
+                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE: CHECKPOINT ", std::bitset<16>(nNotifications));
+                            }
 
                             break;
                         }
@@ -559,11 +598,23 @@ namespace LLP
                         /* Subscribe to getting addresses. */
                         case TYPES::ADDRESS:
                         {
-                            /* Set the address flag. */
-                            nNotifications |= SUBSCRIPTION::ADDRESS;
+                            /* Subscribe. */
+                            if(INCOMING.MESSAGE == ACTION::SUBSCRIBE)
+                            {
+                                /* Set the address flag. */
+                                nNotifications |= SUBSCRIPTION::ADDRESS;
 
-                            /* Debug output. */
-                            debug::log(3, NODE, "ACTION::SUBSCRIBE: added address subscrption ", std::bitset<16>(nNotifications));
+                                /* Debug output. */
+                                debug::log(3, NODE, "ACTION::SUBSCRIBE: ADDRESS ", std::bitset<16>(nNotifications));
+                            }
+                            else
+                            {
+                                /* Unset the address flag. */
+                                nNotifications &= ~SUBSCRIPTION::ADDRESS;
+
+                                /* Debug output. */
+                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE: ADDRESS ", std::bitset<16>(nNotifications));
+                            }
 
                             break;
                         }
@@ -571,11 +622,23 @@ namespace LLP
                         /* Subscribe to getting last index on list commands. */
                         case TYPES::LAST:
                         {
-                            /* Set the last flag. */
-                            nNotifications |= SUBSCRIPTION::LAST;
+                            /* Subscribe. */
+                            if(INCOMING.MESSAGE == ACTION::SUBSCRIBE)
+                            {
+                                /* Set the last flag. */
+                                nNotifications |= SUBSCRIPTION::LAST;
 
-                            /* Debug output. */
-                            debug::log(3, NODE, "ACTION::SUBSCRIBE: added last subscrption ", std::bitset<16>(nNotifications));
+                                /* Debug output. */
+                                debug::log(3, NODE, "ACTION::SUBSCRIBE: LAST ", std::bitset<16>(nNotifications));
+                            }
+                            else
+                            {
+                                /* Unset the last flag. */
+                                nNotifications &= ~SUBSCRIPTION::LAST;
+
+                                /* Debug output. */
+                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE: LAST ", std::bitset<16>(nNotifications));
+                            }
 
                             break;
                         }
@@ -583,15 +646,27 @@ namespace LLP
                         /* Subscribe to getting transactions. */
                         case TYPES::BESTCHAIN:
                         {
-                            /* Set the best chain flag. */
-                            nNotifications |= SUBSCRIPTION::BESTCHAIN;
+                            /* Subscribe. */
+                            if(INCOMING.MESSAGE == ACTION::SUBSCRIBE)
+                            {
+                                /* Set the best chain flag. */
+                                nNotifications |= SUBSCRIPTION::BESTCHAIN;
 
-                            /* Notify node of current block height. */
-                            PushMessage(ACTION::NOTIFY,
-                                uint8_t(TYPES::BESTCHAIN), TAO::Ledger::ChainState::hashBestChain.load());
+                                /* Notify node of current block height. */
+                                PushMessage(ACTION::NOTIFY,
+                                    uint8_t(TYPES::BESTCHAIN), TAO::Ledger::ChainState::hashBestChain.load());
 
-                            /* Debug output. */
-                            debug::log(3, NODE, "ACTION::SUBSCRIBE: added best chain ", std::bitset<16>(nNotifications));
+                                /* Debug output. */
+                                debug::log(3, NODE, "ACTION::SUBSCRIBE: BESTCHAIN ", std::bitset<16>(nNotifications));
+                            }
+                            else
+                            {
+                                /* Unset the last flag. */
+                                nNotifications &= ~SUBSCRIPTION::BESTCHAIN;
+
+                                /* Debug output. */
+                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE: BESTCHAIN" , std::bitset<16>(nNotifications));
+                            }
 
                             break;
                         }
@@ -605,9 +680,6 @@ namespace LLP
                         }
                     }
                 }
-
-                /* Debug output. */
-                debug::log(3, NODE, "ACTION::SUBSCRIBE: node subscribed to flags ", std::bitset<16>(nNotifications));
 
                 break;
             }
@@ -1172,12 +1244,11 @@ namespace LLP
                                 {
                                     /* Set state to synchronized. */
                                     TritiumNode::fSynchronized.store(true);
-
-                                    /* Set the sync session. */
                                     nSyncSession.store(0);
 
                                     /* Subscribe to notifications. */
                                     Subscribe(SUBSCRIPTION::HEIGHT | SUBSCRIPTION::CHECKPOINT | SUBSCRIPTION::BLOCK | SUBSCRIPTION::TRANSACTION);
+                                    Unsubscribe(SUBSCRIPTION::LAST);
 
                                     /* Log that sync is complete. */
                                     debug::log(0, NODE, "ACTION::BLOCK: Synchonization COMPLETE at ", hashBestChain.SubString());
@@ -1185,13 +1256,29 @@ namespace LLP
                             }
                             else
                             {
-                                /* Ask for list of blocks. */
-                                PushMessage(ACTION::LIST,
-                                    uint8_t(TYPES::BLOCK),
-                                    uint8_t(TYPES::LOCATOR),
-                                    TAO::Ledger::ChainState::hashBestChain.load(),
-                                    hashBestChain
-                                );
+                                /* Ask for list of blocks if this is current sync node. */
+                                if(nSyncSession == nCurrentSession)
+                                {
+                                    PushMessage(ACTION::LIST,
+                                        uint8_t(SPECIFIER::SYNC),
+                                        uint8_t(TYPES::BLOCK),
+                                        uint8_t(TYPES::LOCATOR),
+                                        TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
+                                        uint1024_t(0)
+                                    );
+                                }
+
+                                /* If we don't have this best block, attempt to get a list. */
+                                else if(!LLD::Ledger->HasBlock(hashBestChain))
+                                {
+                                    /* Ask for list of blocks. */
+                                    PushMessage(ACTION::LIST,
+                                        uint8_t(TYPES::BLOCK),
+                                        uint8_t(TYPES::LOCATOR),
+                                        TAO::Ledger::ChainState::hashBestChain.load(),
+                                        hashBestChain
+                                    );
+                                }
                             }
 
                             /* Debug output. */
@@ -1419,12 +1506,11 @@ namespace LLP
                             {
                                 /* Set state to synchronized. */
                                 TritiumNode::fSynchronized.store(true);
-
-                                /* Set the sync session. */
                                 nSyncSession.store(0);
 
                                 /* Subscribe to notifications. */
                                 Subscribe(SUBSCRIPTION::HEIGHT | SUBSCRIPTION::CHECKPOINT | SUBSCRIPTION::BLOCK | SUBSCRIPTION::TRANSACTION);
+                                Unsubscribe(SUBSCRIPTION::LAST);
 
                                 /* Log that sync is complete. */
                                 debug::log(0, NODE, "ACTION::BLOCK: Synchonization COMPLETE at ", hashBestChain.SubString());
@@ -1620,8 +1706,16 @@ namespace LLP
     }
 
 
+    /* Unsubscribe from another node for notifications. */
+    void TritiumNode::Unsubscribe(const uint16_t nFlags)
+    {
+        //this method just wraps subscribe
+        Subscribe(nFlags, false);
+    }
+
+
     /* Subscribe to another node for notifications. */
-    void TritiumNode::Subscribe(const uint16_t nFlags)
+    void TritiumNode::Subscribe(const uint16_t nFlags, bool fSubscribe)
     {
         /* Build subscription message. */
         DataStream ssMessage(SER_NETWORK, MIN_PROTO_VERSION);
@@ -1631,7 +1725,24 @@ namespace LLP
         {
             /* Build the message. */
             ssMessage << uint8_t(TYPES::BLOCK);
-            nSubscriptions |= SUBSCRIPTION::BLOCK;
+
+            /* Check for subscription. */
+            if(fSubscribe)
+            {
+                /* Set the flag. */
+                nSubscriptions |=  SUBSCRIPTION::BLOCK;
+
+                /* Debug output. */
+                debug::log(3, NODE, "SUBSCRIBING TO BLOCK ", std::bitset<16>(nSubscriptions));
+            }
+            else
+            {
+                /* Set the flag. */
+                nSubscriptions &= ~SUBSCRIPTION::BLOCK;
+
+                /* Debug output. */
+                debug::log(3, NODE, "UNSUBSCRIBING FROM BLOCK ", std::bitset<16>(nSubscriptions));
+            }
         }
 
         /* Check for transaction. */
@@ -1639,7 +1750,24 @@ namespace LLP
         {
             /* Build the message. */
             ssMessage << uint8_t(TYPES::TRANSACTION);
-            nSubscriptions |= SUBSCRIPTION::TRANSACTION;
+
+            /* Check for subscription. */
+            if(fSubscribe)
+            {
+                /* Set the flag. */
+                nSubscriptions |=  SUBSCRIPTION::TRANSACTION;
+
+                /* Debug output. */
+                debug::log(3, NODE, "SUBSCRIBING TO TRANSACTION ", std::bitset<16>(nSubscriptions));
+            }
+            else
+            {
+                /* Set the flag. */
+                nSubscriptions &= ~SUBSCRIPTION::TRANSACTION;
+
+                /* Debug output. */
+                debug::log(3, NODE, "UNSUBSCRIBING FROM TRANSACTION ", std::bitset<16>(nSubscriptions));
+            }
         }
 
         /* Check for time seed. */
@@ -1647,7 +1775,24 @@ namespace LLP
         {
             /* Build the message. */
             ssMessage << uint8_t(TYPES::TIMESEED);
-            nSubscriptions |= SUBSCRIPTION::TIMESEED;
+
+            /* Check for subscription. */
+            if(fSubscribe)
+            {
+                /* Set the flag. */
+                nSubscriptions |=  SUBSCRIPTION::TIMESEED;
+
+                /* Debug output. */
+                debug::log(3, NODE, "SUBSCRIBING TO TIMESEED ", std::bitset<16>(nSubscriptions));
+            }
+            else
+            {
+                /* Set the flag. */
+                nSubscriptions &= ~SUBSCRIPTION::TIMESEED;
+
+                /* Debug output. */
+                debug::log(3, NODE, "UNSUBSCRIBING FROM TIMESEED ", std::bitset<16>(nSubscriptions));
+            }
         }
 
         /* Check for height. */
@@ -1655,7 +1800,24 @@ namespace LLP
         {
             /* Build the message. */
             ssMessage << uint8_t(TYPES::HEIGHT);
-            nSubscriptions |= SUBSCRIPTION::HEIGHT;
+
+            /* Check for subscription. */
+            if(fSubscribe)
+            {
+                /* Set the flag. */
+                nSubscriptions |=  SUBSCRIPTION::HEIGHT;
+
+                /* Debug output. */
+                debug::log(3, NODE, "SUBSCRIBING TO HEIGHT ", std::bitset<16>(nSubscriptions));
+            }
+            else
+            {
+                /* Set the flag. */
+                nSubscriptions &= ~SUBSCRIPTION::HEIGHT;
+
+                /* Debug output. */
+                debug::log(3, NODE, "UNSUBSCRIBING FROM HEIGHT ", std::bitset<16>(nSubscriptions));
+            }
         }
 
         /* Check for checkpoint. */
@@ -1663,7 +1825,24 @@ namespace LLP
         {
             /* Build the message. */
             ssMessage << uint8_t(TYPES::CHECKPOINT);
-            nSubscriptions |= SUBSCRIPTION::CHECKPOINT;
+
+            /* Check for subscription. */
+            if(fSubscribe)
+            {
+                /* Set the flag. */
+                nSubscriptions |=  SUBSCRIPTION::CHECKPOINT;
+
+                /* Debug output. */
+                debug::log(3, NODE, "SUBSCRIBING TO CHECKPOINT ", std::bitset<16>(nSubscriptions));
+            }
+            else
+            {
+                /* Set the flag. */
+                nSubscriptions &= ~SUBSCRIPTION::CHECKPOINT;
+
+                /* Debug output. */
+                debug::log(3, NODE, "UNSUBSCRIBING FROM CHECKPOINT ", std::bitset<16>(nSubscriptions));
+            }
         }
 
         /* Check for address. */
@@ -1671,7 +1850,24 @@ namespace LLP
         {
             /* Build the message. */
             ssMessage << uint8_t(TYPES::ADDRESS);
-            nSubscriptions |= SUBSCRIPTION::ADDRESS;
+
+            /* Check for subscription. */
+            if(fSubscribe)
+            {
+                /* Set the flag. */
+                nSubscriptions |=  SUBSCRIPTION::ADDRESS;
+
+                /* Debug output. */
+                debug::log(3, NODE, "SUBSCRIBING TO ADDRESS ", std::bitset<16>(nSubscriptions));
+            }
+            else
+            {
+                /* Set the flag. */
+                nSubscriptions &= ~SUBSCRIPTION::ADDRESS;
+
+                /* Debug output. */
+                debug::log(3, NODE, "UNSUBSCRIBING FROM ADDRESS ", std::bitset<16>(nSubscriptions));
+            }
         }
 
         /* Check for last. */
@@ -1679,7 +1875,24 @@ namespace LLP
         {
             /* Build the message. */
             ssMessage << uint8_t(TYPES::LAST);
-            nSubscriptions |= SUBSCRIPTION::LAST;
+
+            /* Check for subscription. */
+            if(fSubscribe)
+            {
+                /* Set the flag. */
+                nSubscriptions |=  SUBSCRIPTION::LAST;
+
+                /* Debug output. */
+                debug::log(3, NODE, "SUBSCRIBING TO LAST ", std::bitset<16>(nSubscriptions));
+            }
+            else
+            {
+                /* Set the flag. */
+                nSubscriptions &= ~SUBSCRIPTION::LAST;
+
+                /* Debug output. */
+                debug::log(3, NODE, "UNSUBSCRIBING FROM LAST ", std::bitset<16>(nSubscriptions));
+            }
         }
 
         /* Check for last. */
@@ -1687,13 +1900,28 @@ namespace LLP
         {
             /* Build the message. */
             ssMessage << uint8_t(TYPES::BESTCHAIN);
-            nSubscriptions |= SUBSCRIPTION::BESTCHAIN;
+
+            /* Check for subscription. */
+            if(fSubscribe)
+            {
+                /* Set the flag. */
+                nSubscriptions |=  SUBSCRIPTION::BESTCHAIN;
+
+                /* Debug output. */
+                debug::log(3, NODE, "SUBSCRIBING TO BESTCHAIN ", std::bitset<16>(nSubscriptions));
+            }
+            else
+            {
+                /* Set the flag. */
+                nSubscriptions &= ~SUBSCRIPTION::BESTCHAIN;
+
+                /* Debug output. */
+                debug::log(3, NODE, "UNSUBSCRIBING FROM BESTCHAIN ", std::bitset<16>(nSubscriptions));
+            }
         }
 
         /* Write the subscription packet. */
-        WritePacket(NewMessage(ACTION::SUBSCRIBE, ssMessage));
-
-        debug::log(0, "Subscribed to ", std::bitset<16>(nSubscriptions));
+        WritePacket(NewMessage((fSubscribe ? ACTION::SUBSCRIBE : ACTION::UNSUBSCRIBE), ssMessage));
     }
 
 

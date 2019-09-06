@@ -41,6 +41,7 @@ namespace LLP
             AUTH         = 0x13,
             VERSION      = 0x14,
             SUBSCRIBE    = 0x15,
+            UNSUBSCRIBE  = 0x16,
 
             /* Protocol. */
             PING         = 0x1a,
@@ -310,14 +311,25 @@ namespace LLP
         bool Authorized() const;
 
 
+        /** Unsubscribe
+         *
+         *  Unsubscribe from another node for notifications.
+         *
+         *  @param[in] nFlags The subscription flags.
+         *
+         **/
+        void Unsubscribe(const uint16_t nFlags);
+
+
         /** Subscribe
          *
          *  Subscribe to another node for notifications.
          *
          *  @param[in] nFlags The subscription flags.
+         *  @param[in] fSubscribe Flag to determine whether subscibing or unsubscribing
          *
          **/
-        void Subscribe(const uint16_t nFlags);
+        void Subscribe(const uint16_t nFlags, bool fSubscribe = true);
 
 
         /** Notifications
