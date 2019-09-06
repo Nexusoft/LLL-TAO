@@ -135,7 +135,8 @@ namespace TAO
                         ssData >> tx;
 
                         /* Accept into memory pool. */
-                        mempool.AddUnchecked(tx);
+                        if(!LLD::Ledger->HasTx(tx.GetHash()))
+                            mempool.AddUnchecked(tx);
                         //throw debug::exception(FUNCTION, "sync block contains invalid transaction");
 
                         /* Add transaction to binary data. */
@@ -158,7 +159,8 @@ namespace TAO
                         ssData >> tx;
 
                         /* Accept into memory pool. */
-                        mempool.AddUnchecked(tx);
+                        if(!LLD::Legacy->HasTx(tx.GetHash()))
+                            mempool.AddUnchecked(tx);
                         //throw debug::exception(FUNCTION, "sync block contains invalid transaction");
 
                         /* Add transaction to binary data. */
