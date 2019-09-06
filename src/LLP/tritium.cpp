@@ -366,7 +366,7 @@ namespace LLP
                 /* Subscribe to receive notifications. */
                 if(fSynchronized.load())
                     Subscribe(
-                        SUBSCRIPTION::HEIGHT
+                        SUBSCRIPTION::BESTHEIGHT
                       | SUBSCRIPTION::CHECKPOINT
                       | SUBSCRIPTION::BLOCK
                       | SUBSCRIPTION::TRANSACTION
@@ -540,28 +540,28 @@ namespace LLP
                         }
 
                         /* Subscribe to getting best height. */
-                        case TYPES::HEIGHT:
+                        case TYPES::BESTHEIGHT:
                         {
                             /* Subscribe. */
                             if(INCOMING.MESSAGE == ACTION::SUBSCRIBE)
                             {
                                 /* Set the best height flag. */
-                                nNotifications |= SUBSCRIPTION::HEIGHT;
+                                nNotifications |= SUBSCRIPTION::BESTHEIGHT;
 
                                 /* Notify node of current block height. */
                                 PushMessage(ACTION::NOTIFY,
-                                    uint8_t(TYPES::HEIGHT), TAO::Ledger::ChainState::nBestHeight.load());
+                                    uint8_t(TYPES::BESTHEIGHT), TAO::Ledger::ChainState::nBestHeight.load());
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "ACTION::SUBSCRIBE: HEIGHT ", std::bitset<16>(nNotifications));
+                                debug::log(3, NODE, "ACTION::SUBSCRIBE: BESTHEIGHT ", std::bitset<16>(nNotifications));
                             }
                             else
                             {
                                 /* Unset the height flag. */
-                                nNotifications &= ~SUBSCRIPTION::HEIGHT;
+                                nNotifications &= ~SUBSCRIPTION::BESTHEIGHT;
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE: HEIGHT ", std::bitset<16>(nNotifications));
+                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE: BESTHEIGHT ", std::bitset<16>(nNotifications));
                             }
 
                             break;
@@ -1156,11 +1156,11 @@ namespace LLP
                         }
 
                         /* Standard type for height. */
-                        case TYPES::HEIGHT:
+                        case TYPES::BESTHEIGHT:
                         {
                             /* Check for subscription. */
-                            if(!(nSubscriptions & SUBSCRIPTION::HEIGHT))
-                                return debug::drop(NODE, "HEIGHT: unsolicited notification");
+                            if(!(nSubscriptions & SUBSCRIPTION::BESTHEIGHT))
+                                return debug::drop(NODE, "BESTHEIGHT: unsolicited notification");
 
                             /* Check for legacy. */
                             if(fLegacy)
@@ -1170,7 +1170,7 @@ namespace LLP
                             ssPacket >> nCurrentHeight;
 
                             /* Debug output. */
-                            debug::log(3, NODE, "ACTION::NOTIFY: HEIGHT ", nCurrentHeight);
+                            debug::log(3, NODE, "ACTION::NOTIFY: BESTHEIGHT ", nCurrentHeight);
 
                             break;
                         }
@@ -1218,7 +1218,7 @@ namespace LLP
                                     nSyncSession.store(0);
 
                                     /* Subscribe to notifications. */
-                                    Subscribe(SUBSCRIPTION::HEIGHT | SUBSCRIPTION::CHECKPOINT | SUBSCRIPTION::BLOCK | SUBSCRIPTION::TRANSACTION);
+                                    Subscribe(SUBSCRIPTION::BESTHEIGHT | SUBSCRIPTION::CHECKPOINT | SUBSCRIPTION::BLOCK | SUBSCRIPTION::TRANSACTION);
 
                                     /* Unsubcribe from last. */
                                     Unsubscribe(SUBSCRIPTION::LASTINDEX);
@@ -1266,7 +1266,7 @@ namespace LLP
                                     nSyncSession.store(0);
 
                                     /* Subscribe to notifications. */
-                                    Subscribe(SUBSCRIPTION::HEIGHT | SUBSCRIPTION::CHECKPOINT | SUBSCRIPTION::BLOCK | SUBSCRIPTION::TRANSACTION);
+                                    Subscribe(SUBSCRIPTION::BESTHEIGHT | SUBSCRIPTION::CHECKPOINT | SUBSCRIPTION::BLOCK | SUBSCRIPTION::TRANSACTION);
 
                                     /* Unsubcribe from last. */
                                     Unsubscribe(SUBSCRIPTION::LASTINDEX);
@@ -1798,27 +1798,27 @@ namespace LLP
         }
 
         /* Check for height. */
-        if(nFlags & SUBSCRIPTION::HEIGHT)
+        if(nFlags & SUBSCRIPTION::BESTHEIGHT)
         {
             /* Build the message. */
-            ssMessage << uint8_t(TYPES::HEIGHT);
+            ssMessage << uint8_t(TYPES::BESTHEIGHT);
 
             /* Check for subscription. */
             if(fSubscribe)
             {
                 /* Set the flag. */
-                nSubscriptions |=  SUBSCRIPTION::HEIGHT;
+                nSubscriptions |=  SUBSCRIPTION::BESTHEIGHT;
 
                 /* Debug output. */
-                debug::log(3, NODE, "SUBSCRIBING TO HEIGHT ", std::bitset<16>(nSubscriptions));
+                debug::log(3, NODE, "SUBSCRIBING TO BESTHEIGHT ", std::bitset<16>(nSubscriptions));
             }
             else
             {
                 /* Set the flag. */
-                nSubscriptions &= ~SUBSCRIPTION::HEIGHT;
+                nSubscriptions &= ~SUBSCRIPTION::BESTHEIGHT;
 
                 /* Debug output. */
-                debug::log(3, NODE, "UNSUBSCRIBING FROM HEIGHT ", std::bitset<16>(nSubscriptions));
+                debug::log(3, NODE, "UNSUBSCRIBING FROM BESTHEIGHT ", std::bitset<16>(nSubscriptions));
             }
         }
 
@@ -2003,7 +2003,7 @@ namespace LLP
 
 
                 /* Check for height subscription. */
-                case TYPES::HEIGHT:
+                case TYPES::BESTHEIGHT:
                 {
                     /* Get the index. */
                     uint32_t nHeight;
@@ -2014,10 +2014,10 @@ namespace LLP
                         continue;
 
                     /* Check subscription. */
-                    if(nNotifications & SUBSCRIPTION::HEIGHT)
+                    if(nNotifications & SUBSCRIPTION::BESTHEIGHT)
                     {
                         /* Write transaction to stream. */
-                        ssRelay << uint8_t(TYPES::HEIGHT);
+                        ssRelay << uint8_t(TYPES::BESTHEIGHT);
                         ssRelay << nHeight;
                     }
 
