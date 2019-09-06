@@ -1576,23 +1576,122 @@ namespace LLP
         /* Build a response data stream. */
         DataStream ssRelay(SER_NETWORK, MIN_PROTO_VERSION);
 
-        /* Get the first notify type. */
-        uint8_t nType;
-        ssData >> nType;
-
-        /* Skip over legacy. */
-        if(nType == SPECIFIER::LEGACY)
+        /* Loop until reached end of stream. */
+        while(!ssData.End())
+        {
+            /* Get the first notify type. */
+            uint8_t nType;
             ssData >> nType;
 
-        /* Switch based on type. */
-        switch(nType)
-        {
-            /* Check for block subscription. */
-            case TYPES::BLOCK:
+            /* Skip over legacy. */
+            bool fLegacy = false;
+            if(nType == SPECIFIER::LEGACY)
             {
-                break;
+                /* Set legacy specifier. */
+                fLegacy = true;
+
+                /* Go to next type in stream. */
+                ssData >> nType;
             }
 
+            /* Switch based on type. */
+            switch(nType)
+            {
+                /* Check for block subscription. */
+                case TYPES::BLOCK:
+                {
+                    /* Get the index. */
+                    uint1024_t hashBlock;
+                    ssData >> hashBlock;
+
+                    /* Check subscription. */
+                    if(nNotifications & SUBSCRIPTION::BLOCK)
+                    {
+                        /* Check for legacy. */
+                        if(fLegacy)
+                            ssRelay << uint8_t(SPECIFIER::LEGACY);
+
+                        /* Write block to stream. */
+                        ssRelay << uint8_t(TYPES::BLOCK);
+                        ssRelay << hashBlock;
+                    }
+
+                    break;
+                }
+
+
+                /* Check for transaction subscription. */
+                case TYPES::TRANSACTION:
+                {
+                    /* Get the index. */
+                    uint512_t hashTx;
+                    ssData >> hashTx;
+
+                    /* Check subscription. */
+                    if(nNotifications & SUBSCRIPTION::TRANSACTION)
+                    {
+                        /* Check for legacy. */
+                        if(fLegacy)
+                            ssRelay << uint8_t(SPECIFIER::LEGACY);
+
+                        /* Write transaction to stream. */
+                        ssRelay << uint8_t(TYPES::TRANSACTION);
+                        ssRelay << hashTx;
+                    }
+
+                    break;
+                }
+
+
+                /* Check for height subscription. */
+                case TYPES::HEIGHT:
+                {
+                    /* Get the index. */
+                    uint32_t nHeight;
+                    ssData >> nHeight;
+
+                    /* Skip malformed requests. */
+                    if(fLegacy)
+                        continue;
+
+                    /* Check subscription. */
+                    if(nNotifications & SUBSCRIPTION::HEIGHT)
+                    {
+                        /* Write transaction to stream. */
+                        ssRelay << uint8_t(TYPES::HEIGHT);
+                        ssRelay << nHeight;
+                    }
+
+                    break;
+                }
+
+
+                /* Check for checkpoint subscription. */
+                case TYPES::CHECKPOINT:
+                {
+                    /* Get the index. */
+                    uint1024_t hashCheck;
+                    ssData >> hashCheck;
+
+                    /* Skip malformed requests. */
+                    if(fLegacy)
+                        continue;
+
+                    /* Check subscription. */
+                    if(nNotifications & SUBSCRIPTION::CHECKPOINT)
+                    {
+                        /* Write transaction to stream. */
+                        ssRelay << uint8_t(TYPES::CHECKPOINT);
+                        ssRelay << hashCheck;
+                    }
+
+                    break;
+                }
+
+                /* Default catch (relay up to this point) */
+                default:
+                    return ssRelay;
+            }
         }
 
         return ssRelay;
