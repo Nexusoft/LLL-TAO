@@ -154,11 +154,6 @@ namespace LLP
                 {
                     /* Respond with version message. */
                     PushMessage(ACTION::VERSION, PROTOCOL_VERSION, SESSION_ID, version::CLIENT_VERSION_BUILD_STRING);
-
-                    /* Notify node of current block height. */
-                    PushMessage(ACTION::NOTIFY,
-                        uint8_t(TYPES::HEIGHT),     TAO::Ledger::ChainState::nBestHeight.load(),
-                        uint8_t(TYPES::CHECKPOINT), TAO::Ledger::ChainState::hashCheckpoint.load());
                 }
 
                 break;
@@ -347,13 +342,11 @@ namespace LLP
                     /* Respond with version message. */
                     PushMessage(uint8_t(ACTION::VERSION), PROTOCOL_VERSION, SESSION_ID, version::CLIENT_VERSION_BUILD_STRING);
 
-                    /* Subscribe to this node. */
-                    Subscribe(SUBSCRIPTION::HEIGHT | SUBSCRIPTION::CHECKPOINT);
                 }
                 else if(nSyncSession == 0)
                 {
                     /* Subscribe to this node. */
-                    Subscribe(SUBSCRIPTION::LAST | SUBSCRIPTION::HEIGHT | SUBSCRIPTION::CHECKPOINT);
+                    Subscribe(SUBSCRIPTION::LAST);
 
                     /* Set the sync session-id. */
                     nSyncSession.store(nCurrentSession);
@@ -368,11 +361,9 @@ namespace LLP
                         uint1024_t(0)
                     );
                 }
-                else
-                {
-                    /* Subscribe to notifications. */
-                    Subscribe(SUBSCRIPTION::HEIGHT | SUBSCRIPTION::CHECKPOINT);
-                }
+
+                /* Subscribe to receive notifications. */
+                Subscribe(SUBSCRIPTION::HEIGHT | SUBSCRIPTION::CHECKPOINT | SUBSCRIPTION::BLOCK | SUBSCRIPTION::TRANSACTION);
 
                 break;
             }
