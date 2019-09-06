@@ -132,13 +132,13 @@ namespace LLP
         virtual ~BaseConnection();
 
 
-        /** Subscribed
+        /** Notifications
          *
-         *  Determine if a node is subscribed to receive relay message.
+         *  Filter out relay requests with notifications node is subscribed to.
          *
          **/
         template<typename MessageType>
-        const DataStream Subscribed(const MessageType& message, const DataStream& ssData) const
+        const DataStream Notifications(const MessageType& message, const DataStream& ssData) const
         {
             return ssData; //copy over relay like normal for all items to be relayed
         }

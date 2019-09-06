@@ -310,7 +310,7 @@ namespace LLP
         void Subscribe(const uint16_t nFlags);
 
 
-        /** Subscribed
+        /** Notifications
          *
          *  Checks if a node is subscribed to receive a notification.
          *
@@ -319,7 +319,7 @@ namespace LLP
          *  @return a data stream with relevant relay information
          *
          **/
-        const DataStream Subscribed(const uint16_t nMsg, const DataStream& ssData) const;
+        const DataStream Notifications(const uint16_t nMsg, const DataStream& ssData) const;
 
 
         /** SessionActive

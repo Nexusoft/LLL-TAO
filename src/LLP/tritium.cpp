@@ -1585,7 +1585,7 @@ namespace LLP
 
 
     /* Checks if a node is subscribed to receive a notification. */
-    const DataStream TritiumNode::Subscribed(const uint16_t nMsg, const DataStream& ssData) const
+    const DataStream TritiumNode::Notifications(const uint16_t nMsg, const DataStream& ssData) const
     {
         /* Only relay when message is notify. */
         if(nMsg != ACTION::NOTIFY)
