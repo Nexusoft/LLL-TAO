@@ -347,15 +347,13 @@ namespace LLP
                     /* Respond with version message. */
                     PushMessage(uint8_t(ACTION::VERSION), PROTOCOL_VERSION, SESSION_ID, version::CLIENT_VERSION_BUILD_STRING);
 
-                    /* Notify node of current block height. */
-                    PushMessage(ACTION::NOTIFY,
-                        uint8_t(TYPES::HEIGHT),     TAO::Ledger::ChainState::nBestHeight.load(),
-                        uint8_t(TYPES::CHECKPOINT), TAO::Ledger::ChainState::hashCheckpoint.load());
+                    /* Subscribe to this node. */
+                    Subscribe(SUBSCRIPTION::HEIGHT | SUBSCRIPTION::CHECKPOINT);
                 }
                 else if(nSyncSession == 0)
                 {
                     /* Subscribe to this node. */
-                    Subscribe(SUBSCRIPTION::LAST);
+                    Subscribe(SUBSCRIPTION::LAST | SUBSCRIPTION::HEIGHT | SUBSCRIPTION::CHECKPOINT);
 
                     /* Set the sync session-id. */
                     nSyncSession.store(nCurrentSession);
@@ -369,6 +367,11 @@ namespace LLP
                         TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
                         uint1024_t(0)
                     );
+                }
+                else
+                {
+                    /* Subscribe to notifications. */
+                    Subscribe(SUBSCRIPTION::HEIGHT | SUBSCRIPTION::CHECKPOINT);
                 }
 
                 break;
@@ -518,6 +521,10 @@ namespace LLP
                             /* Set the best height flag. */
                             nNotifications |= SUBSCRIPTION::HEIGHT;
 
+                            /* Notify node of current block height. */
+                            PushMessage(ACTION::NOTIFY,
+                                uint8_t(TYPES::HEIGHT),     TAO::Ledger::ChainState::nBestHeight.load());
+
                             /* Debug output. */
                             debug::log(3, NODE, "ACTION::SUBSCRIBE: added height subscrption ", std::bitset<16>(nNotifications));
 
@@ -529,6 +536,10 @@ namespace LLP
                         {
                             /* Set the checkpoints flag. */
                             nNotifications |= SUBSCRIPTION::CHECKPOINT;
+
+                            /* Notify node of current block height. */
+                            PushMessage(ACTION::NOTIFY,
+                                uint8_t(TYPES::CHECKPOINT),     TAO::Ledger::ChainState::hashCheckpoint.load());
 
                             /* Debug output. */
                             debug::log(3, NODE, "ACTION::SUBSCRIBE: added checkpoint subscrption ", std::bitset<16>(nNotifications));
@@ -994,6 +1005,10 @@ namespace LLP
                         /* Standard type for a block. */
                         case TYPES::BLOCK:
                         {
+                            /* Check for subscription. */
+                            if(!(nSubscriptions & SUBSCRIPTION::BLOCK))
+                                return debug::drop(NODE, "BLOCK: unsolicited notification");
+
                             /* Check for legacy. */
                             if(fLegacy)
                                 return debug::drop(NODE, "block notify can't have legacy specifier");
@@ -1015,6 +1030,10 @@ namespace LLP
                         /* Standard type for a block. */
                         case TYPES::TRANSACTION:
                         {
+                            /* Check for subscription. */
+                            if(!(nSubscriptions & SUBSCRIPTION::TRANSACTION))
+                                return debug::drop(NODE, "TRANSACTION: unsolicited notification");
+
                             /* Get the index of transaction. */
                             uint512_t hashTx;
                             ssPacket >> hashTx;
@@ -1042,6 +1061,10 @@ namespace LLP
                         /* Standard type for height. */
                         case TYPES::HEIGHT:
                         {
+                            /* Check for subscription. */
+                            if(!(nSubscriptions & SUBSCRIPTION::HEIGHT))
+                                return debug::drop(NODE, "HEIGHT: unsolicited notification");
+
                             /* Check for legacy. */
                             if(fLegacy)
                                 return debug::drop(NODE, "height can't have legacy specifier");
@@ -1058,6 +1081,10 @@ namespace LLP
                         /* Standard type for a checkpoint. */
                         case TYPES::CHECKPOINT:
                         {
+                            /* Check for subscription. */
+                            if(!(nSubscriptions & SUBSCRIPTION::CHECKPOINT))
+                                return debug::drop(NODE, "CHECKPOINT: unsolicited notification");
+
                             /* Check for legacy. */
                             if(fLegacy)
                                 return debug::drop(NODE, "checkpoint can't have legacy specifier");
@@ -1077,7 +1104,7 @@ namespace LLP
                         {
                             /* Check for subscription. */
                             if(!(nSubscriptions & SUBSCRIPTION::LAST))
-                                return debug::drop(NODE, "unsolicited notification");
+                                return debug::drop(NODE, "LAST: unsolicited notification");
 
                             /* Keep track of current checkpoint. */
                             uint1024_t hashLast;
