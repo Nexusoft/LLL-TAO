@@ -94,9 +94,13 @@ namespace debug
     /** LogStartup
      *
      *  Log startup information.
+     *  This will read/log the config file separately from the startup arguments passed as parameters.
+     *
+     *  @param argc The argc value from main()
+     *  @param argv The argv value from main()
      *
      **/
-    void LogStartup();
+    void LogStartup(int argc, char** argv);
 
 
     /** print_args

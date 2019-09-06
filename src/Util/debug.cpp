@@ -107,12 +107,12 @@ namespace debug
 
 
     /*  Log startup information. */
-    void LogStartup()
+    void LogStartup(int argc, char** argv)
     {
-        /* Log the Operating System. */
         log(0, "Startup time ", convert::DateTimeStrFormat(runtime::timestamp()));
         log(0, version::CLIENT_VERSION_BUILD_STRING);
 
+        /* Log the Operating System. */
     #ifdef WIN32
         log(0, "Microsoft Windows Build (created ", version::CLIENT_DATE, ")");
     #else
@@ -168,23 +168,17 @@ namespace debug
 
         /* Log command line parameters (which can override conf file settings) */
         std::string cmdLineParms = "";
-        for(const auto& arg : config::mapArgs)
+        for(int i = 1; i < argc; i++)
         {
-            cmdLineParms += arg.first;
-            if(arg.second.empty())
-            {
-                cmdLineParms += " ";
-                continue;
-            }
-            else
-                cmdLineParms += "=";
-
             /* Check for password parameters and hide them in the debug output. */
-            if(arg.first.compare(0, 12, "-rpcpassword") == 0
-            || arg.first.compare(0, 12, "-apipassword") == 0)
-                cmdLineParms += "XXXXXXXX ";
+            if(std::string(argv[i]).compare(0, 12, "-rpcpassword") == 0)
+                cmdLineParms += "-rpcpassword=XXXXXXXX ";
+
+            else if(std::string(argv[i]).compare(0, 12, "-apipassword") == 0)
+                cmdLineParms += "-apipassword=XXXXXXXX ";
+
             else
-                cmdLineParms += arg.second + " ";
+                cmdLineParms += std::string(argv[i]) + " ";
         }
 
         if(cmdLineParms == "")
