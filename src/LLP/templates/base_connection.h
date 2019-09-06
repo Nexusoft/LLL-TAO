@@ -16,7 +16,10 @@ ________________________________________________________________________________
 #define NEXUS_LLP_TEMPLATES_BASE_CONNECTION_H
 
 #include <LLP/templates/socket.h>
+
 #include <Util/include/mutex.h>
+#include <Util/templates/datastream.h>
+
 #include <vector>
 #include <condition_variable>
 
@@ -101,8 +104,10 @@ namespace LLP
         /** Flag to determine if event occurred. **/
         std::atomic<bool> fEVENT;
 
+
         /** Mutex used for event condition variable **/
         std::mutex EVENT_MUTEX;
+
 
         /** event condition variable to wake up sleeping connection. **/
         std::condition_variable EVENT_CONDITION;
@@ -133,9 +138,9 @@ namespace LLP
          *
          **/
         template<typename MessageType>
-        bool Subscribed(const MessageType& message)
+        const DataStream Subscribed(const MessageType& message, const DataStream& ssData) const
         {
-            return true;
+            return ssData; //copy over relay like normal for all items to be relayed
         }
 
 

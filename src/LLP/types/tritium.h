@@ -316,10 +316,10 @@ namespace LLP
          *
          *  @param[in] nMsg The message to check for
          *
-         *  @return true if node is subscribed.
+         *  @return a data stream with relevant relay information
          *
          **/
-        bool Subscribed(const uint16_t nMsg);
+        const DataStream Subscribed(const uint16_t nMsg, const DataStream& ssData) const;
 
 
         /** SessionActive

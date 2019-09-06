@@ -1567,22 +1567,35 @@ namespace LLP
 
 
     /* Checks if a node is subscribed to receive a notification. */
-    bool TritiumNode::Subscribed(const uint16_t nMsg)
+    const DataStream TritiumNode::Subscribed(const uint16_t nMsg, const DataStream& ssData) const
     {
-        /* Switch based on message. */
-        switch(nMsg)
+        /* Only relay when message is notify. */
+        if(nMsg != ACTION::NOTIFY)
+            return DataStream(SER_NETWORK, MIN_PROTO_VERSION);
+
+        /* Build a response data stream. */
+        DataStream ssRelay(SER_NETWORK, MIN_PROTO_VERSION);
+
+        /* Get the first notify type. */
+        uint8_t nType;
+        ssData >> nType;
+
+        /* Skip over legacy. */
+        if(nType == SPECIFIER::LEGACY)
+            ssData >> nType;
+
+        /* Switch based on type. */
+        switch(nType)
         {
-            /* Handle for block relay messages. */
+            /* Check for block subscription. */
             case TYPES::BLOCK:
             {
                 break;
             }
 
-            default:
-                return false;
         }
 
-        return true;
+        return ssRelay;
     }
 
 
