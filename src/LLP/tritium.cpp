@@ -1208,15 +1208,34 @@ namespace LLP
                             ssPacket >> hashLast;
 
                             /* Check if is sync node. */
-                            if(nCurrentSession == nSyncSession.load() && !fSynchronized.load())
+                            if(nCurrentSession == nSyncSession.load())
                             {
-                                /* Ask for list of blocks. */
-                                PushMessage(ACTION::LIST,
-                                    uint8_t(TYPES::BLOCK),
-                                    uint8_t(TYPES::UINT1024_T),
-                                    hashLast,
-                                    uint1024_t(0)
-                                );
+                                /* Check for complete synchronization. */
+                                if(hashBestChain == TAO::Ledger::ChainState::hashBestChain.load())
+                                {
+                                    /* Set state to synchronized. */
+                                    fSynchronized.store(true);
+                                    nSyncSession.store(0);
+
+                                    /* Subscribe to notifications. */
+                                    Subscribe(SUBSCRIPTION::HEIGHT | SUBSCRIPTION::CHECKPOINT | SUBSCRIPTION::BLOCK | SUBSCRIPTION::TRANSACTION);
+
+                                    /* Unsubcribe from last. */
+                                    Unsubscribe(SUBSCRIPTION::LAST);
+
+                                    /* Log that sync is complete. */
+                                    debug::log(0, NODE, "ACTION::NOTIFY: Synchonization COMPLETE at ", hashBestChain.SubString());
+                                }
+                                else
+                                {
+                                    /* Ask for list of blocks. */
+                                    PushMessage(ACTION::LIST,
+                                        uint8_t(TYPES::BLOCK),
+                                        uint8_t(TYPES::UINT1024_T),
+                                        hashLast,
+                                        uint1024_t(0)
+                                    );
+                                }
                             }
 
                             /* Debug output. */
@@ -1248,10 +1267,12 @@ namespace LLP
 
                                     /* Subscribe to notifications. */
                                     Subscribe(SUBSCRIPTION::HEIGHT | SUBSCRIPTION::CHECKPOINT | SUBSCRIPTION::BLOCK | SUBSCRIPTION::TRANSACTION);
+
+                                    /* Unsubcribe from last. */
                                     Unsubscribe(SUBSCRIPTION::LAST);
 
                                     /* Log that sync is complete. */
-                                    debug::log(0, NODE, "ACTION::BLOCK: Synchonization COMPLETE at ", hashBestChain.SubString());
+                                    debug::log(0, NODE, "ACTION::NOTIFY: Synchonization COMPLETE at ", hashBestChain.SubString());
                                 }
                             }
                             else
@@ -1500,30 +1521,11 @@ namespace LLP
 
                             /* Process the block. */
                             TAO::Ledger::Process(tritium, nStatus);
-
-                            /* Check the synchronization status. */
-                            if(tritium.GetHash() == hashBestChain)
-                            {
-                                /* Set state to synchronized. */
-                                TritiumNode::fSynchronized.store(true);
-                                nSyncSession.store(0);
-
-                                /* Subscribe to notifications. */
-                                Subscribe(SUBSCRIPTION::HEIGHT | SUBSCRIPTION::CHECKPOINT | SUBSCRIPTION::BLOCK | SUBSCRIPTION::TRANSACTION);
-                                Unsubscribe(SUBSCRIPTION::LAST);
-
-                                /* Log that sync is complete. */
-                                debug::log(0, NODE, "ACTION::BLOCK: Synchonization COMPLETE at ", hashBestChain.SubString());
-                            }
                         }
                         else
                         {
                             /* Build a tritium block from sync block. */
                             Legacy::LegacyBlock legacy(block);
-
-                            /* Check if we reached sync node's best block. */
-                            if(legacy.GetHash() == hashBestChain)
-                                TritiumNode::fSynchronized.store(true);
 
                             /* Process the block. */
                             TAO::Ledger::Process(legacy, nStatus);
