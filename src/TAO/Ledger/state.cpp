@@ -765,6 +765,8 @@ namespace TAO
                             (
                                 LLP::ACTION::NOTIFY,
                                 uint8_t(LLP::TYPES::BLOCK),
+                                hash,
+                                uint8_t(LLP::TYPES::BESTCHAIN),
                                 hash
                             );
                         }
@@ -775,6 +777,8 @@ namespace TAO
                                 LLP::ACTION::NOTIFY,
                                 uint8_t(LLP::SPECIFIER::LEGACY),
                                 uint8_t(LLP::TYPES::BLOCK),
+                                hash,
+                                uint8_t(LLP::TYPES::BESTCHAIN),
                                 hash
                             );
                         }
