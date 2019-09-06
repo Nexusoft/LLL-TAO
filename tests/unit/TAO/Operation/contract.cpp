@@ -49,11 +49,8 @@ TEST_CASE( "Contract::Bind", "[operation]" )
     REQUIRE(contract.Caller() == tx.hashGenesis);
 
     // check for erroneous input
-    contract.Bind(nullptr);
+    REQUIRE_THROWS( contract.Bind(nullptr) );
 
-    //check for error
-    std::string error = debug::GetLastError();
-    REQUIRE(error.find("null transaction") != std::string::npos);
 }
 
 
