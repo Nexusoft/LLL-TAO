@@ -88,6 +88,14 @@ namespace TAO
         const uint32_t NEXUS_MATURITY_COINSTAKE = 250;
 
 
+        /** Testnet maturity for sig chain. **/
+        const uint32_t TESTNET_MATURITY_SIGCHAIN = 2;
+
+
+        /** Testnet maturity for sig chain. **/
+        const uint32_t NEXUS_MATURITY_SIGCHAIN = 33;
+
+
         /** Stake reward rate is annual. Define one year (364 days) of time for reward calculations **/
         const uint32_t ONE_YEAR = 60 * 60 * 24 * 28 * 13;
 
@@ -218,6 +226,16 @@ namespace TAO
          *
          **/
         uint32_t MaturityCoinStake();
+
+
+        /** MaturitySigChain
+         *
+         *  Retrieve the number of blocks (confirmations) required for sig chain maturity after a coinbase/coinstake transaction.
+         *
+         *  @return maturity setting for coinstake producer, based on current testnet or mainnet
+         *
+         **/
+        uint32_t MaturitySigChain();
 
     }
 }
