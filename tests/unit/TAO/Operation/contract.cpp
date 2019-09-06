@@ -49,8 +49,7 @@ TEST_CASE( "Contract::Bind", "[operation]" )
     REQUIRE(contract.Caller() == tx.hashGenesis);
 
     // check for erroneous input
-    REQUIRE_THROWS( contract.Bind(nullptr) );
-
+    REQUIRE_THROWS_WITH(contract.Bind(nullptr), debug::safe_printstr(ANSI_COLOR_FUNCTION, "Bind", ANSI_COLOR_RESET, " : cannot bind to a nullptr"));
 }
 
 
