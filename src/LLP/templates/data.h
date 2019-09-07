@@ -182,14 +182,17 @@ namespace LLP
             {
                 try
                 {
+                    /* Get the connection object. */
+                    memory::atomic_ptr<ProtocolType>& pConnection = CONNECTIONS->at(nIndex);
+
                     /* Skip over inactive connections. */
-                    if(!CONNECTIONS->at(nIndex))
+                    if(!pConnection)
                         continue;
 
                     /* Relay if there are active subscriptions. */
-                    const DataStream ssRelay = CONNECTIONS->at(nIndex)->Notifications(message, ssData);
+                    const DataStream ssRelay = pConnection->Notifications(message, ssData);
                     if(ssRelay.size() != 0)
-                        CONNECTIONS->at(nIndex)->WritePacket(CONNECTIONS->at(nIndex)->NewMessage(message, ssRelay));
+                        pConnection->WritePacket(pConnection->NewMessage(message, ssRelay));
                 }
                 catch(const std::runtime_error& e)
                 {
