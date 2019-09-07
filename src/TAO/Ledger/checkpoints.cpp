@@ -52,8 +52,8 @@ namespace TAO
                 return debug::error(FUNCTION, "failed to read checkpoint");
 
             /* Calculate the time differences. */
-            uint32_t nFirstMinutes = static_cast<uint32_t>(floor(static_cast<double>(state.GetBlockTime() - stateCheck.GetBlockTime()) / 60.0));
-            uint32_t nLastMinutes =  static_cast<uint32_t>(floor(static_cast<double>(statePrev.GetBlockTime() - stateCheck.GetBlockTime()) / 60.0));
+            uint32_t nFirstMinutes = static_cast<uint32_t>((state.GetBlockTime() - stateCheck.GetBlockTime()) / 60);
+            uint32_t nLastMinutes =  static_cast<uint32_t>((statePrev.GetBlockTime() - stateCheck.GetBlockTime()) / 60);
 
             return (nFirstMinutes != nLastMinutes && nFirstMinutes >= CHECKPOINT_TIMESPAN);
         }

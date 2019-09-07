@@ -718,7 +718,7 @@ namespace TAO
                     " height=", ChainState::nBestHeight.load(),
                     " trust=", ChainState::nBestChainTrust.load(),
                     " tx=", vtx.size(),
-                    " [", double(vtx.size()) / (GetBlockTime() - ChainState::stateBest.load().GetBlockTime()), " tx/s]"
+                    " [", double(vtx.size()) / (GetBlockTime() - ChainState::stateBest.load().GetBlockTime() + 1), " tx/s]"
                     " [verified in ", timer.ElapsedMilliseconds(), " ms]",
                     " [", ::GetSerializeSize(*this, SER_LLD, nVersion), " bytes]");
 

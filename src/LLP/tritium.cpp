@@ -670,7 +670,7 @@ namespace LLP
                             }
                             else
                             {
-                                /* Unset the last flag. */
+                                /* Unset the bestchain flag. */
                                 nNotifications &= ~SUBSCRIPTION::BESTCHAIN;
 
                                 /* Debug output. */
@@ -786,7 +786,11 @@ namespace LLP
                                     }
 
                                     /* Debug output. */
-                                    debug::log(3, NODE, "ACTION::LIST: Locator ", hashStart.SubString(), " found");
+                                    debug::log(1, NODE, "ACTION::LIST: Locator ", hashStart.SubString(), " found");
+
+                                    TAO::Ledger::BlockState state;
+                                    if(LLD::Ledger->ReadBlock(hashStart, state))
+                                        debug::log(0, "Starting from height=", state.nHeight, " hash=", state.GetHash().SubString());
 
                                     break;
                                 }
@@ -1418,8 +1422,7 @@ namespace LLP
                         /* Check for duplicate and ask for previous block. */
                         if(!(nStatus & TAO::Ledger::PROCESS::DUPLICATE)
                         && !(nStatus & TAO::Ledger::PROCESS::IGNORED)
-                        &&  (nStatus & TAO::Ledger::PROCESS::ORPHAN)
-                        && !TAO::Ledger::ChainState::Synchronizing())
+                        &&  (nStatus & TAO::Ledger::PROCESS::ORPHAN))
                         {
                             /* Ask for list of blocks. */
                             PushMessage(ACTION::LIST,
@@ -1470,8 +1473,7 @@ namespace LLP
                         /* Check for duplicate and ask for previous block. */
                         if(!(nStatus & TAO::Ledger::PROCESS::DUPLICATE)
                         && !(nStatus & TAO::Ledger::PROCESS::IGNORED)
-                        &&  (nStatus & TAO::Ledger::PROCESS::ORPHAN)
-                        && !TAO::Ledger::ChainState::Synchronizing())
+                        &&  (nStatus & TAO::Ledger::PROCESS::ORPHAN))
                         {
                             /* Ask for list of blocks. */
                             PushMessage(ACTION::LIST,
