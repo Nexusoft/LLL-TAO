@@ -1287,7 +1287,7 @@ namespace LLP
                             }
 
                             /* Debug output. */
-                            debug::log(3, NODE, "ACTION::NOTIFY: BESTCHAIN ", hashBestChain.SubString());
+                            debug::log(0, NODE, "ACTION::NOTIFY: BESTCHAIN ", hashBestChain.SubString());
 
                             break;
                         }
