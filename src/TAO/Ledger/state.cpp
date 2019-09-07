@@ -551,26 +551,20 @@ namespace TAO
             else if(nChainTrust > ChainState::nBestChainTrust.load() && !SetBest())
                 return debug::error(FUNCTION, "failed to set best chain");
 
-            /* Check timer. */
-            if(timer.ElapsedMilliseconds() > 100)
-            {
-                debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_RED, "!!!SLOW BLOCK ", ANSI_COLOR_RESET, timer.ElapsedMilliseconds(), " ms ", GetHash().SubString());
-
-                debug::log(0, ToString(debug::flags::header | debug::flags::tx));
-            }
 
             timer.Reset();
 
             /* Commit the transaction to database. */
             LLD::TxnCommit();
 
-            /* Check timer. */
+            /* Check timer.
             if(timer.ElapsedMilliseconds() > 100)
             {
                 debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_RED, "!!!SLOW BLOCK WRITE ", ANSI_COLOR_RESET, timer.ElapsedMilliseconds(), " ms ", GetHash().SubString());
 
                 debug::log(0, ToString(debug::flags::header | debug::flags::tx));
             }
+            */
 
             /* Debug output. */
             debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION, "ACCEPTED");

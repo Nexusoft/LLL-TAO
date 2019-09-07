@@ -248,6 +248,10 @@ namespace TAO
         /* Checks if a block is valid if not connected to chain. */
         bool TritiumBlock::Check() const
         {
+            /* Read ledger DB for duplicate block. */
+            if(LLD::Ledger->HasBlock(GetHash()))
+                return false;//debug::error(FUNCTION, "already have block ", GetHash().SubString());
+
             /* Check the Size limits of the Current Block. */
             if(::GetSerializeSize(*this, SER_NETWORK, LLP::PROTOCOL_VERSION) > MAX_BLOCK_SIZE)
                 return debug::error(FUNCTION, "size limits failed ", MAX_BLOCK_SIZE);
@@ -476,10 +480,6 @@ namespace TAO
         /** Accept a tritium block. **/
         bool TritiumBlock::Accept() const
         {
-            /* Read ledger DB for duplicate block. */
-            if(LLD::Ledger->HasBlock(GetHash()))
-                return debug::error(FUNCTION, "already have block ", GetHash().SubString());
-
             /* Read ledger DB for previous block. */
             TAO::Ledger::BlockState statePrev;
             if(!LLD::Ledger->ReadBlock(hashPrevBlock, statePrev))

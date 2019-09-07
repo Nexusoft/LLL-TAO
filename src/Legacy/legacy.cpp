@@ -197,6 +197,10 @@ namespace Legacy
     /* Checks if a block is valid if not connected to chain. */
     bool LegacyBlock::Check() const
     {
+        /* Read ledger DB for duplicate block. */
+        if(LLD::Ledger->HasBlock(GetHash()))
+            return false;//debug::error(FUNCTION, "already have block ", GetHash().SubString());
+
         /* Check the Size limits of the Current Block. */
         if(::GetSerializeSize(*this, SER_NETWORK, LLP::PROTOCOL_VERSION) > TAO::Ledger::MAX_BLOCK_SIZE)
             return debug::error(FUNCTION, "size limits failed");
@@ -382,10 +386,6 @@ namespace Legacy
     /* Accept a block into the chain. */
     bool LegacyBlock::Accept() const
     {
-        /* Check for duplicates */
-        if(LLD::Ledger->HasBlock(GetHash()))
-            return debug::error(FUNCTION, "already have block ", GetHash().SubString(), " height=", nHeight);
-
         /* Print the block on verbose 2. */
         if(config::GetArg("-verbose", 0) >= 2)
             print();

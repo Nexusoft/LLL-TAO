@@ -229,8 +229,9 @@ int main(int argc, char** argv)
 
 
         /* ensure that apiuser / apipassword has been configured */
-        if(config::mapArgs.find("-apiuser") == config::mapArgs.end()
+        if((config::mapArgs.find("-apiuser") == config::mapArgs.end()
         || config::mapArgs.find("-apipassword") == config::mapArgs.end())
+        && config::GetBoolArg("-apiauth", true))
         {
             debug::log(0, ANSI_COLOR_BRIGHT_RED, "!!!WARNING!!! API DISABLED", ANSI_COLOR_RESET);
             debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "You must set apiuser=<user> and apipassword=<password> in nexus.conf", ANSI_COLOR_RESET);
