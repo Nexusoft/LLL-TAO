@@ -59,6 +59,16 @@ namespace TAO
         /* Destructor. */
         Users::~Users()
         {
+            /* Set the shutdown flag and join events processing thread. */
+            fShutdown = true;
+            
+            /* Events processor only enabled if multi-user session is disabled. */
+            if(EVENTS_THREAD.joinable())
+            {
+                NotifyEvent();
+                EVENTS_THREAD.join();
+            }
+
             /* Iterate through the sessions map and delete any sig chains that are still active */
             for(auto& session : mapSessions)
             {
@@ -72,22 +82,14 @@ namespace TAO
 
             if(!pActivePIN.IsNull())
                 pActivePIN.free();
-
-            /* Set the shutdown flag and join events processing thread. */
-            fShutdown = true;
-
-            /* Events processor only enabled if multi-user session is disabled. */
-            if(EVENTS_THREAD.joinable())
-            {
-                NotifyEvent();
-                EVENTS_THREAD.join();
-            }
         }
 
 
         /* Determine if a sessionless user is logged in. */
         bool Users::LoggedIn() const
         {
+            LOCK(MUTEX);
+
             return !config::fMultiuser.load() && mapSessions.count(0);
         }
 
@@ -236,13 +238,13 @@ namespace TAO
          * an APIException is thrown */
         SecureString Users::GetPin(const json::json params, uint8_t nUnlockAction) const
         {
-            
+
             /* Check for pin parameter. */
             SecureString strPIN;
 
             /* If we have a pin already, check we are allowed to use it for the requested action */
-            bool fNeedPin = pActivePIN.IsNull() || pActivePIN->PIN().empty() || !(pActivePIN->UnlockedActions() & nUnlockAction); 
-            
+            bool fNeedPin = pActivePIN.IsNull() || pActivePIN->PIN().empty() || !(pActivePIN->UnlockedActions() & nUnlockAction);
+
             if(fNeedPin)
             {
                 /* If we need a pin then check it is in the params */

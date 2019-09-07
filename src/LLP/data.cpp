@@ -56,13 +56,12 @@ namespace LLP
     DataThread<ProtocolType>::~DataThread()
     {
         fDestruct = true;
-
         CONDITION.notify_all();
+
+        DisconnectAll();
 
         if(DATA_THREAD.joinable())
             DATA_THREAD.join();
-
-        DisconnectAll();
 
         CONNECTIONS.free();
     }
@@ -79,7 +78,11 @@ namespace LLP
             pnode->fCONNECTED.store(true);
 
             /* Find an available slot. */
-            int nSlot = find_slot();
+            uint32_t nSlot = find_slot();
+
+            /* Update the indexes. */
+            pnode->nDataThread = ID;
+            pnode->nDataIndex  = nSlot;
 
             /* Find a slot that is empty. */
             if(nSlot == CONNECTIONS->size())
@@ -91,15 +94,11 @@ namespace LLP
             CONNECTIONS->at(nSlot)->Event(EVENT_CONNECT);
 
             /* Iterate the DDOS cScore (Connection score). */
-            if(fDDOS)
+            if(DDOS)
                 DDOS -> cSCORE += 1;
 
             /* Bump the total connections atomic counter. */
             ++nConnections;
-
-            /* Set the indexes. */
-            pnode->nDataThread = ID;
-            pnode->nDataIndex  = nSlot;
 
             /* Notify data thread to wake up. */
             CONDITION.notify_all();
@@ -113,25 +112,26 @@ namespace LLP
 
     /*  Adds a new connection to current Data Thread */
     template <class ProtocolType>
-    bool DataThread<ProtocolType>::AddConnection(const BaseAddress &addr, DDOS_Filter* DDOS)
+    bool DataThread<ProtocolType>::AddConnection(const BaseAddress& addr, DDOS_Filter* DDOS)
     {
         try
         {
             /* Create a new pointer on the heap. */
             ProtocolType* pnode = new ProtocolType(nullptr, false); //turn off DDOS for outgoing connections
+
+            /* Find an available slot. */
+            uint32_t nSlot = find_slot();
+
+            /* Update the indexes. */
+            pnode->nDataThread = ID;
+            pnode->nDataIndex  = nSlot;
+
+            /* Attempt to make the connection. */
             if(!pnode->Connect(addr))
             {
-                pnode->Disconnect();
                 delete pnode;
-
                 return false;
             }
-
-            /* Set the pnode to outgoing. */
-            pnode->fOUTGOING = true;
-
-            /* Search for an available slot. */
-            int nSlot = find_slot();
 
             /* Find a slot that is empty. */
             if(nSlot == CONNECTIONS->size())
@@ -142,16 +142,8 @@ namespace LLP
             /* Fire the connected event. */
             CONNECTIONS->at(nSlot)->Event(EVENT_CONNECT);
 
-            /* Iterate the DDOS cScore (Connection score). */
-            if(fDDOS)
-                DDOS -> cSCORE += 1;
-
             /* Bump the total connections atomic counter. */
             ++nConnections;
-
-            /* Set the indexes. */
-            pnode->nDataThread = ID;
-            pnode->nDataIndex  = nSlot;
 
             /* Notify data thread to wake up. */
             CONDITION.notify_all();
@@ -173,13 +165,10 @@ namespace LLP
     template <class ProtocolType>
     void DataThread<ProtocolType>::DisconnectAll()
     {
-        /* Get the size of the vector. */
-        uint32_t nSize = static_cast<uint32_t>(CONNECTIONS->size());
-
         /* Iterate through connections to remove. When call on destruct, simply remove the connection. Otherwise,
          * force a disconnect event. This will inform address manager so it knows to attempt new connections.
          */
-        for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
+        for(uint32_t nIndex = 0; nIndex < CONNECTIONS->size(); ++nIndex)
         {
             if(!fDestruct.load())
                 disconnect_remove_event(nIndex, DISCONNECT_FORCE);
@@ -415,21 +404,21 @@ namespace LLP
 
     /* Fires off a Disconnect event with the given disconnect reason and also removes the data thread connection. */
     template <class ProtocolType>
-    void DataThread<ProtocolType>::disconnect_remove_event(uint32_t index, uint8_t reason)
+    void DataThread<ProtocolType>::disconnect_remove_event(uint32_t nIndex, uint8_t nReason)
     {
-        ProtocolType* connection = CONNECTIONS->at(index).load();
-        connection->Event(EVENT_DISCONNECT, reason);
+        /* Send off the disconnect event. */
+        CONNECTIONS->at(nIndex)->Event(EVENT_DISCONNECT, nReason);
 
-        remove(index);
+        remove(nIndex);
     }
 
 
     /* Removes given connection from current Data Thread. This happens on timeout/error, graceful close, or disconnect command. */
     template <class ProtocolType>
-    void DataThread<ProtocolType>::remove(int index)
+    void DataThread<ProtocolType>::remove(int nIndex)
     {
         /* Free the memory. */
-        CONNECTIONS->at(index).free();
+        CONNECTIONS->at(nIndex).free();
 
         --nConnections;
 

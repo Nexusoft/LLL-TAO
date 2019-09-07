@@ -127,7 +127,6 @@ namespace LLP
     bool Socket::Attempt(const BaseAddress &addrDest, uint32_t nTimeout)
     {
         bool fConnected = false;
-        SOCKET nFile = INVALID_SOCKET;
 
         /* Create the Socket Object (Streaming TCP/IP). */
         {
@@ -141,22 +140,20 @@ namespace LLP
             /* Catch failure if socket couldn't be initialized. */
             if(fd == INVALID_SOCKET)
                 return false;
-
-            nFile = fd;
         }
 
         /* Set the socket to non blocking. */
     #ifdef WIN32
         long unsigned int nonBlocking = 1; //any non-zero is nonblocking
-        ioctlsocket(nFile, FIONBIO, &nonBlocking);
+        ioctlsocket(fd, FIONBIO, &nonBlocking);
     #else
-        fcntl(nFile, F_SETFL, O_NONBLOCK);
+        fcntl(fd, F_SETFL, O_NONBLOCK);
     #endif
 
 #ifndef WIN32
         /* Set the MSS to a lower than default value to support the increased bytes required for LISP */
         int nMaxSeg = 1300;
-        if(setsockopt(nFile, IPPROTO_TCP, TCP_MAXSEG, &nMaxSeg, sizeof(nMaxSeg)) == SOCKET_ERROR)
+        if(setsockopt(fd, IPPROTO_TCP, TCP_MAXSEG, &nMaxSeg, sizeof(nMaxSeg)) == SOCKET_ERROR)
         { //TODO: this fails on OSX systems. Need to find out why
             //debug::error("setsockopt() MSS for connection failed: ", WSAGetLastError());
             //closesocket(nFile);
@@ -183,7 +180,7 @@ namespace LLP
              * Then we have to use select below to check if connection was made.
              * If it doesn't return that, it means it connected immediately and connection was successful. (very unusual, but possible)
              */
-            fConnected = (connect(nFile, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR);
+            fConnected = (connect(fd, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR);
         }
         else
         {
@@ -197,78 +194,64 @@ namespace LLP
                 addr = BaseAddress(sockaddr);
             }
 
-            fConnected = (connect(nFile, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR);
+            fConnected = (connect(fd, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR);
         }
 
         /* Handle final socket checks if connection established with no errors. */
         if(fConnected)
         {
-            /* We would expect to get WSAEWOULDBLOCK/WSAEINPROGRESS here in the normal case of attempting a connection. */
-            nError = WSAGetLastError();
+            /* Check for errors. */
+            int32_t nError = WSAGetLastError();
 
+            /* We would expect to get WSAEWOULDBLOCK/WSAEINPROGRESS here in the normal case of attempting a connection. */
             if(nError == WSAEWOULDBLOCK || nError == WSAEALREADY || nError == WSAEINPROGRESS)
             {
-                struct timeval timeout;
-                timeout.tv_sec  = nTimeout / 1000;
-                timeout.tv_usec = (nTimeout % 1000) * 1000;
+                /* Setup poll objects. */
+                pollfd fds[1];
+                fds[0].events = POLLOUT;
+                fds[0].fd     = fd;
 
-                /* Create an fd_set with our current socket (and only it) */
-                fd_set fdset;
-                FD_ZERO(&fdset);
-                FD_SET(nFile, &fdset);
+                /* Get the total sleeps to cycle. */
+                uint32_t nIterators = (nTimeout / 100) - 1;
 
-                /* select returns the number of descriptors that have successfully established connection and are writeable.
-                 * We only pass one descriptor in the fd_set, so this will return 1 if connect attempt succeeded, 0 if it timed out, or SOCKET_ERROR on error
-                 */
-                int nRet = select(nFile + 1, nullptr, &fdset, nullptr, &timeout);
+#ifdef WIN32
+                int32_t nPoll = WSAPoll(&fds[0], 1, 100);
+#else
+                int32_t nPoll = poll(&fds[0], 1, 100);
+#endif
 
-                /* If the connection attempt timed out with select. */
-                if(nRet == 0)
+                for(uint32_t nSeconds = 0; nSeconds < nIterators && !config::fShutdown.load(); ++nSeconds)
                 {
-                    debug::log(2, FUNCTION, "Connection timeout ", addrDest.ToString());
-                    closesocket(nFile);
+#ifdef WIN32
+                    nPoll = WSAPoll(&fds[0], 1, 100);
+#else
+                    nPoll = poll(&fds[0], 1, 100);
+#endif
 
-                    return false;
+                    /* Check poll for errors. */
+                    if(nPoll < 0)
+                    {
+                        debug::log(3, FUNCTION, "poll failed ", addrDest.ToString(), " (", nError, ")");
+                        closesocket(fd);
+
+                        return false;
+                    }
                 }
 
-                /* If the select failed. */
-                else if(nRet == SOCKET_ERROR)
+                /* Check for timeout. */
+                if(nPoll == 0)
                 {
-                    debug::log(3, FUNCTION, "Select failed ", addrDest.ToString(), " (",  WSAGetLastError(), ")");
-                    closesocket(nFile);
-
-                    return false;
-                }
-
-                /* Get socket options. TODO: Remove preprocessors for cross platform sockets. */
-                socklen_t nRetSize = sizeof(nRet);
-    #ifdef WIN32
-                if(getsockopt(nFile, SOL_SOCKET, SO_ERROR, (char*)(&nRet), &nRetSize) == SOCKET_ERROR)
-    #else
-                if(getsockopt(nFile, SOL_SOCKET, SO_ERROR, &nRet, &nRetSize) == SOCKET_ERROR)
-    #endif
-                {
-                    debug::log(3, FUNCTION, "Get options failed ", addrDest.ToString(), " (", WSAGetLastError(), ")");
-                    closesocket(nFile);
-
-                    return false;
-                }
-
-                /* If there are no socket options set. */
-                if(nRet != 0)
-                {
-                    debug::log(3, FUNCTION, "Failed after select ", addrDest.ToString(), " (", nRet, ")");
-
-                    closesocket(nFile);
+                    debug::log(3, FUNCTION, "poll timeout ", addrDest.ToString(), " (", nError, ")");
+                    closesocket(fd);
 
                     return false;
                 }
             }
             else if(nError != WSAEISCONN)
             {
-                debug::log(3, FUNCTION, "Connect failed ", addrDest.ToString(), " (", nError, ")");
+                debug::log(3, FUNCTION, "connect failed ", addrDest.ToString(), " (", nError, ")");
 
-                closesocket(nFile);
+                closesocket(fd);
 
                 return false;
             }

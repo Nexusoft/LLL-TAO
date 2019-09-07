@@ -195,7 +195,7 @@ namespace LLP
          **/
         inline bool DoS(int nDoS, bool fReturn)
         {
-            if(fDDOS)
+            if(DDOS)
                 DDOS->rSCORE += nDoS;
 
             return fReturn;

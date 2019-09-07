@@ -132,9 +132,7 @@ namespace LLP
         for(; it != DDOS_MAP.end(); ++it)
         {
             if(it->second)
-            {
                 delete it->second;
-            }
         }
         DDOS_MAP.clear();
 

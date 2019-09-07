@@ -62,7 +62,7 @@ namespace LLP
         if(EVENT == EVENT_HEADER)
         {
             /* Checks for incoming connections only. */
-            if(fDDOS)
+            if(DDOS && Incoming())
             {
                 /* Get the incoming packet. */
                 Packet PACKET   = this->INCOMING;

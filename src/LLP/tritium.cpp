@@ -361,6 +361,15 @@ namespace LLP
 
                     /* Set the sync session-id. */
                     nSyncSession.store(nCurrentSession);
+
+                    /* Ask for list of blocks if this is current sync node. */
+                    PushMessage(ACTION::LIST,
+                        uint8_t(SPECIFIER::SYNC),
+                        uint8_t(TYPES::BLOCK),
+                        uint8_t(TYPES::LOCATOR),
+                        TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
+                        uint1024_t(0)
+                    );
                 }
 
                 /* Subscribe to receive notifications. */
@@ -1010,24 +1019,25 @@ namespace LLP
                             uint1024_t hashBlock;
                             ssPacket >> hashBlock;
 
-                            /* Check for legacy. */
-                            if(fLegacy)
+                            /* Check the database for the block. */
+                            TAO::Ledger::BlockState state;
+                            if(LLD::Ledger->ReadBlock(hashBlock, state))
                             {
-                                /* Check the database for the block. */
-                                TAO::Ledger::BlockState state;
-                                if(LLD::Ledger->ReadBlock(hashBlock, state))
+                                /* Push legacy blocks for less than version 7. */
+                                if(state.nVersion < 7)
                                 {
+                                    /* Build legacy block from state. */
                                     Legacy::LegacyBlock block(state);
+
+                                    /* Push block as response. */
                                     PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::LEGACY), block);
                                 }
-                            }
-                            else
-                            {
-                                /* Check the database for the block. */
-                                TAO::Ledger::BlockState state;
-                                if(LLD::Ledger->ReadBlock(hashBlock, state))
+                                else
                                 {
+                                    /* Build tritium block from state. */
                                     TAO::Ledger::TritiumBlock block(state);
+
+                                    /* Push block as response. */
                                     PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::TRITIUM), block);
                                 }
                             }
@@ -1273,32 +1283,6 @@ namespace LLP
 
                                     /* Log that sync is complete. */
                                     debug::log(0, NODE, "ACTION::NOTIFY: Synchonization COMPLETE at ", hashBestChain.SubString());
-                                }
-                            }
-                            else
-                            {
-                                /* Ask for list of blocks if this is current sync node. */
-                                if(nSyncSession == nCurrentSession)
-                                {
-                                    PushMessage(ACTION::LIST,
-                                        uint8_t(SPECIFIER::SYNC),
-                                        uint8_t(TYPES::BLOCK),
-                                        uint8_t(TYPES::LOCATOR),
-                                        TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
-                                        uint1024_t(0)
-                                    );
-                                }
-
-                                /* If we don't have this best block, attempt to get a list. */
-                                else if(!LLD::Ledger->HasBlock(hashBestChain))
-                                {
-                                    /* Ask for list of blocks. */
-                                    PushMessage(ACTION::LIST,
-                                        uint8_t(TYPES::BLOCK),
-                                        uint8_t(TYPES::LOCATOR),
-                                        TAO::Ledger::ChainState::hashBestChain.load(),
-                                        hashBestChain
-                                    );
                                 }
                             }
 

@@ -90,7 +90,6 @@ namespace TAO
 
             if(dex)
                 delete dex;
-
         }
     }
 }
