@@ -1215,7 +1215,7 @@ namespace LLP
                             if(nCurrentSession == TAO::Ledger::nSyncSession.load())
                             {
                                 /* Check for complete synchronization. */
-                                if(hashBestChain == TAO::Ledger::ChainState::hashBestChain.load())
+                                if(hashLast == TAO::Ledger::ChainState::hashBestChain.load())
                                 {
                                     /* Set state to synchronized. */
                                     fSynchronized.store(true);
@@ -1258,27 +1258,6 @@ namespace LLP
 
                             /* Keep track of current checkpoint. */
                             ssPacket >> hashBestChain;
-
-                            /* Check best chain. */
-                            if(hashBestChain == TAO::Ledger::ChainState::hashBestChain.load())
-                            {
-                                /* Reset the sychronization if this is current sync node. */
-                                if(TAO::Ledger::nSyncSession == nCurrentSession)
-                                {
-                                    /* Set state to synchronized. */
-                                    fSynchronized.store(true);
-                                    TAO::Ledger::nSyncSession.store(0);
-
-                                    /* Subscribe to notifications. */
-                                    Subscribe(SUBSCRIPTION::BESTHEIGHT | SUBSCRIPTION::CHECKPOINT | SUBSCRIPTION::BLOCK | SUBSCRIPTION::TRANSACTION);
-
-                                    /* Unsubcribe from last. */
-                                    Unsubscribe(SUBSCRIPTION::LASTINDEX);
-
-                                    /* Log that sync is complete. */
-                                    debug::log(0, NODE, "ACTION::NOTIFY: Synchonization COMPLETE at ", hashBestChain.SubString());
-                                }
-                            }
 
                             /* Debug output. */
                             debug::log(0, NODE, "ACTION::NOTIFY: BESTCHAIN ", hashBestChain.SubString());
@@ -1534,11 +1513,9 @@ namespace LLP
                 /* Check for failure limit on node. */
                 if(nConsecutiveFails >= 500)
                 {
-                    /* Fast Sync node switch. */
+                    /* Switch to another available node. */
                     if(TAO::Ledger::ChainState::Synchronizing() && TAO::Ledger::nSyncSession.load() == nCurrentSession)
-                    {
-                        //TODO: find a new fast sync node
-                    }
+                        SwitchNode();
 
                     /* Drop pesky nodes. */
                     return debug::drop(NODE, "node reached failure limit");
@@ -1548,10 +1525,16 @@ namespace LLP
                 /* Detect large orphan chains and ask for new blocks from origin again. */
                 if(nConsecutiveOrphans >= 500)
                 {
-                    LOCK(TAO::Ledger::PROCESSING_MUTEX);
+                    {
+                        LOCK(TAO::Ledger::PROCESSING_MUTEX);
 
-                    /* Clear the memory to prevent DoS attacks. */
-                    TAO::Ledger::mapOrphans.clear();
+                        /* Clear the memory to prevent DoS attacks. */
+                        TAO::Ledger::mapOrphans.clear();
+                    }
+
+                    /* Switch to another available node. */
+                    if(TAO::Ledger::ChainState::Synchronizing() && TAO::Ledger::nSyncSession.load() == nCurrentSession)
+                        SwitchNode();
 
                     /* Disconnect from a node with large orphan chain. */
                     return debug::drop(NODE, "node reached orphan limit");
@@ -2062,5 +2045,65 @@ namespace LLP
         LOCK(SESSIONS_MUTEX);
 
         return mapSessions.count(nSession);
+    }
+
+
+    /* Helper function to switch the nodes on sync. */
+    void TritiumNode::SwitchNode()
+    {
+        std::pair<uint32_t, uint32_t> pairSession;
+        { LOCK(SESSIONS_MUTEX);
+
+            /* Check for session. */
+            if(!mapSessions.count(TAO::Ledger::nSyncSession.load()))
+                return;
+
+            /* Set the current session. */
+            pairSession = mapSessions[TAO::Ledger::nSyncSession.load()];
+        }
+
+        /* Normal case of asking for a getblocks inventory message. */
+        memory::atomic_ptr<TritiumNode>& pnode = TRITIUM_SERVER->GetConnection(pairSession);
+        if(pnode != nullptr)
+        {
+            /* Send out another getblocks request. */
+            try
+            {
+                /* Get the current sync node. */
+                memory::atomic_ptr<TritiumNode>& pcurrent = TRITIUM_SERVER->GetConnection(pairSession.first, pairSession.second);
+                pcurrent->Unsubscribe(SUBSCRIPTION::LASTINDEX | SUBSCRIPTION::BESTCHAIN);
+
+                /* Set the sync session-id. */
+                TAO::Ledger::nSyncSession.store(0);
+
+                /* Subscribe to this node. */
+                pnode->Subscribe(SUBSCRIPTION::LASTINDEX | SUBSCRIPTION::BESTCHAIN);
+                pnode->PushMessage(ACTION::LIST,
+                    uint8_t(SPECIFIER::SYNC),
+                    uint8_t(TYPES::BLOCK),
+                    uint8_t(TYPES::LOCATOR),
+                    TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
+                    uint1024_t(0)
+                );
+
+                /* Set the sync session-id. */
+                TAO::Ledger::nSyncSession.store(pnode->nCurrentSession);
+            }
+            catch(const std::exception& e)
+            {
+                /* Recurse on failure. */
+                debug::error(FUNCTION, e.what());
+
+                SwitchNode();
+            }
+        }
+        else
+        {
+            /* Reset the current sync node. */
+            TAO::Ledger::nSyncSession.store(0);
+
+            /* Logging to verify (for debugging). */
+            debug::log(0, FUNCTION, "No Sync Nodes Available");
+        }
     }
 }

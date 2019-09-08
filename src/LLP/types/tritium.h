@@ -127,6 +127,14 @@ namespace LLP
     class TritiumNode : public BaseConnection<TritiumPacket>
     {
 
+        /** Switch Node
+         *
+         *  Helper function to switch available nodes.
+         *
+         **/
+        static void SwitchNode();
+        
+
         /** message_args
          *
          *  Overload of variadic templates
