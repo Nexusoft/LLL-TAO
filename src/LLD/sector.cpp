@@ -450,6 +450,10 @@ namespace LLD
         if(!pSectorKeys->Erase(vKey))
             return false;
 
+        /* Check that this key isn't a keychain only entry. */
+        if(key.nSectorFile ==0 && key.nSectorSize == 0 && key.nSectorStart == 0)
+            return true;
+
         {
             LOCK(SECTOR_MUTEX);
 
@@ -716,7 +720,7 @@ namespace LLD
 
         /* Erase data set to be removed. */
         for(const auto& item : pTransaction->mapEraseData)
-            if(!pSectorKeys->Erase(item.first))//if(!Delete(item.first))
+            if(!Delete(item.first))
                 return debug::error(FUNCTION, "failed to erase from keychain");
 
         /* Commit the sector data. */

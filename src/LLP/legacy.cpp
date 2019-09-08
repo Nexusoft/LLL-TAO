@@ -197,7 +197,7 @@ namespace LLP
     /* Helper function to switch the nodes on sync. */
     void LegacyNode::SwitchNode()
     {
-        /* Don't switch node if tritium node if on tritium server. */
+        /* Don't switch node if tritium node is on tritium server. */
         if(TritiumNode::SessionActive(TAO::Ledger::nSyncSession.load()))
             return;
 
@@ -274,11 +274,9 @@ namespace LLP
             /* Check a packet's validity once it is finished being read. */
             if(fDDOS)
             {
-
                 /* Give higher score for Bad Packets. */
                 if(INCOMING.Complete() && !INCOMING.IsValid())
                 {
-
                     debug::log(3, NODE, "Dropped Packet (Complete: ", INCOMING.Complete() ? "Y" : "N",
                         " - Valid:)",  INCOMING.IsValid() ? "Y" : "N");
 
@@ -328,8 +326,8 @@ namespace LLP
             /* Unreliabilitiy re-requesting (max time since getblocks) */
             if(TAO::Ledger::ChainState::Synchronizing()
             && nCurrentSession == TAO::Ledger::nSyncSession.load()
-            && nLastTimeReceived.load() + 1 < nTimestamp
-            && nLastGetBlocks.load() + 1 < nTimestamp)
+            && nLastTimeReceived.load() + 15 < nTimestamp
+            && nLastGetBlocks.load() + 15 < nTimestamp)
             {
                 debug::log(0, NODE, "Sync Node Timeout");
 

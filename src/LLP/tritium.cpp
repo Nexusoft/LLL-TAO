@@ -146,18 +146,14 @@ namespace LLP
         {
             case EVENT_CONNECT:
             {
-                debug::log(1, NODE, fOUTGOING ? "Outgoing" : "Incoming",
-                       " Connected at timestamp ",   runtime::unifiedtimestamp());
+                debug::log(1, NODE, fOUTGOING ? "Outgoing" : "Incoming", " Connected at timestamp ",   runtime::unifiedtimestamp());
 
                 /* Set the laset ping time. */
                 nLastPing    = runtime::unifiedtimestamp();
 
                 /* Respond with version message if incoming connection. */
                 if(fOUTGOING)
-                {
-                    /* Respond with version message. */
                     PushMessage(ACTION::VERSION, PROTOCOL_VERSION, SESSION_ID, version::CLIENT_VERSION_BUILD_STRING);
-                }
 
                 break;
             }
@@ -174,17 +170,11 @@ namespace LLP
             case EVENT_PACKET:
             {
                 /* Check a packet's validity once it is finished being read. */
-                if(fDDOS)
+                if(Incoming())
                 {
                     /* Give higher score for Bad Packets. */
-                    if(INCOMING.Complete() && !INCOMING.IsValid())
-                    {
-                        debug::log(3, NODE "dropped packet (complete: ", INCOMING.Complete() ? "Y" : "N",
-                            " - Valid:)",  INCOMING.IsValid() ? "Y" : "N");
-
-                        if(DDOS)
-                            DDOS->rSCORE += 15;
-                    }
+                    if(INCOMING.Complete() && !INCOMING.IsValid() && DDOS)
+                        DDOS->rSCORE += 15;
                 }
 
                 if(INCOMING.Complete())

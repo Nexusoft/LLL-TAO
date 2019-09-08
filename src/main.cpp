@@ -256,8 +256,8 @@ int main(int argc, char** argv)
 
 
         /* Handle Manual Connections from Command Line, if there are any. */
-        LLP::MakeConnections<LLP::TritiumNode>(LLP::TRITIUM_SERVER);
         LLP::MakeConnections<LLP::LegacyNode>(LLP::LEGACY_SERVER);
+        LLP::MakeConnections<LLP::TritiumNode>(LLP::TRITIUM_SERVER);
 
 
         /* Set up Mining Server */
