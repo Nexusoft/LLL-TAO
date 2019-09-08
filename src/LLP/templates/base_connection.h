@@ -132,6 +132,14 @@ namespace LLP
         virtual ~BaseConnection();
 
 
+        /** Name
+         *
+         *  Returns a string for the name of this type of Node.
+         *
+         **/
+        static std::string Name() { return "Base"; }
+
+
         /** Notifications
          *
          *  Filter out relay requests with notifications node is subscribed to.

@@ -153,7 +153,7 @@ namespace LLP
         std::vector<uint8_t> vBytes = PACKET.GetBytes();
 
         /* Debug dump of message type. */
-        debug::log(4, NODE "sent packet (", vBytes.size(), " bytes)");
+        debug::log(4, NODE, "sent packet (", vBytes.size(), " bytes)");
 
         /* Debug dump of packet data. */
         if(config::GetArg("-verbose", 0) >= 5)
