@@ -716,7 +716,7 @@ namespace LLD
 
         /* Erase data set to be removed. */
         for(const auto& item : pTransaction->mapEraseData)
-            if(!Delete(item.first))
+            if(!pSectorKeys->Erase(item.first))//if(!Delete(item.first))
                 return debug::error(FUNCTION, "failed to erase from keychain");
 
         /* Commit the sector data. */

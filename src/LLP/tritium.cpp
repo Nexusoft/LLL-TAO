@@ -786,11 +786,11 @@ namespace LLP
                                     }
 
                                     /* Debug output. */
-                                    debug::log(1, NODE, "ACTION::LIST: Locator ", hashStart.SubString(), " found");
+                                    debug::log(0, NODE, "ACTION::LIST: Locator ", hashStart.SubString(), " found");
 
                                     TAO::Ledger::BlockState state;
                                     if(LLD::Ledger->ReadBlock(hashStart, state))
-                                        debug::log(0, "Starting from height=", state.nHeight, " hash=", state.GetHash().SubString());
+                                        debug::log(0, NODE, "Starting from height=", state.nHeight, " hash=", state.GetHash().SubString());
 
                                     break;
                                 }

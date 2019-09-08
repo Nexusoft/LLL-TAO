@@ -127,14 +127,16 @@ endif
 
 
 #Build with memory checking
-ifdef ADDRESS_CHECK
-    CXXFLAGS+=-fsanitize=address
+ifdef LEAK_CHECK
+    CXXFLAGS+=-fsanitize=leak
 endif
 
 
 #Build with memory checking
-ifdef LEAK_CHECK
-    CXXFLAGS+=-fsanitize=leak
+ifdef ADDRESS_CHECK
+    CXXFLAGS+= -fsanitize=address \
+			   -fno-omit-frame-pointer \
+			   -fsanitize-address-use-after-scope
 endif
 
 
@@ -1480,3 +1482,4 @@ clean:
 
 endif
 ###############################################################################
+##
