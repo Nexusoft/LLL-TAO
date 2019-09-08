@@ -713,12 +713,13 @@ namespace TAO
                     return debug::error(FUNCTION, "failed to write best chain");
 
                 /* Debug output about the best chain. */
+                uint64_t nElapsed = (GetBlockTime() - ChainState::stateBest.load().GetBlockTime());
                 debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION,
                     "New Best Block hash=", hash.SubString(),
                     " height=", ChainState::nBestHeight.load(),
                     " trust=", ChainState::nBestChainTrust.load(),
                     " tx=", vtx.size(),
-                    " [", double(vtx.size()) / (GetBlockTime() - ChainState::stateBest.load().GetBlockTime() + 1), " tx/s]"
+                    " [", (nElapsed == 0 ? 0 : double(vtx.size()) / nElapsed), " tx/s]"
                     " [verified in ", timer.ElapsedMilliseconds(), " ms]",
                     " [", ::GetSerializeSize(*this, SER_LLD, nVersion), " bytes]");
 
