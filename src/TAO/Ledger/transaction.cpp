@@ -376,7 +376,7 @@ namespace TAO
                 {
                     /* Get number of confirmations of previous TX */
                     uint32_t nConfirms;
-                    LLD::Ledger->ReadConfirmations(hash, nConfirms);
+                    LLD::Ledger->ReadConfirmations(hashPrevTx, nConfirms);
 
                     /* Check that the previous TX has reached sig chain maturity */
                     if(nConfirms < MaturitySigChain())
