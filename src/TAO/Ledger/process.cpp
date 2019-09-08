@@ -35,6 +35,10 @@ namespace TAO
         uint64_t nSynchronizationTimer = 0;
 
 
+        /* Current sync node. */
+        std::atomic<uint64_t> nSyncSession(0);
+
+
         /* Processes a block incoming over the network. */
         void Process(const TAO::Ledger::Block& block, uint8_t &nStatus)
         {

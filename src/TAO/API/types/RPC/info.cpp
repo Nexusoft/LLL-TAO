@@ -98,7 +98,7 @@ namespace TAO
             obj["offset"]    =  (int32_t)UNIFIED_AVERAGE_OFFSET.load();
             obj["connections"] = GetTotalConnectionCount();
 
-            obj["syncnode"]    = LLP::LegacyNode::addrFastSync.load().ToStringIP();
+            //obj["syncnode"]    = LLP::LegacyNode::addrFastSync.load().ToStringIP();
             obj["syncaverage"] = (int32_t)LLP::LegacyNode::nFastSyncAverage;
             obj["synccomplete"] = (int32_t)TAO::Ledger::ChainState::PercentSynchronized();
 

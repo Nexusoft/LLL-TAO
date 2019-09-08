@@ -50,41 +50,9 @@ namespace LLP
     /* Mutex to protect connected sessions. */
     std::mutex LegacyNode::SESSIONS_MUTEX;
 
+
     /* Map to keep track of duplicate nonce sessions. */
     std::map<uint64_t, std::pair<uint32_t, uint32_t>> LegacyNode::mapSessions;
-
-    /* Helper function to switch the nodes on sync. */
-    void SwitchNode()
-    {
-        /* Normal case of asking for a getblocks inventory message. */
-        memory::atomic_ptr<LegacyNode>& pBest = LEGACY_SERVER->GetConnection(LegacyNode::addrFastSync.load());
-        if(pBest != nullptr)
-        {
-            /* Send out another getblocks request. */
-            try
-            {
-                pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
-            }
-            catch(const std::runtime_error& e)
-            {
-                /* Recurse on failure. */
-                debug::error(FUNCTION, e.what());
-
-                SwitchNode();
-            }
-        }
-        else
-        {
-            /* Reset the sync address. */
-            LegacyNode::addrFastSync = BaseAddress();
-
-            /* Reset the getblocks request timeout. */
-            LegacyNode::nLastGetBlocks.store(0);
-
-            /* Logging to verify (for debugging). */
-            debug::log(0, FUNCTION, "No Sync Nodes Available, Resetting State");
-        }
-    }
 
 
     /* Static initialization of last get blocks. */
@@ -97,10 +65,6 @@ namespace LLP
 
     /* The fast sync average speed. */
     std::atomic<uint64_t> LegacyNode::nFastSyncAverage;
-
-
-    /* The current node that is being used for fast sync */
-    memory::atomic<BaseAddress> LegacyNode::addrFastSync;
 
 
     /* The last time a block was received. */
@@ -194,6 +158,86 @@ namespace LLP
     }
 
 
+    /* Send a request to get recent inventory from remote node. */
+    void LegacyNode::PushGetBlocks(const uint1024_t& hashBlockFrom, const uint1024_t& hashBlockTo)
+    {
+        /* Filter out duplicate requests. */
+        if(hashLastGetblocks.load() == hashBlockFrom && nLastGetBlocks.load() + 1 > runtime::timestamp())
+            return;
+
+        /* Set the fast sync address. */
+        if(nCurrentSession != TAO::Ledger::nSyncSession.load())
+        {
+            /* Set the new sync address. */
+            TAO::Ledger::nSyncSession.store(nCurrentSession);
+
+            /* Reset the last time received. */
+            nLastTimeReceived = runtime::timestamp();
+
+            debug::log(0, NODE, "New sync address set");
+        }
+
+        /* Calculate the fast sync average. */
+        nFastSyncAverage = std::min((uint64_t)25, (nFastSyncAverage.load() + (runtime::timestamp() - nLastGetBlocks.load())) / 2);
+
+        /* Update the last timestamp this was called. */
+        nLastGetBlocks = runtime::timestamp();
+
+        /* Update the hash that was used for last request. */
+        hashLastGetblocks = hashBlockFrom;
+
+        /* Push the request to the node. */
+        PushMessage("getblocks", TAO::Ledger::Locator(hashBlockFrom), hashBlockTo);
+
+        /* Debug output for monitoring. */
+        debug::log(0, NODE, "(", nFastSyncAverage.load(), ") requesting getblocks from ", hashBlockFrom.SubString(), " to ", hashBlockTo.SubString());
+    }
+
+
+    /* Helper function to switch the nodes on sync. */
+    void LegacyNode::SwitchNode()
+    {
+        /* Don't switch node if tritium node if on tritium server. */
+        if(TritiumNode::SessionActive(TAO::Ledger::nSyncSession.load()))
+            return;
+
+        std::pair<uint32_t, uint32_t> pairSession;
+        { LOCK(SESSIONS_MUTEX);
+
+            /* Check for session. */
+            if(!mapSessions.count(TAO::Ledger::nSyncSession.load()))
+                return;
+
+            /* Set the current session. */
+            pairSession = mapSessions[TAO::Ledger::nSyncSession.load()];
+        }
+
+        /* Normal case of asking for a getblocks inventory message. */
+        memory::atomic_ptr<LegacyNode>& pBest = LEGACY_SERVER->GetConnection(pairSession);
+        if(pBest != nullptr)
+        {
+            /* Send out another getblocks request. */
+            try { pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0)); }
+            catch(const std::runtime_error& e)
+            {
+                /* Recurse on failure. */
+                debug::error(FUNCTION, e.what());
+
+                SwitchNode();
+            }
+        }
+        else
+        {
+            /* Reset the getblocks request timeout. */
+            LegacyNode::nLastGetBlocks.store(0);
+            TAO::Ledger::nSyncSession.store(0);
+
+            /* Logging to verify (for debugging). */
+            debug::log(0, FUNCTION, "No Sync Nodes Available, Resetting State");
+        }
+    }
+
+
     /** Handle Event Inheritance. **/
     void LegacyNode::Event(uint8_t EVENT, uint32_t LENGTH)
     {
@@ -283,9 +327,9 @@ namespace LLP
 
             /* Unreliabilitiy re-requesting (max time since getblocks) */
             if(TAO::Ledger::ChainState::Synchronizing()
-            && addrFastSync == GetAddress()
-            && nLastTimeReceived.load() + 15 < nTimestamp
-            && nLastGetBlocks.load() + 15 < nTimestamp)
+            && nCurrentSession == TAO::Ledger::nSyncSession.load()
+            && nLastTimeReceived.load() + 1 < nTimestamp
+            && nLastGetBlocks.load() + 1 < nTimestamp)
             {
                 debug::log(0, NODE, "Sync Node Timeout");
 
@@ -356,7 +400,7 @@ namespace LLP
             }
 
             /* Detect if the fast sync node was disconnected. */
-            if(addrFastSync == GetAddress())
+            if(nCurrentSession == TAO::Ledger::nSyncSession.load())
             {
                 debug::log(0, NODE, "Sync Node Disconnected");
 
@@ -461,7 +505,7 @@ namespace LLP
             PushMessage("verack");
 
             /* Push our version back since we just completed getting the version from the other node. */
-            if(fOUTGOING && !addrFastSync.load().IsValid())
+            if(fOUTGOING && TAO::Ledger::nSyncSession.load() == 0)
                 PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
 
             PushMessage("getaddr");
@@ -549,7 +593,7 @@ namespace LLP
                 if(TAO::Ledger::ChainState::Synchronizing())
                 {
                     /* Find a new fast sync node if too many failures. */
-                    if(addrFastSync == GetAddress())
+                    if(nCurrentSession == TAO::Ledger::nSyncSession.load())
                     {
                         /* Switch to a new node. */
                         SwitchNode();
@@ -681,7 +725,7 @@ namespace LLP
             }
 
             /* Fast sync mode. */
-            if(addrFastSync == GetAddress()
+            if(nCurrentSession == TAO::Ledger::nSyncSession.load()
             && TAO::Ledger::ChainState::Synchronizing()
             && vInv.back().GetType() == MSG_BLOCK_LEGACY
             && vInv.size() > 100) //an assumption that a getblocks batch will be at least 100 blocks or more.

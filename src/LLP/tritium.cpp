@@ -54,10 +54,6 @@ namespace LLP
     std::map<uint64_t, std::pair<uint32_t, uint32_t>> TritiumNode::mapSessions;
 
 
-    /* The current sync node. */
-    std::atomic<uint64_t> TritiumNode::nSyncSession(0);
-
-
     /* If node is completely sychronized. */
     std::atomic<bool> TritiumNode::fSynchronized(false);
 
@@ -267,10 +263,10 @@ namespace LLP
                     TRITIUM_SERVER->pAddressManager->AddAddress(GetAddress(), ConnectState::DROPPED);
 
                 /* Handle if sync node is disconnected. */
-                if(nCurrentSession == nSyncSession.load())
+                if(nCurrentSession == TAO::Ledger::nSyncSession.load())
                 {
                     //TODO: find another node
-                    nSyncSession.store(0);
+                    TAO::Ledger::nSyncSession.store(0);
                 }
 
 
@@ -354,13 +350,13 @@ namespace LLP
                     PushMessage(uint8_t(ACTION::VERSION), PROTOCOL_VERSION, SESSION_ID, version::CLIENT_VERSION_BUILD_STRING);
 
                 }
-                else if(nSyncSession == 0 && !fSynchronized.load())
+                else if(TAO::Ledger::nSyncSession == 0 && !fSynchronized.load())
                 {
                     /* Subscribe to this node. */
                     Subscribe(SUBSCRIPTION::LASTINDEX | SUBSCRIPTION::BESTCHAIN);
 
                     /* Set the sync session-id. */
-                    nSyncSession.store(nCurrentSession);
+                    TAO::Ledger::nSyncSession.store(nCurrentSession);
 
                     /* Ask for list of blocks if this is current sync node. */
                     PushMessage(ACTION::LIST,
@@ -1222,14 +1218,14 @@ namespace LLP
                             ssPacket >> hashLast;
 
                             /* Check if is sync node. */
-                            if(nCurrentSession == nSyncSession.load())
+                            if(nCurrentSession == TAO::Ledger::nSyncSession.load())
                             {
                                 /* Check for complete synchronization. */
                                 if(hashBestChain == TAO::Ledger::ChainState::hashBestChain.load())
                                 {
                                     /* Set state to synchronized. */
                                     fSynchronized.store(true);
-                                    nSyncSession.store(0);
+                                    TAO::Ledger::nSyncSession.store(0);
 
                                     /* Subscribe to notifications. */
                                     Subscribe(SUBSCRIPTION::BESTHEIGHT | SUBSCRIPTION::CHECKPOINT | SUBSCRIPTION::BLOCK | SUBSCRIPTION::TRANSACTION);
@@ -1273,11 +1269,11 @@ namespace LLP
                             if(hashBestChain == TAO::Ledger::ChainState::hashBestChain.load())
                             {
                                 /* Reset the sychronization if this is current sync node. */
-                                if(nSyncSession == nCurrentSession)
+                                if(TAO::Ledger::nSyncSession == nCurrentSession)
                                 {
                                     /* Set state to synchronized. */
                                     fSynchronized.store(true);
-                                    nSyncSession.store(0);
+                                    TAO::Ledger::nSyncSession.store(0);
 
                                     /* Subscribe to notifications. */
                                     Subscribe(SUBSCRIPTION::BESTHEIGHT | SUBSCRIPTION::CHECKPOINT | SUBSCRIPTION::BLOCK | SUBSCRIPTION::TRANSACTION);
@@ -1491,7 +1487,7 @@ namespace LLP
                     case SPECIFIER::SYNC:
                     {
                         /* Check if this is an unsolicited sync block. */
-                        if(nCurrentSession != nSyncSession)
+                        if(nCurrentSession != TAO::Ledger::nSyncSession)
                             return debug::drop(FUNCTION, "unsolicted sync block");
 
                         /* Get the block from the stream. */
@@ -1545,7 +1541,7 @@ namespace LLP
                 if(nConsecutiveFails >= 500)
                 {
                     /* Fast Sync node switch. */
-                    if(TAO::Ledger::ChainState::Synchronizing() && nSyncSession.load() == nCurrentSession)
+                    if(TAO::Ledger::ChainState::Synchronizing() && TAO::Ledger::nSyncSession.load() == nCurrentSession)
                     {
                         //TODO: find a new fast sync node
                     }

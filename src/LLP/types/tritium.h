@@ -171,10 +171,6 @@ namespace LLP
         static std::map<uint64_t, std::pair<uint32_t, uint32_t>> mapSessions;
 
 
-        /** The current sync node. **/
-        static std::atomic<uint64_t> nSyncSession;
-
-
         /** The current subscriptions. **/
         uint16_t nSubscriptions;
 

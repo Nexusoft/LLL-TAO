@@ -91,7 +91,8 @@ namespace LLP
                 CONNECTIONS->at(nSlot).store(pnode);
 
             /* Fire the connected event. */
-            CONNECTIONS->at(nSlot)->Event(EVENT_CONNECT);
+            memory::atomic_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nSlot);
+            CONNECTION->Event(EVENT_CONNECT);
 
             /* Iterate the DDOS cScore (Connection score). */
             if(DDOS)
@@ -140,7 +141,8 @@ namespace LLP
                 CONNECTIONS->at(nSlot).store(pnode);
 
             /* Fire the connected event. */
-            CONNECTIONS->at(nSlot)->Event(EVENT_CONNECT);
+            memory::atomic_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nSlot);
+            CONNECTION->Event(EVENT_CONNECT);
 
             /* Bump the total connections atomic counter. */
             ++nConnections;
@@ -261,8 +263,6 @@ namespace LLP
                 {
                     /* Load the atomic pointer raw data. */
                     ProtocolType* pConnection = CONNECTIONS->at(nIndex).load();
-
-                    /* Skip over Inactive Connections. */
                     if(!pConnection)
                         continue;
 
@@ -407,7 +407,8 @@ namespace LLP
     void DataThread<ProtocolType>::disconnect_remove_event(uint32_t nIndex, uint8_t nReason)
     {
         /* Send off the disconnect event. */
-        CONNECTIONS->at(nIndex)->Event(EVENT_DISCONNECT, nReason);
+        memory::atomic_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nIndex);
+        CONNECTION->Event(EVENT_DISCONNECT, nReason);
 
         remove(nIndex);
     }
