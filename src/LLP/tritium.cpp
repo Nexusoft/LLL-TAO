@@ -350,22 +350,26 @@ namespace LLP
                     PushMessage(uint8_t(ACTION::VERSION), PROTOCOL_VERSION, SESSION_ID, version::CLIENT_VERSION_BUILD_STRING);
 
                 }
-                else if(TAO::Ledger::nSyncSession == 0 && !fSynchronized.load())
+                else if(!fSynchronized.load())
                 {
-                    /* Subscribe to this node. */
-                    Subscribe(SUBSCRIPTION::LASTINDEX | SUBSCRIPTION::BESTCHAIN);
+                    /* Start sync on startup, or override any legacy syncing currently in process. */
+                    if(TAO::Ledger::nSyncSession.load() == 0 || LegacyNode::SessionActive(TAO::Ledger::nSyncSession.load()))
+                    {
+                        /* Subscribe to this node. */
+                        Subscribe(SUBSCRIPTION::LASTINDEX | SUBSCRIPTION::BESTCHAIN);
 
-                    /* Set the sync session-id. */
-                    TAO::Ledger::nSyncSession.store(nCurrentSession);
+                        /* Set the sync session-id. */
+                        TAO::Ledger::nSyncSession.store(nCurrentSession);
 
-                    /* Ask for list of blocks if this is current sync node. */
-                    PushMessage(ACTION::LIST,
-                        uint8_t(SPECIFIER::SYNC),
-                        uint8_t(TYPES::BLOCK),
-                        uint8_t(TYPES::LOCATOR),
-                        TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
-                        uint1024_t(0)
-                    );
+                        /* Ask for list of blocks if this is current sync node. */
+                        PushMessage(ACTION::LIST,
+                            uint8_t(SPECIFIER::SYNC),
+                            uint8_t(TYPES::BLOCK),
+                            uint8_t(TYPES::LOCATOR),
+                            TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
+                            uint1024_t(0)
+                        );
+                    }
                 }
 
                 /* Subscribe to receive notifications. */

@@ -189,6 +189,18 @@ namespace LLP
         static memory::atomic_ptr<LegacyNode>& GetNode(const uint64_t nSession);
 
 
+        /** SessionActive
+         *
+         *  Determine whether a session is connected.
+         *
+         *  @param[in] nSession The session to check for
+         *
+         *  @return true if session is connected.
+         *
+         **/
+        static bool SessionActive(const uint64_t nSession);
+
+
         /** DoS
          *
          *  Send the DoS Score to DDOS Filte

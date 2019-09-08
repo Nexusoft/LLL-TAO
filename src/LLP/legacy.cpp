@@ -1007,4 +1007,14 @@ namespace LLP
         const std::pair<uint32_t, uint32_t>& pair = mapSessions[nSession];
         return LEGACY_SERVER->GetConnection(pair.first, pair.second);
     }
+
+
+
+    /* Determine whether a session is connected. */
+    bool LegacyNode::SessionActive(const uint64_t nSession)
+    {
+        LOCK(SESSIONS_MUTEX);
+
+        return mapSessions.count(nSession);
+    }
 }
