@@ -146,7 +146,7 @@ namespace TAO
                             /* Set current conflict chain. */
                             nConflict = mapConflicts[hashTx];
 
-                            debug::error(FUNCTION, "CONFLICT ", nConflict, " TRANSACTION DETECTED ", tx.hashPrevTx.SubString());
+                            debug::error(FUNCTION, "SEQUENCED CONFLICT ", nConflict, " TRANSACTION DETECTED ", tx.hashPrevTx.SubString());
                         }
                     }
                 }

@@ -1162,7 +1162,102 @@ TEST_CASE( "Mempool and memory sequencing tests", "[mempool]")
             REQUIRE(LLD::Register->ReadState(hashAccount, object2));
 
             //set previous
-            //hashPrevTx = tx.GetHash();
+            hashPrevTx = tx.GetHash();
+        }
+
+
+        //THIS WILL BE SEEN AS A SECOND 'CONFLICTED' TRANSACTION
+        {
+
+            //set private keys
+            hashPrivKey1 = hashPrivKey2;
+            hashPrivKey2 = LLC::GetRand512();
+
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis;
+            tx.nSequence   = 3;
+            tx.hashPrevTx  = hashPrevTx;
+            tx.nTimestamp  = runtime::timestamp();
+            tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
+
+            //payload
+            tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(300) << uint64_t(0);
+
+            //generate the prestates and poststates
+            REQUIRE(tx.Build(TAO::Ledger::FLAGS::MEMPOOL + 1)); //simulate a remote node that is sequencing like normal
+
+            //sign
+            tx.Sign(hashPrivKey1);
+
+            //commit to disk
+            REQUIRE(TAO::Ledger::mempool.Accept(tx));
+
+            //check values all match
+            TAO::Register::Object object2;
+            REQUIRE(LLD::Register->ReadState(hashToken, object2, TAO::Ledger::FLAGS::MEMPOOL + 1));
+
+            //parse
+            REQUIRE(object2.Parse());
+
+            //check values
+            REQUIRE(object2.get<uint64_t>("balance") == 400);
+
+            //make sure not on disk
+            REQUIRE(LLD::Register->ReadState(hashAccount, object2));
+
+            //set previous
+            hashPrevTx = tx.GetHash();
+        }
+
+
+
+        //THIS WILL BE SEEN AS A THIRD CHAINED 'CONFLICTED' TRANSACTION
+        {
+
+            //set private keys
+            hashPrivKey1 = hashPrivKey2;
+            hashPrivKey2 = LLC::GetRand512();
+
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis;
+            tx.nSequence   = 4;
+            tx.hashPrevTx  = hashPrevTx;
+            tx.nTimestamp  = runtime::timestamp();
+            tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
+
+            //payload
+            tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(300) << uint64_t(0);
+
+            //generate the prestates and poststates
+            REQUIRE(tx.Build(TAO::Ledger::FLAGS::MEMPOOL + 1)); //simulate a remote node that is sequencing like normal
+
+            //sign
+            tx.Sign(hashPrivKey1);
+
+            //commit to disk
+            REQUIRE(TAO::Ledger::mempool.Accept(tx));
+
+            //check values all match
+            TAO::Register::Object object2;
+            REQUIRE(LLD::Register->ReadState(hashToken, object2, TAO::Ledger::FLAGS::MEMPOOL + 1));
+
+            //parse
+            REQUIRE(object2.Parse());
+
+            //check values
+            REQUIRE(object2.get<uint64_t>("balance") == 100);
+
+            //make sure not on disk
+            REQUIRE(LLD::Register->ReadState(hashAccount, object2));
+
+            //set previous
+            hashPrevTx = tx.GetHash();
         }
     }
 }
