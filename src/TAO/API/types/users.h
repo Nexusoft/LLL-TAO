@@ -556,6 +556,18 @@ namespace TAO
                 uint512_t hashLast, std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> &vContracts);
 
 
+            /** BlocksToMaturity
+            *
+            *  Determines whether the signature chain has reached maturity after the last coinbase/coinstake transaction
+            *
+            *  @param[in] hashGenesis The genesis hash for the sig chain owner.
+            *
+            *  @return The number of blocks remaining until it is mature
+            *
+            **/
+            static uint32_t BlocksToMaturity(const uint256_t hashGenesis);
+
+
           private:
 
 
