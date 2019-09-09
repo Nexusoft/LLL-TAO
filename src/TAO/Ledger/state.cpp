@@ -760,7 +760,9 @@ namespace TAO
                             uint8_t(LLP::TYPES::BLOCK),
                             hash,
                             uint8_t(LLP::TYPES::BESTCHAIN),
-                            hash
+                            hash,
+                            uint8_t(LLP::TYPES::BESTHEIGHT),
+                            nHeight
                         );
                     }
 
