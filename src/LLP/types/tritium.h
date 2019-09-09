@@ -174,6 +174,10 @@ namespace LLP
         std::atomic<bool> fAuthorized;
 
 
+        /** State to keep track of if node has completed initialization process. **/
+        std::atomic<bool> fInitialized;
+
+
         /** Mutex for connected sessions. **/
         static std::mutex SESSIONS_MUTEX;
 

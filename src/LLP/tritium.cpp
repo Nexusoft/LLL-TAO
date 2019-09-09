@@ -62,6 +62,7 @@ namespace LLP
     TritiumNode::TritiumNode()
     : BaseConnection<TritiumPacket>()
     , fAuthorized(false)
+    , fInitialized(false)
     , nSubscriptions(0)
     , nNotifications(0)
     , nLastPing(0)
@@ -86,6 +87,7 @@ namespace LLP
     TritiumNode::TritiumNode(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS)
     : BaseConnection<TritiumPacket>(SOCKET_IN, DDOS_IN, isDDOS)
     , fAuthorized(false)
+    , fInitialized(false)
     , nSubscriptions(0)
     , nNotifications(0)
     , nLastPing(0)
@@ -110,6 +112,7 @@ namespace LLP
     TritiumNode::TritiumNode(DDOS_Filter* DDOS_IN, bool isDDOS)
     : BaseConnection<TritiumPacket>(DDOS_IN, isDDOS)
     , fAuthorized(false)
+    , fInitialized(false)
     , nSubscriptions(0)
     , nNotifications(0)
     , nLastPing(0)
@@ -195,6 +198,23 @@ namespace LLP
                     Disconnect();
 
                     return;
+                }
+
+                /* Check for initialization. */
+                if(!fInitialized.load() && fSynchronized.load())
+                {
+                    /* Set that node is initialized. */
+                    fInitialized.store(true);
+
+                    /* Subscribe to new data elements. */
+                    Subscribe(
+                        SUBSCRIPTION::BESTHEIGHT
+                      | SUBSCRIPTION::CHECKPOINT
+                      | SUBSCRIPTION::BLOCK
+                      | SUBSCRIPTION::TRANSACTION
+                      | SUBSCRIPTION::BESTCHAIN
+                      | SUBSCRIPTION::ADDRESS
+                    );
                 }
 
                 /* Handle sending the pings to remote node.. */
