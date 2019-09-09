@@ -127,10 +127,28 @@ namespace TAO
                         /* Set the conflict from current conflict counter. */
                         nConflict = ++mapConnected[tx.hashPrevTx];
 
+                        /* Flag this transaction as a conflicted transaction. */
+                        mapConflicts[hashTx] = nConflict;
+
                         debug::error(FUNCTION, "CONFLICT ", nConflict, " TRANSACTION DETECTED ", tx.hashPrevTx.SubString());
                     }
                     else
+                    {
+                        /* Set this transaction as connected. */
                         mapConnected[tx.hashPrevTx] = 0;
+
+                        /* Check if transaction resolves to a conflict. */
+                        if(mapConflicts.count(tx.hashPrevTx))
+                        {
+                            /* Assign this transaction to conflicted chain. */
+                            mapConflicts[hashTx] = mapConflicts[tx.hashPrevTx];
+
+                            /* Set current conflict chain. */
+                            nConflict = mapConflicts[hashTx];
+
+                            debug::error(FUNCTION, "CONFLICT ", nConflict, " TRANSACTION DETECTED ", tx.hashPrevTx.SubString());
+                        }
+                    }
                 }
             }
 
@@ -244,12 +262,11 @@ namespace TAO
             RLOCK(MUTEX);
 
             /* Check through the ledger map for the genesis. */
-            for(const auto& txMap : mapLedger)
+            for(const auto& tx : mapLedger)
             {
-                /* Check for Genesis. */
-                if(txMap.second.hashGenesis == hashGenesis)
-                    vTx.push_back(txMap.second);
-
+                /* Check for non-conflicted genesis-id's. */
+                if(tx.second.hashGenesis == hashGenesis && !mapConflicts.count(tx.first))
+                    vTx.push_back(tx.second);
             }
 
             /* Check that a transaction was found. */

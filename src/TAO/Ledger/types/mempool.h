@@ -63,11 +63,11 @@ namespace TAO
 
 
             /** Keep track of spent previous transactions. **/
-            std::map<uint256_t, uint32_t> mapConnected;
+            std::map<uint512_t, uint32_t> mapConnected;
 
 
             /** Record of conflicted transactions in mempool. **/
-            std::map<uint256_t, uint32_t> mapConflicts;
+            std::map<uint512_t, uint32_t> mapConflicts;
 
 
             /** Record of legacy inputs in the mempool. **/

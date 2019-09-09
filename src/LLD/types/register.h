@@ -160,58 +160,6 @@ namespace LLD
         bool EraseTrust(const uint256_t& hashGenesis);
 
 
-        /** WriteIdentifier
-         *
-         *  Writes a token identifier to the register database.
-         *
-         *  @param[in] nIdentifier The token identifier.
-         *  @param[in] hashRegister The register address of the token.
-         *
-         *  @return True if write was successful, false otherwise.
-         *
-         **/
-        bool WriteIdentifier(const uint256_t nIdentifier, const uint256_t& hashRegister, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
-
-
-        /** EraseIdentifier
-         *
-         *  Erase a token identifier to the register database.
-         *
-         *  @param[in] nIdentifier The token identifier.
-         *
-         *  @return True if write was successful, false otherwise.
-         *
-         **/
-        bool EraseIdentifier(const uint256_t nIdentifier);
-
-
-        /** ReadIdentifier
-         *
-         *  Read a token address from the register database.
-         *
-         *  @param[in] nIdentifier The token identifier.
-         *  @param[out] hashRegister The register address of token.
-         *  @param[in] nFlags The flags for the register database.
-         *
-         *  @return True if read was successful, false otherwise.
-         *
-         **/
-        bool ReadIdentifier(const uint256_t nIdentifier, uint256_t& hashRegister, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
-
-
-        /** HasIdentifier
-         *
-         *  Determines if an identifier exists in the database.
-         *
-         *  @param[in] nIdentifier The token identifier.
-         *  @param[in] nFlags The flags for the register database.
-         *
-         *  @return True if it exists, false otherwise.
-         *
-         **/
-        bool HasIdentifier(const uint256_t nIdentifier, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
-
-
         /** HasState
          *
          *  Determines if a state exists in the register database.

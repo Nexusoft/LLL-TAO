@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/include/timelocks.h>
+#include <TAO/Ledger/include/chainstate.h>
 
 #include <TAO/Operation/include/enum.h>
 
@@ -122,7 +123,8 @@ namespace TAO
                 return 0;
 
             /* Cutoff time of grace period. Stake added within grace period can be removed without penalty */
-            uint64_t nCutoff = runtime::unifiedtimestamp() - (uint64_t)(config::fTestNet.load() ? STAKE_GRACE_PERIOD_TESTNET : STAKE_GRACE_PERIOD);
+            uint64_t nCutoff = ChainState::stateBest.load().GetBlockTime()
+                                    - (uint64_t)(config::fTestNet.load() ? STAKE_GRACE_PERIOD_TESTNET : STAKE_GRACE_PERIOD);
 
             /* Look through tx history to calculate any amount of stake added within the grace period */
             uint512_t hashLast = 0;

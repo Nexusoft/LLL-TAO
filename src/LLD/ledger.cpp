@@ -261,13 +261,13 @@ namespace LLD
 
                 /* Check that the diff index is correct. */
                 std::vector<uint64_t>& vClaims = mapClaims[pair];
-                if(nConflict >= vClaims.size())
-                    throw debug::exception(FUNCTION, "conflict ", nConflict, " out of range ", vClaims.size());
+                if(nConflict < vClaims.size())
+                {
+                    /* Return correct conflict by id. */
+                    nClaimed = vClaims[nConflict];
 
-                /* Return correct conflict by id. */
-                nClaimed = vClaims[nConflict];
-
-                return true;
+                    return true;
+                }
             }
         }
 
