@@ -77,8 +77,7 @@ namespace LLP
     , nConsecutiveOrphans(0)
     , nConsecutiveFails(0)
     , strFullVersion()
-    , hashLastBlock(0)
-    , hashLastTx({0, 0})
+    , nUnsubscribed(0)
     {
     }
 
@@ -102,8 +101,7 @@ namespace LLP
     , nConsecutiveOrphans(0)
     , nConsecutiveFails(0)
     , strFullVersion()
-    , hashLastBlock(0)
-    , hashLastTx({0, 0})
+    , nUnsubscribed(0)
     {
     }
 
@@ -127,8 +125,7 @@ namespace LLP
     , nConsecutiveOrphans(0)
     , nConsecutiveFails(0)
     , strFullVersion()
-    , hashLastBlock(0)
-    , hashLastTx({0, 0})
+    , nUnsubscribed(0)
     {
     }
 
@@ -188,6 +185,18 @@ namespace LLP
 
             case EVENT_GENERIC:
             {
+                /* Make sure node responded on unsubscriion within 30 seconds. */
+                if(nUnsubscribed != 0 && nUnsubscribed + 30 < runtime::timestamp())
+                {
+                    /* Debug output. */
+                    debug::drop(NODE, "failed to receive unsubscription within 30 seconds");
+
+                    /* Disconnect this node. */
+                    Disconnect();
+
+                    return;
+                }
+
                 /* Handle sending the pings to remote node.. */
                 if(nLastPing + 15 < runtime::unifiedtimestamp())
                 {
@@ -476,7 +485,19 @@ namespace LLP
             /* Handle for the subscribe command. */
             case ACTION::SUBSCRIBE:
             case ACTION::UNSUBSCRIBE:
+            case RESPONSE::UNSUBSCRIBED:
             {
+                /* Let node know it unsubscribed successfully. */
+                if(INCOMING.MESSAGE == RESPONSE::UNSUBSCRIBED)
+                {
+                    /* Check for unsoliced messages. */
+                    if(nUnsubscribed == 0)
+                        return debug::drop(NODE, "unsolicted RESPONSE::UNSUBSCRIBE");
+
+                    /* Reset the timer. */
+                    nUnsubscribed = 0;
+                }
+
                 /* Set the limits. */
                 int32_t nLimits = 16;
 
@@ -502,13 +523,21 @@ namespace LLP
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::SUBSCRIBE: BLOCK ", std::bitset<16>(nNotifications));
                             }
-                            else
+                            else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
                             {
                                 /* Unset the block flag. */
                                 nNotifications &= ~SUBSCRIPTION::BLOCK;
 
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::UNSUBSCRIBE: BLOCK ", std::bitset<16>(nNotifications));
+                            }
+                            else
+                            {
+                                /* Unset the block flag. */
+                                nSubscriptions &= ~SUBSCRIPTION::BLOCK;
+
+                                /* Debug output. */
+                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED: BLOCK ", std::bitset<16>(nSubscriptions));
                             }
 
                             break;
@@ -526,13 +555,21 @@ namespace LLP
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::SUBSCRIBE: TRANSACTION ", std::bitset<16>(nNotifications));
                             }
-                            else
+                            else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
                             {
-                                /* Unset the transactiopn flag. */
+                                /* Unset the transaction flag. */
                                 nNotifications &= ~SUBSCRIPTION::TRANSACTION;
 
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::UNSUBSCRIBE: TRANSACTION ", std::bitset<16>(nNotifications));
+                            }
+                            else
+                            {
+                                /* Unset the transaction flag. */
+                                nSubscriptions &= ~SUBSCRIPTION::TRANSACTION;
+
+                                /* Debug output. */
+                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED: TRANSACTION ", std::bitset<16>(nSubscriptions));
                             }
 
                             break;
@@ -554,13 +591,21 @@ namespace LLP
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::SUBSCRIBE: BESTHEIGHT ", std::bitset<16>(nNotifications));
                             }
-                            else
+                            else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
                             {
                                 /* Unset the height flag. */
                                 nNotifications &= ~SUBSCRIPTION::BESTHEIGHT;
 
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::UNSUBSCRIBE: BESTHEIGHT ", std::bitset<16>(nNotifications));
+                            }
+                            else
+                            {
+                                /* Unset the height flag. */
+                                nSubscriptions &= ~SUBSCRIPTION::BESTHEIGHT;
+
+                                /* Debug output. */
+                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED: BESTHEIGHT ", std::bitset<16>(nSubscriptions));
                             }
 
                             break;
@@ -582,13 +627,21 @@ namespace LLP
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::SUBSCRIBE: CHECKPOINT ", std::bitset<16>(nNotifications));
                             }
-                            else
+                            else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
                             {
                                 /* Unset the checkpoints flag. */
                                 nNotifications &= ~SUBSCRIPTION::CHECKPOINT;
 
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::UNSUBSCRIBE: CHECKPOINT ", std::bitset<16>(nNotifications));
+                            }
+                            else
+                            {
+                                /* Unset the checkpoints flag. */
+                                nSubscriptions &= ~SUBSCRIPTION::CHECKPOINT;
+
+                                /* Debug output. */
+                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED: CHECKPOINT ", std::bitset<16>(nSubscriptions));
                             }
 
                             break;
@@ -606,13 +659,21 @@ namespace LLP
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::SUBSCRIBE: ADDRESS ", std::bitset<16>(nNotifications));
                             }
-                            else
+                            else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
                             {
                                 /* Unset the address flag. */
                                 nNotifications &= ~SUBSCRIPTION::ADDRESS;
 
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::UNSUBSCRIBE: ADDRESS ", std::bitset<16>(nNotifications));
+                            }
+                            else
+                            {
+                                /* Unset the address flag. */
+                                nSubscriptions &= ~SUBSCRIPTION::ADDRESS;
+
+                                /* Debug output. */
+                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED: ADDRESS ", std::bitset<16>(nSubscriptions));
                             }
 
                             break;
@@ -630,13 +691,21 @@ namespace LLP
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::SUBSCRIBE: LAST ", std::bitset<16>(nNotifications));
                             }
-                            else
+                            else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
                             {
                                 /* Unset the last flag. */
                                 nNotifications &= ~SUBSCRIPTION::LASTINDEX;
 
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::UNSUBSCRIBE: LAST ", std::bitset<16>(nNotifications));
+                            }
+                            else
+                            {
+                                /* Unset the last flag. */
+                                nSubscriptions &= ~SUBSCRIPTION::LASTINDEX;
+
+                                /* Debug output. */
+                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED: LASTINDEX ", std::bitset<16>(nSubscriptions));
                             }
 
                             break;
@@ -658,13 +727,21 @@ namespace LLP
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::SUBSCRIBE: BESTCHAIN ", std::bitset<16>(nNotifications));
                             }
-                            else
+                            else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
                             {
                                 /* Unset the bestchain flag. */
                                 nNotifications &= ~SUBSCRIPTION::BESTCHAIN;
 
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::UNSUBSCRIBE: BESTCHAIN" , std::bitset<16>(nNotifications));
+                            }
+                            else
+                            {
+                                /* Unset the bestchain flag. */
+                                nSubscriptions &= ~SUBSCRIPTION::BESTCHAIN;
+
+                                /* Debug output. */
+                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED: BESTCHAIN ", std::bitset<16>(nSubscriptions));
                             }
 
                             break;
@@ -679,6 +756,10 @@ namespace LLP
                         }
                     }
                 }
+
+                /* Let node know it unsubscribed successfully. */
+                if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
+                    WritePacket(NewMessage(RESPONSE::UNSUBSCRIBED, ssPacket));
 
                 break;
             }
@@ -785,10 +866,6 @@ namespace LLP
                                     return debug::drop(NODE, "malformed starting index");
                             }
 
-                            /* Check for search from last. */
-                            if(hashStart == 0)
-                                hashStart = hashLastBlock;
-
                             /* Get the ending hash. */
                             uint1024_t hashStop;
                             ssPacket >> hashStop;
@@ -844,12 +921,9 @@ namespace LLP
                                 }
                             }
 
-                            /* Set the last block. */
-                            hashLastBlock = hashStart;
-
                             /* Check for last subscription. */
                             if(nNotifications & SUBSCRIPTION::LASTINDEX)
-                                PushMessage(ACTION::NOTIFY, uint8_t(TYPES::LASTINDEX), hashLastBlock);
+                                PushMessage(ACTION::NOTIFY, uint8_t(TYPES::LASTINDEX), hashStart);
 
                             break;
                         }
@@ -872,10 +946,6 @@ namespace LLP
                             /* Check for legacy. */
                             if(fLegacy)
                             {
-                                /* Check for search from last. */
-                                if(hashStart == 0)
-                                    hashStart = hashLastTx[0];
-
                                 /* Do a sequential read to obtain the list. */
                                 std::vector<Legacy::Transaction> vtx;
                                 while(LLD::Legacy->BatchRead(hashStart, "tx", vtx, 100))
@@ -898,15 +968,9 @@ namespace LLP
                                     if(nLimits == 0 || hashStart == hashStop)
                                         break;
                                 }
-
-                                /* Set the last transction. */
-                                hashLastTx[0] = hashStart;
                             }
                             else
                             {
-                                /* Check for search from last. */
-                                if(hashStart == 0)
-                                    hashStart = hashLastTx[1];
 
                                 /* Do a sequential read to obtain the list. */
                                 std::vector<TAO::Ledger::Transaction> vtx;
@@ -934,9 +998,6 @@ namespace LLP
                                     if(nLimits == 0 || hashStart == hashStop)
                                         break;
                                 }
-
-                                /* Set the last transction. */
-                                hashLastTx[1] = hashStart;
                             }
 
                             break;
@@ -1666,7 +1727,10 @@ namespace LLP
     /* Unsubscribe from another node for notifications. */
     void TritiumNode::Unsubscribe(const uint16_t nFlags)
     {
-        //this method just wraps subscribe
+        /* Set the timestamp that we unsubscribed at. */
+        nUnsubscribed = runtime::timestamp();
+
+        /* Unsubscribe over the network. */
         Subscribe(nFlags, false);
     }
 
@@ -1694,9 +1758,6 @@ namespace LLP
             }
             else
             {
-                /* Set the flag. */
-                nSubscriptions &= ~SUBSCRIPTION::BLOCK;
-
                 /* Debug output. */
                 debug::log(3, NODE, "UNSUBSCRIBING FROM BLOCK ", std::bitset<16>(nSubscriptions));
             }
@@ -1719,9 +1780,6 @@ namespace LLP
             }
             else
             {
-                /* Set the flag. */
-                nSubscriptions &= ~SUBSCRIPTION::TRANSACTION;
-
                 /* Debug output. */
                 debug::log(3, NODE, "UNSUBSCRIBING FROM TRANSACTION ", std::bitset<16>(nSubscriptions));
             }
@@ -1744,9 +1802,6 @@ namespace LLP
             }
             else
             {
-                /* Set the flag. */
-                nSubscriptions &= ~SUBSCRIPTION::TIMESEED;
-
                 /* Debug output. */
                 debug::log(3, NODE, "UNSUBSCRIBING FROM TIMESEED ", std::bitset<16>(nSubscriptions));
             }
@@ -1769,9 +1824,6 @@ namespace LLP
             }
             else
             {
-                /* Set the flag. */
-                nSubscriptions &= ~SUBSCRIPTION::BESTHEIGHT;
-
                 /* Debug output. */
                 debug::log(3, NODE, "UNSUBSCRIBING FROM BESTHEIGHT ", std::bitset<16>(nSubscriptions));
             }
@@ -1794,9 +1846,6 @@ namespace LLP
             }
             else
             {
-                /* Set the flag. */
-                nSubscriptions &= ~SUBSCRIPTION::CHECKPOINT;
-
                 /* Debug output. */
                 debug::log(3, NODE, "UNSUBSCRIBING FROM CHECKPOINT ", std::bitset<16>(nSubscriptions));
             }
@@ -1819,9 +1868,6 @@ namespace LLP
             }
             else
             {
-                /* Set the flag. */
-                nSubscriptions &= ~SUBSCRIPTION::ADDRESS;
-
                 /* Debug output. */
                 debug::log(3, NODE, "UNSUBSCRIBING FROM ADDRESS ", std::bitset<16>(nSubscriptions));
             }
@@ -1844,9 +1890,6 @@ namespace LLP
             }
             else
             {
-                /* Set the flag. */
-                nSubscriptions &= ~SUBSCRIPTION::LASTINDEX;
-
                 /* Debug output. */
                 debug::log(3, NODE, "UNSUBSCRIBING FROM LASTINDEX ", std::bitset<16>(nSubscriptions));
             }
@@ -1869,9 +1912,6 @@ namespace LLP
             }
             else
             {
-                /* Set the flag. */
-                nSubscriptions &= ~SUBSCRIPTION::BESTCHAIN;
-
                 /* Debug output. */
                 debug::log(3, NODE, "UNSUBSCRIBING FROM BESTCHAIN ", std::bitset<16>(nSubscriptions));
             }

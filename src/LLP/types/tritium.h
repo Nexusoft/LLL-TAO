@@ -95,9 +95,10 @@ namespace LLP
     {
         enum
         {
-            ACCEPTED    = 0x50,
-            REJECTED    = 0x51,
-            STALE       = 0x52,
+            ACCEPTED     = 0x50,
+            REJECTED     = 0x51,
+            STALE        = 0x52,
+            UNSUBSCRIBED = 0x53, //let node know it was unsubscribed successfully
         };
     }
 
@@ -269,12 +270,8 @@ namespace LLP
         std::string strFullVersion;
 
 
-        /** The last block index listed. **/
-        uint1024_t hashLastBlock;
-
-
-        /** The last transaction index listed. **/
-        uint512_t hashLastTx[2];
+        /** Timestamp of unsubscription. **/
+        uint64_t nUnsubscribed;
 
 
         /** Event
