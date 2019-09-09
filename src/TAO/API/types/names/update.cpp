@@ -58,6 +58,9 @@ namespace TAO
             /* Lock the signature chain. */
             LOCK(users->CREATE_MUTEX);
 
+            /* Check that the sig chain is mature after the last coinbase/coinstake transaction in the chain. */
+            CheckMature(user->Genesis());
+
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
             if(!TAO::Ledger::CreateTransaction(user, strPIN, tx))

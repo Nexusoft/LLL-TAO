@@ -63,6 +63,9 @@ namespace TAO
             /* Lock the signature chain. */
             LOCK(users->CREATE_MUTEX);
 
+            /* Check that the sig chain is mature after the last coinbase/coinstake transaction in the chain. */
+            CheckMature(user->Genesis());
+
             /* Get trust account. Any trust account that has completed Genesis will be indexed. */
             TAO::Register::Object trustAccount;
 

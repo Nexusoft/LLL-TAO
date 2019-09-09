@@ -86,15 +86,12 @@ namespace TAO
             /* The current block height of this node */
             jsonRet["blocks"] = (int)TAO::Ledger::ChainState::nBestHeight.load();
 
-            /* Only include the sync information when not running in private mode as there is nothing to sync in private */
-            if(!config::GetBoolArg("-private"))
-            {
-                /* Flag indicating whether this node is currently syncrhonizing*/
-                jsonRet["synchronizing"] = (bool)TAO::Ledger::ChainState::Synchronizing();
+            /* Flag indicating whether this node is currently syncrhonizing*/
+            jsonRet["synchronizing"] = (bool)TAO::Ledger::ChainState::Synchronizing();
 
-                /* The percentage complete when synchronizing */
+            /* The percentage complete when synchronizing */
                 jsonRet["synccomplete"] = (int)TAO::Ledger::ChainState::PercentSynchronized();
-            }
+            
             /* Number of transactions in the node's mempool*/
             jsonRet["txtotal"] =TAO::Ledger::mempool.Size() + TAO::Ledger::mempool.SizeLegacy();
 
