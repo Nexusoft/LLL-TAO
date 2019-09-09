@@ -348,63 +348,80 @@ namespace TAO
 
 
         /* List transactions in memory pool. */
-        bool Mempool::List(std::vector<uint512_t> &vHashes, uint32_t nCount) const
+        bool Mempool::List(std::vector<uint512_t> &vHashes, uint32_t nCount, bool fLegacy) const
         {
             RLOCK(MUTEX);
 
             //TODO: need to check dependant transactions and sequence them properly otherwise this will fail
 
-            /* Create map of transactions by genesis. */
-            std::map<uint256_t, std::vector<TAO::Ledger::Transaction> > mapTransactions;
-
-            /* Loop through all the transactions. */
-            for(const auto& tx : mapLedger)
+            /* If legacy flag set, skip over getting tritium transactions. */
+            if(fLegacy)
             {
-                /* Cache the genesis. */
-                const uint256_t& hashGenesis = tx.second.hashGenesis;
+                /* Create map of transactions by genesis. */
+                std::map<uint256_t, std::vector<TAO::Ledger::Transaction> > mapTransactions;
 
-                /* Check in map for push back. */
-                if(!mapTransactions.count(hashGenesis))
-                    mapTransactions[hashGenesis] = std::vector<TAO::Ledger::Transaction>();
-
-                /* Push to back of map. */
-                mapTransactions[hashGenesis].push_back(tx.second);
-            }
-
-            /* Loop transctions map by genesis. */
-            for(auto& list : mapTransactions)
-            {
-                /* Get reference of the vector. */
-                std::vector<TAO::Ledger::Transaction>& vTx = list.second;
-
-                /* Sort the list by sequence numbers. */
-                std::sort(vTx.begin(), vTx.end());
-
-                /* Add the hashes into list. */
-                uint512_t hashLast = vTx[0].GetHash();
-                for(uint32_t n = 1; n <= vTx.size(); ++n)
+                /* Loop through all the transactions. */
+                for(const auto& tx : mapLedger)
                 {
-                    /* Add to the output queue. */
-                    vHashes.push_back(hashLast);
+                    /* Cache the genesis. */
+                    const uint256_t& hashGenesis = tx.second.hashGenesis;
 
-                    /* Check for end of index. */
-                    if(n == vTx.size())
-                        break;
+                    /* Check in map for push back. */
+                    if(!mapTransactions.count(hashGenesis))
+                        mapTransactions[hashGenesis] = std::vector<TAO::Ledger::Transaction>();
 
-                    /* Check count. */
+                    /* Push to back of map. */
+                    mapTransactions[hashGenesis].push_back(tx.second);
+                }
+
+                /* Loop transctions map by genesis. */
+                for(auto& list : mapTransactions)
+                {
+                    /* Get reference of the vector. */
+                    std::vector<TAO::Ledger::Transaction>& vTx = list.second;
+
+                    /* Sort the list by sequence numbers. */
+                    std::sort(vTx.begin(), vTx.end());
+
+                    /* Add the hashes into list. */
+                    uint512_t hashLast = vTx[0].GetHash();
+                    for(uint32_t n = 1; n <= vTx.size(); ++n)
+                    {
+                        /* Add to the output queue. */
+                        vHashes.push_back(hashLast);
+
+                        /* Check for end of index. */
+                        if(n == vTx.size())
+                            break;
+
+                        /* Check count. */
+                        if(--nCount == 0)
+                            return true;
+
+                        /* Check that transaction is in sequence. */
+                        if(vTx[n].hashPrevTx != hashLast)
+                        {
+                            debug::log(0, FUNCTION, "Last hash mismatch");
+
+                            break;
+                        }
+
+                        /* Set last hash. */
+                        hashLast = vTx[n].GetHash();
+                    }
+                }
+            }
+            else
+            {
+                /* Loop transctions map by genesis. */
+                for(const auto& list : mapLegacy)
+                {
+                    /* Push legacy transactions last. */
+                    vHashes.push_back(list.first);;
+
+                    /* Check for end of line. */
                     if(--nCount == 0)
                         return true;
-
-                    /* Check that transaction is in sequence. */
-                    if(vTx[n].hashPrevTx != hashLast)
-                    {
-                        debug::log(0, FUNCTION, "Last hash mismatch");
-
-                        break;
-                    }
-
-                    /* Set last hash. */
-                    hashLast = vTx[n].GetHash();
                 }
             }
 

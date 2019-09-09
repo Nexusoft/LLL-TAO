@@ -142,15 +142,15 @@ namespace TAO
                 block.vtx.push_back(std::make_pair(TRANSACTION::TRITIUM, hash));
             }
 
-            /* Add legacy */
-            std::vector<uint512_t> vLegacyMempool;
+            /* Clear for legacy. */
+            vMempool.clear();
 
             /* Retrieve list of transaction hashes from mempool. Limit list to a sane size that would typically more than fill a
              * legacy block, rather than pulling entire pool if it is very large. */
-            TAO::Ledger::mempool.ListLegacy(vLegacyMempool, 1000);
+            TAO::Ledger::mempool.List(vMempool, 1000, true);
 
             /* Loop through the list of transactions. */
-            for(const auto& hash : vLegacyMempool)
+            for(const auto& hash : vMempool)
             {
                 /* Check the Size limits of the Current Block. */
                 if(::GetSerializeSize(block, SER_NETWORK, LLP::PROTOCOL_VERSION) + 200 >= MAX_BLOCK_SIZE)
@@ -172,7 +172,6 @@ namespace TAO
                 /* Add the transaction to the block. */
                 block.vtx.push_back(std::make_pair(TRANSACTION::LEGACY, hash));
             }
-
         }
 
 

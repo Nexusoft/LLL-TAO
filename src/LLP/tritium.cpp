@@ -296,10 +296,13 @@ namespace LLP
         DataStream ssPacket(INCOMING.DATA, SER_NETWORK, PROTOCOL_VERSION);
         switch(INCOMING.MESSAGE)
         {
-
             /* Handle for the version command. */
             case ACTION::VERSION:
             {
+                /* Check for duplicate version messages. */
+                if(nCurrentSession != 0)
+                    return debug::drop(NODE, "duplicate version message");
+
                 /* Hard requirement for version. */
                 ssPacket >> nProtocolVersion;
 
@@ -348,6 +351,14 @@ namespace LLP
                     /* Respond with version message. */
                     PushMessage(uint8_t(ACTION::VERSION), PROTOCOL_VERSION, SESSION_ID, version::CLIENT_VERSION_BUILD_STRING);
 
+                    /* Relay to subscribed nodes a new connection was seen. */
+                    TRITIUM_SERVER->Relay
+                    (
+                        ACTION::NOTIFY,
+                        uint8_t(TYPES::ADDRESS),
+                        BaseAddress(GetAddress())
+                    );
+
                 }
                 else if(!fSynchronized.load())
                 {
@@ -379,6 +390,7 @@ namespace LLP
                       | SUBSCRIPTION::BLOCK
                       | SUBSCRIPTION::TRANSACTION
                       | SUBSCRIPTION::BESTCHAIN
+                      | SUBSCRIPTION::ADDRESS
                   );
 
                 break;
@@ -1039,54 +1051,43 @@ namespace LLP
                         /* Standard type for a block. */
                         case TYPES::MEMPOOL:
                         {
-                            /* Get the index of block. */
-                            uint512_t hashStart;
-                            ssPacket >> hashStart;
-
-                            /* Get the total list amount. */
-                            uint32_t nTotal;
-                            ssPacket >> nTotal;
-
-                            /* Check size constraints. */
-                            if(nTotal > 1000)
-                            {
-                                /* Give penalties for size violation. */
-                                if(DDOS)
-                                    DDOS->rSCORE += 20;
-
-                                /* Set value to max range. */
-                                nTotal = 1000;
-                            }
-
-                            /* Keep track of the last hash. */
-                            uint512_t hashLast = 0;
-
                             /* Get a list of transactions from mempool. */
                             std::vector<uint512_t> vHashes;
-                            if(TAO::Ledger::mempool.List(vHashes, nTotal)) //NOTE: this number needs to be increased in the future
+
+                            /* List tritium transactions if legacy isn't specified. */
+                            if(!fLegacy)
+                            {
+                                if(TAO::Ledger::mempool.List(vHashes, std::numeric_limits<uint32_t>::max(), false))
+                                {
+                                    /* Loop through the available hashes. */
+                                    for(const auto& hash : vHashes)
+                                    {
+                                        /* Get the transaction from memory pool. */
+                                        TAO::Ledger::Transaction tx;
+                                        if(!TAO::Ledger::mempool.Get(hash, tx))
+                                            break; //we don't want to add more dependants if this fails
+
+                                        /* Push the transaction. */
+                                        PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::TRITIUM), tx);
+                                    }
+                                }
+                            }
+
+                            /* Get a list of legacy transactions from pool. */
+                            vHashes.clear();
+                            if(TAO::Ledger::mempool.List(vHashes, std::numeric_limits<uint32_t>::max(), true))
                             {
                                 /* Loop through the available hashes. */
                                 for(const auto& hash : vHashes)
                                 {
-                                    /* List from mempool based on starting hash. */
-                                    if(hashStart != 0 && hash != hashStart)
-                                        continue;
-
                                     /* Get the transaction from memory pool. */
-                                    TAO::Ledger::Transaction tx;
+                                    Legacy::Transaction tx;
                                     if(!TAO::Ledger::mempool.Get(hash, tx))
                                         break; //we don't want to add more dependants if this fails
 
                                     /* Push the transaction. */
-                                    PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::TRITIUM), tx);
-
-                                    /* Set the last hash. */
-                                    hashLast = hash;
+                                    PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::LEGACY), tx);
                                 }
-
-                                /* Check for last subscription. */
-                                if(nNotifications & SUBSCRIPTION::LASTINDEX)
-                                    PushMessage(ACTION::NOTIFY, uint8_t(TYPES::LASTINDEX), uint8_t(TYPES::MEMPOOL), hashLast);
                             }
 
                             break;
@@ -1360,7 +1361,13 @@ namespace LLP
                                             Unsubscribe(SUBSCRIPTION::LASTINDEX);
 
                                             /* Subscribe to notifications. */
-                                            Subscribe(SUBSCRIPTION::BESTHEIGHT | SUBSCRIPTION::CHECKPOINT | SUBSCRIPTION::BLOCK | SUBSCRIPTION::TRANSACTION);
+                                            Subscribe(
+                                                   SUBSCRIPTION::BESTHEIGHT
+                                                 | SUBSCRIPTION::CHECKPOINT
+                                                 | SUBSCRIPTION::BLOCK
+                                                 | SUBSCRIPTION::TRANSACTION
+                                                 | SUBSCRIPTION::ADDRESS
+                                             );
 
                                             /* Log that sync is complete. */
                                             debug::log(0, NODE, "ACTION::NOTIFY: Synchonization COMPLETE at ", hashBestChain.SubString());
@@ -1382,29 +1389,6 @@ namespace LLP
 
                                     break;
                                 }
-
-
-                                /* Last index for a mempool is always uint512_t. */
-                                case TYPES::MEMPOOL:
-                                {
-                                    /* Keep track of current checkpoint. */
-                                    uint512_t hashLast;
-                                    ssPacket >> hashLast;
-
-                                    /* Check memory pool for transaction. */
-                                    if(!TAO::Ledger::mempool.Has(hashLast))
-                                    {
-                                        /* Ask for list of transactions. */
-                                        PushMessage(ACTION::LIST,
-                                            uint8_t(TYPES::MEMPOOL),
-                                            hashLast,
-                                            uint32_t(1000)
-                                        );
-                                    }
-
-                                    break;
-                                }
-
                             }
 
                             break;
@@ -1423,6 +1407,28 @@ namespace LLP
 
                             /* Debug output. */
                             debug::log(0, NODE, "ACTION::NOTIFY: BESTCHAIN ", hashBestChain.SubString());
+
+                            break;
+                        }
+
+
+                        /* Standard type for na address. */
+                        case TYPES::ADDRESS:
+                        {
+                            /* Check for subscription. */
+                            if(!(nSubscriptions & SUBSCRIPTION::ADDRESS))
+                                return debug::drop(NODE, "ADDRESS: unsolicited notification");
+
+                            /* Get the base address. */
+                            BaseAddress addr;
+                            ssPacket >> addr;
+
+                            /* Add addresses to manager.. */
+                            if(TRITIUM_SERVER->pAddressManager)
+                                TRITIUM_SERVER->pAddressManager->AddAddress(addr);
+
+                            /* Debug output. */
+                            debug::log(0, NODE, "ACTION::NOTIFY: ADDRESS ", addr.ToString());
 
                             break;
                         }
@@ -2148,7 +2154,7 @@ namespace LLP
                 }
 
 
-                /* Check for checkpoint subscription. */
+                /* Check for best chain subscription. */
                 case TYPES::BESTCHAIN:
                 {
                     /* Get the index. */
@@ -2165,6 +2171,29 @@ namespace LLP
                         /* Write transaction to stream. */
                         ssRelay << uint8_t(TYPES::BESTCHAIN);
                         ssRelay << hashBest;
+                    }
+
+                    break;
+                }
+
+
+                /* Check for address subscription. */
+                case TYPES::ADDRESS:
+                {
+                    /* Get the index. */
+                    BaseAddress addr;
+                    ssData >> addr;
+
+                    /* Skip malformed requests. */
+                    if(fLegacy)
+                        continue;
+
+                    /* Check subscription. */
+                    if(nNotifications & SUBSCRIPTION::ADDRESS)
+                    {
+                        /* Write transaction to stream. */
+                        ssRelay << uint8_t(TYPES::ADDRESS);
+                        ssRelay << addr;
                     }
 
                     break;
