@@ -1,0 +1,123 @@
+/*__________________________________________________________________________________________
+
+            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+
+            (c) Copyright The Nexus Developers 2014 - 2019
+
+            Distributed under the MIT software license, see the accompanying
+            file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
+            "ad vocem populi" - To the Voice of the People
+
+____________________________________________________________________________________________*/
+
+#include <LLD/include/global.h>
+
+#include <TAO/Register/types/stream.h>
+
+#include <TAO/Ledger/types/syncblock.h>
+#include <TAO/Ledger/types/state.h>
+
+#include <Util/templates/datastream.h>
+
+/* Global TAO namespace. */
+namespace TAO
+{
+
+    /* Ledger Layer namespace. */
+    namespace Ledger
+    {
+
+        /* The default constructor. */
+        SyncBlock::SyncBlock()
+        : Block()
+        , nTime(runtime::unifiedtimestamp())
+        , ssSystem()
+        , vtx()
+        {
+            SetNull();
+        }
+
+
+        /* Copy constructor from base block. */
+        SyncBlock::SyncBlock(const Block& block)
+        : Block(block)
+        , nTime(runtime::unifiedtimestamp())
+        , ssSystem()
+        , vtx()
+        {
+        }
+
+
+        /* Copy Constructor. */
+        SyncBlock::SyncBlock(const BlockState& state)
+        : Block(state)
+        , nTime(state.nTime)
+        , ssSystem(state.ssSystem)
+        , vtx()
+        {
+            /* Loop through transactions in state block. */
+            for(const auto& proof : state.vtx)
+            {
+                /* Switch for type. */
+                switch(proof.first)
+                {
+                    /* Check for tritium. */
+                    case TRANSACTION::TRITIUM:
+                    {
+                        /* Read the tritium transaction from disk. */
+                        Transaction tx;
+                        if(!LLD::Ledger->ReadTx(proof.second, tx, FLAGS::MEMPOOL)) //check mempool too
+                            throw debug::exception(FUNCTION, "failed to read tx ", proof.second.SubString());
+
+                        /* Serialize stream. */
+                        DataStream ssData(SER_DISK, LLD::DATABASE_VERSION);
+                        ssData << tx;
+
+                        /* Add transaction to binary data. */
+                        vtx.push_back(std::make_pair(proof.first, ssData.Bytes()));
+
+                        break;
+                    }
+
+                    /* Check for legacy. */
+                    case TRANSACTION::LEGACY:
+                    {
+                        /* Read the tritium transaction from disk. */
+                        Legacy::Transaction tx;
+                        if(!LLD::Legacy->ReadTx(proof.second, tx, FLAGS::MEMPOOL)) //check mempool too
+                            throw debug::exception(FUNCTION, "failed to read tx ", proof.second.SubString());
+
+                        /* Serialize stream. */
+                        DataStream ssData(SER_DISK, LLD::DATABASE_VERSION);
+                        ssData << tx;
+
+                        /* Add transaction to binary data. */
+                        vtx.push_back(std::make_pair(proof.first, ssData.Bytes()));
+
+                        break;
+                    }
+
+                    /* Check for checkpoint. */
+                    case TRANSACTION::CHECKPOINT:
+                    {
+                        /* Serialize stream. */
+                        DataStream ssData(SER_DISK, LLD::DATABASE_VERSION);
+                        ssData << proof.second;
+
+                        /* Add transaction to binary data. */
+                        vtx.push_back(std::make_pair(proof.first, ssData.Bytes()));
+
+                        break;
+                    }
+                }
+            }
+        }
+
+
+        /* Default Destructor */
+        SyncBlock::~SyncBlock()
+        {
+        }
+    }
+}

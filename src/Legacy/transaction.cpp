@@ -59,7 +59,7 @@ namespace Legacy
         {
             /* Get legacy converted output.*/
             TxOut txout;
-            if(tx[n].Legacy(txout)) 
+            if(tx[n].Legacy(txout))
                 /* Add the output. */
                 vout.push_back(txout);
         }
@@ -336,7 +336,7 @@ namespace Legacy
 
         /* Check the script size matches expected length. */
         if(vin[0].scriptSig.size() != 144)
-            return debug::error(FUNCTION, "script not 144 bytes");
+            return debug::error(FUNCTION, "script not 144 bytes ", vin[0].scriptSig.size());
 
         /* Put script in deserializing stream. */
         DataStream scriptPub(vin[0].scriptSig.begin() + 8, vin[0].scriptSig.end(), SER_NETWORK, LLP::PROTOCOL_VERSION);
@@ -1202,7 +1202,8 @@ namespace Legacy
 
             Legacy::TrustKey trustKey;
 
-            if(LLD::Trust->ReadTrustKey(cKey, trustKey)) //no need to revert if trust key not in database, so skip on read fail
+            /* no need to revert if trust key not in database, so skip on read fail */
+            if(LLD::Trust->ReadTrustKey(cKey, trustKey))
             {
                 if(state.GetHash() == trustKey.hashGenesisBlock)
                 {

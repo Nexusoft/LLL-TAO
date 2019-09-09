@@ -116,7 +116,7 @@ namespace TAO
         , hashCheckpoint(0)
         {
             /* Set producer to be last transaction. */
-            vtx.push_back(std::make_pair(TYPE::TRITIUM_TX, block.producer.GetHash()));
+            vtx.push_back(std::make_pair(TRANSACTION::TRITIUM, block.producer.GetHash()));
 
             /* Check that sizes are expected. */
             if(vtx.size() != block.vtx.size() + 1)
@@ -142,7 +142,7 @@ namespace TAO
         , hashCheckpoint(0)
         {
             for(const auto& tx : block.vtx)
-                vtx.push_back(std::make_pair(TYPE::LEGACY_TX, tx.GetHash()));
+                vtx.push_back(std::make_pair(TRANSACTION::LEGACY, tx.GetHash()));
 
             if(vtx.size() != block.vtx.size())
                 throw std::runtime_error(debug::safe_printstr(FUNCTION, "legacy block to state incorrect sizes"));
@@ -465,7 +465,7 @@ namespace TAO
             /* Write the transactions. */
             for(const auto& proof : vtx)
             {
-                if(proof.first == TYPE::TRITIUM_TX)
+                if(proof.first == TRANSACTION::TRITIUM)
                 {
                     /* Get the transaction hash. */
                     uint512_t hash = proof.second;
@@ -483,7 +483,7 @@ namespace TAO
                     mempool.Remove(hash);
 
                 }
-                else if(proof.first == TYPE::LEGACY_TX)
+                else if(proof.first == TRANSACTION::LEGACY)
                 {
                     /* Get the transaction hash. */
                     uint512_t hash = proof.second;
@@ -551,26 +551,20 @@ namespace TAO
             else if(nChainTrust > ChainState::nBestChainTrust.load() && !SetBest())
                 return debug::error(FUNCTION, "failed to set best chain");
 
-            /* Check timer. */
-            if(timer.ElapsedMilliseconds() > 100)
-            {
-                debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_RED, "!!!SLOW BLOCK ", ANSI_COLOR_RESET, timer.ElapsedMilliseconds(), " ms ", GetHash().SubString());
-
-                debug::log(0, ToString(debug::flags::header | debug::flags::tx));
-            }
 
             timer.Reset();
 
             /* Commit the transaction to database. */
             LLD::TxnCommit();
 
-            /* Check timer. */
+            /* Check timer.
             if(timer.ElapsedMilliseconds() > 100)
             {
                 debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_RED, "!!!SLOW BLOCK WRITE ", ANSI_COLOR_RESET, timer.ElapsedMilliseconds(), " ms ", GetHash().SubString());
 
                 debug::log(0, ToString(debug::flags::header | debug::flags::tx));
             }
+            */
 
             /* Debug output. */
             debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION, "ACCEPTED");
@@ -719,12 +713,13 @@ namespace TAO
                     return debug::error(FUNCTION, "failed to write best chain");
 
                 /* Debug output about the best chain. */
+                uint64_t nElapsed = (GetBlockTime() - ChainState::stateBest.load().GetBlockTime());
                 debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION,
                     "New Best Block hash=", hash.SubString(),
                     " height=", ChainState::nBestHeight.load(),
                     " trust=", ChainState::nBestChainTrust.load(),
                     " tx=", vtx.size(),
-                    " [", double(vtx.size()) / (GetBlockTime() - ChainState::stateBest.load().GetBlockTime()), " tx/s]"
+                    " [", (nElapsed == 0 ? 0 : double(vtx.size()) / nElapsed), " tx/s]"
                     " [verified in ", timer.ElapsedMilliseconds(), " ms]",
                     " [", ::GetSerializeSize(*this, SER_LLD, nVersion), " bytes]");
 
@@ -743,7 +738,7 @@ namespace TAO
                     }
 
                     /* Create the inventory object. */
-                    bool fLegacy = TAO::Ledger::ChainState::stateBest.load().vtx[0].first == TAO::Ledger::TYPE::LEGACY_TX;
+                    bool fLegacy = TAO::Ledger::ChainState::stateBest.load().vtx[0].first == TAO::Ledger::TRANSACTION::LEGACY;
 
                     /* Relay the block that was just found. */
                     std::vector<LLP::CInv> vInv =
@@ -758,26 +753,15 @@ namespace TAO
                     /* If using Tritium server then we need to include the blocks transactions in the inventory before the block. */
                     if(LLP::TRITIUM_SERVER)
                     {
-                        /* Check for version 7 blocks. */
-                        if(nVersion >= 7)
-                        {
-                            LLP::TRITIUM_SERVER->Relay
-                            (
-                                LLP::ACTION::NOTIFY,
-                                uint8_t(LLP::TYPES::BLOCK),
-                                hash
-                            );
-                        }
-                        else
-                        {
-                            LLP::TRITIUM_SERVER->Relay
-                            (
-                                LLP::ACTION::NOTIFY,
-                                uint8_t(LLP::TYPES::LEGACY),
-                                uint8_t(LLP::TYPES::BLOCK),
-                                hash
-                            );
-                        }
+                        /* Relay the block and bestchain. */
+                        LLP::TRITIUM_SERVER->Relay
+                        (
+                            LLP::ACTION::NOTIFY,
+                            uint8_t(LLP::TYPES::BLOCK),
+                            hash,
+                            uint8_t(LLP::TYPES::BESTCHAIN),
+                            hash
+                        );
                     }
 
                 }
@@ -797,7 +781,7 @@ namespace TAO
             for(const auto& proof : vtx)
             {
                 /* Only work on tritium transactions for now. */
-                if(proof.first == TYPE::TRITIUM_TX)
+                if(proof.first == TRANSACTION::TRITIUM)
                 {
                     /* Get the transaction hash. */
                     uint512_t hash = proof.second;
@@ -863,7 +847,7 @@ namespace TAO
                     if(tx.IsCoinStake() && !LLD::Ledger->WriteStake(tx.hashGenesis, hash))
                         return debug::error(FUNCTION, "failed to write last stake");
                 }
-                else if(proof.first == TYPE::LEGACY_TX)
+                else if(proof.first == TRANSACTION::LEGACY)
                 {
                     /* Get the transaction hash. */
                     uint512_t hash = proof.second;
@@ -936,7 +920,7 @@ namespace TAO
             for(const auto& proof : vtx)
             {
                 /* Only work on tritium transactions for now. */
-                if(proof.first == TYPE::TRITIUM_TX)
+                if(proof.first == TRANSACTION::TRITIUM)
                 {
                     /* Get the transaction hash. */
                     uint512_t hash = proof.second;
@@ -950,7 +934,7 @@ namespace TAO
                     if(!tx.Disconnect())
                         return debug::error(FUNCTION, "failed to disconnect transaction");
                 }
-                else if(proof.first == TYPE::LEGACY_TX)
+                else if(proof.first == TRANSACTION::LEGACY)
                 {
                     /* Get the transaction hash. */
                     uint512_t hash = proof.second;
@@ -1222,7 +1206,7 @@ namespace TAO
         /* Prove that you staked a number of seconds based on weight. */
         uint1024_t BlockState::StakeHash() const
         {
-            if(vtx[0].first == TYPE::TRITIUM_TX)
+            if(vtx[0].first == TRANSACTION::TRITIUM)
             {
                 /* Get the tritium transaction  from the database*/
                 TAO::Ledger::Transaction tx;
@@ -1231,7 +1215,7 @@ namespace TAO
 
                 return Block::StakeHash(tx.IsGenesis(), tx.hashGenesis);
             }
-            else if(vtx[0].first == TYPE::LEGACY_TX)
+            else if(vtx[0].first == TRANSACTION::LEGACY)
             {
                 /* Get the legacy transaction from the database. */
                 Legacy::Transaction tx;

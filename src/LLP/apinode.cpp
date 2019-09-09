@@ -56,7 +56,7 @@ namespace LLP
     /* Custom Events for Core API */
     void APINode::Event(uint8_t EVENT, uint32_t LENGTH)
     {
-        
+
         if(EVENT == EVENT_CONNECT)
         {
             /* Reset the error log for this thread */
@@ -239,7 +239,8 @@ namespace LLP
 
     bool APINode::Authorized(std::map<std::string, std::string>& mapHeaders)
     {
-        if(config::GetArg("-apiuser", "").empty() && config::GetArg("-apipassword", "").empty())
+        /* Check for apiauth settings. */
+        if(!config::GetBoolArg("-apiauth", true))
             return true;
 
         /* Check the headers. */

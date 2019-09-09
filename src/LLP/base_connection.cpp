@@ -153,7 +153,7 @@ namespace LLP
         std::vector<uint8_t> vBytes = PACKET.GetBytes();
 
         /* Debug dump of message type. */
-        debug::log(4, NODE "sent packet (", vBytes.size(), " bytes)");
+        debug::log(4, NODE, "sent packet (", vBytes.size(), " bytes)");
 
         /* Debug dump of packet data. */
         if(config::GetArg("-verbose", 0) >= 5)
@@ -168,21 +168,22 @@ namespace LLP
     template <class PacketType>
     bool BaseConnection<PacketType>::Connect(const BaseAddress &addrConnect)
     {
-        std::string connectStr = addrConnect.ToStringIP();
+        std::string strConnect = addrConnect.ToStringIP();
 
         /* Check for connect to self */
-        if(addr.ToStringIP() == connectStr)
+        if(addr.ToStringIP() == strConnect)
             return debug::error(NODE, "cannot self-connect");
 
-        debug::log(1, NODE, "Connecting to ", connectStr);
+        /* Debug information. */
+        debug::log(1, NODE, "Connecting to ", strConnect);
 
         // Connect
         if(Attempt(addrConnect))
         {
-            debug::log(1, NODE, "Connected to ", connectStr);
+            debug::log(1, NODE, "Connected to ", strConnect);
 
-            fCONNECTED = true;
-            fOUTGOING = true;
+            fCONNECTED  = true;
+            fOUTGOING   = true;
 
             return true;
         }

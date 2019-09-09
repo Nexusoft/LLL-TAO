@@ -31,7 +31,7 @@ namespace LLP
     template<typename NodeType>
     inline bool DoS(NodeType* pfrom, uint32_t nDoS, bool fReturn)
     {
-        if(pfrom)
+        if(pfrom && pfrom->DDOS)
             pfrom->DDOS->rSCORE += nDoS;
 
         return fReturn;

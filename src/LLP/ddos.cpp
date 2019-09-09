@@ -75,7 +75,7 @@ namespace LLP
         LOCK(MUTEX);
 
         if(nScore)
-            debug::log(3, FUNCTION, "DDOS Penalty of +", nScore);
+            debug::log(4, FUNCTION, "DDOS Penalty of +", nScore);
 
         uint32_t nTime = TIMER.Elapsed();
 

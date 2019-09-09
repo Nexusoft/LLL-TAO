@@ -165,8 +165,10 @@ namespace LLP
          *
          *  Get the best connection based on latency
          *
+         *  @param[in] pairExclude The connection that should be excluded from the search.
+         *
          **/
-        memory::atomic_ptr<ProtocolType>& GetConnection(const BaseAddress& addrExclude);
+        memory::atomic_ptr<ProtocolType>& GetConnection(const std::pair<uint32_t, uint32_t>& pairExclude);
 
 
         /** Get Connection

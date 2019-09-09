@@ -39,8 +39,10 @@ namespace LLP
             GET          = 0x11,
             NOTIFY       = 0x12,
             AUTH         = 0x13,
-            VERSION      = 0x14,
-            SUBSCRIBE    = 0x15,
+            DEAUTH       = 0x14,
+            VERSION      = 0x15,
+            SUBSCRIBE    = 0x16,
+            UNSUBSCRIBE  = 0x17,
 
             /* Protocol. */
             PING         = 0x1a,
@@ -62,18 +64,29 @@ namespace LLP
             STRING      = 0x23,
             BYTES       = 0x24,
             LOCATOR     = 0x25,
-            LAST        = 0x26, //sends a last index notify after list
+            LASTINDEX   = 0x26, //sends a last index notify after list
 
             /* Object Types. */
             BLOCK       = 0x30,
             TRANSACTION = 0x31,
             TIMESEED    = 0x32,
-            HEIGHT      = 0x33,
+            BESTHEIGHT  = 0x33,
             CHECKPOINT  = 0x34,
             ADDRESS     = 0x35,
+            BESTCHAIN   = 0x36,
+        };
+    }
 
+
+    /** Specifiers describe object type in greater detail. **/
+    namespace SPECIFIER
+    {
+        enum
+        {
             /* Specifier. */
-            LEGACY      = 0x3a
+            LEGACY      = 0x40, //specify for legacy data types
+            TRITIUM     = 0x41, //specify for tritium data types
+            SYNC        = 0x42  //specify a sync block type
         };
     }
 
@@ -83,9 +96,9 @@ namespace LLP
     {
         enum
         {
-            ACCEPTED    = 0x40,
-            REJECTED    = 0x41,
-            STALE       = 0x42,
+            ACCEPTED    = 0x50,
+            REJECTED    = 0x51,
+            STALE       = 0x52,
         };
     }
 
@@ -98,10 +111,11 @@ namespace LLP
             BLOCK       = (1 << 1),
             TRANSACTION = (1 << 2),
             TIMESEED    = (1 << 3),
-            HEIGHT      = (1 << 4),
+            BESTHEIGHT  = (1 << 4),
             CHECKPOINT  = (1 << 5),
             ADDRESS     = (1 << 6),
-            LAST        = (1 << 7),
+            LASTINDEX   = (1 << 7),
+            BESTCHAIN   = (1 << 8),
         };
     }
 
@@ -113,6 +127,14 @@ namespace LLP
      **/
     class TritiumNode : public BaseConnection<TritiumPacket>
     {
+
+        /** Switch Node
+         *
+         *  Helper function to switch available nodes.
+         *
+         **/
+        static void SwitchNode();
+
 
         /** message_args
          *
@@ -158,10 +180,6 @@ namespace LLP
         static std::map<uint64_t, std::pair<uint32_t, uint32_t>> mapSessions;
 
 
-        /** The current sync node. **/
-        static std::atomic<uint64_t> nSyncSession;
-
-
         /** The current subscriptions. **/
         uint16_t nSubscriptions;
 
@@ -178,6 +196,10 @@ namespace LLP
          *
          **/
         static std::string Name() { return "Tritium"; }
+
+
+        /** Keeps track of if this node is fully synchronized. **/
+        static std::atomic<bool> fSynchronized;
 
 
         /** Default Constructor **/
@@ -230,6 +252,10 @@ namespace LLP
 
         /** This node's current checkpoint. **/
         uint1024_t hashCheckpoint;
+
+
+        /** This node's best block. **/
+        uint1024_t hashBestChain;
 
 
         /** Counter of total orphans. **/
@@ -290,14 +316,57 @@ namespace LLP
         bool Authorized() const;
 
 
+        /** Unsubscribe
+         *
+         *  Unsubscribe from another node for notifications.
+         *
+         *  @param[in] nFlags The subscription flags.
+         *
+         **/
+        void Unsubscribe(const uint16_t nFlags);
+
+
         /** Subscribe
          *
          *  Subscribe to another node for notifications.
          *
          *  @param[in] nFlags The subscription flags.
+         *  @param[in] fSubscribe Flag to determine whether subscibing or unsubscribing
          *
          **/
-        void Subscribe(const uint16_t nFlags);
+        void Subscribe(const uint16_t nFlags, bool fSubscribe = true);
+
+
+        /** Notifications
+         *
+         *  Checks if a node is subscribed to receive a notification.
+         *
+         *  @param[in] nMsg The message to check for
+         *
+         *  @return a data stream with relevant relay information
+         *
+         **/
+        const DataStream Notifications(const uint16_t nMsg, const DataStream& ssData) const;
+
+
+        /** Auth
+         *
+         *  Authorize this node to the connected node .
+         *
+         *  @param[in] fAuth Flag to determine whether authorizing or de-authorizing
+         *
+         **/
+        void Auth(bool fAuth);
+
+
+        /** GetAuth
+         *
+         *  Builds an Auth message for this node.
+         *
+         *  @param[in] fAuth Flag to determine whether authorizing or de-authorizing
+         *
+         **/
+        static DataStream GetAuth(bool fAuth);
 
 
         /** SessionActive

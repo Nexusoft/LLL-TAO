@@ -38,7 +38,6 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
-
         /** Users API Class
          *
          *  Manages the function pointers for all Users commands.
@@ -56,6 +55,8 @@ namespace TAO
             /** The active pin for sessionless API use **/
             mutable memory::encrypted_ptr<TAO::Ledger::PinUnlock> pActivePIN;
 
+            /** The auth private key for sessionless API use **/
+            mutable memory::encrypted_ptr<memory::encrypted_type<uint512_t>> pAuthKey;
 
             /** The mutex for locking. **/
             mutable std::mutex MUTEX;
@@ -220,14 +221,17 @@ namespace TAO
             /** GetPin
              *
              *  If the API is running in sessionless mode this method will return the currently
-             *  active PIN (if logged in) or the pin from the params.  If not in sessionless mode
-             *  then the method will return the pin from the params.  If no pin is available then
-             *  an APIException is thrown
+             *  active PIN (if logged in and unlocked for the requested action) or the pin from the params.  
+             *  If not in sessionless mode then the method will return the pin from the params.  If no pin is available for the 
+             *  given unlock action then an appropriate APIException is thrown
+             * 
+             *  @param[in] params The API method parameters.
+             *  @param[in] nUnlockAction The unlock 
              *
              *  @return the pin.
              *
              **/
-            SecureString GetPin(const json::json params) const;
+            SecureString GetPin(const json::json params, uint8_t nUnlockAction) const;
 
 
             /** GetSession
@@ -246,6 +250,16 @@ namespace TAO
              *
              **/
             uint256_t GetSession(const json::json params, bool fThrow = true) const;
+
+
+            /** GetAuthKey
+            *
+            *  Returns the private key for the auth public key
+            *
+            *  @return the private key for the auth public key
+            *
+            **/
+            memory::encrypted_ptr<memory::encrypted_type<uint512_t>>& GetAuthKey() const;
 
 
 
@@ -551,6 +565,18 @@ namespace TAO
              **/
             static bool get_coinbases(const uint256_t& hashGenesis,
                 uint512_t hashLast, std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> &vContracts);
+
+
+            /** BlocksToMaturity
+            *
+            *  Determines whether the signature chain has reached maturity after the last coinbase/coinstake transaction
+            *
+            *  @param[in] hashGenesis The genesis hash for the sig chain owner.
+            *
+            *  @return The number of blocks remaining until it is mature
+            *
+            **/
+            static uint32_t BlocksToMaturity(const uint256_t hashGenesis);
 
 
           private:

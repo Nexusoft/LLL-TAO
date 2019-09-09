@@ -34,6 +34,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/types/syncblock.h>
 
 #include <Util/include/args.h>
 #include <Util/include/hex.h>
@@ -68,7 +69,7 @@ namespace Legacy
         return false;
     }
 
-    /** The default constructor. **/
+    /* The default constructor. */
     LegacyBlock::LegacyBlock()
     : Block()
     , nTime(static_cast<uint32_t>(runtime::unifiedtimestamp()))
@@ -77,7 +78,7 @@ namespace Legacy
         SetNull();
     }
 
-    /** Copy Constructor. **/
+    /* Copy Constructor. */
     LegacyBlock::LegacyBlock(const LegacyBlock& block)
     : Block(block)
     , nTime(block.nTime)
@@ -85,7 +86,7 @@ namespace Legacy
     {
     }
 
-    /** Copy Constructor. **/
+    /* Copy Constructor. */
     LegacyBlock::LegacyBlock(const TAO::Ledger::BlockState& state)
     : Block(state)
     , nTime(state.nTime)
@@ -94,19 +95,58 @@ namespace Legacy
         /* Push back all the transactions from the state object. */
         for(const auto& item : state.vtx)
         {
-            if(item.first == TAO::Ledger::LEGACY_TX)
+            if(item.first == TAO::Ledger::TRANSACTION::LEGACY)
             {
                 /* Read transaction from database */
                 Transaction tx;
                 if(!LLD::Legacy->ReadTx(item.second, tx))
-                    continue;
+                    throw debug::exception(FUNCTION, "failed to read tx ", item.second.SubString());
 
                 vtx.push_back(tx);
             }
         }
     }
 
-    /** Default Destructor **/
+
+    /* Copy Constructor. */
+    LegacyBlock::LegacyBlock(const TAO::Ledger::SyncBlock& block)
+    : Block(block)
+    , nTime(block.nTime)
+    , vtx()
+    {
+        /* Check for version conversions. */
+        if(block.nVersion >= 7)
+            throw debug::exception(FUNCTION, "invalid sync block version for legacy block");
+
+        /* Push back all the transactions from the state object. */
+        for(const auto& item : block.vtx)
+        {
+            switch(item.first)
+            {
+                /* Check for legacy transactions. */
+                case TAO::Ledger::TRANSACTION::LEGACY:
+                {
+                    /* Serialize stream. */
+                    DataStream ssData(item.second, SER_DISK, LLD::DATABASE_VERSION);
+
+                    /* Build the transaction. */
+                    Legacy::Transaction tx;
+                    ssData >> tx;
+
+                    /* Add transaction to binary data. */
+                    vtx.push_back(tx);
+
+                    break;
+                }
+
+                default:
+                    throw debug::exception(FUNCTION, "invalid transaction type for legacy block");
+            }
+        }
+    }
+
+
+    /* Default Destructor */
     LegacyBlock::~LegacyBlock()
     {
     }
@@ -157,6 +197,10 @@ namespace Legacy
     /* Checks if a block is valid if not connected to chain. */
     bool LegacyBlock::Check() const
     {
+        /* Read ledger DB for duplicate block. */
+        if(LLD::Ledger->HasBlock(GetHash()))
+            return false;//debug::error(FUNCTION, "already have block ", GetHash().SubString());
+
         /* Check the Size limits of the Current Block. */
         if(::GetSerializeSize(*this, SER_NETWORK, LLP::PROTOCOL_VERSION) > TAO::Ledger::MAX_BLOCK_SIZE)
             return debug::error(FUNCTION, "size limits failed");
@@ -342,10 +386,6 @@ namespace Legacy
     /* Accept a block into the chain. */
     bool LegacyBlock::Accept() const
     {
-        /* Check for duplicates */
-        if(LLD::Ledger->HasBlock(GetHash()))
-            return debug::error(FUNCTION, "already have block ", GetHash().SubString(), " height=", nHeight);
-
         /* Print the block on verbose 2. */
         if(config::GetArg("-verbose", 0) >= 2)
             print();

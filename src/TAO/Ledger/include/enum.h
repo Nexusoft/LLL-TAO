@@ -128,6 +128,28 @@ namespace TAO
                 FEES        = 0x03
             };
         }
+
+
+
+        /** TYPES
+         *
+         *  The type of hash that is being inputed.
+         *
+         **/
+        namespace TRANSACTION
+        {
+            enum
+            {
+                /* Legacy transaction. */
+                LEGACY     = 0x00,
+
+                /* Tritium Transaction. */
+                TRITIUM    = 0x01,
+
+                /* Private hybrid hash. */
+                CHECKPOINT = 0x02, //for private chain checkpointing into mainnet blocks.
+            };
+        }
     }
 }
 

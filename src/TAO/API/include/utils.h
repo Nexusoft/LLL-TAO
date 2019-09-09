@@ -166,14 +166,14 @@ namespace TAO
 
         /** GetImmature
          *
-         *  Get the sum of all immature coinbase / coinstake transactions 
+         *  Get the sum of all immature coinbase transactions 
          *
          *  @param[in] hashGenesis The genesis hash for the sig chain owner.
          * 
-         *  @return The sum of all pending debits
+         *  @return The sum of all immature coinbase transactions
          *
          **/
-        void GetImmature(const uint256_t& hashGenesis, uint64_t& nCoinbase, uint64_t& nCoinstake);
+        uint64_t GetImmature(const uint256_t& hashGenesis);
 
 
         /** GetTokenOwnership
@@ -214,6 +214,17 @@ namespace TAO
          **/
         bool ListTokenizedObjects(const TAO::Register::Address& hashToken, 
                                   std::vector<TAO::Register::Address>& vObjects);
+
+
+        /** CheckMature
+        *
+        *  Utilty method that checks that the signature chain is mature and can therefore create new transactions.
+        *  Throws an appropriate APIException if it is not mature
+        *
+        *  @param[in] hashGenesis The genesis hash of the signature chain to check
+        *
+        **/
+        void CheckMature(const uint256_t& hashGenesis);
 
 
     }

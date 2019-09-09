@@ -450,6 +450,10 @@ namespace LLD
         if(!pSectorKeys->Erase(vKey))
             return false;
 
+        /* Check that this key isn't a keychain only entry. */
+        if(key.nSectorFile ==0 && key.nSectorSize == 0 && key.nSectorStart == 0)
+            return true;
+
         {
             LOCK(SECTOR_MUTEX);
 

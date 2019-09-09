@@ -49,7 +49,7 @@ namespace TAO
     namespace Ledger
     {
 
-        /** Default Constructor. **/
+        /* Default Constructor. */
         Transaction::Transaction()
         : vContracts()
         , nVersion(1)
@@ -66,32 +66,32 @@ namespace TAO
         }
 
 
-        /** Default Destructor. **/
+        /* Default Destructor. */
         Transaction::~Transaction()
         {
         }
 
 
-        /*  Used for sorting transactions by sequence. */
+        /* Used for sorting transactions by sequence. */
         bool Transaction::operator>(const Transaction& tx) const
         {
             return nSequence > tx.nSequence;
         }
 
 
-        /*  Used for sorting transactions by sequence. */
-        bool  Transaction::operator<(const Transaction& tx) const
+        /* Used for sorting transactions by sequence. */
+        bool Transaction::operator<(const Transaction& tx) const
         {
             return nSequence < tx.nSequence;
         }
 
 
-        /*  Access for the contract operator overload. This is for read-only objects. */
+        /* Access for the contract operator overload. This is for read-only objects. */
         const TAO::Operation::Contract& Transaction::operator[](const uint32_t n) const
         {
             /* Check contract bounds. */
             if(n >= vContracts.size())
-                throw std::runtime_error(debug::safe_printstr(FUNCTION, "Contract read out of bounds"));
+                throw debug::exception(FUNCTION, "contract read out of bounds");
 
             /* Bind this transaction. */
             vContracts[n].Bind(this);
@@ -100,9 +100,13 @@ namespace TAO
         }
 
 
-        /*  Write access fot the contract operator overload. This handles writes to create new contracts. */
+        /* Write access fot the contract operator overload. This handles writes to create new contracts. */
         TAO::Operation::Contract& Transaction::operator[](const uint32_t n)
         {
+            /* Check for contract bounds. */
+            if(n >= MAX_TRANSACTION_CONTRACTS)
+                throw debug::exception(FUNCTION, "contract create out of bounds");
+
             /* Allocate a new contract if on write. */
             if(n >= vContracts.size())
                 vContracts.resize(n + 1);
@@ -114,7 +118,7 @@ namespace TAO
         }
 
 
-        /*  Get the total contracts in transaction. */
+        /* Get the total contracts in transaction. */
         uint32_t Transaction::Size() const
         {
             return vContracts.size();
@@ -149,7 +153,7 @@ namespace TAO
                 return debug::error(FUNCTION, "genesis using incorrect leading byte");
 
             /* Check for max contracts. */
-            if(vContracts.size() > 100)
+            if(vContracts.size() > MAX_TRANSACTION_CONTRACTS)
                 return debug::error(FUNCTION, "too many contracts for this transaction");
 
             /* Run through all the contracts. */
@@ -365,6 +369,19 @@ namespace TAO
                 /* Check previous transaction from disk hash. */
                 if(txPrev.GetHash() != hashPrevTx) //NOTE: this is being extra paranoid. Consider removing.
                     return debug::error(FUNCTION, "prev transaction prevhash mismatch");
+
+                /* Sig chain maturity check.  If the previous tx is a coinbase/stake and this is NOT a coinbase/stake then 
+                   ensure that the previous transaction is mature (has 33 confs) */
+                if((txPrev.IsCoinBase() || txPrev.IsCoinStake()) && !(IsCoinBase() || IsCoinStake()))
+                {
+                    /* Get number of confirmations of previous TX */
+                    uint32_t nConfirms;
+                    LLD::Ledger->ReadConfirmations(hashPrevTx, nConfirms);
+
+                    /* Check that the previous TX has reached sig chain maturity */
+                    if(nConfirms < MaturitySigChain())
+                        return debug::error(FUNCTION, "signature chain is immature");
+                }
 
                 /* Write specific transaction flags. */
                 if(nFlags == TAO::Ledger::FLAGS::BLOCK)

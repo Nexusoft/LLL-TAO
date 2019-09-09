@@ -46,7 +46,7 @@ namespace TAO
             json::json ret;
 
             /* Get the PIN to be used for this API call */
-            SecureString strPIN = users->GetPin(params);
+            SecureString strPIN = users->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
 
             /* Get the session to be used for this API call */
             uint256_t nSession = users->GetSession(params);
@@ -91,10 +91,6 @@ namespace TAO
             /* Lock the signature chain. */
             LOCK(users->CREATE_MUTEX);
 
-            /* Check that the account is unlocked for creating transactions */
-            if(!users->CanTransact())
-                throw APIException(-16, "Account has not been unlocked for transactions.");
-
             /* Get the from register. */
             TAO::Register::Object objectTo;
             if(!LLD::Register->ReadState(hashTo, objectTo))
@@ -103,6 +99,9 @@ namespace TAO
             /* Parse the object register. */
             if(!objectTo.Parse())
                 throw APIException(-49, "Failed to parse to state");
+
+            /* Check that the sig chain is mature after the last coinbase/coinstake transaction in the chain. */
+            CheckMature(user->Genesis());
 
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;

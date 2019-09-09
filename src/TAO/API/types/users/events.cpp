@@ -30,6 +30,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/enum.h>
+#include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/state.h>
@@ -134,6 +135,14 @@ namespace TAO
             /* Loop the events processing thread until shutdown. */
             while(!fShutdown.load())
             {
+                /* Reset the events flag. */
+                fEvent = false;
+
+                /* If mining is enabled, notify miner LLP that events processor is finished processing transactions so mined blocks
+                   can include these transactions and not orphan a mined block. */
+                if(LLP::MINING_SERVER)
+                    LLP::MINING_SERVER->NotifyEvent();
+                    
                 /* Wait for the events processing thread to be woken up (such as a login) */
                 std::unique_lock<std::mutex> lk(EVENTS_MUTEX);
                 CONDITION.wait_for(lk, std::chrono::milliseconds(5000), [this]{ return fEvent.load() || fShutdown.load();});
@@ -167,7 +176,7 @@ namespace TAO
                     params["genesis"] = hashGenesis.ToString();
 
                     /* Get the PIN to be used for this API call */
-                    SecureString strPIN = users->GetPin(params);
+                    SecureString strPIN = users->GetPin(params, TAO::Ledger::PinUnlock::NOTIFICATIONS);
 
                     /* Retrieve user's default NXS account. */
                     std::string strAccount = "default";
@@ -182,6 +191,19 @@ namespace TAO
                     /* Get the list of outstanding legacy transactions . */
                     std::vector<std::pair<std::shared_ptr<Legacy::Transaction>, uint32_t>> vLegacyTx;
                     GetOutstanding(hashGenesis, vLegacyTx);
+
+                    /* Check if there is anything to process */
+                    if(vContracts.size() == 0 && vLegacyTx.size() == 0)
+                        continue;
+
+                    /* Ensure that the signature is mature.  Note we only check this after we know there is something to process */
+                    uint32_t nBlocksToMaturity = users->BlocksToMaturity(hashGenesis);
+
+                    if(nBlocksToMaturity > 0)
+                    {
+                        debug::log(2, FUNCTION, "Skipping notifications as signature chain not mature. ", nBlocksToMaturity, " more confirmation(s) required.");
+                        continue;
+                    }
 
                     /* The transaction hash. */
                     uint512_t hashTx;
@@ -202,6 +224,10 @@ namespace TAO
                     /* Loop through each contract in the notification queue. */
                     for(const auto& contract : vContracts)
                     {
+                        /* Ensure we don't breach the max contracts/per transaction, leaving room for the fee contract */
+                        if(txout.Size() == TAO::Ledger::MAX_TRANSACTION_CONTRACTS -1)
+                            break;
+                        
                         /* Get a reference to the contract */
                         const TAO::Operation::Contract& refContract = std::get<0>(contract);
 
@@ -393,6 +419,10 @@ namespace TAO
                     /* Now process the legacy transactions */
                     for(const auto& contract : vLegacyTx)
                     {
+                        /* Ensure we don't breach the max contracts/per transaction, leaving room for the fee contract */
+                        if(txout.Size() == TAO::Ledger::MAX_TRANSACTION_CONTRACTS -1)
+                            break;
+                            
                         /* Set the transaction hash. */
                         hashTx = contract.first->GetHash();
 
@@ -559,13 +589,6 @@ namespace TAO
                     debug::error(FUNCTION, e.what());
                 }
 
-                /* Reset the events flag. */
-                fEvent = false;
-
-                /* If mining is enabled, notify miner LLP that events processor is finished processing transactions so mined blocks
-                   can include these transactions and not orphan a mined block. */
-                if(LLP::MINING_SERVER)
-                    LLP::MINING_SERVER->NotifyEvent();
             }
         }
 

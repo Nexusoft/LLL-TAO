@@ -48,12 +48,8 @@ TEST_CASE( "Contract::Bind", "[operation]" )
     REQUIRE(contract.Timestamp() == tx.nTimestamp);
     REQUIRE(contract.Caller() == tx.hashGenesis);
 
-    // check for erroneous inputs
-    contract.Bind(nullptr);
-
-    //check for error
-    std::string error = debug::GetLastError();
-    REQUIRE(error.find("null transaction") != std::string::npos);
+    // check for erroneous input
+    REQUIRE_THROWS_WITH(contract.Bind(nullptr), debug::safe_printstr(ANSI_COLOR_FUNCTION, "Bind", ANSI_COLOR_RESET, " : cannot bind to a nullptr"));
 }
 
 

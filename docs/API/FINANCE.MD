@@ -227,9 +227,9 @@ Additionally the API supports passing a field name in the URL after the account 
     "created": 1566534164,
     "modified": 1566616211,
     "name": "default",
-    "address": "d449ceeb23b7ef11004d29494891e01de393ad50d7cc225c179303e8c89a42d4",
+    "address": "8CbkwEQ9S8owmX74joU6XmiwxJq1aoiqUoXc9fLCKzw15HscM99",
     "token_name": "NXS",
-    "token": "0000000000000000000000000000000000000000000000000000000000000000",
+    "token": "0",
     "balance": 2903.239792,
     "pending": 0.0,
     "unconfirmed": 76.492244
@@ -258,8 +258,6 @@ Additionally the API supports passing a field name in the URL after the account 
 
 `unconfirmed` : This is the sum of all unconfirmed debit transactions that have been made to this account PLUS the sum of all unconfirmed credits that you have for confirmed debit transactions.  When someone makes a debit to your account it will immediately appear in the unconfirmed balance until that transaction is included in a block, at which point it moves into `pending`.  When you (or the events processor) creates the corresponding credit transaction for that debit, the amount will move from `pending` back into `unconfirmed` until the credit transaction is included in a block, at which point the amount moves to `balance`.  
 
-`immature` : Only returned for the trust account, this is the sum of trust transactions that have not yet matured.  Once they reach maturity, the value of the trust transaction will move into `balance`
-
 `stake` : Only returned for the trust account, this is the amount of NXS currently staked in the trust account.
 
 
@@ -284,27 +282,52 @@ This will list off all of the NXS accounts belonging to the currently logged in 
 ```
 [
     {
-        "address": "f9ee3e63c845794d577d54c5087f0ff2f2053195bf007907e8134977bb1f1e24",
-        "token": "0000000000000000000000000000000000000000000000000000000000000000",
-        "balance": 5000
+        "created": 1568025836,
+        "modified": 1568025836,
+        "name": "default",
+        "address": "8CbkwEQ9S8owmX74joU6XmiwxJq1aoiqUoXc9fLCKzw15HscM99",
+        "token_name": "NXS",
+        "token": "0",
+        "balance": 5000,
+        "pending": 0.0,
+        "unconfirmed": 76.492244
     },
     {
-        "address": "a74774dc075e59d03639b56da8c29736fe248888a43c6103060409dd11273417",
-        "token": "0000000000000000000000000000000000000000000000000000000000000000",
-        "balance": 60
+        "created": 1568025836,
+        "modified": 1568025836,
+        "name": "savings",
+        "address": "8GhrC2TKkU4ra9Uuj8LuiAyxDAtza2u483N1rKDSaVp24dNgUy9",
+        "token_name": "mytoken",
+        "token": "8GHrC2TKkU4ra9Uuj8LuiAyxDAtza2u483N1rKDSaVp24dNgUx8",
+        "balance": 10000.0,
+        "pending": 0.0,
+        "unconfirmed": 0.0
     }
-
 ]
 ```
 
 
 ### Return values:
 
-`address` : The register address for the account
+`created` : The UNIX timestamp when the account was created.
+
+`modified` : The UNIX timestamp when the account was last modified.
+
+`name` : The name identifying the account.  For privacy purposes, this is only included in the response if the caller is the owner of the account
+
+`address` : The register address of the account.  The address is a hash based on the owners username and account name.
+
+`token_name` : This will always be set to `NXS`.
 
 `token` : This will always be set to 0 for NXS accounts.
 
-`balance` : The current balance of the token account.
+`balance` : The available balance of this account.  This is the last confirmed balance less any new debits that you have made since the last block
+
+`pending` : This is the sum of all confirmed debit transactions that have been made to this account, that have not yet been credited.  To move coins from pending into the available balance you must create a corresponding credit transaction.  NOTE: if configured to run, the events processor does this for you.
+
+`unconfirmed` : This is the sum of all unconfirmed debit transactions that have been made to this account PLUS the sum of all unconfirmed credits that you have for confirmed debit transactions.  When someone makes a debit to your account it will immediately appear in the unconfirmed balance until that transaction is included in a block, at which point it moves into `pending`.  When you (or the events processor) creates the corresponding credit transaction for that debit, the amount will move from `pending` back into `unconfirmed` until the credit transaction is included in a block, at which point the amount moves to `balance`.  
+
+`stake` : Only returned for the trust account, this is the amount of NXS currently staked in the trust account.
 
 
 ****
@@ -362,7 +385,7 @@ This will list off all of the transactions related to a given account. You DO NO
                 "account": "d430231b0c1973c784cc9942daa32f704db571a5c7d2a1f091e91fdd4abe622b",
                 "account_name": "default",
                 "amount": 76.450762,
-                "token": "0000000000000000000000000000000000000000000000000000000000000000",
+                "token": "0",
                 "token_name": "NXS"
             },
             {
@@ -545,8 +568,7 @@ This will retrieve a summary of balance information for all NXS accounts belongi
     "pending": 50,
     "unconfirmed": 5,
     "stake": 5000,
-    "immature_mined": 100,
-    "immature_stake": 0.01234
+    "immature": 100
 }
 ```
 
@@ -559,9 +581,7 @@ This will retrieve a summary of balance information for all NXS accounts belongi
 
 `unconfirmed` : The sum of all debit transactions made to your NXS accounts that are not confirmed, or credits you have made to your accounts that are not yet confirmed (not yet included in a block)
 
-`immature_mined`  The sum of all coinbase transactions that have not yet reached maturity.   
-
-`immature_stake`  The sum of all stake transactions that have not yet reached maturity.   
+`immature`  The sum of all coinbase transactions that have not yet reached maturity.   
 
 `stake` : The amount of NXS currently staked in the trust account.
 

@@ -132,9 +132,7 @@ namespace LLP
         for(; it != DDOS_MAP.end(); ++it)
         {
             if(it->second)
-            {
                 delete it->second;
-            }
         }
         DDOS_MAP.clear();
 
@@ -254,7 +252,7 @@ namespace LLP
 
     /*  Get the best connection based on latency. */
     template <class ProtocolType>
-    memory::atomic_ptr<ProtocolType>& Server<ProtocolType>::GetConnection(const BaseAddress& addrExclude)
+    memory::atomic_ptr<ProtocolType>& Server<ProtocolType>::GetConnection(const std::pair<uint32_t, uint32_t>& pairExclude)
     {
         /* List of connections to return. */
         uint32_t nLatency   = std::numeric_limits<uint32_t>::max();
@@ -263,29 +261,25 @@ namespace LLP
         int16_t nRetIndex  = -1;
         for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
         {
-            /* Get the data threads. */
-            DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
-
-            /* Lock the data thread. */
-            uint16_t nSize = static_cast<uint16_t>(dt->CONNECTIONS->size());
-
             /* Loop through connections in data thread. */
+            uint16_t nSize = static_cast<uint16_t>(DATA_THREADS[nThread]->CONNECTIONS->size());
             for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
             {
                 try
                 {
-                    /* Skip over inactive connections. */
-                    if(!dt->CONNECTIONS->at(nIndex))
+                    /* Skip over excluded connection. */
+                    if(pairExclude.first == nThread && pairExclude.second == nIndex)
                         continue;
 
-                    /* Skip over exclusion address. */
-                    if(dt->CONNECTIONS->at(nIndex)->GetAddress() == addrExclude)
+                    /* Get the current atomic_ptr. */
+                    memory::atomic_ptr<ProtocolType>& CONNECTION = DATA_THREADS[nThread]->CONNECTIONS->at(nIndex);
+                    if(!CONNECTION)
                         continue;
 
                     /* Push the active connection. */
-                    if(dt->CONNECTIONS->at(nIndex)->nLatency < nLatency)
+                    if(CONNECTION->nLatency < nLatency)
                     {
-                        nLatency = dt->CONNECTIONS->at(nIndex)->nLatency;
+                        nLatency = CONNECTION->nLatency;
 
                         nRetThread = nThread;
                         nRetIndex  = nIndex;

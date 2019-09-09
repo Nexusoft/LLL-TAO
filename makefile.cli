@@ -127,14 +127,16 @@ endif
 
 
 #Build with memory checking
-ifdef ADDRESS_CHECK
-    CXXFLAGS+=-fsanitize=address
+ifdef LEAK_CHECK
+    CXXFLAGS+=-fsanitize=leak
 endif
 
 
 #Build with memory checking
-ifdef LEAK_CHECK
-    CXXFLAGS+=-fsanitize=leak
+ifdef ADDRESS_CHECK
+    CXXFLAGS+= -fsanitize=address \
+			   -fno-omit-frame-pointer \
+			   -fsanitize-address-use-after-scope
 endif
 
 
@@ -201,6 +203,7 @@ ifdef UNIT_TESTS
 		   build/Tests_TAO_API_util.o \
 		   build/Tests_TAO_Ledger_block.o \
 		   build/Tests_TAO_Ledger_mempool.o \
+           build/Tests_TAO_Ledger_transaction.o \
 		   build/Tests_TAO_Register_objects.o \
 		   build/Tests_TAO_Register_rollback.o \
 		   build/Tests_TAO_Register_testvm.o \
@@ -439,6 +442,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Ledger_stake.o \
 		build/Ledger_state.o \
 		build/Ledger_supply.o \
+		build/Ledger_syncblock.o \
 		build/Ledger_timelocks.o \
 		build/Ledger_transaction.o \
 		build/Ledger_tritium.o \
@@ -1478,3 +1482,4 @@ clean:
 
 endif
 ###############################################################################
+##

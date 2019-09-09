@@ -908,11 +908,10 @@ namespace TAO
 
 
         /*  Get the outstanding coinbases. */
-        void GetImmature(const uint256_t& hashGenesis, uint64_t& nCoinbase, uint64_t& nCoinstake)
+        uint64_t GetImmature(const uint256_t& hashGenesis)
         {
-            /* Reset amounts */
-            nCoinbase = 0;
-            nCoinstake = 0;
+            /* Return amount */
+            uint64_t nImmature = 0;
 
             /* Get the last transaction. */
             uint512_t hashLast = 0;
@@ -962,16 +961,8 @@ namespace TAO
                             /* Check that the contract was for us */
                             if(hashRecipient == hashGenesis)
                                 /* Add it to our return values */
-                                nCoinbase += nAmount;
+                                nImmature += nAmount;
 
-                        }
-                        else if(nOp == Operation::OP::TRUST || nOp == Operation::OP::GENESIS)
-                        {
-                            /* Get the amount */
-                            TAO::Register::Unpack(tx[nContract], nAmount);
-
-                            /* Add it to our return values */
-                            nCoinstake += nAmount;
                         }
                     }
 
@@ -979,6 +970,8 @@ namespace TAO
                     hashLast = tx.hashPrevTx;
                 }
             }
+
+            return nImmature;
         }
 
 
@@ -1158,6 +1151,22 @@ namespace TAO
 
             /* Return true if we found any objects owned by the token */
             return vObjects.size() > 0;
+        }
+
+
+        /* Utilty method that checks that the signature chain is mature and can therefore create new transactions.
+        *  Throws an appropriate APIException if it is not mature. */
+        void CheckMature(const uint256_t& hashGenesis)
+        {
+            /* No need to check this in private mode as there is no PoS/Pow */
+            if(!config::GetBoolArg("-private"))
+            {
+                /* Get the number of blocks to maturity for this sig chain */
+                uint32_t nBlocksToMaturity = users->BlocksToMaturity(hashGenesis);
+
+                if(nBlocksToMaturity > 0)
+                    throw APIException(-202, debug::safe_printstr( "Signature chain not mature after your previous mined/stake block. ", nBlocksToMaturity, " more confirmation(s) required."));
+            }
         }
 
 

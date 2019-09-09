@@ -36,6 +36,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/include/timelocks.h>
+#include <TAO/Ledger/types/syncblock.h>
 
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/types/address.h>
@@ -98,10 +99,93 @@ namespace TAO
         {
             /* Read the producer transaction from disk. */
             if(!LLD::Ledger->ReadTx(state.vtx.back().second, producer))
-                throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to read producer"));
+                throw debug::exception(FUNCTION, "failed to read producer");
 
             /* Erase the producer. */
             vtx.erase(vtx.end());
+        }
+
+
+        /** Copy Constructor. **/
+        TritiumBlock::TritiumBlock(const SyncBlock& block)
+        : Block(block)
+        , nTime(block.nTime)
+        , producer()
+        , ssSystem(block.ssSystem)
+        , vtx()
+        {
+            /* Check for version conversions. */
+            if(block.nVersion < 7)
+                throw debug::exception(FUNCTION, "invalid sync block version for tritium block");
+
+            /* Loop through transctions. */
+            for(uint32_t n = 0; n < block.vtx.size(); ++n)
+            {
+                /* Switch for type. */
+                switch(block.vtx[n].first)
+                {
+                    /* Check for tritium. */
+                    case TRANSACTION::TRITIUM:
+                    {
+                        /* Serialize stream. */
+                        DataStream ssData(block.vtx[n].second, SER_DISK, LLD::DATABASE_VERSION);
+
+                        /* Build the transaction. */
+                        Transaction tx;
+                        ssData >> tx;
+
+                        /* Accept into memory pool. */
+                        if(!LLD::Ledger->HasTx(tx.GetHash()))
+                            mempool.AddUnchecked(tx);
+                        //throw debug::exception(FUNCTION, "sync block contains invalid transaction");
+
+                        /* Add transaction to binary data. */
+                        if(n == block.vtx.size() - 1)
+                            producer = tx; //handle for the producer transaction
+                        else
+                            vtx.push_back(std::make_pair(block.vtx[n].first, tx.GetHash()));
+
+                        break;
+                    }
+
+                    /* Check for legacy. */
+                    case TRANSACTION::LEGACY:
+                    {
+                        /* Serialize stream. */
+                        DataStream ssData(block.vtx[n].second, SER_DISK, LLD::DATABASE_VERSION);
+
+                        /* Build the transaction. */
+                        Legacy::Transaction tx;
+                        ssData >> tx;
+
+                        /* Accept into memory pool. */
+                        if(!LLD::Legacy->HasTx(tx.GetHash()))
+                            mempool.AddUnchecked(tx);
+                        //throw debug::exception(FUNCTION, "sync block contains invalid transaction");
+
+                        /* Add transaction to binary data. */
+                        vtx.push_back(std::make_pair(block.vtx[n].first, tx.GetHash()));
+
+                        break;
+                    }
+
+                    /* Check for checkpoint. */
+                    case TRANSACTION::CHECKPOINT:
+                    {
+                        /* Serialize stream. */
+                        DataStream ssData(block.vtx[n].second, SER_DISK, LLD::DATABASE_VERSION);
+
+                        /* Build the transaction. */
+                        uint512_t proof;
+                        ssData >> proof;
+
+                        /* Add transaction to binary data. */
+                        vtx.push_back(std::make_pair(block.vtx[n].first, proof));
+
+                        break;
+                    }
+                }
+            }
         }
 
 
@@ -164,6 +248,10 @@ namespace TAO
         /* Checks if a block is valid if not connected to chain. */
         bool TritiumBlock::Check() const
         {
+            /* Read ledger DB for duplicate block. */
+            if(LLD::Ledger->HasBlock(GetHash()))
+                return false;//debug::error(FUNCTION, "already have block ", GetHash().SubString());
+
             /* Check the Size limits of the Current Block. */
             if(::GetSerializeSize(*this, SER_NETWORK, LLP::PROTOCOL_VERSION) > MAX_BLOCK_SIZE)
                 return debug::error(FUNCTION, "size limits failed ", MAX_BLOCK_SIZE);
@@ -264,7 +352,7 @@ namespace TAO
                 vHashes.push_back(vtx[i].second);
 
                 /* Basic checks for legacy transactions. */
-                if(vtx[i].first == TYPE::LEGACY_TX)
+                if(vtx[i].first == TRANSACTION::LEGACY)
                 {
                     /* Check the memory pool. */
                     Legacy::Transaction tx;
@@ -294,7 +382,7 @@ namespace TAO
                 }
 
                 /* Basic checks for tritium transactions. */
-                else if(vtx[i].first == TYPE::TRITIUM_TX)
+                else if(vtx[i].first == TRANSACTION::TRITIUM)
                 {
                     /* Check the memory pool. */
                     TAO::Ledger::Transaction tx;
@@ -392,10 +480,6 @@ namespace TAO
         /** Accept a tritium block. **/
         bool TritiumBlock::Accept() const
         {
-            /* Read ledger DB for duplicate block. */
-            if(LLD::Ledger->HasBlock(GetHash()))
-                return debug::error(FUNCTION, "already have block ", GetHash().SubString());
-
             /* Read ledger DB for previous block. */
             TAO::Ledger::BlockState statePrev;
             if(!LLD::Ledger->ReadBlock(hashPrevBlock, statePrev))

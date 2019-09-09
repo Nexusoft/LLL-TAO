@@ -182,12 +182,17 @@ namespace LLP
             {
                 try
                 {
+                    /* Get the connection object. */
+                    memory::atomic_ptr<ProtocolType>& pConnection = CONNECTIONS->at(nIndex);
+
                     /* Skip over inactive connections. */
-                    if(!CONNECTIONS->at(nIndex))
+                    if(!pConnection)
                         continue;
 
-                    /* Push the active connection. */
-                    CONNECTIONS->at(nIndex)->WritePacket(CONNECTIONS->at(nIndex)->NewMessage(message, ssData));
+                    /* Relay if there are active subscriptions. */
+                    const DataStream ssRelay = pConnection->Notifications(message, ssData);
+                    if(ssRelay.size() != 0)
+                        pConnection->WritePacket(pConnection->NewMessage(message, ssRelay));
                 }
                 catch(const std::runtime_error& e)
                 {
@@ -222,12 +227,11 @@ namespace LLP
          *  Fires off a Disconnect event with the given disconnect reason
          *  and also removes the data thread connection.
          *
-         *  @param[in] index The data thread index to disconnect.
-         *
-         *  @param[in] reason The reason why the connection is to be disconnected.
+         *  @param[in] nIndex The data thread index to disconnect.
+         *  @param[in] nReason The reason why the connection is to be disconnected.
          *
          **/
-        void disconnect_remove_event(uint32_t index, uint8_t reason);
+        void disconnect_remove_event(uint32_t nIndex, uint8_t nReason);
 
 
         /** remove

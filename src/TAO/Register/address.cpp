@@ -92,7 +92,7 @@ namespace TAO
             *this = LLC::SK256(vData);
 
             /* Check for valid types. */
-            if(nType != TRUST && nType != NAME)
+            if(nType != TRUST && nType != NAME && nType != CRYPTO)
                 throw debug::exception(FUNCTION, "invalid type for deterministic address");
 
             SetType(nType);

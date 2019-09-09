@@ -92,7 +92,7 @@ namespace TAO
                 /* Iterate through each transaction hash in the block vtx*/
                 for(const auto& vtx : block.vtx)
                 {
-                    if(vtx.first == TAO::Ledger::TYPE::TRITIUM_TX)
+                    if(vtx.first == TAO::Ledger::TRANSACTION::TRITIUM)
                     {
                         /* Get the tritium transaction from the database*/
                         TAO::Ledger::Transaction tx;
@@ -104,7 +104,7 @@ namespace TAO
                             txinfo.push_back(ret);
                         }
                     }
-                    else if(vtx.first == TAO::Ledger::TYPE::LEGACY_TX)
+                    else if(vtx.first == TAO::Ledger::TRANSACTION::LEGACY)
                     {
                         /* Get the legacy transaction from the database. */
                         Legacy::Transaction tx;
@@ -966,12 +966,6 @@ namespace TAO
                         {
                             /* The amount being staked */
                             ret["stake"]    = (double)object.get<uint64_t>("stake") / pow(10, nDecimals);
-
-                            /* Get immature mined / staked */
-                            uint64_t nImmatureMined, nImmatureStake;
-                            GetImmature(object.hashOwner, nImmatureMined, nImmatureStake);
-
-                            ret["immature"]  = (double)nImmatureStake / pow(10, nDecimals);
                         }
 
 

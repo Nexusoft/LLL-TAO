@@ -44,6 +44,14 @@ namespace LLP
         static std::map<uint64_t, std::pair<uint32_t, uint32_t>> mapSessions;
 
 
+        /** Switch Node
+         *
+         *  Helper function to switch available nodes.
+         *
+         **/
+        static void SwitchNode();
+
+
     public:
 
         /** Name
@@ -114,10 +122,6 @@ namespace LLP
         static std::atomic<uint64_t> nFastSyncAverage;
 
 
-        /** The current node that is being used for fast sync.l **/
-        static memory::atomic<BaseAddress> addrFastSync;
-
-
         /** The last time a block was accepted. **/
         static std::atomic<uint64_t> nLastTimeReceived;
 
@@ -185,6 +189,18 @@ namespace LLP
         static memory::atomic_ptr<LegacyNode>& GetNode(const uint64_t nSession);
 
 
+        /** SessionActive
+         *
+         *  Determine whether a session is connected.
+         *
+         *  @param[in] nSession The session to check for
+         *
+         *  @return true if session is connected.
+         *
+         **/
+        static bool SessionActive(const uint64_t nSession);
+
+
         /** DoS
          *
          *  Send the DoS Score to DDOS Filte
@@ -195,7 +211,7 @@ namespace LLP
          **/
         inline bool DoS(int nDoS, bool fReturn)
         {
-            if(fDDOS)
+            if(DDOS)
                 DDOS->rSCORE += nDoS;
 
             return fReturn;
@@ -211,7 +227,7 @@ namespace LLP
         void ReadPacket() final;
 
 
-        /** Push Get Blocks
+        /** PushGetBlocks
          *
          *  Send a request to get recent inventory from remote node.
          *
@@ -219,39 +235,7 @@ namespace LLP
          *  @param[in] hashBlockTo The block to search to
          *
          **/
-        void PushGetBlocks(const uint1024_t& hashBlockFrom, const uint1024_t& hashBlockTo)
-        {
-            /* Filter out duplicate requests. */
-            if(hashLastGetblocks.load() == hashBlockFrom && nLastGetBlocks.load() + 1 > runtime::timestamp())
-                return;
-
-            /* Set the fast sync address. */
-            if(addrFastSync != GetAddress())
-            {
-                /* Set the new sync address. */
-                addrFastSync = GetAddress();
-
-                /* Reset the last time received. */
-                nLastTimeReceived = runtime::timestamp();
-
-                debug::log(0, NODE, "New sync address set");
-            }
-
-            /* Calculate the fast sync average. */
-            nFastSyncAverage = std::min((uint64_t)25, (nFastSyncAverage.load() + (runtime::timestamp() - nLastGetBlocks.load())) / 2);
-
-            /* Update the last timestamp this was called. */
-            nLastGetBlocks = runtime::timestamp();
-
-            /* Update the hash that was used for last request. */
-            hashLastGetblocks = hashBlockFrom;
-
-            /* Push the request to the node. */
-            PushMessage("getblocks", TAO::Ledger::Locator(hashBlockFrom), hashBlockTo);
-
-            /* Debug output for monitoring. */
-            debug::log(0, NODE, "(", nFastSyncAverage.load(), ") requesting getblocks from ", hashBlockFrom.SubString(), " to ", hashBlockTo.SubString());
-        }
+        void PushGetBlocks(const uint1024_t& hashBlockFrom, const uint1024_t& hashBlockTo);
 
 
         /** NewMessage

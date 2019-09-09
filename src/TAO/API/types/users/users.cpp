@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/utils.h>
 
+#include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/transaction.h>
 
@@ -59,6 +60,16 @@ namespace TAO
         /* Destructor. */
         Users::~Users()
         {
+            /* Set the shutdown flag and join events processing thread. */
+            fShutdown = true;
+            
+            /* Events processor only enabled if multi-user session is disabled. */
+            if(EVENTS_THREAD.joinable())
+            {
+                NotifyEvent();
+                EVENTS_THREAD.join();
+            }
+
             /* Iterate through the sessions map and delete any sig chains that are still active */
             for(auto& session : mapSessions)
             {
@@ -72,22 +83,14 @@ namespace TAO
 
             if(!pActivePIN.IsNull())
                 pActivePIN.free();
-
-            /* Set the shutdown flag and join events processing thread. */
-            fShutdown = true;
-
-            /* Events processor only enabled if multi-user session is disabled. */
-            if(EVENTS_THREAD.joinable())
-            {
-                NotifyEvent();
-                EVENTS_THREAD.join();
-            }
         }
 
 
         /* Determine if a sessionless user is logged in. */
         bool Users::LoggedIn() const
         {
+            LOCK(MUTEX);
+
             return !config::fMultiuser.load() && mapSessions.count(0);
         }
 
@@ -234,17 +237,25 @@ namespace TAO
          * active PIN (if logged in) or the pin from the params.  If not in sessionless mode
          * then the method will return the pin from the params.  If no pin is available then
          * an APIException is thrown */
-        SecureString Users::GetPin(const json::json params) const
+        SecureString Users::GetPin(const json::json params, uint8_t nUnlockAction) const
         {
+
             /* Check for pin parameter. */
             SecureString strPIN;
-            bool fNeedPin = users->Locked();
 
-            if(fNeedPin && params.find("pin") == params.end())
-                throw APIException(-129, "Missing PIN");
-            else if(fNeedPin)
-                strPIN = params["pin"].get<std::string>().c_str();
+            /* If we have a pin already, check we are allowed to use it for the requested action */
+            bool fNeedPin = pActivePIN.IsNull() || pActivePIN->PIN().empty() || !(pActivePIN->UnlockedActions() & nUnlockAction);
+
+            if(fNeedPin)
+            {
+                /* If we need a pin then check it is in the params */
+                if(params.find("pin") == params.end())
+                    throw APIException(-129, "Missing PIN");
+                else
+                    strPIN = params["pin"].get<std::string>().c_str();
+            }
             else
+                /* If we don't need the pin then use the current active one */
                 strPIN = users->GetActivePin();
 
             return strPIN;
@@ -282,6 +293,48 @@ namespace TAO
             }
 
             return nSession;
+        }
+
+
+        /* Returns the private key for the auth public key */
+        memory::encrypted_ptr<memory::encrypted_type<uint512_t>>& Users::GetAuthKey() const
+        {
+            return pAuthKey;
+        }
+
+
+        /* Determines whether the signature chain has reached maturity after the last coinbase/coinstake transaction */
+        uint32_t Users::BlocksToMaturity(const uint256_t hashGenesis)
+        {
+            /* The number of blocks to maturity to return */
+            uint32_t nBlocksToMaturity = 0;
+
+            /* The hash of the last transaction for this sig chain from disk */
+            uint512_t hashLast = 0;
+            if(LLD::Ledger->ReadLast(hashGenesis, hashLast))
+            {
+                /* Get the last transaction from disk for this sig chain */
+                TAO::Ledger::Transaction txLast;
+                if(!LLD::Ledger->ReadTx(hashLast, txLast))
+                    return debug::error(FUNCTION, "last transaction not on disk");
+                
+                /* If the previous transaction is a coinbase or coinstake then check the maturity */
+                if(txLast.IsCoinBase() || txLast.IsCoinStake())
+                {
+                    /* Get number of confirmations of previous TX */
+                    uint32_t nConfirms;
+                    LLD::Ledger->ReadConfirmations(hashLast, nConfirms);
+
+                    /* Exclude the confirmation from out own block */
+                    nConfirms -= 1;
+
+                    /* Check to see if it is mature */
+                    if(nConfirms < TAO::Ledger::MaturitySigChain())
+                        nBlocksToMaturity = TAO::Ledger::MaturitySigChain() - nConfirms;
+                }
+            }
+
+            return nBlocksToMaturity;
         }
     }
 }

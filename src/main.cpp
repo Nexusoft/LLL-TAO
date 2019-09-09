@@ -204,35 +204,34 @@ int main(int argc, char** argv)
         Legacy::Wallet::GetInstance().ResendWalletTransactions();
 
 
-        /* Initialize the Main Net LLP's. */
-        if(!config::GetBoolArg(std::string("-beta")))
-        {
-            /* Get the port for Tritium Server. */
-            nPort = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet.load() ? (TRITIUM_TESTNET_PORT + (config::GetArg("-testnet", 0) - 1)) : TRITIUM_MAINNET_PORT));
+        /* Get the port for Tritium Server. */
+        nPort = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet.load() ? (TRITIUM_TESTNET_PORT + (config::GetArg("-testnet", 0) - 1)) : TRITIUM_MAINNET_PORT));
 
-            /* Initialize the Tritium Server. */
-            LLP::TRITIUM_SERVER = LLP::CreateTAOServer<LLP::TritiumNode>(nPort);
-        }
-        else
-        {
-            /* Get the port for Legacy Server. */
-            nPort = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet.load() ? (LEGACY_TESTNET_PORT + (config::GetArg("-testnet", 0) - 1)) : LEGACY_MAINNET_PORT));
 
-            /* Initialize the Legacy Server. */
-            LLP::LEGACY_SERVER = LLP::CreateTAOServer<LLP::LegacyNode>(nPort);
-        }
+        /* Initialize the Tritium Server. */
+        LLP::TRITIUM_SERVER = LLP::CreateTAOServer<LLP::TritiumNode>(nPort);
+
+
+        /* Get the port for Legacy Server. */
+        nPort = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet.load() ? (LEGACY_TESTNET_PORT + (config::GetArg("-testnet", 0) - 1)) : LEGACY_MAINNET_PORT));
+
+
+        /* Initialize the Legacy Server. */
+        LLP::LEGACY_SERVER = LLP::CreateTAOServer<LLP::LegacyNode>(nPort);
 
 
         /* Initialize API Pointers. */
         TAO::API::Initialize();
+
 
         /* Get the port for the Core API Server. */
         nPort = static_cast<uint16_t>(config::GetArg(std::string("-apiport"), config::fTestNet.load() ? TESTNET_API_PORT : MAINNET_API_PORT));
 
 
         /* ensure that apiuser / apipassword has been configured */
-        if(config::mapArgs.find("-apiuser") == config::mapArgs.end()
+        if((config::mapArgs.find("-apiuser") == config::mapArgs.end()
         || config::mapArgs.find("-apipassword") == config::mapArgs.end())
+        && config::GetBoolArg("-apiauth", true))
         {
             debug::log(0, ANSI_COLOR_BRIGHT_RED, "!!!WARNING!!! API DISABLED", ANSI_COLOR_RESET);
             debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "You must set apiuser=<user> and apipassword=<password> in nexus.conf", ANSI_COLOR_RESET);
@@ -257,10 +256,8 @@ int main(int argc, char** argv)
 
 
         /* Handle Manual Connections from Command Line, if there are any. */
-        if(config::GetBoolArg("-beta"))
-            LLP::MakeConnections<LLP::LegacyNode>(LLP::LEGACY_SERVER);
-        else
-            LLP::MakeConnections<LLP::TritiumNode>(LLP::TRITIUM_SERVER);
+        LLP::MakeConnections<LLP::LegacyNode>(LLP::LEGACY_SERVER);
+        LLP::MakeConnections<LLP::TritiumNode>(LLP::TRITIUM_SERVER);
 
 
         /* Set up Mining Server */

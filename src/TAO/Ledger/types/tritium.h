@@ -31,16 +31,8 @@ namespace TAO
     /* Ledger Layer namespace. */
     namespace Ledger
     {
-
         class BlockState;
-
-        /** Defines the types of transaction hash stored in the TritiumBlock vtx **/
-        enum TYPE
-        {
-            LEGACY_TX  = 0x00,
-            TRITIUM_TX = 0x01,
-            CHECKPOINT = 0x02, //for private chain checkpointing into mainnet blocks.
-        };
+        class SyncBlock;
 
 
         /** TritiumBlock
@@ -117,6 +109,10 @@ namespace TAO
 
             /** Copy Constructor. **/
             TritiumBlock(const BlockState& state);
+
+
+            /** Copy Constructor. **/
+            TritiumBlock(const SyncBlock& block);
 
 
             /** Default Destructor **/

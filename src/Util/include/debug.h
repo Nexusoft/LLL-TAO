@@ -47,7 +47,9 @@ ________________________________________________________________________________
 
 #define VALUE(data) data
 
-#define NODE ANSI_COLOR_FUNCTION "Node" ANSI_COLOR_RESET " : ", "\u001b[1m", GetAddress().ToStringIP(), ANSI_COLOR_RESET, " "
+#define NODE debug::print_node(this)
+
+//ANSI_COLOR_FUNCTION, " Node", ANSI_COLOR_RESET " : ", "\u001b[1m", GetAddress().ToStringIP(), ANSI_COLOR_RESET, " "
 
 /* Support for Windows */
 #ifndef __PRETTY_FUNCTION__
@@ -283,6 +285,25 @@ namespace debug
     };
 
 
+    /** print_node
+     *
+     *  Print information about a node including current address and name.
+     *  Uses a template to grab the static class type and force it to the proper polymorphic class.
+     *
+     *  @param[in] pnode A pointer to the node getting stats from.
+     *
+     *  @return A string containing the node formatted text.
+     *
+     **/
+    template<typename ProtocolType>
+    const std::string print_node(const ProtocolType* pnode)
+    {
+        return debug::safe_printstr(
+            ANSI_COLOR_FUNCTION, ProtocolType::Name(), " Node",
+            ANSI_COLOR_RESET, " : ", "\u001b[1m", pnode->GetAddress().ToStringIP(), ANSI_COLOR_RESET, " ");
+    }
+
+
     /** rfc1123Time
      *
      *  Special Specification for HTTP Protocol.
@@ -306,7 +327,6 @@ namespace debug
     /** GetFilesize
      *
      *  Gets the size of the file in bytes.
->>>>>>> master
      *
      *  Gets the last error string logged via debug::error and clears the last error
      *
