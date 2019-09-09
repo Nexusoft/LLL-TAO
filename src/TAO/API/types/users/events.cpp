@@ -183,6 +183,19 @@ namespace TAO
                     std::vector<std::pair<std::shared_ptr<Legacy::Transaction>, uint32_t>> vLegacyTx;
                     GetOutstanding(hashGenesis, vLegacyTx);
 
+                    /* Check if there is anything to process */
+                    if(vContracts.size() == 0 && vLegacyTx.size() == 0)
+                        continue;
+
+                    /* Ensure that the signature is mature.  Note we only check this after we know there is something to process */
+                    uint32_t nBlocksToMaturity = users->BlocksToMaturity(hashGenesis);
+
+                    if(nBlocksToMaturity > 0)
+                    {
+                        debug::log(2, FUNCTION, "Skipping notifications as signature chain not mature. ", nBlocksToMaturity, " more confirmation(s) required.");
+                        continue;
+                    }
+
                     /* The transaction hash. */
                     uint512_t hashTx;
 

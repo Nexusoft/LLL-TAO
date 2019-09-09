@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/utils.h>
 
+#include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/transaction.h>
 
@@ -292,6 +293,41 @@ namespace TAO
             }
 
             return nSession;
+        }
+
+
+        /* Determines whether the signature chain has reached maturity after the last coinbase/coinstake transaction */
+        uint32_t Users::BlocksToMaturity(const uint256_t hashGenesis)
+        {
+            /* The number of blocks to maturity to return */
+            uint32_t nBlocksToMaturity = 0;
+
+            /* The hash of the last transaction for this sig chain from disk */
+            uint512_t hashLast = 0;
+            if(LLD::Ledger->ReadLast(hashGenesis, hashLast))
+            {
+                /* Get the last transaction from disk for this sig chain */
+                TAO::Ledger::Transaction txLast;
+                if(!LLD::Ledger->ReadTx(hashLast, txLast))
+                    return debug::error(FUNCTION, "last transaction not on disk");
+                
+                /* If the previous transaction is a coinbase or coinstake then check the maturity */
+                if(txLast.IsCoinBase() || txLast.IsCoinStake())
+                {
+                    /* Get number of confirmations of previous TX */
+                    uint32_t nConfirms;
+                    LLD::Ledger->ReadConfirmations(hashLast, nConfirms);
+
+                    /* Exclude the confirmation from out own block */
+                    nConfirms -= 1;
+
+                    /* Check to see if it is mature */
+                    if(nConfirms < TAO::Ledger::MaturitySigChain())
+                        nBlocksToMaturity = TAO::Ledger::MaturitySigChain() - nConfirms;
+                }
+            }
+
+            return nBlocksToMaturity;
         }
     }
 }

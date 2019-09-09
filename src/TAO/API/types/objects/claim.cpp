@@ -56,6 +56,9 @@ namespace TAO
             /* Lock the signature chain. */
             LOCK(users->CREATE_MUTEX);
 
+            /* Check that the sig chain is mature after the last coinbase/coinstake transaction in the chain. */
+            CheckMature(user->Genesis());
+
             /* Get the transaction id. */
             uint512_t hashTx;
             hashTx.SetHex(params["txid"].get<std::string>());

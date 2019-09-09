@@ -216,5 +216,16 @@ namespace TAO
                                   std::vector<TAO::Register::Address>& vObjects);
 
 
+        /** CheckMature
+        *
+        *  Utilty method that checks that the signature chain is mature and can therefore create new transactions.
+        *  Throws an appropriate APIException if it is not mature
+        *
+        *  @param[in] hashGenesis The genesis hash of the signature chain to check
+        *
+        **/
+        void CheckMature(const uint256_t& hashGenesis);
+
+
     }
 }

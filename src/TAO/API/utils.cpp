@@ -1161,6 +1161,22 @@ namespace TAO
         }
 
 
+        /* Utilty method that checks that the signature chain is mature and can therefore create new transactions.
+        *  Throws an appropriate APIException if it is not mature. */
+        void CheckMature(const uint256_t& hashGenesis)
+        {
+            /* No need to check this in private mode as there is no PoS/Pow */
+            if(!config::GetBoolArg("-private"))
+            {
+                /* Get the number of blocks to maturity for this sig chain */
+                uint32_t nBlocksToMaturity = users->BlocksToMaturity(hashGenesis);
+
+                if(nBlocksToMaturity > 0)
+                    throw APIException(-202, debug::safe_printstr( "Signature chain not mature after your previous mined/stake block. ", nBlocksToMaturity, " more confirmation(s) required."));
+            }
+        }
+
+
 
     } // End API namespace
 } // End TAO namespace
