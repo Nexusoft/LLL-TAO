@@ -62,7 +62,7 @@ namespace TAO
             std::map<uint512_t, TAO::Ledger::Transaction> mapOrphans;
 
 
-            /** Record of next hashes in the mempool. **/
+            /** Record of conflicted transactions in mempool. **/
             std::map<uint256_t, uint32_t> mapConflicts;
 
 

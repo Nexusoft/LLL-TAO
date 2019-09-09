@@ -100,33 +100,37 @@ namespace TAO
                     return false;
 
                 /* Check memory and disk for previous transaction. */
-                if(!tx.IsFirst() && !LLD::Ledger->HasTx(tx.hashPrevTx, FLAGS::MEMPOOL))
+                if(!tx.IsFirst())
                 {
-                    /* Debug output. */
-                    debug::log(0, FUNCTION, "tx ", hashTx.SubString(), " ",
-                        tx.nSequence, " genesis ", tx.hashGenesis.SubString(),
-                        " ORPHAN in ", std::dec, time.ElapsedMilliseconds(), " ms");
+                    /* Check for orphan transaction. */
+                    if(!LLD::Ledger->HasTx(tx.hashPrevTx, FLAGS::MEMPOOL))
+                    {
+                        /* Debug output. */
+                        debug::log(0, FUNCTION, "tx ", hashTx.SubString(), " ",
+                            tx.nSequence, " genesis ", tx.hashGenesis.SubString(),
+                            " ORPHAN in ", std::dec, time.ElapsedMilliseconds(), " ms");
 
-                    /* Push to orphan queue. */
-                    mapOrphans[tx.hashPrevTx] = tx;
+                        /* Push to orphan queue. */
+                        mapOrphans[tx.hashPrevTx] = tx;
 
-                    /* Ask for the missing transaction. */
-                    if(pnode)
-                        pnode->PushMessage(uint8_t(LLP::ACTION::GET), uint8_t(LLP::TYPES::TRANSACTION), tx.hashPrevTx);
+                        /* Ask for the missing transaction. */
+                        if(pnode)
+                            pnode->PushMessage(LLP::ACTION::GET, uint8_t(LLP::TYPES::TRANSACTION), tx.hashPrevTx);
 
-                    return true;
+                        return true;
+                    }
+
+                    /* Check the transaction for conflicts. */
+                    if(mapConflicts.count(tx.hashPrevTx))
+                    {
+                        /* Handle for a conflicted transaction. */
+                        //nConflict = ++mapConflicts[tx.hashPrevTx];
+
+                        debug::error(FUNCTION, "CONFLICT ", nConflict, " TRANSACTION DETECTED ", tx.hashPrevTx.SubString());
+                    }
+                    else //set the total conflicts to zero
+                        mapConflicts[tx.hashPrevTx] = 0;
                 }
-
-                /* The next hash that is being claimed. */
-                //if(mapConflicts.count(tx.hashPrevTx))
-                {
-                    /* Handle for a conflicted transaction. */
-                    //nConflict = ++mapConflicts[tx.hashPrevTx];
-
-                    //debug::error(FUNCTION, "CONFLICT ", nConflict, " TRANSACTION DETECTED ", hashTx.SubString());
-                }
-                //else //set the total conflicts to zero
-                //    mapConflicts[tx.hashPrevTx] = 0;
             }
 
             //TODO: add mapConflcts map to soft-ban conflicting blocks
