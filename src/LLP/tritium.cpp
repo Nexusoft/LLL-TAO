@@ -349,7 +349,10 @@ namespace LLP
                 if(Incoming())
                 {
                     /* Respond with version message. */
-                    PushMessage(uint8_t(ACTION::VERSION), PROTOCOL_VERSION, SESSION_ID, version::CLIENT_VERSION_BUILD_STRING);
+                    PushMessage(ACTION::VERSION,
+                        PROTOCOL_VERSION,
+                        SESSION_ID,
+                        version::CLIENT_VERSION_BUILD_STRING);
 
                     /* Relay to subscribed nodes a new connection was seen. */
                     TRITIUM_SERVER->Relay
@@ -1500,6 +1503,10 @@ namespace LLP
             /* Standard type for a timeseed. */
             case TYPES::TIMESEED:
             {
+                /* Check for subscription. */
+                if(!(nSubscriptions & SUBSCRIPTION::TIMESEED))
+                    return debug::drop(NODE, "TYPES::TIMESEED: unsolicited data");
+
                 /* Check for authorized node. */
                 if(!Authorized())
                     return debug::drop(NODE, "cannot send timeseed if not authorized");
@@ -1522,6 +1529,10 @@ namespace LLP
             /* Standard type for a block. */
             case TYPES::ADDRESS:
             {
+                /* Check for subscription. */
+                if(!(nSubscriptions & SUBSCRIPTION::ADDRESS))
+                    return debug::drop(NODE, "TYPES::ADDRESS: unsolicited data");
+
                 /* Get the base address. */
                 BaseAddress addr;
                 ssPacket >> addr;
@@ -1537,6 +1548,10 @@ namespace LLP
             /* Handle incoming block. */
             case TYPES::BLOCK:
             {
+                /* Check for subscription. */
+                if(!(nSubscriptions & SUBSCRIPTION::BLOCK) && TAO::Ledger::nSyncSession.load() != nCurrentSession)
+                    return debug::drop(NODE, "TYPES::BLOCK: unsolicited data");
+
                 /* Get the specifier. */
                 uint8_t nSpecifier = 0;
                 ssPacket >> nSpecifier;
@@ -1715,6 +1730,10 @@ namespace LLP
             /* Handle incoming transaction. */
             case TYPES::TRANSACTION:
             {
+                /* Check for subscription. */
+                if(!(nSubscriptions & SUBSCRIPTION::TRANSACTION))
+                    return debug::drop(NODE, "TYPES::TRANSACTION: unsolicited data");
+
                 /* Get the specifier. */
                 uint8_t nSpecifier = 0;
                 ssPacket >> nSpecifier;
