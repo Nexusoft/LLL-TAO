@@ -241,6 +241,7 @@ namespace LLP
                 break;
             }
 
+
             case EVENT_DISCONNECT:
             {
                 /* Debut output. */
@@ -430,6 +431,8 @@ namespace LLP
             case ACTION::AUTH:
             case ACTION::DEAUTH:
             {
+                return true; //disable AUTH for testnet
+
                 /* Disable AUTH messages when synchronizing. */
                 if(TAO::Ledger::ChainState::Synchronizing())
                     return true;
