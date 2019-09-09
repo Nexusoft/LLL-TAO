@@ -110,14 +110,13 @@ namespace LLP
         }
 
         /* Send a notification to wake up sleeping thread to finish shutdown process. */
-        //this->NotifyEvent();
+        this->NotifyEvent();
     }
 
 
     /* Handle custom message events. */
     void Miner::Event(uint8_t EVENT, uint32_t LENGTH)
     {
-
         /* Handle any DDOS Packet Filters. */
         switch(EVENT)
         {
@@ -692,7 +691,7 @@ namespace LLP
         if(TAO::API::users && TAO::API::users->CanProcessNotifications())
         {
             TAO::API::users->NotifyEvent();
-            WaitEvent();
+            //WaitEvent();
         }
 
         return true;
