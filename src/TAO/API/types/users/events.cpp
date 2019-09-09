@@ -30,6 +30,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/enum.h>
+#include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/state.h>
@@ -215,6 +216,10 @@ namespace TAO
                     /* Loop through each contract in the notification queue. */
                     for(const auto& contract : vContracts)
                     {
+                        /* Ensure we don't breach the max contracts/per transaction, leaving room for the fee contract */
+                        if(txout.Size() == TAO::Ledger::MAX_TRANSACTION_CONTRACTS -1)
+                            break;
+                        
                         /* Get a reference to the contract */
                         const TAO::Operation::Contract& refContract = std::get<0>(contract);
 
@@ -406,6 +411,10 @@ namespace TAO
                     /* Now process the legacy transactions */
                     for(const auto& contract : vLegacyTx)
                     {
+                        /* Ensure we don't breach the max contracts/per transaction, leaving room for the fee contract */
+                        if(txout.Size() == TAO::Ledger::MAX_TRANSACTION_CONTRACTS -1)
+                            break;
+                            
                         /* Set the transaction hash. */
                         hashTx = contract.first->GetHash();
 
