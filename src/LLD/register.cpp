@@ -115,7 +115,7 @@ namespace LLD
     bool RegisterDB::EraseState(const uint256_t& hashRegister, const uint8_t nFlags)
     {
         /* Memory mode for pre-database commits. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags >= TAO::Ledger::FLAGS::MEMPOOL)
         {
             LOCK(MEMORY_MUTEX);
 

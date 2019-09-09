@@ -45,7 +45,7 @@ namespace TAO
         , mapLegacy()
         , mapLedger()
         , mapOrphans()
-        , mapPrevHashes()
+        , mapConflicts()
         , mapInputs()
         {
         }
@@ -91,7 +91,7 @@ namespace TAO
             time.Start();
 
             /* Get ehe next hash being claimed. */
-            uint256_t hashClaim = tx.PrevHash();
+            uint32_t nConflict = 0;
             {
                 RLOCK(MUTEX);
 
@@ -99,15 +99,8 @@ namespace TAO
                 if(mapLedger.count(hashTx))
                     return false;
 
-                /* The next hash that is being claimed. */
-                if(mapPrevHashes.count(hashClaim))
-                    return debug::error(FUNCTION, "trying to claim spent next hash ", hashClaim.SubString());
-
                 /* Check memory and disk for previous transaction. */
-                TAO::Ledger::Transaction txPrev;
-                if(!tx.IsFirst()
-                && !mapLedger.count(tx.hashPrevTx)
-                && !LLD::Ledger->ReadTx(tx.hashPrevTx, txPrev))
+                if(!tx.IsFirst() && !LLD::Ledger->HasTx(tx.hashPrevTx, FLAGS::MEMPOOL))
                 {
                     /* Debug output. */
                     debug::log(0, FUNCTION, "tx ", hashTx.SubString(), " ",
@@ -124,6 +117,16 @@ namespace TAO
                     return true;
                 }
 
+                /* The next hash that is being claimed. */
+                //if(mapConflicts.count(tx.hashPrevTx))
+                {
+                    /* Handle for a conflicted transaction. */
+                    //nConflict = ++mapConflicts[tx.hashPrevTx];
+
+                    //debug::error(FUNCTION, "CONFLICT ", nConflict, " TRANSACTION DETECTED ", hashTx.SubString());
+                }
+                //else //set the total conflicts to zero
+                //    mapConflicts[tx.hashPrevTx] = 0;
             }
 
             //TODO: add mapConflcts map to soft-ban conflicting blocks
@@ -145,11 +148,11 @@ namespace TAO
                 return false;
 
             /* Verify the Ledger Pre-States. */
-            if(!tx.Verify())
+            if(!tx.Verify(TAO::Ledger::FLAGS::MEMPOOL + nConflict))
                 return false;
 
             /* Connect transaction in memory. */
-            if(!tx.Connect(TAO::Ledger::FLAGS::MEMPOOL))
+            if(!tx.Connect(TAO::Ledger::FLAGS::MEMPOOL + nConflict))
                 return false;
 
             {
@@ -157,7 +160,6 @@ namespace TAO
 
                 /* Set the internal memory. */
                 mapLedger[hashTx] = tx;
-                mapPrevHashes[hashClaim] = hashTx;
             }
 
             /* Debug output. */
@@ -321,11 +323,14 @@ namespace TAO
             /* Find the transaction in pool. */
             if(mapLedger.count(hashTx))
             {
-                TAO::Ledger::Transaction tx = mapLedger[hashTx];
+                /* Get a reference from the map. */
+                const TAO::Ledger::Transaction& tx = mapLedger[hashTx];
 
                 /* Erase from the memory map. */
-                mapPrevHashes.erase(tx.PrevHash());
+                mapConflicts.erase(tx.hashPrevTx);
                 mapLedger.erase(hashTx);
+
+                //TODO: find a nice way to erase conflicts
 
                 return true;
             }
@@ -333,7 +338,7 @@ namespace TAO
             /* Find the legacy transaction in pool. */
             if(mapLegacy.count(hashTx))
             {
-                Legacy::Transaction tx = mapLegacy[hashTx];
+                const Legacy::Transaction& tx = mapLegacy[hashTx];
 
                 /* Erase the claimed inputs */
                 uint32_t s = static_cast<uint32_t>(tx.vin.size());

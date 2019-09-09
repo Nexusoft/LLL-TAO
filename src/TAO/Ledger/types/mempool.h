@@ -63,7 +63,7 @@ namespace TAO
 
 
             /** Record of next hashes in the mempool. **/
-            std::map<uint256_t, uint512_t> mapPrevHashes;
+            std::map<uint256_t, uint32_t> mapConflicts;
 
 
             /** Record of legacy inputs in the mempool. **/
