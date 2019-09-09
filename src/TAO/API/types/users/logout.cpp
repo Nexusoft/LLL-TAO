@@ -48,6 +48,10 @@ namespace TAO
             if(config::fMultiuser.load())
                 nSession.SetHex(params["session"].get<std::string>());
 
+            /* Generate an DEAUTH message to send to all peers.  NOTE We need to do this before we lock the MUTEX to delete 
+               the sig chain to avoid a deadlock, as the GetAuth method also takes a lock */
+            DataStream ssMessage = LLP::TritiumNode::GetAuth(false);
+
             /* Delete the sigchan. */
             {
                 LOCK(MUTEX);
@@ -56,21 +60,6 @@ namespace TAO
                     throw APIException(-141, "Already logged out");
 
                 memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = mapSessions[nSession];
-
-                /* If not using multi-user then we need to send a deauth message to all peers */
-                if(!config::fMultiuser.load())
-                {
-                    /* Generate an DEAUTH message to send to all peers */
-                    DataStream ssMessage = LLP::TritiumNode::GetAuth(false);
-
-                    /* Check whether it is valid before relaying it to all peers */
-                    if(ssMessage.size() > 0)
-                        LLP::TRITIUM_SERVER->Relay(LLP::ACTION::DEAUTH, ssMessage.Bytes());
-
-                    /* Free up the Auth private key */
-                    pAuthKey.free();
-                }
-
                 
                 user.free();
 
@@ -80,6 +69,17 @@ namespace TAO
                 if(!pActivePIN.IsNull())
                     pActivePIN.free();
 
+            }
+
+            /* If not using multi-user then we need to send a deauth message to all peers */
+            if(!config::fMultiuser.load())
+            {
+                /* Check whether it is valid before relaying it to all peers */
+                if(ssMessage.size() > 0)
+                    LLP::TRITIUM_SERVER->Relay(LLP::ACTION::DEAUTH, ssMessage.Bytes());
+
+                /* Free up the Auth private key */
+                pAuthKey.free();
             }
 
             ret["success"] = true;
