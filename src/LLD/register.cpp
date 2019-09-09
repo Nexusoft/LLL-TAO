@@ -57,6 +57,7 @@ namespace LLD
                 throw debug::exception(FUNCTION, "conflict ", nConflict, " out of sequence ", vStates.size());
 
             /* Check if there is a new conflict. */
+            debug::log(0, FUNCTION, "CONFLICT ", nConflict);
             if(nConflict == vStates.size())
             {
                 debug::error(FUNCTION, "REGISTER CONFLICT: ", nConflict, " hash ", hashRegister.SubString());
@@ -97,13 +98,13 @@ namespace LLD
 
                 /* Check that the diff index is correct. */
                 std::vector<TAO::Register::State>& vStates = mapStates[hashRegister];
-                if(nConflict >= vStates.size())
-                    throw debug::exception(FUNCTION, "conflict ", nConflict, " out of range ", vStates.size());
+                if(nConflict < vStates.size())
+                {
+                    /* Return correct conflict by id. */
+                    state = vStates[nConflict];
 
-                /* Return correct conflict by id. */
-                state = vStates[nConflict];
-
-                return true;
+                    return true;
+                }
             }
         }
 

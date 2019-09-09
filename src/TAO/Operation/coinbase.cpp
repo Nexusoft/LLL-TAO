@@ -28,7 +28,7 @@ namespace TAO
         bool Coinbase::Commit(const uint256_t& hashAddress, const uint512_t& hashTx, const uint8_t nFlags)
         {
             /* Check to contract caller. */
-            if(nFlags & TAO::Ledger::FLAGS::BLOCK)
+            if(nFlags == TAO::Ledger::FLAGS::BLOCK)
             {
                 /* Write the event to the database. */
                 if(!LLD::Ledger->WriteEvent(hashAddress, hashTx))

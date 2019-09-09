@@ -45,6 +45,7 @@ namespace TAO
         , mapLegacy()
         , mapLedger()
         , mapOrphans()
+        , mapConnected()
         , mapConflicts()
         , mapInputs()
         {
@@ -99,10 +100,10 @@ namespace TAO
                 if(mapLedger.count(hashTx))
                     return false;
 
-                /* Check memory and disk for previous transaction. */
+                /* Check for orphans and conflicts when not first transaction. */
                 if(!tx.IsFirst())
                 {
-                    /* Check for orphan transaction. */
+                    /* Check memory and disk for previous transaction. */
                     if(!LLD::Ledger->HasTx(tx.hashPrevTx, FLAGS::MEMPOOL))
                     {
                         /* Debug output. */
@@ -120,16 +121,16 @@ namespace TAO
                         return true;
                     }
 
-                    /* Check the transaction for conflicts. */
-                    if(mapConflicts.count(tx.hashPrevTx))
+                    /* Keep track of connected previous transactions. */
+                    if(mapConnected.count(tx.hashPrevTx))
                     {
-                        /* Handle for a conflicted transaction. */
-                        //nConflict = ++mapConflicts[tx.hashPrevTx];
+                        /* Set the conflict from current conflict counter. */
+                        nConflict = ++mapConnected[tx.hashPrevTx];
 
                         debug::error(FUNCTION, "CONFLICT ", nConflict, " TRANSACTION DETECTED ", tx.hashPrevTx.SubString());
                     }
-                    else //set the total conflicts to zero
-                        mapConflicts[tx.hashPrevTx] = 0;
+                    else
+                        mapConnected[tx.hashPrevTx] = 0;
                 }
             }
 
