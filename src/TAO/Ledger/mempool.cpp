@@ -390,6 +390,10 @@ namespace TAO
                 /* Loop through all the transactions. */
                 for(const auto& tx : mapLedger)
                 {
+                    /* Check that this transaction isn't conflicted. */
+                    if(mapConflicts.count(tx.first))
+                        continue;
+
                     /* Cache the genesis. */
                     const uint256_t& hashGenesis = tx.second.hashGenesis;
 
