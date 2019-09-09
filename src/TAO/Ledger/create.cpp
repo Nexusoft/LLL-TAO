@@ -142,15 +142,15 @@ namespace TAO
                 block.vtx.push_back(std::make_pair(TRANSACTION::TRITIUM, hash));
             }
 
-            /* Add legacy */
-            std::vector<uint512_t> vLegacyMempool;
+            /* Clear for legacy. */
+            vMempool.clear();
 
             /* Retrieve list of transaction hashes from mempool. Limit list to a sane size that would typically more than fill a
              * legacy block, rather than pulling entire pool if it is very large. */
-            TAO::Ledger::mempool.ListLegacy(vLegacyMempool, 1000);
+            TAO::Ledger::mempool.List(vMempool, 1000, true);
 
             /* Loop through the list of transactions. */
-            for(const auto& hash : vLegacyMempool)
+            for(const auto& hash : vMempool)
             {
                 /* Check the Size limits of the Current Block. */
                 if(::GetSerializeSize(block, SER_NETWORK, LLP::PROTOCOL_VERSION) + 200 >= MAX_BLOCK_SIZE)
@@ -172,7 +172,6 @@ namespace TAO
                 /* Add the transaction to the block. */
                 block.vtx.push_back(std::make_pair(TRANSACTION::LEGACY, hash));
             }
-
         }
 
 
@@ -435,8 +434,6 @@ namespace TAO
                         if(statePrev.nChannelHeight %
                             (config::fTestNet.load() ? AMBASSADOR_PAYOUT_THRESHOLD_TESTNET : AMBASSADOR_PAYOUT_THRESHOLD) == 0)
                         {
-                            debug::log(0, "GENERATING AMBASSADOR");
-
                             /* Get the total in reserves. */
                             int64_t nBalance = statePrev.nReleasedReserve[1] - (33 * NXS_COIN); //leave 33 coins in the reserve
                             if(nBalance > 0)

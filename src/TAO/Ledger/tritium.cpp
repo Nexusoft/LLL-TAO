@@ -406,11 +406,6 @@ namespace TAO
                     return debug::error(FUNCTION, "unknown transaction type");
             }
 
-            /* Check that the producer isn't going to orphan any transactions. */
-            TAO::Ledger::Transaction tx; //TODO: remove this
-            if(mempool.Get(producer.hashGenesis, tx) && producer.hashPrevTx != tx.GetHash())
-                return debug::error(FUNCTION, "producer is STALE");
-
             /* Get producer hash. */
             uint512_t hashProducer = producer.GetHash();
 

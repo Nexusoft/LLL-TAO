@@ -43,11 +43,12 @@ namespace TAO
          *
          *  @param[out] contract The contract to calculate for
          *  @param[out] mapStates The temporary states if pre-states rely on previous contracts.
+         *  @param[in] nFlags The flags to define block, memory, or conflict tree
          *
          *  @return true if verified correctly, false otherwise.
          *
          **/
-        bool Build(TAO::Operation::Contract& contract, std::map<uint256_t, State>& mapStates);
+        bool Build(TAO::Operation::Contract& contract, std::map<uint256_t, State>& mapStates, const uint8_t nFlags = TAO::Ledger::FLAGS::MEMPOOL);
 
     }
 }
