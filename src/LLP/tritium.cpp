@@ -20,6 +20,8 @@ ________________________________________________________________________________
 #include <LLP/templates/events.h>
 #include <LLP/include/manager.h>
 
+#include <TAO/API/include/global.h>
+
 #include <TAO/Register/include/names.h>
 #include <TAO/Register/types/object.h>
 
@@ -338,9 +340,13 @@ namespace LLP
                 {
                     /* Respond with version message. */
                     PushMessage(uint8_t(ACTION::VERSION), PROTOCOL_VERSION, SESSION_ID, version::CLIENT_VERSION_BUILD_STRING);
-
                 }
-                else if(!fSynchronized.load())
+
+                /* Send Auth immediately after version and before any other messages*/
+                Auth(true);
+
+                /* If not synchronized and making an outbound connection, start the sync */
+                if(!Incoming() && !fSynchronized.load())
                 {
                     /* Start sync on startup, or override any legacy syncing currently in process. */
                     if(TAO::Ledger::nSyncSession.load() == 0 || LegacyNode::SessionActive(TAO::Ledger::nSyncSession.load()))
@@ -376,8 +382,9 @@ namespace LLP
             }
 
 
-            /* Handle for auth command. */
+            /* Handle for auth / deauthcommand. */
             case ACTION::AUTH:
+            case ACTION::DEAUTH:
             {
                 /* Disable AUTH messages when synchronizing. */
                 if(TAO::Ledger::ChainState::Synchronizing())
@@ -407,6 +414,14 @@ namespace LLP
                 uint256_t hashCheck = crypto.get<uint256_t>("network");
                 if(hashCheck != 0) //a hash of 0 is a disabled authorization hash
                 {
+                    /* Get the timestamp */
+                    uint64_t nTimestamp;
+                    ssPacket >> nTimestamp;
+
+                    /* Get the nonce */
+                    uint64_t nNonce;
+                    ssPacket >> nNonce;
+
                     /* Get the public key. */
                     std::vector<uint8_t> vchPubKey;
                     ssPacket >> vchPubKey;
@@ -414,6 +429,10 @@ namespace LLP
                     /* Check the public key to expected authorization key. */
                     if(LLC::SK256(vchPubKey) != hashCheck)
                         return debug::drop(NODE, "ACTION::AUTH: failed to authorize, invalid public key");
+
+                    /* Build the byte stream from genesis+nonce in order to verify the signature */
+                    DataStream ssCheck(SER_NETWORK, PROTOCOL_VERSION);
+                    ssCheck << hashGenesis << nTimestamp << nNonce;
 
                     /* Get the signature. */
                     std::vector<uint8_t> vchSig;
@@ -430,7 +449,7 @@ namespace LLP
 
                             /* Set the public key and verify. */
                             key.SetPubKey(vchPubKey);
-                            if(!key.Verify(hashGenesis.GetBytes(), vchSig))
+                            if(!key.Verify(ssCheck.Bytes(), vchSig))
                                 return debug::drop(NODE, "ACTION::AUTH: invalid transaction signature");
 
                             break;
@@ -444,7 +463,7 @@ namespace LLP
 
                             /* Set the public key and verify. */
                             key.SetPubKey(vchPubKey);
-                            if(!key.Verify(hashGenesis.GetBytes(), vchSig))
+                            if(!key.Verify(ssCheck.Bytes(), vchSig))
                                 return debug::drop(NODE, "ACTION::AUTH: invalid transaction signature");
 
                             break;
@@ -456,7 +475,8 @@ namespace LLP
 
                     /* Get the crypto register. */
                     TAO::Register::Object trust;
-                    if(!TAO::Register::GetNameRegister(hashGenesis, "trust", trust))
+                    TAO::Register::Address hashTrust = TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
+                    if(!LLD::Register->ReadState(hashTrust, trust, TAO::Ledger::FLAGS::MEMPOOL))
                         return debug::drop(NODE, "ACTION::AUTH: authorization failed, missing trust register");
 
                     /* Parse the object. */
@@ -467,7 +487,7 @@ namespace LLP
                     nTrust = trust.get<uint64_t>("trust");
 
                     /* Set to authorized node if passed all cryptographic checks. */
-                    fAuthorized = true;
+                    fAuthorized = INCOMING.MESSAGE == ACTION::AUTH;
                 }
 
                 break;
@@ -1880,6 +1900,57 @@ namespace LLP
 
         /* Write the subscription packet. */
         WritePacket(NewMessage((fSubscribe ? ACTION::SUBSCRIBE : ACTION::UNSUBSCRIBE), ssMessage));
+    }
+
+    /*  Builds an Auth message for this node.*/
+    DataStream TritiumNode::GetAuth(bool fAuth)
+    {
+        /* Build auth message. */
+        DataStream ssMessage(SER_NETWORK, MIN_PROTO_VERSION);
+
+        /* Only send auth messages if the auth key has been cached */
+        if(TAO::API::users->LoggedIn() && !TAO::API::users->GetAuthKey().IsNull())
+        {
+            /* The genesis of the currently logged in user */
+            uint256_t hashGenesis = TAO::API::users->GetGenesis(0);
+
+            /* The current timestamp */
+            uint64_t nTimestamp = runtime::unifiedtimestamp();
+
+            /* Add the basic auth data to the message */
+            ssMessage << hashGenesis <<  nTimestamp << SESSION_ID;
+
+            /* The public key for the "network" key*/
+            std::vector<uint8_t> vchPubKey;
+
+            /* The signature data for this message */
+            std::vector<uint8_t> vchSig;
+            
+            /* Generate the public key and signature for the message data */
+            TAO::API::users->GetAccount(0)->Sign("network", ssMessage.Bytes(), TAO::API::users->GetAuthKey()->DATA, vchPubKey, vchSig);
+
+            /* Add the public key to the message */
+            ssMessage << vchPubKey;
+
+            /* Finally add the signature to the message */
+            ssMessage << vchSig;   
+        
+        }
+
+        return ssMessage;
+    }
+
+
+    /*  Authorize this node to the connected node */
+    void TritiumNode::Auth(bool fAuth)
+    {
+        /* Get the auth message */
+        DataStream ssMessage = GetAuth(fAuth);
+
+        /* Check whether it is valid before sending it */
+        if(ssMessage.size() > 0)
+            WritePacket(NewMessage((fAuth ? ACTION::AUTH : ACTION::DEAUTH), ssMessage));   
+        
     }
 
 

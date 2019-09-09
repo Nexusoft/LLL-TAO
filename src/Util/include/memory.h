@@ -916,6 +916,26 @@ namespace memory
             data = nullptr;
         }
     };
+
+
+    /** encrypted_type
+     *
+     *  Simple template class to allow primitive types to be used with encrypted_ptr  
+     *  without needing to inherit from memory::encrypted or provide their own Encrypt() implementation
+     *
+     **/
+    template<class TypeName> class encrypted_type : memory::encrypted
+    {
+    public:
+        /* Constructor from primitive type data */
+        encrypted_type(TypeName data){DATA = data;}
+
+        /* Encrypts the internal data */
+        void Encrypt(){ encrypt(DATA);}
+
+        /* The primitive data being encrypted */
+        TypeName DATA;
+    };
 }
 
 #endif

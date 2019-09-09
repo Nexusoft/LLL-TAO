@@ -296,6 +296,13 @@ namespace TAO
         }
 
 
+        /* Returns the private key for the auth public key */
+        memory::encrypted_ptr<memory::encrypted_type<uint512_t>>& Users::GetAuthKey() const
+        {
+            return pAuthKey;
+        }
+
+
         /* Determines whether the signature chain has reached maturity after the last coinbase/coinstake transaction */
         uint32_t Users::BlocksToMaturity(const uint256_t hashGenesis)
         {
