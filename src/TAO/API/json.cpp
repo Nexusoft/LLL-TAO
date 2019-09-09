@@ -966,12 +966,6 @@ namespace TAO
                         {
                             /* The amount being staked */
                             ret["stake"]    = (double)object.get<uint64_t>("stake") / pow(10, nDecimals);
-
-                            /* Get immature mined / staked */
-                            uint64_t nImmatureMined, nImmatureStake;
-                            GetImmature(object.hashOwner, nImmatureMined, nImmatureStake);
-
-                            ret["immature"]  = (double)nImmatureStake / pow(10, nDecimals);
                         }
 
 

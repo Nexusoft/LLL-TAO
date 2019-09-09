@@ -437,21 +437,27 @@ This will list off all of the token accounts belonging to a particular signature
 ```
 [
     {
+        "created": 1568025836,
+        "modified": 1568025836,
         "name": "default",
-        "address": "f9ee3e63c845794d577d54c5087f0ff2f2053195bf007907e8134977bb1f1e24",
+        "address": "8CbkwEQ9S8owmX74joU6XmiwxJq1aoiqUoXc9fLCKzw15HscM99",
         "token_name": "NXS",
         "token": "0",
-        "balance": 5000
+        "balance": 5000,
+        "pending": 0.0,
+        "unconfirmed": 76.492244
     },
     {
+        "created": 1568025836,
+        "modified": 1568025836,
         "name": "savings",
-        "address": "a74774dc075e59d03639b56da8c29736fe248888a43c6103060409dd11273417",
+        "address": "8GhrC2TKkU4ra9Uuj8LuiAyxDAtza2u483N1rKDSaVp24dNgUy9",
         "token_name": "mytoken",
-        "token": "f9ee3e63c845794d577d54c5087f0ff2f2053195bf007907e8134977bb1f1e24",
-        "balance": 60
+        "token": "8GHrC2TKkU4ra9Uuj8LuiAyxDAtza2u483N1rKDSaVp24dNgUx8",
+        "balance": 10000.0,
+        "pending": 0.0,
+        "unconfirmed": 0.0
     }
-
-
 ]
 ```
 ### Return values:
@@ -468,7 +474,11 @@ This will list off all of the token accounts belonging to a particular signature
 
 `token` : The register address of the token that this account can be used for.
 
-`balance` : The current balance of the token account.
+`balance` : The available balance of this account.  This is the last confirmed balance less any new debits that you have made since the last block
+
+`pending` : This is the sum of all confirmed debit transactions that have been made to this account, that have not yet been credited.  To move coins from pending into the available balance you must create a corresponding credit transaction.  NOTE: if configured to run, the events processor does this for you.
+
+`unconfirmed` : This is the sum of all unconfirmed debit transactions that have been made to this account PLUS the sum of all unconfirmed credits that you have for confirmed debit transactions.  When someone makes a debit to your account it will immediately appear in the unconfirmed balance until that transaction is included in a block, at which point it moves into `pending`.  When you (or the events processor) creates the corresponding credit transaction for that debit, the amount will move from `pending` back into `unconfirmed` until the credit transaction is included in a block, at which point the amount moves to `balance`.  
 
 
 ****

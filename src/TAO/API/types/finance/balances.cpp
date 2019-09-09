@@ -72,10 +72,7 @@ namespace TAO
             uint64_t nStake = 0;
 
             /* The sum of all immature coinbase transactions */
-            uint64_t nImmatureMined = 0;
-
-            /* The sum of all immature coinstake transactions */
-            uint64_t nImmatureStake = 0;
+            uint64_t nImmature = 0;
 
             /* vector of NXS accounts */
             std::vector<TAO::Register::Object> vAccounts;
@@ -139,7 +136,7 @@ namespace TAO
             nAvailable = nBalance - nUnconfirmedOutgoing;
 
             /* Get immature mined / staked */
-            GetImmature(hashGenesis, nImmatureMined, nImmatureStake);
+            nImmature = GetImmature(hashGenesis);
 
             /* Get the stake amount */
             if(!trust.IsNull())
@@ -150,8 +147,7 @@ namespace TAO
             ret["pending"] = (double)nPending / TAO::Ledger::NXS_COIN;
             ret["unconfirmed"] = (double)nUnconfirmed / TAO::Ledger::NXS_COIN;
             ret["stake"] = (double)nStake / TAO::Ledger::NXS_COIN;
-            ret["immature_mined"] = (double)nImmatureMined / TAO::Ledger::NXS_COIN;
-            ret["immature_stake"] = (double)nImmatureStake / TAO::Ledger::NXS_COIN;
+            ret["immature"] = (double)nImmature / TAO::Ledger::NXS_COIN;
 
             return ret;
         }
