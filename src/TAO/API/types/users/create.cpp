@@ -123,11 +123,8 @@ namespace TAO
             tx[3] << uint8_t(TAO::Operation::OP::CREATE)      << hashRegister
                   << uint8_t(TAO::Register::REGISTER::OBJECT) << TAO::Register::CreateAccount(0).GetState();
 
-            /* Generate a random hash for this objects register address */
-            hashRegister = TAO::Register::Address(TAO::Register::Address::CRYPTO);
-
-            /* Add a Name record for the trust account */
-            tx[4] = Names::CreateName(user->Genesis(), "crypto", "", hashRegister);
+            /* Generate register address for crypto register deterministically */
+            hashRegister = TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
 
             /* The key type to use for the crypto keys */
             uint8_t nKeyType = config::GetBoolArg("-brainpool") ? TAO::Ledger::SIGNATURE::BRAINPOOL : TAO::Ledger::SIGNATURE::FALCON;
@@ -144,8 +141,8 @@ namespace TAO
                                                 0, //app2 disabled for now
                                                 0);//app3 disabled for now 
 
-            /* Add the default account register operation to the transaction */
-            tx[5] << uint8_t(TAO::Operation::OP::CREATE)      << hashRegister
+            /* Add the crypto register operation to the transaction */
+            tx[4] << uint8_t(TAO::Operation::OP::CREATE)      << hashRegister
                   << uint8_t(TAO::Register::REGISTER::OBJECT) << crypto.GetState();
 
             /* Add the fee */

@@ -394,8 +394,9 @@ namespace LLP
                     return debug::drop(NODE, "ACTION::AUTH: cannot authorize with reserved genesis");
 
                 /* Get the crypto register. */
+                TAO::Register::Address hashCrypto = TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
                 TAO::Register::Object crypto;
-                if(!TAO::Register::GetNameRegister(hashGenesis, "crypto", crypto))
+                if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::MEMPOOL))
                     return debug::drop(NODE, "ACTION::AUTH: authorization failed, missing crypto register");
 
                 /* Parse the object. */
