@@ -73,6 +73,7 @@ namespace LLP
             CHECKPOINT  = 0x34,
             ADDRESS     = 0x35,
             BESTCHAIN   = 0x36,
+            MEMPOOL     = 0x37,
         };
     }
 
@@ -116,6 +117,7 @@ namespace LLP
             ADDRESS     = (1 << 6),
             LASTINDEX   = (1 << 7),
             BESTCHAIN   = (1 << 8),
+            SIGCHAIN    = (1 << 9),
         };
     }
 

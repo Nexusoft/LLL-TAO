@@ -923,7 +923,7 @@ namespace LLP
 
                             /* Check for last subscription. */
                             if(nNotifications & SUBSCRIPTION::LASTINDEX)
-                                PushMessage(ACTION::NOTIFY, uint8_t(TYPES::LASTINDEX), hashStart);
+                                PushMessage(ACTION::NOTIFY, uint8_t(TYPES::LASTINDEX), uint8_t(TYPES::BLOCK), hashStart);
 
                             break;
                         }
@@ -1013,7 +1013,14 @@ namespace LLP
 
                             /* Check for size constraints. */
                             if(nTotal > 10000)
+                            {
+                                /* Give penalties for size violation. */
+                                if(DDOS)
+                                    DDOS->rSCORE += 20;
+
+                                /* Set value to max range. */
                                 nTotal = 10000;
+                            }
 
                             /* Get addresses from manager. */
                             std::vector<BaseAddress> vAddr;
@@ -1024,6 +1031,63 @@ namespace LLP
                             const uint32_t nCount = std::min((uint32_t)vAddr.size(), nTotal);
                             for(uint32_t n = 0; n < nCount; ++n)
                                 PushMessage(TYPES::ADDRESS, vAddr[n]);
+
+                            break;
+                        }
+
+
+                        /* Standard type for a block. */
+                        case TYPES::MEMPOOL:
+                        {
+                            /* Get the index of block. */
+                            uint512_t hashStart;
+                            ssPacket >> hashStart;
+
+                            /* Get the total list amount. */
+                            uint32_t nTotal;
+                            ssPacket >> nTotal;
+
+                            /* Check size constraints. */
+                            if(nTotal > 1000)
+                            {
+                                /* Give penalties for size violation. */
+                                if(DDOS)
+                                    DDOS->rSCORE += 20;
+
+                                /* Set value to max range. */
+                                nTotal = 1000;
+                            }
+
+                            /* Keep track of the last hash. */
+                            uint512_t hashLast = 0;
+
+                            /* Get a list of transactions from mempool. */
+                            std::vector<uint512_t> vHashes;
+                            if(TAO::Ledger::mempool.List(vHashes, nTotal)) //NOTE: this number needs to be increased in the future
+                            {
+                                /* Loop through the available hashes. */
+                                for(const auto& hash : vHashes)
+                                {
+                                    /* List from mempool based on starting hash. */
+                                    if(hashStart != 0 && hash != hashStart)
+                                        continue;
+
+                                    /* Get the transaction from memory pool. */
+                                    TAO::Ledger::Transaction tx;
+                                    if(!TAO::Ledger::mempool.Get(hash, tx))
+                                        break; //we don't want to add more dependants if this fails
+
+                                    /* Push the transaction. */
+                                    PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::TRITIUM), tx);
+
+                                    /* Set the last hash. */
+                                    hashLast = hash;
+                                }
+
+                                /* Check for last subscription. */
+                                if(nNotifications & SUBSCRIPTION::LASTINDEX)
+                                    PushMessage(ACTION::NOTIFY, uint8_t(TYPES::LASTINDEX), uint8_t(TYPES::MEMPOOL), hashLast);
+                            }
 
                             break;
                         }
@@ -1262,45 +1326,86 @@ namespace LLP
                         {
                             /* Check for subscription. */
                             if(!(nSubscriptions & SUBSCRIPTION::LASTINDEX))
-                                return debug::drop(NODE, "LAST: unsolicited notification");
+                                return debug::drop(NODE, "ACTION::NOTIFY: LASTINDEX: unsolicited notification");
 
-                            /* Keep track of current checkpoint. */
-                            uint1024_t hashLast;
-                            ssPacket >> hashLast;
+                            /* Get the data type. */
+                            uint8_t nType = 0;
+                            ssPacket >> nType;
 
-                            /* Check if is sync node. */
-                            if(nCurrentSession == TAO::Ledger::nSyncSession.load())
+                            /* Switch based on different last index values. */
+                            switch(nType)
                             {
-                                /* Check for complete synchronization. */
-                                if(hashLast == TAO::Ledger::ChainState::hashBestChain.load() && hashLast == hashBestChain)
+                                /* Last index for a block is always uint1024_t. */
+                                case TYPES::BLOCK:
                                 {
-                                    /* Set state to synchronized. */
-                                    fSynchronized.store(true);
-                                    TAO::Ledger::nSyncSession.store(0);
+                                    /* Check for legacy. */
+                                    if(fLegacy)
+                                        return debug::drop(NODE, "ACTION::NOTIFY: LASTINDEX: block can't have legacy specifier");
 
-                                    /* Unsubcribe from last. */
-                                    Unsubscribe(SUBSCRIPTION::LASTINDEX);
+                                    /* Keep track of current checkpoint. */
+                                    uint1024_t hashLast;
+                                    ssPacket >> hashLast;
 
-                                    /* Subscribe to notifications. */
-                                    Subscribe(SUBSCRIPTION::BESTHEIGHT | SUBSCRIPTION::CHECKPOINT | SUBSCRIPTION::BLOCK | SUBSCRIPTION::TRANSACTION);
+                                    /* Check if is sync node. */
+                                    if(nCurrentSession == TAO::Ledger::nSyncSession.load())
+                                    {
+                                        /* Check for complete synchronization. */
+                                        if(hashLast == TAO::Ledger::ChainState::hashBestChain.load() && hashLast == hashBestChain)
+                                        {
+                                            /* Set state to synchronized. */
+                                            fSynchronized.store(true);
+                                            TAO::Ledger::nSyncSession.store(0);
 
-                                    /* Log that sync is complete. */
-                                    debug::log(0, NODE, "ACTION::NOTIFY: Synchonization COMPLETE at ", hashBestChain.SubString());
+                                            /* Unsubcribe from last. */
+                                            Unsubscribe(SUBSCRIPTION::LASTINDEX);
+
+                                            /* Subscribe to notifications. */
+                                            Subscribe(SUBSCRIPTION::BESTHEIGHT | SUBSCRIPTION::CHECKPOINT | SUBSCRIPTION::BLOCK | SUBSCRIPTION::TRANSACTION);
+
+                                            /* Log that sync is complete. */
+                                            debug::log(0, NODE, "ACTION::NOTIFY: Synchonization COMPLETE at ", hashBestChain.SubString());
+                                        }
+                                        else
+                                        {
+                                            /* Ask for list of blocks. */
+                                            PushMessage(ACTION::LIST,
+                                                uint8_t(TYPES::BLOCK),
+                                                uint8_t(TYPES::UINT1024_T),
+                                                hashLast,
+                                                uint1024_t(0)
+                                            );
+                                        }
+                                    }
+
+                                    /* Debug output. */
+                                    debug::log(3, NODE, "ACTION::NOTIFY: LASTINDEX ", hashLast.SubString());
+
+                                    break;
                                 }
-                                else
+
+
+                                /* Last index for a mempool is always uint512_t. */
+                                case TYPES::MEMPOOL:
                                 {
-                                    /* Ask for list of blocks. */
-                                    PushMessage(ACTION::LIST,
-                                        uint8_t(TYPES::BLOCK),
-                                        uint8_t(TYPES::UINT1024_T),
-                                        hashLast,
-                                        uint1024_t(0)
-                                    );
+                                    /* Keep track of current checkpoint. */
+                                    uint512_t hashLast;
+                                    ssPacket >> hashLast;
+
+                                    /* Check memory pool for transaction. */
+                                    if(!TAO::Ledger::mempool.Has(hashLast))
+                                    {
+                                        /* Ask for list of transactions. */
+                                        PushMessage(ACTION::LIST,
+                                            uint8_t(TYPES::MEMPOOL),
+                                            hashLast,
+                                            uint32_t(1000)
+                                        );
+                                    }
+
+                                    break;
                                 }
+
                             }
-
-                            /* Debug output. */
-                            debug::log(3, NODE, "ACTION::NOTIFY: LASTINDEX ", hashLast.SubString());
 
                             break;
                         }
