@@ -355,7 +355,7 @@ namespace TAO
             //TODO: need to check dependant transactions and sequence them properly otherwise this will fail
 
             /* If legacy flag set, skip over getting tritium transactions. */
-            if(fLegacy)
+            if(!fLegacy)
             {
                 /* Create map of transactions by genesis. */
                 std::map<uint256_t, std::vector<TAO::Ledger::Transaction> > mapTransactions;

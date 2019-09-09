@@ -42,12 +42,29 @@ namespace LLD
     bool RegisterDB::WriteState(const uint256_t& hashRegister, const TAO::Register::State& state, const uint8_t nFlags)
     {
         /* Memory mode for pre-database commits. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags >= TAO::Ledger::FLAGS::MEMPOOL)
         {
             LOCK(MEMORY_MUTEX);
 
             /* Set the state in the memory map. */
-            mapStates[hashRegister] = state;
+            uint32_t nConflict = nFlags - TAO::Ledger::FLAGS::MEMPOOL;
+            if(!mapStates.count(hashRegister))
+                mapStates[hashRegister] = { state };
+
+            /* Check that the diff index is correct. */
+            std::vector<TAO::Register::State>& vStates = mapStates[hashRegister];
+            if(nConflict > vStates.size())
+                throw debug::exception(FUNCTION, "conflict ", nConflict, " out of sequence ", vStates.size());
+
+            /* Check if there is a new conflict. */
+            if(nConflict == vStates.size())
+            {
+                debug::error(FUNCTION, "REGISTER CONFLICT: ", nConflict, " hash ", hashRegister.SubString());
+                vStates.push_back(state);
+            }
+
+            /* Set state conflict by id. */
+            vStates[nConflict] = state;
 
             return true;
         }
@@ -68,15 +85,23 @@ namespace LLD
     bool RegisterDB::ReadState(const uint256_t& hashRegister, TAO::Register::State& state, const uint8_t nFlags)
     {
         /* Memory mode for pre-database commits. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags >= TAO::Ledger::FLAGS::MEMPOOL)
         {
             LOCK(MEMORY_MUTEX);
 
             /* Check for state in memory map. */
             if(mapStates.count(hashRegister))
             {
-                /* Get the state from memory map. */
-                state = mapStates[hashRegister];
+                /* Get the memory map access iterator. */
+                uint32_t nConflict = nFlags - TAO::Ledger::FLAGS::MEMPOOL;
+
+                /* Check that the diff index is correct. */
+                std::vector<TAO::Register::State>& vStates = mapStates[hashRegister];
+                if(nConflict >= vStates.size())
+                    throw debug::exception(FUNCTION, "conflict ", nConflict, " out of range ", vStates.size());
+
+                /* Return correct conflict by id. */
+                state = vStates[nConflict];
 
                 return true;
             }
