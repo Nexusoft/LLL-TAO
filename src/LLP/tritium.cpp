@@ -387,20 +387,20 @@ namespace LLP
                 ssPacket >> hashGenesis;
 
                 /* Debug logging. */
-                debug::log(0, NODE, "new auth request from ", hashGenesis.SubString());
+                debug::log(0, NODE, "ACTION::AUTH: request from ", hashGenesis.SubString());
 
                 /* Get the signature information. */
                 if(hashGenesis == 0)
-                    return debug::drop(NODE, "cannot authorize with reserved genesis");
+                    return debug::drop(NODE, "ACTION::AUTH: cannot authorize with reserved genesis");
 
                 /* Get the crypto register. */
                 TAO::Register::Object crypto;
                 if(!TAO::Register::GetNameRegister(hashGenesis, "crypto", crypto))
-                    return debug::drop(NODE, "authorization failed, missing crypto register");
+                    return debug::drop(NODE, "ACTION::AUTH: authorization failed, missing crypto register");
 
                 /* Parse the object. */
                 if(!crypto.Parse())
-                    return debug::drop(NODE, "failed to parse crypto register");
+                    return debug::drop(NODE, "ACTION::AUTH: failed to parse crypto register");
 
                 /* Check the authorization hash. */
                 uint256_t hashCheck = crypto.get<uint256_t>("network");
@@ -412,7 +412,7 @@ namespace LLP
 
                     /* Check the public key to expected authorization key. */
                     if(LLC::SK256(vchPubKey) != hashCheck)
-                        return debug::drop(NODE, "failed to authorize, invalid public key");
+                        return debug::drop(NODE, "ACTION::AUTH: failed to authorize, invalid public key");
 
                     /* Get the signature. */
                     std::vector<uint8_t> vchSig;
@@ -430,7 +430,7 @@ namespace LLP
                             /* Set the public key and verify. */
                             key.SetPubKey(vchPubKey);
                             if(!key.Verify(hashGenesis.GetBytes(), vchSig))
-                                return debug::drop(NODE, "invalid transaction signature");
+                                return debug::drop(NODE, "ACTION::AUTH: invalid transaction signature");
 
                             break;
                         }
@@ -444,23 +444,23 @@ namespace LLP
                             /* Set the public key and verify. */
                             key.SetPubKey(vchPubKey);
                             if(!key.Verify(hashGenesis.GetBytes(), vchSig))
-                                return debug::drop(NODE, "invalid transaction signature");
+                                return debug::drop(NODE, "ACTION::AUTH: invalid transaction signature");
 
                             break;
                         }
 
                         default:
-                            return debug::drop(NODE, "invalid signature type");
+                            return debug::drop(NODE, "ACTION::AUTH: invalid signature type");
                     }
 
                     /* Get the crypto register. */
                     TAO::Register::Object trust;
                     if(!TAO::Register::GetNameRegister(hashGenesis, "trust", trust))
-                        return debug::drop(NODE, "authorization failed, missing trust register");
+                        return debug::drop(NODE, "ACTION::AUTH: authorization failed, missing trust register");
 
                     /* Parse the object. */
                     if(!trust.Parse())
-                        return debug::drop(NODE, "failed to parse trust register");
+                        return debug::drop(NODE, "ACTION::AUTH: failed to parse trust register");
 
                     /* Set the node's current trust score. */
                     nTrust = trust.get<uint64_t>("trust");
@@ -777,10 +777,6 @@ namespace LLP
 
                                     /* Debug output. */
                                     debug::log(0, NODE, "ACTION::LIST: Locator ", hashStart.SubString(), " found");
-
-                                    TAO::Ledger::BlockState state;
-                                    if(LLD::Ledger->ReadBlock(hashStart, state))
-                                        debug::log(0, NODE, "Starting from height=", state.nHeight, " hash=", state.GetHash().SubString());
 
                                     break;
                                 }
@@ -1194,7 +1190,7 @@ namespace LLP
                             ssPacket >> hashCheckpoint;
 
                             /* Debug output. */
-                            debug::log(3, NODE, "ACTION::NOTIFY: CHECKPOINT ", hashCheckpoint.SubString());
+                            debug::log(0, NODE, "ACTION::NOTIFY: CHECKPOINT ", hashCheckpoint.SubString());
 
                             break;
                         }
@@ -1221,11 +1217,11 @@ namespace LLP
                                     fSynchronized.store(true);
                                     TAO::Ledger::nSyncSession.store(0);
 
-                                    /* Subscribe to notifications. */
-                                    Subscribe(SUBSCRIPTION::BESTHEIGHT | SUBSCRIPTION::CHECKPOINT | SUBSCRIPTION::BLOCK | SUBSCRIPTION::TRANSACTION);
-
                                     /* Unsubcribe from last. */
                                     Unsubscribe(SUBSCRIPTION::LASTINDEX);
+
+                                    /* Subscribe to notifications. */
+                                    Subscribe(SUBSCRIPTION::BESTHEIGHT | SUBSCRIPTION::CHECKPOINT | SUBSCRIPTION::BLOCK | SUBSCRIPTION::TRANSACTION);
 
                                     /* Log that sync is complete. */
                                     debug::log(0, NODE, "ACTION::NOTIFY: Synchonization COMPLETE at ", hashBestChain.SubString());
