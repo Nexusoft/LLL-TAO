@@ -678,7 +678,7 @@ namespace LLP
          uint32_t nChainStateHeight = TAO::Ledger::ChainState::nBestHeight.load();
 
         /* Return early if the height doesn't change. */
-        if(nBestHeight == nChainStateHeight)
+        if(nBestHeight > 0 && nBestHeight == nChainStateHeight)
             return false;
 
         /* Clear the map of blocks if a new block has been accepted. */

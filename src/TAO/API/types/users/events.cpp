@@ -135,6 +135,14 @@ namespace TAO
             /* Loop the events processing thread until shutdown. */
             while(!fShutdown.load())
             {
+                /* Reset the events flag. */
+                fEvent = false;
+
+                /* If mining is enabled, notify miner LLP that events processor is finished processing transactions so mined blocks
+                   can include these transactions and not orphan a mined block. */
+                if(LLP::MINING_SERVER)
+                    LLP::MINING_SERVER->NotifyEvent();
+                    
                 /* Wait for the events processing thread to be woken up (such as a login) */
                 std::unique_lock<std::mutex> lk(EVENTS_MUTEX);
                 CONDITION.wait_for(lk, std::chrono::milliseconds(5000), [this]{ return fEvent.load() || fShutdown.load();});
@@ -581,13 +589,6 @@ namespace TAO
                     debug::error(FUNCTION, e.what());
                 }
 
-                /* Reset the events flag. */
-                fEvent = false;
-
-                /* If mining is enabled, notify miner LLP that events processor is finished processing transactions so mined blocks
-                   can include these transactions and not orphan a mined block. */
-                if(LLP::MINING_SERVER)
-                    LLP::MINING_SERVER->NotifyEvent();
             }
         }
 
