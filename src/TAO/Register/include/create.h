@@ -80,12 +80,17 @@ namespace TAO
          *  @param[in] hashNetwork The network signing key for authenticating network identity.
          *  @param[in] hashSign The signing key for external contracts.
          *  @param[in] hashVerify The verification key for witnessing that certain events have happened.
+         *  @param[in] hashCert The verification key for signing certificates.
+         *  @param[in] hashApp1 The verification key for application keys.
+         *  @param[in] hashApp2 The verification key for application keys.
+         *  @param[in] hashApp2 The verification key for application keys.
          *
          *  @return The object register just created.
          *
          **/
         Object CreateCrypto(const uint256_t& hashAuth, const uint256_t& hashLisp, const uint256_t& hashNetwork,
-            const uint256_t& hashSign, const uint256_t& hashVerify);
+            const uint256_t& hashSign, const uint256_t& hashVerify, const uint256_t& hashCert,
+            const uint256_t& hashApp1, const uint256_t& hashApp2, const uint256_t& hashApp3);
 
 
         /** CreateName
