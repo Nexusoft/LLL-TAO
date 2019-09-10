@@ -387,7 +387,7 @@ namespace TAO
                 if(nFlags == TAO::Ledger::FLAGS::BLOCK)
                 {
                     /* Check previous transaction next pointer. */
-                    if(!txPrev.IsHead())
+                    if(!txPrev.IsHead() && txPrev.hashNextTx != GetHash())
                         return debug::error(FUNCTION, "prev tx not head ", txPrev.hashNextTx.SubString());
 
                     /* Set the previous transactions next hash. */

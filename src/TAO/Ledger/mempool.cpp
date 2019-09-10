@@ -243,7 +243,7 @@ namespace TAO
             for(const auto& tx : mapLedger)
             {
                 /* Check for non-conflicted genesis-id's. */
-                if(tx.second.hashGenesis == hashGenesis && !mapConflicts.count(tx.first))
+                if(tx.second.hashGenesis == hashGenesis)// && !mapConflicts.count(tx.first))
                     vTx.push_back(tx.second);
             }
 
@@ -369,8 +369,8 @@ namespace TAO
                 for(const auto& tx : mapLedger)
                 {
                     /* Check that this transaction isn't conflicted. */
-                    if(mapConflicts.count(tx.first))
-                        continue;
+                    //if(mapConflicts.count(tx.first))
+                    //    continue;
 
                     /* Cache the genesis. */
                     const uint256_t& hashGenesis = tx.second.hashGenesis;
