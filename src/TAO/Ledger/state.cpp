@@ -482,9 +482,8 @@ namespace TAO
                     /* Remove indexed tx from memory pool. */
                     mempool.Remove(hash);
 
-
+                    /* Print transaction (for extra debugging.) */
                     tx.print();
-
                 }
                 else if(proof.first == TRANSACTION::LEGACY)
                 {

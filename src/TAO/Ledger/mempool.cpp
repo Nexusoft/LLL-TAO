@@ -87,8 +87,6 @@ namespace TAO
             /* Get the transaction hash. */
             uint512_t hashTx = tx.GetHash();
 
-            debug::log(0, "TX ", hashTx.ToString());
-
             /* Check for transaction on disk. */
             if(LLD::Ledger->HasTx(hashTx, FLAGS::MEMPOOL))
                 return debug::error(FUNCTION, "transaction already exists");
@@ -244,7 +242,7 @@ namespace TAO
             for(const auto& tx : mapLedger)
             {
                 /* Check for non-conflicted genesis-id's. */
-                if(tx.second.hashGenesis == hashGenesis)// && !mapConflicts.count(tx.first))
+                if(tx.second.hashGenesis == hashGenesis)
                     vTx.push_back(tx.second);
             }
 
