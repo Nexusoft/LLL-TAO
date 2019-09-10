@@ -340,7 +340,13 @@ namespace LLP
 
                 /* Check for a connect to self. */
                 if(nCurrentSession == SESSION_ID)
+                {
+                    /* Cache self-address in the banned list of the Address Manager. */
+                    if(TRITIUM_SERVER->pAddressManager)
+                        TRITIUM_SERVER->pAddressManager->Ban(GetAddress());
+
                     return debug::drop(NODE, "connected to self");
+                }
 
                 /* Check if session is already connected. */
                 {
