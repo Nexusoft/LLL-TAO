@@ -390,6 +390,14 @@ namespace LLP
                         BaseAddress(GetAddress())
                     );
                 }
+                else
+                {
+                    /* Subscribe to this node. */
+                    Subscribe(SUBSCRIPTION::BESTCHAIN | SUBSCRIPTION::TRANSACTION);
+
+                    /* Grab list of memory pool transactions. */
+                    PushMessage(ACTION::LIST, uint8_t(TYPES::MEMPOOL));
+                }
 
                 /* Send Auth immediately after version and before any other messages*/
                 Auth(true);
@@ -415,11 +423,6 @@ namespace LLP
                             uint1024_t(0)
                         );
                     }
-                }
-                else if(Incoming())
-                {
-                    /* Subscribe to this node. */
-                    Subscribe(SUBSCRIPTION::BESTCHAIN);
                 }
 
                 /* Subscribe to receive notifications. */

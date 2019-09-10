@@ -121,34 +121,12 @@ namespace TAO
                         return true;
                     }
 
-                    /* Keep track of connected previous transactions. */
-                    if(mapConnected.count(tx.hashPrevTx))
-                    {
-                        /* Set the conflict from current conflict counter. */
-                        nConflict = ++mapConnected[tx.hashPrevTx];
+                    /* Handle the conflict detection. */
+                    if(mapConflicts.count(tx.hashPrevTx))
+                        return debug::error(FUNCTION, "conflicting transaction");
 
-                        /* Flag this transaction as a conflicted transaction. */
-                        mapConflicts[hashTx] = nConflict;
-
-                        debug::error(FUNCTION, "CONFLICT ", nConflict, " TRANSACTION DETECTED ", tx.hashPrevTx.SubString());
-                    }
-                    else
-                    {
-                        /* Set this transaction as connected. */
-                        mapConnected[tx.hashPrevTx] = 0;
-
-                        /* Check if transaction resolves to a conflict. */
-                        if(mapConflicts.count(tx.hashPrevTx))
-                        {
-                            /* Assign this transaction to conflicted chain. */
-                            mapConflicts[hashTx] = mapConflicts[tx.hashPrevTx];
-
-                            /* Set current conflict chain. */
-                            nConflict = mapConflicts[hashTx];
-
-                            debug::error(FUNCTION, "SEQUENCED CONFLICT ", nConflict, " TRANSACTION DETECTED ", tx.hashPrevTx.SubString());
-                        }
-                    }
+                    /* Set the conflict. */
+                    mapConflicts[tx.hashPrevTx] = 0;
                 }
             }
 
