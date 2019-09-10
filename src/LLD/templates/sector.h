@@ -274,7 +274,7 @@ namespace LLD
                 }
             }
 
-            return Delete(ssKey.Bytes());
+            return pSectorKeys->Erase(ssKey.Bytes());//Delete(ssKey.Bytes());
         }
 
 
