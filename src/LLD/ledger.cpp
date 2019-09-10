@@ -175,7 +175,7 @@ namespace LLD
     bool LedgerDB::ReadTx(const uint512_t& hashTx, TAO::Ledger::Transaction& tx, const uint8_t nFlags)
     {
         /* Special check for memory pool. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags >= TAO::Ledger::FLAGS::MEMPOOL)
         {
             /* Get the transaction. */
             if(TAO::Ledger::mempool.Get(hashTx, tx))
@@ -196,13 +196,33 @@ namespace LLD
     /* Writes a partial to the ledger DB. */
     bool LedgerDB::WriteClaimed(const uint512_t& hashTx, const uint32_t nContract, const uint64_t nClaimed, const uint8_t nFlags)
     {
+        /* Get the key pair. */
+        const std::pair<uint512_t, uint32_t> pair = std::make_pair(hashTx, nContract);
+
         /* Memory mode for pre-database commits. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags >= TAO::Ledger::FLAGS::MEMPOOL)
         {
             LOCK(MEMORY_MUTEX);
 
-            /* Write the new proof state. */
-            mapClaims[std::make_pair(hashTx, nContract)] = nClaimed;
+            /* Set the state in the memory map. */
+            uint32_t nConflict = nFlags - TAO::Ledger::FLAGS::MEMPOOL;
+            if(!mapClaims.count(pair))
+                mapClaims[pair] = { nClaimed };
+
+            /* Check that the diff index is correct. */
+            std::vector<uint64_t>& vClaims = mapClaims[pair];
+            if(nConflict > vClaims.size())
+                throw debug::exception(FUNCTION, "conflict ", nConflict, " out of sequence ", vClaims.size());
+
+            /* Check if there is a new conflict. */
+            if(nConflict == vClaims.size())
+            {
+                debug::error(FUNCTION, "CLAIMED CONFLICT: ", nConflict, " amount ", nClaimed);
+                vClaims.push_back(nClaimed);
+            }
+
+            /* Set state conflict by id. */
+            vClaims[nConflict] = nClaimed;
 
             return true;
         }
@@ -210,33 +230,48 @@ namespace LLD
         {
             LOCK(MEMORY_MUTEX);
 
+            /* Get the key pair. */
+            const std::pair<uint512_t, uint32_t> pair = std::make_pair(hashTx, nContract);
+
             /* Erase memory proof if they exist. */
-            if(mapClaims.count(std::make_pair(hashTx, nContract)))
-               mapClaims.erase(std::make_pair(hashTx, nContract));
+            if(mapClaims.count(pair))
+               mapClaims.erase(pair);
         }
 
-        return Write(std::make_pair(hashTx, nContract), nClaimed);
+        return Write(pair, nClaimed);
     }
 
 
     /* Read a partial to the ledger DB. */
     bool LedgerDB::ReadClaimed(const uint512_t& hashTx, const uint32_t nContract, uint64_t& nClaimed, const uint8_t nFlags)
     {
+        /* Get the key pair. */
+        const std::pair<uint512_t, uint32_t> pair = std::make_pair(hashTx, nContract);
+
         /* Memory mode for pre-database commits. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags >= TAO::Ledger::FLAGS::MEMPOOL)
         {
             LOCK(MEMORY_MUTEX);
 
             /* Read the new proof state. */
-            if(mapClaims.count(std::make_pair(hashTx, nContract)))
+            if(mapClaims.count(pair))
             {
-                nClaimed = mapClaims[std::make_pair(hashTx, nContract)];
-                return true;
-            }
+                /* Get the memory map access iterator. */
+                uint32_t nConflict = nFlags - TAO::Ledger::FLAGS::MEMPOOL;
 
+                /* Check that the diff index is correct. */
+                std::vector<uint64_t>& vClaims = mapClaims[pair];
+                if(nConflict < vClaims.size())
+                {
+                    /* Return correct conflict by id. */
+                    nClaimed = vClaims[nConflict];
+
+                    return true;
+                }
+            }
         }
 
-        return Read(std::make_pair(hashTx, nContract), nClaimed);
+        return Read(pair, nClaimed);
     }
 
 
@@ -248,14 +283,16 @@ namespace LLD
         if(!ReadTx(hashTx, tx))
             return false;
 
+        /* Get the total confirmations. */
         uint32_t nConfirms;
-
         if(!ReadConfirmations(hashTx, nConfirms))
             return false;
 
+        /* Switch for coinbase. */
         if(tx.IsCoinBase())
             return nConfirms >= TAO::Ledger::MaturityCoinBase();
 
+        /* Switch for coinstake. */
         else if(tx.IsCoinStake())
             return nConfirms >= TAO::Ledger::MaturityCoinStake();
 
@@ -265,7 +302,7 @@ namespace LLD
 
 
     /* Read the number of confirmations a transaction has. */
-    bool LedgerDB::ReadConfirmations(const uint512_t &hashTx, uint32_t &nConfirms)
+    bool LedgerDB::ReadConfirmations(const uint512_t& hashTx, uint32_t &nConfirms)
     {
         /* Read a block state for this transaction. */
         TAO::Ledger::BlockState state;
@@ -415,7 +452,7 @@ namespace LLD
     bool LedgerDB::HasTx(const uint512_t& hashTx, const uint8_t nFlags)
     {
         /* Special check for memory pool. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags >= TAO::Ledger::FLAGS::MEMPOOL)
         {
             /* Get the transaction. */
             if(TAO::Ledger::mempool.Has(hashTx))
@@ -495,15 +532,15 @@ namespace LLD
 
 
     /* Reads the last txid of sigchain to disk indexed by genesis. */
-    bool LedgerDB::ReadLast(const uint256_t& hashGenesis, uint512_t& hashLast, const uint8_t nFlags)
+    bool LedgerDB::ReadLast(const uint256_t& hashGenesis, uint512_t &hashLast, const uint8_t nFlags)
     {
         /* If the caller has requested to include mempool transactions then check there first*/
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags >= TAO::Ledger::FLAGS::MEMPOOL)
         {
-            TAO::Ledger::Transaction mempoolTx;
-            if(TAO::Ledger::mempool.Get(hashGenesis, mempoolTx))
+            TAO::Ledger::Transaction tx;
+            if(TAO::Ledger::mempool.Get(hashGenesis, tx))
             {
-                hashLast = mempoolTx.GetHash();
+                hashLast = tx.GetHash();
 
                 return true;
             }
@@ -531,18 +568,6 @@ namespace LLD
     /* Reads the last stake transaction of sigchain. */
     bool LedgerDB::ReadStake(const uint256_t& hashGenesis, uint512_t& hashLast, const uint8_t nFlags)
     {
-        /* If the caller has requested to include mempool transactions then check there first*/
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
-        {
-            TAO::Ledger::Transaction tx;
-            if(TAO::Ledger::mempool.Get(hashGenesis, tx))
-            {
-                hashLast = tx.GetHash();
-
-                return true;
-            }
-        }
-
         /* If we haven't checked the mempool or haven't found one in the mempool then read the last from the ledger DB */
         return Read(std::make_pair(std::string("stake"), hashGenesis), hashLast);
     }
@@ -552,13 +577,31 @@ namespace LLD
     bool LedgerDB::WriteProof(const uint256_t& hashProof, const uint512_t& hashTx,
                               const uint32_t nContract, const uint8_t nFlags)
     {
+        /* Get the key typle. */
+        const std::tuple<uint256_t, uint512_t, uint32_t> tuple = std::make_tuple(hashProof, hashTx, nContract);
+
         /* Memory mode for pre-database commits. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags >= TAO::Ledger::FLAGS::MEMPOOL)
         {
             LOCK(MEMORY_MUTEX);
 
-            /* Write the new proof state. */
-            mapProofs[std::make_tuple(hashProof, hashTx, nContract)] = 0;
+            /* Set the state in the memory map. */
+            uint32_t nConflict = nFlags - TAO::Ledger::FLAGS::MEMPOOL;
+            if(!mapProofs.count(tuple))
+                mapProofs[tuple] = { 0 };
+
+            /* Check that the diff index is correct. */
+            std::vector<uint32_t>& vProofs = mapProofs[tuple];
+            if(nConflict > vProofs.size())
+                throw debug::exception(FUNCTION, "conflict ", nConflict, " out of sequence ", vProofs.size());
+
+            /* Check if there is a new conflict. */
+            if(nConflict == vProofs.size())
+            {
+                debug::error(FUNCTION, "PROOF CONFLICT: ", nConflict, " hash ", hashProof.SubString());
+                vProofs.push_back(0);
+            }
+
             return true;
         }
         else if(nFlags == TAO::Ledger::FLAGS::BLOCK)
@@ -566,11 +609,11 @@ namespace LLD
             LOCK(MEMORY_MUTEX);
 
             /* Erase memory proof if they exist. */
-            if(mapProofs.count(std::make_tuple(hashProof, hashTx, nContract)))
-               mapProofs.erase(std::make_tuple(hashProof, hashTx, nContract));
+            if(mapProofs.count(tuple))
+               mapProofs.erase(tuple);
         }
 
-        return Write(std::make_tuple(hashProof, hashTx, nContract));
+        return Write(tuple);
     }
 
 
@@ -578,17 +621,26 @@ namespace LLD
     bool LedgerDB::HasProof(const uint256_t& hashProof, const uint512_t& hashTx,
                             const uint32_t nContract, const uint8_t nFlags)
     {
+        /* Get the key pair. */
+        const std::tuple<uint256_t, uint512_t, uint32_t> tuple = std::make_tuple(hashProof, hashTx, nContract);
+
         /* Memory mode for pre-database commits. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags >= TAO::Ledger::FLAGS::MEMPOOL)
         {
             LOCK(MEMORY_MUTEX);
 
-            /* If exists in memory, return true. */
-            if(mapProofs.count(std::make_tuple(hashProof, hashTx, nContract)))
-                return true;
+            /* Set the state in the memory map. */
+            uint32_t nConflict = nFlags - TAO::Ledger::FLAGS::MEMPOOL;
+            if(mapProofs.count(tuple))
+            {
+                /* Check that the diff index is correct. */
+                std::vector<uint32_t>& vProofs = mapProofs[tuple];
+                if(nConflict < vProofs.size())
+                    return true;
+            }
         }
 
-        return Exists(std::make_tuple(hashProof, hashTx, nContract));
+        return Exists(tuple);
     }
 
 
@@ -596,15 +648,18 @@ namespace LLD
     bool LedgerDB::EraseProof(const uint256_t& hashProof, const uint512_t& hashTx,
                               const uint32_t nContract, const uint8_t nFlags)
     {
+        /* Get the key pair. */
+        const std::tuple<uint256_t, uint512_t, uint32_t> tuple = std::make_tuple(hashProof, hashTx, nContract);
+
         /* Memory mode for pre-database commits. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags >= TAO::Ledger::FLAGS::MEMPOOL)
         {
             LOCK(MEMORY_MUTEX);
 
             /* Erase memory proof if they exist. */
-            if(mapProofs.count(std::make_tuple(hashProof, hashTx, nContract)))
+            if(mapProofs.count(tuple))
             {
-                mapProofs.erase(std::make_tuple(hashProof, hashTx, nContract));
+                mapProofs.erase(tuple);
 
                 return true;
             }

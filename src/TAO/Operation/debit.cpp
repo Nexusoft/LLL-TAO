@@ -35,7 +35,7 @@ namespace TAO
                            const uint256_t& hashFrom, const uint256_t& hashTo, const uint8_t nFlags)
         {
             /* Only commit events on new block. */
-            if((nFlags & TAO::Ledger::FLAGS::BLOCK) && hashTo != TAO::Register::WILDCARD_ADDRESS)
+            if((nFlags == TAO::Ledger::FLAGS::BLOCK) && hashTo != TAO::Register::WILDCARD_ADDRESS)
             {
                 /* Read the owner of register. */
                 TAO::Register::State state;

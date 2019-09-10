@@ -154,7 +154,7 @@ namespace TAO
 
             /* Check for max contracts. */
             if(vContracts.size() > MAX_TRANSACTION_CONTRACTS)
-                return debug::error(FUNCTION, "too many contracts for this transaction");
+                return debug::error(FUNCTION, "exceeded MAX_TRANSACTION_CONTRACTS");
 
             /* Run through all the contracts. */
             for(const auto& contract : vContracts)
@@ -204,7 +204,7 @@ namespace TAO
 
 
         /* Verify a transaction contracts. */
-        bool Transaction::Verify() const
+        bool Transaction::Verify(const uint8_t nFlags) const
         {
             /* Create a temporary map for pre-states. */
             std::map<uint256_t, TAO::Register::State> mapStates;
@@ -216,7 +216,7 @@ namespace TAO
                 contract.Bind(this);
 
                 /* Verify the register pre-states. */
-                if(!TAO::Register::Verify(contract, mapStates, TAO::Ledger::FLAGS::MEMPOOL))
+                if(!TAO::Register::Verify(contract, mapStates, nFlags))
                     return false;
             }
 
@@ -244,7 +244,7 @@ namespace TAO
                 /* Bind the contract to this transaction. */
                 contract.Bind(this);
 
-                /* Calculate the pre-states and post-states. */
+                /* Calculate the total cost to execute. */
                 TAO::Operation::Cost(contract, nRet);
             }
 
@@ -253,14 +253,14 @@ namespace TAO
 
 
         /* Build the transaction contracts. */
-        bool Transaction::Build()
+        bool Transaction::Build(const uint8_t nFlags)
         {
             /* Create a temporary map for pre-states. */
             std::map<uint256_t, TAO::Register::State> mapStates;
 
             /* Check for max contracts. */
-            if(vContracts.size() > 100)
-                return debug::error(FUNCTION, "too many contracts for this transaction");
+            if(vContracts.size() > MAX_TRANSACTION_CONTRACTS)
+                return debug::error(FUNCTION, "exceeded MAX_TRANSACTION_CONTRACTS");
 
             /* Run through all the contracts. */
             for(auto& contract : vContracts)
@@ -269,7 +269,7 @@ namespace TAO
                 contract.Bind(this);
 
                 /* Calculate the pre-states and post-states. */
-                if(!TAO::Register::Build(contract, mapStates))
+                if(!TAO::Register::Build(contract, mapStates, nFlags))
                     return false;
             }
 
@@ -370,7 +370,7 @@ namespace TAO
                 if(txPrev.GetHash() != hashPrevTx) //NOTE: this is being extra paranoid. Consider removing.
                     return debug::error(FUNCTION, "prev transaction prevhash mismatch");
 
-                /* Sig chain maturity check.  If the previous tx is a coinbase/stake and this is NOT a coinbase/stake then 
+                /* Sig chain maturity check.  If the previous tx is a coinbase/stake and this is NOT a coinbase/stake then
                    ensure that the previous transaction is mature (has 33 confs) */
                 if((txPrev.IsCoinBase() || txPrev.IsCoinStake()) && !(IsCoinBase() || IsCoinStake()))
                 {
@@ -462,7 +462,6 @@ namespace TAO
                 /* Write proper last hash index. */
                 if(!LLD::Ledger->WriteLast(hashGenesis, hashPrevTx))
                     return debug::error(FUNCTION, "failed to write last hash");
-
             }
 
             /* Revert last stake whan disconnect a coinstake tx */

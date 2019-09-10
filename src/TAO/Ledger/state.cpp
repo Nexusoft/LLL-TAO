@@ -482,6 +482,8 @@ namespace TAO
                     /* Remove indexed tx from memory pool. */
                     mempool.Remove(hash);
 
+                    /* Print transaction (for extra debugging.) */
+                    tx.print();
                 }
                 else if(proof.first == TRANSACTION::LEGACY)
                 {
@@ -545,11 +547,19 @@ namespace TAO
 
                     /* Set the best chain. */
                     if(!SetBest())
+                    {
+                        LLD::TxnAbort();
+
                         return debug::error(FUNCTION, "failed to set best chain");
+                    }
                 }
             }
             else if(nChainTrust > ChainState::nBestChainTrust.load() && !SetBest())
+            {
+                LLD::TxnAbort();
+
                 return debug::error(FUNCTION, "failed to set best chain");
+            }
 
 
             timer.Reset();
@@ -760,7 +770,9 @@ namespace TAO
                             uint8_t(LLP::TYPES::BLOCK),
                             hash,
                             uint8_t(LLP::TYPES::BESTCHAIN),
-                            hash
+                            hash,
+                            uint8_t(LLP::TYPES::BESTHEIGHT),
+                            nHeight
                         );
                     }
 

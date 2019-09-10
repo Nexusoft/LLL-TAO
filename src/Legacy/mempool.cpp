@@ -187,54 +187,6 @@ namespace TAO
         }
 
 
-        /* Checks if a legacy transaction exists. */
-        bool Mempool::HasLegacy(const uint512_t& hashTx) const
-        {
-            RLOCK(MUTEX);
-
-            return mapLegacy.count(hashTx);
-        }
-
-
-        /* Remove a legacy transaction from pool. */
-        bool Mempool::RemoveLegacy(const uint512_t& hashTx)
-        {
-            RLOCK(MUTEX);
-
-            if(mapLegacy.count(hashTx))
-            {
-                Legacy::Transaction tx = mapLegacy[hashTx];
-
-                /* Erase the claimed inputs */
-                uint32_t s = tx.vin.size();
-                for(uint32_t i = 0; i < s; ++i)
-                    mapInputs.erase(tx.vin[i].prevout);
-
-                mapLegacy.erase(hashTx);
-
-                return true;
-            }
-
-            return false;
-        }
-
-
-        /* List legacy transactions in memory pool. */
-        bool Mempool::ListLegacy(std::vector<uint512_t> &vHashes, uint32_t nCount) const
-        {
-            RLOCK(MUTEX);
-
-            for(auto it = mapLegacy.begin(); it != mapLegacy.end() && nCount > 0; ++it)
-            {
-
-                vHashes.push_back(it->first);
-                --nCount;
-            }
-
-            return vHashes.size() > 1;
-        }
-
-
         /* Gets the size of the memory pool. */
         uint32_t Mempool::SizeLegacy()
         {

@@ -45,7 +45,8 @@ namespace TAO
         , mapLegacy()
         , mapLedger()
         , mapOrphans()
-        , mapPrevHashes()
+        , mapConnected()
+        , mapConflicts()
         , mapInputs()
         {
         }
@@ -86,44 +87,46 @@ namespace TAO
             /* Get the transaction hash. */
             uint512_t hashTx = tx.GetHash();
 
+            /* Check for transaction on disk. */
+            if(LLD::Ledger->HasTx(hashTx, FLAGS::MEMPOOL))
+                return debug::error(FUNCTION, "transaction already exists");
+
             /* Runtime calculations. */
             runtime::timer time;
             time.Start();
 
             /* Get ehe next hash being claimed. */
-            uint256_t hashClaim = tx.PrevHash();
             {
                 RLOCK(MUTEX);
 
-                /* Check the mempool. */
-                if(mapLedger.count(hashTx))
-                    return false;
-
-                /* The next hash that is being claimed. */
-                if(mapPrevHashes.count(hashClaim))
-                    return debug::error(FUNCTION, "trying to claim spent next hash ", hashClaim.SubString());
-
-                /* Check memory and disk for previous transaction. */
-                TAO::Ledger::Transaction txPrev;
-                if(!tx.IsFirst()
-                && !mapLedger.count(tx.hashPrevTx)
-                && !LLD::Ledger->ReadTx(tx.hashPrevTx, txPrev))
+                /* Check for orphans and conflicts when not first transaction. */
+                if(!tx.IsFirst())
                 {
-                    /* Debug output. */
-                    debug::log(0, FUNCTION, "tx ", hashTx.SubString(), " ",
-                        tx.nSequence, " genesis ", tx.hashGenesis.SubString(),
-                        " ORPHAN in ", std::dec, time.ElapsedMilliseconds(), " ms");
+                    /* Check memory and disk for previous transaction. */
+                    if(!LLD::Ledger->HasTx(tx.hashPrevTx, FLAGS::MEMPOOL))
+                    {
+                        /* Debug output. */
+                        debug::log(0, FUNCTION, "tx ", hashTx.SubString(), " ",
+                            tx.nSequence, " genesis ", tx.hashGenesis.SubString(),
+                            " ORPHAN in ", std::dec, time.ElapsedMilliseconds(), " ms");
 
-                    /* Push to orphan queue. */
-                    mapOrphans[tx.hashPrevTx] = tx;
+                        /* Push to orphan queue. */
+                        mapOrphans[tx.hashPrevTx] = tx;
 
-                    /* Ask for the missing transaction. */
-                    if(pnode)
-                        pnode->PushMessage(uint8_t(LLP::ACTION::GET), uint8_t(LLP::TYPES::TRANSACTION), tx.hashPrevTx);
+                        /* Ask for the missing transaction. */
+                        if(pnode)
+                            pnode->PushMessage(LLP::ACTION::GET, uint8_t(LLP::TYPES::TRANSACTION), tx.hashPrevTx);
 
-                    return true;
+                        return true;
+                    }
+
+                    /* Handle the conflict detection. */
+                    if(mapConflicts.count(tx.hashPrevTx))
+                        return debug::error(FUNCTION, "tx already claimed ", tx.hashPrevTx.SubString());
+
+                    /* Set the conflict. */
+                    mapConflicts[tx.hashPrevTx] = 0;
                 }
-
             }
 
             //TODO: add mapConflcts map to soft-ban conflicting blocks
@@ -145,7 +148,7 @@ namespace TAO
                 return false;
 
             /* Verify the Ledger Pre-States. */
-            if(!tx.Verify())
+            if(!tx.Verify(TAO::Ledger::FLAGS::MEMPOOL))
                 return false;
 
             /* Connect transaction in memory. */
@@ -157,7 +160,6 @@ namespace TAO
 
                 /* Set the internal memory. */
                 mapLedger[hashTx] = tx;
-                mapPrevHashes[hashClaim] = hashTx;
             }
 
             /* Debug output. */
@@ -237,12 +239,11 @@ namespace TAO
             RLOCK(MUTEX);
 
             /* Check through the ledger map for the genesis. */
-            for(const auto& txMap : mapLedger)
+            for(const auto& tx : mapLedger)
             {
-                /* Check for Genesis. */
-                if(txMap.second.hashGenesis == hashGenesis)
-                    vTx.push_back(txMap.second);
-
+                /* Check for non-conflicted genesis-id's. */
+                if(tx.second.hashGenesis == hashGenesis)
+                    vTx.push_back(tx.second);
             }
 
             /* Check that a transaction was found. */
@@ -321,11 +322,14 @@ namespace TAO
             /* Find the transaction in pool. */
             if(mapLedger.count(hashTx))
             {
-                TAO::Ledger::Transaction tx = mapLedger[hashTx];
+                /* Get a reference from the map. */
+                const TAO::Ledger::Transaction& tx = mapLedger[hashTx];
 
                 /* Erase from the memory map. */
-                mapPrevHashes.erase(tx.PrevHash());
+                mapConflicts.erase(tx.hashPrevTx);
                 mapLedger.erase(hashTx);
+
+                //TODO: find a nice way to erase conflicts
 
                 return true;
             }
@@ -333,7 +337,7 @@ namespace TAO
             /* Find the legacy transaction in pool. */
             if(mapLegacy.count(hashTx))
             {
-                Legacy::Transaction tx = mapLegacy[hashTx];
+                const Legacy::Transaction& tx = mapLegacy[hashTx];
 
                 /* Erase the claimed inputs */
                 uint32_t s = static_cast<uint32_t>(tx.vin.size());
@@ -348,63 +352,84 @@ namespace TAO
 
 
         /* List transactions in memory pool. */
-        bool Mempool::List(std::vector<uint512_t> &vHashes, uint32_t nCount) const
+        bool Mempool::List(std::vector<uint512_t> &vHashes, uint32_t nCount, bool fLegacy) const
         {
             RLOCK(MUTEX);
 
             //TODO: need to check dependant transactions and sequence them properly otherwise this will fail
 
-            /* Create map of transactions by genesis. */
-            std::map<uint256_t, std::vector<TAO::Ledger::Transaction> > mapTransactions;
-
-            /* Loop through all the transactions. */
-            for(const auto& tx : mapLedger)
+            /* If legacy flag set, skip over getting tritium transactions. */
+            if(!fLegacy)
             {
-                /* Cache the genesis. */
-                const uint256_t& hashGenesis = tx.second.hashGenesis;
+                /* Create map of transactions by genesis. */
+                std::map<uint256_t, std::vector<TAO::Ledger::Transaction> > mapTransactions;
 
-                /* Check in map for push back. */
-                if(!mapTransactions.count(hashGenesis))
-                    mapTransactions[hashGenesis] = std::vector<TAO::Ledger::Transaction>();
-
-                /* Push to back of map. */
-                mapTransactions[hashGenesis].push_back(tx.second);
-            }
-
-            /* Loop transctions map by genesis. */
-            for(auto& list : mapTransactions)
-            {
-                /* Get reference of the vector. */
-                std::vector<TAO::Ledger::Transaction>& vTx = list.second;
-
-                /* Sort the list by sequence numbers. */
-                std::sort(vTx.begin(), vTx.end());
-
-                /* Add the hashes into list. */
-                uint512_t hashLast = vTx[0].GetHash();
-                for(uint32_t n = 1; n <= vTx.size(); ++n)
+                /* Loop through all the transactions. */
+                for(const auto& tx : mapLedger)
                 {
-                    /* Add to the output queue. */
-                    vHashes.push_back(hashLast);
+                    /* Check that this transaction isn't conflicted. */
+                    //if(mapConflicts.count(tx.first))
+                    //    continue;
 
-                    /* Check for end of index. */
-                    if(n == vTx.size())
-                        break;
+                    /* Cache the genesis. */
+                    const uint256_t& hashGenesis = tx.second.hashGenesis;
 
-                    /* Check count. */
+                    /* Check in map for push back. */
+                    if(!mapTransactions.count(hashGenesis))
+                        mapTransactions[hashGenesis] = std::vector<TAO::Ledger::Transaction>();
+
+                    /* Push to back of map. */
+                    mapTransactions[hashGenesis].push_back(tx.second);
+                }
+
+                /* Loop transctions map by genesis. */
+                for(auto& list : mapTransactions)
+                {
+                    /* Get reference of the vector. */
+                    std::vector<TAO::Ledger::Transaction>& vTx = list.second;
+
+                    /* Sort the list by sequence numbers. */
+                    std::sort(vTx.begin(), vTx.end());
+
+                    /* Add the hashes into list. */
+                    uint512_t hashLast = vTx[0].GetHash();
+                    for(uint32_t n = 1; n <= vTx.size(); ++n)
+                    {
+                        /* Add to the output queue. */
+                        vHashes.push_back(hashLast);
+
+                        /* Check for end of index. */
+                        if(n == vTx.size())
+                            break;
+
+                        /* Check count. */
+                        if(--nCount == 0)
+                            return true;
+
+                        /* Check that transaction is in sequence. */
+                        if(vTx[n].hashPrevTx != hashLast)
+                        {
+                            debug::log(0, FUNCTION, "Last hash mismatch");
+
+                            break;
+                        }
+
+                        /* Set last hash. */
+                        hashLast = vTx[n].GetHash();
+                    }
+                }
+            }
+            else
+            {
+                /* Loop transctions map by genesis. */
+                for(const auto& list : mapLegacy)
+                {
+                    /* Push legacy transactions last. */
+                    vHashes.push_back(list.first);;
+
+                    /* Check for end of line. */
                     if(--nCount == 0)
                         return true;
-
-                    /* Check that transaction is in sequence. */
-                    if(vTx[n].hashPrevTx != hashLast)
-                    {
-                        debug::log(0, FUNCTION, "Last hash mismatch");
-
-                        break;
-                    }
-
-                    /* Set last hash. */
-                    hashLast = vTx[n].GetHash();
                 }
             }
 

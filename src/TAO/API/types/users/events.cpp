@@ -31,6 +31,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/include/constants.h>
+#include <TAO/Ledger/include/process.h>
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/state.h>
@@ -142,10 +143,10 @@ namespace TAO
                    can include these transactions and not orphan a mined block. */
                 if(LLP::MINING_SERVER)
                     LLP::MINING_SERVER->NotifyEvent();
-                    
+
                 /* Wait for the events processing thread to be woken up (such as a login) */
-                std::unique_lock<std::mutex> lk(EVENTS_MUTEX);
-                CONDITION.wait_for(lk, std::chrono::milliseconds(5000), [this]{ return fEvent.load() || fShutdown.load();});
+                std::unique_lock<std::mutex> lock(EVENTS_MUTEX);
+                CONDITION.wait_for(lock, std::chrono::milliseconds(5000), [this]{ return fEvent.load() || fShutdown.load();});
 
                 /* Check for a shutdown event. */
                 if(fShutdown.load())
@@ -156,6 +157,9 @@ namespace TAO
                     /* Ensure that the user is logged, in, wallet unlocked, and unlocked for notifications. */
                     if(!LoggedIn() || Locked() || !CanProcessNotifications())
                         continue;
+
+                    /* Make sure we don't send transactions out when processing a block. */
+                    std::unique_lock<std::mutex> lock(TAO::Ledger::PROCESSING_MUTEX);
 
                     /* Get the session to be used for this API call */
                     json::json params;
@@ -227,7 +231,7 @@ namespace TAO
                         /* Ensure we don't breach the max contracts/per transaction, leaving room for the fee contract */
                         if(txout.Size() == TAO::Ledger::MAX_TRANSACTION_CONTRACTS -1)
                             break;
-                        
+
                         /* Get a reference to the contract */
                         const TAO::Operation::Contract& refContract = std::get<0>(contract);
 
@@ -422,7 +426,7 @@ namespace TAO
                         /* Ensure we don't breach the max contracts/per transaction, leaving room for the fee contract */
                         if(txout.Size() == TAO::Ledger::MAX_TRANSACTION_CONTRACTS -1)
                             break;
-                            
+
                         /* Set the transaction hash. */
                         hashTx = contract.first->GetHash();
 

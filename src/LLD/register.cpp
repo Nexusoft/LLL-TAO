@@ -42,12 +42,29 @@ namespace LLD
     bool RegisterDB::WriteState(const uint256_t& hashRegister, const TAO::Register::State& state, const uint8_t nFlags)
     {
         /* Memory mode for pre-database commits. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags >= TAO::Ledger::FLAGS::MEMPOOL)
         {
             LOCK(MEMORY_MUTEX);
 
             /* Set the state in the memory map. */
-            mapStates[hashRegister] = state;
+            uint32_t nConflict = nFlags - TAO::Ledger::FLAGS::MEMPOOL;
+            if(!mapStates.count(hashRegister))
+                mapStates[hashRegister] = { state };
+
+            /* Check that the diff index is correct. */
+            std::vector<TAO::Register::State>& vStates = mapStates[hashRegister];
+            if(nConflict > vStates.size())
+                throw debug::exception(FUNCTION, "conflict ", nConflict, " out of sequence ", vStates.size());
+
+            /* Check if there is a new conflict. */
+            if(nConflict == vStates.size())
+            {
+                debug::error(FUNCTION, "REGISTER CONFLICT: ", nConflict, " hash ", hashRegister.SubString());
+                vStates.push_back(state);
+            }
+
+            /* Set state conflict by id. */
+            vStates[nConflict] = state;
 
             return true;
         }
@@ -68,17 +85,25 @@ namespace LLD
     bool RegisterDB::ReadState(const uint256_t& hashRegister, TAO::Register::State& state, const uint8_t nFlags)
     {
         /* Memory mode for pre-database commits. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags >= TAO::Ledger::FLAGS::MEMPOOL)
         {
             LOCK(MEMORY_MUTEX);
 
             /* Check for state in memory map. */
             if(mapStates.count(hashRegister))
             {
-                /* Get the state from memory map. */
-                state = mapStates[hashRegister];
+                /* Get the memory map access iterator. */
+                uint32_t nConflict = nFlags - TAO::Ledger::FLAGS::MEMPOOL;
 
-                return true;
+                /* Check that the diff index is correct. */
+                std::vector<TAO::Register::State>& vStates = mapStates[hashRegister];
+                if(nConflict < vStates.size())
+                {
+                    /* Return correct conflict by id. */
+                    state = vStates[nConflict];
+
+                    return true;
+                }
             }
         }
 
@@ -90,7 +115,7 @@ namespace LLD
     bool RegisterDB::EraseState(const uint256_t& hashRegister, const uint8_t nFlags)
     {
         /* Memory mode for pre-database commits. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags >= TAO::Ledger::FLAGS::MEMPOOL)
         {
             LOCK(MEMORY_MUTEX);
 
@@ -135,76 +160,6 @@ namespace LLD
     bool RegisterDB::EraseTrust(const uint256_t& hashGenesis)
     {
         return Erase(std::make_pair(std::string("genesis"), hashGenesis));
-    }
-
-
-    /* Writes a token identifier to the register database. */
-    bool RegisterDB::WriteIdentifier(const uint256_t nIdentifier, const uint256_t& hashRegister, const uint8_t nFlags)
-    {
-        /* Memory mode for pre-database commits. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
-        {
-            LOCK(MEMORY_MUTEX);
-
-            mapIdentifiers[nIdentifier] = hashRegister;
-
-            return true;
-        }
-        else if(nFlags == TAO::Ledger::FLAGS::BLOCK)
-        {
-            LOCK(MEMORY_MUTEX);
-
-            /* Remove the memory state if writing the disk state. */
-            if(mapIdentifiers.count(nIdentifier))
-                mapIdentifiers.erase(nIdentifier);
-        }
-
-        return Write(std::make_pair(std::string("token"), nIdentifier), hashRegister);
-    }
-
-
-    /* Erase a token identifier to the register database. */
-    bool RegisterDB::EraseIdentifier(const uint256_t nIdentifier)
-    {
-        return Erase(std::make_pair(std::string("token"), nIdentifier));
-    }
-
-
-    /* Read a token identifier from the register database. */
-    bool RegisterDB::ReadIdentifier(const uint256_t nIdentifier, uint256_t& hashRegister, const uint8_t nFlags)
-    {
-        /* Memory mode for pre-database commits. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
-        {
-            LOCK(MEMORY_MUTEX);
-
-            /* Return the state if it is found. */
-            if(mapIdentifiers.count(nIdentifier))
-            {
-                hashRegister = mapIdentifiers[nIdentifier];
-
-                return true;
-            }
-        }
-
-        return Read(std::make_pair(std::string("token"), nIdentifier), hashRegister);
-    }
-
-
-    /*  Determines if an identifier exists in the database. */
-    bool RegisterDB::HasIdentifier(const uint256_t nIdentifier, const uint8_t nFlags)
-    {
-        /* Memory mode for pre-database commits. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
-        {
-            LOCK(MEMORY_MUTEX);
-
-            /* Return the state if it is found. */
-            if(mapIdentifiers.count(nIdentifier))
-                return true;
-        }
-
-        return Exists(std::make_pair(std::string("token"), nIdentifier));
     }
 
 

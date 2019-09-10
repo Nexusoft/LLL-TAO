@@ -237,21 +237,18 @@ namespace Legacy
         /* Previous block state is current best state on chain. */
         TAO::Ledger::BlockState prevBlockState = TAO::Ledger::ChainState::stateBest.load();
 
-        std::vector<uint512_t> vMemPoolHashes;           // legacy tx hashes currently in mempool
-        std::vector<uint512_t> vRemoveFromPool;          // invalid tx to remove from mempool
+        std::vector<uint512_t> vHashes;           // legacy tx hashes currently in mempool
+        std::vector<uint512_t> vRemove;          // invalid tx to remove from mempool
         std::multimap<double, Transaction> mapPriority; // processing priority for mempool tx
         uint64_t nFees = 0;
 
         /* Retrieve list of transaction hashes from mempool. Limit list to a sane size that would typically more than fill a
          * legacy block, rather than pulling entire pool if it is very large. */
-        if(TAO::Ledger::mempool.ListLegacy(vMemPoolHashes, 1000))
-        {
-            /* Mempool was empty */
+        if(!TAO::Ledger::mempool.List(vHashes, 1000, true))
             return;
-        }
 
         /* Process the mempool transactions and load them into mapPriority for processing. */
-        for(const uint512_t& txHash : vMemPoolHashes)
+        for(const uint512_t& txHash : vHashes)
         {
             Transaction tx;
 
@@ -367,7 +364,7 @@ namespace Legacy
             {
                 debug::log(2, FUNCTION, "Failed to get transaction inputs ", tx.GetHash().SubString(10));
 
-                vRemoveFromPool.push_back(tx.GetHash());
+                vRemove.push_back(tx.GetHash());
                 continue;
             }
 
@@ -377,7 +374,7 @@ namespace Legacy
             {
                 debug::log(2, FUNCTION, "Not enough fees ", tx.GetHash().SubString(10));
 
-                vRemoveFromPool.push_back(tx.GetHash());
+                vRemove.push_back(tx.GetHash());
                 continue;
             }
 
@@ -387,7 +384,7 @@ namespace Legacy
             {
                 debug::log(2, FUNCTION, "Too many P2SH signature operations ", tx.GetHash().SubString(10));
 
-                vRemoveFromPool.push_back(tx.GetHash());
+                vRemove.push_back(tx.GetHash());
                 continue;
             }
 
@@ -395,7 +392,7 @@ namespace Legacy
             {
                 debug::log(2, FUNCTION, "Failed to connect inputs ", tx.GetHash().SubString(10));
 
-                vRemoveFromPool.push_back(tx.GetHash());
+                vRemove.push_back(tx.GetHash());
                 continue;
             }
 
@@ -412,10 +409,10 @@ namespace Legacy
         //nLastBlockSize = nBlockSize;
 
         /* Remove any invalid transactions from the mempool */
-        for(const uint512_t& hashRemove : vRemoveFromPool)
+        for(const uint512_t& hashRemove : vRemove)
         {
             debug::log(0, FUNCTION, "Removed invalid tx ", hashRemove.SubString(10), " from mempool");
-            TAO::Ledger::mempool.RemoveLegacy(hashRemove);
+            TAO::Ledger::mempool.Remove(hashRemove);
         }
 
     }

@@ -47,7 +47,7 @@ namespace TAO
     {
 
         /* Verify the pre-states of a register to current network state. */
-        bool Build(TAO::Operation::Contract &contract, std::map<uint256_t, State>& mapStates)
+        bool Build(TAO::Operation::Contract &contract, std::map<uint256_t, State>& mapStates, const uint8_t nFlags)
         {
             /* Reset the contract streams. */
             contract.Reset(TAO::Operation::Contract::ALL);
@@ -111,7 +111,7 @@ namespace TAO
                             state = mapStates[hashAddress];
 
                         /* Read the register from database. */
-                        else if(!LLD::Register->ReadState(hashAddress, state, TAO::Ledger::FLAGS::MEMPOOL))
+                        else if(!LLD::Register->ReadState(hashAddress, state, nFlags))
                             return debug::error(FUNCTION, "OP::WRITE: register pre-state doesn't exist");
 
                         /* Check the ownership. */
@@ -158,7 +158,7 @@ namespace TAO
                             state = mapStates[hashAddress];
 
                         /* Read the register from database. */
-                        else if(!LLD::Register->ReadState(hashAddress, state, TAO::Ledger::FLAGS::MEMPOOL))
+                        else if(!LLD::Register->ReadState(hashAddress, state, nFlags))
                             return debug::error(FUNCTION, "OP::APPEND: register pre-state doesn't exist");
 
                         /* Check the ownership. */
@@ -252,7 +252,7 @@ namespace TAO
                             state = mapStates[hashAddress];
 
                         /* Read the register from database. */
-                        else if(!LLD::Register->ReadState(hashAddress, state, TAO::Ledger::FLAGS::MEMPOOL))
+                        else if(!LLD::Register->ReadState(hashAddress, state, nFlags))
                             return debug::error(FUNCTION, "OP::TRANSFER: register pre-state doesn't exist");
 
                         /* Check the ownership. */
@@ -298,7 +298,7 @@ namespace TAO
                             state = mapStates[hashAddress];
 
                         /* Read the register from database. */
-                        else if(!LLD::Register->ReadState(hashAddress, state, TAO::Ledger::FLAGS::MEMPOOL))
+                        else if(!LLD::Register->ReadState(hashAddress, state, nFlags))
                             return debug::error(FUNCTION, "OP::CLAIM: register pre-state doesn't exist");
 
                         /* Serialize the pre-state into contract. */
@@ -404,7 +404,7 @@ namespace TAO
                             object = TAO::Register::Object(mapStates[contract.Caller()]);
 
                         /* Read the register from database. */
-                        else if(!LLD::Register->ReadState(hashAddress, object, TAO::Ledger::FLAGS::MEMPOOL))
+                        else if(!LLD::Register->ReadState(hashAddress, object, nFlags))
                             return debug::error(FUNCTION, "OP::GENESIS: register pre-state doesn't exist");
 
                         /* Serialize the pre-state into contract. */
@@ -543,7 +543,7 @@ namespace TAO
                             object = TAO::Register::Object(mapStates[hashFrom]);
 
                         /* Read the register from database. */
-                        else if(!LLD::Register->ReadState(hashFrom, object, TAO::Ledger::FLAGS::MEMPOOL))
+                        else if(!LLD::Register->ReadState(hashFrom, object, nFlags))
                             return debug::error(FUNCTION, "OP::DEBIT: register pre-state doesn't exist");
 
                         /* Serialize the pre-state into contract. */
@@ -593,7 +593,7 @@ namespace TAO
                             object = TAO::Register::Object(mapStates[hashAddress]);
 
                         /* Read the register from database. */
-                        else if(!LLD::Register->ReadState(hashAddress, object, TAO::Ledger::FLAGS::MEMPOOL))
+                        else if(!LLD::Register->ReadState(hashAddress, object, nFlags))
                             return debug::error(FUNCTION, "OP::CREDIT: register pre-state doesn't exist");
 
                         /* Serialize the pre-state into contract. */
@@ -649,7 +649,7 @@ namespace TAO
                             object = TAO::Register::Object(mapStates[hashAccount]);
 
                         /* Read the register from database. */
-                        else if(!LLD::Register->ReadState(hashAccount, object, TAO::Ledger::FLAGS::MEMPOOL))
+                        else if(!LLD::Register->ReadState(hashAccount, object, nFlags))
                             return debug::error(FUNCTION, "OP::MIGRATE: register pre-state doesn't exist");
 
                         /* Serialize the pre-state into contract. */
@@ -692,7 +692,7 @@ namespace TAO
                             object = TAO::Register::Object(mapStates[hashAddress]);
 
                         /* Read the register from database. */
-                        else if(!LLD::Register->ReadState(hashAddress, object, TAO::Ledger::FLAGS::MEMPOOL))
+                        else if(!LLD::Register->ReadState(hashAddress, object, nFlags))
                             return debug::error(FUNCTION, "OP::LEGACY: register pre-state doesn't exist");
 
                         /* Serialize the pre-state into contract. */
@@ -754,7 +754,7 @@ namespace TAO
                             object = TAO::Register::Object(mapStates[hashAddress]);
 
                         /* Read the register from database. */
-                        else if(!LLD::Register->ReadState(hashAddress, object, TAO::Ledger::FLAGS::MEMPOOL))
+                        else if(!LLD::Register->ReadState(hashAddress, object, nFlags))
                             return debug::error(FUNCTION, "OP::LEGACY: register pre-state doesn't exist");
 
                         /* Serialize the pre-state into contract. */

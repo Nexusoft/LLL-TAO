@@ -62,8 +62,12 @@ namespace TAO
             std::map<uint512_t, TAO::Ledger::Transaction> mapOrphans;
 
 
-            /** Record of next hashes in the mempool. **/
-            std::map<uint256_t, uint512_t> mapPrevHashes;
+            /** Keep track of spent previous transactions. **/
+            std::map<uint512_t, uint32_t> mapConnected;
+
+
+            /** Record of conflicted transactions in mempool. **/
+            std::map<uint512_t, uint32_t> mapConflicts;
 
 
             /** Record of legacy inputs in the mempool. **/
@@ -221,18 +225,6 @@ namespace TAO
             bool Has(const uint256_t& hashGenesis) const;
 
 
-            /** HasLegacy
-             *
-             *  Checks if a legacy transaction exists.
-             *
-             *  @param[in] hashTx Hash of legacy transaction to check.
-             *
-             *  @return true if legacy transaction in mempool.
-             *
-             **/
-            bool HasLegacy(const uint512_t& hashTx) const;
-
-
             /** Remove
              *
              *  Remove a transaction from pool.
@@ -245,18 +237,6 @@ namespace TAO
             bool Remove(const uint512_t& hashTx);
 
 
-            /** RemoveLegacy
-             *
-             *  Remove a legacy transaction from pool.
-             *
-             *  @param[in] hashTx Hash of legacy transaction to remove.
-             *
-             *  @return true if removed.
-             *
-             **/
-            bool RemoveLegacy(const uint512_t& hashTx);
-
-
             /** List
              *
              *  List transactions in memory pool.
@@ -267,20 +247,7 @@ namespace TAO
              *  @return true if list is not empty.
              *
              **/
-            bool List(std::vector<uint512_t> &vHashes, uint32_t nCount = std::numeric_limits<uint32_t>::max()) const;
-
-
-            /** ListLegacy
-             *
-             *  List legacy transactions in memory pool.
-             *
-             *  @param[out] vHashes List of legacy transaction hashes.
-             *  @param[in] nCount The total transactions to get.
-             *
-             *  @return true if list is not empty.
-             *
-             **/
-            bool ListLegacy(std::vector<uint512_t> &vHashes, uint32_t nCount = std::numeric_limits<uint32_t>::max()) const;
+            bool List(std::vector<uint512_t> &vHashes, uint32_t nCount = std::numeric_limits<uint32_t>::max(), bool fLegacy = false) const;
 
 
             /** Size

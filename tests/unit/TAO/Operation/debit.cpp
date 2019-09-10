@@ -35,8 +35,6 @@ TEST_CASE( "Debit Primitive Tests", "[operation]")
 
     //check a debit from token
     {
-        //cleanup
-        LLD::Register->EraseIdentifier(11);
 
         //create object
         TAO::Register::Address hashToken = TAO::Register::Address(TAO::Register::Address::TOKEN);
@@ -518,8 +516,6 @@ TEST_CASE( "Debit Primitive Tests", "[operation]")
 
     //check for failed by incorrect base
     {
-        //cleanup
-        LLD::Register->EraseIdentifier(11);
 
         //create object
         TAO::Register::Address hashToken  = TAO::Register::Address(TAO::Register::Address::OBJECT);

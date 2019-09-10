@@ -74,6 +74,7 @@ namespace LLP
             CHECKPOINT  = 0x34,
             ADDRESS     = 0x35,
             BESTCHAIN   = 0x36,
+            MEMPOOL     = 0x37,
         };
     }
 
@@ -96,9 +97,10 @@ namespace LLP
     {
         enum
         {
-            ACCEPTED    = 0x50,
-            REJECTED    = 0x51,
-            STALE       = 0x52,
+            ACCEPTED     = 0x50,
+            REJECTED     = 0x51,
+            STALE        = 0x52,
+            UNSUBSCRIBED = 0x53, //let node know it was unsubscribed successfully
         };
     }
 
@@ -116,6 +118,7 @@ namespace LLP
             ADDRESS     = (1 << 6),
             LASTINDEX   = (1 << 7),
             BESTCHAIN   = (1 << 8),
+            SIGCHAIN    = (1 << 9),
         };
     }
 
@@ -170,6 +173,10 @@ namespace LLP
 
         /** State of if node has currently verified signature. **/
         std::atomic<bool> fAuthorized;
+
+
+        /** State to keep track of if node has completed initialization process. **/
+        std::atomic<bool> fInitialized;
 
 
         /** Mutex for connected sessions. **/
@@ -270,12 +277,8 @@ namespace LLP
         std::string strFullVersion;
 
 
-        /** The last block index listed. **/
-        uint1024_t hashLastBlock;
-
-
-        /** The last transaction index listed. **/
-        uint512_t hashLastTx[2];
+        /** Timestamp of unsubscription. **/
+        uint64_t nUnsubscribed;
 
 
         /** Event

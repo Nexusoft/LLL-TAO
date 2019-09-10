@@ -125,15 +125,18 @@ namespace TAO
                 MEMPOOL     = 0x02,
 
                 /* Don't write data when calculating fees. */
-                FEES        = 0x03
+                FEES        = 0x03,
+
+                /* Conflicted transaction states. */
+                CONFLICTED  = 0x04,
             };
         }
 
 
 
-        /** TYPES
+        /** TRANSACTION
          *
-         *  The type of hash that is being inputed.
+         *  The type of transaction being put into the block's vtx
          *
          **/
         namespace TRANSACTION

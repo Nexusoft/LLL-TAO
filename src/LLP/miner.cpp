@@ -110,14 +110,13 @@ namespace LLP
         }
 
         /* Send a notification to wake up sleeping thread to finish shutdown process. */
-        //this->NotifyEvent();
+        this->NotifyEvent();
     }
 
 
     /* Handle custom message events. */
     void Miner::Event(uint8_t EVENT, uint32_t LENGTH)
     {
-
         /* Handle any DDOS Packet Filters. */
         switch(EVENT)
         {
@@ -678,7 +677,7 @@ namespace LLP
          uint32_t nChainStateHeight = TAO::Ledger::ChainState::nBestHeight.load();
 
         /* Return early if the height doesn't change. */
-        if(nBestHeight > 0 && nBestHeight == nChainStateHeight)
+        if(nBestHeight == nChainStateHeight)
             return false;
 
         /* Clear the map of blocks if a new block has been accepted. */

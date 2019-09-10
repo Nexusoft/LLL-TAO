@@ -115,9 +115,6 @@ TEST_CASE( "Register Primitive Tests", "[operation]")
 
     //test token register
     {
-        //erase identifier
-        LLD::Register->EraseIdentifier(55);
-
         //object register address
         uint256_t hashAddress = TAO::Register::Address(TAO::Register::Address::TOKEN);
 

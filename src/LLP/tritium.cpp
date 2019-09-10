@@ -64,6 +64,7 @@ namespace LLP
     TritiumNode::TritiumNode()
     : BaseConnection<TritiumPacket>()
     , fAuthorized(false)
+    , fInitialized(false)
     , nSubscriptions(0)
     , nNotifications(0)
     , nLastPing(0)
@@ -79,8 +80,7 @@ namespace LLP
     , nConsecutiveOrphans(0)
     , nConsecutiveFails(0)
     , strFullVersion()
-    , hashLastBlock(0)
-    , hashLastTx({0, 0})
+    , nUnsubscribed(0)
     {
     }
 
@@ -89,6 +89,7 @@ namespace LLP
     TritiumNode::TritiumNode(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS)
     : BaseConnection<TritiumPacket>(SOCKET_IN, DDOS_IN, isDDOS)
     , fAuthorized(false)
+    , fInitialized(false)
     , nSubscriptions(0)
     , nNotifications(0)
     , nLastPing(0)
@@ -104,8 +105,7 @@ namespace LLP
     , nConsecutiveOrphans(0)
     , nConsecutiveFails(0)
     , strFullVersion()
-    , hashLastBlock(0)
-    , hashLastTx({0, 0})
+    , nUnsubscribed(0)
     {
     }
 
@@ -114,6 +114,7 @@ namespace LLP
     TritiumNode::TritiumNode(DDOS_Filter* DDOS_IN, bool isDDOS)
     : BaseConnection<TritiumPacket>(DDOS_IN, isDDOS)
     , fAuthorized(false)
+    , fInitialized(false)
     , nSubscriptions(0)
     , nNotifications(0)
     , nLastPing(0)
@@ -129,8 +130,7 @@ namespace LLP
     , nConsecutiveOrphans(0)
     , nConsecutiveFails(0)
     , strFullVersion()
-    , hashLastBlock(0)
-    , hashLastTx({0, 0})
+    , nUnsubscribed(0)
     {
     }
 
@@ -190,6 +190,18 @@ namespace LLP
 
             case EVENT_GENERIC:
             {
+                /* Make sure node responded on unsubscriion within 30 seconds. */
+                if(nUnsubscribed != 0 && nUnsubscribed + 30 < runtime::timestamp())
+                {
+                    /* Debug output. */
+                    debug::drop(NODE, "failed to receive unsubscription within 30 seconds");
+
+                    /* Disconnect this node. */
+                    Disconnect();
+
+                    return;
+                }
+
                 /* Handle sending the pings to remote node.. */
                 if(nLastPing + 15 < runtime::unifiedtimestamp())
                 {
@@ -211,6 +223,7 @@ namespace LLP
 
                 break;
             }
+
 
             case EVENT_DISCONNECT:
             {
@@ -289,10 +302,13 @@ namespace LLP
         DataStream ssPacket(INCOMING.DATA, SER_NETWORK, PROTOCOL_VERSION);
         switch(INCOMING.MESSAGE)
         {
-
             /* Handle for the version command. */
             case ACTION::VERSION:
             {
+                /* Check for duplicate version messages. */
+                if(nCurrentSession != 0)
+                    return debug::drop(NODE, "duplicate version message");
+
                 /* Hard requirement for version. */
                 ssPacket >> nProtocolVersion;
 
@@ -308,7 +324,13 @@ namespace LLP
 
                 /* Check for a connect to self. */
                 if(nCurrentSession == SESSION_ID)
+                {
+                    /* Cache self-address in the banned list of the Address Manager. */
+                    if(TRITIUM_SERVER->pAddressManager)
+                        TRITIUM_SERVER->pAddressManager->Ban(GetAddress());
+
                     return debug::drop(NODE, "connected to self");
+                }
 
                 /* Check if session is already connected. */
                 {
@@ -339,11 +361,22 @@ namespace LLP
                 if(Incoming())
                 {
                     /* Respond with version message. */
-                    PushMessage(uint8_t(ACTION::VERSION), PROTOCOL_VERSION, SESSION_ID, version::CLIENT_VERSION_BUILD_STRING);
+                    PushMessage(ACTION::VERSION,
+                        PROTOCOL_VERSION,
+                        SESSION_ID,
+                        version::CLIENT_VERSION_BUILD_STRING);
+
+                    /* Relay to subscribed nodes a new connection was seen. */
+                    TRITIUM_SERVER->Relay
+                    (
+                        ACTION::NOTIFY,
+                        uint8_t(TYPES::ADDRESS),
+                        BaseAddress(GetAddress())
+                    );
                 }
 
                 /* Send Auth immediately after version and before any other messages*/
-                Auth(true);
+                //Auth(true);
 
                 /* If not synchronized and making an outbound connection, start the sync */
                 if(!Incoming() && !fSynchronized.load())
@@ -369,14 +402,30 @@ namespace LLP
                 }
 
                 /* Subscribe to receive notifications. */
-                if(fSynchronized.load())
-                    Subscribe(
-                        SUBSCRIPTION::BESTHEIGHT
-                      | SUBSCRIPTION::CHECKPOINT
-                      | SUBSCRIPTION::BLOCK
-                      | SUBSCRIPTION::TRANSACTION
-                      | SUBSCRIPTION::BESTCHAIN
-                  );
+                Subscribe(
+                      SUBSCRIPTION::BESTHEIGHT
+                    | SUBSCRIPTION::CHECKPOINT
+                    | SUBSCRIPTION::BLOCK
+                    | SUBSCRIPTION::TRANSACTION
+                    | SUBSCRIPTION::ADDRESS
+                );
+
+                /* Grab list of memory pool transactions. */
+                PushMessage(ACTION::LIST, uint8_t(TYPES::MEMPOOL));
+
+                /* Ask node for current list of sync blocks. */
+                if(TAO::Ledger::nSyncSession.load() != nCurrentSession)
+                {
+                    /* Ask for list of blocks if this is current sync node. */
+                    PushMessage(ACTION::LIST,
+                        uint8_t(SPECIFIER::SYNC),
+                        uint8_t(TYPES::BLOCK),
+                        uint8_t(TYPES::LOCATOR),
+                        TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
+                        uint1024_t(0)
+                    );
+                }
+
 
                 break;
             }
@@ -386,6 +435,8 @@ namespace LLP
             case ACTION::AUTH:
             case ACTION::DEAUTH:
             {
+                return true; //disable AUTH for testnet
+
                 /* Disable AUTH messages when synchronizing. */
                 if(TAO::Ledger::ChainState::Synchronizing())
                     return true;
@@ -497,7 +548,19 @@ namespace LLP
             /* Handle for the subscribe command. */
             case ACTION::SUBSCRIBE:
             case ACTION::UNSUBSCRIBE:
+            case RESPONSE::UNSUBSCRIBED:
             {
+                /* Let node know it unsubscribed successfully. */
+                if(INCOMING.MESSAGE == RESPONSE::UNSUBSCRIBED)
+                {
+                    /* Check for unsoliced messages. */
+                    if(nUnsubscribed == 0)
+                        return debug::drop(NODE, "unsolicted RESPONSE::UNSUBSCRIBE");
+
+                    /* Reset the timer. */
+                    nUnsubscribed = 0;
+                }
+
                 /* Set the limits. */
                 int32_t nLimits = 16;
 
@@ -523,13 +586,21 @@ namespace LLP
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::SUBSCRIBE: BLOCK ", std::bitset<16>(nNotifications));
                             }
-                            else
+                            else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
                             {
                                 /* Unset the block flag. */
                                 nNotifications &= ~SUBSCRIPTION::BLOCK;
 
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::UNSUBSCRIBE: BLOCK ", std::bitset<16>(nNotifications));
+                            }
+                            else
+                            {
+                                /* Unset the block flag. */
+                                nSubscriptions &= ~SUBSCRIPTION::BLOCK;
+
+                                /* Debug output. */
+                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED: BLOCK ", std::bitset<16>(nSubscriptions));
                             }
 
                             break;
@@ -547,13 +618,21 @@ namespace LLP
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::SUBSCRIBE: TRANSACTION ", std::bitset<16>(nNotifications));
                             }
-                            else
+                            else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
                             {
-                                /* Unset the transactiopn flag. */
+                                /* Unset the transaction flag. */
                                 nNotifications &= ~SUBSCRIPTION::TRANSACTION;
 
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::UNSUBSCRIBE: TRANSACTION ", std::bitset<16>(nNotifications));
+                            }
+                            else
+                            {
+                                /* Unset the transaction flag. */
+                                nSubscriptions &= ~SUBSCRIPTION::TRANSACTION;
+
+                                /* Debug output. */
+                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED: TRANSACTION ", std::bitset<16>(nSubscriptions));
                             }
 
                             break;
@@ -575,13 +654,21 @@ namespace LLP
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::SUBSCRIBE: BESTHEIGHT ", std::bitset<16>(nNotifications));
                             }
-                            else
+                            else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
                             {
                                 /* Unset the height flag. */
                                 nNotifications &= ~SUBSCRIPTION::BESTHEIGHT;
 
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::UNSUBSCRIBE: BESTHEIGHT ", std::bitset<16>(nNotifications));
+                            }
+                            else
+                            {
+                                /* Unset the height flag. */
+                                nSubscriptions &= ~SUBSCRIPTION::BESTHEIGHT;
+
+                                /* Debug output. */
+                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED: BESTHEIGHT ", std::bitset<16>(nSubscriptions));
                             }
 
                             break;
@@ -603,13 +690,21 @@ namespace LLP
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::SUBSCRIBE: CHECKPOINT ", std::bitset<16>(nNotifications));
                             }
-                            else
+                            else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
                             {
                                 /* Unset the checkpoints flag. */
                                 nNotifications &= ~SUBSCRIPTION::CHECKPOINT;
 
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::UNSUBSCRIBE: CHECKPOINT ", std::bitset<16>(nNotifications));
+                            }
+                            else
+                            {
+                                /* Unset the checkpoints flag. */
+                                nSubscriptions &= ~SUBSCRIPTION::CHECKPOINT;
+
+                                /* Debug output. */
+                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED: CHECKPOINT ", std::bitset<16>(nSubscriptions));
                             }
 
                             break;
@@ -627,13 +722,21 @@ namespace LLP
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::SUBSCRIBE: ADDRESS ", std::bitset<16>(nNotifications));
                             }
-                            else
+                            else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
                             {
                                 /* Unset the address flag. */
                                 nNotifications &= ~SUBSCRIPTION::ADDRESS;
 
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::UNSUBSCRIBE: ADDRESS ", std::bitset<16>(nNotifications));
+                            }
+                            else
+                            {
+                                /* Unset the address flag. */
+                                nSubscriptions &= ~SUBSCRIPTION::ADDRESS;
+
+                                /* Debug output. */
+                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED: ADDRESS ", std::bitset<16>(nSubscriptions));
                             }
 
                             break;
@@ -651,13 +754,21 @@ namespace LLP
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::SUBSCRIBE: LAST ", std::bitset<16>(nNotifications));
                             }
-                            else
+                            else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
                             {
                                 /* Unset the last flag. */
                                 nNotifications &= ~SUBSCRIPTION::LASTINDEX;
 
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::UNSUBSCRIBE: LAST ", std::bitset<16>(nNotifications));
+                            }
+                            else
+                            {
+                                /* Unset the last flag. */
+                                nSubscriptions &= ~SUBSCRIPTION::LASTINDEX;
+
+                                /* Debug output. */
+                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED: LASTINDEX ", std::bitset<16>(nSubscriptions));
                             }
 
                             break;
@@ -679,13 +790,21 @@ namespace LLP
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::SUBSCRIBE: BESTCHAIN ", std::bitset<16>(nNotifications));
                             }
-                            else
+                            else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
                             {
                                 /* Unset the bestchain flag. */
                                 nNotifications &= ~SUBSCRIPTION::BESTCHAIN;
 
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::UNSUBSCRIBE: BESTCHAIN" , std::bitset<16>(nNotifications));
+                            }
+                            else
+                            {
+                                /* Unset the bestchain flag. */
+                                nSubscriptions &= ~SUBSCRIPTION::BESTCHAIN;
+
+                                /* Debug output. */
+                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED: BESTCHAIN ", std::bitset<16>(nSubscriptions));
                             }
 
                             break;
@@ -700,6 +819,10 @@ namespace LLP
                         }
                     }
                 }
+
+                /* Let node know it unsubscribed successfully. */
+                if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
+                    WritePacket(NewMessage(RESPONSE::UNSUBSCRIBED, ssPacket));
 
                 break;
             }
@@ -806,10 +929,6 @@ namespace LLP
                                     return debug::drop(NODE, "malformed starting index");
                             }
 
-                            /* Check for search from last. */
-                            if(hashStart == 0)
-                                hashStart = hashLastBlock;
-
                             /* Get the ending hash. */
                             uint1024_t hashStop;
                             ssPacket >> hashStop;
@@ -865,12 +984,9 @@ namespace LLP
                                 }
                             }
 
-                            /* Set the last block. */
-                            hashLastBlock = hashStart;
-
                             /* Check for last subscription. */
                             if(nNotifications & SUBSCRIPTION::LASTINDEX)
-                                PushMessage(ACTION::NOTIFY, uint8_t(TYPES::LASTINDEX), hashLastBlock);
+                                PushMessage(ACTION::NOTIFY, uint8_t(TYPES::LASTINDEX), uint8_t(TYPES::BLOCK), hashStart);
 
                             break;
                         }
@@ -893,10 +1009,6 @@ namespace LLP
                             /* Check for legacy. */
                             if(fLegacy)
                             {
-                                /* Check for search from last. */
-                                if(hashStart == 0)
-                                    hashStart = hashLastTx[0];
-
                                 /* Do a sequential read to obtain the list. */
                                 std::vector<Legacy::Transaction> vtx;
                                 while(LLD::Legacy->BatchRead(hashStart, "tx", vtx, 100))
@@ -919,15 +1031,9 @@ namespace LLP
                                     if(nLimits == 0 || hashStart == hashStop)
                                         break;
                                 }
-
-                                /* Set the last transction. */
-                                hashLastTx[0] = hashStart;
                             }
                             else
                             {
-                                /* Check for search from last. */
-                                if(hashStart == 0)
-                                    hashStart = hashLastTx[1];
 
                                 /* Do a sequential read to obtain the list. */
                                 std::vector<TAO::Ledger::Transaction> vtx;
@@ -955,9 +1061,6 @@ namespace LLP
                                     if(nLimits == 0 || hashStart == hashStop)
                                         break;
                                 }
-
-                                /* Set the last transction. */
-                                hashLastTx[1] = hashStart;
                             }
 
                             break;
@@ -973,7 +1076,14 @@ namespace LLP
 
                             /* Check for size constraints. */
                             if(nTotal > 10000)
+                            {
+                                /* Give penalties for size violation. */
+                                if(DDOS)
+                                    DDOS->rSCORE += 20;
+
+                                /* Set value to max range. */
                                 nTotal = 10000;
+                            }
 
                             /* Get addresses from manager. */
                             std::vector<BaseAddress> vAddr;
@@ -984,6 +1094,52 @@ namespace LLP
                             const uint32_t nCount = std::min((uint32_t)vAddr.size(), nTotal);
                             for(uint32_t n = 0; n < nCount; ++n)
                                 PushMessage(TYPES::ADDRESS, vAddr[n]);
+
+                            break;
+                        }
+
+
+                        /* Standard type for a block. */
+                        case TYPES::MEMPOOL:
+                        {
+                            /* Get a list of transactions from mempool. */
+                            std::vector<uint512_t> vHashes;
+
+                            /* List tritium transactions if legacy isn't specified. */
+                            if(!fLegacy)
+                            {
+                                if(TAO::Ledger::mempool.List(vHashes, std::numeric_limits<uint32_t>::max(), false))
+                                {
+                                    /* Loop through the available hashes. */
+                                    for(const auto& hash : vHashes)
+                                    {
+                                        /* Get the transaction from memory pool. */
+                                        TAO::Ledger::Transaction tx;
+                                        if(!TAO::Ledger::mempool.Get(hash, tx))
+                                            break; //we don't want to add more dependants if this fails
+
+                                        /* Push the transaction. */
+                                        PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::TRITIUM), tx);
+                                    }
+                                }
+                            }
+
+                            /* Get a list of legacy transactions from pool. */
+                            vHashes.clear();
+                            if(TAO::Ledger::mempool.List(vHashes, std::numeric_limits<uint32_t>::max(), true))
+                            {
+                                /* Loop through the available hashes. */
+                                for(const auto& hash : vHashes)
+                                {
+                                    /* Get the transaction from memory pool. */
+                                    Legacy::Transaction tx;
+                                    if(!TAO::Ledger::mempool.Get(hash, tx))
+                                        break; //we don't want to add more dependants if this fails
+
+                                    /* Push the transaction. */
+                                    PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::LEGACY), tx);
+                                }
+                            }
 
                             break;
                         }
@@ -1222,45 +1378,69 @@ namespace LLP
                         {
                             /* Check for subscription. */
                             if(!(nSubscriptions & SUBSCRIPTION::LASTINDEX))
-                                return debug::drop(NODE, "LAST: unsolicited notification");
+                                return debug::drop(NODE, "ACTION::NOTIFY: LASTINDEX: unsolicited notification");
 
-                            /* Keep track of current checkpoint. */
-                            uint1024_t hashLast;
-                            ssPacket >> hashLast;
+                            /* Get the data type. */
+                            uint8_t nType = 0;
+                            ssPacket >> nType;
 
-                            /* Check if is sync node. */
-                            if(nCurrentSession == TAO::Ledger::nSyncSession.load())
+                            /* Switch based on different last index values. */
+                            switch(nType)
                             {
-                                /* Check for complete synchronization. */
-                                if(hashLast == TAO::Ledger::ChainState::hashBestChain.load() && hashLast == hashBestChain)
+                                /* Last index for a block is always uint1024_t. */
+                                case TYPES::BLOCK:
                                 {
-                                    /* Set state to synchronized. */
-                                    fSynchronized.store(true);
-                                    TAO::Ledger::nSyncSession.store(0);
+                                    /* Check for legacy. */
+                                    if(fLegacy)
+                                        return debug::drop(NODE, "ACTION::NOTIFY: LASTINDEX: block can't have legacy specifier");
 
-                                    /* Unsubcribe from last. */
-                                    Unsubscribe(SUBSCRIPTION::LASTINDEX);
+                                    /* Keep track of current checkpoint. */
+                                    uint1024_t hashLast;
+                                    ssPacket >> hashLast;
 
-                                    /* Subscribe to notifications. */
-                                    Subscribe(SUBSCRIPTION::BESTHEIGHT | SUBSCRIPTION::CHECKPOINT | SUBSCRIPTION::BLOCK | SUBSCRIPTION::TRANSACTION);
+                                    /* Check if is sync node. */
+                                    if(nCurrentSession == TAO::Ledger::nSyncSession.load())
+                                    {
+                                        /* Check for complete synchronization. */
+                                        if(hashLast == TAO::Ledger::ChainState::hashBestChain.load() && hashLast == hashBestChain)
+                                        {
+                                            /* Set state to synchronized. */
+                                            fSynchronized.store(true);
+                                            TAO::Ledger::nSyncSession.store(0);
 
-                                    /* Log that sync is complete. */
-                                    debug::log(0, NODE, "ACTION::NOTIFY: Synchonization COMPLETE at ", hashBestChain.SubString());
-                                }
-                                else
-                                {
-                                    /* Ask for list of blocks. */
-                                    PushMessage(ACTION::LIST,
-                                        uint8_t(TYPES::BLOCK),
-                                        uint8_t(TYPES::UINT1024_T),
-                                        hashLast,
-                                        uint1024_t(0)
-                                    );
+                                            /* Unsubcribe from last. */
+                                            Unsubscribe(SUBSCRIPTION::LASTINDEX);
+
+                                            /* Subscribe to notifications. */
+                                            Subscribe(
+                                                   SUBSCRIPTION::BESTHEIGHT
+                                                 | SUBSCRIPTION::CHECKPOINT
+                                                 | SUBSCRIPTION::BLOCK
+                                                 | SUBSCRIPTION::TRANSACTION
+                                                 | SUBSCRIPTION::ADDRESS
+                                             );
+
+                                            /* Log that sync is complete. */
+                                            debug::log(0, NODE, "ACTION::NOTIFY: Synchonization COMPLETE at ", hashBestChain.SubString());
+                                        }
+                                        else
+                                        {
+                                            /* Ask for list of blocks. */
+                                            PushMessage(ACTION::LIST,
+                                                uint8_t(TYPES::BLOCK),
+                                                uint8_t(TYPES::UINT1024_T),
+                                                hashLast,
+                                                uint1024_t(0)
+                                            );
+                                        }
+                                    }
+
+                                    /* Debug output. */
+                                    debug::log(3, NODE, "ACTION::NOTIFY: LASTINDEX ", hashLast.SubString());
+
+                                    break;
                                 }
                             }
-
-                            /* Debug output. */
-                            debug::log(3, NODE, "ACTION::NOTIFY: LASTINDEX ", hashLast.SubString());
 
                             break;
                         }
@@ -1278,6 +1458,28 @@ namespace LLP
 
                             /* Debug output. */
                             debug::log(0, NODE, "ACTION::NOTIFY: BESTCHAIN ", hashBestChain.SubString());
+
+                            break;
+                        }
+
+
+                        /* Standard type for na address. */
+                        case TYPES::ADDRESS:
+                        {
+                            /* Check for subscription. */
+                            if(!(nSubscriptions & SUBSCRIPTION::ADDRESS))
+                                return debug::drop(NODE, "ADDRESS: unsolicited notification");
+
+                            /* Get the base address. */
+                            BaseAddress addr;
+                            ssPacket >> addr;
+
+                            /* Add addresses to manager.. */
+                            if(TRITIUM_SERVER->pAddressManager)
+                                TRITIUM_SERVER->pAddressManager->AddAddress(addr);
+
+                            /* Debug output. */
+                            debug::log(0, NODE, "ACTION::NOTIFY: ADDRESS ", addr.ToString());
 
                             break;
                         }
@@ -1349,6 +1551,10 @@ namespace LLP
             /* Standard type for a timeseed. */
             case TYPES::TIMESEED:
             {
+                /* Check for subscription. */
+                if(!(nSubscriptions & SUBSCRIPTION::TIMESEED))
+                    return debug::drop(NODE, "TYPES::TIMESEED: unsolicited data");
+
                 /* Check for authorized node. */
                 if(!Authorized())
                     return debug::drop(NODE, "cannot send timeseed if not authorized");
@@ -1371,6 +1577,10 @@ namespace LLP
             /* Standard type for a block. */
             case TYPES::ADDRESS:
             {
+                /* Check for subscription. */
+                if(!(nSubscriptions & SUBSCRIPTION::ADDRESS))
+                    return debug::drop(NODE, "TYPES::ADDRESS: unsolicited data");
+
                 /* Get the base address. */
                 BaseAddress addr;
                 ssPacket >> addr;
@@ -1386,6 +1596,10 @@ namespace LLP
             /* Handle incoming block. */
             case TYPES::BLOCK:
             {
+                /* Check for subscription. */
+                if(!(nSubscriptions & SUBSCRIPTION::BLOCK) && TAO::Ledger::nSyncSession.load() != nCurrentSession)
+                    return debug::drop(NODE, "TYPES::BLOCK: unsolicited data");
+
                 /* Get the specifier. */
                 uint8_t nSpecifier = 0;
                 ssPacket >> nSpecifier;
@@ -1477,8 +1691,8 @@ namespace LLP
                     case SPECIFIER::SYNC:
                     {
                         /* Check if this is an unsolicited sync block. */
-                        if(nCurrentSession != TAO::Ledger::nSyncSession)
-                            return debug::drop(FUNCTION, "unsolicted sync block");
+                        //if(nCurrentSession != TAO::Ledger::nSyncSession)
+                        //    return debug::drop(FUNCTION, "unsolicted sync block");
 
                         /* Get the block from the stream. */
                         TAO::Ledger::SyncBlock block;
@@ -1564,6 +1778,10 @@ namespace LLP
             /* Handle incoming transaction. */
             case TYPES::TRANSACTION:
             {
+                /* Check for subscription. */
+                if(!(nSubscriptions & SUBSCRIPTION::TRANSACTION))
+                    return debug::drop(NODE, "TYPES::TRANSACTION: unsolicited data");
+
                 /* Get the specifier. */
                 uint8_t nSpecifier = 0;
                 ssPacket >> nSpecifier;
@@ -1687,7 +1905,10 @@ namespace LLP
     /* Unsubscribe from another node for notifications. */
     void TritiumNode::Unsubscribe(const uint16_t nFlags)
     {
-        //this method just wraps subscribe
+        /* Set the timestamp that we unsubscribed at. */
+        nUnsubscribed = runtime::timestamp();
+
+        /* Unsubscribe over the network. */
         Subscribe(nFlags, false);
     }
 
@@ -1715,9 +1936,6 @@ namespace LLP
             }
             else
             {
-                /* Set the flag. */
-                nSubscriptions &= ~SUBSCRIPTION::BLOCK;
-
                 /* Debug output. */
                 debug::log(3, NODE, "UNSUBSCRIBING FROM BLOCK ", std::bitset<16>(nSubscriptions));
             }
@@ -1740,9 +1958,6 @@ namespace LLP
             }
             else
             {
-                /* Set the flag. */
-                nSubscriptions &= ~SUBSCRIPTION::TRANSACTION;
-
                 /* Debug output. */
                 debug::log(3, NODE, "UNSUBSCRIBING FROM TRANSACTION ", std::bitset<16>(nSubscriptions));
             }
@@ -1765,9 +1980,6 @@ namespace LLP
             }
             else
             {
-                /* Set the flag. */
-                nSubscriptions &= ~SUBSCRIPTION::TIMESEED;
-
                 /* Debug output. */
                 debug::log(3, NODE, "UNSUBSCRIBING FROM TIMESEED ", std::bitset<16>(nSubscriptions));
             }
@@ -1790,9 +2002,6 @@ namespace LLP
             }
             else
             {
-                /* Set the flag. */
-                nSubscriptions &= ~SUBSCRIPTION::BESTHEIGHT;
-
                 /* Debug output. */
                 debug::log(3, NODE, "UNSUBSCRIBING FROM BESTHEIGHT ", std::bitset<16>(nSubscriptions));
             }
@@ -1815,9 +2024,6 @@ namespace LLP
             }
             else
             {
-                /* Set the flag. */
-                nSubscriptions &= ~SUBSCRIPTION::CHECKPOINT;
-
                 /* Debug output. */
                 debug::log(3, NODE, "UNSUBSCRIBING FROM CHECKPOINT ", std::bitset<16>(nSubscriptions));
             }
@@ -1840,9 +2046,6 @@ namespace LLP
             }
             else
             {
-                /* Set the flag. */
-                nSubscriptions &= ~SUBSCRIPTION::ADDRESS;
-
                 /* Debug output. */
                 debug::log(3, NODE, "UNSUBSCRIBING FROM ADDRESS ", std::bitset<16>(nSubscriptions));
             }
@@ -1865,9 +2068,6 @@ namespace LLP
             }
             else
             {
-                /* Set the flag. */
-                nSubscriptions &= ~SUBSCRIPTION::LASTINDEX;
-
                 /* Debug output. */
                 debug::log(3, NODE, "UNSUBSCRIBING FROM LASTINDEX ", std::bitset<16>(nSubscriptions));
             }
@@ -1890,9 +2090,6 @@ namespace LLP
             }
             else
             {
-                /* Set the flag. */
-                nSubscriptions &= ~SUBSCRIPTION::BESTCHAIN;
-
                 /* Debug output. */
                 debug::log(3, NODE, "UNSUBSCRIBING FROM BESTCHAIN ", std::bitset<16>(nSubscriptions));
             }
@@ -1925,7 +2122,7 @@ namespace LLP
 
             /* The signature data for this message */
             std::vector<uint8_t> vchSig;
-            
+
             /* Generate the public key and signature for the message data */
             TAO::API::users->GetAccount(0)->Sign("network", ssMessage.Bytes(), TAO::API::users->GetAuthKey()->DATA, vchPubKey, vchSig);
 
@@ -1933,8 +2130,8 @@ namespace LLP
             ssMessage << vchPubKey;
 
             /* Finally add the signature to the message */
-            ssMessage << vchSig;   
-        
+            ssMessage << vchSig;
+
         }
 
         return ssMessage;
@@ -1949,8 +2146,8 @@ namespace LLP
 
         /* Check whether it is valid before sending it */
         if(ssMessage.size() > 0)
-            WritePacket(NewMessage((fAuth ? ACTION::AUTH : ACTION::DEAUTH), ssMessage));   
-        
+            WritePacket(NewMessage((fAuth ? ACTION::AUTH : ACTION::DEAUTH), ssMessage));
+
     }
 
 
@@ -2075,7 +2272,7 @@ namespace LLP
                 }
 
 
-                /* Check for checkpoint subscription. */
+                /* Check for best chain subscription. */
                 case TYPES::BESTCHAIN:
                 {
                     /* Get the index. */
@@ -2092,6 +2289,29 @@ namespace LLP
                         /* Write transaction to stream. */
                         ssRelay << uint8_t(TYPES::BESTCHAIN);
                         ssRelay << hashBest;
+                    }
+
+                    break;
+                }
+
+
+                /* Check for address subscription. */
+                case TYPES::ADDRESS:
+                {
+                    /* Get the index. */
+                    BaseAddress addr;
+                    ssData >> addr;
+
+                    /* Skip malformed requests. */
+                    if(fLegacy)
+                        continue;
+
+                    /* Check subscription. */
+                    if(nNotifications & SUBSCRIPTION::ADDRESS)
+                    {
+                        /* Write transaction to stream. */
+                        ssRelay << uint8_t(TYPES::ADDRESS);
+                        ssRelay << addr;
                     }
 
                     break;
