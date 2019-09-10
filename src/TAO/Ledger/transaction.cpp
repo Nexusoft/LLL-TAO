@@ -462,7 +462,6 @@ namespace TAO
                 /* Write proper last hash index. */
                 if(!LLD::Ledger->WriteLast(hashGenesis, hashPrevTx))
                     return debug::error(FUNCTION, "failed to write last hash");
-
             }
 
             /* Revert last stake whan disconnect a coinstake tx */

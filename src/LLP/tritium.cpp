@@ -203,7 +203,7 @@ namespace LLP
                 }
 
                 /* Check for initialization. */
-                if(!fInitialized.load() && hashBestChain == TAO::Ledger::ChainState::hashBestChain.load())
+                if(!fInitialized.load() && (hashBestChain == TAO::Ledger::ChainState::hashBestChain.load() || fSynchronized))
                 {
                     /* Set that node is initialized. */
                     fInitialized.store(true);
