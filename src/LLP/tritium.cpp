@@ -1691,8 +1691,8 @@ namespace LLP
                     case SPECIFIER::SYNC:
                     {
                         /* Check if this is an unsolicited sync block. */
-                        if(nCurrentSession != TAO::Ledger::nSyncSession)
-                            return debug::drop(FUNCTION, "unsolicted sync block");
+                        //if(nCurrentSession != TAO::Ledger::nSyncSession)
+                        //    return debug::drop(FUNCTION, "unsolicted sync block");
 
                         /* Get the block from the stream. */
                         TAO::Ledger::SyncBlock block;
