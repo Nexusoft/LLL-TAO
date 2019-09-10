@@ -123,7 +123,7 @@ namespace TAO
 
                     /* Handle the conflict detection. */
                     if(mapConflicts.count(tx.hashPrevTx))
-                        return debug::error(FUNCTION, "conflicting transaction");
+                        return debug::error(FUNCTION, "tx already claimed ", tx.hashPrevTx.SubString());
 
                     /* Set the conflict. */
                     mapConflicts[tx.hashPrevTx] = 0;
