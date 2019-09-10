@@ -202,22 +202,6 @@ namespace LLP
                     return;
                 }
 
-                /* Check for initialization. */
-                if(!fInitialized.load() && (hashBestChain == TAO::Ledger::ChainState::hashBestChain.load() || fSynchronized))
-                {
-                    /* Set that node is initialized. */
-                    fInitialized.store(true);
-
-                    /* Subscribe to new data elements. */
-                    Subscribe(
-                        SUBSCRIPTION::BESTHEIGHT
-                      | SUBSCRIPTION::CHECKPOINT
-                      | SUBSCRIPTION::BLOCK
-                      | SUBSCRIPTION::TRANSACTION
-                      | SUBSCRIPTION::ADDRESS
-                    );
-                }
-
                 /* Handle sending the pings to remote node.. */
                 if(nLastPing + 15 < runtime::unifiedtimestamp())
                 {
@@ -390,17 +374,9 @@ namespace LLP
                         BaseAddress(GetAddress())
                     );
                 }
-                else
-                {
-                    /* Subscribe to this node. */
-                    Subscribe(SUBSCRIPTION::BESTCHAIN | SUBSCRIPTION::TRANSACTION);
-
-                    /* Grab list of memory pool transactions. */
-                    PushMessage(ACTION::LIST, uint8_t(TYPES::MEMPOOL));
-                }
 
                 /* Send Auth immediately after version and before any other messages*/
-                Auth(true);
+                //Auth(true);
 
                 /* If not synchronized and making an outbound connection, start the sync */
                 if(!Incoming() && !fSynchronized.load())
@@ -426,14 +402,30 @@ namespace LLP
                 }
 
                 /* Subscribe to receive notifications. */
-                if(fSynchronized.load())
-                    Subscribe(
-                        SUBSCRIPTION::BESTHEIGHT
-                      | SUBSCRIPTION::CHECKPOINT
-                      | SUBSCRIPTION::BLOCK
-                      | SUBSCRIPTION::TRANSACTION
-                      | SUBSCRIPTION::ADDRESS
-                  );
+                Subscribe(
+                      SUBSCRIPTION::BESTHEIGHT
+                    | SUBSCRIPTION::CHECKPOINT
+                    | SUBSCRIPTION::BLOCK
+                    | SUBSCRIPTION::TRANSACTION
+                    | SUBSCRIPTION::ADDRESS
+                );
+
+                /* Grab list of memory pool transactions. */
+                PushMessage(ACTION::LIST, uint8_t(TYPES::MEMPOOL));
+
+                /* Ask node for current list of sync blocks. */
+                if(TAO::Ledger::nSyncSession.load() != nCurrentSession)
+                {
+                    /* Ask for list of blocks if this is current sync node. */
+                    PushMessage(ACTION::LIST,
+                        uint8_t(SPECIFIER::SYNC),
+                        uint8_t(TYPES::BLOCK),
+                        uint8_t(TYPES::LOCATOR),
+                        TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
+                        uint1024_t(0)
+                    );
+                }
+
 
                 break;
             }
