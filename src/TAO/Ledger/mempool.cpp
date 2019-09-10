@@ -87,18 +87,19 @@ namespace TAO
             /* Get the transaction hash. */
             uint512_t hashTx = tx.GetHash();
 
+            debug::log(0, "TX ", hashTx.ToString());
+
+            /* Check for transaction on disk. */
+            if(LLD::Ledger->HasTx(hashTx, FLAGS::MEMPOOL))
+                return debug::error(FUNCTION, "transaction already exists");
+
             /* Runtime calculations. */
             runtime::timer time;
             time.Start();
 
             /* Get ehe next hash being claimed. */
-            uint32_t nConflict = 0;
             {
                 RLOCK(MUTEX);
-
-                /* Check the mempool. */
-                if(mapLedger.count(hashTx))
-                    return false;
 
                 /* Check for orphans and conflicts when not first transaction. */
                 if(!tx.IsFirst())
@@ -149,11 +150,11 @@ namespace TAO
                 return false;
 
             /* Verify the Ledger Pre-States. */
-            if(!tx.Verify(TAO::Ledger::FLAGS::MEMPOOL + nConflict))
+            if(!tx.Verify(TAO::Ledger::FLAGS::MEMPOOL))
                 return false;
 
             /* Connect transaction in memory. */
-            if(!tx.Connect(TAO::Ledger::FLAGS::MEMPOOL + nConflict))
+            if(!tx.Connect(TAO::Ledger::FLAGS::MEMPOOL))
                 return false;
 
             {
