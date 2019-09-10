@@ -203,7 +203,7 @@ namespace LLP
                 }
 
                 /* Check for initialization. */
-                if(!fInitialized.load() && fSynchronized.load())
+                if(!fInitialized.load() && hashBestChain == TAO::Ledger::ChainState::hashBestChain.load())
                 {
                     /* Set that node is initialized. */
                     fInitialized.store(true);
@@ -214,7 +214,6 @@ namespace LLP
                       | SUBSCRIPTION::CHECKPOINT
                       | SUBSCRIPTION::BLOCK
                       | SUBSCRIPTION::TRANSACTION
-                      | SUBSCRIPTION::BESTCHAIN
                       | SUBSCRIPTION::ADDRESS
                     );
                 }
@@ -411,6 +410,11 @@ namespace LLP
                         );
                     }
                 }
+                else if(Incoming())
+                {
+                    /* Subscribe to this node. */
+                    Subscribe(SUBSCRIPTION::BESTCHAIN);
+                }
 
                 /* Subscribe to receive notifications. */
                 if(fSynchronized.load())
@@ -419,7 +423,6 @@ namespace LLP
                       | SUBSCRIPTION::CHECKPOINT
                       | SUBSCRIPTION::BLOCK
                       | SUBSCRIPTION::TRANSACTION
-                      | SUBSCRIPTION::BESTCHAIN
                       | SUBSCRIPTION::ADDRESS
                   );
 
