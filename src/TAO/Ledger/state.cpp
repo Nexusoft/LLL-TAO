@@ -574,11 +574,15 @@ namespace TAO
                     }
                 }
             }
-            else if(nChainTrust > ChainState::nBestChainTrust.load() && !SetBest())
+            else if(nChainTrust > ChainState::nBestChainTrust.load())
             {
-                LLD::TxnAbort();
+                /* Attempt to set the best chain. */
+                if(!!SetBest())
+                {
+                    LLD::TxnAbort();
 
-                return debug::error(FUNCTION, "failed to set best chain");
+                    return debug::error(FUNCTION, "failed to set best chain");
+                }
             }
 
 

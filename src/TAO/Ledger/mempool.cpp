@@ -151,6 +151,10 @@ namespace TAO
             if(tx.nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
                 return debug::error(FUNCTION, "tx ", hashTx.SubString(), " too far in the future");
 
+            /* Check that hashNextTx is valid */
+            if(tx.hashNextTx != 0) //extra sanity check, just in case. Only matters when in memory pool
+                return debug::error(FUNCTION, "hash next transaction must be zero");
+
             /* Check that the transaction is in a valid state. */
             if(!tx.Check())
                 return false;

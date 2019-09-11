@@ -36,6 +36,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/types/transaction.h>
+#include <TAO/Ledger/types/tritium_minter.h>
 
 #include <Legacy/include/evaluate.h>
 #include <Legacy/include/trust.h>
@@ -128,6 +129,12 @@ namespace TAO
                         /* Set account to unlocked. */
                         pActivePIN = new TAO::Ledger::PinUnlock(
                             config::GetArg("-pin", "").c_str(), TAO::Ledger::PinUnlock::UnlockActions::ALL);
+
+                        /* Display that login was successful. */
+                        debug::log(0, FUNCTION, "Auto-Login Successful");
+
+                        /* Start the stake minter if successful login. */
+                        TAO::Ledger::TritiumMinter::GetInstance().Start();
                     }
                 }
             }
