@@ -87,18 +87,17 @@ namespace TAO
             /* Get the transaction hash. */
             uint512_t hashTx = tx.GetHash();
 
+            /* Check for transaction on disk. */
+            if(LLD::Ledger->HasTx(hashTx, FLAGS::MEMPOOL))
+                return debug::error(FUNCTION, "transaction already exists");
+
             /* Runtime calculations. */
             runtime::timer time;
             time.Start();
 
             /* Get ehe next hash being claimed. */
-            uint32_t nConflict = 0;
             {
                 RLOCK(MUTEX);
-
-                /* Check the mempool. */
-                if(mapLedger.count(hashTx))
-                    return false;
 
                 /* Check for orphans and conflicts when not first transaction. */
                 if(!tx.IsFirst())
@@ -121,35 +120,6 @@ namespace TAO
                         return true;
                     }
 
-<<<<<<< Updated upstream
-                    /* Keep track of connected previous transactions. */
-                    if(mapConnected.count(tx.hashPrevTx))
-                    {
-                        /* Set the conflict from current conflict counter. */
-                        nConflict = ++mapConnected[tx.hashPrevTx];
-
-                        /* Flag this transaction as a conflicted transaction. */
-                        mapConflicts[hashTx] = nConflict;
-
-                        debug::error(FUNCTION, "CONFLICT ", nConflict, " TRANSACTION DETECTED ", tx.hashPrevTx.SubString());
-                    }
-                    else
-                    {
-                        /* Set this transaction as connected. */
-                        mapConnected[tx.hashPrevTx] = 0;
-
-                        /* Check if transaction resolves to a conflict. */
-                        if(mapConflicts.count(tx.hashPrevTx))
-                        {
-                            /* Assign this transaction to conflicted chain. */
-                            mapConflicts[hashTx] = mapConflicts[tx.hashPrevTx];
-
-                            /* Set current conflict chain. */
-                            nConflict = mapConflicts[hashTx];
-
-                            debug::error(FUNCTION, "SEQUENCED CONFLICT ", nConflict, " TRANSACTION DETECTED ", tx.hashPrevTx.SubString());
-                        }
-=======
                     /* Handle the conflict detection. */
                     if(mapConflicts.count(tx.hashPrevTx))
                     {
@@ -163,7 +133,6 @@ namespace TAO
                         tx.print();
 
                         return debug::error(FUNCTION, "tx already claimed ", tx.hashPrevTx.SubString());
->>>>>>> Stashed changes
                     }
                 }
             }
@@ -187,19 +156,11 @@ namespace TAO
                 return false;
 
             /* Verify the Ledger Pre-States. */
-<<<<<<< Updated upstream
-            if(!tx.Verify(TAO::Ledger::FLAGS::MEMPOOL + nConflict))
-                return false;
-
-            /* Connect transaction in memory. */
-            if(!tx.Connect(TAO::Ledger::FLAGS::MEMPOOL + nConflict))
-=======
             if(!tx.Verify())
                 return false;
 
             /* Connect transaction in memory. */
             if(!tx.Connect())
->>>>>>> Stashed changes
                 return false;
 
             {
@@ -293,7 +254,7 @@ namespace TAO
             for(const auto& tx : mapLedger)
             {
                 /* Check for non-conflicted genesis-id's. */
-                if(tx.second.hashGenesis == hashGenesis && !mapConflicts.count(tx.first))
+                if(tx.second.hashGenesis == hashGenesis)
                     vTx.push_back(tx.second);
             }
 
@@ -419,8 +380,8 @@ namespace TAO
                 for(const auto& tx : mapLedger)
                 {
                     /* Check that this transaction isn't conflicted. */
-                    if(mapConflicts.count(tx.first))
-                        continue;
+                    //if(mapConflicts.count(tx.first))
+                    //    continue;
 
                     /* Cache the genesis. */
                     const uint256_t& hashGenesis = tx.second.hashGenesis;
