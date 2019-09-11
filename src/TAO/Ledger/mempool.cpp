@@ -82,7 +82,7 @@ namespace TAO
         {
             /* Check for version 7 activation timestamp. */
             if(!(TAO::Ledger::VersionActive((tx.nTimestamp), 7) || TAO::Ledger::CurrentVersion() > 7))
-                return debug::error(FUNCTION, "tritium transaction not accepted until 2 hours after time-lock");
+                return debug::error(FUNCTION, "tritium transaction not accepted until tritium time-lock");
 
             /* Get the transaction hash. */
             uint512_t hashTx = tx.GetHash();
@@ -108,7 +108,7 @@ namespace TAO
                     {
                         /* Debug output. */
                         debug::log(0, FUNCTION, "tx ", hashTx.SubString(), " ",
-                            tx.nSequence, " genesis ", tx.hashGenesis.SubString(),
+                            tx.nSequence, " prev ", tx.hashPrevTx.SubString(),
                             " ORPHAN in ", std::dec, time.ElapsedMilliseconds(), " ms");
 
                         /* Push to orphan queue. */
@@ -121,6 +121,7 @@ namespace TAO
                         return true;
                     }
 
+<<<<<<< Updated upstream
                     /* Keep track of connected previous transactions. */
                     if(mapConnected.count(tx.hashPrevTx))
                     {
@@ -148,6 +149,21 @@ namespace TAO
 
                             debug::error(FUNCTION, "SEQUENCED CONFLICT ", nConflict, " TRANSACTION DETECTED ", tx.hashPrevTx.SubString());
                         }
+=======
+                    /* Handle the conflict detection. */
+                    if(mapConflicts.count(tx.hashPrevTx))
+                    {
+                        if(!mapLedger.count(mapConflicts[tx.hashPrevTx]))
+                            return debug::error(FUNCTION, "conflict issued with nothing in mempool");
+
+                        debug::log(0, "already in");
+                        mapLedger[mapConflicts[tx.hashPrevTx]].print();
+
+                        debug::log(0, "conflicted tx");
+                        tx.print();
+
+                        return debug::error(FUNCTION, "tx already claimed ", tx.hashPrevTx.SubString());
+>>>>>>> Stashed changes
                     }
                 }
             }
@@ -171,11 +187,19 @@ namespace TAO
                 return false;
 
             /* Verify the Ledger Pre-States. */
+<<<<<<< Updated upstream
             if(!tx.Verify(TAO::Ledger::FLAGS::MEMPOOL + nConflict))
                 return false;
 
             /* Connect transaction in memory. */
             if(!tx.Connect(TAO::Ledger::FLAGS::MEMPOOL + nConflict))
+=======
+            if(!tx.Verify())
+                return false;
+
+            /* Connect transaction in memory. */
+            if(!tx.Connect())
+>>>>>>> Stashed changes
                 return false;
 
             {
@@ -231,6 +255,10 @@ namespace TAO
                     hashTx = hashThis;
                 }
             }
+
+            /* Set the conflict in pool. */
+            if(!tx.IsFirst())
+                mapConflicts[tx.hashPrevTx] = hashTx;
 
             /* Notify private to produce block if valid. */
             if(config::GetBoolArg("-private"))

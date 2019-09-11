@@ -74,6 +74,9 @@ namespace TAO
                     && config::GetArg("-password", "") != ""
                     && config::GetArg("-pin", "")      != "")
                     {
+                        /* Wipe out the sigchain credentials from args. */
+                        //TODO
+
                         /* Create the sigchain. */
                         memory::encrypted_ptr<TAO::Ledger::SignatureChain> user =
                             new TAO::Ledger::SignatureChain(config::GetArg("-username", "").c_str(), config::GetArg("-password", "").c_str());

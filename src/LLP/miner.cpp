@@ -918,7 +918,7 @@ namespace LLP
 
                /* Check the Proof of Work for submitted block. */
                if(!Legacy::CheckWork(*pBlock, Legacy::Wallet::GetInstance()))
-                   return debug::error(FUNCTION, "Invalid Work for Legacy Block ", hashMerkleRoot.SubString());
+                   return false;
 
                /* Block is valid - Tell the wallet to keep this key. */
                pMiningKey->KeepKey();
@@ -956,8 +956,8 @@ namespace LLP
            }
 
            /* Check if the block is stale. */
-           if(pBlock->hashPrevBlock != TAO::Ledger::ChainState::hashBestChain.load())
-               return debug::error(FUNCTION, "Generated block is stale");
+          // if(pBlock->hashPrevBlock != TAO::Ledger::ChainState::hashBestChain.load())
+            //   return false;
 
            /* Attempt to get the sigchain. */
            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pSigChain = TAO::API::users->GetAccount(0);
@@ -973,13 +973,13 @@ namespace LLP
 
            /* Check the statues. */
            if(!(nStatus & TAO::Ledger::PROCESS::ACCEPTED))
-               return debug::error(FUNCTION, "generated block not accepted");
+               return false;
 
            return true;
        }
 
        /* If we get here, the block is null or doesn't exist. */
-       return debug::error(FUNCTION, "null block");
+       return false;
    }
 
 

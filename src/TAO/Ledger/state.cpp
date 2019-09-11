@@ -90,7 +90,8 @@ namespace TAO
         , nMoneySupply(0)
         , nMint(0)
         , nChannelHeight(0)
-        , nReleasedReserve{0, 0, 0}
+        , nChannelWeight {0, 0, 0}
+        , nReleasedReserve {0, 0, 0}
         , hashNextBlock(0)
         , hashCheckpoint(0)
         {
@@ -109,8 +110,8 @@ namespace TAO
         , nMint(0)
         , nFees(0)
         , nChannelHeight(0)
-        , nChannelWeight{0, 0, 0}
-        , nReleasedReserve{0, 0, 0}
+        , nChannelWeight {0, 0, 0}
+        , nReleasedReserve {0, 0, 0}
         , nFeeReserve(0)
         , hashNextBlock(0)
         , hashCheckpoint(0)
@@ -135,8 +136,8 @@ namespace TAO
         , nMint(0)
         , nFees(0)
         , nChannelHeight(0)
-        , nChannelWeight{0, 0, 0}
-        , nReleasedReserve{0, 0, 0}
+        , nChannelWeight {0, 0, 0}
+        , nReleasedReserve {0, 0, 0}
         , nFeeReserve(0)
         , hashNextBlock(0)
         , hashCheckpoint(0)
@@ -160,16 +161,24 @@ namespace TAO
         : Block(state)
         {
             nTime               = state.nTime;
+            ssSystem            = state.ssSystem;
             vtx                 = state.vtx;
 
             nChainTrust         = state.nChainTrust;
             nMoneySupply        = state.nMoneySupply;
             nMint               = state.nMint;
+            nFees               = state.nFees;
             nChannelHeight      = state.nChannelHeight;
+
+            nChannelWeight[0]   = state.nChannelWeight[0];
+            nChannelWeight[1]   = state.nChannelWeight[1];
+            nChannelWeight[2]   = state.nChannelWeight[2];
 
             nReleasedReserve[0] = state.nReleasedReserve[0];
             nReleasedReserve[1] = state.nReleasedReserve[1];
             nReleasedReserve[2] = state.nReleasedReserve[2];
+
+            nFeeReserve         = state.nFeeReserve;
 
             hashNextBlock       = state.hashNextBlock;
             hashCheckpoint      = state.hashCheckpoint;
@@ -189,16 +198,24 @@ namespace TAO
             vchBlockSig         = state.vchBlockSig;
 
             nTime               = state.nTime;
+            ssSystem            = state.ssSystem;
             vtx                 = state.vtx;
 
             nChainTrust         = state.nChainTrust;
             nMoneySupply        = state.nMoneySupply;
             nMint               = state.nMint;
+            nFees               = state.nFees;
             nChannelHeight      = state.nChannelHeight;
+
+            nChannelWeight[0]   = state.nChannelWeight[0];
+            nChannelWeight[1]   = state.nChannelWeight[1];
+            nChannelWeight[2]   = state.nChannelWeight[2];
 
             nReleasedReserve[0] = state.nReleasedReserve[0];
             nReleasedReserve[1] = state.nReleasedReserve[1];
             nReleasedReserve[2] = state.nReleasedReserve[2];
+
+            nFeeReserve         = state.nFeeReserve;
 
             hashNextBlock       = state.hashNextBlock;
             hashCheckpoint      = state.hashCheckpoint;
@@ -284,7 +301,7 @@ namespace TAO
             for(uint32_t n = 0; n < 3; ++n)
             {
                 nChannelWeight[n] = statePrev.nChannelWeight[n];
-                //debug::log(0, "Weight ", n == 0 ? "Stake" : (n == 1 ? "Prime" : "Hash "), ": ", nChannelWeight[n]);
+                debug::log(0, "Weight ", n == 0 ? "Stake" : (n == 1 ? "Prime" : "Hash "), ": ", nChannelWeight[n].Get64());
             }
 
             /* Find the last block of this channel. */
@@ -506,7 +523,10 @@ namespace TAO
 
             /* Add new weights for this channel. */
             if(!IsPrivate())
+            {
+                debug::log(0, "Adding ", Weight(), " To Channel ", nChannel);
                 nChannelWeight[nChannel] += Weight();
+            }
 
             /* Compute the chain trust. */
             nChainTrust = statePrev.nChainTrust + Trust();
@@ -526,11 +546,11 @@ namespace TAO
                 for(uint32_t n = 0; n < 3; ++n)
                 {
                     /* Check each weight. */
-                    if(nChannelWeight[nChannel] == ChainState::stateBest.load().nChannelWeight[n])
+                    if(nChannelWeight[n] == ChainState::stateBest.load().nChannelWeight[n])
                         ++nEquals;
 
                     /* Check each weight. */
-                    if(nChannelWeight[nChannel] > ChainState::stateBest.load().nChannelWeight[n])
+                    if(nChannelWeight[n] > ChainState::stateBest.load().nChannelWeight[n])
                         ++nGreater;
                 }
 
@@ -539,9 +559,9 @@ namespace TAO
                 {
                     /* Log the weights. */
                     debug::log(2, FUNCTION, "WEIGHTS [", uint32_t(nGreater), "]",
-                        " Prime ", nChannelWeight[1].ToString(),
-                        " Hash ",  nChannelWeight[2].ToString(),
-                        " Stake ", nChannelWeight[0].ToString());
+                        " Prime ", nChannelWeight[1].Get64(),
+                        " Hash ",  nChannelWeight[2].Get64(),
+                        " Stake ", nChannelWeight[0].Get64());
 
                     /* Set the best chain. */
                     if(!SetBest())
