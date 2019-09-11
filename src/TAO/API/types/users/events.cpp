@@ -496,7 +496,7 @@ namespace TAO
                                         break;
 
                                     /* Last stake block must be at least v5 and coinstake must be a legacy transaction */
-                                    if(stateLast.nVersion < 5 || stateLast.vtx[0].first != TAO::Ledger::LEGACY)
+                                    if(stateLast.nVersion < 5 || stateLast.vtx[0].first != TAO::Ledger::TRANSACTION::LEGACY)
                                         break;
 
                                     /* Extract the coinstake from the last trust block */

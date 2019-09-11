@@ -177,7 +177,7 @@ namespace Legacy
         if(!LLD::Ledger->ReadBlock(trustKey.hashLastBlock, state))
             return debug::error(FUNCTION, "debit trust key hash last missing");
 
-        if(state.vtx[0].first != TAO::Ledger::LEGACY)
+        if(state.vtx[0].first != TAO::Ledger::TRANSACTION::LEGACY)
             return debug::error(FUNCTION, "debit last stake is not a legacy transaction");
 
         Transaction txLast;
