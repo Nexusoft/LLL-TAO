@@ -81,7 +81,8 @@ namespace TAO
 
         /* Generate new crypto settings object. */
         Object CreateCrypto(const uint256_t& hashAuth, const uint256_t& hashLisp, const uint256_t& hashNetwork,
-            const uint256_t& hashSign, const uint256_t& hashVerify)
+            const uint256_t& hashSign, const uint256_t& hashVerify, const uint256_t& hashCert,
+            const uint256_t& hashApp1, const uint256_t& hashApp2, const uint256_t& hashApp3)
         {
             /* Create an token object register. */
             TAO::Register::Object crypto;
@@ -91,7 +92,11 @@ namespace TAO
                      << std::string("lisp")      << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << hashLisp
                      << std::string("network")   << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << hashNetwork
                      << std::string("sign")      << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << hashSign
-                     << std::string("verify")    << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << hashVerify;
+                     << std::string("verify")    << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << hashVerify
+                     << std::string("cert")    << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << hashCert
+                     << std::string("app1")    << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << hashApp1
+                     << std::string("app2")    << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << hashApp2
+                     << std::string("app3")    << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << hashApp3;
 
             return crypto;
         }

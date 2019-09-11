@@ -73,12 +73,16 @@ namespace TAO
                 nType = OBJECTS::NAMESPACE;
 
             }
-            else if(mapData.size() == 5
+            else if(mapData.size() == 9
             && Check("auth", TYPES::UINT256_T, true)
             && Check("lisp", TYPES::UINT256_T, true)
             && Check("network", TYPES::UINT256_T, true)
             && Check("sign", TYPES::UINT256_T, true)
-            && Check("verify", TYPES::UINT256_T, true))
+            && Check("verify", TYPES::UINT256_T, true)
+            && Check("cert", TYPES::UINT256_T, true)
+            && Check("app1", TYPES::UINT256_T, true)
+            && Check("app2", TYPES::UINT256_T, true)
+            && Check("app3", TYPES::UINT256_T, true))
             {
                 /* Set the return value. */
                 nType = OBJECTS::CRYPTO;

@@ -39,9 +39,10 @@ namespace LLP
             GET          = 0x11,
             NOTIFY       = 0x12,
             AUTH         = 0x13,
-            VERSION      = 0x14,
-            SUBSCRIBE    = 0x15,
-            UNSUBSCRIBE  = 0x16,
+            DEAUTH       = 0x14,
+            VERSION      = 0x15,
+            SUBSCRIBE    = 0x16,
+            UNSUBSCRIBE  = 0x17,
 
             /* Protocol. */
             PING         = 0x1a,
@@ -349,6 +350,26 @@ namespace LLP
          *
          **/
         const DataStream Notifications(const uint16_t nMsg, const DataStream& ssData) const;
+
+
+        /** Auth
+         *
+         *  Authorize this node to the connected node .
+         *
+         *  @param[in] fAuth Flag to determine whether authorizing or de-authorizing
+         *
+         **/
+        void Auth(bool fAuth);
+
+
+        /** GetAuth
+         *
+         *  Builds an Auth message for this node.
+         *
+         *  @param[in] fAuth Flag to determine whether authorizing or de-authorizing
+         *
+         **/
+        static DataStream GetAuth(bool fAuth);
 
 
         /** SessionActive

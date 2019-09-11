@@ -57,7 +57,6 @@ namespace LLD
                 throw debug::exception(FUNCTION, "conflict ", nConflict, " out of sequence ", vStates.size());
 
             /* Check if there is a new conflict. */
-            debug::log(0, FUNCTION, "CONFLICT ", nConflict);
             if(nConflict == vStates.size())
             {
                 debug::error(FUNCTION, "REGISTER CONFLICT: ", nConflict, " hash ", hashRegister.SubString());

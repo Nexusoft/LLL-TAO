@@ -15,6 +15,9 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <LLP/include/global.h>
+#include <LLP/types/tritium.h>
+
 #include <TAO/API/types/users.h>
 
 #include <TAO/Ledger/include/create.h>
@@ -153,6 +156,21 @@ namespace TAO
             {
                 LOCK(MUTEX);
                 mapSessions.emplace(nSession, std::move(user));
+            }
+
+            /* If not using Multiuser then generate and cache the private key for the "network" key so that we can generate AUTH 
+               LLP messages to authenticate to peers */
+            if(!config::fMultiuser.load())
+            {
+                /* Get the private key. */
+                pAuthKey = new memory::encrypted_type<uint512_t>(user->Generate("network", 0, strPin));
+
+                /* Generate an AUTH message to send to all peers */
+                DataStream ssMessage = LLP::TritiumNode::GetAuth(true);
+
+                /* Check whether it is valid before relaying it to all peers */
+                if(ssMessage.size() > 0)
+                    LLP::TRITIUM_SERVER->Relay(LLP::ACTION::AUTH, ssMessage.Bytes());
             }
 
             return ret;

@@ -19,10 +19,15 @@ ________________________________________________________________________________
 #include <LLC/include/flkey.h>
 #include <LLC/include/eckey.h>
 
+#include <LLD/include/global.h>
+
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/genesis.h>
 
 #include <TAO/Ledger/include/enum.h>
+
+#include <TAO/Register/include/names.h>
+#include <TAO/Register/types/object.h>
 
 #include <Util/include/debug.h>
 
@@ -417,6 +422,92 @@ namespace TAO
             encrypt(pairCache.first);
             encrypt(pairCache.second);
             encrypt(hashGenesis);
+        }
+
+
+        /* Generates a signature for the data, using the specified crypto key type. */
+        bool SignatureChain::Sign(const std::string& strType, const std::vector<uint8_t>& vchData, const uint512_t& hashSecret,
+                                  std::vector<uint8_t>& vchPubKey, std::vector<uint8_t>& vchSig ) const
+        {
+
+            /* Get the secret from new key. */
+            std::vector<uint8_t> vBytes = hashSecret.GetBytes();
+            LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
+
+            /* The crypto register object */
+            TAO::Register::Object crypto;
+
+            /* Get the crypto register. This is needed so that we can determine the key type used to generate the public key */
+            TAO::Register::Address hashCrypto = TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
+            if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::MEMPOOL))
+                throw debug::exception(FUNCTION, "Could not sign - missing crypto register");
+
+            /* Parse the object. */
+            if(!crypto.Parse())
+                throw debug::exception(FUNCTION, "failed to parse crypto register");
+            
+            /* Check that the requested key is in the crypto register */
+            if(!crypto.CheckName(strType))
+                throw debug::exception(FUNCTION, "Key type not found in crypto register: ", strType);
+
+            /* Retrieve the pubic key hash from the crypto register */
+            uint256_t hashPublic = crypto.get<uint256_t>(strType);
+
+            /* Get the encryption key type from the hash of the public key */
+            uint8_t nType = hashPublic.GetType();
+
+            /* Switch based on signature type. */
+            switch(nType)
+            {
+                /* Support for the FALCON signature scheme. */
+                case SIGNATURE::FALCON:
+                {
+                    /* Create the FL Key object. */
+                    LLC::FLKey key;
+
+                    /* Set the secret key. */
+                    if(!key.SetSecret(vchSecret, true))
+                        throw debug::exception(FUNCTION, "failed to set falcon secret key");
+
+                    /* Generate the public key */
+                    vchPubKey = key.GetPubKey();
+
+                    /* Generate the signature */
+                    if(!key.Sign(vchData, vchSig))
+                        throw debug::exception(FUNCTION, "failed to sign data");
+
+                    break;
+                    
+                }
+
+                /* Support for the BRAINPOOL signature scheme. */
+                case SIGNATURE::BRAINPOOL:
+                {
+                    /* Create EC Key object. */
+                    LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
+
+                    /* Set the secret key. */
+                    if(!key.SetSecret(vchSecret, true))
+                        throw debug::exception(FUNCTION, "failed to set brainpool secret key");
+
+                    /* Generate the public key */
+                    vchPubKey = key.GetPubKey();
+
+                    /* Generate the signature */
+                    if(!key.Sign(vchData, vchSig))
+                        throw debug::exception(FUNCTION, "failed to sign data");
+
+                    break;
+                }
+                default:
+                {
+                    throw debug::exception(FUNCTION, "unknown crypto signature scheme");
+                }
+            }
+
+            /* Return success */
+            return true;
+
         }
     }
 }

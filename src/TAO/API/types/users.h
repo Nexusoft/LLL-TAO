@@ -38,7 +38,6 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
-
         /** Users API Class
          *
          *  Manages the function pointers for all Users commands.
@@ -56,6 +55,8 @@ namespace TAO
             /** The active pin for sessionless API use **/
             mutable memory::encrypted_ptr<TAO::Ledger::PinUnlock> pActivePIN;
 
+            /** The auth private key for sessionless API use **/
+            mutable memory::encrypted_ptr<memory::encrypted_type<uint512_t>> pAuthKey;
 
             /** The mutex for locking. **/
             mutable std::mutex MUTEX;
@@ -249,6 +250,16 @@ namespace TAO
              *
              **/
             uint256_t GetSession(const json::json params, bool fThrow = true) const;
+
+
+            /** GetAuthKey
+            *
+            *  Returns the private key for the auth public key
+            *
+            *  @return the private key for the auth public key
+            *
+            **/
+            memory::encrypted_ptr<memory::encrypted_type<uint512_t>>& GetAuthKey() const;
 
 
 

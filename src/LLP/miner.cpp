@@ -691,7 +691,7 @@ namespace LLP
         if(TAO::API::users && TAO::API::users->CanProcessNotifications())
         {
             TAO::API::users->NotifyEvent();
-            //WaitEvent();
+            WaitEvent();
         }
 
         return true;

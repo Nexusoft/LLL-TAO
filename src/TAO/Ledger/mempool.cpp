@@ -156,11 +156,11 @@ namespace TAO
                 return false;
 
             /* Verify the Ledger Pre-States. */
-            if(!tx.Verify())
+            if(!tx.Verify(FLAGS::MEMPOOL))
                 return false;
 
             /* Connect transaction in memory. */
-            if(!tx.Connect())
+            if(!tx.Connect(FLAGS::MEMPOOL))
                 return false;
 
             {

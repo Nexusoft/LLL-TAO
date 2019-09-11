@@ -307,7 +307,7 @@ This will list off all of the transactions related to a given token. You DO NOT 
                 "account": "d430231b0c1973c784cc9942daa32f704db571a5c7d2a1f091e91fdd4abe622b",
                 "account_name": "default",
                 "amount": 76.450762,
-                "token": "0000000000000000000000000000000000000000000000000000000000000000",
+                "token": "0",
                 "token_name": "NXS"
             },
             {
@@ -586,9 +586,9 @@ Additionally the API supports passing a field name in the URL after the account 
     "created": 1566534164,
     "modified": 1566616211,
     "name": "myaccount",
-    "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9",
+    "address": "8CbkwEQ9S8owmX74joU6XmiwxJq1aoiqUoXc9fLCKzw15HscM99",
     "token_name": "mytoken"
-    "token": "f9ee3e63c845794d577d54c5087f0ff2f2053195bf007907e8134977bb1f1e24",
+    "token": "8EHRNnxn5qX9gMF1Jbqvo1jkAeP7XY1PETnMtegv9rdr6QG3ZJy",
     "balance": 990,
     "pending": 0.0,
     "unconfirmed": 10
@@ -669,17 +669,11 @@ This will list off all of the transactions related to a given account. You DO NO
                 "txid": "01e73b498dbabbf4629ad674b9ae3824b96cca83199c25a67901db53b271d19acf1411b0c4f9a3d8ded80860ffe2dcf683d2d227a675d453303b31f86f868f9e",
                 "output": 0,
                 "proof": "a2e51edcd41a8152bfedb24e3c22ee5a65d6d7d524146b399145bced269aeff0",
-                "account": "d430231b0c1973c784cc9942daa32f704db571a5c7d2a1f091e91fdd4abe622b",
-                "account_name": "default",
-                "amount": 76.450762,
-                "token": "0000000000000000000000000000000000000000000000000000000000000000",
-                "token_name": "NXS"
-            },
-            {
-                "OP": "FEE",
-                "account": "d430231b0c1973c784cc9942daa32f704db571a5c7d2a1f091e91fdd4abe622b",
-                "account_name": "default",
-                "amount": 0.1
+                "account": "8CbkwEQ9S8owmX74joU6XmiwxJq1aoiqUoXc9fLCKzw15HscM99",
+                "account_name": "test",
+                "amount": 10,
+                "token": "8EHRNnxn5qX9gMF1Jbqvo1jkAeP7XY1PETnMtegv9rdr6QG3ZJy",
+                "token_name": "TST"
             }
         ]
     }

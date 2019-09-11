@@ -62,6 +62,7 @@ namespace TAO
 
             /** Internal genesis hash. **/
             const uint256_t hashGenesis;
+            
 
 
         public:
@@ -173,6 +174,23 @@ namespace TAO
              *
              **/
             void Encrypt();
+
+
+            /** Sign
+            *
+            *  Generates a signature for the data, using the specified crypto key type
+            *
+            *  @param[in] strType The type of signing key to use
+            *  @param[in] vchData The data to base the signature off
+            *  @param[in] hashSecret The private key to use for the signature
+            *  @param[out] vchPubKey The public key generated from the private key
+            *  @param[out] vchSig The signature bytes
+            *
+            *  @return True if successful
+            *
+            **/
+            bool Sign(const std::string& strType, const std::vector<uint8_t>& vchData, const uint512_t& hashSecret,
+                                      std::vector<uint8_t>& vchPubKey, std::vector<uint8_t>& vchSig) const;
         };
     }
 }
