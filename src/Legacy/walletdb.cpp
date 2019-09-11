@@ -490,9 +490,13 @@ namespace Legacy
                 else if(config::GetBoolArg("-walletcheck", true))
                 {
                     /* Skip check for tritium transactions. */
-                    if((TAO::Ledger::VersionActive(wtx.nTime, 7) || TAO::Ledger::CurrentVersion() > 7) && hash.GetType() == TAO::Ledger::TRITIUM)
+                    if((TAO::Ledger::VersionActive(wtx.nTime, 7) || TAO::Ledger::CurrentVersion() > 7)
+                        && hash.GetType() == TAO::Ledger::TRITIUM)
                     {
-                        /* Read the transaction from ledger database. */
+                        /* Read the transaction from ledger database.
+                         * In the event of a collision between old Legacy hash and Tritium hash type, this
+                         * read will fail and it will fall through to Legacy check below.
+                         */
                         TAO::Ledger::Transaction tx;
                         if(LLD::Ledger->ReadTx(hash, tx))
                         {
@@ -504,22 +508,21 @@ namespace Legacy
                             if(wtx.GetHash() != wtx2.GetHash())
                             {
                                 debug::error(FUNCTION, "Error in ", strWalletFile, ", hash mismatch, resolving");
-
                                 vRemove.push_back(hash);
 
                                 fBind = false;
                             }
-                        }
-                        else
-                        {
-                            vRemove.push_back(hash);
 
-                            fBind = false;
+                            continue;
                         }
                     }
-                    else if(wtx.GetHash() != hash)
+
+                    if(wtx.GetHash() != hash)
                     {
                         debug::error(FUNCTION, "Error in ", strWalletFile, ", hash mismatch, resolving");
+debug::log(0, FUNCTION, "Legacy check");
+debug::log(0, FUNCTION, "wtx ", wtx.GetHash().SubString());
+debug::log(0, FUNCTION, "hash ", hash.SubString());
 
                         /* Add mismatched transaction to list of transactions to remove from database */
                         vRemove.push_back(hash);
