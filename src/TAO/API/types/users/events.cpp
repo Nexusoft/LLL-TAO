@@ -95,9 +95,9 @@ namespace TAO
                             {
                                 /* The genesis transaction  */
                                 TAO::Ledger::Transaction tx;
-                                
+
                                 /* Create the sig chain genesis transaction */
-                                Create(strUsername, strPassword, strPin, tx);
+                                CreateSigchain(strUsername, strPassword, strPin, tx);
 
                             }
                             else
@@ -144,7 +144,7 @@ namespace TAO
                             pActivePIN.free();
 
                         /* The unlock actions to apply for autologin.  NOTE we do NOT unlock for transactions */
-                        uint8_t nUnlockActions = TAO::Ledger::PinUnlock::UnlockActions::MINING 
+                        uint8_t nUnlockActions = TAO::Ledger::PinUnlock::UnlockActions::MINING
                                                | TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS
                                                | TAO::Ledger::PinUnlock::UnlockActions::STAKING;
 

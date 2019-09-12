@@ -84,9 +84,9 @@ namespace TAO
 
             /* The genesis transaction  */
             TAO::Ledger::Transaction tx;
-            
+
             /* Create the sig chain genesis transaction */
-            Create(strUsername, strPassword, strPin, tx);
+            CreateSigchain(strUsername, strPassword, strPin, tx);
 
             /* Build a JSON response object. */
             ret["version"]   = tx.nVersion;
@@ -104,8 +104,8 @@ namespace TAO
 
 
         /* Creates a signature chain for the given credentials and returns the transaction object if successful */
-        void Users::Create(const SecureString& strUsername, const SecureString& strPassword, 
-                            const SecureString& strPin, TAO::Ledger::Transaction& tx)
+        void Users::CreateSigchain(const SecureString& strUsername, const SecureString& strPassword,
+                                   const SecureString& strPin, TAO::Ledger::Transaction& tx)
         {
             /* Generate the signature chain. */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain> user = new TAO::Ledger::SignatureChain(strUsername, strPassword);
@@ -163,7 +163,7 @@ namespace TAO
                                                 0, //cert disabled for now
                                                 0, //app1 disabled for now
                                                 0, //app2 disabled for now
-                                                0);//app3 disabled for now 
+                                                0);//app3 disabled for now
 
             /* Add the crypto register operation to the transaction */
             tx[4] << uint8_t(TAO::Operation::OP::CREATE)      << hashRegister
