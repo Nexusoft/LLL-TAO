@@ -29,8 +29,11 @@ namespace TAO
         /*  Commit the final state to disk. */
         bool Trust::Commit(const TAO::Register::State& state, const uint8_t nFlags)
         {
-            /* Attempt to write to disk. */
-            if(!LLD::Register->WriteTrust(state.hashOwner, state))
+            /* Attempt to write to disk.
+             * This should never be executed from mempool because Trust should be in producer, but
+             * check the nFlags as a precaution
+             */
+            if(nFlags == TAO::Ledger::FLAGS::BLOCK && !LLD::Register->WriteTrust(state.hashOwner, state))
                 return debug::error(FUNCTION, "failed to write post-state to disk");
 
             return true;

@@ -32,8 +32,10 @@ namespace TAO
         /*  Commit the final state to disk. */
         bool Unstake::Commit(const TAO::Register::State& state, const uint8_t nFlags)
         {
-            /* Attempt to write to disk. */
-            if(!LLD::Register->WriteTrust(state.hashOwner, state))
+            /* Attempt to write to disk.
+             * Unstake operation can be executed on mempool accept, so only write trust for BLOCK flag
+             */
+            if(nFlags == TAO::Ledger::FLAGS::BLOCK && !LLD::Register->WriteTrust(state.hashOwner, state))
                 return debug::error(FUNCTION, "failed to write post-state to disk");
 
             return true;

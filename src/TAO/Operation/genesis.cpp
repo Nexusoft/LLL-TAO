@@ -38,9 +38,12 @@ namespace TAO
             if(!LLD::Register->WriteState(hashAddress, state, nFlags))
                 return debug::error(FUNCTION, "failed to write new state");
 
-            /* Update the register database with the index. */
-            if(!LLD::Register->IndexTrust(state.hashOwner, hashAddress))
-                return debug::error(FUNCTION, "could not index the address to the genesis");
+            /* Update the register database with the index.
+             * This should never be executed from mempool because Genesis should be in producer, but
+             * check the nFlags as a precaution
+             */
+            if(nFlags == TAO::Ledger::FLAGS::BLOCK && !LLD::Register->IndexTrust(state.hashOwner, hashAddress))
+                    return debug::error(FUNCTION, "could not index the address to the genesis");
 
             return true;
         }
