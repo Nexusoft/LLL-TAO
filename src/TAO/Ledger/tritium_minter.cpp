@@ -246,17 +246,18 @@ namespace TAO
 
 
         /** Retrieves the most recent stake transaction for a user account. */
-        bool TritiumMinter::FindLastStake(const Genesis& hashGenesis, Transaction& tx)
+        bool TritiumMinter::FindLastStake(const Genesis& hashGenesis, uint512_t& hashLast)
         {
-            uint512_t hashLast = 0;
-            if(LLD::Ledger->ReadStake(hashGenesis, hashLast) && LLD::Ledger->ReadTx(hashLast, tx))
+            if(LLD::Ledger->ReadStake(hashGenesis, hashLast))
                 return true;
 
             /* If last stake is not directly available, search for it */
+            Transaction tx;
             if(TAO::Ledger::FindLastStake(hashGenesis, tx))
             {
                 /* Update the Ledger with found last stake */
-                LLD::Ledger->WriteStake(hashGenesis, tx.GetHash());
+                hashLast = tx.GetHash();
+                LLD::Ledger->WriteStake(hashGenesis, hashLast);
 
                 return true;
             }
@@ -303,13 +304,13 @@ namespace TAO
                 }
 
                 /* Get the previous stake tx for the trust account. */
-                txLast = Transaction();
-                if(!FindLastStake(user->Genesis(), txLast))
+                uint512_t hashLast;
+                if(!FindLastStake(user->Genesis(), hashLast))
                     return debug::error(FUNCTION, "Failed to get last stake for trust account");
 
                 /* Get the block containing the last stake tx for the trust account. */
                 stateLast = BlockState();
-                if(!LLD::Ledger->ReadBlock(txLast.GetHash(), stateLast))
+                if(!LLD::Ledger->ReadBlock(hashLast, stateLast))
                     return debug::error(FUNCTION, "Failed to get last block for trust account");
 
                 /* Calculate time since last stake block (block age = age of previous stake block at time of current stateBest). */
@@ -321,7 +322,7 @@ namespace TAO
                 /* Initialize block producer for Trust operation with hashLastTrust, new trust score.
                  * The coinstake reward will be added based on time when block is found.
                  */
-                block.producer[0] << uint8_t(TAO::Operation::OP::TRUST) << txLast.GetHash() << nTrust;
+                block.producer[0] << uint8_t(TAO::Operation::OP::TRUST) << hashLast << nTrust;
             }
             else
             {
@@ -465,17 +466,17 @@ namespace TAO
                 return;
             }
             /* Genesis blocks do not include mempool transactions.  Therefore if there are already any transactions in the mempool
-               for this sig chain the genesis block will fail to be accepted because the producer.prevTX would not be on disk. 
+               for this sig chain the genesis block will fail to be accepted because the producer.prevTX would not be on disk.
                Therefore if this is a genesis block, skip until there are no mempool transactions for this sig chain. */
-            else if(fGenesis && mempool.Has(user->Genesis())) 
+            else if(fGenesis && mempool.Has(user->Genesis()))
             {
                 /* 5 second wait is reset below (can't sleep too long or will hang until wakes up on shutdown) */
-                nSleepTime = 5000; 
+                nSleepTime = 5000;
 
                 /* Update log every 10 iterations (50 seconds, which is average block time) */
                 if((nCounter % 10) == 0)
                     debug::log(0, FUNCTION, "Stake Minter: Skipping genesis as mempool transactions would be orphaned.");
-                
+
                 ++nCounter;
 
                 return;

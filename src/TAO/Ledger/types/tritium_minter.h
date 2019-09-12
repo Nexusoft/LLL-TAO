@@ -157,10 +157,6 @@ namespace TAO
         TAO::Register::Object account;
 
 
-        /** Last stake transaction for the current trust account. */
-        TAO::Ledger::Transaction txLast;
-
-
         /** Last stake block found by current trust account. */
         TAO::Ledger::BlockState stateLast;
 
@@ -185,7 +181,6 @@ namespace TAO
         TritiumMinter()
         : hashAddress(0)
         , account()
-        , txLast()
         , stateLast()
         , block()
         , fGenesis(false)
@@ -222,12 +217,12 @@ namespace TAO
          *  Retrieves the most recent stake transaction for a user account.
          *
          *  @param[in] hashGenesis - genesis of user account signature chain
-         *  @param[out] tx - the most recent stake transaction
+         *  @param[out] hashLast - the most recent stake transaction hash
          *
          *  @return true if the last stake transaction was successfully retrieved
          *
          **/
-        bool FindLastStake(const Genesis& hashGenesis, Transaction& tx);
+        bool FindLastStake(const Genesis& hashGenesis, uint512_t& hashLast);
 
 
         /** CreateCandidateBlock
