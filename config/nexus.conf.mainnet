@@ -8,9 +8,6 @@
 #this will launch the process into the background
 daemon=1
 
-#this will trigger the software to run on the Legacy Main Network
-beta=1
-
 #default RPC user/pass.  PLEASE CHANGE THESE TO SUITABLE VALUES
 rpcuser=username
 rpcpassword=password
@@ -19,9 +16,11 @@ rpcpassword=password
 apiuser=username
 apipassword=password
 
+#OPTIONAL: Allows API authentication to be disabled
+#apiauth=0
 
-#OPTIONAL: seed node to force connect to
-#connect=node1.nexusoft.io
+#OPTIONAL: Sets log file verobosity, default 0
+#verbose=0
 
 #OPTIONAL: enable mining server (for a remote miner to connect to)
 #mining=1
@@ -34,4 +33,16 @@ apipassword=password
 
 #OPTIONAL: allows you to specifically disable the processing of notifications (on by default)
 #processnotifications=0
+
+#OPTIONAL: Allows the node to automatically log in with sig chain credentials and unlock the node for Mining, Staking, and Notifications 
+#autologin=1
+#username=testuser
+#password=testpassword
+#pin=1234
+
+#OPTIONAL: If autologin is set to 1, this additional setting will create the signature chain if it does not exist
+#autocreate=0
+
+#OPTIONAL: seed node to force connect to
+#connect=node1.nexusoft.io
 

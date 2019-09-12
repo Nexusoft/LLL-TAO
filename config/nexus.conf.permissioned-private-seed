@@ -6,7 +6,8 @@
 rpcuser=username
 rpcpassword=password
 
-#default API user/pass to blank for private network (no authentication of API requests)
+#default API user/pass to blank for private network and disable authentication of API requests
+apiauth=0
 apiuser=
 apipassword=
 

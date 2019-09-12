@@ -606,6 +606,20 @@ namespace TAO
                 std::vector<std::pair<std::shared_ptr<Legacy::Transaction>, uint32_t>> &vContracts);
 
 
+            /** Create
+            *
+            *  Creates a signature chain for the given credentials and returns the transaction object if successful
+            *
+            *  @param[in] strUsername The username.
+            *  @param[in] strPassword The password.
+            *  @param[in] strPin The pin.
+            *  @param[out] tx The transaction object that was created.
+            *
+            **/
+            void Create(const SecureString& strUsername, 
+                        const SecureString& strPassword, 
+                        const SecureString& strPin,
+                        TAO::Ledger::Transaction& tx);   
 
 
         };

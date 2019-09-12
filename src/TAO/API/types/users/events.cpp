@@ -76,12 +76,33 @@ namespace TAO
                     && config::GetArg("-password", "") != ""
                     && config::GetArg("-pin", "")      != "")
                     {
+                        SecureString strUsername = config::GetArg("-username", "").c_str();
+                        SecureString strPassword = config::GetArg("-password", "").c_str();
+                        SecureString strPin = config::GetArg("-pin", "").c_str();
+
                         /* Create the sigchain. */
                         memory::encrypted_ptr<TAO::Ledger::SignatureChain> user =
-                            new TAO::Ledger::SignatureChain(config::GetArg("-username", "").c_str(), config::GetArg("-password", "").c_str());
+                            new TAO::Ledger::SignatureChain(strUsername.c_str(), strPassword.c_str());
 
                         /* Get the genesis ID. */
                         uint256_t hashGenesis = user->Genesis();
+
+                        /* See if the sig chain exists */
+                        if(!LLD::Ledger->HasGenesis(hashGenesis) || TAO::Ledger::mempool.Has(hashGenesis))
+                        {
+                            /* If it doesn't exist then create it if configured to do so */
+                            if(config::GetBoolArg("-autocreate"))
+                            {
+                                /* The genesis transaction  */
+                                TAO::Ledger::Transaction tx;
+                                
+                                /* Create the sig chain genesis transaction */
+                                Create(strUsername, strPassword, strPin, tx);
+
+                            }
+                            else
+                                throw APIException(-203, "Autologin user not found");
+                        }
 
                         /* Check for duplicates in ledger db. */
                         TAO::Ledger::Transaction txPrev;
@@ -122,9 +143,14 @@ namespace TAO
                         if(!pActivePIN.IsNull())
                             pActivePIN.free();
 
+                        /* The unlock actions to apply for autologin.  NOTE we do NOT unlock for transactions */
+                        uint8_t nUnlockActions = TAO::Ledger::PinUnlock::UnlockActions::MINING 
+                                               | TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS
+                                               | TAO::Ledger::PinUnlock::UnlockActions::STAKING;
+
                         /* Set account to unlocked. */
                         pActivePIN = new TAO::Ledger::PinUnlock(
-                            config::GetArg("-pin", "").c_str(), TAO::Ledger::PinUnlock::UnlockActions::ALL);
+                            config::GetArg("-pin", "").c_str(), nUnlockActions);
                     }
                 }
             }
