@@ -640,6 +640,10 @@ namespace TAO
                         /* Seek to end */
                         contract.Seek(64);
 
+                        /* Check that indexed trust account exists. */
+                        if(LLD::Register->HasTrust(contract.Caller()))
+                            return debug::error(FUNCTION, "OP::MIGRATE: trust account previously indexed");
+
                         /* Serialize the pre-state byte into contract. */
                         contract <<= uint8_t(TAO::Register::STATES::PRESTATE);
 

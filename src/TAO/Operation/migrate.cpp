@@ -42,10 +42,6 @@ namespace TAO
             if(LLD::Ledger->HasProof(TAO::Register::WILDCARD_ADDRESS, hashTx, 0, nFlags))
                 return debug::error(FUNCTION, "migrate credit is already claimed");
 
-            /* Record that the legacy trust key has completed migration. */
-            if(LLD::Legacy->HasTrustConversion(hashKey))
-                return debug::error(FUNCTION, "trust key is already converted");
-
             /* Write the claimed proof. */
             if(!LLD::Ledger->WriteProof(TAO::Register::WILDCARD_ADDRESS, hashTx, 0, nFlags))
                 return debug::error(FUNCTION, "failed to write migrate credit proof");
@@ -54,17 +50,21 @@ namespace TAO
             if(!LLD::Register->WriteState(hashAddress, trust, nFlags))
                 return debug::error(FUNCTION, "failed to write post-state to disk");
 
-            /* Update the register database to index the trust account. (migrated trust account is post-Genesis) */
-            if(!LLD::Register->IndexTrust(hashCaller, hashAddress))
-                return debug::error(FUNCTION, "could not index the trust account genesis");
+            /* Migrate operation can be executed on mempool accept, so only write trust/stake items for BLOCK flag */
+            if(nFlags == TAO::Ledger::FLAGS::BLOCK)
+            {
+                /* Update the register database to index the trust account. (migrated trust account is post-Genesis) */
+                if(!LLD::Register->IndexTrust(hashCaller, hashAddress))
+                    return debug::error(FUNCTION, "could not index the trust account genesis");
 
-            /* Set hash last trust for trust account to hash last trust for Legacy trust key. */
-            if(!LLD::Ledger->WriteStake(hashCaller, hashLast))
-                return debug::error(FUNCTION, "failed to write last trust to disk");
+                /* Set hash last trust for trust account to hash last trust for Legacy trust key. */
+                if(!LLD::Ledger->WriteStake(hashCaller, hashLast))
+                    return debug::error(FUNCTION, "failed to write last trust to disk");
 
-            /* Record that the legacy trust key has completed migration. */
-            if(!LLD::Legacy->WriteTrustConversion(hashKey))
-                return debug::error(FUNCTION, "failed to record trust key migration to disk");
+                /* Record that the legacy trust key has completed migration. */
+                if(!LLD::Legacy->WriteTrustConversion(hashKey))
+                    return debug::error(FUNCTION, "failed to record trust key migration to disk");
+            }
 
             return true;
         }
@@ -219,6 +219,10 @@ namespace TAO
             /* Migrate should always have wildcard as hashFrom because it is from UTXO. */
             if(hashFrom != TAO::Register::WILDCARD_ADDRESS)
                 return debug::error(FUNCTION, "migrate debit register must be from UTXO");
+
+            /* Check whether the legacy trust key has already completed migration. */
+            if(LLD::Legacy->HasTrustConversion(hashKey))
+                return debug::error(FUNCTION, "trust key is already converted");
 
             /* Validate migrate is to address in UTXO output */
             if(hashTo != hashAccount)

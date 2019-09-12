@@ -535,7 +535,7 @@ namespace TAO
 
                         /* Erase the trust key conversion. */
                         if(!LLD::Legacy->EraseTrustConversion(hashKey))
-                            return debug::error(FUNCTION, "OP::MIGRATE: failed to record trust key migration to disk");
+                            return debug::error(FUNCTION, "OP::MIGRATE: failed to erase trust key migration from disk");
 
                         break;
                     }
