@@ -149,7 +149,7 @@ TEST_CASE( "Migrate Operation Tests", "[operation]")
         //store block with coinstake as its vtx[0]
         ++state.nHeight;
         state.hashNextBlock = LLC::GetRand1024();
-        state.vtx.push_back(std::make_pair(uint8_t(TAO::Ledger::LEGACY), tx.GetHash()));
+        state.vtx.push_back(std::make_pair(uint8_t(TAO::Ledger::TRANSACTION::LEGACY), tx.GetHash()));
 
         REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
 
@@ -231,6 +231,8 @@ TEST_CASE( "Migrate Operation Tests", "[operation]")
 
         //connect tx
         REQUIRE(wtx.Connect(inputs, state, Legacy::FLAGS::BLOCK));
+
+        REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
 
         //index to block
         REQUIRE(LLD::Ledger->IndexBlock(wtx.GetHash(), state.GetHash()));
