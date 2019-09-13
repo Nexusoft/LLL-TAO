@@ -892,7 +892,7 @@ namespace LLP
                 return true;
 
             /* Set the search from search limit. */
-            debug::log(2, "getblocks ", vStates[0].nHeight, " to ", hashStop.ToString().substr(0, 20));
+            debug::log(2, "getblocks ", vStates[0].nHeight, " to ", hashStop.SubString());
 
             /* Iterate forward the blocks required. */
             std::vector<CInv> vInv;
@@ -910,7 +910,7 @@ namespace LLP
                 /* Check for hash stop. */
                 if(hashContinue == hashStop)
                 {
-                    debug::log(3, "  getblocks stopping at ", state.nHeight, " to ", hashContinue.ToString().substr(0, 20));
+                    debug::log(3, "  getblocks stopping at ", state.nHeight, " to ", hashContinue.SubString());
 
                     /* Tell about latest block if hash stop is found. */
                     if(hashStop != TAO::Ledger::ChainState::hashBestChain.load())

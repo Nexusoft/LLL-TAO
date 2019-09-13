@@ -564,7 +564,7 @@ TEST_CASE( "Test Assets API - claim item", "[supply/claim/item]")
             tx.hashGenesis = GENESIS1;
             tx.nSequence   = 2;
             tx.nTimestamp  = runtime::timestamp();
-            tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
+             
 
             //payload
             tx[0] << uint8_t(TAO::Operation::OP::TRANSFER) << hashItem << GENESIS2 << uint8_t(TAO::Operation::TRANSFER::CLAIM);

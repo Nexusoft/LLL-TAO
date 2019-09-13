@@ -59,7 +59,6 @@ namespace TAO
         , hashRecovery(0)
         , hashGenesis(0)
         , hashPrevTx(0)
-        , hashNextTx(0)
         , vchPubKey()
         , vchSig()
         {
@@ -135,10 +134,6 @@ namespace TAO
             /* Check for genesis valid numbers. */
             if(hashNext == 0)
                 return debug::error(FUNCTION, "nextHash cannot be zero");
-
-            /* Check that hashNextTx is valid */
-            if(hashNextTx != 0) //extra sanity check, just in case
-                return debug::error(FUNCTION, "hash next transaction must be zero");
 
             /* Check the timestamp. */
             if(nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
@@ -312,11 +307,6 @@ namespace TAO
                 /* Write specific transaction flags. */
                 if(nFlags == TAO::Ledger::FLAGS::BLOCK)
                 {
-                    /* Set the proper next pointer. */
-                    hashNextTx = uint512_t(STATE::HEAD);
-                    if(!LLD::Ledger->WriteTx(hash, *this))
-                        return debug::error(FUNCTION, "failed to write valid next pointer");
-
                     /* Write the genesis identifier. */
                     if(!LLD::Ledger->WriteGenesis(hashGenesis, hash))
                         return debug::error(FUNCTION, "failed to write genesis");
@@ -382,26 +372,6 @@ namespace TAO
                     if(nConfirms < MaturitySigChain())
                         return debug::error(FUNCTION, "signature chain is immature");
                 }
-
-                /* Write specific transaction flags. */
-                if(nFlags == TAO::Ledger::FLAGS::BLOCK)
-                {
-                    /* Check previous transaction next pointer. */
-                    if(!txPrev.IsHead())
-                        return debug::error(FUNCTION, "prev tx not head ", txPrev.hashNextTx.SubString());
-
-                    /* Set the previous transactions next hash. */
-                    txPrev.hashNextTx = hash;
-
-                    /* Write the next pointer. */
-                    if(!LLD::Ledger->WriteTx(hashPrevTx, txPrev))
-                        return debug::error(FUNCTION, "failed to write last tx");
-
-                    /* Set the proper next pointer. */
-                    hashNextTx = uint512_t(STATE::HEAD);
-                    if(!LLD::Ledger->WriteTx(hash, *this))
-                        return debug::error(FUNCTION, "failed to write valid next pointer");
-                }
             }
 
             /* Run through all the contracts. */
@@ -439,30 +409,13 @@ namespace TAO
         /* Disconnect a transaction object to the main chain. */
         bool Transaction::Disconnect()
         {
-            /* Set the proper next pointer. */
-            hashNextTx = uint512_t(STATE::UNCONFIRMED);
-            if(!LLD::Ledger->WriteTx(GetHash(), *this))
-                return debug::error(FUNCTION, "failed to write valid next pointer");
-
             /* Erase last for genesis. */
             if(IsFirst() && !LLD::Ledger->EraseLast(hashGenesis))
                 return debug::error(FUNCTION, "failed to erase last hash");
-            else
-            {
-                /* Make sure the previous transaction is on disk. */
-                TAO::Ledger::Transaction txPrev;
-                if(!LLD::Ledger->ReadTx(hashPrevTx, txPrev))
-                    return debug::error(FUNCTION, "prev transaction not on disk");
 
-                /* Set the proper next pointer. */
-                txPrev.hashNextTx = STATE::HEAD;
-                if(!LLD::Ledger->WriteTx(hashPrevTx, txPrev))
-                    return debug::error(FUNCTION, "failed to write valid next pointer");
-
-                /* Write proper last hash index. */
-                if(!LLD::Ledger->WriteLast(hashGenesis, hashPrevTx))
-                    return debug::error(FUNCTION, "failed to write last hash");
-            }
+            /* Write proper last hash index. */
+            else if(!LLD::Ledger->WriteLast(hashGenesis, hashPrevTx))
+                return debug::error(FUNCTION, "failed to write last hash");
 
             /* Revert last stake whan disconnect a coinstake tx */
             if(IsCoinStake())
@@ -558,20 +511,6 @@ namespace TAO
                 return false;
 
             return (vContracts[0].Primitive() == TAO::Operation::OP::TRUST);
-        }
-
-
-        /* Determines if the transaction is at head of chain. */
-        bool Transaction::IsHead() const
-        {
-            return hashNextTx == STATE::HEAD;
-        }
-
-
-        /* Determines if the transaction is confirmed in the chain. */
-        bool Transaction::IsConfirmed() const
-        {
-            return (hashNextTx != STATE::UNCONFIRMED);
         }
 
 
@@ -774,7 +713,6 @@ namespace TAO
                 "nextHash  = ",  hashNext.SubString(), ", ",
                 "prevHash  = ",  PrevHash().SubString(), ", ",
                 "hashPrevTx = ", hashPrevTx.SubString(), ", ",
-                "hashNextTx = ", hashNextTx.SubString(), ", ",
                 "hashGenesis = ", hashGenesis.SubString(), ", ",
                 "pub = ", HexStr(vchPubKey).substr(0, 20), ", ",
                 "sig = ", HexStr(vchSig).substr(0, 20), ", ",

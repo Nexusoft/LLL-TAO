@@ -36,6 +36,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/types/transaction.h>
+#include <TAO/Ledger/types/tritium_minter.h>
 
 #include <Legacy/include/evaluate.h>
 #include <Legacy/include/trust.h>
@@ -76,6 +77,7 @@ namespace TAO
                     && config::GetArg("-password", "") != ""
                     && config::GetArg("-pin", "")      != "")
                     {
+                        /* Keep a the credentials in secure allocated strings. */
                         SecureString strUsername = config::GetArg("-username", "").c_str();
                         SecureString strPassword = config::GetArg("-password", "").c_str();
                         SecureString strPin = config::GetArg("-pin", "").c_str();
@@ -149,8 +151,13 @@ namespace TAO
                                                | TAO::Ledger::PinUnlock::UnlockActions::STAKING;
 
                         /* Set account to unlocked. */
-                        pActivePIN = new TAO::Ledger::PinUnlock(
-                            config::GetArg("-pin", "").c_str(), nUnlockActions);
+                        pActivePIN = new TAO::Ledger::PinUnlock(config::GetArg("-pin", "").c_str(), nUnlockActions);
+
+                        /* Display that login was successful. */
+                        debug::log(0, FUNCTION, "Auto-Login Successful");
+
+                        /* Start the stake minter if successful login. */
+                        TAO::Ledger::TritiumMinter::GetInstance().Start();
                     }
                 }
             }

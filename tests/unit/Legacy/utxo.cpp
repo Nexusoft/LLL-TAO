@@ -92,7 +92,6 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             tx.hashGenesis = hashGenesis;
             tx.nSequence   = 0;
             tx.nTimestamp  = runtime::timestamp();
-            tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
 
             //payload (hashGenesis, coinbase reward, extra nonce)
             tx[0] << uint8_t(OP::COINBASE) << hashGenesis << uint64_t(1000000) << (uint64_t)0;
@@ -211,7 +210,6 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             tx.hashGenesis = hashGenesis;
             tx.nSequence   = 2;
             tx.nTimestamp  = runtime::timestamp();
-            tx.hashNextTx = 1;
 
             //payload
             tx[0] << uint8_t(OP::LEGACY) << hashAccount << uint64_t(900000);

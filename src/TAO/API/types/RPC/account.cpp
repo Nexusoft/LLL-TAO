@@ -1771,7 +1771,7 @@ namespace TAO
                         /* Read the previous transaction. */
                         Legacy::Transaction txPrev;
                         if(!LLD::Legacy->ReadTx(prevout.hash, txPrev))
-                            throw APIException(-5, debug::safe_printstr("tx ", prevout.hash.ToString().substr(0, 20), " not found"));
+                            throw APIException(-5, debug::safe_printstr("tx ", prevout.hash.SubString(), " not found"));
 
                         /* Extract the address. */
                         Legacy::NexusAddress address;

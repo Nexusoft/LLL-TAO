@@ -400,13 +400,13 @@ namespace Legacy
             return debug::error(FUNCTION, "incorrect block height.");
 
         /* Verbose logging of proof and target. */
-        debug::log(2, "  proof:  ", (nVersion < 5 ? GetHash() : nChannel == 0 ? StakeHash() : ProofHash()).ToString().substr(0, 30));
+        debug::log(2, "  proof:  ", (nVersion < 5 ? GetHash() : nChannel == 0 ? StakeHash() : ProofHash()).SubString(30));
 
         /* Channel switched output. */
         if(nChannel == 1)
             debug::log(2, "  prime cluster verified of size ", TAO::Ledger::GetDifficulty(nBits, 1));
         else
-            debug::log(2, "  target: ", LLC::CBigNum().SetCompact(nBits).getuint1024().ToString().substr(0, 30));
+            debug::log(2, "  target: ", LLC::CBigNum().SetCompact(nBits).getuint1024().SubString(30));
 
         /* Check that the nBits match the current Difficulty. **/
         if(nBits != TAO::Ledger::GetNextTargetRequired(statePrev, nChannel))
