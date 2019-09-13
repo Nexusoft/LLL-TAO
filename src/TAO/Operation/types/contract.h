@@ -192,6 +192,18 @@ namespace TAO
             bool Value(uint64_t &nValue) const;
 
 
+            /** Previous
+             *
+             *  Get the previous tx hash if valid for contract
+             *
+             *  @param[out] nValue The value to return.
+             *
+             *  @return True if value returned successfully
+             *
+             **/
+            bool Previous(uint512_t &hashPrev) const;
+
+
             /** Legacy
              *
              *  Get the legacy converted output of the contract if valid
