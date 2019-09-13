@@ -469,19 +469,19 @@ namespace TAO
             {
                 if(IsTrust())
                 {
-                    /* Revert saved last stake to the prior stake transaction */
-                    Transaction txLast;
-                    if(!TAO::Ledger::FindLastStake(hashGenesis, txLast))
-                        return debug::error(FUNCTION, "failed to find previous stake");
+                    /* Extract the last stake hash from the coinstake contract */
+                    uint512_t hashLast;
+                    if(!vContracts[0].Previous(hashLast))
+                        return debug::error(FUNCTION, "failed to extract last stake hash from contract");
 
-                    if(!LLD::Ledger->WriteStake(hashGenesis, txLast.GetHash()))
+                    /* Revert saved last stake to the prior stake transaction */
+                    if(!LLD::Ledger->WriteStake(hashGenesis, hashLast))
                         return debug::error(FUNCTION, "failed to write last stake");
                 }
                 else
                 {
                     if(!LLD::Ledger->EraseStake(hashGenesis))
                         return debug::error(FUNCTION, "failed to erase last stake");
-
                 }
             }
 
