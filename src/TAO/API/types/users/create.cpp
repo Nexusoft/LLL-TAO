@@ -65,10 +65,10 @@ namespace TAO
                 throw APIException(-129, "Missing PIN");
 
             /* Extract the username  */
-            std::string strUsername = params["username"].get<std::string>();
+            SecureString strUsername = params["username"].get<std::string>().c_str();
 
             /* Extract the password */
-            std::string strPassword = params["password"].get<std::string>();
+            SecureString strPassword = params["password"].get<std::string>().c_str();
 
             /* Check username length */
             if(strUsername.length() < 3)
@@ -82,14 +82,38 @@ namespace TAO
             if(strPin.length() < 4)
                 throw APIException(-193, "Pin must be a minimum of 4 characters");
 
+            /* The genesis transaction  */
+            TAO::Ledger::Transaction tx;
+
+            /* Create the sig chain genesis transaction */
+            CreateSigchain(strUsername, strPassword, strPin, tx);
+
+            /* Build a JSON response object. */
+            ret["version"]   = tx.nVersion;
+            ret["sequence"]  = tx.nSequence;
+            ret["timestamp"] = tx.nTimestamp;
+            ret["genesis"]   = tx.hashGenesis.ToString();
+            ret["nexthash"]  = tx.hashNext.ToString();
+            ret["prevhash"]  = tx.hashPrevTx.ToString();
+            ret["pubkey"]    = HexStr(tx.vchPubKey.begin(), tx.vchPubKey.end());
+            ret["signature"] = HexStr(tx.vchSig.begin(),    tx.vchSig.end());
+            ret["hash"]      = tx.GetHash().ToString();
+
+            return ret;
+        }
+
+
+        /* Creates a signature chain for the given credentials and returns the transaction object if successful */
+        void Users::CreateSigchain(const SecureString& strUsername, const SecureString& strPassword,
+                                   const SecureString& strPin, TAO::Ledger::Transaction& tx)
+        {
             /* Generate the signature chain. */
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain> user = new TAO::Ledger::SignatureChain(strUsername.c_str(), strPassword.c_str());
+            memory::encrypted_ptr<TAO::Ledger::SignatureChain> user = new TAO::Ledger::SignatureChain(strUsername, strPassword);
 
             /* Get the Genesis ID. */
             uint256_t hashGenesis = user->Genesis();
 
             /* Check for duplicates in ledger db. */
-            TAO::Ledger::Transaction tx;
             if(LLD::Ledger->HasGenesis(hashGenesis) || TAO::Ledger::mempool.Has(hashGenesis))
             {
                 user.free();
@@ -139,7 +163,7 @@ namespace TAO
                                                 0, //cert disabled for now
                                                 0, //app1 disabled for now
                                                 0, //app2 disabled for now
-                                                0);//app3 disabled for now 
+                                                0);//app3 disabled for now
 
             /* Add the crypto register operation to the transaction */
             tx[4] << uint8_t(TAO::Operation::OP::CREATE)      << hashRegister
@@ -168,20 +192,6 @@ namespace TAO
             /* Execute the operations layer. */
             if(!TAO::Ledger::mempool.Accept(tx))
                 throw APIException(-32, "Failed to accept");
-
-
-            /* Build a JSON response object. */
-            ret["version"]   = tx.nVersion;
-            ret["sequence"]  = tx.nSequence;
-            ret["timestamp"] = tx.nTimestamp;
-            ret["genesis"]   = tx.hashGenesis.ToString();
-            ret["nexthash"]  = tx.hashNext.ToString();
-            ret["prevhash"]  = tx.hashPrevTx.ToString();
-            ret["pubkey"]    = HexStr(tx.vchPubKey.begin(), tx.vchPubKey.end());
-            ret["signature"] = HexStr(tx.vchSig.begin(),    tx.vchSig.end());
-            ret["hash"]      = tx.GetHash().ToString();
-
-            return ret;
         }
 
 

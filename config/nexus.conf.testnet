@@ -6,7 +6,7 @@
 #
 
 #this value can be any integer value, to make it simple to create new testnets on the fly.
-testnet=1
+testnet=16
 
 #default RPC user/pass.  PLEASE CHANGE THESE TO SUITABLE VALUES
 rpcuser=username
@@ -19,7 +19,7 @@ apipassword=password
 #this will launch the process into the background
 daemon=1
 
-#this allows you to control how much data is outputed to the console
+#this allows you to control how much data is output to the console
 verbose=2
 
 #OPTIONAL: seed node to force connect to
@@ -40,3 +40,12 @@ verbose=2
 
 #OPTIONAL: allows you to specifically disable the processing of notifications (on by default)
 #processnotifications=0
+
+#OPTIONAL: Allows the node to automatically log in with sig chain credentials and unlock the node for Mining, Staking, and Notifications 
+#autologin=1
+#username=testuser
+#password=testpassword
+#pin=1234
+
+#OPTIONAL: If autologin is set to 1, this additional setting will create the signature chain if it does not exist
+#autocreate=0

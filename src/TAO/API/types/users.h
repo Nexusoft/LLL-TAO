@@ -221,12 +221,12 @@ namespace TAO
             /** GetPin
              *
              *  If the API is running in sessionless mode this method will return the currently
-             *  active PIN (if logged in and unlocked for the requested action) or the pin from the params.  
-             *  If not in sessionless mode then the method will return the pin from the params.  If no pin is available for the 
+             *  active PIN (if logged in and unlocked for the requested action) or the pin from the params.
+             *  If not in sessionless mode then the method will return the pin from the params.  If no pin is available for the
              *  given unlock action then an appropriate APIException is thrown
-             * 
+             *
              *  @param[in] params The API method parameters.
-             *  @param[in] nUnlockAction The unlock 
+             *  @param[in] nUnlockAction The unlock
              *
              *  @return the pin.
              *
@@ -606,6 +606,18 @@ namespace TAO
                 std::vector<std::pair<std::shared_ptr<Legacy::Transaction>, uint32_t>> &vContracts);
 
 
+            /** CreateSigchain
+             *
+             *  Creates a signature chain for the given credentials and returns the transaction object if successful
+             *
+             *  @param[in] strUsername The username.
+             *  @param[in] strPassword The password.
+             *  @param[in] strPin The pin.
+             *  @param[out] tx The transaction object that was created.
+             *
+             **/
+            void CreateSigchain(const SecureString& strUsername, const SecureString& strPassword,  const SecureString& strPin,
+                TAO::Ledger::Transaction& tx);
 
 
         };

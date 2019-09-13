@@ -337,6 +337,7 @@ Error Codes
 | -200 | Namespace can't be created with reserved name |
 | -201 | Global names can't be created with reserved name |
 | -202 | Signature chain not mature after your previous mined/stake block. X more confirmation(s) required. |
+| -203 | Autologin user not found |
 
 
 
