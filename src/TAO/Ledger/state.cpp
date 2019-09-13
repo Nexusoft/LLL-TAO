@@ -822,14 +822,14 @@ namespace TAO
                     /* Get the transaction hash. */
                     uint512_t hash = proof.second;
 
+                    /* Check for existing indexes. */
+                    if(LLD::Ledger->HasIndex(hash))
+                        return debug::error(FUNCTION, "transaction overwrites not allowed");
+
                     /* Make sure the transaction is on disk. */
                     TAO::Ledger::Transaction tx;
                     if(!LLD::Ledger->ReadTx(hash, tx))
                         return debug::error(FUNCTION, "transaction not on disk");
-
-                    /* Check the next hash pointer. */
-                    if(tx.IsConfirmed())
-                        return debug::error(FUNCTION, "transaction overwrites not allowed");
 
                     /* Connect the transaction. */
                     if(!tx.Connect())
@@ -888,14 +888,14 @@ namespace TAO
                     /* Get the transaction hash. */
                     uint512_t hash = proof.second;
 
+                    /* Check for existing indexes. */
+                    if(LLD::Ledger->HasIndex(hash))
+                        return debug::error(FUNCTION, "transaction overwrites not allowed");
+
                     /* Make sure the transaction isn't on disk. */
                     Legacy::Transaction tx;
                     if(!LLD::Legacy->ReadTx(hash, tx))
                         return debug::error(FUNCTION, "transaction not on disk");
-
-                    /* Check for existing indexes. */
-                    if(LLD::Ledger->HasIndex(hash))
-                        return debug::error(FUNCTION, "transaction overwrites not allowed");
 
                     /* Fetch the inputs. */
                     std::map<uint512_t, std::pair<uint8_t, DataStream> > inputs;

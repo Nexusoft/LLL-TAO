@@ -467,7 +467,7 @@ TEST_CASE( "Test Names API - claim namespace", "[names/claim/namespace]")
             tx.hashGenesis = GENESIS1;
             tx.nSequence   = 1;
             tx.nTimestamp  = runtime::timestamp();
-            tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
+
 
             //payload
             tx[0] << uint8_t(TAO::Operation::OP::TRANSFER) << hashNamespace << GENESIS2 << uint8_t(TAO::Operation::TRANSFER::CLAIM);
@@ -1334,7 +1334,7 @@ TEST_CASE( "Test Names API - claim name", "[names/claim/name]")
             tx.hashGenesis = GENESIS1;
             tx.nSequence   = 2;
             tx.nTimestamp  = runtime::timestamp();
-            tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
+
 
             //payload
             tx[0] << uint8_t(TAO::Operation::OP::TRANSFER) << hashName << GENESIS2 << uint8_t(TAO::Operation::TRANSFER::CLAIM);

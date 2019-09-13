@@ -74,10 +74,6 @@ namespace TAO
             uint512_t hashPrevTx;
 
 
-            /** The next transaction. **/
-            uint512_t hashNextTx;
-
-
             /** The key type. **/
             uint8_t nKeyType;
 
@@ -105,11 +101,6 @@ namespace TAO
                 READWRITE(hashRecovery);
                 READWRITE(hashGenesis);
                 READWRITE(hashPrevTx);
-
-                /* Only write hash next when to disk. */
-                if(!(nSerType & SER_GETHASH) && (nSerType & SER_LLD))
-                    READWRITE(hashNextTx);
-
                 READWRITE(nKeyType);
                 READWRITE(nNextType);
                 READWRITE(vchPubKey);
@@ -250,26 +241,6 @@ namespace TAO
              *
              **/
             bool IsCoinStake() const;
-
-
-            /** IsHead
-             *
-             *  Determines if the transaction is at head of chain.
-             *
-             *  @return true if transaction is at head.
-             *
-             **/
-            bool IsHead() const;
-
-
-            /** Confirmed
-             *
-             *  Determines if the transaction is confirmed in the chain.
-             *
-             *  @return true if transaction is confirmed.
-             *
-             **/
-            bool IsConfirmed() const;
 
 
             /** IsPrivate

@@ -119,21 +119,6 @@ namespace TAO
 
                         return true;
                     }
-
-                    /* Handle the conflict detection. */
-                    if(mapConflicts.count(tx.hashPrevTx))
-                    {
-                        if(!mapLedger.count(mapConflicts[tx.hashPrevTx]))
-                            return debug::error(FUNCTION, "conflict issued with nothing in mempool");
-
-                        debug::log(0, "already in");
-                        mapLedger[mapConflicts[tx.hashPrevTx]].print();
-
-                        debug::log(0, "conflicted tx");
-                        tx.print();
-
-                        return debug::error(FUNCTION, "tx already claimed ", tx.hashPrevTx.SubString());
-                    }
                 }
             }
 
@@ -150,10 +135,6 @@ namespace TAO
             /* Check for duplicate coinbase or coinstake. */
             if(tx.nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
                 return debug::error(FUNCTION, "tx ", hashTx.SubString(), " too far in the future");
-
-            /* Check that hashNextTx is valid */
-            if(tx.hashNextTx != 0) //extra sanity check, just in case. Only matters when in memory pool
-                return debug::error(FUNCTION, "hash next transaction must be zero");
 
             /* Check that the transaction is in a valid state. */
             if(!tx.Check())
@@ -220,10 +201,6 @@ namespace TAO
                     hashTx = hashThis;
                 }
             }
-
-            /* Set the conflict in pool. */
-            if(!tx.IsFirst())
-                mapConflicts[tx.hashPrevTx] = hashTx;
 
             /* Notify private to produce block if valid. */
             if(config::GetBoolArg("-private"))

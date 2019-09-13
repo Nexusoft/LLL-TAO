@@ -1016,8 +1016,15 @@ namespace LLP
                                     /* Loop through all available states. */
                                     for(const auto& tx : vtx)
                                     {
+                                        /* Get a copy of the hash. */
+                                        uint512_t hash = tx.GetHash();
+
+                                        /* Check if indexed. */
+                                        if(!LLD::Ledger->HasIndex(hash))
+                                            continue;
+
                                         /* Cache the block hash. */
-                                        hashStart = tx.GetHash();
+                                        hashStart = hash;
 
                                         /* Push the transaction. */
                                         PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::LEGACY), tx);
@@ -1042,12 +1049,15 @@ namespace LLP
                                     /* Loop through all available states. */
                                     for(const auto& tx : vtx)
                                     {
-                                        /* Cache the block hash. */
-                                        hashStart = tx.GetHash();
+                                        /* Get a copy of the hash. */
+                                        uint512_t hash = tx.GetHash();
 
-                                        /* Skip if not in main chain. */
-                                        if(!tx.IsConfirmed())
+                                        /* Check if indexed. */
+                                        if(!LLD::Ledger->HasIndex(hash))
                                             continue;
+
+                                        /* Cache the block hash. */
+                                        hashStart = hash;
 
                                         /* Push the transaction. */
                                         PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::TRITIUM), tx);
