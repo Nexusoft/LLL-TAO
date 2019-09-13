@@ -20,6 +20,8 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/Ledger/types/transaction.h>
+#include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/include/chainstate.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
@@ -385,6 +387,13 @@ TEST_CASE( "Test Names API - transfer namespace", "[names/transfer/namespace]")
         /* Grab the transfer txid so that we can use it for a claim */
         hashNamespaceTransfer.SetHex(result["txid"].get<std::string>());
 
+        /* Check mempool. */
+        TAO::Ledger::Transaction tx;
+        REQUIRE(TAO::Ledger::mempool.Get(hashNamespaceTransfer, tx));
+
+        /* Index to genesis. */
+        REQUIRE(LLD::Ledger->IndexBlock(hashNamespaceTransfer, TAO::Ledger::ChainState::Genesis()));
+
     }
 
 }
@@ -480,6 +489,7 @@ TEST_CASE( "Test Names API - claim namespace", "[names/claim/namespace]")
 
             //write transaction
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
+            REQUIRE(LLD::Ledger->IndexBlock(tx.GetHash(), TAO::Ledger::ChainState::Genesis()));
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -1221,6 +1231,13 @@ TEST_CASE( "Test Names API - transfer name", "[names/transfer/name]")
         /* Grab the transfer txid so that we can use it for a claim */
         hashNameTransfer.SetHex(result["txid"].get<std::string>());
 
+        /* Check mempool. */
+        TAO::Ledger::Transaction tx;
+        REQUIRE(TAO::Ledger::mempool.Get(hashNameTransfer, tx));
+
+        /* Index to genesis. */
+        REQUIRE(LLD::Ledger->IndexBlock(hashNameTransfer, TAO::Ledger::ChainState::Genesis()));
+
     }
 
 }
@@ -1347,6 +1364,7 @@ TEST_CASE( "Test Names API - claim name", "[names/claim/name]")
 
             //write transaction
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
+            REQUIRE(LLD::Ledger->IndexBlock(tx.GetHash(), TAO::Ledger::ChainState::Genesis()));
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));

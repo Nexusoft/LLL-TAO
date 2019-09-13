@@ -1073,6 +1073,7 @@ TEST_CASE( "Test Tokens API - credit account", "[tokens/credit/account]")
 
         //write transaction
         REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
+        REQUIRE(LLD::Ledger->IndexBlock(tx.GetHash(), TAO::Ledger::ChainState::Genesis()));
 
         //commit to disk
         REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));

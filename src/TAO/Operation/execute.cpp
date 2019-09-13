@@ -104,7 +104,7 @@ namespace TAO
                         contract >> nContract;
 
                         /* Verify the operation rules. */
-                        const Contract condition = LLD::Ledger->ReadContract(hashTx, nContract, nFlags);
+                        const Contract condition = LLD::Ledger->ReadContract(hashTx, nContract);
                         if(!Validate::Verify(contract, condition))
                             return false;
 
@@ -398,7 +398,7 @@ namespace TAO
                         contract >> hashAddress;
 
                         /* Verify the operation rules. */
-                        const Contract transfer = LLD::Ledger->ReadContract(hashTx, nContract, nFlags);
+                        const Contract transfer = LLD::Ledger->ReadContract(hashTx, nContract);
                         if(!Claim::Verify(contract, transfer))
                             return false;
 
@@ -834,7 +834,7 @@ namespace TAO
                         contract >> nContract;
 
                         /* Verify the operation rules. */
-                        const Contract debit = LLD::Ledger->ReadContract(hashTx, nContract, nFlags);
+                        const Contract debit = LLD::Ledger->ReadContract(hashTx, nContract);
                         if(!Credit::Verify(contract, debit, nFlags))
                             return false;
 
@@ -934,7 +934,7 @@ namespace TAO
                         contract >> hashTx;
 
                         /* Retrieve a debit for the Legacy tx output. Migrate tx will only have one output (index 0) */
-                        Contract debit = LLD::Ledger->ReadContract(hashTx, 0, nFlags);
+                        Contract debit = LLD::Ledger->ReadContract(hashTx, 0);
 
                         /* Add migrate data from Legacy tx to debit (base ReadContract returns generic Legacy send to register) */
                         if(!::Legacy::BuildMigrateDebit(debit, hashTx))
@@ -946,6 +946,7 @@ namespace TAO
 
                         /* After Verify, reset streams */
                         contract.Reset();
+
                         contract.Seek(65);
 
                         /* Get the trust register address. (hash to) */

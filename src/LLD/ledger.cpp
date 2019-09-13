@@ -81,6 +81,10 @@ namespace LLD
         /* Check for Tritium transaction. */
         if(hashTx.GetType() == TAO::Ledger::TRITIUM)
         {
+            /* Check that the previous transaction is indexed. */
+            if(!HasIndex(hashTx))
+                throw debug::exception(FUNCTION, "tritium transaction not indexed");
+                
             /* Get the transaction. */
             TAO::Ledger::Transaction tx;
             if(!ReadTx(hashTx, tx, nFlags))
@@ -92,10 +96,6 @@ namespace LLD
             /* Check flags. */
             if(nFlags == TAO::Ledger::FLAGS::BLOCK)
             {
-                /* Check that the previous transaction is indexed. */
-                if(!HasIndex(hashTx))
-                    throw debug::exception(FUNCTION, "tritium transaction not indexed");
-
                 /* Check for coinbase transactions. */
                 uint8_t nOP = 0;
                 ref[nContract] >> nOP;
@@ -128,13 +128,9 @@ namespace LLD
         /* Check for Legacy transaction. */
         else if(hashTx.GetType() == TAO::Ledger::LEGACY)
         {
-            /* Check flags. */
-            if(nFlags == TAO::Ledger::FLAGS::BLOCK)
-            {
-                /* Check if indexed. */
-                if(!HasIndex(hashTx))
-                    throw debug::exception(FUNCTION, "legacy transaction not indexed");
-            }
+            /* Check if indexed. */
+            if(!HasIndex(hashTx))
+                throw debug::exception(FUNCTION, "legacy transaction not indexed");
 
             /* Get the transaction. */
             Legacy::Transaction tx;

@@ -20,6 +20,8 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/Ledger/types/transaction.h>
+#include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/include/chainstate.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
@@ -930,6 +932,13 @@ TEST_CASE( "Test Assets API - transfer asset", "[assets/transfer/asset]")
         /* Grab the transfer txid so that we can use it for a claim */
         hashTransfer.SetHex(result["txid"].get<std::string>());
 
+        /* Check mempool. */
+        TAO::Ledger::Transaction tx;
+        REQUIRE(TAO::Ledger::mempool.Get(hashTransfer, tx));
+
+        /* Index to genesis. */
+        REQUIRE(LLD::Ledger->IndexBlock(hashTransfer, TAO::Ledger::ChainState::Genesis()));
+
     }
 
 }
@@ -1026,6 +1035,7 @@ TEST_CASE( "Test Assets API - claim asset", "[assets/claim/asset]")
 
             //write transaction
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
+            REQUIRE(LLD::Ledger->IndexBlock(tx.GetHash(), TAO::Ledger::ChainState::Genesis()));
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
