@@ -516,7 +516,7 @@ This will retrieve account values and staking metrics for the trust account belo
 
 `stakeweight` : The current stake weight (trust weight and block weight combined) as a percent of maximum.
 
-`change` : Indicates whether or not there is a pending request to change stake. The remaining fields only appear when this one is true. 
+`change` : Indicates whether or not there is a pending request to change stake. The remaining fields only appear when this one is true.   
 {    
 &nbsp;&nbsp;&nbsp;`amount` : Amount of stake change. Positive will be added to stake (moved from balance) and negative will unstake (move to balance).
 
@@ -524,19 +524,19 @@ This will retrieve account values and staking metrics for the trust account belo
 
 &nbsp;&nbsp;&nbsp;`expires`: Timestamp when the stake change request expires, if assigned. Zero indicates does not expire. 
 
-}
+} 
 
 ***
 
 # `set/stake`
 
-Creates a stake change request for a signature chain's trust account. This request will add or remove stake to set the stake value to the requested amount. If the new value is more than the current stake amount, it adds stake from the account balance. If the new value is less, it removes stake to the account balance (with appropriate trust penalty). 
+Creates a stake change request for a signature chain's trust account. This request will add or remove stake to set the stake value to the requested amount. If the new value is more than the current stake amount, it adds stake from the account balance. If the new value is less, it removes stake to the account balance (with appropriate trust penalty, if applicable). 
 
 Requests are saved locally and take effect with the next stake block found. Because they are saved locally, you must continue to stake on the machine where it was created until the next stake block, or the request will not be processed.
 
 Until implemented, you can update the request by calling set/stake again. 
 
-To remove a stake change request, you can either set an expiration time, or set the stake amount equal to the current trust account stake. 
+To remove a stake change request, you can either set an expiration time, or set the amount equal to the current trust account stake. 
 
 
 ### Endpoint:
@@ -600,7 +600,7 @@ The transaction created by migrate/stake is a special form of debit, and it will
 
 ### Return values:
 
-`txid` : The ID (hash) of the transaction that includes the stake change.
+`txid` : The ID (hash) of the migrate transaction.
 
 ***
 
