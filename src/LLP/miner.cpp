@@ -243,6 +243,11 @@ namespace LLP
             /* On Connect Event, Assign the Proper Daemon Handle. */
             case EVENT_CONNECT:
             {
+                /* If version 7 or above then cache then cache the last transaction ID of the sig chain so that we can detect if
+                   new transactions enter the mempool for this sig chain. */
+                if(TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 7) || TAO::Ledger::CurrentVersion() > 7)
+                    LLD::Ledger->ReadLast(TAO::API::users->GetGenesis(0), nHashLast, TAO::Ledger::FLAGS::MEMPOOL);
+
                 /* Debug output. */
                 debug::log(2, FUNCTION, "New Connection from ", GetAddress().ToStringIP());
                 return;
