@@ -487,11 +487,11 @@ namespace LLP
             case GET_ROUND:
             {
 
-                /* Check for a new round. */
+                /* Flag indicating the current round is no longer valid or there is a new block */
                 bool fNewRound = false;
                 {
                     LOCK(MUTEX);
-                    fNewRound = check_best_height();
+                    fNewRound = !check_round() || check_best_height();
                 }
 
                 /* If height was outdated, respond with old round, otherwise respond with a new round */
@@ -507,12 +507,6 @@ namespace LLP
             /* Respond with the block reward in a given round. */
             case GET_REWARD:
             {
-                /* Check for the best block height. */
-                {
-                    LOCK(MUTEX);
-                    check_best_height();
-                }
-
                 /* Get the mining reward amount for the channel currently set. */
                 uint64_t nReward = TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest.load(), nChannel.load(), 0);
 
@@ -559,9 +553,6 @@ namespace LLP
                 std::vector<uint8_t> vData;
                 {
                     LOCK(MUTEX);
-
-                    /* Check for the best block height. */
-                    check_best_height();
 
                     /* Create a new block */
                     pBlock = new_block();
@@ -671,10 +662,63 @@ namespace LLP
     }
 
 
+
+        /* For Tritium, this checks the mempool to make sure that there are no new transactions that would be orphaned by the
+         *  the current round block. */
+        bool Miner::check_round()
+        {
+            /* Only need to check the round for version 7 and above */
+            if(TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 7) || TAO::Ledger::CurrentVersion() > 7)
+            {
+                /* Get the hash genesis. */
+                uint256_t hashGenesis = TAO::API::users->GetGenesis(0);
+
+                /* Read hashLast from hashGenesis' sigchain and also check mempool. */
+                uint512_t hashLast;
+                
+                /* Check to see whether there are any new transactions in the mempool for the sig chain */
+                if(TAO::Ledger::mempool.Has(hashGenesis))
+                {
+                    /* Get the last hash of the last transaction created by the sig chain */
+                    LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL);
+
+                    /* Update nHashLast if it changed. */
+                    if(nHashLast != hashLast)
+                    {   
+                        nHashLast = hashLast;
+
+                        clear_map();
+
+                        debug::log(2, FUNCTION, "Block producer will orphan new sig chain transactions, resetting blocks");
+
+                        return false;
+                    }
+                }
+            
+            }
+
+            return true;
+        }
+    
+    
     /* Checks the current height index and updates best height. Clears the block map if the height is outdated or stale. */
     bool Miner::check_best_height()
     {
-         uint32_t nChainStateHeight = TAO::Ledger::ChainState::nBestHeight.load();
+        uint32_t nChainStateHeight = TAO::Ledger::ChainState::nBestHeight.load();
+
+        /* Introduced as part of Tritium upgrade. We can't rely on existing mining software to use the GET_ROUND to check that the
+           the current round is still valid, so we additionally check the round whenever the height is checked.  If we find that it
+           is not valid, the only way we can force miners to request new block data is to send through a height change. So here we
+           set the height to 0 which will trigger miners to stop and request new block data, and then immediately the height will be
+           set to the correct height again so they can carry on with the new block data. 
+           NOTE: there is no need to check the round if the height has changed as this obviously  will result in a new block*/
+        if(nBestHeight == nChainStateHeight && !check_round())
+        {
+            /* Set the height temporarily to 0 */
+            nBestHeight = 0;
+
+            return true;
+        }
 
         /* Return early if the height doesn't change. */
         if(nBestHeight == nChainStateHeight)
@@ -693,6 +737,11 @@ namespace LLP
             TAO::API::users->NotifyEvent();
             WaitEvent();
         }
+
+        /* If we detected a block height change, update the cached last hash of the logged in sig chain.  NOTE this is done AFTER
+           the notifications processor has finished, in case it added new transactions to the mempool  */
+        if(TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 7) || TAO::Ledger::CurrentVersion() > 7)
+            LLD::Ledger->ReadLast(TAO::API::users->GetGenesis(0), nHashLast, TAO::Ledger::FLAGS::MEMPOOL);
 
         return true;
     }
