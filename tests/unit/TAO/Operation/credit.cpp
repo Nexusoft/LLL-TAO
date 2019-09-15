@@ -24,6 +24,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/genesis.h>
+#include <TAO/Ledger/include/chainstate.h>
 
 #include <unit/catch2/catch.hpp>
 
@@ -150,12 +151,10 @@ TEST_CASE( "Credit Primitive Tests", "[operation]")
             tx.hashGenesis = hashGenesis;
             tx.nSequence = 2;
             tx.nTimestamp = runtime::timestamp();
-            tx.hashNextTx = TAO::Ledger::STATE::HEAD;
 
             tx2.hashGenesis = hashGenesis;
             tx2.nSequence = 3;
             tx2.nTimestamp = runtime::timestamp();
-            tx2.hashNextTx = TAO::Ledger::STATE::HEAD;
 
             nReference = 0;
             nAmount = 500;
@@ -175,6 +174,7 @@ TEST_CASE( "Credit Primitive Tests", "[operation]")
             /* write transaction */
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
             REQUIRE(LLD::Ledger->WriteTx(tx2.GetHash(), tx2));
+            REQUIRE(LLD::Ledger->IndexBlock(tx.GetHash(), TAO::Ledger::ChainState::Genesis()));
 
             /* commit to disk */
             REQUIRE(TAO::Operation::Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -189,7 +189,6 @@ TEST_CASE( "Credit Primitive Tests", "[operation]")
             tx2.hashGenesis = hashGenesis;
             tx2.nSequence = 3;
             tx2.nTimestamp = runtime::timestamp();
-            tx2.hashNextTx = TAO::Ledger::STATE::HEAD;
 
             nAmount = 500;
 
@@ -213,12 +212,10 @@ TEST_CASE( "Credit Primitive Tests", "[operation]")
             tx.hashGenesis = hashGenesis;
             tx.nSequence = 4;
             tx.nTimestamp = runtime::timestamp();
-            tx.hashNextTx = TAO::Ledger::STATE::HEAD;
 
             tx2.hashGenesis = hashGenesis;
             tx2.nSequence = 5;
             tx2.nTimestamp = runtime::timestamp();
-            tx2.hashNextTx = TAO::Ledger::STATE::HEAD;
 
             nReference = 0;
             nAmount = 500;
@@ -237,6 +234,7 @@ TEST_CASE( "Credit Primitive Tests", "[operation]")
 
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
             REQUIRE(LLD::Ledger->WriteTx(tx2.GetHash(), tx2));
+            REQUIRE(LLD::Ledger->IndexBlock(tx.GetHash(), TAO::Ledger::ChainState::Genesis()));
 
             REQUIRE(TAO::Operation::Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
             REQUIRE(TAO::Operation::Execute(tx2[0], TAO::Ledger::FLAGS::BLOCK));
@@ -252,7 +250,6 @@ TEST_CASE( "Credit Primitive Tests", "[operation]")
             tx2.hashGenesis = hashGenesis;
             tx2.nSequence = 5;
             tx2.nTimestamp = runtime::timestamp();
-            tx2.hashNextTx = TAO::Ledger::STATE::HEAD;
 
             nAmount = 500;
 
@@ -275,7 +272,6 @@ TEST_CASE( "Credit Primitive Tests", "[operation]")
             tx2.hashGenesis = hashGenesis;
             tx2.nSequence = 5;
             tx2.nTimestamp = runtime::timestamp();
-            tx2.hashNextTx = TAO::Ledger::STATE::HEAD;
 
             /* create a token credit transaction. */
             tx2[0] << uint8_t(TAO::Operation::OP::CREDIT) << tx.GetHash() << uint32_t(0) << hashAccount << hashToken << nAmount;
@@ -290,7 +286,7 @@ TEST_CASE( "Credit Primitive Tests", "[operation]")
             tx[0].Clear();
             tx2[0].Clear();
         }
-        
+
     }
 
 }

@@ -67,7 +67,7 @@ namespace TAO
 
 
             /** Record of conflicted transactions in mempool. **/
-            std::map<uint512_t, uint32_t> mapConflicts;
+            std::map<uint512_t, uint512_t> mapConflicts;
 
 
             /** Record of legacy inputs in the mempool. **/

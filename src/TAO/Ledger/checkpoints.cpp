@@ -83,7 +83,7 @@ namespace TAO
                     return true;
 
                 /* Verbose logging for hardcoded checkpoints. */
-                debug::log(0, "===== HARDCODED Checkpoint ", it->first, " Hash ", it->second.ToString().substr(0, 20));
+                debug::log(0, "===== HARDCODED Checkpoint ", it->first, " Hash ", it->second.SubString());
 
                 /* Block must match checkpoints map. */
                 return it->second == state.hashCheckpoint;
@@ -139,7 +139,7 @@ namespace TAO
             ChainState::nCheckpointHeight = stateCheckpoint.nHeight;
 
             /* Dump the Checkpoint if not Initializing. */
-            debug::log(ChainState::Synchronizing() ? 1 : 0, "===== Hardened Checkpoint ", ChainState::hashCheckpoint.load().ToString().substr(0, 20), " Height ", ChainState::nCheckpointHeight.load());
+            debug::log(ChainState::Synchronizing() ? 1 : 0, "===== Hardened Checkpoint ", ChainState::hashCheckpoint.load().SubString(), " Height ", ChainState::nCheckpointHeight.load());
 
             return true;
         }

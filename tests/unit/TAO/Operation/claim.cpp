@@ -23,6 +23,7 @@ ________________________________________________________________________________
 #include <TAO/Register/types/address.h>
 
 #include <TAO/Ledger/types/transaction.h>
+#include <TAO/Ledger/include/chainstate.h>
 
 #include <unit/catch2/catch.hpp>
 
@@ -73,13 +74,11 @@ TEST_CASE("Claim Primitive Tests", "[operation]")
         tx.hashGenesis = hashGenesis;
         tx.nSequence   = 2;
         tx.nTimestamp  = runtime::timestamp();
-        tx.hashNextTx = TAO::Ledger::STATE::HEAD;
 
         TAO::Ledger::Transaction tx2;
         tx2.hashGenesis = hashGenesis2;
         tx2.nSequence   = 1;
         tx2.nTimestamp  = runtime::timestamp();
-        tx.hashNextTx   = TAO::Ledger::STATE::HEAD;
 
         /* transfer payload */
         tx[0] << uint8_t(TAO::Operation::OP::TRANSFER) << hashAsset << hashGenesis2 << uint8_t(TAO::Operation::TRANSFER::CLAIM);
@@ -97,6 +96,7 @@ TEST_CASE("Claim Primitive Tests", "[operation]")
         REQUIRE(tx2.Build());
         REQUIRE(tx2.Verify());
         REQUIRE(LLD::Ledger->WriteTx(tx2.GetHash(), tx2));
+        REQUIRE(LLD::Ledger->IndexBlock(tx.GetHash(), TAO::Ledger::ChainState::Genesis()));
         REQUIRE(TAO::Operation::Execute(tx2[0], TAO::Ledger::FLAGS::BLOCK));
 
         /* check register values */
@@ -115,13 +115,11 @@ TEST_CASE("Claim Primitive Tests", "[operation]")
         tx.hashGenesis = hashGenesis2;
         tx.nSequence   = 2;
         tx.nTimestamp  = runtime::timestamp();
-        tx.hashNextTx = TAO::Ledger::STATE::HEAD;
 
         TAO::Ledger::Transaction tx2;
         tx2.hashGenesis = hashGenesis;
         tx2.nSequence   = 3;
         tx2.nTimestamp  = runtime::timestamp();
-        tx.hashNextTx   = TAO::Ledger::STATE::HEAD;
 
         /* transfer payload */
         tx[0] << uint8_t(TAO::Operation::OP::TRANSFER) << hashAsset << hashGenesis << uint8_t(TAO::Operation::TRANSFER::FORCE);

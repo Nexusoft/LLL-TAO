@@ -80,7 +80,7 @@ namespace TAO
                     mapOrphans.insert(std::make_pair(block.hashPrevBlock, std::unique_ptr<TAO::Ledger::Block>(block.Clone())));
 
                     /* Debug output. */
-                    debug::log(0, FUNCTION, "ORPHAN height=", block.nHeight, " prev=", block.hashPrevBlock.ToString().substr(0, 20));
+                    debug::log(0, FUNCTION, "ORPHAN height=", block.nHeight, " prev=", block.hashPrevBlock.SubString());
                 }
                 else
                     nStatus |= PROCESS::DUPLICATE;

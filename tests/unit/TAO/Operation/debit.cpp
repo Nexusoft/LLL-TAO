@@ -95,7 +95,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]")
             tx.hashGenesis = hashGenesis;
             tx.nSequence   = 2;
             tx.nTimestamp  = runtime::timestamp();
-            tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
+             
 
             //payload
             tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(500) << uint64_t(0);
@@ -189,7 +189,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]")
             tx.hashGenesis = hashGenesis;
             tx.nSequence   = 2;
             tx.nTimestamp  = runtime::timestamp();
-            tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
+             
 
             //payload
             tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(1000) << uint64_t(0);
@@ -226,7 +226,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]")
             tx.hashGenesis = hashGenesis;
             tx.nSequence   = 2;
             tx.nTimestamp  = runtime::timestamp();
-            tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
+             
 
             //payload
             tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(1) << uint64_t(0);
@@ -313,7 +313,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]")
             tx.hashGenesis = hashGenesis;
             tx.nSequence   = 2;
             tx.nTimestamp  = runtime::timestamp();
-            tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
+             
 
             //payload
             tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(500) << uint64_t(0);
@@ -371,7 +371,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]")
             tx.hashGenesis = hashGenesis;
             tx.nSequence   = 2;
             tx.nTimestamp  = runtime::timestamp();
-            tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
+             
 
             //payload
             tx[0] << uint8_t(OP::DEBIT) << uint256_t(0) << hashAccount << uint64_t(500) << uint64_t(0);
@@ -429,7 +429,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]")
             tx.hashGenesis = hashGenesis;
             tx.nSequence   = 2;
             tx.nTimestamp  = runtime::timestamp();
-            tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
+             
 
             //payload
             tx[0] << uint8_t(OP::DEBIT) << hashAccount << hashAccount << uint64_t(500) << uint64_t(0);
@@ -493,7 +493,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]")
             tx.hashGenesis = hashGenesis;
             tx.nSequence   = 2;
             tx.nTimestamp  = runtime::timestamp();
-            tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
+             
 
             //payload
             tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(500) << uint64_t(0);
@@ -557,7 +557,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]")
             tx.hashGenesis = hashGenesis;
             tx.nSequence   = 2;
             tx.nTimestamp  = runtime::timestamp();
-            tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
+             
 
             //payload
             tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(500) << uint64_t(0);

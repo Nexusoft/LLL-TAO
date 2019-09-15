@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/Ledger/types/transaction.h>
+#include <TAO/Ledger/include/chainstate.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
@@ -884,7 +885,7 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens/debit/account]")
         tx.hashGenesis = GENESIS1;
         tx.nSequence   = 0;
         tx.nTimestamp  = runtime::timestamp();
-        tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
+
 
         //payload
         tx[0] << uint8_t(TAO::Operation::OP::DEBIT) << hashToken << hashAccount << uint64_t(100000) << uint64_t(0);
@@ -897,6 +898,7 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens/debit/account]")
 
         //write transaction
         REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
+        REQUIRE(LLD::Ledger->IndexBlock(tx.GetHash(), TAO::Ledger::ChainState::Genesis()));
 
         //commit to disk
         REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -909,7 +911,7 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens/debit/account]")
         tx.hashGenesis = GENESIS1;
         tx.nSequence   = 1;
         tx.nTimestamp  = runtime::timestamp();
-        tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
+
 
         //payload
         tx[0] << uint8_t(TAO::Operation::OP::CREDIT) << hashDebitTx << uint32_t(0) << hashAccount << hashToken << uint64_t(100000);
@@ -923,6 +925,7 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens/debit/account]")
 
         //write transaction
         REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
+        REQUIRE(LLD::Ledger->IndexBlock(tx.GetHash(), TAO::Ledger::ChainState::Genesis()));
 
         //commit to disk
         REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -1057,7 +1060,7 @@ TEST_CASE( "Test Tokens API - credit account", "[tokens/credit/account]")
         tx.hashGenesis = GENESIS1;
         tx.nSequence   = 2;
         tx.nTimestamp  = runtime::timestamp();
-        tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
+
 
         //payload
         tx[0] << uint8_t(TAO::Operation::OP::DEBIT) << hashToken << hashAccount << uint64_t(1000) << uint64_t(0);
@@ -1070,6 +1073,7 @@ TEST_CASE( "Test Tokens API - credit account", "[tokens/credit/account]")
 
         //write transaction
         REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
+        REQUIRE(LLD::Ledger->IndexBlock(tx.GetHash(), TAO::Ledger::ChainState::Genesis()));
 
         //commit to disk
         REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));

@@ -941,12 +941,12 @@ namespace LLP
                                 /* Loop through all available states. */
                                 for(const auto& state : vStates)
                                 {
-                                    /* Cache the block hash. */
-                                    hashStart = state.GetHash();
-
                                     /* Skip if not in main chain. */
                                     if(!state.IsInMainChain())
                                         continue;
+
+                                    /* Cache the block hash. */
+                                    hashStart = state.GetHash();
 
                                     /* Handle for special sync block type specifier. */
                                     if(fSyncBlock)
@@ -1016,8 +1016,15 @@ namespace LLP
                                     /* Loop through all available states. */
                                     for(const auto& tx : vtx)
                                     {
+                                        /* Get a copy of the hash. */
+                                        uint512_t hash = tx.GetHash();
+
+                                        /* Check if indexed. */
+                                        if(!LLD::Ledger->HasIndex(hash))
+                                            continue;
+
                                         /* Cache the block hash. */
-                                        hashStart = tx.GetHash();
+                                        hashStart = hash;
 
                                         /* Push the transaction. */
                                         PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::LEGACY), tx);
@@ -1042,12 +1049,15 @@ namespace LLP
                                     /* Loop through all available states. */
                                     for(const auto& tx : vtx)
                                     {
-                                        /* Cache the block hash. */
-                                        hashStart = tx.GetHash();
+                                        /* Get a copy of the hash. */
+                                        uint512_t hash = tx.GetHash();
 
-                                        /* Skip if not in main chain. */
-                                        if(!tx.IsConfirmed())
+                                        /* Check if indexed. */
+                                        if(!LLD::Ledger->HasIndex(hash))
                                             continue;
+
+                                        /* Cache the block hash. */
+                                        hashStart = hash;
 
                                         /* Push the transaction. */
                                         PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::TRITIUM), tx);
@@ -1661,6 +1671,9 @@ namespace LLP
 
                                 /* Push to stream. */
                                 ssResponse << uint8_t(TYPES::TRANSACTION) << tx.second;
+
+                                /* Log the missing data. */
+                                debug::log(0, FUNCTION, "requesting missing tx ", tx.second.SubString());
                             }
 
                             /* Ask for the block again last TODO: this can be cached for further optimization. */
@@ -1820,7 +1833,7 @@ namespace LLP
                         ssPacket >> tx;
 
                         /* Accept into memory pool. */
-                        if(TAO::Ledger::mempool.Accept(tx))
+                        if(TAO::Ledger::mempool.Accept(tx, this))
                         {
                             /* Relay the transaction notification. */
                             TRITIUM_SERVER->Relay
