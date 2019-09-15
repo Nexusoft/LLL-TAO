@@ -465,8 +465,13 @@ namespace TAO
                     block.producer[0] << block.producer.hashGenesis;
                 }
 
-                /* Update the producer timestamp. */
-                block.producer.nTimestamp = ChainState::stateBest.load().GetBlockTime() + 1;
+                /* Update the producer timestamp, making sure it is not earlier than the previous block.  However we can't simply
+                   set the timstamp to be last block time + 1, in case there is a long gap between blocks, as there is a consensus
+                   rule that the producer timestamp cannot be more than 3600 seconds before the current block time. */
+                if(ChainState::stateBest.load().GetBlockTime() + 1 > runtime::unifiedtimestamp())
+                    block.producer.nTimestamp = ChainState::stateBest.load().GetBlockTime() + 1;
+                else
+                    block.producer.nTimestamp = runtime::unifiedtimestamp();
 
                 /* Sign the producer transaction. */
                 block.producer.Sign(user->Generate(block.producer.nSequence, pin));
