@@ -68,4 +68,25 @@ namespace LLD
         return Read(std::make_pair(std::string("last"), hashGenesis), hashLast);
     }
 
+
+    /* Writes a stake change request indexed by genesis. */
+    bool LocalDB::WriteStakeChange(const uint256_t& hashGenesis, const TAO::Ledger::StakeChange& stakeChange)
+    {
+        return Write(std::make_pair(std::string("stakechange"), hashGenesis), stakeChange);
+    }
+
+
+    /* Reads a stake change request for a sig chain genesis. */
+    bool LocalDB::ReadStakeChange(const uint256_t& hashGenesis, TAO::Ledger::StakeChange& stakeChange)
+    {
+        return Read(std::make_pair(std::string("stakechange"), hashGenesis), stakeChange);
+    }
+
+
+    /* Removes a recorded stake change request. */
+    bool LocalDB::EraseStakeChange(const uint256_t& hashGenesis)
+    {
+        return Erase(std::make_pair(std::string("stakechange"), hashGenesis));
+    }
+
 }

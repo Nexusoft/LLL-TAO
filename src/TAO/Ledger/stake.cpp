@@ -86,19 +86,31 @@ namespace TAO
 
 
         /* Calculate new trust score from parameters. */
-        uint64_t GetTrustScore(const uint64_t nScorePrev, const uint64_t nBlockAge)
+        uint64_t GetTrustScore(const uint64_t nScorePrev, const uint64_t nBlockAge,
+                               const uint64_t nStake, const int64_t nStakeChange)
         {
+            /* Note that trust score can be affected by both trust decay and unstake penalty simultaneously.
+             * Trust decay should always be applied first, as it is a linear decay from the previous trust score.
+             * Any unstake penalty is only applied to what is left after trust decay is included.
+             *
+             * If unstake penalty were applied first, trust would fully decay in less time than it should.
+             */
             uint64_t nScore = 0;
             uint64_t nBlockAgeMax = MaxBlockAge();
 
             /* Block age less than maximum awards trust score increase equal to the current block age. */
             if(nBlockAge <= nBlockAgeMax)
             {
+                /* Trust score grows indefinitely as long as block age less than minimum.
+                 * Trust weight and stake rate cap when they reach their max values even though score keeps growing.
+                 * The impact of unlimited trust score is that you can unstake a portion (with resulting penalty below) and
+                 * potentially still keep trust weight and stake rate at their max values.
+                 */
                 nScore = nScorePrev + nBlockAge;
             }
             else
             {
-                /* Block age more than maximum allowed is penalized 3 times the time it has exceeded the maximum. */
+                /* Block age more than maximum allowed, trust is penalized 3 times the time it has exceeded the maximum. */
 
                 /* Calculate the penalty for score (3x the time). */
                 uint64_t nPenalty = (nBlockAge - nBlockAgeMax) * (uint64_t)3;
@@ -110,113 +122,28 @@ namespace TAO
                     nScore = 0;
             }
 
-            return nScore;
-        }
-
-
-        /* Calculate trust score penalty that results from unstaking a portion of stake balance. */
-        uint64_t GetUnstakePenalty(const uint64_t nScorePrev, const uint64_t nStakePrev,
-                                   const uint64_t nStakeNew, const uint256_t& hashGenesis)
-        {
-            /* Unstake penalty only applies if stake balance is reduced */
-            if(nStakeNew >= nStakePrev)
-                return 0;
-
-            /* Cutoff time of grace period. Stake added within grace period can be removed without penalty */
-            uint64_t nCutoff = ChainState::stateBest.load().GetBlockTime()
-                                    - (uint64_t)(config::fTestNet.load() ? STAKE_GRACE_PERIOD_TESTNET : STAKE_GRACE_PERIOD);
-
-            /* Look through tx history to calculate any amount of stake added within the grace period */
-            uint512_t hashLast = 0;
-            int64_t nStakeAdded = 0;
-
-            /* Get the most recent tx hash for the user account. */
-            if(LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
+            if(nStakeChange < 0)
             {
-                /* Loop through all transactions within grace period and accumulate net amount of stake added. */
-                while(hashLast != 0)
-                {
-                    /* Get the transaction for the current hashLast. */
-                    TAO::Ledger::Transaction txCheck;
-                    if(!LLD::Ledger->ReadTx(hashLast, txCheck, TAO::Ledger::FLAGS::MEMPOOL))
-                        break;
+                /* Adjust trust based on penalty for removing stake
+                 *
+                 * When unstake, resulting trust score is fraction of trust score equal to fraction of stake remaining.
+                 * (nStakeNew / nStake) is fraction of stake remaining, multiply by trust score to get new one.
+                 *
+                 * In other words, (nStakeNew / nStake) * trust score = new trust score
+                 *
+                 * In implementation, multiplication is done first to allow this to use integer math.
+                 */
+                uint64_t nStakeNew = 0;
+                uint64_t nUnstake = 0 - nStakeChange;
 
-                    /* Transaction must be after cutoff to be within the grace period */
-                    if(txCheck.nTimestamp < nCutoff)
-                        break;
+                /* Unstake amount should never be more than stake but check as a precaution */
+                if(nUnstake < nStake)
+                    nStakeNew = nStake - nUnstake;
 
-                    /* Test whether the transaction contains a staking operation */
-                    for(uint32_t i = 0; i < txCheck.Size(); ++i)
-                    {
-                        if(TAO::Register::Unpack(txCheck[i], TAO::Operation::OP::STAKE))
-                        {
-                            /* Unpack the amount added to stake by stake operation */
-                            uint64_t nAmount;
-                            TAO::Register::Unpack(txCheck[i], nAmount);
-
-                            nStakeAdded += nAmount;
-                        }
-
-                        /* Also have to account for stake removed during grace period as this negates the amount added */
-                        if(TAO::Register::Unpack(txCheck[i], TAO::Operation::OP::UNSTAKE))
-                        {
-                            /* Unpack the amount added to stake by stake operation */
-                            uint64_t nAmount;
-                            TAO::Register::Unpack(txCheck[i], nAmount);
-
-                            nStakeAdded -= nAmount;
-                        }
-                    }
-
-                    /* Iterate to next previous user tx */
-                    hashLast = txCheck.hashPrevTx;
-                }
+                nScore = (nStakeNew * nScore) / nStake;
             }
 
-            /* If net change during grace period is unstake, then amount added is 0 */
-            if(nStakeAdded < 0)
-                nStakeAdded = 0;
-
-            /* Unstake penalty only applies if stake balance reduced by more than amount added during grace period */
-            if((nStakeNew + nStakeAdded) >= nStakePrev)
-                return 0;
-
-            /* When unstake, new trust score is fraction of old trust score equal to fraction of balance remaining.
-             * (nStakeNew / nStakePrev) is fraction of balance remaining, multiply by old trust score to get new one.
-             * In other words, (nStakeNew / nStakePrev) * old trust score = new trust score
-             *
-             * In implementation, multiplication is done first to allow this to use integer math.
-             *
-             * If have stake added during grace period, this amount is added to nStakeNew, reducing the trust penalty.
-             *
-             * Example 1: have 100 stake and remove 30, new stake is 70 and new trust score is (70 / 100) * old trust score
-             * New score is 70% old score, a 30% penalty.
-             *
-             * Example 2: have 100 stake and add 100 more (200 stake), then remove 150 within grace period, new stake is 50.
-             * If penalty applied to full amount removed, new score = (50 / 200) * old trust score, a 75% penalty
-             * but because it was removed during grace period, new score = ((50 + 100) / 200) * old trust score, a 25% penalty
-             *
-             * Note that, in example 2, if only remove 50, then (nStakeNew + nStakeAdded) = (150 + 100) > current 200 stake
-             * so the if-check above is true and penalty is 0 because have only removed a portion of the stake added
-             * during the grace period.
-             */
-            uint64_t nScore = ((nStakeNew + (uint64_t)nStakeAdded) * nScorePrev) / nStakePrev;
-
-            /* Penalty is amount of trust reduction */
-            return (nScorePrev - nScore);
-        }
-
-
-        /* Calculate trust score penalty from unstaking an amount from a trustAccout */
-        uint64_t GetUnstakePenalty(const TAO::Register::Object trustAccount, const uint64_t nUnstake)
-        {
-            uint64_t nStake = trustAccount.get<uint64_t>("stake");
-
-            uint64_t nStakeNew = 0;
-            if(nUnstake < nStake)
-                nStakeNew = nStake - nUnstake;
-
-            return GetUnstakePenalty(trustAccount.get<uint64_t>("trust"), nStake, nStakeNew, trustAccount.hashOwner);
+            return nScore;
         }
 
 

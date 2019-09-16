@@ -41,7 +41,8 @@ namespace TAO
 
 
         /* Commits funds from a coinbase transaction. */
-        bool Trust::Execute(TAO::Register::Object &trust, const uint64_t nReward, const uint64_t nScore, const uint64_t nTimestamp)
+        bool Trust::Execute(TAO::Register::Object &trust, const uint64_t nReward, const uint64_t nScore,
+                            const int64_t nStakeChange, const uint64_t nTimestamp)
         {
             /* Parse the account object register. */
             if(!trust.Parse())
@@ -51,13 +52,40 @@ namespace TAO
             if(trust.Standard() != TAO::Register::OBJECTS::TRUST)
                 return debug::error(FUNCTION, "no trust for non-trust account");
 
+            /* Get account starting values */
+            uint64_t nStakePrev = trust.get<uint64_t>("stake");
+            uint64_t nBalancePrev = trust.get<uint64_t>("balance");
+
+            uint64_t nStakeAdded = 0;
+            uint64_t nStakeRemoved = 0;
+
+            if(nStakeChange > 0)
+            {
+                if(nStakeChange > nBalancePrev)
+                    return debug::error(FUNCTION, "cannot add stake exceeding existing trust account balance");
+                else
+                    nStakeAdded = nStakeChange;
+            }
+
+            else if(nStakeChange < 0)
+            {
+                if((0 - nStakeChange) > nStakePrev)
+                    return debug::error(FUNCTION, "cannot unstake more than existing stake balance");
+                else
+                    nStakeRemoved = (0 - nStakeChange);
+            }
+
             /* Write the new trust to object register. */
             if(!trust.Write("trust", nScore))
                 return debug::error(FUNCTION, "trust could not be written to object register");
 
             /* Write the new balance to object register. */
-            if(!trust.Write("balance", trust.get<uint64_t>("balance") + nReward))
+            if(!trust.Write("balance", nBalancePrev + nReward + nStakeRemoved - nStakeAdded))
                 return debug::error(FUNCTION, "balance could not be written to object register");
+
+            /* Write the new stake to object register. */
+            if(!trust.Write("stake", nStakePrev + nStakeAdded - nStakeRemoved))
+                return debug::error(FUNCTION, "stake could not be written to object register");
 
             /* Update the state register's timestamp. */
             trust.nModified = nTimestamp;

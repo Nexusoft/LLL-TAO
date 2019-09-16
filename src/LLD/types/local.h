@@ -21,6 +21,8 @@ ________________________________________________________________________________
 #include <LLD/cache/binary_lru.h>
 #include <LLD/keychain/hashmap.h>
 
+#include <TAO/Ledger/include/stake_change.h>
+
 
 /** Forward declarations **/
 namespace TAO
@@ -116,6 +118,43 @@ namespace LLD
          *
          **/
         bool ReadLast(const uint256_t& hashGenesis, uint512_t &hashLast);
+
+
+        /** WriteStakeChange
+         *
+         *  Writes a stake change request indexed by genesis.
+         *
+         *  @param[in] hashGenesis The user genesis requesting the stake change.
+         *  @param[in] stakeChange Stake change request data to record.
+         *
+         *  @return True if the change was successfully written, false otherwise.
+         *
+         **/
+        bool WriteStakeChange(const uint256_t& hashGenesis, const TAO::Ledger::StakeChange& stakeChange);
+
+
+        /** ReadStakeChange
+         *
+         *  Reads a stake change request for a sig chain genesis.
+         *
+         *  @param[in] hashGenesis The user genesis to read.
+         *
+         *  @return True if the change was successfully read, false otherwise.
+         *
+         **/
+        bool ReadStakeChange(const uint256_t& hashGenesis, TAO::Ledger::StakeChange& stakeChange);
+
+
+        /** EraseStakeChange
+         *
+         *  Removes a recorded stake change request.
+         *
+         *  @param[in] hashGenesis The user genesis of the request to remove.
+         *
+         *  @return True if the change was successfully erased, false otherwise.
+         *
+         **/
+        bool EraseStakeChange(const uint256_t& hashGenesis);
 
     };
 }

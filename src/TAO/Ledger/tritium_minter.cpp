@@ -172,7 +172,7 @@ namespace TAO
 
 
         /*  Retrieves the most recent stake transaction for a user account. */
-        bool TritiumMinter::FindTrustAccount(const Genesis& hashGenesis)
+        bool TritiumMinter::FindTrustAccount(const uint256_t& hashGenesis)
         {
 
             /* Reset saved trust account data */
@@ -246,7 +246,7 @@ namespace TAO
 
 
         /** Retrieves the most recent stake transaction for a user account. */
-        bool TritiumMinter::FindLastStake(const Genesis& hashGenesis, uint512_t& hashLast)
+        bool TritiumMinter::FindLastStake(const uint256_t& hashGenesis, uint512_t& hashLast)
         {
             if(LLD::Ledger->ReadStake(hashGenesis, hashLast))
                 return true;
@@ -263,6 +263,69 @@ namespace TAO
             }
 
             return false;
+        }
+
+
+        /* Identifies any pending stake change request and populates the appropriate instance data. */
+        bool TritiumMinter::FindStakeChange(const uint256_t& hashGenesis, const uint512_t hashLast)
+        {
+            /* Check for pending stake change request */
+            fStakeChange = false;
+            TAO::Ledger::StakeChange request;
+            uint64_t nStake = account.get<uint64_t>("stake");
+            uint64_t nBalance = account.get<uint64_t>("balance");
+
+            if(LLD::Local->ReadStakeChange(hashGenesis, request) && !request.fProcessed)
+            {
+                if(request.hashLast != hashLast)
+                {
+                    debug::log(0, FUNCTION, "Stake Minter: Stake change request is stale...removing.");
+
+                    if(!LLD::Local->EraseStakeChange(hashGenesis))
+                    {
+                        debug::log(0, FUNCTION, "Stake Minter: Failed to remove stake change request");
+                        return false;
+                    }
+                }
+
+                else if(request.nExpires != 0 && request.nExpires < runtime::unifiedtimestamp())
+                {
+                    debug::log(0, FUNCTION, "Stake Minter: Stake change request has expired...removing.");
+
+                    if(!LLD::Local->EraseStakeChange(hashGenesis))
+                    {
+                        debug::log(0, FUNCTION, "Stake Minter: Failed to remove stake change request");
+                        return false;
+                    }
+                }
+
+                else if(request.nAmount < 0 && (0 - request.nAmount) > nStake)
+                {
+                    debug::log(0, FUNCTION, "Stake Minter: Cannot unstake more than current stake, using current stake amount.");
+
+                    fStakeChange = true;
+                    request.nAmount = 0 - nStake;
+                }
+
+                else if(request.nAmount > 0 && request.nAmount > nBalance)
+                {
+                    debug::log(0, FUNCTION, "Stake Minter: Cannot add more than current balance to stake, using current balance.");
+
+                    fStakeChange = true;
+                    request.nAmount = nBalance;
+                }
+
+                else if(request.nAmount != 0)
+                    fStakeChange = true;
+
+            }
+
+            if(fStakeChange)
+                stakeChange = request;
+            else
+                stakeChange.SetNull();
+
+            return true;
         }
 
 
@@ -288,25 +351,32 @@ namespace TAO
                 /* Staking Trust for existing trust account */
                 uint64_t nTrustPrev = account.get<uint64_t>("trust");
                 uint64_t nStake = account.get<uint64_t>("stake");
+                int64_t nStakeChange = 0;
 
-                if(nStake == 0)
+                /* Get the previous stake tx for the trust account. */
+                uint512_t hashLast;
+                if(!FindLastStake(user->Genesis(), hashLast))
+                    return debug::error(FUNCTION, "Failed to get last stake for trust account");
+
+                if(!FindStakeChange(user->Genesis(), hashLast))
+                    return debug::error(FUNCTION, "Unable to process stake change request");
+
+                if(fStakeChange)
+                    nStakeChange = stakeChange.nAmount;
+
+                if(nStake == 0 && nStakeChange == 0)
                 {
                     /* Trust account has no stake balance. Increase sleep time to wait for balance. */
                     nSleepTime = 5000;
 
                     /* Update log every 60 iterations (5 minutes) */
                     if((nCounter % 60) == 0)
-                        debug::log(0, FUNCTION, "Stake Minter: Trust account has no stake balance.");
+                        debug::log(0, FUNCTION, "Stake Minter: Trust account has no stake.");
 
                     ++nCounter;
 
                     return false;
                 }
-
-                /* Get the previous stake tx for the trust account. */
-                uint512_t hashLast;
-                if(!FindLastStake(user->Genesis(), hashLast))
-                    return debug::error(FUNCTION, "Failed to get last stake for trust account");
 
                 /* Get the block containing the last stake tx for the trust account. */
                 stateLast = BlockState();
@@ -317,12 +387,12 @@ namespace TAO
                 nBlockAge = TAO::Ledger::ChainState::stateBest.load().GetBlockTime() - stateLast.GetBlockTime();
 
                 /* Calculate the new trust score */
-                nTrust = GetTrustScore(nTrustPrev, nBlockAge);
+                nTrust = GetTrustScore(nTrustPrev, nBlockAge, nStake, nStakeChange);
 
                 /* Initialize block producer for Trust operation with hashLastTrust, new trust score.
                  * The coinstake reward will be added based on time when block is found.
                  */
-                block.producer[0] << uint8_t(TAO::Operation::OP::TRUST) << hashLast << nTrust;
+                block.producer[0] << uint8_t(TAO::Operation::OP::TRUST) << hashLast << nTrust << nStakeChange;
             }
             else
             {
@@ -341,6 +411,16 @@ namespace TAO
                     ++nCounter;
 
                     return false;
+                }
+
+                /* Pending stake change request not allowed while staking Genesis */
+                fStakeChange = false;
+                if(LLD::Local->ReadStakeChange(user->Genesis(), stakeChange))
+                {
+                    debug::log(0, FUNCTION, "Stake Minter: Stake change request not allowed for trust account Genesis...removing");
+
+                    if(!LLD::Local->EraseStakeChange(user->Genesis()))
+                        debug::error(FUNCTION, "Stake Minter: Failed to remove stake change request");
                 }
 
                 /* Initialize block producer for Genesis operation with hashAddress of trust account register.
@@ -466,7 +546,7 @@ namespace TAO
                 return;
             }
             /* Genesis blocks do not include mempool transactions.  Therefore if there are already any transactions in the mempool
-               for this sig chain the genesis block will fail to be accepted because the producer.prevTX would not be on disk.
+               for this sig chain the genesis block will fail to be accepted because the producer.hashPrevTx would not be on disk.
                Therefore if this is a genesis block, skip until there are no mempool transactions for this sig chain. */
             else if(fGenesis && mempool.Has(user->Genesis()))
             {
@@ -488,20 +568,32 @@ namespace TAO
                 nCounter = 0;
             }
 
+            uint64_t nStake = 0;
+            if (fGenesis)
+            {
+                /* For Genesis, stake amount is the trust account balance. */
+                nStake = account.get<uint64_t>("balance");
+            }
+            else
+            {
+                nStake = account.get<uint64_t>("stake");
+
+                /* Include added stake into the amount for threshold calculations. Need this because, if not included and someone
+                 * unstaked their full stake amount, their trust account would be stuck unable to ever stake another block.
+                 * By allowing minter to proceed when adding stake to a zero stake trust account, it must be added in here also
+                 * or there would be no stake amount (require threshold calculation would fail).
+                 *
+                 * For other cases, where more is added to existing stake, we also include it as an immediate benefit
+                 * to improve the chances to stake the block that implements the change. If not, low balance accounts could
+                 * potentially have difficulty finding a block to add stake, even if they were adding a large amount.
+                 */
+                if(fStakeChange && stakeChange.nAmount > 0)
+                    nStake += stakeChange.nAmount;
+            }
+
             /* Calculate the minimum Required Energy Efficiency Threshold.
              * Minter can only mine Proof of Stake when current threshold exceeds this value.
-             *
-             * Staking weights (trust and block) reduce the required threshold by reducing the numerator of this calculation.
-             * Weight from staking balance reduces required threshold by increasing the denominator.
-             *
-             * For Genesis, staking balance is the trust account balance. Otherwise (Trust) it is stake balance.
              */
-            uint64_t nStake = 0;
-            if (!fGenesis)
-                nStake = account.get<uint64_t>("stake");
-            else
-                nStake = account.get<uint64_t>("balance");
-
             double nRequired = GetRequiredThreshold(nTrustWeight.load(), nBlockWeight.load(), nStake);
 
             /* Calculate the target value based on difficulty. */
@@ -666,8 +758,23 @@ namespace TAO
             if(!(nStatus & PROCESS::ACCEPTED))
                 return debug::error(FUNCTION, "generated block not accepted");
 
+            /* After successfully generated genesis for trust account, reset to genereate trust for continued staking */
             if(fGenesis)
                 fGenesis = false;
+
+            /* If stake change was applied, mark it as processed */
+            if(fStakeChange)
+            {
+                stakeChange.fProcessed = true;
+                stakeChange.hashTx = block.producer.GetHash();
+
+                if(!LLD::Local->WriteStakeChange(user->Genesis(), stakeChange))
+                {
+                    /* If the write fails, log and attempt to erase it or it will be repeatedly processed */
+                    debug::error(FUNCTION, "unable to update stake change request...attempting to remove");
+                    LLD::Local->EraseStakeChange(user->Genesis());
+                }
+            }
 
             return true;
         }

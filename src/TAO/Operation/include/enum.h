@@ -49,8 +49,7 @@ namespace TAO
                 COINBASE   = 0x12,
                 GENESIS    = 0x13, //for proof of stake
                 TRUST      = 0x14, //for proof of stake
-                STAKE      = 0x15, //to move funds to stake
-                UNSTAKE    = 0x16, //to move funds from stake
+
                 FEE        = 0x17, //to pay fees to network
 
                 //internal funding

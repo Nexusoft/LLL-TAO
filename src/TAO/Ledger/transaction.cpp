@@ -31,10 +31,11 @@ ________________________________________________________________________________
 #include <TAO/Register/include/build.h>
 #include <TAO/Register/types/object.h>
 
+#include <TAO/Ledger/include/ambassador.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/include/stake.h>
-#include <TAO/Ledger/include/ambassador.h>
+#include <TAO/Ledger/include/stake_change.h>
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/mempool.h>
 
@@ -430,6 +431,20 @@ namespace TAO
                     /* Revert saved last stake to the prior stake transaction */
                     if(!LLD::Ledger->WriteStake(hashGenesis, hashLast))
                         return debug::error(FUNCTION, "failed to write last stake");
+
+                    /* If local database has a stake change request for this transaction that marked as processed, update it.
+                     * This resets the request but keeps the tx hash, so if it is later reconnected it can be marked
+                     * as processed again. Otherwise, the stake minter can recognized that the original coinstake was
+                     * disconnected and implement the stake change request with the next stake block found.
+                     */
+                    StakeChange request;
+                    if(LLD::Local->ReadStakeChange(hashGenesis, request) && request.fProcessed && request.hashTx == GetHash())
+                    {
+                        request.fProcessed = false;
+
+                        if(!LLD::Local->WriteStakeChange(hashGenesis, request))
+                            debug::error(FUNCTION, "unable to reinstate disconnected stake change request"); //don't fail for this
+                    }
                 }
                 else
                 {

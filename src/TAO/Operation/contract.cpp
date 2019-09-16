@@ -246,8 +246,8 @@ namespace TAO
                 /* Check for Trust Coinstake. */
                 case OP::TRUST:
                 {
-                    /* Skip over hashLast and nScore. */
-                    ssOperation.seek(72);
+                    /* Skip over hashLast, nScore, nStakeChange. */
+                    ssOperation.seek(80);
 
                     /* Get stake reward for trust. */
                     ssOperation >> nValue;

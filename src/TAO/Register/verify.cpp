@@ -24,10 +24,8 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/genesis.h>
 #include <TAO/Operation/include/legacy.h>
 #include <TAO/Operation/include/migrate.h>
-#include <TAO/Operation/include/stake.h>
 #include <TAO/Operation/include/transfer.h>
 #include <TAO/Operation/include/trust.h>
-#include <TAO/Operation/include/unstake.h>
 #include <TAO/Operation/include/write.h>
 #include <TAO/Operation/types/contract.h>
 
@@ -348,6 +346,10 @@ namespace TAO
                         uint64_t nScore = 0;
                         contract >> nScore;
 
+                        /* Get the stake change. */
+                        int64_t nStakeChange = 0;
+                        contract >> nStakeChange;
+
                         /* Get the stake reward. */
                         uint64_t nReward = 0;
                         contract >> nReward;
@@ -382,7 +384,7 @@ namespace TAO
                             return debug::error(FUNCTION, "OP::TRUST: not authorized ", contract.Caller().SubString());
 
                         /* Calculate the new operation. */
-                        if(!TAO::Operation::Trust::Execute(object, nReward, nScore, contract.Timestamp()))
+                        if(!TAO::Operation::Trust::Execute(object, nReward, nScore, nStakeChange, contract.Timestamp()))
                             return false;
 
                         /* Write the state to memory map. */
@@ -434,104 +436,6 @@ namespace TAO
 
                         /* Calculate the new operation. */
                         if(!TAO::Operation::Genesis::Execute(object, nReward, contract.Timestamp()))
-                            return false;
-
-                        /* Write the state to memory map. */
-                        mapStates[contract.Caller()] = TAO::Register::State(object);
-
-                        break;
-                    }
-
-
-                    /* Move funds from trust account balance to stake. */
-                    case TAO::Operation::OP::STAKE:
-                    {
-                        /* Amount to of funds to move. */
-                        uint64_t nAmount = 0;
-                        contract >> nAmount;
-
-                        /* Verify the first register code. */
-                        uint8_t nState = 0;
-                        contract >>= nState;
-
-                        /* Check the state is prestate. */
-                        if(nState != STATES::PRESTATE)
-                            return debug::error(FUNCTION, "OP::STAKE: register state not in pre-state");
-
-                        /* Verify the register's prestate. */
-                        State prestate;
-                        contract >>= prestate;
-
-                        /* Check temporary memory states first. */
-                        Object object;
-                        if(mapStates.count(contract.Caller())) //TODO: could have a collision between genesis and address)
-                            object = TAO::Register::Object(mapStates[contract.Caller()]);
-
-                        /* Read the register from database. */
-                        else if(!LLD::Register->ReadTrust(contract.Caller(), object))
-                            return debug::error(FUNCTION, "OP::STAKE: failed to read pre-state");
-
-                        /* Check that the checksums match. */
-                        if(prestate != object)
-                            return debug::error(FUNCTION, "OP::STAKE: pre-state verification failed");
-
-                        /* Check contract account */
-                        if(contract.Caller() != prestate.hashOwner)
-                            return debug::error(FUNCTION, "OP::STAKE: not authorized ", contract.Caller().SubString());
-
-                        /* Calculate the new operation. */
-                        if(!TAO::Operation::Stake::Execute(object, nAmount, contract.Timestamp()))
-                            return false;
-
-                        /* Write the state to memory map. */
-                        mapStates[contract.Caller()] = TAO::Register::State(object);
-
-                        break;
-                    }
-
-
-                    /* Move funds from trust account stake to balance. */
-                    case TAO::Operation::OP::UNSTAKE:
-                    {
-                        /* Amount of funds to move. */
-                        uint64_t nAmount = 0;
-                        contract >> nAmount;
-
-                        /* Trust score penalty from unstake. */
-                        uint64_t nPenalty = 0;
-                        contract >> nPenalty;
-
-                        /* Verify the first register code. */
-                        uint8_t nState = 0;
-                        contract >>= nState;
-
-                        /* Check the state is prestate. */
-                        if(nState != STATES::PRESTATE)
-                            return debug::error(FUNCTION, "OP::UNSTAKE: register state not in pre-state");
-
-                        /* Verify the register's prestate. */
-                        State prestate;
-                        contract >>= prestate;
-
-                        /* Check temporary memory states first. */
-                        Object object;
-                        if(mapStates.count(contract.Caller())) //TODO: could have a collision between genesis and address)
-                            object = TAO::Register::Object(mapStates[contract.Caller()]);
-
-                        /* Read the register from database. */
-                        else if(!LLD::Register->ReadTrust(contract.Caller(), object))
-                            return debug::error(FUNCTION, "OP::UNSTAKE: failed to read pre-state");
-
-                        /* Check that the checksums match. */
-                        if(prestate != object)
-                            return debug::error(FUNCTION, "OP::UNSTAKE: pre-state verification failed");
-
-                        /* Check contract account */
-                        if(contract.Caller() != prestate.hashOwner)
-                            return debug::error(FUNCTION, "OP::UNSTAKE: not authorized ", contract.Caller().SubString());
-
-                        /* Calculate the new operation. */
-                        if(!TAO::Operation::Unstake::Execute(object, nAmount, nPenalty, contract.Timestamp()))
                             return false;
 
                         /* Write the state to memory map. */

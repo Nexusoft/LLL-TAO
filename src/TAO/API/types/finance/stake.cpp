@@ -11,25 +11,17 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLC/hash/SK.h>
+#include <TAO/API/types/finance.h>
 
 #include <LLD/include/global.h>
 
-#include <TAO/API/types/finance.h>
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/utils.h>
 
 #include <TAO/Ledger/include/constants.h>
-#include <TAO/Ledger/include/create.h>
-#include <TAO/Ledger/include/stake.h>
-#include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/include/stake_change.h>
 #include <TAO/Ledger/types/sigchain.h>
 
-#include <TAO/Operation/include/enum.h>
-#include <TAO/Operation/include/execute.h>
-
-#include <TAO/Register/include/enum.h>
-#include <TAO/Register/include/names.h>
 #include <TAO/Register/types/object.h>
 
 /* Global TAO namespace. */
@@ -58,7 +50,10 @@ namespace TAO
 
             /* Check for amount parameter. */
             if(params.find("amount") == params.end())
-                throw APIException(-46, "Missing amount.");
+                throw APIException(-46, "Missing amount");
+
+            else if(std::stod(params["amount"].get<std::string>()) < 0)
+                throw APIException(-204, "Cannot set stake to a negative amount");
 
             /* Lock the signature chain. */
             LOCK(users->CREATE_MUTEX);
@@ -73,67 +68,99 @@ namespace TAO
             {
                 /* Trust account is indexed */
                 if(!LLD::Register->ReadTrust(user->Genesis(), trustAccount))
-                   throw APIException(-75, "Unable to retrieve trust account.");
+                   throw APIException(-75, "Unable to retrieve trust account");
 
                 if(!trustAccount.Parse())
-                    throw APIException(-71, "Unable to parse trust account.");
+                    throw APIException(-71, "Unable to parse trust account");
             }
             else
             {
                 throw APIException(-76, "Cannot set stake for trust account until after Genesis transaction");
             }
 
-            /* Create the transaction. */
-            TAO::Ledger::Transaction tx;
-            if(!TAO::Ledger::CreateTransaction(user, strPIN, tx))
-                throw APIException(-17, "Failed to create transaction.");
-
             uint64_t nBalancePrev = trustAccount.get<uint64_t>("balance");
             uint64_t nStakePrev = trustAccount.get<uint64_t>("stake");
 
-            /* Get the amount to debit. */
+            /* Retrieve last stake tx hash for the user trust account to include in stake change request */
+            uint512_t hashLast;
+            if(!LLD::Ledger->ReadStake(user->Genesis(), hashLast))
+                throw APIException(-205, "Unable to retrieve last stake");
+
+            /* Get the requested amount to stake. */
             uint64_t nAmount = std::stod(params["amount"].get<std::string>()) * TAO::Ledger::NXS_COIN;
+
+            /* Get the time to expiration (optional). */
+            uint64_t nExpires = 0;
+            if(params.find("expires") == params.end())
+                nExpires = std::stoull(params["expires"].get<std::string>());
+
+            uint64_t nTime = runtime::unifiedtimestamp();
+
+            /* Convert time to expiration to an expiration timestamp (0 = does not expire) */
+            if(nExpires > 0)
+            {
+
+                if((std::numeric_limits<uint64_t>::max() - nExpires) < nTime) //check for overflow
+                    nExpires = std::numeric_limits<uint64_t>::max();
+
+                else
+                    nExpires = nExpires + nTime;
+            }
+
+            /* Only need to validate amount for add to stake. An amount between zero and current stake balance
+             * is an unstake (remove from stake), and cannot set less than zero so cannot attempt to remove
+             * more than current stake amount.
+             */
             if(nAmount > nStakePrev)
             {
-                /* Adding to stake from balance */
+                /* Validate add to stake */
                 if((nAmount - nStakePrev) > nBalancePrev)
                     throw APIException(-77, "Insufficient trust account balance to add to stake");
-
-                /* Set the transaction payload for stake operation */
-                uint64_t nAddStake = nAmount - nStakePrev;
-
-                tx[0] << uint8_t(TAO::Operation::OP::STAKE) << nAddStake;
             }
-            else if(nAmount < nStakePrev)
+
+            TAO::Ledger::StakeChange request;
+            bool hasPrev = false;
+
+            /* Retrieve any existing stake change request */
+            if(LLD::Local->ReadStakeChange(user->Genesis(), request))
+                hasPrev = true;
+
+            if(hasPrev && request.nExpires != 0 && (request.nExpires < runtime::unifiedtimestamp()))
             {
-                /* Removing from stake to balance */
-                uint64_t nRemoveStake = nStakePrev - nAmount;
+                request.SetNull();
+                hasPrev = false;
 
-                uint64_t nTrustPrev = trustAccount.get<uint64_t>("trust");
-                uint64_t nTrustPenalty = TAO::Ledger::GetUnstakePenalty(nTrustPrev, nStakePrev, nAmount, user->Genesis());
-
-                tx[0] << uint8_t(TAO::Operation::OP::UNSTAKE) << nRemoveStake << nTrustPenalty;
+                if(!LLD::Local->EraseStakeChange(user->Genesis()))
+                    throw APIException(-206, "Failed to erase expired stake change request");
             }
+
+            /* Set up the stake change request and store for inclusion in next stake block found */
+            if(nAmount == nStakePrev)
+            {
+                if(hasPrev)
+                {
+                    /* Setting amount to the current stake value (no change) removes the prior stake change request */
+                    if(!LLD::Local->EraseStakeChange(user->Genesis()))
+                        throw APIException(-207, "Failed to erase previous stake change request");
+                }
+                else
+                    throw APIException(-78, "Stake not changed"); //Request to set stake to current value when no prior request
+            }
+
             else
-                throw APIException(-78, "Stake not changed");
+            {
+                request.hashGenesis = user->Genesis();
+                request.hashLast = hashLast;
+                request.nAmount = nAmount;
+                request.nTime = nTime;
+                request.nExpires = nExpires;
 
-            /* Add the fee */
-            AddFee(tx);
-
-            /* Execute the operations layer. */
-            if(!tx.Build())
-                throw APIException(-44, "Transaction failed to build");
-
-            /* Sign the transaction. */
-            if(!tx.Sign(users->GetKey(tx.nSequence, strPIN, nSession)))
-                throw APIException(-31, "Ledger failed to sign transaction");
-
-            /* Execute the operations layer. */
-            if(!TAO::Ledger::mempool.Accept(tx))
-                throw APIException(-32, "Failed to accept");
+                if(!LLD::Local->WriteStakeChange(user->Genesis(), request))
+                        throw APIException(-208, "Failed to save stake change request");
+            }
 
             /* Build a JSON response object. */
-            ret["txid"] = tx.GetHash().ToString();
+            ret["success"] = true;
 
             return ret;
         }
