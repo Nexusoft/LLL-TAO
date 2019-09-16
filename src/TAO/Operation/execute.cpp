@@ -946,7 +946,6 @@ namespace TAO
 
                         /* After Verify, reset streams */
                         contract.Reset();
-
                         contract.Seek(65);
 
                         /* Get the trust register address. (hash to) */

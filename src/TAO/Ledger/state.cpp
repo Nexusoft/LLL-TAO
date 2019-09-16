@@ -953,13 +953,13 @@ namespace TAO
         bool BlockState::Disconnect()
         {
             /* Check through all the transactions. */
-            for(const auto& proof : vtx)
+            for(auto proof = vtx.rbegin(); proof != vtx.rend(); ++proof)
             {
                 /* Only work on tritium transactions for now. */
-                if(proof.first == TRANSACTION::TRITIUM)
+                if(proof->first == TRANSACTION::TRITIUM)
                 {
                     /* Get the transaction hash. */
-                    uint512_t hash = proof.second;
+                    uint512_t hash = proof->second;
 
                     /* Read from disk. */
                     TAO::Ledger::Transaction tx;
@@ -970,10 +970,10 @@ namespace TAO
                     if(!tx.Disconnect())
                         return debug::error(FUNCTION, "failed to disconnect transaction");
                 }
-                else if(proof.first == TRANSACTION::LEGACY)
+                else if(proof->first == TRANSACTION::LEGACY)
                 {
                     /* Get the transaction hash. */
-                    uint512_t hash = proof.second;
+                    uint512_t hash = proof->second;
 
                     /* Read from disk. */
                     Legacy::Transaction tx;
@@ -990,7 +990,7 @@ namespace TAO
                 }
 
                 /* Write the indexing entries. */
-                LLD::Ledger->EraseIndex(proof.second);
+                LLD::Ledger->EraseIndex(proof->second);
             }
 
             /* Erase the index for block by height. */
