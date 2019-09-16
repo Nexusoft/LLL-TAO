@@ -214,6 +214,14 @@ namespace TAO
                      LLD::Ledger->RepairIndexHeight();
             }
 
+            stateBest.load().print();
+
+            /* Log the weights. */
+            debug::log(0, FUNCTION, "WEIGHTS",
+                " Prime ", stateBest.load().nChannelWeight[1].Get64(),
+                " Hash ",  stateBest.load().nChannelWeight[2].Get64(),
+                " Stake ", stateBest.load().nChannelWeight[0].Get64());
+
 
             /* Debug logging. */
             debug::log(0, FUNCTION, config::fTestNet.load() ? "Test" : "Nexus", " Network: genesis=", Genesis().SubString(),

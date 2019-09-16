@@ -1235,7 +1235,7 @@ namespace Legacy
         if(stateBegin.nVersion < 7)
         {
             /* Loop until complete. */
-            debug::log(0, FUNCTION, "Scanning Legacy from tx ", hashLast.ToString().substr(0, 20));
+            debug::log(0, FUNCTION, "Scanning Legacy from tx ", hashLast.SubString());
             while(!config::fShutdown.load())
             {
                 /* Read the next batch of inventory. */

@@ -27,6 +27,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/include/enum.h>
+#include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/types/genesis.h>
 
 #include <unit/catch2/catch.hpp>
@@ -225,7 +226,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
         tx.hashGenesis = hashGenesis;
         tx.nSequence   = 1;
         tx.nTimestamp  = runtime::timestamp();
-        tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
+
 
         //payload
         tx[0] << uint8_t(OP::TRANSFER) << hashRegister << uint256_t(0xffff) << false;
@@ -299,7 +300,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
         tx.hashGenesis = hashGenesis;
         tx.nSequence   = 1;
         tx.nTimestamp  = runtime::timestamp();
-        tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
+
 
         //payload
         tx[0] << uint8_t(OP::TRANSFER) << hashRegister << uint256_t(0xffff) << uint8_t(TRANSFER::FORCE);
@@ -379,7 +380,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
             tx.hashGenesis = hashGenesis;
             tx.nSequence   = 1;
             tx.nTimestamp  = runtime::timestamp();
-            tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
+
 
             //payload
             tx[0] << uint8_t(OP::TRANSFER) << hashRegister << hashGenesis2 << false;
@@ -392,6 +393,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
 
             //write transaction
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
+            REQUIRE(LLD::Ledger->IndexBlock(tx.GetHash(), TAO::Ledger::ChainState::Genesis()));
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -554,7 +556,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
             tx.hashGenesis = hashGenesis2;
             tx.nSequence   = 1;
             tx.nTimestamp  = runtime::timestamp();
-            tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
+
 
             //payload
             tx[0] << uint8_t(OP::CLAIM) << hashTx << uint32_t(0) << hashRegister;
@@ -669,7 +671,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
             tx.hashGenesis = hashGenesis;
             tx.nSequence   = 2;
             tx.nTimestamp  = runtime::timestamp();
-            tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
+
 
             //payload
             tx[0] << uint8_t(OP::DEBIT) << hashRegister << hashAccount << uint64_t(500) << uint64_t(0);
@@ -682,6 +684,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
 
             //write transaction
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
+            REQUIRE(LLD::Ledger->IndexBlock(tx.GetHash(), TAO::Ledger::ChainState::Genesis()));
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -778,7 +781,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
                 tx.hashGenesis = hashGenesis;
                 tx.nSequence   = 1;
                 tx.nTimestamp  = runtime::timestamp();
-                tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
+
 
                 //payload
                 tx[0] << uint8_t(OP::DEBIT) << hashRegister << hashAccount << uint64_t(500) << uint64_t(0);
@@ -791,6 +794,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
 
                 //write transaction
                 REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
+                REQUIRE(LLD::Ledger->IndexBlock(tx.GetHash(), TAO::Ledger::ChainState::Genesis()));
 
                 //commit to disk
                 REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -1034,13 +1038,14 @@ TEST_CASE( "Register Rollback Tests", "[register]")
             tx.hashGenesis = hashGenesis;
             tx.nSequence   = 0;
             tx.nTimestamp  = runtime::timestamp();
-            tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
+
 
             //payload (hashGenesis, coinbase reward, extra nonce)
             tx[0] << uint8_t(OP::COINBASE) << hashGenesis << uint64_t(5000) << (uint64_t)0;
 
             //write transaction
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
+            REQUIRE(LLD::Ledger->IndexBlock(tx.GetHash(), TAO::Ledger::ChainState::Genesis()));
 
             //write index
             REQUIRE(LLD::Ledger->IndexBlock(tx.GetHash(), state.GetHash()));

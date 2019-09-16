@@ -295,7 +295,6 @@ TEST_CASE( "Migrate Operation Tests", "[operation]")
         tx.hashGenesis = hashGenesis;
         tx.nSequence   = 1;
         tx.nTimestamp  = runtime::timestamp();
-        tx.hashNextTx  = LLC::GetRand512();
 
         //payload
         tx[0] << uint8_t(OP::MIGRATE) << txSend.GetHash() << hashAccount << hashKey << txSend.vout[0].nValue << nScore << hashLast;

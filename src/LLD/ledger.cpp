@@ -81,6 +81,10 @@ namespace LLD
         /* Check for Tritium transaction. */
         if(hashTx.GetType() == TAO::Ledger::TRITIUM)
         {
+            /* Check that the previous transaction is indexed. */
+            if(!HasIndex(hashTx))
+                throw debug::exception(FUNCTION, "tritium transaction not indexed");
+                
             /* Get the transaction. */
             TAO::Ledger::Transaction tx;
             if(!ReadTx(hashTx, tx, nFlags))
@@ -88,10 +92,6 @@ namespace LLD
 
             /* Get const reference for read-only access. */
             const TAO::Ledger::Transaction& ref = tx;
-
-            /* Check that the previous transaction is indexed. */
-            if(!tx.IsConfirmed())
-                throw debug::exception(FUNCTION, "previous transaction not confirmed");
 
             /* Check flags. */
             if(nFlags == TAO::Ledger::FLAGS::BLOCK)
@@ -128,6 +128,10 @@ namespace LLD
         /* Check for Legacy transaction. */
         else if(hashTx.GetType() == TAO::Ledger::LEGACY)
         {
+            /* Check if indexed. */
+            if(!HasIndex(hashTx))
+                throw debug::exception(FUNCTION, "legacy transaction not indexed");
+
             /* Get the transaction. */
             Legacy::Transaction tx;
             if(!LLD::Legacy->ReadTx(hashTx, tx, nFlags))
@@ -136,10 +140,6 @@ namespace LLD
             /* Check boundaries. */
             if(nContract >= tx.vout.size())
                 throw debug::exception(FUNCTION, "contract output out of bounds");
-
-            /* Check if indexed. */
-            if(!HasIndex(hashTx))
-                throw debug::exception(FUNCTION, "legacy transaction not indexed");
 
             /* Check script size. */
             if(tx.vout[nContract].scriptPubKey.size() != 34)

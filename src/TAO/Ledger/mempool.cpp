@@ -82,7 +82,7 @@ namespace TAO
         {
             /* Check for version 7 activation timestamp. */
             if(!(TAO::Ledger::VersionActive((tx.nTimestamp), 7) || TAO::Ledger::CurrentVersion() > 7))
-                return debug::error(FUNCTION, "tritium transaction not accepted until 2 hours after time-lock");
+                return debug::error(FUNCTION, "tritium transaction not accepted until tritium time-lock");
 
             /* Get the transaction hash. */
             uint512_t hashTx = tx.GetHash();
@@ -107,7 +107,7 @@ namespace TAO
                     {
                         /* Debug output. */
                         debug::log(0, FUNCTION, "tx ", hashTx.SubString(), " ",
-                            tx.nSequence, " genesis ", tx.hashGenesis.SubString(),
+                            tx.nSequence, " prev ", tx.hashPrevTx.SubString(),
                             " ORPHAN in ", std::dec, time.ElapsedMilliseconds(), " ms");
 
                         /* Push to orphan queue. */
@@ -119,13 +119,6 @@ namespace TAO
 
                         return true;
                     }
-
-                    /* Handle the conflict detection. */
-                    if(mapConflicts.count(tx.hashPrevTx))
-                        return debug::error(FUNCTION, "tx already claimed ", tx.hashPrevTx.SubString());
-
-                    /* Set the conflict. */
-                    mapConflicts[tx.hashPrevTx] = 0;
                 }
             }
 
@@ -148,11 +141,11 @@ namespace TAO
                 return false;
 
             /* Verify the Ledger Pre-States. */
-            if(!tx.Verify(TAO::Ledger::FLAGS::MEMPOOL))
+            if(!tx.Verify(FLAGS::MEMPOOL))
                 return false;
 
             /* Connect transaction in memory. */
-            if(!tx.Connect(TAO::Ledger::FLAGS::MEMPOOL))
+            if(!tx.Connect(FLAGS::MEMPOOL))
                 return false;
 
             {

@@ -182,76 +182,87 @@ namespace LLP
          *  @return Returns true if best height was outdated, false otherwise.
          *
          **/
-         bool check_best_height();
+        bool check_best_height();
 
 
-         /** clear_map
-          *
-          *  Clear the blocks map.
-          *
-          **/
-         void clear_map();
+        /** check_round
+         *
+         *  For Tritium, this checks the mempool to make sure that there are no new transactions that would be orphaned by the
+         *  the current round block. 
+         *
+         *  @return Returns false if the current round is no longer valid.
+         *
+         **/
+        bool check_round();
 
 
-         /** find_block
-          *
-          *  Determines if the block exists.
-          *
-          **/
-         bool find_block(const uint512_t& hashMerkleRoot);
+        /** clear_map
+         *
+         *  Clear the blocks map.
+         *
+         **/
+        void clear_map();
 
 
-         /** new_block
-          *
-          *  Adds a new block to the map.
-          *
-          **/
-         TAO::Ledger::Block *new_block();
+        /** find_block
+         *
+         *  Determines if the block exists.
+         *
+         **/
+        bool find_block(const uint512_t& hashMerkleRoot);
 
 
-         /** validate_block
-          *
-          *  validates the block for the derived miner class.
-          *
-          *  @param[in] hashMerkleRoot The root hash of the merkle tree.
-          *
-          *  @return Returns true if block is valid, false otherwise.
-          *
-          **/
-         bool validate_block(const uint512_t& hashMerkleRoot);
+        /** new_block
+         *
+         *  Adds a new block to the map.
+         *
+         **/
+        TAO::Ledger::Block *new_block();
 
 
-         /** sign_block
-          *
-          *  signs the block to seal the proof of work.
-          *
-          *  @param[in] nNonce The nonce secret for the block proof.
-          *  @param[in] hashMerkleRoot The root hash of the merkle tree.
-          *
-          *  @return Returns true if block is valid, false otherwise.
-          *
-          **/
-         bool sign_block(uint64_t nNonce, const uint512_t& hashMerkleRoot);
+        /** validate_block
+         *
+         *  validates the block for the derived miner class.
+         *
+         *  @param[in] hashMerkleRoot The root hash of the merkle tree.
+         *
+         *  @return Returns true if block is valid, false otherwise.
+         *
+         **/
+        bool validate_block(const uint512_t& hashMerkleRoot);
 
 
-         /** is_locked
-          *
-          *  Returns true if the mining wallet locked, false otherwise.
-          *
-          **/
-         bool is_locked();
+        /** sign_block
+         *
+         *  signs the block to seal the proof of work.
+         *
+         *  @param[in] nNonce The nonce secret for the block proof.
+         *  @param[in] hashMerkleRoot The root hash of the merkle tree.
+         *
+         *  @return Returns true if block is valid, false otherwise.
+         *
+         **/
+        bool sign_block(uint64_t nNonce, const uint512_t& hashMerkleRoot);
 
 
-         /** is_prime_mod
-          *
-          *  Helper function used for prime channel modification rule in loop.
-          *  Returns true if the condition is satisfied, false otherwise.
-          *
-          *  @param[in] nBitMask The bitMask for the highest order bits of a block hash to check for to satisfy rule.
-          *  @param[in] pBlock The block to check.
-          *
-          **/
-          bool is_prime_mod(uint32_t nBitMask, TAO::Ledger::Block *pBlock);
+        /** is_locked
+         *
+         *  Returns true if the mining wallet locked, false otherwise.
+         *
+         **/
+        bool is_locked();
+
+
+        /** is_prime_mod
+         *
+         *  Helper function used for prime channel modification rule in loop.
+         *  Returns true if the condition is satisfied, false otherwise.
+         *
+         *  @param[in] nBitMask The bitMask for the highest order bits of a block hash to check for to satisfy rule.
+         *  @param[in] pBlock The block to check.
+         *
+         **/
+        bool is_prime_mod(uint32_t nBitMask, TAO::Ledger::Block *pBlock);
 
     };
 }
