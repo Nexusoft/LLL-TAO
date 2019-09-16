@@ -265,7 +265,7 @@ namespace TAO
                     case TAO::Operation::OP::TRUST:
                     {
                         /* Seek to end. */
-                        contract.Seek(80);
+                        contract.Seek(88);
 
                         /* Verify the first register code. */
                         uint8_t nState = 0;
