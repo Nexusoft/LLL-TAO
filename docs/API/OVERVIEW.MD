@@ -338,6 +338,11 @@ Error Codes
 | -201 | Global names can't be created with reserved name |
 | -202 | Signature chain not mature after your previous mined/stake block. X more confirmation(s) required. |
 | -203 | Autologin user not found |
+| -204 | Cannot set stake to a negative amount |
+| -205 | Unable to retrieve last stake |
+| -206 | Failed to erase expired stake change request |
+| -207 | Failed to erase previous stake change request |
+| -208 | Failed to save stake change request |
 
 
 
