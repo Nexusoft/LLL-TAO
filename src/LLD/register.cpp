@@ -121,7 +121,7 @@ namespace LLD
     /* Write a genesis to a register address. */
     bool RegisterDB::WriteTrust(const uint256_t& hashGenesis, const TAO::Register::State& state)
     {
-        return Write(std::make_pair(std::string("genesis"), hashGenesis), state);
+        return Write(std::make_pair(std::string("genesis"), hashGenesis), state, "genesis");
     }
 
 
