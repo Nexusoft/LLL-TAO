@@ -272,6 +272,10 @@ namespace TAO
                 /* Iterate through these to find all Name registers */
                 for(const auto& hashRegister : vRegisters)
                 {
+                    /* Initial check that it is a name before we hit the DB to get the address */
+                    if(!hashRegister.IsName())
+                        continue;
+                        
                     /* Get the object from the register DB.  We can read it as an Object and then check its nType
                     to determine whether or not it is a Name. */
                     TAO::Register::Object object;

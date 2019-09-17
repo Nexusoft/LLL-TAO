@@ -71,13 +71,17 @@ namespace TAO
                 nLimit = std::stoul(params["limit"].get<std::string>());
 
             /* Get the list of registers owned by this sig chain */
-            std::vector<TAO::Register::Address> vRegisters;
-            ListRegisters(hashGenesis, vRegisters);
+            std::vector<TAO::Register::Address> vAddresses;
+            ListRegisters(hashGenesis, vAddresses);
 
             /* Get list of tokenized assets owned by this sig chain */
-            ListPartial(hashGenesis, vRegisters);
-            if(vRegisters.size() == 0)
+            ListPartial(hashGenesis, vAddresses);
+            if(vAddresses.size() == 0)
                 throw APIException(-74, "No registers found");
+
+            /* Read all the registers to that they are sorted by creation time */
+            std::vector<std::pair<TAO::Register::Address, TAO::Register::State>> vRegisters;
+            GetRegisters(vAddresses, vRegisters);
 
             /* We pass false for fLookupName if the requested type is a name of namesace object,
                as those are the edge case that do not have a Name object themselves */
@@ -85,17 +89,14 @@ namespace TAO
 
             /* Add the register data to the response */
             uint32_t nTotal = 0;
-            for(const auto& hashRegister : vRegisters)
+            for(const auto& state : vRegisters)
             {
-                /* Get the asset from the register DB.  We can read it as an Object and then check its nType to determine
-                   whether or not it is an asset. */
-                TAO::Register::Object object;
-                if(!LLD::Register->ReadState(hashRegister, object, TAO::Ledger::FLAGS::MEMPOOL))
+                /* Only include requested register type */
+                if(state.second.nType != nRegisterType)
                     continue;
 
-                /* Only include requested register type */
-                if(object.nType != nRegisterType)
-                    continue;
+                /* Cast to an Object */
+                TAO::Register::Object object(state.second);
 
                 /* Handle for object registers. */
                 if(object.nType == TAO::Register::REGISTER::OBJECT)
@@ -124,10 +125,10 @@ namespace TAO
 
                 /* Populate the response JSON */
                 json::json json;
-                json["created"]  = object.nCreated;
-                json["modified"] = object.nModified;
+                json["created"]  = state.second.nCreated;
+                json["modified"] = state.second.nModified;
 
-                json::json data  =TAO::API::ObjectToJSON(params, object, hashRegister, fLookupName);
+                json::json data  =TAO::API::ObjectToJSON(params, object, state.first, fLookupName);
 
                 /* Copy the data in to the response after the  */
                 json.insert(data.begin(), data.end());
