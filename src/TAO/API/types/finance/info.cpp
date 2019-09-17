@@ -122,16 +122,13 @@ namespace TAO
             }
 
             TAO::Ledger::StakeChange stakeChange;
-            if(LLD::Local->ReadStakeChange(user->Genesis(), stakeChange))
+            if(LLD::Local->ReadStakeChange(user->Genesis(), stakeChange) && !stakeChange.fProcessed
+            && (stakeChange.nExpires == 0 || stakeChange.nExpires > runtime::unifiedtimestamp()))
             {
-                json::json changeRequest;
-
-                changeRequest["amount"] = stakeChange.nAmount;
-                changeRequest["requested"] = stakeChange.nTime;
-                changeRequest["expires"] = stakeChange.nExpires;
-
                 ret["change"] = true;
-                ret.push_back(changeRequest);
+                ret["amount"] = (double)stakeChange.nAmount / TAO::Ledger::NXS_COIN;
+                ret["requested"] = stakeChange.nTime;
+                ret["expires"] = stakeChange.nExpires;
             }
             else
                 ret["change"] = false;

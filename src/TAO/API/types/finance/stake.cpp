@@ -91,7 +91,7 @@ namespace TAO
 
             /* Get the time to expiration (optional). */
             uint64_t nExpires = 0;
-            if(params.find("expires") == params.end())
+            if(params.find("expires") != params.end())
                 nExpires = std::stoull(params["expires"].get<std::string>());
 
             uint64_t nTime = runtime::unifiedtimestamp();
@@ -149,11 +149,15 @@ namespace TAO
 
             else
             {
+                request.SetNull();
+
                 request.hashGenesis = user->Genesis();
                 request.hashLast = hashLast;
-                request.nAmount = nAmount;
                 request.nTime = nTime;
                 request.nExpires = nExpires;
+
+                /* set/stake amount is new stake value, request stores the amount of change */
+                request.nAmount = nAmount - nStakePrev;
 
                 if(!LLD::Local->WriteStakeChange(user->Genesis(), request))
                         throw APIException(-208, "Failed to save stake change request");

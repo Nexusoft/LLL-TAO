@@ -93,10 +93,10 @@ namespace TAO
                 return false;
             }
 
-            /* Check that stake minter is configured to run.
+            /* Check that stake minter is configured to run. (either stake or staking argument are supported)
              * Stake Minter default is to run for non-server and not to run for server
              */
-            if(!config::GetBoolArg("-stake"))
+            if(!config::GetBoolArg("-stake") && !config::GetBoolArg("-staking"))
             {
                 debug::log(0, "Stake Minter not configured. Startup cancelled.");
                 return false;
@@ -301,6 +301,7 @@ namespace TAO
 
                 else if(request.nAmount < 0 && (0 - request.nAmount) > nStake)
                 {
+                    /* This should not be possible, but check it nevertheless */
                     debug::log(0, FUNCTION, "Stake Minter: Cannot unstake more than current stake, using current stake amount.");
 
                     fStakeChange = true;
