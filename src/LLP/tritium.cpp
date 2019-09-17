@@ -77,6 +77,7 @@ namespace LLP
     , nCurrentHeight(0)
     , hashCheckpoint(0)
     , hashBestChain(0)
+    , hashLastIndex(0)
     , nConsecutiveOrphans(0)
     , nConsecutiveFails(0)
     , strFullVersion()
@@ -102,6 +103,7 @@ namespace LLP
     , nCurrentHeight(0)
     , hashCheckpoint(0)
     , hashBestChain(0)
+    , hashLastIndex(0)
     , nConsecutiveOrphans(0)
     , nConsecutiveFails(0)
     , strFullVersion()
@@ -127,6 +129,7 @@ namespace LLP
     , nCurrentHeight(0)
     , hashCheckpoint(0)
     , hashBestChain(0)
+    , hashLastIndex(0)
     , nConsecutiveOrphans(0)
     , nConsecutiveFails(0)
     , strFullVersion()
@@ -1412,7 +1415,7 @@ namespace LLP
                                     if(nCurrentSession == TAO::Ledger::nSyncSession.load())
                                     {
                                         /* Check for complete synchronization. */
-                                        if(hashLast == TAO::Ledger::ChainState::hashBestChain.load() && hashLast == hashBestChain)
+                                        if(hashLast == hashLastIndex || (hashLast == TAO::Ledger::ChainState::hashBestChain.load() && hashLast == hashBestChain))
                                         {
                                             /* Set state to synchronized. */
                                             fSynchronized.store(true);
@@ -1444,6 +1447,9 @@ namespace LLP
                                             );
                                         }
                                     }
+
+                                    /* Set the last index. */
+                                    hashLastIndex = hashLast;
 
                                     /* Debug output. */
                                     debug::log(3, NODE, "ACTION::NOTIFY: LASTINDEX ", hashLast.SubString());

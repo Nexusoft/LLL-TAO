@@ -498,9 +498,6 @@ namespace TAO
 
                     /* Remove indexed tx from memory pool. */
                     mempool.Remove(hash);
-
-                    /* Print transaction (for extra debugging.) */
-                    tx.print();
                 }
                 else if(proof.first == TRANSACTION::LEGACY)
                 {
@@ -813,6 +810,8 @@ namespace TAO
             /* Reset the transaction fees. */
             nFees = 0;
 
+            debug::log(0, FUNCTION, "connecting block ", GetHash().SubString());
+
             /* Check through all the transactions. */
             for(const auto& proof : vtx)
             {
@@ -830,6 +829,9 @@ namespace TAO
                     TAO::Ledger::Transaction tx;
                     if(!LLD::Ledger->ReadTx(hash, tx))
                         return debug::error(FUNCTION, "transaction not on disk");
+
+                    /* Print transaction (for extra debugging.) */
+                    tx.print();
 
                     /* Connect the transaction. */
                     if(!tx.Connect())
@@ -897,6 +899,9 @@ namespace TAO
                     if(!LLD::Legacy->ReadTx(hash, tx))
                         return debug::error(FUNCTION, "transaction not on disk");
 
+                    /* Print transaction (for extra debugging.) */
+                    tx.print();
+
                     /* Fetch the inputs. */
                     std::map<uint512_t, std::pair<uint8_t, DataStream> > inputs;
                     if(!tx.FetchInputs(inputs))
@@ -952,9 +957,12 @@ namespace TAO
         /** Disconnect a block state from the chain. **/
         bool BlockState::Disconnect()
         {
-            /* Check through all the transactions. */
+            debug::log(0, FUNCTION, "disconnecting block ", GetHash().SubString());
+
+            /* Disconnect the transctions in reverse order to preserve sigchain ordering. */
             for(auto proof = vtx.rbegin(); proof != vtx.rend(); ++proof)
             {
+
                 /* Only work on tritium transactions for now. */
                 if(proof->first == TRANSACTION::TRITIUM)
                 {
@@ -965,6 +973,9 @@ namespace TAO
                     TAO::Ledger::Transaction tx;
                     if(!LLD::Ledger->ReadTx(hash, tx))
                         return debug::error(FUNCTION, "transaction is not on disk");
+
+                    /* Print transaction (for extra debugging.) */
+                    tx.print();
 
                     /* Disconnect the transaction. */
                     if(!tx.Disconnect())
@@ -979,6 +990,9 @@ namespace TAO
                     Legacy::Transaction tx;
                     if(!LLD::Legacy->ReadTx(hash, tx))
                         return debug::error(FUNCTION, "transaction is not on disk");
+
+                    /* Print transaction (for extra debugging.) */
+                    tx.print();
 
                     /* Disconnect the inputs. */
                     if(!tx.Disconnect(*this))

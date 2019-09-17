@@ -265,6 +265,10 @@ namespace LLP
         uint1024_t hashBestChain;
 
 
+        /** This node's current last index. **/
+        uint1024_t hashLastIndex;
+        
+
         /** Counter of total orphans. **/
         uint32_t nConsecutiveOrphans;
 

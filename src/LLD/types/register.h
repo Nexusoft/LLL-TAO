@@ -37,7 +37,7 @@ namespace LLD
     {
         std::mutex MEMORY_MUTEX;
 
-        std::map<uint256_t, std::vector<TAO::Register::State>> mapStates;
+        std::map<uint256_t, TAO::Register::State> mapStates;
         std::map<uint256_t, uint256_t> mapIdentifiers;
 
     public:

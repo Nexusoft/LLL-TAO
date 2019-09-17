@@ -61,6 +61,9 @@ namespace TAO
         bool CreateTransaction(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin,
                                TAO::Ledger::Transaction& tx)
         {
+            /* Make sure we don't send transactions out when processing a block. */
+            LOCK(TAO::Ledger::PROCESSING_MUTEX);
+
             /* Get the genesis id of the sigchain. */
             uint256_t hashGenesis = user->Genesis();
 

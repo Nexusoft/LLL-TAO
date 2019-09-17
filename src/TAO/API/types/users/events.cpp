@@ -191,9 +191,6 @@ namespace TAO
                     if(!LoggedIn() || Locked() || !CanProcessNotifications())
                         continue;
 
-                    /* Make sure we don't send transactions out when processing a block. */
-                    std::unique_lock<std::mutex> lock(TAO::Ledger::PROCESSING_MUTEX);
-
                     /* Get the session to be used for this API call */
                     json::json params;
                     uint256_t nSession = users->GetSession(params);
