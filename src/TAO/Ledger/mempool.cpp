@@ -400,10 +400,13 @@ namespace TAO
                         /* Check the last hash. */
                         if(vTx[0].hashPrevTx != hashLast)
                         {
-                            debug::log(0, FUNCTION, "ORPHAN: last hash mismatch ", hashLast.SubString());
+                            /* Debug information. */
+                            debug::error(FUNCTION, "ORPHAN: last hash mismatch ", hashLast.SubString());
 
+                            /* Remove from mempool. */
                             Remove(vTx[0].GetHash());
 
+                            /* Erase from queue. */
                             vTx.erase(vTx.begin());
                         }
                     }
