@@ -84,7 +84,7 @@ namespace LLD
             /* Check that the previous transaction is indexed. */
             if(!HasIndex(hashTx))
                 throw debug::exception(FUNCTION, "tritium transaction not indexed");
-                
+
             /* Get the transaction. */
             TAO::Ledger::Transaction tx;
             if(!ReadTx(hashTx, tx, nFlags))
@@ -113,7 +113,8 @@ namespace LLD
                         throw debug::exception(FUNCTION, "maturity overflow");
 
                     /* Check the intervals. */
-                    if((TAO::Ledger::ChainState::stateBest.load().nHeight - state.nHeight + 1) < TAO::Ledger::MaturityCoinBase())
+                    if((TAO::Ledger::ChainState::stateBest.load().nHeight - state.nHeight + 1)
+                        < TAO::Ledger::MaturityCoinBase() - (nFlags == TAO::Ledger::FLAGS::MEMPOOL ? 5 : 0))//NOTE: we use -5 on checks to account for a tx maturity issue for mempool
                         throw debug::exception(FUNCTION, "coinbase is immature");
                 }
 

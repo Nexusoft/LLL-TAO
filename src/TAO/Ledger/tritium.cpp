@@ -403,9 +403,6 @@ namespace TAO
                         continue;
                     }
 
-                    debug::log(0, FUNCTION, vtx[i].second.SubString());
-                    tx.print();
-
                     /* Check for coinbase / coinstake. */
                     if(tx.IsCoinBase() || tx.IsCoinStake())
                         return debug::error(FUNCTION, "more than one coinbase / coinstake");

@@ -785,6 +785,10 @@ namespace TAO
                     if(!LLD::Ledger->ReadTx(hash, tx))
                         return debug::error(FUNCTION, "transaction not on disk");
 
+                    /* Verify the Ledger Pre-States. */
+                    if(!tx.Verify()) //NOTE: double checking this for now in post-processing
+                        return false;
+
                     /* Connect the transaction. */
                     if(!tx.Connect())
                         return debug::error(FUNCTION, "failed to connect transaction");
