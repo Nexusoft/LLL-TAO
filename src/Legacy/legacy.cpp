@@ -492,9 +492,6 @@ namespace Legacy
             /* Write to disk. */
             if(!LLD::Legacy->WriteTx(hash, tx))
                 return debug::error(FUNCTION, "failed to write tx to disk");
-
-            /* Remove indexed tx from memory pool. */
-            TAO::Ledger::mempool.Remove(hash);
         }
 
         /* Accept the block state. */

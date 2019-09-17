@@ -665,6 +665,9 @@ namespace TAO
                     }
                 }
 
+                /* Keep track of mempool transactions to delete. */
+                std::vector<std::pair<uint8_t, uint512_t>> vDelete;
+
                 /* Reverse the blocks to connect to connect in ascending height. */
                 for(auto state = vConnect.rbegin(); state != vConnect.rend(); ++state)
                 {
@@ -685,7 +688,14 @@ namespace TAO
 
                     /* Harden a checkpoint if there is any. */
                     HardenCheckpoint(Prev());
+
+                    /* Insert into delete queue. */
+                    vDelete.insert(vDelete.end(), state->vtx.begin(), state->vtx.end());
                 }
+
+                /* Delete from mempool. */
+                for(const auto& proof : vDelete)
+                    mempool.Remove(proof.second);
 
                 /* Set the best chain variables. */
                 ChainState::stateBest          = *this;

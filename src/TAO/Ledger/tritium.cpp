@@ -563,9 +563,6 @@ namespace TAO
                     /* Write to disk. */
                     if(!LLD::Ledger->WriteTx(hash, tx))
                         return debug::error(FUNCTION, "failed to write tx to disk");
-
-                    /* Remove indexed tx from memory pool. */
-                    mempool.Remove(hash);
                 }
                 else if(proof.first == TRANSACTION::LEGACY)
                 {
@@ -580,9 +577,6 @@ namespace TAO
                     /* Write to disk. */
                     if(!LLD::Legacy->WriteTx(hash, tx))
                         return debug::error(FUNCTION, "failed to write tx to disk");
-
-                    /* Remove indexed tx from memory pool. */
-                    mempool.Remove(hash);
                 }
                 else
                     return debug::error(FUNCTION, "using an unknown transaction type");
