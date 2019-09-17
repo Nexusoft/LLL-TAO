@@ -230,6 +230,15 @@ namespace TAO
         /* For debugging Purposes seeing block state data dump */
         std::string TritiumBlock::ToString() const
         {
+            for(const auto& tx : vtx)
+            {
+                Transaction tx2;
+                if(!mempool.Get(tx.second, tx2))
+                    continue;
+
+                tx2.print();
+            }
+
             return debug::safe_printstr("Tritium Block("
                 VALUE("hash")     " = ", GetHash().SubString(), " ",
                 VALUE("nVersion") " = ", nVersion, ", ",
@@ -394,6 +403,9 @@ namespace TAO
                         continue;
                     }
 
+                    debug::log(0, FUNCTION, vtx[i].second.SubString());
+                    tx.print();
+
                     /* Check for coinbase / coinstake. */
                     if(tx.IsCoinBase() || tx.IsCoinStake())
                         return debug::error(FUNCTION, "more than one coinbase / coinstake");
@@ -532,17 +544,64 @@ namespace TAO
             /* Process the block state. */
             TAO::Ledger::BlockState state(*this);
 
+            /* Start the database transaction. */
+            LLD::TxnBegin();
+
+            /* Write the transactions. */
+            for(const auto& proof : vtx)
+            {
+                if(proof.first == TRANSACTION::TRITIUM)
+                {
+                    /* Get the transaction hash. */
+                    uint512_t hash = proof.second;
+
+                    /* Check the memory pool. */
+                    TAO::Ledger::Transaction tx;
+                    if(!LLD::Ledger->ReadTx(hash, tx, FLAGS::MEMPOOL))
+                        return debug::error(FUNCTION, "transaction is not in memory pool");
+
+                    /* Write to disk. */
+                    if(!LLD::Ledger->WriteTx(hash, tx))
+                        return debug::error(FUNCTION, "failed to write tx to disk");
+
+                    /* Remove indexed tx from memory pool. */
+                    mempool.Remove(hash);
+                }
+                else if(proof.first == TRANSACTION::LEGACY)
+                {
+                    /* Get the transaction hash. */
+                    uint512_t hash = proof.second;
+
+                    /* Check if in memory pool. */
+                    Legacy::Transaction tx;
+                    if(!LLD::Legacy->ReadTx(hash, tx, FLAGS::MEMPOOL))
+                        return debug::error(FUNCTION, "transaction is not in memory pool");
+
+                    /* Write to disk. */
+                    if(!LLD::Legacy->WriteTx(hash, tx))
+                        return debug::error(FUNCTION, "failed to write tx to disk");
+
+                    /* Remove indexed tx from memory pool. */
+                    mempool.Remove(hash);
+                }
+                else
+                    return debug::error(FUNCTION, "using an unknown transaction type");
+            }
+
             /* Add the producer transaction */
-            TAO::Ledger::mempool.AddUnchecked(producer);
+            if(!LLD::Ledger->WriteTx(producer.GetHash(), producer))
+                return debug::error(FUNCTION, "failed to write producer to disk");
 
             /* Accept the block state. */
             if(!state.Index())
             {
-                /* Remove producer from temporary mempool. */
-                TAO::Ledger::mempool.Remove(producer.GetHash());
+                LLD::TxnAbort();
 
                 return false;
             }
+
+            /* Commit the transaction to database. */
+            LLD::TxnCommit();
 
             return true;
         }

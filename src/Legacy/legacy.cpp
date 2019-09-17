@@ -480,30 +480,32 @@ namespace Legacy
         if(state.GetHash() != GetHash())
             return debug::error(FUNCTION, "Hash mismatch expected ", GetHash().ToString(), " actual ", state.GetHash().ToString());
 
-        /* Add to the memory pool. */
+        /* Start the database transaction. */
+        LLD::TxnBegin();
+
+        /* Write the transactions. */
         for(const auto& tx : vtx)
-            TAO::Ledger::mempool.AddUnchecked(tx);
+        {
+            /* Get the transaction hash. */
+            uint512_t hash = tx.GetHash();
+
+            /* Write to disk. */
+            if(!LLD::Legacy->WriteTx(hash, tx))
+                return debug::error(FUNCTION, "failed to write tx to disk");
+
+            /* Remove indexed tx from memory pool. */
+            TAO::Ledger::mempool.Remove(hash);
+        }
 
         /* Accept the block state. */
         if(!state.Index())
         {
-            uint512_t hashTx;
-
-            /* Remove from the memory pool. */
-            for(const auto& tx : vtx)
-            {
-                /* Get the transaction hash. */
-                hashTx = tx.GetHash();
-
-                /* Keep transactions in memory pool that aren't on disk. */
-                if(!LLD::Legacy->HasTx(hashTx))
-                    continue;
-
-                TAO::Ledger::mempool.Remove(hashTx);
-            }
-
+            LLD::TxnAbort();
             return false;
         }
+
+        /* Commit the transaction to database. */
+        LLD::TxnCommit();
 
         return true;
     }

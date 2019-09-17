@@ -89,9 +89,11 @@ namespace TAO
         , nChainTrust(0)
         , nMoneySupply(0)
         , nMint(0)
+        , nFees(0)
         , nChannelHeight(0)
         , nChannelWeight {0, 0, 0}
         , nReleasedReserve {0, 0, 0}
+        , nFeeReserve(0)
         , hashNextBlock(0)
         , hashCheckpoint(0)
         {
@@ -476,50 +478,6 @@ namespace TAO
                 debug::log(1, "===== Pending Checkpoint Hash = ", hashCheckpoint.SubString(15));
             }
 
-            /* Start the database transaction. */
-            LLD::TxnBegin();
-
-            /* Write the transactions. */
-            for(const auto& proof : vtx)
-            {
-                if(proof.first == TRANSACTION::TRITIUM)
-                {
-                    /* Get the transaction hash. */
-                    uint512_t hash = proof.second;
-
-                    /* Check the memory pool. */
-                    TAO::Ledger::Transaction tx;
-                    if(!LLD::Ledger->ReadTx(hash, tx, FLAGS::MEMPOOL))
-                        return debug::error(FUNCTION, "transaction is not in memory pool");
-
-                    /* Write to disk. */
-                    if(!LLD::Ledger->WriteTx(hash, tx))
-                        return debug::error(FUNCTION, "failed to write tx to disk");
-
-                    /* Remove indexed tx from memory pool. */
-                    mempool.Remove(hash);
-                }
-                else if(proof.first == TRANSACTION::LEGACY)
-                {
-                    /* Get the transaction hash. */
-                    uint512_t hash = proof.second;
-
-                    /* Check if in memory pool. */
-                    Legacy::Transaction tx;
-                    if(!LLD::Legacy->ReadTx(hash, tx, FLAGS::MEMPOOL))
-                        return debug::error(FUNCTION, "transaction is not in memory pool");
-
-                    /* Write to disk. */
-                    if(!LLD::Legacy->WriteTx(hash, tx))
-                        return debug::error(FUNCTION, "failed to write tx to disk");
-
-                    /* Remove indexed tx from memory pool. */
-                    mempool.Remove(hash);
-                }
-                else
-                    return debug::error(FUNCTION, "using an unknown transaction type");
-            }
-
             /* Add new weights for this channel. */
             if(!IsPrivate())
             {
@@ -584,9 +542,6 @@ namespace TAO
 
 
             timer.Reset();
-
-            /* Commit the transaction to database. */
-            LLD::TxnCommit();
 
             /* Check timer.
             if(timer.ElapsedMilliseconds() > 100)
@@ -699,8 +654,7 @@ namespace TAO
                         LLD::TxnAbort();
 
                         /* Debug errors. */
-                        return debug::error(FUNCTION, "failed to disconnect ",
-                            state.GetHash().SubString());
+                        return debug::error(FUNCTION, "failed to disconnect ", state.GetHash().SubString());
                     }
 
                     /* Erase block if not connecting anything. */
@@ -819,7 +773,9 @@ namespace TAO
                 if(proof.first == TRANSACTION::TRITIUM)
                 {
                     /* Get the transaction hash. */
-                    uint512_t hash = proof.second;
+                    const uint512_t& hash = proof.second;
+
+                    debug::log(0, FUNCTION, "TX ", hash.SubString());
 
                     /* Check for existing indexes. */
                     if(LLD::Ledger->HasIndex(hash))
@@ -829,9 +785,6 @@ namespace TAO
                     TAO::Ledger::Transaction tx;
                     if(!LLD::Ledger->ReadTx(hash, tx))
                         return debug::error(FUNCTION, "transaction not on disk");
-
-                    /* Print transaction (for extra debugging.) */
-                    tx.print();
 
                     /* Connect the transaction. */
                     if(!tx.Connect())
@@ -861,12 +814,14 @@ namespace TAO
                             if(!LLD::Ledger->ReadTx(hashLast, tx2))
                                 return debug::error(FUNCTION, "last transaction not on disk");
 
-                            tx2.print();
+                            debug::log(0, FUNCTION, "-----------------------------------------------------------------");
+
                             tx.print();
+                            tx2.print();
 
                             for(uint32_t i = 0; i < 10; ++i)
                             {
-                                if(!LLD::Ledger->ReadTx(tx.hashPrevTx, tx2))
+                                if(!LLD::Ledger->ReadTx(tx2.hashPrevTx, tx2))
                                     break;
 
                                 tx2.print();
@@ -888,7 +843,7 @@ namespace TAO
                 else if(proof.first == TRANSACTION::LEGACY)
                 {
                     /* Get the transaction hash. */
-                    uint512_t hash = proof.second;
+                    const uint512_t& hash = proof.second;
 
                     /* Check for existing indexes. */
                     if(LLD::Ledger->HasIndex(hash))
