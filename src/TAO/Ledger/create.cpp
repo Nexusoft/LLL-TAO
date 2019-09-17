@@ -38,6 +38,8 @@ ________________________________________________________________________________
 
 #include <TAO/Operation/include/enum.h>
 
+#include <TAO/API/include/global.h> //for CREATE_MUTEX
+
 #include <Util/include/convert.h>
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
@@ -61,9 +63,6 @@ namespace TAO
         bool CreateTransaction(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin,
                                TAO::Ledger::Transaction& tx)
         {
-            /* Make sure we don't send transactions out when processing a block. */
-            LOCK(TAO::Ledger::PROCESSING_MUTEX);
-
             /* Get the genesis id of the sigchain. */
             uint256_t hashGenesis = user->Genesis();
 
@@ -117,6 +116,9 @@ namespace TAO
         /* Gets a list of transactions from memory pool for current block. */
         void AddTransactions(TAO::Ledger::TritiumBlock& block)
         {
+            /* Clear the transactions. */
+            block.vtx.clear();
+
             /* Check the memory pool. */
             std::vector<uint512_t> vMempool;
             mempool.List(vMempool);
@@ -233,9 +235,6 @@ namespace TAO
                 /* Set the block to cached block. */
                 block = blockCache[nChannel].load();
 
-                /* Clear the block transactions. */
-                block.vtx.clear();
-
                 /* Add new transactions. */
                 AddTransactions(block);
 
@@ -349,6 +348,8 @@ namespace TAO
             }
             else //block not cached, set up new block
             {
+                LOCK(TAO::API::users->CREATE_MUTEX);
+
                 /* Cache the best chain before processing. */
                 const TAO::Ledger::BlockState stateBest = ChainState::stateBest.load();
 
