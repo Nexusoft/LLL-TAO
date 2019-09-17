@@ -58,16 +58,16 @@ namespace TAO
             std::map<uint512_t, TAO::Ledger::Transaction> mapLedger;
 
 
+            /** The transactions in the conflicted ledger memory pool. **/
+            std::map<uint512_t, TAO::Ledger::Transaction> mapConflicts;
+
+
             /** Oprhan transactions in queue. **/
             std::map<uint512_t, TAO::Ledger::Transaction> mapOrphans;
 
 
-            /** Keep track of spent previous transactions. **/
-            std::map<uint512_t, uint32_t> mapConnected;
-
-
             /** Record of conflicted transactions in mempool. **/
-            std::map<uint512_t, uint512_t> mapConflicts;
+            std::map<uint512_t, uint512_t> mapClaimed;
 
 
             /** Record of legacy inputs in the mempool. **/

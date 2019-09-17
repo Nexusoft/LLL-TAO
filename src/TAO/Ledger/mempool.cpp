@@ -44,9 +44,9 @@ namespace TAO
         : MUTEX()
         , mapLegacy()
         , mapLedger()
-        , mapOrphans()
-        , mapConnected()
         , mapConflicts()
+        , mapOrphans()
+        , mapClaimed()
         , mapInputs()
         {
         }
@@ -120,6 +120,10 @@ namespace TAO
                         return true;
                     }
                 }
+
+                /* Check for conflicts. */
+                if(mapClaimed.count(tx.hashPrevTx))
+                    return debug::error(0, FUNCTION, "conflict detected");
             }
 
             //TODO: add mapConflcts map to soft-ban conflicting blocks
@@ -153,6 +157,7 @@ namespace TAO
 
                 /* Set the internal memory. */
                 mapLedger[hashTx] = tx;
+                mapClaimed[tx.hashPrevTx] = hashTx;
             }
 
             /* Debug output. */
@@ -319,10 +324,8 @@ namespace TAO
                 const TAO::Ledger::Transaction& tx = mapLedger[hashTx];
 
                 /* Erase from the memory map. */
-                mapConflicts.erase(tx.hashPrevTx);
+                mapClaimed.erase(tx.hashPrevTx);
                 mapLedger.erase(hashTx);
-
-                //TODO: find a nice way to erase conflicts
 
                 return true;
             }
