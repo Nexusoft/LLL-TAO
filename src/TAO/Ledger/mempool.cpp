@@ -348,7 +348,7 @@ namespace TAO
 
 
         /* List transactions in memory pool. */
-        bool Mempool::List(std::vector<uint512_t> &vHashes, uint32_t nCount, bool fLegacy) const
+        bool Mempool::List(std::vector<uint512_t> &vHashes, uint32_t nCount, bool fLegacy)
         {
             RLOCK(MUTEX);
 
@@ -388,7 +388,30 @@ namespace TAO
                     std::sort(vTx.begin(), vTx.end());
 
                     /* Add the hashes into list. */
-                    uint512_t hashLast = vTx[0].GetHash();
+                    uint512_t hashLast = 0;
+
+                    /* Check last hash for valid transactions. */
+                    if(!vTx[0].IsFirst())
+                    {
+                        /* Read last index from disk. */
+                        if(!LLD::Ledger->ReadLast(list.first, hashLast))
+                            return debug::error(FUNCTION, "failed to read the last index");
+
+                        /* Check the last hash. */
+                        if(vTx[0].hashPrevTx != hashLast)
+                        {
+                            debug::log(0, FUNCTION, "ORPHAN: last hash mismatch ", hashLast.SubString());
+
+                            Remove(vTx[0].GetHash());
+
+                            vTx.erase(vTx.begin());
+                        }
+                    }
+
+                    /* Set last from next transaction. */
+                    hashLast = vTx[0].GetHash();
+
+                    /* Loop through transaction by genesis. */
                     for(uint32_t n = 1; n <= vTx.size(); ++n)
                     {
                         /* Add to the output queue. */

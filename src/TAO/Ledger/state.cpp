@@ -774,8 +774,6 @@ namespace TAO
             /* Reset the transaction fees. */
             nFees = 0;
 
-            debug::log(0, FUNCTION, "connecting block ", GetHash().SubString());
-
             /* Check through all the transactions. */
             for(const auto& proof : vtx)
             {
@@ -784,8 +782,6 @@ namespace TAO
                 {
                     /* Get the transaction hash. */
                     const uint512_t& hash = proof.second;
-
-                    debug::log(0, FUNCTION, "TX ", hash.SubString());
 
                     /* Check for existing indexes. */
                     if(LLD::Ledger->HasIndex(hash))

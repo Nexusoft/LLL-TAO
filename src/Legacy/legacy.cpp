@@ -487,7 +487,7 @@ namespace Legacy
         for(const auto& tx : vtx)
         {
             /* Get the transaction hash. */
-            uint512_t hash = tx.GetHash();
+            const uint512_t hash = tx.GetHash();
 
             /* Write to disk. */
             if(!LLD::Legacy->WriteTx(hash, tx))

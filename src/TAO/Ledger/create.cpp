@@ -124,6 +124,7 @@ namespace TAO
             mempool.List(vMempool);
 
             /* Loop through the list of transactions. */
+            uint256_t hashGenesis = 0;
             for(const auto& hash : vMempool)
             {
                 /* Check the Size limits of the Current Block. */
@@ -145,6 +146,9 @@ namespace TAO
 
                 /* Add the transaction to the block. */
                 block.vtx.push_back(std::make_pair(TRANSACTION::TRITIUM, hash));
+
+                /* Set the last genesis used. */
+                hashGenesis = tx.hashGenesis;
             }
 
             /* Clear for legacy. */

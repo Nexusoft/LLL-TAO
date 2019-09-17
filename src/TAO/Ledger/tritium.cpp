@@ -553,7 +553,7 @@ namespace TAO
                 if(proof.first == TRANSACTION::TRITIUM)
                 {
                     /* Get the transaction hash. */
-                    uint512_t hash = proof.second;
+                    const uint512_t& hash = proof.second;
 
                     /* Check the memory pool. */
                     TAO::Ledger::Transaction tx;
@@ -567,7 +567,7 @@ namespace TAO
                 else if(proof.first == TRANSACTION::LEGACY)
                 {
                     /* Get the transaction hash. */
-                    uint512_t hash = proof.second;
+                    const uint512_t& hash = proof.second;
 
                     /* Check if in memory pool. */
                     Legacy::Transaction tx;

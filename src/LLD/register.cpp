@@ -60,10 +60,7 @@ namespace LLD
                 /* Check for most recent memory state, and remove if writing it. */
                 const TAO::Register::State& stateCheck = mapStates[hashRegister];
                 if(stateCheck == state)
-                {
-                    debug::log(0, FUNCTION, "NOTICE: deleting matching state");
                     mapStates.erase(hashRegister);
-                }
             }
 
         }

@@ -247,7 +247,7 @@ namespace TAO
              *  @return true if list is not empty.
              *
              **/
-            bool List(std::vector<uint512_t> &vHashes, uint32_t nCount = std::numeric_limits<uint32_t>::max(), bool fLegacy = false) const;
+            bool List(std::vector<uint512_t> &vHashes, uint32_t nCount = std::numeric_limits<uint32_t>::max(), bool fLegacy = false);
 
 
             /** Size
