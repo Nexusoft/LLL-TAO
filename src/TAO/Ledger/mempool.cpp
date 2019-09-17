@@ -89,7 +89,7 @@ namespace TAO
 
             /* Check for transaction on disk. */
             if(LLD::Ledger->HasTx(hashTx, FLAGS::MEMPOOL))
-                return debug::error(FUNCTION, "transaction already exists");
+                return false;
 
             /* Runtime calculations. */
             runtime::timer time;

@@ -388,7 +388,7 @@ namespace TAO
                                 /* Check that the coinbase is mature and ready to be credited. */
                                 if(!fMature)
                                 {
-                                    debug::error(FUNCTION, "Immature coinbase.");
+                                    //debug::error(FUNCTION, "Immature coinbase.");
                                     continue;
                                 }
 
