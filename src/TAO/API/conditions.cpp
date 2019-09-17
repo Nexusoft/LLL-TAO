@@ -38,12 +38,12 @@ namespace TAO
             /* Flag indicating the condition was added */
             bool fAdded = false;
 
+            /* The optional expiration time */
+            uint64_t nExpires = 0;
+
             /* Check that the caller has supplied the 'expires' parameter */
             if(params.find("expires") != params.end())
             {
-                /* The optional expiration time */
-                uint64_t nExpires = 0;
-
                 /* The expiration time as a string */
                 std::string strExpires = params["expires"].get<std::string>();
 
@@ -53,28 +53,34 @@ namespace TAO
                     throw APIException(-168, "Invalid expiration time");
 
                 /* Convert the expiration time to uint64 */
-                nExpires = stoull(strExpires);            
-            
-                /* Add conditional statements to only allow the transaction to be credited before the expiration time. */
-                contract <= uint8_t(OP::GROUP);
-                contract <= uint8_t(OP::CALLER::GENESIS) <= uint8_t(OP::NOTEQUALS) <= uint8_t(OP::TYPES::UINT256_T) <= hashCaller;
-                contract <= uint8_t(OP::AND);
-                contract <= uint8_t(OP::THIS::TIMESTAMP) <= uint8_t(OP::ADD) <= uint8_t(OP::TYPES::UINT64_T) <= uint64_t(nExpires);
-                contract <= uint8_t(OP::GREATERTHAN) <= uint8_t(OP::CALLER::TIMESTAMP);
-                contract <= uint8_t(OP::UNGROUP);
-
-                contract <= uint8_t(OP::OR);
-
-                /* Add condition to prevent the sender from reversing the transaction until after the expiration time */
-                contract <= uint8_t(OP::GROUP);
-                contract <= uint8_t(OP::CALLER::GENESIS) <= uint8_t(OP::EQUALS) <= uint8_t(OP::TYPES::UINT256_T) <= hashCaller;
-                contract <= uint8_t(OP::AND);
-                contract <= uint8_t(OP::THIS::TIMESTAMP) <= uint8_t(OP::ADD) <= uint8_t(OP::TYPES::UINT64_T) <= uint64_t(nExpires);
-                contract <= uint8_t(OP::LESSTHAN) <= uint8_t(OP::CALLER::TIMESTAMP);
-                contract <= uint8_t(OP::UNGROUP);
-
-                fAdded = true;
+                nExpires = stoull(strExpires);
             }
+            else
+            {
+                /* Default Expiration of 1 day (86400 seconds) */
+                nExpires = 86400;
+            }
+                        
+            
+            /* Add conditional statements to only allow the transaction to be credited before the expiration time. */
+            contract <= uint8_t(OP::GROUP);
+            contract <= uint8_t(OP::CALLER::GENESIS) <= uint8_t(OP::NOTEQUALS) <= uint8_t(OP::TYPES::UINT256_T) <= hashCaller;
+            contract <= uint8_t(OP::AND);
+            contract <= uint8_t(OP::THIS::TIMESTAMP) <= uint8_t(OP::ADD) <= uint8_t(OP::TYPES::UINT64_T) <= uint64_t(nExpires);
+            contract <= uint8_t(OP::GREATERTHAN) <= uint8_t(OP::CALLER::TIMESTAMP);
+            contract <= uint8_t(OP::UNGROUP);
+
+            contract <= uint8_t(OP::OR);
+
+            /* Add condition to prevent the sender from reversing the transaction until after the expiration time */
+            contract <= uint8_t(OP::GROUP);
+            contract <= uint8_t(OP::CALLER::GENESIS) <= uint8_t(OP::EQUALS) <= uint8_t(OP::TYPES::UINT256_T) <= hashCaller;
+            contract <= uint8_t(OP::AND);
+            contract <= uint8_t(OP::THIS::TIMESTAMP) <= uint8_t(OP::ADD) <= uint8_t(OP::TYPES::UINT64_T) <= uint64_t(nExpires);
+            contract <= uint8_t(OP::LESSTHAN) <= uint8_t(OP::CALLER::TIMESTAMP);
+            contract <= uint8_t(OP::UNGROUP);
+
+            fAdded = true;
 
             return fAdded;
 
