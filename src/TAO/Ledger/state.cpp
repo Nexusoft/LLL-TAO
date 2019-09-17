@@ -786,7 +786,7 @@ namespace TAO
                         return debug::error(FUNCTION, "transaction not on disk");
 
                     /* Verify the Ledger Pre-States. */
-                    if(!tx.Verify()) //NOTE: double checking this for now in post-processing
+                    if(!tx.Verify(FLAGS::BLOCK)) //NOTE: double checking this for now in post-processing
                         return false;
 
                     /* Connect the transaction. */
