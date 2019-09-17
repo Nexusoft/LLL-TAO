@@ -610,14 +610,14 @@ namespace TAO
 
                         /* Read the register from database. */
                         else if(!LLD::Register->ReadState(hashAddress, object, nFlags))
-                            return debug::error(FUNCTION, "OP::LEGACY: register pre-state doesn't exist");
+                            return debug::error(FUNCTION, "OP::FEE: register pre-state doesn't exist");
 
                         /* Serialize the pre-state into contract. */
                         contract <<= object;
 
                         /* Calculate the new operation. */
                         if(!TAO::Operation::Fee::Execute(object, nFees, contract.Timestamp()))
-                            return debug::error(FUNCTION, "OP::LEGACY: cannot generate post-state");
+                            return debug::error(FUNCTION, "OP::FEE: cannot generate post-state");
 
                         /* Serialize the post-state byte into contract. */
                         contract <<= uint8_t(TAO::Register::STATES::POSTSTATE);

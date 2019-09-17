@@ -55,7 +55,7 @@ namespace TAO
 
             /* Check the account balance. */
             if(nFees > account.get<uint64_t>("balance"))
-                return debug::error(FUNCTION, "account doesn't have sufficient balance");
+                return debug::error(FUNCTION, "account doesn't have sufficient balance ", account.get<uint64_t>("balance"));
 
             /* Write the new balance to object register. */
             if(!account.Write("balance", account.get<uint64_t>("balance") - nFees))

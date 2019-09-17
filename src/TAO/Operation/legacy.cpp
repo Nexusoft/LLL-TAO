@@ -41,6 +41,7 @@ namespace TAO
         /* Authorizes funds from an account to an account */
         bool Legacy::Execute(TAO::Register::Object &account, const uint64_t nAmount, const uint64_t nTimestamp)
         {
+
             /* Parse the account object register. */
             if(!account.Parse())
                 return debug::error(FUNCTION, "failed to parse account object register");

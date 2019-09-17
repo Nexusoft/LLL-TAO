@@ -500,6 +500,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[mempool]")
                 REQUIRE(TAO::Ledger::mempool.Get(hash, tx));
 
                 LLD::Ledger->WriteTx(hash, tx);
+
                 REQUIRE(tx.Verify());
                 REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
                 REQUIRE(TAO::Ledger::mempool.Remove(tx.GetHash()));

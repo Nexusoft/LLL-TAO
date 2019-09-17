@@ -875,9 +875,6 @@ namespace TAO
                     if(!LLD::Legacy->ReadTx(hash, tx))
                         return debug::error(FUNCTION, "transaction not on disk");
 
-                    /* Print transaction (for extra debugging.) */
-                    tx.print();
-
                     /* Fetch the inputs. */
                     std::map<uint512_t, std::pair<uint8_t, DataStream> > inputs;
                     if(!tx.FetchInputs(inputs))

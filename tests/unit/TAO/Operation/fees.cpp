@@ -43,7 +43,7 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
 
     /* Create a default NXS account so that we can load it funds for the future tests */
     {
-        TAO::Ledger::Transaction tx; 
+        TAO::Ledger::Transaction tx;
         TAO::Ledger::CreateTransaction(user, strPin, tx);
 
         /* Add a Name record for the trust account */
@@ -69,11 +69,11 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
         //add balance to seed remaining tests
         REQUIRE(LLD::Register->ReadState(hashDefaultAccount, account, TAO::Ledger::FLAGS::MEMPOOL));
         account.Parse();
-        account.Write("balance", uint64_t(5000000000));
-        REQUIRE(account.get<uint64_t>("balance") == 5000000000);
+        account.Write("balance", uint64_t(50000000000));
+        REQUIRE(account.get<uint64_t>("balance") == 50000000000);
         account.SetChecksum();
 
-        REQUIRE(LLD::Register->WriteState(hashDefaultAccount, account));
+        REQUIRE(LLD::Register->WriteState(hashDefaultAccount, account, TAO::Ledger::FLAGS::MEMPOOL));
     }
 
 
@@ -81,7 +81,7 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
     {
         uint256_t hashAddress = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
 
-        TAO::Ledger::Transaction tx; 
+        TAO::Ledger::Transaction tx;
         TAO::Ledger::CreateTransaction(user, strPin, tx);
 
         TAO::Register::Object object = TAO::Register::CreateAccount(0);
@@ -107,7 +107,7 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
     {
         uint256_t hashAddress = TAO::Register::Address(TAO::Register::Address::OBJECT);
 
-        TAO::Ledger::Transaction tx; 
+        TAO::Ledger::Transaction tx;
         TAO::Ledger::CreateTransaction(user, strPin, tx);
 
         /* create object so that a fee is required */
@@ -127,7 +127,7 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
     /* Test name fee */
     {
         /* Create transaction  */
-        TAO::Ledger::Transaction tx; 
+        TAO::Ledger::Transaction tx;
         TAO::Ledger::CreateTransaction(user, strPin, tx);
 
         /* Generate Random name */
@@ -147,7 +147,7 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
     /* Test global name fee */
     {
         /* Create transaction  */
-        TAO::Ledger::Transaction tx; 
+        TAO::Ledger::Transaction tx;
         TAO::Ledger::CreateTransaction(user, strPin, tx);
 
         /* Generate Random name */
@@ -166,7 +166,7 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
     /* Test namespace fee */
     {
         /* Create transaction  */
-        TAO::Ledger::Transaction tx; 
+        TAO::Ledger::Transaction tx;
         TAO::Ledger::CreateTransaction(user, strPin, tx);
 
         /* Generate Random name */
@@ -185,16 +185,16 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
     /* Test token fee - free for 100 units*/
     {
         /* Create transaction  */
-        TAO::Ledger::Transaction tx; 
+        TAO::Ledger::Transaction tx;
         TAO::Ledger::CreateTransaction(user, strPin, tx);
 
-        
+
         TAO::Register::Address hashAddress = TAO::Register::Address(TAO::Register::Address::TOKEN);
         /* Create token with 100 units */
         Object token = CreateToken(hashAddress, 100, 0);
         /* Add the operations payload */
         tx[0] << uint8_t(OP::CREATE) << hashAddress << uint8_t(REGISTER::OBJECT) << token.GetState();
-        
+
         /* Token with 100 units - should be 1 NXS */
         REQUIRE(tx.Cost() == 1 * TAO::Ledger::NXS_COIN);
     }
@@ -202,16 +202,16 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
     /* Test token fee - for 1000 units*/
     {
         /* Create transaction  */
-        TAO::Ledger::Transaction tx; 
+        TAO::Ledger::Transaction tx;
         TAO::Ledger::CreateTransaction(user, strPin, tx);
 
         TAO::Register::Address hashAddress = TAO::Register::Address(TAO::Register::Address::TOKEN);
-        
+
         /* Create token with 1000 units  */
         Object token = CreateToken(hashAddress, 1000, 0);
         /* Add the operations payload */
         tx[0] << uint8_t(OP::CREATE) << hashAddress << uint8_t(REGISTER::OBJECT) << token.GetState();
-        
+
         /* Token with 1000 units - should be 100 NXS */
         REQUIRE(tx.Cost() == (100 * TAO::Ledger::NXS_COIN));
     }
@@ -219,16 +219,16 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
     /* Test token fee - for 1000000 units*/
     {
         /* Create transaction  */
-        TAO::Ledger::Transaction tx; 
+        TAO::Ledger::Transaction tx;
         TAO::Ledger::CreateTransaction(user, strPin, tx);
 
         TAO::Register::Address hashAddress = TAO::Register::Address(TAO::Register::Address::TOKEN);
-        
+
         /* Create token with 1000000 units */
         Object token = CreateToken(hashAddress, 1000000, 0);
         /* Add the operations payload */
         tx[0] << uint8_t(OP::CREATE) << hashAddress << uint8_t(REGISTER::OBJECT) << token.GetState();
-        
+
         /* Token with 1000 units - should be 200 NXS */
         REQUIRE(tx.Cost() == (400 * TAO::Ledger::NXS_COIN));
     }
@@ -236,16 +236,16 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
     /* Test token fee - for 100000000000000 units*/
     {
         /* Create transaction  */
-        TAO::Ledger::Transaction tx; 
+        TAO::Ledger::Transaction tx;
         TAO::Ledger::CreateTransaction(user, strPin, tx);
 
         TAO::Register::Address hashAddress = TAO::Register::Address(TAO::Register::Address::TOKEN);
-        
+
         /* Create token with 100000000000000 units*/
         Object token = CreateToken(hashAddress, 100000000000000, 0);
         /* Add the operations payload */
         tx[0] << uint8_t(OP::CREATE) << hashAddress << uint8_t(REGISTER::OBJECT) << token.GetState();
-        
+
         /* Token with 1000 units - should be 1200 NXS */
         REQUIRE(tx.Cost() == (1200 * TAO::Ledger::NXS_COIN));
     }
@@ -255,7 +255,7 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
     {
         TAO::Register::Address hashAddress = TAO::Register::Address(TAO::Register::Address::OBJECT);
 
-        TAO::Ledger::Transaction tx; 
+        TAO::Ledger::Transaction tx;
         TAO::Ledger::CreateTransaction(user, strPin, tx);
 
         /* create object so that a fee is required */
@@ -280,7 +280,7 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
     {
         TAO::Register::Address hashAddress = TAO::Register::Address(TAO::Register::Address::OBJECT);
 
-        TAO::Ledger::Transaction tx; 
+        TAO::Ledger::Transaction tx;
         TAO::Ledger::CreateTransaction(user, strPin, tx);
 
         /* create object so that a fee is required */
@@ -307,6 +307,7 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
 
         REQUIRE(tx.Build());
         REQUIRE(tx.Sign(user->Generate(tx.nSequence, strPin)));
+
         /* Check fail as we have provided no fees */
         REQUIRE(TAO::Ledger::mempool.Accept(tx));
 

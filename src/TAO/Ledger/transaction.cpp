@@ -249,7 +249,7 @@ namespace TAO
 
 
         /* Build the transaction contracts. */
-        bool Transaction::Build(const uint8_t nFlags)
+        bool Transaction::Build()
         {
             /* Create a temporary map for pre-states. */
             std::map<uint256_t, TAO::Register::State> mapStates;
@@ -265,7 +265,7 @@ namespace TAO
                 contract.Bind(this);
 
                 /* Calculate the pre-states and post-states. */
-                if(!TAO::Register::Build(contract, mapStates, nFlags))
+                if(!TAO::Register::Build(contract, mapStates, FLAGS::MEMPOOL))
                     return false;
             }
 

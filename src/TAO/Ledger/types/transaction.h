@@ -178,7 +178,7 @@ namespace TAO
              *  @return true if transaction is valid.
              *
              **/
-            bool Verify(const uint8_t nFlags = TAO::Ledger::FLAGS::MEMPOOL) const;
+            bool Verify(const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK) const;
 
 
             /** Cost
@@ -198,7 +198,7 @@ namespace TAO
              *  @return true if transaction is valid.
              *
              **/
-            bool Build(const uint8_t nFlags = TAO::Ledger::FLAGS::MEMPOOL);
+            bool Build();
 
 
             /** Connect
