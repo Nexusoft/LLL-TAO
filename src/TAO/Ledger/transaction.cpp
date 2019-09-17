@@ -438,10 +438,13 @@ namespace TAO
                 }
             }
 
-            /* Run through all the contracts. */
-            for(const auto& contract : vContracts)
-                if(!TAO::Register::Rollback(contract))
+            /* Run through all the contracts in reverse order to disconnect. */
+            for(auto contract = vContracts.rbegin(); contract != vContracts.rend(); ++contract)
+            {
+                contract->Bind(this);
+                if(!TAO::Register::Rollback(*contract))
                     return false;
+            }
 
             return true;
         }

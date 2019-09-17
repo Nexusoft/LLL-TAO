@@ -915,25 +915,19 @@ namespace TAO
         /** Disconnect a block state from the chain. **/
         bool BlockState::Disconnect()
         {
-            debug::log(0, FUNCTION, "disconnecting block ", GetHash().SubString());
-
             /* Disconnect the transctions in reverse order to preserve sigchain ordering. */
             for(auto proof = vtx.rbegin(); proof != vtx.rend(); ++proof)
             {
-
                 /* Only work on tritium transactions for now. */
                 if(proof->first == TRANSACTION::TRITIUM)
                 {
                     /* Get the transaction hash. */
-                    uint512_t hash = proof->second;
+                    const uint512_t& hash = proof->second;
 
                     /* Read from disk. */
                     TAO::Ledger::Transaction tx;
                     if(!LLD::Ledger->ReadTx(hash, tx))
                         return debug::error(FUNCTION, "transaction is not on disk");
-
-                    /* Print transaction (for extra debugging.) */
-                    tx.print();
 
                     /* Disconnect the transaction. */
                     if(!tx.Disconnect())
@@ -942,15 +936,12 @@ namespace TAO
                 else if(proof->first == TRANSACTION::LEGACY)
                 {
                     /* Get the transaction hash. */
-                    uint512_t hash = proof->second;
+                    const uint512_t& hash = proof->second;
 
                     /* Read from disk. */
                     Legacy::Transaction tx;
                     if(!LLD::Legacy->ReadTx(hash, tx))
                         return debug::error(FUNCTION, "transaction is not on disk");
-
-                    /* Print transaction (for extra debugging.) */
-                    tx.print();
 
                     /* Disconnect the inputs. */
                     if(!tx.Disconnect(*this))

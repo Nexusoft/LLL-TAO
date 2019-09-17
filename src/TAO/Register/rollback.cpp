@@ -19,7 +19,7 @@ ________________________________________________________________________________
 #include <TAO/Register/include/constants.h>
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/include/rollback.h>
-#include <TAO/Register/types/state.h>
+#include <TAO/Register/types/object.h>
 
 /* Global TAO namespace. */
 namespace TAO

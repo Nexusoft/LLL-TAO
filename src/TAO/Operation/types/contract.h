@@ -60,6 +60,7 @@ namespace TAO
 
             /* MEMORY ONLY: The cached cost of this contract */
             mutable uint64_t nCost;
+            
 
             /** MEMORY ONLY: the calling public-id. **/
             mutable uint256_t hashCaller;
