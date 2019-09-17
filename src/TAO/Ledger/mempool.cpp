@@ -119,11 +119,11 @@ namespace TAO
 
                         return true;
                     }
-                }
 
-                /* Check for conflicts. */
-                if(mapClaimed.count(tx.hashPrevTx))
-                    return debug::error(0, FUNCTION, "conflict detected");
+                    /* Check for conflicts. */
+                    if(mapClaimed.count(tx.hashPrevTx))
+                        return debug::error(0, FUNCTION, "conflict detected");
+                }
             }
 
             //TODO: add mapConflcts map to soft-ban conflicting blocks
@@ -157,7 +157,10 @@ namespace TAO
 
                 /* Set the internal memory. */
                 mapLedger[hashTx] = tx;
-                mapClaimed[tx.hashPrevTx] = hashTx;
+
+                /* Update map claimed if not first tx. */
+                if(!tx.IsFirst())
+                    mapClaimed[tx.hashPrevTx] = hashTx;
             }
 
             /* Debug output. */
