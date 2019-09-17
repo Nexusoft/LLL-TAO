@@ -299,12 +299,8 @@ namespace TAO
                 return debug::error(FUNCTION, hashPrevBlock.SubString(), " block state not found");
 
             /* Compute the Chain Weight. */
-            //debug::log(0, "Weight Limit: ", std::numeric_limits<uint64_t>::max());
             for(uint32_t n = 0; n < 3; ++n)
-            {
                 nChannelWeight[n] = statePrev.nChannelWeight[n];
-                debug::log(0, "Weight ", n == 0 ? "Stake" : (n == 1 ? "Prime" : "Hash "), ": ", nChannelWeight[n].Get64());
-            }
 
             /* Find the last block of this channel. */
             BlockState stateLast = statePrev;
@@ -480,10 +476,7 @@ namespace TAO
 
             /* Add new weights for this channel. */
             if(!IsPrivate())
-            {
-                debug::log(0, "Adding ", Weight(), " To Channel ", nChannel);
                 nChannelWeight[nChannel] += Weight();
-            }
 
             /* Compute the chain trust. */
             nChainTrust = statePrev.nChainTrust + Trust();
