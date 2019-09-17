@@ -97,14 +97,11 @@ namespace LLD
     bool RegisterDB::EraseState(const uint256_t& hashRegister, const uint8_t nFlags)
     {
         /* Memory mode for pre-database commits. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
-        {
-            LOCK(MEMORY_MUTEX);
+        LOCK(MEMORY_MUTEX);
 
-            /* Check for state in memory map. */
-            if(mapStates.count(hashRegister))
-                mapStates.erase(hashRegister);
-        }
+        /* Check for state in memory map. */
+        if(mapStates.count(hashRegister))
+            mapStates.erase(hashRegister);
 
         return Erase(std::make_pair(std::string("state"), hashRegister));
     }
