@@ -88,6 +88,10 @@ namespace TAO
             /* Iterate through each register we own */
             for(const auto& hashRegister : vRegisters)
             {
+                /* Initial check that it is an account/trust/token, before we hit the DB to get the balance */
+                if(!hashRegister.IsAccount() && !hashRegister.IsTrust() && !hashRegister.IsToken())
+                    continue;
+
                 /* Get the register from the register DB */
                 TAO::Register::Object object;
                 if(!LLD::Register->ReadState(hashRegister, object)) // note we don't include mempool state here as we want the confirmed

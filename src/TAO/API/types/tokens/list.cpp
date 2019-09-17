@@ -60,19 +60,24 @@ namespace TAO
                 nLimit = std::stoul(params["limit"].get<std::string>());
 
             /* Get the list of registers owned by this sig chain */
-            std::vector<TAO::Register::Address> vRegisters;
-            if(!ListRegisters(user->Genesis(), vRegisters))
+            std::vector<TAO::Register::Address> vAddresses;
+            if(!TAO::API::ListAccounts(user->Genesis(), vAddresses, false, false))
                 throw APIException(-74, "No registers found");
+
+            /* Read all the registers to that they are sorted by creation time */
+            std::vector<std::pair<TAO::Register::Address, TAO::Register::State>> vAccounts;
+            GetRegisters(vAddresses, vAccounts);
 
             /* Add the register data to the response */
             uint32_t nTotal = 0;
-            for(const auto& hashRegister : vRegisters)
+            for(const auto& state : vAccounts)
             {
-                /* Get the account from the register DB.  We can read it as an Object and then check its nType to determine
-                   whether or not it is an asset. */
-                TAO::Register::Object object;
-                if(!LLD::Register->ReadState(hashRegister, object, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-13, "Account not found");
+                /* Double check that it is an object before we cast it */
+                if(state.second.nType != TAO::Register::REGISTER::OBJECT)
+                    continue;
+
+                /* Cast the state to an Object register */
+                TAO::Register::Object object(state.second);
 
                 /* Check that this is a non-standard object type so that we can parse it and check the type*/
                 if(object.nType != TAO::Register::REGISTER::OBJECT)
@@ -84,7 +89,7 @@ namespace TAO
 
                 /* Check that this is an account */
                 uint8_t nStandard = object.Standard();
-                if(nStandard != TAO::Register::OBJECTS::ACCOUNT && nStandard != TAO::Register::OBJECTS::TRUST)
+                if(nStandard != TAO::Register::OBJECTS::ACCOUNT )
                     continue;
 
                 /* Check the account is not a NXS account */
@@ -107,7 +112,7 @@ namespace TAO
                     break;
 
                 /* Convert the object to JSON */
-                ret.push_back(TAO::API::ObjectToJSON(params, object, hashRegister));
+                ret.push_back(TAO::API::ObjectToJSON(params, object, state.first));
             }
 
             return ret;

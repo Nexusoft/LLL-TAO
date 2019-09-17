@@ -301,6 +301,10 @@ namespace TAO
             /* Iterate registers to find all token accounts. */
             for(const auto& hashRegister : vRegisters)
             {
+                /* Initial check that it is a token or account, before we hit the DB to check the token type */
+                if(!hashRegister.IsAccount() && !hashRegister.IsToken())
+                    continue;
+                    
                 /* Read the object register. */
                 TAO::Register::Object object;
                 if(!LLD::Register->ReadState(hashRegister, object, TAO::Ledger::FLAGS::MEMPOOL))

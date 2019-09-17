@@ -319,6 +319,8 @@ namespace TAO
                 }
             }
 
+            /* Sort the registers by creation date  */
+
             return true;
         }
 
@@ -343,7 +345,7 @@ namespace TAO
 
 
         /* Scans a signature chain to work out all accounts that it owns */
-        bool ListAccounts(const uint256_t& hashGenesis, std::vector<TAO::Register::Address>& vAccounts, bool fTokens)
+        bool ListAccounts(const uint256_t& hashGenesis, std::vector<TAO::Register::Address>& vAccounts, bool fTokens, bool fTrust)
         {
             /* Get all registers owned by the sig chain */
             std::vector<TAO::Register::Address> vRegisters;
@@ -353,7 +355,7 @@ namespace TAO
             for(const auto& address : vRegisters)
             {
                 /* Check that the address is for an account or token */
-                if(address.IsAccount() || (fTokens && address.IsToken()))
+                if(address.IsAccount() || (fTokens && address.IsToken()) || (fTrust && address.IsTrust()))
                     vAccounts.push_back(address);
             }
 
@@ -980,7 +982,7 @@ namespace TAO
         {
             /* Find all token accounts owned by the caller for the token */
             std::vector<TAO::Register::Address> vAccounts;
-            ListAccounts(hashGenesis, vAccounts, true);
+            ListAccounts(hashGenesis, vAccounts, true, false);
 
             /* The balance of tokens owned for this asset */
             uint64_t nBalance = 0;
@@ -1047,7 +1049,7 @@ namespace TAO
         {
             /* Find all token accounts owned by the caller */
             std::vector<TAO::Register::Address> vAccounts;
-            ListAccounts(hashGenesis, vAccounts, true);
+            ListAccounts(hashGenesis, vAccounts, true, false);
 
             for(const auto& hashAccount : vAccounts)
             {
@@ -1167,6 +1169,32 @@ namespace TAO
                 if(nBlocksToMaturity > 0)
                     throw APIException(-202, debug::safe_printstr( "Signature chain not mature after your previous mined/stake block. ", nBlocksToMaturity, " more confirmation(s) required."));
             }
+        }
+
+
+        /* Reads a batch of states registers from the Register DB */
+        bool GetRegisters(const std::vector<TAO::Register::Address>& vAddresses, 
+                          std::vector<std::pair<TAO::Register::Address, TAO::Register::State>>& vStates)
+        {
+            for(const auto& hashRegister : vAddresses)
+            {
+                /* Get the state from the register DB. */
+                TAO::Register::State state;
+                if(!LLD::Register->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
+                    throw APIException(-104, "Object not found");
+                
+                vStates.push_back(std::make_pair(hashRegister, state));
+            }
+
+            /* Now sort the states based on the creation time */
+            std::sort(vStates.begin(), vStates.end(), 
+                [](const std::pair<TAO::Register::Address, TAO::Register::State> &a,  
+                const std::pair<TAO::Register::Address, TAO::Register::State> &b)
+                { 
+                    return ( a.second.nCreated < b.second.nCreated );
+                });
+
+            return vStates.size() > 0;
         }
 
 

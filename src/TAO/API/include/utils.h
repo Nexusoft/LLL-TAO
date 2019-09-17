@@ -86,12 +86,14 @@ namespace TAO
          *
          *  @param[in] hashGenesis The genesis hash of the signature chain to scan
          *  @param[in] fTokens If set then this will include tokens in the list
+         *  @param[in] fTrust If set then this will include trust accounts in the list
          *  @param[out] vAccounts The list of account register addresses from sigchain.
          *
          *  @return A vector of register addresses owned by the sig chain
          *
          **/
-        bool ListAccounts(const uint256_t& hashGenesis, std::vector<TAO::Register::Address>& vAccounts, bool fTokens);
+        bool ListAccounts(const uint256_t& hashGenesis, std::vector<TAO::Register::Address>& vAccounts, 
+                          bool fTokens, bool fTrust);
 
 
         /** AddFee
@@ -225,6 +227,21 @@ namespace TAO
         *
         **/
         void CheckMature(const uint256_t& hashGenesis);
+
+
+        /** GetRegisters
+         *
+         *  Reads a batch of states registers from the Register DB 
+         *
+         *  @param[in] vAddresses The list of register addresses to read
+         *  @param[out] vStates The list of states paired to the register address.  
+         *              The list will be sorted by the create timestamp of the register, oldest first
+         *
+         *  @return True if successful
+         *
+         **/
+        bool GetRegisters(const std::vector<TAO::Register::Address>& vAddresses, 
+                          std::vector<std::pair<TAO::Register::Address, TAO::Register::State>>& vStates);
 
 
     }
