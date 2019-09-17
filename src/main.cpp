@@ -99,7 +99,7 @@ int main(int argc, char** argv)
 
 
     /* Log the startup information now. */
-    debug::LogStartup();
+    debug::LogStartup(argc, argv);
 
 
     /* Run the process as Daemon RPC/LLP Server if Flagged. */

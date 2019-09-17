@@ -26,6 +26,7 @@ ________________________________________________________________________________
 #include <TAO/Register/include/names.h>
 #include <TAO/Register/include/constants.h>
 
+#include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/sigchain.h>
@@ -363,14 +364,17 @@ namespace TAO
                             uint32_t nScore;
                             uint512_t hashKey;
                             uint512_t hashLast;
+                            Legacy::TrustKey trustKey;
 
                             /* This loop will only have one iteration. If it breaks out before end, fMigration stays false */
                             while(1)
                             {
-                                Legacy::TrustKey trustKey;
-
                                 /* Trust account output must be only output for the transaction */
                                 if(nContract != 0 || txSend.vout.size() > 1)
+                                    break;
+
+                                /* Trust account must be new (not indexed) */
+                                if(LLD::Register->HasTrust(user->Genesis()))
                                     break;
 
                                 /* Retrieve the trust key being converted */
@@ -388,7 +392,7 @@ namespace TAO
                                     break;
 
                                 /* Last stake block must be at least v5 and coinstake must be a legacy transaction */
-                                if(stateLast.nVersion < 5 || stateLast.vtx[0].first != TAO::Ledger::LEGACY)
+                                if(stateLast.nVersion < 5 || stateLast.vtx[0].first != TAO::Ledger::TRANSACTION::LEGACY)
                                     break;
 
                                 /* Extract the coinstake from the last trust block */
@@ -424,6 +428,13 @@ namespace TAO
                                 /* Set up the OP::MIGRATE */
                                 tx[tx.Size()] << uint8_t(TAO::Operation::OP::MIGRATE) << hashTx << hashAccount << hashKey
                                             << nAmount << nScore << hashLast;
+
+                                debug::log(0, FUNCTION, "Generated trust key MIGRATE",
+                                    "\n    Migrated amount: ", std::fixed, (nAmount / (double)TAO::Ledger::NXS_COIN),
+                                    "\n    Migrated trust: ", nScore,
+                                    "\n    To trust account: ", hashAccount.ToString(),
+                                    "\n    Last stake block: ", trustKey.hashLastBlock.SubString(),
+                                    "\n    Last stake tx: ", hashLast.SubString());
 
                                 continue;
                             }

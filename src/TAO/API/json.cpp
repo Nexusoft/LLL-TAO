@@ -209,7 +209,7 @@ namespace TAO
                         input["amount"] = (double) tx.vout[txin.prevout.n].nValue / TAO::Ledger::NXS_COIN;
 
                         inputs.push_back(input);
-                        
+
                     }
                     ret["inputs"] = inputs;
                 }
@@ -337,7 +337,7 @@ namespace TAO
                         ret["OP"]      = "CREATE";
                         ret["address"] = hashAddress.ToString();
                         ret["type"]    = RegisterType(nType);
-                        
+
                         /* If this is a register object then decode the object type */
                         if(nType == TAO::Register::REGISTER::OBJECT)
                         {
@@ -424,7 +424,7 @@ namespace TAO
                         ret["txid"]       = hashTx.ToString();
                         ret["output"]     = nContract;
                         ret["address"]    = hashAddress.ToString();
-                        
+
 
                         break;
                     }
@@ -473,6 +473,10 @@ namespace TAO
                         uint64_t nScore = 0;
                         contract >> nScore;
 
+                        /* Change to stake amount. */
+                        int64_t nStakeChange = 0;
+                        contract >> nStakeChange;
+
                         /* The total trust reward. */
                         uint64_t nReward = 0;
                         contract >> nReward;
@@ -481,7 +485,13 @@ namespace TAO
                         ret["OP"]      = "TRUST";
                         ret["last"]    = hashLastTrust.ToString();
                         ret["score"]   = nScore;
-                        ret["amount"]  = (double) nReward / TAO::Ledger::NXS_COIN;;
+                        ret["amount"]  = (double) nReward / TAO::Ledger::NXS_COIN;
+
+                        if(nStakeChange > 0)
+                            ret["add_stake"] = (double) nStakeChange / TAO::Ledger::NXS_COIN;
+
+                        else if (nStakeChange < 0)
+                            ret["unstake"] = (double) (0 - nStakeChange) / TAO::Ledger::NXS_COIN;
 
                         break;
                     }
@@ -502,41 +512,6 @@ namespace TAO
                         ret["OP"]        = "GENESIS";
                         ret["address"]   = hashAddress.ToString();
                         ret["amount"]    = (double) nReward / TAO::Ledger::NXS_COIN;;
-
-                        break;
-                    }
-
-
-                    /* Stake operation. Move amount from trust account balance to stake. */
-                    case TAO::Operation::OP::STAKE:
-                    {
-                        /* Amount to of funds to move. */
-                        uint64_t nAmount;
-                        contract >> nAmount;
-
-                        /* Output the json information. */
-                        ret["OP"]      = "STAKE";
-                        ret["amount"]  = (double) nAmount / TAO::Ledger::NXS_COIN;;
-
-                        break;
-                    }
-
-
-                    /* Unstake operation. Move amount from trust account stake to balance (with trust penalty). */
-                    case TAO::Operation::OP::UNSTAKE:
-                    {
-                        /* Amount of funds to move. */
-                        uint64_t nAmount;
-                        contract >> nAmount;
-
-                        /* Trust score penalty from unstake. */
-                        uint64_t nTrustPenalty;
-                        contract >> nTrustPenalty;
-
-                        /* Output the json information. */
-                        ret["OP"]      = "UNSTAKE";
-                        ret["penalty"] = nTrustPenalty;
-                        ret["amount"]  = (double) nAmount / TAO::Ledger::NXS_COIN;
 
                         break;
                     }
@@ -721,7 +696,7 @@ namespace TAO
                                     std::string strFrom = Names::ResolveName(hashCaller, hashFrom);
                                     if(!strFrom.empty())
                                         ret["from_name"] = strFrom;
-                                        
+
                                     /* Reset the operation stream position in case it was loaded from mempool and therefore still in previous state */
                                     debitContract.Reset();
 
@@ -740,6 +715,53 @@ namespace TAO
 
                         break;
                     }
+
+
+                    /* Migrate a trust key to a trust account register. */
+                    case TAO::Operation::OP::MIGRATE:
+                    {
+                        /* Extract the transaction from contract. */
+                        uint512_t hashTx = 0;
+                        contract >> hashTx;
+
+                        /* Get the trust register address. (hash to) */
+                        TAO::Register::Address hashAccount;
+                        contract >> hashAccount;
+
+                        /* Get the Legacy trust key hash (hash from) */
+                        uint512_t hashKey = 0;
+                        contract >> hashKey;
+
+                        /* Get the amount to migrate. */
+                        uint64_t nAmount = 0;
+                        contract >> nAmount;
+
+                        /* Get the trust score to migrate. */
+                        uint32_t nScore = 0;
+                        contract >> nScore;
+
+                        /* Get the hash last stake. */
+                        uint512_t hashLast = 0;
+                        contract >> hashLast;
+
+                        /* Output the json information. */
+                        ret["OP"]      = "MIGRATE";
+                        ret["txid"]    = hashTx.ToString();
+                        ret["account"]  = hashAccount.ToString();
+
+                        /* Resolve the name of the account that the credit is to */
+                        std::string strAccount = Names::ResolveName(hashCaller, hashAccount);
+                        if(!strAccount.empty())
+                            ret["account_name"] = strAccount;
+
+                        ret["hashkey"] = hashKey.ToString();
+                        ret["amount"] = (double) nAmount / TAO::Ledger::NXS_COIN;
+                        ret["score"] = nScore;
+                        ret["hashLast"] = hashLast.ToString();
+
+                        break;
+                    }
+
 
                     /* Authorize a transaction to happen with a temporal proof. */
                     case TAO::Operation::OP::AUTHORIZE:
@@ -931,8 +953,8 @@ namespace TAO
                         /* Handle digit conversion. */
                         uint8_t nDecimals = GetDecimals(object);
 
-                        /* In order to get the balance for this account we need to ensure that we use the state from disk, which 
-                           will contain the confirmed balance.  If this is a new account then it won't be on disk yet so the 
+                        /* In order to get the balance for this account we need to ensure that we use the state from disk, which
+                           will contain the confirmed balance.  If this is a new account then it won't be on disk yet so the
                            confirmed balance is 0 */
                         uint64_t nConfirmedBalance = 0;
                         TAO::Register::Object account;
@@ -941,7 +963,7 @@ namespace TAO
                             /* Parse the object register. */
                             if(!account.Parse())
                                 throw APIException(-14, "Object failed to parse");
-                            
+
                             nConfirmedBalance = account.get<uint64_t>("balance");
                         }
 
@@ -979,8 +1001,8 @@ namespace TAO
                         /* Handle decimals conversion. */
                         uint8_t nDecimals = GetDecimals(object);
 
-                        /* In order to get the balance for this account we need to ensure that we use the state from disk, which 
-                           will contain the confirmed balance.  If this is a new account then it won't be on disk yet so the 
+                        /* In order to get the balance for this account we need to ensure that we use the state from disk, which
+                           will contain the confirmed balance.  If this is a new account then it won't be on disk yet so the
                            confirmed balance is 0 */
                         uint64_t nConfirmedBalance = 0;
                         TAO::Register::Object account;
@@ -989,7 +1011,7 @@ namespace TAO
                             /* Parse the object register. */
                             if(!account.Parse())
                                 throw APIException(-14, "Object failed to parse");
-                            
+
                             nConfirmedBalance = account.get<uint64_t>("balance");
                         }
 
@@ -1009,7 +1031,7 @@ namespace TAO
                         ret["balance"]          = (double)nAvailable / pow(10, nDecimals);
                         ret["pending"]          = (double)nPending / pow(10, nDecimals);
                         ret["unconfirmed"]      = (double)nUnconfirmed / pow(10, nDecimals);
-                        
+
                         ret["maxsupply"]        = (double) object.get<uint64_t>("supply") / pow(10, nDecimals);
                         ret["currentsupply"]    = (double) (object.get<uint64_t>("supply")
                                                 - object.get<uint64_t>("balance")) / pow(10, nDecimals); // current supply is based on unconfirmed balance
@@ -1023,7 +1045,7 @@ namespace TAO
                     {
                         ret["address"]          = hashRegister.ToString();
                         ret["name"]             = object.get<std::string>("name");
-                        
+
                         std::string strNamespace = object.get<std::string>("namespace");
                         if(strNamespace == TAO::Register::NAMESPACE::GLOBAL)
                         {
@@ -1035,8 +1057,8 @@ namespace TAO
                             ret["namespace"] = strNamespace;
                             ret["global"] = false;
                         }
-                        
-                        
+
+
                         ret["register_address"] = TAO::Register::Address(object.get<uint256_t>("address")).ToString();
 
                         break;

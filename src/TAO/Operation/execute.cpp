@@ -29,10 +29,8 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/genesis.h>
 #include <TAO/Operation/include/legacy.h>
 #include <TAO/Operation/include/migrate.h>
-#include <TAO/Operation/include/stake.h>
 #include <TAO/Operation/include/transfer.h>
 #include <TAO/Operation/include/trust.h>
-#include <TAO/Operation/include/unstake.h>
 #include <TAO/Operation/include/validate.h>
 #include <TAO/Operation/include/write.h>
 
@@ -522,6 +520,10 @@ namespace TAO
                         uint64_t nScore = 0;
                         contract >> nScore;
 
+                        /* Get the stake change. */
+                        int64_t nStakeChange = 0;
+                        contract >> nStakeChange;
+
                         /* Get the stake reward. */
                         uint64_t nReward = 0;
                         contract >> nReward;
@@ -539,7 +541,7 @@ namespace TAO
                         contract >>= object;
 
                         /* Calculate the new operation. */
-                        if(!Trust::Execute(object, nReward, nScore, contract.Timestamp()))
+                        if(!Trust::Execute(object, nReward, nScore, nStakeChange, contract.Timestamp()))
                             return false;
 
                         /* Deserialize the pre-state byte from contract. */
@@ -623,132 +625,6 @@ namespace TAO
 
                         /* Commit the register to disk. */
                         if(!Genesis::Commit(object, hashAddress, nFlags))
-                            return false;
-
-                        break;
-                    }
-
-
-                    /* Move funds from trust account balance to stake. */
-                    case OP::STAKE:
-                    {
-                        /* Check for validate. */
-                        if(fValidate)
-                            return debug::error(FUNCTION, "OP::STAKE: cannot use OP::VALIDATE with stake");
-
-                        /* Make sure there are no conditions. */
-                        if(!contract.Empty(Contract::CONDITIONS))
-                            return debug::error(FUNCTION, "OP::STAKE: conditions not allowed on stake");
-
-                        /* Verify the operation rules. */
-                        if(!Stake::Verify(contract))
-                            return false;
-
-                        /* Amount to of funds to move. */
-                        uint64_t nAmount;
-                        contract >> nAmount;
-
-                        /* Deserialize the pre-state byte from the contract. */
-                        uint8_t nState = 0;
-                        contract >>= nState;
-
-                        /* Check for pre-state. */
-                        if(nState != TAO::Register::STATES::PRESTATE)
-                            return debug::error(FUNCTION, "OP::STAKE: register pre-state doesn't exist");
-
-                        /* Read the register from database. */
-                        TAO::Register::Object object;
-                        contract >>= object;
-
-                        /* Calculate the new operation. */
-                        if(!Stake::Execute(object, nAmount, contract.Timestamp()))
-                            return false;
-
-                        /* Deserialize the pre-state byte from contract. */
-                        nState = 0;
-                        contract >>= nState;
-
-                        /* Check for pre-state. */
-                        if(nState != TAO::Register::STATES::POSTSTATE)
-                            return debug::error(FUNCTION, "OP::STAKE: register post-state doesn't exist");
-
-                        /* Deserialize the checksum from contract. */
-                        uint64_t nChecksum = 0;
-                        contract >>= nChecksum;
-
-                        /* Check the post-state to register state. */
-                        if(nChecksum != object.GetHash())
-                            return debug::error(FUNCTION, "OP::STAKE: invalid register post-state");
-
-                        /* Commit the register to disk. */
-                        if(!Stake::Commit(object, nFlags))
-                            return false;
-
-                        break;
-                    }
-
-
-                    /* Move funds from trust account stake to balance. */
-                    case OP::UNSTAKE:
-                    {
-                        /* Check for validate. */
-                        if(fValidate)
-                            return debug::error(FUNCTION, "OP::UNSTAKE: cannot use OP::VALIDATE with unstake");
-
-                        /* Make sure there are no conditions. */
-                        if(!contract.Empty(Contract::CONDITIONS))
-                            return debug::error(FUNCTION, "OP::UNSTAKE: conditions not allowed on unstake");
-
-                        /* Verify the operation rules. */
-                        if(!Unstake::Verify(contract))
-                            return false;
-
-                        contract.Reset();
-
-                        contract.Seek(1);
-
-                        /* Amount of funds to move. */
-                        uint64_t nAmount = 0;
-                        contract >> nAmount;
-
-                        /* Trust score penalty from unstake. */
-                        uint64_t nPenalty = 0;
-                        contract >> nPenalty;
-
-                        /* Deserialize the pre-state byte from the contract. */
-                        uint8_t nState = 0;
-                        contract >>= nState;
-
-                        /* Check for pre-state. */
-                        if(nState != TAO::Register::STATES::PRESTATE)
-                            return debug::error(FUNCTION, "OP::UNSTAKE: register pre-state doesn't exist");
-
-                        /* Read the register from database. */
-                        TAO::Register::Object object;
-                        contract >>= object;
-
-                        /* Calculate the new operation. */
-                        if(!Unstake::Execute(object, nAmount, nPenalty, contract.Timestamp()))
-                            return false;
-
-                        /* Deserialize the pre-state byte from contract. */
-                        nState = 0;
-                        contract >>= nState;
-
-                        /* Check for pre-state. */
-                        if(nState != TAO::Register::STATES::POSTSTATE)
-                            return debug::error(FUNCTION, "OP::UNSTAKE: register post-state doesn't exist");
-
-                        /* Deserialize the checksum from contract. */
-                        uint64_t nChecksum = 0;
-                        contract >>= nChecksum;
-
-                        /* Check the post-state to register state. */
-                        if(nChecksum != object.GetHash())
-                            return debug::error(FUNCTION, "OP::UNSTAKE: invalid register post-state");
-
-                        /* Commit the register to disk. */
-                        if(!Unstake::Commit(object, nFlags))
                             return false;
 
                         break;

@@ -320,7 +320,12 @@ namespace Legacy
         if(!fVerified && !trustKey.IsNull() && !config::fShutdown.load())
         {
             TAO::Ledger::BlockState stateLast = TAO::Ledger::ChainState::stateBest.load();
-            if(GetLastTrust(trustKey, stateLast))
+            if((trustKey.hashLastBlock == trustKey.hashGenesisBlock) && (trustKey.hashLastBlock == stateLast.GetHash()))
+            {
+                /* Just mined Genesis for this trust key, so it is up to date */
+                fVerified = true;
+            }
+            else if(GetLastTrust(trustKey, stateLast))
             {
                 uint1024_t hashLast = stateLast.GetHash();
 
@@ -340,9 +345,9 @@ namespace Legacy
 
                     LLD::Trust->WriteTrustKey(cKey, trustKey);
                 }
-            }
 
-            fVerified = true;
+                fVerified = true;
+            }
         }
 
 

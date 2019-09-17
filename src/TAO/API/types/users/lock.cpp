@@ -102,15 +102,6 @@ namespace TAO
             /* Clear the pin */
             LOCK(MUTEX);
 
-            /* Stop the stake minter if it is no longer unlocked for staking */
-            if(!(nUnlockedActions & TAO::Ledger::PinUnlock::UnlockActions::STAKING))
-            {
-                /* If stake minter is running, stop it */
-                TAO::Ledger::TritiumMinter& stakeMinter = TAO::Ledger::TritiumMinter::GetInstance();
-                if(stakeMinter.IsStarted())
-                    stakeMinter.Stop();
-            }
-
             /* If we have changed specific unlocked actions them set them on the pin */
             if(nUnlockedActions != pActivePIN->UnlockedActions())
             {
@@ -129,7 +120,16 @@ namespace TAO
                 /* If no unlock actions left then free the pin from cache */
                 pActivePIN.free();
             }
-            
+
+            /* Stop the stake minter if it is no longer unlocked for staking */
+            if(pActivePIN.IsNull() || (!(nUnlockedActions & TAO::Ledger::PinUnlock::UnlockActions::STAKING)))
+            {
+                /* If stake minter is running, stop it */
+                TAO::Ledger::TritiumMinter& stakeMinter = TAO::Ledger::TritiumMinter::GetInstance();
+                if(stakeMinter.IsStarted())
+                    stakeMinter.Stop();
+            }
+
             /* populate unlocked status */
             json::json jsonUnlocked;
 

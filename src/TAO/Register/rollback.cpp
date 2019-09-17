@@ -265,7 +265,7 @@ namespace TAO
                     case TAO::Operation::OP::TRUST:
                     {
                         /* Seek to end. */
-                        contract.Seek(80);
+                        contract.Seek(88);
 
                         /* Verify the first register code. */
                         uint8_t nState = 0;
@@ -316,58 +316,6 @@ namespace TAO
                         /* Erase the trust index. */
                         if(!LLD::Register->EraseTrust(contract.Caller()))
                             return debug::error(FUNCTION, "OP::GENESIS: failed to erase trust index");
-
-                        break;
-                    }
-
-
-                    /* Add stake */
-                    case TAO::Operation::OP::STAKE:
-                    {
-                        /* Seek to end. */
-                        contract.Seek(8);
-
-                        /* Verify the first register code. */
-                        uint8_t nState = 0;
-                        contract >>= nState;
-
-                        /* Check the state is prestate. */
-                        if(nState != STATES::PRESTATE)
-                            return debug::error(FUNCTION, "OP::STAKE: register state not in pre-state");
-
-                        /* Verify the register's prestate. */
-                        State state;
-                        contract >>= state;
-
-                        /* Write the register prestate to database. */
-                        if(!LLD::Register->WriteTrust(contract.Caller(), state))
-                            return debug::error(FUNCTION, "OP::STAKE: failed to rollback to pre-state");
-
-                        break;
-                    }
-
-
-                    /* Remove stake */
-                    case TAO::Operation::OP::UNSTAKE:
-                    {
-                        /* Seek to end. */
-                        contract.Seek(16);
-
-                        /* Verify the first register code. */
-                        uint8_t nState = 0;
-                        contract >>= nState;
-
-                        /* Check the state is prestate. */
-                        if(nState != STATES::PRESTATE)
-                            return debug::error(FUNCTION, "OP::UNSTAKE: register state not in pre-state");
-
-                        /* Verify the register's prestate. */
-                        State state;
-                        contract >>= state;
-
-                        /* Write the register prestate to database. */
-                        if(!LLD::Register->WriteTrust(contract.Caller(), state))
-                            return debug::error(FUNCTION, "OP::UNSTAKE: failed to rollback to pre-state");
 
                         break;
                     }
@@ -535,7 +483,7 @@ namespace TAO
 
                         /* Erase the trust key conversion. */
                         if(!LLD::Legacy->EraseTrustConversion(hashKey))
-                            return debug::error(FUNCTION, "OP::MIGRATE: failed to record trust key migration to disk");
+                            return debug::error(FUNCTION, "OP::MIGRATE: failed to erase trust key migration from disk");
 
                         break;
                     }

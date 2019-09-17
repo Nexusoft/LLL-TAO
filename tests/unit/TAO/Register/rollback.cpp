@@ -1125,6 +1125,9 @@ TEST_CASE( "Register Rollback Tests", "[register]")
 
                 //check balance (claimed Coinbase amount added to balance)
                 REQUIRE(trust.get<uint64_t>("balance") == 5000);
+                REQUIRE(trust.get<uint64_t>("trust")   == 0);
+                REQUIRE(trust.get<uint64_t>("stake")   == 0);
+                REQUIRE(trust.get<uint256_t>("token")  == 0);
             }
         }
 
@@ -1162,7 +1165,9 @@ TEST_CASE( "Register Rollback Tests", "[register]")
 
                 //check register
                 REQUIRE(trust.get<uint64_t>("balance") == 5);
+                REQUIRE(trust.get<uint64_t>("trust")   == 0);
                 REQUIRE(trust.get<uint64_t>("stake")   == 5000);
+                REQUIRE(trust.get<uint256_t>("token")  == 0);
             }
 
             //rollback the genesis
@@ -1181,7 +1186,9 @@ TEST_CASE( "Register Rollback Tests", "[register]")
 
                 //check register
                 REQUIRE(trust.get<uint64_t>("balance") == 5000);
+                REQUIRE(trust.get<uint64_t>("trust")   == 0);
                 REQUIRE(trust.get<uint64_t>("stake")   == 0);
+                REQUIRE(trust.get<uint256_t>("token")  == 0);
             }
         }
 
@@ -1222,7 +1229,9 @@ TEST_CASE( "Register Rollback Tests", "[register]")
 
                 //check register
                 REQUIRE(trust.get<uint64_t>("balance") == 6);
+                REQUIRE(trust.get<uint64_t>("trust")   == 0);
                 REQUIRE(trust.get<uint64_t>("stake")   == 5000);
+                REQUIRE(trust.get<uint256_t>("token")  == 0);
             }
         }
 
@@ -1236,7 +1245,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
             tx.nTimestamp  = runtime::timestamp();
 
             //payload
-            tx[0] << uint8_t(OP::TRUST) << hashLastTrust << uint64_t(555) << uint64_t(7);
+            tx[0] << uint8_t(OP::TRUST) << hashLastTrust << uint64_t(555) << int64_t(0) << uint64_t(7);
 
             //generate the prestates and poststates
             REQUIRE(tx.Build());
@@ -1259,6 +1268,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
                 REQUIRE(trust.get<uint64_t>("balance") == 13);
                 REQUIRE(trust.get<uint64_t>("trust")   == 555);
                 REQUIRE(trust.get<uint64_t>("stake")   == 5000);
+                REQUIRE(trust.get<uint256_t>("token")  == 0);
             }
 
             //rollback
@@ -1276,6 +1286,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
                 REQUIRE(trust.get<uint64_t>("balance") == 6);
                 REQUIRE(trust.get<uint64_t>("trust")   == 0);
                 REQUIRE(trust.get<uint64_t>("stake")   == 5000);
+                REQUIRE(trust.get<uint256_t>("token")  == 0);
             }
         }
 
@@ -1289,7 +1300,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
             tx.nTimestamp  = runtime::timestamp();
 
             //payload
-            tx[0] << uint8_t(OP::TRUST) << hashLastTrust << uint64_t(2000) << uint64_t(10);
+            tx[0] << uint8_t(OP::TRUST) << hashLastTrust << uint64_t(2000) << int64_t(0) << uint64_t(10);
 
             //generate the prestates and poststates
             REQUIRE(tx.Build());
@@ -1314,11 +1325,12 @@ TEST_CASE( "Register Rollback Tests", "[register]")
                 REQUIRE(trust.get<uint64_t>("balance") == 16);
                 REQUIRE(trust.get<uint64_t>("trust")   == 2000);
                 REQUIRE(trust.get<uint64_t>("stake")   == 5000);
+                REQUIRE(trust.get<uint256_t>("token")  == 0);
             }
         }
 
 
-        //OP::STAKE rollback
+        //OP::TRUST with add stake rollback
         {
             //create the transaction object
             TAO::Ledger::Transaction tx;
@@ -1326,8 +1338,8 @@ TEST_CASE( "Register Rollback Tests", "[register]")
             tx.nSequence   = 7;
             tx.nTimestamp  = runtime::timestamp();
 
-            //payload with coinstake reward
-            tx[0] << uint8_t(OP::STAKE) << uint64_t(15);
+            //payload containing trust, reward, and add 15 from balance to stake
+            tx[0] << uint8_t(OP::TRUST) << hashLastTrust << uint64_t(3000) << int64_t(15) << uint64_t(8);
 
             //generate the prestates and poststates
             REQUIRE(tx.Build());
@@ -1347,8 +1359,10 @@ TEST_CASE( "Register Rollback Tests", "[register]")
                 REQUIRE(trust.Parse());
 
                 //check register
-                REQUIRE(trust.get<uint64_t>("balance") == 1);
+                REQUIRE(trust.get<uint64_t>("balance") == 9);
+                REQUIRE(trust.get<uint64_t>("trust")   == 3000);
                 REQUIRE(trust.get<uint64_t>("stake")   == 5015);
+                REQUIRE(trust.get<uint256_t>("token")  == 0);
             }
 
             //rollback the stake
@@ -1364,12 +1378,14 @@ TEST_CASE( "Register Rollback Tests", "[register]")
 
                 //check register
                 REQUIRE(trust.get<uint64_t>("balance") == 16);
+                REQUIRE(trust.get<uint64_t>("trust")   == 2000);
                 REQUIRE(trust.get<uint64_t>("stake")   == 5000);
+                REQUIRE(trust.get<uint256_t>("token")  == 0);
             }
         }
 
 
-        //OP::UNSTAKE rollback
+        //OP::TRUST with unstake rollback
         {
             //create the transaction object
             TAO::Ledger::Transaction tx;
@@ -1377,8 +1393,8 @@ TEST_CASE( "Register Rollback Tests", "[register]")
             tx.nSequence   = 8;
             tx.nTimestamp  = runtime::timestamp();
 
-            //payload with removed stake amount and trust penalty
-            tx[0] << uint8_t(OP::UNSTAKE) << uint64_t(2000) << uint64_t(800);
+            //payload containing trust (after penalty), reward, and remove 2000 from stake to balance
+            tx[0] << uint8_t(OP::TRUST) << hashLastTrust << uint64_t(1200) << int64_t(-2000) << uint64_t(6);
 
             //generate the prestates and poststates
             REQUIRE(tx.Build());
@@ -1398,9 +1414,10 @@ TEST_CASE( "Register Rollback Tests", "[register]")
                 REQUIRE(trust.Parse());
 
                 //check register
-                REQUIRE(trust.get<uint64_t>("balance") == 2016);
+                REQUIRE(trust.get<uint64_t>("balance") == 2022);
                 REQUIRE(trust.get<uint64_t>("trust")   == 1200);
                 REQUIRE(trust.get<uint64_t>("stake")   == 3000);
+                REQUIRE(trust.get<uint256_t>("token")  == 0);
             }
 
             //rollback
@@ -1418,6 +1435,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
                 REQUIRE(trust.get<uint64_t>("balance") == 16);
                 REQUIRE(trust.get<uint64_t>("trust")   == 2000);
                 REQUIRE(trust.get<uint64_t>("stake")   == 5000);
+                REQUIRE(trust.get<uint256_t>("token")  == 0);
             }
         }
     }

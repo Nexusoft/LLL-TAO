@@ -66,12 +66,14 @@ namespace TAO
              *  @param[out] trust The trust object register to stake.
              *  @param[in] nReward The reward to apply to trust account.
              *  @param[in] nScore The score to apply to trust account.
+             *  @param[in] nStakeChange The change in stake amount to apply to the trust account.
              *  @param[in] nTimestamp The timestamp to update register to.
              *
              *  @return true if successful.
              *
              **/
-            bool Execute(TAO::Register::Object &trust, const uint64_t nReward, const uint64_t nScore, const uint64_t nTimestamp);
+            bool Execute(TAO::Register::Object &trust, const uint64_t nReward, const uint64_t nScore,
+                         const int64_t nStakeChange, const uint64_t nTimestamp);
 
 
             /** Verify

@@ -15,8 +15,8 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEDGER_TYPES_TRITIUM_MINTER_H
 #define NEXUS_TAO_LEDGER_TYPES_TRITIUM_MINTER_H
 
+#include <TAO/Ledger/include/stake_change.h>
 #include <TAO/Ledger/types/base_minter.h>
-#include <TAO/Ledger/types/genesis.h>
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/types/transaction.h>
@@ -157,12 +157,16 @@ namespace TAO
         TAO::Register::Object account;
 
 
-        /** Last stake transaction for the current trust account. */
-        TAO::Ledger::Transaction txLast;
-
-
         /** Last stake block found by current trust account. */
         TAO::Ledger::BlockState stateLast;
+
+
+        /** Flag to indicate whether the user has a current stake change request **/
+        bool fStakeChange;
+
+
+        /** Stake change request for current user */
+        TAO::Ledger::StakeChange stakeChange;
 
 
         /** The candidate block that the stake minter is currently attempting to mine **/
@@ -185,8 +189,9 @@ namespace TAO
         TritiumMinter()
         : hashAddress(0)
         , account()
-        , txLast()
         , stateLast()
+        , fStakeChange(false)
+        , stakeChange()
         , block()
         , fGenesis(false)
         , nTrust(0)
@@ -214,7 +219,7 @@ namespace TAO
          *  @return true if the trust account was successfully retrieved
          *
          **/
-        bool FindTrustAccount(const Genesis& hashGenesis);
+        bool FindTrustAccount(const uint256_t& hashGenesis);
 
 
         /** FindLastStake
@@ -222,12 +227,25 @@ namespace TAO
          *  Retrieves the most recent stake transaction for a user account.
          *
          *  @param[in] hashGenesis - genesis of user account signature chain
-         *  @param[out] tx - the most recent stake transaction
+         *  @param[out] hashLast - the most recent stake transaction hash
          *
          *  @return true if the last stake transaction was successfully retrieved
          *
          **/
-        bool FindLastStake(const Genesis& hashGenesis, Transaction& tx);
+        bool FindLastStake(const uint256_t& hashGenesis, uint512_t& hashLast);
+
+
+        /** FindStakeChange
+         *
+         *  Identifies any pending stake change request and populates the appropriate instance data.
+         *
+         *  @param[in] hashGenesis - genesis of user account signature chain
+         *  @param[in] hashLast - hash of last stake transation for the user's trust account
+         *
+         *  @return true if processed successfully
+         *
+         **/
+        bool FindStakeChange(const uint256_t& hashGenesis, const uint512_t hashLast);
 
 
         /** CreateCandidateBlock

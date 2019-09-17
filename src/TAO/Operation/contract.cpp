@@ -237,7 +237,31 @@ namespace TAO
                     /* Skip over genesis. */
                     ssOperation.seek(32);
 
-                    /* Get value. */
+                    /* Get coinbase reward. */
+                    ssOperation >> nValue;
+
+                    break;
+                }
+
+                /* Check for Trust Coinstake. */
+                case OP::TRUST:
+                {
+                    /* Skip over hashLast, nScore, nStakeChange. */
+                    ssOperation.seek(80);
+
+                    /* Get stake reward for trust. */
+                    ssOperation >> nValue;
+
+                    break;
+                }
+
+                /* Check for Genesis Coinstake. */
+                case OP::GENESIS:
+                {
+                    /* Skip over hashAddress. */
+                    ssOperation.seek(32);
+
+                    /* Get stake reward for genesis. */
                     ssOperation >> nValue;
 
                     break;
@@ -256,10 +280,77 @@ namespace TAO
                 }
             }
 
-            /* Reset before return. */
+            return (nValue > 0);
+        }
+
+
+        /* Get the previous tx hash if valid for contract */
+        bool Contract::Previous(uint512_t &hashPrev) const
+        {
+            /* Reset the contract. */
             ssOperation.seek(0, STREAM::BEGIN);
 
-            return (nValue > 0);
+            /* Initialize the has. */
+            hashPrev = 0;
+
+            /* Get the operation code.*/
+            uint8_t nOP = 0;
+            ssOperation >> nOP;
+
+            /* Switch for validate or condition. */
+            switch(nOP)
+            {
+                /* Check for condition. */
+                case OP::CONDITION:
+                {
+                    /* Get next op. */
+                    ssOperation >> nOP;
+
+                    break;
+                }
+
+                /* Check for validate. */
+                case OP::VALIDATE:
+                {
+                    /* Get hash tx for condition contract */
+                    ssOperation >> hashPrev;
+
+                    return (hashPrev > 0);
+                }
+            }
+
+            /* Switch for validate or condition. */
+            switch(nOP)
+            {
+                /* Check for claim. */
+                case OP::CLAIM:
+                {
+                    /* Get hash tx of previous transfer. */
+                    ssOperation >> hashPrev;
+
+                    break;
+                }
+
+                /* Check for credit. */
+                case OP::CREDIT:
+                {
+                    /* Get hash tx of previous debit. */
+                    ssOperation >> hashPrev;
+
+                    break;
+                }
+
+                /* Check for trust coinstake. */
+                case OP::TRUST:
+                {
+                    /* Get last stake hash */
+                    ssOperation >> hashPrev;
+
+                    break;
+                }
+            }
+
+            return (hashPrev > 0);
         }
 
 

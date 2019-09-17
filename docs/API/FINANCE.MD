@@ -532,7 +532,7 @@ This will retrieve account values and staking metrics for the trust account belo
 
 Creates a stake change request for a signature chain's trust account. This request will add or remove stake to set the stake value to the requested amount. If the new value is more than the current stake amount, it adds stake from the account balance. If the new value is less, it removes stake to the account balance (with appropriate trust penalty, if applicable). 
 
-Requests are saved locally and take effect with the next stake block found by staking the signature chain's the trust account. Because they are saved locally, you must continue to stake on the machine where it was created until the next stake block is found, or the request will not be processed.
+Requests are saved locally and take effect with the next stake block found by staking the signature chain's trust account. Because they are saved locally, you must continue to stake on the machine where it was created until the next stake block is found, or the request will not be processed.
 
 Until implemented, you can update the request by calling set/stake again. 
 

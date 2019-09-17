@@ -22,6 +22,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/tritium_minter.h>
 
 #include <Util/include/hex.h>
 
@@ -38,7 +39,7 @@ namespace TAO
         {
             /* JSON return value. */
             json::json ret;
-            
+
             /* Check for username parameter. */
             if(config::fMultiuser.load() && params.find("session") == params.end())
                 throw APIException(-12, "Missing Session ID");
@@ -48,7 +49,7 @@ namespace TAO
             if(config::fMultiuser.load())
                 nSession.SetHex(params["session"].get<std::string>());
 
-            /* Generate an DEAUTH message to send to all peers.  NOTE We need to do this before we lock the MUTEX to delete 
+            /* Generate an DEAUTH message to send to all peers.  NOTE We need to do this before we lock the MUTEX to delete
                the sig chain to avoid a deadlock, as the GetAuth method also takes a lock */
             DataStream ssMessage = LLP::TritiumNode::GetAuth(false);
 
@@ -60,7 +61,7 @@ namespace TAO
                     throw APIException(-141, "Already logged out");
 
                 memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = mapSessions[nSession];
-                
+
                 user.free();
 
                 /* Erase the session. */
@@ -81,6 +82,11 @@ namespace TAO
                 /* Free up the Auth private key */
                 pAuthKey.free();
             }
+
+            /* If stake minter is running when logout, stop it */
+            TAO::Ledger::TritiumMinter& stakeMinter = TAO::Ledger::TritiumMinter::GetInstance();
+            if(stakeMinter.IsStarted())
+                stakeMinter.Stop();
 
             ret["success"] = true;
             return ret;

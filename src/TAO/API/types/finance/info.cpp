@@ -21,6 +21,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/stake.h>
+#include <TAO/Ledger/include/stake_change.h>
 
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/tritium_minter.h>
@@ -84,6 +85,11 @@ namespace TAO
 
             ret["trust"] = nTrustScore;
 
+            if(LLD::Register->HasTrust(user->Genesis()))
+                ret["new"] = false;
+            else
+                ret["new"] = true;
+
             TAO::Ledger::TritiumMinter& stakeMinter = TAO::Ledger::TritiumMinter::GetInstance();
 
             /* Return whether stake minter is started and actively running. */
@@ -114,6 +120,18 @@ namespace TAO
                 ret["blockweight"] = 0.0;
                 ret["stakeweight"] = 0.0;
             }
+
+            TAO::Ledger::StakeChange stakeChange;
+            if(LLD::Local->ReadStakeChange(user->Genesis(), stakeChange) && !stakeChange.fProcessed
+            && (stakeChange.nExpires == 0 || stakeChange.nExpires > runtime::unifiedtimestamp()))
+            {
+                ret["change"] = true;
+                ret["amount"] = (double)stakeChange.nAmount / TAO::Ledger::NXS_COIN;
+                ret["requested"] = stakeChange.nTime;
+                ret["expires"] = stakeChange.nExpires;
+            }
+            else
+                ret["change"] = false;
 
             /* If the caller has requested to filter on a fieldname then filter out the json response to only include that field */
             if(params.find("fieldname") != params.end())

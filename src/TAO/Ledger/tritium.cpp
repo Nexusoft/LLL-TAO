@@ -636,6 +636,7 @@ namespace TAO
             uint64_t nReward = 0;
             uint64_t nBlockAge = 0;
             uint64_t nStake = 0;
+            int64_t nStakeChange = 0;
 
             if(producer.IsTrust())
             {
@@ -653,6 +654,8 @@ namespace TAO
 
                 uint64_t nClaimedTrust = 0;
                 producer[0] >> nClaimedTrust;
+
+                producer[0] >> nStakeChange;
 
                 uint64_t nClaimedReward = 0;
                 producer[0] >> nClaimedReward;
@@ -679,13 +682,13 @@ namespace TAO
 
                 /* Get pre-state trust account values */
                 nTrustPrev = account.get<uint64_t>("trust");
-                nStake     = account.get<uint64_t>("stake");
+                nStake = account.get<uint64_t>("stake");
 
                 /* Calculate Block Age (time from last stake block until previous block) */
                 nBlockAge = statePrev.GetBlockTime() - stateLast.GetBlockTime();
 
                 /* Calculate the new trust score */
-                nTrust = GetTrustScore(nTrustPrev, nBlockAge);
+                nTrust = GetTrustScore(nTrustPrev, nBlockAge, nStake, nStakeChange);
 
                 /* Validate the trust score calculation */
                 if(nClaimedTrust != nTrust)
@@ -759,14 +762,18 @@ namespace TAO
             else
                 return debug::error(FUNCTION, "invalid stake operation");
 
+            uint64_t nStakeApplied = nStake;
+            if(nStakeChange > 0)
+                nStakeApplied += nStakeChange; //If stake added, apply to threshold calculation
+
             /* Check the stake balance. */
-            if(nStake == 0)
+            if(nStakeApplied == 0)
                 return debug::error(FUNCTION, "cannot stake if stake balance is zero");
 
             /* Calculate the energy efficiency thresholds. */
             uint64_t nBlockTime = GetBlockTime() - producer.nTimestamp;
             double nThreshold = GetCurrentThreshold(nBlockTime, nNonce);
-            double nRequired  = GetRequiredThreshold(nTrustWeight, nBlockWeight, nStake);
+            double nRequired  = GetRequiredThreshold(nTrustWeight, nBlockWeight, nStakeApplied);
 
             /* Check that the threshold was not violated. */
             if(nThreshold < nRequired)
@@ -780,7 +787,7 @@ namespace TAO
             debug::log(2, FUNCTION,
                 "stake hash=", StakeHash().SubString(), ", ",
                 "target=", bnTarget.getuint1024().SubString(), ", ",
-                "type=", (producer.IsTrust() ? "Trust":"Genesis"), ", ",
+                "type=", (producer.IsTrust() ? "Trust" : "Genesis"), ", ",
                 "trust score=", nTrust, ", ",
                 "prev trust score=", nTrustPrev, ", ",
                 "trust change=", int64_t(nTrust - nTrustPrev), ", ",
@@ -792,7 +799,9 @@ namespace TAO
                 "block time=", nBlockTime, ", ",
                 "threshold=", nThreshold, ", ",
                 "required=", nRequired, ", ",
-                "nonce=", nNonce);
+                "nonce=", nNonce, ", ",
+                "add stake=", ((nStakeChange > 0) ? nStakeChange : 0), ", ",
+                "unstake=", ((nStakeChange < 0) ? (0 - nStakeChange) : 0));
 
             return true;
         }

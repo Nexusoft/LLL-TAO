@@ -30,13 +30,14 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/ambassador.h>
 #include <TAO/Ledger/include/enum.h>
+#include <TAO/Ledger/include/difficulty.h>
+#include <TAO/Ledger/include/checkpoints.h>
+#include <TAO/Ledger/include/stake_change.h>
+#include <TAO/Ledger/include/supply.h>
+#include <TAO/Ledger/include/prime.h>
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/genesis.h>
-#include <TAO/Ledger/include/difficulty.h>
-#include <TAO/Ledger/include/checkpoints.h>
-#include <TAO/Ledger/include/supply.h>
-#include <TAO/Ledger/include/prime.h>
 
 #include <Util/include/string.h>
 
@@ -840,8 +841,25 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to write last hash");
 
                     /* If tx is coinstake, also write the last stake. */
-                    if(tx.IsCoinStake() && !LLD::Ledger->WriteStake(tx.hashGenesis, hash))
-                        return debug::error(FUNCTION, "failed to write last stake");
+                    if(tx.IsCoinStake())
+                    {
+                        if(!LLD::Ledger->WriteStake(tx.hashGenesis, hash))
+                            return debug::error(FUNCTION, "failed to write last stake");
+
+                        /* If local database has a stake change request for this transaction not marked as processed, update it.
+                         * This updates a request that was reset because coinstake was disconnected and now is reconnected, such
+                         * as if execute a forkblocks and re-sync.
+                         */
+                        StakeChange request;
+                        if(LLD::Local->ReadStakeChange(tx.hashGenesis, request)
+                        && !request.fProcessed && request.hashTx == tx.GetHash())
+                        {
+                            request.fProcessed = true;
+
+                            if(!LLD::Local->WriteStakeChange(tx.hashGenesis, request))
+                                LLD::Local->EraseStakeChange(tx.hashGenesis); //if cannot update, erase the reqeust
+                        }
+                    }
                 }
                 else if(proof.first == TRANSACTION::LEGACY)
                 {

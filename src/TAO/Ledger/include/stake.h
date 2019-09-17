@@ -90,42 +90,15 @@ namespace TAO
          *  Calculate new trust score from parameters.
          *
          *  @param[in] nScorePrev - previous trust score of trust account
-         *  @param[in] nStake - current stake balance
          *  @param[in] nBlockAge - current block age (time since last stake block for trust account)
+         *  @param[in] nStake - current stake amount
+         *  @param[in] nStakeChange - amount added to or removed from stake, unstake penalty applied if this is a negative amount
          *
          *  @return new value for trust score
          *
          **/
-        uint64_t GetTrustScore(const uint64_t nScorePrev, const uint64_t nBlockAge);
-
-
-        /** GetUnstakePenalty
-         *
-         *  Calculate amount of trust score reduction that results from unstaking a portion of stake balance.
-         *
-         *  @param[in] nScorePrev - previous trust score of trust account
-         *  @param[in] nStakePrev - previous stake amount for trust account
-         *  @param[in] nStakeNew - new stake amount for trust account
-         *  @param[in] hashGenesis - user genesis of trust account owner
-         *
-         *  @return value trust score penalty
-         *
-         **/
-        uint64_t GetUnstakePenalty(const uint64_t nScorePrev, const uint64_t nStakePrev,
-                                   const uint64_t nStakeNew, const uint256_t& hashGenesis);
-
-
-        /** GetUnstakePenalty
-         *
-         *  Calculate amount of trust score reduction from unstaking an amount from a trustAccout.
-         *
-         *  @param[in] trustAccount - the trust account to unstake from
-         *  @param[in] nUnstake - the amount to unstake
-         *
-         *  @return value trust score penalty
-         *
-         **/
-        uint64_t GetUnstakePenalty(const TAO::Register::Object trustAccount, const uint64_t nUnstake);
+        uint64_t GetTrustScore(const uint64_t nScorePrev, const uint64_t nBlockAge,
+                               const uint64_t nStake, const int64_t nStakeChange);
 
 
         /** BlockWeight

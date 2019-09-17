@@ -81,7 +81,7 @@ namespace TAO
             if(!LLD::Register->ReadState(hashRegister, object))
                 throw APIException(-104, "Object not found");
 
-            /* We need to check if this register is a trust account as stake/genesis/trust/stake/unstake 
+            /* We need to check if this register is a trust account as stake/genesis/trust/stake/unstake
                transactions don't include the account register address like all other transactions do */
             if(object.Parse() && object.Standard() == TAO::Register::OBJECTS::TRUST)
                 fTrust = true;
@@ -132,7 +132,7 @@ namespace TAO
                 /* The contracts to include that relate to the supplied register */
                 std::vector<TAO::Operation::Contract> vContracts;
 
-                /* Check all contracts in the transaction to see if any of them relates to the requested object register. */                
+                /* Check all contracts in the transaction to see if any of them relates to the requested object register. */
                 uint32_t nContracts = tx.Size();
                 for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
                 {
@@ -143,7 +143,7 @@ namespace TAO
                     const TAO::Operation::Contract& contract = tx[nContract];
 
                     /* Start the stream at the beginning. */
-                    contract.Reset(); 
+                    contract.Reset();
 
                     /* Get the contract operation. */
                     uint8_t OPERATION = 0;
@@ -197,8 +197,7 @@ namespace TAO
 
                         case TAO::Operation::OP::TRUST:
                         case TAO::Operation::OP::GENESIS:
-                        case TAO::Operation::OP::STAKE:
-                        case TAO::Operation::OP::UNSTAKE:
+                        case TAO::Operation::OP::MIGRATE:
                         {
                             fTrustRelated = true;
                             break;
@@ -213,7 +212,7 @@ namespace TAO
 
                 /* Set the next last. */
                 hashLast = tx.hashPrevTx;
-                    
+
                 /* skip this transaction if none of its contracts relate to the register */
                 if(vContracts.size() == 0)
                     continue;
@@ -236,7 +235,7 @@ namespace TAO
 
                 /* Build the transaction JSON. */
                 json::json jsonTx;
-                
+
                 /* Always add the transaction hash */
                 jsonTx["txid"] = tx.GetHash().GetHex();
 

@@ -204,7 +204,7 @@ namespace TAO
                     case TAO::Operation::OP::TRUST:
                     {
                         /* Seek to coinstake. */
-                        contract.Seek(72);
+                        contract.Seek(80);
 
                         contract >> nAmount;
 
@@ -231,9 +231,11 @@ namespace TAO
                         return true;
                     }
 
-                    case TAO::Operation::OP::STAKE:
-                    case TAO::Operation::OP::UNSTAKE:
+                    case TAO::Operation::OP::MIGRATE:
                     {
+                        /* Seek to migrate amount. */
+                        contract.Seek(160);
+
                         /* Amount at beginning of contract, no need to seek. */
                         contract >> nAmount;
 

@@ -29,7 +29,7 @@ TEST_CASE( "Test Finance API - create acccount", "[finance/create/account]")
     json::json error;
 
     std::string strAccount = "ACCOUNT" +std::to_string(LLC::GetRand());
-    
+
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
 
@@ -94,7 +94,7 @@ TEST_CASE( "Test Finance API - get acccount", "[finance/get/account]")
 
     std::string strAccount = "ACCOUNT" +std::to_string(LLC::GetRand());
     TAO::Register::Address hashAccount;
-    
+
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
 
@@ -215,7 +215,7 @@ TEST_CASE( "Test Finance API - list acccounts", "[finance/list/accounts]")
 
     std::string strAccount = "ACCOUNT" +std::to_string(LLC::GetRand());
     TAO::Register::Address hashAccount;
-    
+
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
 
@@ -278,7 +278,7 @@ TEST_CASE( "Test Finance API - get stakeinfo", "[finance/get/stakeinfo]")
 
     std::string strAccount = "ACCOUNT" +std::to_string(LLC::GetRand());
     TAO::Register::Address hashAccount ;
-    
+
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
 
@@ -300,11 +300,13 @@ TEST_CASE( "Test Finance API - get stakeinfo", "[finance/get/stakeinfo]")
         REQUIRE(result.find("balance") != result.end());
         REQUIRE(result.find("stake") != result.end());
         REQUIRE(result.find("trust") != result.end());
+        REQUIRE(result.find("new") != result.end());
         REQUIRE(result.find("staking") != result.end());
         REQUIRE(result.find("stakerate") != result.end());
         REQUIRE(result.find("trustweight") != result.end());
         REQUIRE(result.find("blockweight") != result.end());
         REQUIRE(result.find("stakeweight") != result.end());
+        REQUIRE(result.find("change") != result.end());
     }
 }
 
@@ -317,21 +319,53 @@ TEST_CASE( "Test Finance API - set stake", "[finance/set/stake]")
     json::json result;
     json::json error;
 
-    std::string strAccount = "ACCOUNT" +std::to_string(LLC::GetRand());
-    TAO::Register::Address hashAccount ;
-    
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
 
-    /* Failure case with insufficient balance */
     {
         /* Build the parameters to pass to the API */
         params.clear();
-        params["pin"] = PIN;
         params["session"] = SESSION1;
-        params["amount"] = "1000000";
 
-        /* Invoke the API */
+        /* Invoke the API - missing pin */
+        ret = APICall("finance/set/stake", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -129);
+
+        params.clear();
+        params["session"] = "xxxx";
+        params["pin"] = PIN;
+
+        /* Invoke the API - invalid session */
+        ret = APICall("finance/set/stake", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -10);
+
+        params["session"] = SESSION1;
+
+        /* Invoke the API - missing amount */
+        ret = APICall("finance/set/stake", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -46);
+
+        params["amount"] = "-1000";
+
+        /* Invoke the API - negative amount */
+        ret = APICall("finance/set/stake", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -204);
+
+        params["amount"] = "1000";
+
+        /* Invoke the API - cannot set stake until after Genesis */
         ret = APICall("finance/set/stake", params);
 
         /* Check response is an error and validate error code */

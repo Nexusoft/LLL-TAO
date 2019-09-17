@@ -176,7 +176,7 @@ namespace TAO
             if(!LLD::Ledger->ReadBlock(trustKey.hashLastBlock, state))
                 throw APIException(-40, "Previous transaction not found");
 
-            if(state.vtx[0].first != TAO::Ledger::LEGACY)
+            if(state.vtx[0].first != TAO::Ledger::TRANSACTION::LEGACY)
                 throw APIException(-184, "Previous stake transaction is not a Legacy transaction");
 
             uint512_t txHash = state.vtx[0].second;
@@ -316,6 +316,9 @@ namespace TAO
                 }
             }
 
+            if(Legacy::TRANSACTION_FEE > nAmount)
+                throw APIException(-69, "Insufficient funds");
+
             nAmount -= Legacy::TRANSACTION_FEE;
 
             if(nAmount < Legacy::MIN_TXOUT_AMOUNT)
@@ -328,6 +331,7 @@ namespace TAO
             TAO::Register::Address hashAddress;
             if(!FindTrustAccount(user, hashAddress))
                 throw APIException(-70, "Trust account not found");
+
 
             /* Create the transaction. */
 
@@ -349,6 +353,13 @@ namespace TAO
             /* Check result of SendToNexusAddress only after returning to prior lock state */
             if(strError != "")
                 throw APIException(-3, strError);
+            else
+            {
+                debug::log(0, FUNCTION, "Initiated trust key migration from trust address ", trustAddress.ToString(),
+                    "\n    to trust account address ", hashAddress.ToString(),
+                    "\n    Balance sent (less fee): ", std::fixed, (nAmount / (double)TAO::Ledger::NXS_COIN));
+            }
+
 
             /* Build a JSON response object. */
             ret["txid"] = wtx.GetHash().GetHex();
