@@ -419,6 +419,18 @@ namespace TAO
         bool Users::get_expired(const uint256_t& hashGenesis,
                 uint512_t hashLast, std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> &vContracts)
         {
+            /* Temporary transaction to use to evaluate the conditions */
+            TAO::Ledger::Transaction voidTx;
+
+            /* Set the time and caller on the voidTx to simulate executing it now */
+            voidTx.hashGenesis = hashGenesis;
+
+            /* Temporary voiding contract to use to evaluate the conditions */
+            TAO::Operation::Contract voidContract;
+
+            /* Bind the temp void contract to the void tx so that the genesis and timestamp are bound */
+            voidContract.Bind(&voidTx);
+
             /* Reverse iterate until genesis (newest to oldest). */
             while(hashLast != 0)
             {
@@ -439,13 +451,10 @@ namespace TAO
                     if(contract.Empty(TAO::Operation::Contract::CONDITIONS))
                         continue;
 
-                    /* Temporary voiding contract to use to evaluate the conditions */
-                    TAO::Operation::Contract voidContract;
-
                     /* The proof to check for this contract */
                     TAO::Register::Address hashProof;
 
-                    /* REset the op stream */
+                    /* Reset the op stream */
                     contract.Reset();
 
                     /* The operation */
@@ -483,6 +492,7 @@ namespace TAO
                         nAmount -= nClaimed;
 
                         /* Populate the temp void contract */
+                        voidContract.Clear();
                         voidContract << uint8_t(TAO::Operation::OP::CREDIT) << hashLast << uint32_t(nContract) << hashProof <<  hashProof << nAmount;
                     }
                     else if(nOp == TAO::Operation::OP::TRANSFER)
@@ -508,6 +518,7 @@ namespace TAO
                             continue;
                         
                         /* Populate the temp void contract */
+                        voidContract.Clear();
                         voidContract << (uint8_t)TAO::Operation::OP::CLAIM << hashLast << uint32_t(nContract) << hashRegister;
 
                     }
