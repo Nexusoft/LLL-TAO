@@ -29,6 +29,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/sigchain.h>
 
 #include <TAO/Operation/include/enum.h>
+#include <TAO/Operation/types/condition.h>
 
 #include <TAO/Register/include/constants.h>
 #include <TAO/Register/include/unpack.h>
@@ -51,9 +52,9 @@ namespace TAO
         bool Users::GetOutstanding(const uint256_t& hashGenesis,
                 std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> &vContracts)
         {
-            /* Get the last transaction. */
+            /* Get the last transaction in the sig chain from disk. */
             uint512_t hashLast = 0;
-            if(LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
+            if(LLD::Ledger->ReadLast(hashGenesis, hashLast))
             {
                 /* Get the coinbase transactions. */
                 get_coinbases(hashGenesis, hashLast, vContracts);
@@ -61,12 +62,27 @@ namespace TAO
                 /* Get split dividend payments to assets tokenized by tokens we hold */
                 get_tokenized_debits(hashGenesis, vContracts);
                 
-                /* Get the debit and transfer transactions. */
+                /* Get the debit and transfer events. */
                 get_events(hashGenesis, vContracts);
 
             }
 
             //TODO: sort transactions by timestamp here.
+
+            return true;
+        }
+
+        /*  Gets the any debit or transfer transactions that have expired and can be voided. */
+        bool Users::GetExpired(const uint256_t& hashGenesis,
+                std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> &vContracts)
+        {
+            /* Get the last transaction in the sig chain from disk. */
+            uint512_t hashLast = 0;
+            if(LLD::Ledger->ReadLast(hashGenesis, hashLast))
+            {
+                /* Get any expired debit and transfer transactions we made */
+                get_expired(hashGenesis, hashLast, vContracts);
+            }
 
             return true;
         }
@@ -98,25 +114,28 @@ namespace TAO
                 uint32_t nContracts = tx.Size();
                 for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
                 {
+                    /* Reference to contract to check */
+                    TAO::Operation::Contract& contract = tx[nContract];
+
                     /* The proof to check for this contract */
                     TAO::Register::Address hashProof;
 
                     /* REset the op stream */
-                    tx[nContract].Reset();
+                    contract.Reset();
 
                     /* The operation */
                     uint8_t nOp;
-                    tx[nContract] >> nOp;
+                    contract >> nOp;
 
                     /* Check for that the debit is meant for us. */
                     if(nOp == TAO::Operation::OP::DEBIT)
                     {
                         /* Get the source address which is the proof for the debit */
-                        tx[nContract] >> hashProof;
+                        contract >> hashProof;
                         
                         /* Get the recipient account */
                         TAO::Register::Address hashTo;
-                        tx[nContract] >> hashTo;
+                        contract >> hashTo;
                         
                         /* Retrieve the account. */
                         TAO::Register::State state;
@@ -131,14 +150,14 @@ namespace TAO
                     {
                         /* The register address being transferred */
                         TAO::Register::Address hashRegister;
-                        tx[nContract] >> hashRegister;
+                        contract >> hashRegister;
                         
                         /* Get recipient genesis hash */
-                        tx[nContract] >> hashProof;
+                        contract >> hashProof;
 
                         /* Read the force transfer flag */
                         uint8_t nType = 0;
-                        tx[nContract] >> nType;
+                        contract >> nType;
 
                         /* Ensure this wasn't a forced transfer (which requires no Claim) */
                         if(nType == TAO::Operation::TRANSFER::FORCE)
@@ -161,7 +180,7 @@ namespace TAO
                     else if(nOp == TAO::Operation::OP::COINBASE)
                     {
                         /* Unpack the miners genesis from the contract */
-                        if(!TAO::Register::Unpack(tx[nContract], hashProof))
+                        if(!TAO::Register::Unpack(contract, hashProof))
                             continue;
 
                         /* Check that we mined it */
@@ -176,7 +195,7 @@ namespace TAO
                         continue;
 
                     /* Add the coinbase transaction and skip rest of contracts. */
-                    vContracts.push_back(std::make_tuple(tx[nContract], nContract, 0));
+                    vContracts.push_back(std::make_tuple(contract, nContract, 0));
                 }
 
                 /* Iterate the sequence id forward. */
@@ -258,15 +277,18 @@ namespace TAO
                 uint32_t nContracts = tx.Size();
                 for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
                 {
+                    /* Reference to contract to check */
+                    TAO::Operation::Contract& contract = tx[nContract];
+
                     /* Check for coinbase opcode */
-                    if(TAO::Register::Unpack(tx[nContract], Operation::OP::COINBASE))
+                    if(TAO::Register::Unpack(contract, Operation::OP::COINBASE))
                     {
                         /* Seek past operation. */
-                        tx[nContract].Seek(1);
+                        contract.Seek(1);
 
                         /* Get the proof to check coinbase. */
                         TAO::Register::Address hashProof;
-                        tx[nContract] >> hashProof;
+                        contract >> hashProof;
 
                         /* Check that the proof is to your genesis. */
                         if(hashProof != hashGenesis)
@@ -277,7 +299,7 @@ namespace TAO
                             continue;
 
                         /* Add the coinbase transaction and skip rest of contracts. */
-                        vContracts.push_back(std::make_tuple(tx[nContract], nContract, 0));
+                        vContracts.push_back(std::make_tuple(contract, nContract, 0));
                     }
                 }
 
@@ -361,7 +383,9 @@ namespace TAO
                     uint32_t nContracts = tx.Size();
                     for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
                     {
+                        /* Reference to contract to check */
                         TAO::Operation::Contract& contract = tx[nContract];
+                        
                         /* Check that this is a debit contract */
                         if(!TAO::Register::Unpack(contract, Operation::OP::DEBIT))
                             continue;
@@ -391,12 +415,126 @@ namespace TAO
         }
 
 
+        /*  Get any debit or transfer contracts that have expired. */
+        bool Users::get_expired(const uint256_t& hashGenesis,
+                uint512_t hashLast, std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> &vContracts)
+        {
+            /* Reverse iterate until genesis (newest to oldest). */
+            while(hashLast != 0)
+            {
+                /* Get the transaction from disk. NOTE we do not include mempool transactions here as you cannot void a transaction
+                   until it has been at least one confirmation */
+                TAO::Ledger::Transaction tx;
+                if(!LLD::Ledger->ReadTx(hashLast, tx))
+                    return debug::error(FUNCTION, "Failed to read transaction");
+
+                /* Loop through all contracts and test any debits or transfers. */
+                uint32_t nContracts = tx.Size();
+                for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
+                {
+                    /* Reference to contract to check */
+                    TAO::Operation::Contract& contract = tx[nContract];
+                    
+                    /* First check to see if there are any conditions.  If not then they can't have expired! */
+                    if(contract.Empty(TAO::Operation::Contract::CONDITIONS))
+                        continue;
+
+                    /* Temporary voiding contract to use to evaluate the conditions */
+                    TAO::Operation::Contract voidContract;
+
+                    /* The proof to check for this contract */
+                    TAO::Register::Address hashProof;
+
+                    /* REset the op stream */
+                    contract.Reset();
+
+                    /* The operation */
+                    uint8_t nOp;
+                    contract >> nOp;
+
+                    /* Check for that the debit is meant for us. */
+                    if(nOp == TAO::Operation::OP::DEBIT)
+                    {
+                        /* Get the source address which is the proof for the debit */
+                        contract >> hashProof;
+
+                        /* Get the hashTo from the debit transaction. */
+                        TAO::Register::Address hashTo;
+                        contract >> hashTo;
+
+                        /* Get the amount to respond to. */
+                        uint64_t nAmount = 0;
+                        contract >> nAmount;
+
+                        /* Check to see if this debit has already been sent */
+                        if(LLD::Ledger->HasProof(hashProof, hashLast, nContract, TAO::Ledger::FLAGS::MEMPOOL))
+                            continue;
+
+                         /* Check to see whether there are any partial credits already claimed against the debit */
+                        uint64_t nClaimed = 0;
+                        if(!LLD::Ledger->ReadClaimed(hashLast, nContract, nClaimed, TAO::Ledger::FLAGS::MEMPOOL))
+                            nClaimed = 0; 
+
+                        /* Check that there is something to be claimed */
+                        if(nClaimed == nAmount)
+                            continue;
+
+                        /* Reduce the amount to credit by the amount already claimed */
+                        nAmount -= nClaimed;
+
+                        /* Populate the temp void contract */
+                        voidContract << uint8_t(TAO::Operation::OP::CREDIT) << hashLast << uint32_t(nContract) << hashProof <<  hashProof << nAmount;
+                    }
+                    else if(nOp == TAO::Operation::OP::TRANSFER)
+                    {
+                        /* The register address being transferred */
+                        TAO::Register::Address hashRegister;
+                        contract >> hashRegister;
+                        
+                        /* Get recipient genesis hash */
+                        contract >> hashProof;
+
+                        /* Read the force transfer flag */
+                        uint8_t nType = 0;
+                        contract >> nType;
+
+                        /* Ensure this wasn't a forced transfer (which requires no Claim) */
+                        if(nType == TAO::Operation::TRANSFER::FORCE)
+                            continue;
+
+                        /* Check to see if this transfer has already been claimed by the recipient or us */
+                        if(LLD::Ledger->HasProof(hashProof, tx.GetHash(), nContract, TAO::Ledger::FLAGS::MEMPOOL)
+                        || LLD::Ledger->HasProof(hashGenesis, tx.GetHash(), nContract, TAO::Ledger::FLAGS::MEMPOOL))
+                            continue;
+                        
+                        /* Populate the temp void contract */
+                        voidContract << (uint8_t)TAO::Operation::OP::CLAIM << hashLast << uint32_t(nContract) << hashRegister;
+
+                    }
+
+                    /* If we have gotten this far then check the conditions */
+                    TAO::Operation::Condition condition = TAO::Operation::Condition(contract, voidContract);
+                    if(!condition.Execute())
+                        continue;
+
+                    /* Add the contract to the return list  . */
+                    vContracts.push_back(std::make_tuple(contract, nContract, 0));
+                }
+
+                /* Set the next last. */
+                hashLast = tx.hashPrevTx;
+            }
+
+            return true;
+        }
+
+
 
         /* Get a user's account. */
         json::json Users::Notifications(const json::json& params, bool fHelp)
         {
             /* JSON return value. */
-            json::json ret;
+            json::json ret = json::json::array();
 
             /* Get the Genesis ID. */
             uint256_t hashGenesis = 0;
@@ -436,6 +574,9 @@ namespace TAO
             /* Get the outstanding contracts not yet credited or claimed. */
             std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> vContracts;
             GetOutstanding(hashGenesis, vContracts);
+
+            /* Get any expired contracts not yet voided. */
+            GetExpired(hashGenesis, vContracts);
 
             /* Get notifications for foreign token registers. */
             for(const auto& contract : vContracts)

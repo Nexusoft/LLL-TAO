@@ -271,7 +271,7 @@ This will transfer ownership of an asset or digital item.  This is a generic end
 
 `destination` : The genesis hash of the signature chain to transfer the the asset to. This is optional if the username is provided.
 
-`expires` : This optional field allows callers to specify an expiration for the transfer transaction. The expires value is the `number of seconds` from the transaction creation time after which the transaction can no longer be claimed by the recipient.  Conversely, when you apply an expiration to a transaction, you are unable to reverse the transaction until after the expiration time.
+`expires` : This optional field allows callers to specify an expiration for the transfer transaction. The expires value is the `number of seconds` from the transaction creation time after which the transaction can no longer be claimed by the recipient.  Conversely, when you apply an expiration to a transaction, you are unable to void the transaction until after the expiration time.  If omitted, a default expiration of 1 day (86400 seconds) is applied
 
 
 ### Return value JSON object:

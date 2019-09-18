@@ -88,90 +88,10 @@ namespace TAO
                     throw APIException(-172, "Cannot void a transaction that does not belong to you.");
 
                 /* Loop through all transactions. */
-                int32_t nCurrent = -1;
                 for(uint32_t nContract = 0; nContract < txVoid.Size(); ++nContract)
                 {
-                    /* Get the contract. */
-                    const TAO::Operation::Contract& contract = txVoid[nContract];
-
-                    /* Reset the operation stream position in case it was loaded from mempool and therefore still in previous state */
-                    contract.Reset();
-
-                    /* Get the operation byte. */
-                    uint8_t nType = 0;
-                    contract >> nType;
-
-                    /* Ensure that it is a debit or transfer */
-                    if(nType != TAO::Operation::OP::DEBIT && nType != TAO::Operation::OP::TRANSFER)
-                        continue;
-
-                    /* Process crediting a debit */
-                    if(nType == TAO::Operation::OP::DEBIT)
-                    {
-                        /* Get the hashFrom from the debit transaction. This is the account we are going to return the credit to*/
-                        TAO::Register::Address hashFrom;
-                        contract >> hashFrom;
-
-                        /* Get the hashTo from the debit transaction. */
-                        TAO::Register::Address hashTo;
-                        contract >> hashTo;
-
-                        /* Get the amount to respond to. */
-                        uint64_t nAmount = 0;
-                        contract >> nAmount;
-
-                        /* Get the token / account object that the debit was made to. */
-                        TAO::Register::Object debit;
-                        if(!LLD::Register->ReadState(hashTo, debit))
-                            continue;
-
-                        /* Parse the object register. */
-                        if(!debit.Parse())
-                            throw APIException(-41, "Failed to parse object from debit transaction");
-
-                        /* Check to see whether there are any partial credits already claimed against the debit */
-                        uint64_t nClaimed = 0;
-                        if(!LLD::Ledger->ReadClaimed(hashTx, nContract, nClaimed, TAO::Ledger::FLAGS::MEMPOOL))
-                            nClaimed = 0; 
-
-                        /* Check that there is something to be claimed */
-                        if(nClaimed == nAmount)
-                            throw APIException(-173, "Cannot void debit transaction as it has already been fully credited by all recipients");
-
-                        /* Reduce the amount to credit by the amount already claimed */
-                        nAmount -= nClaimed;
-
-                        /* Insert the credit contract into the tx */
-                        tx[++nCurrent] << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract) << hashFrom <<  hashFrom << nAmount;
-                        
-                    }
-                    /* Process voiding a transfer */
-                    else if(nType == TAO::Operation::OP::TRANSFER)
-                    {
-                        /* Get the address of the asset being transferred from the transaction. */
-                        TAO::Register::Address hashAddress;
-                        contract >> hashAddress;
-
-                        /* Get the genesis hash (recipient) of the transfer*/
-                        uint256_t hashGenesis = 0;
-                        contract >> hashGenesis;
-
-                        /* Read the force transfer flag */
-                        uint8_t nForceFlag = 0;
-                        contract >> nForceFlag;
-
-                        /* Ensure this wasn't a forced transfer (which requires no Claim) */
-                        if(nForceFlag == TAO::Operation::TRANSFER::FORCE)
-                            continue;
-
-                        /* Insert the claim contract into the tx. */
-                        tx[++nCurrent] << (uint8_t)TAO::Operation::OP::CLAIM << hashTx << uint32_t(nContract) << hashAddress;
-                    }
-                    else
-                    {
-                        // skip this contract as it is not a debit or transfer
-                        continue;
-                    }
+                    /* Process the contract and attempt to void it */
+                    VoidContract(txVoid[nContract], nContract, tx);
                 }
             }
             else

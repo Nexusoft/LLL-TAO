@@ -244,5 +244,19 @@ namespace TAO
                           std::vector<std::pair<TAO::Register::Address, TAO::Register::State>>& vStates);
 
 
+        /** VoidContract
+        *
+        *  Creates a void contract for the specified transaction and adds it to the txVoid transaction
+        *
+        *  @param[in] contract The contract to void
+        *  @param[in] the ID of the contract in the transaction
+        *  @param[out] txVoid The transaction to add the void contract to
+        * 
+        *  @return True if a void contract was added.
+        *
+        **/
+        bool VoidContract(const TAO::Operation::Contract& contract, const uint32_t nContract, TAO::Ledger::Transaction& txVoid);
+
+
     }
 }

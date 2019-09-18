@@ -542,6 +542,18 @@ namespace TAO
                 std::vector<std::pair<std::shared_ptr<Legacy::Transaction>, uint32_t>> &vContracts);
 
 
+            /** GetExpired
+             *
+             *  Gets the any debit or transfer transactions that have expired and can be voided.
+             *
+             *  @param[in] hashGenesis The genesis hash for the sig chain owner.
+             *  @param[out] vContracts The array of expired contracts.
+             *
+             **/
+            static bool GetExpired(const uint256_t& hashGenesis,
+                std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> &vContracts);
+
+
             /** get_tokenized_debits
              *
              *  Get the outstanding debit transactions made to assets owned by tokens you hold.
@@ -564,6 +576,19 @@ namespace TAO
              *
              **/
             static bool get_coinbases(const uint256_t& hashGenesis,
+                uint512_t hashLast, std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> &vContracts);
+
+
+            /** get_expired
+             *
+             *  Get any debit or transfer contracts that have expired
+             *
+             *  @param[in] hashGenesis The genesis hash for the sig chain owner.
+             *  @param[in] hashLast The hash of the last transaction to iterate.
+             *  @param[out] vContracts The array of contracts.
+             *
+             **/
+            static bool get_expired(const uint256_t& hashGenesis, 
                 uint512_t hashLast, std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> &vContracts);
 
 

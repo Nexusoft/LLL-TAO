@@ -78,6 +78,10 @@ namespace TAO
             /* Get the notifications so that we can return the notification count. */
             std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> vContracts;
             GetOutstanding(hashGenesis, vContracts);
+
+            /* Get any expired contracts not yet voided. */
+            GetExpired(hashGenesis, vContracts);
+            
             ret["notifications"] = vContracts.size();
 
 
