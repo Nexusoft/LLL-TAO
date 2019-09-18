@@ -574,18 +574,22 @@ namespace LLD
         const std::tuple<uint256_t, uint512_t, uint32_t> tuple = std::make_tuple(hashProof, hashTx, nContract);
 
         /* Memory mode for pre-database commits. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
             LOCK(MEMORY_MUTEX);
 
             /* Erase memory proof if they exist. */
             if(mapProofs.count(tuple))
+            {
+                /* Erase the proof. */
                 mapProofs.erase(tuple);
 
-            return true;
+                /* Break out early if in memory mode and the proof was erased. */
+                if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+                    return true;
+            }
         }
 
-        return Erase(std::make_tuple(hashProof, hashTx, nContract));
+        return Erase(tuple);
     }
 
 
