@@ -55,7 +55,7 @@ This will create a new item, assigning ownership to the user logged in to the pr
 ### Return value JSON object:
 ```
 {
-    "address": "e6d9529c4cb27857d6f86159f53f5fa5a06dd1de4a52c8a4260a6f287f41b77c",
+    "address": "8FJxzexVDUN5YiQYK4QjvfRNrAUym8FNu4B8yvYGXgKFJL8nBse",
     "txid": "70e5d8b6227d209fafe4c90ed0ed7e63b23b72dc1349c60b37a00ed06e18215d5fa384da1b6522e24cb1467b11b0b0e8ac4e9db8374f09718ab1218e8da33a11"
 }
 ```
@@ -96,7 +96,7 @@ Additionally the API supports passing a field name in the URL after the asset na
 ```
 {
     "name": "myitem",
-    "address": "70f49d996d53317cf2175b89efc2694b85c4ebede5fc468bedb860b3e4dada68",
+    "address": "8FJxzexVDUN5YiQYK4QjvfRNrAUym8FNu4B8yvYGXgKFJL8nBse",
     "created": 1560982537,
     "modified": 1560982615,
     "owner": "2be51edcd41a8152bfedb24e3c22ee5a65d6d7d524146b399145bced269aeff0",
@@ -151,7 +151,7 @@ This is the generic endpoint for updating the data value in an item.  The API su
 ```
 {
     "txid": "27ef3f31499b6f55482088ba38b7ec7cb02bd4383645d3fd43745ef7fa3db3d1"
-    "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9"
+    "address": "8FJxzexVDUN5YiQYK4QjvfRNrAUym8FNu4B8yvYGXgKFJL8nBse"
 }
 ```
 
@@ -196,7 +196,7 @@ This will transfer ownership of an item.  This is a generic endpoint requiring t
 ```
 {
     "txid": "27ef3f31499b6f55482088ba38b7ec7cb02bd4383645d3fd43745ef7fa3db3d1"
-    "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9"
+    "address": "8FJxzexVDUN5YiQYK4QjvfRNrAUym8FNu4B8yvYGXgKFJL8nBse"
 }
 ```
 
@@ -235,7 +235,7 @@ Items that have been transferred need to be claimed by the recipient before the 
 {
     "claimed" : 
     [
-        "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9"
+        "address": "8FJxzexVDUN5YiQYK4QjvfRNrAUym8FNu4B8yvYGXgKFJL8nBse"
     ],
     "txid": "27ef3f31499b6f55482088ba38b7ec7cb02bd4383645d3fd43745ef7fa3db3d1"
 }

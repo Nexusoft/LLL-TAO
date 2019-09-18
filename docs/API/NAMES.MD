@@ -64,7 +64,7 @@ This will create a new namespace.  The API supports an alternative endpoint that
 ```
 {
     "txid": "27ef3f31499b6f55482088ba38b7ec7cb02bd4383645d3fd43745ef7fa3db3d1",
-    "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9"
+    "address": "8CvLySLAWEKDB9SJSUDdRgzAG6ALVcXLzPQREN9Nbf7AzuJkg5P"
 }
 ```
 
@@ -99,7 +99,7 @@ Retrieves a namespace object.  The API supports an alternative endpoint that can
 ```
 {
     "name": "mynamespace",
-    "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9",
+    "address": "8CvLySLAWEKDB9SJSUDdRgzAG6ALVcXLzPQREN9Nbf7AzuJkg5P",
     "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1"
 }
 ```
@@ -148,7 +148,7 @@ This will transfer ownership of an namespace .  This is a generic endpoint requi
 ```
 {
     "txid": "27ef3f31499b6f55482088ba38b7ec7cb02bd4383645d3fd43745ef7fa3db3d1",
-    "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9"
+    "address": "8CvLySLAWEKDB9SJSUDdRgzAG6ALVcXLzPQREN9Nbf7AzuJkg5P"
 }
 ```
 
@@ -223,7 +223,7 @@ This will get the history of a namespace as well as it's ownership. The API supp
         "owner": "2be51edcd41a8152bfedb24e3c22ee5a65d6d7d524146b399145bced269aeff0",
         "modified": 1560492117,
         "checksum": 13703027408063695802,
-        "address": "3ff89f7f923bf9e3193540c95434f3bcaafabfe21e49068dca9440903d8233ec",
+        "address": "8CvLySLAWEKDB9SJSUDdRgzAG6ALVcXLzPQREN9Nbf7AzuJkg5P",
         "name": "test"
     },
     {
@@ -231,7 +231,7 @@ This will get the history of a namespace as well as it's ownership. The API supp
         "owner": "1ff463e036cbde3595fbe2de9dff15721a89e99ef3e2e9bfa7ce48ed825e9ec2",
         "modified": 1560492117,
         "checksum": 13703027408063695802,
-        "address": "3ff89f7f923bf9e3193540c95434f3bcaafabfe21e49068dca9440903d8233ec",
+        "address": "8CvLySLAWEKDB9SJSUDdRgzAG6ALVcXLzPQREN9Nbf7AzuJkg5P",
         "name": "test"
     }
 ]
@@ -292,7 +292,7 @@ The following example creates a name for "asset1" in the namespace "ourcompany",
 {
     "name": "asset1",
     "namespace": "ourcompany",
-    "register_address": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1"
+    "register_address": "8CvLySLAWEKDB9SJSUDdRgzAG6ALVcXLzPQREN9Nbf7AzuJkg5P"
 }
 ```
 
@@ -300,7 +300,7 @@ The following example creates a name for "asset1" in the namespace "ourcompany",
 ```
 {
     "txid": "27ef3f31499b6f55482088ba38b7ec7cb02bd4383645d3fd43745ef7fa3db3d1",
-    "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9"
+    "address": "8FJxzexVDUN5YiQYK4QjvfRNrAUym8FNu4B8yvYGXgKFJL8nBse"
 }
 ```
 
@@ -340,10 +340,10 @@ The API supports an alternative endpoint that can include the name in the URL.  
     "owner": "a2e51edcd41a8152bfedb24e3c22ee5a65d6d7d524146b399145bced269aeff0",
     "created": 1565934825,
     "modified": 1565934825,
-    "address": "d73828704de4820e3fc71ca4043de3a32ea13ad1ccc48e7459b5cd8bcec41b74",
+    "address": "8FJxzexVDUN5YiQYK4QjvfRNrAUym8FNu4B8yvYGXgKFJL8nBse",
     "name": "asset1",
     "namespace": "somenamespace",
-    "register_address": "d3ddbe2522c638a91eb3ab15e7b788621c59c4e8f79ffb4f1f666870e29e1dbf"
+    "register_address": "8CvLySLAWEKDB9SJSUDdRgzAG6ALVcXLzPQREN9Nbf7AzuJkg5P"
 }
 ```
 
@@ -396,7 +396,7 @@ The following example updates the register_address field for the name "asset1.ou
 {
     "pin": "1234",
     "name": "asset1.ourcompany",
-    "register_address": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1"
+    "register_address": "8CvLySLAWEKDB9SJSUDdRgzAG6ALVcXLzPQREN9Nbf7AzuJkg5P"
 }
 ```
 
@@ -405,7 +405,7 @@ The following example updates the register_address field for the name "asset1.ou
 ```
 {
     "txid": "27ef3f31499b6f55482088ba38b7ec7cb02bd4383645d3fd43745ef7fa3db3d1"
-    "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9"
+    "address": "8FJxzexVDUN5YiQYK4QjvfRNrAUym8FNu4B8yvYGXgKFJL8nBse"
 }
 ```
 
@@ -449,7 +449,7 @@ This will transfer ownership of a name .  Only global names or names created in 
 ```
 {
     "txid": "27ef3f31499b6f55482088ba38b7ec7cb02bd4383645d3fd43745ef7fa3db3d1"
-    "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9"
+    "address": "8FJxzexVDUN5YiQYK4QjvfRNrAUym8FNu4B8yvYGXgKFJL8nBse"
 }
 ```
 
@@ -524,10 +524,10 @@ This will get the history of a name as well as it's ownership. The API supports 
         "owner": "2be51edcd41a8152bfedb24e3c22ee5a65d6d7d524146b399145bced269aeff0",
         "modified": 1560492280,
         "checksum": 5612332250743384100,
-        "address": "2af7515915a9df9e80c120f68c0ba7973e53669f791da5e6c12f36ca493ac05f",
+        "address": "8FJxzexVDUN5YiQYK4QjvfRNrAUym8FNu4B8yvYGXgKFJL8nBse",
         "name": "paul",
         "namespace": "test",
-        "register_address": "94cdbf13aa1bbb2df228036e280c7b3cc5a5152ae1fed9bacca3b94e9e652bb1"
+        "register_address": "8CvLySLAWEKDB9SJSUDdRgzAG6ALVcXLzPQREN9Nbf7AzuJkg5P"
     }
 
 ]

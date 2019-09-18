@@ -632,12 +632,12 @@ namespace TAO
                         ret["txid"]    = hashTx.ToString();
                         ret["output"]  = nID;
                         ret["proof"]   = hashProof.ToString();
-                        ret["account"] = hashAddress.ToString();
+                        ret["to"] = hashAddress.ToString();
 
                         /* Resolve the name of the account that the credit is to */
                         std::string strAccount = Names::ResolveName(hashCaller, hashAddress);
                         if(!strAccount.empty())
-                            ret["account_name"] = strAccount;
+                            ret["to_name"] = strAccount;
 
                         /* Get the token/account we are crediting to so that we can output the token address / name. */
                         TAO::Register::Object account;
@@ -794,12 +794,12 @@ namespace TAO
 
                         /* Output the json information. */
                         ret["OP"]      = "FEE";
-                        ret["account"] = hashAccount.ToString();
+                        ret["to"] = hashAccount.ToString();
 
                         /* Resolve the name of the account that the credit is to */
                         std::string strAccount = Names::ResolveName(hashCaller, hashAccount);
                         if(!strAccount.empty())
-                            ret["account_name"] = strAccount;
+                            ret["to_name"] = strAccount;
 
                         ret["amount"]  = (double) nFee / TAO::Ledger::NXS_COIN;
 

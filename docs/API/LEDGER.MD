@@ -173,17 +173,13 @@ Retrieving block data by height is only allowed if the daemon has been configure
 
 &nbsp;&nbsp;&nbsp;`proof` : The register address proving the credit.
 
-&nbsp;&nbsp;&nbsp;`account` : For `CREDIT` transactions, the register address of the account that the transaction relates to.
+&nbsp;&nbsp;&nbsp;`from` : For `DEBIT`, `CREDIT`, `FEE` transactions, the register address of the account that the debit is being made from.
 
-&nbsp;&nbsp;&nbsp;`account_name` : For `CREDIT` transactions, the name of the account that the transaction relates to.  Only included if the name can be resolved.
+&nbsp;&nbsp;&nbsp;`from_name` : For `DEBIT`, `CREDIT`, `FEE` transactions, the name of the account that the debit is being made from.  Only included if the name can be resolved.
 
-&nbsp;&nbsp;&nbsp;`from` : For `DEBIT` and `CREDIT` transactions, the register address of the account that the debit is being made from.
+&nbsp;&nbsp;&nbsp;`to` : For `DEBIT` and `CREDIT` transactions, the register address of the recipient account.
 
-&nbsp;&nbsp;&nbsp;`from_name` : For `DEBIT` and `CREDIT` transactions, the name of the account that the debit is being made from.  Only included if the name can be resolved.
-
-&nbsp;&nbsp;&nbsp;`to` : For `DEBIT` transactions, the register address of the account that the debit is being made to.
-
-&nbsp;&nbsp;&nbsp;`to_name` : For `DEBIT` transactions, the name of the account that the debit is being made to.  Only included if the name can be resolved.
+&nbsp;&nbsp;&nbsp;`to_name` : For `DEBIT` and `CREDIT` transactions, the name of the recipient account.  Only included if the name can be resolved.
 
 &nbsp;&nbsp;&nbsp;`amount` : the token amount of the transaction.
 
@@ -338,17 +334,13 @@ Retrieving block data by height is only allowed if the daemon has been configure
 
 &nbsp;&nbsp;&nbsp;`proof` : The register address proving the credit.
 
-&nbsp;&nbsp;&nbsp;`account` : For `CREDIT` transactions, the register address of the account that the transaction relates to.
+&nbsp;&nbsp;&nbsp;`from` : For `DEBIT`, `CREDIT`, `FEE` transactions, the register address of the account that the debit is being made from.
 
-&nbsp;&nbsp;&nbsp;`account_name` : For `CREDIT` transactions, the name of the account that the transaction relates to.  Only included if the name can be resolved.
+&nbsp;&nbsp;&nbsp;`from_name` : For `DEBIT`, `CREDIT`, `FEE` transactions, the name of the account that the debit is being made from.  Only included if the name can be resolved.
 
-&nbsp;&nbsp;&nbsp;`from` : For `DEBIT` and `CREDIT` transactions, the register address of the account that the debit is being made from.
+&nbsp;&nbsp;&nbsp;`to` : For `DEBIT` and `CREDIT` transactions, the register address of the recipient account.
 
-&nbsp;&nbsp;&nbsp;`from_name` : For `DEBIT` and `CREDIT` transactions, the name of the account that the debit is being made from.  Only included if the name can be resolved.
-
-&nbsp;&nbsp;&nbsp;`to` : For `DEBIT` transactions, the register address of the account that the debit is being made to.
-
-&nbsp;&nbsp;&nbsp;`to_name` : For `DEBIT` transactions, the name of the account that the debit is being made to.  Only included if the name can be resolved.
+&nbsp;&nbsp;&nbsp;`to_name` : For `DEBIT` and `CREDIT` transactions, the name of the recipient account.  Only included if the name can be resolved.
 
 &nbsp;&nbsp;&nbsp;`amount` : the token amount of the transaction.
 
@@ -453,17 +445,13 @@ Retrieves transaction data for a given transaction hash.
 
 &nbsp;&nbsp;&nbsp;`proof` : The register address proving the credit.
 
-&nbsp;&nbsp;&nbsp;`account` : For `CREDIT` transactions, the register address of the account that the transaction relates to.
+&nbsp;&nbsp;&nbsp;`from` : For `DEBIT`, `CREDIT`, `FEE` transactions, the register address of the account that the debit is being made from.
 
-&nbsp;&nbsp;&nbsp;`account_name` : For `CREDIT` transactions, the name of the account that the transaction relates to.  Only included if the name can be resolved.
+&nbsp;&nbsp;&nbsp;`from_name` : For `DEBIT`, `CREDIT`, `FEE` transactions, the name of the account that the debit is being made from.  Only included if the name can be resolved.
 
-&nbsp;&nbsp;&nbsp;`from` : For `DEBIT` and `CREDIT` transactions, the register address of the account that the debit is being made from.
+&nbsp;&nbsp;&nbsp;`to` : For `DEBIT` and `CREDIT` transactions, the register address of the recipient account.
 
-&nbsp;&nbsp;&nbsp;`from_name` : For `DEBIT` and `CREDIT` transactions, the name of the account that the debit is being made from.  Only included if the name can be resolved.
-
-&nbsp;&nbsp;&nbsp;`to` : For `DEBIT` transactions, the register address of the account that the debit is being made to.
-
-&nbsp;&nbsp;&nbsp;`to_name` : For `DEBIT` transactions, the name of the account that the debit is being made to.  Only included if the name can be resolved.
+&nbsp;&nbsp;&nbsp;`to_name` : For `DEBIT` and `CREDIT` transactions, the name of the recipient account.  Only included if the name can be resolved.
 
 &nbsp;&nbsp;&nbsp;`amount` : the token amount of the transaction.
 

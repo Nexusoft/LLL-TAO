@@ -15,7 +15,7 @@ For each API method we support an alternative endpoint that includes the asset n
 
 For example `assets/create/asset/myasset` is a shortcut to `assets/create/asset?name=myasset`.
 
-Similarly `assets/get/asset/5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9` is a shortcut to `assets/get/asset?address=5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9` 
+Similarly `assets/get/asset/8CvLySLAWEKDB9SJSUDdRgzAG6ALVcXLzPQREN9Nbf7AzuJkg5P` is a shortcut to `assets/get/asset?address=8CvLySLAWEKDB9SJSUDdRgzAG6ALVcXLzPQREN9Nbf7AzuJkg5P` 
 
 The logic for resolving the shortcut to either a name or address is that if the data is 64 characters of hexadecimal then it will be assumed to be a register address.  Otherwise it will be considered a name.  
 
@@ -122,7 +122,7 @@ The following is an example of an asset defined using the `JSON` format:
 ```
 {
     "txid": "27ef3f31499b6f55482088ba38b7ec7cb02bd4383645d3fd43745ef7fa3db3d1"
-    "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9"
+    "address": "8CvLySLAWEKDB9SJSUDdRgzAG6ALVcXLzPQREN9Nbf7AzuJkg5P"
 }
 ```
 
@@ -234,7 +234,7 @@ The following is an example JSON payload to update two fields in an asset called
 ```
 {
     "txid": "27ef3f31499b6f55482088ba38b7ec7cb02bd4383645d3fd43745ef7fa3db3d1"
-    "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9"
+    "address": "8CvLySLAWEKDB9SJSUDdRgzAG6ALVcXLzPQREN9Nbf7AzuJkg5P"
 }
 ```
 
@@ -278,7 +278,7 @@ This will transfer ownership of an asset or digital item.  This is a generic end
 ```
 {
     "txid": "27ef3f31499b6f55482088ba38b7ec7cb02bd4383645d3fd43745ef7fa3db3d1"
-    "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9"
+    "address": "8CvLySLAWEKDB9SJSUDdRgzAG6ALVcXLzPQREN9Nbf7AzuJkg5P"
 }
 ```
 
@@ -315,7 +315,7 @@ Assets that have been transferred need to be claimed by the recipient before the
 {
     "claimed" : 
     [
-        "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9"
+        "address": "8CvLySLAWEKDB9SJSUDdRgzAG6ALVcXLzPQREN9Nbf7AzuJkg5P"
     ],
     "txid": "27ef3f31499b6f55482088ba38b7ec7cb02bd4383645d3fd43745ef7fa3db3d1"
 }
@@ -356,7 +356,7 @@ This will get the history of an asset or digital item as well as it's ownership.
         "owner": "2be51edcd41a8152bfedb24e3c22ee5a65d6d7d524146b399145bced269aeff0",
         "modified": 1560492117,
         "checksum": 13703027408063695802,
-        "address": "3ff89f7f923bf9e3193540c95434f3bcaafabfe21e49068dca9440903d8233ec",
+        "address": "8CvLySLAWEKDB9SJSUDdRgzAG6ALVcXLzPQREN9Nbf7AzuJkg5P",
         "name": "test",
         "data": "1234"
     },
@@ -365,7 +365,7 @@ This will get the history of an asset or digital item as well as it's ownership.
         "owner": "1ff463e036cbde3595fbe2de9dff15721a89e99ef3e2e9bfa7ce48ed825e9ec2",
         "modified": 1560492117,
         "checksum": 13703027408063695802,
-        "address": "3ff89f7f923bf9e3193540c95434f3bcaafabfe21e49068dca9440903d8233ec",
+        "address": "8FJxzexVDUN5YiQYK4QjvfRNrAUym8FNu4B8yvYGXgKFJL8nBse",
         "name": "test",
         "data: "1234"
     }
@@ -423,7 +423,7 @@ This will tokenize an asset into fungible tokens that represent ownership.  This
 ```
 {
     "txid": "27ef3f31499b6f55482088ba38b7ec7cb02bd4383645d3fd43745ef7fa3db3d1"
-    "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9"
+    "address": "8FJxzexVDUN5YiQYK4QjvfRNrAUym8FNu4B8yvYGXgKFJL8nBse"
 }
 
 ```

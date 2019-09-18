@@ -69,7 +69,7 @@ This example creates an account called "main".
 ```
 {
     "txid": "f9dcd28bce2563ab288fab76cf3ee5149ea938c735894ce4833b55e474e08e8a519e8005e09e2fc19623577a8839a280ca72b6430ee0bdf13b3d9f785bc7397d",
-    "address": "f2f71204bda6e6512d21c48eb4ca98db37a25c4d152afb284f3fc36760c0c717"
+    "address": "8CvLySLAWEKDB9SJSUDdRgzAG6ALVcXLzPQREN9Nbf7AzuJkg5P"
 }
 ```
 
@@ -382,17 +382,17 @@ This will list off all of the transactions related to a given account. You DO NO
                 "OP": "CREDIT",
                 "txid": "01e73b498dbabbf4629ad674b9ae3824b96cca83199c25a67901db53b271d19acf1411b0c4f9a3d8ded80860ffe2dcf683d2d227a675d453303b31f86f868f9e",
                 "output": 0,
-                "proof": "a2e51edcd41a8152bfedb24e3c22ee5a65d6d7d524146b399145bced269aeff0",
-                "account": "d430231b0c1973c784cc9942daa32f704db571a5c7d2a1f091e91fdd4abe622b",
-                "account_name": "default",
+                "proof": "8FJxzexVDUN5YiQYK4QjvfRNrAUym8FNu4B8yvYGXgKFJL8nBse",
+                "to": "8CvLySLAWEKDB9SJSUDdRgzAG6ALVcXLzPQREN9Nbf7AzuJkg5P",
+                "to_name": "default",
                 "amount": 76.450762,
                 "token": "0",
                 "token_name": "NXS"
             },
             {
                 "OP": "FEE",
-                "account": "d430231b0c1973c784cc9942daa32f704db571a5c7d2a1f091e91fdd4abe622b",
-                "account_name": "default",
+                "from": "8CvLySLAWEKDB9SJSUDdRgzAG6ALVcXLzPQREN9Nbf7AzuJkg5P",
+                "from_name": "default",
                 "amount": 0.1
             }
         ]
@@ -435,17 +435,13 @@ This will list off all of the transactions related to a given account. You DO NO
 
 &nbsp;&nbsp;&nbsp;`proof` : The register address proving the credit.
 
-&nbsp;&nbsp;&nbsp;`account` : For `CREDIT` transactions, the register address of the account that the transaction relates to.
+&nbsp;&nbsp;&nbsp;`from` : For `DEBIT`, `CREDIT`, `FEE` transactions, the register address of the account that the debit is being made from.
 
-&nbsp;&nbsp;&nbsp;`account_name` : For `CREDIT` transactions, the name of the account that the transaction relates to.  Only included if the name can be resolved.
+&nbsp;&nbsp;&nbsp;`from_name` : For `DEBIT`, `CREDIT`, `FEE` transactions, the name of the account that the debit is being made from.  Only included if the name can be resolved.
 
-&nbsp;&nbsp;&nbsp;`from` : For `DEBIT` and `CREDIT` transactions, the register address of the account that the debit is being made from.
+&nbsp;&nbsp;&nbsp;`to` : For `DEBIT` and `CREDIT` transactions, the register address of the recipient account.
 
-&nbsp;&nbsp;&nbsp;`from_name` : For `DEBIT` and `CREDIT` transactions, the name of the account that the debit is being made from.  Only included if the name can be resolved.
-
-&nbsp;&nbsp;&nbsp;`to` : For `DEBIT` transactions, the register address of the account that the debit is being made to.
-
-&nbsp;&nbsp;&nbsp;`to_name` : For `DEBIT` transactions, the name of the account that the debit is being made to.  Only included if the name can be resolved.
+&nbsp;&nbsp;&nbsp;`to_name` : For `DEBIT` and `CREDIT` transactions, the name of the recipient account.  Only included if the name can be resolved.
 
 &nbsp;&nbsp;&nbsp;`amount` : the token amount of the transaction.
 
@@ -479,7 +475,7 @@ This will retrieve account values and staking metrics for the trust account belo
 ### Return value JSON object:
 ```
 {
-    "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9",
+    "address": "8FJxzexVDUN5YiQYK4QjvfRNrAUym8FNu4B8yvYGXgKFJL8nBse",
     "balance": 150,
     "stake": 5000,
     "trust": 54322,

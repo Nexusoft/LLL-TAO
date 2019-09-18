@@ -514,7 +514,7 @@ This will list off all of the supply chain items (append registers) owned by a s
         "created": 1560982537,
         "modified": 1560982615,
         "name": "myitem",
-        "address": "70f49d996d53317cf2175b89efc2694b85c4ebede5fc468bedb860b3e4dada68",
+        "address": "8FJxzexVDUN5YiQYK4QjvfRNrAUym8FNu4B8yvYGXgKFJL8nBse",
         "owner": "2be51edcd41a8152bfedb24e3c22ee5a65d6d7d524146b399145bced269aeff0",
         "data": "xxxxxx"
     }
@@ -564,20 +564,11 @@ This will list off all of the names owned by the signature chain.  For privacy r
 ### Return value JSON object:
 ```
 [
-    {
-        "name": "asset1.ourcompany",
-        "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9",
-        "register_address": "597164ddc65ed8e4e481958d578daf0890a625a4957a987c5e966fcfff7084f3"
-    }
-    {
-        "name": "asset2.ourcompany",
-        "address": "a74774dc075e59d03639b56da8c29736fe248888a43c6103060409dd11273417",
-        "register_address": "55c559eabe469eb566f302712edf089b165001da8dfda7acdcf9347896e1fff4"
-    },
+
     {
         "name": "default",
-        "address": "97c2e9fe863e51adeee82b28bf43747291ca801e258a98453d79edb261a02e7a",
-        "register_address": "2be51edcd41a8152bfedb24e3c22ee5a65d6d7d524146b399145bced269aeff0"
+        "address": "8CvLySLAWEKDB9SJSUDdRgzAG6ALVcXLzPQREN9Nbf7AzuJkg5P",
+        "register_address": "8FJxzexVDUN5YiQYK4QjvfRNrAUym8FNu4B8yvYGXgKFJL8nBse"
     }
 
 
@@ -628,11 +619,11 @@ This will list off all of the namespaces owned by the signature chain.
 [
     {
         "name": "mynamespace1",
-        "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9"
+        "address": "8CvLySLAWEKDB9SJSUDdRgzAG6ALVcXLzPQREN9Nbf7AzuJkg5P"
     },
     {
         "name": "mynamespace2",
-        "address": "a74774dc075e59d03639b56da8c29736fe248888a43c6103060409dd11273417"
+        "address": "8FJxzexVDUN5YiQYK4QjvfRNrAUym8FNu4B8yvYGXgKFJL8nBse"
     }
 
 
@@ -680,22 +671,22 @@ This will list off all of the transactions sent to a particular genesis or usern
 [
     {
         "OP": "DEBIT",
-        "from": "d5dd7b3660565dca8811f1e2532c464e3e14a246bf62858cb1df031531ed1ec9",
+        "from": "8FJxzexVDUN5YiQYK4QjvfRNrAUym8FNu4B8yvYGXgKFJL8nBse",
         "from_name": "abc",
-        "to": "d35df4a1bc272e936fd29abcbf8211c4927070685b928235b5f105c3de915632",
+        "to": "8CvLySLAWEKDB9SJSUDdRgzAG6ALVcXLzPQREN9Nbf7AzuJkg5P",
         "to_name": "myasset",
         "amount": 10.0,
         "reference": 0,
-        "token": "d5dd7b3660565dca8811f1e2532c464e3e14a246bf62858cb1df031531ed1ec9",
+        "token": "8GHxzexVDUN5YiQYK4QjvfRNrAUym8FNu4B8yvYGXgKFJL8nAbD",
         "token_name": "abc",
         "txid": "01fa33c49901f3a2622b724d33e6bae238a8a0c3615facb4a00842b1b3a8545e275aff1015f1f2d04bffb3f47f54f64aa917702e3a8904c1be874ce5e969adb4",
         "time": 1566479032,
-        "proof": "d4bb1bbd4ea3795cc906353d26930bc0c54cc165f357fdf232c7887542e9eab4",
+        "proof": "8FJxzexVDUN5YiQYK4QjvfRNrAUym8FNu4B8yvYGXgKFJL8nBse",
         "dividend_payment": true
     },
     {
         "OP": "TRANSFER",
-        "address": "d35b4f7d07a2a42bb38cf36eea35f924b6c9a64ba791562a901d8bf92633b94a",
+        "address": "8HJxzexVDUN5YiQYK4QjvfRNrAUym8FNu4B8yvYGXgKFJL8n8Dc",
         "destination": "a2056d518d6e6d65c6c2e05af7fe2d3182a93def20e960fcfa0d35777a082440",
         "force": false,
         "txid": "0123200b85d720d85211d245fa4a38671622accd544f049262506eff242241733c5acfb396499e88a9156534b7d7943d554b59cbb38070fa323b16d52e439995",
@@ -767,7 +758,7 @@ This will list off all of the tokens that were created by a particular signature
 [
     {
         "name": "mytoken1",
-        "address": "f9ee3e63c845794d577d54c5087f0ff2f2053195bf007907e8134977bb1f1e24",
+        "address": "8CvLySLAWEKDB9SJSUDdRgzAG6ALVcXLzPQREN9Nbf7AzuJkg5P",
         "balance": 0,
         "maxsupply": 26738388,
         "currentsupply": 26738388,
@@ -775,7 +766,7 @@ This will list off all of the tokens that were created by a particular signature
     },
     {
         "name": "mytoken2",
-        "address": "a74774dc075e59d03639b56da8c29736fe248888a43c6103060409dd11273417",
+        "address": "8FJxzexVDUN5YiQYK4QjvfRNrAUym8FNu4B8yvYGXgKFJL8nBse",
         "balance": 990,
         "maxsupply": 1000,
         "currentsupply": 10,
@@ -897,17 +888,13 @@ This will list off all of the transactions for the requested signature chain gen
 
 &nbsp;&nbsp;&nbsp;`proof` : The register address proving the credit.
 
-&nbsp;&nbsp;&nbsp;`account` : For `CREDIT` transactions, the register address of the account that the transaction relates to.
+&nbsp;&nbsp;&nbsp;`from` : For `DEBIT`, `CREDIT`, `FEE` transactions, the register address of the account that the debit is being made from.
 
-&nbsp;&nbsp;&nbsp;`account_name` : For `CREDIT` transactions, the name of the account that the transaction relates to.  Only included if the name can be resolved.
+&nbsp;&nbsp;&nbsp;`from_name` : For `DEBIT`, `CREDIT`, `FEE` transactions, the name of the account that the debit is being made from.  Only included if the name can be resolved.
 
-&nbsp;&nbsp;&nbsp;`from` : For `DEBIT` and `CREDIT` transactions, the register address of the account that the debit is being made from.
+&nbsp;&nbsp;&nbsp;`to` : For `DEBIT` and `CREDIT` transactions, the register address of the recipient account.
 
-&nbsp;&nbsp;&nbsp;`from_name` : For `DEBIT` and `CREDIT` transactions, the name of the account that the debit is being made from.  Only included if the name can be resolved.
-
-&nbsp;&nbsp;&nbsp;`to` : For `DEBIT` transactions, the register address of the account that the debit is being made to.
-
-&nbsp;&nbsp;&nbsp;`to_name` : For `DEBIT` transactions, the name of the account that the debit is being made to.  Only included if the name can be resolved.
+&nbsp;&nbsp;&nbsp;`to_name` : For `DEBIT` and `CREDIT` transactions, the name of the recipient account.  Only included if the name can be resolved.
 
 &nbsp;&nbsp;&nbsp;`amount` : the token amount of the transaction.
 
