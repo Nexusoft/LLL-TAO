@@ -505,6 +505,10 @@ namespace TAO
                         ++nGreater;
                 }
 
+                /* Check for better height. */
+                if(nHeight > ChainState::nBestHeight.load() + 1)
+                    ++nGreater;
+
                 /* Handle single channel having higher weight. */
                 if((nEquals == 2 && nGreater == 1) || nGreater > 1)
                 {
