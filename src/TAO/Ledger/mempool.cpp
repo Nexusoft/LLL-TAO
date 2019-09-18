@@ -454,10 +454,6 @@ namespace TAO
                             }
 
                             break;
-
-                            debug::log(0, FUNCTION, "Last hash mismatch");
-
-                            break;
                         }
 
                         /* Set last hash. */

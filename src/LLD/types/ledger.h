@@ -55,9 +55,9 @@ namespace LLD
     {
         std::mutex MEMORY_MUTEX;
 
-        std::map<std::tuple<uint256_t, uint512_t, uint32_t>, std::vector<uint32_t> > mapProofs;
+        std::map<std::tuple<uint256_t, uint512_t, uint32_t>, uint32_t> mapProofs;
 
-        std::map<std::pair<uint512_t, uint32_t>, std::vector<uint64_t> > mapClaims;
+        std::map<std::pair<uint512_t, uint32_t>, uint64_t> mapClaims;
 
 
     public:

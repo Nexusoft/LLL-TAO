@@ -915,13 +915,19 @@ namespace LLP
                                         /* Check the database for the ancestor block. */
                                         if(LLD::Ledger->HasBlock(have))
                                         {
-                                            /* Grab the block that's found. */
-                                            TAO::Ledger::BlockState state;
-                                            if(!LLD::Ledger->ReadBlock(have, state))
-                                                return debug::drop(NODE, "failed to read locator block");
+                                            /* Check if locator found genesis. */
+                                            if(have != TAO::Ledger::ChainState::Genesis())
+                                            {
+                                                /* Grab the block that's found. */
+                                                TAO::Ledger::BlockState state;
+                                                if(!LLD::Ledger->ReadBlock(have, state))
+                                                    return debug::drop(NODE, "failed to read locator block");
 
-                                            /* Set the starting hash. */
-                                            hashStart = state.hashPrevBlock;
+                                                /* Start from previous block in locator. */
+                                                hashStart = state.hashPrevBlock;
+                                            }
+                                            else //on genesis, don't rever to previous block
+                                                hashStart = have;
 
                                             break;
                                         }

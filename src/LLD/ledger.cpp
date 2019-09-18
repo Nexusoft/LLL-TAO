@@ -201,38 +201,18 @@ namespace LLD
         const std::pair<uint512_t, uint32_t> pair = std::make_pair(hashTx, nContract);
 
         /* Memory mode for pre-database commits. */
-        if(nFlags >= TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
             LOCK(MEMORY_MUTEX);
 
             /* Set the state in the memory map. */
-            uint32_t nConflict = nFlags - TAO::Ledger::FLAGS::MEMPOOL;
-            if(!mapClaims.count(pair))
-                mapClaims[pair] = { nClaimed };
-
-            /* Check that the diff index is correct. */
-            std::vector<uint64_t>& vClaims = mapClaims[pair];
-            if(nConflict > vClaims.size())
-                throw debug::exception(FUNCTION, "conflict ", nConflict, " out of sequence ", vClaims.size());
-
-            /* Check if there is a new conflict. */
-            if(nConflict == vClaims.size())
-            {
-                debug::error(FUNCTION, "CLAIMED CONFLICT: ", nConflict, " amount ", nClaimed);
-                vClaims.push_back(nClaimed);
-            }
-
-            /* Set state conflict by id. */
-            vClaims[nConflict] = nClaimed;
+            mapClaims[pair] = nClaimed;
 
             return true;
         }
         else if(nFlags == TAO::Ledger::FLAGS::BLOCK)
         {
             LOCK(MEMORY_MUTEX);
-
-            /* Get the key pair. */
-            const std::pair<uint512_t, uint32_t> pair = std::make_pair(hashTx, nContract);
 
             /* Erase memory proof if they exist. */
             if(mapClaims.count(pair))
@@ -257,18 +237,10 @@ namespace LLD
             /* Read the new proof state. */
             if(mapClaims.count(pair))
             {
-                /* Get the memory map access iterator. */
-                uint32_t nConflict = nFlags - TAO::Ledger::FLAGS::MEMPOOL;
+                /* Set claimed from memory. */
+                nClaimed = mapClaims[pair];
 
-                /* Check that the diff index is correct. */
-                std::vector<uint64_t>& vClaims = mapClaims[pair];
-                if(nConflict < vClaims.size())
-                {
-                    /* Return correct conflict by id. */
-                    nClaimed = vClaims[nConflict];
-
-                    return true;
-                }
+                return true;
             }
         }
 
@@ -582,26 +554,12 @@ namespace LLD
         const std::tuple<uint256_t, uint512_t, uint32_t> tuple = std::make_tuple(hashProof, hashTx, nContract);
 
         /* Memory mode for pre-database commits. */
-        if(nFlags >= TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
             LOCK(MEMORY_MUTEX);
 
-            /* Set the state in the memory map. */
-            uint32_t nConflict = nFlags - TAO::Ledger::FLAGS::MEMPOOL;
-            if(!mapProofs.count(tuple))
-                mapProofs[tuple] = { 0 };
-
-            /* Check that the diff index is correct. */
-            std::vector<uint32_t>& vProofs = mapProofs[tuple];
-            if(nConflict > vProofs.size())
-                throw debug::exception(FUNCTION, "conflict ", nConflict, " out of sequence ", vProofs.size());
-
-            /* Check if there is a new conflict. */
-            if(nConflict == vProofs.size())
-            {
-                debug::error(FUNCTION, "PROOF CONFLICT: ", nConflict, " hash ", hashProof.SubString());
-                vProofs.push_back(0);
-            }
+            /* Write internal memory. */
+            mapProofs[tuple] = 0;
 
             return true;
         }
@@ -626,19 +584,13 @@ namespace LLD
         const std::tuple<uint256_t, uint512_t, uint32_t> tuple = std::make_tuple(hashProof, hashTx, nContract);
 
         /* Memory mode for pre-database commits. */
-        if(nFlags >= TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
             LOCK(MEMORY_MUTEX);
 
-            /* Set the state in the memory map. */
-            uint32_t nConflict = nFlags - TAO::Ledger::FLAGS::MEMPOOL;
+            /* Check internal memory. */
             if(mapProofs.count(tuple))
-            {
-                /* Check that the diff index is correct. */
-                std::vector<uint32_t>& vProofs = mapProofs[tuple];
-                if(nConflict < vProofs.size())
-                    return true;
-            }
+                return true;
         }
 
         return Exists(tuple);
@@ -653,17 +605,15 @@ namespace LLD
         const std::tuple<uint256_t, uint512_t, uint32_t> tuple = std::make_tuple(hashProof, hashTx, nContract);
 
         /* Memory mode for pre-database commits. */
-        if(nFlags >= TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
             LOCK(MEMORY_MUTEX);
 
             /* Erase memory proof if they exist. */
             if(mapProofs.count(tuple))
-            {
                 mapProofs.erase(tuple);
 
-                return true;
-            }
+            return true;
         }
 
         return Erase(std::make_tuple(hashProof, hashTx, nContract));
