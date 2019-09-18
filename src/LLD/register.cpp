@@ -13,6 +13,8 @@ ________________________________________________________________________________
 
 #include <LLD/types/register.h>
 
+#include <TAO/Register/include/enum.h>
+
 namespace LLD
 {
 
@@ -64,6 +66,10 @@ namespace LLD
             }
 
         }
+
+        /* Check for trust and index for sequential reads. */
+        if(hashRegister.GetType() == TAO::Register::OBJECTS::TRUST)
+            return Write(std::make_pair(std::string("state"), hashRegister), state, "genesis");
 
         return Write(std::make_pair(std::string("state"), hashRegister), state);
     }

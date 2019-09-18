@@ -63,6 +63,7 @@ namespace LLD
          *
          *  @param[in] hashRegister The register address.
          *  @param[in] state The state register to write.
+         *  @param[in] nFlags The flags from ledger
          *
          *  @return True if write was successful, false otherwise.
          *
