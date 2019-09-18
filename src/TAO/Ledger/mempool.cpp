@@ -404,13 +404,19 @@ namespace TAO
                         if(vTx[0].hashPrevTx != hashLast)
                         {
                             /* Debug information. */
-                            debug::error(FUNCTION, "ORPHAN: last hash mismatch ", hashLast.SubString());
+                            debug::error(FUNCTION, "ROOT ORPHAN: last hash mismatch ", vTx[0].hashPrevTx.SubString());
 
-                            /* Remove from mempool. */
-                            Remove(vTx[0].GetHash());
+                            /* Disconnect all transactions in reverse order. */
+                            for(auto tx = vTx.rbegin(); tx != vTx.rend(); ++tx)
+                            {
+                                /* Reset memory states to disk indexes. */
+                                tx->Disconnect(FLAGS::MEMPOOL);
 
-                            /* Erase from queue. */
-                            vTx.erase(vTx.begin());
+                                /* Remove from mempool. */
+                                Remove(tx->GetHash());
+                            }
+
+                            break;
                         }
                     }
 
@@ -434,6 +440,21 @@ namespace TAO
                         /* Check that transaction is in sequence. */
                         if(vTx[n].hashPrevTx != hashLast)
                         {
+                            /* Debug information. */
+                            debug::error(FUNCTION, "ORPHAN DETECTED: last hash mismatch ", vTx[n].hashPrevTx.SubString());
+
+                            /* Disconnect all transactions in reverse order. */
+                            for(int32_t i = vTx.size() - 1; i >= n; --i)
+                            {
+                                /* Reset memory states to disk indexes. */
+                                vTx[i].Disconnect(FLAGS::MEMPOOL);
+
+                                /* Remove from mempool. */
+                                Remove(vTx[i].GetHash());
+                            }
+
+                            break;
+
                             debug::log(0, FUNCTION, "Last hash mismatch");
 
                             break;

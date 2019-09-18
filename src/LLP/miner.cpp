@@ -680,7 +680,7 @@ namespace LLP
 
                 /* Read hashLast from hashGenesis' sigchain and also check mempool. */
                 uint512_t hashLast;
-                
+
                 /* Check to see whether there are any new transactions in the mempool for the sig chain */
                 if(TAO::Ledger::mempool.Has(hashGenesis))
                 {
@@ -689,7 +689,7 @@ namespace LLP
 
                     /* Update nHashLast if it changed. */
                     if(nHashLast != hashLast)
-                    {   
+                    {
                         nHashLast = hashLast;
 
                         clear_map();
@@ -699,13 +699,13 @@ namespace LLP
                         return false;
                     }
                 }
-            
+
             }
 
             return true;
         }
-    
-    
+
+
     /* Checks the current height index and updates best height. Clears the block map if the height is outdated or stale. */
     bool Miner::check_best_height()
     {
@@ -715,7 +715,7 @@ namespace LLP
            the current round is still valid, so we additionally check the round whenever the height is checked.  If we find that it
            is not valid, the only way we can force miners to request new block data is to send through a height change. So here we
            set the height to 0 which will trigger miners to stop and request new block data, and then immediately the height will be
-           set to the correct height again so they can carry on with the new block data. 
+           set to the correct height again so they can carry on with the new block data.
            NOTE: there is no need to check the round if the height has changed as this obviously  will result in a new block*/
         if(nBestHeight == nChainStateHeight && !check_round())
         {
@@ -992,10 +992,9 @@ namespace LLP
            if(config::GetArg("-verbose", 0) > 0)
            {
                std::string strTimestamp(convert::DateTimeStrFormat(runtime::unifiedtimestamp()));
-
                if(pBlock->nChannel == 1)
                {
-                   debug::log(1, FUNCTION, "Nexus Tritium Miner: new Prime channel block found at unified time ", strTimestamp);
+                   debug::log(1, FUNCTION, "new prime block found at unified time ", strTimestamp);
                    debug::log(1, "  blockHash: ", pBlock->ProofHash().SubString(30), " block height: ", pBlock->nHeight);
                    debug::log(1, "  prime cluster verified of size ", TAO::Ledger::GetDifficulty(pBlock->nBits, 1));
                }
@@ -1003,11 +1002,13 @@ namespace LLP
                {
                    uint1024_t hashTarget = LLC::CBigNum().SetCompact(pBlock->nBits).getuint1024();
 
-                   debug::log(1, FUNCTION, "Nexus Tritium Miner: new Hash channel block found at unified time ", strTimestamp);
+                   debug::log(1, FUNCTION, "new hash block found at unified time ", strTimestamp);
                    debug::log(1, "  blockHash: ", pBlock->ProofHash().SubString(30), " block height: ", pBlock->nHeight);
                    debug::log(1, "  target: ", hashTarget.SubString(30));
                }
            }
+
+           //TODO: check if block will orphan any transactions
 
            /* Check if the block is stale. */
           // if(pBlock->hashPrevBlock != TAO::Ledger::ChainState::hashBestChain.load())

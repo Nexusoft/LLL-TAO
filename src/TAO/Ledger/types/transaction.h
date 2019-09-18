@@ -217,10 +217,12 @@ namespace TAO
              *
              *  Disconnect a transaction object to the main chain.
              *
+             *  @param[in] nFlags Flag to tell whether transaction is a mempool check.
+             *
              *  @return true if transaction is valid.
              *
              **/
-            bool Disconnect();
+            bool Disconnect(const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
             /** IsCoinBase

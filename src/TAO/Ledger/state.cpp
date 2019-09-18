@@ -786,6 +786,19 @@ namespace TAO
                     if(!LLD::Ledger->ReadTx(hash, tx))
                         return debug::error(FUNCTION, "transaction not on disk");
 
+                    /* Check the ledger rules for sigchain at end. */
+                    if(!tx.IsFirst())
+                    {
+                        /* Check for the last hash. */
+                        uint512_t hashLast = 0;
+                        if(!LLD::Ledger->ReadLast(tx.hashGenesis, hashLast))
+                            return debug::error(FUNCTION, "failed to read last on non-genesis");
+
+                        /* Check that the last transaction is correct. */
+                        if(tx.hashPrevTx != hashLast)
+                            return debug::error(FUNCTION, "last hash hash mismatch");
+                    }
+
                     /* Verify the Ledger Pre-States. */
                     if(!tx.Verify(FLAGS::BLOCK)) //NOTE: double checking this for now in post-processing
                         return false;
@@ -799,42 +812,6 @@ namespace TAO
 
                     /* Accumulate the fees. */
                     nFees += tx.Fees();
-
-                    /* Check for first. */
-                    if(!tx.IsFirst())
-                    {
-                        /* Check for the last hash. */
-                        uint512_t hashLast = 0;
-                        if(!LLD::Ledger->ReadLast(tx.hashGenesis, hashLast))
-                            return debug::error(FUNCTION, "failed to read last on non-genesis");
-
-                        /* Check that the last transaction is correct. */
-                        if(tx.hashPrevTx != hashLast)
-                        {
-                            //NOTE: this debugging crap that will be removed in production
-
-                            /* Make sure the transaction is on disk. */
-                            TAO::Ledger::Transaction tx2;
-                            if(!LLD::Ledger->ReadTx(hashLast, tx2))
-                                return debug::error(FUNCTION, "last transaction not on disk");
-
-                            debug::log(0, FUNCTION, "-----------------------------------------------------------------");
-
-                            tx.print();
-                            tx2.print();
-
-                            for(uint32_t i = 0; i < 10; ++i)
-                            {
-                                if(!LLD::Ledger->ReadTx(tx2.hashPrevTx, tx2))
-                                    break;
-
-                                tx2.print();
-                                tx = tx2;
-                            }
-
-                            return debug::error(FUNCTION, "last hash hash mismatch");
-                        }
-                    }
 
                     /* Write the last to disk. */
                     if(!LLD::Ledger->WriteLast(tx.hashGenesis, hash))

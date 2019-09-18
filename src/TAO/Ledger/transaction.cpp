@@ -408,48 +408,52 @@ namespace TAO
 
 
         /* Disconnect a transaction object to the main chain. */
-        bool Transaction::Disconnect()
+        bool Transaction::Disconnect(const uint8_t nFlags)
         {
-            /* Erase last for genesis. */
-            if(IsFirst() && !LLD::Ledger->EraseLast(hashGenesis))
-                return debug::error(FUNCTION, "failed to erase last hash");
-
-            /* Write proper last hash index. */
-            else if(!LLD::Ledger->WriteLast(hashGenesis, hashPrevTx))
-                return debug::error(FUNCTION, "failed to write last hash");
-
-            /* Revert last stake whan disconnect a coinstake tx */
-            if(IsCoinStake())
+            /* Disconnect on block needs to manage ledger level indexes. */
+            if(nFlags == FLAGS::BLOCK)
             {
-                if(IsTrust())
+                /* Erase last for genesis. */
+                if(IsFirst() && !LLD::Ledger->EraseLast(hashGenesis))
+                    return debug::error(FUNCTION, "failed to erase last hash");
+
+                /* Write proper last hash index. */
+                else if(!LLD::Ledger->WriteLast(hashGenesis, hashPrevTx))
+                    return debug::error(FUNCTION, "failed to write last hash");
+
+                /* Revert last stake whan disconnect a coinstake tx */
+                if(IsCoinStake())
                 {
-                    /* Extract the last stake hash from the coinstake contract */
-                    uint512_t hashLast;
-                    if(!vContracts[0].Previous(hashLast))
-                        return debug::error(FUNCTION, "failed to extract last stake hash from contract");
-
-                    /* Revert saved last stake to the prior stake transaction */
-                    if(!LLD::Ledger->WriteStake(hashGenesis, hashLast))
-                        return debug::error(FUNCTION, "failed to write last stake");
-
-                    /* If local database has a stake change request for this transaction that marked as processed, update it.
-                     * This resets the request but keeps the tx hash, so if it is later reconnected it can be marked
-                     * as processed again. Otherwise, the stake minter can recognized that the original coinstake was
-                     * disconnected and implement the stake change request with the next stake block found.
-                     */
-                    StakeChange request;
-                    if(LLD::Local->ReadStakeChange(hashGenesis, request) && request.fProcessed && request.hashTx == GetHash())
+                    if(IsTrust())
                     {
-                        request.fProcessed = false;
+                        /* Extract the last stake hash from the coinstake contract */
+                        uint512_t hashLast;
+                        if(!vContracts[0].Previous(hashLast))
+                            return debug::error(FUNCTION, "failed to extract last stake hash from contract");
 
-                        if(!LLD::Local->WriteStakeChange(hashGenesis, request))
-                            debug::error(FUNCTION, "unable to reinstate disconnected stake change request"); //don't fail for this
+                        /* Revert saved last stake to the prior stake transaction */
+                        if(!LLD::Ledger->WriteStake(hashGenesis, hashLast))
+                            return debug::error(FUNCTION, "failed to write last stake");
+
+                        /* If local database has a stake change request for this transaction that marked as processed, update it.
+                         * This resets the request but keeps the tx hash, so if it is later reconnected it can be marked
+                         * as processed again. Otherwise, the stake minter can recognized that the original coinstake was
+                         * disconnected and implement the stake change request with the next stake block found.
+                         */
+                        StakeChange request;
+                        if(LLD::Local->ReadStakeChange(hashGenesis, request) && request.fProcessed && request.hashTx == GetHash())
+                        {
+                            request.fProcessed = false;
+
+                            if(!LLD::Local->WriteStakeChange(hashGenesis, request))
+                                debug::error(FUNCTION, "unable to reinstate disconnected stake change request"); //don't fail for this
+                        }
                     }
-                }
-                else
-                {
-                    if(!LLD::Ledger->EraseStake(hashGenesis))
-                        return debug::error(FUNCTION, "failed to erase last stake");
+                    else
+                    {
+                        if(!LLD::Ledger->EraseStake(hashGenesis))
+                            return debug::error(FUNCTION, "failed to erase last stake");
+                    }
                 }
             }
 
@@ -457,7 +461,7 @@ namespace TAO
             for(auto contract = vContracts.rbegin(); contract != vContracts.rend(); ++contract)
             {
                 contract->Bind(this);
-                if(!TAO::Register::Rollback(*contract))
+                if(!TAO::Register::Rollback(*contract, nFlags))
                     return false;
             }
 

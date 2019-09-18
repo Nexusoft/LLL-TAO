@@ -230,15 +230,6 @@ namespace TAO
         /* For debugging Purposes seeing block state data dump */
         std::string TritiumBlock::ToString() const
         {
-            for(const auto& tx : vtx)
-            {
-                Transaction tx2;
-                if(!mempool.Get(tx.second, tx2))
-                    continue;
-
-                tx2.print();
-            }
-
             return debug::safe_printstr("Tritium Block("
                 VALUE("hash")     " = ", GetHash().SubString(), " ",
                 VALUE("nVersion") " = ", nVersion, ", ",
