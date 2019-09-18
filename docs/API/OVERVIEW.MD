@@ -300,7 +300,7 @@ Error Codes
 | -163 | Could not retrieve default NXS account to debit fees |
 | -164 | Account 'default' is not a NXS account |
 | -165 | Invalid address_to |
-| -166 | "Account is a NXS account.  Please use the finance API for accessing NXS accounts." |
+| -166 | Account is a NXS account.  Please use the finance API for accessing NXS accounts. |
 | -167 | Invalid reference |
 | -168 | Invalid expiration time |
 | -169 | Names cannot start with a colon |
@@ -343,6 +343,7 @@ Error Codes
 | -206 | Failed to erase expired stake change request |
 | -207 | Failed to erase previous stake change request |
 | -208 | Failed to save stake change request |
+| -209 | Recipient is not a valid account |
 
 
 

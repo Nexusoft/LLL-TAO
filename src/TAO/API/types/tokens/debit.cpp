@@ -130,6 +130,23 @@ namespace TAO
             }
 
 
+            /* Get the recipent token / account object. */
+            TAO::Register::Object recipient;
+            if(!LLD::Register->ReadState(hashTo, recipient, TAO::Ledger::FLAGS::MEMPOOL))
+                throw APIException(-209, "Recipient is not a valid account");
+
+            /* Parse the object register. */
+            if(!recipient.Parse())
+                throw APIException(-14, "Object failed to parse");
+
+            /* Check recipient account type */
+            nStandard = recipient.Base();
+            if(nStandard != TAO::Register::OBJECTS::ACCOUNT
+            || (recipient.get<uint256_t>("token") != object.get<uint256_t>("token")))
+            {
+                throw APIException(-209, "Recipient is not a valid account.");
+            }
+
             /* Get the amount to debit. */
             uint64_t nAmount = std::stod(params["amount"].get<std::string>()) * pow(10, nDecimals);
 
@@ -149,8 +166,9 @@ namespace TAO
             /* Submit the payload object. */
             tx[0] << (uint8_t)TAO::Operation::OP::DEBIT << hashFrom << hashTo << nAmount << nReference;
 
-            /* Add expiration condition */
-            AddExpires( params, user->Genesis(), tx[0]);
+            /* Add expiration condition unless sending to self */
+            if(recipient.hashOwner != object.hashOwner)
+                AddExpires( params, user->Genesis(), tx[0]);
 
             /* Add the fee */
             AddFee(tx);

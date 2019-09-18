@@ -188,11 +188,28 @@ namespace TAO
             }
             else
             {
+                /* Get the recipent account object. */
+                TAO::Register::Object recipient;
+                if(!LLD::Register->ReadState(hashTo, recipient, TAO::Ledger::FLAGS::MEMPOOL))
+                    throw APIException(-209, "Recipient is not a valid account");
+
+                /* Parse the object register. */
+                if(!recipient.Parse())
+                    throw APIException(-14, "Object failed to parse");
+
+                /* Check recipient account type */
+                nStandard = recipient.Base();
+                if(nStandard != TAO::Register::OBJECTS::ACCOUNT
+                || (recipient.get<uint256_t>("token") != object.get<uint256_t>("token")))
+                {
+                    throw APIException(-209, "Recipient is not a valid account.");
+                }
                 /* Build the OP:DEBIT */
                 tx[0] << (uint8_t)OP::DEBIT << hashFrom << hashTo << nAmount << nReference;
             
-                /* Add expiration  */
-                AddExpires( params, user->Genesis(), tx[0]);
+                /* Add expiration condition unless sending to self */
+                if(recipient.hashOwner != object.hashOwner)
+                    AddExpires( params, user->Genesis(), tx[0]);
             }
 
             /* Add the fee */
