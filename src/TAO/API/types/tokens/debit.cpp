@@ -149,9 +149,8 @@ namespace TAO
             /* Submit the payload object. */
             tx[0] << (uint8_t)TAO::Operation::OP::DEBIT << hashFrom << hashTo << nAmount << nReference;
 
-            /* Add expiration condition if caller has passed an expires value */
-            if(params.find("expires") != params.end())
-                AddExpires( params, user->Genesis(), tx[0]);
+            /* Add expiration condition */
+            AddExpires( params, user->Genesis(), tx[0]);
 
             /* Add the fee */
             AddFee(tx);

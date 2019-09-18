@@ -191,9 +191,8 @@ namespace TAO
                 /* Build the OP:DEBIT */
                 tx[0] << (uint8_t)OP::DEBIT << hashFrom << hashTo << nAmount << nReference;
             
-                /* Add expiration condition if caller has passed an expires value */
-                if(params.find("expires") != params.end())
-                    AddExpires( params, user->Genesis(), tx[0]);
+                /* Add expiration  */
+                AddExpires( params, user->Genesis(), tx[0]);
             }
 
             /* Add the fee */
