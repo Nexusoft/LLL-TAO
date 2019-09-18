@@ -69,7 +69,7 @@ namespace LLD
 
         /* Check for trust and index for sequential reads. */
         if(hashRegister.GetType() == TAO::Register::OBJECTS::TRUST)
-            return Write(std::make_pair(std::string("state"), hashRegister), state, "genesis");
+            return Write(std::make_pair(std::string("state"), hashRegister), state, "trust");
 
         return Write(std::make_pair(std::string("state"), hashRegister), state);
     }
@@ -127,7 +127,7 @@ namespace LLD
     /* Write a genesis to a register address. */
     bool RegisterDB::WriteTrust(const uint256_t& hashGenesis, const TAO::Register::State& state)
     {
-        return Write(std::make_pair(std::string("genesis"), hashGenesis), state, "genesis");
+        return Write(std::make_pair(std::string("genesis"), hashGenesis), state, "trust");
     }
 
 
