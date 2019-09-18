@@ -309,7 +309,7 @@ namespace TAO
                                         continue;
 
                                     /* Check the token type */
-                                    if( from.get<uint256_t>("token") != 0)
+                                    if(from.get<uint256_t>("token") != 0)
                                     {
                                         debug::log(2, FUNCTION, "Skipping split dividend DEBIT as token is not NXS");
                                         continue;
