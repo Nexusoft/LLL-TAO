@@ -222,12 +222,16 @@ namespace TAO
                     std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> vContracts;
                     GetOutstanding(hashGenesis, vContracts);
 
+                    /* Get any expired contracts not yet voided. */
+                    std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> vExpired;
+                    GetExpired(hashGenesis, vExpired);
+
                     /* Get the list of outstanding legacy transactions . */
                     std::vector<std::pair<std::shared_ptr<Legacy::Transaction>, uint32_t>> vLegacyTx;
                     GetOutstanding(hashGenesis, vLegacyTx);
 
                     /* Check if there is anything to process */
-                    if(vContracts.size() == 0 && vLegacyTx.size() == 0)
+                    if(vContracts.size() == 0 && vLegacyTx.size() == 0 && vExpired.size() == 0)
                         continue;
 
                     /* Ensure that the signature is mature.  Note we only check this after we know there is something to process */
@@ -604,6 +608,25 @@ namespace TAO
                             else
                                 continue;
                         }
+                    }
+
+
+                    /* Finally process any expired transactions that can be voided. */
+                    for(const auto& contract : vExpired)
+                    {
+                        /* Ensure we don't breach the max contracts/per transaction, leaving room for the fee contract */
+                        if(txout.Size() == TAO::Ledger::MAX_TRANSACTION_CONTRACTS -1)
+                            break;
+
+                        /* Get a reference to the contract */
+                        const TAO::Operation::Contract& refContract = std::get<0>(contract);
+
+                        /* Get the contract ID */
+                        const uint32_t& nContract = std::get<1>(contract);
+
+                        /* Attempt to add the void contract */
+                        if(VoidContract(refContract, nContract, txout))
+                            ++nOut;
                     }
 
 

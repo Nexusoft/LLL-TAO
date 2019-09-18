@@ -111,7 +111,7 @@ Deduct an amount of NXS from an account and send it to another account or legacy
 
 `reference` : This optional field allows callers to provide a reference, which the recipient can then use to relate the transaction to an order number, invoice number etc.  The reference is be a `64-bit unsigned integer` in the range of 0 to 18446744073709551615
 
-`expires` : This optional field allows callers to specify an expiration for the debit transaction. The expires value is the `number of seconds` from the transaction creation time after which the transaction can no longer be credited by the recipient.  Conversely, when you apply an expiration to a transaction, you are unable to reverse the transaction until after the expiration time.    
+`expires` : This optional field allows callers to specify an expiration for the debit transaction. The expires value is the `number of seconds` from the transaction creation time after which the transaction can no longer be credited by the recipient.  Conversely, when you apply an expiration to a transaction, you are unable to void the transaction until after the expiration time.  If omitted, a default expiration of 1 day (86400 seconds) is applied    
 
 
 ### Example:
