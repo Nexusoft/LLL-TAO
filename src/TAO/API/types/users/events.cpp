@@ -31,6 +31,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/include/constants.h>
+#include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/process.h>
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/sigchain.h>
@@ -188,7 +189,7 @@ namespace TAO
                 try
                 {
                     /* Ensure that the user is logged, in, wallet unlocked, and unlocked for notifications. */
-                    if(!LoggedIn() || Locked() || !CanProcessNotifications())
+                    if(!LoggedIn() || Locked() || !CanProcessNotifications() || TAO::Ledger::ChainState::Synchronizing())
                         continue;
 
                     /* Get the session to be used for this API call */
