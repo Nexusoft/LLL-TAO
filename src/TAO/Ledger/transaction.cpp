@@ -427,7 +427,9 @@ namespace TAO
 
             /* Once we have executed the contracts we need to check the fees.
                NOTE there are no fees on the genesis transaction.
-               NOTE: There are no fees required in private mode. */
+               NOTE: There are no fees required in private mode.
+
+               TODO: we need hard limits on first transaction to protect against attacks with first transctionss */
             if(!IsFirst() && !config::GetBoolArg("-private", false))
             {
                 /* The fee applied to this transaction */
@@ -466,7 +468,7 @@ namespace TAO
                     if(IsTrust())
                     {
                         /* Extract the last stake hash from the coinstake contract */
-                        uint512_t hashLast;
+                        uint512_t hashLast = 0;
                         if(!vContracts[0].Previous(hashLast))
                             return debug::error(FUNCTION, "failed to extract last stake hash from contract");
 
