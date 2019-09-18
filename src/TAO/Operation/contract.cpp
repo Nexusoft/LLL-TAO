@@ -74,7 +74,7 @@ namespace TAO
             ssRegister  = contract.ssRegister;
 
             /* set the cached cost */
-            nCost = contract.nCost;
+            nCost       = contract.nCost;
 
             /* Set the transaction reference. */
             hashCaller  = contract.hashCaller;
@@ -351,6 +351,71 @@ namespace TAO
             }
 
             return (hashPrev > 0);
+        }
+
+
+        /* Get the previous tx hash if valid for contract */
+        bool Contract::Dependant(uint512_t &hashPrev, uint32_t &nContract) const
+        {
+            /* Reset values. */
+            hashPrev  = 0;
+            nContract = 0;
+
+            /* Reset contract. */
+            ssOperation.seek(0, STREAM::BEGIN);
+
+            /* Get the operation code.*/
+            uint8_t nOP = 0;
+            ssOperation >> nOP;
+
+            /* Switch for validate or condition. */
+            switch(nOP)
+            {
+                /* Check for condition. */
+                case OP::CONDITION:
+                {
+                    /* Get next op. */
+                    ssOperation >> nOP;
+
+                    break;
+                }
+
+                /* Check for validate. */
+                case OP::VALIDATE:
+                {
+                    /* Skip over on validate. */
+                    ssOperation.seek(68);
+
+                    /* Get next op. */
+                    ssOperation >> nOP;
+                }
+            }
+
+            /* Switch for validate or condition. */
+            switch(nOP)
+            {
+                /* Check for claim. */
+                case OP::CLAIM:
+                {
+                    /* Get dependants from binary stream. */
+                    ssOperation >> hashPrev;
+                    ssOperation >> nContract;
+
+                    return true;
+                }
+
+                /* Check for credit. */
+                case OP::CREDIT:
+                {
+                    /* Get dependants from binary stream. */
+                    ssOperation >> hashPrev;
+                    ssOperation >> nContract;
+
+                    return true;
+                }
+            }
+
+            return false;
         }
 
 

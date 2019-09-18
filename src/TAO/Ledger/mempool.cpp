@@ -164,7 +164,7 @@ namespace TAO
             }
 
             /* Debug output. */
-            debug::log(2, FUNCTION, "tx ", hashTx.SubString(), " ACCEPTED in ", std::dec, time.ElapsedMilliseconds(), " ms");
+            debug::log(3, FUNCTION, "tx ", hashTx.SubString(), " ACCEPTED in ", std::dec, time.ElapsedMilliseconds(), " ms");
 
             /* Relay the transaction. */
             if(LLP::TRITIUM_SERVER)

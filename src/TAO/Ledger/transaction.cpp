@@ -33,6 +33,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/ambassador.h>
 #include <TAO/Ledger/include/constants.h>
+#include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/include/stake.h>
 #include <TAO/Ledger/include/stake_change.h>
@@ -274,7 +275,7 @@ namespace TAO
 
 
         /* Connect a transaction object to the main chain. */
-        bool Transaction::Connect(const uint8_t nFlags)
+        bool Transaction::Connect(const uint8_t nFlags, const BlockState* pblock)
         {
             /* Get the transaction's hash. */
             uint512_t hash = GetHash();
@@ -366,8 +367,9 @@ namespace TAO
                 if((txPrev.IsCoinBase() || txPrev.IsCoinStake()) && !(IsCoinBase() || IsCoinStake()))
                 {
                     /* Get number of confirmations of previous TX */
-                    uint32_t nConfirms;
-                    LLD::Ledger->ReadConfirmations(hashPrevTx, nConfirms);
+                    uint32_t nConfirms = 0;
+                    if(!LLD::Ledger->ReadConfirmations(hashPrevTx, nConfirms, pblock))
+                        return debug::error(FUNCTION, "failed to read confirmations");
 
                     /* Check that the previous TX has reached sig chain maturity */
                     if(nConfirms < MaturitySigChain())
@@ -375,9 +377,46 @@ namespace TAO
                 }
             }
 
+            /* Keep for dependants. */
+            uint512_t hashPrev = 0;
+            uint32_t nContract = 0;
+
             /* Run through all the contracts. */
             for(const auto& contract : vContracts)
             {
+                /* Check for dependants. */
+                if(contract.Dependant(hashPrev, nContract))
+                {
+                    /* Check that the previous transaction is indexed. */
+                    if(!LLD::Ledger->HasIndex(hashPrev))
+                        return debug::error(FUNCTION, hashPrev.SubString(), " not indexed");
+
+                    /* Read previous transaction from disk. */
+                    const TAO::Operation::Contract dependant = LLD::Ledger->ReadContract(hashPrev, nContract, nFlags);
+                    switch(dependant.Primitive())
+                    {
+                        /* Handle coinbase rules. */
+                        case TAO::Operation::OP::COINBASE:
+                        {
+                            /* Check for block. */
+                            TAO::Ledger::BlockState state;
+                            if(!LLD::Ledger->ReadBlock(hashPrev, state))
+                                return debug::error(FUNCTION, "coinbase isn't included in block");
+
+                            /* Get the current height. */
+                            uint32_t nHeight = (pblock ? pblock->nHeight : ChainState::nBestHeight.load());
+                            if(nHeight < state.nHeight)
+                                return debug::error(FUNCTION, "maturity overflow");
+
+                            /* Check the intervals. */
+                            if((nHeight - state.nHeight + 1) < TAO::Ledger::MaturityCoinBase())
+                                throw debug::exception(FUNCTION, "coinbase is immature");
+
+                            break;
+                        }
+                    }
+                }
+
                 /* Bind the contract to this transaction. */
                 contract.Bind(this);
 
