@@ -60,7 +60,7 @@ namespace TAO
 
             /* MEMORY ONLY: The cached cost of this contract */
             mutable uint64_t nCost;
-            
+
 
             /** MEMORY ONLY: the calling public-id. **/
             mutable uint256_t hashCaller;
@@ -197,12 +197,25 @@ namespace TAO
              *
              *  Get the previous tx hash if valid for contract
              *
-             *  @param[out] nValue The value to return.
+             *  @param[out] hashPrev The previous txid
              *
              *  @return True if value returned successfully
              *
              **/
             bool Previous(uint512_t &hashPrev) const;
+
+
+            /** Dependant
+             *
+             *  Get the Dependant tx and contract-id
+             *
+             *  @param[out] hashPrev The txid of dependant.
+             *  @param[out] nContract The contract-id of dependant
+             *
+             *  @return True if value returned successfully
+             *
+             **/
+            bool Dependant(uint512_t &hashPrev, uint32_t &nContract) const;
 
 
             /** Legacy

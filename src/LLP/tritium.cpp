@@ -413,9 +413,6 @@ namespace LLP
                     | SUBSCRIPTION::ADDRESS
                 );
 
-                /* Grab list of memory pool transactions. */
-                PushMessage(ACTION::LIST, uint8_t(TYPES::MEMPOOL));
-
                 /* Ask node for current list of sync blocks. */
                 if(TAO::Ledger::nSyncSession.load() != nCurrentSession)
                 {
@@ -1256,7 +1253,25 @@ namespace LLP
                                 /* Check ledger database. */
                                 TAO::Ledger::Transaction tx;
                                 if(LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
-                                    PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::TRITIUM), tx);
+                                {
+                                    /* Check if producer is being asked for, and send block instead. */
+                                    if(tx.IsCoinBase() || tx.IsCoinStake())
+                                    {
+                                        /* Read block state from disk. */
+                                        TAO::Ledger::BlockState state;
+                                        if(LLD::Ledger->ReadBlock(hashTx, state))
+                                        {
+                                            /* Send off tritium block. */
+                                            TAO::Ledger::TritiumBlock block(state);
+                                            PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::TRITIUM), block);
+                                        }
+
+
+                                    }
+                                    else
+                                        PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::TRITIUM), tx);
+                                }
+
                             }
 
                             break;
@@ -1442,7 +1457,10 @@ namespace LLP
                                                  | SUBSCRIPTION::BLOCK
                                                  | SUBSCRIPTION::TRANSACTION
                                                  | SUBSCRIPTION::ADDRESS
-                                             );
+                                            );
+
+                                            /* Grab list of memory pool transactions. */
+                                            PushMessage(ACTION::LIST, uint8_t(TYPES::MEMPOOL));
 
                                             /* Log that sync is complete. */
                                             debug::log(0, NODE, "ACTION::NOTIFY: Synchonization COMPLETE at ", hashBestChain.SubString());

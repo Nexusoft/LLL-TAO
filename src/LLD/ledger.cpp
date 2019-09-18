@@ -81,10 +81,6 @@ namespace LLD
         /* Check for Tritium transaction. */
         if(hashTx.GetType() == TAO::Ledger::TRITIUM)
         {
-            /* Check that the previous transaction is indexed. */
-            if(!HasIndex(hashTx))
-                throw debug::exception(FUNCTION, "tritium transaction not indexed");
-
             /* Get the transaction. */
             TAO::Ledger::Transaction tx;
             if(!ReadTx(hashTx, tx, nFlags))
@@ -92,47 +88,12 @@ namespace LLD
 
             /* Get const reference for read-only access. */
             const TAO::Ledger::Transaction& ref = tx;
-
-            /* Check flags. */
-            if(nFlags == TAO::Ledger::FLAGS::BLOCK)
-            {
-                /* Check for coinbase transactions. */
-                uint8_t nOP = 0;
-                ref[nContract] >> nOP;
-
-                /* Check for COINBASE. */
-                if(nOP == TAO::Operation::OP::COINBASE)
-                {
-                    /* Check for block. */
-                    TAO::Ledger::BlockState state;
-                    if(!ReadBlock(hashTx, state))
-                        throw debug::exception(FUNCTION, "coinbase isn't included in block");
-
-                    /* Check for overflows. */
-                    if(TAO::Ledger::ChainState::stateBest.load().nHeight < state.nHeight)
-                        throw debug::exception(FUNCTION, "maturity overflow");
-
-                    /* Check the intervals. */
-                    if((TAO::Ledger::ChainState::stateBest.load().nHeight - state.nHeight + 1)
-                        < TAO::Ledger::MaturityCoinBase() - (nFlags == TAO::Ledger::FLAGS::MEMPOOL ? 5 : 0))//NOTE: we use -5 on checks to account for a tx maturity issue for mempool
-                        throw debug::exception(FUNCTION, "coinbase is immature");
-                }
-
-                /* Reset the contract. */
-                ref[nContract].Reset();
-            }
-
-            /* Get the contract. */
             return ref[nContract];
         }
 
         /* Check for Legacy transaction. */
         else if(hashTx.GetType() == TAO::Ledger::LEGACY)
         {
-            /* Check if indexed. */
-            if(!HasIndex(hashTx))
-                throw debug::exception(FUNCTION, "legacy transaction not indexed");
-
             /* Get the transaction. */
             Legacy::Transaction tx;
             if(!LLD::Legacy->ReadTx(hashTx, tx, nFlags))
@@ -249,7 +210,7 @@ namespace LLD
 
 
     /* Read if a transaction is mature. */
-    bool LedgerDB::ReadMature(const uint512_t &hashTx)
+    bool LedgerDB::ReadMature(const uint512_t &hashTx, const TAO::Ledger::BlockState* pblock)
     {
         /* Read the transaction so we can check type. Transaction must be in a block or it is immature by default. */
         TAO::Ledger::Transaction tx;
@@ -257,8 +218,8 @@ namespace LLD
             return false;
 
         /* Get the total confirmations. */
-        uint32_t nConfirms;
-        if(!ReadConfirmations(hashTx, nConfirms))
+        uint32_t nConfirms = 0;
+        if(!ReadConfirmations(hashTx, nConfirms, pblock))
             return false;
 
         /* Switch for coinbase. */
@@ -275,7 +236,7 @@ namespace LLD
 
 
     /* Read the number of confirmations a transaction has. */
-    bool LedgerDB::ReadConfirmations(const uint512_t& hashTx, uint32_t &nConfirms)
+    bool LedgerDB::ReadConfirmations(const uint512_t& hashTx, uint32_t &nConfirms, const TAO::Ledger::BlockState* pblock)
     {
         /* Read a block state for this transaction. */
         TAO::Ledger::BlockState state;
@@ -285,8 +246,16 @@ namespace LLD
             return false;
         }
 
+        /* Check for overflows. */
+        uint32_t nHeight = (pblock ? pblock->nHeight : TAO::Ledger::ChainState::nBestHeight.load());
+        if(nHeight < state.nHeight)
+        {
+            nConfirms = 0;
+            return debug::error(FUNCTION, "height overflow catch");
+        }
+
         /* Set the number of confirmations based on chainstate/blockstate height. */
-        nConfirms = TAO::Ledger::ChainState::stateBest.load().nHeight - state.nHeight + 1;
+        nConfirms = nHeight - state.nHeight + 1;
 
         return true;
     }

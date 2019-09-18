@@ -203,7 +203,7 @@ namespace LLD
          *  @return True if txid was successfully read.
          *
          **/
-        bool ReadMature(const uint512_t &hashTx);
+        bool ReadMature(const uint512_t &hashTx, const TAO::Ledger::BlockState* pblock = nullptr);
 
 
         /** ReadConfirmations
@@ -216,7 +216,7 @@ namespace LLD
          *  @return True if txid was successfully read.
          *
          **/
-        bool ReadConfirmations(const uint512_t &hashTx, uint32_t &nConfirms);
+        bool ReadConfirmations(const uint512_t &hashTx, uint32_t &nConfirms, const TAO::Ledger::BlockState* pblock = nullptr);
 
 
         /** HasIndex

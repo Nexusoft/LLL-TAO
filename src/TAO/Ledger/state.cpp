@@ -505,6 +505,10 @@ namespace TAO
                         ++nGreater;
                 }
 
+                /* Check for better height. */
+                if(nHeight > ChainState::nBestHeight.load() + 1)
+                    ++nGreater;
+
                 /* Handle single channel having higher weight. */
                 if((nEquals == 2 && nGreater == 1) || nGreater > 1)
                 {
@@ -553,6 +557,7 @@ namespace TAO
         }
 
 
+        static uint32_t nTotalContracts = 0;
         bool BlockState::SetBest()
         {
             /* Runtime calculations. */
@@ -692,7 +697,6 @@ namespace TAO
                     mempool.Remove(proof.second);
 
                 /* Set the best chain variables. */
-                ChainState::stateBest          = *this;
                 ChainState::hashBestChain      = hash;
                 ChainState::nBestChainTrust    = nChainTrust;
                 ChainState::nBestHeight        = nHeight;
@@ -708,12 +712,13 @@ namespace TAO
                     " height=", ChainState::nBestHeight.load(),
                     " trust=", ChainState::nBestChainTrust.load(),
                     " tx=", vtx.size(),
-                    " [", (nElapsed == 0 ? 0 : double(vtx.size()) / nElapsed), " tx/s]"
+                    " [", (nElapsed == 0 ? 0 : double(nTotalContracts / nElapsed)), " contracts/s]"
                     " [verified in ", timer.ElapsedMilliseconds(), " ms]",
                     " [", ::GetSerializeSize(*this, SER_LLD, nVersion), " bytes]");
 
                 /* Set best block state. */
                 ChainState::stateBest = *this;
+                nTotalContracts = 0;
 
                 /* Broadcast the block to nodes if not synchronizing. */
                 if(!ChainState::Synchronizing())
@@ -804,7 +809,7 @@ namespace TAO
                         return false;
 
                     /* Connect the transaction. */
-                    if(!tx.Connect())
+                    if(!tx.Connect(FLAGS::BLOCK, this))
                         return debug::error(FUNCTION, "failed to connect transaction");
 
                     /* Add legacy transactions to the wallet where appropriate */
@@ -837,6 +842,9 @@ namespace TAO
                                 LLD::Local->EraseStakeChange(tx.hashGenesis); //if cannot update, erase the reqeust
                         }
                     }
+
+                    /* Keep track of total contracts processed. */
+                    nTotalContracts += tx.Size();
                 }
                 else if(proof.first == TRANSACTION::LEGACY)
                 {
