@@ -93,7 +93,7 @@ namespace TAO
             else if(params.find("address_to") != params.end())
             {
                 std::string strAddressTo = params["address_to"].get<std::string>();
-                
+
                 /* Decode the base58 register address */
                 if(IsRegisterAddress(strAddressTo))
                     hashTo.SetBase58(strAddressTo);
@@ -147,7 +147,7 @@ namespace TAO
             if(object.get<uint256_t>("token") != 0)
                 throw APIException(-66, "Account is not a NXS account.  Please use the tokens API for debiting non-NXS token accounts.");
 
-
+            /* Get current balance and significant figures. */
             uint8_t nDecimals = TAO::Ledger::NXS_DIGITS;
             uint64_t nCurrentBalance = object.get<uint64_t>("balance");
 
@@ -176,7 +176,7 @@ namespace TAO
                 /* Convert the reference to uint64 */
                 nReference = stoull(strReference);
             }
-            
+
             /* Build the transaction payload object. */
             if(fLegacy)
             {
