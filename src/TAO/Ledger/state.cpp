@@ -760,6 +760,15 @@ namespace TAO
                         );
                     }
 
+
+                    /* Do a quick mempool processing check for ORPHANS. */
+                    timer.Reset();
+                    mempool.Check();
+
+                    /* Log the mempool consistency checking. */
+                    nElapsed = timer.ElapsedMilliseconds();
+                    debug::log(0, FUNCTION, "Mempool Consistency Check Complete in ", nElapsed,  " ms");
+
                 }
             }
 

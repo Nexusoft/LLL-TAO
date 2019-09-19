@@ -455,7 +455,7 @@ namespace TAO
                 if(contract.Dependant(hashPrev, nContract))
                 {
                     /* Check that the previous transaction is indexed. */
-                    if(!LLD::Ledger->HasIndex(hashPrev))
+                    if(nFlags == FLAGS::BLOCK && !LLD::Ledger->HasIndex(hashPrev))
                         return debug::error(FUNCTION, hashPrev.SubString(), " not indexed");
 
                     /* Read previous transaction from disk. */

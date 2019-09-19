@@ -226,8 +226,11 @@ namespace LLP
 
 
                 /* Handle subscribing to events from other nodes. */
-                if(!fInitialized && fSynchronized)
+                if(!fInitialized && fSynchronized && nCurrentSession != 0)
                 {
+                    /* Simple log to let us know we are making the subscription requests. */
+                    debug::log(1, NODE, "Initializing Subscriptions with REMOTE HOST");
+
                     /* Subscribe to notifications. */
                     Subscribe(
                            SUBSCRIPTION::BESTHEIGHT
@@ -401,7 +404,7 @@ namespace LLP
                 //Auth(true);
 
                 /* If not synchronized and making an outbound connection, start the sync */
-                if(!Incoming() && !fSynchronized.load())
+                if(!fSynchronized.load())
                 {
                     /* Start sync on startup, or override any legacy syncing currently in process. */
                     if(TAO::Ledger::nSyncSession.load() == 0 || LegacyNode::SessionActive(TAO::Ledger::nSyncSession.load()))

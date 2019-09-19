@@ -237,6 +237,14 @@ namespace TAO
             bool Remove(const uint512_t& hashTx);
 
 
+            /** Check
+             *
+             *  Check the memory pool for consistency.
+             *
+             **/
+            void Check();
+
+
             /** List
              *
              *  List transactions in memory pool.
