@@ -1492,6 +1492,20 @@ namespace LLP
                             /* Keep track of current checkpoint. */
                             ssPacket >> hashBestChain;
 
+                            /* Check if is sync node. */
+                            if(nCurrentSession == TAO::Ledger::nSyncSession.load() && LLD::Ledger->HasBlock(hashBestChain))
+                            {
+                                /* Set state to synchronized. */
+                                fSynchronized.store(true);
+                                TAO::Ledger::nSyncSession.store(0);
+
+                                /* Unsubcribe from last. */
+                                Unsubscribe(SUBSCRIPTION::LASTINDEX);
+
+                                /* Log that sync is complete. */
+                                debug::log(0, NODE, "ACTION::NOTIFY: Synchonization COMPLETE at ", hashBestChain.SubString());
+                            }
+
                             /* Debug output. */
                             debug::log(0, NODE, "ACTION::NOTIFY: BESTCHAIN ", hashBestChain.SubString());
 
