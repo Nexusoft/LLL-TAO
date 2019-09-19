@@ -732,7 +732,7 @@ namespace LLD
 
 
     /* Abort a memory transaction following ACID properties. */
-    void LedgerDB::MemoryAbort()
+    void LedgerDB::MemoryRelease()
     {
         LOCK(MEMORY_MUTEX);
 

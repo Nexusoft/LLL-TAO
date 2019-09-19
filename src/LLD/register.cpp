@@ -239,7 +239,7 @@ namespace LLD
 
 
     /* Abort a memory transaction following ACID properties. */
-    void RegisterDB::MemoryAbort()
+    void RegisterDB::MemoryRelease()
     {
         LOCK(MEMORY_MUTEX);
 

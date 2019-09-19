@@ -144,14 +144,12 @@ namespace TAO
             if(!tx.Check())
                 return false;
 
-            LLD::Ledger->MemoryBegin();
-            LLD::Register->MemoryBegin();
-
-            /* Verify the Ledger Pre-States. */
+            /* Begin an ACID transction for internal memory commits. */
+            LLD::TxnBegin(FLAGS::MEMPOOL);
             if(!tx.Verify(FLAGS::MEMPOOL))
             {
-                LLD::Ledger->MemoryAbort();
-                LLD::Register->MemoryAbort();
+                /* Abort memory commits on failures. */
+                LLD::TxnAbort(FLAGS::MEMPOOL);
 
                 return false;
             }
@@ -159,8 +157,8 @@ namespace TAO
             /* Connect transaction in memory. */
             if(!tx.Connect(FLAGS::MEMPOOL))
             {
-                LLD::Ledger->MemoryAbort();
-                LLD::Register->MemoryAbort();
+                /* Abort memory commits on failures. */
+                LLD::TxnAbort(FLAGS::MEMPOOL);
 
                 return false;
             }
@@ -175,8 +173,8 @@ namespace TAO
                 if(!tx.IsFirst())
                     mapClaimed[tx.hashPrevTx] = hashTx;
 
-                LLD::Ledger->MemoryCommit();
-                LLD::Register->MemoryCommit();
+                /* Commit new memory into database states. */
+                LLD::TxnCommit(FLAGS::MEMPOOL);
             }
 
             /* Debug output. */

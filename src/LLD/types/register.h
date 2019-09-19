@@ -208,12 +208,12 @@ namespace LLD
         void MemoryBegin();
 
 
-        /** MemoryAbort
+        /** MemoryRelease
          *
-         *  Abort a memory transaction following ACID properties.
+         *  Release a memory transaction following ACID properties.
          *
          **/
-        void MemoryAbort();
+        void MemoryRelease();
 
 
         /** MemoryCommit
