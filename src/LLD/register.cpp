@@ -100,20 +100,18 @@ namespace LLD
             LOCK(MEMORY_MUTEX);
 
             /* Check for a memory transaction first */
-            if(pMemory)
+            if(pMemory && pMemory->mapStates.count(hashRegister))
             {
-                /* Check for state in memory map. */
-                if(pMemory->mapStates.count(hashRegister))
-                {
-                    state = pMemory->mapStates[hashRegister];
+                /* Get the state from temporary transaction. */
+                state = pMemory->mapStates[hashRegister];
 
-                    return true;
-                }
+                return true;
             }
 
             /* Check for state in memory map. */
             if(pCommit->mapStates.count(hashRegister))
             {
+                /* Get the state from commited memory. */
                 state = pCommit->mapStates[hashRegister];
 
                 return true;
