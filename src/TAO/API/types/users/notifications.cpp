@@ -61,7 +61,7 @@ namespace TAO
 
                 /* Get split dividend payments to assets tokenized by tokens we hold */
                 get_tokenized_debits(hashGenesis, vContracts);
-                
+
                 /* Get the debit and transfer events. */
                 get_events(hashGenesis, vContracts);
 
@@ -132,11 +132,11 @@ namespace TAO
                     {
                         /* Get the source address which is the proof for the debit */
                         contract >> hashProof;
-                        
+
                         /* Get the recipient account */
                         TAO::Register::Address hashTo;
                         contract >> hashTo;
-                        
+
                         /* Retrieve the account. */
                         TAO::Register::State state;
                         if(!LLD::Register->ReadState(hashTo, state))
@@ -151,7 +151,7 @@ namespace TAO
                         /* The register address being transferred */
                         TAO::Register::Address hashRegister;
                         contract >> hashRegister;
-                        
+
                         /* Get recipient genesis hash */
                         contract >> hashProof;
 
@@ -164,7 +164,7 @@ namespace TAO
                             continue;
 
                         /* Check that we are the recipient */
-                        if(hashGenesis != hashProof) 
+                        if(hashGenesis != hashProof)
                             continue;
 
                         /* Check that the sender has not claimed it back (voided) */
@@ -184,14 +184,15 @@ namespace TAO
                             continue;
 
                         /* Check that we mined it */
-                        if(hashGenesis != hashProof) 
+                        if(hashGenesis != hashProof)
                             continue;
                     }
-                    else 
+                    else
                         continue;
 
                     /* Check to see if we have already credited this debit. */
-                    if(LLD::Ledger->HasProof(hashProof, tx.GetHash(), nContract, TAO::Ledger::FLAGS::MEMPOOL))
+                    uint512_t hashTx = tx.GetHash();
+                    if(LLD::Ledger->HasProof(hashProof, hashTx, nContract, TAO::Ledger::FLAGS::MEMPOOL))
                         continue;
 
                     /* Add the coinbase transaction and skip rest of contracts. */
@@ -215,7 +216,7 @@ namespace TAO
             uint32_t nSequence = 0;
             while(LLD::Legacy->ReadEvent(hashGenesis, nSequence, tx))
             {
-                /* Make a shared pointer to the transaction so that we can keep it alive until the caller 
+                /* Make a shared pointer to the transaction so that we can keep it alive until the caller
                    is done processing the contracts */
                 std::shared_ptr<Legacy::Transaction> ptx(new Legacy::Transaction(tx));
 
@@ -227,7 +228,7 @@ namespace TAO
                     TAO::Register::Address hashTo;
                     if(!Legacy::ExtractRegister(ptx->vout[nContract].scriptPubKey, hashTo))
                         continue;
-                    
+
                     /* Read the hashTo account */
                     TAO::Register::State state;
                     if(!LLD::Register->ReadState(hashTo, state))
@@ -236,7 +237,7 @@ namespace TAO
                     /* Check owner. */
                     if(state.hashOwner != hashGenesis)
                         continue;
-                
+
                     /* Check if proofs are spent. NOTE the proof is the wildcard address since this is a legacy transaction*/
                     if(LLD::Ledger->HasProof(TAO::Register::WILDCARD_ADDRESS, ptx->GetHash(), nContract, TAO::Ledger::FLAGS::MEMPOOL))
                         continue;
@@ -326,7 +327,7 @@ namespace TAO
                 /* Initial check that it is a token or account, before we hit the DB to check the token type */
                 if(!hashRegister.IsAccount() && !hashRegister.IsToken())
                     continue;
-                    
+
                 /* Read the object register. */
                 TAO::Register::Object object;
                 if(!LLD::Register->ReadState(hashRegister, object, TAO::Ledger::FLAGS::MEMPOOL))
@@ -342,7 +343,7 @@ namespace TAO
 
                 /* Get the token address */
                 TAO::Register::Address hashToken = object.get<uint256_t>("token");
-                
+
                 /* Check the account is a not NXS account */
                 if(hashToken == 0)
                     continue;
@@ -374,7 +375,7 @@ namespace TAO
                     /* Iterate sequence forward. */
                     ++nSequence;
 
-                    /* Firstly we can ignore any transactions that occurred before our token account was last modified, as only 
+                    /* Firstly we can ignore any transactions that occurred before our token account was last modified, as only
                        the balance at the time of the transaction can be used as proof */
                     if(tx.nTimestamp < nModified)
                         continue;
@@ -385,11 +386,11 @@ namespace TAO
                     {
                         /* Reference to contract to check */
                         TAO::Operation::Contract& contract = tx[nContract];
-                        
+
                         /* Check that this is a debit contract */
                         if(!TAO::Register::Unpack(contract, Operation::OP::DEBIT))
                             continue;
-                        
+
                         /* The account/token the debit came from  */
                         TAO::Register::Address hashFrom;
 
@@ -446,7 +447,7 @@ namespace TAO
                 {
                     /* Reference to contract to check */
                     TAO::Operation::Contract& contract = tx[nContract];
-                    
+
                     /* First check to see if there are any conditions.  If not then they can't have expired! */
                     if(contract.Empty(TAO::Operation::Contract::CONDITIONS))
                         continue;
@@ -482,7 +483,7 @@ namespace TAO
                          /* Check to see whether there are any partial credits already claimed against the debit */
                         uint64_t nClaimed = 0;
                         if(!LLD::Ledger->ReadClaimed(hashLast, nContract, nClaimed, TAO::Ledger::FLAGS::MEMPOOL))
-                            nClaimed = 0; 
+                            nClaimed = 0;
 
                         /* Check that there is something to be claimed */
                         if(nClaimed == nAmount)
@@ -500,7 +501,7 @@ namespace TAO
                         /* The register address being transferred */
                         TAO::Register::Address hashRegister;
                         contract >> hashRegister;
-                        
+
                         /* Get recipient genesis hash */
                         contract >> hashProof;
 
@@ -516,7 +517,7 @@ namespace TAO
                         if(LLD::Ledger->HasProof(hashProof, tx.GetHash(), nContract, TAO::Ledger::FLAGS::MEMPOOL)
                         || LLD::Ledger->HasProof(hashGenesis, tx.GetHash(), nContract, TAO::Ledger::FLAGS::MEMPOOL))
                             continue;
-                        
+
                         /* Populate the temp void contract */
                         voidContract.Clear();
                         voidContract << (uint8_t)TAO::Operation::OP::CLAIM << hashLast << uint32_t(nContract) << hashRegister;
@@ -593,8 +594,8 @@ namespace TAO
             for(const auto& contract : vContracts)
             {
                 /* Get a reference to the contract */
-                const TAO::Operation::Contract& refContract = std::get<0>(contract); 
-                
+                const TAO::Operation::Contract& refContract = std::get<0>(contract);
+
                 /* LOOP: Get the current page. */
                 uint32_t nCurrentPage = nTotal / nLimit;
 
@@ -614,7 +615,7 @@ namespace TAO
                 /* Check to see if there is a proof for the contract, indicating this is a split dividend payment and the
                    hashProof is the account the proves the ownership of it*/
                 TAO::Register::Address hashProof = std::get<2>(contract);
-                
+
                 if(hashProof != 0)
                 {
                     /* Read the object register, which is the token . */
@@ -631,7 +632,7 @@ namespace TAO
                         throw APIException(-65, "Object is not an account");
 
                     /* Get the token address */
-                    TAO::Register::Address hashToken = account.get<uint256_t>("token");                    
+                    TAO::Register::Address hashToken = account.get<uint256_t>("token");
 
                     /* Read the token register. */
                     TAO::Register::Object token;
@@ -667,7 +668,7 @@ namespace TAO
 
                     /* Also flag this notification as a split dividend */
                     obj["dividend_payment"] = true;
-                    
+
                 }
 
                 /* Add to return object. */
@@ -700,7 +701,7 @@ namespace TAO
                 Legacy::ExtractRegister(tx.first->vout[tx.second].scriptPubKey, hashTo);
 
                 /* Get transaction JSON data. */
-                json::json obj; 
+                json::json obj;
                 obj["OP"]       = "LEGACY";
                 obj["address"]  = hashTo.ToString();
 

@@ -37,8 +37,8 @@ namespace LLD
     , nCacheIn)
 
     , MEMORY_MUTEX()
-    , mapProofs()
-    , mapClaims()
+    , pMemory(nullptr)
+    , pCommit(new LedgerTransaction())
     {
     }
 
@@ -46,6 +46,13 @@ namespace LLD
     /* Default Destructor */
     LedgerDB::~LedgerDB()
     {
+        /* Free transaction memory. */
+        if(pMemory)
+            delete pMemory;
+
+        /* Free commited memory. */
+        if(pCommit)
+            delete pCommit;
     }
 
 
@@ -137,7 +144,7 @@ namespace LLD
     bool LedgerDB::ReadTx(const uint512_t& hashTx, TAO::Ledger::Transaction& tx, const uint8_t nFlags)
     {
         /* Special check for memory pool. */
-        if(nFlags >= TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
             /* Get the transaction. */
             if(TAO::Ledger::mempool.Get(hashTx, tx))
@@ -166,8 +173,15 @@ namespace LLD
         {
             LOCK(MEMORY_MUTEX);
 
+            /* Check for pending tranasaction. */
+            if(pMemory)
+            {
+                pMemory->mapClaims[pair] = nClaimed;
+                return true;
+            }
+
             /* Set the state in the memory map. */
-            mapClaims[pair] = nClaimed;
+            pCommit->mapClaims[pair] = nClaimed;
 
             return true;
         }
@@ -175,9 +189,13 @@ namespace LLD
         {
             LOCK(MEMORY_MUTEX);
 
-            /* Erase memory proof if they exist. */
-            if(mapClaims.count(pair))
-               mapClaims.erase(pair);
+            /* Check for pending tranasaction. */
+            if(pMemory && pMemory->mapClaims.count(pair))
+                pMemory->mapClaims.erase(pair);
+
+            /* Check for commited tranasactions. */
+            if(pCommit && pCommit->mapClaims.count(pair))
+                pCommit->mapClaims.erase(pair);
         }
 
         return Write(pair, nClaimed);
@@ -191,15 +209,24 @@ namespace LLD
         const std::pair<uint512_t, uint32_t> pair = std::make_pair(hashTx, nContract);
 
         /* Memory mode for pre-database commits. */
-        if(nFlags >= TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
             LOCK(MEMORY_MUTEX);
 
-            /* Read the new proof state. */
-            if(mapClaims.count(pair))
+            /* Check for pending transaction. */
+            if(pMemory && pMemory->mapClaims.count(pair))
             {
                 /* Set claimed from memory. */
-                nClaimed = mapClaims[pair];
+                nClaimed = pMemory->mapClaims[pair];
+
+                return true;
+            }
+
+            /* Check for pending transaction. */
+            if(pCommit->mapClaims.count(pair))
+            {
+                /* Set claimed from memory. */
+                nClaimed = pCommit->mapClaims[pair];
 
                 return true;
             }
@@ -394,7 +421,7 @@ namespace LLD
     bool LedgerDB::HasTx(const uint512_t& hashTx, const uint8_t nFlags)
     {
         /* Special check for memory pool. */
-        if(nFlags >= TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
             /* Get the transaction. */
             if(TAO::Ledger::mempool.Has(hashTx))
@@ -477,7 +504,7 @@ namespace LLD
     bool LedgerDB::ReadLast(const uint256_t& hashGenesis, uint512_t &hashLast, const uint8_t nFlags)
     {
         /* If the caller has requested to include mempool transactions then check there first*/
-        if(nFlags >= TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
             TAO::Ledger::Transaction tx;
             if(TAO::Ledger::mempool.Get(hashGenesis, tx))
@@ -527,8 +554,17 @@ namespace LLD
         {
             LOCK(MEMORY_MUTEX);
 
-            /* Write internal memory. */
-            mapProofs[tuple] = 0;
+            /* Check for pending transactions. */
+            if(pMemory)
+            {
+                /* Write proof to memory. */
+                pMemory->setProofs.insert(tuple);
+
+                return true;
+            }
+
+            /* Write proof to commited memory. */
+            pCommit->setProofs.insert(tuple);
 
             return true;
         }
@@ -537,8 +573,8 @@ namespace LLD
             LOCK(MEMORY_MUTEX);
 
             /* Erase memory proof if they exist. */
-            if(mapProofs.count(tuple))
-               mapProofs.erase(tuple);
+            if(pCommit->setProofs.count(tuple))
+               pCommit->setProofs.erase(tuple);
         }
 
         return Write(tuple);
@@ -557,9 +593,13 @@ namespace LLD
         {
             LOCK(MEMORY_MUTEX);
 
-            /* Check internal memory. */
-            if(mapProofs.count(tuple))
+            /* Check pending transaction memory. */
+            if(pMemory && pMemory->setProofs.count(tuple))
                 return true;
+
+            /* Check commited memory. */
+            //if(pCommit->setProofs.count(tuple))
+            //    return true;
         }
 
         return Exists(tuple);
@@ -571,18 +611,46 @@ namespace LLD
                               const uint32_t nContract, const uint8_t nFlags)
     {
         /* Get the key pair. */
-        const std::tuple<uint256_t, uint512_t, uint32_t> tuple = std::make_tuple(hashProof, hashTx, nContract);
+        std::tuple<uint256_t, uint512_t, uint32_t> tuple = std::make_tuple(hashProof, hashTx, nContract);
 
         /* Memory mode for pre-database commits. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
             LOCK(MEMORY_MUTEX);
 
-            /* Erase memory proof if they exist. */
-            if(mapProofs.count(tuple))
-                mapProofs.erase(tuple);
+            /* Check for memory transaction. */
+            if(pMemory && nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+            {
+                /* Check for available states. */
+                bool fExists = false;
+                if(pMemory->setProofs.count(tuple))
+                {
+                    /* Erase state out of transaction. */
+                    pMemory->setProofs.erase(tuple);
 
-            return true;
+                    fExists = true;
+                }
+
+                /* Check that value exists to erase. */
+                if(pCommit->setProofs.count(tuple))
+                {
+                    /* Set data to be in erase queue. */
+                    pMemory->setEraseProofs.insert(tuple);
+
+                    fExists = true;
+                }
+
+                return fExists;
+            }
+
+            /* Erase memory proof if they exist. */
+            if(pCommit->setProofs.count(tuple))
+            {
+                /* Erase the proof. */
+                pCommit->setProofs.erase(tuple);
+
+                return true;
+            }
         }
 
         return Erase(std::make_tuple(hashProof, hashTx, nContract));
@@ -647,6 +715,64 @@ namespace LLD
     bool LedgerDB::ReadGenesis(const uint256_t& hashGenesis, uint512_t& hashTx)
     {
         return Read(std::make_pair(std::string("genesis"), hashGenesis), hashTx);
+    }
+
+
+    /* Begin a memory transaction following ACID properties. */
+    void LedgerDB::MemoryBegin()
+    {
+        LOCK(MEMORY_MUTEX);
+
+        /* Set the pre-commit memory mode. */
+        if(pMemory)
+            delete pMemory;
+
+        pMemory = new LedgerTransaction();
+    }
+
+
+    /* Abort a memory transaction following ACID properties. */
+    void LedgerDB::MemoryAbort()
+    {
+        LOCK(MEMORY_MUTEX);
+
+        /* Abort the current memory mode. */
+        if(pMemory)
+            delete pMemory;
+
+        /* Set to null. */
+        pMemory = nullptr;
+    }
+
+
+    /* Commit a memory transaction following ACID properties. */
+    void LedgerDB::MemoryCommit()
+    {
+        LOCK(MEMORY_MUTEX);
+
+        /* Abort the current memory mode. */
+        if(pMemory)
+        {
+            /* Loop through all new states and apply to commit data. */
+            for(const auto& claim : pMemory->mapClaims)
+                pCommit->mapClaims[claim.first] = claim.second;
+
+            /* Loop through values to erase. */
+            for(const auto& erase : pMemory->setEraseClaims)
+                pCommit->mapClaims.erase(erase);
+
+            /* Loop through all new states and apply to commit data. */
+            for(const auto& proof : pMemory->setProofs)
+                pCommit->setProofs.insert(proof);
+
+            /* Loop through values to erase. */
+            for(const auto& erase : pMemory->setEraseProofs)
+                pCommit->setProofs.erase(erase);
+
+            /* Free the memory. */
+            delete pMemory;
+            pMemory = nullptr;
+        }
     }
 
 }

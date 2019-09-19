@@ -46,6 +46,27 @@ namespace TAO
 namespace LLD
 {
 
+    /** LedgerTransaction
+     *
+     *  Helper class for managing memory states in register database.
+     *
+     **/
+    class LedgerTransaction
+    {
+    public:
+
+        /** Collection of proofs to be written to database. **/
+        std::set<std::tuple<uint256_t, uint512_t, uint32_t>> setProofs;
+        std::set<std::tuple<uint256_t, uint512_t, uint32_t>> setEraseProofs;
+
+
+        /** Collection of claims to be written to database. **/
+        std::map<std::pair<uint512_t, uint32_t>, uint64_t> mapClaims;
+        std::set<std::pair<uint512_t, uint32_t>>           setEraseClaims;
+
+    };
+
+
     /** LedgerDB
      *
      *  The database class for the Ledger Layer.
@@ -53,11 +74,17 @@ namespace LLD
      **/
     class LedgerDB : public SectorDatabase<BinaryHashMap, BinaryLRU>
     {
+
+        /** Mutex to lock internall when accessing memory mode. **/
         std::mutex MEMORY_MUTEX;
 
-        std::map<std::tuple<uint256_t, uint512_t, uint32_t>, uint32_t> mapProofs;
 
-        std::map<std::pair<uint512_t, uint32_t>, uint64_t> mapClaims;
+        /** Ledger transaction to track current open transaction. **/
+        LedgerTransaction* pMemory;
+
+
+        /** Ledger transaction to keep open all commited data. **/
+        LedgerTransaction* pCommit;
 
 
     public:
@@ -636,6 +663,31 @@ namespace LLD
          *
          **/
         bool ReadGenesis(const uint256_t& hashGenesis, uint512_t& hashTx);
+
+
+        /** MemoryBegin
+         *
+         *  Begin a memory transaction following ACID properties.
+         *
+         **/
+        void MemoryBegin();
+
+
+        /** MemoryAbort
+         *
+         *  Abort a memory transaction following ACID properties.
+         *
+         **/
+        void MemoryAbort();
+
+
+        /** MemoryCommit
+         *
+         *  Commit a memory transaction following ACID properties.
+         *
+         **/
+        void MemoryCommit();
+
 
    };
 }
