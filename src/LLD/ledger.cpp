@@ -614,7 +614,6 @@ namespace LLD
         std::tuple<uint256_t, uint512_t, uint32_t> tuple = std::make_tuple(hashProof, hashTx, nContract);
 
         /* Memory mode for pre-database commits. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
             LOCK(MEMORY_MUTEX);
 
@@ -649,11 +648,12 @@ namespace LLD
                 /* Erase the proof. */
                 pCommit->setProofs.erase(tuple);
 
-                return true;
+                if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+                    return true;
             }
         }
 
-        return Erase(std::make_tuple(hashProof, hashTx, nContract));
+        return Erase(tuple);
     }
 
 

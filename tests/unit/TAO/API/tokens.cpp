@@ -867,7 +867,7 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens/debit/account]")
         params["session"] = SESSION1;
         params["address"] = hashAccount.ToString();
         params["amount"] = "100";
-        params["address_to"] = hashToken.GetHex();
+        params["address_to"] = hashToken.ToString();
 
         /* Invoke the API */
         ret = APICall("tokens/debit/account", params);
