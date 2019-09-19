@@ -396,7 +396,7 @@ namespace TAO
                                 /* Iterate contract. */
                                 ++nContract;
 
-                                debug::log(0, "AMBASSADOR GENESIS ", genesis.ToString());
+                                debug::log(2, "AMBASSADOR GENESIS ", genesis.ToString());
 
                                 /* Update coinbase rewards. */
                                 nCoinbaseRewards[1] += nValue;

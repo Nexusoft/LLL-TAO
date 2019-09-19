@@ -224,6 +224,25 @@ namespace LLP
                     //    Legacy::Wallet::GetInstance().ResendWalletTransactions();
                 }
 
+
+                /* Handle subscribing to events from other nodes. */
+                if(!fInitialized && fSynchronized)
+                {
+                    /* Subscribe to notifications. */
+                    Subscribe(
+                           SUBSCRIPTION::BESTHEIGHT
+                         | SUBSCRIPTION::CHECKPOINT
+                         | SUBSCRIPTION::BLOCK
+                         | SUBSCRIPTION::TRANSACTION
+                    );
+
+                    /* Grab list of memory pool transactions. */
+                    PushMessage(ACTION::LIST, uint8_t(TYPES::MEMPOOL));
+
+                    /* Set node as initialized. */
+                    fInitialized = true;
+                }
+
                 break;
             }
 
@@ -404,28 +423,8 @@ namespace LLP
                     }
                 }
 
-                /* Subscribe to receive notifications. */
-                Subscribe(
-                      SUBSCRIPTION::BESTHEIGHT
-                    | SUBSCRIPTION::CHECKPOINT
-                    | SUBSCRIPTION::BLOCK
-                    | SUBSCRIPTION::TRANSACTION
-                    | SUBSCRIPTION::ADDRESS
-                );
-
-                /* Ask node for current list of sync blocks. */
-                if(TAO::Ledger::nSyncSession.load() != nCurrentSession)
-                {
-                    /* Ask for list of blocks if this is current sync node. */
-                    PushMessage(ACTION::LIST,
-                        uint8_t(SPECIFIER::SYNC),
-                        uint8_t(TYPES::BLOCK),
-                        uint8_t(TYPES::LOCATOR),
-                        TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
-                        uint1024_t(0)
-                    );
-                }
-
+                /* Subscribe to address notifications only. */
+                Subscribe(SUBSCRIPTION::ADDRESS);
 
                 break;
             }
@@ -1450,18 +1449,6 @@ namespace LLP
                                             /* Unsubcribe from last. */
                                             Unsubscribe(SUBSCRIPTION::LASTINDEX);
 
-                                            /* Subscribe to notifications. */
-                                            Subscribe(
-                                                   SUBSCRIPTION::BESTHEIGHT
-                                                 | SUBSCRIPTION::CHECKPOINT
-                                                 | SUBSCRIPTION::BLOCK
-                                                 | SUBSCRIPTION::TRANSACTION
-                                                 | SUBSCRIPTION::ADDRESS
-                                            );
-
-                                            /* Grab list of memory pool transactions. */
-                                            PushMessage(ACTION::LIST, uint8_t(TYPES::MEMPOOL));
-
                                             /* Log that sync is complete. */
                                             debug::log(0, NODE, "ACTION::NOTIFY: Synchonization COMPLETE at ", hashBestChain.SubString());
                                         }
@@ -1469,6 +1456,7 @@ namespace LLP
                                         {
                                             /* Ask for list of blocks. */
                                             PushMessage(ACTION::LIST,
+                                                uint8_t(SPECIFIER::SYNC),
                                                 uint8_t(TYPES::BLOCK),
                                                 uint8_t(TYPES::UINT1024_T),
                                                 hashLast,
@@ -1753,6 +1741,9 @@ namespace LLP
                             /* Build a tritium block from sync block. */
                             TAO::Ledger::TritiumBlock tritium(block);
 
+                            /* Verbose debug output. */
+                            debug::log(3, FUNCTION, "received sync block ", tritium.GetHash().SubString());
+
                             /* Process the block. */
                             TAO::Ledger::Process(tritium, nStatus);
                         }
@@ -1761,9 +1752,14 @@ namespace LLP
                             /* Build a tritium block from sync block. */
                             Legacy::LegacyBlock legacy(block);
 
+                            /* Verbose debug output. */
+                            debug::log(3, FUNCTION, "received sync block ", legacy.GetHash().SubString());
+
                             /* Process the block. */
                             TAO::Ledger::Process(legacy, nStatus);
                         }
+
+
 
                         break;
                     }

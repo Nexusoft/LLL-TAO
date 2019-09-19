@@ -162,7 +162,7 @@ namespace TAO
                     return debug::error(FUNCTION, "contract is empty");
             }
 
-            /* If genesis then check that the only contracts are those for the default registers. 
+            /* If genesis then check that the only contracts are those for the default registers.
                NOTE: we do not make this limitation in private mode */
             if(IsFirst() && !config::GetBoolArg("-private", false))
             {
@@ -220,7 +220,7 @@ namespace TAO
                     {
                         return debug::error(FUNCTION, "genesis transaction contains invalid contracts.");
                     }
-                    
+
                 }
 
                 /* Check that the there are not more than the allowable default contracts */
@@ -354,7 +354,7 @@ namespace TAO
                 if(!config::fTestNet.load() && AMBASSADOR.find(hashGenesis) != AMBASSADOR.end())
                 {
                     /* Debug logging. */
-                    debug::log(1, FUNCTION, "Processing AMBASSADOR sigchain ", hashGenesis.SubString());
+                    //debug::log(1, FUNCTION, "Processing AMBASSADOR sigchain ", hashGenesis.SubString());
 
                     /* Check that the hashes match. */
                     if(AMBASSADOR.at(hashGenesis).first != PrevHash())
@@ -366,7 +366,7 @@ namespace TAO
                 if(config::fTestNet.load() && AMBASSADOR_TESTNET.find(hashGenesis) != AMBASSADOR_TESTNET.end())
                 {
                     /* Debug logging. */
-                    debug::log(1, FUNCTION, "Processing TESTNET AMBASSADOR sigchain ", hashGenesis.SubString());
+                    //debug::log(1, FUNCTION, "Processing TESTNET AMBASSADOR sigchain ", hashGenesis.SubString());
 
                     /* Check that the hashes match. */
                     if(AMBASSADOR_TESTNET.at(hashGenesis).first != PrevHash())
@@ -514,7 +514,7 @@ namespace TAO
                 else
                     /* For all other transactions we check the actual fee contracts included in the transaction */
                     nFees = Fees();
-                
+
                 /* Check that the fees match.  */
                 if(nCost > nFees)
                     return debug::error(FUNCTION, "not enough fees supplied ", nFees);
