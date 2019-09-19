@@ -181,17 +181,21 @@ namespace TAO
                     return TAO::Ledger::NAMESPACE_FEE;
 
                 case TAO::Register::OBJECTS::ACCOUNT:
+                case TAO::Register::OBJECTS::TRUST:
                     return TAO::Ledger::ACCOUNT_FEE;
+
+                case TAO::Register::OBJECTS::CRYPTO:
+                    return TAO::Ledger::CRYPTO_FEE;
 
                 /* non standard object cost is dependant on the data size. */
                 case TAO::Register::OBJECTS::NONSTANDARD:
                     return std::max(TAO::Ledger::MIN_DATA_FEE, vchState.size() * TAO::Ledger::DATA_FEE);
 
                 default:
-                    return 0;
+                    return TAO::Ledger::MIN_DATA_FEE;
             }
 
-            return 0;
+            return TAO::Ledger::MIN_DATA_FEE;
         }
 
 

@@ -29,6 +29,7 @@ ________________________________________________________________________________
 #include <TAO/Register/include/rollback.h>
 #include <TAO/Register/include/verify.h>
 #include <TAO/Register/include/build.h>
+#include <TAO/Register/include/unpack.h>
 #include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/include/ambassador.h>
@@ -159,6 +160,72 @@ namespace TAO
                 /* Check for empty contracts. */
                 if(contract.Empty(TAO::Operation::Contract::OPERATIONS))
                     return debug::error(FUNCTION, "contract is empty");
+            }
+
+            /* If genesis then check that the only contracts are those for the default registers. 
+               NOTE: we do not make this limitation in private mode */
+            if(IsFirst() && !config::GetBoolArg("-private", false))
+            {
+                /* Number of Name contracts */
+                uint8_t nNames = 0;
+
+                /* Number of Trust contracts */
+                uint8_t nTrust = 0;
+
+                /* Number of Account contracts */
+                uint8_t nAccounts = 0;
+
+                /* Number of Crypto contracts */
+                uint8_t nCrypto = 0;
+
+                /* Run through all the contracts. */
+                for(const auto& contract : vContracts)
+                {
+                    /* Reset the contract operation stream */
+                    contract.Reset();
+
+                    /* Get the Operation */
+                    uint8_t nOP;
+                    contract >> nOP;
+
+                    /* Check that the operation is a CREATE as these are the only OP's allowed in the genesis transaction */
+                    if(nOP == TAO::Operation::OP::CREATE)
+                    {
+                        /* The register address */
+                        TAO::Register::Address address;
+
+                        /* Deserialize the register address from the contract */
+                        contract >> address;
+
+                        /* Check the type of each register and increment the relative counter. */
+                        switch(address.GetType())
+                        {
+                            case TAO::Register::Address::ACCOUNT:
+                                ++nAccounts;
+                                break;
+                            case TAO::Register::Address::TRUST:
+                                ++nTrust;
+                                break;
+                            case TAO::Register::Address::NAME:
+                                ++nNames;
+                                break;
+                            case TAO::Register::Address::CRYPTO:
+                                ++nCrypto;
+                                break;
+                            default:
+                                return debug::error(FUNCTION, "genesis transaction contains invalid contracts.");
+                        }
+                    }
+                    else
+                    {
+                        return debug::error(FUNCTION, "genesis transaction contains invalid contracts.");
+                    }
+                    
+                }
+
+                /* Check that the there are not more than the allowable default contracts */
+                if(vContracts.size() > 5 || nNames > 2 || nTrust > 1 || nAccounts > 1 || nCrypto > 1)
+                    return debug::error(FUNCTION, "genesis transaction contains invalid contracts.");
             }
 
             /* Switch based on signature type. */
@@ -426,19 +493,28 @@ namespace TAO
             }
 
             /* Once we have executed the contracts we need to check the fees.
-               NOTE there are no fees on the genesis transaction.
-               NOTE: There are no fees required in private mode.
-
-               TODO: we need hard limits on first transaction to protect against attacks with first transctionss */
-            if(!IsFirst() && !config::GetBoolArg("-private", false))
+               NOTE there are fixed fees on the genesis transaction to allow for the default registers to be created.
+               NOTE: There are no fees required in private mode.  */
+            if(!config::GetBoolArg("-private", false))
             {
                 /* The fee applied to this transaction */
-                uint64_t nFees = Fees();
+                uint64_t nFees = 0;
 
                 /* The total cost of this transaction.  We use the calculated cost for this as the individual contract costs would
                    have already been calculated during the execution of each contract (Operation::Execute)*/
                 uint64_t nCost = CalculatedCost();
 
+                if(IsFirst())
+                {
+                    /* For the genesis transaction we allow a fixed amount of default registers to be created for free. */
+                    nFees = 2 * TAO::Ledger::ACCOUNT_FEE    // 2 accounts
+                          + 2 * TAO::Ledger::NAME_FEE       // 2 names
+                          + 1 * TAO::Ledger::CRYPTO_FEE;  // 1 crypto register
+                }
+                else
+                    /* For all other transactions we check the actual fee contracts included in the transaction */
+                    nFees = Fees();
+                
                 /* Check that the fees match.  */
                 if(nCost > nFees)
                     return debug::error(FUNCTION, "not enough fees supplied ", nFees);

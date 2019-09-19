@@ -200,6 +200,10 @@ namespace TAO
         const uint64_t ACCOUNT_FEE = 0 * NXS_COIN;
 
 
+        /* Cost to crete a crypto register */
+        const uint64_t CRYPTO_FEE = 1 * NXS_COIN;
+
+
         /* The minimum cost to create a register */
         const uint64_t MIN_DATA_FEE = 1 * NXS_COIN;
 
