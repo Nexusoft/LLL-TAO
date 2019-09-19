@@ -144,13 +144,26 @@ namespace TAO
             if(!tx.Check())
                 return false;
 
+            LLD::Ledger->MemoryBegin();
+            LLD::Register->MemoryBegin();
+
             /* Verify the Ledger Pre-States. */
             if(!tx.Verify(FLAGS::MEMPOOL))
+            {
+                LLD::Ledger->MemoryAbort();
+                LLD::Register->MemoryAbort();
+
                 return false;
+            }
 
             /* Connect transaction in memory. */
             if(!tx.Connect(FLAGS::MEMPOOL))
+            {
+                LLD::Ledger->MemoryAbort();
+                LLD::Register->MemoryAbort();
+
                 return false;
+            }
 
             {
                 RLOCK(MUTEX);
@@ -161,6 +174,9 @@ namespace TAO
                 /* Update map claimed if not first tx. */
                 if(!tx.IsFirst())
                     mapClaimed[tx.hashPrevTx] = hashTx;
+
+                LLD::Ledger->MemoryCommit();
+                LLD::Register->MemoryCommit();
             }
 
             /* Debug output. */

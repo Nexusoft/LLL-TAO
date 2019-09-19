@@ -598,8 +598,8 @@ namespace LLD
                 return true;
 
             /* Check commited memory. */
-            //if(pCommit->setProofs.count(tuple))
-            //    return true;
+            if(pCommit->setProofs.count(tuple))
+                return true;
         }
 
         return Exists(tuple);
