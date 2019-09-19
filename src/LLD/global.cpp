@@ -13,6 +13,8 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <TAO/Ledger/include/enum.h> //for internal flags
+
 namespace LLD
 {
     /* The LLD global instance pointers. */
@@ -175,8 +177,22 @@ namespace LLD
 
 
     /* Global handler for all LLD instances. */
-    void TxnBegin()
+    void TxnBegin(const uint8_t nFlags)
     {
+        /* Handle memory commits if in memory m ode. */
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        {
+            /* Start the register DB transacdtion. */
+            if(Register)
+                Register->MemoryBegin();
+
+            /* Start the ledger DB transaction. */
+            if(Ledger)
+                Ledger->MemoryBegin();
+
+            return;
+        }
+
         /* Start the register DB transacdtion. */
         if(Register)
             Register->TxnBegin();
@@ -200,8 +216,22 @@ namespace LLD
 
 
     /* Global handler for all LLD instances. */
-    void TxnAbort()
+    void TxnAbort(const uint8_t nFlags)
     {
+        /* Handle memory commits if in memory m ode. */
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        {
+            /* Start the register DB transacdtion. */
+            if(Register)
+                Register->MemoryRelease();
+
+            /* Start the ledger DB transaction. */
+            if(Ledger)
+                Ledger->MemoryRelease();
+
+            return;
+        }
+
         /* Abort the register DB transaction. */
         if(Register)
             Register->TxnRelease();
@@ -225,8 +255,22 @@ namespace LLD
 
 
     /* Global handler for all LLD instances. */
-    void TxnCommit()
+    void TxnCommit(const uint8_t nFlags)
     {
+        /* Handle memory commits if in memory m ode. */
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        {
+            /* Start the register DB transacdtion. */
+            if(Register)
+                Register->MemoryCommit();
+
+            /* Start the ledger DB transaction. */
+            if(Ledger)
+                Ledger->MemoryCommit();
+
+            return;
+        }
+
         /* Set a checkpoint for register DB. */
         if(Register)
             Register->TxnCheckpoint();

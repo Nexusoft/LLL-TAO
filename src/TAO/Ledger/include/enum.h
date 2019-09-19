@@ -126,9 +126,6 @@ namespace TAO
 
                 /* Don't write data when calculating fees. */
                 FEES        = 0x03,
-
-                /* Conflicted transaction states. */
-                CONFLICTED  = 0x04,
             };
         }
 

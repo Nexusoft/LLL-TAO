@@ -28,6 +28,25 @@ ________________________________________________________________________________
 namespace LLD
 {
 
+    /** RegisterTransaction
+     *
+     *  Helper class for managing memory states in register database.
+     *
+     **/
+    class RegisterTransaction
+    {
+    public:
+
+        /** Map of states that are stored in memory mode until commited. **/
+        std::map<uint256_t, TAO::Register::State> mapStates;
+
+
+        /** Set of indexes to remove during commit. **/
+        std::set<uint256_t> setErase;
+
+    };
+
+
     /** RegisterDB
      *
      *  The database class for the Register Layer.
@@ -35,10 +54,17 @@ namespace LLD
      **/
     class RegisterDB : public SectorDatabase<BinaryHashMap, BinaryLRU>
     {
+        /** Memory mutex to lock when accessing internal memory states. **/
         std::mutex MEMORY_MUTEX;
 
-        std::map<uint256_t, TAO::Register::State> mapStates;
-        std::map<uint256_t, uint256_t> mapIdentifiers;
+
+        /** Register transaction to track current open transaction. **/
+        RegisterTransaction* pMemory;
+
+
+        /** Register transaction to keep open all commited data. **/
+        RegisterTransaction* pCommit;
+
 
     public:
 
@@ -172,6 +198,30 @@ namespace LLD
          *
          **/
         bool HasState(const uint256_t& hashRegister, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
+
+
+        /** MemoryBegin
+         *
+         *  Begin a memory transaction following ACID properties.
+         *
+         **/
+        void MemoryBegin();
+
+
+        /** MemoryRelease
+         *
+         *  Release a memory transaction following ACID properties.
+         *
+         **/
+        void MemoryRelease();
+
+
+        /** MemoryCommit
+         *
+         *  Commit a memory transaction following ACID properties.
+         *
+         **/
+        void MemoryCommit();
 
     };
 

@@ -64,7 +64,7 @@ namespace LLD
      *  Global handler for all LLD instances.
      *
      */
-    void TxnBegin();
+    void TxnBegin(const uint8_t nFlags = 0);
 
 
     /** Txn Abort
@@ -72,7 +72,7 @@ namespace LLD
      *  Global handler for all LLD instances.
      *
      */
-    void TxnAbort();
+    void TxnAbort(const uint8_t nFlags = 0);
 
 
     /** Txn Commit
@@ -80,7 +80,7 @@ namespace LLD
      *  Global handler for all LLD instances.
      *
      */
-    void TxnCommit();
+    void TxnCommit(const uint8_t nFlags = 0);
 }
 
 #endif

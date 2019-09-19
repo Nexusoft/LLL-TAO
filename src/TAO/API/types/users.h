@@ -588,7 +588,7 @@ namespace TAO
              *  @param[out] vContracts The array of contracts.
              *
              **/
-            static bool get_expired(const uint256_t& hashGenesis, 
+            static bool get_expired(const uint256_t& hashGenesis,
                 uint512_t hashLast, std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> &vContracts);
 
 
@@ -642,7 +642,7 @@ namespace TAO
              *
              **/
             void CreateSigchain(const SecureString& strUsername, const SecureString& strPassword,  const SecureString& strPin,
-                TAO::Ledger::Transaction& tx);
+                TAO::Ledger::Transaction &tx);
 
 
         };
