@@ -465,19 +465,14 @@ namespace TAO
                         /* Handle coinbase rules. */
                         case TAO::Operation::OP::COINBASE:
                         {
-                            /* Check for block. */
-                            TAO::Ledger::BlockState state;
-                            if(!LLD::Ledger->ReadBlock(hashPrev, state))
-                                return debug::error(FUNCTION, "coinbase isn't included in block");
+                            /* Get number of confirmations of previous TX */
+                            uint32_t nConfirms = 0;
+                            if(!LLD::Ledger->ReadConfirmations(hashPrev, nConfirms, pblock))
+                                return debug::error(FUNCTION, "failed to read confirmations for coinbase");
 
-                            /* Get the current height. */
-                            uint32_t nHeight = (pblock ? pblock->nHeight : ChainState::nBestHeight.load());
-                            if(nHeight < state.nHeight)
-                                return debug::error(FUNCTION, "maturity overflow");
-
-                            /* Check the intervals. */
-                            if((nHeight - state.nHeight + 1) < TAO::Ledger::MaturityCoinBase())
-                                return debug::error(FUNCTION, "coinbase is immature ", (nHeight - state.nHeight + 1));
+                            /* Check that the previous TX has reached sig chain maturity */
+                            if(nConfirms < MaturityCoinBase())
+                                return debug::error(FUNCTION, "coinbase is immature ", nConfirms);
 
                             break;
                         }
