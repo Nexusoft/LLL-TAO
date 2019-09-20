@@ -16,6 +16,8 @@ ________________________________________________________________________________
 
 #include <Legacy/include/evaluate.h>
 #include <Legacy/include/money.h>
+#include <Legacy/types/address.h>
+#include <Legacy/types/trustkey.h>
 
 #include <LLD/include/global.h>
 
@@ -721,27 +723,27 @@ namespace TAO
                     case TAO::Operation::OP::MIGRATE:
                     {
                         /* Extract the transaction from contract. */
-                        uint512_t hashTx = 0;
+                        uint512_t hashTx;
                         contract >> hashTx;
 
                         /* Get the trust register address. (hash to) */
                         TAO::Register::Address hashAccount;
                         contract >> hashAccount;
 
-                        /* Get the Legacy trust key hash (hash from) */
-                        uint512_t hashKey = 0;
-                        contract >> hashKey;
+                        /* Get thekey for the  Legacy trust key */
+                        uint576_t hashTrust;
+                        contract >> hashTrust;
 
                         /* Get the amount to migrate. */
-                        uint64_t nAmount = 0;
+                        uint64_t nAmount;
                         contract >> nAmount;
 
                         /* Get the trust score to migrate. */
-                        uint32_t nScore = 0;
+                        uint32_t nScore;
                         contract >> nScore;
 
                         /* Get the hash last stake. */
-                        uint512_t hashLast = 0;
+                        uint512_t hashLast;
                         contract >> hashLast;
 
                         /* Output the json information. */
@@ -754,7 +756,14 @@ namespace TAO
                         if(!strAccount.empty())
                             ret["account_name"] = strAccount;
 
-                        ret["hashkey"] = hashKey.ToString();
+                        Legacy::TrustKey trustKey;
+                        if(LLD::Trust->ReadTrustKey(hashTrust, trustKey))
+                        {
+                            Legacy::NexusAddress address;
+                            address.SetPubKey(trustKey.vchPubKey);
+                            ret["trustkey"] = address.ToString();
+                        }
+
                         ret["amount"] = (double) nAmount / TAO::Ledger::NXS_COIN;
                         ret["score"] = nScore;
                         ret["hashLast"] = hashLast.ToString();

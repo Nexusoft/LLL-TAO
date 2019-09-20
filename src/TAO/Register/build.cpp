@@ -540,7 +540,7 @@ namespace TAO
                         contract >> hashAccount;
 
                         /* Seek to amount. */
-                        contract.Seek(64);
+                        contract.Seek(72);
 
                         /* Get the amount to migrate. */
                         uint64_t nAmount = 0;
@@ -553,7 +553,7 @@ namespace TAO
                         /* Seek to end */
                         contract.Seek(64);
 
-                        /* Check that indexed trust account exists. */
+                        /* Check that no indexed trust account exists. */
                         if(LLD::Register->HasTrust(contract.Caller()))
                             return debug::error(FUNCTION, "OP::MIGRATE: trust account previously indexed");
 

@@ -234,9 +234,8 @@ namespace TAO
                     case TAO::Operation::OP::MIGRATE:
                     {
                         /* Seek to migrate amount. */
-                        contract.Seek(160);
+                        contract.Seek(168);
 
-                        /* Amount at beginning of contract, no need to seek. */
                         contract >> nAmount;
 
                         return true;

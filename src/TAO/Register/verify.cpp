@@ -570,22 +570,22 @@ namespace TAO
                         TAO::Register::Address hashAccount;
                         contract >> hashAccount;
 
-                        /* Skip hashKey (hash from) */
-                        contract.Seek(64);
+                        /* Skip trust key (hash from) */
+                        contract.Seek(72);
 
                         /* Get the amount to migrate. */
-                        uint64_t nAmount = 0;
+                        uint64_t nAmount;
                         contract >> nAmount;
 
                         /* Get the trust score to migrate. */
-                        uint32_t nScore = 0;
+                        uint32_t nScore;
                         contract >> nScore;
 
                         /* Seek to end */
                         contract.Seek(64);
 
                         /* Verify the first register code. */
-                        uint8_t nState = 0;
+                        uint8_t nState;
                         contract >>= nState;
 
                         /* Check the state is prestate. */

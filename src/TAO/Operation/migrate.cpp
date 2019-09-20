@@ -31,8 +31,8 @@ namespace TAO
     {
 
         /* Commit the final state to disk. */
-        bool Migrate::Commit(const TAO::Register::Object& trust, const TAO::Register::Address& hashAddress,
-                             const uint256_t& hashCaller, const uint512_t& hashTx, const uint512_t& hashKey,
+        bool Migrate::Commit(const TAO::Register::Object& trust, const uint256_t& hashAddress,
+                             const uint256_t& hashCaller, const uint512_t& hashTx, const uint576_t& hashTrust,
                              const uint512_t& hashLast, const uint8_t nFlags)
         {
             /* Check if this transfer is already claimed. Trust migration is always a send from a Legacy trust key,
@@ -62,7 +62,7 @@ namespace TAO
                     return debug::error(FUNCTION, "failed to write last trust to disk");
 
                 /* Record that the legacy trust key has completed migration. */
-                if(!LLD::Legacy->WriteTrustConversion(hashKey))
+                if(!LLD::Legacy->WriteTrustConversion(hashTrust))
                     return debug::error(FUNCTION, "failed to record trust key migration to disk");
             }
 
@@ -117,7 +117,7 @@ namespace TAO
             contract.Reset();
 
             /* Get operation byte. */
-            uint8_t OP = 0;
+            uint8_t OP;
             contract >> OP;
 
             /* Check operation byte. */
@@ -131,27 +131,27 @@ namespace TAO
             contract.Seek(64);
 
             /* Get the trust register address. (hash to) */
-            TAO::Register::Address hashAccount;
+            uint256_t hashAccount;
             contract >> hashAccount;
 
             /* Get the trust key hash. (hash from) */
-            uint512_t hashKey;
-            contract >> hashKey;
+            uint576_t hashTrust;
+            contract >> hashTrust;
 
             /* Get the amount to migrate. */
-            uint64_t nAmount = 0;
+            uint64_t nAmount;
             contract >> nAmount;
 
             /* Get the trust score to migrate. */
-            uint32_t nScore = 0;
+            uint32_t nScore;
             contract >> nScore;
 
             /* Get the hash last stake. */
-            uint512_t hashLast = 0;
+            uint512_t hashLast;
             contract >> hashLast;
 
             /* Get the byte from pre-state. */
-            uint8_t nState = 0;
+            uint8_t nState;
             contract >>= nState;
 
             /* Check for the pre-state. */
@@ -186,31 +186,31 @@ namespace TAO
                 return debug::error(FUNCTION, "tx claim is not a debit");
 
             /* Get the hashFrom */
-            TAO::Register::Address hashFrom;
+            uint256_t hashFrom;
             debit >> hashFrom;
 
             /* Get the hashTo. */
-            TAO::Register::Address hashTo;
+            uint256_t hashTo;
             debit >> hashTo;
 
             /* Get the debit amount. */
-            uint64_t nDebit = 0;
+            uint64_t nDebit;
             debit >> nDebit;
 
             /* Skip placeholder */
             debit.Seek(8);
 
             /* Get the debit trust score */
-            uint32_t nScoreDebit = 0;
+            uint32_t nScoreDebit;
             debit >> nScoreDebit;
 
             /* Get the debit last stake hash */
-            uint512_t hashLastDebit = 0;
+            uint512_t hashLastDebit;
             debit >> hashLastDebit;
 
             /* Get the trust key hash */
-            uint512_t hashKeyDebit;
-            debit >> hashKeyDebit;
+            uint576_t hashTrustDebit;
+            debit >> hashTrustDebit;
 
             /* Check for reserved values. */
             if(TAO::Register::Reserved(hashTo))
@@ -221,7 +221,7 @@ namespace TAO
                 return debug::error(FUNCTION, "migrate debit register must be from UTXO");
 
             /* Check whether the legacy trust key has already completed migration. */
-            if(LLD::Legacy->HasTrustConversion(hashKey))
+            if(LLD::Legacy->HasTrustConversion(hashTrust))
                 return debug::error(FUNCTION, "trust key is already converted");
 
             /* Validate migrate is to address in UTXO output */
@@ -241,7 +241,7 @@ namespace TAO
                 return debug::error(FUNCTION, "debit and credit hash last stake mismatch");
 
             /* Verify the trust key hash */
-            if(hashKeyDebit != hashKey)
+            if(hashTrustDebit != hashTrust)
                 return debug::error(FUNCTION, "debit and credit trust key mismatch");
 
             return true;

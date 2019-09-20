@@ -362,7 +362,7 @@ namespace TAO
 
                             /* Trust key data we need for OP::MIGRATE */
                             uint32_t nScore;
-                            uint512_t hashKey;
+                            uint576_t hashTrust;
                             uint512_t hashLast;
                             Legacy::TrustKey trustKey;
 
@@ -382,8 +382,8 @@ namespace TAO
                                     break;
 
                                 /* Verify trust key not already converted */
-                                hashKey = trustKey.GetHash();
-                                if(LLD::Legacy->HasTrustConversion(hashKey))
+                                hashTrust.SetBytes(trustKey.vchPubKey);
+                                if(LLD::Legacy->HasTrustConversion(hashTrust))
                                     break;
 
                                 /* Get last trust for the legacy trust key */
@@ -426,7 +426,7 @@ namespace TAO
                                     nAmount = nLegacyAmount;
 
                                 /* Set up the OP::MIGRATE */
-                                tx[tx.Size()] << uint8_t(TAO::Operation::OP::MIGRATE) << hashTx << hashAccount << hashKey
+                                tx[tx.Size()] << uint8_t(TAO::Operation::OP::MIGRATE) << hashTx << hashAccount << hashTrust
                                             << nAmount << nScore << hashLast;
 
                                 debug::log(0, FUNCTION, "Generated trust key MIGRATE",
