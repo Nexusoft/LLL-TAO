@@ -707,19 +707,20 @@ namespace TAO
 
                 /* Debug output about the best chain. */
                 uint64_t nElapsed = (GetBlockTime() - ChainState::stateBest.load().GetBlockTime());
+                uint64_t nTimer   = timer.ElapsedMilliseconds();
                 debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION,
                     "New Best Block hash=", hash.SubString(),
                     " height=", ChainState::nBestHeight.load(),
                     " trust=", ChainState::nBestChainTrust.load(),
                     " tx=", vtx.size(),
                     " [", (nElapsed == 0 ? 0 : double(nTotalContracts / nElapsed)), " contracts/s]"
-                    " [verified in ", timer.ElapsedMilliseconds(), " ms]",
-                    " [processing ", (nTotalContracts * 1000.0) / timer.ElapsedMilliseconds(), " contracts/s]",
+                    " [verified in ", nTimer, " ms]",
+                    " [processing ", (nTotalContracts * 1000.0) / (nTimer + 1), " contracts/s]",
                     " [", ::GetSerializeSize(*this, SER_LLD, nVersion), " bytes]");
 
                 /* Set best block state. */
                 ChainState::stateBest = *this;
-                nTotalContracts = 1; //one contract per block
+                nTotalContracts = 0; //one contract per block
 
                 /* Broadcast the block to nodes if not synchronizing. */
                 if(!ChainState::Synchronizing())

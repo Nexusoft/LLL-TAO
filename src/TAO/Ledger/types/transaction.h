@@ -103,13 +103,14 @@ namespace TAO
                 READWRITE(hashPrevTx);
                 READWRITE(nKeyType);
                 READWRITE(nNextType);
-                READWRITE(vchPubKey);
 
-                /* Handle for when not getting hash. */
-                if(!(nSerType & SER_GETHASH))
-                {
+                /* Check for skipping public key. */
+                if(!(nSerType & SER_SKIPPUB))
+                    READWRITE(vchPubKey);
+
+                /* Handle for when not getting hash or skipsig. */
+                if(!(nSerType & SER_GETHASH) && !(nSerType & SER_SKIPSIG))
                     READWRITE(vchSig);
-                }
             )
 
 

@@ -137,7 +137,6 @@ namespace TAO
                         /* Accept into memory pool. */
                         if(!LLD::Ledger->HasTx(tx.GetHash()))
                             mempool.AddUnchecked(tx);
-                        //throw debug::exception(FUNCTION, "sync block contains invalid transaction");
 
                         /* Add transaction to binary data. */
                         if(n == block.vtx.size() - 1)
@@ -161,7 +160,6 @@ namespace TAO
                         /* Accept into memory pool. */
                         if(!LLD::Legacy->HasTx(tx.GetHash()))
                             mempool.AddUnchecked(tx);
-                        //throw debug::exception(FUNCTION, "sync block contains invalid transaction");
 
                         /* Add transaction to binary data. */
                         vtx.push_back(std::make_pair(block.vtx[n].first, tx.GetHash()));
@@ -399,8 +397,8 @@ namespace TAO
                         return debug::error(FUNCTION, "more than one coinbase / coinstake");
 
                     /* Check the transaction for validity. */
-                    if(!tx.Check())
-                        return debug::error(FUNCTION, "contains an invalid transaction");
+                    //if(!tx.Check()) //NOTE: this is pre-processing stuff
+                    //    return debug::error(FUNCTION, "contains an invalid transaction");
                 }
                 else
                     return debug::error(FUNCTION, "unknown transaction type");
@@ -645,7 +643,6 @@ namespace TAO
 
                 uint64_t nClaimedTrust = 0;
                 producer[0] >> nClaimedTrust;
-
                 producer[0] >> nStakeChange;
 
                 uint64_t nClaimedReward = 0;
@@ -657,8 +654,22 @@ namespace TAO
                     return debug::error(FUNCTION, "last stake not in database");
 
                 if(hashLast != hashLastClaimed)
+                {
+                    Transaction tx1;
+                    if(!LLD::Ledger->ReadTx(hashLast, tx1))
+                        return debug::error(FUNCTION, "failed to read ", tx1.GetHash().SubString());
+
+                    Transaction tx2;
+                    if(!LLD::Ledger->ReadTx(hashLastClaimed, tx2))
+                        return debug::error(FUNCTION, "failed to read ", tx2.GetHash().SubString());
+
+                    tx1.print();
+                    tx2.print();
+
                     return debug::error(FUNCTION, "claimed last stake ", hashLastClaimed.SubString(),
-                                                  " does not match actual last stake");
+                                                  " does not match actual last stake ", hashLast.SubString());
+                }
+
 
                 /* Get the last stake block. */
                 TAO::Ledger::BlockState stateLast;

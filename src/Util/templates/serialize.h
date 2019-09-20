@@ -59,7 +59,7 @@ inline T& REF(const T& val)
  * i.e. anything that supports .read(char*, uint32_t) and .write(char*, uint32_t)
  *
  **/
-enum
+enum SER_OPERATIONS
 {
     // primary actions
     SER_NETWORK         = (1 << 0),
@@ -80,8 +80,9 @@ enum
 
     // modifiers
     SER_SKIPSIG         = (1 << 16),
-    SER_BLOCKHEADERONLY = (1 << 17),
-    SER_STATEHEADERONLY = (1 << 18),
+    SER_SKIPPUB         = (1 << 17),
+    SER_BLOCKHEADERONLY = (1 << 18),
+    SER_STATEHEADERONLY = (1 << 19),
 
     // LLP actions
     SER_LLP_HEADER_ONLY = (1 << 20),

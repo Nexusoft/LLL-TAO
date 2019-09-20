@@ -154,7 +154,7 @@ namespace TAO
 
                 return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED");
             }
-            
+
             /* Commit new memory into database states. */
             LLD::TxnCommit(FLAGS::MEMPOOL);
 
@@ -351,6 +351,8 @@ namespace TAO
         /* Check the memory pool for consistency. */
         void Mempool::Check()
         {
+            RLOCK(MUTEX);
+            
             /* Create map of transactions by genesis. */
             std::map<uint256_t, std::vector<TAO::Ledger::Transaction> > mapTransactions;
 

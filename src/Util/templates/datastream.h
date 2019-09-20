@@ -107,7 +107,23 @@ public:
     /** Destructor. */
     ~DataStream()
     {
-        std::vector<uint8_t>().swap(vData);
+    }
+
+
+    /** Operator |= overload to set flag **/
+    DataStream& operator|=(enum SER_OPERATIONS nFlags)
+    {
+        nSerType |= nFlags;
+
+        return *this;
+    }
+
+    /** Operator &= overload to unset flag **/
+    DataStream& operator&=(enum SER_OPERATIONS nFlags)
+    {
+        nSerType &= ~nFlags;
+
+        return *this;
     }
 
 
