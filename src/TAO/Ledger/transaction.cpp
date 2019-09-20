@@ -477,7 +477,7 @@ namespace TAO
 
                             /* Check the intervals. */
                             if((nHeight - state.nHeight + 1) < TAO::Ledger::MaturityCoinBase())
-                                return debug::error(FUNCTION, "coinbase is immature");
+                                return debug::error(FUNCTION, "coinbase is immature ", (nHeight - state.nHeight + 1));
 
                             break;
                         }
