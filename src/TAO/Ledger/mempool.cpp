@@ -142,11 +142,11 @@ namespace TAO
 
             /* Check that the transaction is in a valid state. */
             if(!tx.Check())
-                return false;
+                return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED");
 
             /* Begin an ACID transction for internal memory commits. */
             if(!tx.Verify(FLAGS::MEMPOOL))
-                return false;
+                return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED");
 
             /* Connect transaction in memory. */
             LLD::TxnBegin(FLAGS::MEMPOOL);
