@@ -124,71 +124,86 @@ namespace TAO
                     contract.Reset();
 
                     /* The operation */
-                    uint8_t nOp;
-                    contract >> nOp;
+                    uint8_t nOP;
+                    contract >> nOP;
 
                     /* Check for that the debit is meant for us. */
-                    if(nOp == TAO::Operation::OP::DEBIT)
+                    switch(nOP)
                     {
-                        /* Get the source address which is the proof for the debit */
-                        contract >> hashProof;
+                        /* Check for debit events. */
+                        case TAO::Operation::OP::DEBIT:
+                        {
+                            /* Get the source address which is the proof for the debit */
+                            contract >> hashProof;
 
-                        /* Get the recipient account */
-                        TAO::Register::Address hashTo;
-                        contract >> hashTo;
+                            /* Get the recipient account */
+                            TAO::Register::Address hashTo;
+                            contract >> hashTo;
 
-                        /* Retrieve the account. */
-                        TAO::Register::State state;
-                        if(!LLD::Register->ReadState(hashTo, state))
-                            continue;
+                            /* Retrieve the account. */
+                            TAO::Register::State state;
+                            if(!LLD::Register->ReadState(hashTo, state))
+                                continue;
 
-                        /* Check owner that we are the owner of the recipient account  */
-                        if(state.hashOwner != hashGenesis)
+                            /* Check owner that we are the owner of the recipient account  */
+                            if(state.hashOwner != hashGenesis)
+                                continue;
+
+                            break;
+                        }
+
+                        /* Check for transfer events. */
+                        case TAO::Operation::OP::TRANSFER:
+                        {
+                            /* The register address being transferred */
+                            TAO::Register::Address hashRegister;
+                            contract >> hashRegister;
+
+                            /* Get recipient genesis hash */
+                            contract >> hashProof;
+
+                            /* Read the force transfer flag */
+                            uint8_t nType = 0;
+                            contract >> nType;
+
+                            /* Ensure this wasn't a forced transfer (which requires no Claim) */
+                            if(nType == TAO::Operation::TRANSFER::FORCE)
+                                continue;
+
+                            /* Check that we are the recipient */
+                            if(hashGenesis != hashProof)
+                                continue;
+
+                            /* Check that the sender has not claimed it back (voided) */
+                            TAO::Register::State state;
+                            if(!LLD::Register->ReadState(hashRegister, state))
+                                continue;
+
+                            /* Make sure the register claim is in SYSTEM pending from a transfer.  */
+                            if(state.hashOwner != 0)
+                                continue;
+
+                            break;
+                        }
+
+                        /* Check for coinbase events. */
+                        case TAO::Operation::OP::COINBASE:
+                        {
+                            /* Unpack the miners genesis from the contract */
+                            if(!TAO::Register::Unpack(contract, hashProof))
+                                continue;
+
+                            /* Check that we mined it */
+                            if(hashGenesis != hashProof)
+                                continue;
+
+                            break;
+                        }
+
+                        /* Default continue. */
+                        default:
                             continue;
                     }
-                    else if(nOp == TAO::Operation::OP::TRANSFER)
-                    {
-                        /* The register address being transferred */
-                        TAO::Register::Address hashRegister;
-                        contract >> hashRegister;
-
-                        /* Get recipient genesis hash */
-                        contract >> hashProof;
-
-                        /* Read the force transfer flag */
-                        uint8_t nType = 0;
-                        contract >> nType;
-
-                        /* Ensure this wasn't a forced transfer (which requires no Claim) */
-                        if(nType == TAO::Operation::TRANSFER::FORCE)
-                            continue;
-
-                        /* Check that we are the recipient */
-                        if(hashGenesis != hashProof)
-                            continue;
-
-                        /* Check that the sender has not claimed it back (voided) */
-                        TAO::Register::State state;
-                        if(!LLD::Register->ReadState(hashRegister, state))
-                            continue;
-
-                        /* Make sure the register claim is in SYSTEM pending from a transfer.  */
-                        if(state.hashOwner != 0)
-                            continue;
-
-                    }
-                    else if(nOp == TAO::Operation::OP::COINBASE)
-                    {
-                        /* Unpack the miners genesis from the contract */
-                        if(!TAO::Register::Unpack(contract, hashProof))
-                            continue;
-
-                        /* Check that we mined it */
-                        if(hashGenesis != hashProof)
-                            continue;
-                    }
-                    else
-                        continue;
 
                     /* Check to see if we have already credited this debit. */
                     uint512_t hashTx = tx.GetHash();
