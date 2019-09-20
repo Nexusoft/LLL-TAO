@@ -1852,7 +1852,6 @@ namespace LLP
                 if(nStatus & TAO::Ledger::PROCESS::ACCEPTED)
                 {
                     /* Reset the fails and orphans. */
-                    nConsecutiveFails   = 0;
                     nConsecutiveOrphans = 0;
                 }
 
@@ -1863,18 +1862,6 @@ namespace LLP
                 /* Check for orphan status messages. */
                 if(nStatus & TAO::Ledger::PROCESS::ORPHAN)
                     ++nConsecutiveOrphans;
-
-                /* Check for failure limit on node. */
-                if(nConsecutiveFails >= 1000)
-                {
-                    /* Switch to another available node. */
-                    if(TAO::Ledger::ChainState::Synchronizing() && TAO::Ledger::nSyncSession.load() == nCurrentSession)
-                        SwitchNode();
-
-                    /* Drop pesky nodes. */
-                    return debug::drop(NODE, "node reached failure limit");
-                }
-
 
                 /* Detect large orphan chains and ask for new blocks from origin again. */
                 if(nConsecutiveOrphans >= 1000)
@@ -1930,7 +1917,12 @@ namespace LLP
                                 uint8_t(TYPES::TRANSACTION),
                                 tx.GetHash()
                             );
+
+                            /* Reset consecutive failures. */
+                            nConsecutiveFails = 0;
                         }
+                        else
+                            ++nConsecutiveFails;
 
                         break;
                     }
@@ -1952,7 +1944,12 @@ namespace LLP
                                 uint8_t(TYPES::TRANSACTION),
                                 tx.GetHash()
                             );
+
+                            /* Reset consecutive failures. */
+                            nConsecutiveFails = 0;
                         }
+                        else
+                            ++nConsecutiveFails;
 
                         break;
                     }
@@ -1960,6 +1957,17 @@ namespace LLP
                     /* Default catch all. */
                     default:
                         return debug::drop(NODE, "invalid type specifier for transaction");
+                }
+
+                /* Check for failure limit on node. */
+                if(nConsecutiveFails >= 1000)
+                {
+                    /* Switch to another available node. */
+                    if(TAO::Ledger::ChainState::Synchronizing() && TAO::Ledger::nSyncSession.load() == nCurrentSession)
+                        SwitchNode();
+
+                    /* Drop pesky nodes. */
+                    return debug::drop(NODE, "node reached failure limit");
                 }
 
                 break;

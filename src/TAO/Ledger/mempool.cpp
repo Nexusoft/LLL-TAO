@@ -352,7 +352,7 @@ namespace TAO
         void Mempool::Check()
         {
             RLOCK(MUTEX);
-            
+
             /* Create map of transactions by genesis. */
             std::map<uint256_t, std::vector<TAO::Ledger::Transaction> > mapTransactions;
 
@@ -517,34 +517,7 @@ namespace TAO
 
                         /* Check the last hash. */
                         if(vTx[0].hashPrevTx != hashLast)
-                        {
-                            /* Debug information. */
-                            debug::error(FUNCTION, "ROOT ORPHAN: last hash mismatch ", vTx[0].hashPrevTx.SubString());
-
-                            /* Begin the memory transaction. */
-                            LLD::TxnBegin(FLAGS::MEMPOOL);
-
-                            /* Disconnect all transactions in reverse order. */
-                            for(auto tx = vTx.rbegin(); tx != vTx.rend(); ++tx)
-                            {
-                                /* Reset memory states to disk indexes. */
-                                if(!tx->Disconnect(FLAGS::MEMPOOL))
-                                {
-                                    LLD::TxnAbort(FLAGS::MEMPOOL);
-
-                                    break;
-                                }
-                            }
-
-                            /* Commit the memory transaction. */
-                            LLD::TxnCommit(FLAGS::MEMPOOL);
-
-                            /* Remove all transactions after commited to memory. */
-                            for(const auto& tx : vTx)
-                                Remove(tx.GetHash());
-
-                            break;
-                        }
+                            continue; //SKIP ANY ORPHANS FOUND
                     }
 
                     /* Set last from next transaction. */
@@ -566,34 +539,7 @@ namespace TAO
 
                         /* Check that transaction is in sequence. */
                         if(vTx[n].hashPrevTx != hashLast)
-                        {
-                            /* Debug information. */
-                            debug::error(FUNCTION, "ORPHAN DETECTED: last hash mismatch ", vTx[n].hashPrevTx.SubString());
-
-                            /* Begin the memory transaction. */
-                            LLD::TxnBegin(FLAGS::MEMPOOL);
-
-                            /* Disconnect all transactions in reverse order. */
-                            for(auto tx = vTx.rbegin(); tx != vTx.rend(); ++tx)
-                            {
-                                /* Reset memory states to disk indexes. */
-                                if(!tx->Disconnect(FLAGS::MEMPOOL))
-                                {
-                                    LLD::TxnAbort(FLAGS::MEMPOOL);
-
-                                    break;
-                                }
-                            }
-
-                            /* Commit the memory transaction. */
-                            LLD::TxnCommit(FLAGS::MEMPOOL);
-
-                            /* Remove all transactions after commited to memory. */
-                            for(const auto& tx : vTx)
-                                Remove(tx.GetHash());
-
-                            break;
-                        }
+                            break; //SKIP ANY ORPHANS FOUND
 
                         /* Set last hash. */
                         hashLast = vTx[n].GetHash();
