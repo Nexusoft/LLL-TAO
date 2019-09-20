@@ -165,7 +165,14 @@ DataStream& DataStream::write(const char* pch, uint64_t nSize)
 
 
 /*  Get the data stream from the object. */
-const std::vector<uint8_t>& DataStream::Bytes()
+const std::vector<uint8_t>& DataStream::Bytes() const
+{
+    return vData;
+}
+
+
+/*  Get the data stream from the object. */
+std::vector<uint8_t>& DataStream::Bytes()
 {
     return vData;
 }

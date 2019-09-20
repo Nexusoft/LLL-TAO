@@ -254,8 +254,16 @@ namespace TAO
                     /* Coinbase operation. Creates an account if none exists. */
                     case TAO::Operation::OP::COINBASE:
                     {
-                        /* Seek through coinbase data. */
-                        contract.Seek(48);
+                        /* Get the genesis. */
+                        uint256_t hashGenesis;
+                        contract >> hashGenesis;
+
+                        /* Seek to end. */
+                        contract.Seek(16);
+
+                        /* Commit to disk. */
+                        if(nFlags == TAO::Ledger::FLAGS::BLOCK && contract.Caller() != hashGenesis && !LLD::Ledger->EraseEvent(hashGenesis))
+                            return false;
 
                         break;
                     }

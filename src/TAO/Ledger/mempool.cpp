@@ -80,6 +80,8 @@ namespace TAO
         /* Accepts a transaction with validation rules. */
         bool Mempool::Accept(TAO::Ledger::Transaction& tx, LLP::TritiumNode* pnode)
         {
+            RLOCK(MUTEX);
+
             /* Check for version 7 activation timestamp. */
             if(!(TAO::Ledger::VersionActive((tx.nTimestamp), 7) || TAO::Ledger::CurrentVersion() > 7))
                 return debug::error(FUNCTION, "tritium transaction not accepted until tritium time-lock");
@@ -95,35 +97,30 @@ namespace TAO
             runtime::timer time;
             time.Start();
 
-            /* Get ehe next hash being claimed. */
+            /* Check for orphans and conflicts when not first transaction. */
+            if(!tx.IsFirst())
             {
-                RLOCK(MUTEX);
-
-                /* Check for orphans and conflicts when not first transaction. */
-                if(!tx.IsFirst())
+                /* Check memory and disk for previous transaction. */
+                if(!LLD::Ledger->HasTx(tx.hashPrevTx, FLAGS::MEMPOOL))
                 {
-                    /* Check memory and disk for previous transaction. */
-                    if(!LLD::Ledger->HasTx(tx.hashPrevTx, FLAGS::MEMPOOL))
-                    {
-                        /* Debug output. */
-                        debug::log(0, FUNCTION, "tx ", hashTx.SubString(), " ",
-                            tx.nSequence, " prev ", tx.hashPrevTx.SubString(),
-                            " ORPHAN in ", std::dec, time.ElapsedMilliseconds(), " ms");
+                    /* Debug output. */
+                    debug::log(0, FUNCTION, "tx ", hashTx.SubString(), " ",
+                        tx.nSequence, " prev ", tx.hashPrevTx.SubString(),
+                        " ORPHAN in ", std::dec, time.ElapsedMilliseconds(), " ms");
 
-                        /* Push to orphan queue. */
-                        mapOrphans[tx.hashPrevTx] = tx;
+                    /* Push to orphan queue. */
+                    mapOrphans[tx.hashPrevTx] = tx;
 
-                        /* Ask for the missing transaction. */
-                        if(pnode)
-                            pnode->PushMessage(LLP::ACTION::GET, uint8_t(LLP::TYPES::TRANSACTION), tx.hashPrevTx);
+                    /* Ask for the missing transaction. */
+                    if(pnode)
+                        pnode->PushMessage(LLP::ACTION::GET, uint8_t(LLP::TYPES::TRANSACTION), tx.hashPrevTx);
 
-                        return true;
-                    }
-
-                    /* Check for conflicts. */
-                    if(mapClaimed.count(tx.hashPrevTx))
-                        return debug::error(0, FUNCTION, "conflict detected");
+                    return true;
                 }
+
+                /* Check for conflicts. */
+                if(mapClaimed.count(tx.hashPrevTx))
+                    return debug::error(0, FUNCTION, "conflict detected");
             }
 
             //TODO: add mapConflcts map to soft-ban conflicting blocks
@@ -142,11 +139,11 @@ namespace TAO
 
             /* Check that the transaction is in a valid state. */
             if(!tx.Check())
-                return false;
+                return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED");
 
             /* Begin an ACID transction for internal memory commits. */
             if(!tx.Verify(FLAGS::MEMPOOL))
-                return false;
+                return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED");
 
             /* Connect transaction in memory. */
             LLD::TxnBegin(FLAGS::MEMPOOL);
@@ -158,16 +155,12 @@ namespace TAO
                 return false;
             }
 
-            {
-                RLOCK(MUTEX);
+            /* Set the internal memory. */
+            mapLedger[hashTx] = tx;
 
-                /* Set the internal memory. */
-                mapLedger[hashTx] = tx;
-
-                /* Update map claimed if not first tx. */
-                if(!tx.IsFirst())
-                    mapClaimed[tx.hashPrevTx] = hashTx;
-            }
+            /* Update map claimed if not first tx. */
+            if(!tx.IsFirst())
+                mapClaimed[tx.hashPrevTx] = hashTx;
 
             /* Commit new memory into database states. */
             LLD::TxnCommit(FLAGS::MEMPOOL);
@@ -187,36 +180,32 @@ namespace TAO
             }
 
             /* Check orphan queue. */
+            while(mapOrphans.count(hashTx))
             {
-                RLOCK(MUTEX);
+                /* Get the transaction from map. */
+                TAO::Ledger::Transaction& txOrphan = mapOrphans[hashTx];
 
-                while(mapOrphans.count(hashTx))
+                /* Get the previous hash. */
+                uint512_t hashThis = txOrphan.GetHash();
+
+                /* Debug output. */
+                debug::log(0, FUNCTION, "PROCESSING ORPHAN tx ", hashTx.SubString());
+
+                /* Accept the transaction into memory pool. */
+                if(!Accept(txOrphan))
                 {
-                    /* Get the transaction from map. */
-                    TAO::Ledger::Transaction& txOrphan = mapOrphans[hashTx];
-
-                    /* Get the previous hash. */
-                    uint512_t hashThis = txOrphan.GetHash();
-
-                    /* Debug output. */
-                    debug::log(0, FUNCTION, "PROCESSING ORPHAN tx ", hashTx.SubString());
-
-                    /* Accept the transaction into memory pool. */
-                    if(!Accept(txOrphan))
-                    {
-                        hashTx = hashThis;
-
-                        debug::log(0, FUNCTION, "ORPHAN tx ", hashTx.SubString(), " REJECTED");
-
-                        continue;
-                    }
-
-                    /* Erase the transaction. */
-                    mapOrphans.erase(hashTx);
-
-                    /* Set the hashTx. */
                     hashTx = hashThis;
+
+                    debug::log(0, FUNCTION, "ORPHAN tx ", hashTx.SubString(), " REJECTED");
+
+                    continue;
                 }
+
+                /* Erase the transaction. */
+                mapOrphans.erase(hashTx);
+
+                /* Set the hashTx. */
+                hashTx = hashThis;
             }
 
             /* Notify private to produce block if valid. */
