@@ -152,8 +152,11 @@ namespace TAO
                 /* Abort memory commits on failures. */
                 LLD::TxnAbort(FLAGS::MEMPOOL);
 
-                return false;
+                return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED");
             }
+            
+            /* Commit new memory into database states. */
+            LLD::TxnCommit(FLAGS::MEMPOOL);
 
             /* Set the internal memory. */
             mapLedger[hashTx] = tx;
@@ -161,9 +164,6 @@ namespace TAO
             /* Update map claimed if not first tx. */
             if(!tx.IsFirst())
                 mapClaimed[tx.hashPrevTx] = hashTx;
-
-            /* Commit new memory into database states. */
-            LLD::TxnCommit(FLAGS::MEMPOOL);
 
             /* Debug output. */
             debug::log(3, FUNCTION, "tx ", hashTx.SubString(), " ACCEPTED in ", std::dec, time.ElapsedMilliseconds(), " ms");
