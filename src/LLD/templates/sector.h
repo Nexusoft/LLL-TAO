@@ -456,21 +456,27 @@ namespace LLD
             /* Get the Data from Sector Database. */
             std::vector<uint8_t> vData;
 
+            /* Get reference of key. */
+            std::vector<uint8_t>& vKey = ssKey.Bytes();
+
             /* Check that the key is not pending in a transaction for Erase. */
             {
                 LOCK(TRANSACTION_MUTEX);
-
                 if(pTransaction)
                 {
                     /* Check if in erase queue. */
-                    if(pTransaction->mapEraseData.count(ssKey.Bytes()))
+                    if(pTransaction->mapEraseData.count(vKey))
                         return false;
 
+                    /* Check for indexes. */
+                    if(pTransaction->mapIndex.count(vKey))
+                        vKey = pTransaction->mapIndex[vKey];
+
                     /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
-                    if(pTransaction->mapTransactions.count(ssKey.Bytes()))
+                    if(pTransaction->mapTransactions.count(vKey))
                     {
                         /* Get the data from the transction object. */
-                        vData = pTransaction->mapTransactions[ssKey.Bytes()];
+                        vData = pTransaction->mapTransactions[vKey];
 
                         /* Deserialize Value. */
                         DataStream ssValue(vData, SER_LLD, DATABASE_VERSION);
@@ -488,7 +494,7 @@ namespace LLD
             }
 
             /* Get the data from the database. */
-            if(!Get(ssKey.Bytes(), vData))
+            if(!Get(vKey, vData))
                 return false;
 
             /* Deserialize Value. */
@@ -725,7 +731,7 @@ namespace LLD
          *
          **/
         bool Force(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vData);
-        
+
 
         /** Put
          *

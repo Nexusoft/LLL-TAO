@@ -199,10 +199,18 @@ public:
 
     /** Bytes
      *
+     *  Get the data stream from the object as a const reference.
+     *
+     **/
+    const std::vector<uint8_t>& Bytes() const;
+
+
+    /** Bytes
+     *
      *  Get the data stream from the object.
      *
      **/
-    const std::vector<uint8_t>& Bytes();
+    std::vector<uint8_t>& Bytes();
 
 
     /** reserve
