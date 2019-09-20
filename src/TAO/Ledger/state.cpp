@@ -714,11 +714,12 @@ namespace TAO
                     " tx=", vtx.size(),
                     " [", (nElapsed == 0 ? 0 : double(nTotalContracts / nElapsed)), " contracts/s]"
                     " [verified in ", timer.ElapsedMilliseconds(), " ms]",
+                    " [processing ", (nTotalContracts * 1000.0) / timer.ElapsedMilliseconds(), " contracts/s]",
                     " [", ::GetSerializeSize(*this, SER_LLD, nVersion), " bytes]");
 
                 /* Set best block state. */
                 ChainState::stateBest = *this;
-                nTotalContracts = 0;
+                nTotalContracts = 1; //one contract per block
 
                 /* Broadcast the block to nodes if not synchronizing. */
                 if(!ChainState::Synchronizing())

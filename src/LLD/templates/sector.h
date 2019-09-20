@@ -553,6 +553,10 @@ namespace LLD
                     const std::vector<uint8_t>& vBytes = ssJournal.Bytes();
                     STREAM.write((char*)&vBytes[0], vBytes.size());
 
+                    /* Check for erased data. */
+                    if(pTransaction->mapEraseData.count(vKey))
+                        pTransaction->mapEraseData.erase(vKey);
+
                     /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
                     pTransaction->mapIndex[vKey] = vIndex;
 
