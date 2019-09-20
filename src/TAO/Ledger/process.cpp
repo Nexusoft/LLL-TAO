@@ -48,13 +48,14 @@ namespace TAO
             if(!block.Check())
             {
                 /* Check for missing transactions. */
-                if(block.vMissing.size() != 0)
-                    nStatus |= PROCESS::INCOMPLETE;
+                if(block.vMissing.size() == 0)
+                {
+                    nStatus |= PROCESS::REJECTED;
+                    return;
+                }
 
-                /* Set the status. */
-                nStatus |= PROCESS::REJECTED;
-
-                return;
+                /* Incomplete blocks can pass through orphan checks. */
+                nStatus |= PROCESS::INCOMPLETE;
             }
 
             /* Check for orphan. */
@@ -90,6 +91,10 @@ namespace TAO
 
                 return;
             }
+
+            /* Check for incomplete block that made it through orphan checks. */
+            if(nStatus & PROCESS::INCOMPLETE)
+                return;
 
             /* Check if valid in the chain. */
             if(!block.Accept())

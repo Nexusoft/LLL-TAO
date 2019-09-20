@@ -885,7 +885,7 @@ namespace Legacy
     bool Transaction::Connect(const std::map<uint512_t, std::pair<uint8_t, DataStream> >& inputs, TAO::Ledger::BlockState& state, uint8_t nFlags) const
     {
         /* Determine if Transaction is CoinStake or CoinBase. */
-        bool fIsCoinBase = IsCoinBase();
+        bool fIsCoinBase  = IsCoinBase();
         bool fIsCoinStake = IsCoinStake();
 
         /* Special checks for coinbase and coinstake. */
