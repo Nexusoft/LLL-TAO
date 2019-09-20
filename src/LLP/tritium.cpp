@@ -1717,7 +1717,7 @@ namespace LLP
                             }
 
                             /* Ask for the block again last TODO: this can be cached for further optimization. */
-                            ssResponse << uint8_t(TYPES::BLOCK) << block.GetHash();
+                            ssResponse << uint8_t(TYPES::BLOCK) << block.hashMissing;
 
                             /* Push the packet response. */
                             WritePacket(NewMessage(ACTION::GET, ssResponse));
@@ -1728,13 +1728,19 @@ namespace LLP
                         && !(nStatus & TAO::Ledger::PROCESS::IGNORED)
                         &&  (nStatus & TAO::Ledger::PROCESS::ORPHAN))
                         {
-                            /* Ask for list of blocks. */
+                            PushMessage(ACTION::GET,
+                                uint8_t(TYPES::BLOCK),
+                                block.hashPrevBlock
+                            );
+
+                            /* Ask for list of blocks.
                             PushMessage(ACTION::LIST,
                                 uint8_t(TYPES::BLOCK),
                                 uint8_t(TYPES::LOCATOR),
                                 TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
                                 uint1024_t(block.hashPrevBlock)
                             );
+                            */
                         }
 
                         break;
@@ -1803,7 +1809,7 @@ namespace LLP
                     ++nConsecutiveOrphans;
 
                 /* Check for failure limit on node. */
-                if(nConsecutiveFails >= 500)
+                if(nConsecutiveFails >= 1000)
                 {
                     /* Switch to another available node. */
                     if(TAO::Ledger::ChainState::Synchronizing() && TAO::Ledger::nSyncSession.load() == nCurrentSession)
@@ -1815,7 +1821,7 @@ namespace LLP
 
 
                 /* Detect large orphan chains and ask for new blocks from origin again. */
-                if(nConsecutiveOrphans >= 500)
+                if(nConsecutiveOrphans >= 1000)
                 {
                     {
                         LOCK(TAO::Ledger::PROCESSING_MUTEX);
