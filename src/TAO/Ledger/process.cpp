@@ -65,7 +65,7 @@ namespace TAO
                 if(!mapOrphans.count(block.hashPrevBlock))
                 {
                     /* Check the checkpoint height. */
-                    if(block.nHeight < TAO::Ledger::ChainState::nCheckpointHeight)
+                    if(!config::fTestNet.load() && block.nHeight < TAO::Ledger::ChainState::nCheckpointHeight)
                     {
                         /* Set the status. */
                         nStatus |= PROCESS::IGNORED;
