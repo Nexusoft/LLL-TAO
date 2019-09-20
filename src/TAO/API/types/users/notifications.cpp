@@ -107,6 +107,10 @@ namespace TAO
             /* Get notifications for personal genesis indexes. */
             TAO::Ledger::Transaction tx;
 
+            /* Keep track of unique proofs. */
+            std::set<std::tuple<uint256_t, uint512_t, uint32_t>> setUnique;
+
+            /* Read back all the events. */
             uint32_t nSequence = 0;
             while(LLD::Ledger->ReadEvent(hashGenesis, nSequence, tx))
             {
@@ -115,12 +119,12 @@ namespace TAO
                 for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
                 {
                     /* Reference to contract to check */
-                    TAO::Operation::Contract& contract = tx[nContract];
+                    const TAO::Operation::Contract& contract = tx[nContract];
 
                     /* The proof to check for this contract */
-                    TAO::Register::Address hashProof;
+                    uint256_t hashProof = 0;
 
-                    /* REset the op stream */
+                    /* Reset the op stream */
                     contract.Reset();
 
                     /* The operation */
@@ -137,7 +141,7 @@ namespace TAO
                             contract >> hashProof;
 
                             /* Get the recipient account */
-                            TAO::Register::Address hashTo;
+                            uint256_t hashTo;
                             contract >> hashTo;
 
                             /* Retrieve the account. */
@@ -156,7 +160,7 @@ namespace TAO
                         case TAO::Operation::OP::TRANSFER:
                         {
                             /* The register address being transferred */
-                            TAO::Register::Address hashRegister;
+                            uint256_t hashRegister;
                             contract >> hashRegister;
 
                             /* Get recipient genesis hash */
@@ -190,8 +194,7 @@ namespace TAO
                         case TAO::Operation::OP::COINBASE:
                         {
                             /* Unpack the miners genesis from the contract */
-                            if(!TAO::Register::Unpack(contract, hashProof))
-                                continue;
+                            contract >> hashProof;
 
                             /* Check that we mined it */
                             if(hashGenesis != hashProof)
@@ -210,8 +213,17 @@ namespace TAO
                     if(LLD::Ledger->HasProof(hashProof, hashTx, nContract, TAO::Ledger::FLAGS::MEMPOOL))
                         continue;
 
+                    /* Check that this is a unique proof. */
+                    if(setUnique.count(std::make_tuple(hashProof, hashTx, nContract)))
+                    {
+                        //TODO: remove this debug print, this is to ensure consistency with the internal events
+                        debug::error(FUNCTION, "non unique event proof ", hashTx.SubString(), ", ", hashProof.SubString(), ", ", nContract);
+                        continue;
+                    }
+
                     /* Add the coinbase transaction and skip rest of contracts. */
                     vContracts.push_back(std::make_tuple(contract, nContract, 0));
+                    setUnique.insert(std::make_tuple(hashProof, hashTx, nContract));
                 }
 
                 /* Iterate the sequence id forward. */
@@ -353,7 +365,7 @@ namespace TAO
                     continue;
 
                 /* Check that this is an account */
-                if(object.Base() != TAO::Register::OBJECTS::ACCOUNT )
+                if(object.Base() != TAO::Register::OBJECTS::ACCOUNT)
                     continue;
 
                 /* Get the token address */
