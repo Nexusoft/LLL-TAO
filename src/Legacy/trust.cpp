@@ -197,7 +197,9 @@ namespace Legacy
         else
             nScore = 0;
 
-        debit << nScore << txLast.GetHash() << trustKey.GetHash();
+        uint576_t hashTrust;
+        hashTrust.SetBytes(trustKey.vchPubKey);
+        debit << nScore << txLast.GetHash() << hashTrust;
 
         return true;
     }

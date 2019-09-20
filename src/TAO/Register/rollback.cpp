@@ -439,7 +439,7 @@ namespace TAO
                     case TAO::Operation::OP::MIGRATE:
                     {
                         /* Extract the transaction from contract. */
-                        uint512_t hashTx = 0;
+                        uint512_t hashTx;
                         contract >> hashTx;
 
                         /* Get the trust register address. (hash to) */
@@ -447,8 +447,8 @@ namespace TAO
                         contract >> hashAccount;
 
                         /* Get the Legacy trust key hash (hash from) */
-                        uint512_t hashKey = 0;
-                        contract >> hashKey;
+                        uint576_t hashTrust;
+                        contract >> hashTrust;
 
                         /* Seek to end. */
                         contract.Seek(76);
@@ -482,7 +482,7 @@ namespace TAO
                             return debug::error(FUNCTION, "OP::MIGRATE: failed to erase last stake");
 
                         /* Erase the trust key conversion. */
-                        if(!LLD::Legacy->EraseTrustConversion(hashKey))
+                        if(!LLD::Legacy->EraseTrustConversion(hashTrust))
                             return debug::error(FUNCTION, "OP::MIGRATE: failed to erase trust key migration from disk");
 
                         break;

@@ -206,38 +206,38 @@ namespace LLD
 
         /** WriteTrustConversion
          *
-         *  Writes the hash of a trust key to record that it has been converted from Legacy to Tritium.
+         *  Writes the key of a trust key to record that it has been converted from Legacy to Tritium.
          *
-         *  @param[in] hashTrust The trust key hash.
+         *  @param[in] hashTrust The key of trust key to write.
          *
          *  @return True if the trust hash is written, false otherwise.
          *
          **/
-        bool WriteTrustConversion(const uint512_t& hashTrust);
+        bool WriteTrustConversion(const uint576_t& hashTrust);
 
 
         /** HasTrustConversion
          *
          *  Checks if a Legacy trust key has already been converted to Tritium.
          *
-         *  @param[in] hashTrust The trust key hash.
+         *  @param[in] hashTrust The key of trust key.
          *
          *  @return True if the trust key converted, false otherwise.
          *
          **/
-        bool HasTrustConversion(const uint512_t& hashTrust);
+        bool HasTrustConversion(const uint576_t& hashTrust);
 
 
         /** EraseTrustConversion
          *
          *  Erase a Legacy trust key conversion.
          *
-         *  @param[in] hashTrust The trust key hash.
+         *  @param[in] hashTrust The key of trust key.
          *
          *  @return True if the trust key erased, false otherwise.
          *
          **/
-        bool EraseTrustConversion(const uint512_t& hashTrust);
+        bool EraseTrustConversion(const uint576_t& hashTrust);
 
     };
 }

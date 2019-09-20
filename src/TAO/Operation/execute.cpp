@@ -825,27 +825,27 @@ namespace TAO
                         contract.Seek(65);
 
                         /* Get the trust register address. (hash to) */
-                        TAO::Register::Address hashAccount;
+                        uint256_t hashAccount;
                         contract >> hashAccount;
 
-                        /* Get the Legacy trust key hash (hash from) */
-                        uint512_t hashKey = 0;
-                        contract >> hashKey;
+                        /* Get the Legacy trust key */
+                        uint576_t hashTrust;
+                        contract >> hashTrust;
 
                         /* Get the amount to migrate. */
-                        uint64_t nAmount = 0;
+                        uint64_t nAmount;
                         contract >> nAmount;
 
                         /* Get the trust score to migrate. */
-                        uint32_t nScore = 0;
+                        uint32_t nScore;
                         contract >> nScore;
 
                         /* Get the hash last stake. */
-                        uint512_t hashLast = 0;
+                        uint512_t hashLast;
                         contract >> hashLast;
 
                         /* Deserialize the pre-state byte from the contract. */
-                        uint8_t nState = 0;
+                        uint8_t nState;
                         contract >>= nState;
 
                         /* Check for pre-state. */
@@ -877,7 +877,7 @@ namespace TAO
                             return debug::error(FUNCTION, "OP::MIGRATE: invalid register post-state");
 
                         /* Commit the migration updates to disk. */
-                        if(!Migrate::Commit(object, hashAccount, contract.Caller(), hashTx, hashKey, hashLast, nFlags))
+                        if(!Migrate::Commit(object, hashAccount, contract.Caller(), hashTx, hashTrust, hashLast, nFlags))
                             return false;
 
                         break;

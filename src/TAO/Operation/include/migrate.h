@@ -55,15 +55,15 @@ namespace TAO
              *  @param[in] hashAddress The register address to commit.
              *  @param[in] hashCaller The contract caller.
              *  @param[in] hashTx The transaction-id being claimed.
-             *  @param[in] hashKey The Legacy trust key hash being migrated from.
+             *  @param[in] hashTrust The key of the Legacy trust key being migrated from.
              *  @param[in] hashLast The hash last trust for the legacy trust key being migrated.
              *  @param[in] nFlags Flags to the LLD instance.
              *
              *  @return true if successful.
              *
              **/
-            bool Commit(const TAO::Register::Object& account, const TAO::Register::Address& hashAddress,
-                        const uint256_t& hashCaller, const uint512_t& hashTx, const uint512_t& hashKey,
+            bool Commit(const TAO::Register::Object& account, const uint256_t& hashAddress,
+                        const uint256_t& hashCaller, const uint512_t& hashTx, const uint576_t& hashTrust,
                         const uint512_t& hashLast, const uint8_t nFlags);
 
 
