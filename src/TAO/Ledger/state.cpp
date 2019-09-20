@@ -530,7 +530,7 @@ namespace TAO
             else if(nChainTrust > ChainState::nBestChainTrust.load())
             {
                 /* Attempt to set the best chain. */
-                if(!!SetBest())
+                if(!SetBest())
                 {
                     LLD::TxnAbort();
 
