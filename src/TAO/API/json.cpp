@@ -803,12 +803,12 @@ namespace TAO
 
                         /* Output the json information. */
                         ret["OP"]      = "FEE";
-                        ret["to"] = hashAccount.ToString();
+                        ret["from"] = hashAccount.ToString();
 
                         /* Resolve the name of the account that the credit is to */
                         std::string strAccount = Names::ResolveName(hashCaller, hashAccount);
                         if(!strAccount.empty())
-                            ret["to_name"] = strAccount;
+                            ret["from_name"] = strAccount;
 
                         ret["amount"]  = (double) nFee / TAO::Ledger::NXS_COIN;
 
