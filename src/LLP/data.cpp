@@ -322,6 +322,7 @@ namespace LLP
                         /* Remove a connection if it was banned by DDOS Protection. */
                         if(pConnection->DDOS->Banned())
                         {
+                            debug::log(0, "BANNED: ", pConnection->GetAddress().ToString());
                             disconnect_remove_event(nIndex, DISCONNECT_DDOS);
                             continue;
                         }

@@ -125,10 +125,10 @@ namespace LLP
             static_cast<uint32_t>(config::GetArg(std::string("-cscore"), 1)),
 
             /* The request score (total packets per second.) */
-            static_cast<uint32_t>(config::GetArg(std::string("-rscore"), 1000)),
+            static_cast<uint32_t>(config::GetArg(std::string("-rscore"), 2000)),
 
-            /* The DDOS moving average timespan (default: 60 seconds). */
-            static_cast<uint32_t>(config::GetArg(std::string("-timespan"), 60)),
+            /* The DDOS moving average timespan (default: 20 seconds). */
+            static_cast<uint32_t>(config::GetArg(std::string("-timespan"), 20)),
 
             /* Flag to determine if server should listen. */
             config::GetBoolArg(std::string("-listen"), true),
