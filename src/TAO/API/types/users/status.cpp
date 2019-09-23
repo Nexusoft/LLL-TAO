@@ -57,19 +57,16 @@ namespace TAO
             
             /* Read the last transaction for the sig chain */
             uint512_t hashLast = 0;
-            LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL);
-
-            /* Loop until genesis to count the transactions */
-            while(hashLast != 0)
+            if(LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
             {
                 /* Get the transaction from disk. */
                 TAO::Ledger::Transaction tx;
                 if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
                     throw APIException(-108, "Failed to read transaction");
 
-                /* Set the next last. */
-                hashLast = tx.hashPrevTx;
-                ++nTransactions;
+                /* Number of transactions is the last sequence number + 1 (since the sequence is 0 based) */
+                nTransactions = tx.nSequence + 1;
+
             }
 
             /* populate the transaction count */
