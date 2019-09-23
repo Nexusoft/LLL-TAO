@@ -38,6 +38,18 @@ namespace TAO
          **/
         void Cost(const Contract& contract, uint64_t &nCost);
 
+
+        /** TxCost
+         *
+         *  Calculates the transaction cost for including this contract in a transaction.  This method gives us the ability to
+         *  modulate the transaction cost depending on the contract type, for example to have no costs for credit or claim contracts.  
+         *
+         *  @param[in] contract The contract to get the transaction cost for.
+         *  @param[out] nCost The transaction cost for this contract.
+         *
+         **/
+        void TxCost(const Contract& contract, uint64_t &nCost);
+
     }
 }
 

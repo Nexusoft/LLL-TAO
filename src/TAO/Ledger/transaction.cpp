@@ -152,15 +152,24 @@ namespace TAO
 
             /* Check for max contracts. */
             if(vContracts.size() > MAX_TRANSACTION_CONTRACTS)
-                return debug::error(FUNCTION, "exceeded MAX_TRANSACTION_CONTRACTS");
+                return debug::error(FUNCTION, "transaction contract limit exceeded", vContracts.size());
 
+            /* Count of non-fee contracts in the transaction */
+            uint8_t nContracts = 0;
             /* Run through all the contracts. */
             for(const auto& contract : vContracts)
             {
                 /* Check for empty contracts. */
                 if(contract.Empty(TAO::Operation::Contract::OPERATIONS))
                     return debug::error(FUNCTION, "contract is empty");
+                
+                if(contract.Primitive() != TAO::Operation::OP::FEE)
+                    ++nContracts;
             }
+
+            /* Check contains contracts. */
+            if(nContracts == 0)
+                return debug::error(FUNCTION, "transaction is empty");
 
             /* If genesis then check that the only contracts are those for the default registers.
                NOTE: we do not make this limitation in private mode */
@@ -302,6 +311,17 @@ namespace TAO
             if(IsFirst())
                 return 0;
 
+            /* Need the previous transaction timestamp for throttling fees */
+            TAO::Ledger::Transaction txPrev;
+            if(!LLD::Ledger->ReadTx(hashPrevTx, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
+                return debug::error(FUNCTION, "prev transaction not on disk");
+
+            /* The timestamp of the previous transaction */
+            uint64_t nPrevTimestamp = txPrev.nTimestamp;
+
+            /* flag indicating that transaction fees should apply, depending on the time since the last transaction */
+            bool fApplyTxFee = nTimestamp - nPrevTimestamp < TX_FEE_INTERVAL;
+
             /* Run through all the contracts. */
             for(auto& contract : vContracts)
             {
@@ -310,6 +330,10 @@ namespace TAO
 
                 /* Calculate the total cost to execute. */
                 TAO::Operation::Cost(contract, nRet);
+
+                /* If transaction fees should apply, calculate the additional transaction cost for the contract */
+                if(fApplyTxFee)
+                    TAO::Operation::TxCost(contract, nRet);
             }
 
             return nRet;
@@ -346,6 +370,9 @@ namespace TAO
         {
             /* Get the transaction's hash. */
             uint512_t hash = GetHash();
+
+            /* flag indicating that transaction fees should apply, depending on the time since the last transaction */
+            bool fApplyTxFee = false;    
 
             /* Check for first. */
             if(IsFirst())
@@ -387,6 +414,9 @@ namespace TAO
                 TAO::Ledger::Transaction txPrev;
                 if(!LLD::Ledger->ReadTx(hashPrevTx, txPrev, nFlags))
                     return debug::error(FUNCTION, "prev transaction not on disk");
+
+                /* Work out the whether transaction fees should apply based on the interval between transactions */
+                fApplyTxFee = nTimestamp - txPrev.nTimestamp < TX_FEE_INTERVAL;
 
                 /* Double check sequence numbers here. */
                 if(txPrev.nSequence + 1 != nSequence)
@@ -493,11 +523,11 @@ namespace TAO
             if(!config::GetBoolArg("-private", false))
             {
                 /* The fee applied to this transaction */
-                uint64_t nFees = 0;
+                uint64_t nFees = 0;                
 
                 /* The total cost of this transaction.  We use the calculated cost for this as the individual contract costs would
                    have already been calculated during the execution of each contract (Operation::Execute)*/
-                uint64_t nCost = CalculatedCost();
+                uint64_t nCost = CalculatedCost(fApplyTxFee);
 
                 if(IsFirst())
                 {
@@ -915,10 +945,12 @@ namespace TAO
 
 
         /* Calculates the cost of this transaction from the contracts within it */
-        uint64_t Transaction::CalculatedCost() const
+        uint64_t Transaction::CalculatedCost(bool fApplyTxFee) const
         {
             /* The calculated cost */
             uint64_t nCost = 0;
+
+
 
             /* Iterate through all contracts. */
             for(const auto& contract : vContracts)
@@ -927,6 +959,10 @@ namespace TAO
                 contract.Bind(this);
 
                 nCost += contract.Cost();
+
+                /* If transaction fees should apply, calculate the additional transaction cost for the contract */
+                if(fApplyTxFee)
+                    TAO::Operation::TxCost(contract, nCost);
             }
 
             return nCost;

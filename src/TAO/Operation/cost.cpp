@@ -206,5 +206,53 @@ namespace TAO
                 }
             }
         }
+
+        /* Calculates the transaction cost for including this contract in a transaction.  This method gives us the ability to
+           modulate the transaction cost depending on the contract type, for example to have no costs for credit or claim contracts */
+        void TxCost(const Contract& contract, uint64_t &nCost)
+        {
+            /* Reset the contract streams. */
+            contract.Reset();
+
+            /* Get the contract OP. */
+            uint8_t nOP = 0;
+            contract >> nOP;
+
+            /* Check the current opcode. */
+            switch(nOP)
+            {
+                /* Condition that allows a validation to occur. */
+                case OP::CONDITION:
+                {
+                    /* If it is a condition then get the actual op code. */
+                    contract >> nOP;
+
+                    break;
+                }
+            }
+
+
+            /* Check the opcode. */
+            switch(nOP)
+            {
+                case OP::CLAIM:
+                case OP::CREDIT:
+                case OP::FEE:
+                {
+                    /* This case is included for clarity as it is essentially a no-op. Credit and Claim contracts attract no
+                       transaction fee as the fee is essentially paid by the debit/transfer. Fee contracts should also not incur 
+                       a tx fee.*/
+                    nCost += 0;
+                    break;
+                }
+
+                default:
+                {
+                    /* Apply the default fee */
+                    nCost += TAO::Ledger::TX_FEE;
+                    break;
+                }
+            }
+        }
     }
 }

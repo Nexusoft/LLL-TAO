@@ -171,6 +171,9 @@ namespace TAO
         /** The stake threshold weight multiplier. **/
         const uint64_t MAX_STAKE_WEIGHT = 1000 * NXS_COIN;
 
+        /* The fee-free interval between transactions in seconds*/
+        const uint64_t TX_FEE_INTERVAL = 10;
+
         /* Fees */
         /* Cost to create generic object registers */
         const uint64_t OBJECT_FEE = 1 * NXS_COIN;
@@ -210,6 +213,10 @@ namespace TAO
 
         /* The cost per byte to create registers */
         const uint64_t DATA_FEE = 0.01 * NXS_COIN;
+
+
+        /* The cost per contract when creating transactions faster than the fee-free threshold */
+        const uint64_t TX_FEE = 0.01 * NXS_COIN;
 
 
         /** MaturityCoinbase
