@@ -393,11 +393,13 @@ namespace TAO
             /** CalculatedCost
             *
             *  Calculates the cost of this transaction from the contracts within it
+            * 
+            *  @param[in] fApplyTxFee Flag indicating that transaction fees should also apply
             *
             *  @return The calculated cost.
             *
             **/
-            uint64_t CalculatedCost() const;
+            uint64_t CalculatedCost(bool fApplyTxFee) const;
 
         };
     }
