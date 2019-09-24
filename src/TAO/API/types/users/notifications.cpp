@@ -650,7 +650,8 @@ namespace TAO
                     break;
 
                 /* Get contract JSON data. */
-                json::json obj = ContractToJSON(hashCaller, refContract, 1);
+                json::json obj = ContractToJSON(hashCaller, refContract, std::get<1>(contract), 1);
+                
                 obj["txid"]      = refContract.Hash().ToString();
                 obj["time"]      = refContract.Timestamp();
 

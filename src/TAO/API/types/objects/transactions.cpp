@@ -130,12 +130,15 @@ namespace TAO
                 bool fTrustRelated = false;
 
                 /* The contracts to include that relate to the supplied register */
-                std::vector<TAO::Operation::Contract> vContracts;
+                std::vector<std::pair<TAO::Operation::Contract, uint32_t>> vContracts;
 
                 /* Check all contracts in the transaction to see if any of them relates to the requested object register. */
                 uint32_t nContracts = tx.Size();
                 for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
                 {
+                    /* reset trust related flag */
+                    fTrustRelated = false;
+
                     /* The register address that this contract relates to, if any  */
                     TAO::Register::Address hashAddress;
 
@@ -207,7 +210,7 @@ namespace TAO
                     /* If the register from the contract is the same as the requested register OR if the register is a trust account
                        and the contract is a trust related operation, then add it to the contracts to be included for this tx */
                     if((hashAddress == hashRegister) || (fTrust && fTrustRelated))
-                        vContracts.push_back(contract);
+                        vContracts.push_back(std::make_pair(contract, nContract));
                 }
 
                 /* Set the next last. */
@@ -271,7 +274,11 @@ namespace TAO
 
                     /* Add all relevant contracts to the response. */
                     for(const auto& contract : vContracts)
-                        jsonContracts.push_back(ContractToJSON(hashCaller, contract, nVerbose));
+                    {
+                        /* add the contract to the array */
+                        jsonContracts.push_back(ContractToJSON(hashCaller, contract.first, contract.second, nVerbose));
+
+                    }
 
                     jsonTx["contracts"] = jsonContracts;
                 }
