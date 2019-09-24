@@ -236,10 +236,9 @@ namespace TAO
             switch(nOP)
             {
                 case OP::CLAIM:
-                case OP::CREDIT:
                 case OP::FEE:
                 {
-                    /* This case is included for clarity as it is essentially a no-op. Credit and Claim contracts attract no
+                    /* This case is included for clarity as it is essentially a no-op. Claim contracts attract no
                        transaction fee as the fee is essentially paid by the debit/transfer. Fee contracts should also not incur 
                        a tx fee.*/
                     nCost += 0;
