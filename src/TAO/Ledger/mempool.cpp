@@ -139,11 +139,11 @@ namespace TAO
 
             /* Check that the transaction is in a valid state. */
             if(!tx.Check())
-                return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED");
+                return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
 
             /* Begin an ACID transction for internal memory commits. */
             if(!tx.Verify(FLAGS::MEMPOOL))
-                return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED");
+                return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
 
             /* Connect transaction in memory. */
             LLD::TxnBegin(FLAGS::MEMPOOL);
@@ -152,7 +152,7 @@ namespace TAO
                 /* Abort memory commits on failures. */
                 LLD::TxnAbort(FLAGS::MEMPOOL);
 
-                return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED");
+                return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
             }
 
             /* Commit new memory into database states. */
@@ -196,7 +196,7 @@ namespace TAO
                 {
                     hashTx = hashThis;
 
-                    debug::log(0, FUNCTION, "ORPHAN tx ", hashTx.SubString(), " REJECTED");
+                    debug::log(0, FUNCTION, "ORPHAN tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
 
                     continue;
                 }
