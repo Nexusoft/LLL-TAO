@@ -254,17 +254,26 @@ namespace TAO
             /* Add a contract to the list of contracts. */
             uint32_t nContracts = tx.Size();
             for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
-                ret.push_back(ContractToJSON(hashCaller, tx[nContract], nVerbosity));
+            {
+                /* JSONify the contract */
+                json::json contract = ContractToJSON(hashCaller, tx[nContract], nContract, nVerbosity);
+                
+                /* add the contract to the array */
+                ret.push_back(contract);
+            }
 
             return ret;
         }
 
 
         /* Converts a serialized operation stream to formattted JSON */
-        json::json ContractToJSON(const uint256_t& hashCaller, const TAO::Operation::Contract& contract, uint32_t nVerbosity)
+        json::json ContractToJSON(const uint256_t& hashCaller, const TAO::Operation::Contract& contract, uint32_t nContract, uint32_t nVerbosity)
         {
             /* Declare the return JSON object*/
             json::json ret;
+
+            /* Add the id */
+            ret["id"] = nContract;
 
             /* Start the stream at the beginning. */
             contract.Reset();
@@ -424,7 +433,7 @@ namespace TAO
                         /* Output the json information. */
                         ret["OP"]         = "CLAIM";
                         ret["txid"]       = hashTx.ToString();
-                        ret["output"]     = nContract;
+                        ret["contract"]     = nContract;
                         ret["address"]    = hashAddress.ToString();
 
 
@@ -632,7 +641,7 @@ namespace TAO
                         ret["for"]      = strInput;
 
                         ret["txid"]    = hashTx.ToString();
-                        ret["output"]  = nID;
+                        ret["contract"]  = nID;
                         ret["proof"]   = hashProof.ToString();
                         ret["to"] = hashAddress.ToString();
 

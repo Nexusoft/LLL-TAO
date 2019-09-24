@@ -302,7 +302,7 @@ This will list off all of the transactions related to a given token. You DO NOT 
             {
                 "OP": "CREDIT",
                 "txid": "01e73b498dbabbf4629ad674b9ae3824b96cca83199c25a67901db53b271d19acf1411b0c4f9a3d8ded80860ffe2dcf683d2d227a675d453303b31f86f868f9e",
-                "output": 0,
+                "contract": 0,
                 "proof": "8FJxzexVDUN5YiQYK4QjvfRNrAUym8FNu4B8yvYGXgKFJL8nBse",
                 "to": "8CvLySLAWEKDB9SJSUDdRgzAG6ALVcXLzPQREN9Nbf7AzuJkg5P",
                 "to_name": "main",
@@ -348,11 +348,15 @@ This will list off all of the transactions related to a given token. You DO NOT 
 
 `contracts` : The array of contracts bound to this transaction and their details with opcodes.    
 {    
+&nbsp;&nbsp;&nbsp;`id` : The sequential ID of this contract within the transaction.
+
 &nbsp;&nbsp;&nbsp;`OP` : The contract operation. Can be `APPEND`, `CLAIM`, `COINBASE`, `CREATE`, `CREDIT`, `DEBIT`, `FEE`, `GENESIS`, `LEGACY`, `TRANSFER`, `TRUST`, `STAKE`, `UNSTAKE`, `WRITE`.
 
 &nbsp;&nbsp;&nbsp;`for` : For `CREDIT` transactions, the contract that this credit was created for . Always `DEBIT` for token transactions.
 
 &nbsp;&nbsp;&nbsp;`txid` : The transaction that was credited / claimed.
+
+&nbsp;&nbsp;&nbsp;`contract` : The ID of the contract within the transaction that was credited / claimed.
 
 &nbsp;&nbsp;&nbsp;`proof` : The register address proving the credit.
 
@@ -663,7 +667,7 @@ This will list off all of the transactions related to a given account. You DO NO
             {
                 "OP": "CREDIT",
                 "txid": "01e73b498dbabbf4629ad674b9ae3824b96cca83199c25a67901db53b271d19acf1411b0c4f9a3d8ded80860ffe2dcf683d2d227a675d453303b31f86f868f9e",
-                "output": 0,
+                "contract": 0,
                 "proof": "a2e51edcd41a8152bfedb24e3c22ee5a65d6d7d524146b399145bced269aeff0",
                 "to": "8CbkwEQ9S8owmX74joU6XmiwxJq1aoiqUoXc9fLCKzw15HscM99",
                 "to_name": "test",
@@ -703,11 +707,15 @@ This will list off all of the transactions related to a given account. You DO NO
 
 `contracts` : The array of contracts bound to this transaction and their details with opcodes.    
 {    
+&nbsp;&nbsp;&nbsp;`id` : The sequential ID of this contract within the transaction.
+
 &nbsp;&nbsp;&nbsp;`OP` : The contract operation. Can be `APPEND`, `CLAIM`, `COINBASE`, `CREATE`, `CREDIT`, `DEBIT`, `FEE`, `GENESIS`, `LEGACY`, `TRANSFER`, `TRUST`, `STAKE`, `UNSTAKE`, `WRITE`.
 
 &nbsp;&nbsp;&nbsp;`for` : For `CREDIT` transactions, the contract that this credit was created for . Always `DEBIT` for token transactions.
 
 &nbsp;&nbsp;&nbsp;`txid` : The transaction that was credited / claimed.
+
+&nbsp;&nbsp;&nbsp;`contract` : The ID of the contract within the transaction that was credited / claimed.
 
 &nbsp;&nbsp;&nbsp;`proof` : The register address proving the credit.
 

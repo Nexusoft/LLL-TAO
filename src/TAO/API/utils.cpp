@@ -13,6 +13,7 @@ ________________________________________________________________________________
 #include <unordered_set>
 
 #include <LLD/include/global.h>
+#include <LLD/cache/template_lru.h>
 
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/utils.h>
@@ -132,6 +133,10 @@ namespace TAO
          */
         bool ListRegisters(const uint256_t& hashGenesis, std::vector<TAO::Register::Address>& vRegisters)
         {
+            /* LRU register cache by genesis hash.  This caches the vector of register addresses along with the last txid of the
+               sig chain, so that we can determine whether any new transactions have been added, invalidating the cache.  */
+            static LLD::TemplateLRU<uint256_t, std::pair<uint512_t, std::vector<TAO::Register::Address>>> cache(10);
+
             /* Get the last transaction. */
             uint512_t hashLast = 0;
 
@@ -140,6 +145,26 @@ namespace TAO
             if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
                 return false;
 
+            /* Check the cache to see if we have already cached the registers for this sig chain and it is still valid. */
+            if(cache.Has(hashGenesis))
+            {
+                /* The cached register list */
+                std::pair<uint512_t, std::vector<TAO::Register::Address>> cacheEntry;
+                
+                /* Retrieve the cached register list from the LRU cache */
+                cache.Get(hashGenesis, cacheEntry);
+
+                /* Check that the hashlast hasn't changed */
+                if(cacheEntry.first == hashLast)
+                {
+                    /* Poplate vector to return */
+                    vRegisters = cacheEntry.second;
+
+                    return true;
+                }
+
+            }
+
             /* Keep a running list of owned and transferred registers. We use a set to store these registers because
              * we are going to be checking them frequently to see if a hash is already in the container,
              * and a set offers us near linear search time
@@ -147,16 +172,19 @@ namespace TAO
             std::unordered_set<uint256_t> vTransferred;
             std::unordered_set<uint256_t> vOwnedRegisters;
 
+            /* The previous hash in the chain */
+            uint512_t hashPrev = hashLast;
+
             /* Loop until genesis. */
-            while(hashLast != 0)
+            while(hashPrev != 0)
             {
                 /* Get the transaction from disk. */
                 TAO::Ledger::Transaction tx;
-                if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                if(!LLD::Ledger->ReadTx(hashPrev, tx, TAO::Ledger::FLAGS::MEMPOOL))
                     throw APIException(-108, "Failed to read transaction");
 
                 /* Set the next last. */
-                hashLast = tx.hashPrevTx;
+                hashPrev = tx.hashPrevTx;
 
                 /* Iterate through all contracts. */
                 for(uint32_t nContract = 0; nContract < tx.Size(); ++nContract)
@@ -319,7 +347,8 @@ namespace TAO
                 }
             }
 
-            /* Sort the registers by creation date  */
+            /* Add the register list to the LRU cache */
+            cache.Put(hashGenesis, std::make_pair(hashLast, vRegisters));
 
             return true;
         }

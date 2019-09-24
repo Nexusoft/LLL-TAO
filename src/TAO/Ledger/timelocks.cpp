@@ -47,7 +47,7 @@ namespace TAO
             1421949600,        //--- Block Version 4 Testnet Activation:  05/10/2015 08:01:00 GMT - 6
             1536562800,        //--- Block Version 5 Testnet Activation:  09/10/2018 00:00:00 GMT - 7
             1537167600,        //--- Block Version 6 Testnet Activation:  09/17/2018 00:00:00 GMT - 7
-            1560481207,        //--- Block Version 7 Testnet Activation:  06/12/2019 14:02:00 GMT - 7
+            1560481207        //--- Block Version 7 Testnet Activation:  06/12/2019 14:02:00 GMT - 7
         };
 
 
@@ -59,7 +59,8 @@ namespace TAO
             1438369200,        //--- Block Version 4 Activation:          07/31/2015 12:00:00 GMT - 7
             1536977460,        //--- Block Version 5 Activation:          09/14/2018 19:11:00 GMT - 7
             1538791860,        //--- Block Version 6 Activation:          10/05/2018 19:11:00 GMT - 7
-            1569277200,        //--- Block Version 7 Activation:          09/23/2019 16:20:00 GMT - 6
+            1571869200         //--- Block Version 7 Activation:          10/23/2019 16:20:00 GMT - 6  (TODO - update with actual date)
+            // 1569277200        //--- Block Version 7 Activation:          09/23/2019 16:20:00 GMT - 6
         };
 
 

@@ -20,6 +20,7 @@ ________________________________________________________________________________
 
 #include <cstdint>
 #include <vector>
+#include <map>
 
 
 //TODO: Abstract base class for all cache systems
