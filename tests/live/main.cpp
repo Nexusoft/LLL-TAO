@@ -47,6 +47,9 @@ ________________________________________________________________________________
 #include <Legacy/types/address.h>
 #include <Legacy/types/transaction.h>
 
+#include <LLP/templates/ddos.h>
+#include <Util/include/runtime.h>
+
 #include <list>
 #include <variant>
 
@@ -167,7 +170,7 @@ public:
 
 
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
-int main(int argc, char** argv)
+/* int main(int argc, char** argv)
 {
 
     Test2* test = new Test2();
@@ -238,4 +241,40 @@ int main(int argc, char** argv)
 
 
     return 0;
+} */
+
+int main(int argc, char** argv)
+{
+    LLP::DDOS_Filter DDOS(10);
+
+    runtime::timer TIMER;
+
+    while(!DDOS.Banned())
+    {
+        if(TIMER.Elapsed() >= 1)
+        {
+            DDOS.rSCORE += 20;
+            DDOS.cSCORE += 2;
+            TIMER.Reset();
+
+            debug::log(0, "rSCORE: ", DDOS.rSCORE.Score() );
+            debug::log(0, "cSCORE: ", DDOS.cSCORE.Score() ); 
+
+            if(DDOS.rSCORE.Score() > 10)
+                DDOS.Ban("rSCORE");
+
+            if(DDOS.cSCORE.Score() > 1)
+                DDOS.Ban("rSCORE");
+        }
+        else
+        {
+            runtime::sleep(100);
+        }
+        
+    }
+
+    debug::log(0, "BANNED");
+
+    return 0;
+
 }

@@ -285,6 +285,8 @@ namespace TAO
         bool Users::get_coinbases(const uint256_t& hashGenesis,
                 uint512_t hashLast, std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> &vContracts)
         {
+            /* Counter of consecutive claimed coinbases.  If this reaches 10 then assume there are none older to process */
+            uint8_t nConsecutive = 0;
             /* Reverse iterate until genesis (newest to oldest). */
             while(hashLast != 0)
             {
@@ -324,12 +326,25 @@ namespace TAO
 
                         /* Check if proofs are spent. */
                         if(LLD::Ledger->HasProof(hashGenesis, hashLast, nContract, TAO::Ledger::FLAGS::MEMPOOL))
+                        {
+                            /* Increment the counter of consecutive claims */
+                            ++nConsecutive;
                             continue;
+                        }
+
+                        /* Reset the counter since this one has not been claimed */
+                        nConsecutive = 0;
 
                         /* Add the coinbase transaction and skip rest of contracts. */
                         vContracts.push_back(std::make_tuple(contract, nContract, 0));
                     }
                 }
+
+                /* Check to see if we have reached 10 consecutive claims.  If so then we can assume that all previous coinbases
+                    are also claimed and therefore break out early.  This avoids us having to scan the entire sig chain each time
+                    which can be very expensive if you have many transactions (such as miners/stakers) */
+                if(nConsecutive == 10)
+                    break;
 
                 /* Set the next last. */
                 hashLast = tx.hashPrevTx;
@@ -635,7 +650,8 @@ namespace TAO
                     break;
 
                 /* Get contract JSON data. */
-                json::json obj = ContractToJSON(hashCaller, refContract, 1);
+                json::json obj = ContractToJSON(hashCaller, refContract, std::get<1>(contract), 1);
+                
                 obj["txid"]      = refContract.Hash().ToString();
                 obj["time"]      = refContract.Timestamp();
 
