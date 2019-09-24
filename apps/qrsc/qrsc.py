@@ -366,12 +366,10 @@ def check_notifications(api, sid):
     # the list of transactions, we will remove them.
     #
     transfers = []
-    for entries in status["result"]:
-        for entry in entries:
-            if (entry["OP"] != "TRANSFER"): continue
-            transfers.append({ "txid" : entry["txid"], "address" :
-                entry["address"] })
-        #endfor
+    for entry in status["result"]:
+        if (entry["OP"] != "TRANSFER"): continue
+        transfers.append({ "txid" : entry["txid"], "address" :
+            entry["address"] })
     #endfor
     if (transfers == []): return("")
 
@@ -384,8 +382,9 @@ def check_notifications(api, sid):
         address = entry["address"]
         found = False
         for contracts in status["result"]:
+            if (contracts.has_key("contracts") == False): continue
             for contract in contracts["contracts"]:
-                if (contract["OP"] != "CLAIM"): continue
+                if (contract["OP"] != "TRANSFER"): continue
                 if (contract["txid"] != txid): continue
                 if (contract["address"] != address): continue
                 found = True
