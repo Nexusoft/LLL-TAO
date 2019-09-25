@@ -907,8 +907,24 @@ namespace LLP
                                                 if(!LLD::Ledger->ReadBlock(have, state))
                                                     return debug::drop(NODE, "failed to read locator block");
 
-                                                /* Start from previous block in locator. */
-                                                hashStart = state.hashPrevBlock;
+                                                /* Go back five blocks from locator. */
+                                                for(uint32_t i = 0; i < 5; ++i)
+                                                {
+                                                    /* Get previous block state. */
+                                                    TAO::Ledger::BlockState statePrev = state.Prev();
+                                                    if(!statePrev)
+                                                        break;
+
+                                                    /* Assign hash start. */
+                                                    hashStart = statePrev.GetHash();
+
+                                                    /* Check for genesis. */
+                                                    if(hashStart == TAO::Ledger::ChainState::Genesis())
+                                                        break;
+
+                                                    /* Set the starting hash. */
+                                                    state = statePrev;
+                                                }
                                             }
                                             else //on genesis, don't rever to previous block
                                                 hashStart = have;
