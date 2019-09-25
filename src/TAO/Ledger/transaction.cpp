@@ -130,6 +130,10 @@ namespace TAO
         /* Determines if the transaction is a valid transaciton and passes ledger level checks. */
         bool Transaction::Check() const
         {
+            /* Check transaction version */
+            if(nVersion != 1)
+                return debug::error(FUNCTION, "invalid transaction version");
+
             /* Check for genesis valid numbers. */
             if(hashGenesis == 0)
                 return debug::error(FUNCTION, "genesis cannot be zero");
