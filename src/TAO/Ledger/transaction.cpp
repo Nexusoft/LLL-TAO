@@ -396,6 +396,10 @@ namespace TAO
                 if(txPrev.nSequence + 1 != nSequence)
                     return debug::error(FUNCTION, "prev transaction incorrect sequence");
 
+                /* Check timestamp to previous transaction. */
+                if(nTimestamp < txPrev.nTimestamp)
+                    return debug::error(FUNCTION, "timestamp too far in the past ", txPrev.nTimestamp - nTimestamp);
+
                 /* Check the previous next hash that is being claimed. */
                 bool fRecovery = false;
                 if(txPrev.hashNext != PrevHash())
@@ -420,10 +424,6 @@ namespace TAO
                 /* Check recovery hash is sequenced from previous tx (except for changing from 0) */
                 if(!fRecovery && txPrev.hashRecovery != hashRecovery && txPrev.hashRecovery != 0)
                     return debug::error(FUNCTION, "recovery hash broken chain"); //this can only be updated when recovery executed
-
-                /* Check the previous sequence number. */
-                if(txPrev.nSequence + 1 != nSequence)
-                    return debug::error(FUNCTION, "prev sequence ", txPrev.nSequence, " broken ", nSequence);
 
                 /* Check the previous genesis. */
                 if(txPrev.hashGenesis != hashGenesis)
