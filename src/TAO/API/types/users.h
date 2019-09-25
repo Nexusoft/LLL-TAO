@@ -594,7 +594,7 @@ namespace TAO
 
             /** BlocksToMaturity
             *
-            *  Determines whether the signature chain has reached maturity after the last coinbase/coinstake transaction
+            *  Determines whether the signature chain has reached desired maturity after the last coinbase/coinstake transaction
             *
             *  @param[in] hashGenesis The genesis hash for the sig chain owner.
             *

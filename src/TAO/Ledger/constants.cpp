@@ -65,14 +65,5 @@ namespace TAO
             return NEXUS_MATURITY_COINSTAKE;
         }
 
-        /* Retrieve the number of blocks (confirmations) required for sig chain maturity after a coinbase/coinstake transaction. */
-        uint32_t MaturitySigChain()
-        {
-            if(config::fTestNet)
-                return TESTNET_MATURITY_SIGCHAIN;
-            else
-                return NEXUS_MATURITY_SIGCHAIN;
-        }
-
     }
 }

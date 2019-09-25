@@ -432,20 +432,6 @@ namespace TAO
                 /* Check previous transaction from disk hash. */
                 if(txPrev.GetHash() != hashPrevTx) //NOTE: this is being extra paranoid. Consider removing.
                     return debug::error(FUNCTION, "prev transaction prevhash mismatch");
-
-                /* Sig chain maturity check.  If the previous tx is a coinbase/stake and this is NOT a coinbase/stake then
-                   ensure that the previous transaction is mature (has 33 confs) */
-                if((txPrev.IsCoinBase() || txPrev.IsCoinStake()) && !(IsCoinBase() || IsCoinStake()))
-                {
-                    /* Get number of confirmations of previous TX */
-                    uint32_t nConfirms = 0;
-                    if(!LLD::Ledger->ReadConfirmations(hashPrevTx, nConfirms, pblock))
-                        return debug::error(FUNCTION, "failed to read confirmations");
-
-                    /* Check that the previous TX has reached sig chain maturity */
-                    if(nConfirms < MaturitySigChain())
-                        return debug::error(FUNCTION, "signature chain is immature");
-                }
             }
 
             /* Keep for dependants. */
