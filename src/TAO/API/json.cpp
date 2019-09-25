@@ -101,7 +101,7 @@ namespace TAO
                         if(LLD::Ledger->ReadTx(vtx.second, tx))
                         {
                             /* add the transaction JSON.  */
-                            json::json ret = TransactionToJSON(0, tx, block, nVerbosity, false);
+                            json::json ret = TransactionToJSON(0, tx, block, nVerbosity);
 
                             txinfo.push_back(ret);
                         }
@@ -128,7 +128,7 @@ namespace TAO
 
         /* Converts the transaction to formatted JSON */
         json::json TransactionToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction& tx, 
-                                     const TAO::Ledger::BlockState& block, uint32_t nVerbosity, bool fFilterCoinbase)
+                                     const TAO::Ledger::BlockState& block, uint32_t nVerbosity, const uint256_t& hashCoinbase)
         {
             /* Declare JSON object to return */
             json::json ret;
@@ -162,7 +162,7 @@ namespace TAO
 
             /* Always add the contracts if level 2 and up */
             if(nVerbosity >= 2)
-                ret["contracts"] = ContractsToJSON(hashCaller, tx, nVerbosity, fFilterCoinbase);
+                ret["contracts"] = ContractsToJSON(hashCaller, tx, nVerbosity, hashCoinbase);
 
             return ret;
         }
@@ -247,7 +247,7 @@ namespace TAO
 
 
         /* Converts a transaction object into a formatted JSON list of contracts bound to the transaction. */
-        json::json ContractsToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction &tx, uint32_t nVerbosity, bool fFilterCoinbase)
+        json::json ContractsToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction &tx, uint32_t nVerbosity, const uint256_t& hashCoinbase)
         {
             /* Declare the return JSON object*/
             json::json ret = json::json::array();
@@ -257,8 +257,8 @@ namespace TAO
             for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
             {
                 const TAO::Operation::Contract& contract = tx[nContract]; 
-                /* If the caller has requested to filter the coinbases then we only include those where the owner is the  */
-                if(fFilterCoinbase)
+                /* If the caller has requested to filter the coinbases then we only include those where the coinbase is meant for hashCoinbase  */
+                if(hashCoinbase != 0)
                 {
                     if(TAO::Register::Unpack(contract, TAO::Operation::OP::COINBASE))
                     {
@@ -268,8 +268,8 @@ namespace TAO
                         /* Unpack the owner from the contract */
                         TAO::Register::Unpack(contract, hashProof);
 
-                        /* Skip this contract if the proof is not the hashCaller */
-                        if(hashProof != hashCaller)
+                        /* Skip this contract if the proof is not the hashCoinbase */
+                        if(hashProof != hashCoinbase)
                             continue;
                     }
                 }

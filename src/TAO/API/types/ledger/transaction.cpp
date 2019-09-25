@@ -92,7 +92,7 @@ namespace TAO
             if(TAO::Ledger::mempool.Get(hash, txTritium) || LLD::Ledger->ReadTx(hash, txTritium))
             {
                 if(strFormat == "JSON")
-                    ret = TAO::API::TransactionToJSON (hashCaller, txTritium, blockState, nVerbose, false);
+                    ret = TAO::API::TransactionToJSON (hashCaller, txTritium, blockState, nVerbose);
                 else
                 {
                     DataStream ssTx(SER_NETWORK, LLP::PROTOCOL_VERSION);
