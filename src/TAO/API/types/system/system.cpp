@@ -123,49 +123,82 @@ namespace TAO
             /* Declare the JSON response object*/
             json::json jsonRet = json::json::array();
 
-            /* Vector of tritium peers*/
-            std::vector<LLP::TrustAddress> vTritiumInfo;
-
-            /* Query address information from Tritium server address manager */
-            if(LLP::TRITIUM_SERVER && LLP::TRITIUM_SERVER->pAddressManager)
-                 LLP::TRITIUM_SERVER->pAddressManager->GetAddresses(vTritiumInfo, LLP::ConnectState::CONNECTED);
-
-            /* Sort the peers by score (highest first)*/
-            std::sort(vTritiumInfo.begin(), vTritiumInfo.end());
-
-            /* add peer info to the response array for each connected peer*/
-            for(auto& addr : vTritiumInfo)
+            for(uint16_t nThread = 0; nThread < LLP::TRITIUM_SERVER->MAX_THREADS; ++nThread)
             {
-                json::json obj;
+                /* Get the data threads. */
+                LLP::DataThread<LLP::TritiumNode>* dt = LLP::TRITIUM_SERVER->DATA_THREADS[nThread];
 
-                /* The IP address of the peer.  This could be an EID*/
-                obj["address"]  = addr.ToString();
+                /* Lock the data thread. */
+                uint16_t nSize = static_cast<uint16_t>(dt->CONNECTIONS->size());
 
-                /* Whether the IP address is IPv4 or IPv6 */
-                obj["version"]  = addr.IsIPv4() ? std::string("IPv4") : std::string("IPv6");
+                /* Loop through connections in data thread. */
+                for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
+                {
+                    try
+                    {
+                        /* Skip over inactive connections. */
+                        if(!dt->CONNECTIONS->at(nIndex))
+                            continue;
 
-                /* The last known block height of the peer.  This may not be accurate as peers only broadcast their current height periodically */
-                obj["height"]   = addr.nHeight;
+                        /* Push the active connection. */
+                        if(dt->CONNECTIONS->at(nIndex)->Connected())
+                        {
+                            json::json obj;
 
-                /* The calculated network latency between this node and the peer */
-                obj["latency"]  = debug::safe_printstr(addr.nLatency, " ms");
+                            /* The IPV4/V6 address */
+                            obj["address"]  = dt->CONNECTIONS->at(nIndex)->addr.ToString();
 
-                /* Unix timestamp of the last time this node had any communications with the peer */
-                obj["lastseen"] = addr.nLastSeen;
+                            /* The version string of the connected peer */
+                            obj["type"]     = dt->CONNECTIONS->at(nIndex)->strFullVersion;
 
-                /* The number of connections successfully established with this peer since this node started */
-                obj["connects"] = addr.nConnected;
+                            /* The protocol version being used to communicate */
+                            obj["version"]  = dt->CONNECTIONS->at(nIndex)->nProtocolVersion;
 
-                /* The number of connections dropped with this peer since this node started */
-                obj["drops"]    = addr.nDropped;
+                            /* Session ID for the current connection */
+                            obj["session"]  = dt->CONNECTIONS->at(nIndex)->nCurrentSession;
 
-                /* The number of failed connection attempts to this peer since this node started */
-                obj["fails"]    = addr.nFailed;
-                
-                /* The score value assigned to this peer based on latency and other connection statistics.   */
-                obj["score"]    = addr.Score();
+                            /* Flag indicating whether this was an outgoing connection or incoming */
+                            obj["outgoing"] = dt->CONNECTIONS->at(nIndex)->fOUTGOING.load();
 
-                jsonRet.push_back(obj);
+                            /* The current height of the peer */
+                            obj["height"]   = dt->CONNECTIONS->at(nIndex)->nCurrentHeight;
+
+                            /* block hash of the peer's best chain */
+                            obj["best"]     = dt->CONNECTIONS->at(nIndex)->hashBestChain.SubString();
+
+                            /* The calculated network latency between this node and the peer */
+                            obj["latency"]  = dt->CONNECTIONS->at(nIndex)->nLatency.load();
+
+                            /* Unix timestamp of the last time this node had any communications with the peer */
+                            obj["lastseen"] = dt->CONNECTIONS->at(nIndex)->nLastPing.load();
+
+                            /* See if the connection is in the address manager */
+                            if(LLP::TRITIUM_SERVER->pAddressManager->Has(dt->CONNECTIONS->at(nIndex)->addr))
+                            {
+                                /* Get the trust address from the address manager */
+                                const LLP::TrustAddress& trustAddress = LLP::TRITIUM_SERVER->pAddressManager->Get(dt->CONNECTIONS->at(nIndex)->addr);
+                                
+                                /* The number of connections successfully established with this peer since this node started */
+                                obj["connects"] = trustAddress.nConnected;
+
+                                /* The number of connections dropped with this peer since this node started */
+                                obj["drops"]    = trustAddress.nDropped;
+
+                                /* The number of failed connection attempts to this peer since this node started */
+                                obj["fails"]    = trustAddress.nFailed;
+                                
+                                /* The score value assigned to this peer based on latency and other connection statistics.   */
+                                obj["score"]    = trustAddress.Score();
+                            }
+
+                            jsonRet.push_back(obj);
+                        }
+                    }
+                    catch(const std::exception& e)
+                    {
+                        //debug::error(FUNCTION, e.what());
+                    }
+                }
             }
 
             return jsonRet;
