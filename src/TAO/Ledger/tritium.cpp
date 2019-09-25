@@ -500,7 +500,7 @@ namespace TAO
                 return debug::error(FUNCTION, "block's timestamp too early");
 
             /* Check that Block is Descendant of Hardened Checkpoints. */
-            if(!IsDescendant(statePrev))
+            if(!ChainState::Synchronizing() && !IsDescendant(statePrev))
                 return debug::error(FUNCTION, "not descendant of last checkpoint");
 
             /* Check proof of stake requirements. */
