@@ -135,9 +135,17 @@ NONE
 
 `address` : The IP address and port of the peer.  This could be a LISP EID using the LISP overlay or an IP address using the native underlay.
 
-`version` : Whether the IP address is IPv4 or IPv6.
+`type` : The version string of the connected peer.
 
-`height` : The last known block height of the peer.  This may not be accurate as peers only broadcast their current height periodically.
+`version` : The protocol version being used to communicate.
+
+`session` : Session ID for the current connection
+
+`outgoing` : Flag indicating whether this was an outgoing connection or incoming
+
+`height` : The current height of the peer.
+
+`best` : Block hash of the peer's best chain
 
 `latency` : The calculated network latency between this node and the peer.
 

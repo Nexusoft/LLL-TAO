@@ -127,7 +127,8 @@ namespace TAO
         }
 
         /* Converts the transaction to formatted JSON */
-        json::json TransactionToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nVerbosity)
+        json::json TransactionToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction& tx, 
+                                     const TAO::Ledger::BlockState& block, uint32_t nVerbosity, const uint256_t& hashCoinbase)
         {
             /* Declare JSON object to return */
             json::json ret;
@@ -161,7 +162,7 @@ namespace TAO
 
             /* Always add the contracts if level 2 and up */
             if(nVerbosity >= 2)
-                ret["contracts"] = ContractsToJSON(hashCaller, tx, nVerbosity);
+                ret["contracts"] = ContractsToJSON(hashCaller, tx, nVerbosity, hashCoinbase);
 
             return ret;
         }
@@ -246,7 +247,7 @@ namespace TAO
 
 
         /* Converts a transaction object into a formatted JSON list of contracts bound to the transaction. */
-        json::json ContractsToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction &tx, uint32_t nVerbosity)
+        json::json ContractsToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction &tx, uint32_t nVerbosity, const uint256_t& hashCoinbase)
         {
             /* Declare the return JSON object*/
             json::json ret = json::json::array();
@@ -255,11 +256,29 @@ namespace TAO
             uint32_t nContracts = tx.Size();
             for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
             {
+                const TAO::Operation::Contract& contract = tx[nContract]; 
+                /* If the caller has requested to filter the coinbases then we only include those where the coinbase is meant for hashCoinbase  */
+                if(hashCoinbase != 0)
+                {
+                    if(TAO::Register::Unpack(contract, TAO::Operation::OP::COINBASE))
+                    {
+                        /* The proof (owner) of the coinbase */
+                        uint256_t hashProof = 0;
+
+                        /* Unpack the owner from the contract */
+                        TAO::Register::Unpack(contract, hashProof);
+
+                        /* Skip this contract if the proof is not the hashCoinbase */
+                        if(hashProof != hashCoinbase)
+                            continue;
+                    }
+                }
+
                 /* JSONify the contract */
-                json::json contract = ContractToJSON(hashCaller, tx[nContract], nContract, nVerbosity);
+                json::json contractJSON = ContractToJSON(hashCaller, contract, nContract, nVerbosity);
                 
                 /* add the contract to the array */
-                ret.push_back(contract);
+                ret.push_back(contractJSON);
             }
 
             return ret;
@@ -695,7 +714,7 @@ namespace TAO
                                 const TAO::Operation::Contract& debitContract = txDebit[nID];
 
                                 /* Only add reference if the credit is for a debit (rather than a coinbase) */
-                                if( TAO::Register::Unpack(debitContract, TAO::Operation::OP::DEBIT))
+                                if(TAO::Register::Unpack(debitContract, TAO::Operation::OP::DEBIT))
                                 {
                                     /* Get the address the debit came from */
                                     TAO::Register::Address hashFrom;

@@ -130,6 +130,10 @@ namespace TAO
         /* Determines if the transaction is a valid transaciton and passes ledger level checks. */
         bool Transaction::Check() const
         {
+            /* Check transaction version */
+            if(nVersion != 1)
+                return debug::error(FUNCTION, "invalid transaction version");
+
             /* Check for genesis valid numbers. */
             if(hashGenesis == 0)
                 return debug::error(FUNCTION, "genesis cannot be zero");
@@ -422,6 +426,10 @@ namespace TAO
                 if(txPrev.nSequence + 1 != nSequence)
                     return debug::error(FUNCTION, "prev transaction incorrect sequence");
 
+                /* Check timestamp to previous transaction. */
+                //if(nTimestamp < txPrev.nTimestamp)
+                //    return debug::error(FUNCTION, "timestamp too far in the past ", txPrev.nTimestamp - nTimestamp);
+
                 /* Check the previous next hash that is being claimed. */
                 bool fRecovery = false;
                 if(txPrev.hashNext != PrevHash())
@@ -447,10 +455,6 @@ namespace TAO
                 if(!fRecovery && txPrev.hashRecovery != hashRecovery && txPrev.hashRecovery != 0)
                     return debug::error(FUNCTION, "recovery hash broken chain"); //this can only be updated when recovery executed
 
-                /* Check the previous sequence number. */
-                if(txPrev.nSequence + 1 != nSequence)
-                    return debug::error(FUNCTION, "prev sequence ", txPrev.nSequence, " broken ", nSequence);
-
                 /* Check the previous genesis. */
                 if(txPrev.hashGenesis != hashGenesis)
                     return debug::error(FUNCTION, "genesis hash broken chain");
@@ -458,20 +462,6 @@ namespace TAO
                 /* Check previous transaction from disk hash. */
                 if(txPrev.GetHash() != hashPrevTx) //NOTE: this is being extra paranoid. Consider removing.
                     return debug::error(FUNCTION, "prev transaction prevhash mismatch");
-
-                /* Sig chain maturity check.  If the previous tx is a coinbase/stake and this is NOT a coinbase/stake then
-                   ensure that the previous transaction is mature (has 33 confs) */
-                if((txPrev.IsCoinBase() || txPrev.IsCoinStake()) && !(IsCoinBase() || IsCoinStake()))
-                {
-                    /* Get number of confirmations of previous TX */
-                    uint32_t nConfirms = 0;
-                    if(!LLD::Ledger->ReadConfirmations(hashPrevTx, nConfirms, pblock))
-                        return debug::error(FUNCTION, "failed to read confirmations");
-
-                    /* Check that the previous TX has reached sig chain maturity */
-                    if(nConfirms < MaturitySigChain())
-                        return debug::error(FUNCTION, "signature chain is immature");
-                }
             }
 
             /* Keep for dependants. */

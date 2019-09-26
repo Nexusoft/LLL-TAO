@@ -678,7 +678,7 @@ namespace TAO
                     if(!state->Connect())
                     {
                         /* Abort the Transaction. */
-                        LLD::TxnAbort();
+                        LLD::TxnAbort(); //TODO: when a txn is aborted, we need to ensure that the memory states stay intact
 
                         /* Debug errors. */
                         return debug::error(FUNCTION, "failed to connect ",
