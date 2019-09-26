@@ -174,7 +174,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
         tx.nTimestamp  = runtime::timestamp();
 
         //payload with coinstake reward
-        tx[0] << uint8_t(OP::GENESIS) << hashTrust << uint64_t(5);
+        tx[0] << uint8_t(OP::GENESIS) << uint64_t(5);
 
         //generate the prestates and poststates
         REQUIRE(tx.Build());
@@ -204,6 +204,12 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             REQUIRE(trust.get<uint64_t>("trust")   == 0);
             REQUIRE(trust.get<uint64_t>("stake")   == 5000);
             REQUIRE(trust.get<uint256_t>("token")  == 0);
+
+            //verify ReadTrust and ReadState return same object
+            TAO::Register::Object object;
+            REQUIRE(LLD::Register->ReadState(hashTrust, object));
+
+            REQUIRE(trust == object);
         }
 
 
@@ -236,7 +242,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
         tx.nTimestamp  = runtime::timestamp();
 
         //payload with coinstake reward
-        tx[0] << uint8_t(OP::GENESIS) << hashTrust << uint64_t(10);
+        tx[0] << uint8_t(OP::GENESIS) << uint64_t(10);
 
         //generate the prestates and poststates
         REQUIRE_FALSE(tx.Build());
@@ -257,6 +263,12 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             REQUIRE(trust.get<uint64_t>("trust")   == 0);
             REQUIRE(trust.get<uint64_t>("stake")   == 5000);
             REQUIRE(trust.get<uint256_t>("token")  == 0);
+
+            //verify ReadTrust and ReadState return same object
+            TAO::Register::Object object;
+            REQUIRE(LLD::Register->ReadState(hashTrust, object));
+
+            REQUIRE(trust == object);
         }
 
 
@@ -316,6 +328,12 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             REQUIRE(trust.get<uint64_t>("trust")   == 720);
             REQUIRE(trust.get<uint64_t>("stake")   == 5000);
             REQUIRE(trust.get<uint256_t>("token")  == 0);
+
+            //verify ReadTrust and ReadState return same object
+            TAO::Register::Object object;
+            REQUIRE(LLD::Register->ReadState(hashTrust, object));
+
+            REQUIRE(trust == object);
         }
 
 
@@ -376,6 +394,12 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             REQUIRE(trust.get<uint64_t>("trust")   == 2000);
             REQUIRE(trust.get<uint64_t>("stake")   == 5000);
             REQUIRE(trust.get<uint256_t>("token")  == 0);
+
+            //verify ReadTrust and ReadState return same object
+            TAO::Register::Object object;
+            REQUIRE(LLD::Register->ReadState(hashTrust, object));
+
+            REQUIRE(trust == object);
         }
 
 
@@ -427,6 +451,12 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             REQUIRE(trust.get<uint64_t>("trust")   == 2000);
             REQUIRE(trust.get<uint64_t>("stake")   == 5000);
             REQUIRE(trust.get<uint256_t>("token")  == 0);
+
+            //verify ReadTrust and ReadState return same object
+            TAO::Register::Object object;
+            REQUIRE(LLD::Register->ReadState(hashTrust, object));
+
+            REQUIRE(trust == object);
         }
 
 
@@ -478,6 +508,12 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             REQUIRE(trust.get<uint64_t>("trust")   == 2000);
             REQUIRE(trust.get<uint64_t>("stake")   == 5000);
             REQUIRE(trust.get<uint256_t>("token")  == 0);
+
+            //verify ReadTrust and ReadState return same object
+            TAO::Register::Object object;
+            REQUIRE(LLD::Register->ReadState(hashTrust, object));
+
+            REQUIRE(trust == object);
         }
 
 
@@ -535,6 +571,12 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             REQUIRE(trust.get<uint64_t>("trust")   == 1200);
             REQUIRE(trust.get<uint64_t>("stake")   == 3000);
             REQUIRE(trust.get<uint256_t>("token")  == 0);
+
+            //verify ReadTrust and ReadState return same object
+            TAO::Register::Object object;
+            REQUIRE(LLD::Register->ReadState(hashTrust, object));
+
+            REQUIRE(trust == object);
         }
 
 
@@ -592,6 +634,12 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             REQUIRE(trust.get<uint64_t>("trust")   == 2200);
             REQUIRE(trust.get<uint64_t>("stake")   == 3020);
             REQUIRE(trust.get<uint256_t>("token")  == 0);
+
+            //verify ReadTrust and ReadState return same object
+            TAO::Register::Object object;
+            REQUIRE(LLD::Register->ReadState(hashTrust, object));
+
+            REQUIRE(trust == object);
         }
 
 
@@ -652,6 +700,12 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             REQUIRE(trust.get<uint64_t>("trust")   == 3000);
             REQUIRE(trust.get<uint64_t>("stake")   == 3020);
             REQUIRE(trust.get<uint256_t>("token")  == 0);
+
+            //verify ReadTrust and ReadState return same object
+            TAO::Register::Object object;
+            REQUIRE(LLD::Register->ReadState(hashTrust, object));
+
+            REQUIRE(trust == object);
         }
 
 
