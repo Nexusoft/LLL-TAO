@@ -13,7 +13,7 @@ The following methods are currently supported by this API
 [`get/transaction`](#gettransaction)   
 [`submit/transaction`](#submittransaction)  
 [`void/transaction`](#voidtransaction)   
-[`get/mininginfo`](#getmininginfo)
+[`get/mininginfo`](#getmininginfo)   
 [`list/trustaccounts`](#listtrustaccounts)
 
 
