@@ -17,6 +17,8 @@ ________________________________________________________________________________
 #include <Util/include/string.h>
 #include <Util/include/mutex.h>
 
+#include <LLP/include/port.h>
+
 #include <cstring>
 #include <string>
 #include <cmath>
@@ -25,21 +27,22 @@ namespace config
 {
     std::map<std::string, std::string> mapArgs;
     std::map<std::string, std::vector<std::string> > mapMultiArgs;
-    std::map<uint32_t, std::vector<std::string> > mapIPFilters;
+    std::map<uint16_t, std::vector<std::string> > mapIPFilters;
 
     std::atomic<bool> fShutdown(false);
-
-    bool fDebug = false;
-    bool fPrintToConsole = false;
-    bool fDaemon = false;
-    bool fServer = false;
-    bool fClient = false;
-    bool fCommandLine = false;
-    bool fTestNet = false;
-    bool fListen = false;
-    bool fUseProxy = false;
-    bool fAllowDNS = false;
-    bool fLogTimestamps = false;
+    std::atomic<bool> fDebug(false);
+    std::atomic<bool> fPrintToConsole(false);
+    std::atomic<bool> fDaemon(false);
+    std::atomic<bool> fClient(false);
+    std::atomic<bool> fCommandLine(false);
+    std::atomic<bool> fTestNet(false);
+    std::atomic<bool> fListen(false);
+    std::atomic<bool> fUseProxy(false);
+    std::atomic<bool> fAllowDNS(false);
+    std::atomic<bool> fLogTimestamps(false);
+    std::atomic<bool> fMultiuser(false);
+    std::atomic<bool> fProcessNotifications(false);
+    std::atomic<bool> fInitialized(false);
 
     std::mutex ARGS_MUTEX;
 
@@ -47,14 +50,17 @@ namespace config
     void InterpretNegativeSetting(const std::string &name, std::map<std::string, std::string>& mapSettingsRet)
     {
         // interpret -nofoo as -foo=0 (and -nofoo=0 as -foo=1) as long as -foo not set
-        if (name.find("-no") == 0)
+        if(name.find("-no") == 0)
         {
             std::string positive("-");
             positive.append(name.begin()+3, name.end());
-            if (mapSettingsRet.count(positive) == 0)
+
+            if(mapSettingsRet.count(positive) == 0)
             {
-                bool value = !GetBoolArg(name);
-                mapSettingsRet[positive] = (value ? "1" : "0");
+                if(mapSettingsRet[name].empty())
+                    mapSettingsRet[positive] = "0";
+                else
+                    mapSettingsRet[positive] = (convert::atoi32(mapArgs[name]) == 0) ? "1" : "0";
             }
         }
     }
@@ -62,71 +68,58 @@ namespace config
     /* Parse the Argument Parameters */
     void ParseParameters(int argc, const char*const argv[])
     {
-        //mapArgs.clear();
-        //mapMultiArgs.clear();
-        for (int i = 1; i < argc; ++i)
+        LOCK(ARGS_MUTEX);
+
+        for(int i = 1; i < argc; ++i)
         {
-            char psz[10000];
-            memset( psz, 0, 10000);
-
-            uint16_t len = static_cast<uint16_t>(std::strlen(argv[i]));
-            len = std::min(len, static_cast<uint16_t>(10000));
-            std::copy((uint8_t *)argv[i], (uint8_t *)argv[i] + len, psz);
-
-            char* pszValue = (char*)"";
-            if (strchr(psz, '='))
-            {
-                pszValue = strchr(psz, '=');
-                *pszValue++ = '\0';
-            }
-            #ifdef WIN32
-            _strlwr(psz);
-            if (psz[0] == '/')
-                psz[0] = '-';
-            #endif
-            if (psz[0] != '-')
+            /* Check for arguments value. */
+            std::string strArg = std::string(argv[i]);
+            if(strArg[0] != '-')
                 break;
 
-            mapArgs[psz] = pszValue;
-            mapMultiArgs[psz].push_back(pszValue);
-        }
+            /* Compress '--' value into '-' */
+            if(strArg[1] == '-')
+                strArg.erase(0, 1);
 
-        for(const auto& entry : mapArgs)
-        {
-            std::string name = entry.first;
+            /* Find value split. */
+            std::string::size_type pos = strArg.find("=");
 
-            //  interpret --foo as -foo (as long as both are not set)
-            if (name.find("--") == 0)
-            {
-                std::string singleDash(name.begin()+1, name.end());
-                if (mapArgs.count(singleDash) == 0)
-                    mapArgs[singleDash] = entry.second;
+            /* Parse key and value. */
+            std::string strKey = strArg.substr(0, pos);
+            std::string strVal = "";
 
-                name = singleDash;
-            }
+            /* Add value if not boolean. */
+            if(pos != strArg.npos)
+                strVal = strArg.substr(pos + 1);
 
-            // interpret -nofoo as -foo=0 (and -nofoo=0 as -foo=1) as long as -foo not set
-            InterpretNegativeSetting(name, mapArgs);
+            /* Build args map. */
+            mapArgs[strKey] = strVal;
+            mapMultiArgs[strKey].push_back(strVal);
+
+            /* Interpret -nofoo as -foo=0 (and -nofoo=0 as -foo=1) as long as -foo not set */
+            InterpretNegativeSetting(strKey, mapArgs);
         }
     }
+
 
     /* Return string argument or default value */
     std::string GetArg(const std::string& strArg, const std::string& strDefault)
     {
         LOCK(ARGS_MUTEX);
 
-        if (mapArgs.count(strArg))
+        if(mapArgs.count(strArg))
             return mapArgs[strArg];
 
         return strDefault;
     }
+
 
     /* Return integer argument or default value. */
     int64_t GetArg(const std::string& strArg, int64_t nDefault)
     {
         LOCK(ARGS_MUTEX);
 
-        if (mapArgs.count(strArg))
+        if(mapArgs.count(strArg))
             return convert::atoi64(mapArgs[strArg]);
 
         return nDefault;
@@ -138,35 +131,38 @@ namespace config
     {
         LOCK(ARGS_MUTEX);
 
-        if (mapArgs.count(strArg))
+        if(mapArgs.count(strArg))
         {
-            if (mapArgs[strArg].empty())
+            if(mapArgs[strArg].empty())
                 return true;
             return (convert::atoi32(mapArgs[strArg]) != 0);
         }
         return fDefault;
     }
 
+
     /* Set an argument if it doesn't already have a value */
     bool SoftSetArg(const std::string& strArg, const std::string& strValue)
     {
         LOCK(ARGS_MUTEX);
 
-        if (mapArgs.count(strArg))
+        if(mapArgs.count(strArg))
             return false;
 
         mapArgs[strArg] = strValue;
         return true;
     }
 
+
     /* Set a boolean argument if it doesn't already have a value */
     bool SoftSetBoolArg(const std::string& strArg, bool fValue)
     {
-        if (fValue)
+        if(fValue)
             return SoftSetArg(strArg, std::string("1"));
         else
             return SoftSetArg(strArg, std::string("0"));
     }
+
 
     /* Caches some of the common arguments into global variables for quick/easy access */
     void CacheArgs()
@@ -174,13 +170,13 @@ namespace config
         fDebug                  = GetBoolArg("-debug", false);
         fPrintToConsole         = GetBoolArg("-printtoconsole", false);
         fDaemon                 = GetBoolArg("-daemon", false);
-        fServer                 = fDaemon || GetBoolArg("-server", false);
-        fTestNet                = GetBoolArg("-testnet", false) ||
-                                  GetBoolArg("-lispnet", false);
+        fTestNet                = GetArg("-testnet", 0) > 0;
         fListen                 = GetBoolArg("-listen", true);
         //fUseProxy               = GetBoolArg("-proxy")
         fAllowDNS               = GetBoolArg("-allowdns", true);
         fLogTimestamps          = GetBoolArg("-logtimestamps", false);
+        fMultiuser              = GetBoolArg("-multiuser", false);
+        fProcessNotifications   = GetBoolArg("-processnotifications", true);
 
 
         /* Parse the allowip entries and add them to a map for easier processing when new connections are made*/
@@ -190,13 +186,25 @@ namespace config
         {
             /* ensure it has a port*/
             std::size_t nPortPos = entry.find(":");
-            if( nPortPos == std::string::npos)
+            if(nPortPos == std::string::npos)
                 continue;
 
             std::string strIP = entry.substr(0, nPortPos);
-            uint32_t nPort = stoi(entry.substr( nPortPos +1));
+            uint16_t nPort = std::stoi(entry.substr(nPortPos + 1));
 
             mapIPFilters[nPort].push_back(strIP);
+        }
+
+        /* Parse the legacy rpcallowip entries and add them to to the filters map too, so that legacy users
+           can migrate without having to change their config files*/
+        const std::vector<std::string>& vRPCFilters = config::mapMultiArgs["-rpcallowip"];
+
+        /* get the RPC port in use */
+        uint16_t nRPCPort = static_cast<uint16_t>(config::GetArg(std::string("-rpcport"), config::fTestNet ? TESTNET_RPC_PORT : MAINNET_RPC_PORT));
+
+        for(const auto& entry : vRPCFilters)
+        {
+            mapIPFilters[nRPCPort].push_back(entry);
         }
     }
 }

@@ -22,7 +22,7 @@ ________________________________________________________________________________
 #include <thread>
 #include <vector>
 
-#include <LLC/include/key.h>
+#include <LLC/include/eckey.h>
 #include <LLC/types/uint1024.h>
 
 #include <Legacy/wallet/cryptokeystore.h> //for CryptedKeyMap typedef
@@ -47,7 +47,8 @@ namespace Legacy
         DB_LOAD_OK,
         DB_CORRUPT,
         DB_TOO_NEW,
-        DB_LOAD_FAIL
+        DB_LOAD_FAIL,
+        DB_NEEDS_RESCAN
     };
 
 
@@ -67,6 +68,7 @@ namespace Legacy
      *    - "defaultkey" = Default public key value
      *    - "key"<public key> = unencrypted private key
      *    - "ckey"<public key> = encrypted private key
+     *    - "trustkey" <public key> = the key/ckey used for staking
      *    - "tx"<tx hash> = serialized wallet transaction
      *    - "cscript"<script hash> = serialized redeem script
      *    - "bestblock" = block locator
@@ -561,14 +563,14 @@ namespace Legacy
          *
          *  This method will write the master key and encrypted key map into the database. It will also remove any unencrypted
          *  keys that correspond to the new encrypted ones. It will suspend the flush thread and perform all database
-         *  updates as a single transaction that is committed on success. 
+         *  updates as a single transaction that is committed on success.
          *
          *  @param[in] nNewMasterKeyId The index (Id) of the master key to store
          *
          *  @param[in] kMasterKey Master key used to encrypt the new encrypted keys
          *
          *  @param[in] mapNewEncryptedKeys The encrypted keys to store in the database
-         * 
+         *
          *  @return true on success, false otherwise (transaction aborted, database not updated)
          *
          **/
@@ -577,13 +579,13 @@ namespace Legacy
 
         /** DBRewrite
          *
-         *  Rewrites the backing database by copying all contents. 
+         *  Rewrites the backing database by copying all contents.
          *
-         *  This method provides a proxy to the underlying database process, keeping all database specifics encapsulated 
+         *  This method provides a proxy to the underlying database process, keeping all database specifics encapsulated
          *  within WalletDB. Wallet class, or other use points, should always call this method instead of the
          *  underlying method, allowing flexibilty to the underlying implementation.
-         * 
-         *  @return true on success, false otherwise 
+         *
+         *  @return true on success, false otherwise
          *
          **/
         bool DBRewrite();

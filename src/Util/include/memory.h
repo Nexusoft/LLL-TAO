@@ -16,8 +16,14 @@ ________________________________________________________________________________
 #define NEXUS_UTIL_INCLUDE_MEMORY_H
 
 #include <cstdint>
+
+#include <LLC/aes/aes.h>
+
 #include <Util/include/mutex.h>
 #include <Util/include/debug.h>
+#include <Util/include/allocators.h>
+
+#include <openssl/rand.h>
 
 namespace memory
 {
@@ -35,6 +41,37 @@ namespace memory
      *
      **/
     int32_t compare(const uint8_t *a, const uint8_t *b, const uint64_t size);
+
+
+    /** copy
+     *
+     *  Copies from two sets of iteratos and checks the sizes for potential buffer
+     *  overflows.
+     *
+     *  @param[in] src_begin The source beginning iterator
+     *  @param[in] src_end The source ending iterator
+     *  @param[in] dst_begin The destination beginning iterator
+     *  @param[in] dst_end The destination ending iterator
+     *
+     **/
+    template<typename Type>
+    void copy(const Type* src_begin, const Type* src_end , const Type* dst_begin, const Type* dst_end)
+    {
+        /* Check the source iterators. */
+        if(src_end < src_begin)
+            throw std::domain_error("src end iterator less than src begin");
+
+        /* Check the destination iterators. */
+        if(dst_end < dst_begin)
+            throw std::domain_error("dst end iterator less than dst begin");
+
+        /* Check the sizes. */
+        if(src_end - src_begin != dst_end - dst_begin)
+            throw std::domain_error("src size mismatch with dst size");
+
+        /* Copy the data. */
+        std::copy((Type*)src_begin, (Type*)src_end, (Type*)dst_begin);
+    }
 
 
     /** atomic
@@ -212,7 +249,6 @@ namespace memory
         : MUTEX(MUTEX_IN)
         , data(pData)
         {
-            MUTEX.lock();
         }
 
 
@@ -363,6 +399,8 @@ namespace memory
          **/
         lock_proxy<TypeName> operator->()
         {
+            MUTEX.lock();
+
             return lock_proxy<TypeName>(data, MUTEX);
         }
 
@@ -409,9 +447,9 @@ namespace memory
         }
 
 
-        /** reset
+        /** free
          *
-         *  Reset the internal memory of the atomic pointer.
+         *  Free the internal memory of the encrypted pointer.
          *
          **/
         void free()
@@ -423,6 +461,480 @@ namespace memory
 
             data = nullptr;
         }
+    };
+
+
+
+    /** encrypted
+     *
+     *  Abstract base class for encrypting specific data types in a class.
+     *
+     **/
+    class encrypted
+    {
+    public:
+
+        /** Special method for encrypting specific member variables of class. **/
+        virtual void Encrypt() = 0;
+
+
+        /** Virtual Destructor. **/
+        virtual ~encrypted()
+        {
+
+        }
+
+    protected:
+
+        /** encrypt memory
+         *
+         *  Encrypt or Decrypt a pointer.
+         *
+         **/
+        template<class TypeName>
+        void encrypt(const TypeName& data)
+        {
+            static bool fKeySet = false;
+            static std::vector<uint8_t> vKey(16);
+            static std::vector<uint8_t> vIV(16);
+
+            /* Set the encryption key if not set. */
+            if(!fKeySet)
+            {
+                RAND_bytes((uint8_t*)&vKey[0], 16);
+                RAND_bytes((uint8_t*)&vIV[0], 16);
+
+                fKeySet = true;
+            }
+
+            /* Create the AES context. */
+            struct AES_ctx ctx;
+            AES_init_ctx_iv(&ctx, &vKey[0], &vIV[0]);
+
+            /* Encrypt the buffer data. */
+            AES_CTR_xcrypt_buffer(&ctx, (uint8_t*)&data, sizeof(data));
+        }
+
+
+        /** encrypt memory
+         *
+         *  Encrypt or Decrypt a pointer.
+         *
+         **/
+        template<class TypeName>
+        void encrypt(const std::vector<TypeName>& data)
+        {
+            static bool fKeySet = false;
+            static std::vector<uint8_t> vKey(16);
+            static std::vector<uint8_t> vIV(16);
+
+            /* Set the encryption key if not set. */
+            if(!fKeySet)
+            {
+                RAND_bytes((uint8_t*)&vKey[0], 16);
+                RAND_bytes((uint8_t*)&vIV[0], 16);
+
+                fKeySet = true;
+            }
+
+            /* Create the AES context. */
+            struct AES_ctx ctx;
+            AES_init_ctx_iv(&ctx, &vKey[0], &vIV[0]);
+
+            /* Encrypt the buffer data. */
+            AES_CTR_xcrypt_buffer(&ctx, (uint8_t*)&data[0], data.size() * sizeof(TypeName));
+        }
+
+
+        /** encrypt memory
+         *
+         *  Encrypt or Decrypt a pointer.
+         *
+         **/
+        void encrypt(const std::string& data)
+        {
+            static bool fKeySet = false;
+            static std::vector<uint8_t> vKey(16);
+            static std::vector<uint8_t> vIV(16);
+
+            /* Set the encryption key if not set. */
+            if(!fKeySet)
+            {
+                RAND_bytes((uint8_t*)&vKey[0], 16);
+                RAND_bytes((uint8_t*)&vIV[0], 16);
+
+                fKeySet = true;
+            }
+
+            /* Create the AES context. */
+            struct AES_ctx ctx;
+            AES_init_ctx_iv(&ctx, &vKey[0], &vIV[0]);
+
+            /* Encrypt the buffer data. */
+            AES_CTR_xcrypt_buffer(&ctx, (uint8_t*)&data[0], data.size());
+        }
+
+
+
+        /** encrypt memory
+         *
+         *  Encrypt or Decrypt a pointer.
+         *
+         **/
+        void encrypt(const SecureString& data)
+        {
+            static bool fKeySet = false;
+            static std::vector<uint8_t> vKey(16);
+            static std::vector<uint8_t> vIV(16);
+
+            /* Set the encryption key if not set. */
+            if(!fKeySet)
+            {
+                RAND_bytes((uint8_t*)&vKey[0], 16);
+                RAND_bytes((uint8_t*)&vIV[0], 16);
+
+                fKeySet = true;
+            }
+
+            /* Create the AES context. */
+            struct AES_ctx ctx;
+            AES_init_ctx_iv(&ctx, &vKey[0], &vIV[0]);
+
+            /* Encrypt the buffer data. */
+            AES_CTR_xcrypt_buffer(&ctx, (uint8_t*)&data[0], data.size());
+        }
+    };
+
+
+    /** decrypted_proxy
+     *
+     *  Temporary class that unlocks a mutex when outside of scope.
+     *  Useful for protecting member access to a raw pointer and handling decryption.
+     *
+     **/
+    template <class TypeName>
+    class decrypted_proxy
+    {
+        /** Reference of the mutex. **/
+        std::recursive_mutex& MUTEX;
+
+        /** The pointer being locked. **/
+        TypeName* data;
+
+        /** The reference count to ensure it knows when to re-encrypt the memory. */
+        std::atomic<uint32_t>& nRefs;
+
+    public:
+
+        /** Basic constructor
+         *
+         *  Assign the pointer and reference to the mutex.
+         *
+         *  @param[in] pData The pointer to shallow copy
+         *  @param[in] MUTEX_IN The mutex reference
+         *
+         **/
+        decrypted_proxy(TypeName* pdata, std::recursive_mutex& MUTEX_IN, std::atomic<uint32_t>& nRefsIn)
+        : MUTEX(MUTEX_IN)
+        , data(pdata)
+        , nRefs(nRefsIn)
+        {
+            /* Lock the mutex. */
+            MUTEX.lock();
+
+            /* Decrypt memory on first proxy. */
+            if(nRefs == 0)
+            {
+                data->Encrypt();
+            }
+
+            /* Increment the reference count. */
+            ++nRefs;
+        }
+
+
+        /** Destructor
+        *
+        *  Unlock the mutex and encrypt memory.
+        *
+        **/
+        ~decrypted_proxy()
+        {
+            /* Decrement the ref count. */
+            --nRefs;
+
+            /* Encrypt memory again when ref count is 0. */
+            if(nRefs == 0)
+            {
+                data->Encrypt();
+                
+            }
+
+            /* Unlock the mutex. */
+            MUTEX.unlock();
+        }
+
+
+        /** Member Access Operator.
+        *
+        *  Access the memory of the raw pointer.
+        *
+        **/
+        TypeName* operator->() const
+        {
+            /* Stop member access if poitner is null. */
+            if(data == nullptr)
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, "member access to nullptr"));
+
+            return data;
+        }
+    };
+
+
+    /** encrypted_ptr
+     *
+     *  Protects a pointer with a mutex.
+     *  Encrypts / Decrypts the memory allocated to pointer.
+     *
+     **/
+
+    template<class TypeName>
+    class encrypted_ptr
+    {
+        /** The internal locking mutex. **/
+        mutable std::recursive_mutex MUTEX;
+
+        /** The internal raw poitner. **/
+        TypeName* data;
+
+        /** Reference count for decrypted_proxy. **/
+        mutable std::atomic<uint32_t> nRefs;
+
+    public:
+
+        /** Default Constructor. **/
+        encrypted_ptr()
+        : MUTEX()
+        , data(nullptr)
+        , nRefs(0)
+        {
+        }
+
+
+        /** Create pointer by raw pointer data. **/
+        encrypted_ptr(TypeName* pdata)
+        : MUTEX()
+        , data(nullptr)
+        , nRefs(0)
+        {
+            store(pdata);
+        }
+
+
+        /** Create pointer from object. **/
+        encrypted_ptr(const TypeName& type)
+        : MUTEX()
+        , data(nullptr)
+        , nRefs(0)
+        {
+            store(new TypeName(type));
+        }
+
+
+        /** Copy Constructor. **/
+        encrypted_ptr(const encrypted_ptr<TypeName>& pointer) = delete;
+
+
+        /** Move Constructor. **/
+        encrypted_ptr(const encrypted_ptr<TypeName>&& pointer)
+        : data(pointer.data)
+        , nRefs(pointer.nRefs.load())
+        {
+        }
+
+
+        /** Destructor. **/
+        ~encrypted_ptr()
+        {
+        }
+
+
+        /** Copy Assignment operator. **/
+        encrypted_ptr& operator=(const encrypted_ptr<TypeName>& pdata) = delete;
+
+
+        /** Move Assignment operator. **/
+        encrypted_ptr& operator=(const encrypted_ptr<TypeName>&& pdata)
+        {
+            data  = pdata.data;
+            nRefs = pdata.nRefs.load();
+
+            return *this;
+        }
+
+
+        /** Assignment operator. **/
+        encrypted_ptr& operator=(TypeName* dataIn)
+        {
+            store(dataIn);
+
+            return *this;
+        }
+
+
+        /** Equivilent operator.
+         *
+         *  @param[in] a The data type to compare to.
+         *
+         **/
+        bool operator==(const TypeName& dataIn) const
+        {
+            RLOCK(MUTEX);
+
+            /* Throw an exception on nullptr. */
+            if(data == nullptr)
+                return false;
+
+            /* Decrypt the pointer. */
+            data->Encrypt();
+
+            /* Check equivilence. */
+            bool fEquals = (*data == dataIn);
+
+            /* Encrypt the poitner. */
+            data->Encrypt();
+
+            return fEquals;
+        }
+
+
+        /** Not equivilent operator.
+         *
+         *  @param[in] a The data type to compare to.
+         *
+         **/
+        bool operator!=(const TypeName& dataIn) const
+        {
+            RLOCK(MUTEX);
+
+            /* Throw an exception on nullptr. */
+            if(data == nullptr)
+                return false;
+
+            /* Decrypt the pointer. */
+            data->Encrypt();
+
+            /* Check equivilence. */
+            bool fNotEquals = (*data != dataIn);
+
+            /* Encrypt the poitner. */
+            data->Encrypt();
+
+            return fNotEquals;
+        }
+
+
+        /** Not operator
+         *
+         *  Check if the pointer is nullptr.
+         *
+         **/
+        bool operator!(void) const
+        {
+            RLOCK(MUTEX);
+
+            return data == nullptr;
+        }
+
+
+        /** Member access overload
+         *
+         *  Allow encrypted_ptr access like a normal pointer.
+         *
+         **/
+        decrypted_proxy<TypeName> operator->() const
+        {
+            return decrypted_proxy<TypeName>(data, MUTEX, nRefs);
+        }
+
+
+        /** IsNull
+        *
+        *  Determines if the internal data for this encrypted pointer is nullptr
+        *
+        *  @return True, if the internal data for this encrypted pointer is nullptr.
+        *
+        **/
+       bool IsNull() const
+       {
+            RLOCK(MUTEX);
+
+            return data == nullptr;
+       }
+
+
+        /** store
+         *
+         *  Stores an object into memory.
+         *
+         *  @param[in] dataIn The data into protected memory.
+         *
+         **/
+        void store(TypeName* pdata)
+        {
+            RLOCK(MUTEX);
+
+            /* Delete already allocated memory. */
+            if(data)
+                delete data;
+
+            /* Shallow copy the pointer. */
+            data = pdata;
+
+            /* Encrypt the memory. */
+            data->Encrypt();
+        }
+
+
+        /** free
+         *
+         *  Reset the internal memory of the encrypted pointer.
+         *
+         **/
+        void free()
+        {
+            RLOCK(MUTEX);
+
+            /* Free the memory. */
+            if(data)
+            {
+                data->Encrypt();
+                delete data;
+            }
+
+            /* Set the pointer to nullptr. */
+            data = nullptr;
+        }
+    };
+
+
+    /** encrypted_type
+     *
+     *  Simple template class to allow primitive types to be used with encrypted_ptr  
+     *  without needing to inherit from memory::encrypted or provide their own Encrypt() implementation
+     *
+     **/
+    template<class TypeName> class encrypted_type : memory::encrypted
+    {
+    public:
+        /* Constructor from primitive type data */
+        encrypted_type(TypeName data){DATA = data;}
+
+        /* Encrypts the internal data */
+        void Encrypt(){ encrypt(DATA);}
+
+        /* The primitive data being encrypted */
+        TypeName DATA;
     };
 }
 

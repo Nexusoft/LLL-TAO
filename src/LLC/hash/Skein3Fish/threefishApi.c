@@ -15,7 +15,7 @@ void threefishSetKey(ThreefishKey_t* keyCtx, ThreefishSize_t stateSize,
     keyCtx->tweak[1] = tweak[1];
     keyCtx->tweak[2] = tweak[0] ^ tweak[1];
 
-    for (i = 0; i < keyWords; i++) {
+    for(i = 0; i < keyWords; i++) {
         keyCtx->key[i] = keyData[i];
         parity ^= keyData[i];
     }

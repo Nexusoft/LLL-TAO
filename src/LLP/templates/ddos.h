@@ -31,7 +31,7 @@ namespace LLP
     template<typename NodeType>
     inline bool DoS(NodeType* pfrom, uint32_t nDoS, bool fReturn)
     {
-        if(pfrom)
+        if(pfrom && pfrom->DDOS)
             pfrom->DDOS->rSCORE += nDoS;
 
         return fReturn;
@@ -103,7 +103,15 @@ namespace LLP
          *  @param[in] nScore rhs DDOS_Score to add
          *
          **/
-        DDOS_Score &operator+=(const int& nScore);
+        DDOS_Score &operator+=(const uint32_t& nScore);
+
+
+        /** print
+         *
+         *  Print out the internal data inside the score object.
+         *
+         **/
+        void print();
 
     };
 

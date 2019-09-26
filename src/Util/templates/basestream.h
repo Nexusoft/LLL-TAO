@@ -74,10 +74,23 @@ public:
     , vchData(vchDataIn)
     {
     }
+    
+
 
     /** Default Destructor **/
     virtual ~BaseStream()
     {
+    }
+
+
+    /** Bytes
+     *
+     *  Get the internal bytes from the stream.
+     *
+     **/
+    const std::vector<uint8_t>& Bytes() const
+    {
+        return vchData;
     }
 
 
@@ -140,12 +153,23 @@ public:
     }
 
 
+    /** pos
+     *
+     *  Get the read position in the stream.
+     *
+     **/
+    uint64_t pos() const
+    {
+        return nReadPos;
+    }
+
+
     /** seek
      *
      *  Seeks the read pointer to position.
      *
      **/
-    void seek(uint64_t nSeek, uint8_t nFlags = STREAM::CURSOR) const
+    void seek(int64_t nSeek, uint8_t nFlags = STREAM::CURSOR) const
     {
         /* Seek from end of stream. */
         if(nFlags == STREAM::CURSOR)
@@ -189,7 +213,7 @@ public:
      **/
     bool begin() const
     {
-        return nReadPos == 1;
+        return nReadPos == 0;
     }
 
 

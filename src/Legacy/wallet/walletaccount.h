@@ -15,9 +15,10 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_WALLET_WALLETACCOUNT_H
 #define NEXUS_LEGACY_WALLET_WALLETACCOUNT_H
 
+#include <Util/templates/serialize.h>
+
 #include <vector>
 
-#include <Util/templates/serialize.h>
 
 namespace Legacy
 {
@@ -68,10 +69,10 @@ namespace Legacy
 
         IMPLEMENT_SERIALIZE
         (
-            if (!(nSerType & SER_GETHASH))
+            if(!(nSerType & SER_GETHASH))
                 READWRITE(nSerVersion);
             READWRITE(vchPubKey);
-        )
+      )
     };
 
 }

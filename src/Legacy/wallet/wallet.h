@@ -24,7 +24,7 @@ ________________________________________________________________________________
 #include <vector>
 #include <utility>
 
-#include <LLC/include/key.h>
+#include <LLC/include/eckey.h>
 #include <LLC/types/uint1024.h>
 
 #include <Legacy/types/legacy.h>
@@ -46,6 +46,7 @@ namespace TAO
     {
         /* forward declarations */
         class BlockState;
+        class Transaction;
     }
 }
 
@@ -61,7 +62,6 @@ namespace Legacy
 
     class Output;
     class ReserveKey;
-    class WalletTx;
 
 
     /** Nexus: Setting to unlock wallet for block minting only **/
@@ -93,10 +93,10 @@ namespace Legacy
      *  To use the wallet, first call InitializeWallet followed by LoadWallet. The following
      *  example will use the default wallet database file name:
      *
-     *  if (!Wallet::InitializeWallet())
+     *  if(!Wallet::InitializeWallet())
      *      //initialization not successful
      *
-     *  if (Wallet::GetInstance().LoadWallet() != Legacy::DB_LOAD_OK)
+     *  if(Wallet::GetInstance().LoadWallet() != Legacy::DB_LOAD_OK)
      *      //load not successful
      *
      *  Wallet& wallet = Wallet::GetInstance();
@@ -224,14 +224,11 @@ namespace Legacy
 
     public:
         /** Mutex for thread concurrency across wallet operations **/
-        mutable std::mutex cs_wallet;
+        mutable std::recursive_mutex cs_wallet;
 
 
         /** Map of wallet transactions contained in this wallet **/
         TransactionMap mapWallet;
-
-
-        std::map<uint1024_t, uint32_t> mapRequestCount;
 
 
     /*----------------------------------------------------------------------------------------*/
@@ -349,19 +346,6 @@ namespace Legacy
          *
          */
         uint32_t LoadWallet(bool& fFirstRunRet);
-
-
-        /** Inventory
-         *
-         *  Tracks requests for transactions contained in this wallet, or the blocks that contain them.
-         *
-         *  When mapRequestCount contains the given block hash, wallet has one or more
-         *  transactions in that block and increments the request count.
-         *
-         *  @param[in] hash Block hash to track
-         *
-         */
-        void Inventory(const uint1024_t& hash);  //Not really a very intuitive method name
 
 
         /** GetWalletUnlockTime
@@ -558,10 +542,12 @@ namespace Legacy
          *  @param[in] nUnlockSeconds The number of seconds to remain unlocked, 0 to unlock indefinitely
          *                            This setting is ignored if fWalletUnlockMintOnly=true (always unlocks indefinitely)
          *
+         *  @param[in] fStartStake By default, Unlock will activate the stake minter. Set false if do not want stake minter to run.
+         *
          *  @return true if wallet was locked, passphrase matches the one used to encrypt it, and unlock is successful
          *
          */
-        bool Unlock(const SecureString& strWalletPassphrase, const uint32_t nUnlockSeconds = 0);
+        bool Unlock(const SecureString& strWalletPassphrase, const uint32_t nUnlockSeconds = 0, const bool fStartStake = true);
 
 
         /** ChangeWalletPassphrase
@@ -674,32 +660,45 @@ namespace Legacy
         bool GetTransaction(const uint512_t& hashTx, WalletTx& wtx);
 
 
-        /** GetRequestCount
-         *
-         *  Get the number of remote requests recorded for a transaction.
-         *
-         *  Coinbase and Coinstake transactions are tracked at the block level,
-         *  so count records requests for the block containing them.
-         *
-         *  @param[in] wtx The wallet transaction to check
-         *
-         *  @return The request count as recorded by request tracking, -1 if not tracked
-         *
-         **/
-        int32_t GetRequestCount(const WalletTx& wtx) const;
-
-
         /** AddToWallet
          *
          *  Adds a wallet transaction to the wallet. If this transaction already exists
          *  in the wallet, the new one is merged into it.
          *
          *  @param[in] wtxIn The wallet transaction to add
+         *  @param[in] hash The wallet txid
          *
          *  @return true if transaction found
          *
          **/
-        bool AddToWallet(const WalletTx& wtxIn);
+        bool AddToWallet(const WalletTx& wtxIn, uint512_t hash = 0);
+
+
+        /** AddToWalletIfInvolvingMe
+         *
+         *  Checks whether a transaction has inputs or outputs belonging to this wallet, and adds
+         *  it to the wallet when it does.
+         *
+         *  state is optional, but should be provided if the transaction is known to be in a block.
+         *  If fUpdate is true, existing transactions will be updated.
+         *
+         *  @param[in] tx The legacy transaction to check
+         *
+         *  @param[in] state The block containing the transaction, pass IsNull() block if transaction not added to block yet
+         *
+         *  @param[in] fUpdate Flag indicating whether or not to update transaction already in wallet
+         *
+         *  @param[in] fFindBlock Set true if don't know block containing the tx
+         *                        Method will find the containing block and return it via the parameter reference
+         *
+         *  @param[in] fRescan Set true if processing as part of wallet rescan
+         *                     This will set WalletTx time to tx time if it is added (otherwise uses current timestamp)
+         *
+         * @return true if the transactions was added/updated
+         *
+         */
+        bool AddToWalletIfInvolvingMe(const Transaction& tx, TAO::Ledger::BlockState& state,
+                                      bool fUpdate = false, bool fFindBlock = false, bool fRescan = false);
 
 
         /** AddToWalletIfInvolvingMe
@@ -710,13 +709,14 @@ namespace Legacy
          *  pblock is optional, but should be provided if the transaction is known to be in a block.
          *  If fUpdate is true, existing transactions will be updated.
          *
-         *  @param[in] tx The transaction to check
+         *  @param[in] txIn The tritium transaction to check
          *
-         *  @param[in] containingBlock The block containing the transaction
+         *  @param[in] state The block containing the transaction, pass IsNull() block if transaction not added to block yet
          *
          *  @param[in] fUpdate Flag indicating whether or not to update transaction already in wallet
          *
-         *  @param[in] fFindBlock No longer used
+         *  @param[in] fFindBlock Set true if don't know block containing the tx
+         *                        Method will find the containing block and return it via the parameter reference
          *
          *  @param[in] fRescan Set true if processing as part of wallet rescan
          *                     This will set WalletTx time to tx time if it is added (otherwise uses current timestamp)
@@ -724,9 +724,8 @@ namespace Legacy
          * @return true if the transactions was added/updated
          *
          */
-        bool AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::BlockState& containingBlock,
+        bool AddToWalletIfInvolvingMe(const TAO::Ledger::Transaction& txIn, TAO::Ledger::BlockState& state,
                                       bool fUpdate = false, bool fFindBlock = false, bool fRescan = false);
-
 
         /** EraseFromWallet
          *
@@ -757,7 +756,7 @@ namespace Legacy
          *  Add/update the current wallet transactions for anyhat found.
          *
          *  @param[in] pState Block state for location in block chain to start the scan.
-         *                    If nullptr, will scan full chain from Genesis
+         *                    (no longer used, scans full chain)
          *
          *  @param[in] fUpdate If true, any transaction found by scan that is already in the
          *                     wallet will be updated
@@ -765,7 +764,7 @@ namespace Legacy
          *  @return The number of transactions added/updated by the scan
          *
          **/
-        uint32_t ScanForWalletTransactions(const TAO::Ledger::BlockState* pState, const bool fUpdate = false);
+        uint32_t ScanForWalletTransactions(const TAO::Ledger::BlockState& stateBegin, const bool fUpdate = false);
 
 
         /** ResendWalletTransactions
@@ -819,6 +818,19 @@ namespace Legacy
          *
          **/
         bool IsMine(const Transaction& tx);
+
+
+        /** IsMine
+         *
+         *  Checks whether a transaction contains any outputs belonging to this
+         *  wallet.
+         *
+         *  @param[in] tx The transaction to check
+         *
+         *  @return true if this wallet receives balance via this transaction
+         *
+         **/
+        bool IsMine(const TAO::Ledger::Transaction& tx);
 
 
         /** IsMine
@@ -970,7 +982,7 @@ namespace Legacy
          *
          *  Generate a transaction to send balance to a given Nexus address.
          *
-         *  @param[in] address Nexus address where we are sending balance
+         *  @param[in] scriptPubKey The script containing the Nexus address or register address where we are sending balance
          *
          *  @param[in] nValue Amount to send
          *
@@ -983,7 +995,7 @@ namespace Legacy
          *  @return empty string if successful, otherwise contains a displayable error message
          *
          **/
-        std::string SendToNexusAddress(const NexusAddress& address, const int64_t nValue, WalletTx& wtxNew,
+        std::string SendToNexusAddress(const Script& scriptPubKey, const int64_t nValue, WalletTx& wtxNew,
                                        const bool fAskFee = false, const uint32_t nMinDepth = 1);
 
 
@@ -1134,19 +1146,24 @@ namespace Legacy
          *
          *  @param[in] nSpendTime Time of send. Results only include transactions before this time
          *
-         *  @param[in,out] setCoinsRet Set to be populated with selected pairs of transaction and vout index (each identifies selected txout)
+         *  @param[in,out] mapCoinsRet Map to be populated with unspent txouts as pairs consisting of transaction and vout index
          *
          *  @param[out] nValueRet Total value of selected unspent txouts in the result set
          *
          *  @param[in] strAccount (optional) Only include outputs for this account label, "default" for wallet default account
+         *
+         *  @param[in] fromAddress (optional) Only include outputs for this Nexus Address.
+         *                                    If an address is present, overrides strAccount (which is ignored)
          *
          *  @param[in] nMinDepth (optional) Only include outputs with at least this many confirms
          *
          *  @return true if result set was successfully populated
          *
          **/
-        bool SelectCoins(const int64_t nTargetValue, const uint32_t nSpendTime, std::set<std::pair<const WalletTx*, uint32_t> >& setCoinsRet,
-                        int64_t& nValueRet, const std::string& strAccount = "*", const uint32_t nMinDepth = 1);
+        bool SelectCoins(const int64_t nTargetValue, const uint32_t nSpendTime,
+            std::map<std::pair<uint512_t, uint32_t>, const WalletTx*>& mapCoinsRet,
+            int64_t& nValueRet, const std::string& strAccount = "*",
+            const NexusAddress fromAddress = NexusAddress(), const uint32_t nMinDepth = 1);
 
 
         /** SelectCoinsMinConf
@@ -1159,22 +1176,26 @@ namespace Legacy
          *  @param[in] nSpendTime Time of send. Results only include transactions before this time
          *
          *  @param[in] nConfMine Require this number of confirmations if transaction with unspent output was from this wallet
-         *                       (eg, spending a change transaction),
+         *                       (eg, spending a change transaction)
          *
          *  @param[in] nConfTheirs Require this number of confirmations if transaction with unspent output was received from elsewhere
          *
-         *  @param[in,out] setCoinsRet Set of selected unspent txouts as pairs consisting of transaction and vout index
+         *  @param[in,out] mapCoinsRet Map of selected unspent txouts as pairs consisting of transaction and vout index
          *
          *  @param[out] nValueRet Total value of selected unspent txouts in the result set
          *
          *  @param[in] strAccount (optional) Only include outputs for this account label, "default" for wallet default account
          *
+         *  @param[in] fromAddress (optional) Only include outputs for this Nexus Address.
+         *                                    If an address is present, overrides strAccount (which is ignored)
+         *
          *  @return true if script was successfully added
          *
          **/
-        bool SelectCoinsMinConf(const int64_t nTargetValue, const uint32_t nSpendTime, const uint32_t nConfMine, const uint32_t nConfTheirs,
-                                std::set<std::pair<const WalletTx*, uint32_t> >& setCoinsRet,
-                                int64_t& nValueRet, const std::string& strAccount = "*");
+        bool SelectCoinsMinConf(const int64_t nTargetValue, const uint32_t nSpendTime,
+            const uint32_t nConfMine, const uint32_t nConfTheirs,
+            std::map<std::pair<uint512_t, uint32_t>, const WalletTx*>& mapCoinsRet,
+            int64_t& nValueRet, const std::string& strAccount = "*", const NexusAddress fromAddress = NexusAddress());
 
     };
 

@@ -13,22 +13,20 @@ ________________________________________________________________________________
 
 #include <LLC/hash/SK.h>
 #include <LLC/hash/macro.h>
-#include <LLC/include/key.h>
+#include <LLC/include/eckey.h>
 #include <LLC/types/bignum.h>
 
 #include <Util/templates/datastream.h>
 #include <Util/include/hex.h>
 #include <Util/include/args.h>
+#include <Util/include/convert.h>
 #include <Util/include/runtime.h>
 
 #include <TAO/Ledger/types/block.h>
-#include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/include/prime.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/timelocks.h>
-
-#include <Legacy/types/legacy.h>
 
 #include <ios>
 #include <iomanip>
@@ -51,18 +49,20 @@ namespace TAO
         Block::Block(uint32_t nVersionIn, uint1024_t hashPrevBlockIn, uint32_t nChannelIn, uint32_t nHeightIn)
         : nVersion(nVersionIn)
         , hashPrevBlock(hashPrevBlockIn)
+        , hashMerkleRoot()
         , nChannel(nChannelIn)
         , nHeight(nHeightIn)
         , nBits(0)
         , nNonce(0)
-        , nTime(static_cast<uint32_t>(runtime::unifiedtimestamp()))
         , vchBlockSig()
+        , vMissing()
+        , hashMissing(0)
         {
         }
 
 
         /** Copy constructor. **/
-        Block::Block(const Legacy::LegacyBlock& block)
+        Block::Block(const Block& block)
         : nVersion(block.nVersion)
         , hashPrevBlock(block.hashPrevBlock)
         , hashMerkleRoot(block.hashMerkleRoot)
@@ -70,23 +70,9 @@ namespace TAO
         , nHeight(block.nHeight)
         , nBits(block.nBits)
         , nNonce(block.nNonce)
-        , nTime(block.nTime)
         , vchBlockSig(block.vchBlockSig.begin(), block.vchBlockSig.end())
-        {
-        }
-
-
-        /** Copy constructor. **/
-        Block::Block(const BlockState& block)
-        : nVersion(block.nVersion)
-        , hashPrevBlock(block.hashPrevBlock)
-        , hashMerkleRoot(block.hashMerkleRoot)
-        , nChannel(block.nChannel)
-        , nHeight(block.nHeight)
-        , nBits(block.nBits)
-        , nNonce(block.nNonce)
-        , nTime(block.nTime)
-        , vchBlockSig(block.vchBlockSig.begin(), block.vchBlockSig.end())
+        , vMissing(block.vMissing)
+        , hashMissing(block.hashMissing)
         {
         }
 
@@ -96,18 +82,40 @@ namespace TAO
         {
         }
 
+
+        /*  Allows polymorphic copying of blocks
+         *  Derived classes should override this and return an instance of the derived type. */
+        Block* Block::Clone() const
+        {
+            return new Block(*this);
+        }
+
+
         /* Set the block state to null. */
         void Block::SetNull()
         {
-            nVersion = config::fTestNet ? TESTNET_BLOCK_CURRENT_VERSION : NETWORK_BLOCK_CURRENT_VERSION;
+            nVersion = TAO::Ledger::CurrentVersion();
             hashPrevBlock = 0;
             hashMerkleRoot = 0;
             nChannel = 0;
             nHeight = 0;
             nBits = 0;
             nNonce = 0;
-            nTime = 0;
             vchBlockSig.clear();
+        }
+
+
+        /*  Check a block for consistency. */
+        bool Block::Check() const
+        {
+            return true; /* No implementation in base class. */
+        }
+
+
+        /*  Accept a block with chain state parameters. */
+        bool Block::Accept() const
+        {
+            return true; /* No implementation in base class. */
         }
 
 
@@ -132,17 +140,10 @@ namespace TAO
         }
 
 
-        /* Return the Block's current UNIX timestamp. */
-        uint64_t Block::GetBlockTime() const
-        {
-            return (uint64_t)nTime;
-        }
-
-
         /* Get the prime number of the block. */
-        LLC::CBigNum Block::GetPrime() const
+        uint1024_t Block::GetPrime() const
         {
-            return LLC::CBigNum(ProofHash() + nNonce);
+            return ProofHash() + nNonce;
         }
 
 
@@ -161,7 +162,7 @@ namespace TAO
         /* Get the Signarture Hash of the block. Used to verify work claims. */
         uint1024_t Block::SignatureHash() const
         {
-            return LLC::SK1024(BEGIN(nVersion), END(nTime));
+            return 0; //base block signature hash is unused since it relies on nTime
         }
 
 
@@ -172,14 +173,7 @@ namespace TAO
             if(nVersion < 5)
                 return ProofHash();
 
-            return LLC::SK1024(BEGIN(nVersion), END(nTime));
-        }
-
-
-        /* Update the nTime of the current block. */
-        void Block::UpdateTime()
-        {
-            nTime = static_cast<uint32_t>(std::max(ChainState::stateBest.load().GetBlockTime() + 1, runtime::unifiedtimestamp()));
+            return SignatureHash();
         }
 
 
@@ -197,6 +191,13 @@ namespace TAO
         }
 
 
+        /* Check flags for PoW block. */
+        bool Block::IsPrivate() const
+        {
+            return nChannel == 3;
+        }
+
+
         /* Generate the Merkle Tree from uint512_t hashes. */
         uint512_t Block::BuildMerkleTree(std::vector<uint512_t> vMerkleTree) const
         {
@@ -204,12 +205,12 @@ namespace TAO
             uint32_t j = 0;
             uint32_t nSize = static_cast<uint32_t>(vMerkleTree.size());
 
-            for (; nSize > 1; nSize = (nSize + 1) >> 1)
+            for(; nSize > 1; nSize = (nSize + 1) >> 1)
             {
-                for (i = 0; i < nSize; i += 2)
+                for(i = 0; i < nSize; i += 2)
                 {
                     /* get the references to the left and right leaves in the merkle tree */
-                    uint512_t &left_tx = vMerkleTree[j+i];
+                    uint512_t &left_tx  = vMerkleTree[j+i];
                     uint512_t &right_tx = vMerkleTree[j + std::min(i+1, nSize-1)];
 
                     vMerkleTree.push_back(LLC::SK512(BEGIN(left_tx),  END(left_tx),
@@ -225,16 +226,15 @@ namespace TAO
         std::string Block::ToString() const
         {
             return debug::safe_printstr(
-                "Block(hash=", GetHash().ToString().substr(0,20),
+                "Block(hash=", GetHash().SubString(),
                 ", ver=", nVersion,
-                ", hashPrevBlock=", hashPrevBlock.ToString().substr(0,20),
-                ", hashMerkleRoot=", hashMerkleRoot.ToString().substr(0,10),
-                ", nTime=", nTime,
+                ", hashPrevBlock=", hashPrevBlock.SubString(),
+                ", hashMerkleRoot=", hashMerkleRoot.SubString(10),
                 std::hex, std::setfill('0'), std::setw(8), ", nBits=", nBits,
                 std::dec, std::setfill(' '), std::setw(0), ", nChannel = ", nChannel,
                 ", nHeight= ", nHeight,
                 ", nNonce=",  nNonce,
-                ", vchBlockSig=", HexStr(vchBlockSig.begin(), vchBlockSig.end()), ")");
+                ", vchBlockSig=", HexStr(vchBlockSig.begin(), vchBlockSig.end()).substr(0,20), ")");
         }
 
         /* Dump the Block data to Console / Debug.log. */
@@ -256,7 +256,7 @@ namespace TAO
 
                 /* Check proof of work limits. */
                 uint32_t nPrimeBits = GetPrimeBits(GetPrime());
-                if (nPrimeBits < bnProofOfWorkLimit[1])
+                if(nPrimeBits < bnProofOfWorkLimit[1])
                     return debug::error(FUNCTION, "prime-cluster below minimum work" "(", nPrimeBits, ")");
 
                 /* Check the prime difficulty target. */
@@ -267,26 +267,45 @@ namespace TAO
             }
             if(nChannel == 2)
             {
-
                 /* Get the hash target. */
                 LLC::CBigNum bnTarget;
                 bnTarget.SetCompact(nBits);
 
                 /* Check that the hash is within range. */
-                if (bnTarget <= 0 || bnTarget > bnProofOfWorkLimit[2])
+                if(bnTarget <= 0 || bnTarget > bnProofOfWorkLimit[2])
                     return debug::error(FUNCTION, "proof-of-work hash not in range");
 
 
                 /* Check that the that enough work was done on this block. */
-                if (ProofHash() > bnTarget.getuint1024())
+                if(ProofHash() > bnTarget.getuint1024())
                     return debug::error(FUNCTION, "proof-of-work hash below target");
 
                 return true;
             }
 
-            return debug::error(FUNCTION, "invalid proof-of-work channel: ", nChannel);
+            /* Check for a private block work claims. */
+            if(IsPrivate() && !config::GetBoolArg("-private"))
+                return debug::error(FUNCTION, "Invalid channel: ", nChannel);
+
+            return true;
         }
 
+
+        /* Sign the block with the key that found the block. */
+        bool Block::GenerateSignature(const LLC::FLKey& key)
+        {
+            return key.Sign(GetHash().GetBytes(), vchBlockSig);
+        }
+
+
+        /* Check that the block signature is a valid signature. */
+        bool Block::VerifySignature(const LLC::FLKey& key) const
+        {
+            if(vchBlockSig.empty())
+                return false;
+
+            return key.Verify(GetHash().GetBytes(), vchBlockSig);
+        }
 
         /* Sign the block with the key that found the block. */
         bool Block::GenerateSignature(const LLC::ECKey& key)
@@ -298,31 +317,59 @@ namespace TAO
         /* Check that the block signature is a valid signature. */
         bool Block::VerifySignature(const LLC::ECKey& key) const
         {
-            if (vchBlockSig.empty())
+            if(vchBlockSig.empty())
                 return false;
 
             return key.Verify((nVersion == 4) ? SignatureHash() : GetHash(), vchBlockSig, 1024);
         }
 
 
+        /*  Convert the Header of a Block into a Byte Stream for
+         *  Reading and Writing Across Sockets. */
+        std::vector<uint8_t> Block::Serialize() const
+        {
+            std::vector<uint8_t> VERSION  = convert::uint2bytes(nVersion);
+            std::vector<uint8_t> PREVIOUS = hashPrevBlock.GetBytes();
+            std::vector<uint8_t> MERKLE   = hashMerkleRoot.GetBytes();
+            std::vector<uint8_t> CHANNEL  = convert::uint2bytes(nChannel);
+            std::vector<uint8_t> HEIGHT   = convert::uint2bytes(nHeight);
+            std::vector<uint8_t> BITS     = convert::uint2bytes(nBits);
+            std::vector<uint8_t> NONCE    = convert::uint2bytes64(nNonce);
+
+            std::vector<uint8_t> vData;
+            vData.insert(vData.end(), VERSION.begin(),   VERSION.end());
+            vData.insert(vData.end(), PREVIOUS.begin(), PREVIOUS.end());
+            vData.insert(vData.end(), MERKLE.begin(),     MERKLE.end());
+            vData.insert(vData.end(), CHANNEL.begin(),   CHANNEL.end());
+            vData.insert(vData.end(), HEIGHT.begin(),     HEIGHT.end());
+            vData.insert(vData.end(), BITS.begin(),         BITS.end());
+            vData.insert(vData.end(), NONCE.begin(),       NONCE.end());
+
+            return vData;
+        }
+
+
+        /*  Convert Byte Stream into Block Header. */
+        void Block::Deserialize(const std::vector<uint8_t>& vData)
+        {
+            nVersion = convert::bytes2uint(std::vector<uint8_t>(vData.begin(), vData.begin() + 4));
+
+            hashPrevBlock.SetBytes (std::vector<uint8_t>(vData.begin() + 4, vData.begin() + 132));
+            hashMerkleRoot.SetBytes(std::vector<uint8_t>(vData.begin() + 132, vData.end() - 20));
+
+            nChannel = convert::bytes2uint(std::vector<uint8_t>( vData.end() - 20, vData.end() - 16));
+            nHeight  = convert::bytes2uint(std::vector<uint8_t>( vData.end() - 16, vData.end() - 12));
+            nBits    = convert::bytes2uint(std::vector<uint8_t>( vData.end() - 12, vData.end() - 8));
+            nNonce   = convert::bytes2uint64(std::vector<uint8_t>(vData.end() -  8, vData.end()));
+        }
+
+
         /* Generates the StakeHash for this block from a uint256_t hashGenesis*/
-        uint1024_t Block::StakeHash(bool fIsGenesis, const uint256_t &hashGenesis) const
+        uint1024_t Block::StakeHash(bool fIsGenesis, const uint256_t& hashGenesis) const
         {
             /* Create a data stream to get the hash. */
             DataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
-            ss.reserve(10000);
-
-            /* Trust Key is part of stake hash if not genesis. */
-            if(nHeight > 2392970 && fIsGenesis)
-            {
-                /* Genesis must hash a prvout of 0. */
-                uint512_t hashPrevout = 0;
-
-                /* Serialize the data to hash into a stream. */
-                ss << nVersion << hashPrevBlock << nChannel << nHeight << nBits << hashPrevout << nNonce;
-
-                return LLC::SK1024(ss.begin(), ss.end());
-            }
+            ss.reserve(256);
 
             /* Serialize the data to hash into a stream. */
             ss << nVersion << hashPrevBlock << nChannel << nHeight << nBits << hashGenesis << nNonce;
@@ -336,7 +383,7 @@ namespace TAO
         {
             /* Create a data stream to get the hash. */
             DataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
-            ss.reserve(10000);
+            ss.reserve(256);
 
             /* Trust Key is part of stake hash if not genesis. */
             if(nHeight > 2392970 && fIsGenesis)

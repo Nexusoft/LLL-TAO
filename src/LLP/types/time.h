@@ -60,34 +60,20 @@ namespace LLP
 
 
         /** Constructor **/
-        TimeNode()
-        : Connection()
-        , nSamples()
-        {
-        }
+        TimeNode();
 
 
         /** Constructor **/
-        TimeNode(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false)
-        : Connection( SOCKET_IN, DDOS_IN, isDDOS)
-        , nSamples()
-        {
-        }
+        TimeNode(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false);
 
 
         /** Constructor **/
-        TimeNode(DDOS_Filter* DDOS_IN, bool isDDOS = false)
-        : Connection(DDOS_IN, isDDOS)
-        , nSamples()
-        {
-        }
+        TimeNode(DDOS_Filter* DDOS_IN, bool isDDOS = false);
 
 
         /* Virtual destructor. */
-        virtual ~TimeNode()
-        {
-            nSamples.clear();
-        }
+        virtual ~TimeNode();
+
 
         /** Event
          *

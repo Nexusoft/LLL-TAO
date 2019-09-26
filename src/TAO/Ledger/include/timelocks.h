@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEDGER_INCLUDE_TIMELOCKS_H
 #define NEXUS_TAO_LEDGER_INCLUDE_TIMELOCKS_H
 
-#include <inttypes.h>
+#include <cstdint>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -26,11 +26,11 @@ namespace TAO
     {
 
         /** The network current block version. **/
-        const uint32_t NETWORK_BLOCK_CURRENT_VERSION = 6;
+        extern const uint32_t NETWORK_BLOCK_CURRENT_VERSION;
 
 
         /** The testnet current block version. **/
-        const uint32_t TESTNET_BLOCK_CURRENT_VERSION = 6;
+        extern const uint32_t TESTNET_BLOCK_CURRENT_VERSION;
 
 
         /** Nexus Testnet Timelock
@@ -38,7 +38,7 @@ namespace TAO
          *  Activated test network at timestamp.
          *
          **/
-        const uint32_t NEXUS_TESTNET_TIMELOCK             = 1421250000;        //--- Nexus Testnet Activation:        1/14/2015 08:38:00 GMT - 6
+        extern const uint32_t NEXUS_TESTNET_TIMELOCK;
 
 
         /** Nexus Network Timelock
@@ -46,7 +46,7 @@ namespace TAO
          *  Activated main network at timestamp.
          *
          **/
-        const uint32_t NEXUS_NETWORK_TIMELOCK             = 1411510800;        //--- Nexus Network Launch:           09/23/2014 16:20:00 GMT - 6
+        extern const uint32_t NEXUS_NETWORK_TIMELOCK;
 
 
         /** Testnet Version Timelock
@@ -54,14 +54,7 @@ namespace TAO
          *  Lock for the Nexus block version upgrades.
          *
          **/
-        const uint32_t TESTNET_VERSION_TIMELOCK[]   =
-        {
-            1412676000,        //--- Block Version 2 Testnet Activation:  10/07/2014 04:00:00 GMT - 6
-            1421293891,        //--- Block Version 3 Testnet Activation:  01/15/2015 07:51:31 GMT - 6
-            1421949600,        //--- Block Version 4 Testnet Activation:  05/10/2015 08:01:00 GMT - 6
-            1536562800,        //--- Block Version 5 Testnet Activation:  09/10/2018 00:00:00 GMT - 7
-            1537167600,        //--- Block Version 6 Testnet Activation:  09/17/2018 00:00:00 GMT - 7
-        };
+        extern const uint32_t TESTNET_VERSION_TIMELOCK[];
 
 
         /** Network Version Timelock
@@ -69,14 +62,7 @@ namespace TAO
          *  Lock for the Nexus block version upgrades.
          *
          **/
-        const uint32_t NETWORK_VERSION_TIMELOCK[]   =
-        {
-            1412964000,        //--- Block Version 2 Activation:          10/10/2014 12:00:00 GMT - 6
-            1421949600,        //--- Block Version 3 Activation:          01/22/2015 12:00:00 GMT - 6
-            1438369200,        //--- Block Version 4 Activation:          07/31/2015 12:00:00 GMT - 7
-            1536977460,        //--- Block Version 5 Activation:          09/14/2018 19:11:00 GMT - 7
-            1538791860,        //--- Block Version 6 Activation:          10/05/2018 19:11:00 GMT - 7
-        };
+        extern const uint32_t NETWORK_VERSION_TIMELOCK[];
 
 
         /** Testnet Channel Timelock
@@ -84,12 +70,7 @@ namespace TAO
          *  Lock to activate each corresponding proof channel.
          *
          **/
-        const uint32_t CHANNEL_TESTNET_TIMELOCK[] =
-        {
-            1421949600,        //--- POS Testnet Activation:              05/10/2015 08:01:00 GMT - 6
-            1411437371,        //--- CPU Testnet Activation:              09/22/2014 18:56:11 GMT - 6
-            1411437371         //--- GPU Testnet Activation:              09/22/2014 18:56:11 GMT - 6
-        };
+        extern const uint32_t CHANNEL_TESTNET_TIMELOCK[];
 
 
         /** Mainnet Channel Timelock
@@ -97,12 +78,91 @@ namespace TAO
          *  Lock to activate each corresponding proof channel.
          *
          **/
-        const uint32_t CHANNEL_NETWORK_TIMELOCK[] =
-        {
-            1438369200,        //--- POS Channel Activation:              07/31/2015 12:00:00 GMT - 7
-            1411510800,        //--- CPU Channel Activation:              09/23/2014 16:20:00 GMT - 6
-            1413914400         //--- GPU Channel Activation:              10/21/2014 12:00:00 GMT - 6
-        };
+        extern const uint32_t CHANNEL_NETWORK_TIMELOCK[];
+
+
+        /** NetworkActive
+         *
+         *  Helper function to determine if the network timelock has been met.
+         *
+         *  @param[in] nTimestamp The timestamp to check against
+         *
+         *  @return true if the network is currently active.
+         *
+         **/
+        bool NetworkActive(const uint64_t nTimestamp);
+
+
+        /** ChannelActive
+         *
+         *  Helper function to determine if a timelock has been met for a channel.
+         *
+         *  @param[in] nTimestamp The timestamp to check against
+         *  @param[in] nChannel The channel to check for
+         *
+         *  @return true if the channel is currently active.
+         *
+         **/
+        bool ChannelActive(const uint64_t nTimestamp, const uint32_t nChannel);
+
+
+        /** VersionActive
+         *
+         *  Helper function to test if a given block version is active
+         *  at the time of the provided timestamp.
+         *
+         *  @param[in] nTimestamp The timestamp to check against.
+         *  @param[in] nVersion The version to check against.
+         *
+         **/
+        bool VersionActive(const uint64_t nTimestamp, const uint32_t nVersion);
+
+
+        /** CurrentVersion
+         *
+         *  Retrieve the current block version from mainnet or testnet.
+         *
+         **/
+        uint32_t CurrentVersion();
+
+
+        /** CurrentTimelock
+         *
+         *  Retrieve the current block timelock activation from mainnet or testnet.
+         *
+         **/
+        uint32_t CurrentTimelock();
+
+
+        /** StartTimelock
+         *
+         *  Retrieve the timelock activation for a given block version on mainnet or testnet.
+         *
+         *  Invalid versions (version 0 or anything after current version) return 0. This should be checked.
+         *
+         *  @param[in] nVersion The version of the timelock to retreive
+         *
+         *  @return version activation timelock
+         *
+         **/
+        uint64_t StartTimelock(const uint32_t nVersion);
+
+
+        /** EndTimelock
+         *
+         *  Retrieve the ending timelock for a given block version on mainnet or testnet. This value equals the StartTimelock()
+         *  value of the next version.
+         *
+         *  Invalid versions (version 0 or anything after current version) return 0, as does the current version.
+         *  This should be checked.
+         *
+         *  @param[in] nVersion The version of the timelock to retreive
+         *
+         *  @return version ending timelock
+         *
+         **/
+        uint64_t EndTimelock(const uint32_t nVersion);
+
     }
 }
 

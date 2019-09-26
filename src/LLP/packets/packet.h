@@ -105,7 +105,7 @@ namespace LLP
          **/
         void SetLength(const std::vector<uint8_t> &BYTES)
         {
-            LENGTH = (BYTES[0] << 24) + (BYTES[1] << 16) + (BYTES[2] << 8) + (BYTES[3] );
+            LENGTH = (BYTES[0] << 24) + (BYTES[1] << 16) + (BYTES[2] << 8) + (BYTES[3]);
         }
 
 

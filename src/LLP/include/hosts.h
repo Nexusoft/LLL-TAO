@@ -23,28 +23,13 @@ namespace LLP
     class BaseAddress;
 
 
-    /** DNS_SeedNodes
-     *
-     *  These addresses are the first point of contact on the P2P network
-     *  They are established and maintained by the owners of each domain.
-     *
-     **/
-    extern const std::vector<std::string> DNS_SeedNodes;
-
-
-    /** DNS_SeedNodes_Testnet
-     *
-     *  Testnet seed nodes.
-     *
-     **/
-    extern const std::vector<std::string> DNS_SeedNodes_Testnet;
-
-
     /** DNS_Lookup
      *
      *  The DNS Lookup Routine to find the Nodes that are set as DNS seeds.
      *
      *  @param[in] DNS_Seed List of dns seed names to translate into addresses.
+     *
+     *  @return Returns the list of addresses that were successfully found from the lookup list.
      *
      **/
     std::vector<BaseAddress> DNS_Lookup(const std::vector<std::string> &DNS_Seed);
@@ -54,15 +39,15 @@ namespace LLP
      *
      *  Standard Wrapper Function to Interact with cstdlib DNS functions.
      *
-     *  @param[in] strName
-     *  @param[out] vAddr
-     *  @param[in] nMaxSolutions
-     *  @param[in] fAllowLookup
+     *  @param[in] strName The DNS name or numeric (i.e 192.168.0.1) name of the host to look up.
+     *  @param[out] vAddr The list of solutions for the lookup address.
+     *  @param[in] nMaxSolutions The maximum number of look up solutions (a lookup may have more than one solution).
+     *  @param[in] fAllowLookup The flag for specifying numeric lookups vs. DNS lookups.
+     *
+     *  @return Returns true if lookup was successful, false otherwise.
      *
      **/
-    bool LookupHost(const std::string &strName,
-                    std::vector<BaseAddress>& vAddr,
-                    uint32_t nMaxSolutions = 0,
+    bool LookupHost(const std::string &strName, std::vector<BaseAddress>& vAddr, uint32_t nMaxSolutions = 0,
                     bool fAllowLookup = true);
 
 
@@ -70,49 +55,45 @@ namespace LLP
      *
      *  Standard Wrapper Function to Interact with cstdlib DNS functions.
      *
-     *  @param[in] strName
-     *  @param[out] vAddr
-     *  @param[in] nMaxSolutions
+     *  @param[in] strName The numeric (i.e 192.168.0.1) name of the host to look up.
+     *  @param[out] vAddr The list of solutions for the lookup address.
+     *  @param[in] nMaxSolutions The maximum number of look up solutions (a lookup may have more than one solution).
+     *
+     *  @return Returns true if lookup was successful, false otherwise.
      *
      **/
-    bool LookupHostNumeric(const std::string &strName,
-                           std::vector<BaseAddress>& vAddr,
-                           uint32_t nMaxSolutions = 0);
+    bool LookupHostNumeric(const std::string &strName, std::vector<BaseAddress>& vAddr, uint32_t nMaxSolutions = 0);
 
 
     /** Lookup
      *
      *  Standard Wrapper Function to Interact with cstdlib DNS functions.
      *
-     *  @param[in] strName
-     *  @param[out] addr
-     *  @param[in] portDefault
-     *  @param[in] fAllowLookup
+     *  @param[in] strName The DNS name or numeric (i.e 192.168.0.1) name of the host to look up.
+     *  @param[out] addr The address to update if lookup was successful.
+     *  @param[in] portDefault The port number.
+     *  @param[in] fAllowLookup The flag for specifying numeric lookups vs. DNS lookups
      *
-     *  @return
+     *  @return Returns true if lookup was successful, false otherwise.
      *
      **/
-    bool Lookup(const std::string &strName,
-                BaseAddress& addr,
-                uint16_t portDefault = 0,
-                bool fAllowLookup = true);
+    bool Lookup(const std::string &strName, BaseAddress& addr, uint16_t portDefault = 0, bool fAllowLookup = true);
 
 
     /** Lookup
      *
      *  Standard Wrapper Function to Interact with cstdlib DNS functions.
      *
-     *  @param[in] strName
-     *  @param[out] vAddr
-     *  @param[in] portDefault
-     *  @param[in] fAllowLookup
-     *  @param[in] nMaxSolutions
+     *  @param[in] strName The DNS name or numeric (i.e 192.168.0.1) name of the host to look up.
+     *  @param[out] vAddr The list of solutions for the lookup address.
+     *  @param[in] portDefault The port number.
+     *  @param[in] fAllowLookup The flag for specifying numeric lookups vs. DNS lookups
+     *  @param[in] nMaxSolutions The maximum number of look up solutions (a lookup may have more than one solution).
+     *
+     *  @return Returns true if lookup was successful, false otherwise.
      *
      **/
-    bool Lookup(const std::string &strName,
-                std::vector<BaseAddress>& vAddr,
-                uint16_t portDefault = 0,
-                bool fAllowLookup = true,
+    bool Lookup(const std::string &strName, std::vector<BaseAddress>& vAddr, uint16_t portDefault = 0, bool fAllowLookup = true,
                 uint32_t nMaxSolutions = 0);
 
 
@@ -120,14 +101,14 @@ namespace LLP
      *
      *  Standard Wrapper Function to Interact with cstdlib DNS functions.
      *
-     *  @param[in] strName
-     *  @param[out] addr
-     *  @param[in] portDefault
+     *  @param[in] strName The DNS name or numeric (i.e 192.168.0.1) name of the host to look up.
+     *  @param[out] addr The address to update if lookup was successful.
+     *  @param[in] portDefault The port number.
+     *
+     *  @return Returns true if lookup was successful, false otherwise.
      *
      **/
-    bool LookupNumeric(const std::string &strName,
-                       BaseAddress& addr,
-                       uint16_t portDefault = 0);
+    bool LookupNumeric(const std::string &strName, BaseAddress& addr, uint16_t portDefault = 0);
 }
 
 #endif

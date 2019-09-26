@@ -450,6 +450,19 @@ namespace TAO
             json::json ListSinceBlock(const json::json& params, bool fHelp);
 
 
+            /** GetGlobalTransaction
+            *
+            *  getglobaltransaction <txid>
+            *  Get detailed information about <txid>
+            *
+            *  @param[in] params Parameters array passed by the caller.
+            *
+            *  @return JSON containing the information.
+            *
+            **/
+            json::json GetGlobalTransaction(const json::json& params, bool fHelp);
+
+
             /** GetTransaction
             *
             *  gettransaction <txid>
@@ -741,9 +754,19 @@ namespace TAO
             *  @return JSON containing the information.
             *
             **/
-            /*  keypoolrefill
-            *   Fills the keypool, requires wallet passphrase to be set */
             json::json KeypoolRefill(const json::json& params, bool fHelp);
+
+
+            /** SetTxFee
+            *
+            *  Sets the default transaction fee to be used
+            *
+            *  @param[in] params Parameters array passed by the caller.
+            *
+            *  @return JSON containing the information.
+            *
+            **/
+            json::json SetTxFee(const json::json& params, bool fHelp);
 
 
             /** WalletPassphrase

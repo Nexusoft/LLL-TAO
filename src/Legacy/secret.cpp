@@ -11,13 +11,14 @@
 
 ____________________________________________________________________________________________*/
 
-#include <assert.h>
-
 #include <Legacy/types/secret.h>
 #include <Legacy/include/enum.h>
 
 #include <Util/include/args.h>
 #include <Util/include/debug.h>
+
+#include <assert.h>
+
 
 namespace Legacy
 {
@@ -33,8 +34,8 @@ namespace Legacy
     void NexusSecret::SetSecret(const LLC::CSecret& vchSecret, bool fCompressed)
     {
         assert(vchSecret.size() == 72);
-        SetData(128 + (config::fTestNet ? PUBKEY_ADDRESS_TEST : PUBKEY_ADDRESS), &vchSecret[0], vchSecret.size());
-        if (fCompressed)
+        SetData(128 + (config::fTestNet.load() ? PUBKEY_ADDRESS_TEST : PUBKEY_ADDRESS), &vchSecret[0], vchSecret.size());
+        if(fCompressed)
             vchData.push_back(1);
     }
 
@@ -73,7 +74,7 @@ namespace Legacy
             default:
                 return false;
         }
-        return fExpectTestNet == config::fTestNet && (vchData.size() == 72 || (vchData.size() == 73 && vchData[72] == 1));
+        return fExpectTestNet == config::fTestNet.load() && (vchData.size() == 72 || (vchData.size() == 73 && vchData[72] == 1));
     }
 
 

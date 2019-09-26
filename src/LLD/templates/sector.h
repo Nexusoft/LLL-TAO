@@ -21,12 +21,7 @@ ________________________________________________________________________________
 #include <LLD/templates/key.h>
 #include <LLD/templates/transaction.h>
 
-#include <LLD/cache/binary_lru.h>
 #include <LLD/cache/template_lru.h>
-
-#include <LLD/keychain/filemap.h>
-#include <LLD/keychain/hashmap.h>
-#include <LLD/keychain/hashtree.h>
 
 #include <Util/templates/datastream.h>
 #include <Util/include/runtime.h>
@@ -91,6 +86,9 @@ namespace LLD
 
         /* The condition for thread sleeping. */
         std::condition_variable CONDITION;
+
+        /* Transaction file stream. */
+        std::ofstream STREAM;
 
     protected:
         /* Mutex for Thread Synchronization.
@@ -167,7 +165,8 @@ namespace LLD
 
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        SectorDatabase(std::string strNameIn, uint8_t nFlagsIn);
+        SectorDatabase(const std::string& strNameIn, const uint8_t nFlagsIn,
+                       const uint64_t nBucketsIn = 256 * 256 * 64, const uint32_t nCacheIn = 1024 * 1024);
 
 
         /** Default Destructor **/
@@ -180,14 +179,6 @@ namespace LLD
          *
          **/
         void Initialize();
-
-
-        /** GetKeys
-         *
-         *  Get the keys for this sector database from the keychain.
-         *
-         **/
-        std::vector< std::vector<uint8_t> > GetKeys();
 
 
         /** Exists
@@ -206,6 +197,9 @@ namespace LLD
             DataStream ssKey(SER_LLD, DATABASE_VERSION);
             ssKey << key;
 
+            /* Get reference of key. */
+            const std::vector<uint8_t>& vKey = ssKey.Bytes();
+
             /* Check that the key is not pending in a transaction for Erase. */
             {
                 LOCK(TRANSACTION_MUTEX);
@@ -213,30 +207,30 @@ namespace LLD
                 if(pTransaction)
                 {
                     /* Check if in erase queue. */
-                    if(pTransaction->mapEraseData.count(ssKey.Bytes()))
+                    if(pTransaction->mapEraseData.count(vKey))
                         return false;
 
                     /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
-                    if(pTransaction->mapTransactions.count(ssKey.Bytes()))
+                    if(pTransaction->mapTransactions.count(vKey))
                         return true;
 
                     /* Check for keychain commits. */
-                    if(pTransaction->mapKeychain.count(ssKey.Bytes()))
+                    if(pTransaction->mapKeychain.count(vKey))
                         return true;
 
                     /* Check for the indexes. */
-                    if(pTransaction->mapIndex.count(ssKey.Bytes()))
+                    if(pTransaction->mapIndex.count(vKey))
                         return true;
                 }
             }
 
             /* Check the cache pool. */
-            if(cachePool->Has(ssKey.Bytes()))
+            if(cachePool->Has(vKey))
                 return true;
 
             /* Return the Key existance in the Keychain Database. */
             SectorKey cKey;
-            return pSectorKeys->Get(ssKey.Bytes(), cKey);
+            return pSectorKeys->Get(vKey, cKey);
         }
 
 
@@ -268,17 +262,13 @@ namespace LLD
 
                 if(pTransaction)
                 {
-                    /* Create an append only stream. */
-                    std::ofstream stream(debug::safe_printstr(config::GetDataDir(), strName, "/journal.dat"), std::ios::app | std::ios::binary);
-
                     /* Serialize the key. */
                     DataStream ssJournal(SER_LLD, DATABASE_VERSION);
                     ssJournal << std::string("erase") << ssKey.Bytes();
 
                     /* Write to the file.  */
                     const std::vector<uint8_t>& vBytes = ssJournal.Bytes();
-                    stream.write((char*)&vBytes[0], vBytes.size());
-                    stream.close();
+                    STREAM.write((char*)&vBytes[0], vBytes.size());
 
                     /* Erase the transaction data. */
                     pTransaction->EraseTransaction(ssKey.Bytes());
@@ -287,16 +277,165 @@ namespace LLD
                 }
             }
 
-            /* Return the Key existance in the Keychain Database. */
-            bool fErased = pSectorKeys->Erase(ssKey.Bytes());
+            return pSectorKeys->Erase(ssKey.Bytes());//Delete(ssKey.Bytes());
+        }
 
-            if(config::GetBoolArg("-runtime", false))
+
+        /** BatchRead
+         *
+         *  Sequential read from beginning of datachain.
+         *
+         *  @param[in] strType The type specifier to read records from
+         *  @param[out] vValues The database entry value to read out.
+         *  @param[in] nLimit The total records to read.
+         *
+         *  @return True if the entry read, false otherwise.
+         *
+         **/
+        template<typename Type>
+        bool BatchRead(const std::string& strType, std::vector<Type>& vValues, int32_t nLimit = 1000)
+        {
+            /* The current file being read. */
+            return GetBatch(0, 0, strType, vValues, nLimit);
+        }
+
+
+        /** BatchRead
+         *
+         *  Sequential read from another key's position in datachain.
+         *
+         *  @param[in] key The key to start reading from
+         *  @param[in] strType The type specifier to read records from
+         *  @param[out] vValues The database entry value to read out.
+         *  @param[in] nLimit The total records to read.
+         *  @param[in] fExclude Flag to choose whether to exclude current key.
+         *
+         *  @return True if the entry read, false otherwise.
+         *
+         **/
+        template<typename Key, typename Type>
+        bool BatchRead(const Key& key, const std::string& strType,
+            std::vector<Type>& vValues, int32_t nLimit = 1000, bool fExclude = true)
+        {
+            /* Serialize Key into Bytes. */
+            DataStream ssKey(SER_LLD, DATABASE_VERSION);
+            ssKey << key;
+
+            /* Get the key. */
+            SectorKey cKey;
+            if(!pSectorKeys->Get(ssKey.Bytes(), cKey))
+                return false;
+
+            /* The current file being read. */
+            return GetBatch(cKey.nSectorStart + (fExclude ? cKey.nSectorSize : 0), cKey.nSectorFile, strType, vValues, nLimit);
+        }
+
+
+        /** GetBatch
+         *
+         *  Sequential read from a specified binary position.
+         *
+         *  @param[in] nStart The starting binary position
+         *  @param[in] nFile The starting file
+         *  @param[in] strType The type specifier to read records from
+         *  @param[out] vValues The database entry value to read out.
+         *  @param[in] nLimit The total records to read.
+         *
+         *  @return True if the entry read, false otherwise.
+         *
+         **/
+        template<typename Type>
+        bool GetBatch(uint64_t nStart, uint32_t nFile, const std::string& strType,
+            std::vector<Type>& vValues, int32_t nLimit = 1000)
+        {
+            /* Clear any remaining data. */
+            vValues.clear();
+
+            /* Scan until limit is reached. */
+            while(nLimit == -1 || nLimit > 0)
             {
-                debug::log(0, ANSI_COLOR_GREEN FUNCTION, "executed in ",
-                    runtime.ElapsedMicroseconds(), " micro-seconds" ANSI_COLOR_RESET);
+                /* Get filestream object. */
+                std::ifstream stream = std::ifstream(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), nFile), std::ios::in | std::ios::binary);
+                if(!stream)
+                    break;
+
+                /* Get the Binary Size. */
+                uint64_t nBufferSize = 1024 * 1024; //1 MB read buffer
+
+                /* Loop until stream encounters exceptions. */
+                while(stream)
+                {
+                    /* Read into serialize stream. */
+                    DataStream ssData(SER_LLD, DATABASE_VERSION);
+                    ssData.resize(nBufferSize);
+
+                    {
+                        LOCK(SECTOR_MUTEX);
+
+                        /* Seek stream to beginning. */
+                        stream.seekg(nStart, std::ios::beg);
+
+                        /* Read the data into the buffer. */
+                        stream.read((char*)ssData.data(), nBufferSize);
+                        if(!stream)
+                            ssData.resize(stream.gcount());
+                    }
+
+                    /* Read records. */
+                    while(!ssData.End())
+                    {
+                        try
+                        {
+                            /* Get the current stream position. */
+                            uint64_t nPos  = ssData.GetPos();
+
+                            /* Read compact size. */
+                            uint64_t nSize = ReadCompactSize(ssData);
+                            if(nSize == 0) //reached end of current file
+                                break;
+
+                            /* Deserialize the String. */
+                            std::string strThis;
+                            ssData >> strThis;
+
+                            /* Check the type. */
+                            if(strType == strThis && strThis != "NONE")
+                            {
+                                /* Get the value. */
+                                Type value;
+                                ssData >> value;
+
+                                /* Push next value. */
+                                vValues.push_back(value);
+
+                                /* Check limits. */
+                                if(nLimit != -1 && --nLimit == 0)
+                                    return (vValues.size() > 0);
+                            }
+                            else
+                                ssData.SetPos(nPos + nSize + GetSizeOfCompactSize(nSize));
+
+                            /* Iterate to next position. */
+                            nStart += nSize + GetSizeOfCompactSize(nSize);
+                        }
+                        catch(const std::exception& e)
+                        {
+                            /* Allocate a larger buffer if full record exceeds default buffer. */
+                            nBufferSize *= 2;
+
+                            break;
+                        }
+                    }
+                }
+
+                /* Iterate to the next file. */
+                ++nFile;
+
+                /* Reset the start position. */
+                nStart = 0;
             }
 
-            return fErased;
+            return (vValues.size() > 0);
         }
 
 
@@ -320,24 +459,36 @@ namespace LLD
             /* Get the Data from Sector Database. */
             std::vector<uint8_t> vData;
 
+            /* Get reference of key. */
+            std::vector<uint8_t>& vKey = ssKey.Bytes();
+
             /* Check that the key is not pending in a transaction for Erase. */
             {
                 LOCK(TRANSACTION_MUTEX);
-
                 if(pTransaction)
                 {
                     /* Check if in erase queue. */
-                    if(pTransaction->mapEraseData.count(ssKey.Bytes()))
+                    if(pTransaction->mapEraseData.count(vKey))
                         return false;
 
+                    /* Check for indexes. */
+                    if(pTransaction->mapIndex.count(vKey))
+                        vKey = pTransaction->mapIndex[vKey];
+
                     /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
-                    if(pTransaction->mapTransactions.count(ssKey.Bytes()))
+                    if(pTransaction->mapTransactions.count(vKey))
                     {
                         /* Get the data from the transction object. */
-                        vData = pTransaction->mapTransactions[ssKey.Bytes()];
+                        vData = pTransaction->mapTransactions[vKey];
 
                         /* Deserialize Value. */
                         DataStream ssValue(vData, SER_LLD, DATABASE_VERSION);
+
+                        /* Deserialize the String. */
+                        std::string strType;
+                        ssValue >> strType;
+
+                        /* Deseriazlie the Value. */
                         ssValue >> value;
 
                         return true;
@@ -346,11 +497,17 @@ namespace LLD
             }
 
             /* Get the data from the database. */
-            if(!Get(ssKey.Bytes(), vData))
+            if(!Get(vKey, vData))
                 return false;
 
             /* Deserialize Value. */
             DataStream ssValue(vData, SER_LLD, DATABASE_VERSION);
+
+            /* Deserialize the String. */
+            std::string strType;
+            ssValue >> strType;
+
+            /* Deseriazlie the Value. */
             ssValue >> value;
 
             return true;
@@ -378,26 +535,30 @@ namespace LLD
             DataStream ssIndex(SER_LLD, DATABASE_VERSION);
             ssIndex << index;
 
+            /* Get reference of key and index. */
+            const std::vector<uint8_t>& vKey   = ssKey.Bytes();
+            const std::vector<uint8_t>& vIndex = ssIndex.Bytes();
+
             /* Check that the key is not pending in a transaction for Erase. */
             {
                 LOCK(TRANSACTION_MUTEX);
 
                 if(pTransaction)
                 {
-                    /* Create an append only stream. */
-                    std::ofstream stream(debug::safe_printstr(config::GetDataDir(), strName, "/journal.dat"), std::ios::app | std::ios::binary);
-
                     /* Serialize the key. */
                     DataStream ssJournal(SER_LLD, DATABASE_VERSION);
-                    ssJournal << std::string("index") << ssKey.Bytes() << ssIndex.Bytes();
+                    ssJournal << std::string("index") << vKey << vIndex;
 
                     /* Write to the file.  */
                     const std::vector<uint8_t>& vBytes = ssJournal.Bytes();
-                    stream.write((char*)&vBytes[0], vBytes.size());
-                    stream.close();
+                    STREAM.write((char*)&vBytes[0], vBytes.size());
+
+                    /* Check for erased data. */
+                    if(pTransaction->mapEraseData.count(vKey))
+                        pTransaction->mapEraseData.erase(vKey);
 
                     /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
-                    pTransaction->mapIndex[ssKey.Bytes()] = ssIndex.Bytes();
+                    pTransaction->mapIndex[vKey] = vIndex;
 
                     return true;
                 }
@@ -405,11 +566,11 @@ namespace LLD
 
             /* Get the key. */
             SectorKey cKey;
-            if(!pSectorKeys->Get(ssIndex.Bytes(), cKey))
+            if(!pSectorKeys->Get(vIndex, cKey))
                 return false;
 
             /* Write the new sector key. */
-            cKey.SetKey(ssKey.Bytes());
+            cKey.SetKey(vKey);
             return pSectorKeys->Put(cKey);
         }
 
@@ -433,37 +594,36 @@ namespace LLD
             DataStream ssKey(SER_LLD, DATABASE_VERSION);
             ssKey << key;
 
+            /* Get reference of key. */
+            const std::vector<uint8_t>& vKey = ssKey.Bytes();
+
             /* Check for transaction. */
             {
                 LOCK(TRANSACTION_MUTEX);
 
                 if(pTransaction)
                 {
-                    /* Create an append only stream. */
-                    std::ofstream stream(debug::safe_printstr(config::GetDataDir(), strName, "/journal.dat"), std::ios::app | std::ios::binary);
-
                     /* Serialize the key. */
                     DataStream ssJournal(SER_LLD, DATABASE_VERSION);
-                    ssJournal << std::string("key") << ssKey.Bytes();
+                    ssJournal << std::string("key") << vKey;
 
                     /* Write to the file.  */
                     const std::vector<uint8_t>& vBytes = ssJournal.Bytes();
-                    stream.write((char*)&vBytes[0], vBytes.size());
-                    stream.close();
+                    STREAM.write((char*)&vBytes[0], vBytes.size());
 
                     /* Check if data is in erase queue, if so remove it. */
-                    if(pTransaction->mapEraseData.count(ssKey.Bytes()))
-                        pTransaction->mapEraseData.erase(ssKey.Bytes());
+                    if(pTransaction->mapEraseData.count(vKey))
+                        pTransaction->mapEraseData.erase(vKey);
 
                     /* Set the transaction data. */
-                    pTransaction->mapKeychain[ssKey.Bytes()] = 0;
+                    pTransaction->mapKeychain[vKey] = 0;
 
                     return true;
                 }
             }
 
             /* Return the Key existance in the Keychain Database. */
-            SectorKey cKey(STATE::READY, ssKey.Bytes(), 0, 0, 0);
+            SectorKey cKey(STATE::READY, vKey, 0, 0, 0);
             return pSectorKeys->Put(cKey);
         }
 
@@ -479,7 +639,7 @@ namespace LLD
          *
          **/
         template<typename Key, typename Type>
-        bool Write(const Key& key, const Type& value)
+        bool Write(const Key& key, const Type& value, const std::string& strType = "NONE")
         {
             if(nFlags & FLAGS::READONLY)
                 return debug::error(FUNCTION, "Write called on database in read-only mode");
@@ -490,7 +650,12 @@ namespace LLD
 
             /* Serialize the Value */
             DataStream ssData(SER_LLD, DATABASE_VERSION);
+            ssData << strType;
             ssData << value;
+
+            /* Get reference of key and data. */
+            const std::vector<uint8_t>& vKey  = ssKey.Bytes();
+            const std::vector<uint8_t>& vData = ssData.Bytes();
 
             /* Check for transaction. */
             {
@@ -498,25 +663,20 @@ namespace LLD
 
                 if(pTransaction)
                 {
-                    /* Create an append only stream. */
-                    std::ofstream stream(debug::safe_printstr(config::GetDataDir(),
-                        strName, "/journal.dat"), std::ios::app | std::ios::binary);
-
                     /* Serialize the key. */
                     DataStream ssJournal(SER_LLD, DATABASE_VERSION);
-                    ssJournal << std::string("write") << ssKey.Bytes() << ssData.Bytes();
+                    ssJournal << std::string("write") << vKey << vData;
 
                     /* Write to the file.  */
                     const std::vector<uint8_t>& vBytes = ssJournal.Bytes();
-                    stream.write((char*)&vBytes[0], vBytes.size());
-                    stream.close();
+                    STREAM.write((char*)&vBytes[0], vBytes.size());
 
                     /* Check if data is in erase queue, if so remove it. */
-                    if(pTransaction->mapEraseData.count(ssKey.Bytes()))
-                        pTransaction->mapEraseData.erase(ssKey.Bytes());
+                    if(pTransaction->mapEraseData.count(vKey))
+                        pTransaction->mapEraseData.erase(vKey);
 
                     /* Set the transaction data. */
-                    pTransaction->mapTransactions[ssKey.Bytes()] = ssData.Bytes();
+                    pTransaction->mapTransactions[vKey] = vData;
 
                     /* Handle for a record update that needs to be reverted in case of errors. */
                     //if(pSectorKeys->Get(ssKey.Bytes()))
@@ -534,7 +694,7 @@ namespace LLD
                 }
             }
 
-            return Put(ssKey.Bytes(), ssData.Bytes());
+            return Put(vKey, vData);
         }
 
 
@@ -590,6 +750,7 @@ namespace LLD
          **/
         bool Force(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vData);
 
+
         /** Put
          *
          *  Write a record into the cache and disk buffer for flushing to disk.
@@ -601,6 +762,19 @@ namespace LLD
          *
          **/
         bool Put(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vData);
+
+
+        /** Delete
+         *
+         *  Delete a record from the sector database
+         *
+         *  @param[in] vKey The binary data of the key to get.
+         *  @param[out] vData The binary data of the record to get.
+         *
+         *  @return True if the record was deleted successfully.
+         *
+         **/
+        bool Delete(const std::vector<uint8_t>& vKey);
 
 
         /** CacheWriter
@@ -633,14 +807,6 @@ namespace LLD
          *
          **/
         void TxnRollback();
-
-
-        /** TxnAbort
-         *
-         *  Abort a transaction from happening.
-         *
-         **/
-        void TxnAbort();
 
 
         /** TxnCheckpoint

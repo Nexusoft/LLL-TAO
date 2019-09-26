@@ -15,6 +15,10 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEDGER_TYPES_TRITIUM_H
 #define NEXUS_TAO_LEDGER_TYPES_TRITIUM_H
 
+#include <LLC/include/flkey.h>
+
+#include <TAO/Register/types/stream.h>
+
 #include <TAO/Ledger/types/block.h>
 #include <TAO/Ledger/types/transaction.h>
 
@@ -27,14 +31,8 @@ namespace TAO
     /* Ledger Layer namespace. */
     namespace Ledger
     {
-
-        /** Defines the types of transaction hash stored in the TritiumBlock vtx **/
-        enum TYPE
-        {
-            LEGACY_TX  = 0x00,
-            TRITIUM_TX = 0x01,
-            CHECKPOINT = 0x02, //for private chain checkpointing into mainnet blocks.
-        };
+        class BlockState;
+        class SyncBlock;
 
 
         /** TritiumBlock
@@ -49,6 +47,10 @@ namespace TAO
         {
         public:
 
+            /** The Block's timestamp. This number is locked into the signature hash. **/
+            uint64_t nTime;
+
+
             /** Verifier Transaction.
              *
              *  Transaction responsible for the block producer.
@@ -57,11 +59,19 @@ namespace TAO
             Transaction producer;
 
 
+            /** System Script
+             *
+             *  The critical system level pre-states and post-states.
+             *
+             **/
+            TAO::Register::Stream  ssSystem;
+
+
             /** The transaction history.
              *  uint8_t = TransactionType (per enum)
              *  uint512_t = Tx hash
              **/
-            std::vector< std::pair<uint8_t, uint512_t> > vtx;
+            std::vector<std::pair<uint8_t, uint512_t> > vtx;
 
 
             /** Serialization **/
@@ -79,12 +89,19 @@ namespace TAO
                 READWRITE(vchBlockSig);
 
                 READWRITE(producer);
+                READWRITE(ssSystem);
+                READWRITE(vOffsets);
                 READWRITE(vtx);
             )
 
 
             /** The default constructor. **/
             TritiumBlock();
+
+
+            /** Copy constructor from base block. **/
+            TritiumBlock(const Block& block);
+
 
             /** Copy Constructor. **/
             TritiumBlock(const TritiumBlock& block);
@@ -94,20 +111,25 @@ namespace TAO
             TritiumBlock(const BlockState& state);
 
 
+            /** Copy Constructor. **/
+            TritiumBlock(const SyncBlock& block);
+
+
             /** Default Destructor **/
             virtual ~TritiumBlock();
 
+
             /** Clone
-            *
-            *  Allows polymorphic copying of blocks
-            *  Overridden to return an instance of the TritiumBlock class.
-            *  Return-type covariance allows us to return the more derived type whilst 
-            *  still overriding the virtual base-class method
-            *
-            *  @return A pointer to a copy of this TritiumBlock.
-            *
-            **/
-            virtual TritiumBlock* Clone() const override {return new TritiumBlock(*this);};
+             *
+             *  Allows polymorphic copying of blocks
+             *  Overridden to return an instance of the TritiumBlock class.
+             *  Return-type covariance allows us to return the more derived type whilst
+             *  still overriding the virtual base-class method
+             *
+             *  @return A pointer to a copy of this TritiumBlock.
+             *
+             **/
+            virtual TritiumBlock* Clone() const override;
 
 
             /** SetNull
@@ -116,6 +138,24 @@ namespace TAO
              *
              **/
             void SetNull() override;
+
+
+            /** UpdateTime
+             *
+             *  Update the blocks timestamp.
+             *
+             **/
+            void UpdateTime();
+
+
+            /** GetBlockTime
+             *
+             *  Returns the current UNIX timestamp of the block.
+             *
+             *  @return 64-bit integer of timestamp.
+             *
+             **/
+            uint64_t GetBlockTime() const;
 
 
             /** Check
@@ -142,28 +182,24 @@ namespace TAO
             bool CheckStake() const;
 
 
-            /** CheckTrust
+            /** VerifyWork
              *
-             *  Check the calculated trust score meets published one.
+             *  Verify the work was completed by miners as advertised.
              *
-             **/
-            bool CheckTrust() const;
-
-
-            /** BlockAge
-             *
-             *  Get the current block age of the trust key.
+             *  @return True if work is valid, false otherwise.
              *
              **/
-            bool BlockAge(uint32_t& nAge) const;
+            bool VerifyWork() const override;
 
 
-            /** TrustScore
+            /** SignatureHash
              *
-             *  Get the score of the current trust block.
+             *  Get the Signature Hash of the block. Used to verify work claims.
+             *
+             *  @return Returns a 1024-bit signature hash.
              *
              **/
-            bool TrustScore(uint32_t& nScore) const;
+            uint1024_t SignatureHash() const override;
 
 
             /** StakeHash

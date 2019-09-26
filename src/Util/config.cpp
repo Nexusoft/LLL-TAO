@@ -35,16 +35,14 @@ namespace config
             return; /* No nexus.conf file is OK */
 
         std::string line;
-
-        while(!streamConfig.eof())
+        while(std::getline(streamConfig, line))
         {
-            std::getline(streamConfig, line);
-
-            if(streamConfig.eof())
-                break;
-
             size_t i = line.find('=');
             if(i == std::string::npos)
+                continue;
+
+            size_t l = line.find('#');
+            if(l != std::string::npos)
                 continue;
 
             std::string strKey = std::string("-") + std::string(line, 0, i);
@@ -71,49 +69,24 @@ namespace config
         /* This may be called before parsing command line arguments.
          * Check if -datadir option is present and record the setting if it is
          */
-        for (int i = 1; i < argc; ++i)
+        for(int i = 1; i < argc; ++i)
         {
             const std::string argValue(argv[i]);
             const std::string datadirSwitch("-datadir");
             const std::string configFileSwitch("-conf");
 
-            /* Form is -datadir=path so path setting starts at location 9. 
+            /* Form is -datadir=path so path setting starts at location 9.
              * Any length <9 on argv is either a different option or datadir with no value. Ignore these.
              */
-            if (argValue.length() > 9 && argValue.compare(0, 8, datadirSwitch) == 0)
+            if(argValue.length() > 9 && argValue.compare(0, 8, datadirSwitch) == 0)
                 mapArgs[datadirSwitch] = argValue.substr(9, std::string::npos);
 
             /* Also need to do the same for custom config file name */
-            if (argValue.length() > 6 && argValue.compare(0, 5, configFileSwitch) == 0)
+            if(argValue.length() > 6 && argValue.compare(0, 5, configFileSwitch) == 0)
                 mapArgs[configFileSwitch] = argValue.substr(6, std::string::npos);
         }
 
         ReadConfigFile(mapSettingsRet, mapMultiSettingsRet);
-    }
-
-
-    /* Setup PID file for Linux users. */
-    void CreatePidFile(const std::string &path, pid_t pid)
-    {
-        FILE* file = fopen(path.c_str(), "w");
-        if (file)
-        {
-        #ifndef WIN32
-            fprintf(file, "%d", pid);
-        #else
-            /* For some reason, PRI64d fails with warning here because %I non-ANSI compliant,
-               but it doesn't give this warning in other places except for config.cpp
-               perhaps because this is fprintf (debug::log for example does not use printf).
-
-               Consider re-writing this to use << operator
-
-               If we just change to llu, then Linux gives warnings, so instead use a
-               conditional compile and get warnings out of both */
-            fprintf(file, "%llu", pid);
-        #endif
-
-            fclose(file);
-        }
     }
 
 
@@ -125,17 +98,17 @@ namespace config
         char pszPath[MAX_PATH] = "";
         std::string p;
 
-        if (SHGetSpecialFolderPathA(nullptr, pszPath, nFolder, fCreate))
+        if(SHGetSpecialFolderPathA(nullptr, pszPath, nFolder, fCreate))
             p = pszPath;
 
-        else if (nFolder == CSIDL_STARTUP)
+        else if(nFolder == CSIDL_STARTUP)
         {
             p = getenv("USERPROFILE");
             p.append("\\Start Menu");
             p.append("\\Programs");
             p.append("\\Startup");
         }
-        else if (nFolder == CSIDL_APPDATA)
+        else if(nFolder == CSIDL_APPDATA)
             p = getenv("APPDATA");
 
         return p;
@@ -155,11 +128,11 @@ namespace config
         pathRet = MyGetSpecialFolderPath(CSIDL_APPDATA, true);
         pathRet.append("\\" + strName + "\\");
     #else
-        char* pszHome = getenv("HOME");
-        if (pszHome == nullptr || strlen(pszHome) == 0)
+        std::string strHome = std::string(getenv("HOME"));
+        if(strHome == "" || strHome.size() == 0)
             pathRet = "/";
         else
-            pathRet = pszHome;
+            pathRet = strHome;
     #ifdef MAC_OSX
         // Mac
         pathRet.append("/Library/Application Support");
@@ -186,17 +159,6 @@ namespace config
     }
 
 
-    /* Get the Location of the PID File. */
-    std::string GetPidFile()
-    {
-        std::string pathPidFile(GetDataDir());
-
-        pathPidFile.append(GetArg("-pid", "nexus.pid"));
-
-        return pathPidFile;
-    }
-
-
     /* Get the location that Nexus data is being stored in. */
     std::string GetDataDir(bool fNetSpecific)
     {
@@ -208,16 +170,16 @@ namespace config
 
         // This can be called during exceptions by debug log, so we cache the
         // value so we don't have to do memory allocations after that.
-        if (fCachedPath[fNetSpecific])
+        if(fCachedPath[fNetSpecific])
             return path;
 
         LOCK(csPathCached);
-        if (mapArgs.count("-datadir"))
+        if(mapArgs.count("-datadir"))
         {
             /* get the command line argument for the data directory */
             path = mapArgs["-datadir"];
 
-            if (path.length() == 0)
+            if(path.length() == 0)
             {
                 /* -datadir setting used, but no value provided */
                 debug::error(FUNCTION, "-datadir no path specified. Using default.");
@@ -229,7 +191,7 @@ namespace config
                 path = filesystem::system_complete(path);
             }
 
-            /* Validate the resulting path length */            
+            /* Validate the resulting path length */
             if  (path.length() > MAX_PATH)
             {
                 debug::error(FUNCTION, "-datadir path exceeds maximum allowed path length. Using default.");
@@ -239,8 +201,9 @@ namespace config
         else
             path = GetDefaultDataDir();
 
-        if (fNetSpecific && GetBoolArg("-testnet", false))
-            path.append("testnet/");
+        uint32_t nTestnet = GetArg("-testnet", 0);
+        if(fNetSpecific && nTestnet > 0)
+            path.append(debug::safe_printstr("testnet", nTestnet, "/"));
 
         filesystem::create_directories(path);
 

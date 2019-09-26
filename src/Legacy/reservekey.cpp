@@ -11,16 +11,16 @@
 
 ____________________________________________________________________________________________*/
 
-#include <memory>
-#include <string>
-#include <vector>
-
 #include <LLP/include/network.h>
 
 #include <Legacy/wallet/keypoolentry.h>
 #include <Legacy/wallet/reservekey.h>
 
 #include <Util/include/debug.h>
+
+#include <memory>
+#include <string>
+#include <vector>
 
 
 namespace Legacy
@@ -29,13 +29,13 @@ namespace Legacy
     /* Retrieves the public key value for the currently reserved key. */
     std::vector<uint8_t> ReserveKey::GetReservedKey()
     {
-        if (nPoolIndex == -1)
+        if(nPoolIndex == -1)
         {
             /* Don't have a reserved key in this instance, yet, so need to reserve one */
             KeyPoolEntry keypoolEntry;
             wallet.GetKeyPool().ReserveKeyFromPool(nPoolIndex, keypoolEntry);
 
-            if (nPoolIndex != -1)
+            if(nPoolIndex != -1)
                 vchPubKey = keypoolEntry.vchPubKey;
             else
             {
@@ -52,7 +52,7 @@ namespace Legacy
     /* Marks the reserved key as used, removing it from the key pool. */
     void ReserveKey::KeepKey()
     {
-        if (nPoolIndex != -1)
+        if(nPoolIndex != -1)
             wallet.GetKeyPool().KeepKey(nPoolIndex);
 
         nPoolIndex = -1;
@@ -63,7 +63,7 @@ namespace Legacy
     /* Returns a reserved key to the key pool. After call, it is no longer reserved. */
     void ReserveKey::ReturnKey()
     {
-        if (nPoolIndex != -1)
+        if(nPoolIndex != -1)
             wallet.GetKeyPool().ReturnKey(nPoolIndex);
 
         nPoolIndex = -1;

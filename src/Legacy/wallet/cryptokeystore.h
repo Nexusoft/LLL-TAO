@@ -15,15 +15,16 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_WALLET_CRYPTEDKEYSTORE_H
 #define NEXUS_LEGACY_WALLET_CRYPTEDKEYSTORE_H
 
+#include <Legacy/wallet/basickeystore.h>
+#include <Legacy/wallet/crypter.h>
+
+#include <Util/include/mutex.h>
+
 #include <map>
 #include <set>
 #include <utility>
 #include <vector>
 
-#include <Legacy/wallet/basickeystore.h>
-#include <Legacy/wallet/crypter.h>
-
-#include <Util/include/mutex.h>
 
 /* forward declaration */
 namespace LLC

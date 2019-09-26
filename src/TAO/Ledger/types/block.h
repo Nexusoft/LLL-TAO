@@ -16,18 +16,14 @@ ________________________________________________________________________________
 #define NEXUS_TAO_LEDGER_TYPES_BLOCK_H
 
 #include <LLC/types/uint1024.h>
-#include <Util/include/runtime.h>
+
+#include <set>
 
 //forward declerations for BigNum
 namespace LLC
 {
-    class CBigNum;
     class ECKey;
-}
-
-namespace Legacy
-{
-    class LegacyBlock;
+    class FLKey;
 }
 
 /* Global TAO namespace. */
@@ -37,8 +33,6 @@ namespace TAO
     /* Ledger Layer namespace. */
     namespace Ledger
     {
-
-        class BlockState;
 
         /** Block
          *
@@ -79,12 +73,20 @@ namespace TAO
             uint64_t nNonce;
 
 
-            /** The Block's timestamp. This number is locked into the signature hash. **/
-            uint32_t nTime; //TODO: make this 64 bit
+            /** The prime origin offsets. **/
+            std::vector<uint8_t> vOffsets;
 
 
             /** The bytes holding the blocks signature. Signed by the block creator before broadcast. **/
             std::vector<uint8_t> vchBlockSig;
+
+
+            /** MEMORY ONLY: list of missing transactions if processing failed. **/
+            mutable std::vector<std::pair<uint8_t, uint512_t> > vMissing;
+
+
+            /** MEMORY ONLY: hash of root block that missing tx's failed on. **/
+            mutable uint1024_t hashMissing;
 
 
 
@@ -99,30 +101,27 @@ namespace TAO
              *  @param[in] nChannelIn The channel this block is being created for
              *  @param[in] nHeightIn The height this block is being created at.
              *
-            **/
+             **/
             Block(uint32_t nVersionIn, uint1024_t hashPrevBlockIn, uint32_t nChannelIn, uint32_t nHeightIn);
 
 
             /** Copy constructor. **/
-            Block(const Legacy::LegacyBlock& block);
-
-
-            /** Copy constructor. **/
-            Block(const BlockState& block);
+            Block(const Block& block);
 
 
             /** Default Destructor **/
             virtual ~Block();
 
+
             /** Clone
-            *
-            *  Allows polymorphic copying of blocks
-            *  Derived classes should override this and return an instance of the derived type.
-            *
-            *  @return A pointer to a copy of this Block.
-            *
-            **/
-            virtual Block* Clone() const {return new Block(*this);};
+             *
+             *  Allows polymorphic copying of blocks
+             *  Derived classes should override this and return an instance of the derived type.
+             *
+             *  @return A pointer to a copy of this Block.
+             *
+             **/
+            virtual Block* Clone() const;
 
 
             /** SetNull
@@ -132,12 +131,13 @@ namespace TAO
              **/
             virtual void SetNull();
 
+
             /** Check
              *
              *  Check a block for consistency.
              *
              **/
-            virtual bool Check() const { /* no implementation in base class*/ return true;}
+            virtual bool Check() const;
 
 
             /** Accept
@@ -145,7 +145,7 @@ namespace TAO
              *  Accept a block with chain state parameters.
              *
              **/
-            virtual bool Accept() const { /* no implementation in base class*/ return true;}
+            virtual bool Accept() const;
 
 
             /** SetChannel
@@ -164,7 +164,7 @@ namespace TAO
              *
              *  @return The channel assigned. (uint32_t)
              *
-             */
+             **/
             uint32_t GetChannel() const;
 
 
@@ -178,31 +178,21 @@ namespace TAO
             bool IsNull() const;
 
 
-            /** GetBlockTime
-             *
-             *  Returns the current UNIX timestamp of the block.
-             *
-             *  @return 64-bit uint32_teger of timestamp.
-             *
-             **/
-            uint64_t GetBlockTime() const;
-
-
             /** GetPrime
              *
              *  Get the Prime number for the block (hash + nNonce).
              *
-             *  @return Prime number stored as a CBigNum. (wrapper for BIGNUM in OpenSSL)
+             *  @return Returns a 1024-bit prime number.
              *
              **/
-            LLC::CBigNum GetPrime() const;
+            uint1024_t GetPrime() const;
 
 
             /** ProofHash
              *
              *  Get the Proof Hash of the block. Used to verify work claims.
              *
-             *  @return 1024-bit proof hash
+             *  @return Returns a 1024-bit proof hash.
              *
              **/
             uint1024_t ProofHash() const;
@@ -212,28 +202,20 @@ namespace TAO
              *
              *  Get the Signature Hash of the block. Used to verify work claims.
              *
-             *  @return 1024-bit signature hash
+             *  @return Returns a 1024-bit signature hash.
              *
              **/
-            uint1024_t SignatureHash() const;
+            virtual uint1024_t SignatureHash() const;
 
 
             /** GetHash
              *
              *  Get the Hash of the block.
              *
-             *  @return 1024-bit block hash
+             *  @return Returns a 1024-bit block hash.
              *
              **/
             uint1024_t GetHash() const;
-
-
-            /** UpdateTime
-             *
-             *  Update the blocks timestamp
-             *
-             **/
-            void UpdateTime();
 
 
             /** IsProofOfStake
@@ -252,9 +234,19 @@ namespace TAO
             bool IsProofOfWork() const;
 
 
+            /** IsPrivate
+             *
+             *  @return True if the block is private block.
+             *
+             **/
+            bool IsPrivate() const;
+
+
             /** BuildMerkleTree
              *
              *  Build the merkle tree from the transaction list.
+             *
+             *  @param[in] vMerkleTree The list of hashes to build merkle tree with.
              *
              *  @return The 512-bit merkle root
              *
@@ -284,7 +276,23 @@ namespace TAO
              *  @return True if work is valid, false otherwise.
              *
              **/
-            bool VerifyWork() const;
+            virtual bool VerifyWork() const;
+
+
+            /** Generate Signature
+             *
+             *  Sign the block with the key that found the block.
+             *
+             */
+            bool GenerateSignature(const LLC::FLKey& key);
+
+
+            /** Verify Signature
+             *
+             *  Check that the block signature is a valid signature.
+             *
+             **/
+            bool VerifySignature(const LLC::FLKey& key) const;
 
 
             /** GenerateSignature
@@ -307,6 +315,27 @@ namespace TAO
              *
              **/
             bool VerifySignature(const LLC::ECKey& key) const;
+
+
+            /** Serialize
+             *
+             *  Convert the Header of a Block into a Byte Stream for
+             *  Reading and Writing Across Sockets.
+             *
+             *  @return Returns a vector of serialized byte information.
+             *
+             **/
+            std::vector<uint8_t> Serialize() const;
+
+
+            /** Deserialize
+             *
+             *  Convert Byte Stream into Block Header.
+             *
+             *  @param[in] vData The byte stream containing block info.
+             *
+             **/
+            void Deserialize(const std::vector<uint8_t>& vData);
 
         protected:
 

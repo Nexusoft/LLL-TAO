@@ -16,38 +16,61 @@ ________________________________________________________________________________
 #define NEXUS_TAO_OPERATION_INCLUDE_VALIDATE_H
 
 #include <LLC/types/uint1024.h>
-#include <TAO/Opeartion/include/stream.h>
 
+/* Global TAO namespace. */
 namespace TAO
 {
 
+    /* Register layer. */
+    namespace Register
+    {
+        /* Forward declarations. */
+        class State;
+    }
+
+
+    /* Operation Layer namespace. */
     namespace Operation
     {
 
-        /** Validate
+        /* Forward declarations. */
+        class Contract;
+
+
+        /** Claim
          *
-         *  Validates a given operation expression. This would evaluate to a boolean expression required to return true.
-         *
-         *  @param[in] regDB The register database to execute on
-         *  @param[in] hashOwner The owner executing the register batch.
-         *
-         *  @return True if operations executed successfully, false otherwise.
+         *  Namespace to contain main functions for OP::CLAIM
          *
          **/
-        bool Validate(std::vector<uint8_t> vchData, uint256_t hashOwner)
+        namespace Validate
         {
-            /* Create the operations stream to execute. */
-            Stream stream = Stream(vchData);
 
-            while(!stream.end())
-            {
-                uint8_t OP;
-                stream >> OP;
-                switch(OP)
-                {
+            /** Commit
+             *
+             *  Commit validation proofs.
+             *
+             *  @param[in] hashTx The transaction-id being claimed.
+             *  @param[in] nContract The contract output being claimed.
+             *  @param[in] hashCaller The contract caller.
+             *  @param[in] nFlags Flags to the LLD instance.
+             *
+             *  @return true if successful.
+             *
+             **/
+            bool Commit(const uint512_t& hashTx, const uint32_t nContract, const uint256_t& hashCaller, const uint8_t nFlags);
 
-                }
-            }
+
+            /** Verify
+             *
+             *  Verify validation rules and caller.
+             *
+             *  @param[in] contract The contract that is executing.
+             *  @param[in] condition The contract that is being verified.
+             *
+             *  @return true if successful.
+             *
+             **/
+            bool Verify(const Contract& contract, const Contract& condition);
         }
     }
 }

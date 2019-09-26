@@ -48,7 +48,25 @@ namespace LLP
      **/
     class TrustAddress : public BaseAddress
     {
+        /* Tell compiler we are overloading Print. */
+        using BaseAddress::Print;
+
     public:
+
+        uint64_t nSession;    //total time since connected
+        uint64_t nLastSeen;   //unified time last seen
+        uint32_t nConnected;  //total number of successful connections
+        uint32_t nDropped;    //total number of dropped connections
+        uint32_t nFailed;     //total number of failed connections
+        uint32_t nFails;      //consecutive number of failed connections
+        uint32_t nLatency;    //the latency experienced by the connection
+        uint32_t nHeight;     //last recorded block height for the connection
+        uint8_t  nState;      //the flag for the state of connection
+        uint8_t  nType;       //TODO: the type for serialization
+
+
+        /* Comparison less than operator used for sorting */
+        friend bool operator<(const TrustAddress &info1, const TrustAddress &info2);
 
 
         /** TrustAddress
@@ -64,8 +82,8 @@ namespace LLP
          *  Copy constructors
          *
          **/
-        TrustAddress(const TrustAddress &other);
-        TrustAddress(const BaseAddress &other);
+        TrustAddress(const TrustAddress& other);
+        TrustAddress(const BaseAddress& other);
 
 
         /** operator=
@@ -73,8 +91,8 @@ namespace LLP
          *  Copy assignment operators
          *
          **/
-        TrustAddress &operator=(const BaseAddress &other);
-        TrustAddress &operator=(const TrustAddress &other);
+        TrustAddress &operator=(const BaseAddress& other);
+        TrustAddress &operator=(const TrustAddress& other);
 
 
         /** ~TrustAddress
@@ -116,23 +134,6 @@ namespace LLP
          *
          **/
         virtual void Print();
-
-
-    public:
-        uint64_t nSession;    //total time since connected
-        uint64_t nLastSeen;   //unified time last seen
-        uint32_t nConnected;  //total number of successful connections
-        uint32_t nDropped;    //total number of dropped connections
-        uint32_t nFailed;     //total number of failed connections
-        uint32_t nFails;      //consecutive number of failed connections
-        uint32_t nLatency;    //the latency experienced by the connection
-        uint32_t nHeight;     //last recorded block height for the connection
-        uint8_t  nState;      //the flag for the state of connection
-        uint8_t  nType;       //TODO: the type for serialization
-
-
-        /* Comparison less than operator used for sorting */
-        friend bool operator<(const TrustAddress &info1, const TrustAddress &info2);
     };
 
 }

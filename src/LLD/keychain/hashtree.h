@@ -7,7 +7,7 @@
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-            "ad vocem populi" - To the Voice of the People
+            "Excellence is not a skill. It is an attitude." - Ralph Marston
 
 ____________________________________________________________________________________________*/
 
@@ -15,31 +15,27 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLD_TEMPLATES_HASHTREE_H
 #define NEXUS_LLD_TEMPLATES_HASHTREE_H
 
+#include <LLD/templates/key.h>
 #include <LLD/cache/template_lru.h>
+#include <LLD/include/enum.h>
 
 #include <cstdint>
 #include <string>
 #include <fstream>
 #include <vector>
 #include <mutex>
-#include <thread>
-
 
 //TODO: Abstract base class for all keychains
 namespace LLD
 {
 
-    /** Forward declarations **/
-    class SectorKey;
-
-
     /** BinaryHashTree
      *
      *  This class is responsible for managing the keys to the sector database.
      *
-     *  It contains a Binary Hash Tree with a search complexity of O(log n)
-     *  It uses files as leafs or nodes when collisions are found in buckets
-     *  making it a hybrid hashmap and binary search tree
+     *  It contains a Binary Hash Map with a minimum complexity of O(1).
+     *  It uses a linked file list based on index to iterate trhough files and binary Positions
+     *  when there is a collision that is found.
      *
      **/
     class BinaryHashTree
@@ -54,12 +50,24 @@ namespace LLD
         std::string strBaseLocation;
 
 
+        /** Keychain stream object. **/
+        TemplateLRU<uint32_t, std::fstream*> *fileCache;
+
+
+        /** Keychain index stream. **/
+        std::fstream* pindex;
+
+
+        /** Total elements in hashmap for quick inserts. **/
+        std::vector<uint32_t> hashmap;
+
+
         /** The Maximum buckets allowed in the hashmap. */
         uint32_t HASHMAP_TOTAL_BUCKETS;
 
 
         /** The Maximum cache size for allocated keys. **/
-        uint32_t HASHMAP_MAX_CACHE_SZIE;
+        uint32_t HASHMAP_MAX_CACHE_SIZE;
 
 
         /** The Maximum key size for static key sectors. **/
@@ -70,20 +78,8 @@ namespace LLD
         uint16_t HASHMAP_KEY_ALLOCATION;
 
 
-        /** Initialized flag (used for cache thread) **/
-        bool fInitialized;
-
-
-        /** Keychain stream object. **/
-        mutable TemplateLRU<uint32_t, std::fstream *> *fileCache;
-
-
-        /** Total elements in hashmap for quick inserts. **/
-        mutable std::vector<uint32_t> hashmap;
-
-
-        /* The cache writer thread. */
-        std::thread CacheThread;
+        /** The keychain flags. **/
+        uint8_t nFlags;
 
 
     public:
@@ -93,28 +89,60 @@ namespace LLD
 
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        BinaryHashTree(std::string strBaseLocationIn);
+        BinaryHashTree(const std::string& strBaseLocationIn, const uint8_t nFlagsIn = FLAGS::APPEND);
+
+
+        /** Default Constructor **/
+        BinaryHashTree(const std::string& strBaseLocationIn, const uint32_t nTotalBuckets, const uint32_t nMaxCacheSize, const uint8_t nFlagsIn = FLAGS::APPEND);
+
+
+        /** Copy Assignment Operator **/
+        BinaryHashTree& operator=(const BinaryHashTree& map);
+
+
+        /** Copy Constructor **/
+        BinaryHashTree(const BinaryHashTree& map);
 
 
         /** Default Destructor **/
         ~BinaryHashTree();
 
 
-        /** GetBucket
+        /** CompressKey
          *
-         *  Handle the Assigning of a Map Bucket.
+         *  Compresses a given key until it matches size criteria.
+         *  This function is one way and efficient for reducing key sizes.
          *
-         *  @param[in] vKey The key to obtain a bucket id from.
-         *
-         *  @return Returns the bucket id.
+         *  @param[out] vData The binary data of key to compress.
+         *  @param[in] nSize The desired size of key after compression.
          *
          **/
-        uint32_t GetBucket(const std::vector<uint8_t> &vKey) const;
+        void CompressKey(std::vector<uint8_t>& vData, uint16_t nSize = 32);
+
+
+        /** GetKeys
+         *
+         *  Placeholder.
+         *
+         **/
+         std::vector< std::vector<uint8_t> > GetKeys();
+
+
+        /** GetBucket
+         *
+         *  Calculates a bucket to be used for the hashmap allocation.
+         *
+         *  @param[in] vKey The key object to calculate with.
+         *
+         *  @return The bucket assigned to the key.
+         *
+         **/
+        uint32_t GetBucket(const std::vector<uint8_t>& vKey);
 
 
         /** Initialize
          *
-         *  Read the Database Keys and File Positions.
+         *  Initialize the binary hash map keychain.
          *
          **/
         void Initialize();
@@ -130,7 +158,7 @@ namespace LLD
          *  @return True if the key was found, false otherwise.
          *
          **/
-        bool Get(const std::vector<uint8_t> vKey, SectorKey& cKey);
+        bool Get(const std::vector<uint8_t>& vKey, SectorKey &cKey);
 
 
         /** Put
@@ -142,21 +170,25 @@ namespace LLD
          *  @return True if the key was written, false otherwise.
          *
          **/
-        bool Put(const SectorKey &cKey) const;
+        bool Put(const SectorKey& cKey);
 
 
-        /** CacheWriter
+        /** Restore
          *
-         *  Helper Thread to Batch Write to Disk.
+         *  Restore an erased key from keychain.
+         *
+         *  @param[in] vKey the key to restore.
+         *
+         *  @return True if the key was restored.
          *
          **/
-        void CacheWriter();
+        bool Restore(const std::vector<uint8_t> &vKey);
 
 
         /** Erase
          *
-         *  Simple Erase for now, not efficient in Data Usage of HD but quick to
-         *  get erase function working.
+         *  Erase a key from the disk hashmaps.
+         *  TODO: This should be optimized further.
          *
          *  @param[in] vKey the key to erase.
          *

@@ -84,7 +84,7 @@ namespace LLP
             READWRITE(FLATDATA(MESSAGE));
             READWRITE(LENGTH);
             READWRITE(CHECKSUM);
-        )
+      )
 
 
         /** SetNull
@@ -156,7 +156,7 @@ namespace LLP
          **/
         void SetHeader()
         {
-            if (config::fTestNet)
+            if(config::fTestNet.load())
                 //memcpy(HEADER, MESSAGE_START_TESTNET, sizeof(MESSAGE_START_TESTNET));
                 std::copy(MESSAGE_START_TESTNET,
                     MESSAGE_START_TESTNET + sizeof(MESSAGE_START_TESTNET),
@@ -255,12 +255,12 @@ namespace LLP
                 return false;
 
             /* Check the Header Bytes. */
-            //if(memcmp(HEADER, (config::fTestNet ? MESSAGE_START_TESTNET : MESSAGE_START_MAINNET), sizeof(HEADER)) != 0)
-            if(memory::compare((uint8_t *)HEADER, (uint8_t *)(config::fTestNet ? MESSAGE_START_TESTNET : MESSAGE_START_MAINNET), sizeof(HEADER)) != 0)
+            //if(memcmp(HEADER, (config::fTestNet.load() ? MESSAGE_START_TESTNET : MESSAGE_START_MAINNET), sizeof(HEADER)) != 0)
+            if(memory::compare((uint8_t *)HEADER, (uint8_t *)(config::fTestNet.load() ? MESSAGE_START_TESTNET : MESSAGE_START_MAINNET), sizeof(HEADER)) != 0)
                 return debug::error("Message Packet (Invalid Packet Header");
 
             /* Make sure Packet length is within bounds. (Max 512 MB Packet Size) */
-            if (LENGTH > (1024 * 1024 * 512))
+            if(LENGTH > (1024 * 1024 * 512))
                 return debug::error("Message Packet (", MESSAGE, ", ", LENGTH, " bytes) : Message too Large");
 
             /* Double check the Message Checksum. */
@@ -269,7 +269,7 @@ namespace LLP
             //memcpy(&nChecksum, &hash, sizeof(nChecksum));
             std::copy((uint8_t *)&hash, (uint8_t *)&hash + sizeof(nChecksum), (uint8_t *)&nChecksum);
 
-            if (nChecksum != CHECKSUM)
+            if(nChecksum != CHECKSUM)
                 return debug::error("Message Packet (", MESSAGE, ", ", LENGTH,
                     " bytes) : CHECKSUM MISMATCH nChecksum=", nChecksum, " hdr.nChecksum=", CHECKSUM);
 

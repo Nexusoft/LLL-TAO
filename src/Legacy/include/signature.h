@@ -16,12 +16,12 @@ ________________________________________________________________________________
 #define NEXUS_LEGACY_INCLUDE_SIGNATURE_H
 
 #include <LLC/types/bignum.h>
-#include <Util/include/base58.h>
-
 #include <Legacy/wallet/basickeystore.h>
+#include <Util/include/base58.h>
 
 #include <string>
 #include <vector>
+
 
 namespace Legacy
 {

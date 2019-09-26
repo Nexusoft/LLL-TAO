@@ -15,11 +15,12 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_TYPES_SCRIPT_H
 #define NEXUS_LEGACY_TYPES_SCRIPT_H
 
+#include <LLC/types/bignum.h>
+#include <LLC/include/eckey.h>
+
 #include <Legacy/types/address.h>
 #include <Legacy/include/enum.h>
 
-#include <LLC/types/bignum.h>
-#include <LLC/include/key.h>
 #include <Util/include/base58.h>
 
 #include <string>
@@ -277,6 +278,16 @@ namespace Legacy
         void SetNexusAddress(const NexusAddress& address);
 
 
+        /** SetRegisterAddress
+         *
+         *  Set the register address into script
+         *
+         *  @param[in] address The register address you input
+         *
+         **/
+        void SetRegisterAddress(const uint256_t& address);
+
+
         /** SetNexusAddress
          *
          *  Set the nexus address from public key
@@ -326,6 +337,14 @@ namespace Legacy
          *
          **/
         std::string ToString(bool fShort=false) const;
+
+
+        /** SubString
+         *
+         *  Returns a sub-string representation of the script object.
+         *
+         **/
+        std::string SubString(const uint32_t nSize = 20) const;
 
 
         /** print
@@ -386,7 +405,7 @@ namespace Legacy
 
         Script& operator<<(opcodetype opcode)
         {
-            if (opcode < 0 || opcode > 0xff)
+            if(opcode < 0 || opcode > 0xff)
                 throw std::runtime_error("Script::operator<<() : invalid opcode");
             insert(end(), (uint8_t)opcode);
             return *this;
@@ -407,16 +426,16 @@ namespace Legacy
 
         Script& operator<<(const std::vector<uint8_t>& b)
         {
-            if (b.size() < OP_PUSHDATA1)
+            if(b.size() < OP_PUSHDATA1)
             {
                 insert(end(), (uint8_t)b.size());
             }
-            else if (b.size() <= 0xff)
+            else if(b.size() <= 0xff)
             {
                 insert(end(), OP_PUSHDATA1);
                 insert(end(), (uint8_t)b.size());
             }
-            else if (b.size() <= 0xffff)
+            else if(b.size() <= 0xffff)
             {
                 insert(end(), OP_PUSHDATA2);
                 uint16_t nSize = static_cast<uint16_t>(b.size());

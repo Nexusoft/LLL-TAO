@@ -20,14 +20,12 @@ ________________________________________________________________________________
 #include <LLP/types/tritium.h>
 #include <LLP/types/legacy.h>
 #include <LLP/types/time.h>
-#include <LLP/types/corenode.h>
+#include <LLP/types/apinode.h>
 #include <LLP/types/rpcnode.h>
-#include <LLP/types/legacy_miner.h>
-#include <LLP/types/tritium_miner.h>
+#include <LLP/types/miner.h>
 
 #include <Util/include/hex.h>
 
-#include <new> //std::bad_alloc
 
 namespace LLP
 {
@@ -58,9 +56,10 @@ namespace LLP
     DataThread<ProtocolType>::~DataThread()
     {
         fDestruct = true;
-
         CONDITION.notify_all();
-        DATA_THREAD.join();
+
+        if(DATA_THREAD.joinable())
+            DATA_THREAD.join();
 
         DisconnectAll();
 
@@ -75,23 +74,28 @@ namespace LLP
         try
         {
             /* Create a new pointer on the heap. */
-            ProtocolType* node = new ProtocolType(SOCKET, DDOS, fDDOS);
-            node->fCONNECTED.store(true);
+            ProtocolType* pnode = new ProtocolType(SOCKET, DDOS, fDDOS);
+            pnode->fCONNECTED.store(true);
 
             /* Find an available slot. */
-            int nSlot = find_slot();
+            uint32_t nSlot = find_slot();
+
+            /* Update the indexes. */
+            pnode->nDataThread = ID;
+            pnode->nDataIndex  = nSlot;
 
             /* Find a slot that is empty. */
             if(nSlot == CONNECTIONS->size())
-                CONNECTIONS->push_back(memory::atomic_ptr<ProtocolType>(node));
+                CONNECTIONS->push_back(memory::atomic_ptr<ProtocolType>(pnode));
             else
-                CONNECTIONS->at(nSlot).store(node);
+                CONNECTIONS->at(nSlot).store(pnode);
 
             /* Fire the connected event. */
-            CONNECTIONS->at(nSlot)->Event(EVENT_CONNECT);
+            memory::atomic_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nSlot);
+            CONNECTION->Event(EVENT_CONNECT);
 
             /* Iterate the DDOS cScore (Connection score). */
-            if(fDDOS)
+            if(DDOS)
                 DDOS -> cSCORE += 1;
 
             /* Bump the total connections atomic counter. */
@@ -109,38 +113,36 @@ namespace LLP
 
     /*  Adds a new connection to current Data Thread */
     template <class ProtocolType>
-    bool DataThread<ProtocolType>::AddConnection(const BaseAddress &addr, DDOS_Filter* DDOS)
+    bool DataThread<ProtocolType>::AddConnection(const BaseAddress& addr, DDOS_Filter* DDOS)
     {
         try
         {
             /* Create a new pointer on the heap. */
-            ProtocolType* node = new ProtocolType(DDOS, fDDOS);
-            if(!node->Connect(addr))
-            {
-                node->Disconnect();
-                delete node;
+            ProtocolType* pnode = new ProtocolType(nullptr, false); //turn off DDOS for outgoing connections
 
+            /* Find an available slot. */
+            uint32_t nSlot = find_slot();
+
+            /* Update the indexes. */
+            pnode->nDataThread = ID;
+            pnode->nDataIndex  = nSlot;
+
+            /* Attempt to make the connection. */
+            if(!pnode->Connect(addr))
+            {
+                delete pnode;
                 return false;
             }
 
-            /* Set the node to outgoing. */
-            node->fOUTGOING = true;
-
-            /* Search for an available slot. */
-            int nSlot = find_slot();
-
             /* Find a slot that is empty. */
             if(nSlot == CONNECTIONS->size())
-                CONNECTIONS->push_back(memory::atomic_ptr<ProtocolType>(node));
+                CONNECTIONS->push_back(memory::atomic_ptr<ProtocolType>(pnode));
             else
-                CONNECTIONS->at(nSlot).store(node);
+                CONNECTIONS->at(nSlot).store(pnode);
 
             /* Fire the connected event. */
-            CONNECTIONS->at(nSlot)->Event(EVENT_CONNECT);
-
-            /* Iterate the DDOS cScore (Connection score). */
-            if(fDDOS)
-                DDOS -> cSCORE += 1;
+            memory::atomic_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nSlot);
+            CONNECTION->Event(EVENT_CONNECT);
 
             /* Bump the total connections atomic counter. */
             ++nConnections;
@@ -165,12 +167,16 @@ namespace LLP
     template <class ProtocolType>
     void DataThread<ProtocolType>::DisconnectAll()
     {
-        /* Get the size of the vector. */
-        uint32_t nSize = static_cast<uint32_t>(CONNECTIONS->size());
-
-        /* Iterate through connections to remove. */
-        for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
-           remove(nIndex);
+        /* Iterate through connections to remove. When call on destruct, simply remove the connection. Otherwise,
+         * force a disconnect event. This will inform address manager so it knows to attempt new connections.
+         */
+        for(uint32_t nIndex = 0; nIndex < CONNECTIONS->size(); ++nIndex)
+        {
+            if(!fDestruct.load())
+                disconnect_remove_event(nIndex, DISCONNECT_FORCE);
+            else
+                remove(nIndex);
+        }
     }
 
 
@@ -196,7 +202,7 @@ namespace LLP
              * While loop catches potential for spurious wakeups. Also has the effect of skipping the wait() call after connections established.
              */
             std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
-            CONDITION.wait(CONDITION_LOCK, [this]{ return fDestruct.load() || config::fShutdown || nConnections.load() > 0; });
+            CONDITION.wait(CONDITION_LOCK, [this]{ return fDestruct.load() || config::fShutdown.load() || nConnections.load() > 0; });
 
             /* Check for close. */
             if(fDestruct.load() || config::fShutdown.load())
@@ -208,7 +214,7 @@ namespace LLP
             /* We should have connections, as predicate of releasing condition wait.
              * This is a precaution, checking after getting MUTEX lock
              */
-            if (nConnections.load() == 0)
+            if(nConnections.load() == 0)
                 continue;
 
             /* Check the pollfd's size. */
@@ -223,7 +229,7 @@ namespace LLP
                 try
                 {
                     /* Set the proper POLLIN flags. */
-                    POLLFDS.at(nIndex).events = POLLIN;
+                    POLLFDS.at(nIndex).events = POLLIN;// | POLLRDHUP;
 
                     /* Set to invalid socket if connection is inactive. */
                     if(!CONNECTIONS->at(nIndex))
@@ -256,91 +262,108 @@ namespace LLP
                 try
                 {
                     /* Load the atomic pointer raw data. */
-                    ProtocolType* connection = CONNECTIONS->at(nIndex).load();
-
-                    /* Skip over Inactive Connections. */
-                    if(!connection || !connection->Connected())
+                    ProtocolType* pConnection = CONNECTIONS->at(nIndex).load();
+                    if(!pConnection)
                         continue;
+
+                    /* Check if connected. */
+                    if(!pConnection->Connected())
+                    {
+                        disconnect_remove_event(nIndex, DISCONNECT_FORCE);
+                        continue;
+                    }
 
                     /* Disconnect if there was a polling error */
-                    if((POLLFDS.at(nIndex).revents & POLLERR)
-                    || (POLLFDS.at(nIndex).revents & POLLNVAL)
-                    || (POLLFDS.at(nIndex).revents & POLLHUP))
+                    if(POLLFDS.at(nIndex).revents & POLLERR)
+                    {
+                        disconnect_remove_event(nIndex, DISCONNECT_POLL_ERROR);
+                        continue;
+                    }
+
+#ifdef WIN32
+                    /* Disconnect if the socket was disconnected by peer (need for Windows) */
+                    if(POLLFDS.at(nIndex).revents & POLLHUP)
+                    {
+                        disconnect_remove_event(nIndex, DISCONNECT_PEER);
+                        continue;
+                    }
+#endif
+
+                    /* Disconnect if pollin signaled with no data (This happens on Linux). */
+                    if((POLLFDS.at(nIndex).revents & POLLIN)
+                    && pConnection->Available() == 0)
+                    {
+                        disconnect_remove_event(nIndex, DISCONNECT_POLL_EMPTY);
+                        continue;
+                    }
+
+                    /* Remove connection if it has Timed out or had any read/write Errors. */
+                    if(pConnection->Errors())
                     {
                         disconnect_remove_event(nIndex, DISCONNECT_ERRORS);
                         continue;
                     }
 
-                    /* Remove Connection if it has Timed out or had any read/write Errors. */
-                    if(connection->Errors())
-                    {
-                        disconnect_remove_event(nIndex, DISCONNECT_ERRORS);
-                        continue;
-                    }
-
-                    /* Remove Connection if it has Timed out or had any Errors. */
-                    if(connection->Timeout(TIMEOUT))
+                    /* Remove connection if it has Timed out or had any Errors. */
+                    if(pConnection->Timeout(TIMEOUT))
                     {
                         disconnect_remove_event(nIndex, DISCONNECT_TIMEOUT);
                         continue;
                     }
 
                     /* Handle any DDOS Filters. */
-                    if(fDDOS && connection->DDOS)
+                    if(fDDOS && pConnection->DDOS)
                     {
                         /* Ban a node if it has too many Requests per Second. **/
-                        if(connection->DDOS->rSCORE.Score() > DDOS_rSCORE
-                        || connection->DDOS->cSCORE.Score() > DDOS_cSCORE)
-                            connection->DDOS->Ban();
+                        if(pConnection->DDOS->rSCORE.Score() > DDOS_rSCORE
+                        || pConnection->DDOS->cSCORE.Score() > DDOS_cSCORE)
+                            pConnection->DDOS->Ban();
 
                         /* Remove a connection if it was banned by DDOS Protection. */
-                        if(connection->DDOS->Banned())
+                        if(pConnection->DDOS->Banned())
                         {
+                            debug::log(0, "BANNED: ", pConnection->GetAddress().ToString());
                             disconnect_remove_event(nIndex, DISCONNECT_DDOS);
                             continue;
                         }
                     }
 
                     /* Generic event for Connection. */
-                    connection->Event(EVENT_GENERIC);
+                    pConnection->Event(EVENT_GENERIC);
 
                     /* Flush the write buffer. */
-                    connection->Flush();
+                    pConnection->Flush();
 
                     /* Work on Reading a Packet. **/
-                    connection->ReadPacket();
+                    pConnection->ReadPacket();
 
                     /* If a Packet was received successfully, increment request count [and DDOS count if enabled]. */
-                    if(connection->PacketComplete())
+                    if(pConnection->PacketComplete())
                     {
                         /* Debug dump of message type. */
-                        debug::log(4, FUNCTION, "Recieved Message (", connection->INCOMING.GetBytes().size(), " bytes)");
+                        debug::log(4, FUNCTION, "recieved packet (", pConnection->INCOMING.GetBytes().size(), " bytes)");
 
                         /* Debug dump of packet data. */
                         if(config::GetArg("-verbose", 0) >= 5)
-                            PrintHex(connection->INCOMING.GetBytes());
+                            PrintHex(pConnection->INCOMING.GetBytes());
 
                         /* Handle Meters and DDOS. */
                         if(fMETER)
                             ++REQUESTS;
-                        if(fDDOS)
-                            connection->DDOS->rSCORE += 1;
+
+                        /* Handle default rscore. */
+                        if(pConnection->DDOS)
+                            pConnection->DDOS->rSCORE += 1;
 
                         /* Packet Process return value of False will flag Data Thread to Disconnect. */
-                        if(!connection->ProcessPacket())
+                        if(!pConnection->ProcessPacket())
                         {
                             disconnect_remove_event(nIndex, DISCONNECT_FORCE);
                             continue;
                         }
 
-                        connection->ResetPacket();
+                        pConnection->ResetPacket();
                     }
-                }
-                catch(const std::bad_alloc &e)
-                {
-                    debug::error(FUNCTION, "Memory allocation failed ", e.what());
-                    debug::error(FUNCTION, "Currently running ", nConnections, " connections.");
-                    disconnect_remove_event(nIndex, DISCONNECT_ERRORS);
                 }
                 catch(const std::exception& e)
                 {
@@ -349,52 +372,55 @@ namespace LLP
                     disconnect_remove_event(nIndex, DISCONNECT_ERRORS);
                 }
             }
-
-            runtime::sleep(10);
         }
     }
 
 
-    /*  Get the number of active connection pointers from data threads. */
-     template <class ProtocolType>
-     uint16_t DataThread<ProtocolType>::GetConnectionCount()
-     {
-         uint16_t nConnectionCount = 0;
-         uint16_t nSize = static_cast<uint16_t>(CONNECTIONS->size());
-
-         /* Loop through connections in data thread and add any that are connected to count. */
-         for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
-         {
-             /* Skip over inactive connections. */
-             if(!CONNECTIONS->at(nIndex))
-                 continue;
-
-             ++nConnectionCount;
-         }
-
-         return nConnectionCount;
-     }
-
-
-    /*  Fires off a Disconnect event with the given disconnect reason
-     *  and also removes the data thread connection. */
-    template <class ProtocolType>
-    void DataThread<ProtocolType>::disconnect_remove_event(uint32_t index, uint8_t reason)
+    /* Tell the data thread an event has occured and notify each connection. */
+    template<class ProtocolType>
+    void DataThread<ProtocolType>::NotifyEvent()
     {
-        ProtocolType* connection = CONNECTIONS->at(index).load();
-        connection->Event(EVENT_DISCONNECT, reason);
+        /* Loop through each connection. */
+        uint32_t nSize = static_cast<uint32_t>(CONNECTIONS->size());
+        for(uint32_t i = 0; i < nSize; ++i)
+        {
+            ProtocolType* connection = CONNECTIONS->at(i).load();
 
-        remove(index);
+            if(!connection)
+                continue;
+
+            /* Notify the connection that an event has occurred. */
+            connection->NotifyEvent();
+        }
     }
 
 
-    /*  Removes given connection from current Data Thread.
-     *  This happens with a timeout/error, graceful close, or disconnect command. */
+    /* Get the number of active connection pointers from data threads. */
     template <class ProtocolType>
-    void DataThread<ProtocolType>::remove(int index)
+    uint32_t DataThread<ProtocolType>::GetConnectionCount()
+    {
+        return nConnections.load();
+    }
+
+
+    /* Fires off a Disconnect event with the given disconnect reason and also removes the data thread connection. */
+    template <class ProtocolType>
+    void DataThread<ProtocolType>::disconnect_remove_event(uint32_t nIndex, uint8_t nReason)
+    {
+        /* Send off the disconnect event. */
+        memory::atomic_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nIndex);
+        CONNECTION->Event(EVENT_DISCONNECT, nReason);
+
+        remove(nIndex);
+    }
+
+
+    /* Removes given connection from current Data Thread. This happens on timeout/error, graceful close, or disconnect command. */
+    template <class ProtocolType>
+    void DataThread<ProtocolType>::remove(int nIndex)
     {
         /* Free the memory. */
-        CONNECTIONS->at(index).free();
+        CONNECTIONS->at(nIndex).free();
 
         --nConnections;
 
@@ -402,14 +428,12 @@ namespace LLP
     }
 
 
-    /*  Returns the index of a component of the CONNECTIONS vector that
-     *  has been flagged Disconnected */
+    /* Returns the index of a component of the CONNECTIONS vector that has been flagged Disconnected */
     template <class ProtocolType>
     int DataThread<ProtocolType>::find_slot()
     {
-        /* Get the total connections. */
+        /* Loop through each connection. */
         uint32_t nSize = static_cast<uint32_t>(CONNECTIONS->size());
-
         for(int index = 0; index < nSize; ++index)
         {
             if(!CONNECTIONS->at(index))
@@ -424,9 +448,7 @@ namespace LLP
     template class DataThread<TritiumNode>;
     template class DataThread<LegacyNode>;
     template class DataThread<TimeNode>;
-    template class DataThread<CoreNode>;
+    template class DataThread<APINode>;
     template class DataThread<RPCNode>;
-    template class DataThread<LegacyMiner>;
-    template class DataThread<TritiumMiner>;
-
+    template class DataThread<Miner>;
 }

@@ -13,12 +13,14 @@ ________________________________________________________________________________
 
 
 #include <LLP/types/rpcnode.h>
-#include <TAO/API/include/rpc.h>
+#include <LLP/templates/events.h>
+
+#include <TAO/API/include/global.h>
+#include <TAO/API/types/exception.h>
+
 #include <Util/include/config.h>
 #include <Util/include/base64.h>
 #include <Util/include/string.h>
-#include <TAO/API/types/exception.h>
-#include <new> //std::bad_alloc
 
 // using alias to simplify using APIException liberally without having to reference the TAO:API namespace
 using APIException = TAO::API::APIException ;
@@ -36,26 +38,108 @@ namespace LLP
     // http://www.codeproject.com/KB/recipes/JSON_Spirit.aspx
     //
 
+
+    /** Default Constructor **/
+    RPCNode::RPCNode()
+    : HTTPNode()
+    {
+    }
+
+
+    /** Constructor **/
+    RPCNode::RPCNode(LLP::Socket SOCKET_IN, LLP::DDOS_Filter* DDOS_IN, bool isDDOS)
+    : HTTPNode(SOCKET_IN, DDOS_IN, isDDOS)
+    {
+    }
+
+
+    /** Constructor **/
+    RPCNode::RPCNode(LLP::DDOS_Filter* DDOS_IN, bool isDDOS)
+    : HTTPNode(DDOS_IN, isDDOS)
+    {
+    }
+
+
+    /** Default Destructor **/
+    RPCNode::~RPCNode()
+    {
+    }
+
+
     /* Custom Events for Core API */
     void RPCNode::Event(uint8_t EVENT, uint32_t LENGTH)
     {
-        //no events for now
-        //TODO: see if at all possible to call from down in inheritance heirarchy
+        /* Log connect event */
+        if(EVENT == EVENT_CONNECT)
+        {
+            debug::log(3, NODE, fOUTGOING ? "Outgoing" : "Incoming",
+                       " RPC Connected at timestamp ",   runtime::unifiedtimestamp());
+
+            return;
+        }
+
+
+        /* Log disconnect event */
+        if(EVENT == EVENT_DISCONNECT)
+        {
+            std::string strReason = "";
+            switch(LENGTH)
+            {
+                case DISCONNECT_TIMEOUT:
+                    strReason = "Timeout";
+                    break;
+
+                case DISCONNECT_PEER:
+                    strReason = "Peer disconnected";
+                    break;
+
+                case DISCONNECT_ERRORS:
+                    strReason = "Errors";
+                    break;
+
+                case DISCONNECT_POLL_ERROR:
+                    strReason = "Poll Error";
+                    break;
+
+                case DISCONNECT_POLL_EMPTY:
+                    strReason = "Unavailable";
+                    break;
+
+                case DISCONNECT_DDOS:
+                    strReason = "DDOS";
+                    break;
+
+                case DISCONNECT_FORCE:
+                    strReason = "Forced";
+                    break;
+
+                default:
+                    strReason = "Other";
+                    break;
+            }
+
+            /* Debug output for node disconnect. */
+            debug::log(3, NODE, fOUTGOING ? "Outgoing" : "Incoming",
+                " RPC Disconnected (", strReason, ") at timestamp ", runtime::unifiedtimestamp());
+
+            return;
+        }
     }
 
 
     /** Main message handler once a packet is received. **/
     bool RPCNode::ProcessPacket()
     {
+
         /* Check HTTP authorization */
-        if (!Authorized(INCOMING.mapHeaders))
+        if(!Authorized(INCOMING.mapHeaders))
         {
-            debug::log(0, "RPC incorrect password attempt from ", this->addr.ToString());
+            debug::error(FUNCTION, "RPC incorrect password attempt from ", this->addr.ToString());
 
             /* Deter brute-forcing short passwords.
              * If this results in a DOS the user really
              * shouldn't have their RPC port exposed. */
-            if (config::GetArg("-rpcpassword", "").size() < 20)
+            if(config::GetArg("-rpcpassword", "").size() < 20)
                 runtime::sleep(250);
 
             PushResponse(401, "");
@@ -74,7 +158,7 @@ namespace LLP
                 throw APIException(-32600, "Missing method");
 
             /* Ensure the method is correct type. */
-            if (!jsonIncoming["method"].is_string())
+            if(!jsonIncoming["method"].is_string())
                 throw APIException(-32600, "Method must be a string");
 
             /* Get the method string. */
@@ -91,16 +175,15 @@ namespace LLP
             if(!jsonParams.is_array())
                 throw APIException(-32600, "Params must be an array");
 
+            /* Check that the node is initialized. */
+            if(!config::fInitialized)
+                throw APIException(-1, "Daemon is still initializing");
+
             /* Execute the RPC method. */
-            json::json jsonResult = TAO::API::RPCCommands.Execute(strMethod, jsonParams, false);
+            json::json jsonResult = TAO::API::RPCCommands->Execute(strMethod, jsonParams, false);
 
             /* Push the response data with json payload. */
             PushResponse(200, JSONReply(jsonResult, nullptr, jsonID).dump());
-        }
-        /* Handle for memory allocation fail. */
-        catch(const std::bad_alloc &e)
-        {
-            return debug::error(FUNCTION, "Memory allocation failed ", e.what());
         }
 
         /* Handle for custom API exceptions. */
@@ -128,7 +211,7 @@ namespace LLP
         }
 
         /* Handle a connection close header. */
-        return false;
+        return true;
     }
 
 
@@ -136,7 +219,7 @@ namespace LLP
     json::json RPCNode::JSONReply(const json::json& jsonResponse, const json::json& jsonError, const json::json& jsonID)
     {
         json::json jsonReply;
-        if (!jsonError.is_null())
+        if(!jsonError.is_null())
         {
             jsonReply["result"] = nullptr;
             jsonReply["error"] = jsonError;
@@ -186,7 +269,7 @@ namespace LLP
             return debug::error(FUNCTION, "no authorization in header");
 
         std::string strAuth = mapHeaders["authorization"];
-        if (strAuth.substr(0,6) != "Basic ")
+        if(strAuth.substr(0,6) != "Basic ")
             return debug::error(FUNCTION, "incorrect authorization type");
 
         /* Get the encoded content */

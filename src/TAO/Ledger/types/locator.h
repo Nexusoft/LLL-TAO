@@ -33,19 +33,16 @@ namespace TAO
 
             IMPLEMENT_SERIALIZE
             (
-                if (!(nSerType & SER_GETHASH))
+                if(!(nSerType & SER_GETHASH))
                     READWRITE(nSerVersion);
 
                 READWRITE(vHave);
-            )
+          )
 
 
             /** Default constructor. **/
-            Locator()
-            : vHave()
-            {
+            Locator();
 
-            }
 
             /** Constructor
              *
@@ -64,7 +61,7 @@ namespace TAO
              *  @param[in] hashBlock The block hash to work from.
              *
              **/
-            explicit Locator(const uint1024_t hashBlock);
+            explicit Locator(const uint1024_t& hashBlock);
 
 
             /** Constructor
@@ -74,15 +71,11 @@ namespace TAO
              *  @param[in] vHaveIn The list of hashes to use.
              *
              **/
-            Locator(const std::vector<uint1024_t>& vHaveIn)
-            : vHave(vHaveIn)
-            {
-            }
+            Locator(const std::vector<uint1024_t>& vHaveIn);
+
 
             /** Destructor **/
-            ~Locator()
-            {
-            }
+            ~Locator();
 
 
             /** Set Null
@@ -90,10 +83,7 @@ namespace TAO
              *  Set the object to null.
              *
              **/
-            void SetNull()
-            {
-                vHave.clear();
-            }
+            void SetNull();
 
 
             /** Is Null
@@ -103,10 +93,7 @@ namespace TAO
              *  @return true if object is in null state.
              *
              **/
-            bool IsNull() const
-            {
-                return vHave.empty();
-            }
+            bool IsNull() const;
 
 
             /** Set
@@ -116,7 +103,7 @@ namespace TAO
              *  @param[in] state The state to set object from.
              *
              **/
-            void Set(TAO::Ledger::BlockState state);
+            void Set(const TAO::Ledger::BlockState& state);
 
 
 

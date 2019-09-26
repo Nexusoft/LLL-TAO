@@ -23,12 +23,12 @@ namespace TAO
     namespace Register
     {
 
-        /** OBJECT
+        /** REGISTER
          *
-         *  Object registers that are available for use.
+         *  State registers that are available for use.
          *
          **/
-        struct OBJECT
+        namespace REGISTER
         {
             enum
             {
@@ -36,21 +36,99 @@ namespace TAO
                 RESERVED   = 0x00,
 
                 /* This type of register cannot have the data changed */
-                READONLY = 0x01,
+                READONLY   = 0x01,
 
                 /* This type of register can only be appended to. */
-                APPEND   = 0x02,
+                APPEND     = 0x02,
 
                 /* This type of register is just raw data that can be changed. */
-                RAW      = 0x03,
+                RAW        = 0x03,
 
-                /* This type of register handles general accounts and DEBITS / CREDITS */
-                ACCOUNT  = 0x04,
+                /* This type of register has its data fields enforced by operations layer. */
+                OBJECT     = 0x04,
 
-                /* This type of register to hold token parameters. */
-                TOKEN    = 0x05
+                /* This type of register is special and for system update only. */
+                SYSTEM     = 0x05,
             };
-        };
+        }
+
+
+        /** SYSTEM
+         *
+         *  System registers with reserved indexes.
+         *
+         **/
+        namespace SYSTEM
+        {
+            enum
+            {
+                /* RESERVED can't be used as system register. */
+                RESERVED  = 0x00,
+
+                /* This type of register is a system register holding global trust. */
+                TRUST     = 0x01,
+
+                /* LIMIT is defined as 256 values. */
+                LIMIT     = 0xff
+            };
+        }
+
+
+        /** OBJECT
+         *
+         *  Object registers that are available and standardized.
+         *
+         **/
+        namespace OBJECTS
+        {
+            enum
+            {
+                /* Non-Standard Object (User Defined Type). */
+                NONSTANDARD  = 1,
+
+                /* Account Object Register. */
+                ACCOUNT      = 2,
+
+                /* Token Object Register. */
+                TOKEN        = 4,
+
+                /* Trust Object Register. */
+                TRUST        = 8,
+
+                /* Name Object Register. */
+                NAME         = 16,
+
+                /* Namespace Object Register. */
+                NAMESPACE    = 32,
+
+                /* Crypto Object Register. */
+                CRYPTO       = 64
+            };
+        }
+
+
+        /** Object register data types. **/
+        namespace TYPES
+        {
+            enum
+            {
+                UNSUPPORTED = 0x00,
+
+                //RESERVED to 0x0f
+                UINT8_T     = 0x01,
+                UINT16_T    = 0x02,
+                UINT32_T    = 0x03,
+                UINT64_T    = 0x04,
+                UINT256_T   = 0x05,
+                UINT512_T   = 0x06,
+                UINT1024_T  = 0x07,
+                STRING      = 0x08,
+                BYTES       = 0x09,
+
+                //by default everything is read-only
+                MUTABLE     = 0xff
+            };
+        }
 
 
         /** STATES
@@ -58,7 +136,7 @@ namespace TAO
          *  The states for the register script in transaction.
          *
          **/
-        struct STATES
+        namespace STATES
         {
             enum
             {
@@ -69,36 +147,20 @@ namespace TAO
                 PRESTATE   = 0x01,
 
                 /* Post-State - for recording the checksum of register post-state. */
-                POSTSTATE  = 0x02,
-
-                /* Validation - for recording events in validation registers. */
-                VALIDATION = 0x03
+                POSTSTATE  = 0x02
             };
-        };
+        }
 
-
-        /** FLAGS
+        /** NAMESPACE
          *
-         *  The flags on what to do to registers when executing operations.
+         *  The NAMESPACE namespace to hold constants for Namespace Object registers
          *
          **/
-        struct FLAGS
+        namespace NAMESPACE
         {
-            enum
-            {
-                /* Calculate the register's pre-states. */
-                PRESTATE  = (1 << 1),
-
-                /* Calculate the register post-state checksum. */
-                POSTSTATE = (1 << 2),
-
-                /* Write the registers post-state to database. */
-                WRITE     = (1 << 3),
-
-                /* Write the states into a mempool for checking pre-block. */
-                MEMPOOL   = (1 << 4)
-            };
-        };
+            /* Constant used to indicate a global namespace */
+            const std::string GLOBAL = "~GLOBAL~";
+        }
     }
 }
 

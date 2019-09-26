@@ -19,15 +19,16 @@ ________________________________________________________________________________
 #include <LLP/types/tritium.h>
 #include <LLP/types/legacy.h>
 #include <LLP/types/time.h>
-#include <LLP/types/corenode.h>
+#include <LLP/types/apinode.h>
 #include <LLP/types/rpcnode.h>
-#include <LLP/types/legacy_miner.h>
-#include <LLP/types/tritium_miner.h>
+#include <LLP/types/miner.h>
 
 #include <LLP/include/manager.h>
 #include <LLP/include/trust_address.h>
 
 #include <Util/include/args.h>
+#include <Util/include/signals.h>
+
 #include <LLP/include/permissions.h>
 #include <functional>
 #include <numeric>
@@ -51,25 +52,24 @@ namespace LLP
                          uint32_t cScore, uint32_t rScore, uint32_t nTimespan, bool fListen,
                          bool fMeter, bool fManager, uint32_t nSleepTimeIn)
     : fDDOS(fDDOS_)
-    , MANAGER()
     , PORT(nPort)
     , MAX_THREADS(nMaxThreads)
     , DDOS_TIMESPAN(nTimespan)
     , DATA_THREADS()
     , pAddressManager(nullptr)
     , nSleepTime(nSleepTimeIn)
+    , hListenSocket(-1, -1)
     {
-        for(uint16_t index = 0; index < MAX_THREADS; ++index)
+        for(uint16_t nIndex = 0; nIndex < MAX_THREADS; ++nIndex)
         {
             DATA_THREADS.push_back(new DataThread<ProtocolType>(
-                index, fDDOS_, rScore, cScore, nTimeout, fMeter));
+                nIndex, fDDOS_, rScore, cScore, nTimeout, fMeter));
         }
 
         /* Initialize the address manager. */
         if(fManager)
         {
             pAddressManager = new AddressManager(nPort);
-
             if(!pAddressManager)
                 debug::error(FUNCTION, "Failed to allocate memory for address manager on port ", nPort);
 
@@ -79,8 +79,14 @@ namespace LLP
         /* Initialize the listeners. */
         if(fListen)
         {
+            /* Bind the Listener. */
+            if(!BindListenPort(hListenSocket.first, true))
+            {
+                ::Shutdown();
+                return;
+            }
+
             LISTEN_THREAD_V4 = std::thread(std::bind(&Server::ListeningThread, this, true));  //IPv4 Listener
-            LISTEN_THREAD_V6 = std::thread(std::bind(&Server::ListeningThread, this, false)); //IPv6 Listener
         }
 
         /* Initialize the meter. */
@@ -99,8 +105,6 @@ namespace LLP
         /* Wait for address manager. */
         if(pAddressManager)
         {
-            MANAGER.notify_all();
-
             if(MANAGER_THREAD.joinable())
                 MANAGER_THREAD.join();
         }
@@ -128,9 +132,7 @@ namespace LLP
         for(; it != DDOS_MAP.end(); ++it)
         {
             if(it->second)
-            {
                 delete it->second;
-            }
         }
         DDOS_MAP.clear();
 
@@ -250,13 +252,69 @@ namespace LLP
 
     /*  Get the best connection based on latency. */
     template <class ProtocolType>
-    memory::atomic_ptr<ProtocolType>& Server<ProtocolType>::GetConnection(const BaseAddress& addrExclude)
+    memory::atomic_ptr<ProtocolType>& Server<ProtocolType>::GetConnection(const std::pair<uint32_t, uint32_t>& pairExclude)
     {
         /* List of connections to return. */
         uint32_t nLatency   = std::numeric_limits<uint32_t>::max();
-        uint16_t nRetThread = 0;
-        uint16_t nRetIndex  = 0;
 
+        int16_t nRetThread = -1;
+        int16_t nRetIndex  = -1;
+        for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
+        {
+            /* Loop through connections in data thread. */
+            uint16_t nSize = static_cast<uint16_t>(DATA_THREADS[nThread]->CONNECTIONS->size());
+            for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
+            {
+                try
+                {
+                    /* Skip over excluded connection. */
+                    if(pairExclude.first == nThread && pairExclude.second == nIndex)
+                        continue;
+
+                    /* Get the current atomic_ptr. */
+                    memory::atomic_ptr<ProtocolType>& CONNECTION = DATA_THREADS[nThread]->CONNECTIONS->at(nIndex);
+                    if(!CONNECTION)
+                        continue;
+
+                    /* Push the active connection. */
+                    if(CONNECTION->nLatency < nLatency)
+                    {
+                        nLatency = CONNECTION->nLatency;
+
+                        nRetThread = nThread;
+                        nRetIndex  = nIndex;
+                    }
+                }
+                catch(const std::exception& e)
+                {
+                    //debug::error(FUNCTION, e.what());
+                }
+            }
+        }
+
+        /* Handle if no connections were found. */
+        static memory::atomic_ptr<ProtocolType> pNULL;
+        if(nRetThread == -1 || nRetIndex == -1)
+            return pNULL;
+
+        return DATA_THREADS[nRetThread]->CONNECTIONS->at(nRetIndex);
+    }
+
+
+    /* Get the best connection based on data thread index. */
+    template<class ProtocolType>
+    memory::atomic_ptr<ProtocolType>& Server<ProtocolType>::GetConnection(const uint32_t nDataThread, const uint32_t nDataIndex)
+    {
+        return DATA_THREADS[nDataThread]->CONNECTIONS->at(nDataIndex);
+    }
+
+
+    /*  Get the active connection pointers from data threads. */
+    template <class ProtocolType>
+    std::vector<LegacyAddress> Server<ProtocolType>::GetAddresses()
+    {
+        /* Loop through the data threads. */
+        std::vector<LegacyAddress> vAddr;
         for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
         {
             /* Get the data threads. */
@@ -274,18 +332,9 @@ namespace LLP
                     if(!dt->CONNECTIONS->at(nIndex))
                         continue;
 
-                    /* Skip over exclusion address. */
-                    if(dt->CONNECTIONS->at(nIndex)->GetAddress() == addrExclude)
-                        continue;
-
                     /* Push the active connection. */
-                    if(dt->CONNECTIONS->at(nIndex)->nLatency < nLatency)
-                    {
-                        nLatency = dt->CONNECTIONS->at(nIndex)->nLatency;
-
-                        nRetThread = nThread;
-                        nRetIndex  = nIndex;
-                    }
+                    if(dt->CONNECTIONS->at(nIndex)->Connected())
+                        vAddr.emplace_back(dt->CONNECTIONS->at(nIndex)->addr);
                 }
                 catch(const std::runtime_error& e)
                 {
@@ -294,28 +343,7 @@ namespace LLP
             }
         }
 
-        return DATA_THREADS[nRetThread]->CONNECTIONS->at(nRetIndex);
-    }
-
-
-    /*  Get the active connection pointers from data threads. */
-    template <class ProtocolType>
-    std::vector<LegacyAddress> Server<ProtocolType>::GetAddresses()
-    {
-        std::vector<BaseAddress> vAddr;
-        std::vector<LegacyAddress> vLegacyAddr;
-
-        if(pAddressManager)
-        {
-            /* Get the base addresses from address manager and convert
-            into legacy addresses */
-            pAddressManager->GetAddresses(vAddr);
-
-            for(auto it = vAddr.begin(); it != vAddr.end(); ++it)
-                vLegacyAddr.push_back((LegacyAddress)*it);
-        }
-
-        return vLegacyAddr;
+        return vAddr;
     }
 
 
@@ -328,6 +356,17 @@ namespace LLP
     }
 
 
+    /*  Tell the server an event has occured to wake up thread if it is sleeping. This can be used to orchestrate communication
+     *  among threads if a strong ordering needs to be guaranteed. */
+    template <class ProtocolType>
+    void Server<ProtocolType>::NotifyEvent()
+    {
+        /* Notify the connection of each data thread that an event has occurred. */
+        for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
+            DATA_THREADS[nThread]->NotifyEvent();
+    }
+
+
      /*  Address Manager Thread. */
     template <class ProtocolType>
     void Server<ProtocolType>::Manager()
@@ -336,8 +375,10 @@ namespace LLP
         if(!pAddressManager)
             return;
 
+        debug::log(0, FUNCTION, Name(), " Connection Manager Started");
+
         /* Address to select. */
-        BaseAddress addr;
+        BaseAddress addr = BaseAddress();
 
         /* Read the address database. */
         pAddressManager->ReadDatabase();
@@ -345,10 +386,8 @@ namespace LLP
         /* Set the port. */
         pAddressManager->SetPort(PORT);
 
-
-        /* Wait for data threads to startup. */
-        while(DATA_THREADS.size() < MAX_THREADS)
-            runtime::sleep(1000);
+        /* Get the max connections. Default is 16 if maxconnections isn't specified. */
+        uint32_t nMaxConnections = static_cast<uint32_t>(config::GetArg(std::string("-maxconnections"), 16));
 
         /* Loop connections. */
         while(!config::fShutdown.load())
@@ -358,7 +397,7 @@ namespace LLP
                 runtime::sleep(1000);
 
             /* Pick a weighted random priority from a sorted list of addresses. */
-            if(pAddressManager->StochasticSelect(addr))
+            if(GetConnectionCount() < nMaxConnections && pAddressManager->StochasticSelect(addr))
             {
                 /* Check for invalid address */
                 if(!addr.IsValid())
@@ -371,8 +410,14 @@ namespace LLP
 
                 /* Attempt the connection. */
                 debug::log(3, FUNCTION, ProtocolType::Name(), " Attempting Connection ", addr.ToString());
+                if(AddConnection(addr.ToStringIP(), addr.GetPort()))
+                {
 
-                AddConnection(addr.ToStringIP(), addr.GetPort());
+                    /* If address is DNS, log message on connection. */
+                    std::string dns_name;
+                    if(pAddressManager->GetDNSName(addr, dns_name))
+                        debug::log(3, FUNCTION, "Connected to DNS Address: ", dns_name);
+                }
             }
 
             debug::log(3, FUNCTION, ProtocolType::Name(), " ", pAddressManager->ToString());
@@ -409,37 +454,28 @@ namespace LLP
     template <class ProtocolType>
     void Server<ProtocolType>::ListeningThread(bool fIPv4)
     {
-        int32_t hListenSocket = 0;
         SOCKET hSocket;
         BaseAddress addr;
         socklen_t len_v4 = sizeof(struct sockaddr_in);
         socklen_t len_v6 = sizeof(struct sockaddr_in6);
 
-        /* Bind the Listener. */
-        if(!BindListenPort(hListenSocket, fIPv4))
-            return;
-
-        /* Don't listen until all data threads are created. */
-        while(DATA_THREADS.size() < MAX_THREADS)
-            runtime::sleep(1000);
-
         /* Setup poll objects. */
         pollfd fds[1];
         fds[0].events = POLLIN;
-        fds[0].fd     = hListenSocket;
+        fds[0].fd     = (fIPv4 ? hListenSocket.first : hListenSocket.second);
 
         /* Main listener loop. */
         while(!config::fShutdown.load())
         {
-            if (hListenSocket != INVALID_SOCKET)
+            if ((fIPv4 ? hListenSocket.first : hListenSocket.second) != INVALID_SOCKET)
             {
                 /* Poll the sockets. */
                 fds[0].revents = 0;
 
 #ifdef WIN32
-                int nPoll = WSAPoll(&fds[0], 1, 100);
+                int32_t nPoll = WSAPoll(&fds[0], 1, 100);
 #else
-                int nPoll = poll(&fds[0], 1, 100);
+                int32_t nPoll = poll(&fds[0], 1, 100);
 #endif
 
 				/* Continue on poll error or no data to read */
@@ -453,7 +489,7 @@ namespace LLP
                 {
                     struct sockaddr_in sockaddr;
 
-                    hSocket = accept(hListenSocket, (struct sockaddr*)&sockaddr, &len_v4);
+                    hSocket = accept(hListenSocket.first, (struct sockaddr*)&sockaddr, &len_v4);
                     if (hSocket != INVALID_SOCKET)
                         addr = BaseAddress(sockaddr);
                 }
@@ -461,14 +497,14 @@ namespace LLP
                 {
                     struct sockaddr_in6 sockaddr;
 
-                    hSocket = accept(hListenSocket, (struct sockaddr*)&sockaddr, &len_v6);
+                    hSocket = accept(hListenSocket.second, (struct sockaddr*)&sockaddr, &len_v6);
                     if (hSocket != INVALID_SOCKET)
                         addr = BaseAddress(sockaddr);
                 }
 
-                if (hSocket == INVALID_SOCKET)
+                if(hSocket == INVALID_SOCKET)
                 {
-                    if (WSAGetLastError() != WSAEWOULDBLOCK)
+                    if(WSAGetLastError() != WSAEWOULDBLOCK)
                         debug::error(FUNCTION, "Socket error accept failed: ", WSAGetLastError());
                 }
                 else
@@ -521,6 +557,8 @@ namespace LLP
                 }
             }
         }
+
+        closesocket(fIPv4 ? hListenSocket.first : hListenSocket.second);
     }
 
 
@@ -536,9 +574,9 @@ namespace LLP
 
         /* Create socket for listening for incoming connections */
         hListenSocket = socket(fIPv4 ? AF_INET : AF_INET6, SOCK_STREAM, IPPROTO_TCP);
-        if (hListenSocket == INVALID_SOCKET)
+        if(hListenSocket == INVALID_SOCKET)
         {
-            debug::error("Couldn't open socket for incoming connections (socket returned error )", WSAGetLastError());
+            debug::error("Couldn't open socket for incoming connections (socket returned error)", WSAGetLastError());
             return false;
         }
 
@@ -551,19 +589,18 @@ namespace LLP
         /* Allow binding if the port is still in TIME_WAIT state after the program was closed and restarted.  Not an issue on windows. */
 #ifndef WIN32
         setsockopt(hListenSocket, SOL_SOCKET, SO_REUSEADDR, (void*)&nOne, sizeof(int32_t));
-        setsockopt(hListenSocket, SOL_SOCKET, SO_REUSEPORT, (void*)&nOne, sizeof(int32_t));
 #endif
 
 #ifndef WIN32
-    /* Set the MSS to a lower than default value to support the increased bytes required for LISP */
-    int nMaxSeg = 1300;
-    if(setsockopt(hListenSocket, IPPROTO_TCP /*SOL_SOCKET*/, TCP_MAXSEG, &nMaxSeg, sizeof(nMaxSeg)) == SOCKET_ERROR)
-    {
-        debug::error("setsockopt() MSS for connection failed: ", WSAGetLastError());
-        //closesocket(hListenSocket);
+        /* Set the MSS to a lower than default value to support the increased bytes required for LISP */
+        int nMaxSeg = 1300;
+        if(setsockopt(hListenSocket, IPPROTO_TCP, TCP_MAXSEG, &nMaxSeg, sizeof(nMaxSeg)) == SOCKET_ERROR)
+        { //TODO: this fails on OSX systems. Need to find out why
+            //debug::error("setsockopt() MSS for connection failed: ", WSAGetLastError());
+            //closesocket(hListenSocket);
 
-        //return false;
-    }
+            //return false;
+        }
 #endif
 
         /* The sockaddr_in structure specifies the address family, IP address, and port for the socket that is being bound */
@@ -574,15 +611,13 @@ namespace LLP
             sockaddr.sin_family = AF_INET;
             sockaddr.sin_addr.s_addr = INADDR_ANY; // bind to all IPs on this computer
             sockaddr.sin_port = htons(PORT);
-            if (::bind(hListenSocket, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR)
+            if(::bind(hListenSocket, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR)
             {
                 int32_t nErr = WSAGetLastError();
                 if (nErr == WSAEADDRINUSE)
-                    debug::error("Unable to bind to port ", ntohs(sockaddr.sin_port), " on this computer. Address already in use.");
+                    return debug::error("Unable to bind to port ", ntohs(sockaddr.sin_port), "... Nexus is probably still running");
                 else
-                    debug::error("Unable to bind to port ", ntohs(sockaddr.sin_port), " on this computer (bind returned error )",  nErr);
-
-                return false;
+                    return debug::error("Unable to bind to port ", ntohs(sockaddr.sin_port), " on this computer (bind returned error )",  nErr);
             }
 
             debug::log(0, FUNCTION,"(v4) Bound to port ", ntohs(sockaddr.sin_port));
@@ -594,24 +629,22 @@ namespace LLP
             sockaddr.sin6_family = AF_INET6;
             sockaddr.sin6_addr = IN6ADDR_ANY_INIT; // bind to all IPs on this computer
             sockaddr.sin6_port = htons(PORT);
-            if (::bind(hListenSocket, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR)
+            if(::bind(hListenSocket, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR)
             {
                 int32_t nErr = WSAGetLastError();
                 if (nErr == WSAEADDRINUSE)
-                    debug::error("Unable to bind to port ", ntohs(sockaddr.sin6_port), " on this computer. Address already in use.");
+                    return debug::error("Unable to bind to port ", ntohs(sockaddr.sin6_port), "... Nexus is probably still running");
                 else
-                    debug::error("Unable to bind to port ", ntohs(sockaddr.sin6_port), " on this computer (bind returned error )",  nErr);
-
-                return false;
+                    return debug::error("Unable to bind to port ", ntohs(sockaddr.sin6_port), " on this computer (bind returned error )",  nErr);
             }
 
             debug::log(0, FUNCTION, "(v6) Bound to port ", ntohs(sockaddr.sin6_port));
         }
 
         /* Listen for incoming connections */
-        if (listen(hListenSocket, SOMAXCONN) == SOCKET_ERROR)
+        if(listen(hListenSocket, 4096) == SOCKET_ERROR)
         {
-            debug::error("Listening for incoming connections failed (listen returned error )", WSAGetLastError());
+            debug::error("Listening for incoming connections failed (listen returned error)", WSAGetLastError());
             return false;
         }
 
@@ -689,8 +722,7 @@ namespace LLP
     template class Server<TritiumNode>;
     template class Server<LegacyNode>;
     template class Server<TimeNode>;
-    template class Server<CoreNode>;
+    template class Server<APINode>;
     template class Server<RPCNode>;
-    template class Server<LegacyMiner>;
-    template class Server<TritiumMiner>;
+    template class Server<Miner>;
 }

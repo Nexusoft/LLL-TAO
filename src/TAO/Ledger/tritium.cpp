@@ -11,9 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <cmath>
-
-#include <LLC/include/key.h>
+#include <LLC/types/bignum.h>
 
 #include <LLD/include/global.h>
 
@@ -21,19 +19,32 @@ ________________________________________________________________________________
 #include <LLP/include/global.h>
 #include <LLP/include/inv.h>
 
+#include <TAO/Operation/include/enum.h>
+
+#include <TAO/Register/types/object.h>
+
 #include <TAO/Ledger/types/tritium.h>
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/types/mempool.h>
 
 #include <TAO/Ledger/include/constants.h>
-#include <TAO/Ledger/include/timelocks.h>
-#include <TAO/Ledger/include/difficulty.h>
-#include <TAO/Ledger/include/supply.h>
-#include <TAO/Ledger/include/checkpoints.h>
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/checkpoints.h>
+#include <TAO/Ledger/include/difficulty.h>
+#include <TAO/Ledger/include/retarget.h>
+#include <TAO/Ledger/include/stake.h>
+#include <TAO/Ledger/include/enum.h>
+#include <TAO/Ledger/include/supply.h>
+#include <TAO/Ledger/include/timelocks.h>
+#include <TAO/Ledger/types/syncblock.h>
+
+#include <TAO/Register/include/enum.h>
+#include <TAO/Register/types/address.h>
 
 #include <Util/include/args.h>
 #include <Util/include/hex.h>
+
+#include <cmath>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -46,40 +57,147 @@ namespace TAO
         /** The default constructor. **/
         TritiumBlock::TritiumBlock()
         : Block()
+        , nTime(runtime::unifiedtimestamp())
         , producer()
+        , ssSystem()
         , vtx()
         {
             SetNull();
         }
 
 
+        /** Copy constructor from base block. **/
+        TritiumBlock::TritiumBlock(const Block& block)
+        : Block(block)
+        , nTime(runtime::unifiedtimestamp())
+        , producer()
+        , ssSystem()
+        , vtx(0)
+        {
+
+        }
+
+
         /** Copy Constructor. **/
         TritiumBlock::TritiumBlock(const TritiumBlock& block)
         : Block(block)
+        , nTime(block.nTime)
         , producer(block.producer)
+        , ssSystem(block.ssSystem)
         , vtx(block.vtx)
         {
-
         }
 
 
         /** Copy Constructor. **/
         TritiumBlock::TritiumBlock(const BlockState& state)
         : Block(state)
+        , nTime(state.nTime)
         , producer()
+        , ssSystem(state.ssSystem)
         , vtx(state.vtx)
         {
-            vtx.erase(vtx.begin());
-
             /* Read the producer transaction from disk. */
-            if(!LLD::legDB->ReadTx(state.vtx[0].second, producer))
-                debug::error(FUNCTION, "failed to read producer");
+            if(!LLD::Ledger->ReadTx(state.vtx.back().second, producer))
+                throw debug::exception(FUNCTION, "failed to read producer");
+
+            /* Erase the producer. */
+            vtx.erase(vtx.end());
+        }
+
+
+        /** Copy Constructor. **/
+        TritiumBlock::TritiumBlock(const SyncBlock& block)
+        : Block(block)
+        , nTime(block.nTime)
+        , producer()
+        , ssSystem(block.ssSystem)
+        , vtx()
+        {
+            /* Check for version conversions. */
+            if(block.nVersion < 7)
+                throw debug::exception(FUNCTION, "invalid sync block version for tritium block");
+
+            /* Loop through transctions. */
+            for(uint32_t n = 0; n < block.vtx.size(); ++n)
+            {
+                /* Switch for type. */
+                switch(block.vtx[n].first)
+                {
+                    /* Check for tritium. */
+                    case TRANSACTION::TRITIUM:
+                    {
+                        /* Serialize stream. */
+                        DataStream ssData(block.vtx[n].second, SER_DISK, LLD::DATABASE_VERSION);
+
+                        /* Build the transaction. */
+                        Transaction tx;
+                        ssData >> tx;
+
+                        /* Accept into memory pool. */
+                        if(!LLD::Ledger->HasTx(tx.GetHash()))
+                            mempool.AddUnchecked(tx);
+
+                        /* Add transaction to binary data. */
+                        if(n == block.vtx.size() - 1)
+                            producer = tx; //handle for the producer transaction
+                        else
+                            vtx.push_back(std::make_pair(block.vtx[n].first, tx.GetHash()));
+
+                        break;
+                    }
+
+                    /* Check for legacy. */
+                    case TRANSACTION::LEGACY:
+                    {
+                        /* Serialize stream. */
+                        DataStream ssData(block.vtx[n].second, SER_DISK, LLD::DATABASE_VERSION);
+
+                        /* Build the transaction. */
+                        Legacy::Transaction tx;
+                        ssData >> tx;
+
+                        /* Accept into memory pool. */
+                        if(!LLD::Legacy->HasTx(tx.GetHash()))
+                            mempool.AddUnchecked(tx);
+
+                        /* Add transaction to binary data. */
+                        vtx.push_back(std::make_pair(block.vtx[n].first, tx.GetHash()));
+
+                        break;
+                    }
+
+                    /* Check for checkpoint. */
+                    case TRANSACTION::CHECKPOINT:
+                    {
+                        /* Serialize stream. */
+                        DataStream ssData(block.vtx[n].second, SER_DISK, LLD::DATABASE_VERSION);
+
+                        /* Build the transaction. */
+                        uint512_t proof;
+                        ssData >> proof;
+
+                        /* Add transaction to binary data. */
+                        vtx.push_back(std::make_pair(block.vtx[n].first, proof));
+
+                        break;
+                    }
+                }
+            }
         }
 
 
         /** Default Destructor **/
         TritiumBlock::~TritiumBlock()
         {
+        }
+
+
+        /*  Allows polymorphic copying of blocks
+         *  Overridden to return an instance of the TritiumBlock class. */
+        TritiumBlock* TritiumBlock::Clone() const
+        {
+            return new TritiumBlock(*this);
         }
 
 
@@ -93,20 +211,34 @@ namespace TAO
         }
 
 
+        /* Update the nTime of the current block. */
+        void TritiumBlock::UpdateTime()
+        {
+            nTime = static_cast<uint32_t>(std::max(ChainState::stateBest.load().GetBlockTime() + 1, runtime::unifiedtimestamp()));
+        }
+
+
+        /* Return the Block's current UNIX timestamp. */
+        uint64_t TritiumBlock::GetBlockTime() const
+        {
+            return nTime;
+        }
+
+
         /* For debugging Purposes seeing block state data dump */
         std::string TritiumBlock::ToString() const
         {
             return debug::safe_printstr("Tritium Block("
-                VALUE("hash")     " = ", GetHash().ToString().substr(0, 20), " ",
+                VALUE("hash")     " = ", GetHash().SubString(), " ",
                 VALUE("nVersion") " = ", nVersion, ", ",
-                VALUE("hashPrevBlock") " = ", hashPrevBlock.ToString().substr(0, 20), ", ",
-                VALUE("hashMerkleRoot") " = ", hashMerkleRoot.ToString().substr(0, 20), ", ",
+                VALUE("hashPrevBlock") " = ", hashPrevBlock.SubString(), ", ",
+                VALUE("hashMerkleRoot") " = ", hashMerkleRoot.SubString(), ", ",
                 VALUE("nChannel") " = ", nChannel, ", ",
                 VALUE("nHeight") " = ", nHeight, ", ",
                 VALUE("nBits") " = ", nBits, ", ",
                 VALUE("nNonce") " = ", nNonce, ", ",
                 VALUE("nTime") " = ", nTime, ", ",
-                VALUE("vchBlockSig") " = ", HexStr(vchBlockSig.begin(), vchBlockSig.end()), ", ",
+                VALUE("vchBlockSig") " = ", HexStr(vchBlockSig.begin(), vchBlockSig.end()).substr(0, 20), ", ",
                 VALUE("vtx.size()") " = ", vtx.size(), ")");
         }
 
@@ -114,74 +246,49 @@ namespace TAO
         /* Checks if a block is valid if not connected to chain. */
         bool TritiumBlock::Check() const
         {
-            /* Check the Size limits of the Current Block. */
-            if (::GetSerializeSize(*this, SER_NETWORK, LLP::PROTOCOL_VERSION) > MAX_BLOCK_SIZE)
-                return debug::error(FUNCTION, "size ", ::GetSerializeSize(*this, SER_NETWORK, LLP::PROTOCOL_VERSION), " limits failed ", MAX_BLOCK_SIZE);
+            /* Read ledger DB for duplicate block. */
+            if(LLD::Ledger->HasBlock(GetHash()))
+                return false;//debug::error(FUNCTION, "already have block ", GetHash().SubString());
 
+            /* Check the Size limits of the Current Block. */
+            if(::GetSerializeSize(*this, SER_NETWORK, LLP::PROTOCOL_VERSION) > MAX_BLOCK_SIZE)
+                return debug::error(FUNCTION, "size limits failed ", MAX_BLOCK_SIZE);
 
             /* Make sure the Block was Created within Active Channel. */
-            if (GetChannel() > 2)
-                return debug::error(FUNCTION, "channel out of Range.");
-
+            if(GetChannel() > (config::GetBoolArg("-private") ? 3 : 2))
+                return debug::error(FUNCTION, "channel out of range");
 
             /* Check that the time was within range. */
-            if (GetBlockTime() > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT * 60)
+            if(GetBlockTime() > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT * 60)
                 return debug::error(FUNCTION, "block timestamp too far in the future");
 
-
-            /* Do not allow blocks to be accepted above the current block version. */
-            if(nVersion == 0 || nVersion > (config::fTestNet ? TESTNET_BLOCK_CURRENT_VERSION : NETWORK_BLOCK_CURRENT_VERSION))
-                return debug::error(FUNCTION, "invalid block version");
-
-
-            /* Only allow POS blocks in Version 4. */
-            if(IsProofOfStake() && nVersion < 4)
-                return debug::error(FUNCTION, "proof-of-stake rejected until version 4");
-
-
-            /* Check the Proof of Work Claims. */
-            if (IsProofOfWork() && !VerifyWork())
-               return debug::error(FUNCTION, "invalid proof of work");
-
+            /* Check the Current Version Block Time-Lock. */
+            if(!VersionActive(GetBlockTime(), nVersion))
+                return debug::error(FUNCTION, "block created with invalid version");
 
             /* Check the Network Launch Time-Lock. */
-            if (nHeight > 0 && GetBlockTime() <= (config::fTestNet ? NEXUS_TESTNET_TIMELOCK : NEXUS_NETWORK_TIMELOCK))
+            if(!NetworkActive(GetBlockTime()))
                 return debug::error(FUNCTION, "block created before network time-lock");
 
+            /* Check the channel time-locks. */
+            if(!ChannelActive(GetBlockTime(), GetChannel()))
+                return debug::error(FUNCTION, "block created before channel time-lock");
 
-            /* Check the Current Channel Time-Lock. */
-            if (nHeight > 0 && GetBlockTime() < (config::fTestNet ? CHANNEL_TESTNET_TIMELOCK[GetChannel()] : CHANNEL_NETWORK_TIMELOCK[GetChannel()]))
-                return debug::error(FUNCTION, "block created before channel time-lock, please wait ", (config::fTestNet ? CHANNEL_TESTNET_TIMELOCK[GetChannel()] : CHANNEL_NETWORK_TIMELOCK[GetChannel()]) - runtime::unifiedtimestamp(), " seconds");
-
-
-            /* Check the Current Version Block Time-Lock. Allow Version (Current -1) Blocks for 1 Hour after Time Lock. */
-            if (nVersion > 1 && nVersion == (config::fTestNet ? TESTNET_BLOCK_CURRENT_VERSION - 1 : NETWORK_BLOCK_CURRENT_VERSION - 1) && (GetBlockTime() - 3600) > (config::fTestNet ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2]))
-                return debug::error(FUNCTION, "version ", nVersion, " blocks have been obsolete for ", (runtime::unifiedtimestamp() - (config::fTestNet ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2])), " seconds");
-
-
-            /* Check the Current Version Block Time-Lock. */
-            if (nVersion >= (config::fTestNet ? TESTNET_BLOCK_CURRENT_VERSION : NETWORK_BLOCK_CURRENT_VERSION) && GetBlockTime() <= (config::fTestNet ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2]))
-                return debug::error(FUNCTION, "version ", nVersion, " blocks are not accepted for ", (runtime::unifiedtimestamp() - (config::fTestNet ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2])), " seconds");
-
-
-            /* Check the producer transaction. */
-            if(nHeight > 0 && GetChannel() > 0 && !producer.IsCoinbase())
-                return debug::error(FUNCTION, "producer transaction has to be coinbase for proof of work");
-
-
-            /* Check the producer transaction. */
-            if(GetChannel() == 0 && !producer.IsTrust())
-                return debug::error(FUNCTION, "producer transaction has to be trust for proof of stake");
-
-
-            /* Check coinbase/coinstake timestamp is at least 20 minutes before block time */
-            if (GetBlockTime() > (uint64_t)producer.nTimestamp + ((nVersion < 4) ? 1200 : 3600))
+            /* Check coinbase/coinstake timestamp against block time */
+            if(GetBlockTime() > (uint64_t)producer.nTimestamp + ((nVersion < 4) ? 1200 : 3600))
                 return debug::error(FUNCTION, "producer transaction timestamp is too early");
 
+            /* Check that the producer is a valid transaction. */
+            if(!producer.Check())
+                return debug::error(FUNCTION, "producer transaction is invalid");
 
             /* Proof of stake specific checks. */
             if(IsProofOfStake())
             {
+                /* Check the producer transaction. */
+                if(!(producer.IsCoinStake()))
+                    return debug::error(FUNCTION, "producer transaction has to be trust/genesis for proof of stake");
+
                 /* Check for nonce of zero values. */
                 if(nNonce == 0)
                     return debug::error(FUNCTION, "proof of stake can't have Nonce value of zero");
@@ -191,122 +298,172 @@ namespace TAO
                     return debug::error(FUNCTION, "trust timestamp too far in the future");
 
                 /* Make Sure Trust Transaction Time is Before Block. */
-                if (producer.nTimestamp > GetBlockTime())
-                    return debug::error(FUNCTION, "trust timestamp is ahead of block timestamp");
+                if(producer.nTimestamp > GetBlockTime())
+                    return debug::error(FUNCTION, "coinstake timestamp is after block timestamp");
+
+                /* Check the Proof of Stake Claims. */
+                if(!VerifyWork())
+                    return debug::error(FUNCTION, "invalid proof of stake");
             }
 
+            /* Proof of work specific checks. */
+            else if(IsProofOfWork())
+            {
+                /* Check the producer transaction. */
+                if(!producer.IsCoinBase())
+                    return debug::error(FUNCTION, "producer transaction has to be coinbase for proof of work");
+
+                /* Check the Proof of Work Claims. */
+                if(!VerifyWork())
+                    return debug::error(FUNCTION, "invalid proof of work");
+            }
+
+            /* Private specific checks. */
+            else if(IsPrivate())
+            {
+                /* Check the producer transaction. */
+                if(!producer.IsPrivate())
+                    return debug::error(FUNCTION, "producer transaction has to be authorize for private mode");
+            }
+
+            /* Default catch. */
+            else
+                return debug::error(FUNCTION, "unknown block type");
+
+            /* Make sure there is no system memory. */
+            if(ssSystem.size() != 0)
+                return debug::error(FUNCTION, "cannot allocate system memory");
 
             /* Check for duplicate txid's */
-            std::set<uint512_t> uniqueTx;
-
-
-            /* Missing transactions. */
-            std::vector< std::pair<uint8_t, uint512_t> > missingTx;
-
-
-            /* Get the hashes for the merkle root. */
+            std::set<uint512_t> setUnique;
             std::vector<uint512_t> vHashes;
-
-
-            /* Only do producer transaction on non genesis. */
-            if(nHeight > 0)
-                vHashes.push_back(producer.GetHash());
-
 
             /* Get the signature operations for legacy tx's. */
             uint32_t nSigOps = 0;
 
-
-            /* Check all the transactions. */
-            for(const auto& tx : vtx)
+            /* Get the signature operations for legacy tx's. */
+            uint32_t nSize = (uint32_t)vtx.size();
+            for(uint32_t i = 0; i < nSize; ++i)
             {
-
                 /* Insert txid into set to check for duplicates. */
-                uniqueTx.insert(tx.second);
-
-                /* Push back this hash for merkle root. */
-                vHashes.push_back(tx.second);
+                setUnique.insert(vtx[i].second);
+                vHashes.push_back(vtx[i].second);
 
                 /* Basic checks for legacy transactions. */
-                if(tx.first == TYPE::LEGACY_TX)
+                if(vtx[i].first == TRANSACTION::LEGACY)
                 {
                     /* Check the memory pool. */
-                    Legacy::Transaction txMem;
-                    if(!mempool.Get(tx.second, txMem))
+                    Legacy::Transaction tx;
+                    if(!LLD::Legacy->ReadTx(vtx[i].second, tx, FLAGS::MEMPOOL))
                     {
-                        missingTx.push_back(tx);
+                        /* Push missing transaction to memory. */
+                        vMissing.push_back(vtx[i]);
+
                         continue;
                     }
 
+                    /* Check for coinbase / coinstake. */
+                    if(tx.IsCoinBase() || tx.IsCoinStake())
+                        return debug::error(FUNCTION, "more than one coinbase / coinstake");
+
                     /* Check the transaction timestamp. */
-                    if(GetBlockTime() < (uint64_t) txMem.nTime)
+                    if(GetBlockTime() < (uint64_t) tx.nTime)
                         return debug::error(FUNCTION, "block timestamp earlier than transaction timestamp");
 
-                    /* Check the transaction for validitity. */
-                    if(!txMem.CheckTransaction())
+                    /* Check the transaction for validity. */
+                    if(!tx.CheckTransaction())
                         return debug::error(FUNCTION, "check transaction failed.");
+
+                    /* Check legacy transaction for finality. */
+                    if(!tx.IsFinal(nHeight, GetBlockTime()))
+                        return debug::error(FUNCTION, "contains a non-final transaction");
                 }
 
                 /* Basic checks for tritium transactions. */
-                else if(tx.first == TYPE::TRITIUM_TX)
+                else if(vtx[i].first == TRANSACTION::TRITIUM)
                 {
                     /* Check the memory pool. */
-                    TAO::Ledger::Transaction txMem;
-                    if(!mempool.Has(tx.second))
+                    TAO::Ledger::Transaction tx;
+                    if(!LLD::Ledger->ReadTx(vtx[i].second, tx, FLAGS::MEMPOOL))
                     {
-                        missingTx.push_back(tx);
+                        /* Push missing transaction to memory. */
+                        vMissing.push_back(vtx[i]);
+
                         continue;
                     }
+
+                    /* Check for coinbase / coinstake. */
+                    if(tx.IsCoinBase() || tx.IsCoinStake())
+                        return debug::error(FUNCTION, "more than one coinbase / coinstake");
+
+                    /* Check the transaction for validity. */
+                    //if(!tx.Check()) //NOTE: this is pre-processing stuff
+                    //    return debug::error(FUNCTION, "contains an invalid transaction");
                 }
                 else
                     return debug::error(FUNCTION, "unknown transaction type");
             }
 
-            /* Fail and ask for response of missing transctions. */
-            if(missingTx.size() > 0 && nHeight > 0)
-            {
-                std::vector<LLP::CInv> vInv;
-                for(const auto& tx : missingTx)
-                    vInv.push_back(LLP::CInv(tx.second, tx.first == TYPE::TRITIUM_TX ? LLP::MSG_TX_TRITIUM : LLP::MSG_TX_LEGACY));
+            /* Get producer hash. */
+            uint512_t hashProducer = producer.GetHash();
 
-                vInv.push_back(LLP::CInv(GetHash(), LLP::MSG_BLOCK_TRITIUM));
-                if(LLP::TRITIUM_SERVER)
-                    LLP::TRITIUM_SERVER->Relay(LLP::GET_DATA, vInv);
+            /* Add producer to merkle tree list. */
+            vHashes.push_back(hashProducer);
+            setUnique.insert(hashProducer);
 
-                //NodeType* pnode;
-                //pnode->PushMessage("GetInv("....")");
-                //send pnode as a template for this method.
-
-                //TODO: ask the sending node for the missing transactions
-                //Keep a list of missing transactions and then send a work queue once done
-                return debug::error(FUNCTION, "block contains missing transactions");
-            }
-
+            /* Check for missing transactions. */
+            if(vMissing.size() != 0)
+                return debug::error(FUNCTION, "missing ", vMissing.size(), " transactions");
 
             /* Check for duplicate txid's. */
-            if (uniqueTx.size() != vtx.size())
+            if(setUnique.size() != vHashes.size())
                 return debug::error(FUNCTION, "duplicate transaction");
 
-
             /* Check the signature operations for legacy. */
-            if (nSigOps > MAX_BLOCK_SIGOPS)
+            if(nSigOps > MAX_BLOCK_SIGOPS)
                 return debug::error(FUNCTION, "out-of-bounds SigOpCount");
 
-
             /* Check the merkle root. */
-            if (hashMerkleRoot != BuildMerkleTree(vHashes))
+            if(hashMerkleRoot != BuildMerkleTree(vHashes))
                 return debug::error(FUNCTION, "hashMerkleRoot mismatch");
 
-            /* Get the key from the producer. */
-            if(nHeight > 0)
+            /* Switch based on signature type. */
+            switch(producer.nKeyType)
             {
-                /* Create the key to check. */
-                LLC::ECKey key(LLC::BRAINPOOL_P512_T1, 64);
-                key.SetPubKey(producer.vchPubKey);
+                /* Support for the FALCON signature scheeme. */
+                case SIGNATURE::FALCON:
+                {
+                    /* Create the FL Key object. */
+                    LLC::FLKey key;
 
-                /* Check the Block Signature. */
-                if (!VerifySignature(key))
-                    return debug::error(FUNCTION, "bad block signature");
+                    /* Set the public key and verify. */
+                    key.SetPubKey(producer.vchPubKey);
+
+                    /* Check the Block Signature. */
+                    if(!VerifySignature(key))
+                        return debug::error(FUNCTION, "bad block signature");
+
+                    break;
+                }
+
+                /* Support for the BRAINPOOL signature scheme. */
+                case SIGNATURE::BRAINPOOL:
+                {
+                    /* Create EC Key object. */
+                    LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
+
+                    /* Set the public key and verify. */
+                    key.SetPubKey(producer.vchPubKey);
+
+                    /* Check the Block Signature. */
+                    if(!VerifySignature(key))
+                        return debug::error(FUNCTION, "bad block signature");
+
+                    break;
+                }
+
+                default:
+                    return debug::error(FUNCTION, "unknown signature type");
             }
 
             return true;
@@ -316,130 +473,115 @@ namespace TAO
         /** Accept a tritium block. **/
         bool TritiumBlock::Accept() const
         {
-            /* Read leger DB for duplicate block. */
-            if(LLD::legDB->HasBlock(GetHash()))
-                return debug::error(FUNCTION, "already have block ", GetHash().ToString().substr(0, 20));
-
-
-            /* Read leger DB for previous block. */
+            /* Read ledger DB for previous block. */
             TAO::Ledger::BlockState statePrev;
-            if(!LLD::legDB->ReadBlock(hashPrevBlock, statePrev))
+            if(!LLD::Ledger->ReadBlock(hashPrevBlock, statePrev))
                 return debug::error(FUNCTION, "previous block state not found");
-
 
             /* Check the Height of Block to Previous Block. */
             if(statePrev.nHeight + 1 != nHeight)
                 return debug::error(FUNCTION, "incorrect block height.");
 
-
-            /* Get the proof hash for this block. */
-            uint1024_t hash = (nVersion < 5 ? GetHash() : GetChannel() == 0 ? StakeHash() : ProofHash());
-
-
-            /* Get the target hash for this block. */
-            uint1024_t hashTarget = LLC::CBigNum().SetCompact(nBits).getuint1024();
-
-
             /* Verbose logging of proof and target. */
-            debug::log(2, "  proof:  ", hash.ToString().substr(0, 30));
-
+            debug::log(2, "  proof:  ", (GetChannel() == 0 ? StakeHash() : ProofHash()).SubString());
 
             /* Channel switched output. */
             if(GetChannel() == 1)
                 debug::log(2, "  prime cluster verified of size ", GetDifficulty(nBits, 1));
             else
-                debug::log(2, "  target: ", hashTarget.ToString().substr(0, 30));
-
+                debug::log(2, "  target: ", LLC::CBigNum().SetCompact(nBits).getuint1024().SubString());
 
             /* Check that the nBits match the current Difficulty. **/
-            if (nBits != GetNextTargetRequired(statePrev, GetChannel()))
+            if(nBits != GetNextTargetRequired(statePrev, GetChannel()))
                 return debug::error(FUNCTION, "incorrect proof-of-work/proof-of-stake");
 
-
             /* Check That Block timestamp is not before previous block. */
-            if (GetBlockTime() <= statePrev.GetBlockTime())
-                return debug::error(FUNCTION, "block's timestamp too early Block: ", GetBlockTime(), " Prev: ",
-                statePrev.GetBlockTime());
-
+            if(GetBlockTime() <= statePrev.GetBlockTime())
+                return debug::error(FUNCTION, "block's timestamp too early");
 
             /* Check that Block is Descendant of Hardened Checkpoints. */
-            if(!ChainState::Synchronizing() && !IsDescendant(statePrev))
-                return debug::error(FUNCTION, "not descendant of last checkpoint");
+            //if(!ChainState::Synchronizing() && !IsDescendant(statePrev))
+            //    return debug::error(FUNCTION, "not descendant of last checkpoint");
 
-
-            /* Check the block proof of work rewards. */
-            if(IsProofOfWork())
+            /* Check proof of stake requirements. */
+            if(IsProofOfStake())
             {
-                /* Get the stream from coinbase. */
-                producer.ssOperation.seek(1, STREAM::BEGIN); //set the read position to where reward will be.
-
-                /* Read the mining reward. */
-                uint64_t nMiningReward;
-                producer.ssOperation >> nMiningReward;
-
-                /* Check that the Mining Reward Matches the Coinbase Calculations. */
-                if (nMiningReward != GetCoinbaseReward(statePrev, GetChannel(), 0))
-                    return debug::error(FUNCTION, "miner reward mismatch ", nMiningReward, " : ",
-                         GetCoinbaseReward(statePrev, GetChannel(), 0));
-
-                 /* Check that the producer is a valid transaction. */
-                 if(!producer.IsValid())
-                     return debug::error(FUNCTION, "producer transaction is invalid");
-            }
-            else if (IsProofOfStake())
-            {
-                /* Check that the Coinbase / CoinstakeTimstamp is after Previous Block. */
-                if (producer.nTimestamp < statePrev.GetBlockTime())
-                    return debug::error(FUNCTION, "coinstake transaction too early");
-
                 /* Check the proof of stake. */
                 if(!CheckStake())
                     return debug::error(FUNCTION, "proof of stake is invalid");
             }
-
-
-            /* Check legacy transactions for finality. */
-            for(const auto & tx : vtx)
+            else if(IsPrivate())
             {
-                /* Only work on tritium transactions for now. */
-                if(tx.first == TYPE::LEGACY_TX)
-                {
-                    /* Check if in memory pool. */
-                    Legacy::Transaction txCheck;
-                    if(!mempool.Get(tx.second, txCheck))
-                        return debug::error(FUNCTION, "transaction is not in memory pool");
-
-                    /* Check legacy transaction for finality. */
-                    if (!txCheck.IsFinal(nHeight, GetBlockTime()))
-                        return debug::error(FUNCTION, "contains a non-final transaction");
-                }
-                else if(tx.first == TYPE::TRITIUM_TX)
-                {
-                    /* Check if in memory pool. */
-                    Transaction txCheck;
-                    if(!mempool.Get(tx.second, txCheck))
-                        return debug::error(FUNCTION, "transaction is not in memory pool");
-
-                    /* Check the transaction for validity. */
-                    if (!txCheck.IsValid())
-                        return debug::error(FUNCTION, "contains an invalid transaction");
-                }
+                /* Check producer for correct genesis. */
+                if(producer.hashGenesis != (config::fTestNet ?
+                    uint256_t("0xa2a74c14508bd09e104eff93d86cbbdc5c9556ae68546895d964d8374a0e9a41") :
+                    uint256_t("0xa1a74c14508bd09e104eff93d86cbbdc5c9556ae68546895d964d8374a0e9a41")))
+                    return debug::error(FUNCTION, "invalid genesis generated");
             }
+
+            /* Default catch. */
+            else if(!IsProofOfWork())
+                return debug::error(FUNCTION, "unknown block type");
+
+            /* Check that producer isn't before previous block time. */
+            if(producer.nTimestamp <= statePrev.GetBlockTime())
+                return debug::error(FUNCTION, "producer can't be before previous block");
 
             /* Process the block state. */
             TAO::Ledger::BlockState state(*this);
 
+            /* Start the database transaction. */
+            LLD::TxnBegin();
+
+            /* Write the transactions. */
+            for(const auto& proof : vtx)
+            {
+                if(proof.first == TRANSACTION::TRITIUM)
+                {
+                    /* Get the transaction hash. */
+                    const uint512_t& hash = proof.second;
+
+                    /* Check the memory pool. */
+                    TAO::Ledger::Transaction tx;
+                    if(!LLD::Ledger->ReadTx(hash, tx, FLAGS::MEMPOOL))
+                        return debug::error(FUNCTION, "transaction is not in memory pool");
+
+                    /* Write to disk. */
+                    if(!LLD::Ledger->WriteTx(hash, tx))
+                        return debug::error(FUNCTION, "failed to write tx to disk");
+                }
+                else if(proof.first == TRANSACTION::LEGACY)
+                {
+                    /* Get the transaction hash. */
+                    const uint512_t& hash = proof.second;
+
+                    /* Check if in memory pool. */
+                    Legacy::Transaction tx;
+                    if(!LLD::Legacy->ReadTx(hash, tx, FLAGS::MEMPOOL))
+                        return debug::error(FUNCTION, "transaction is not in memory pool");
+
+                    /* Write to disk. */
+                    if(!LLD::Legacy->WriteTx(hash, tx))
+                        return debug::error(FUNCTION, "failed to write tx to disk");
+                }
+                else
+                    return debug::error(FUNCTION, "using an unknown transaction type");
+            }
+
             /* Add the producer transaction */
-            TAO::Ledger::mempool.AddUnchecked(producer);
+            if(!LLD::Ledger->WriteTx(producer.GetHash(), producer))
+                return debug::error(FUNCTION, "failed to write producer to disk");
 
             /* Accept the block state. */
             if(!state.Index())
             {
-                /* Remove producer from temporary mempool. */
-                TAO::Ledger::mempool.Remove(producer.GetHash());
+                LLD::TxnAbort();
 
                 return false;
             }
+
+            /* Commit the transaction to database. */
+            LLD::TxnCommit();
 
             return true;
         }
@@ -448,284 +590,266 @@ namespace TAO
         /* Check the proof of stake calculations. */
         bool TritiumBlock::CheckStake() const
         {
-            /* Check the proof hash of the stake block on version 5 and above. */
-            LLC::CBigNum bnTarget;
-            bnTarget.SetCompact(nBits);
-            if(StakeHash() > bnTarget.getuint1024())
-                return debug::error(FUNCTION, "proof of stake hash not meeting target");
+            /* Reset the coinstake contract streams. */
+            producer[0].Reset();
 
-            /* Weight for Trust transactions combine block weight and stake weight. */
-            double nTrustWeight = 0.0, nBlockWeight = 0.0;
-            uint32_t nTrustAge = 0, nBlockAge = 0;
+            /* Get the trust object register. */
+            TAO::Register::Object account;
+
+            /* Deserialize from the stream. */
+            uint8_t nState = 0;
+            producer[0] >>= nState;
+
+            /* Get the pre-state. */
+            producer[0] >>= account;
+
+            /* Parse the object. */
+            if(!account.Parse())
+                return debug::error(FUNCTION, "failed to parse object register from pre-state");
+
+            /* Validate that it is a trust account. */
+            if(account.Standard() != TAO::Register::OBJECTS::TRUST)
+                return debug::error(FUNCTION, "stake producer account is not a trust account");
+
+            /* Get previous block. Block time used for block age/coin age calculation */
+            TAO::Ledger::BlockState statePrev;
+            if(!LLD::Ledger->ReadBlock(hashPrevBlock, statePrev))
+                return debug::error(FUNCTION, "prev block not in database");
+
+            /* Calculate weights */
+            double nTrustWeight = 0.0;
+            double nBlockWeight = 0.0;
+
+            uint64_t nTrust = 0;
+            uint64_t nTrustPrev = 0;
+            uint64_t nReward = 0;
+            uint64_t nBlockAge = 0;
+            uint64_t nStake = 0;
+            int64_t nStakeChange = 0;
+
             if(producer.IsTrust())
             {
-                /* Get the score and make sure it all checks out. */
-                if(!TrustScore(nTrustAge))
-                    return debug::error(FUNCTION, "failed to get trust score");
+                /* Extract values from producer operation */
+                uint8_t OP = 0;
+                producer[0] >> OP;
 
-                /* Get the weights with the block age. */
-                if(!BlockAge(nBlockAge))
-                    return debug::error(FUNCTION, "failed to get block age");
+                /* Double check OP code. */
+                if(OP != TAO::Operation::OP::TRUST)
+                    return debug::error(FUNCTION, "invalid producer operation for trust");
 
-                /* Trust Weight Continues to grow the longer you have staked and higher your interest rate */
-                nTrustWeight = std::min(90.0, (((44.0 * log(((2.0 * nTrustAge) /
-                    (60 * 60 * 24 * 28 * 3)) + 1.0)) / log(3))) + 1.0);
+                /* Get last trust hash. */
+                uint512_t hashLastClaimed = 0;
+                producer[0] >> hashLastClaimed;
 
-                /* Block Weight Reaches Maximum At Trust Key Expiration. */
-                nBlockWeight = std::min(10.0, (((9.0 * log(((2.0 * nBlockAge) /
-                    ((config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN))) + 1.0)) / log(3))) + 1.0);
+                uint64_t nClaimedTrust = 0;
+                producer[0] >> nClaimedTrust;
+                producer[0] >> nStakeChange;
 
+                uint64_t nClaimedReward = 0;
+                producer[0] >> nClaimedReward;
+
+                /* Validate the claimed hash last stake */
+                uint512_t hashLast;
+                if(!LLD::Ledger->ReadStake(producer.hashGenesis, hashLast))
+                    return debug::error(FUNCTION, "last stake not in database");
+
+                if(hashLast != hashLastClaimed)
+                {
+                    Transaction tx1;
+                    if(!LLD::Ledger->ReadTx(hashLast, tx1))
+                        return debug::error(FUNCTION, "failed to read ", tx1.GetHash().SubString());
+
+                    Transaction tx2;
+                    if(!LLD::Ledger->ReadTx(hashLastClaimed, tx2))
+                        return debug::error(FUNCTION, "failed to read ", tx2.GetHash().SubString());
+
+                    tx1.print();
+                    tx2.print();
+
+                    return debug::error(FUNCTION, "claimed last stake ", hashLastClaimed.SubString(),
+                                                  " does not match actual last stake ", hashLast.SubString());
+                }
+
+
+                /* Get the last stake block. */
+                TAO::Ledger::BlockState stateLast;
+                if(!LLD::Ledger->ReadBlock(hashLastClaimed, stateLast))
+                    return debug::error(FUNCTION, "last block not in database");
+
+                /* Enforce the minimum interval between stake blocks. */
+                const uint32_t nInterval = nHeight - stateLast.nHeight;
+
+                if(nInterval <= MinStakeInterval())
+                    return debug::error(FUNCTION, "stake block interval ", nInterval, " below minimum interval");
+
+                /* Get pre-state trust account values */
+                nTrustPrev = account.get<uint64_t>("trust");
+                nStake = account.get<uint64_t>("stake");
+
+                /* Calculate Block Age (time from last stake block until previous block) */
+                nBlockAge = statePrev.GetBlockTime() - stateLast.GetBlockTime();
+
+                /* Calculate the new trust score */
+                nTrust = GetTrustScore(nTrustPrev, nBlockAge, nStake, nStakeChange);
+
+                /* Validate the trust score calculation */
+                if(nClaimedTrust != nTrust)
+                    return debug::error(FUNCTION, "claimed trust score ", nClaimedTrust,
+                                                  " does not match calculated trust score ", nTrust);
+
+                /* Calculate the coinstake reward */
+                const uint64_t nTime = GetBlockTime() - stateLast.GetBlockTime();
+                nReward = GetCoinstakeReward(nStake, nTime, nTrust, false);
+
+                /* Validate the coinstake reward calculation */
+                if(nClaimedReward != nReward)
+                    return debug::error(FUNCTION, "claimed stake reward ", nClaimedReward,
+                                                  " does not match calculated reward ", nReward);
+
+                /* Calculate Trust Weight corresponding to new trust score. */
+                nTrustWeight = TrustWeight(nTrust);
+
+                /* Calculate Block Weight from current block age. */
+                nBlockWeight = BlockWeight(nBlockAge);
             }
 
-            /* Weight for Gensis transactions are based on your coin age. */
-            else
+            else if(producer.IsGenesis())
             {
+                /* Extract values from producer operation */
+                uint8_t OP = 0;
+                producer[0] >> OP;
+
+                /* Double check OP code. */
+                if(OP != TAO::Operation::OP::GENESIS)
+                    return debug::error(FUNCTION, "invalid producer operation for genesis");
+
+                uint256_t hashAddress = 0;
+                producer[0] >> hashAddress;
+
+                uint64_t nClaimedReward = 0;
+                producer[0] >> nClaimedReward;
+
+                /* Verify that hashAddress of trust account is for producer hashGenesis */
+                TAO::Register::Address hashRegister =
+                    TAO::Register::Address(std::string("trust"), producer.hashGenesis, TAO::Register::Address::TRUST);
+
+                if(hashAddress != hashRegister)
+                    return debug::error(FUNCTION, "genesis for trust account address not owned by producer hashGenesis");
+
+                /* Get Genesis stake from the trust account pre-state balance. Genesis reward based on balance (that will move to stake) */
+                nStake = account.get<uint64_t>("balance");
+
                 /* Genesis transaction can't have any transactions. */
-                if(vtx.size() != 1)
-                    return debug::error(FUNCTION, "genesis can't include transactions");
+                if(vtx.size() != 0)
+                    return debug::error(FUNCTION, "genesis cannot include transactions");
 
-                /* Calculate the Average Coinstake Age. */
-                uint64_t nCoinAge = 0;
-                //TODO: get the age of this transaction with genesis flags.
-                //if(!vtx[0].CoinstakeAge(nCoinAge))
-                //    return debug::error(FUNCTION, "failed to get coinstake age");
+                /* Calculate the Coin Age. */
+                const uint64_t nAge = GetBlockTime() - account.nModified;
 
-                /* Genesis has to wait for one full trust key timespan. */
-                if(nCoinAge < (config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN))
+                /* Validate that Genesis coin age exceeds required minimum. */
+                if(nAge < MinCoinAge())
                     return debug::error(FUNCTION, "genesis age is immature");
 
+                /* Calculate the coinstake reward */
+                nReward = GetCoinstakeReward(nStake, nAge, 0, true);
+
+                /* Validate the coinstake reward calculation */
+                if(nClaimedReward != nReward)
+                    return debug::error(FUNCTION, "claimed hashGenesis reward ", nClaimedReward, " does not match calculated reward ", nReward);
+
                 /* Trust Weight For Genesis Transaction Reaches Maximum at 90 day Limit. */
-                nTrustWeight = std::min(10.0, (((9.0 * log(((2.0 * nCoinAge) / (60 * 60 * 24 * 28 * 3)) + 1.0)) / log(3))) + 1.0);
+                nTrustWeight = GenesisWeight(nAge);
             }
 
-            /* Check the energy efficiency requirements. */
-            uint64_t nStake = 0;
-            if(!producer.ExtractStake(nStake))
-                return debug::error(FUNCTION, "failed to extract the stake amount");
+            else
+                return debug::error(FUNCTION, "invalid stake operation");
+
+            uint64_t nStakeApplied = nStake;
+            if(nStakeChange > 0)
+                nStakeApplied += nStakeChange; //If stake added, apply to threshold calculation
+
+            /* Check the stake balance. */
+            if(nStakeApplied == 0)
+                return debug::error(FUNCTION, "cannot stake if stake balance is zero");
 
             /* Calculate the energy efficiency thresholds. */
-            double nThreshold = ((nTime - producer.nTimestamp) * 100.0) / nNonce;
-            double nRequired  = ((108.0 - nTrustWeight - nBlockWeight) * TAO::Ledger::MAX_STAKE_WEIGHT) / nStake;
+            uint64_t nBlockTime = GetBlockTime() - producer.nTimestamp;
+            double nThreshold = GetCurrentThreshold(nBlockTime, nNonce);
+            double nRequired  = GetRequiredThreshold(nTrustWeight, nBlockWeight, nStakeApplied);
 
             /* Check that the threshold was not violated. */
             if(nThreshold < nRequired)
                 return debug::error(FUNCTION, "energy threshold too low ", nThreshold, " required ", nRequired);
 
+            /* Set target for logging */
+            LLC::CBigNum bnTarget;
+            bnTarget.SetCompact(nBits);
+
             /* Verbose logging. */
             debug::log(2, FUNCTION,
-                "hash=", StakeHash().ToString().substr(0, 20), ", ",
-                "target=", bnTarget.getuint1024().ToString().substr(0, 20), ", ",
-                "trustscore=", nTrustAge, ", ",
-                "blockage=", nBlockAge, ", ",
-                "trustweight=", nTrustWeight, ", ",
-                "blockweight=", nBlockWeight, ", ",
+                "stake hash=", StakeHash().SubString(), ", ",
+                "target=", bnTarget.getuint1024().SubString(), ", ",
+                "type=", (producer.IsTrust() ? "Trust" : "Genesis"), ", ",
+                "trust score=", nTrust, ", ",
+                "prev trust score=", nTrustPrev, ", ",
+                "trust change=", int64_t(nTrust - nTrustPrev), ", ",
+                "block age=", nBlockAge, ", ",
+                "stake=", nStake, ", ",
+                "reward=", nReward, ", ",
+                "trust weight=", nTrustWeight, ", ",
+                "block weight=", nBlockWeight, ", ",
+                "block time=", nBlockTime, ", ",
                 "threshold=", nThreshold, ", ",
                 "required=", nRequired, ", ",
-                "time=", (nTime - producer.nTimestamp), ", ",
-                "nonce=", nNonce, ")");
+                "nonce=", nNonce, ", ",
+                "add stake=", ((nStakeChange > 0) ? nStakeChange : 0), ", ",
+                "unstake=", ((nStakeChange < 0) ? (0 - nStakeChange) : 0));
 
             return true;
         }
 
 
-        /* Check the calculated trust score meets published one. */
-        bool TritiumBlock::CheckTrust() const
+        /* Verify the Proof of Work satisfies network requirements. */
+        bool TritiumBlock::VerifyWork() const
         {
-            /* No trust score for non proof of stake (for now). */
-            if(!IsProofOfStake())
-                return debug::error(FUNCTION, "not proof of stake");
+            /* This override adds support for verifying the stake hash on the staking channel */
+            if(nChannel == 0)
+            {
+                LLC::CBigNum bnTarget;
+                bnTarget.SetCompact(nBits);
 
-            /* Extract the trust key from the coinstake. */
-            uint256_t cKey = producer.hashGenesis;
+                /* Check that the hash is within range. */
+                if(bnTarget <= 0 || bnTarget > bnProofOfWorkLimit[nChannel])
+                    return debug::error(FUNCTION, "Proof of stake hash not in range");
 
-            /* Genesis has a trust score of 0. */
-            if(producer.IsGenesis())
+                if(StakeHash() > bnTarget.getuint1024())
+                    return debug::error(FUNCTION, "Proof of stake not meeting target");
+
                 return true;
-
-            /* Version 5 - last trust block. */
-            uint1024_t hashLastBlock;
-            uint32_t   nSequence;
-            uint32_t   nTrustScore;
-
-            /* Extract values from coinstake vin. */
-            if(!producer.ExtractTrust(hashLastBlock, nSequence, nTrustScore))
-                return debug::error(FUNCTION, "failed to extract values from script");
-
-            /* Check that the last trust block is in the block database. */
-            TAO::Ledger::BlockState stateLast;
-            if(!LLD::legDB->ReadBlock(hashLastBlock, stateLast))
-                return debug::error(FUNCTION, "last block not in database");
-
-            /* Check that the previous block is in the block database. */
-            TAO::Ledger::BlockState statePrev;
-            if(!LLD::legDB->ReadBlock(hashPrevBlock, statePrev))
-                return debug::error(FUNCTION, "prev block not in database");
-
-            /* Get the last coinstake transaction. */
-            Transaction txLast;
-            //TODO: handle a previous block that is from before tritium activation time-lock
-
-            /* Enforce the minimum trust key interval of 120 blocks. */
-            if(nHeight - stateLast.nHeight < (config::fTestNet ? TAO::Ledger::TESTNET_MINIMUM_INTERVAL : TAO::Ledger::MAINNET_MINIMUM_INTERVAL))
-                return debug::error(FUNCTION, "trust key interval below minimum interval ", nHeight - stateLast.nHeight);
-
-            /* Extract the last trust key */
-            uint256_t keyLast = txLast.hashGenesis;
-
-            /* Ensure the last block being checked is the same trust key. */
-            if(keyLast != cKey)
-                return debug::error(FUNCTION,
-                    "trust key in previous block ", cKey.ToString().substr(0, 20),
-                    " to this one ", keyLast.ToString().substr(0, 20));
-
-            /* Placeholder in case previous block is a version 4 block. */
-            uint32_t nScorePrev = 0;
-            uint32_t nScore     = 0;
-
-            /* If previous block is genesis, set previous score to 0. */
-            if(txLast.IsGenesis())
-            {
-                /* Enforce sequence number 1 if previous block was genesis */
-                if(nSequence != 1)
-                    return debug::error("CBlock::CheckTrust() : first trust block and sequence is not 1 (%u)", nSequence);
-
-                /* Genesis results in a previous score of 0. */
-                nScorePrev = 0;
             }
 
-            /* Version 4 blocks need to get score from previous blocks calculated score from the trust pool. */
-            else if(stateLast.nVersion < 5)
-            {
-                //TODO: handle version 4 trust keys here
-            }
-
-            /* Version 5 blocks that are trust must pass sequence checks. */
-            else
-            {
-                /* The last block of previous. */
-                uint1024_t hashBlockPrev = 0; //dummy variable unless we want to do recursive checking of scores all the way back to genesis
-
-                /* Extract the value from the previous block. */
-                uint32_t nSequencePrev;
-                if(!txLast.ExtractTrust(hashBlockPrev, nSequencePrev, nScorePrev))
-                    return debug::error(FUNCTION, "failed to extract trust");
-
-                /* Enforce Sequence numbering, must be +1 always. */
-                if(nSequence != nSequencePrev + 1)
-                    return debug::error(FUNCTION, "previous sequence broken");
-            }
-
-            /* The time it has been since the last trust block for this trust key. */
-            uint32_t nTimespan = (statePrev.GetBlockTime() - stateLast.GetBlockTime());
-
-            /* Timespan less than required timespan is awarded the total seconds it took to find. */
-            if(nTimespan < (config::fTestNet ? TRUST_KEY_TIMESPAN_TESTNET : TRUST_KEY_TIMESPAN))
-                nScore = nScorePrev + nTimespan;
-
-            /* Timespan more than required timespan is penalized 3 times the time it took past the required timespan. */
-            else
-            {
-                /* Calculate the penalty for score (3x the time). */
-                uint32_t nPenalty = (nTimespan - (config::fTestNet ?
-                    TRUST_KEY_TIMESPAN_TESTNET : TRUST_KEY_TIMESPAN)) * 3;
-
-                /* Catch overflows and zero out if penalties are greater than previous score. */
-                if(nPenalty > nScorePrev)
-                    nScore = 0;
-                else
-                    nScore = (nScorePrev - nPenalty);
-            }
-
-            /* Set maximum trust score to seconds passed for interest rate. */
-            if(nScore > (60 * 60 * 24 * 28 * 13))
-                nScore = (60 * 60 * 24 * 28 * 13);
-
-            /* Debug output. */
-            debug::log(2, FUNCTION,
-                "score=", nScore, ", ",
-                "prev=", nScorePrev, ", ",
-                "timespan=", nTimespan, ", ",
-                "change=", (int32_t)(nScore - nScorePrev), ")"
-            );
-
-            /* Check that published score in this block is equivilent to calculated score. */
-            if(nTrustScore != nScore)
-                return debug::error(FUNCTION, "published trust score ", nTrustScore, " not meeting calculated score ", nScore);
-
-            return true;
+            return Block::VerifyWork();
         }
 
 
-        /* Get the current block age of the trust key. */
-        bool TritiumBlock::BlockAge(uint32_t& nAge) const
+        /* Get the Signarture Hash of the block. Used to verify work claims. */
+        uint1024_t TritiumBlock::SignatureHash() const
         {
-            /* No age for non proof of stake or non version 5 blocks */
-            if(!IsProofOfStake() || nVersion < 5)
-                return debug::error(FUNCTION, "not proof of stake / version < 5");
+            /* Create a data stream to get the hash. */
+            DataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
+            ss.reserve(256);
 
-            /* Genesis has an age 0. */
-            if(producer.IsGenesis())
-            {
-                nAge = 0;
-                return true;
-            }
+            /* Serialize the data to hash into a stream. */
+            ss << nVersion << hashPrevBlock << hashMerkleRoot << nChannel << nHeight << nBits << nNonce << nTime << vOffsets;
 
-            /* Version 5 - last trust block. */
-            uint1024_t hashLastBlock;
-            uint32_t   nSequence;
-            uint32_t   nTrustScore;
-
-            /* Extract values from coinstake vin. */
-            if(!producer.ExtractTrust(hashLastBlock, nSequence, nTrustScore))
-                return debug::error(FUNCTION, "failed to extract values from script");
-
-            /* Check that the previous block is in the block database. */
-            TAO::Ledger::BlockState stateLast;
-            if(!LLD::legDB->ReadBlock(hashLastBlock, stateLast))
-                return debug::error(FUNCTION, "last block not in database");
-
-            /* Check that the previous block is in the block database. */
-            TAO::Ledger::BlockState statePrev;
-            if(!LLD::legDB->ReadBlock(hashPrevBlock, statePrev))
-                return debug::error(FUNCTION, "prev block not in database");
-
-            /* Read the previous block from disk. */
-            nAge = statePrev.GetBlockTime() - stateLast.GetBlockTime();
-
-            return true;
-        }
-
-
-        /* Get the score of the current trust block. */
-        bool TritiumBlock::TrustScore(uint32_t& nScore) const
-        {
-            /* Genesis has an age 0. */
-            if(producer.IsGenesis())
-            {
-                nScore = 0;
-                return true;
-            }
-
-            /* Version 5 - last trust block. */
-            uint1024_t hashLastBlock;
-            uint32_t   nSequence;
-            uint32_t   nTrustScore;
-
-            /* Extract values from coinstake vin. */
-            if(!producer.ExtractTrust(hashLastBlock, nSequence, nTrustScore))
-                return debug::error(FUNCTION, "failed to extract values from script");
-
-            /* Get the score from extract process. */
-            nScore = nTrustScore;
-
-            return true;
+            return LLC::SK1024(ss.begin(), ss.end());
         }
 
 
         /* Prove that you staked a number of seconds based on weight */
         uint1024_t TritiumBlock::StakeHash() const
         {
-            return Block::StakeHash( producer.IsGenesis(), producer.hashGenesis);
+            return Block::StakeHash(producer.IsGenesis(), producer.hashGenesis);
         }
     }
 }

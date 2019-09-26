@@ -28,7 +28,7 @@ namespace encoding
         int mode=0, left=0;
         const uint8_t *pchEnd = pch+len;
 
-        while (pch<pchEnd)
+        while(pch<pchEnd)
         {
             int enc = *(pch++);
             switch (mode)
@@ -53,11 +53,11 @@ namespace encoding
             }
         }
 
-        if (mode)
+        if(mode)
         {
             strRet += pbase64[left];
             strRet += '=';
-            if (mode == 1)
+            if(mode == 1)
                 strRet += '=';
         }
 
@@ -90,7 +90,7 @@ namespace encoding
             -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
         };
 
-        if (pfInvalid)
+        if(pfInvalid)
             *pfInvalid = false;
 
         std::vector<uint8_t> vchRet;
@@ -99,10 +99,10 @@ namespace encoding
         int mode = 0;
         int left = 0;
 
-        while (1)
+        while(1)
         {
             int dec = decode64_table[(uint8_t)*p];
-            if (dec == -1) break;
+            if(dec == -1) break;
             p++;
             switch (mode)
             {
@@ -130,7 +130,7 @@ namespace encoding
             }
         }
 
-        if (pfInvalid)
+        if(pfInvalid)
             switch (mode)
             {
                 case 0: // 4n base64 characters processed: ok
@@ -141,12 +141,12 @@ namespace encoding
                     break;
 
                 case 2: // 4n+2 base64 characters processed: require '=='
-                    if (left || p[0] != '=' || p[1] != '=' || decode64_table[(uint8_t)p[2]] != -1)
+                    if(left || p[0] != '=' || p[1] != '=' || decode64_table[(uint8_t)p[2]] != -1)
                         *pfInvalid = true;
                     break;
 
                 case 3: // 4n+3 base64 characters processed: require '='
-                    if (left || p[0] != '=' || decode64_table[(uint8_t)p[1]] != -1)
+                    if(left || p[0] != '=' || decode64_table[(uint8_t)p[1]] != -1)
                         *pfInvalid = true;
                     break;
             }

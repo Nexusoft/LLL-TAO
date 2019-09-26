@@ -114,7 +114,7 @@ public:
     {
         state |= bits;
         if (state & exceptmask)
-            THROW_WITH_STACKTRACE(std::ios_base::failure(psz));
+            throw std::runtime_error("setstate() : exception occured");
     }
 
 

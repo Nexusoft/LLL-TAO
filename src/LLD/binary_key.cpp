@@ -7,8 +7,9 @@
 ____________________________________________________________________________________________*/
 
 #include <LLD/cache/binary_key.h>
+#include <LLD/hash/xxh3.h>
+
 #include <Util/include/mutex.h>
-#include <openssl/md5.h>
 
 namespace LLD
 {
@@ -27,6 +28,7 @@ namespace LLD
         /** Default constructor **/
         BinaryKey(const std::vector<uint8_t>& vKeyIn);
     };
+
 
     /** Default constructor **/
     BinaryKey::BinaryKey(const std::vector<uint8_t>& vKeyIn)
@@ -89,13 +91,8 @@ namespace LLD
     /*  Find a bucket for cache key management. */
     uint32_t KeyLRU::Bucket(const std::vector<uint8_t>& vKey) const
     {
-        /* Get an MD5 digest. */
-        uint8_t digest[MD5_DIGEST_LENGTH];
-        MD5((uint8_t*)&vKey[0], vKey.size(), (uint8_t*)&digest);
-
-        /* Copy bytes into the bucket. */
-        uint64_t nBucket;
-        std::copy((uint8_t*)&digest[0], (uint8_t*)&digest[0] + 8, (uint8_t*)&nBucket);
+        /* Get an xxHash. */
+        uint64_t nBucket = XXH64(&vKey[0], vKey.size(), 0);
 
         return static_cast<uint32_t>(nBucket % static_cast<uint64_t>(MAX_CACHE_BUCKETS));
     }
@@ -118,7 +115,7 @@ namespace LLD
             return false;
 
         /* If the time has expired, return false. */
-        if(pthis->nTimestamp + 60 < runtime::timestamp())
+        if(pthis->nTimestamp + 10 < runtime::timestamp())
             return false;
 
         /* Move to front of LRU. */
@@ -294,7 +291,7 @@ namespace LLD
         BinaryKey* pthis = hashmap[nBucket];
 
         /* Check if the Record Exists. */
-        if (pthis == nullptr || pthis->vKey != vKey)
+        if(pthis == nullptr || pthis->vKey != vKey)
             return;
 
         /* Set the binary key to have a large time penalty. */
@@ -314,7 +311,7 @@ namespace LLD
         BinaryKey* pthis = hashmap[nBucket];
 
         /* Check if the Record Exists. */
-        if (pthis == nullptr || pthis->vKey != vKey)
+        if(pthis == nullptr || pthis->vKey != vKey)
             return false;
 
         /* Remove from the linked list. */

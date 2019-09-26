@@ -15,12 +15,14 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEDGER_TYPES_SIGNATURE_CHAIN_H
 #define NEXUS_TAO_LEDGER_TYPES_SIGNATURE_CHAIN_H
 
-#include <string>
 
-#include <LLC/hash/SK.h>
-#include <LLC/hash/macro.h>
+#include <LLC/types/uint1024.h>
 
 #include <Util/include/allocators.h>
+#include <Util/include/mutex.h>
+#include <Util/include/memory.h>
+
+#include <string>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -39,30 +41,71 @@ namespace TAO
          *  to attack a signature chain by dictionary attack.
          *
          */
-        class SignatureChain
+        class SignatureChain : public memory::encrypted
         {
 
             /** Secure allocator to represent the username of this signature chain. **/
-            SecureString strUsername;
+            const SecureString strUsername;
 
 
             /** Secure allocater to represent the password of this signature chain. **/
-            SecureString strPassword;
+            const SecureString strPassword;
+
+
+            /* Internal mutex for caches. */
+            mutable std::mutex MUTEX;
+
+
+            /** Internal sigchain cache (to not exhaust ourselves regenerating the same key). **/
+            mutable std::pair<uint32_t, SecureString> pairCache;
+
+
+            /** Internal genesis hash. **/
+            const uint256_t hashGenesis;
+            
+
 
         public:
 
 
+
+            /** Default constructor. **/
+            SignatureChain();
+
+
             /** Constructor to generate Keychain
              *
-             * @param[in] strUsernameIn The username to seed the signature chain
-             * @param[in] strPasswordIn The password to seed the signature chain
+             *  @param[in] strUsernameIn The username to seed the signature chain
+             *  @param[in] strPasswordIn The password to seed the signature chain
+             *
              **/
-            SignatureChain(SecureString strUsernameIn, SecureString strPasswordIn)
-            : strUsername(strUsernameIn.c_str())
-            , strPassword(strPasswordIn.c_str())
-            {
+            SignatureChain(const SecureString& strUsernameIn, const SecureString& strPasswordIn);
 
-            }
+
+            /** Copy constructor **/
+            SignatureChain(const SignatureChain& chain);
+
+
+            /** Move constructor
+             *
+             *  @param[in] chain The signature chain to move from.
+             *
+             **/
+            SignatureChain(const SignatureChain&& chain);
+
+
+            /** Destructor. **/
+            ~SignatureChain();
+
+
+            /** Genesis
+             *
+             *  This function is responsible for generating the genesis ID for this sig chain.
+             *
+             *  @return The 512 bit hash of this key in the series.
+             *
+             **/
+            uint256_t Genesis() const;
 
 
             /** Genesis
@@ -71,54 +114,83 @@ namespace TAO
              *
              *  @return The 512 bit hash of this key in the series.
              **/
-            uint256_t Genesis()
-            {
-                /* Generate the Secret Phrase */
-                std::vector<uint8_t> vSecret(strUsername.begin(), strUsername.end());
-
-                /* Generate the Hashes */
-                uint1024_t hashSecret = LLC::SK1024(vSecret);
-
-                /* Generate the Final Root Hash. */
-                return LLC::SK256(hashSecret.GetBytes());
-            }
+            static uint256_t Genesis(const SecureString& strUsername);
 
 
             /** Generate
              *
-             *  This function is responsible for genearting the private key in the keychain of a specific account.
-             *  The keychain is a series of keys seeded from a secret phrase and a PIN number.
+             *  This function is responsible for genearting the private key in the sigchain of a specific account.
+             *  The sigchain is a series of keys seeded from a secret phrase and a PIN number.
              *
              *  @param[in] nKeyID The key number in the keychian
-             *  @param[in] strSecret The secret phrase to use (Never Cached)
+             *  @param[in] strSecret The secret phrase to use
+             *  @param[in] fCache Use the cache on hand for keys.
              *
              *  @return The 512 bit hash of this key in the series.
              **/
-            uint512_t Generate(uint32_t nKeyID, SecureString strSecret)
-            {
-                /* Serialize the Key ID (Big Endian). */
-                std::vector<uint8_t> vKeyID((uint8_t*)&nKeyID, (uint8_t*)&nKeyID + sizeof(nKeyID));
+            uint512_t Generate(const uint32_t nKeyID, const SecureString& strSecret, bool fCache = true) const;
 
-                /* Generate the Secret Phrase */
-                std::vector<uint8_t> vSecret(strUsername.begin(), strUsername.end());
-                vSecret.insert(vSecret.end(), vKeyID.begin(), vKeyID.end());
-                vSecret.insert(vSecret.end(), strPassword.begin(), strPassword.end());
 
-                /* Generate the secret data. */
-                std::vector<uint8_t> vPin(strSecret.begin(), strSecret.end());
-                vPin.insert(vPin.end(), vKeyID.begin(), vKeyID.end());
+            /** Generate
+             *
+             *  This function is responsible for genearting the private key in the sigchain of a specific account.
+             *  The sigchain is a series of keys seeded from a secret phrase and a PIN number.
+             *
+             *  @param[in] strType The type of signing key used.
+             *  @param[in] nKeyID The key number in the keychian
+             *  @param[in] strSecret The secret phrase to use
+             *
+             *  @return The 512 bit hash of this key in the series.
+             **/
+            uint512_t Generate(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret) const;
 
-                /* Generate the Hashes */
-                uint1024_t hashSecret = LLC::SK1024(vSecret);
-                uint1024_t hashPIN    = LLC::SK1024(vPin);
 
-                std::vector<uint8_t> vFinal;
-                vFinal.insert(vFinal.end(), (uint8_t*)&hashSecret, (uint8_t*)&hashSecret + 128);
-                vFinal.insert(vFinal.end(), (uint8_t*)&hashPIN, (uint8_t*)&hashPIN + 128);
+            /** KeyHash
+             *
+             *  This function generates a hash of a public key generated from random seed phrase.
+             *
+             *  @param[in] strType The type of signing key used.
+             *  @param[in] nKeyID The key number in the keychian
+             *  @param[in] strSecret The secret phrase to use
+             *  @param[in] nType The key type to use.
+             *
+             *  @return The 256 bit hash of this key in the series.
+             **/
+            uint256_t KeyHash(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret, const uint8_t nType) const;
 
-                /* Generate the Final Root Hash. */
-                return LLC::SK512(vFinal);
-            }
+
+            /** UserName
+             *
+             *  Returns the username for this sig chain
+             *
+             *  @return The SecureString containing the username for this sig chain
+             **/
+            const SecureString& UserName() const;
+
+
+            /** Encrypt
+             *
+             *  Special method for encrypting specific data types inside class.
+             *
+             **/
+            void Encrypt();
+
+
+            /** Sign
+            *
+            *  Generates a signature for the data, using the specified crypto key type
+            *
+            *  @param[in] strType The type of signing key to use
+            *  @param[in] vchData The data to base the signature off
+            *  @param[in] hashSecret The private key to use for the signature
+            *  @param[out] vchPubKey The public key generated from the private key
+            *  @param[out] vchSig The signature bytes
+            *
+            *  @return True if successful
+            *
+            **/
+            bool Sign(const std::string& strType, const std::vector<uint8_t>& vchData, const uint512_t& hashSecret,
+                                      std::vector<uint8_t>& vchPubKey, std::vector<uint8_t>& vchSig) const;
         };
     }
 }

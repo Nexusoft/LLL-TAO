@@ -1,6 +1,7 @@
 *.DS_Store
 *.o
 *.P
+*.d
 *.bat
 *.exe
 *.Debug

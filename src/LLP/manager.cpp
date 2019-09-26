@@ -15,11 +15,16 @@ ________________________________________________________________________________
 #include <LLC/hash/macro.h>
 #include <LLC/hash/SK.h>
 #include <LLC/include/random.h>
-#include <LLD/include/address.h>
+
+#include <LLD/types/address.h>
 #include <LLD/include/version.h>
+
 #include <LLP/include/manager.h>
 #include <LLP/include/hosts.h>
+#include <LLP/include/seeds.h>
+
 #include <Util/include/debug.h>
+
 #include <algorithm>
 #include <numeric>
 #include <cmath>
@@ -27,20 +32,17 @@ ________________________________________________________________________________
 namespace LLP
 {
     /* Default constructor */
-    AddressManager::AddressManager(uint16_t port)
+    AddressManager::AddressManager(uint16_t nPortIn)
     : mapTrustAddress()
     , mapBanned()
-    , mut()
+    , mapDNS()
+    , MUTEX()
     , pDatabase(nullptr)
-    , nPort(port)
+    , nPort(nPortIn)
     {
-        pDatabase = new LLD::AddressDB(port, LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
-
-        if(pDatabase)
-            return;
-
-        /* This should never occur. */
-        debug::error(FUNCTION, "Failed to allocate memory for AddressManager");
+        pDatabase = new LLD::AddressDB(nPortIn, LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+        if(!pDatabase)
+            throw debug::exception(FUNCTION, "Failed to allocate memory for AddressManager");
     }
 
 
@@ -58,53 +60,53 @@ namespace LLP
     /*  Determine if the address manager has any addresses in it. */
     bool AddressManager::IsEmpty() const
     {
-        LOCK(mut);
+        LOCK(MUTEX);
 
         return mapTrustAddress.empty();
     }
 
 
-    /*  Get a list of addresses in the manager that have the flagged state. */
-    void AddressManager::GetAddresses(std::vector<BaseAddress> &vBaseAddr, const uint8_t flags)
+    /*  Get a list of addresses in the manager that have the flagged nState. */
+    void AddressManager::GetAddresses(std::vector<BaseAddress> &vBaseAddr, const uint8_t nFlags)
     {
         std::vector<TrustAddress> vTrustAddr;
 
         /* Critical section: Get the flagged trust addresses. */
         {
-            LOCK(mut);
-            get_addresses(vTrustAddr, flags);
+            LOCK(MUTEX);
+            get_addresses(vTrustAddr, nFlags);
         }
 
         /*clear the passed in vector. */
         vBaseAddr.clear();
 
         /* build out base address vector */
-        for(auto it = vTrustAddr.begin(); it != vTrustAddr.end(); ++it)
+        for(const auto &trust_addr : vTrustAddr)
         {
-            const BaseAddress &base_addr = *it;
+            BaseAddress base_addr(trust_addr);
             vBaseAddr.push_back(base_addr);
         }
     }
 
 
     /* Gets a list of trust addresses from the manager. */
-    void AddressManager::GetAddresses(std::vector<TrustAddress> &vTrustAddr, const uint8_t flags)
+    void AddressManager::GetAddresses(std::vector<TrustAddress> &vTrustAddr, const uint8_t nFlags)
     {
-        LOCK(mut);
-        get_addresses(vTrustAddr, flags);
+        LOCK(MUTEX);
+        get_addresses(vTrustAddr, nFlags);
     }
 
 
-    /* Gets the trust address count that have the specified flags */
-    uint32_t AddressManager::Count(const uint8_t flags)
+    /* Gets the trust address count that have the specified nFlags */
+    uint32_t AddressManager::Count(const uint8_t nFlags)
     {
-        LOCK(mut);
-        return count(flags);
+        LOCK(MUTEX);
+        return count(nFlags);
     }
 
 
-    /*  Adds the address to the manager and sets it's connect state. */
-    void AddressManager::AddAddress(const BaseAddress &addr, const uint8_t state)
+    /*  Adds the address to the manager and sets it's connect nState. */
+    void AddressManager::AddAddress(const BaseAddress &addr, const uint8_t nState, const uint32_t nSession)
     {
         /* Reject adding invalid addresses. */
         if(!addr.IsValid())
@@ -115,55 +117,57 @@ namespace LLP
 
         uint64_t hash = addr.GetHash();
 
-        LOCK(mut);
+        LOCK(MUTEX);
 
         /* Reject banned addresses. */
         if(is_banned(hash))
             return;
 
+        /* Add address to map if not already added. */
         if(mapTrustAddress.find(hash) == mapTrustAddress.end())
             mapTrustAddress[hash] = addr;
 
-        TrustAddress *pAddr = &mapTrustAddress[hash];
-
         /* Set the port number to match this server */
-        pAddr->SetPort(nPort);
+        TrustAddress& trust_addr = mapTrustAddress[hash];
+        trust_addr.SetPort(nPort);
+        trust_addr.nSession = nSession;
 
-        /* Update the stats for this address based on the state. */
-        update_state(pAddr, state);
+        /* Update the stats for this address based on the nState. */
+        update_state(&trust_addr, nState);
 
         /* Update the LLD Address database for this entry */
-        //pDatabase->TxnBegin();
-        pDatabase->WriteTrustAddress(hash, *pAddr);
-        //pDatabase->TxnCommit();
+        pDatabase->WriteTrustAddress(hash, trust_addr);
     }
 
 
-    /*  Adds the addresses to the manager and sets their state. */
+    /*  Adds the addresses to the manager and sets their nState. */
     void AddressManager::AddAddresses(const std::vector<BaseAddress> &addrs,
-                                      const uint8_t state)
+                                      const uint8_t nState)
     {
         for(uint32_t i = 0; i < addrs.size(); ++i)
         {
-            /* Don't add addresses that already exist in the address manager, as this could reset the state of existing connections */
-            if(!Has(addrs[i])) 
-                AddAddress(addrs[i], state);
+            /* Don't add addresses that already exist in the address manager, as this could reset the nState of existing connections */
+            if(!Has(addrs[i]))
+                AddAddress(addrs[i], nState);
         }
     }
 
 
-    /*  Adds the addresses to the manager and sets their state. */
+    /*  Adds the addresses to the manager and sets their nState. */
     void AddressManager::AddAddresses(const std::vector<std::string> &addrs,
-                                      const uint8_t state)
+                                      const uint8_t nState)
     {
         for(uint32_t i = 0; i < addrs.size(); ++i)
         {
             /* Create a DNS lookup address to resolve to IP address. */
             BaseAddress lookup_address = BaseAddress(addrs[i], nPort, true);
 
-            /* Don't add addresses that already exist in the address manager, as this could reset the state of existing connections */
-            if(!Has(lookup_address)) 
-                AddAddress(lookup_address, state);
+            AddAddress(lookup_address, nState, 120);
+
+            LOCK(MUTEX);
+
+            /* Associate a DNS name with an address. */
+            mapDNS[lookup_address.GetHash()] = addrs[i];
         }
     }
 
@@ -172,17 +176,17 @@ namespace LLP
     void AddressManager::RemoveAddress(const BaseAddress &addr)
     {
         /* Ensure thread safety while removing address. */
-        LOCK(mut);
+        LOCK(MUTEX);
         remove_address(addr);
     }
 
 
     /*  Adds the seed node addresses to the addressmanager if they aren't
      *  already in there. */
-    void AddressManager::AddSeedAddresses(bool testnet)
+    void AddressManager::AddSeedAddresses(bool fTestnet)
     {
-        /* Add the testnet seed nodes if testnet flag is enabled. */
-        if(testnet)
+        /* Add the fTestnet seed nodes if fTestnet flag is enabled. */
+        if(fTestnet)
             AddAddresses(DNS_SeedNodes_Testnet);
         else
             AddAddresses(DNS_SeedNodes);
@@ -193,7 +197,7 @@ namespace LLP
     bool AddressManager::Has(const BaseAddress &addr) const
     {
         uint64_t hash = addr.GetHash();
-        LOCK(mut);
+        LOCK(MUTEX);
 
         auto it = mapTrustAddress.find(hash);
         if(it != mapTrustAddress.end())
@@ -202,20 +206,28 @@ namespace LLP
         return false;
     }
 
+    /* Gets a TrustAddress from the BaseAddress */
+    const LLP::TrustAddress& AddressManager::Get(const BaseAddress &addr)
+    {
+        uint64_t hash = addr.GetHash();
+        LOCK(MUTEX);
+
+        return mapTrustAddress[hash];
+
+    }
+
 
     /*  Gets the Connect State of the address in the manager if it exists. */
     uint8_t AddressManager::GetState(const BaseAddress &addr) const
     {
-        uint8_t state = static_cast<uint8_t>(ConnectState::NEW);
-
         uint64_t hash = addr.GetHash();
-        LOCK(mut);
-
+        uint8_t nState = static_cast<uint8_t>(ConnectState::NEW);
+        LOCK(MUTEX);
         auto it = mapTrustAddress.find(hash);
         if(it != mapTrustAddress.end())
-            state = it->second.nState;
+            nState = it->second.nState;
 
-        return state;
+        return nState;
     }
 
 
@@ -223,7 +235,7 @@ namespace LLP
     void AddressManager::SetLatency(uint32_t lat, const BaseAddress &addr)
     {
         uint64_t hash = addr.GetHash();
-        LOCK(mut);
+        LOCK(MUTEX);
 
         auto it = mapTrustAddress.find(hash);
         if(it != mapTrustAddress.end())
@@ -231,9 +243,7 @@ namespace LLP
             it->second.nLatency = lat;
 
             /* Update the LLD Address database for this entry */
-            //pDatabase->TxnBegin();
             pDatabase->WriteTrustAddress(hash, it->second);
-            //pDatabase->TxnCommit();
         }
     }
 
@@ -242,7 +252,7 @@ namespace LLP
     void AddressManager::SetHeight(uint32_t height, const BaseAddress &addr)
     {
         uint64_t hash = addr.GetHash();
-        LOCK(mut);
+        LOCK(MUTEX);
 
         auto it = mapTrustAddress.find(hash);
         if(it != mapTrustAddress.end())
@@ -250,9 +260,7 @@ namespace LLP
             it->second.nHeight = height;
 
             /* Update the LLD Address database for this entry */
-            //pDatabase->TxnBegin();
             pDatabase->WriteTrustAddress(hash, it->second);
-            //pDatabase->TxnCommit();
         }
 
     }
@@ -269,13 +277,13 @@ namespace LLP
 
 
         /* Put unconnected address info scores into a vector and sort them. */
-        uint8_t flags = ConnectState::NEW    |
+        uint8_t nFlags = ConnectState::NEW    |
                         ConnectState::FAILED | ConnectState::DROPPED;
 
-        /* Critical section: Get address info for the selected flags. */
+        /* Critical section: Get address info for the selected nFlags. */
         {
-            LOCK(mut);
-            get_addresses(vAddresses, flags);
+            LOCK(MUTEX);
+            get_addresses(vAddresses, nFlags);
         }
 
         uint64_t s = vAddresses.size();
@@ -283,7 +291,7 @@ namespace LLP
         if(s == 0)
             return false;
 
-        /* Select an index with a random weighted bias toward the from of the list. */
+        /* Select an index with a random weighted bias toward the front of the list. */
         nSelect = ((std::numeric_limits<uint64_t>::max() /
             std::max((uint64_t)std::pow(nHash, 1.95) + 1, (uint64_t)1)) - 3) % s;
 
@@ -302,10 +310,10 @@ namespace LLP
     }
 
 
-    /* Print the current state of the address manager. */
+    /* Print the current nState of the address manager. */
     std::string AddressManager::ToString()
     {
-        LOCK(mut);
+        LOCK(MUTEX);
         std::string strRet = debug::safe_printstr(
              "C=", count(ConnectState::CONNECTED),
             " D=", count(ConnectState::DROPPED),
@@ -314,6 +322,7 @@ namespace LLP
             " TD=", total_count(ConnectState::DROPPED),
             " TF=", total_count(ConnectState::FAILED), " |",
             " B=",  ban_count(), " |",
+            " EID=", eid_count(), " |",
             " size=", mapTrustAddress.size());
 
         return strRet;
@@ -321,29 +330,46 @@ namespace LLP
 
 
     /*  Set the port number for all addresses in the manager. */
-    void AddressManager::SetPort(uint16_t port)
+    void AddressManager::SetPort(uint16_t nPortIn)
     {
-        LOCK(mut);
+        LOCK(MUTEX);
 
-        nPort = port;
+        nPort = nPortIn;
 
-        for(auto it = mapTrustAddress.begin(); it != mapTrustAddress.end(); ++it)
-            it->second.SetPort(port);
+        for(auto &addr : mapTrustAddress)
+            addr.second.SetPort(nPort);
     }
 
 
     /*  Blacklists the given address so it won't get selected. The default
      *  behavior is to ban indefinitely.*/
-    void AddressManager::Ban(const BaseAddress &addr, uint32_t banTime)
+    void AddressManager::Ban(const BaseAddress &addr, uint32_t nBanTime)
     {
         uint64_t hash = addr.GetHash();
-        LOCK(mut);
+        LOCK(MUTEX);
 
         /* Store the hash in the map for banned addresses */
-        mapBanned[hash] = banTime;
+        mapBanned[hash] = nBanTime;
 
         /* Remove the address from the map of addresses */
         remove_address(addr);
+    }
+
+    bool AddressManager::GetDNSName(const BaseAddress &addr, std::string &strDNS)
+    {
+        uint64_t hash = addr.GetHash();
+        LOCK(MUTEX);
+
+        /* Attempt to find the DNS string. */
+        auto it = mapDNS.find(hash);
+
+        /* Return if name not found. */
+        if(it == mapDNS.end())
+            return false;
+
+        /* Set the dns lookup name. */
+        strDNS = it->second;
+        return true;
     }
 
 
@@ -351,7 +377,7 @@ namespace LLP
     void AddressManager::ReadDatabase()
     {
         {
-            LOCK(mut);
+            LOCK(MUTEX);
 
             /* Make sure the map is empty. */
             mapTrustAddress.clear();
@@ -364,57 +390,54 @@ namespace LLP
                 return;
             }
 
-            /* Get the database keys. */
-            std::vector<std::vector<uint8_t> > keys = pDatabase->GetKeys();
-            uint32_t s = static_cast<uint32_t>(keys.size());
-
-            /* Load a trust address from each key. */
-            for(uint32_t i = 0; i < s; ++i)
+            /* Do a sequential read. */
+            std::vector<TrustAddress> vAddr;
+            if(pDatabase->BatchRead("addr", vAddr, 1000))
             {
-                std::string str;
-                uint64_t nKey;
-                TrustAddress trust_addr;
-
-                /* Create a datastream and deserialize the key/address pair. */
-                DataStream ssKey(keys[i], SER_LLD, LLD::DATABASE_VERSION);
-                ssKey >> str;
-
-                /* Check for trust addresses. */
-                if(str == "addr")
+                /* Get the last element. */
+                uint64_t hashLast = 0;
+                while(!config::fShutdown)
                 {
-                    /* Deserialize the key if it is an info type. */
-                    ssKey >> nKey;
+                    /* Loop through items read. */
+                    for(const auto& addr : vAddr)
+                    {
+                        /* Get the hash and load it into the map. */
+                        uint64_t hash = addr.GetHash();
+                        mapTrustAddress[hash] = addr;
 
-                    /* Read the trust address. */
-                    pDatabase->ReadTrustAddress(nKey, trust_addr);
+                        hashLast = hash;
+                    }
 
-                    /* Get the hash and load it into the map. */
-                    uint64_t nHash = trust_addr.GetHash();
-                    mapTrustAddress[nHash] = trust_addr;
+                    /* Read another batch. */
+                    if(!pDatabase->BatchRead(std::make_pair(std::string("addr"), hashLast), "addr", vAddr, 1000))
+                        break;
                 }
             }
+
+            debug::log(0, FUNCTION, "Loaded ", mapTrustAddress.size(), " Addresses");
         }
 
         /* Check if the DNS needs update. */
         uint64_t nLastUpdate = 0;
         if(!config::GetBoolArg("-nodns")
-           && (!pDatabase->ReadLastUpdate(nLastUpdate) ||
-                nLastUpdate + config::GetArg("-dnsupdate", 86400) <= runtime::unifiedtimestamp()))
+            && (!pDatabase->ReadLastUpdate(nLastUpdate) ||
+                nLastUpdate + config::GetArg("-dnsupdate", 86400) <= runtime::timestamp()))
         {
             /* Log out that DNS is updating. */
             debug::log(0, "DNS cache is out of date by ",
-                (runtime::unifiedtimestamp() - (nLastUpdate + config::GetArg("-dnsupdate", 86400))),
-                " seconds... refreshing");
+                (runtime::timestamp() - (nLastUpdate + config::GetArg("-dnsupdate", 86400))),
+                " seconds for port ", nPort, "... refreshing");
 
             /* Add the DNS seeds for this server. */
             runtime::timer timer;
             timer.Start();
 
             /* Update the Seed addresses. */
-            AddSeedAddresses(config::fTestNet);
+            AddSeedAddresses(config::fTestNet.load());
 
             /* Write that DNS was updated. */
-            pDatabase->WriteLastUpdate();
+            if(!pDatabase->WriteLastUpdate())
+                debug::error(FUNCTION, "failed to update DNS timer");
 
             /* Log the time it took to resolve DNS items. */
             debug::log(0, "DNS cache updated in ",
@@ -423,61 +446,35 @@ namespace LLP
     }
 
 
-    /*  Write the addresses from the manager into the address database. */
-    void AddressManager::WriteDatabase()
-    {
-        /* DEPRECATED */
-        /* Make sure the database exists. */
-        //if(!pDatabase)
-        //{
-        //    debug::error(FUNCTION, "database null");
-        //    return;
-        //}
-
-        //LOCK(mut);
-
-        //if(!mapTrustAddress.size())
-        //  return;
-
-        //pDatabase->TxnBegin();
-
-        /* Write the keys and addresses. */
-        //for(auto it = mapTrustAddress.begin(); it != mapTrustAddress.end(); ++it)
-        //    pDatabase->WriteTrustAddress(it->first, it->second);
-
-        //pDatabase->TxnCommit();
-    }
-
-
-    /*  Gets an array of trust addresses specified by the state flags. */
-    void AddressManager::get_addresses(std::vector<TrustAddress> &vInfo, const uint8_t flags)
+    /*  Gets an array of trust addresses specified by the nState nFlags. */
+    void AddressManager::get_addresses(std::vector<TrustAddress> &vInfo, const uint8_t nFlags)
     {
         vInfo.clear();
-        for(auto it = mapTrustAddress.begin(); it != mapTrustAddress.end(); ++it)
+        for(const auto &addr : mapTrustAddress)
         {
             /* If the address is on the ban list, skip it. */
-            if(mapBanned.find(it->first) != mapBanned.end())
+            if(mapBanned.find(addr.first) != mapBanned.end())
                 continue;
 
             /* If the address matches the flag, add it to the vector. */
-            if(it->second.nState & flags)
-                vInfo.push_back(it->second);
+            if(addr.second.nState & nFlags)
+                vInfo.push_back(addr.second);
         }
     }
 
 
-    /*  Gets the number of addresses specified by the state flags. */
-    uint32_t AddressManager::count(const uint8_t flags)
+    /*  Gets the number of addresses specified by the nState nFlags. */
+    uint32_t AddressManager::count(const uint8_t nFlags)
     {
         uint32_t c = 0;
-        for(auto it = mapTrustAddress.begin(); it != mapTrustAddress.end(); ++it)
+        for(const auto &it : mapTrustAddress)
         {
             /* If the address is on the ban list, skip it. */
-            if(mapBanned.find(it->first) != mapBanned.end())
+            if(mapBanned.find(it.first) != mapBanned.end())
                 continue;
 
             /* If the address matches the flag, increment the count */
-            if(it->second.nState & flags)
+            if(it.second.nState & nFlags)
                 ++c;
         }
         return c;
@@ -496,11 +493,10 @@ namespace LLP
     }
 
 
-    /* Gets the cumulative count of each address state flags. */
-    uint32_t AddressManager::total_count(const uint8_t flags)
+    /* Gets the cumulative count of each address nState nFlags. */
+    uint32_t AddressManager::total_count(const uint8_t nFlags)
     {
-        uint32_t total = 0;
-
+        uint32_t nTotal = 0;
         for(const auto& addr : mapTrustAddress)
         {
             /* If the address is on the ban list, skip it. */
@@ -508,15 +504,15 @@ namespace LLP
                 continue;
 
             /* Sum up the total stats of each category */
-            if(flags & ConnectState::CONNECTED)
-                total += addr.second.nConnected;
-            if(flags & ConnectState::DROPPED)
-                total += addr.second.nDropped;
-            if(flags & ConnectState::FAILED)
-                total += addr.second.nFailed;
+            if(nFlags & ConnectState::CONNECTED)
+                nTotal += addr.second.nConnected;
+            if(nFlags & ConnectState::DROPPED)
+                nTotal += addr.second.nDropped;
+            if(nFlags & ConnectState::FAILED)
+                nTotal += addr.second.nFailed;
         }
 
-        return total;
+        return nTotal;
     }
 
 
@@ -535,12 +531,26 @@ namespace LLP
     }
 
 
-    /*  Updates the state of the given Trust address. */
-    void AddressManager::update_state(TrustAddress *pAddr, uint8_t state)
+    /*  Returns the total number of LISP EID addresses. */
+    uint32_t AddressManager::eid_count()
     {
-        uint64_t ms = runtime::unifiedtimestamp(true);
+        uint32_t c = 0;
+        auto it = mapTrustAddress.begin();
+        for(; it != mapTrustAddress.end(); ++it)
+        {
+            if(it->second.IsEID())
+              ++c;
+        }
+        return c;
+    }
 
-        switch(state)
+
+    /*  Updates the nState of the given Trust address. */
+    void AddressManager::update_state(TrustAddress *pAddr, uint8_t nState)
+    {
+        uint64_t nTimestamp = runtime::unifiedtimestamp(true);
+
+        switch(nState)
         {
           /* New State */
           case ConnectState::NEW:
@@ -556,8 +566,8 @@ namespace LLP
               ++pAddr->nConnected;
               pAddr->nSession = 0;
               pAddr->nFails = 0;
-              pAddr->nLastSeen = ms;
-              pAddr->nState = state;
+              pAddr->nLastSeen = nTimestamp;
+              pAddr->nState = nState;
               break;
 
           /* Dropped State */
@@ -568,9 +578,9 @@ namespace LLP
                   break;
 
               ++pAddr->nDropped;
-              pAddr->nSession = ms - pAddr->nLastSeen;
-              pAddr->nLastSeen = ms;
-              pAddr->nState = state;
+              pAddr->nSession = nTimestamp - pAddr->nLastSeen;
+              pAddr->nLastSeen = nTimestamp;
+              pAddr->nState = nState;
               break;
 
           /* Failed State */
@@ -578,12 +588,12 @@ namespace LLP
               ++pAddr->nFailed;
               ++pAddr->nFails;
               pAddr->nSession = 0;
-              pAddr->nState = state;
+              pAddr->nState = nState;
               break;
 
-          /* Unrecognized state */
+          /* Unrecognized nState */
           default:
-              debug::log(0, FUNCTION, "Unrecognized state");
+              debug::log(0, FUNCTION, "Unrecognized nState");
               break;
         }
     }

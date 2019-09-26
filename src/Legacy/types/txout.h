@@ -15,11 +15,12 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_TYPES_TXOUT_H
 #define NEXUS_LEGACY_TYPES_TXOUT_H
 
+#include <Util/templates/serialize.h>
+#include <Legacy/types/script.h>
+
 #include <cstdint>
 #include <cstring>
 
-#include <Util/templates/serialize.h>
-#include <Legacy/types/script.h>
 
 namespace Legacy
 {
@@ -53,8 +54,9 @@ namespace Legacy
 		 *
 		 **/
 		TxOut()
+        : nValue(-1)
+        , scriptPubKey()
 		{
-				SetNull();
 		}
 
 
@@ -65,9 +67,9 @@ namespace Legacy
 		 *
 		 **/
 		TxOut(int64_t nValueIn, Script scriptPubKeyIn)
+        : nValue(nValueIn)
+        , scriptPubKey(scriptPubKeyIn)
 		{
-				nValue = nValueIn;
-				scriptPubKey = scriptPubKeyIn;
 		}
 
 
@@ -90,7 +92,7 @@ namespace Legacy
 		 *	Determine if the object is in a null state.
 		 *
 		 **/
-		bool IsNull();
+		bool IsNull() const;
 
 
 		/** SetEmpty

@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <vector>
 #include <mutex>
 
+/* The lookup mutex for thread safe calls to getaddrinfo and freeaddrinfo. */
 namespace
 {
     std::mutex LOOKUP_MUTEX;
@@ -27,116 +28,19 @@ namespace
 namespace LLP
 {
 
-    /*  These addresses are the first point of contact on the P2P network
-     *  They are established and maintained by the owners of each domain. */
-    const std::vector<std::string> DNS_SeedNodes =
-    {
-        "node1.nexusearth.com",
-        "node1.mercuryminer.com",
-        "node1.nexusminingpool.com",
-        "node1.nexus2.space",
-        "node1.barbequemedia.com",
-        "node1.nxsorbitalscan.com",
-        "node1.nxs.efficienthash.com",
-        "node1.henryskinner.net",
-        "node2.nexusearth.com",
-        "node2.mercuryminer.com",
-        "node2.nexusminingpool.com",
-        "node2.nexus2.space",
-        "node2.barbequemeportParseddia.com",
-        "node2.nxsorbitalscan.com",
-        "node2.nxs.efficienthash.com",
-        "node2.henryskinner.net",
-        "node3.nexusearth.com",
-        "node3.mercuryminer.com",
-        "node3.nexusminingpool.com",
-        "node3.nexus2.space",
-        "node3.barbequemedia.com",
-        "node3.nxsorbitalscan.com",
-        "node3.nxs.efficienthash.com",
-        "node3.henryskinner.net",
-        "node4.nexusearth.com",
-        "node4.mercuryminer.com",
-        "node4.nexus2.space",
-        "node4.barbequemedia.com",
-        "node4.nxsorbitalscan.com",
-        "node4.nxs.efficienthash.com",
-        "node4.henryskinner.net",
-        "node5.nexusearth.com",
-        "node5.mercuryminer.com",
-        "node5.barbequemedia.com",
-        "node5.nxs.efficienthash.com",
-        "node5.henryskinner.net",
-        "node6.nexusearth.com",
-        "node6.mercuryminer.com",
-        "node6.barbequemedia.com",
-        "node6.nxs.efficienthash.com",
-        "node6.henryskinner.net",
-        "node7.nexusearth.com",
-        "node7.mercuryminer.com",
-        "node7.barbequemedia.com",
-        "node7.nxs.efficienthash.com",
-        "node7.henryskinner.net",
-        "node8.nexusearth.com",
-        "node8.mercuryminer.com",
-        "node8.barbequemedia.com",
-        "node8.nxs.efficienthash.com",
-        "node8.henryskinner.net",
-        "node9.nexusearth.com",
-        "node9.mercuryminer.com",
-        "node9.nxs.efficienthash.com",
-        "node10.nexusearth.com",
-        "node10.mercuryminer.com",
-        "node10.nxs.efficienthash.com",
-        "node11.nexusearth.com",
-        "node11.mercuryminer.com",
-        "node11.nxs.efficienthash.com",
-        "node12.nexusearth.com",
-        "node12.mercuryminer.com",
-        "node12.nxs.efficienthash.com",
-        "node13.nexusearth.com",
-        "node13.mercuryminer.com",
-        "node13.nxs.efficienthash.com",
-        "node14.mercuryminer.com",
-        "node15.mercuryminer.com",
-        "node16.mercuryminer.com",
-        "node17.mercuryminer.com",
-        "node18.mercuryminer.com",
-        "node19.mercuryminer.com",
-        "node20.mercuryminer.com",
-        "node21.mercuryminer.com"
-    };
-
-
-    /*  Testnet seed nodes. */
-    const std::vector<std::string> DNS_SeedNodes_Testnet =
-    {
-        "test1.nexusoft.io",
-        "lisptest1.mercuryminer.com",
-        "lisptest2.mercuryminer.com",
-        "lisptest3.mercuryminer.com",
-        "lisptest4.mercuryminer.com",
-        "lisptest5.mercuryminer.com",
-        "testlisp.nexusminingpool.com",
-        "nexus-lisp-seed.lispers.net",
-        "fe::255:255"
-        "test1.mercuryminer.com",
-        "test2.mercuryminer.com",
-        "test3.mercuryminer.com",
-        "test4.mercuryminer.com",
-        "test5.mercuryminer.com",
-        "test.nexusminingpool.com",
-    };
-
     /** The DNS Lookup Routine to find the Nodes that are set as DNS seeds. **/
     std::vector<BaseAddress> DNS_Lookup(const std::vector<std::string> &DNS_Seed)
     {
         std::vector<BaseAddress> vNodes;
-        for (int nSeed = 0; nSeed < DNS_Seed.size(); ++nSeed)
+
+        /* Loop through the list of DNS seeds and look them up. */
+        uint32_t nSeeds = DNS_Seed.size();
+        for(uint32_t nSeed = 0; nSeed < nSeeds; ++nSeed)
         {
             debug::log(0, nSeed, " Host: ",  DNS_Seed[nSeed]);
-            if (LookupHost(DNS_Seed[nSeed].c_str(), vNodes))
+            if(LookupHost(DNS_Seed[nSeed].c_str(), vNodes))
             {
+                /* Set the port for each lookup address to the default port. */
                 for(BaseAddress& ip : vNodes)
                 {
                     ip.SetPort(GetDefaultPort());
@@ -149,89 +53,89 @@ namespace LLP
     }
 
 
-
     /* Standard Wrapper Function to Interact with cstdlib DNS functions. */
-    bool static LookupIntern(const std::string &strName,
-                             std::vector<BaseAddress> &vAddr,
-                             uint32_t nMaxSolutions,
-                             bool fAllowLookup)
+    bool LookupIntern(const std::string &strName, std::vector<BaseAddress> &vAddr, uint32_t nMaxSolutions, bool fAllowLookup)
     {
+        /* Do a bounds check on the lookup name. */
         size_t s = strName.size();
-        if (s == 0 || s > 255)
+        if(s == 0 || s > 255)
             return debug::error(FUNCTION, "Invalid lookup string of size ", s, ".");
 
+        /* Ensure the address list is empty before lookup. */
         vAddr.clear();
-        struct addrinfo aiHint;
-        memset(&aiHint, 0, sizeof(struct addrinfo));
 
+        /* Fill out the addrinfo struct with lookup information. */
+        struct addrinfo aiHint;
+        aiHint.ai_flags = AI_ADDRCONFIG | (fAllowLookup ? 0 : AI_NUMERICHOST);
+        aiHint.ai_family = AF_UNSPEC;
         aiHint.ai_socktype = SOCK_STREAM;
         aiHint.ai_protocol = IPPROTO_TCP;
-#ifdef WIN32
-        aiHint.ai_family = AF_UNSPEC;
-        aiHint.ai_flags = fAllowLookup ? 0 : AI_NUMERICHOST;
-#else
-        aiHint.ai_family = AF_UNSPEC;
-        aiHint.ai_flags = AI_ADDRCONFIG | (fAllowLookup ? 0 : AI_NUMERICHOST);
-#endif
+        aiHint.ai_addrlen = socklen_t(0);
+        aiHint.ai_addr = 0;
+        aiHint.ai_canonname = 0;
+        aiHint.ai_next = 0;
 
+        /* This will contain the list of results after the lookup is performed. */
         struct addrinfo *aiRes = nullptr;
+
+        /* Lock the lookup mutex. */
         std::unique_lock<std::mutex> lk(::LOOKUP_MUTEX);
-        //{
-          if(getaddrinfo(strName.c_str(), nullptr, &aiHint, &aiRes) != 0)
-              return false;
-        //}
-        //lk.unlock();
 
-        struct addrinfo *aiTrav = aiRes;
+        /* Attempt to obtain address info for the lookup address. */
+        if(getaddrinfo(strName.c_str(), nullptr, &aiHint, &aiRes) != 0)
+            return false;
 
-        /* Address info traversal */
-        while (aiTrav != nullptr && (nMaxSolutions == 0 || vAddr.size() < nMaxSolutions))
+        /* Loop through the list of address info */
+        struct addrinfo *aiNext = aiRes;
+        while(aiNext != nullptr && (nMaxSolutions == 0 || vAddr.size() < nMaxSolutions))
         {
-            if (aiTrav->ai_family == AF_INET)
+            /* Check if it is a IPv4 address. */
+            if(aiNext->ai_family == AF_INET)
             {
-                if(aiTrav->ai_addrlen < sizeof(sockaddr_in))
+                /* Check for address length consistency. */
+                if(aiNext->ai_addrlen < sizeof(sockaddr_in))
                 {
                     debug::error(FUNCTION, "invalid ai_addrlen: < sizeof(sockaddr_in)");
-                    aiTrav = aiTrav->ai_next;
+                    aiNext = aiNext->ai_next;
                     continue;
                 }
-                vAddr.push_back(BaseAddress(((struct sockaddr_in*)(aiTrav->ai_addr))->sin_addr));
-            }
 
-            if (aiTrav->ai_family == AF_INET6)
+                /* Add the address to the list of addresses. */
+                vAddr.push_back(BaseAddress(((struct sockaddr_in*)(aiNext->ai_addr))->sin_addr));
+            }
+            /* Check if it is a IPv6 address. */
+            else if(aiNext->ai_family == AF_INET6)
             {
-                if(aiTrav->ai_addrlen < sizeof(sockaddr_in6))
+                /* Check for address length consistency. */
+                if(aiNext->ai_addrlen < sizeof(sockaddr_in6))
                 {
                     debug::error(FUNCTION, "invalid ai_addrlen: < sizeof(sockaddr_in6)");
-                    aiTrav = aiTrav->ai_next;
+                    aiNext = aiNext->ai_next;
                     continue;
                 }
 
-
-                vAddr.push_back(BaseAddress(((struct sockaddr_in6*)(aiTrav->ai_addr))->sin6_addr));
+                /* Add the address to the list of addresses. */
+                vAddr.push_back(BaseAddress(((struct sockaddr_in6*)(aiNext->ai_addr))->sin6_addr));
             }
 
-            aiTrav = aiTrav->ai_next;
+            /* Set the next pointer. */
+            aiNext = aiNext->ai_next;
         }
 
-        //lk.lock();
-        //{
-            freeaddrinfo(aiRes);
-        //}
-        //lk.unlock();
+        /* Free the memory associated with the address info. */
+        freeaddrinfo(aiRes);
 
+        /* If there are any addresses added, return true. */
         return (vAddr.size() > 0);
     }
 
 
     /* Standard Wrapper Function to Interact with cstdlib DNS functions. */
-    bool LookupHost(const std::string &strName,
-                    std::vector<BaseAddress>& vAddr,
-                    uint32_t nMaxSolutions,
-                    bool fAllowLookup)
+    bool LookupHost(const std::string &strName, std::vector<BaseAddress>& vAddr, uint32_t nMaxSolutions, bool fAllowLookup)
     {
+        /* Do a bounds check on the lookup name. */
         size_t s = strName.size();
-        if (s == 0 || s > 255)
+        if(s == 0 || s > 255)
             return debug::error(FUNCTION, "Invalid lookup string of size ", s, ".");
 
         return LookupIntern(strName, vAddr, nMaxSolutions, fAllowLookup);
@@ -243,33 +147,31 @@ namespace LLP
                            std::vector<BaseAddress>& vAddr,
                            uint32_t nMaxSolutions)
     {
-        size_t s = strName.size();
-        if (s == 0 || s > 255)
+        /* Do a bounds check on the lookup name. */
+        uint32_t s = strName.size();
+        if(s == 0 || s > 255)
             return debug::error(FUNCTION, "Invalid lookup string of size ", s, ".");
 
-
+        /* Lookup the host. */
         return LookupHost(strName, vAddr, nMaxSolutions, false);
     }
 
 
     /* Standard Wrapper Function to Interact with cstdlib DNS functions. */
-    bool Lookup(const std::string &strName,
-                std::vector<BaseAddress>& vAddr,
-                uint16_t portDefault,
-                bool fAllowLookup,
+    bool Lookup(const std::string &strName, std::vector<BaseAddress>& vAddr, uint16_t portDefault, bool fAllowLookup,
                 uint32_t nMaxSolutions)
     {
-
-        size_t s = strName.size();
-        if (s == 0 || s > 255)
+        /* Do a bounds check on the lookup name. */
+        uint32_t s = strName.size();
+        if(s == 0 || s > 255)
             return debug::error(FUNCTION, "Invalid lookup string of size ", s, ".");
 
-
+        /* Lookup the host. */
         if(!LookupIntern(strName, vAddr, nMaxSolutions, fAllowLookup))
             return false;
 
         /* Set the ports to the default port. */
-        for (uint32_t i = 0; i < vAddr.size(); ++i)
+        for(uint32_t i = 0; i < vAddr.size(); ++i)
             vAddr[i].SetPort(portDefault);
 
         return true;
@@ -277,34 +179,33 @@ namespace LLP
 
 
     /* Standard Wrapper Function to Interact with cstdlib DNS functions. */
-    bool Lookup(const std::string &strName,
-                BaseAddress &addr,
-                uint16_t portDefault,
-                bool fAllowLookup)
+    bool Lookup(const std::string &strName, BaseAddress &addr, uint16_t portDefault, bool fAllowLookup)
     {
-        size_t s = strName.size();
-        if (s == 0 || s > 255)
+        /* Do a bounds check on the lookup name. */
+        uint32_t s = strName.size();
+        if(s == 0 || s > 255)
             return debug::error(FUNCTION, "Invalid lookup string of size ", s, ".");
 
+        /* Lookup the host with a max solution of 1. */
         std::vector<BaseAddress> vAddr;
-
         if(!Lookup(strName, vAddr, portDefault, fAllowLookup, 1))
             return false;
 
+        /* If the lookup was successful, assign the output to the only item in the list. */
         addr = vAddr[0];
         return true;
     }
 
 
     /* Standard Wrapper Function to Interact with cstdlib DNS functions. */
-    bool LookupNumeric(const std::string &strName,
-                       BaseAddress& addr,
-                       uint16_t portDefault)
+    bool LookupNumeric(const std::string &strName, BaseAddress& addr, uint16_t portDefault)
     {
-        size_t s = strName.size();
-        if (s == 0 || s > 255)
+        /* Do a bounds check on the lookup name. */
+        uint32_t s = strName.size();
+        if(s == 0 || s > 255)
             return debug::error(FUNCTION, "Invalid lookup string of size ", s, ".");
 
+        /* If the lookup was successful, assign the output to the only item in the list. */
         return Lookup(strName, addr, portDefault, false);
     }
 }

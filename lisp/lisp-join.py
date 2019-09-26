@@ -164,7 +164,7 @@ else:
 # is a IGMP querier on the LAN. Assume there isn't one in a virtual/container
 # environment.
 #
-while (True):
+while(True):
     print "Rejoining group {} on {}, pid {} ...".format(group, intf, mypid),
     leave_socket(msocket, group, intf)
     join_socket(msocket, group, intf)

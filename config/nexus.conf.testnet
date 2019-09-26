@@ -1,0 +1,51 @@
+#
+# This is an example nexus.conf for a Tritium Testnet. Tailor it to your deployment. Do not change
+# the nexus command line. Any options, put here.
+#
+# This configuration file is for the 'merging' branch.
+#
+
+#this value can be any integer value, to make it simple to create new testnets on the fly.
+testnet=16
+
+#default RPC user/pass.  PLEASE CHANGE THESE TO SUITABLE VALUES
+rpcuser=username
+rpcpassword=password
+
+#default API user/pass.  PLEASE CHANGE THESE TO SUITABLE VALUES
+apiuser=username
+apipassword=password
+
+#this will launch the process into the background
+daemon=1
+
+#this allows you to control how much data is output to the console
+verbose=2
+
+#OPTIONAL: seed node to force connect to
+#connect=myseed.dns.com
+
+#OPTIONAL: enable mining server (for a remote miner to connect to)
+#mining=1
+
+#OPTIONAL: enable staking (to generate blocks inside the process)
+#stake=1
+
+#OPTIONAL: for private testnets and private networks (used for DEMO's)
+#private=1
+#generate=password
+
+#OPTIONAL: if your application requires multiple users
+#multiuser=1
+
+#OPTIONAL: allows you to specifically disable the processing of notifications (on by default)
+#processnotifications=0
+
+#OPTIONAL: Allows the node to automatically log in with sig chain credentials and unlock the node for Mining, Staking, and Notifications 
+#autologin=1
+#username=testuser
+#password=testpassword
+#pin=1234
+
+#OPTIONAL: If autologin is set to 1, this additional setting will create the signature chain if it does not exist
+#autocreate=0

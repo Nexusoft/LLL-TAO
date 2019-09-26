@@ -14,110 +14,101 @@ ________________________________________________________________________________
 #pragma once
 
 #include <map>
-#include <LLC/types/uint1024.h>
-#include <Util/include/debug.h>
+#include <cstdint>
 
 namespace Legacy
 {
 
-	/* Class to encapsulate multiple coinbase recipients, such as for pool payouts*/
+	/** Coinbase
+     *
+     *  Class to encapsulate multiple coinbase recipients, such as for pool payouts.
+     *
+     **/
 	class Coinbase
 	{
-	public:
-
-        /* Default constructor*/
-        Coinbase()
-        : vOutputs()
-				, nMaxValue(0)
-				, nPoolFee(0)
-				{
-				}
-
-        /** Constructor when set from incoming data **/
-        Coinbase(std::map<std::string, uint64_t> vTxOutputs, uint64_t nValue, uint64_t nLocalFee)
-        : vOutputs(vTxOutputs)
-				, nMaxValue(nValue)
-				, nPoolFee(nLocalFee)
-				{
-				}
-
-
-				/** Destructor **/
-				~Coinbase()
-				{
-				}
-
+	private:
 
         /** The Transaction Outputs to be Serialized to Mining LLP. **/
         std::map<std::string, uint64_t> vOutputs;
 
 
-        /** The Value of this current Coinbase Payout. **/
-        uint64_t nMaxValue, nPoolFee;
+        /** The value of the current coinbase payout. **/
+        uint64_t nMaxValue;
+
+
+        /** The amount that will be sent to wallet operator. */
+        uint64_t nWalletFee;
+
+    public:
+
+        /** Default constructor **/
+        Coinbase();
+
+
+        /** Constructor. **/
+        Coinbase(const std::map<std::string, uint64_t>& vTxOutputs, uint64_t nValue, uint64_t nLocalFee);
+
+
+        /** Copy constructor. **/
+        Coinbase(const Coinbase& rhs);
+
+
+        /** Assignment operator. **/
+        Coinbase &operator=(const Coinbase& rhs);
+
+
+		/** Destructor **/
+		~Coinbase();
 
 
         /** SetNull
          *
-         *  Set the coinbase to Null state.
+         *  Set the coinbase to null state.
          *
          **/
-        void SetNull()
-        {
-            vOutputs.clear();
-            nMaxValue = 0;
-            nPoolFee = 0;
-        }
+        void SetNull();
 
 
-        /** Is Null
-				 *
-				 *	Checks the objects null state.
-				 *
-				 **/
-				bool IsNull() const
-				{
-						return vOutputs.empty() && nPoolFee == 0;
-				}
+        /** IsNull
+		 *
+		 *	Checks the objects null state.
+		 *
+		 **/
+		bool IsNull() const;
 
 
         /** IsValid
-        *
-        *  Determines if the Coinbase Tx has been built Successfully
-        *
-        *  @return true if the Coinbase Tx is valid, otherwise false.
-        *
-        **/
-        bool IsValid() const
-        {
-            uint64_t nCurrentValue = nPoolFee;
-            for(const auto& entry : vOutputs)
-                nCurrentValue += entry.second;
+         *
+         *  Determines if the coinbase tx has been built successfully.
+         *
+         *  @return true if the coinbase tx is valid, otherwise false.
+         *
+         **/
+        bool IsValid() const;
 
-            return nCurrentValue == nMaxValue;
-        }
 
         /** Print
-        *
-        *  Writes the coinbase tx data to the log
-        *
-        **/
-        /** Output the Transactions in the Coinbase Container. **/
-        void Print() const
-        {
-            debug::log(0, "\n\n +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ \n");
-            uint64_t nTotal = 0;
-            for(const auto& entry : vOutputs)
-            {
-                debug::log(0, entry.first, ":", static_cast<double>(entry.second) / 1000000.0);
-                nTotal += entry.second;
-            }
+         *
+         *  Writes the coinbase tx data to the log.
+         *
+         **/
+        void Print() const;
 
-            debug::log(0, "Total Value of Coinbase = ", static_cast<double>(nTotal) / 1000000.0);
-            debug::log(0, "Set Value of Coinbase = ", static_cast<double>(nMaxValue) / 1000000.0);
-            debug::log(0, "PoolFee in Coinbase ", static_cast<double>(nPoolFee) / 1000000.0);
-            debug::log(0, "\n\nIs Complete: ", IsValid() ? "TRUE" : "FALSE");
-            debug::log(0, "\n\n +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ \n");
-        }
+
+        /** WalletReward
+         *
+         *  Returns the reward payed out to wallet operator.
+         *
+         **/
+        uint64_t WalletReward() const;
+
+
+        /** Outputs
+         *
+         *  Returns a copy of the outputs used for this coinbase.
+         *
+         **/
+        std::map<std::string, uint64_t> Outputs() const;
 
 	};
 }

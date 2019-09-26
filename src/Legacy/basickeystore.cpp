@@ -37,7 +37,7 @@ namespace Legacy
         {
             LOCK(cs_basicKeyStore);
             auto mi = mapKeys.find(address);
-            if (mi != mapKeys.end())
+            if(mi != mapKeys.end())
             {
                 keyOut.Reset();
                 keyOut.SetSecret((*mi).second.first, (*mi).second.second);
@@ -57,7 +57,7 @@ namespace Legacy
 
             setAddress.clear();
 
-            for (auto &mapEntry : mapKeys)
+            for(auto &mapEntry : mapKeys)
                 setAddress.insert(mapEntry.first);
 
         }
@@ -93,7 +93,7 @@ namespace Legacy
         {
             LOCK(cs_basicKeyStore);
             ScriptMap::const_iterator mi = mapScripts.find(hash);
-            if (mi != mapScripts.end())
+            if(mi != mapScripts.end())
             {
                 redeemScriptOut = (*mi).second;
                 return true;

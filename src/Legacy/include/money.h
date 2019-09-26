@@ -17,10 +17,12 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/timelocks.h>
 
-#include <inttypes.h>
 #include <Util/include/runtime.h>
 #include <Util/include/args.h>
 #include <Util/include/convert.h>
+
+#include <inttypes.h>
+
 
 namespace Legacy
 {
@@ -45,6 +47,10 @@ namespace Legacy
     const uint64_t MIN_RELAY_TX_FEE = CENT;
 
 
+    /** Transaction fee to be used. **/
+    extern uint64_t TRANSACTION_FEE;
+
+
     /** Max TxOut
      *
      *  Maximum value out per transaction
@@ -54,7 +60,8 @@ namespace Legacy
      **/
     inline int64_t MaxTxOut()
     {
-        if(runtime::unifiedtimestamp() > (config::fTestNet ? TAO::Ledger::TESTNET_VERSION_TIMELOCK[3] : TAO::Ledger::NETWORK_VERSION_TIMELOCK[3]))
+        /* New maximum is live after v5 activation */
+        if(runtime::unifiedtimestamp() >= TAO::Ledger::StartTimelock(5))
             return 50000000 * COIN;
 
         return 1000000 * COIN;
@@ -89,13 +96,15 @@ namespace Legacy
         return (double)viz / (double)Legacy::COIN;
     }
 
+
     inline int64_t AmountToSatoshis(double dAmount)
     {
-        if (dAmount <= 0.0 || dAmount > static_cast<double>(Legacy::MaxTxOut()))
-            throw std::runtime_error( "Invalid amount");
-        int64_t nAmount = convert::roundint64(dAmount * COIN);
-        if (!MoneyRange(nAmount))
+        if(dAmount <= 0.0 || dAmount > static_cast<double>(Legacy::MaxTxOut()))
             throw std::runtime_error("Invalid amount");
+        int64_t nAmount = convert::roundint64(dAmount * COIN);
+        if(!MoneyRange(nAmount))
+            throw std::runtime_error("Invalid amount");
+
         return nAmount;
     }
 

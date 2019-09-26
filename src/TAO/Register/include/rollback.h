@@ -15,11 +15,16 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_REGISTER_INCLUDE_ROLLBACK_H
 #define NEXUS_TAO_REGISTER_INCLUDE_ROLLBACK_H
 
-#include <TAO/Ledger/types/transaction.h>
-
 /* Global TAO namespace. */
 namespace TAO
 {
+
+    /* Register layer. */
+    namespace Operation
+    {
+        /* Forward declarations. */
+        class Contract;
+    }
 
     /* Register Layer namespace. */
     namespace Register
@@ -29,12 +34,13 @@ namespace TAO
          *
          *  Rollback the current network state to register pre-states.
          *
-         *  @param[in] tx The transaction to verify pre-states with.
+         *  @param[in] contract The contract to rollback to pre-states
+         *  @param[in] nFlags Ledger level flags to determine if memory or disk
          *
          *  @return True if verified correctly, false otherwise.
          *
          **/
-        bool Rollback(TAO::Ledger::Transaction tx);
+        bool Rollback(const TAO::Operation::Contract& contract, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
     }
 
 }

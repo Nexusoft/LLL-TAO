@@ -64,10 +64,22 @@ public:
 
     /** DataStream
      *
+     *  Constructs the DataStream object.
+     *
+     *  @param[in] vchDataIn The byte vector to insert.
+     *  @param[in] nSerTypeIn The serialize type.
+     *  @param[in] nSerVersionIn The serialize version.
+     *
+     **/
+    DataStream(const std::vector<uint64_t>& vchDataIn, const uint32_t nSerTypeIn, const uint32_t nSerVersionIn);
+
+
+    /** DataStream
+     *
      *  Default constructor for initialization with serialize data, type and version
      *
      **/
-    DataStream( const std::vector<uint8_t>::const_iterator pbegin,
+    DataStream(const std::vector<uint8_t>::const_iterator pbegin,
                 const std::vector<uint8_t>::const_iterator pend,
                 const uint32_t nSerTypeIn, const uint32_t nSerVersionIn);
 
@@ -92,6 +104,29 @@ public:
     DataStream(const std::vector<char>& vchDataIn, const uint32_t nSerTypeIn, const uint32_t nSerVersionIn);
 
 
+    /** Destructor. */
+    ~DataStream()
+    {
+    }
+
+
+    /** Operator |= overload to set flag **/
+    DataStream& operator|=(enum SER_OPERATIONS nFlags)
+    {
+        nSerType |= nFlags;
+
+        return *this;
+    }
+
+    /** Operator &= overload to unset flag **/
+    DataStream& operator&=(enum SER_OPERATIONS nFlags)
+    {
+        nSerType &= ~nFlags;
+
+        return *this;
+    }
+
+
     /** SetType
      *
      *  Sets the type of stream.
@@ -110,6 +145,16 @@ public:
      *
      **/
     void SetPos(uint64_t nNewPos) const;
+
+
+    /** GetPos
+     *
+     *  Gets the position in the stream.
+     *
+     *  @return the current read position in the stream.
+     *
+     **/
+    uint64_t GetPos() const;
 
 
     /** SetNull
@@ -170,10 +215,19 @@ public:
 
     /** Bytes
      *
+     *  Get the data stream from the object as a const reference.
+     *
+     **/
+    const std::vector<uint8_t>& Bytes() const;
+
+
+    /** Bytes
+     *
      *  Get the data stream from the object.
      *
      **/
-    const std::vector<uint8_t>& Bytes();
+    std::vector<uint8_t>& Bytes();
+
 
     /** reserve
      *
@@ -181,6 +235,14 @@ public:
      *
      **/
     void reserve(const uint64_t nSize);
+
+
+    /** resize
+     *
+     *  Implement the same resize functionality to vector.
+     *
+     **/
+    void resize(const uint64_t nSize);
 
 
     /** begin
@@ -220,7 +282,7 @@ public:
      *  Wrapper around data to get the start of vector.
      *
      **/
-     uint8_t* data();
+    uint8_t* data(const uint64_t nOffset = 0);
 
 
     /** clear

@@ -36,6 +36,12 @@ namespace LLP
     }
 
 
+    /* Default destructor */
+    BaseAddress::~BaseAddress()
+    {
+    }
+
+
     /* Copy constructor */
     BaseAddress::BaseAddress(const BaseAddress &other, uint16_t port)
     : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
@@ -110,8 +116,8 @@ namespace LLP
     {
 
         /* Make sure there is a string to lookup. */
-        size_t s = strIp.size();
-        if (s == 0 || s > 255)
+        uint32_t s = strIp.size();
+        if(s == 0 || s > 255)
         {
             debug::error(FUNCTION, "Invalid lookup string of size ", s, ".");
             return;
@@ -119,7 +125,7 @@ namespace LLP
 
         if(fAllowLookup)
         {
-            if (Lookup(strIp, *this, portDefault, true))
+            if(Lookup(strIp, *this, portDefault, true))
                 debug::log(3, FUNCTION, strIp, " resolved to ", ToStringIP());
             else
                 debug::log(3, FUNCTION, strIp, " bad lookup");
@@ -140,12 +146,6 @@ namespace LLP
         nPort = other.nPort;
 
         return *this;
-    }
-
-
-    /* Default destructor */
-    BaseAddress::~BaseAddress()
-    {
     }
 
 
@@ -174,13 +174,19 @@ namespace LLP
     /*  Determines if address is IPv4 mapped address. (::FFFF:0:0/96, 0.0.0.0/0) */
     bool BaseAddress::IsIPv4() const
     {
-        //return (memcmp(ip, pchIPv4, sizeof(pchIPv4)) == 0);
         return (memory::compare(ip, pchIPv4, sizeof(pchIPv4)) == 0);
     }
 
 
-    /* Determines if address is IPv4 private networks.
-     * (10.0.0.0/8, 192.168.0.0/16, 172.16.0.0/12) */
+    /*  Determines if address is a LISP EID mapped address. */
+    bool BaseAddress::IsEID() const
+    {
+        return (IsIPv4() && GetByte(3) == 240)
+        || (!IsIPv4() && (GetByte(15) == 0xfd || GetByte(15) == 0xfe));
+    }
+
+
+    /* Determines if address is IPv4 private networks. (10.0.0.0/8, 192.168.0.0/16, 172.16.0.0/12) */
     bool BaseAddress::IsRFC1918() const
     {
         return IsIPv4() && (
@@ -225,8 +231,7 @@ namespace LLP
     }
 
 
-    /* Determines if address is IPv6 ORCHID.
-     * (10.0.0.0/8, 192.168.0.0/16, 172.16.0.0/12) */
+    /* Determines if address is IPv6 ORCHID. (10.0.0.0/8, 192.168.0.0/16, 172.16.0.0/12) */
     bool BaseAddress::IsRFC4843() const
     {
         return (GetByte(15) == 0x20 && GetByte(14) == 0x01 && GetByte(13) == 0x00 && (GetByte(12) & 0xF0) == 0x10);
@@ -236,7 +241,6 @@ namespace LLP
     /* Determines if address is IPv6 autoconfig. (FE80::/64) */
     bool BaseAddress::IsRFC4862() const
     {
-        //return (memcmp(ip, pchRFC4862, sizeof(pchRFC4862)) == 0);
         return (memory::compare(ip, pchRFC4862, sizeof(pchRFC4862)) == 0);
     }
 
@@ -244,7 +248,6 @@ namespace LLP
     /* Determines if address is IPv6 well-known prefix. (64:FF9B::/96) */
     bool BaseAddress::IsRFC6052() const
     {
-        //return (memcmp(ip, pchRFC6052, sizeof(pchRFC6052)) == 0);
         return (memory::compare(ip, pchRFC6052, sizeof(pchRFC6052)) == 0);
     }
 
@@ -252,28 +255,19 @@ namespace LLP
     /* Determines if address is IPv6 IPv4-translated address. (::FFFF:0:0:0/96) */
     bool BaseAddress::IsRFC6145() const
     {
-        //return (memcmp(ip, pchRFC6145, sizeof(pchRFC6145)) == 0);
         return (memory::compare(ip, pchRFC6145, sizeof(pchRFC6145)) == 0);
-    }
-
-    /* Checks for LISP EID. */
-    bool BaseAddress::IsEID() const
-    {
-        return (IsIPv4() && GetByte(3) == 240) || (!IsIPv4() && (ip[0] == 0xfd || ip[0] == 0xfe));
     }
 
 
     /* Determines if address is a local address. */
     bool BaseAddress::IsLocal() const
     {
-        // IPv4 loopback
-        if (IsIPv4() && (GetByte(3) == 127 || GetByte(3) == 0))
+        /* IPv4 loopback */
+        if(IsIPv4() && (GetByte(3) == 127 || GetByte(3) == 0))
             return true;
 
-        // IPv6 loopback (::1/128)
-
-        //if (memcmp(ip, pchLocal, 16) == 0)
-        if (memory::compare(ip, pchLocal, 16) == 0)
+        /* IPv6 loopback (::1/128) */
+        if(memory::compare(ip, pchLocal, 16) == 0)
             return true;
 
         return false;
@@ -283,50 +277,41 @@ namespace LLP
     /* Determines if address is a routable address. */
     bool BaseAddress::IsRoutable() const
     {
-        return IsValid() && !(IsRFC3927() ||
-                              IsRFC4862() ||
-                              IsRFC4193() ||
-                              IsRFC4843() ||
-                              IsLocal());
-
+        return IsValid() && !(IsRFC3927() || IsRFC4862() || IsRFC4193() || IsRFC4843() || IsLocal());
     }
 
 
     /* Determines if address is a valid address. */
     bool BaseAddress::IsValid() const
     {
-        // Clean up 3-byte shifted addresses caused by garbage in size field
-        // of addr messages from versions before 0.2.9 checksum.
-        // Two consecutive addr messages look like this:
-        // header20 vectorlen3 addr26 addr26 addr26 header20 vectorlen3 addr26 addr26 addr26...
-        // so if the first length field is garbled, it reads the second batch
-        // of addr misaligned by 3 bytes.
-        //if (memcmp(ip, pchIPv4+3, sizeof(pchIPv4)-3) == 0)
-        if (memory::compare(ip, pchIPv4+3, sizeof(pchIPv4)-3) == 0)
+        /* Clean up 3-byte shifted addresses caused by garbage in size field
+         * of addr messages from versions before 0.2.9 checksum.
+         * Two consecutive addr messages look like this:
+         * header20 vectorlen3 addr26 addr26 addr26 header20 vectorlen3 addr26 addr26 addr26...
+         * so if the first length field is garbled, it reads the second batch
+         * of addr misaligned by 3 bytes. */
+        if(memory::compare(ip, pchIPv4+3, sizeof(pchIPv4)-3) == 0)
             return false;
 
-        // unspecified IPv6 address (::/128)
+        /* Unspecified IPv6 address (::/128) */
         uint8_t ipNone[16] = {};
-        //if (memcmp(ip, ipNone, 16) == 0)
-        if (memory::compare(ip, ipNone, 16) == 0)
+        if(memory::compare(ip, ipNone, 16) == 0)
             return false;
 
-        // documentation IPv6 address
-        if (IsRFC3849())
+        /* Documentation IPv6 address */
+        if(IsRFC3849())
             return false;
 
-        if (IsIPv4())
+        if(IsIPv4())
         {
-            // INADDR_NONE
             uint32_t ip_none = INADDR_NONE;
-            //if (memcmp(ip+12, &ipNone, 4) == 0)
-            if (memory::compare(ip+12, (uint8_t *)&ip_none, 4) == 0)
+
+            if(memory::compare(ip+12, (uint8_t *)&ip_none, 4) == 0)
                 return false;
 
-            // 0
             ip_none = 0;
-            //if (memcmp(ip+12, &ipNone, 4) == 0)
-            if (memory::compare(ip+12, (uint8_t *)&ip_none, 4) == 0)
+
+            if(memory::compare(ip+12, (uint8_t *)&ip_none, 4) == 0)
                 return false;
         }
 
@@ -337,7 +322,7 @@ namespace LLP
     /* Determines if address is a multicast address. */
     bool BaseAddress::IsMulticast() const
     {
-        return    (IsIPv4() && (GetByte(3) & 0xF0) == 0xE0)
+        return (IsIPv4() && (GetByte(3) & 0xF0) == 0xE0)
             || (GetByte(15) == 0xFF);
     }
 
@@ -354,16 +339,18 @@ namespace LLP
     {
         /* inet_ntop on mingw64 is void* (non-const), so compile fails if pass ip within const method. Make a non-const copy we can use */
         uint8_t ipCopy[16];
-        for (int i=0; i<16; ++i)
+        for(int i=0; i<16; ++i)
             ipCopy[i] = ip[i];
 
-        if (IsIPv4())
+        /* Build an IPv4 string. */
+        if(IsIPv4())
         {
             char dst[INET_ADDRSTRLEN];
             inet_ntop(AF_INET, ipCopy + 12, dst, INET_ADDRSTRLEN);
             return std::string(dst);
         }
 
+        /* Build an IPv6 string. */
         char dst[INET6_ADDRSTRLEN];
         inet_ntop(AF_INET6, ipCopy, dst, INET6_ADDRSTRLEN);
         return std::string(dst);
@@ -404,59 +391,59 @@ namespace LLP
     std::vector<uint8_t> BaseAddress::GetGroup() const
     {
         std::vector<uint8_t> vchRet;
-        int32_t nClass = 0; // 0=IPv6, 1=IPv4, 254=local, 255=unroutable
+        int32_t nClass = 0; /* 0=IPv6, 1=IPv4, 254=local, 255=unroutable */
         int32_t nStartByte = 0;
         int32_t nBits = 16;
 
-        // all local addresses belong to the same group
-        if (IsLocal())
+        /* All local addresses belong to the same group. */
+        if(IsLocal())
         {
             nClass = 254;
             nBits = 0;
         }
 
-        // all unroutable addresses belong to the same group
-        if (!IsRoutable())
+        /* All unroutable addresses belong to the same group. */
+        if(!IsRoutable())
         {
             nClass = 255;
             nBits = 0;
         }
-        // for IPv4 addresses, '1' + the 16 higher-order bits of the IP
-        // includes mapped IPv4, SIIT translated IPv4, and the well-known prefix
-        else if (IsIPv4() || IsRFC6145() || IsRFC6052())
+        /* for IPv4 addresses, '1' + the 16 higher-order bits of the IP
+         * includes mapped IPv4, SIIT translated IPv4, and the well-known prefix */
+        else if(IsIPv4() || IsRFC6145() || IsRFC6052())
         {
             nClass = 1;
             nStartByte = 12;
         }
-        // for 6to4 tunneled addresses, use the encapsulated IPv4 address
-        else if (IsRFC3964())
+        /* for 6to4 tunneled addresses, use the encapsulated IPv4 address */
+        else if(IsRFC3964())
         {
             nClass = 1;
             nStartByte = 2;
         }
-        // for Teredo-tunneled IPv6 addresses, use the encapsulated IPv4 address
-        else if (IsRFC4380())
+        /* for Teredo-tunneled IPv6 addresses, use the encapsulated IPv4 address */
+        else if(IsRFC4380())
         {
             vchRet.push_back(1);
             vchRet.push_back(GetByte(3) ^ 0xFF);
             vchRet.push_back(GetByte(2) ^ 0xFF);
             return vchRet;
         }
-        // for he.net, use /36 groups
-        else if (GetByte(15) == 0x20 && GetByte(14) == 0x11 && GetByte(13) == 0x04 && GetByte(12) == 0x70)
+        /* for he.net, use /36 groups */
+        else if(GetByte(15) == 0x20 && GetByte(14) == 0x11 && GetByte(13) == 0x04 && GetByte(12) == 0x70)
             nBits = 36;
-        // for the rest of the IPv6 network, use /32 groups
+        /* for the rest of the IPv6 network, use /32 groups */
         else
             nBits = 32;
 
         vchRet.push_back(static_cast<uint8_t>(nClass));
-        while (nBits >= 8)
+        while(nBits >= 8)
         {
             vchRet.push_back(GetByte(static_cast<uint8_t>(15 - nStartByte)));
             ++nStartByte;
             nBits -= 8;
         }
-        if (nBits > 0)
+        if(nBits > 0)
         {
             uint8_t b = GetByte(static_cast<uint8_t>(15 - nStartByte));
             uint32_t c = static_cast<uint32_t>(b) | ((1 << nBits) - 1);
@@ -471,9 +458,9 @@ namespace LLP
     /* Gets an IPv4 address struct. */
     bool BaseAddress::GetInAddr(struct in_addr* pipv4Addr) const
     {
-        if (!IsIPv4())
+        if(!IsIPv4())
             return false;
-        //memcpy(pipv4Addr, ip+12, 4);
+
         std::copy((uint8_t*)&ip[0] + 12, (uint8_t*)&ip[0] + 16, (uint8_t*)pipv4Addr);
         return true;
     }
@@ -482,7 +469,6 @@ namespace LLP
     /* Gets an IPv6 address struct. */
     bool BaseAddress::GetIn6Addr(struct in6_addr* pipv6Addr) const
     {
-        //memcpy(pipv6Addr, ip, 16);
         std::copy((uint8_t*)&ip[0], (uint8_t*)&ip[0] + 16, (uint8_t*)pipv6Addr);
         return true;
     }
@@ -491,15 +477,14 @@ namespace LLP
     /* Gets an IPv4 socket address struct. */
     bool BaseAddress::GetSockAddr(struct sockaddr_in* paddr) const
     {
-        if (!IsIPv4() || !paddr)
+        if(!IsIPv4() || !paddr)
             return false;
 
-        //memset(paddr, 0, sizeof(struct sockaddr_in));
         paddr->sin_family = 0;
         paddr->sin_port = 0;
         paddr->sin_addr.s_addr = 0;
 
-        if (!GetInAddr(&paddr->sin_addr))
+        if(!GetInAddr(&paddr->sin_addr))
             return false;
 
         paddr->sin_family = AF_INET;
@@ -515,7 +500,6 @@ namespace LLP
         if(!paddr)
             return false;
 
-        //memset(paddr, 0, sizeof(struct sockaddr_in6));
         paddr->sin6_family = 0;
         paddr->sin6_port = 0;
         paddr->sin6_flowinfo = 0;
@@ -525,7 +509,7 @@ namespace LLP
 
         paddr->sin6_scope_id = 0;
 
-        if (!GetIn6Addr(&paddr->sin6_addr))
+        if(!GetIn6Addr(&paddr->sin6_addr))
             return false;
 
         paddr->sin6_family = AF_INET6;
@@ -536,7 +520,7 @@ namespace LLP
 
 
     /* Prints information about this address. */
-    void BaseAddress::Print()
+    void BaseAddress::Print() const
     {
         debug::log(0, "BaseAddress(", ToString(), ")");
     }
@@ -553,7 +537,6 @@ namespace LLP
     /* Relational operator not equals */
     bool operator!=(const BaseAddress& a, const BaseAddress& b)
     {
-        //return (memcmp(a.ip, b.ip, 16) != 0);
         return (memory::compare(a.ip, b.ip, 16) != 0);
     }
 
@@ -561,7 +544,6 @@ namespace LLP
     /* Relational operator less than */
     bool operator<(const BaseAddress& a, const BaseAddress& b)
     {
-        //return (memcmp(a.ip, b.ip, 16) < 0);
         return (memory::compare(a.ip, b.ip, 16) < 0);
     }
 

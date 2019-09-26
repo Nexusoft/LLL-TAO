@@ -15,10 +15,11 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_WALLET_KEYPOOLENTRY_H
 #define NEXUS_LEGACY_WALLET_KEYPOOLENTRY_H
 
-#include <vector>
-
 #include <Util/include/runtime.h>
 #include <Util/templates/serialize.h>
+
+#include <vector>
+
 
 namespace Legacy
 {
@@ -77,11 +78,11 @@ namespace Legacy
 
         IMPLEMENT_SERIALIZE
         (
-            if (!(nSerType & SER_GETHASH))
+            if(!(nSerType & SER_GETHASH))
                 READWRITE(nSerVersion);
             READWRITE(nTime);
             READWRITE(vchPubKey);
-        )
+      )
     };
 
 }

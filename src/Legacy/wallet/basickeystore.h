@@ -19,7 +19,7 @@ ________________________________________________________________________________
 #include <set>
 #include <utility>
 
-#include <LLC/include/key.h>
+#include <LLC/include/eckey.h>
 #include <LLC/types/uint1024.h>
 
 #include <Legacy/types/address.h>
@@ -27,6 +27,11 @@ ________________________________________________________________________________
 #include <Legacy/wallet/keystore.h>
 
 #include <Util/include/mutex.h>
+
+#include <map>
+#include <set>
+#include <utility>
+
 
 namespace Legacy
 {

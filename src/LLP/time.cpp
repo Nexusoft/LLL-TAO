@@ -16,10 +16,44 @@ ________________________________________________________________________________
 #include <LLP/templates/events.h>
 #include <LLP/templates/ddos.h>
 
+/* The location of the unified time seed. To enable a Unified Time System push data to this variable. */
+std::atomic<int32_t> UNIFIED_AVERAGE_OFFSET;
+
 namespace LLP
 {
-
     std::map<std::string, int32_t> MAP_TIME_DATA;
+
+
+    /** Constructor **/
+    TimeNode::TimeNode()
+    : Connection()
+    , nSamples()
+    {
+    }
+
+
+    /** Constructor **/
+    TimeNode::TimeNode(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS)
+    : Connection(SOCKET_IN, DDOS_IN, isDDOS)
+    , nSamples()
+    {
+    }
+
+
+    /** Constructor **/
+    TimeNode::TimeNode(DDOS_Filter* DDOS_IN, bool isDDOS)
+    : Connection(DDOS_IN, isDDOS)
+    , nSamples()
+    {
+    }
+
+
+    /* Virtual destructor. */
+    TimeNode::~TimeNode()
+    {
+        nSamples.clear();
+    }
+
 
     /* Virtual Functions to Determine Behavior of Message LLP. */
     void TimeNode::Event(uint8_t EVENT, uint32_t LENGTH)
@@ -27,22 +61,37 @@ namespace LLP
         /* Handle any DDOS Packet Filters. */
         if(EVENT == EVENT_HEADER)
         {
-            if(fDDOS)
+            /* Checks for incoming connections only. */
+            if(fDDOS && Incoming())
             {
+                /* Get the incoming packet. */
                 Packet PACKET   = this->INCOMING;
 
+                /* Incoming connection should never send time data. */
                 if(PACKET.HEADER == TIME_DATA)
-                    DDOS->Ban();
+                    DDOS->Ban("INVALID HEADER: TIME_DATA");
 
+                /* Incoming connection should never receive address data. */
                 if(PACKET.HEADER == ADDRESS_DATA)
-                    DDOS->Ban();
+                    DDOS->Ban("INVALID HEADER: ADDRESS_DATA");
 
+                /* Check for incoming data fields that are unsolicited. */
                 if(PACKET.HEADER == TIME_OFFSET)
-                    DDOS->Ban();
+                    DDOS->Ban("INVALID HEADER: TIME_OFFSET");
 
+                /* Check for expected get time sizes. */
+                if(PACKET.HEADER == GET_ADDRESS)
+                    DDOS->Ban("INVALID HEADER: GET_ADDRESS");
+
+                /* Check for expected get offset sizes. */
                 if(PACKET.HEADER == GET_OFFSET && PACKET.LENGTH > 4)
-                    DDOS->Ban();
+                    DDOS->Ban("INVALID SIZE: GET_OFFSET");
 
+                /* Check for expected get time sizes. */
+                if(PACKET.HEADER == GET_TIME && PACKET.LENGTH > 4)
+                    DDOS->Ban("INVALID SIZE: GET_TIME");
+
+                /* Return if banned. */
                 if(DDOS->Banned())
                     return;
 
@@ -101,14 +150,14 @@ namespace LLP
 
         if(PACKET.HEADER == GET_TIME)
         {
-            uint32_t time_sample = static_cast<uint32_t>(runtime::unifiedtimestamp());
+            uint32_t nTimestamp = static_cast<uint32_t>(runtime::unifiedtimestamp());
 
             Packet RESPONSE;
             RESPONSE.HEADER = TIME_DATA;
             RESPONSE.LENGTH = 4;
-            RESPONSE.DATA = convert::uint2bytes(time_sample);
+            RESPONSE.DATA = convert::uint2bytes(nTimestamp);
 
-            debug::log(4, NODE, "Sent time sample ", time_sample);
+            debug::log(4, NODE, "Sent time sample ", nTimestamp);
 
             WritePacket(RESPONSE);
             return true;
@@ -164,7 +213,7 @@ namespace LLP
                     UNIFIED_AVERAGE_OFFSET.store(UNIFIED_MAJORITY.Majority());
 
                     /* Log the debug output. */
-                    debug::log(0, NODE, MAP_TIME_DATA.size(), " Total Samples | ", nSamples.Majority(), " Offset (", TOTAL_SAMPLES[nSamples.Majority()], ") | ", UNIFIED_AVERAGE_OFFSET, " Majority (", TOTAL_SAMPLES[UNIFIED_AVERAGE_OFFSET], ") | ", runtime::unifiedtimestamp());
+                    debug::log(0, NODE, MAP_TIME_DATA.size(), " Total Samples | ", nSamples.Majority(), " Offset (", TOTAL_SAMPLES[nSamples.Majority()], ") | ", UNIFIED_AVERAGE_OFFSET.load(), " Majority (", TOTAL_SAMPLES[UNIFIED_AVERAGE_OFFSET.load()], ") | ", runtime::unifiedtimestamp());
                 }
 
                 nSamples.clear();

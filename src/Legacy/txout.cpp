@@ -13,14 +13,14 @@ ________________________________________________________________________________
 
 #include <LLC/hash/SK.h>
 
-
-#include <Util/templates/datastream.h>
 #include <LLP/include/version.h>
 
-#include <Util/include/string.h>
-
-#include <Legacy/types/txout.h>
 #include <Legacy/types/script.h>
+#include <Legacy/types/txout.h>
+
+#include <Util/include/string.h>
+#include <Util/templates/datastream.h>
+
 
 namespace Legacy
 {
@@ -34,7 +34,7 @@ namespace Legacy
 
 
 	/* Determine if the object is in a null state. */
-	bool TxOut::IsNull()
+	bool TxOut::IsNull() const
 	{
 		return (nValue == -1);
 	}
@@ -62,7 +62,7 @@ namespace Legacy
 	    // buffer.  If this ever needs to be optimized further, make a CStaticStream
 	    // class with its buffer on the stack.
 	    DataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
-	    ss.reserve(10000);
+	    ss.reserve(8192);
 	    ss << *this;
 	    return LLC::SK512(ss.begin(), ss.end());
 	}
@@ -78,8 +78,8 @@ namespace Legacy
 	/* Full object debug output */
 	std::string TxOut::ToString() const
 	{
-		if (IsEmpty()) return "TxOut(empty)";
-		if (scriptPubKey.size() < 6)
+		if(IsEmpty()) return "TxOut(empty)";
+		if(scriptPubKey.size() < 6)
 			return "TxOut(error)";
 		return debug::safe_printstr("TxOut(nValue=", FormatMoney(nValue), ", scriptPubKey=", scriptPubKey.ToString(), ")");
 	}

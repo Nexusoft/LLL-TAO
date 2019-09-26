@@ -24,13 +24,12 @@ ________________________________________________________________________________
 
 #include <Legacy/types/script.h>
 
+#include <openssl/bn.h>
+
 #include <string>
 #include <vector>
 #include <algorithm>
-#include <new> //std::bad_alloc
 #include <stdexcept>
-
-#include <openssl/bn.h>
 
 namespace Legacy
 {
@@ -48,7 +47,7 @@ namespace Legacy
      **/
     static inline void popstack(std::vector< std::vector<uint8_t> >& stack)
     {
-        if (stack.empty())
+        if(stack.empty())
             throw std::runtime_error("popstack() : stack empty");
 
         stack.pop_back();
@@ -58,7 +57,7 @@ namespace Legacy
     /** Conversion function to bignum value. **/
     LLC::CBigNum CastToBigNum(const std::vector<uint8_t>& vch)
     {
-        if (vch.size() > nMaxNumSize)
+        if(vch.size() > nMaxNumSize)
             throw std::runtime_error("CastToBigNum() : overflow");
 
         // Get rid of extra leading zeros
@@ -69,9 +68,9 @@ namespace Legacy
     void MakeSameSize(std::vector<unsigned char>& vch1, std::vector<unsigned char>& vch2)
     {
         // Lengthen the shorter one
-        if (vch1.size() < vch2.size())
+        if(vch1.size() < vch2.size())
             vch1.resize(vch2.size(), 0);
-        if (vch2.size() < vch1.size())
+        if(vch2.size() < vch1.size())
             vch2.resize(vch1.size(), 0);
     }
 
@@ -79,12 +78,12 @@ namespace Legacy
     /** Conversion function to boolean value. **/
     bool CastToBool(const std::vector<uint8_t>& vch)
     {
-        for (unsigned int i = 0; i < vch.size(); i++)
+        for(unsigned int i = 0; i < vch.size(); i++)
         {
-            if (vch[i] != 0)
+            if(vch[i] != 0)
             {
                 // Can be negative zero
-                if (i == vch.size() - 1 && vch[i] == 0x80)
+                if(i == vch.size() - 1 && vch[i] == 0x80)
                     return false;
 
                 return true;
@@ -106,28 +105,28 @@ namespace Legacy
         std::vector<uint8_t> vchPushValue;
         std::vector<bool> vfExec;
         std::vector<std::vector<uint8_t> > altstack;
-        if (script.size() > 10000)
+        if(script.size() > 10000)
             return false;
         int nOpCount = 0;
 
 
         try
         {
-            while (pc < pend)
+            while(pc < pend)
             {
                 bool fExec = !count(vfExec.begin(), vfExec.end(), false);
 
                 //
                 // Read instruction
                 //
-                if (!script.GetOp(pc, opcode, vchPushValue))
+                if(!script.GetOp(pc, opcode, vchPushValue))
                     return false;
-                if (vchPushValue.size() > 520)
+                if(vchPushValue.size() > 520)
                     return false;
-                if (opcode > OP_16 && ++nOpCount > 201)
+                if(opcode > OP_16 && ++nOpCount > 201)
                     return false;
 
-                if (opcode == OP_CAT ||
+                if(opcode == OP_CAT ||
                     opcode == OP_SUBSTR ||
                     opcode == OP_LEFT ||
                     opcode == OP_RIGHT ||
@@ -144,10 +143,10 @@ namespace Legacy
                     opcode == OP_RSHIFT)
                     return false;
 
-                if (fExec && 0 <= opcode && opcode <= OP_PUSHDATA4)
+                if(fExec && 0 <= opcode && opcode <= OP_PUSHDATA4)
                     stack.push_back(vchPushValue);
 
-                else if (fExec || (OP_IF <= opcode && opcode <= OP_ENDIF))
+                else if(fExec || (OP_IF <= opcode && opcode <= OP_ENDIF))
                 switch (opcode)
                 {
                     //
@@ -171,7 +170,7 @@ namespace Legacy
                     case OP_15:
                     case OP_16:
                     {
-                        // ( -- value)
+                        // (-- value)
                         LLC::CBigNum bn((int)opcode - (int)(OP_1 - 1));
                         stack.push_back(bn.getvch());
                     }
@@ -191,13 +190,13 @@ namespace Legacy
                     {
                         // <expression> if [statements] [else [statements]] endif
                         bool fValue = false;
-                        if (fExec)
+                        if(fExec)
                         {
-                            if (stack.size() < 1)
+                            if(stack.size() < 1)
                                 return false;
                             std::vector<uint8_t>& vch = stacktop(-1);
                             fValue = CastToBool(vch);
-                            if (opcode == OP_NOTIF)
+                            if(opcode == OP_NOTIF)
                                 fValue = !fValue;
                             popstack(stack);
                         }
@@ -207,7 +206,7 @@ namespace Legacy
 
                     case OP_ELSE:
                     {
-                        if (vfExec.empty())
+                        if(vfExec.empty())
                             return false;
                         vfExec.back() = !vfExec.back();
                     }
@@ -215,7 +214,7 @@ namespace Legacy
 
                     case OP_ENDIF:
                     {
-                        if (vfExec.empty())
+                        if(vfExec.empty())
                             return false;
                         vfExec.pop_back();
                     }
@@ -223,12 +222,12 @@ namespace Legacy
 
                     case OP_VERIFY:
                     {
-                        // (true -- ) or
+                        // (true --) or
                         // (false -- false) and return
-                        if (stack.size() < 1)
+                        if(stack.size() < 1)
                             return false;
                         bool fValue = CastToBool(stacktop(-1));
-                        if (fValue)
+                        if(fValue)
                             popstack(stack);
                         else
                             return false;
@@ -247,7 +246,7 @@ namespace Legacy
                     //
                     case OP_TOALTSTACK:
                     {
-                        if (stack.size() < 1)
+                        if(stack.size() < 1)
                             return false;
                         altstack.push_back(stacktop(-1));
                         popstack(stack);
@@ -256,7 +255,7 @@ namespace Legacy
 
                     case OP_FROMALTSTACK:
                     {
-                        if (altstack.size() < 1)
+                        if(altstack.size() < 1)
                             return false;
                         stack.push_back(altstacktop(-1));
                         popstack(altstack);
@@ -265,8 +264,8 @@ namespace Legacy
 
                     case OP_2DROP:
                     {
-                        // (x1 x2 -- )
-                        if (stack.size() < 2)
+                        // (x1 x2 --)
+                        if(stack.size() < 2)
                             return false;
                         popstack(stack);
                         popstack(stack);
@@ -276,7 +275,7 @@ namespace Legacy
                     case OP_2DUP:
                     {
                         // (x1 x2 -- x1 x2 x1 x2)
-                        if (stack.size() < 2)
+                        if(stack.size() < 2)
                             return false;
                         std::vector<uint8_t> vch1 = stacktop(-2);
                         std::vector<uint8_t> vch2 = stacktop(-1);
@@ -288,7 +287,7 @@ namespace Legacy
                     case OP_3DUP:
                     {
                         // (x1 x2 x3 -- x1 x2 x3 x1 x2 x3)
-                        if (stack.size() < 3)
+                        if(stack.size() < 3)
                             return false;
                         std::vector<uint8_t> vch1 = stacktop(-3);
                         std::vector<uint8_t> vch2 = stacktop(-2);
@@ -302,7 +301,7 @@ namespace Legacy
                     case OP_2OVER:
                     {
                         // (x1 x2 x3 x4 -- x1 x2 x3 x4 x1 x2)
-                        if (stack.size() < 4)
+                        if(stack.size() < 4)
                             return false;
                         std::vector<uint8_t> vch1 = stacktop(-4);
                         std::vector<uint8_t> vch2 = stacktop(-3);
@@ -314,7 +313,7 @@ namespace Legacy
                     case OP_2ROT:
                     {
                         // (x1 x2 x3 x4 x5 x6 -- x3 x4 x5 x6 x1 x2)
-                        if (stack.size() < 6)
+                        if(stack.size() < 6)
                             return false;
                         std::vector<uint8_t> vch1 = stacktop(-6);
                         std::vector<uint8_t> vch2 = stacktop(-5);
@@ -327,7 +326,7 @@ namespace Legacy
                     case OP_2SWAP:
                     {
                         // (x1 x2 x3 x4 -- x3 x4 x1 x2)
-                        if (stack.size() < 4)
+                        if(stack.size() < 4)
                             return false;
                         swap(stacktop(-4), stacktop(-2));
                         swap(stacktop(-3), stacktop(-1));
@@ -337,10 +336,10 @@ namespace Legacy
                     case OP_IFDUP:
                     {
                         // (x - 0 | x x)
-                        if (stack.size() < 1)
+                        if(stack.size() < 1)
                             return false;
                         std::vector<uint8_t> vch = stacktop(-1);
-                        if (CastToBool(vch))
+                        if(CastToBool(vch))
                             stack.push_back(vch);
                     }
                     break;
@@ -355,8 +354,8 @@ namespace Legacy
 
                     case OP_DROP:
                     {
-                        // (x -- )
-                        if (stack.size() < 1)
+                        // (x --)
+                        if(stack.size() < 1)
                             return false;
                         popstack(stack);
                     }
@@ -365,7 +364,7 @@ namespace Legacy
                     case OP_DUP:
                     {
                         // (x -- x x)
-                        if (stack.size() < 1)
+                        if(stack.size() < 1)
                             return false;
                         std::vector<uint8_t> vch = stacktop(-1);
                         stack.push_back(vch);
@@ -375,7 +374,7 @@ namespace Legacy
                     case OP_NIP:
                     {
                         // (x1 x2 -- x2)
-                        if (stack.size() < 2)
+                        if(stack.size() < 2)
                             return false;
                         stack.erase(stack.end() - 2);
                     }
@@ -384,7 +383,7 @@ namespace Legacy
                     case OP_OVER:
                     {
                         // (x1 x2 -- x1 x2 x1)
-                        if (stack.size() < 2)
+                        if(stack.size() < 2)
                             return false;
                         std::vector<uint8_t> vch = stacktop(-2);
                         stack.push_back(vch);
@@ -396,14 +395,14 @@ namespace Legacy
                     {
                         // (xn ... x2 x1 x0 n - xn ... x2 x1 x0 xn)
                         // (xn ... x2 x1 x0 n - ... x2 x1 x0 xn)
-                        if (stack.size() < 2)
+                        if(stack.size() < 2)
                             return false;
                         int n = CastToBigNum(stacktop(-1)).getint32();
                         popstack(stack);
-                        if (n < 0 || n >= (int)stack.size())
+                        if(n < 0 || n >= (int)stack.size())
                             return false;
                         std::vector<uint8_t> vch = stacktop(-n-1);
-                        if (opcode == OP_ROLL)
+                        if(opcode == OP_ROLL)
                             stack.erase(stack.end()-n-1);
                         stack.push_back(vch);
                     }
@@ -414,7 +413,7 @@ namespace Legacy
                         // (x1 x2 x3 -- x2 x3 x1)
                         //  x2 x1 x3  after first swap
                         //  x2 x3 x1  after second swap
-                        if (stack.size() < 3)
+                        if(stack.size() < 3)
                             return false;
                         swap(stacktop(-3), stacktop(-2));
                         swap(stacktop(-2), stacktop(-1));
@@ -424,7 +423,7 @@ namespace Legacy
                     case OP_SWAP:
                     {
                         // (x1 x2 -- x2 x1)
-                        if (stack.size() < 2)
+                        if(stack.size() < 2)
                             return false;
                         swap(stacktop(-2), stacktop(-1));
                     }
@@ -433,7 +432,7 @@ namespace Legacy
                     case OP_TUCK:
                     {
                         // (x1 x2 -- x2 x1 x2)
-                        if (stack.size() < 2)
+                        if(stack.size() < 2)
                             return false;
                         std::vector<uint8_t> vch = stacktop(-1);
                         stack.insert(stack.end()-2, vch);
@@ -447,13 +446,13 @@ namespace Legacy
                     case OP_CAT:
                     {
                         // (x1 x2 -- out)
-                        if (stack.size() < 2)
+                        if(stack.size() < 2)
                             return false;
                         std::vector<uint8_t>& vch1 = stacktop(-2);
                         std::vector<uint8_t>& vch2 = stacktop(-1);
                         vch1.insert(vch1.end(), vch2.begin(), vch2.end());
                         popstack(stack);
-                        if (stacktop(-1).size() > 520)
+                        if(stacktop(-1).size() > 520)
                             return false;
                     }
                     break;
@@ -461,16 +460,16 @@ namespace Legacy
                     case OP_SUBSTR:
                     {
                         // (in begin size -- out)
-                        if (stack.size() < 3)
+                        if(stack.size() < 3)
                             return false;
                         std::vector<uint8_t>& vch = stacktop(-3);
                         int nBegin = CastToBigNum(stacktop(-2)).getint32();
                         int nEnd = nBegin + CastToBigNum(stacktop(-1)).getint32();
-                        if (nBegin < 0 || nEnd < nBegin)
+                        if(nBegin < 0 || nEnd < nBegin)
                             return false;
-                        if (nBegin > (int)vch.size())
+                        if(nBegin > (int)vch.size())
                             nBegin = vch.size();
-                        if (nEnd > (int)vch.size())
+                        if(nEnd > (int)vch.size())
                             nEnd = vch.size();
                         vch.erase(vch.begin() + nEnd, vch.end());
                         vch.erase(vch.begin(), vch.begin() + nBegin);
@@ -483,15 +482,15 @@ namespace Legacy
                     case OP_RIGHT:
                     {
                         // (in size -- out)
-                        if (stack.size() < 2)
+                        if(stack.size() < 2)
                             return false;
                         std::vector<uint8_t>& vch = stacktop(-2);
                         int nSize = CastToBigNum(stacktop(-1)).getint32();
-                        if (nSize < 0)
+                        if(nSize < 0)
                             return false;
-                        if (nSize > (int)vch.size())
+                        if(nSize > (int)vch.size())
                             nSize = vch.size();
-                        if (opcode == OP_LEFT)
+                        if(opcode == OP_LEFT)
                             vch.erase(vch.begin() + nSize, vch.end());
                         else
                             vch.erase(vch.begin(), vch.end() - nSize);
@@ -502,7 +501,7 @@ namespace Legacy
                     case OP_SIZE:
                     {
                         // (in -- in size)
-                        if (stack.size() < 1)
+                        if(stack.size() < 1)
                             return false;
                         LLC::CBigNum bn((uint32_t)stacktop(-1).size());
                         stack.push_back(bn.getvch());
@@ -516,10 +515,10 @@ namespace Legacy
                     case OP_INVERT:
                     {
                         // (in - out)
-                        if (stack.size() < 1)
+                        if(stack.size() < 1)
                             return false;
                         std::vector<uint8_t>& vch = stacktop(-1);
-                        for (unsigned int i = 0; i < vch.size(); i++)
+                        for(unsigned int i = 0; i < vch.size(); i++)
                             vch[i] = ~vch[i];
                     }
                     break;
@@ -529,24 +528,24 @@ namespace Legacy
                     case OP_XOR:
                     {
                         // (x1 x2 - out)
-                        if (stack.size() < 2)
+                        if(stack.size() < 2)
                             return false;
                         std::vector<uint8_t>& vch1 = stacktop(-2);
                         std::vector<uint8_t>& vch2 = stacktop(-1);
                         MakeSameSize(vch1, vch2);
-                        if (opcode == OP_AND)
+                        if(opcode == OP_AND)
                         {
-                            for (unsigned int i = 0; i < vch1.size(); i++)
+                            for(unsigned int i = 0; i < vch1.size(); i++)
                                 vch1[i] &= vch2[i];
                         }
-                        else if (opcode == OP_OR)
+                        else if(opcode == OP_OR)
                         {
-                            for (unsigned int i = 0; i < vch1.size(); i++)
+                            for(unsigned int i = 0; i < vch1.size(); i++)
                                 vch1[i] |= vch2[i];
                         }
-                        else if (opcode == OP_XOR)
+                        else if(opcode == OP_XOR)
                         {
-                            for (unsigned int i = 0; i < vch1.size(); i++)
+                            for(unsigned int i = 0; i < vch1.size(); i++)
                                 vch1[i] ^= vch2[i];
                         }
                         popstack(stack);
@@ -558,7 +557,7 @@ namespace Legacy
                     //case OP_NOTEQUAL: // use OP_NUMNOTEQUAL
                     {
                         // (x1 x2 - bool)
-                        if (stack.size() < 2)
+                        if(stack.size() < 2)
                             return false;
                         std::vector<uint8_t>& vch1 = stacktop(-2);
                         std::vector<uint8_t>& vch2 = stacktop(-1);
@@ -566,14 +565,14 @@ namespace Legacy
                         // OP_NOTEQUAL is disabled because it would be too easy to say
                         // something like n != 1 and have some wiseguy pass in 1 with extra
                         // zero bytes after it (numerically, 0x01 == 0x0001 == 0x000001)
-                        //if (opcode == OP_NOTEQUAL)
+                        //if(opcode == OP_NOTEQUAL)
                         //    fEqual = !fEqual;
                         popstack(stack);
                         popstack(stack);
                         stack.push_back(fEqual ? vchTrue : vchFalse);
-                        if (opcode == OP_EQUALVERIFY)
+                        if(opcode == OP_EQUALVERIFY)
                         {
-                            if (fEqual)
+                            if(fEqual)
                                 popstack(stack);
                             else
                                 return false;
@@ -595,7 +594,7 @@ namespace Legacy
                     case OP_0NOTEQUAL:
                     {
                         // (in -- out)
-                        if (stack.size() < 1)
+                        if(stack.size() < 1)
                             return false;
                         LLC::CBigNum bn = CastToBigNum(stacktop(-1));
                         switch (opcode)
@@ -605,7 +604,7 @@ namespace Legacy
                         case OP_2MUL:       bn <<= 1; break;
                         case OP_2DIV:       bn >>= 1; break;
                         case OP_NEGATE:     bn = -bn; break;
-                        case OP_ABS:        if (bn < bnZero) bn = -bn; break;
+                        case OP_ABS:        if(bn < bnZero) bn = -bn; break;
                         case OP_NOT:        bn = (bn == bnZero); break;
                         case OP_0NOTEQUAL:  bn = (bn != bnZero); break;
                         default:            assert(!"invalid opcode"); break;
@@ -635,7 +634,7 @@ namespace Legacy
                     case OP_MAX:
                     {
                         // (x1 x2 -- out)
-                        if (stack.size() < 2)
+                        if(stack.size() < 2)
                             return false;
                         LLC::CBigNum bn1 = CastToBigNum(stacktop(-2));
                         LLC::CBigNum bn2 = CastToBigNum(stacktop(-1));
@@ -651,28 +650,28 @@ namespace Legacy
                             break;
 
                         case OP_MUL:
-                            if (!BN_mul(bn.getBN(), bn1.getBN(), bn2.getBN(), pctx))
+                            if(!BN_mul(bn.getBN(), bn1.getBN(), bn2.getBN(), pctx))
                                 return false;
                             break;
 
                         case OP_DIV:
-                            if (!BN_div(bn.getBN(), nullptr, bn1.getBN(), bn2.getBN(), pctx))
+                            if(!BN_div(bn.getBN(), nullptr, bn1.getBN(), bn2.getBN(), pctx))
                                 return false;
                             break;
 
                         case OP_MOD:
-                            if (!BN_mod(bn.getBN(), bn1.getBN(), bn2.getBN(), pctx))
+                            if(!BN_mod(bn.getBN(), bn1.getBN(), bn2.getBN(), pctx))
                                 return false;
                             break;
 
                         case OP_LSHIFT:
-                            if (bn2 < bnZero || bn2 > LLC::CBigNum(2048))
+                            if(bn2 < bnZero || bn2 > LLC::CBigNum(2048))
                                 return false;
                             bn = bn1 << bn2.getuint32();
                             break;
 
                         case OP_RSHIFT:
-                            if (bn2 < bnZero || bn2 > LLC::CBigNum(2048))
+                            if(bn2 < bnZero || bn2 > LLC::CBigNum(2048))
                                 return false;
                             bn = bn1 >> bn2.getuint32();
                             break;
@@ -694,9 +693,9 @@ namespace Legacy
                         popstack(stack);
                         stack.push_back(bn.getvch());
 
-                        if (opcode == OP_NUMEQUALVERIFY)
+                        if(opcode == OP_NUMEQUALVERIFY)
                         {
-                            if (CastToBool(stacktop(-1)))
+                            if(CastToBool(stacktop(-1)))
                                 popstack(stack);
                             else
                                 return false;
@@ -707,7 +706,7 @@ namespace Legacy
                     case OP_WITHIN:
                     {
                         // (x min max -- out)
-                        if (stack.size() < 3)
+                        if(stack.size() < 3)
                             return false;
                         LLC::CBigNum bn1 = CastToBigNum(stacktop(-3));
                         LLC::CBigNum bn2 = CastToBigNum(stacktop(-2));
@@ -727,7 +726,7 @@ namespace Legacy
                     case OP_HASH256:
                     {
                         // (in -- hash)
-                        if (stack.size() < 1)
+                        if(stack.size() < 1)
                             return false;
                         std::vector<uint8_t>& vch = stacktop(-1);
                         std::vector<uint8_t> vchHash(32);
@@ -751,7 +750,7 @@ namespace Legacy
                     case OP_CHECKSIGVERIFY:
                     {
                         // (sig pubkey -- bool)
-                        if (stack.size() < 2)
+                        if(stack.size() < 2)
                             return false;
 
                         std::vector<uint8_t>& vchSig    = stacktop(-2);
@@ -771,9 +770,9 @@ namespace Legacy
                         popstack(stack);
                         popstack(stack);
                         stack.push_back(fSuccess ? vchTrue : vchFalse);
-                        if (opcode == OP_CHECKSIGVERIFY)
+                        if(opcode == OP_CHECKSIGVERIFY)
                         {
-                            if (fSuccess)
+                            if(fSuccess)
                                 popstack(stack);
                             else
                                 return false;
@@ -787,46 +786,46 @@ namespace Legacy
                         // ([sig ...] num_of_signatures [pubkey ...] num_of_pubkeys -- bool)
 
                         int i = 1;
-                        if (stack.size() < i)
+                        if(stack.size() < i)
                             return false;
 
                         int nKeysCount = CastToBigNum(stacktop(-i)).getint32();
-                        if (nKeysCount < 0 || nKeysCount > 20)
+                        if(nKeysCount < 0 || nKeysCount > 20)
                             return false;
                         nOpCount += nKeysCount;
-                        if (nOpCount > 201)
+                        if(nOpCount > 201)
                             return false;
                         int ikey = ++i;
                         i += nKeysCount;
-                        if (stack.size() < i)
+                        if(stack.size() < i)
                             return false;
 
                         int nSigsCount = CastToBigNum(stacktop(-i)).getint32();
-                        if (nSigsCount < 0 || nSigsCount > nKeysCount)
+                        if(nSigsCount < 0 || nSigsCount > nKeysCount)
                             return false;
                         int isig = ++i;
                         i += nSigsCount;
-                        if (stack.size() < i)
+                        if(stack.size() < i)
                             return false;
 
                         // Subset of script starting at the most recent codeseparator
                         Script scriptCode(pbegincodehash, pend);
 
                         // Drop the signatures, since there's no way for a signature to sign itself
-                        for (int k = 0; k < nSigsCount; k++)
+                        for(int k = 0; k < nSigsCount; k++)
                         {
                             std::vector<uint8_t>& vchSig = stacktop(-isig-k);
                             scriptCode.FindAndDelete(Script(vchSig));
                         }
 
                         bool fSuccess = true;
-                        while (fSuccess && nSigsCount > 0)
+                        while(fSuccess && nSigsCount > 0)
                         {
                             std::vector<uint8_t>& vchSig    = stacktop(-isig);
                             std::vector<uint8_t>& vchPubKey = stacktop(-ikey);
 
                             // Check signature
-                            if (CheckSig(vchSig, vchPubKey, scriptCode, txTo, nIn, nHashType))
+                            if(CheckSig(vchSig, vchPubKey, scriptCode, txTo, nIn, nHashType))
                             {
                                 isig++;
                                 nSigsCount--;
@@ -836,17 +835,17 @@ namespace Legacy
 
                             // If there are more signatures left than keys left,
                             // then too many signatures have failed
-                            if (nSigsCount > nKeysCount)
+                            if(nSigsCount > nKeysCount)
                                 fSuccess = false;
                         }
 
-                        while (i-- > 0)
+                        while(i-- > 0)
                             popstack(stack);
                         stack.push_back(fSuccess ? vchTrue : vchFalse);
 
-                        if (opcode == OP_CHECKMULTISIGVERIFY)
+                        if(opcode == OP_CHECKMULTISIGVERIFY)
                         {
-                            if (fSuccess)
+                            if(fSuccess)
                                 popstack(stack);
                             else
                                 return false;
@@ -859,13 +858,9 @@ namespace Legacy
                 }
 
                 // Size limits
-                if (stack.size() + altstack.size() > 1000)
+                if(stack.size() + altstack.size() > 1000)
                     return false;
             }
-        }
-        catch(const std::bad_alloc &e)
-        {
-            return debug::error(FUNCTION, "Memory allocation failed ", e.what());
         }
         catch(...)
         {
@@ -873,7 +868,7 @@ namespace Legacy
         }
 
 
-        if (!vfExec.empty())
+        if(!vfExec.empty())
             return false;
 
         return true;
@@ -885,7 +880,7 @@ namespace Legacy
     {
         // Templates
         static std::map<TransactionType, Script> mTemplates;
-        if (mTemplates.empty())
+        if(mTemplates.empty())
         {
             // Standard tx, sender provides pubkey, receiver adds signature
             mTemplates.insert(make_pair(TX_PUBKEY, Script() << OP_PUBKEY << OP_CHECKSIG));
@@ -899,7 +894,7 @@ namespace Legacy
 
         // Shortcut for pay-to-script-hash, which are more constrained than the other types:
         // it is always OP_HASH256 20 [20 byte hash] OP_EQUAL
-        if (scriptPubKey.IsPayToScriptHash())
+        if(scriptPubKey.IsPayToScriptHash())
         {
             typeRet = TX_SCRIPTHASH;
             std::vector<uint8_t> hashBytes(scriptPubKey.begin() + 2, scriptPubKey.begin() + 22);
@@ -922,58 +917,58 @@ namespace Legacy
             Script::const_iterator pc2 = script2.begin();
             while(true)
             {
-                if (pc1 == script1.end() && pc2 == script2.end())
+                if(pc1 == script1.end() && pc2 == script2.end())
                 {
                     // Found a match
                     typeRet = tplate.first;
-                    if (typeRet == TX_MULTISIG)
+                    if(typeRet == TX_MULTISIG)
                     {
                         // Additional checks for TX_MULTISIG:
                         uint8_t m = vSolutionsRet.front()[0];
                         uint8_t n = vSolutionsRet.back()[0];
-                        if (m < 1 || n < 1 || m > n || vSolutionsRet.size()-2 != n)
+                        if(m < 1 || n < 1 || m > n || vSolutionsRet.size()-2 != n)
                             return false;
                     }
                     return true;
                 }
-                if (!script1.GetOp(pc1, opcode1, vch1))
+                if(!script1.GetOp(pc1, opcode1, vch1))
                     break;
 
-                if (!script2.GetOp(pc2, opcode2, vch2))
+                if(!script2.GetOp(pc2, opcode2, vch2))
                     break;
 
                 // Template matching opcodes:
-                if (opcode2 == OP_PUBKEYS)
+                if(opcode2 == OP_PUBKEYS)
                 {
-                    while (vch1.size() >= 33 && vch1.size() <= 120)
+                    while(vch1.size() >= 33 && vch1.size() <= 120)
                     {
                         vSolutionsRet.push_back(vch1);
-                        if (!script1.GetOp(pc1, opcode1, vch1))
+                        if(!script1.GetOp(pc1, opcode1, vch1))
                             break;
                     }
-                    if (!script2.GetOp(pc2, opcode2, vch2))
+                    if(!script2.GetOp(pc2, opcode2, vch2))
                         break;
                     // Normal situation is to fall through
                     // to other if/else statments
                 }
 
-                if (opcode2 == OP_PUBKEY)
+                if(opcode2 == OP_PUBKEY)
                 {
-                    if (vch1.size() < 33 || vch1.size() > 120)
+                    if(vch1.size() < 33 || vch1.size() > 120)
                         break;
                     vSolutionsRet.push_back(vch1);
                 }
 
-                else if (opcode2 == OP_PUBKEYHASH)
+                else if(opcode2 == OP_PUBKEYHASH)
                 {
-                    if (vch1.size() != sizeof(uint256_t))
+                    if(vch1.size() != sizeof(uint256_t))
                         break;
                     vSolutionsRet.push_back(vch1);
                 }
 
-                else if (opcode2 == OP_SMALLINTEGER)
+                else if(opcode2 == OP_SMALLINTEGER)
                 {   // Single-byte small integer pushed onto vSolutions
-                    if (opcode1 == OP_0 ||
+                    if(opcode1 == OP_0 ||
                         (opcode1 >= OP_1 && opcode1 <= OP_16))
                     {
                         char n = (int8_t)scriptPubKey.DecodeOP_N(opcode1);
@@ -982,7 +977,7 @@ namespace Legacy
                     else
                         break;
                 }
-                else if (opcode1 != opcode2 || vch1 != vch2)
+                else if(opcode1 != opcode2 || vch1 != vch2)
                 {
                     // Others must match exactly
                     break;
@@ -1002,7 +997,7 @@ namespace Legacy
         scriptSigRet.clear();
 
         std::vector< std::vector<uint8_t> > vSolutions;
-        if (!Solver(scriptPubKey, whichTypeRet, vSolutions))
+        if(!Solver(scriptPubKey, whichTypeRet, vSolutions))
             return false;
 
         NexusAddress address;
@@ -1017,7 +1012,7 @@ namespace Legacy
 
             case TX_PUBKEYHASH:
                 address.SetHash256(uint256_t(vSolutions[0]));
-                if (!Sign1(address, keystore, hash, nHashType, scriptSigRet))
+                if(!Sign1(address, keystore, hash, nHashType, scriptSigRet))
                     return false;
                 else
                 {
@@ -1054,7 +1049,7 @@ namespace Legacy
                 return 2;
 
             case TX_MULTISIG:
-                if (vSolutions.size() < 1 || vSolutions[0].size() < 1)
+                if(vSolutions.size() < 1 || vSolutions[0].size() < 1)
                     return -1;
                 return vSolutions[0][0] + 1;
 
@@ -1071,18 +1066,18 @@ namespace Legacy
     {
         std::vector< std::vector<uint8_t> > vSolutions;
         TransactionType whichType;
-        if (!Solver(scriptPubKey, whichType, vSolutions))
+        if(!Solver(scriptPubKey, whichType, vSolutions))
             return false;
 
-        if (whichType == TX_MULTISIG)
+        if(whichType == TX_MULTISIG)
         {
             uint8_t m = vSolutions.front()[0];
             uint8_t n = vSolutions.back()[0];
 
             // Support up to x-of-3 multisig txns as standard
-            if (n < 1 || n > 3)
+            if(n < 1 || n > 3)
                 return false;
-            if (m < 1 || m > n)
+            if(m < 1 || m > n)
                 return false;
         }
 
@@ -1098,7 +1093,7 @@ namespace Legacy
         {
             NexusAddress address;
             address.SetPubKey(pubkey);
-            if (keystore.HaveKey(address))
+            if(keystore.HaveKey(address))
                 nResult ++;
         }
 
@@ -1111,7 +1106,7 @@ namespace Legacy
     {
         std::vector< std::vector<uint8_t> > vSolutions;
         TransactionType whichType;
-        if (!Solver(scriptPubKey, whichType, vSolutions))
+        if(!Solver(scriptPubKey, whichType, vSolutions))
             return false;
 
         NexusAddress address;
@@ -1131,7 +1126,7 @@ namespace Legacy
             case TX_SCRIPTHASH:
             {
                 Script subscript;
-                if (!keystore.GetScript(uint256_t(vSolutions[0]), subscript))
+                if(!keystore.GetScript(uint256_t(vSolutions[0]), subscript))
                     return false;
 
                 return IsMine(keystore, subscript);
@@ -1158,20 +1153,20 @@ namespace Legacy
     {
         std::vector< std::vector<uint8_t> > vSolutions;
         TransactionType whichType;
-        if (!Solver(scriptPubKey, whichType, vSolutions))
+        if(!Solver(scriptPubKey, whichType, vSolutions))
             return false;
 
-        if (whichType == TX_PUBKEY)
+        if(whichType == TX_PUBKEY)
         {
             addressRet.SetPubKey(vSolutions[0]);
             return true;
         }
-        else if (whichType == TX_PUBKEYHASH)
+        else if(whichType == TX_PUBKEYHASH)
         {
             addressRet.SetHash256(uint256_t(vSolutions[0]));
             return true;
         }
-        else if (whichType == TX_SCRIPTHASH)
+        else if(whichType == TX_SCRIPTHASH)
         {
             addressRet.SetScriptHash256(uint256_t(vSolutions[0]));
             return true;
@@ -1188,13 +1183,13 @@ namespace Legacy
         addressRet.clear();
         typeRet = TX_NONSTANDARD;
         std::vector< std::vector<uint8_t> > vSolutions;
-        if (!Solver(scriptPubKey, typeRet, vSolutions))
+        if(!Solver(scriptPubKey, typeRet, vSolutions))
             return false;
 
-        if (typeRet == TX_MULTISIG)
+        if(typeRet == TX_MULTISIG)
         {
             nRequiredRet = vSolutions.front()[0];
-            for (uint32_t i = 1; i < vSolutions.size() - 1; i++)
+            for(uint32_t i = 1; i < vSolutions.size() - 1; i++)
             {
                 NexusAddress address;
                 address.SetPubKey(vSolutions[i]);
@@ -1205,11 +1200,11 @@ namespace Legacy
         {
             nRequiredRet = 1;
             NexusAddress address;
-            if (typeRet == TX_PUBKEYHASH)
+            if(typeRet == TX_PUBKEYHASH)
                 address.SetHash256(uint256_t(vSolutions.front()));
-            else if (typeRet == TX_SCRIPTHASH)
+            else if(typeRet == TX_SCRIPTHASH)
                 address.SetScriptHash256(uint256_t(vSolutions.front()));
-            else if (typeRet == TX_PUBKEY)
+            else if(typeRet == TX_PUBKEY)
                 address.SetPubKey(vSolutions.front());
 
             addressRet.push_back(address);
@@ -1223,39 +1218,70 @@ namespace Legacy
     bool VerifyScript(const Script& scriptSig, const Script& scriptPubKey, const Transaction& txTo, uint32_t nIn, int32_t nHashType)
     {
         std::vector< std::vector<uint8_t> > stack, stackCopy;
-        if (!EvalScript(stack, scriptSig, txTo, nIn, nHashType))
+        if(!EvalScript(stack, scriptSig, txTo, nIn, nHashType))
             return false;
 
         stackCopy = stack;
-        if (!EvalScript(stack, scriptPubKey, txTo, nIn, nHashType))
+        if(!EvalScript(stack, scriptPubKey, txTo, nIn, nHashType))
             return false;
 
-        if (stack.empty())
+        if(stack.empty())
             return false;
 
-        if (CastToBool(stack.back()) == false)
+        if(CastToBool(stack.back()) == false)
             return false;
 
         // Additional validation for spend-to-script-hash transactions:
-        if (scriptPubKey.IsPayToScriptHash())
+        if(scriptPubKey.IsPayToScriptHash())
         {
-            if (!scriptSig.IsPushOnly()) // scriptSig must be literals-only
+            if(!scriptSig.IsPushOnly()) // scriptSig must be literals-only
                 return false;
 
             const std::vector<uint8_t>& pubKeySerialized = stackCopy.back();
             Script pubKey2(pubKeySerialized.begin(), pubKeySerialized.end());
             popstack(stackCopy);
 
-            if (!EvalScript(stackCopy, pubKey2, txTo, nIn, nHashType))
+            if(!EvalScript(stackCopy, pubKey2, txTo, nIn, nHashType))
                 return false;
 
-            if (stackCopy.empty())
+            if(stackCopy.empty())
                 return false;
 
             return CastToBool(stackCopy.back());
         }
 
         return true;
+    }
+
+
+    /* Extract a Sig chain register address from a public key script. */
+    bool ExtractRegister(const Script& scriptPubKey, uint256_t& hashRegister)
+    {
+        /* Ensure the script is 34 bytes = 1 byte for size, the 256-bit hash, and the OP_RETURN */
+        if(scriptPubKey.size() != 34)
+            return false;
+
+        uint8_t nSize = scriptPubKey.at(0);
+
+        /* Ensure the data size is 32 */
+        if( nSize != 32)
+            return false;    
+
+        std::vector<uint8_t> vBytes;
+        vBytes.assign(scriptPubKey.begin()+1, scriptPubKey.begin()+1 + nSize);
+
+        /* The last OP code which must always be OP_RETURN for a script containing a register address */
+        uint8_t nOP = scriptPubKey.at(nSize +1);
+
+        /* Ensure that it is OP_RETURN */
+        if( nOP != Legacy::OP_RETURN)
+            return false;
+
+        /* Set the register address hash to return */
+        hashRegister = uint256_t(vBytes);
+
+        return true;
+
     }
 
 }

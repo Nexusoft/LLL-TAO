@@ -12,6 +12,15 @@
 ____________________________________________________________________________________________*/
 
 #include <LLD/templates/sector.h>
+
+#include <LLD/cache/binary_lfu.h>
+#include <LLD/cache/binary_lru.h>
+
+#include <LLD/keychain/filemap.h>
+#include <LLD/keychain/hashmap.h>
+#include <LLD/keychain/shard_hashmap.h>
+#include <LLD/keychain/hashtree.h>
+
 #include <Util/include/filesystem.h>
 #include <Util/include/hex.h>
 
@@ -20,9 +29,11 @@ ________________________________________________________________________________
 namespace LLD
 {
 
-    /** The Database Constructor. To determine file location and the Bytes per Record. **/
+    /* The Database Constructor. To determine file location and the Bytes per Record. */
     template<class KeychainType, class CacheType>
-    SectorDatabase<KeychainType, CacheType>::SectorDatabase(std::string strNameIn, uint8_t nFlagsIn)
+    SectorDatabase<KeychainType, CacheType>::SectorDatabase(const std::string& strNameIn,
+                                                            const uint8_t nFlagsIn, const uint64_t nBucketsIn,
+                                                            const uint32_t nCacheIn)
     : CONDITION_MUTEX()
     , CONDITION()
     , SECTOR_MUTEX()
@@ -32,8 +43,8 @@ namespace LLD
     , strName(strNameIn)
     , runtime()
     , pTransaction(nullptr)
-    , pSectorKeys(nullptr)
-    , cachePool(new CacheType(static_cast<uint32_t>(config::GetArg("-maxcache", 64) * 1024 * 1024) / 4))
+    , pSectorKeys(new KeychainType((config::GetDataDir() + strName + "/keychain/"), nFlagsIn, nBucketsIn))
+    , cachePool(new CacheType(nCacheIn))
     , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
     , nCurrentFile(0)
     , nCurrentFileSize(0)
@@ -66,21 +77,27 @@ namespace LLD
     }
 
 
-    /** Default Destructor **/
+    /* Default Destructor */
     template<class KeychainType, class CacheType>
     SectorDatabase<KeychainType, CacheType>::~SectorDatabase()
     {
         fDestruct = true;
         CONDITION.notify_all();
 
-        CacheWriterThread.join();
-        MeterThread.join();
+        if(CacheWriterThread.joinable())
+            CacheWriterThread.join();
+
+        if(MeterThread.joinable())
+            MeterThread.join();
 
         if(pTransaction)
             delete pTransaction;
 
-        delete cachePool;
-        delete fileCache;
+        if(cachePool)
+            delete cachePool;
+
+        if(fileCache)
+            delete fileCache;
 
         if(pSectorKeys)
             delete pSectorKeys;
@@ -101,8 +118,8 @@ namespace LLD
 
             /* TODO: Make a worker or thread to check sizes of files and automatically create new file.
                 Keep independent of reads and writes for efficiency. */
-            std::fstream fIncoming(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::in | std::ios::binary);
-            if(!fIncoming)
+            std::fstream stream(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), nCurrentFile), std::ios::in | std::ios::binary);
+            if(!stream)
             {
 
                 /* Assign the Current Size and File. */
@@ -111,7 +128,7 @@ namespace LLD
                 else
                 {
                     /* Create a new file if it doesn't exist. */
-                    std::ofstream cStream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::binary | std::ios::out | std::ios::trunc);
+                    std::ofstream cStream(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), nCurrentFile), std::ios::binary | std::ios::out | std::ios::trunc);
                     cStream.close();
                 }
 
@@ -119,26 +136,16 @@ namespace LLD
             }
 
             /* Get the Binary Size. */
-            fIncoming.seekg(0, std::ios::end);
-            nCurrentFileSize = static_cast<uint32_t>(fIncoming.tellg());
-            fIncoming.close();
+            stream.seekg(0, std::ios::end);
+            nCurrentFileSize = static_cast<uint32_t>(stream.tellg());
+            stream.close();
 
             /* Increment the Current File */
             ++nCurrentFile;
         }
 
-        /* Initialize the Keys Class. */
-        pSectorKeys = new KeychainType((config::GetDataDir() + strName + "/keychain/"), nFlags);
-
         pTransaction = nullptr;
         fInitialized = true;
-    }
-
-
-    template<class KeychainType, class CacheType>
-    std::vector< std::vector<uint8_t> > SectorDatabase<KeychainType, CacheType>::GetKeys()
-    {
-        return pSectorKeys->GetKeys();
     }
 
 
@@ -165,7 +172,7 @@ namespace LLD
                 if(!fileCache->Get(cKey.nSectorFile, pstream))
                 {
                     /* Set the new stream pointer. */
-                    pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
+                    pstream = new std::fstream(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
                     if(!pstream->is_open())
                     {
                         delete pstream;
@@ -176,13 +183,18 @@ namespace LLD
                     fileCache->Put(cKey.nSectorFile, pstream);
                 }
 
+                /* Get compact size from record. */
+                uint64_t nSize = GetSizeOfCompactSize(cKey.nSectorSize);
+
                 /* Seek to the Sector Position on Disk. */
-                pstream->seekg(cKey.nSectorStart, std::ios::beg);
-                vData.resize(cKey.nSectorSize);
+                pstream->seekg(cKey.nSectorStart + nSize, std::ios::beg);
+
+                /* Resize for proper record length. */
+                vData.resize(cKey.nSectorSize - nSize);
 
                 /* Read the State and Size of Sector Header. */
                 if(!pstream->read((char*) &vData[0], vData.size()))
-                    debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes read");
+                    return debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes read");
 
             }
 
@@ -215,7 +227,7 @@ namespace LLD
             if(!fileCache->Get(cKey.nSectorFile, pstream))
             {
                 /* Set the new stream pointer. */
-                pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
+                pstream = new std::fstream(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
                 if(!pstream->is_open())
                 {
                     delete pstream;
@@ -226,13 +238,18 @@ namespace LLD
                 fileCache->Put(cKey.nSectorFile, pstream);
             }
 
+            /* Get compact size from record. */
+            uint64_t nSize = GetSizeOfCompactSize(cKey.nSectorSize);
+
             /* Seek to the Sector Position on Disk. */
-            pstream->seekg(cKey.nSectorStart, std::ios::beg);
-            vData.resize(cKey.nSectorSize);
+            pstream->seekg(cKey.nSectorStart + nSize, std::ios::beg);
+
+            /* Resize for proper record length. */
+            vData.resize(cKey.nSectorSize - nSize);
 
             /* Read the State and Size of Sector Header. */
             if(!pstream->read((char*) &vData[0], vData.size()))
-                debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes read");
+                return debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes read");
 
             /* Verboe output. */
             debug::log(5, FUNCTION, "Current File: ", cKey.nSectorFile,
@@ -252,9 +269,12 @@ namespace LLD
         if(!pSectorKeys->Get(vKey, key))
             return false;
 
+        /* Get current size */
+        uint64_t nSize = vData.size() + GetSizeOfCompactSize(vData.size());
+
         /* Check data size constraints. */
-        if(vData.size() != key.nSectorSize)
-            return debug::error(FUNCTION, "sector size ", key.nSectorSize, " mismatch ", vData.size());
+        if(nSize != key.nSectorSize)
+            return false;
 
         /* Write the data into the memory cache. */
         cachePool->Put(vKey, vData, false);
@@ -267,7 +287,7 @@ namespace LLD
             if(!fileCache->Get(key.nSectorFile, pstream))
             {
                 /* Set the new stream pointer. */
-                pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), key.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
+                pstream = new std::fstream(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), key.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
                 if(!pstream->is_open())
                 {
                     delete pstream;
@@ -280,7 +300,14 @@ namespace LLD
 
             /* If it is a New Sector, Assign a Binary Position. */
             pstream->seekp(key.nSectorStart, std::ios::beg);
-            pstream->write((char*) &vData[0], vData.size());
+
+            /* Write the size of record. */
+            WriteCompactSize(*pstream, vData.size());
+
+            /* Write the data record. */
+            if(!pstream->write((char*) &vData[0], vData.size()))
+                return debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes written");
+
             pstream->flush();
 
             /* Records flushed indicator. */
@@ -302,6 +329,9 @@ namespace LLD
     {
         if(nFlags & FLAGS::APPEND || !Update(vKey, vData))
         {
+            /* Write the data into the memory cache. */
+            cachePool->Put(vKey, vData, false);
+
             {
                 LOCK(SECTOR_MUTEX);
 
@@ -310,22 +340,23 @@ namespace LLD
                 {
                     debug::log(4, FUNCTION, "allocating new sector file ", nCurrentFile + 1);
 
-                    ++ nCurrentFile;
+                    ++nCurrentFile;
                     nCurrentFileSize = 0;
 
-                    std::ofstream stream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::out | std::ios::binary);
+                    std::ofstream stream
+                    (
+                        debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), nCurrentFile),
+                        std::ios::out | std::ios::binary | std::ios::trunc
+                    );
                     stream.close();
                 }
-
-                /* Write the data into the memory cache. */
-                cachePool->Put(vKey, vData, false);
 
                 /* Find the file stream for LRU cache. */
                 std::fstream* pstream;
                 if(!fileCache->Get(nCurrentFile, pstream))
                 {
                     /* Set the new stream pointer. */
-                    pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile), std::ios::in | std::ios::out | std::ios::binary);
+                    pstream = new std::fstream(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), nCurrentFile), std::ios::in | std::ios::out | std::ios::binary);
                     if(!pstream->is_open())
                     {
                         delete pstream;
@@ -338,23 +369,35 @@ namespace LLD
 
                 /* If it is a New Sector, Assign a Binary Position. */
                 pstream->seekp(nCurrentFileSize, std::ios::beg);
-                pstream->write((char*) &vData[0], vData.size());
+
+                /* Write the size of record. */
+                WriteCompactSize(*pstream, vData.size());
+
+                /* Write the data record. */
+                if(!pstream->write((char*) &vData[0], vData.size()))
+                    return debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes written");
+
                 pstream->flush();
 
-                /* Create a new Sector Key. */
-                SectorKey key = SectorKey(STATE::READY, vKey, static_cast<uint16_t>(nCurrentFile), nCurrentFileSize, static_cast<uint32_t>(vData.size()));
-
-                /* Increment the current filesize */
-                nCurrentFileSize += static_cast<uint32_t>(vData.size());
-
-                /* Assign the Key to Keychain. */
-                if(!pSectorKeys->Put(key))
-                    return debug::error(FUNCTION, "failed to write key to keychain");
-
-                /* Verboe output. */
-                debug::log(5, FUNCTION, "Current File: ", key.nSectorFile,
-                    " | Current File Size: ", key.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
             }
+
+            /* Get current size */
+            uint64_t nSize = vData.size() + GetSizeOfCompactSize(vData.size());
+
+            /* Create a new Sector Key. */
+            SectorKey key(STATE::READY, vKey, static_cast<uint16_t>(nCurrentFile),
+                            nCurrentFileSize, static_cast<uint32_t>(nSize));
+
+            /* Increment the current filesize */
+            nCurrentFileSize += static_cast<uint32_t>(nSize);
+
+            /* Assign the Key to Keychain. */
+            if(!pSectorKeys->Put(key))
+                return debug::error(FUNCTION, "failed to write key to keychain");
+
+            /* Verboe output. */
+            debug::log(5, FUNCTION, "Current File: ", key.nSectorFile,
+                " | Current File Size: ", key.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
         }
 
         return true;
@@ -389,6 +432,67 @@ namespace LLD
 
         /* Notify if buffer was added to. */
         CONDITION.notify_all();
+
+        return true;
+    }
+
+
+    /*  Update a record on disk. */
+    template<class KeychainType, class CacheType>
+    bool SectorDatabase<KeychainType, CacheType>::Delete(const std::vector<uint8_t>& vKey)
+    {
+        /* Check the keychain for key. */
+        SectorKey key;
+        if(!pSectorKeys->Get(vKey, key))
+            return false;
+
+        /* Return the Key existance in the Keychain Database. */
+        if(!pSectorKeys->Erase(vKey))
+            return false;
+
+        /* Check that this key isn't a keychain only entry. */
+        if(key.nSectorFile ==0 && key.nSectorSize == 0 && key.nSectorStart == 0)
+            return true;
+
+        {
+            LOCK(SECTOR_MUTEX);
+
+            /* Find the file stream for LRU cache. */
+            std::fstream* pstream;
+            if(!fileCache->Get(key.nSectorFile, pstream))
+            {
+                /* Set the new stream pointer. */
+                pstream = new std::fstream(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), key.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
+                if(!pstream->is_open())
+                {
+                    delete pstream;
+                    return false;
+                }
+
+                /* If file not found add to LRU cache. */
+                fileCache->Put(key.nSectorFile, pstream);
+            }
+
+            /* If it is a New Sector, Assign a Binary Position. */
+            pstream->seekg(key.nSectorStart, std::ios::beg);
+
+            /* Write the size of record. */
+            uint64_t nSize = ReadCompactSize(*pstream);
+
+            /* Seek to write at specific location. */
+            pstream->seekp(key.nSectorStart + GetSizeOfCompactSize(nSize), std::ios::beg);
+
+            /* Update the record with blank data. */
+            DataStream ssData(SER_LLD, DATABASE_VERSION);
+            ssData << std::string("NONE");
+
+            /* Write the data record. */
+            if(!pstream->write((char*)ssData.data(), ssData.size()))
+                return debug::error(FUNCTION, "only ", pstream->gcount(), " bytes written");
+
+            /* Flush the rest of the write buffer in stream. */
+            pstream->flush();
+        }
 
         return true;
     }
@@ -443,7 +547,7 @@ namespace LLD
                 nCurrentFileSize = 0;
 
                 /* Create a new file for next writes. */
-                std::fstream stream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile), std::ios::out | std::ios::binary | std::ios::trunc);
+                std::fstream stream(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), nCurrentFile), std::ios::out | std::ios::binary | std::ios::trunc);
                 stream.close();
             }
 
@@ -520,8 +624,10 @@ namespace LLD
         /* Create the new Database Transaction Object. */
         pTransaction = new SectorTransaction();
 
-        /* Release the journal file. */
-        TxnRelease();
+        /* Create an append only stream. */
+        STREAM = std::ofstream(debug::safe_printstr(config::GetDataDir(), strName, "/journal.dat"), std::ios::app | std::ios::binary);
+        if(!STREAM.is_open())
+            throw std::runtime_error("Failed to open Journal File");
     }
 
     /* Rollback the transaction to previous state. */
@@ -534,9 +640,9 @@ namespace LLD
          assert(pTransaction);
 
          /* Restore erase data. */
-         for(const auto& item : pTransaction->mapEraseData)
-             if(!pSectorKeys->Restore(item.first))
-                 assert(debug::error(FUNCTION, "failed to rollback erase"));
+         //for(const auto& item : pTransaction->mapEraseData)
+             //if(!pSectorKeys->Restore(item.first))
+            //     assert(debug::error(FUNCTION, "failed to rollback erase"));
 
         /* Erase all the transactions. */
         for(const auto& item : pTransaction->mapTransactions)
@@ -558,16 +664,34 @@ namespace LLD
             if(!pSectorKeys->Erase(item.first))
                 assert(debug::error(FUNCTION, "failed to erase indexes"));
 
-
          /* Cleanup the transaction object. */
          delete pTransaction;
          pTransaction = nullptr;
      }
 
 
-    /*  Abort a transaction from happening. */
+    /*  Write the transaction commitment message. */
     template<class KeychainType, class CacheType>
-    void SectorDatabase<KeychainType, CacheType>::TxnAbort()
+    bool SectorDatabase<KeychainType, CacheType>::TxnCheckpoint()
+    {
+        LOCK(TRANSACTION_MUTEX);
+
+        /* Serialize the key. */
+        DataStream ssJournal(SER_LLD, DATABASE_VERSION);
+        ssJournal << std::string("commit");
+
+        /* Write to the file.  */
+        const std::vector<uint8_t>& vBytes = ssJournal.Bytes();
+        STREAM.write((char*)&vBytes[0], vBytes.size());
+        STREAM.close();
+
+        return true;
+    }
+
+
+    /*  Release the transaction checkpoint. */
+    template<class KeychainType, class CacheType>
+    void SectorDatabase<KeychainType, CacheType>::TxnRelease()
     {
         LOCK(TRANSACTION_MUTEX);
 
@@ -578,43 +702,9 @@ namespace LLD
         /** Set the transaction pointer to null also acting like a flag **/
         pTransaction = nullptr;
 
-        /* Release the journal file. */
-        TxnRelease();
-    }
-
-
-    /*  Write the transaction commitment message. */
-    template<class KeychainType, class CacheType>
-    bool SectorDatabase<KeychainType, CacheType>::TxnCheckpoint()
-    {
-        LOCK(TRANSACTION_MUTEX);
-
-        /* Create an append only stream. */
-        std::ofstream stream(debug::safe_printstr(config::GetDataDir(), strName, "/journal.dat"), std::ios::app | std::ios::binary);
-        if(!stream.is_open())
-            return false;
-
-        /* Serialize the key. */
-        DataStream ssJournal(SER_LLD, DATABASE_VERSION);
-        ssJournal << std::string("commit");
-
-        /* Write to the file.  */
-        const std::vector<uint8_t>& vBytes = ssJournal.Bytes();
-        stream.write((char*)&vBytes[0], vBytes.size());
-        stream.close();
-
-        return true;
-    }
-
-
-    /*  Release the transaction checkpoint. */
-    template<class KeychainType, class CacheType>
-    void SectorDatabase<KeychainType, CacheType>::TxnRelease()
-    {
         /* Delete the transaction journal file. */
-        std::string strPath = debug::safe_printstr(config::GetDataDir(), strName, "/journal.dat");
-        if(filesystem::exists(strPath))
-            filesystem::remove(strPath);
+        std::ofstream stream(debug::safe_printstr(config::GetDataDir(), strName, "/journal.dat"), std::ios::trunc);
+        stream.close();
     }
 
 
@@ -631,19 +721,19 @@ namespace LLD
         /* Erase data set to be removed. */
         for(const auto& item : pTransaction->mapEraseData)
             if(!pSectorKeys->Erase(item.first))
-                assert(debug::error(FUNCTION, "failed to erase from keychain"));
+                return debug::error(FUNCTION, "failed to erase from keychain");
 
         /* Commit the sector data. */
         for(const auto& item : pTransaction->mapTransactions)
             if(!Force(item.first, item.second))
-                assert(debug::error(FUNCTION, "failed to commit sector data"));
+                return debug::error(FUNCTION, "failed to commit sector data");
 
         /* Commit keychain entries. */
         for(const auto& item : pTransaction->mapKeychain)
         {
             SectorKey cKey(STATE::READY, item.first, 0, 0, 0);
             if(!pSectorKeys->Put(cKey))
-                assert(debug::error(FUNCTION, "failed to commit to keychain"));
+                return debug::error(FUNCTION, "failed to commit to keychain");
         }
 
         /* Commit the index data. */
@@ -657,7 +747,7 @@ namespace LLD
             else
             {
                 if(!pSectorKeys->Get(item.second, cKey))
-                    assert(debug::error(FUNCTION, "failed to read indexing entry"));
+                    return debug::error(FUNCTION, "failed to read indexing entry");
 
                 mapIndex[item.second] = cKey;
             }
@@ -665,8 +755,11 @@ namespace LLD
             /* Write the new sector key. */
             cKey.SetKey(item.first);
             if(!pSectorKeys->Put(cKey))
-                assert(debug::error(FUNCTION, "failed to write indexing entry"));
+                return debug::error(FUNCTION, "failed to write indexing entry");
         }
+
+        /* Flush the keychain buffers. */
+        //pSectorKeys->Flush();
 
         /* Cleanup the transaction object. */
         delete pTransaction;
@@ -690,6 +783,12 @@ namespace LLD
 
         /* Get the data buffer. */
         uint32_t nSize = static_cast<uint32_t>(stream.gcount());
+
+        /* Check journal size for 0. */
+        if(nSize == 0)
+            return false;
+
+        /* Create buffer to read into. */
         std::vector<uint8_t> vBuffer(nSize, 0);
 
         /* Read the keychain file. */
@@ -780,7 +879,9 @@ namespace LLD
 
 
     /* Explicity instantiate all template instances needed for compiler. */
-    template class SectorDatabase<BinaryFileMap, BinaryLRU>;
-    template class SectorDatabase<BinaryHashMap, BinaryLRU>;
+    template class SectorDatabase<BinaryHashMap,  BinaryLRU>;
+    //template class SectorDatabase<ShardHashMap,   BinaryLRU>;
+    template class SectorDatabase<BinaryHashMap,  BinaryLFU>;
+    //template class SectorDatabase<BinaryHashTree, BinaryLRU>;
 
 }

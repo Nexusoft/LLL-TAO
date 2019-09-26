@@ -28,14 +28,9 @@ alias tail-nexus        'tail -f /root/.TAO//debug.log'
 # interface for legacy compatibility, (2) the command-line API, and (3)
 # a restful HTTP/JSON interface.    
 #
-alias nexus-api          '/nexus/nexus -api'
-alias nexus-rpc          '/nexus/nexus'
-#alias nexus-rpc         '/nexus/nexus -testnet'
 alias curl-nexus         '/nexus/curl-nexus'
-alias getinfo            'nexus-rpc getinfo'
-alias getpeerinfo        'nexus-rpc getpeerinfo'
-alias getconnectioncount 'nexus-rpc getconnectioncount'
-alias getpeercount       'getconnectioncount'
+alias getinfo            'curl-nexus system/get/info'
+alias getpeerinfo        'curl-nexus system/list/peers'
 alias height             'getinfo | egrep blocks'
     
 #
@@ -43,8 +38,11 @@ alias height             'getinfo | egrep blocks'
 #
 alias ns          'netstat -an'
 alias ping-seed4  'ping 240.0.255.255'
-alias ping-seed6  'ping fe::255:255'
+alias ping-seed6  'ping fe00::255:255'
+alias ltr-seed4   'ltr 240.0.255.255'
+alias ltr-seed6   'ltr fe00::255:255'
 alias td          'tcpdump -i any -n'
+alias whoarepeers 'python /nexus/whoarepeers.py'    
 
 #
 # LISP handy aliases.
@@ -59,6 +57,7 @@ alias eids         'mc | egrep "eid-prefix|group-prefix"'
 alias rate         'mc | egrep "stats|address|state"'
 alias rate-loop    'echo "while 1 \n rate | sort -bu \n echo \n sleep 1 \n end \n" | tcsh'
 alias lisp-log-packets '/lispers.net/log-packets -9090'
-alias lig1         'python -O lisp-lig.pyo "[200]\!*" to node1.nexusoft.io'
-alias lig2         'python -O lisp-lig.pyo "[200]\!*" to node2.nexusoft.io'
+alias lig1         'python -O /lispers.net/lisp-lig.pyo "[200]\!*" to node1.nexusoft.io'
+alias lig2         'python -O /lispers.net/lisp-lig.pyo "[200]\!*" to node2.nexusoft.io'
+alias ltr          'setenv LISP_LTR_PORT -9090; python -O /lispers.net/ltr.pyo'
     

@@ -15,13 +15,14 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_TYPES_TXIN_H
 #define NEXUS_LEGACY_TYPES_TXIN_H
 
-#include <climits>
-#include <cstdint>
+#include <Legacy/types/outpoint.h>
+#include <Legacy/types/script.h>
 
 #include <Util/templates/serialize.h>
 
-#include <Legacy/types/outpoint.h>
-#include <Legacy/types/script.h>
+#include <climits>
+#include <cstdint>
+
 
 namespace Legacy
 {
@@ -61,8 +62,10 @@ namespace Legacy
 		 *
 		 **/
 		TxIn()
+        : prevout()
+        , scriptSig()
+        , nSequence(std::numeric_limits<uint32_t>::max())
 		{
-			nSequence = std::numeric_limits<uint32_t>::max();
 		}
 
 
@@ -128,7 +131,7 @@ namespace Legacy
 
 		/** IsFinal
 		 *
-		 *	Flag to determin if the object sequence is in final state
+		 *	Flag to determine if the object sequence is in final state
 		 *
 		 *	@return true if the transaction is final
 		 *

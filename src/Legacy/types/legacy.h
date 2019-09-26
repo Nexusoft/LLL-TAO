@@ -35,6 +35,10 @@ namespace Legacy
     {
     public:
 
+        /** The Block's timestamp. This number is locked into the signature hash. **/
+        uint32_t nTime; //NOTE: this is 32-bit for backwards compatability
+
+
         /** The transactions of the block. **/
         std::vector<Transaction> vtx;
 
@@ -42,20 +46,24 @@ namespace Legacy
         IMPLEMENT_SERIALIZE
         (
             READWRITE(nVersion);
-	          READWRITE(hashPrevBlock);
-		        READWRITE(hashMerkleRoot);
-		        READWRITE(nChannel);
+            READWRITE(hashPrevBlock);
+            READWRITE(hashMerkleRoot);
+            READWRITE(nChannel);
             READWRITE(nHeight);
             READWRITE(nBits);
             READWRITE(nNonce);
             READWRITE(nTime);
 
-      			// ConnectBlock depends on vtx following header to generate CDiskTxPos
-      			if (!(nSerType & (SER_GETHASH | SER_BLOCKHEADERONLY)))
-      			{
-      				READWRITE(vtx);
-      				READWRITE(vchBlockSig);
-      			}
+            // ConnectBlock depends on vtx following header to generate CDiskTxPos
+            if(!(nSerType & (SER_GETHASH | SER_BLOCKHEADERONLY)))
+            {
+                READWRITE(vtx);
+                READWRITE(vchBlockSig);
+            }
+
+            /* Offsets are serialized to disk. */
+            if(nSerType & SER_LLD)
+                READWRITE(vOffsets);
         )
 
 
@@ -70,7 +78,7 @@ namespace Legacy
         *
         *  Allows polymorphic copying of blocks
         *  Overridden to return an instance of the LegacyBlock class.
-        *  Return-type covariance allows us to return the more derived type whilst 
+        *  Return-type covariance allows us to return the more derived type whilst
         *  still overriding the virtual base-class method
         *
         *  @return A pointer to a copy of this LegacyBlock.
@@ -83,6 +91,10 @@ namespace Legacy
         LegacyBlock(const TAO::Ledger::BlockState& state);
 
 
+        /** Copy Constructor. **/
+        LegacyBlock(const TAO::Ledger::SyncBlock& block);
+
+
         /** Default Destructor **/
         virtual ~LegacyBlock();
 
@@ -93,6 +105,24 @@ namespace Legacy
          *
          **/
         void SetNull() override;
+
+
+        /** UpdateTime
+         *
+         *  Update the blocks timestamp.
+         *
+         **/
+        void UpdateTime();
+
+
+        /** GetBlockTime
+         *
+         *  Returns the current UNIX timestamp of the block.
+         *
+         *  @return 64-bit integer of timestamp.
+         *
+         **/
+        uint64_t GetBlockTime() const;
 
 
         /** Check
@@ -141,6 +171,16 @@ namespace Legacy
          *
          **/
         bool TrustScore(uint32_t& nScore) const;
+
+
+        /** SignatureHash
+         *
+         *  Get the Signature Hash of the block. Used to verify work claims.
+         *
+         *  @return Returns a 1024-bit signature hash.
+         *
+         **/
+        uint1024_t SignatureHash() const;
 
 
         /** Stake Hash

@@ -33,9 +33,18 @@ DataStream::DataStream(const std::vector<uint8_t>& vchDataIn, const uint32_t nSe
 {
 }
 
+/*  Default constructor for initialization with serialize data, type and version. */
+DataStream::DataStream(const std::vector<uint64_t>& vchDataIn, const uint32_t nSerTypeIn, const uint32_t nSerVersionIn)
+: vData((uint8_t*)&vchDataIn.begin()[0], (uint8_t*)&vchDataIn.end()[0])
+, nReadPos(0)
+, nSerType(nSerTypeIn)
+, nSerVersion(nSerVersionIn)
+{
+}
+
 
 /*  Default constructor for initialization with serialize data, type and version */
-DataStream::DataStream( const std::vector<uint8_t>::const_iterator pbegin,
+DataStream::DataStream(const std::vector<uint8_t>::const_iterator pbegin,
             const std::vector<uint8_t>::const_iterator pend,
             const uint32_t nSerTypeIn, const uint32_t nSerVersionIn)
 : vData(pbegin, pend)
@@ -88,6 +97,15 @@ void DataStream::SetPos(uint64_t nNewPos) const
     /* Set the new read pos. */
     nReadPos = nNewPos;
 }
+
+
+
+/*  Gets the position in the stream. */
+uint64_t DataStream::GetPos() const
+{
+    return nReadPos;
+}
+
 
 
 /*  Sets the object into null state. */
@@ -147,7 +165,14 @@ DataStream& DataStream::write(const char* pch, uint64_t nSize)
 
 
 /*  Get the data stream from the object. */
-const std::vector<uint8_t>& DataStream::Bytes()
+const std::vector<uint8_t>& DataStream::Bytes() const
+{
+    return vData;
+}
+
+
+/*  Get the data stream from the object. */
+std::vector<uint8_t>& DataStream::Bytes()
 {
     return vData;
 }
@@ -157,6 +182,13 @@ const std::vector<uint8_t>& DataStream::Bytes()
 void DataStream::reserve(const uint64_t nSize)
 {
     vData.reserve(nSize);
+}
+
+
+/*  Implement the same reserve functionality to vector. */
+void DataStream::resize(const uint64_t nSize)
+{
+    vData.resize(nSize);
 }
 
 
@@ -189,9 +221,9 @@ std::vector<uint8_t>::iterator DataStream::end()
 
 
 /*  Wrapper around data to get the start of vector. */
-uint8_t* DataStream::data()
+uint8_t* DataStream::data(const uint64_t nOffset)
 {
-    return vData.data();
+    return &vData[nOffset];
 }
 
 

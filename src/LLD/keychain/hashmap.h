@@ -12,10 +12,10 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_LLD_TEMPLATES_HASHMAP_H
-#define NEXUS_LLD_TEMPLATES_HASHMAP_H
+#ifndef NEXUS_LLD_KEYCHAIN_HASHMAP_H
+#define NEXUS_LLD_KEYCHAIN_HASHMAP_H
 
-#include <LLD/templates/key.h>
+#include <LLD/keychain/keychain.h>
 #include <LLD/cache/template_lru.h>
 #include <LLD/include/enum.h>
 
@@ -38,7 +38,7 @@ namespace LLD
      *  when there is a collision that is found.
      *
      **/
-    class BinaryHashMap
+    class BinaryHashMap : public Keychain
     {
     protected:
 
@@ -51,7 +51,7 @@ namespace LLD
 
 
         /** Keychain stream object. **/
-        TemplateLRU<uint32_t, std::fstream*> *fileCache;
+        TemplateLRU<uint16_t, std::fstream*> *fileCache;
 
 
         /** Keychain index stream. **/
@@ -59,15 +59,11 @@ namespace LLD
 
 
         /** Total elements in hashmap for quick inserts. **/
-        std::vector<uint32_t> hashmap;
+        std::vector<uint16_t> hashmap;
 
 
         /** The Maximum buckets allowed in the hashmap. */
         uint32_t HASHMAP_TOTAL_BUCKETS;
-
-
-        /** The Maximum cache size for allocated keys. **/
-        uint32_t HASHMAP_MAX_CACHE_SIZE;
 
 
         /** The Maximum key size for static key sectors. **/
@@ -82,21 +78,19 @@ namespace LLD
         uint8_t nFlags;
 
 
-    public:
+        /* The key level locking hashmap. */
+        mutable std::vector<std::mutex> RECORD_MUTEX;
 
-        /** Default Constructor **/
-        BinaryHashMap();
+
+    public:
 
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        BinaryHashMap(std::string strBaseLocationIn, uint8_t nFlagsIn = FLAGS::APPEND);
+        BinaryHashMap(std::string strBaseLocationIn, uint8_t nFlagsIn = FLAGS::APPEND, uint64_t nBucketsIn = 256 * 256 * 64);
 
-
-        /** Default Constructor **/
-        BinaryHashMap(std::string strBaseLocationIn, uint32_t nTotalBuckets, uint32_t nMaxCacheSize, uint8_t nFlagsIn = FLAGS::APPEND);
 
         /** Copy Assignment Operator **/
-        BinaryHashMap& operator=(BinaryHashMap map);
+        BinaryHashMap& operator=(const BinaryHashMap& map);
 
 
         /** Copy Constructor **/
@@ -104,7 +98,7 @@ namespace LLD
 
 
         /** Default Destructor **/
-        ~BinaryHashMap();
+        virtual ~BinaryHashMap();
 
 
         /** CompressKey
@@ -117,14 +111,6 @@ namespace LLD
          *
          **/
         void CompressKey(std::vector<uint8_t>& vData, uint16_t nSize = 32);
-
-
-        /** GetKeys
-         *
-         *  Placeholder.
-         *
-         **/
-         std::vector< std::vector<uint8_t> > GetKeys();
 
 
         /** GetBucket
@@ -160,20 +146,6 @@ namespace LLD
         bool Get(const std::vector<uint8_t>& vKey, SectorKey &cKey);
 
 
-        /** Get
-         *
-         *  Read a key index from the disk hashmaps.
-         *  This method iterates all maps to find all keys.
-         *
-         *  @param[in] vKey The binary data of the key.
-         *  @param[out] vKeys The list of keys to return.
-         *
-         *  @return True if the key was found, false otherwise.
-         *
-         **/
-        bool Get(const std::vector<uint8_t>& vKey, std::vector<SectorKey>& vKeys);
-
-
         /** Put
          *
          *  Write a key to the disk hashmaps.
@@ -184,6 +156,14 @@ namespace LLD
          *
          **/
         bool Put(const SectorKey& cKey);
+
+
+        /** Flush
+         *
+         *  Flush all buffers to disk if using ACID transaction.
+         *
+         **/
+        void Flush();
 
 
         /** Restore

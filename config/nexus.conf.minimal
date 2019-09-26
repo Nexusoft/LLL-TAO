@@ -1,0 +1,13 @@
+#
+# This is an example nexus.conf. Tailor it to your deployment. Do not change
+# the nexus command line. Any options, put here.
+#
+# This configuration file is for the 'master' branch.
+#
+rpcuser=username
+rpcpassword=password
+apiuser=username
+apipassword=password
+daemon=1
+#mining=1
+#stake=1

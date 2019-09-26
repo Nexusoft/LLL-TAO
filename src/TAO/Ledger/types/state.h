@@ -7,7 +7,7 @@
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-            "ad vocem populi" - To the Voice of the People
+            "Doubt is the precursor to fear" - Alex Hannold
 
 ____________________________________________________________________________________________*/
 
@@ -40,14 +40,28 @@ namespace TAO
          **/
         class BlockState : public Block
         {
+            /* Tell compiler we are overloading this virtual method. */
+            using Block::ToString;
+
         public:
-            static std::mutex STATE_MUTEX;
+
+            /** The Block's timestamp. This number is locked into the signature hash. **/
+            uint64_t nTime;
+
+
+            /** System Script
+             *
+             *  The critical system level pre-states and post-states.
+             *
+             **/
+            TAO::Register::Stream  ssSystem;
+
 
             /** The transaction history.
              *  uint8_t = TransactionType (per enum)
              *  uint512_t = Tx hash
              **/
-            std::vector< std::pair<uint8_t, uint512_t> > vtx;
+            std::vector<std::pair<uint8_t, uint512_t> > vtx;
 
 
             /** The Trust of the Chain to this Block. */
@@ -62,12 +76,24 @@ namespace TAO
             int32_t nMint;
 
 
+            /** The Total Fees in block. **/
+            uint64_t nFees;
+
+
             /** The height of this channel. */
             uint32_t nChannelHeight;
 
 
+            /** The weight of this channel. */
+            uint128_t nChannelWeight[3];
+
+
             /** The reserves that are released. */
             int64_t nReleasedReserve[3];
+
+
+            /** The reserves that are released. */
+            uint64_t nFeeReserve;
 
 
             /** Used to Iterate forward in the chain */
@@ -95,30 +121,29 @@ namespace TAO
                 READWRITE(nMoneySupply);
                 READWRITE(nMint);
                 READWRITE(nChannelHeight);
+
+                /* Tritium Block States. */
+                READWRITE(nFees);
+                READWRITE(nChannelWeight[0]);
+                READWRITE(nChannelWeight[1]);
+                READWRITE(nChannelWeight[2]);
+                READWRITE(nFeeReserve);
+
+                /* Reserves. */
                 READWRITE(nReleasedReserve[0]);
                 READWRITE(nReleasedReserve[1]);
                 READWRITE(nReleasedReserve[2]);
                 READWRITE(hashCheckpoint);
 
                 READWRITE(vchBlockSig);
+                READWRITE(ssSystem);
+                READWRITE(vOffsets);
                 READWRITE(vtx);
-            )
+          )
 
 
             /** Default Constructor. **/
-            BlockState()
-            : Block()
-            , vtx()
-            , nChainTrust(0)
-            , nMoneySupply(0)
-            , nMint(0)
-            , nChannelHeight(0)
-            , nReleasedReserve{0, 0, 0}
-            , hashNextBlock(0)
-            , hashCheckpoint(0)
-            {
-                SetNull();
-            }
+            BlockState();
 
 
             /** Default Constructor. **/
@@ -130,79 +155,37 @@ namespace TAO
 
 
             /** Virtual Destructor. **/
-            virtual ~BlockState() { }
+            virtual ~BlockState();
 
 
             /** Copy Constructor. **/
-            BlockState(const BlockState& state)
-            : Block(state)
-            {
-                vtx                 = state.vtx;
-
-                nChainTrust         = state.nChainTrust;
-                nMoneySupply        = state.nMoneySupply;
-                nMint               = state.nMint;
-                nChannelHeight      = state.nChannelHeight;
-
-                nReleasedReserve[0] = state.nReleasedReserve[0];
-                nReleasedReserve[1] = state.nReleasedReserve[1];
-                nReleasedReserve[2] = state.nReleasedReserve[2];
-
-                hashNextBlock       = state.hashNextBlock;
-                hashCheckpoint      = state.hashCheckpoint;
-            }
+            BlockState(const BlockState& state);
 
 
             /** Copy Assignment Operator. **/
-            BlockState operator=(const BlockState state)
-            {
-                nVersion            = state.nVersion;
-                hashPrevBlock       = state.hashPrevBlock;
-                hashMerkleRoot      = state.hashMerkleRoot;
-                nChannel            = state.nChannel;
-                nHeight             = state.nHeight;
-                nBits               = state.nBits;
-                nNonce              = state.nNonce;
-                nTime               = state.nTime;
-                vchBlockSig         = state.vchBlockSig;
-
-                vtx                 = state.vtx;
-
-                nChainTrust         = state.nChainTrust;
-                nMoneySupply        = state.nMoneySupply;
-                nMoneySupply        = state.nMint;
-                nChannelHeight      = state.nChannelHeight;
-
-                nReleasedReserve[0] = state.nReleasedReserve[0];
-                nReleasedReserve[1] = state.nReleasedReserve[1];
-                nReleasedReserve[2] = state.nReleasedReserve[2];
-
-                hashNextBlock       = state.hashNextBlock;
-                hashCheckpoint      = state.hashCheckpoint;
-
-                return *this;
-            }
+            BlockState& operator=(const BlockState& state);
 
 
             /** Equivilence checking **/
-            bool operator==(const BlockState& state) const
-            {
-                return GetHash() == state.GetHash();
-            }
+            bool operator==(const BlockState& state) const;
 
 
             /** Equivilence checking **/
-            bool operator!=(const BlockState& state) const
-            {
-                return GetHash() != state.GetHash();
-            }
+            bool operator!=(const BlockState& state) const;
 
 
             /** Not operator overloading. **/
-            bool operator !(void)
-            {
-                return IsNull();
-            }
+            bool operator!(void) const;
+
+
+            /** GetBlockTime
+             *
+             *  Returns the current UNIX timestamp of the block.
+             *
+             *  @return 64-bit integer of timestamp.
+             *
+             **/
+            uint64_t GetBlockTime() const;
 
 
             /** Prev
@@ -265,14 +248,24 @@ namespace TAO
             bool Disconnect();
 
 
-            /** GetBlockTrust
+            /** Trust
              *
              *  Get the trust of this block.
              *
              *  @return the current trust in the chain.
              *
              **/
-            uint64_t GetBlockTrust() const;
+            uint64_t Trust() const;
+
+
+            /** Weight
+             *
+             *  Get the weight of this block.
+             *
+             *  @return the current weight for this block.
+             *
+             **/
+            uint64_t Weight() const;
 
 
             /** IsInMainChain
@@ -305,6 +298,16 @@ namespace TAO
              *
              **/
             virtual void print() const;
+
+
+            /** SignatureHash
+             *
+             *  Get the Signature Hash of the block. Used to verify work claims.
+             *
+             *  @return Returns a 1024-bit signature hash.
+             *
+             **/
+            uint1024_t SignatureHash() const;
 
 
             /** StakeHash

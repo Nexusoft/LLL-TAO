@@ -43,7 +43,11 @@ namespace TAO
 
 
             /** Default Constructor **/
-            Base() : fInitialized(false) { }
+            Base()
+            : fInitialized(false)
+            , mapFunctions()
+            {
+            }
 
 
             /** Default destructor **/
@@ -86,26 +90,59 @@ namespace TAO
              **/
             json::json Execute(const std::string& strMethod, const json::json& jsonParams, bool fHelp = false)
             {
-                if(mapFunctions.find(strMethod) != mapFunctions.end())
-                    return mapFunctions[strMethod].Execute(SanitizeParams(strMethod, jsonParams), fHelp);
+                json::json jsonParamsUpdated = jsonParams;
+                std::string strMethodToCall = strMethod;
+
+                 /* If the incoming method is not in the function map then
+                   give derived API's the opportunity to rewrite the URL to one that does*/
+                if(mapFunctions.find(strMethodToCall) == mapFunctions.end())
+                    strMethodToCall = RewriteURL(strMethod, jsonParamsUpdated);
+
+                if(mapFunctions.find(strMethodToCall) != mapFunctions.end())
+                    return mapFunctions[strMethodToCall].Execute(SanitizeParams(strMethodToCall, jsonParamsUpdated), fHelp);
                 else
-                    throw APIException(-32601, debug::safe_printstr("Method not found: ", strMethod));
+                    throw APIException(-2, debug::safe_printstr("Method not found: ", strMethodToCall));
             }
 
 
+            /** RewriteURL
+             *
+             *  Allows derived API's to handle custom/dynamic URL's where the strMethod does not
+             *  map directly to a function in the target API.  Insted this method can be overriden to
+             *  parse the incoming URL and route to a different/generic method handler, adding parameter
+             *  values if necessary.  E.g. get/myasset could be rerouted to get/asset with name=myasset
+             *  added to the jsonParams
+             *  The return json contains the modifed method URL to be called.
+             *
+             *  @param[in] strMethod The name of the method being invoked.
+             *  @param[in] jsonParams The json array of parameters being passed to this method.
+             *
+             *  @return the API method URL
+             *
+             **/
+            virtual std::string RewriteURL(const std::string& strMethod, json::json& jsonParams)
+            {
+                return strMethod;
+            };
+
+
+
             /** SanitizeParams
-            *
-            *  Allows derived API's to check the values in the parameters array for the method being called.
-            *  The return json contains the sanitized parameter values, which derived implementations might convert to the correct type
-            *  for the method being called.
-            *
-            *  @param[in] strMethod The name of the method being invoked.
-            *  @param[in] jsonParams The json array of parameters being passed to this method.
-            *
-            *  @return the sanitized json parameters array.
-            *
-            **/
-            virtual json::json SanitizeParams( const std::string& strMethod, const json::json& jsonParams ) {return jsonParams;};
+             *
+             *  Allows derived API's to check the values in the parameters array for the method being called.
+             *  The return json contains the sanitized parameter values, which derived implementations might convert to the correct type
+             *  for the method being called.
+             *
+             *  @param[in] strMethod The name of the method being invoked.
+             *  @param[in] jsonParams The json array of parameters being passed to this method.
+             *
+             *  @return the sanitized json parameters array.
+             *
+             **/
+            virtual json::json SanitizeParams(const std::string& strMethod, const json::json& jsonParams)
+            {
+                return jsonParams;
+            };
 
         protected:
 

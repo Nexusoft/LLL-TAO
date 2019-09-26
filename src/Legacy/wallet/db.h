@@ -15,18 +15,18 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_WALLET_DB_H
 #define NEXUS_LEGACY_WALLET_DB_H
 
+#include <LLD/include/version.h>
+
+#include <Util/templates/datastream.h>
+
+#include <db_cxx.h> /* Berkeley DB header */
+
 #include <atomic>
 #include <map>
 #include <mutex>
 #include <string>
 #include <vector>
-#include <new> //std::bad_alloc
 
-#include <db_cxx.h> /* Berkeley DB header */
-
-#include <LLD/include/version.h>
-
-#include <Util/templates/datastream.h>
 
 namespace Legacy
 {
@@ -39,9 +39,9 @@ namespace Legacy
      *  via the GetInstance(strFileIn) method.  An instance initializes and
      *  maintains its own database environment and is independent of others.
      *
-     *  Within the instance, all database operations are single-threaded. 
-     *  Nexus does not require high scalability for Berkeley operations, thus 
-     *  this approach assures data integrity and avoids race conditions 
+     *  Within the instance, all database operations are single-threaded.
+     *  Nexus does not require high scalability for Berkeley operations, thus
+     *  this approach assures data integrity and avoids race conditions
      *  without impacting system performance.
      *
      *  To assure there can never be two copies of the database instance that may access
@@ -69,8 +69,8 @@ namespace Legacy
         DbEnv* dbenv;
 
 
-        /** Pointer to handle for a Berkeley database, 
-         *  for opening/accessing database underlying this BerkeleyDB instance 
+        /** Pointer to handle for a Berkeley database,
+         *  for opening/accessing database underlying this BerkeleyDB instance
          *
          *  This handle must be closed whenever the database is flushed, then
          *  must be reopened by the next call.
@@ -120,7 +120,7 @@ namespace Legacy
         /** CloseHandle
          *
          *  Closes the handle for the current database instance, if currently open.
-         *  Aborts any open transactions, flushes memory to log file, sets pdb to nullptr. 
+         *  Aborts any open transactions, flushes memory to log file, sets pdb to nullptr.
          *
          *  Call this before any database operations that must close database access (such as flush).
          *  The next database operation must then open a new database handle.
@@ -191,7 +191,7 @@ namespace Legacy
         {
             LOCK(cs_db);
 
-            if (pdb == nullptr)
+            if(pdb == nullptr)
                 OpenHandle();
 
             /* Key */
@@ -210,7 +210,7 @@ namespace Legacy
             /*  Clear the key memory */
             memset(datKey.get_data(), 0, datKey.get_size());
 
-            if (datValue.get_data() == nullptr)
+            if(datValue.get_data() == nullptr)
                 return false; // Key not found or no value present, can safely return without free() because there is nothing to free
 
             /* Unserialize value */
@@ -219,11 +219,6 @@ namespace Legacy
                 /* get_data returns a void* and currently uses a C-style cast to load into DataStream */
                 DataStream ssValue((char*)datValue.get_data(), (char*)datValue.get_data() + datValue.get_size(), SER_DISK, LLD::DATABASE_VERSION);
                 ssValue >> value;
-            }
-            catch(const std::bad_alloc &e)
-            {
-                debug::error(FUNCTION, "Memory allocation failed ", e.what());
-                ret = -1;
             }
             catch(std::exception &e)
             {
@@ -262,8 +257,8 @@ namespace Legacy
         bool Write(const K& key, const T& value, bool fOverwrite=true)
         {
             LOCK(cs_db);
-            
-            if (pdb == nullptr)
+
+            if(pdb == nullptr)
                 OpenHandle();
 
             /* Key */
@@ -304,8 +299,8 @@ namespace Legacy
         inline bool Erase(const K& key)
         {
             LOCK(cs_db);
-            
-            if (pdb == nullptr)
+
+            if(pdb == nullptr)
                 OpenHandle();
 
             /* Key */
@@ -337,8 +332,8 @@ namespace Legacy
         inline bool Exists(const K& key)
         {
             LOCK(cs_db);
-            
-            if (pdb == nullptr)
+
+            if(pdb == nullptr)
                 OpenHandle();
 
             /* Key */
@@ -477,7 +472,7 @@ namespace Legacy
        /** DBRewrite
          *
          *  Rewrites the database file by copying all contents to a new file, then
-         *  replaces the original file with the new one. 
+         *  replaces the original file with the new one.
          *
          *  @return true if rewrite was successful
          *
@@ -485,14 +480,14 @@ namespace Legacy
         bool DBRewrite();
 
 
-        /** EnvShutdown
+        /** Shutdown
          *
          *  Shut down the Berkeley database environment for this instance.
          *
-         *  Call this on system shutdown to flush, checkpoint, and detach the backing database file. 
+         *  Call this on system shutdown to flush, checkpoint, and detach the backing database file.
          *
          **/
-        void EnvShutdown();
+        void Shutdown();
 
 
         /* Static Methods */
@@ -502,7 +497,7 @@ namespace Legacy
          *  Retrieves the BerkeleyDB instance that corresponds to a given database file.
          *
          *  Database setup will be executed the first time this method is called, and
-         *  the database file name must be passed. This will initialize the database environment 
+         *  the database file name must be passed. This will initialize the database environment
          *  for that file. After this initialization call, the database file should not be passed.
          *
          *  Initial call requires a file name, and throws an error if not present.
@@ -511,7 +506,7 @@ namespace Legacy
          *  currently in use, it is ignored. If a different file name is passed, it throws an error.
          *
          *  On the first call, this method opens the database environment for the database file.
-         *  The returned instance allows all read/write operations. If the file does not 
+         *  The returned instance allows all read/write operations. If the file does not
          *  exist, it will be created the first time it is accessed.
          *
          *  @param strFileIn[in] The database file name

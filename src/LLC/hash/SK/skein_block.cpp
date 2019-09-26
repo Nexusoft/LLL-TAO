@@ -55,7 +55,7 @@ void Skein_256_Process_Block(Skein_256_Ctxt_t *ctx,const u08b_t *blkPtr,size_t b
 #endif
 
 #if SKEIN_UNROLL_256
-#if (RCNT % SKEIN_UNROLL_256)
+#if(RCNT % SKEIN_UNROLL_256)
 #error "Invalid SKEIN_UNROLL_256"               /* sanity check on unroll count */
 #endif
     size_t  r;
@@ -129,7 +129,7 @@ void Skein_256_Process_Block(Skein_256_Ctxt_t *ctx,const u08b_t *blkPtr,size_t b
     ts[r + (R)+2    ]   = ts[r+(R)-1];                              \
     Skein_Show_R_Ptr(BLK_BITS,&ctx->h,SKEIN_RND_KEY_INJECT,Xptr);
 
-    for (r=1;r < 2*RCNT;r+=2*SKEIN_UNROLL_256)  /* loop thru it */
+    for(r=1;r < 2*RCNT;r+=2*SKEIN_UNROLL_256)  /* loop thru it */
 #endif
         {
 #define R256_8_rounds(R)                  \
@@ -144,36 +144,36 @@ void Skein_256_Process_Block(Skein_256_Ctxt_t *ctx,const u08b_t *blkPtr,size_t b
         R256(0,3,2,1,R_256_7,8*(R) + 8);  \
         I256(2*(R)+1);
 
-        R256_8_rounds( 0);
+        R256_8_rounds(0);
 
 #define R256_Unroll_R(NN) ((SKEIN_UNROLL_256 == 0 && SKEIN_256_ROUNDS_TOTAL/8 > (NN)) || (SKEIN_UNROLL_256 > (NN)))
 
-  #if   R256_Unroll_R( 1)
-        R256_8_rounds( 1);
+  #if   R256_Unroll_R(1)
+        R256_8_rounds(1);
   #endif
-  #if   R256_Unroll_R( 2)
-        R256_8_rounds( 2);
+  #if   R256_Unroll_R(2)
+        R256_8_rounds(2);
   #endif
-  #if   R256_Unroll_R( 3)
-        R256_8_rounds( 3);
+  #if   R256_Unroll_R(3)
+        R256_8_rounds(3);
   #endif
-  #if   R256_Unroll_R( 4)
-        R256_8_rounds( 4);
+  #if   R256_Unroll_R(4)
+        R256_8_rounds(4);
   #endif
-  #if   R256_Unroll_R( 5)
-        R256_8_rounds( 5);
+  #if   R256_Unroll_R(5)
+        R256_8_rounds(5);
   #endif
-  #if   R256_Unroll_R( 6)
-        R256_8_rounds( 6);
+  #if   R256_Unroll_R(6)
+        R256_8_rounds(6);
   #endif
-  #if   R256_Unroll_R( 7)
-        R256_8_rounds( 7);
+  #if   R256_Unroll_R(7)
+        R256_8_rounds(7);
   #endif
-  #if   R256_Unroll_R( 8)
-        R256_8_rounds( 8);
+  #if   R256_Unroll_R(8)
+        R256_8_rounds(8);
   #endif
-  #if   R256_Unroll_R( 9)
-        R256_8_rounds( 9);
+  #if   R256_Unroll_R(9)
+        R256_8_rounds(9);
   #endif
   #if   R256_Unroll_R(10)
         R256_8_rounds(10);
@@ -204,7 +204,7 @@ void Skein_256_Process_Block(Skein_256_Ctxt_t *ctx,const u08b_t *blkPtr,size_t b
 
         ts[1] &= ~SKEIN_T1_FLAG_FIRST;
         }
-    while (--blkCnt);
+    while(--blkCnt);
     ctx->h.T[0] = ts[0];
     ctx->h.T[1] = ts[1];
     }
@@ -240,7 +240,7 @@ void Skein_512_Process_Block(Skein_512_Ctxt_t *ctx,const u08b_t *blkPtr,size_t b
 #endif
 
 #if SKEIN_UNROLL_512
-#if (RCNT % SKEIN_UNROLL_512)
+#if(RCNT % SKEIN_UNROLL_512)
 #error "Invalid SKEIN_UNROLL_512"               /* sanity check on unroll count */
 #endif
     size_t  r;
@@ -333,7 +333,7 @@ void Skein_512_Process_Block(Skein_512_Ctxt_t *ctx,const u08b_t *blkPtr,size_t b
     ts[r +       (R)+2] = ts[r+(R)-1];                              \
     Skein_Show_R_Ptr(BLK_BITS,&ctx->h,SKEIN_RND_KEY_INJECT,Xptr);
 
-    for (r=1;r < 2*RCNT;r+=2*SKEIN_UNROLL_512)   /* loop thru it */
+    for(r=1;r < 2*RCNT;r+=2*SKEIN_UNROLL_512)   /* loop thru it */
 #endif                         /* end of looped code definitions */
         {
 #define R512_8_rounds(R)  /* do 8 full rounds */  \
@@ -348,36 +348,36 @@ void Skein_512_Process_Block(Skein_512_Ctxt_t *ctx,const u08b_t *blkPtr,size_t b
         R512(6,1,0,7,2,5,4,3,R_512_7,8*(R)+ 8);   \
         I512(2*(R)+1);        /* and key injection */
 
-        R512_8_rounds( 0);
+        R512_8_rounds(0);
 
 #define R512_Unroll_R(NN) ((SKEIN_UNROLL_512 == 0 && SKEIN_512_ROUNDS_TOTAL/8 > (NN)) || (SKEIN_UNROLL_512 > (NN)))
 
-  #if   R512_Unroll_R( 1)
-        R512_8_rounds( 1);
+  #if   R512_Unroll_R(1)
+        R512_8_rounds(1);
   #endif
-  #if   R512_Unroll_R( 2)
-        R512_8_rounds( 2);
+  #if   R512_Unroll_R(2)
+        R512_8_rounds(2);
   #endif
-  #if   R512_Unroll_R( 3)
-        R512_8_rounds( 3);
+  #if   R512_Unroll_R(3)
+        R512_8_rounds(3);
   #endif
-  #if   R512_Unroll_R( 4)
-        R512_8_rounds( 4);
+  #if   R512_Unroll_R(4)
+        R512_8_rounds(4);
   #endif
-  #if   R512_Unroll_R( 5)
-        R512_8_rounds( 5);
+  #if   R512_Unroll_R(5)
+        R512_8_rounds(5);
   #endif
-  #if   R512_Unroll_R( 6)
-        R512_8_rounds( 6);
+  #if   R512_Unroll_R(6)
+        R512_8_rounds(6);
   #endif
-  #if   R512_Unroll_R( 7)
-        R512_8_rounds( 7);
+  #if   R512_Unroll_R(7)
+        R512_8_rounds(7);
   #endif
-  #if   R512_Unroll_R( 8)
-        R512_8_rounds( 8);
+  #if   R512_Unroll_R(8)
+        R512_8_rounds(8);
   #endif
-  #if   R512_Unroll_R( 9)
-        R512_8_rounds( 9);
+  #if   R512_Unroll_R(9)
+        R512_8_rounds(9);
   #endif
   #if   R512_Unroll_R(10)
         R512_8_rounds(10);
@@ -412,7 +412,7 @@ void Skein_512_Process_Block(Skein_512_Ctxt_t *ctx,const u08b_t *blkPtr,size_t b
 
         ts[1] &= ~SKEIN_T1_FLAG_FIRST;
         }
-    while (--blkCnt);
+    while(--blkCnt);
     ctx->h.T[0] = ts[0];
     ctx->h.T[1] = ts[1];
     }
@@ -447,8 +447,8 @@ void Skein1024_Process_Block(Skein1024_Ctxt_t *ctx,const u08b_t *blkPtr,size_t b
 #define SKEIN_UNROLL_1024 (0)
 #endif
 
-#if (SKEIN_UNROLL_1024 != 0)
-#if (RCNT % SKEIN_UNROLL_1024)
+#if(SKEIN_UNROLL_1024 != 0)
+#if(RCNT % SKEIN_UNROLL_1024)
 #error "Invalid SKEIN_UNROLL_1024"              /* sanity check on unroll count */
 #endif
     size_t  r;
@@ -581,7 +581,7 @@ void Skein1024_Process_Block(Skein1024_Ctxt_t *ctx,const u08b_t *blkPtr,size_t b
     ts[r  +       (R)+ 2] = ts[r+(R)-1];                              \
     Skein_Show_R_Ptr(BLK_BITS,&ctx->h,SKEIN_RND_KEY_INJECT,Xptr);
 
-    for (r=1;r <= 2*RCNT;r+=2*SKEIN_UNROLL_1024)    /* loop thru it */
+    for(r=1;r <= 2*RCNT;r+=2*SKEIN_UNROLL_1024)    /* loop thru it */
 #endif
         {
 #define R1024_8_rounds(R)    /* do 8 full rounds */                               \
@@ -596,36 +596,36 @@ void Skein1024_Process_Block(Skein1024_Ctxt_t *ctx,const u08b_t *blkPtr,size_t b
         R1024(00,15,02,11,06,13,04,09,14,01,08,05,10,03,12,07,R1024_7,8*(R) + 8); \
         I1024(2*(R)+1);
 
-        R1024_8_rounds( 0);
+        R1024_8_rounds(0);
 
 #define R1024_Unroll_R(NN) ((SKEIN_UNROLL_1024 == 0 && SKEIN1024_ROUNDS_TOTAL/8 > (NN)) || (SKEIN_UNROLL_1024 > (NN)))
 
-  #if   R1024_Unroll_R( 1)
-        R1024_8_rounds( 1);
+  #if   R1024_Unroll_R(1)
+        R1024_8_rounds(1);
   #endif
-  #if   R1024_Unroll_R( 2)
-        R1024_8_rounds( 2);
+  #if   R1024_Unroll_R(2)
+        R1024_8_rounds(2);
   #endif
-  #if   R1024_Unroll_R( 3)
-        R1024_8_rounds( 3);
+  #if   R1024_Unroll_R(3)
+        R1024_8_rounds(3);
   #endif
-  #if   R1024_Unroll_R( 4)
-        R1024_8_rounds( 4);
+  #if   R1024_Unroll_R(4)
+        R1024_8_rounds(4);
   #endif
-  #if   R1024_Unroll_R( 5)
-        R1024_8_rounds( 5);
+  #if   R1024_Unroll_R(5)
+        R1024_8_rounds(5);
   #endif
-  #if   R1024_Unroll_R( 6)
-        R1024_8_rounds( 6);
+  #if   R1024_Unroll_R(6)
+        R1024_8_rounds(6);
   #endif
-  #if   R1024_Unroll_R( 7)
-        R1024_8_rounds( 7);
+  #if   R1024_Unroll_R(7)
+        R1024_8_rounds(7);
   #endif
-  #if   R1024_Unroll_R( 8)
-        R1024_8_rounds( 8);
+  #if   R1024_Unroll_R(8)
+        R1024_8_rounds(8);
   #endif
-  #if   R1024_Unroll_R( 9)
-        R1024_8_rounds( 9);
+  #if   R1024_Unroll_R(9)
+        R1024_8_rounds(9);
   #endif
   #if   R1024_Unroll_R(10)
         R1024_8_rounds(10);
@@ -670,7 +670,7 @@ void Skein1024_Process_Block(Skein1024_Ctxt_t *ctx,const u08b_t *blkPtr,size_t b
         ts[1] &= ~SKEIN_T1_FLAG_FIRST;
         blkPtr += SKEIN1024_BLOCK_BYTES;
         }
-    while (--blkCnt);
+    while(--blkCnt);
     ctx->h.T[0] = ts[0];
     ctx->h.T[1] = ts[1];
     }

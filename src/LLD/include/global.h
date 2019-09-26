@@ -15,21 +15,40 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLD_INCLUDE_GLOBAL_H
 #define NEXUS_LLD_INCLUDE_GLOBAL_H
 
-#include <LLD/include/register.h>
-#include <LLD/include/ledger.h>
-#include <LLD/include/local.h>
-#include <LLD/include/legacy.h>
-#include <LLD/include/trust.h>
+#include <LLD/types/register.h>
+#include <LLD/types/ledger.h>
+#include <LLD/types/local.h>
+#include <LLD/types/legacy.h>
+#include <LLD/types/trust.h>
+#include <LLD/types/contract.h>
 
 namespace LLD
 {
-    extern RegisterDB*   regDB;
-    extern LedgerDB*     legDB;
-    extern LocalDB*      locDB;
+
+    extern ContractDB*   Contract;
+    extern RegisterDB*   Register;
+    extern LedgerDB*     Ledger;
+    extern LocalDB*      Local;
 
     //for legacy objects
-    extern TrustDB*      trustDB;
-    extern LegacyDB*     legacyDB;
+    extern TrustDB*      Trust;
+    extern LegacyDB*     Legacy;
+
+
+    /** Initialize
+     *
+     *  Initialize the global LLD instances.
+     *
+     **/
+    void Initialize();
+
+
+    /** Shutdown
+     *
+     *  Shutdown and cleanup the global LLD instances.
+     *
+     **/
+    void Shutdown();
 
 
     /** TxnRecover
@@ -45,7 +64,7 @@ namespace LLD
      *  Global handler for all LLD instances.
      *
      */
-    void TxnBegin();
+    void TxnBegin(const uint8_t nFlags = 0);
 
 
     /** Txn Abort
@@ -53,7 +72,7 @@ namespace LLD
      *  Global handler for all LLD instances.
      *
      */
-    void TxnAbort();
+    void TxnAbort(const uint8_t nFlags = 0);
 
 
     /** Txn Commit
@@ -61,7 +80,7 @@ namespace LLD
      *  Global handler for all LLD instances.
      *
      */
-    void TxnCommit();
+    void TxnCommit(const uint8_t nFlags = 0);
 }
 
 #endif

@@ -18,6 +18,10 @@ namespace LLP
 
     /*  Construct a DDOS Score of Moving Average Timespan. */
     DDOS_Score::DDOS_Score(int nTimespan)
+    : SCORE()
+    , TIMER()
+    , nIterator()
+    , MUTEX()
     {
         LOCK(MUTEX);
 
@@ -32,7 +36,7 @@ namespace LLP
     /*  Reset the Timer and the Score Flags to be Overwritten. */
     void DDOS_Score::Reset()
     {
-        for(int i = 0; i < SCORE.size(); i++)
+        for(uint32_t i = 0; i < SCORE.size(); ++i)
             SCORE[i].first = false;
 
         TIMER.Reset();
@@ -46,7 +50,7 @@ namespace LLP
         LOCK(MUTEX);
 
         Reset();
-        for(int i = 0; i < SCORE.size(); i++)
+        for(uint32_t i = 0; i < SCORE.size(); ++i)
             SCORE[i].second = 0;
     }
 
@@ -56,34 +60,33 @@ namespace LLP
     {
         LOCK(MUTEX);
 
-        int32_t nMovingAverage = 0;
-        int32_t s = static_cast<int32_t>(SCORE.size());
-        for(int32_t i = 0; i < s; ++i)
+        uint32_t nMovingAverage = 0;
+        for(int32_t i = 0; i < SCORE.size(); ++i)
             nMovingAverage += SCORE[i].second;
 
-        return nMovingAverage / s;
+        return nMovingAverage / SCORE.size();
     }
 
 
      /* Increase the Score by nScore. Operates on the Moving Average to
       *  Increment Score per Second. */
-    DDOS_Score &DDOS_Score::operator+=(const int& nScore)
+    DDOS_Score &DDOS_Score::operator+=(const uint32_t& nScore)
     {
         LOCK(MUTEX);
 
-        if(nScore > 1)
-            debug::log(3, FUNCTION, "DDOS Penalty of +", nScore);
+        if(nScore)
+            debug::log(4, FUNCTION, "DDOS Penalty of +", nScore);
 
         uint32_t nTime = TIMER.Elapsed();
 
-        /** If the Time has been greater than Moving Average Timespan, Set to Add Score on Time Overlap. **/
+        /* If the Time has been greater than Moving Average Timespan, Set to Add Score on Time Overlap. */
         if(nTime >= SCORE.size())
         {
             Reset();
             nTime = nTime % static_cast<int32_t>(SCORE.size());
         }
 
-        /** Iterate as many seconds as needed, flagging that each has been iterated. **/
+        /* Iterate as many seconds as needed, flagging that each has been iterated. */
         for(uint32_t i = nIterator; i <= nTime; ++i)
         {
             if(!SCORE[i].first)
@@ -93,7 +96,7 @@ namespace LLP
             }
         }
 
-        /** Update the Moving Average Iterator and Score for that Second Instance. **/
+        /* Update the Moving Average Iterator and Score for that Second Instance. */
         SCORE[nTime].second += nScore;
         nIterator = nTime;
 
@@ -101,12 +104,30 @@ namespace LLP
     }
 
 
+    /** print
+     *
+     *  Print out the internal data inside the score object.
+     *
+     **/
+    void DDOS_Score::print()
+    {
+        for(int32_t i = 0; i < SCORE.size(); ++i)
+            printf(" %s %u |", SCORE[i].first ? "T" : "F", SCORE[i].second);
+
+        printf("\n");
+    }
+
+
     /* Default Constructor */
     DDOS_Filter::DDOS_Filter(uint32_t nTimespan)
-    : BANTIME(0)
+    : MUTEX()
+    , TIMER()
+    , BANTIME(0)
     , TOTALBANS(0)
     , rSCORE(nTimespan)
-    , cSCORE(nTimespan) { }
+    , cSCORE(nTimespan)
+    {
+    }
 
 
     /* Ban a Connection, and Flush its Scores. */
@@ -116,6 +137,8 @@ namespace LLP
 
         if((TIMER.Elapsed() < BANTIME))
             return;
+
+        rSCORE.print();
 
         TIMER.Start();
 

@@ -12,7 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #include <Legacy/types/merkle.h>
-#include <LLD/include/legacy.h>
 #include <LLD/include/global.h>
 
 #include <TAO/Ledger/include/constants.h>
@@ -29,18 +28,18 @@ namespace Legacy
 
     uint32_t MerkleTx::GetDepthInMainChain() const
     {
-        if (hashBlock == 0)
+        if(hashBlock == 0)
             return 0;
 
         // Find the block it claims to be in
-        TAO::Ledger::BlockState blockState;
-        if (!LLD::legDB->ReadBlock(hashBlock, blockState))
+        TAO::Ledger::BlockState state;
+        if(!LLD::Ledger->ReadBlock(hashBlock, state))
             return 0;
 
-        if (!blockState.IsInMainChain())
+        if(!state.IsInMainChain())
             return 0;
 
-        return TAO::Ledger::ChainState::nBestHeight.load() - blockState.nHeight + 1;
+        return TAO::Ledger::ChainState::nBestHeight.load() - state.nHeight + 1;
 
     }
 
@@ -48,11 +47,26 @@ namespace Legacy
     /* Retrieve the number of blocks remaining until transaction outputs are spendable. */
     uint32_t MerkleTx::GetBlocksToMaturity() const
     {
-        if (!(IsCoinBase() || IsCoinStake()))
+        if(!(IsCoinBase() || IsCoinStake()))
             return 0;
 
-        int32_t nCoinbaseMaturity = config::fTestNet ? TAO::Ledger::TESTNET_MATURITY_BLOCKS : TAO::Ledger::NEXUS_MATURITY_BLOCKS;
-        return std::max((int32_t)0, (int32_t)(nCoinbaseMaturity + (config::fTestNet ? 1 : 20) - GetDepthInMainChain()));
-    }
+        uint32_t nMaturity;
+        uint32_t nDepth = GetDepthInMainChain();
 
+        if(IsCoinBase())
+            nMaturity = TAO::Ledger::MaturityCoinBase();
+        else
+            nMaturity = TAO::Ledger::MaturityCoinStake();
+
+        /* Legacy mainnet maturity blocks needs +20 added so that wallet considers immature for 120 blocks.
+         * The NEXUS_MATURITY_LEGACY setting value of 100 was kept for backwards compatability within other parts of code.
+         */
+        if(nMaturity == TAO::Ledger::NEXUS_MATURITY_LEGACY && !config::fTestNet)
+            nMaturity += 20;
+
+        if(nDepth >= nMaturity)
+            return 0;
+        else
+            return nMaturity - nDepth;
+    }
 }

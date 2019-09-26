@@ -190,9 +190,9 @@ public:
     std::pair<iterator, bool> insert(const key_type& x)
     {
         std::pair<iterator, bool> ret = set.insert(x);
-        if (ret.second)
+        if(ret.second)
         {
-            if (nMaxSize && queue.size() == nMaxSize)
+            if(nMaxSize && queue.size() == nMaxSize)
             {
                 set.erase(queue.front());
                 queue.pop_front();
@@ -227,9 +227,9 @@ public:
      **/
     size_type max_size(size_type s)
     {
-        if (s)
+        if(s)
         {
-            while (queue.size() >= s)
+            while(queue.size() >= s)
             {
                 set.erase(queue.front());
                 queue.pop_front();

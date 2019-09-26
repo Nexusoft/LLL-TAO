@@ -1,0 +1,30 @@
+#
+# This is an example nexus.conf. Tailor it to your deployment. Do not change
+# the nexus command line. Any options, put here.
+#
+
+#default RPC user/pass.  PLEASE CHANGE THESE TO SUITABLE VALUES
+rpcuser=username
+rpcpassword=password
+
+#default API user/pass to blank for private network and disable authentication of API requests
+apiauth=0
+apiuser=
+apipassword=
+
+rpcallowip=127.0.0.1
+testnet=100
+addnode=240.0.255.1
+addnode=240.0.255.2
+beta=0
+fastsync=1
+server=1
+daemon=1
+threads=10            
+verbose=3    
+maxconnections=16
+private=1
+apisessions=1
+nodns=1
+argon2=1
+        

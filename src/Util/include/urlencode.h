@@ -21,7 +21,7 @@ ________________________________________________________________________________
 namespace encoding
 {
 
-    /** Url Encode
+    /** urlencode
      *
      *  Encode a string into URL format.
      *
@@ -38,23 +38,16 @@ namespace encoding
         std::string escaped="";
         for(size_t i=0; i<s.length(); i++)
         {
-            if (unreserved.find_first_of(s[i]) != std::string::npos)
-            {
+            if(unreserved.find_first_of(s[i]) != std::string::npos)
                 escaped.push_back(s[i]);
-            }
             else
-            {
-                escaped.append("%");
-                char buf[3];
-                sprintf(buf, "%.2X", s[i]);
-                escaped.append(buf);
-            }
+                escaped.append(debug::safe_printstr("%", std::uppercase, std::hex, uint32_t(s[i])));
         }
         return escaped;
     }
 
 
-    /** Url Decode
+    /** urldecode
      *
      *  Encode a string into URL format.
      *
@@ -68,7 +61,7 @@ namespace encoding
         std::string returned="";
         for(size_t i=0; i < s.length(); i++)
         {
-            if (s[i] != '%')
+            if(s[i] != '%')
             {
                 if(s[i] == '+')
                     returned.push_back(' ');

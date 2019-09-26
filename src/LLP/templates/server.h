@@ -32,6 +32,7 @@ namespace LLP
     /* forward declarations */
     class AddressManager;
     class DDOS_Filter;
+    class InfoAddress;
 
 
     /** Server
@@ -47,11 +48,10 @@ namespace LLP
     class Server
     {
     private:
+
         /* The DDOS variables. */
         std::map<BaseAddress, DDOS_Filter *> DDOS_MAP;
         std::atomic<bool> fDDOS;
-
-        std::condition_variable MANAGER;
 
         /* Basic Socket Handle Variables. */
         std::thread          LISTEN_THREAD_V4;
@@ -79,6 +79,10 @@ namespace LLP
 
         /* The sleep time of address manager. */
         uint32_t nSleepTime;
+
+
+        /* The listener socket instance. */
+        std::pair<int32_t, int32_t> hListenSocket;
 
 
         /** Name
@@ -161,8 +165,18 @@ namespace LLP
          *
          *  Get the best connection based on latency
          *
+         *  @param[in] pairExclude The connection that should be excluded from the search.
+         *
          **/
-        memory::atomic_ptr<ProtocolType>& GetConnection(const BaseAddress& addrExclude);
+        memory::atomic_ptr<ProtocolType>& GetConnection(const std::pair<uint32_t, uint32_t>& pairExclude);
+
+
+        /** Get Connection
+         *
+         *  Get the best connection based on data thread index.
+         *
+         **/
+        memory::atomic_ptr<ProtocolType>& GetConnection(const uint32_t nDataThread, const uint32_t nDataIndex);
 
 
         /** Relay
@@ -170,13 +184,12 @@ namespace LLP
          *  Relays data to all nodes on the network.
          *
          **/
-        template<typename MessageType, typename DataType>
-        void Relay(MessageType message, DataType data)
+        template<typename MessageType, typename... Args>
+        void Relay(const MessageType& message, Args&&... args)
         {
-            /* Relay message to each data thread, which will relay message to
-               each connection of each data thread */
+            /* Relay message to each data thread, which will relay message to each connection of each data thread */
             for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
-                DATA_THREADS[nThread]->Relay(message, data);
+                DATA_THREADS[nThread]->Relay(message, args...);
         }
 
 
@@ -196,6 +209,15 @@ namespace LLP
         *
         **/
         void DisconnectAll();
+
+
+        /** NotifyEvent
+         *
+         *  Tell the server an event has occured to wake up thread if it is sleeping. This can be used to orchestrate communication
+         *  among threads if a strong ordering needs to be guaranteed.
+         *
+         **/
+        void NotifyEvent();
 
 
     private:

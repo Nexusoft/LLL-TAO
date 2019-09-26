@@ -7,18 +7,14 @@
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-            "ad vocem populi" - To the Voice of the People
+            "Doubt is the precursor to fear" - Alex Hannold
 
 ____________________________________________________________________________________________*/
 
 #include <LLD/include/global.h>
 
+#include <TAO/Operation/include/coinbase.h>
 #include <TAO/Operation/include/enum.h>
-#include <TAO/Operation/include/operations.h>
-
-#include <TAO/Register/include/enum.h>
-#include <TAO/Register/include/state.h>
-#include <TAO/Register/objects/account.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -28,39 +24,46 @@ namespace TAO
     namespace Operation
     {
 
-        /* Commits funds from a coinbase transaction. */
-        bool Coinbase(const uint256_t &hashAddress, const uint64_t nAmount, const uint256_t &hashCaller, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
+        /* Commit the final state to disk. */
+        bool Coinbase::Commit(const uint256_t& hashAddress, const uint512_t& hashTx, const uint8_t nFlags)
         {
-            //make the coinbase able to be credited as a debit check in credit
-            //this will allow the number of confirmations to be defined.
-
-            /* Read the to account state. */
-            TAO::Register::State state;
-            if(!LLD::regDB->ReadState(hashAddress, state))
+            /* Check to contract caller. */
+            if(nFlags == TAO::Ledger::FLAGS::BLOCK)
             {
-                /* Set the owner of this register. */
-                state.nVersion  = 1;
-                state.nType     = TAO::Register::OBJECT::ACCOUNT;
-                state.nTimestamp = tx.nTimestamp;
-                state.hashOwner = hashCaller;
-
-                /* Create the new account. */
-                TAO::Register::Account acct;
-                acct.nVersion    = 1;
-                acct.nIdentifier = 0; //NXS native token.
-                acct.nBalance    = 0; //Always start with a 0 balance
-                state << acct;
-
-                /* Check the state change is correct. */
-                if(!state.IsValid())
-                    return debug::error(FUNCTION, "memory address ", hashAddress.ToString().c_str(), " is in invalid state");
-
-                /* Write the register to database. */
-                if(!LLD::regDB->WriteState(hashAddress, state))
-                    return debug::error(FUNCTION, "failed to write state register ", hashAddress.ToString(), " memory address");
-
-                debug::log(0, FUNCTION, "created new account ", hashAddress.ToString(), " for coinbase transaction");
+                /* Write the event to the database. */
+                if(!LLD::Ledger->WriteEvent(hashAddress, hashTx))
+                    return debug::error(FUNCTION, "OP::COINBASE: failed to write event for coinbase");
             }
+
+            return true;
+        }
+
+
+        /* Verify append validation rules and caller. */
+        bool Coinbase::Verify(const Contract& contract)
+        {
+            /* Rewind back on byte. */
+            contract.Rewind(1, Contract::OPERATIONS);
+
+            /* Get operation byte. */
+            uint8_t OP = 0;
+            contract >> OP;
+
+            /* Check operation byte. */
+            if(OP != OP::COINBASE)
+                return debug::error(FUNCTION, "called with incorrect OP");
+
+            /* Extract the address from contract. */
+            uint256_t hashGenesis;
+            contract >> hashGenesis;
+
+            /* Check for valid genesis. */
+            if(hashGenesis.GetType() != (config::fTestNet.load() ? 0xa2 : 0xa1))
+                return debug::error(FUNCTION, "invalid genesis for coinbase");
+
+            /* Seek read position to first position. */
+            contract.Rewind(32, Contract::OPERATIONS);
+
 
             return true;
         }

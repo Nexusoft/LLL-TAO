@@ -15,12 +15,11 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEDGER_TYPES_TRANSACTION_H
 #define NEXUS_TAO_LEDGER_TYPES_TRANSACTION_H
 
+#include <TAO/Operation/types/contract.h>
+
+#include <TAO/Ledger/include/enum.h>
+
 #include <vector>
-
-#include <TAO/Operation/include/stream.h>
-#include <TAO/Register/include/stream.h>
-
-#include <Util/include/runtime.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -29,6 +28,8 @@ namespace TAO
     /* Ledger Layer namespace. */
     namespace Ledger
     {
+        class BlockState;
+
 
         /** Transaction
          *
@@ -40,15 +41,10 @@ namespace TAO
          **/
         class Transaction
         {
+            /** For disk indexing on contract. **/
+            std::vector<TAO::Operation::Contract> vContracts;
+
         public:
-
-            /** The operations that create post-states. **/
-            TAO::Operation::Stream ssOperation;
-
-
-            /** The register pre-states. **/
-            TAO::Register::Stream  ssRegister;
-
 
             /** The transaction version. **/
             uint32_t nVersion;
@@ -66,6 +62,10 @@ namespace TAO
             uint256_t hashNext;
 
 
+            /** The recovery hash which can be changed only when in recovery mode. */
+            uint256_t hashRecovery;
+
+
             /** The genesis ID hash. **/
             uint256_t hashGenesis;
 
@@ -74,105 +74,186 @@ namespace TAO
             uint512_t hashPrevTx;
 
 
-            //memory only, to be disposed once fully locked into the chain behind a checkpoint
-            //this is for the segregated keys from transaction data.
+            /** The key type. **/
+            uint8_t nKeyType;
+
+
+            /** The next key type. **/
+            uint8_t nNextType;
+
+
+            /* Memory only, to be disposed once fully locked into the chain behind a checkpoint
+             * this is for the segregated keys from transaction data. */
             std::vector<uint8_t> vchPubKey;
             std::vector<uint8_t> vchSig;
 
-
-            /** Serialization **/
+            /* serialization macros */
             IMPLEMENT_SERIALIZE
             (
-                /* Operations layer. */
-                READWRITE(ssOperation);
-
-                /* Register layer. */
-                READWRITE(ssRegister);
+                /* Contracts layers. */
+                READWRITE(vContracts);
 
                 /* Ledger layer */
                 READWRITE(nVersion);
                 READWRITE(nSequence);
                 READWRITE(nTimestamp);
                 READWRITE(hashNext);
+                READWRITE(hashRecovery);
                 READWRITE(hashGenesis);
                 READWRITE(hashPrevTx);
-                READWRITE(vchPubKey);
-                if(!(nSerType & SER_GETHASH))
+                READWRITE(nKeyType);
+                READWRITE(nNextType);
+
+                /* Check for skipping public key. */
+                if(!(nSerType & SER_SKIPPUB))
+                    READWRITE(vchPubKey);
+
+                /* Handle for when not getting hash or skipsig. */
+                if(!(nSerType & SER_GETHASH) && !(nSerType & SER_SKIPSIG))
                     READWRITE(vchSig);
             )
 
 
             /** Default Constructor. **/
-            Transaction()
-            : ssOperation()
-            , ssRegister()
-            , nVersion(1)
-            , nSequence(0)
-            , nTimestamp(runtime::unifiedtimestamp())
-            , hashNext(0)
-            , hashGenesis(0)
-            , hashPrevTx(0)
-            , vchPubKey()
-            , vchSig()
-            {}
+            Transaction();
 
 
-            /** Operator Overload <<
+            /** Default Destructor. **/
+            ~Transaction();
+
+
+            /** Operator Overload >
              *
-             *  Serializes data into vchOperations
-             *
-             *  @param[in] obj The object to serialize into ledger data
+             *  Used for sorting transactions by sequence.
              *
              **/
-            template<typename Type> Transaction& operator<<(const Type& obj)
-            {
-                /* Serialize to the stream. */
-                ssOperation << obj;
-
-                return (*this);
-            }
+            bool operator>(const Transaction& tx) const;
 
 
-            /** IsValid
+             /** Operator Overload <
+              *
+              *  Used for sorting transactions by sequence.
+              *
+              **/
+            bool operator<(const Transaction& tx) const;
+
+
+            /** Operator Overload []
+             *
+             *  Access for the contract operator overload. This is for read-only objects.
+             *
+             **/
+            const TAO::Operation::Contract& operator[](const uint32_t n) const;
+
+
+            /** Operator Overload []
+             *
+             *  Write access fot the contract operator overload. This handles writes to create new contracts.
+             *
+             **/
+            TAO::Operation::Contract& operator[](const uint32_t n);
+
+
+            /** Size
+             *
+             *  Get the total contracts in transaction.
+             *
+             **/
+            uint32_t Size() const;
+
+
+            /** Check
              *
              *  Determines if the transaction is a valid transaciton and passes ledger level checks.
              *
              *  @return true if transaction is valid.
              *
              **/
-            bool IsValid() const;
+            bool Check() const;
 
 
-            /** ExtractTrust
+            /** Verify
              *
-             *  Extract the trust data from the input script.
+             *  Verify a transaction contracts.
              *
-             *  @param[out] hashLastBlock The last block to extract.
-             *  @param[out] nSequence The sequence number of proof of stake blocks.
-             *  @param[out] nTrustScore The trust score to extract.
+             *  @return true if transaction is valid.
              *
              **/
-            bool ExtractTrust(uint1024_t& hashLastBlock, uint32_t& nSequence, uint32_t& nTrustScore) const;
+            bool Verify(const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK) const;
 
 
-            /** ExtractStake
+            /** Cost
              *
-             *  Extract the stake data from the input script.
+             *  Get the total cost of this transaction.
              *
-             *  @param[out] nStake The amount being staked.
+             *  @return the cost of this transaction (in viz).
              *
              **/
-            bool ExtractStake(uint64_t& nStake) const;
+            uint64_t Cost();
 
 
-            /** IsCoinbase
+            /** Build
+             *
+             *  Build the transaction contracts.
+             *
+             *  @return true if transaction is valid.
+             *
+             **/
+            bool Build();
+
+
+            /** Connect
+             *
+             *  Connect a transaction object to the main chain.
+             *
+             *  @param[in] nFlags Flag to tell whether transaction is a mempool check.
+             *
+             *  @return true if transaction is valid.
+             *
+             **/
+            bool Connect(const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK, const BlockState* pblock = nullptr);
+
+
+            /** Disconnect
+             *
+             *  Disconnect a transaction object to the main chain.
+             *
+             *  @param[in] nFlags Flag to tell whether transaction is a mempool check.
+             *
+             *  @return true if transaction is valid.
+             *
+             **/
+            bool Disconnect(const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
+
+
+            /** IsCoinBase
              *
              *  Determines if the transaction is a coinbase transaction.
              *
              *  @return true if transaction is a coinbase.
              *
              **/
-            bool IsCoinbase() const;
+            bool IsCoinBase() const;
+
+
+            /** IsCoinStake
+             *
+             *  Determines if the transaction is a coinstake (trust or genesis) transaction.
+             *
+             *  @return true if transaction is a coinstake.
+             *
+             **/
+            bool IsCoinStake() const;
+
+
+            /** IsPrivate
+             *
+             *  Determines if the transaction is for a private block.
+             *
+             *  @return true if transaction is a coinbase.
+             *
+             **/
+            bool IsPrivate() const;
 
 
             /** IsTrust
@@ -195,6 +276,31 @@ namespace TAO
             bool IsGenesis() const;
 
 
+            /** IsFirst
+             *
+             *  Determines if the transaction is the first transaction
+             *  in a signature chain
+             *
+             *  @return true if transaction is first
+             *
+             **/
+            bool IsFirst() const;
+
+
+            /** GetTrustInfo
+             *
+             *  Gets the total trust and stake of pre-state.
+             *
+             *  @param[out] nBalance The balance in the trust account.
+             *  @param[out] nTrust The total trust in object.
+             *  @param[out] nStake The total stake in object.
+             *
+             *  @return true if succeeded
+             *
+             **/
+            bool GetTrustInfo(uint64_t& nBalance, uint64_t& nTrust, uint64_t& nStake) const;
+
+
             /** GetHash
              *
              *  Gets the hash of the transaction object.
@@ -210,9 +316,10 @@ namespace TAO
              *  Sets the Next Hash from the key
              *
              *  @param[in] hashSecret The secret phrase to generate the keys.
+             *  @param[in] nType The type of key to create with.
              *
              **/
-            void NextHash(uint512_t hashSecret);
+            void NextHash(const uint512_t& hashSecret, const uint8_t nType);
 
 
             /** PrevHash
@@ -232,7 +339,7 @@ namespace TAO
              *  @param[in] hashSecret The secret phrase to generate the keys.
              *
              **/
-             bool Sign(uint512_t hashSecret);
+             bool Sign(const uint512_t& hashSecret);
 
 
              /** print
@@ -241,6 +348,16 @@ namespace TAO
               *
               **/
              void print() const;
+
+
+             /** ToString
+             *
+             *  Create a transaction string
+             *
+             *  @return The string value to return;
+             *
+             **/
+            std::string ToString() const;
 
 
              /** ToStringShort
@@ -252,14 +369,37 @@ namespace TAO
              **/
             std::string ToStringShort() const;
 
-            /** GetTxTypeString
+
+            /** TypeString
              *
              *  User readable description of the transaction type.
              *
              *  @return User readable description of the transaction type;
              *
              **/
-            std::string GetTxTypeString() const;
+            std::string TypeString() const;
+
+
+            /** Fees
+            *
+            *  Calculates and returns the total fee included in this transaction
+            *
+            *  @return The sum of all OP::FEE contracts in the transaction
+            *
+            **/
+            uint64_t Fees() const;
+
+
+            /** CalculatedCost
+            *
+            *  Calculates the cost of this transaction from the contracts within it
+            * 
+            *  @param[in] fApplyTxFee Flag indicating that transaction fees should also apply
+            *
+            *  @return The calculated cost.
+            *
+            **/
+            uint64_t CalculatedCost(bool fApplyTxFee) const;
 
         };
     }

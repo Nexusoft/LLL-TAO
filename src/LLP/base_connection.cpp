@@ -40,6 +40,11 @@ namespace LLP
     , fDDOS(false)
     , fOUTGOING(false)
     , fCONNECTED(false)
+    , nDataThread(-1)
+    , nDataIndex(-1)
+    , fEVENT(false)
+    , EVENT_MUTEX()
+    , EVENT_CONDITION()
     {
         INCOMING.SetNull();
     }
@@ -54,6 +59,11 @@ namespace LLP
     , fDDOS(isDDOS)
     , fOUTGOING(fOutgoing)
     , fCONNECTED(false)
+    , nDataThread(-1)
+    , nDataIndex(-1)
+    , fEVENT(false)
+    , EVENT_MUTEX()
+    , EVENT_CONDITION()
     {
     }
 
@@ -68,6 +78,11 @@ namespace LLP
     , fDDOS(isDDOS)
     , fOUTGOING(fOutgoing)
     , fCONNECTED(false)
+    , nDataThread(-1)
+    , nDataIndex(-1)
+    , fEVENT(false)
+    , EVENT_MUTEX()
+    , EVENT_CONDITION()
     {
     }
 
@@ -92,6 +107,8 @@ namespace LLP
         fDDOS = false;
         fOUTGOING = false;
         fCONNECTED = false;
+        nDataThread = -1;
+        nDataIndex  = -1;
     }
 
 
@@ -100,6 +117,13 @@ namespace LLP
     bool BaseConnection<PacketType>::Connected() const
     {
         return fCONNECTED.load();
+    }
+
+    /* Flag to detect if connection is an inbound connection. */
+    template <class PacketType>
+    bool BaseConnection<PacketType>::Incoming() const
+    {
+        return !fOUTGOING.load();
     }
 
 
@@ -129,7 +153,7 @@ namespace LLP
         std::vector<uint8_t> vBytes = PACKET.GetBytes();
 
         /* Debug dump of message type. */
-        debug::log(3, NODE "Sent Message (", vBytes.size(), " bytes)");
+        debug::log(4, NODE, "sent packet (", vBytes.size(), " bytes)");
 
         /* Debug dump of packet data. */
         if(config::GetArg("-verbose", 0) >= 5)
@@ -144,22 +168,22 @@ namespace LLP
     template <class PacketType>
     bool BaseConnection<PacketType>::Connect(const BaseAddress &addrConnect)
     {
-
-        std::string connectStr = addrConnect.ToStringIP();
+        std::string strConnect = addrConnect.ToStringIP();
 
         /* Check for connect to self */
-        if(addr.ToStringIP() == connectStr)
+        if(addr.ToStringIP() == strConnect)
             return debug::error(NODE, "cannot self-connect");
 
-        debug::log(1, NODE, "Connecting to ", connectStr);
+        /* Debug information. */
+        debug::log(1, NODE, "Connecting to ", strConnect);
 
         // Connect
-        if (Attempt(addrConnect))
+        if(Attempt(addrConnect))
         {
-            debug::log(1, NODE, "Connected to ", connectStr);
+            debug::log(1, NODE, "Connected to ", strConnect);
 
-            fCONNECTED = true;
-            fOUTGOING = true;
+            fCONNECTED  = true;
+            fOUTGOING   = true;
 
             return true;
         }
@@ -168,14 +192,41 @@ namespace LLP
     }
 
 
+    /* Disconnect Socket. Cleans up memory usage to prevent "memory runs" from poor memory management. */
     template <class PacketType>
     void BaseConnection<PacketType>::Disconnect()
     {
+        /* Wake any potential sleeping connections up on disconnect. */
+        NotifyEvent();
+
         if(fCONNECTED.load())
         {
             Close();
             fCONNECTED = false;
         }
+    }
+
+
+    /* Notify connection an event occured to wake up a sleeping connection. */
+    template <class PacketType>
+    void BaseConnection<PacketType>::NotifyEvent()
+    {
+        /* Set the events flag and notify. */
+        fEVENT = true;
+        EVENT_CONDITION.notify_all();
+    }
+
+
+    /* Have connection wait for a notify signal to wake up. */
+    template <class PacketType>
+    void BaseConnection<PacketType>::WaitEvent()
+    {
+        /* Reset the events flag. */
+        fEVENT = false;
+
+        /* Wait for a notify signal. */
+        std::unique_lock<std::mutex> lk(EVENT_MUTEX);
+        EVENT_CONDITION.wait(lk, [this]{return fEVENT.load() || config::fShutdown.load(); });
     }
 
 

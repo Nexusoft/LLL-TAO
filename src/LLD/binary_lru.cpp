@@ -11,33 +11,45 @@
 ____________________________________________________________________________________________*/
 
 #include <LLD/cache/binary_lru.h>
+#include <LLD/hash/xxh3.h>
+
 #include <Util/include/mutex.h>
-#include <openssl/md5.h>
+#include <Util/include/debug.h>
 
 namespace LLD
 {
     /*  Node to hold the binary data of the double linked list. */
     struct BinaryNode
     {
+        /** The prev pointer. **/
         BinaryNode* pprev;
+
+        /** The next pointer. **/
         BinaryNode* pnext;
 
-        std::vector<uint8_t> vKey;
+        /** Store the key as 64-bit hash, since we have checksum to verify against too. **/
+        uint64_t hashKey;
+
+        /** The data in the binary node. **/
         std::vector<uint8_t> vData;
 
-        bool fReserve;
-
         /** Default constructor **/
-        BinaryNode(const std::vector<uint8_t>& vKeyIn, const std::vector<uint8_t>& vDataIn, bool fReserveIn);
+        BinaryNode(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vDataIn);
+
+        /** Checksum. **/
+        uint64_t Checksum() const
+        {
+            return XXH64(&vData[0], vData.size(), 0);
+        }
     };
 
+
     /** Default constructor **/
-    BinaryNode::BinaryNode(const std::vector<uint8_t>& vKeyIn, const std::vector<uint8_t>& vDataIn, bool fReserveIn)
+    BinaryNode::BinaryNode(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vDataIn)
     : pprev(nullptr)
     , pnext(nullptr)
-    , vKey(vKeyIn)
+    , hashKey(XXH64(&vKey[0], vKey.size(), 0))
     , vData(vDataIn)
-    , fReserve(fReserveIn)
     {
     }
 
@@ -45,9 +57,11 @@ namespace LLD
     /** Base Constructor.  **/
     BinaryLRU::BinaryLRU()
     : MAX_CACHE_SIZE(1024 * 1024)
-    , MAX_CACHE_BUCKETS(MAX_CACHE_SIZE / 32)
-    , nCurrentSize(MAX_CACHE_BUCKETS * 8)
-    , hashmap(MAX_CACHE_BUCKETS)
+    , MAX_CACHE_BUCKETS(MAX_CACHE_SIZE / 128)
+    , nCurrentSize(MAX_CACHE_BUCKETS * 16)
+    , MUTEX()
+    , hashmap(MAX_CACHE_BUCKETS, nullptr)
+    , checksums(MAX_CACHE_BUCKETS, 0)
     , pfirst(nullptr)
     , plast(nullptr)
     {
@@ -57,9 +71,11 @@ namespace LLD
     /** Cache Size Constructor **/
     BinaryLRU::BinaryLRU(uint32_t nCacheSizeIn)
     : MAX_CACHE_SIZE(nCacheSizeIn)
-    , MAX_CACHE_BUCKETS(nCacheSizeIn / 32)
-    , nCurrentSize(MAX_CACHE_BUCKETS * 8)
-    , hashmap(MAX_CACHE_BUCKETS)
+    , MAX_CACHE_BUCKETS(nCacheSizeIn / 128)
+    , nCurrentSize(MAX_CACHE_BUCKETS * 16)
+    , MUTEX()
+    , hashmap(MAX_CACHE_BUCKETS, nullptr)
+    , checksums(MAX_CACHE_BUCKETS, 0)
     , pfirst(nullptr)
     , plast(nullptr)
     {
@@ -71,21 +87,44 @@ namespace LLD
     {
         /* Loop through the linked list. */
         for(auto& item : hashmap)
-            if(item)
+            if(item != nullptr)
                 delete item;
+    }
+
+
+    /*  Get the checksum of a data object. */
+    uint64_t BinaryLRU::Checksum(const std::vector<uint8_t>& vData) const
+    {
+        return XXH64(&vData[0], vData.size(), 0);
+    }
+
+
+    /*  Find a bucket for cache key management. */
+    uint32_t BinaryLRU::Bucket(const BinaryNode* pnode) const
+    {
+        /* Get an xxHash. */
+        uint64_t nChecksum = pnode->Checksum();
+        uint64_t nBucket   = XXH64((uint8_t*)&nChecksum, 8, 0);
+
+        return static_cast<uint32_t>(nBucket % static_cast<uint64_t>(MAX_CACHE_BUCKETS));
     }
 
 
     /*  Find a bucket for cache key management. */
     uint32_t BinaryLRU::Bucket(const std::vector<uint8_t>& vKey) const
     {
-        /* Get an MD5 digest. */
-        uint8_t digest[MD5_DIGEST_LENGTH];
-        MD5((uint8_t*)&vKey[0], vKey.size(), (uint8_t*)&digest);
+        /* Get an xxHash. */
+        uint64_t nBucket = XXH64(&vKey[0], vKey.size(), 0);
 
-        /* Copy bytes into the bucket. */
-        uint64_t nBucket;
-        std::copy((uint8_t*)&digest[0], (uint8_t*)&digest[0] + 8, (uint8_t*)&nBucket);
+        return static_cast<uint32_t>(nBucket % static_cast<uint64_t>(MAX_CACHE_BUCKETS));
+    }
+
+
+    /*  Find a bucket for checksum key management. */
+    uint32_t BinaryLRU::Bucket(const uint64_t nChecksum) const
+    {
+        /* Get an xxHash. */
+        uint64_t nBucket = XXH64((uint8_t*)&nChecksum, 8, 0);
 
         return static_cast<uint32_t>(nBucket % static_cast<uint64_t>(MAX_CACHE_BUCKETS));
     }
@@ -96,8 +135,22 @@ namespace LLD
     {
         LOCK(MUTEX);
 
-        uint32_t nBucket = Bucket(vKey);
-        return (hashmap[nBucket] != nullptr && hashmap[nBucket]->vKey == vKey);
+        /* Get the data. */
+        const uint64_t& nChecksum = checksums[Bucket(vKey)];
+        if(nChecksum == 0)
+            return false;
+
+        /* Check if the Record Exists. */
+        const BinaryNode* pthis = hashmap[Bucket(nChecksum)];
+        if(pthis == nullptr)
+            return false;
+
+        /* Check the data is expected. */
+        if(pthis->Checksum() != nChecksum)
+            return false;
+
+        /* Check the data is expected. */
+        return (pthis->hashKey == XXH64(&vKey[0], vKey.size(), 0));
     }
 
 
@@ -177,19 +230,39 @@ namespace LLD
     {
         LOCK(MUTEX);
 
-        /* Get the data. */
-        BinaryNode* pthis = hashmap[Bucket(vKey)];
+        /* Get the checksum bucket. */
+        uint32_t nChecksumBucket = Bucket(vKey);
+
+        /* Check for data. */
+        const uint64_t& nChecksum = checksums[nChecksumBucket];
+        if(nChecksum == 0)
+            return false;
+
+        /* Get the binary node. */
+        BinaryNode* pthis = hashmap[Bucket(nChecksum)];
 
         /* Check if the Record Exists. */
-        if (pthis == nullptr || pthis->vKey != vKey)
+        if(pthis == nullptr)
+        {
+            /* Set checksum to zero if record not found. */
+            checksums[nChecksumBucket] = 0;
+
+            return false;
+        }
+
+        /* Check the data is expected. */
+        if(pthis->Checksum() != nChecksum)
+            return false;
+
+        /* Check the keys are correct. */
+        if(pthis->hashKey != XXH64(&vKey[0], vKey.size(), 0))
             return false;
 
         /* Get the data. */
         vData = pthis->vData;
 
         /* Move to front of double linked list. */
-        if(!pthis->fReserve)
-            MoveToFront(pthis);
+        MoveToFront(pthis);
 
         return true;
     }
@@ -200,114 +273,120 @@ namespace LLD
     {
         LOCK(MUTEX);
 
-        /* If has a key, check for bucket collisions. */
-        uint32_t nBucket = Bucket(vKey);
+        /* Check for empty slot. */
+        uint32_t nChecksumBucket = Bucket(vKey);
+        uint64_t nChecksum       = checksums[nChecksumBucket];
 
-        /* Check for bucket collisions. */
+        /* Check the checksums. */
+        if(nChecksum == Checksum(vData))
+            return;
+
+        /* Get the binary node. */
+        if(nChecksum != 0)
+        {
+            uint32_t nBucket  = Bucket(nChecksum);
+            BinaryNode* pthis = hashmap[nBucket];
+
+            /* Check for dereferencing nullptr. */
+            if(pthis != nullptr)
+            {
+                /* Remove from the linked list. */
+                RemoveNode(pthis);
+
+                /* Dereference the pointers. */
+                hashmap[nBucket]           = nullptr;
+                pthis->pprev               = nullptr;
+                pthis->pnext               = nullptr;
+
+                /* Reduce the current size. */
+                nCurrentSize -= static_cast<uint32_t>(pthis->vData.size() + 48);
+
+                /* Free the memory. */
+                delete pthis;
+            }
+
+            checksums[nChecksumBucket] = 0;
+        }
+
+        /* Create a new cache node. */
+        BinaryNode* pnew = new BinaryNode(vKey, vData);
+        nChecksum = pnew->Checksum();
+
+        /* Get the bucket. */
+        uint32_t nBucket    = Bucket(nChecksum);
+
+        /* Cleanup if colliding with another bucket. */
         if(hashmap[nBucket] != nullptr)
         {
-            /* Get the object we are working on. */
+            /* Get copy of pointer. */
             BinaryNode* pthis = hashmap[nBucket];
 
             /* Remove from the linked list. */
             RemoveNode(pthis);
 
             /* Dereference the pointers. */
-            hashmap[nBucket] = nullptr;
-            pthis->pprev     = nullptr;
-            pthis->pnext     = nullptr;
-            pthis->fReserve  = false;
+            hashmap[nBucket]           = nullptr;
+            pthis->pprev               = nullptr;
+            pthis->pnext               = nullptr;
 
             /* Reduce the current size. */
-            nCurrentSize -= static_cast<uint32_t>(pthis->vData.size() - pthis->vKey.size());
+            nCurrentSize -= static_cast<uint32_t>(pthis->vData.size() + 48);
 
             /* Free the memory. */
             delete pthis;
         }
 
-        /* Create a new cache node. */
-        BinaryNode* pthis = new BinaryNode(vKey, vData, fReserve);
-
         /* Add cache node to objects map. */
-        hashmap[nBucket] = pthis;
+        hashmap[nBucket]            = pnew;
+        checksums[nChecksumBucket]  = nChecksum;
 
         /* Set the new cache node to the front */
-        if(!pthis->fReserve)
-            MoveToFront(pthis);
-
-        /* Set the new cache size. */
-        nCurrentSize += static_cast<uint32_t>(vData.size() + vKey.size());
+        MoveToFront(pnew);
 
         /* Remove the last node if cache too large. */
         while(nCurrentSize > MAX_CACHE_SIZE)
         {
-            /* Get the last key. */
-            if(plast && plast->pprev)
-            {
-                BinaryNode *pnode = plast;
+            /* Get last pointer. */
+            BinaryNode* pnode = plast;
+            if(!pnode)
+                return;
 
-                /* Relink in memory. */
-                plast = plast->pprev;
+            /* Set the next link. */
+            if(!plast->pprev)
+                return;
 
-                if(plast && plast->pnext)
-                    plast->pnext = nullptr;
+            /* Set the new links. */
+            plast = plast->pprev;
 
-                /* Reduce the current cache size. */
-                if(pnode)
-                {
-                    nCurrentSize -= static_cast<uint32_t>(pnode->vData.size() - pnode->vKey.size());
+            /* Check for nullptr. */
+            if(plast)
+                plast->pnext = nullptr;
 
-                    /* Clear the pointers. */
-                    hashmap[Bucket(pnode->vKey)] = nullptr;
+            /* Clear the pointers. */
+            hashmap[Bucket(pnode)]   = nullptr;
 
-                    /* Reset the memory linking. */
-                    pnode->pprev = nullptr;
-                    pnode->pnext = nullptr;
+            /* Set the checksums. */
+            uint32_t nBucket = static_cast<uint32_t>(pnode->hashKey % static_cast<uint64_t>(MAX_CACHE_BUCKETS));
+            checksums[nBucket] = 0;
 
-                    /* Free the memory */
-                    delete pnode;
-                }
+            /* Reset the memory linking. */
+            pnode->pprev = nullptr;
+            pnode->pnext = nullptr;
 
-                pnode = nullptr;
+            /* Free the memory */
+            nCurrentSize -= static_cast<uint32_t>(pnode->vData.size() + 48);
 
-                continue;
-            }
-
-            break;
+            delete pnode;
         }
+
+        /* Set the new cache size. */
+        nCurrentSize += static_cast<uint32_t>(vData.size() + 48);
     }
 
 
     /*  Reserve this item in the cache permanently if true, unreserve if false. */
     void BinaryLRU::Reserve(const std::vector<uint8_t>& vKey, bool fReserve)
     {
-        LOCK(MUTEX);
-
-        /* Get the data. */
-        BinaryNode* pthis = hashmap[Bucket(vKey)];
-
-        //TODO: have a seperate memory structure for reserved entries.
-        //Then do a PUT if reserve is set to false
-
-        /* Check if the Record Exists. */
-        if (pthis == nullptr || pthis->vKey != vKey)
-            return;
-
-        /* Set object to reserved. */
-        pthis->fReserve = fReserve;
-
-        /* Move back to linked list. */
-        if(!fReserve)
-        {
-            /* Set prev to null to signal front of list */
-            pthis->pprev = nullptr;
-
-            /* Set next to the current first */
-            pthis->pnext = pfirst;
-
-            /* Set the first pointer. */
-            pfirst = pthis;
-        }
     }
 
 
@@ -316,32 +395,40 @@ namespace LLD
     {
         LOCK(MUTEX);
 
-        /* Get the bucket. */
-        uint32_t nBucket = Bucket(vKey);
+        /* Get the data. */
+        const uint64_t& nChecksum = checksums[Bucket(vKey)];
 
-        /* Get the object we are working on. */
+        /* Check for data. */
+        if(nChecksum == 0)
+            return false;
+
+        /* Get the binary node. */
+        uint32_t nBucket  = Bucket(nChecksum);
         BinaryNode* pthis = hashmap[nBucket];
 
         /* Check if the Record Exists. */
-        if (pthis == nullptr || pthis->vKey != vKey)
+        if(pthis == nullptr)
+        {
+            /* Reset the checksum. */
+            checksums[Bucket(vKey)] = 0;
+
             return false;
+        }
 
         /* Remove from the linked list. */
         RemoveNode(pthis);
 
         /* Dereference the pointers. */
-        hashmap[nBucket] = nullptr;
-        pthis->pprev     = nullptr;
-        pthis->pnext     = nullptr;
-        pthis->fReserve  = false;
-
-        /* Reduce the current size. */
-        nCurrentSize -= static_cast<uint32_t>(pthis->vData.size() - pthis->vKey.size());
+        hashmap[Bucket(pthis)]   = nullptr;
+        pthis->pprev             = nullptr;
+        pthis->pnext             = nullptr;
 
         /* Free the memory. */
+        nCurrentSize -= static_cast<uint32_t>(pthis->vData.size() + 48);
+        checksums[Bucket(vKey)] = 0;
+
         delete pthis;
 
         return true;
     }
-
 }

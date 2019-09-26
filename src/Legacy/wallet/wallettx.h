@@ -15,16 +15,17 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_WALLET_WALLETTX_H
 #define NEXUS_LEGACY_WALLET_WALLETTX_H
 
-#include <list>
-#include <map>
-#include <string>
-#include <vector>
-
+#include <Legacy/types/address.h>
 #include <Legacy/types/merkle.h>
 #include <Legacy/wallet/wallet.h>
 
 #include <Util/include/debug.h>
 #include <Util/templates/serialize.h>
+
+#include <list>
+#include <map>
+#include <string>
+#include <vector>
 
 
 /* forward declaration */
@@ -61,8 +62,10 @@ namespace Legacy
         /** Mutex for thread concurrency across transaction operations. **/
         static std::mutex cs_wallettx;
 
+
         /** Pointer to the wallet to which this transaction is bound **/
-        Wallet* ptransactionWallet;
+        Wallet* pWallet;
+
 
         /** Flag indicating whether or not transaction bound to wallet **/
         bool fHaveWallet;
@@ -78,7 +81,7 @@ namespace Legacy
 
     public:
         /** Previous transactions that contain outputs spent by inputs to this transaction **/
-        std::vector<WalletTx> vtxPrev;
+        std::vector<MerkleTx> vtxPrev;
 
 
         /** Used by serialization to store/retrieve vfSpent and other settings.
@@ -90,8 +93,12 @@ namespace Legacy
         std::vector<std::pair<std::string, std::string> > vOrderForm;
 
 
-        /** The sending account label for this tranasction **/
+        /** The sending account label for this tranasction (optional, if send from specific account) **/
         std::string strFromAccount;
+
+
+        /** The sending Nexus Address for this tranasction (optional, if send from specific address) **/
+        NexusAddress fromAddress;
 
 
         /** char vector with true/false values indicating spent outputs.
@@ -225,27 +232,34 @@ namespace Legacy
         virtual ~WalletTx();
 
 
-        /* Wallet transaction serialize/unserialize needs some customization to set up data*/
+        /* Wallet transaction serialize/unserialize needs some customization to set up data
+         *
+         * 2019/08/23 - Added fromAddress. Older transactions won't have this field so mapValue
+         * is used to conditionally serialize/deserialize only when present.
+         */
         IMPLEMENT_SERIALIZE
         (
             WalletTx* pthis = const_cast<WalletTx*>(this);
-            if (fRead)
+            if(fRead)
             {
                 pthis->fHaveWallet = false;
-                pthis->ptransactionWallet = nullptr;
+                pthis->pWallet = nullptr;
                 pthis->InitWalletTx();
             }
             bool fSpent = false;
 
-            if (!fRead)
+            if(!fRead)
             {
                 pthis->mapValue["fromaccount"] = pthis->strFromAccount;
+
+                if(fromAddress.IsValid())
+                    pthis->mapValue["fromaddress"] = pthis->fromAddress.ToString();
 
                 std::string str;
                 for(bool f : vfSpent)
                 {
                     str += (f ? '1' : '0');
-                    if (f)
+                    if(f)
                         fSpent = true;
                 }
                 pthis->mapValue["spent"] = str;
@@ -261,11 +275,18 @@ namespace Legacy
             READWRITE(fFromMe);
             READWRITE(fSpent);
 
-            if (fRead)
+            if(fRead)
             {
                 pthis->strFromAccount = pthis->mapValue["fromaccount"];
 
-                if (mapValue.count("spent"))
+                if(mapValue.count("fromaddress"))
+                {
+                    NexusAddress fromAddress(pthis->mapValue["fromaddress"]);
+                    pthis->fromAddress = fromAddress;
+                    pthis->mapValue.erase("fromaddress");
+                }
+
+                if(mapValue.count("spent"))
                     for(char c : pthis->mapValue["spent"])
                         pthis->vfSpent.push_back(c != '0');
                 else
@@ -275,7 +296,7 @@ namespace Legacy
             pthis->mapValue.erase("fromaccount");
             pthis->mapValue.erase("version");
             pthis->mapValue.erase("spent");
-        )
+      )
 
 
         /** BindWallet
@@ -373,20 +394,6 @@ namespace Legacy
         uint64_t GetTxTime() const;
 
 
-
-        /** GetRequestCount
-         *
-         *  Get the number of remote requests recorded for this transaction.
-         *
-         *  Coinbase and Coinstake transactions are tracked at the block level,
-         *  so count records requests for the block containing them.
-         *
-         *  @return The request count as recorded by request tracking, -1 if not tracked, 0 if no wallet bound
-         *
-         **/
-        int32_t GetRequestCount() const;
-
-
         /** IsFromMe
          *
          *  Checks whether this transaction contains any inputs belonging to the bound wallet.
@@ -468,10 +475,10 @@ namespace Legacy
          *  Store this transaction in the database for the bound wallet
          *  when wallet is file backed.
          *
-         *  @param[in] nOut The index value of the output to mark
+         *  @param[in] hash The hash of the transaction
          *
          **/
-        bool WriteToDisk();
+        bool WriteToDisk(const uint512_t& hash);
 
 
         /** GetAmounts
@@ -495,8 +502,9 @@ namespace Legacy
          *  @param[out] strSentAccount The sent from account assigned to this transaction, if any
          *
          **/
-        void GetAmounts(int64_t& nGeneratedImmature, int64_t& nGeneratedMature, std::list<std::pair<NexusAddress, int64_t> >& listReceived,
-                        std::list<std::pair<NexusAddress, int64_t> >& listSent, int64_t& nFee, std::string& strSentAccount) const;
+        void GetAmounts(int64_t& nGeneratedImmature, int64_t& nGeneratedMature,
+            std::list<std::pair<Legacy::Script, int64_t> >& listReceived,
+            std::list<std::pair<Legacy::Script, int64_t> >& listSent, int64_t& nFee, std::string& strSentAccount) const;
 
 
         /** GetAmounts
@@ -533,7 +541,7 @@ namespace Legacy
          *  Send this transaction to the network if not in our database, yet.
          *
          **/
-        void RelayWalletTransaction() const;
+        bool RelayWalletTransaction() const;
 
     };
 

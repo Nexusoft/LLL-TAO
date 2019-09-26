@@ -15,12 +15,13 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_WALLET_OUTPUT_H
 #define NEXUS_LEGACY_WALLET_OUTPUT_H
 
-#include <string>
-
 #include <Legacy/wallet/wallettx.h>
 
 #include <Util/include/debug.h>
 #include <Util/include/string.h> /* for FormatMoney() */
+
+#include <string>
+
 
 namespace Legacy
 {
@@ -81,7 +82,7 @@ namespace Legacy
          **/
         std::string ToString() const
         {
-            return debug::safe_printstr("Output(", walletTx.GetHash().ToString().substr(0,10), ", ", i, ", ", nDepth, ") [", FormatMoney(walletTx.vout[i].nValue), "]");
+            return debug::safe_printstr("Output(", walletTx.GetHash().SubString(10), ", ", i, ", ", nDepth, ") [", FormatMoney(walletTx.vout[i].nValue), "]");
         }
 
 

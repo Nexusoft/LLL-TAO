@@ -86,14 +86,14 @@ typedef uint_64t        u64b_t;             /* 64-bit uint32_teger */
 #ifndef Skein_Swap64  /* swap for big-endian, nop for little-endian */
 #if     SKEIN_NEED_SWAP
 #define Skein_Swap64(w64)                       \
-  ( (( ((u64b_t)(w64))       & 0xFF) << 56) |   \
+  (((((u64b_t)(w64))       & 0xFF) << 56) |   \
     (((((u64b_t)(w64)) >> 8) & 0xFF) << 48) |   \
     (((((u64b_t)(w64)) >>16) & 0xFF) << 40) |   \
     (((((u64b_t)(w64)) >>24) & 0xFF) << 32) |   \
     (((((u64b_t)(w64)) >>32) & 0xFF) << 24) |   \
     (((((u64b_t)(w64)) >>40) & 0xFF) << 16) |   \
     (((((u64b_t)(w64)) >>48) & 0xFF) <<  8) |   \
-    (((((u64b_t)(w64)) >>56) & 0xFF)      ) )
+    (((((u64b_t)(w64)) >>56) & 0xFF)    ))
 #else
 #define Skein_Swap64(w64)  (w64)
 #endif
@@ -106,7 +106,7 @@ void    Skein_Put64_LSB_First(u08b_t *dst,const u64b_t *src,size_t bCnt)
     { /* this version is fully portable (big-endian or little-endian), but slow */
     size_t n;
 
-    for (n=0;n<bCnt;n++)
+    for(n=0;n<bCnt;n++)
         dst[n] = (u08b_t) (src[n>>3] >> (8*(n&7)));
     }
 #else
@@ -121,8 +121,8 @@ void    Skein_Get64_LSB_First(u64b_t *dst,const u08b_t *src,size_t wCnt)
     { /* this version is fully portable (big-endian or little-endian), but slow */
     size_t n;
 
-    for (n=0;n<8*wCnt;n+=8)
-        dst[n/8] = (((u64b_t) src[n  ])      ) +
+    for(n=0;n<8*wCnt;n+=8)
+        dst[n/8] = (((u64b_t) src[n  ])    ) +
                    (((u64b_t) src[n+1]) <<  8) +
                    (((u64b_t) src[n+2]) << 16) +
                    (((u64b_t) src[n+3]) << 24) +

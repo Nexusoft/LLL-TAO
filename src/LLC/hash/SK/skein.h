@@ -40,24 +40,24 @@ enum
     SKEIN_BAD_HASHLEN     =      2
 };
 
-#define  SKEIN_MODIFIER_WORDS  ( 2)          /* number of modifier (tweak) words */
+#define  SKEIN_MODIFIER_WORDS  (2)          /* number of modifier (tweak) words */
 
-#define  SKEIN_256_STATE_WORDS ( 4)
-#define  SKEIN_512_STATE_WORDS ( 8)
+#define  SKEIN_256_STATE_WORDS (4)
+#define  SKEIN_512_STATE_WORDS (8)
 #define  SKEIN1024_STATE_WORDS (16)
 #define  SKEIN_MAX_STATE_WORDS (16)
 
-#define  SKEIN_256_STATE_BYTES ( 8*SKEIN_256_STATE_WORDS)
-#define  SKEIN_512_STATE_BYTES ( 8*SKEIN_512_STATE_WORDS)
-#define  SKEIN1024_STATE_BYTES ( 8*SKEIN1024_STATE_WORDS)
+#define  SKEIN_256_STATE_BYTES (8*SKEIN_256_STATE_WORDS)
+#define  SKEIN_512_STATE_BYTES (8*SKEIN_512_STATE_WORDS)
+#define  SKEIN1024_STATE_BYTES (8*SKEIN1024_STATE_WORDS)
 
 #define  SKEIN_256_STATE_BITS  (64*SKEIN_256_STATE_WORDS)
 #define  SKEIN_512_STATE_BITS  (64*SKEIN_512_STATE_WORDS)
 #define  SKEIN1024_STATE_BITS  (64*SKEIN1024_STATE_WORDS)
 
-#define  SKEIN_256_BLOCK_BYTES ( 8*SKEIN_256_STATE_WORDS)
-#define  SKEIN_512_BLOCK_BYTES ( 8*SKEIN_512_STATE_WORDS)
-#define  SKEIN1024_BLOCK_BYTES ( 8*SKEIN1024_STATE_WORDS)
+#define  SKEIN_256_BLOCK_BYTES (8*SKEIN_256_STATE_WORDS)
+#define  SKEIN_512_BLOCK_BYTES (8*SKEIN_512_STATE_WORDS)
+#define  SKEIN1024_BLOCK_BYTES (8*SKEIN1024_STATE_WORDS)
 
 typedef struct
 {
@@ -87,7 +87,7 @@ typedef struct                               /* 1024-bit Skein hash context stru
     u08b_t  b[SKEIN1024_BLOCK_BYTES];        /* partial block buffer (8-byte aligned) */
 } Skein1024_Ctxt_t;
 
-/*   Skein APIs for (incremental) "straight hashing" */
+/*   Skein APIs for(incremental) "straight hashing" */
 int  Skein_256_Init  (Skein_256_Ctxt_t *ctx, size_t hashBitLen);
 int  Skein_512_Init  (Skein_512_Ctxt_t *ctx, size_t hashBitLen);
 int  Skein1024_Init  (Skein1024_Ctxt_t *ctx, size_t hashBitLen);
@@ -154,18 +154,18 @@ int  Skein1024_Output   (Skein1024_Ctxt_t *ctx, u08b_t * hashVal);
 #define SKEIN_T1_POS_FINAL      SKEIN_T1_BIT(127)       /* bit  127     : final block flag         */
 
 /* tweak word T[1]: flag bit definition(s) */
-#define SKEIN_T1_FLAG_FIRST     (((u64b_t)  1 ) << SKEIN_T1_POS_FIRST)
-#define SKEIN_T1_FLAG_FINAL     (((u64b_t)  1 ) << SKEIN_T1_POS_FINAL)
-#define SKEIN_T1_FLAG_BIT_PAD   (((u64b_t)  1 ) << SKEIN_T1_POS_BIT_PAD)
+#define SKEIN_T1_FLAG_FIRST     (((u64b_t)  1) << SKEIN_T1_POS_FIRST)
+#define SKEIN_T1_FLAG_FINAL     (((u64b_t)  1) << SKEIN_T1_POS_FINAL)
+#define SKEIN_T1_FLAG_BIT_PAD   (((u64b_t)  1) << SKEIN_T1_POS_BIT_PAD)
 
 /* tweak word T[1]: tree level bit field mask */
 #define SKEIN_T1_TREE_LVL_MASK  (((u64b_t)0x7F) << SKEIN_T1_POS_TREE_LVL)
 #define SKEIN_T1_TREE_LEVEL(n)  (((u64b_t) (n)) << SKEIN_T1_POS_TREE_LVL)
 
 /* tweak word T[1]: block type field */
-#define SKEIN_BLK_TYPE_KEY      ( 0)                    /* key, for MAC and KDF */
-#define SKEIN_BLK_TYPE_CFG      ( 4)                    /* configuration block */
-#define SKEIN_BLK_TYPE_PERS     ( 8)                    /* personalization string */
+#define SKEIN_BLK_TYPE_KEY      (0)                    /* key, for MAC and KDF */
+#define SKEIN_BLK_TYPE_CFG      (4)                    /* configuration block */
+#define SKEIN_BLK_TYPE_PERS     (8)                    /* personalization string */
 #define SKEIN_BLK_TYPE_PK       (12)                    /* public key (for digital signature hashing) */
 #define SKEIN_BLK_TYPE_KDF      (16)                    /* key identifier for KDF */
 #define SKEIN_BLK_TYPE_NONCE    (20)                    /* nonce for PRNG */
@@ -200,8 +200,8 @@ int  Skein1024_Output   (Skein1024_Ctxt_t *ctx, u08b_t * hashVal);
 #define SKEIN_CFG_STR_LEN       (4*8)
 
 /* bit field definitions in config block treeInfo word */
-#define SKEIN_CFG_TREE_LEAF_SIZE_POS  ( 0)
-#define SKEIN_CFG_TREE_NODE_SIZE_POS  ( 8)
+#define SKEIN_CFG_TREE_LEAF_SIZE_POS  (0)
+#define SKEIN_CFG_TREE_NODE_SIZE_POS  (8)
 #define SKEIN_CFG_TREE_MAX_LEVEL_POS  (16)
 
 #define SKEIN_CFG_TREE_LEAF_SIZE_MSK  ((u64b_t) 0xFF) << SKEIN_CFG_TREE_LEAF_SIZE_POS)
@@ -267,7 +267,7 @@ int  Skein1024_Output   (Skein1024_Ctxt_t *ctx, u08b_t * hashVal);
 #define Skein_assert(x)         assert(x)
 #else
 #include <assert.h>
-#define Skein_Assert(x,retCode) { if (!(x)) return retCode; } /*  caller  error */
+#define Skein_Assert(x,retCode) { if(!(x)) return retCode; } /*  caller  error */
 #define Skein_assert(x)         assert(x)                     /* internal error */
 #endif
 
@@ -314,7 +314,7 @@ enum
 #else                                        /* allow command-line define in range 8*(5..14)   */
 #define SKEIN_256_ROUNDS_TOTAL (8*((((SKEIN_ROUNDS/100) + 5) % 10) + 5))
 #define SKEIN_512_ROUNDS_TOTAL (8*((((SKEIN_ROUNDS/ 10) + 5) % 10) + 5))
-#define SKEIN1024_ROUNDS_TOTAL (8*((((SKEIN_ROUNDS    ) + 5) % 10) + 5))
+#define SKEIN1024_ROUNDS_TOTAL (8*((((SKEIN_ROUNDS  ) + 5) % 10) + 5))
 #endif
 
 #endif  /* ifndef _SKEIN_H_ */

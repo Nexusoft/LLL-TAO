@@ -15,30 +15,41 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_REGISTER_INCLUDE_VERIFY_H
 #define NEXUS_TAO_REGISTER_INCLUDE_VERIFY_H
 
-#include <TAO/Ledger/types/transaction.h>
+#include <LLC/types/uint1024.h>
+
+#include <TAO/Ledger/include/enum.h>
 
 /* Global TAO namespace. */
 namespace TAO
 {
 
+    /* Register layer. */
+    namespace Operation
+    {
+        /* Forward declarations. */
+        class Contract;
+    }
+
     /* Register Layer namespace. */
     namespace Register
     {
+        class State;
 
         /** Verify
          *
          *  Verify the pre-states of a register to current network state.
          *
-         *  @param[in] tx The transaction to verify pre-states with.
+         *  @param[in] contract The contract to verify.
+         *  @param[out] mapStates The temporary states if pre-states rely on previous contracts.
          *  @param[in] nFlags The flags to verify for.
          *
          *  @return true if verified correctly, false otherwise.
          *
          **/
-        bool Verify(TAO::Ledger::Transaction tx);
+        bool Verify(const TAO::Operation::Contract& contract,
+                    std::map<uint256_t, TAO::Register::State>& mapStates, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
     }
-
 }
 
 #endif

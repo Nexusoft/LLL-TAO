@@ -16,8 +16,12 @@ ________________________________________________________________________________
 #define NEXUS_LLP_TEMPLATES_BASE_CONNECTION_H
 
 #include <LLP/templates/socket.h>
+
 #include <Util/include/mutex.h>
+#include <Util/templates/datastream.h>
+
 #include <vector>
+#include <condition_variable>
 
 
 namespace LLP
@@ -25,6 +29,7 @@ namespace LLP
 
     /* Forward declarations. */
     class DDOS_Filter;
+
 
     /** BaseConnection
      *
@@ -59,6 +64,7 @@ namespace LLP
          **/
         virtual bool ProcessPacket() = 0;
 
+
     public:
 
         /** Incoming Packet Being Built. **/
@@ -85,21 +91,71 @@ namespace LLP
         std::atomic<bool> fCONNECTED;
 
 
+        /** Index for the current data thread processing. **/
+        int32_t nDataThread;
+
+
+        /** Index for the current slot in data thread. **/
+        int32_t nDataIndex;
+
+
+    private:
+
+        /** Flag to determine if event occurred. **/
+        std::atomic<bool> fEVENT;
+
+
+        /** Mutex used for event condition variable **/
+        std::mutex EVENT_MUTEX;
+
+
+        /** event condition variable to wake up sleeping connection. **/
+        std::condition_variable EVENT_CONDITION;
+
+
+    public:
+
+
         /** Build Base Connection with no parameters **/
         BaseConnection();
 
 
         /** Build Base Connection with all Parameters. **/
         BaseConnection(const Socket &SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false, bool fOutgoing = false);
+
+
+        /** Build Base Connection with all Parameters. **/
         BaseConnection(DDOS_Filter* DDOS_IN, bool isDDOS = false, bool fOutgoing = false);
+
 
         /* Default destructor */
         virtual ~BaseConnection();
 
 
+        /** Name
+         *
+         *  Returns a string for the name of this type of Node.
+         *
+         **/
+        static std::string Name() { return "Base"; }
+
+
+        /** Notifications
+         *
+         *  Filter out relay requests with notifications node is subscribed to.
+         *
+         **/
+        template<typename MessageType>
+        const DataStream Notifications(const MessageType& message, const DataStream& ssData) const
+        {
+            return ssData; //copy over relay like normal for all items to be relayed
+        }
+
+
         /** SetNull
          *
          *  Sets the object to an invalid state.
+
          *
          **/
         void SetNull();
@@ -111,6 +167,14 @@ namespace LLP
          *
          **/
         bool Connected() const;
+
+
+        /** Incoming
+         *
+         *  Flag to detect if connection is an inbound connection.
+         *
+         **/
+        bool Incoming() const;
 
 
         /** PacketComplete
@@ -162,14 +226,28 @@ namespace LLP
         bool Connect(const BaseAddress &addrConnect);
 
 
-
         /** Disconnect
          *
-         *  Disconnect Socket. Cleans up memory usage to prevent "memory runs"
-         *  from poor memory management.
+         *  Disconnect Socket. Cleans up memory usage to prevent "memory runs" from poor memory management.
          *
          **/
         void Disconnect();
+
+
+        /** NotifyEvent
+         *
+         *  Notify connection an event occured to wake up a sleeping connection.
+         *
+         **/
+        void NotifyEvent();
+
+
+        /** WaitEvent
+         *
+         *  Have connection wait for a notify signal to wake up.
+         *
+         **/
+        void WaitEvent();
 
     };
 

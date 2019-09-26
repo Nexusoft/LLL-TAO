@@ -20,28 +20,12 @@ ________________________________________________________________________________
 #include <iosfwd>
 #include <sstream>
 #include <fstream>
+#include <iomanip>
 
 #include <Util/include/args.h>
 #include <Util/include/config.h>
 #include <Util/include/runtime.h>
 #include <Util/include/mutex.h>
-
-#ifdef snprintf
-#undef snprintf
-#endif
-//#define snprintf my_snprintf
-
-#ifndef PRI64d
-#if defined(_MSC_VER) || defined(__MSVCRT__)
-#define PRI64d  "I64d"
-#define PRI64u  "I64u"
-#define PRI64x  "I64x"
-#else
-#define PRI64d  "lld"
-#define PRI64u  "llu"
-#define PRI64x  "llx"
-#endif
-#endif
 
 #define ANSI_COLOR_RED     "\x1b[31m"
 #define ANSI_COLOR_GREEN   "\x1b[32m"
@@ -62,9 +46,10 @@ ________________________________________________________________________________
 #define ANSI_COLOR_FUNCTION "\u001b[1m"
 
 #define VALUE(data) data
-//#define FUNCTION ANSI_COLOR_FUNCTION "%s" ANSI_COLOR_RESET " : "
 
-#define NODE ANSI_COLOR_FUNCTION "Node" ANSI_COLOR_RESET " : ", "\u001b[1m", GetAddress().ToStringIP(), ANSI_COLOR_RESET, " "
+#define NODE debug::print_node(this)
+
+//ANSI_COLOR_FUNCTION, " Node", ANSI_COLOR_RESET " : ", "\u001b[1m", GetAddress().ToStringIP(), ANSI_COLOR_RESET, " "
 
 /* Support for Windows */
 #ifndef __PRETTY_FUNCTION__
@@ -78,30 +63,46 @@ namespace debug
 
     extern std::mutex DEBUG_MUTEX;
     extern std::ofstream ssFile;
+    extern thread_local std::string strLastError;
 
     /** Block debug output flags. **/
-    enum flags
+    struct flags
     {
-        header        = (1 << 0),
-        tx            = (1 << 1),
-        chain         = (1 << 2)
+        enum
+        {
+            header        = (1 << 0),
+            tx            = (1 << 1),
+            chain         = (1 << 2)
+        };
     };
 
 
-    /** init
+    /** Initialize
      *
-     *  Open the debug log file.
+     *  Write startup information into the log file.
      *
      **/
-    bool init(std::string debugPath = config::GetDataDir() + "debug.log");
+    void Initialize();
 
 
-    /** shutdown
+    /** Shutdown
      *
      *  Close the debug log file.
      *
      **/
-    void shutdown();
+    void Shutdown();
+
+
+    /** LogStartup
+     *
+     *  Log startup information.
+     *  This will read/log the config file separately from the startup arguments passed as parameters.
+     *
+     *  @param argc The argc value from main()
+     *  @param argv The argv value from main()
+     *
+     **/
+    void LogStartup(int argc, char** argv);
 
 
     /** print_args
@@ -206,11 +207,30 @@ namespace debug
     template<class... Args>
     bool error(Args&&... args)
     {
+        strLastError = safe_printstr(args...);
+
         log(0, ANSI_COLOR_BRIGHT_RED, "ERROR: ", ANSI_COLOR_RESET, args...);
 
         return false;
     }
 
+
+    /** drop
+     *
+     *  Safe constant format debugging network drror logs.
+     *
+     *  @param[in] args The variadic template arguments in.
+     *
+     *  @return Returns false always. (Assumed to return an error.)
+     *
+     **/
+    template<class... Args>
+    bool drop(Args&&... args)
+    {
+        log(0, ANSI_COLOR_BRIGHT_YELLOW, "DROPPED: ", ANSI_COLOR_RESET, args...);
+
+        return false;
+    }
 
 
     /** success
@@ -232,6 +252,58 @@ namespace debug
     }
 
 
+    /** @class error
+     *
+     *  Handle exceptions with variadic template constructor for logging support.
+     *
+     **/
+    class exception : public std::runtime_error
+    {
+    public:
+
+        /** Constructor
+         *
+         *  @param[in] e The exception object to create error from.
+         *
+         **/
+        exception(const std::runtime_error& e)
+        : std::runtime_error(e)
+        {
+        }
+
+
+        /** Constructor
+         *
+         *  @param[in] args The variadic template for initialization.
+         *
+         **/
+        template<class... Args>
+        exception(Args&&... args)
+        : std::runtime_error(safe_printstr(args...))
+        {
+        }
+    };
+
+
+    /** print_node
+     *
+     *  Print information about a node including current address and name.
+     *  Uses a template to grab the static class type and force it to the proper polymorphic class.
+     *
+     *  @param[in] pnode A pointer to the node getting stats from.
+     *
+     *  @return A string containing the node formatted text.
+     *
+     **/
+    template<typename ProtocolType>
+    const std::string print_node(const ProtocolType* pnode)
+    {
+        return debug::safe_printstr(
+            ANSI_COLOR_FUNCTION, ProtocolType::Name(), " Node",
+            ANSI_COLOR_RESET, " : ", "\u001b[1m", pnode->GetAddress().ToStringIP(), ANSI_COLOR_RESET, " ");
+    }
+
+
     /** rfc1123Time
      *
      *  Special Specification for HTTP Protocol.
@@ -239,21 +311,6 @@ namespace debug
      *
      **/
     std::string rfc1123Time();
-
-
-    /** real_strprintf
-     *
-     *  Prints output into a string that is returned.
-     *
-     *  @param[in] format The format string specifier.
-     *  @param[in] ... The variable argument list to supply to each format
-     *                 specifier in the format string.
-     *
-     *  @return the output string of the printed message
-     *
-     **/
-    std::string real_strprintf(const char* format, ...);
-    #define strprintf(format, ...) real_strprintf(format, __VA_ARGS__)
 
 
     /** InitializeLog
@@ -267,68 +324,48 @@ namespace debug
     void InitializeLog(int argc, char** argv);
 
 
-    /** LogStackTrace
-     *
-     *  Prints and logs the stack trace of the code execution call stack up to
-     *  the point where this function is called to debug.log
-     *
-     **/
-    void LogStackTrace();
-
-
-    /** LogException
-     *
-     *  Prints and logs the exception with the named calling thread.
-     *
-     *  @param[in] pex The pointer to the exception that has been thrown.
-     *  @param[in] pszThread The name of the calling thread that threw the exception.
-     *
-     **/
-    void LogException(std::exception* pex, const char* pszThread);
-
-
-    /** PrintException
-     *
-     *  Prints the exception with the named calling thread and throws it
-     *
-     *  @param[in] pex The pointer to the exception that has been thrown.
-     *  @param[in] pszThread The name of the calling thread that threw the exception.
-     *
-     **/
-    void PrintException(std::exception* pex, const char* pszThread);
-
-
-    /** PrintExceptionContinue
-     *
-     *  Prints the exception with the named calling thread but does not throw it.
-     *
-     *  @param[in] pex The pointer to the exception that has been thrown.
-     *  @param[in] pszThread The name of the calling thread that threw the exception.
-     *
-     **/
-    void PrintExceptionContinue(std::exception* pex, const char* pszThread);
-
-
     /** GetFilesize
      *
      *  Gets the size of the file in bytes.
      *
-     *  @param[in] file The file pointer of the file get get the size of.
+     *  Gets the last error string logged via debug::error and clears the last error
      *
-     *  @return The size of the file
-     *
-     **/
-    int GetFilesize(FILE* file);
-
-
-    /** ShrinkDebugFile
-     *
-     *  Shrinks the size of the debug.log file if it has grown exceptionally large.
-     *  It keeps some of the end of the file with most recent log history before
-     *  shrinking it down.
+     *  @return The last error string logged via debug::error
      *
      **/
-    void ShrinkDebugFile(std::string debugPath = config::GetDataDir() + "debug.log");
+    std::string GetLastError();
 
+
+    /** check_log_archive
+     *
+     *  Checks if the current debug log should be closed and archived. This
+     *  function will close the current file if the max file size is exceeded,
+     *  rename it, and open a new file. It will delete the oldest file if it
+     *  exceeds the max number of files.
+     *
+     *  @param[in] outFile The output file stream used to update debug files
+     *
+     **/
+    void check_log_archive(std::ofstream &outFile);
+
+
+    /** debug_filecount
+     *
+     *  Returns the number of debug files present in the debug directory.
+     *
+     **/
+    uint32_t debug_filecount();
+
+
+    /** log_path
+     *
+     *  Builds an indexed debug log path for a file.
+     *
+     *  @param[in] nIndex The index for the debug log path.
+     *
+     *  @return Returns the absolute path to the log file.
+     *
+     **/
+    std::string log_path(uint32_t nIndex);
 }
 #endif

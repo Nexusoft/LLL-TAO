@@ -13,15 +13,110 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <TAO/Ledger/include/enum.h> //for internal flags
+
 namespace LLD
 {
-    RegisterDB*   regDB;
-    LedgerDB*     legDB;
-    LocalDB*      locDB;
+    /* The LLD global instance pointers. */
+    ContractDB*   Contract;
+    RegisterDB*   Register;
+    LedgerDB*     Ledger;
+    LocalDB*      Local;
 
-    //for legacy objects
-    TrustDB*      trustDB;
-    LegacyDB*     legacyDB;
+    /* For Legacy LLD objects. */
+    TrustDB*      Trust;
+    LegacyDB*     Legacy;
+
+
+    /*  Initialize the global LLD instances. */
+    void Initialize()
+    {
+        debug::log(0, FUNCTION, "Initializing LLD");
+
+        /* Create the ledger database instance. */
+        Ledger    = new LedgerDB(
+                        FLAGS::CREATE | FLAGS::FORCE,
+                        256 * 256 * 64,
+                        16 * 1024 * 1024);
+
+        /* Create the legacy database instance. */
+        Legacy = new LegacyDB(
+                        FLAGS::CREATE | FLAGS::FORCE,
+                        256 * 256 * 64,
+                        16 * 1024 * 1024);
+
+        /* Create the trust database instance. */
+        Trust  = new TrustDB(
+                        FLAGS::CREATE | FLAGS::FORCE);
+
+        /* Create the contract database instance. */
+        Contract = new ContractDB(
+                        FLAGS::CREATE | FLAGS::FORCE);
+
+        /* Create the contract database instance. */
+        Register = new RegisterDB(
+                        FLAGS::CREATE | FLAGS::FORCE);
+
+        /* Create the local database instance. */
+        Local    = new LocalDB(
+                        FLAGS::CREATE | FLAGS::FORCE);
+
+        /* Handle database recovery mode. */
+        TxnRecovery();
+    }
+
+
+    /*  Shutdown and cleanup the global LLD instances. */
+    void Shutdown()
+    {
+        debug::log(0, FUNCTION, "Shutting down LLD");
+
+        /* Cleanup the contract database. */
+        if(Contract)
+        {
+            debug::log(2, FUNCTION, "Shutting down ContractDB");
+            delete Contract;
+        }
+
+        /* Cleanup the ledger database. */
+        if(Ledger)
+        {
+            debug::log(2, FUNCTION, "Shutting down LedgerDB");
+            delete Ledger;
+        }
+
+
+        /* Cleanup the register database. */
+        if(Register)
+        {
+            debug::log(2, FUNCTION, "Shutting down RegisterDB");
+            delete Register;
+        }
+
+
+        /* Cleanup the local database. */
+        if(Local)
+        {
+            debug::log(2, FUNCTION, "Shutting down LocalDB");
+            delete Local;
+        }
+
+
+        /* Cleanup the legacy database. */
+        if(Legacy)
+        {
+            debug::log(2, FUNCTION, "Shutting down LegacyDB");
+            delete Legacy;
+        }
+
+
+        /* Cleanup the trust database. */
+        if(Trust)
+        {
+            debug::log(2, FUNCTION, "Shutting down TrustDB");
+            delete Trust;
+        }
+    }
 
 
     /* Check the transactions for recovery. */
@@ -31,23 +126,23 @@ namespace LLD
         bool fRecovery = true;
 
         /* Check the register DB journal. */
-        if(!regDB->TxnRecovery())
+        if(Register && !Register->TxnRecovery())
             fRecovery = false;
 
         /* Check the ledger DB journal. */
-        if(!legDB->TxnRecovery())
+        if(Ledger && !Ledger->TxnRecovery())
             fRecovery = false;
 
         /* Check the local DB journal. */
-        if(!locDB->TxnRecovery())
+        if(Local && !Local->TxnRecovery())
             fRecovery = false;
 
         /* Check the ledger DB journal. */
-        if(!trustDB->TxnRecovery())
+        if(Trust && !Trust->TxnRecovery())
             fRecovery = false;
 
         /* Check the ledger DB journal. */
-        if(!legacyDB->TxnRecovery())
+        if(Legacy && !Legacy->TxnRecovery())
             fRecovery = false;
 
         /* Commit the transactions if journals are recovered. */
@@ -56,19 +151,24 @@ namespace LLD
             debug::log(0, FUNCTION, "all transactions are complete, recovering...");
 
             /* Commit register DB transaction. */
-            regDB->TxnCommit();
+            if(Register)
+                Register->TxnCommit();
 
             /* Commit legacy DB transaction. */
-            legDB->TxnCommit();
+            if(Ledger)
+                Ledger->TxnCommit();
 
             /* Commit the local DB transaction. */
-            locDB->TxnCommit();
+            if(Local)
+                Local->TxnCommit();
 
             /* Commit the trust DB transaction. */
-            trustDB->TxnCommit();
+            if(Trust)
+                Trust->TxnCommit();
 
             /* Commit the legacy DB transaction. */
-            legacyDB->TxnCommit();
+            if(Legacy)
+                Legacy->TxnCommit();
         }
 
         /* Abort all the transactions. */
@@ -77,93 +177,160 @@ namespace LLD
 
 
     /* Global handler for all LLD instances. */
-    void TxnBegin()
+    void TxnBegin(const uint8_t nFlags)
     {
+        /* Handle memory commits if in memory m ode. */
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        {
+            /* Start the register DB transacdtion. */
+            if(Register)
+                Register->MemoryBegin();
+
+            /* Start the ledger DB transaction. */
+            if(Ledger)
+                Ledger->MemoryBegin();
+
+            return;
+        }
+
         /* Start the register DB transacdtion. */
-        regDB->TxnBegin();
+        if(Register)
+            Register->TxnBegin();
 
         /* Start the ledger DB transaction. */
-        legDB->TxnBegin();
+        if(Ledger)
+            Ledger->TxnBegin();
 
         /* Start the local DB transaction. */
-        locDB->TxnBegin();
+        if(Local)
+            Local->TxnBegin();
 
         /* Start the trust DB transaction. */
-        trustDB->TxnBegin();
+        if(Trust)
+            Trust->TxnBegin();
 
         /* Start the legacy DB transaction. */
-        legacyDB->TxnBegin();
+        if(Legacy)
+            Legacy->TxnBegin();
     }
 
 
     /* Global handler for all LLD instances. */
-    void TxnAbort()
+    void TxnAbort(const uint8_t nFlags)
     {
+        /* Handle memory commits if in memory m ode. */
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        {
+            /* Start the register DB transacdtion. */
+            if(Register)
+                Register->MemoryRelease();
+
+            /* Start the ledger DB transaction. */
+            if(Ledger)
+                Ledger->MemoryRelease();
+
+            return;
+        }
+
         /* Abort the register DB transaction. */
-        regDB->TxnAbort();
+        if(Register)
+            Register->TxnRelease();
 
         /* Abort the ledger DB transaction. */
-        legDB->TxnAbort();
+        if(Ledger)
+            Ledger->TxnRelease();
 
         /* Abort the local DB transaction. */
-        locDB->TxnAbort();
+        if(Local)
+            Local->TxnRelease();
 
         /* Abort the trust DB transaction. */
-        trustDB->TxnAbort();
+        if(Trust)
+            Trust->TxnRelease();
 
         /* Abort the legacy DB transaction. */
-        legacyDB->TxnAbort();
+        if(Legacy)
+            Legacy->TxnRelease();
     }
 
 
     /* Global handler for all LLD instances. */
-    void TxnCommit()
+    void TxnCommit(const uint8_t nFlags)
     {
+        /* Handle memory commits if in memory m ode. */
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        {
+            /* Start the register DB transacdtion. */
+            if(Register)
+                Register->MemoryCommit();
+
+            /* Start the ledger DB transaction. */
+            if(Ledger)
+                Ledger->MemoryCommit();
+
+            return;
+        }
+
         /* Set a checkpoint for register DB. */
-        regDB->TxnCheckpoint();
+        if(Register)
+            Register->TxnCheckpoint();
 
         /* Set a checkpoint for ledger DB. */
-        legDB->TxnCheckpoint();
+        if(Ledger)
+            Ledger->TxnCheckpoint();
 
         /* Set a checkpoint for local DB. */
-        locDB->TxnCheckpoint();
+        if(Local)
+            Local->TxnCheckpoint();
 
         /* Set a checkpoint for trust DB. */
-        trustDB->TxnCheckpoint();
+        if(Trust)
+            Trust->TxnCheckpoint();
 
         /* Set a checkpoint for legacy DB. */
-        legacyDB->TxnCheckpoint();
+        if(Legacy)
+            Legacy->TxnCheckpoint();
 
 
         /* Commit register DB transaction. */
-        regDB->TxnCommit();
+        if(Register)
+            Register->TxnCommit();
 
         /* Commit legacy DB transaction. */
-        legDB->TxnCommit();
+        if(Ledger)
+            Ledger->TxnCommit();
 
         /* Commit the local DB transaction. */
-        locDB->TxnCommit();
+        if(Local)
+            Local->TxnCommit();
 
         /* Commit the trust DB transaction. */
-        trustDB->TxnCommit();
+        if(Trust)
+            Trust->TxnCommit();
 
         /* Commit the legacy DB transaction. */
-        legacyDB->TxnCommit();
+        if(Legacy)
+            Legacy->TxnCommit();
 
 
-        /* Release the register DB journal. */
-        regDB->TxnRelease();
+        /* Abort the register DB transaction. */
+        if(Register)
+            Register->TxnRelease();
 
-        /* Release the ledger DB journal. */
-        legDB->TxnRelease();
+        /* Abort the ledger DB transaction. */
+        if(Ledger)
+            Ledger->TxnRelease();
 
-        /* Release the local DB journal. */
-        locDB->TxnRelease();
+        /* Abort the local DB transaction. */
+        if(Local)
+            Local->TxnRelease();
 
-        /* Release the trust DB journal. */
-        trustDB->TxnRelease();
+        /* Abort the trust DB transaction. */
+        if(Trust)
+            Trust->TxnRelease();
 
-        /* Release the legacy DB journal. */
-        legacyDB->TxnRelease();
+        /* Abort the legacy DB transaction. */
+        if(Legacy)
+            Legacy->TxnRelease();
     }
 }

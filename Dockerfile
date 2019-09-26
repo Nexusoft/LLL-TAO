@@ -41,6 +41,12 @@ RUN apt-get update && apt-get -yq install \
     build-essential libdb++-dev libssl1.0-dev
 
 #
+# Install Nexus application dependencies.
+#
+RUN apt-get update && apt-get -yq install \
+    python-qrtools
+
+#
 # Install LISP release in /lispers.net directory.
 #
 RUN mkdir /lispers.net; cd /lispers.net; curl --insecure -L $LISP_URL | gzip -dc | tar -xf -
@@ -72,8 +78,10 @@ RUN cd /nexus; make -j 8 -f makefile.cli ENABLE_DEBUG=$NEXUS_DEBUG
 # Copy Nexus startup files.
 #
 COPY config/run-nexus /nexus/run-nexus
+COPY config/nexus.conf /nexus/nexus.conf.default
 COPY config/curl-nexus /nexus/curl-nexus
 COPY config/nexus-save-data /nexus/nexus-save-data
+COPY lisp/whoarepeers.py /nexus/whoarepeers.py
 
 #
 # Copy LISP startup config.

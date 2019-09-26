@@ -15,8 +15,6 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_TYPES_TRANSACTION_H
 #define NEXUS_LEGACY_TYPES_TRANSACTION_H
 
-#include <Util/templates/serialize.h>
-
 #include <Legacy/include/enum.h>
 
 #include <Legacy/types/txin.h>
@@ -24,8 +22,15 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/state.h>
 
+#include <Util/templates/serialize.h>
+#include <Util/templates/datastream.h>
+
 namespace Legacy
 {
+	/* forward declaration
+	 * (can't include trustkey.h in this file -- It includes legacy.h which needs Transaction declared and it isn't yet)
+	 */
+	class TrustKey;
 
 	/** Transaction Class
 	 *
@@ -83,6 +88,11 @@ namespace Legacy
 		{
 			SetNull();
 		}
+
+
+		/** Copy Constructor (From Tritium). **/
+		Transaction(const TAO::Ledger::Transaction& tx);
+
 
 		/** Default destructor. **/
 		virtual ~Transaction() {}
@@ -291,7 +301,7 @@ namespace Legacy
 		 *  @see CTransaction::FetchInputs
 		 *
 		 **/
-		bool AreInputsStandard(const std::map<uint512_t, Transaction>& mapInputs) const;
+		bool AreInputsStandard(const std::map<uint512_t, std::pair<uint8_t, DataStream> >& mapInputs) const;
 
 
 		/** Get Legacy SigOp Count
@@ -315,7 +325,7 @@ namespace Legacy
 		 *  @see CTransaction::FetchInputs
 		 *
 		 **/
-		uint32_t TotalSigOps(const std::map<uint512_t, Transaction>& mapInputs) const;
+		uint32_t TotalSigOps(const std::map<uint512_t, std::pair<uint8_t, DataStream> >& mapInputs) const;
 
 
 		/** Get Value Out
@@ -338,7 +348,7 @@ namespace Legacy
 		 *  @see CTransaction::FetchInputs
 		 *
 		 **/
-		uint64_t GetValueIn(const std::map<uint512_t, Transaction>& mapInputs) const;
+		uint64_t GetValueIn(const std::map<uint512_t, std::pair<uint8_t, DataStream> >& mapInputs) const;
 
 
 		/** Allow Free
@@ -376,14 +386,14 @@ namespace Legacy
 		 **/
 		std::string ToStringShort() const;
 
-		/** GetTxTypeString
+		/** TypeString
 		 *
 		 *  User readable description of the transaction type.
 		 *
 		 *  @return User readable description of the transaction type;
 		 *
 		 **/
-		std::string GetTxTypeString() const;
+		std::string TypeString() const;
 
 
 		/** To String
@@ -421,7 +431,7 @@ namespace Legacy
 		 *  @return true if the inputs were found
 		 *
 		 **/
-		bool FetchInputs(std::map<uint512_t, Transaction>& inputs) const;
+		bool FetchInputs(std::map<uint512_t, std::pair<uint8_t, DataStream> >& inputs) const;
 
 
 		/** Connect Inputs
@@ -435,17 +445,19 @@ namespace Legacy
 	     *  @return true if the inputs were found
 	     *
 	     **/
-		bool Connect(const std::map<uint512_t, Transaction>& inputs, TAO::Ledger::BlockState& state, uint8_t nFlags = FLAGS::MEMPOOL) const;
+		bool Connect(const std::map<uint512_t, std::pair<uint8_t, DataStream> >& inputs, TAO::Ledger::BlockState& state, uint8_t nFlags = FLAGS::MEMPOOL) const;
 
 
 		/** Disconnect
 		 *
 		 *  Mark the inputs in a transaction as unspent.
 		 *
+		 *  @param[in] state The block state that is disconnecting
+		 *
 		 *  @return true if the inputs were disconnected
 		 *
 		 **/
-		bool Disconnect() const;
+		bool Disconnect(const TAO::Ledger::BlockState& state) const;
 
 
 		/** Check Trust
@@ -453,11 +465,13 @@ namespace Legacy
 		 *  Check the calculated trust score meets published one.
 		 *
 		 *  @param[in] state The block state to check from.
+		 *  @param[in] trustKey Trust key to check against
 		 *
 		 *  @return true if the trust score was satisfied.
 		 *
 		 **/
-		bool CheckTrust(const TAO::Ledger::BlockState& state) const;
+		bool CheckTrust(const TAO::Ledger::BlockState& state, const Legacy::TrustKey& trustKey) const;
+		// Need to scope TrustKey because there is also a TrustKey() method within Transaction
 
 
 	protected:
@@ -472,7 +486,7 @@ namespace Legacy
 		 *  @return the output that was found.
 		 *
 		 **/
-		const TxOut& GetOutputFor(const TxIn& input, const std::map<uint512_t, Transaction>& inputs) const;
+		const TxOut GetOutputFor(const TxIn& input, const std::map<uint512_t, std::pair<uint8_t, DataStream> >& inputs) const;
 	};
 }
 

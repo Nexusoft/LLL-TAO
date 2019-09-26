@@ -26,7 +26,8 @@ namespace LLD
 
     /** The Database Constructor. To determine file location and the Bytes per Record. **/
     BinaryFileMap::BinaryFileMap(std::string strBaseLocationIn, uint8_t nFlagsIn)
-    : strBaseLocation(strBaseLocationIn)
+    : KEY_MUTEX()
+    , strBaseLocation(strBaseLocationIn)
     , nCurrentFileSize(0)
     , nCurrentFile(0)
     , nFlags(nFlagsIn)
@@ -68,19 +69,7 @@ namespace LLD
 
         Initialize();
     }
-
-
-    /*  Return the Keys to the Records Held in the Database. */
-    std::vector< std::vector<uint8_t> > BinaryFileMap::GetKeys() const
-    {
-        std::vector< std::vector<uint8_t> > vKeys;
-        auto nIterator = mapKeys.begin();
-
-        for(; nIterator != mapKeys.end(); ++nIterator)
-            vKeys.push_back(nIterator->first);
-
-        return vKeys;
-    }
+    
 
     /*  Determines if the database has the Key. */
     bool BinaryFileMap::HasKey(const std::vector<uint8_t>& vKey) const
@@ -106,7 +95,7 @@ namespace LLD
         /* Iterate through the files detected. */
         while(true)
         {
-            std::string strFilename = debug::strprintf("%s_filemap.%05u", strBaseLocation.c_str(), nCurrentFile);
+            std::string strFilename = debug::safe_printstr(strBaseLocation, "_filemap.", std::setfill('0'), std::setw(5), nCurrentFile);
 
             /* Get the Filename at given File Position. */
             std::fstream fIncoming(strFilename.c_str(), std::ios::in | std::ios::binary);
@@ -206,7 +195,7 @@ namespace LLD
                 ++nCurrentFile;
                 nCurrentFileSize = 0;
 
-                std::ofstream ssFile(debug::strprintf("%s_filemap.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::out | std::ios::binary);
+                std::ofstream ssFile(debug::safe_printstr(strBaseLocation, "_filemap.", std::setfill('0'), std::setw(5), nCurrentFile), std::ios::out | std::ios::binary);
                 ssFile.close();
             }
 
@@ -218,7 +207,7 @@ namespace LLD
 
 
         /* Establish the Outgoing Stream. */
-        std::fstream ssFile(debug::strprintf("%s_filemap.%05u", strBaseLocation.c_str(), mapKeys[cKey.vKey].first).c_str(), std::ios::in | std::ios::out | std::ios::binary);
+        std::fstream ssFile(debug::safe_printstr(strBaseLocation, "_filemap.", std::setfill('0'), std::setw(5), mapKeys[cKey.vKey].first), std::ios::in | std::ios::out | std::ios::binary);
 
 
         /* Seek File Pointer */
@@ -263,8 +252,7 @@ namespace LLD
 
 
         /* Establish the Outgoing Stream. */
-        std::string strFilename = debug::strprintf("%s_filemap.%05u", strBaseLocation.c_str(), mapKeys[vKey].first);
-        std::fstream ssFile(strFilename.c_str(), std::ios::in | std::ios::out | std::ios::binary);
+        std::fstream ssFile(debug::safe_printstr(strBaseLocation, "_filemap.", std::setfill('0'), std::setw(5), mapKeys[vKey].first), std::ios::in | std::ios::out | std::ios::binary);
 
 
         /* Set to put at the right file and sector position. */
@@ -297,7 +285,7 @@ namespace LLD
 
 
         /* Establish the Outgoing Stream. */
-        std::string strFilename = debug::strprintf("%s_filemap.%05u", strBaseLocation.c_str(), mapKeys[vKey].first);
+        std::string strFilename = debug::safe_printstr(strBaseLocation, "_filemap.", std::setfill('0'), std::setw(5), mapKeys[vKey].first);
         std::fstream ssFile(strFilename.c_str(), std::ios::in | std::ios::out | std::ios::binary);
 
 
@@ -328,7 +316,7 @@ namespace LLD
         if(mapKeys.count(vKey))
         {
             /* Open the Stream Object. */
-            std::string strFilename = debug::strprintf("%s_filemap.%05u", strBaseLocation.c_str(), mapKeys[vKey].first);
+            std::string strFilename = debug::safe_printstr(strBaseLocation, "_filemap.", std::setfill('0'), std::setw(5), mapKeys[vKey].first);
             std::ifstream ssFile(strFilename.c_str(), std::ios::in | std::ios::binary);
 
 

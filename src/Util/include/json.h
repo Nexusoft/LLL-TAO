@@ -128,11 +128,11 @@ using json = basic_json<workaround_fifo_map>;
 // exclude unsupported compilers
 #if !defined(JSON_SKIP_UNSUPPORTED_COMPILER_CHECK)
     #if defined(__clang__)
-        #if (__clang_major__ * 10000 + __clang_minor__ * 100 + __clang_patchlevel__) < 30400
+        #if(__clang_major__ * 10000 + __clang_minor__ * 100 + __clang_patchlevel__) < 30400
             #error "unsupported Clang version - see https://github.com/nlohmann/json#supported-compilers"
         #endif
     #elif defined(__GNUC__) && !(defined(__ICC) || defined(__INTEL_COMPILER))
-        #if (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__) < 40800
+        #if(__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__) < 40800
             #error "unsupported GCC version - see https://github.com/nlohmann/json#supported-compilers"
         #endif
     #endif
@@ -160,7 +160,7 @@ using json = basic_json<workaround_fifo_map>;
 #endif
 
 // allow to disable exceptions
-#if (defined(__cpp_exceptions) || defined(__EXCEPTIONS) || defined(_CPPUNWIND)) && !defined(JSON_NOEXCEPTION)
+#if(defined(__cpp_exceptions) || defined(__EXCEPTIONS) || defined(_CPPUNWIND)) && !defined(JSON_NOEXCEPTION)
     #define JSON_THROW(exception) throw exception
     #define JSON_TRY try
     #define JSON_CATCH(exception) catch(exception)
@@ -202,10 +202,10 @@ using json = basic_json<workaround_fifo_map>;
 #endif
 
 // C++ language standard detection
-#if (defined(__cplusplus) && __cplusplus >= 201703L) || (defined(_HAS_CXX17) && _HAS_CXX17 == 1) // fix for issue #464
+#if(defined(__cplusplus) && __cplusplus >= 201703L) || (defined(_HAS_CXX17) && _HAS_CXX17 == 1) // fix for issue #464
     #define JSON_HAS_CPP_17
     #define JSON_HAS_CPP_14
-#elif (defined(__cplusplus) && __cplusplus >= 201402L) || (defined(_HAS_CXX14) && _HAS_CXX14 == 1)
+#elif(defined(__cplusplus) && __cplusplus >= 201402L) || (defined(_HAS_CXX14) && _HAS_CXX14 == 1)
     #define JSON_HAS_CPP_14
 #endif
 
@@ -1235,7 +1235,7 @@ namespace detail
 template<typename BasicJsonType>
 void from_json(const BasicJsonType& j, typename std::nullptr_t& n)
 {
-    if (JSON_UNLIKELY(not j.is_null()))
+    if(JSON_UNLIKELY(not j.is_null()))
     {
         JSON_THROW(type_error::create(302, "type must be null, but is " + std::string(j.type_name())));
     }
@@ -1275,7 +1275,7 @@ void get_arithmetic_value(const BasicJsonType& j, ArithmeticType& val)
 template<typename BasicJsonType>
 void from_json(const BasicJsonType& j, typename BasicJsonType::boolean_t& b)
 {
-    if (JSON_UNLIKELY(not j.is_boolean()))
+    if(JSON_UNLIKELY(not j.is_boolean()))
     {
         JSON_THROW(type_error::create(302, "type must be boolean, but is " + std::string(j.type_name())));
     }
@@ -1285,11 +1285,13 @@ void from_json(const BasicJsonType& j, typename BasicJsonType::boolean_t& b)
 template<typename BasicJsonType>
 void from_json(const BasicJsonType& j, typename BasicJsonType::string_t& s)
 {
-    if (JSON_UNLIKELY(not j.is_string()))
+    if(JSON_UNLIKELY(not j.is_string()))
     {
-        JSON_THROW(type_error::create(302, "type must be string, but is " + std::string(j.type_name())));
+        /* If the caller has requested a string but it is not a string in the JSON, use dump() to convert the value to a string */
+        s = j.dump();
     }
-    s = *j.template get_ptr<const typename BasicJsonType::string_t*>();
+    else
+        s = *j.template get_ptr<const typename BasicJsonType::string_t*>();
 }
 
 template <
@@ -1301,7 +1303,7 @@ template <
         int > = 0 >
 void from_json(const BasicJsonType& j, ConstructibleStringType& s)
 {
-    if (JSON_UNLIKELY(not j.is_string()))
+    if(JSON_UNLIKELY(not j.is_string()))
     {
         JSON_THROW(type_error::create(302, "type must be string, but is " + std::string(j.type_name())));
     }
@@ -1341,7 +1343,7 @@ template<typename BasicJsonType, typename T, typename Allocator,
          enable_if_t<std::is_convertible<BasicJsonType, T>::value, int> = 0>
 void from_json(const BasicJsonType& j, std::forward_list<T, Allocator>& l)
 {
-    if (JSON_UNLIKELY(not j.is_array()))
+    if(JSON_UNLIKELY(not j.is_array()))
     {
         JSON_THROW(type_error::create(302, "type must be array, but is " + std::string(j.type_name())));
     }
@@ -1357,7 +1359,7 @@ template<typename BasicJsonType, typename T,
          enable_if_t<std::is_convertible<BasicJsonType, T>::value, int> = 0>
 void from_json(const BasicJsonType& j, std::valarray<T>& l)
 {
-    if (JSON_UNLIKELY(not j.is_array()))
+    if(JSON_UNLIKELY(not j.is_array()))
     {
         JSON_THROW(type_error::create(302, "type must be array, but is " + std::string(j.type_name())));
     }
@@ -1376,7 +1378,7 @@ auto from_json_array_impl(const BasicJsonType& j, std::array<T, N>& arr,
                           priority_tag<2> /*unused*/)
 -> decltype(j.template get<T>(), void())
 {
-    for (std::size_t i = 0; i < N; ++i)
+    for(std::size_t i = 0; i < N; ++i)
     {
         arr[i] = j.at(i).template get<T>();
     }
@@ -1430,7 +1432,7 @@ auto from_json(const BasicJsonType& j, ConstructibleArrayType& arr)
 j.template get<typename ConstructibleArrayType::value_type>(),
 void())
 {
-    if (JSON_UNLIKELY(not j.is_array()))
+    if(JSON_UNLIKELY(not j.is_array()))
     {
         JSON_THROW(type_error::create(302, "type must be array, but is " +
                                       std::string(j.type_name())));
@@ -1443,7 +1445,7 @@ template<typename BasicJsonType, typename ConstructibleObjectType,
          enable_if_t<is_constructible_object_type<BasicJsonType, ConstructibleObjectType>::value, int> = 0>
 void from_json(const BasicJsonType& j, ConstructibleObjectType& obj)
 {
-    if (JSON_UNLIKELY(not j.is_object()))
+    if(JSON_UNLIKELY(not j.is_object()))
     {
         JSON_THROW(type_error::create(302, "type must be object, but is " + std::string(j.type_name())));
     }
@@ -1524,13 +1526,13 @@ template <typename BasicJsonType, typename Key, typename Value, typename Compare
                                      typename BasicJsonType::string_t, Key>::value>>
 void from_json(const BasicJsonType& j, std::map<Key, Value, Compare, Allocator>& m)
 {
-    if (JSON_UNLIKELY(not j.is_array()))
+    if(JSON_UNLIKELY(not j.is_array()))
     {
         JSON_THROW(type_error::create(302, "type must be array, but is " + std::string(j.type_name())));
     }
-    for (const auto& p : j)
+    for(const auto& p : j)
     {
-        if (JSON_UNLIKELY(not p.is_array()))
+        if(JSON_UNLIKELY(not p.is_array()))
         {
             JSON_THROW(type_error::create(302, "type must be array, but is " + std::string(p.type_name())));
         }
@@ -1543,13 +1545,13 @@ template <typename BasicJsonType, typename Key, typename Value, typename Hash, t
                                      typename BasicJsonType::string_t, Key>::value>>
 void from_json(const BasicJsonType& j, std::unordered_map<Key, Value, Hash, KeyEqual, Allocator>& m)
 {
-    if (JSON_UNLIKELY(not j.is_array()))
+    if(JSON_UNLIKELY(not j.is_array()))
     {
         JSON_THROW(type_error::create(302, "type must be array, but is " + std::string(j.type_name())));
     }
-    for (const auto& p : j)
+    for(const auto& p : j)
     {
-        if (JSON_UNLIKELY(not p.is_array()))
+        if(JSON_UNLIKELY(not p.is_array()))
         {
             JSON_THROW(type_error::create(302, "type must be array, but is " + std::string(p.type_name())));
         }
@@ -1675,7 +1677,7 @@ template<typename IteratorType> class iteration_proxy
                 // use integer array index as key
                 case value_t::array:
                 {
-                    if (array_index != array_index_last)
+                    if(array_index != array_index_last)
                     {
                         array_index_str = std::to_string(array_index);
                         array_index_last = array_index;
@@ -1849,7 +1851,7 @@ struct external_constructor<value_t::array>
         j.m_type = value_t::array;
         j.m_value = value_t::array;
         j.m_value.array->reserve(arr.size());
-        for (const bool x : arr)
+        for(const bool x : arr)
         {
             j.m_value.array->push_back(x);
         }
@@ -2137,7 +2139,7 @@ class input_stream_adapter : public input_adapter_protocol
     {
         auto res = sb.sbumpc();
         // set eof manually, as we don't use the istream interface.
-        if (res == EOF)
+        if(res == EOF)
         {
             is.clear(is.rdstate() | std::ios::eofbit);
         }
@@ -2167,7 +2169,7 @@ class input_buffer_adapter : public input_adapter_protocol
 
     std::char_traits<char>::int_type get_character() noexcept override
     {
-        if (JSON_LIKELY(cursor < limit))
+        if(JSON_LIKELY(cursor < limit))
         {
             return std::char_traits<char>::to_int_type(*(cursor++));
         }
@@ -2190,7 +2192,7 @@ struct wide_string_input_helper
     {
         utf8_bytes_index = 0;
 
-        if (current_wchar == str.size())
+        if(current_wchar == str.size())
         {
             utf8_bytes[0] = std::char_traits<char>::eof();
             utf8_bytes_filled = 1;
@@ -2201,25 +2203,25 @@ struct wide_string_input_helper
             const auto wc = static_cast<int>(str[current_wchar++]);
 
             // UTF-32 to UTF-8 encoding
-            if (wc < 0x80)
+            if(wc < 0x80)
             {
                 utf8_bytes[0] = wc;
                 utf8_bytes_filled = 1;
             }
-            else if (wc <= 0x7FF)
+            else if(wc <= 0x7FF)
             {
                 utf8_bytes[0] = 0xC0 | ((wc >> 6) & 0x1F);
                 utf8_bytes[1] = 0x80 | (wc & 0x3F);
                 utf8_bytes_filled = 2;
             }
-            else if (wc <= 0xFFFF)
+            else if(wc <= 0xFFFF)
             {
                 utf8_bytes[0] = 0xE0 | ((wc >> 12) & 0x0F);
                 utf8_bytes[1] = 0x80 | ((wc >> 6) & 0x3F);
                 utf8_bytes[2] = 0x80 | (wc & 0x3F);
                 utf8_bytes_filled = 3;
             }
-            else if (wc <= 0x10FFFF)
+            else if(wc <= 0x10FFFF)
             {
                 utf8_bytes[0] = 0xF0 | ((wc >> 18) & 0x07);
                 utf8_bytes[1] = 0x80 | ((wc >> 12) & 0x3F);
@@ -2245,7 +2247,7 @@ struct wide_string_input_helper<WideStringType, 2>
     {
         utf8_bytes_index = 0;
 
-        if (current_wchar == str.size())
+        if(current_wchar == str.size())
         {
             utf8_bytes[0] = std::char_traits<char>::eof();
             utf8_bytes_filled = 1;
@@ -2256,18 +2258,18 @@ struct wide_string_input_helper<WideStringType, 2>
             const auto wc = static_cast<int>(str[current_wchar++]);
 
             // UTF-16 to UTF-8 encoding
-            if (wc < 0x80)
+            if(wc < 0x80)
             {
                 utf8_bytes[0] = wc;
                 utf8_bytes_filled = 1;
             }
-            else if (wc <= 0x7FF)
+            else if(wc <= 0x7FF)
             {
                 utf8_bytes[0] = 0xC0 | ((wc >> 6));
                 utf8_bytes[1] = 0x80 | (wc & 0x3F);
                 utf8_bytes_filled = 2;
             }
-            else if (0xD800 > wc or wc >= 0xE000)
+            else if(0xD800 > wc or wc >= 0xE000)
             {
                 utf8_bytes[0] = 0xE0 | ((wc >> 12));
                 utf8_bytes[1] = 0x80 | ((wc >> 6) & 0x3F);
@@ -2276,7 +2278,7 @@ struct wide_string_input_helper<WideStringType, 2>
             }
             else
             {
-                if (current_wchar < str.size())
+                if(current_wchar < str.size())
                 {
                     const auto wc2 = static_cast<int>(str[current_wchar++]);
                     const int charcode = 0x10000 + (((wc & 0x3FF) << 10) | (wc2 & 0x3FF));
@@ -2309,7 +2311,7 @@ class wide_string_input_adapter : public input_adapter_protocol
     std::char_traits<char>::int_type get_character() noexcept override
     {
         // check if buffer needs to be filled
-        if (utf8_bytes_index == utf8_bytes_filled)
+        if(utf8_bytes_index == utf8_bytes_filled)
         {
             fill_buffer<sizeof(typename WideStringType::value_type)>();
 
@@ -2416,7 +2418,7 @@ class input_adapter
             "each element in the iterator range must have the size of 1 byte");
 
         const auto len = static_cast<size_t>(std::distance(first, last));
-        if (JSON_LIKELY(len > 0))
+        if(JSON_LIKELY(len > 0))
         {
             // there is at least one element: use the address of first
             ia = std::make_shared<input_buffer_adapter>(reinterpret_cast<const char*>(&(*first)), len);
@@ -2608,19 +2610,19 @@ class lexer
         int codepoint = 0;
 
         const auto factors = { 12, 8, 4, 0 };
-        for (const auto factor : factors)
+        for(const auto factor : factors)
         {
             get();
 
-            if (current >= '0' and current <= '9')
+            if(current >= '0' and current <= '9')
             {
                 codepoint += ((current - 0x30) << factor);
             }
-            else if (current >= 'A' and current <= 'F')
+            else if(current >= 'A' and current <= 'F')
             {
                 codepoint += ((current - 0x37) << factor);
             }
-            else if (current >= 'a' and current <= 'f')
+            else if(current >= 'a' and current <= 'f')
             {
                 codepoint += ((current - 0x57) << factor);
             }
@@ -2654,10 +2656,10 @@ class lexer
         assert(ranges.size() == 2 or ranges.size() == 4 or ranges.size() == 6);
         add(current);
 
-        for (auto range = ranges.begin(); range != ranges.end(); ++range)
+        for(auto range = ranges.begin(); range != ranges.end(); ++range)
         {
             get();
-            if (JSON_LIKELY(*range <= current and current <= *(++range)))
+            if(JSON_LIKELY(*range <= current and current <= *(++range)))
             {
                 add(current);
             }
@@ -2694,7 +2696,7 @@ class lexer
         // we entered the function by reading an open quote
         assert(current == '\"');
 
-        while (true)
+        while(true)
         {
             // get next character
             switch (get())
@@ -2756,28 +2758,28 @@ class lexer
                             const int codepoint1 = get_codepoint();
                             int codepoint = codepoint1; // start with codepoint1
 
-                            if (JSON_UNLIKELY(codepoint1 == -1))
+                            if(JSON_UNLIKELY(codepoint1 == -1))
                             {
                                 error_message = "invalid string: '\\u' must be followed by 4 hex digits";
                                 return token_type::parse_error;
                             }
 
                             // check if code point is a high surrogate
-                            if (0xD800 <= codepoint1 and codepoint1 <= 0xDBFF)
+                            if(0xD800 <= codepoint1 and codepoint1 <= 0xDBFF)
                             {
                                 // expect next \uxxxx entry
-                                if (JSON_LIKELY(get() == '\\' and get() == 'u'))
+                                if(JSON_LIKELY(get() == '\\' and get() == 'u'))
                                 {
                                     const int codepoint2 = get_codepoint();
 
-                                    if (JSON_UNLIKELY(codepoint2 == -1))
+                                    if(JSON_UNLIKELY(codepoint2 == -1))
                                     {
                                         error_message = "invalid string: '\\u' must be followed by 4 hex digits";
                                         return token_type::parse_error;
                                     }
 
                                     // check if codepoint2 is a low surrogate
-                                    if (JSON_LIKELY(0xDC00 <= codepoint2 and codepoint2 <= 0xDFFF))
+                                    if(JSON_LIKELY(0xDC00 <= codepoint2 and codepoint2 <= 0xDFFF))
                                     {
                                         // overwrite codepoint
                                         codepoint =
@@ -2804,7 +2806,7 @@ class lexer
                             }
                             else
                             {
-                                if (JSON_UNLIKELY(0xDC00 <= codepoint1 and codepoint1 <= 0xDFFF))
+                                if(JSON_UNLIKELY(0xDC00 <= codepoint1 and codepoint1 <= 0xDFFF))
                                 {
                                     error_message = "invalid string: surrogate U+DC00..U+DFFF must follow U+D800..U+DBFF";
                                     return token_type::parse_error;
@@ -2815,18 +2817,18 @@ class lexer
                             assert(0x00 <= codepoint and codepoint <= 0x10FFFF);
 
                             // translate codepoint into bytes
-                            if (codepoint < 0x80)
+                            if(codepoint < 0x80)
                             {
                                 // 1-byte characters: 0xxxxxxx (ASCII)
                                 add(codepoint);
                             }
-                            else if (codepoint <= 0x7FF)
+                            else if(codepoint <= 0x7FF)
                             {
                                 // 2-byte characters: 110xxxxx 10xxxxxx
                                 add(0xC0 | (codepoint >> 6));
                                 add(0x80 | (codepoint & 0x3F));
                             }
-                            else if (codepoint <= 0xFFFF)
+                            else if(codepoint <= 0xFFFF)
                             {
                                 // 3-byte characters: 1110xxxx 10xxxxxx 10xxxxxx
                                 add(0xE0 | (codepoint >> 12));
@@ -3179,7 +3181,7 @@ class lexer
                 case 0xDE:
                 case 0xDF:
                 {
-                    if (JSON_UNLIKELY(not next_byte_in_range({0x80, 0xBF})))
+                    if(JSON_UNLIKELY(not next_byte_in_range({0x80, 0xBF})))
                     {
                         return token_type::parse_error;
                     }
@@ -3189,7 +3191,7 @@ class lexer
                 // U+0800..U+0FFF: bytes E0 A0..BF 80..BF
                 case 0xE0:
                 {
-                    if (JSON_UNLIKELY(not (next_byte_in_range({0xA0, 0xBF, 0x80, 0xBF}))))
+                    if(JSON_UNLIKELY(not (next_byte_in_range({0xA0, 0xBF, 0x80, 0xBF}))))
                     {
                         return token_type::parse_error;
                     }
@@ -3213,7 +3215,7 @@ class lexer
                 case 0xEE:
                 case 0xEF:
                 {
-                    if (JSON_UNLIKELY(not (next_byte_in_range({0x80, 0xBF, 0x80, 0xBF}))))
+                    if(JSON_UNLIKELY(not (next_byte_in_range({0x80, 0xBF, 0x80, 0xBF}))))
                     {
                         return token_type::parse_error;
                     }
@@ -3223,7 +3225,7 @@ class lexer
                 // U+D000..U+D7FF: bytes ED 80..9F 80..BF
                 case 0xED:
                 {
-                    if (JSON_UNLIKELY(not (next_byte_in_range({0x80, 0x9F, 0x80, 0xBF}))))
+                    if(JSON_UNLIKELY(not (next_byte_in_range({0x80, 0x9F, 0x80, 0xBF}))))
                     {
                         return token_type::parse_error;
                     }
@@ -3233,7 +3235,7 @@ class lexer
                 // U+10000..U+3FFFF F0 90..BF 80..BF 80..BF
                 case 0xF0:
                 {
-                    if (JSON_UNLIKELY(not (next_byte_in_range({0x90, 0xBF, 0x80, 0xBF, 0x80, 0xBF}))))
+                    if(JSON_UNLIKELY(not (next_byte_in_range({0x90, 0xBF, 0x80, 0xBF, 0x80, 0xBF}))))
                     {
                         return token_type::parse_error;
                     }
@@ -3245,7 +3247,7 @@ class lexer
                 case 0xF2:
                 case 0xF3:
                 {
-                    if (JSON_UNLIKELY(not (next_byte_in_range({0x80, 0xBF, 0x80, 0xBF, 0x80, 0xBF}))))
+                    if(JSON_UNLIKELY(not (next_byte_in_range({0x80, 0xBF, 0x80, 0xBF, 0x80, 0xBF}))))
                     {
                         return token_type::parse_error;
                     }
@@ -3255,7 +3257,7 @@ class lexer
                 // U+100000..U+10FFFF F4 80..8F 80..BF 80..BF
                 case 0xF4:
                 {
-                    if (JSON_UNLIKELY(not (next_byte_in_range({0x80, 0x8F, 0x80, 0xBF, 0x80, 0xBF}))))
+                    if(JSON_UNLIKELY(not (next_byte_in_range({0x80, 0x8F, 0x80, 0xBF, 0x80, 0xBF}))))
                     {
                         return token_type::parse_error;
                     }
@@ -3613,33 +3615,33 @@ scan_number_done:
         errno = 0;
 
         // try to parse integers first and fall back to floats
-        if (number_type == token_type::value_unsigned)
+        if(number_type == token_type::value_unsigned)
         {
             const auto x = std::strtoull(token_buffer.data(), &endptr, 10);
 
             // we checked the number format before
             assert(endptr == token_buffer.data() + token_buffer.size());
 
-            if (errno == 0)
+            if(errno == 0)
             {
                 value_unsigned = static_cast<number_unsigned_t>(x);
-                if (value_unsigned == x)
+                if(value_unsigned == x)
                 {
                     return token_type::value_unsigned;
                 }
             }
         }
-        else if (number_type == token_type::value_integer)
+        else if(number_type == token_type::value_integer)
         {
             const auto x = std::strtoll(token_buffer.data(), &endptr, 10);
 
             // we checked the number format before
             assert(endptr == token_buffer.data() + token_buffer.size());
 
-            if (errno == 0)
+            if(errno == 0)
             {
                 value_integer = static_cast<number_integer_t>(x);
-                if (value_integer == x)
+                if(value_integer == x)
                 {
                     return token_type::value_integer;
                 }
@@ -3665,9 +3667,9 @@ scan_number_done:
                             token_type return_type)
     {
         assert(current == literal_text[0]);
-        for (std::size_t i = 1; i < length; ++i)
+        for(std::size_t i = 1; i < length; ++i)
         {
-            if (JSON_UNLIKELY(get() != literal_text[i]))
+            if(JSON_UNLIKELY(get() != literal_text[i]))
             {
                 error_message = "invalid literal";
                 return token_type::parse_error;
@@ -3703,7 +3705,7 @@ scan_number_done:
         ++position.chars_read_total;
         ++position.chars_read_current_line;
 
-        if (next_unget)
+        if(next_unget)
         {
             // just reset the next_unget variable and work with current
             next_unget = false;
@@ -3713,12 +3715,12 @@ scan_number_done:
             current = ia->get_character();
         }
 
-        if (JSON_LIKELY(current != std::char_traits<char>::eof()))
+        if(JSON_LIKELY(current != std::char_traits<char>::eof()))
         {
             token_string.push_back(std::char_traits<char>::to_char_type(current));
         }
 
-        if (current == '\n')
+        if(current == '\n')
         {
             ++position.lines_read;
             ++position.chars_read_current_line = 0;
@@ -3742,9 +3744,9 @@ scan_number_done:
         --position.chars_read_total;
 
         // in case we "unget" a newline, we have to also decrement the lines_read
-        if (position.chars_read_current_line == 0)
+        if(position.chars_read_current_line == 0)
         {
-            if (position.lines_read > 0)
+            if(position.lines_read > 0)
             {
                 --position.lines_read;
             }
@@ -3754,7 +3756,7 @@ scan_number_done:
             --position.chars_read_current_line;
         }
 
-        if (JSON_LIKELY(current != std::char_traits<char>::eof()))
+        if(JSON_LIKELY(current != std::char_traits<char>::eof()))
         {
             assert(token_string.size() != 0);
             token_string.pop_back();
@@ -3813,9 +3815,9 @@ scan_number_done:
     {
         // escape control characters
         std::string result;
-        for (const auto c : token_string)
+        for(const auto c : token_string)
         {
-            if ('\x00' <= c and c <= '\x1F')
+            if('\x00' <= c and c <= '\x1F')
             {
                 // escape control characters
                 char cs[9];
@@ -3848,7 +3850,7 @@ scan_number_done:
     */
     bool skip_bom()
     {
-        if (get() == 0xEF)
+        if(get() == 0xEF)
         {
             // check if we completely parse the BOM
             return get() == 0xBB and get() == 0xBF;
@@ -3863,7 +3865,7 @@ scan_number_done:
     token_type scan()
     {
         // initially, skip the BOM
-        if (position.chars_read_total == 0 and not skip_bom())
+        if(position.chars_read_total == 0 and not skip_bom())
         {
             error_message = "invalid BOM; must be 0xEF 0xBB 0xBF if given";
             return token_type::parse_error;
@@ -3874,7 +3876,7 @@ scan_number_done:
         {
             get();
         }
-        while (current == ' ' or current == '\t' or current == '\n' or current == '\r');
+        while(current == ' ' or current == '\t' or current == '\n' or current == '\r');
 
         switch (current)
         {
@@ -4151,7 +4153,7 @@ input.
 template<typename BasicJsonType>
 struct json_sax
 {
-    /// type for (signed) integers
+    /// type for(signed) integers
     using number_integer_t = typename BasicJsonType::number_integer_t;
     /// type for unsigned integers
     using number_unsigned_t = typename BasicJsonType::number_unsigned_t;
@@ -4327,7 +4329,7 @@ class json_sax_dom_parser
     {
         ref_stack.push_back(handle_value(BasicJsonType::value_t::object));
 
-        if (JSON_UNLIKELY(len != std::size_t(-1) and len > ref_stack.back()->max_size()))
+        if(JSON_UNLIKELY(len != std::size_t(-1) and len > ref_stack.back()->max_size()))
         {
             JSON_THROW(out_of_range::create(408,
                                             "excessive object size: " + std::to_string(len)));
@@ -4353,7 +4355,7 @@ class json_sax_dom_parser
     {
         ref_stack.push_back(handle_value(BasicJsonType::value_t::array));
 
-        if (JSON_UNLIKELY(len != std::size_t(-1) and len > ref_stack.back()->max_size()))
+        if(JSON_UNLIKELY(len != std::size_t(-1) and len > ref_stack.back()->max_size()))
         {
             JSON_THROW(out_of_range::create(408,
                                             "excessive array size: " + std::to_string(len)));
@@ -4372,7 +4374,7 @@ class json_sax_dom_parser
                      const detail::exception& ex)
     {
         errored = true;
-        if (allow_exceptions)
+        if(allow_exceptions)
         {
             // determine the proper exception type from the id
             switch ((ex.id / 100) % 100)
@@ -4411,7 +4413,7 @@ class json_sax_dom_parser
     template<typename Value>
     BasicJsonType* handle_value(Value&& v)
     {
-        if (ref_stack.empty())
+        if(ref_stack.empty())
         {
             root = BasicJsonType(std::forward<Value>(v));
             return &root;
@@ -4419,7 +4421,7 @@ class json_sax_dom_parser
 
         assert(ref_stack.back()->is_array() or ref_stack.back()->is_object());
 
-        if (ref_stack.back()->is_array())
+        if(ref_stack.back()->is_array())
         {
             ref_stack.back()->m_value.array->emplace_back(std::forward<Value>(v));
             return &(ref_stack.back()->m_value.array->back());
@@ -4509,9 +4511,9 @@ class json_sax_dom_callback_parser
         ref_stack.push_back(val.second);
 
         // check object limit
-        if (ref_stack.back())
+        if(ref_stack.back())
         {
-            if (JSON_UNLIKELY(len != std::size_t(-1) and len > ref_stack.back()->max_size()))
+            if(JSON_UNLIKELY(len != std::size_t(-1) and len > ref_stack.back()->max_size()))
             {
                 JSON_THROW(out_of_range::create(408,
                                                 "excessive object size: " + std::to_string(len)));
@@ -4530,7 +4532,7 @@ class json_sax_dom_callback_parser
         key_keep_stack.push_back(keep);
 
         // add discarded value at given key and store the reference for later
-        if (keep and ref_stack.back())
+        if(keep and ref_stack.back())
         {
             object_element = &(ref_stack.back()->m_value.object->operator[](val) = discarded);
         }
@@ -4540,9 +4542,9 @@ class json_sax_dom_callback_parser
 
     bool end_object()
     {
-        if (ref_stack.back())
+        if(ref_stack.back())
         {
-            if (not callback(static_cast<int>(ref_stack.size()) - 1, parse_event_t::object_end, *ref_stack.back()))
+            if(not callback(static_cast<int>(ref_stack.size()) - 1, parse_event_t::object_end, *ref_stack.back()))
             {
                 // discard object
                 *ref_stack.back() = discarded;
@@ -4554,14 +4556,14 @@ class json_sax_dom_callback_parser
         ref_stack.pop_back();
         keep_stack.pop_back();
 
-        if (not ref_stack.empty() and ref_stack.back())
+        if(not ref_stack.empty() and ref_stack.back())
         {
             // remove discarded value
-            if (ref_stack.back()->is_object())
+            if(ref_stack.back()->is_object())
             {
-                for (auto it = ref_stack.back()->begin(); it != ref_stack.back()->end(); ++it)
+                for(auto it = ref_stack.back()->begin(); it != ref_stack.back()->end(); ++it)
                 {
-                    if (it->is_discarded())
+                    if(it->is_discarded())
                     {
                         ref_stack.back()->erase(it);
                         break;
@@ -4582,9 +4584,9 @@ class json_sax_dom_callback_parser
         ref_stack.push_back(val.second);
 
         // check array limit
-        if (ref_stack.back())
+        if(ref_stack.back())
         {
-            if (JSON_UNLIKELY(len != std::size_t(-1) and len > ref_stack.back()->max_size()))
+            if(JSON_UNLIKELY(len != std::size_t(-1) and len > ref_stack.back()->max_size()))
             {
                 JSON_THROW(out_of_range::create(408,
                                                 "excessive array size: " + std::to_string(len)));
@@ -4598,10 +4600,10 @@ class json_sax_dom_callback_parser
     {
         bool keep = true;
 
-        if (ref_stack.back())
+        if(ref_stack.back())
         {
             keep = callback(static_cast<int>(ref_stack.size()) - 1, parse_event_t::array_end, *ref_stack.back());
-            if (not keep)
+            if(not keep)
             {
                 // discard array
                 *ref_stack.back() = discarded;
@@ -4614,9 +4616,9 @@ class json_sax_dom_callback_parser
         keep_stack.pop_back();
 
         // remove discarded value
-        if (not keep and not ref_stack.empty())
+        if(not keep and not ref_stack.empty())
         {
-            if (ref_stack.back()->is_array())
+            if(ref_stack.back()->is_array())
             {
                 ref_stack.back()->m_value.array->pop_back();
             }
@@ -4629,7 +4631,7 @@ class json_sax_dom_callback_parser
                      const detail::exception& ex)
     {
         errored = true;
-        if (allow_exceptions)
+        if(allow_exceptions)
         {
             // determine the proper exception type from the id
             switch ((ex.id / 100) % 100)
@@ -4681,7 +4683,7 @@ class json_sax_dom_callback_parser
 
         // do not handle this value if we know it would be added to a discarded
         // container
-        if (not keep_stack.back())
+        if(not keep_stack.back())
         {
             return {false, nullptr};
         }
@@ -4693,12 +4695,12 @@ class json_sax_dom_callback_parser
         const bool keep = skip_callback or callback(static_cast<int>(ref_stack.size()), parse_event_t::value, value);
 
         // do not handle this value if we just learnt it shall be discarded
-        if (not keep)
+        if(not keep)
         {
             return {false, nullptr};
         }
 
-        if (ref_stack.empty())
+        if(ref_stack.empty())
         {
             root = std::move(value);
             return {true, &root};
@@ -4706,7 +4708,7 @@ class json_sax_dom_callback_parser
 
         // skip this value if we already decided to skip the parent
         // (https://github.com/nlohmann/json/issues/971#issuecomment-413678360)
-        if (not ref_stack.back())
+        if(not ref_stack.back())
         {
             return {false, nullptr};
         }
@@ -4714,7 +4716,7 @@ class json_sax_dom_callback_parser
         // we now only expect arrays and objects
         assert(ref_stack.back()->is_array() or ref_stack.back()->is_object());
 
-        if (ref_stack.back()->is_array())
+        if(ref_stack.back()->is_array())
         {
             ref_stack.back()->m_value.array->push_back(std::move(value));
             return {true, &(ref_stack.back()->m_value.array->back())};
@@ -4726,7 +4728,7 @@ class json_sax_dom_callback_parser
             const bool store_element = key_keep_stack.back();
             key_keep_stack.pop_back();
 
-            if (not store_element)
+            if(not store_element)
             {
                 return {false, nullptr};
             }
@@ -4900,14 +4902,14 @@ class parser
     */
     void parse(const bool strict, BasicJsonType& result)
     {
-        if (callback)
+        if(callback)
         {
             json_sax_dom_callback_parser<BasicJsonType> sdp(result, callback, allow_exceptions);
             sax_parse_internal(&sdp);
             result.assert_invariant();
 
             // in strict mode, input must be completely read
-            if (strict and (get_token() != token_type::end_of_input))
+            if(strict and (get_token() != token_type::end_of_input))
             {
                 sdp.parse_error(m_lexer.get_position(),
                                 m_lexer.get_token_string(),
@@ -4916,7 +4918,7 @@ class parser
             }
 
             // in case of an error, return discarded value
-            if (sdp.is_errored())
+            if(sdp.is_errored())
             {
                 result = value_t::discarded;
                 return;
@@ -4924,7 +4926,7 @@ class parser
 
             // set top-level value to null if it was discarded by the callback
             // function
-            if (result.is_discarded())
+            if(result.is_discarded())
             {
                 result = nullptr;
             }
@@ -4936,7 +4938,7 @@ class parser
             result.assert_invariant();
 
             // in strict mode, input must be completely read
-            if (strict and (get_token() != token_type::end_of_input))
+            if(strict and (get_token() != token_type::end_of_input))
             {
                 sdp.parse_error(m_lexer.get_position(),
                                 m_lexer.get_token_string(),
@@ -4945,7 +4947,7 @@ class parser
             }
 
             // in case of an error, return discarded value
-            if (sdp.is_errored())
+            if(sdp.is_errored())
             {
                 result = value_t::discarded;
                 return;
@@ -4972,7 +4974,7 @@ class parser
         const bool result = sax_parse_internal(sax);
 
         // strict mode: next byte must be EOF
-        if (result and strict and (get_token() != token_type::end_of_input))
+        if(result and strict and (get_token() != token_type::end_of_input))
         {
             return sax->parse_error(m_lexer.get_position(),
                                     m_lexer.get_token_string(),
@@ -4993,24 +4995,24 @@ class parser
         // value to avoid a goto (see comment where set to true)
         bool skip_to_state_evaluation = false;
 
-        while (true)
+        while(true)
         {
-            if (not skip_to_state_evaluation)
+            if(not skip_to_state_evaluation)
             {
                 // invariant: get_token() was called before each iteration
                 switch (last_token)
                 {
                     case token_type::begin_object:
                     {
-                        if (JSON_UNLIKELY(not sax->start_object(std::size_t(-1))))
+                        if(JSON_UNLIKELY(not sax->start_object(std::size_t(-1))))
                         {
                             return false;
                         }
 
                         // closing } -> we are done
-                        if (get_token() == token_type::end_object)
+                        if(get_token() == token_type::end_object)
                         {
-                            if (JSON_UNLIKELY(not sax->end_object()))
+                            if(JSON_UNLIKELY(not sax->end_object()))
                             {
                                 return false;
                             }
@@ -5018,20 +5020,20 @@ class parser
                         }
 
                         // parse key
-                        if (JSON_UNLIKELY(last_token != token_type::value_string))
+                        if(JSON_UNLIKELY(last_token != token_type::value_string))
                         {
                             return sax->parse_error(m_lexer.get_position(),
                                                     m_lexer.get_token_string(),
                                                     parse_error::create(101, m_lexer.get_position(),
                                                             exception_message(token_type::value_string, "object key")));
                         }
-                        if (JSON_UNLIKELY(not sax->key(m_lexer.get_string())))
+                        if(JSON_UNLIKELY(not sax->key(m_lexer.get_string())))
                         {
                             return false;
                         }
 
                         // parse separator (:)
-                        if (JSON_UNLIKELY(get_token() != token_type::name_separator))
+                        if(JSON_UNLIKELY(get_token() != token_type::name_separator))
                         {
                             return sax->parse_error(m_lexer.get_position(),
                                                     m_lexer.get_token_string(),
@@ -5049,15 +5051,15 @@ class parser
 
                     case token_type::begin_array:
                     {
-                        if (JSON_UNLIKELY(not sax->start_array(std::size_t(-1))))
+                        if(JSON_UNLIKELY(not sax->start_array(std::size_t(-1))))
                         {
                             return false;
                         }
 
                         // closing ] -> we are done
-                        if (get_token() == token_type::end_array)
+                        if(get_token() == token_type::end_array)
                         {
-                            if (JSON_UNLIKELY(not sax->end_array()))
+                            if(JSON_UNLIKELY(not sax->end_array()))
                             {
                                 return false;
                             }
@@ -5075,7 +5077,7 @@ class parser
                     {
                         const auto res = m_lexer.get_number_float();
 
-                        if (JSON_UNLIKELY(not std::isfinite(res)))
+                        if(JSON_UNLIKELY(not std::isfinite(res)))
                         {
                             return sax->parse_error(m_lexer.get_position(),
                                                     m_lexer.get_token_string(),
@@ -5083,7 +5085,7 @@ class parser
                         }
                         else
                         {
-                            if (JSON_UNLIKELY(not sax->number_float(res, m_lexer.get_string())))
+                            if(JSON_UNLIKELY(not sax->number_float(res, m_lexer.get_string())))
                             {
                                 return false;
                             }
@@ -5093,7 +5095,7 @@ class parser
 
                     case token_type::literal_false:
                     {
-                        if (JSON_UNLIKELY(not sax->boolean(false)))
+                        if(JSON_UNLIKELY(not sax->boolean(false)))
                         {
                             return false;
                         }
@@ -5102,7 +5104,7 @@ class parser
 
                     case token_type::literal_null:
                     {
-                        if (JSON_UNLIKELY(not sax->null()))
+                        if(JSON_UNLIKELY(not sax->null()))
                         {
                             return false;
                         }
@@ -5111,7 +5113,7 @@ class parser
 
                     case token_type::literal_true:
                     {
-                        if (JSON_UNLIKELY(not sax->boolean(true)))
+                        if(JSON_UNLIKELY(not sax->boolean(true)))
                         {
                             return false;
                         }
@@ -5120,7 +5122,7 @@ class parser
 
                     case token_type::value_integer:
                     {
-                        if (JSON_UNLIKELY(not sax->number_integer(m_lexer.get_number_integer())))
+                        if(JSON_UNLIKELY(not sax->number_integer(m_lexer.get_number_integer())))
                         {
                             return false;
                         }
@@ -5129,7 +5131,7 @@ class parser
 
                     case token_type::value_string:
                     {
-                        if (JSON_UNLIKELY(not sax->string(m_lexer.get_string())))
+                        if(JSON_UNLIKELY(not sax->string(m_lexer.get_string())))
                         {
                             return false;
                         }
@@ -5138,7 +5140,7 @@ class parser
 
                     case token_type::value_unsigned:
                     {
-                        if (JSON_UNLIKELY(not sax->number_unsigned(m_lexer.get_number_unsigned())))
+                        if(JSON_UNLIKELY(not sax->number_unsigned(m_lexer.get_number_unsigned())))
                         {
                             return false;
                         }
@@ -5169,17 +5171,17 @@ class parser
             }
 
             // we reached this line after we successfully parsed a value
-            if (states.empty())
+            if(states.empty())
             {
                 // empty stack: we reached the end of the hierarchy: done
                 return true;
             }
             else
             {
-                if (states.back())  // array
+                if(states.back())  // array
                 {
                     // comma -> next value
-                    if (get_token() == token_type::value_separator)
+                    if(get_token() == token_type::value_separator)
                     {
                         // parse a new value
                         get_token();
@@ -5187,9 +5189,9 @@ class parser
                     }
 
                     // closing ]
-                    if (JSON_LIKELY(last_token == token_type::end_array))
+                    if(JSON_LIKELY(last_token == token_type::end_array))
                     {
-                        if (JSON_UNLIKELY(not sax->end_array()))
+                        if(JSON_UNLIKELY(not sax->end_array()))
                         {
                             return false;
                         }
@@ -5214,10 +5216,10 @@ class parser
                 else  // object
                 {
                     // comma -> next value
-                    if (get_token() == token_type::value_separator)
+                    if(get_token() == token_type::value_separator)
                     {
                         // parse key
-                        if (JSON_UNLIKELY(get_token() != token_type::value_string))
+                        if(JSON_UNLIKELY(get_token() != token_type::value_string))
                         {
                             return sax->parse_error(m_lexer.get_position(),
                                                     m_lexer.get_token_string(),
@@ -5226,14 +5228,14 @@ class parser
                         }
                         else
                         {
-                            if (JSON_UNLIKELY(not sax->key(m_lexer.get_string())))
+                            if(JSON_UNLIKELY(not sax->key(m_lexer.get_string())))
                             {
                                 return false;
                             }
                         }
 
                         // parse separator (:)
-                        if (JSON_UNLIKELY(get_token() != token_type::name_separator))
+                        if(JSON_UNLIKELY(get_token() != token_type::name_separator))
                         {
                             return sax->parse_error(m_lexer.get_position(),
                                                     m_lexer.get_token_string(),
@@ -5247,9 +5249,9 @@ class parser
                     }
 
                     // closing }
-                    if (JSON_LIKELY(last_token == token_type::end_object))
+                    if(JSON_LIKELY(last_token == token_type::end_object))
                     {
-                        if (JSON_UNLIKELY(not sax->end_object()))
+                        if(JSON_UNLIKELY(not sax->end_object()))
                         {
                             return false;
                         }
@@ -5285,14 +5287,14 @@ class parser
     {
         std::string error_msg = "syntax error ";
 
-        if (not context.empty())
+        if(not context.empty())
         {
             error_msg += "while parsing " + context + " ";
         }
 
         error_msg += "- ";
 
-        if (last_token == token_type::parse_error)
+        if(last_token == token_type::parse_error)
         {
             error_msg += std::string(m_lexer.get_error_message()) + "; last read: '" +
                          m_lexer.get_token_string() + "'";
@@ -5302,7 +5304,7 @@ class parser
             error_msg += "unexpected " + std::string(lexer_t::token_type_name(last_token));
         }
 
-        if (expected != token_type::uninitialized)
+        if(expected != token_type::uninitialized)
         {
             error_msg += "; expected " + std::string(lexer_t::token_type_name(expected));
         }
@@ -5718,7 +5720,7 @@ class iter_impl
 
             default:
             {
-                if (JSON_LIKELY(m_it.primitive_iterator.is_begin()))
+                if(JSON_LIKELY(m_it.primitive_iterator.is_begin()))
                 {
                     return *m_object;
                 }
@@ -5752,7 +5754,7 @@ class iter_impl
 
             default:
             {
-                if (JSON_LIKELY(m_it.primitive_iterator.is_begin()))
+                if(JSON_LIKELY(m_it.primitive_iterator.is_begin()))
                 {
                     return m_object;
                 }
@@ -5855,7 +5857,7 @@ class iter_impl
     bool operator==(const iter_impl& other) const
     {
         // if objects are not the same, the comparison is undefined
-        if (JSON_UNLIKELY(m_object != other.m_object))
+        if(JSON_UNLIKELY(m_object != other.m_object))
         {
             JSON_THROW(invalid_iterator::create(212, "cannot compare iterators of different containers"));
         }
@@ -5891,7 +5893,7 @@ class iter_impl
     bool operator<(const iter_impl& other) const
     {
         // if objects are not the same, the comparison is undefined
-        if (JSON_UNLIKELY(m_object != other.m_object))
+        if(JSON_UNLIKELY(m_object != other.m_object))
         {
             JSON_THROW(invalid_iterator::create(212, "cannot compare iterators of different containers"));
         }
@@ -6051,7 +6053,7 @@ class iter_impl
 
             default:
             {
-                if (JSON_LIKELY(m_it.primitive_iterator.get_value() == -n))
+                if(JSON_LIKELY(m_it.primitive_iterator.get_value() == -n))
                 {
                     return *m_object;
                 }
@@ -6069,7 +6071,7 @@ class iter_impl
     {
         assert(m_object != nullptr);
 
-        if (JSON_LIKELY(m_object->is_object()))
+        if(JSON_LIKELY(m_object->is_object()))
         {
             return m_it.object_iterator->first;
         }
@@ -6439,9 +6441,9 @@ class binary_reader
         }
 
         // strict mode: next byte must be EOF
-        if (result and strict)
+        if(result and strict)
         {
-            if (format == input_format_t::ubjson)
+            if(format == input_format_t::ubjson)
             {
                 get_ignore_noop();
             }
@@ -6450,7 +6452,7 @@ class binary_reader
                 get();
             }
 
-            if (JSON_UNLIKELY(current != std::char_traits<char>::eof()))
+            if(JSON_UNLIKELY(current != std::char_traits<char>::eof()))
             {
                 return sax->parse_error(chars_read, get_token_string(),
                                         parse_error::create(110, chars_read, exception_message(format, "expected end of input; last byte: 0x" + get_token_string(), "value")));
@@ -6486,12 +6488,12 @@ class binary_reader
         std::int32_t document_size;
         get_number<std::int32_t, true>(input_format_t::bson, document_size);
 
-        if (JSON_UNLIKELY(not sax->start_object(std::size_t(-1))))
+        if(JSON_UNLIKELY(not sax->start_object(std::size_t(-1))))
         {
             return false;
         }
 
-        if (JSON_UNLIKELY(not parse_bson_element_list(/*is_array*/false)))
+        if(JSON_UNLIKELY(not parse_bson_element_list(/*is_array*/false)))
         {
             return false;
         }
@@ -6509,14 +6511,14 @@ class binary_reader
     bool get_bson_cstr(string_t& result)
     {
         auto out = std::back_inserter(result);
-        while (true)
+        while(true)
         {
             get();
-            if (JSON_UNLIKELY(not unexpect_eof(input_format_t::bson, "cstring")))
+            if(JSON_UNLIKELY(not unexpect_eof(input_format_t::bson, "cstring")))
             {
                 return false;
             }
-            if (current == 0x00)
+            if(current == 0x00)
             {
                 return true;
             }
@@ -6540,7 +6542,7 @@ class binary_reader
     template<typename NumberType>
     bool get_bson_string(const NumberType len, string_t& result)
     {
-        if (JSON_UNLIKELY(len < 1))
+        if(JSON_UNLIKELY(len < 1))
         {
             auto last_token = get_token_string();
             return sax->parse_error(chars_read, last_token, parse_error::create(112, chars_read, exception_message(input_format_t::bson, "string length must be at least 1, is " + std::to_string(len), "string")));
@@ -6633,28 +6635,28 @@ class binary_reader
     bool parse_bson_element_list(const bool is_array)
     {
         string_t key;
-        while (int element_type = get())
+        while(int element_type = get())
         {
-            if (JSON_UNLIKELY(not unexpect_eof(input_format_t::bson, "element list")))
+            if(JSON_UNLIKELY(not unexpect_eof(input_format_t::bson, "element list")))
             {
                 return false;
             }
 
             const std::size_t element_type_parse_position = chars_read;
-            if (JSON_UNLIKELY(not get_bson_cstr(key)))
+            if(JSON_UNLIKELY(not get_bson_cstr(key)))
             {
                 return false;
             }
 
-            if (not is_array)
+            if(not is_array)
             {
-                if (not sax->key(key))
+                if(not sax->key(key))
                 {
                     return false;
                 }
             }
 
-            if (JSON_UNLIKELY(not parse_bson_element_internal(element_type, element_type_parse_position)))
+            if(JSON_UNLIKELY(not parse_bson_element_internal(element_type, element_type_parse_position)))
             {
                 return false;
             }
@@ -6675,12 +6677,12 @@ class binary_reader
         std::int32_t document_size;
         get_number<std::int32_t, true>(input_format_t::bson, document_size);
 
-        if (JSON_UNLIKELY(not sax->start_array(std::size_t(-1))))
+        if(JSON_UNLIKELY(not sax->start_array(std::size_t(-1))))
         {
             return false;
         }
 
-        if (JSON_UNLIKELY(not parse_bson_element_list(/*is_array*/true)))
+        if(JSON_UNLIKELY(not parse_bson_element_list(/*is_array*/true)))
         {
             return false;
         }
@@ -6965,12 +6967,12 @@ class binary_reader
             case 0xF9: // Half-Precision Float (two-byte IEEE 754)
             {
                 const int byte1_raw = get();
-                if (JSON_UNLIKELY(not unexpect_eof(input_format_t::cbor, "number")))
+                if(JSON_UNLIKELY(not unexpect_eof(input_format_t::cbor, "number")))
                 {
                     return false;
                 }
                 const int byte2_raw = get();
-                if (JSON_UNLIKELY(not unexpect_eof(input_format_t::cbor, "number")))
+                if(JSON_UNLIKELY(not unexpect_eof(input_format_t::cbor, "number")))
                 {
                     return false;
                 }
@@ -7043,7 +7045,7 @@ class binary_reader
     */
     bool get_cbor_string(string_t& result)
     {
-        if (JSON_UNLIKELY(not unexpect_eof(input_format_t::cbor, "string")))
+        if(JSON_UNLIKELY(not unexpect_eof(input_format_t::cbor, "string")))
         {
             return false;
         }
@@ -7105,10 +7107,10 @@ class binary_reader
 
             case 0x7F: // UTF-8 string (indefinite length)
             {
-                while (get() != 0xFF)
+                while(get() != 0xFF)
                 {
                     string_t chunk;
-                    if (not get_cbor_string(chunk))
+                    if(not get_cbor_string(chunk))
                     {
                         return false;
                     }
@@ -7132,16 +7134,16 @@ class binary_reader
     */
     bool get_cbor_array(const std::size_t len)
     {
-        if (JSON_UNLIKELY(not sax->start_array(len)))
+        if(JSON_UNLIKELY(not sax->start_array(len)))
         {
             return false;
         }
 
-        if (len != std::size_t(-1))
+        if(len != std::size_t(-1))
         {
-            for (std::size_t i = 0; i < len; ++i)
+            for(std::size_t i = 0; i < len; ++i)
             {
-                if (JSON_UNLIKELY(not parse_cbor_internal()))
+                if(JSON_UNLIKELY(not parse_cbor_internal()))
                 {
                     return false;
                 }
@@ -7149,9 +7151,9 @@ class binary_reader
         }
         else
         {
-            while (get() != 0xFF)
+            while(get() != 0xFF)
             {
-                if (JSON_UNLIKELY(not parse_cbor_internal(false)))
+                if(JSON_UNLIKELY(not parse_cbor_internal(false)))
                 {
                     return false;
                 }
@@ -7168,23 +7170,23 @@ class binary_reader
     */
     bool get_cbor_object(const std::size_t len)
     {
-        if (not JSON_UNLIKELY(sax->start_object(len)))
+        if(not JSON_UNLIKELY(sax->start_object(len)))
         {
             return false;
         }
 
         string_t key;
-        if (len != std::size_t(-1))
+        if(len != std::size_t(-1))
         {
-            for (std::size_t i = 0; i < len; ++i)
+            for(std::size_t i = 0; i < len; ++i)
             {
                 get();
-                if (JSON_UNLIKELY(not get_cbor_string(key) or not sax->key(key)))
+                if(JSON_UNLIKELY(not get_cbor_string(key) or not sax->key(key)))
                 {
                     return false;
                 }
 
-                if (JSON_UNLIKELY(not parse_cbor_internal()))
+                if(JSON_UNLIKELY(not parse_cbor_internal()))
                 {
                     return false;
                 }
@@ -7193,14 +7195,14 @@ class binary_reader
         }
         else
         {
-            while (get() != 0xFF)
+            while(get() != 0xFF)
             {
-                if (JSON_UNLIKELY(not get_cbor_string(key) or not sax->key(key)))
+                if(JSON_UNLIKELY(not get_cbor_string(key) or not sax->key(key)))
                 {
                     return false;
                 }
 
-                if (JSON_UNLIKELY(not parse_cbor_internal()))
+                if(JSON_UNLIKELY(not parse_cbor_internal()))
                 {
                     return false;
                 }
@@ -7589,7 +7591,7 @@ class binary_reader
     */
     bool get_msgpack_string(string_t& result)
     {
-        if (JSON_UNLIKELY(not unexpect_eof(input_format_t::msgpack, "string")))
+        if(JSON_UNLIKELY(not unexpect_eof(input_format_t::msgpack, "string")))
         {
             return false;
         }
@@ -7665,14 +7667,14 @@ class binary_reader
     */
     bool get_msgpack_array(const std::size_t len)
     {
-        if (JSON_UNLIKELY(not sax->start_array(len)))
+        if(JSON_UNLIKELY(not sax->start_array(len)))
         {
             return false;
         }
 
-        for (std::size_t i = 0; i < len; ++i)
+        for(std::size_t i = 0; i < len; ++i)
         {
-            if (JSON_UNLIKELY(not parse_msgpack_internal()))
+            if(JSON_UNLIKELY(not parse_msgpack_internal()))
             {
                 return false;
             }
@@ -7687,21 +7689,21 @@ class binary_reader
     */
     bool get_msgpack_object(const std::size_t len)
     {
-        if (JSON_UNLIKELY(not sax->start_object(len)))
+        if(JSON_UNLIKELY(not sax->start_object(len)))
         {
             return false;
         }
 
         string_t key;
-        for (std::size_t i = 0; i < len; ++i)
+        for(std::size_t i = 0; i < len; ++i)
         {
             get();
-            if (JSON_UNLIKELY(not get_msgpack_string(key) or not sax->key(key)))
+            if(JSON_UNLIKELY(not get_msgpack_string(key) or not sax->key(key)))
             {
                 return false;
             }
 
-            if (JSON_UNLIKELY(not parse_msgpack_internal()))
+            if(JSON_UNLIKELY(not parse_msgpack_internal()))
             {
                 return false;
             }
@@ -7743,12 +7745,12 @@ class binary_reader
     */
     bool get_ubjson_string(string_t& result, const bool get_char = true)
     {
-        if (get_char)
+        if(get_char)
         {
             get();  // TODO: may we ignore N here?
         }
 
-        if (JSON_UNLIKELY(not unexpect_eof(input_format_t::ubjson, "value")))
+        if(JSON_UNLIKELY(not unexpect_eof(input_format_t::ubjson, "value")))
         {
             return false;
         }
@@ -7802,7 +7804,7 @@ class binary_reader
             case 'U':
             {
                 uint8_t number;
-                if (JSON_UNLIKELY(not get_number(input_format_t::ubjson, number)))
+                if(JSON_UNLIKELY(not get_number(input_format_t::ubjson, number)))
                 {
                     return false;
                 }
@@ -7813,7 +7815,7 @@ class binary_reader
             case 'i':
             {
                 int8_t number;
-                if (JSON_UNLIKELY(not get_number(input_format_t::ubjson, number)))
+                if(JSON_UNLIKELY(not get_number(input_format_t::ubjson, number)))
                 {
                     return false;
                 }
@@ -7824,7 +7826,7 @@ class binary_reader
             case 'I':
             {
                 int16_t number;
-                if (JSON_UNLIKELY(not get_number(input_format_t::ubjson, number)))
+                if(JSON_UNLIKELY(not get_number(input_format_t::ubjson, number)))
                 {
                     return false;
                 }
@@ -7835,7 +7837,7 @@ class binary_reader
             case 'l':
             {
                 int32_t number;
-                if (JSON_UNLIKELY(not get_number(input_format_t::ubjson, number)))
+                if(JSON_UNLIKELY(not get_number(input_format_t::ubjson, number)))
                 {
                     return false;
                 }
@@ -7846,7 +7848,7 @@ class binary_reader
             case 'L':
             {
                 int64_t number;
-                if (JSON_UNLIKELY(not get_number(input_format_t::ubjson, number)))
+                if(JSON_UNLIKELY(not get_number(input_format_t::ubjson, number)))
                 {
                     return false;
                 }
@@ -7879,18 +7881,18 @@ class binary_reader
 
         get_ignore_noop();
 
-        if (current == '$')
+        if(current == '$')
         {
             result.second = get();  // must not ignore 'N', because 'N' maybe the type
-            if (JSON_UNLIKELY(not unexpect_eof(input_format_t::ubjson, "type")))
+            if(JSON_UNLIKELY(not unexpect_eof(input_format_t::ubjson, "type")))
             {
                 return false;
             }
 
             get_ignore_noop();
-            if (JSON_UNLIKELY(current != '#'))
+            if(JSON_UNLIKELY(current != '#'))
             {
-                if (JSON_UNLIKELY(not unexpect_eof(input_format_t::ubjson, "value")))
+                if(JSON_UNLIKELY(not unexpect_eof(input_format_t::ubjson, "value")))
                 {
                     return false;
                 }
@@ -7900,7 +7902,7 @@ class binary_reader
 
             return get_ubjson_size_value(result.first);
         }
-        else if (current == '#')
+        else if(current == '#')
         {
             return get_ubjson_size_value(result.first);
         }
@@ -7971,11 +7973,11 @@ class binary_reader
             case 'C':  // char
             {
                 get();
-                if (JSON_UNLIKELY(not unexpect_eof(input_format_t::ubjson, "char")))
+                if(JSON_UNLIKELY(not unexpect_eof(input_format_t::ubjson, "char")))
                 {
                     return false;
                 }
-                if (JSON_UNLIKELY(current > 127))
+                if(JSON_UNLIKELY(current > 127))
                 {
                     auto last_token = get_token_string();
                     return sax->parse_error(chars_read, last_token, parse_error::create(113, chars_read, exception_message(input_format_t::ubjson, "byte after 'C' must be in range 0x00..0x7F; last byte: 0x" + last_token, "char")));
@@ -8010,25 +8012,25 @@ class binary_reader
     bool get_ubjson_array()
     {
         std::pair<std::size_t, int> size_and_type;
-        if (JSON_UNLIKELY(not get_ubjson_size_type(size_and_type)))
+        if(JSON_UNLIKELY(not get_ubjson_size_type(size_and_type)))
         {
             return false;
         }
 
-        if (size_and_type.first != string_t::npos)
+        if(size_and_type.first != string_t::npos)
         {
-            if (JSON_UNLIKELY(not sax->start_array(size_and_type.first)))
+            if(JSON_UNLIKELY(not sax->start_array(size_and_type.first)))
             {
                 return false;
             }
 
-            if (size_and_type.second != 0)
+            if(size_and_type.second != 0)
             {
-                if (size_and_type.second != 'N')
+                if(size_and_type.second != 'N')
                 {
-                    for (std::size_t i = 0; i < size_and_type.first; ++i)
+                    for(std::size_t i = 0; i < size_and_type.first; ++i)
                     {
-                        if (JSON_UNLIKELY(not get_ubjson_value(size_and_type.second)))
+                        if(JSON_UNLIKELY(not get_ubjson_value(size_and_type.second)))
                         {
                             return false;
                         }
@@ -8037,9 +8039,9 @@ class binary_reader
             }
             else
             {
-                for (std::size_t i = 0; i < size_and_type.first; ++i)
+                for(std::size_t i = 0; i < size_and_type.first; ++i)
                 {
-                    if (JSON_UNLIKELY(not parse_ubjson_internal()))
+                    if(JSON_UNLIKELY(not parse_ubjson_internal()))
                     {
                         return false;
                     }
@@ -8048,14 +8050,14 @@ class binary_reader
         }
         else
         {
-            if (JSON_UNLIKELY(not sax->start_array(std::size_t(-1))))
+            if(JSON_UNLIKELY(not sax->start_array(std::size_t(-1))))
             {
                 return false;
             }
 
-            while (current != ']')
+            while(current != ']')
             {
-                if (JSON_UNLIKELY(not parse_ubjson_internal(false)))
+                if(JSON_UNLIKELY(not parse_ubjson_internal(false)))
                 {
                     return false;
                 }
@@ -8072,28 +8074,28 @@ class binary_reader
     bool get_ubjson_object()
     {
         std::pair<std::size_t, int> size_and_type;
-        if (JSON_UNLIKELY(not get_ubjson_size_type(size_and_type)))
+        if(JSON_UNLIKELY(not get_ubjson_size_type(size_and_type)))
         {
             return false;
         }
 
         string_t key;
-        if (size_and_type.first != string_t::npos)
+        if(size_and_type.first != string_t::npos)
         {
-            if (JSON_UNLIKELY(not sax->start_object(size_and_type.first)))
+            if(JSON_UNLIKELY(not sax->start_object(size_and_type.first)))
             {
                 return false;
             }
 
-            if (size_and_type.second != 0)
+            if(size_and_type.second != 0)
             {
-                for (std::size_t i = 0; i < size_and_type.first; ++i)
+                for(std::size_t i = 0; i < size_and_type.first; ++i)
                 {
-                    if (JSON_UNLIKELY(not get_ubjson_string(key) or not sax->key(key)))
+                    if(JSON_UNLIKELY(not get_ubjson_string(key) or not sax->key(key)))
                     {
                         return false;
                     }
-                    if (JSON_UNLIKELY(not get_ubjson_value(size_and_type.second)))
+                    if(JSON_UNLIKELY(not get_ubjson_value(size_and_type.second)))
                     {
                         return false;
                     }
@@ -8102,13 +8104,13 @@ class binary_reader
             }
             else
             {
-                for (std::size_t i = 0; i < size_and_type.first; ++i)
+                for(std::size_t i = 0; i < size_and_type.first; ++i)
                 {
-                    if (JSON_UNLIKELY(not get_ubjson_string(key) or not sax->key(key)))
+                    if(JSON_UNLIKELY(not get_ubjson_string(key) or not sax->key(key)))
                     {
                         return false;
                     }
-                    if (JSON_UNLIKELY(not parse_ubjson_internal()))
+                    if(JSON_UNLIKELY(not parse_ubjson_internal()))
                     {
                         return false;
                     }
@@ -8118,18 +8120,18 @@ class binary_reader
         }
         else
         {
-            if (JSON_UNLIKELY(not sax->start_object(std::size_t(-1))))
+            if(JSON_UNLIKELY(not sax->start_object(std::size_t(-1))))
             {
                 return false;
             }
 
-            while (current != '}')
+            while(current != '}')
             {
-                if (JSON_UNLIKELY(not get_ubjson_string(key, false) or not sax->key(key)))
+                if(JSON_UNLIKELY(not get_ubjson_string(key, false) or not sax->key(key)))
                 {
                     return false;
                 }
-                if (JSON_UNLIKELY(not parse_ubjson_internal()))
+                if(JSON_UNLIKELY(not parse_ubjson_internal()))
                 {
                     return false;
                 }
@@ -8169,7 +8171,7 @@ class binary_reader
         {
             get();
         }
-        while (current == 'N');
+        while(current == 'N');
 
         return current;
     }
@@ -8192,16 +8194,16 @@ class binary_reader
     {
         // step 1: read input into array with system's byte order
         std::array<uint8_t, sizeof(NumberType)> vec;
-        for (std::size_t i = 0; i < sizeof(NumberType); ++i)
+        for(std::size_t i = 0; i < sizeof(NumberType); ++i)
         {
             get();
-            if (JSON_UNLIKELY(not unexpect_eof(format, "number")))
+            if(JSON_UNLIKELY(not unexpect_eof(format, "number")))
             {
                 return false;
             }
 
             // reverse byte order prior to conversion if necessary
-            if (is_little_endian && !InputIsLittleEndian)
+            if(is_little_endian && !InputIsLittleEndian)
             {
                 vec[sizeof(NumberType) - i - 1] = static_cast<uint8_t>(current);
             }
@@ -8240,7 +8242,7 @@ class binary_reader
         std::generate_n(std::back_inserter(result), len, [this, &success, &format]()
         {
             get();
-            if (JSON_UNLIKELY(not unexpect_eof(format, "string")))
+            if(JSON_UNLIKELY(not unexpect_eof(format, "string")))
             {
                 success = false;
             }
@@ -8256,7 +8258,7 @@ class binary_reader
     */
     bool unexpect_eof(const input_format_t format, const char* context) const
     {
-        if (JSON_UNLIKELY(current == std::char_traits<char>::eof()))
+        if(JSON_UNLIKELY(current == std::char_traits<char>::eof()))
         {
             return sax->parse_error(chars_read, "<end of file>",
                                     parse_error::create(110, chars_read, exception_message(format, "unexpected end of input", context)));
@@ -8417,26 +8419,26 @@ class binary_writer
 
             case value_t::number_integer:
             {
-                if (j.m_value.number_integer >= 0)
+                if(j.m_value.number_integer >= 0)
                 {
                     // CBOR does not differentiate between positive signed
                     // integers and unsigned integers. Therefore, we used the
                     // code from the value_t::number_unsigned case here.
-                    if (j.m_value.number_integer <= 0x17)
+                    if(j.m_value.number_integer <= 0x17)
                     {
                         write_number(static_cast<uint8_t>(j.m_value.number_integer));
                     }
-                    else if (j.m_value.number_integer <= (std::numeric_limits<uint8_t>::max)())
+                    else if(j.m_value.number_integer <= (std::numeric_limits<uint8_t>::max)())
                     {
                         oa->write_character(to_char_type(0x18));
                         write_number(static_cast<uint8_t>(j.m_value.number_integer));
                     }
-                    else if (j.m_value.number_integer <= (std::numeric_limits<uint16_t>::max)())
+                    else if(j.m_value.number_integer <= (std::numeric_limits<uint16_t>::max)())
                     {
                         oa->write_character(to_char_type(0x19));
                         write_number(static_cast<uint16_t>(j.m_value.number_integer));
                     }
-                    else if (j.m_value.number_integer <= (std::numeric_limits<uint32_t>::max)())
+                    else if(j.m_value.number_integer <= (std::numeric_limits<uint32_t>::max)())
                     {
                         oa->write_character(to_char_type(0x1A));
                         write_number(static_cast<uint32_t>(j.m_value.number_integer));
@@ -8452,21 +8454,21 @@ class binary_writer
                     // The conversions below encode the sign in the first
                     // byte, and the value is converted to a positive number.
                     const auto positive_number = -1 - j.m_value.number_integer;
-                    if (j.m_value.number_integer >= -24)
+                    if(j.m_value.number_integer >= -24)
                     {
                         write_number(static_cast<uint8_t>(0x20 + positive_number));
                     }
-                    else if (positive_number <= (std::numeric_limits<uint8_t>::max)())
+                    else if(positive_number <= (std::numeric_limits<uint8_t>::max)())
                     {
                         oa->write_character(to_char_type(0x38));
                         write_number(static_cast<uint8_t>(positive_number));
                     }
-                    else if (positive_number <= (std::numeric_limits<uint16_t>::max)())
+                    else if(positive_number <= (std::numeric_limits<uint16_t>::max)())
                     {
                         oa->write_character(to_char_type(0x39));
                         write_number(static_cast<uint16_t>(positive_number));
                     }
-                    else if (positive_number <= (std::numeric_limits<uint32_t>::max)())
+                    else if(positive_number <= (std::numeric_limits<uint32_t>::max)())
                     {
                         oa->write_character(to_char_type(0x3A));
                         write_number(static_cast<uint32_t>(positive_number));
@@ -8482,21 +8484,21 @@ class binary_writer
 
             case value_t::number_unsigned:
             {
-                if (j.m_value.number_unsigned <= 0x17)
+                if(j.m_value.number_unsigned <= 0x17)
                 {
                     write_number(static_cast<uint8_t>(j.m_value.number_unsigned));
                 }
-                else if (j.m_value.number_unsigned <= (std::numeric_limits<uint8_t>::max)())
+                else if(j.m_value.number_unsigned <= (std::numeric_limits<uint8_t>::max)())
                 {
                     oa->write_character(to_char_type(0x18));
                     write_number(static_cast<uint8_t>(j.m_value.number_unsigned));
                 }
-                else if (j.m_value.number_unsigned <= (std::numeric_limits<uint16_t>::max)())
+                else if(j.m_value.number_unsigned <= (std::numeric_limits<uint16_t>::max)())
                 {
                     oa->write_character(to_char_type(0x19));
                     write_number(static_cast<uint16_t>(j.m_value.number_unsigned));
                 }
-                else if (j.m_value.number_unsigned <= (std::numeric_limits<uint32_t>::max)())
+                else if(j.m_value.number_unsigned <= (std::numeric_limits<uint32_t>::max)())
                 {
                     oa->write_character(to_char_type(0x1A));
                     write_number(static_cast<uint32_t>(j.m_value.number_unsigned));
@@ -8520,27 +8522,27 @@ class binary_writer
             {
                 // step 1: write control byte and the string length
                 const auto N = j.m_value.string->size();
-                if (N <= 0x17)
+                if(N <= 0x17)
                 {
                     write_number(static_cast<uint8_t>(0x60 + N));
                 }
-                else if (N <= (std::numeric_limits<uint8_t>::max)())
+                else if(N <= (std::numeric_limits<uint8_t>::max)())
                 {
                     oa->write_character(to_char_type(0x78));
                     write_number(static_cast<uint8_t>(N));
                 }
-                else if (N <= (std::numeric_limits<uint16_t>::max)())
+                else if(N <= (std::numeric_limits<uint16_t>::max)())
                 {
                     oa->write_character(to_char_type(0x79));
                     write_number(static_cast<uint16_t>(N));
                 }
-                else if (N <= (std::numeric_limits<uint32_t>::max)())
+                else if(N <= (std::numeric_limits<uint32_t>::max)())
                 {
                     oa->write_character(to_char_type(0x7A));
                     write_number(static_cast<uint32_t>(N));
                 }
                 // LCOV_EXCL_START
-                else if (N <= (std::numeric_limits<uint64_t>::max)())
+                else if(N <= (std::numeric_limits<uint64_t>::max)())
                 {
                     oa->write_character(to_char_type(0x7B));
                     write_number(static_cast<uint64_t>(N));
@@ -8558,27 +8560,27 @@ class binary_writer
             {
                 // step 1: write control byte and the array size
                 const auto N = j.m_value.array->size();
-                if (N <= 0x17)
+                if(N <= 0x17)
                 {
                     write_number(static_cast<uint8_t>(0x80 + N));
                 }
-                else if (N <= (std::numeric_limits<uint8_t>::max)())
+                else if(N <= (std::numeric_limits<uint8_t>::max)())
                 {
                     oa->write_character(to_char_type(0x98));
                     write_number(static_cast<uint8_t>(N));
                 }
-                else if (N <= (std::numeric_limits<uint16_t>::max)())
+                else if(N <= (std::numeric_limits<uint16_t>::max)())
                 {
                     oa->write_character(to_char_type(0x99));
                     write_number(static_cast<uint16_t>(N));
                 }
-                else if (N <= (std::numeric_limits<uint32_t>::max)())
+                else if(N <= (std::numeric_limits<uint32_t>::max)())
                 {
                     oa->write_character(to_char_type(0x9A));
                     write_number(static_cast<uint32_t>(N));
                 }
                 // LCOV_EXCL_START
-                else if (N <= (std::numeric_limits<uint64_t>::max)())
+                else if(N <= (std::numeric_limits<uint64_t>::max)())
                 {
                     oa->write_character(to_char_type(0x9B));
                     write_number(static_cast<uint64_t>(N));
@@ -8586,7 +8588,7 @@ class binary_writer
                 // LCOV_EXCL_STOP
 
                 // step 2: write each element
-                for (const auto& el : *j.m_value.array)
+                for(const auto& el : *j.m_value.array)
                 {
                     write_cbor(el);
                 }
@@ -8597,27 +8599,27 @@ class binary_writer
             {
                 // step 1: write control byte and the object size
                 const auto N = j.m_value.object->size();
-                if (N <= 0x17)
+                if(N <= 0x17)
                 {
                     write_number(static_cast<uint8_t>(0xA0 + N));
                 }
-                else if (N <= (std::numeric_limits<uint8_t>::max)())
+                else if(N <= (std::numeric_limits<uint8_t>::max)())
                 {
                     oa->write_character(to_char_type(0xB8));
                     write_number(static_cast<uint8_t>(N));
                 }
-                else if (N <= (std::numeric_limits<uint16_t>::max)())
+                else if(N <= (std::numeric_limits<uint16_t>::max)())
                 {
                     oa->write_character(to_char_type(0xB9));
                     write_number(static_cast<uint16_t>(N));
                 }
-                else if (N <= (std::numeric_limits<uint32_t>::max)())
+                else if(N <= (std::numeric_limits<uint32_t>::max)())
                 {
                     oa->write_character(to_char_type(0xBA));
                     write_number(static_cast<uint32_t>(N));
                 }
                 // LCOV_EXCL_START
-                else if (N <= (std::numeric_limits<uint64_t>::max)())
+                else if(N <= (std::numeric_limits<uint64_t>::max)())
                 {
                     oa->write_character(to_char_type(0xBB));
                     write_number(static_cast<uint64_t>(N));
@@ -8625,7 +8627,7 @@ class binary_writer
                 // LCOV_EXCL_STOP
 
                 // step 2: write each element
-                for (const auto& el : *j.m_value.object)
+                for(const auto& el : *j.m_value.object)
                 {
                     write_cbor(el.first);
                     write_cbor(el.second);
@@ -8661,35 +8663,35 @@ class binary_writer
 
             case value_t::number_integer:
             {
-                if (j.m_value.number_integer >= 0)
+                if(j.m_value.number_integer >= 0)
                 {
                     // MessagePack does not differentiate between positive
                     // signed integers and unsigned integers. Therefore, we used
                     // the code from the value_t::number_unsigned case here.
-                    if (j.m_value.number_unsigned < 128)
+                    if(j.m_value.number_unsigned < 128)
                     {
                         // positive fixnum
                         write_number(static_cast<uint8_t>(j.m_value.number_integer));
                     }
-                    else if (j.m_value.number_unsigned <= (std::numeric_limits<uint8_t>::max)())
+                    else if(j.m_value.number_unsigned <= (std::numeric_limits<uint8_t>::max)())
                     {
                         // uint 8
                         oa->write_character(to_char_type(0xCC));
                         write_number(static_cast<uint8_t>(j.m_value.number_integer));
                     }
-                    else if (j.m_value.number_unsigned <= (std::numeric_limits<uint16_t>::max)())
+                    else if(j.m_value.number_unsigned <= (std::numeric_limits<uint16_t>::max)())
                     {
                         // uint 16
                         oa->write_character(to_char_type(0xCD));
                         write_number(static_cast<uint16_t>(j.m_value.number_integer));
                     }
-                    else if (j.m_value.number_unsigned <= (std::numeric_limits<uint32_t>::max)())
+                    else if(j.m_value.number_unsigned <= (std::numeric_limits<uint32_t>::max)())
                     {
                         // uint 32
                         oa->write_character(to_char_type(0xCE));
                         write_number(static_cast<uint32_t>(j.m_value.number_integer));
                     }
-                    else if (j.m_value.number_unsigned <= (std::numeric_limits<uint64_t>::max)())
+                    else if(j.m_value.number_unsigned <= (std::numeric_limits<uint64_t>::max)())
                     {
                         // uint 64
                         oa->write_character(to_char_type(0xCF));
@@ -8698,33 +8700,33 @@ class binary_writer
                 }
                 else
                 {
-                    if (j.m_value.number_integer >= -32)
+                    if(j.m_value.number_integer >= -32)
                     {
                         // negative fixnum
                         write_number(static_cast<int8_t>(j.m_value.number_integer));
                     }
-                    else if (j.m_value.number_integer >= (std::numeric_limits<int8_t>::min)() and
+                    else if(j.m_value.number_integer >= (std::numeric_limits<int8_t>::min)() and
                              j.m_value.number_integer <= (std::numeric_limits<int8_t>::max)())
                     {
                         // int 8
                         oa->write_character(to_char_type(0xD0));
                         write_number(static_cast<int8_t>(j.m_value.number_integer));
                     }
-                    else if (j.m_value.number_integer >= (std::numeric_limits<int16_t>::min)() and
+                    else if(j.m_value.number_integer >= (std::numeric_limits<int16_t>::min)() and
                              j.m_value.number_integer <= (std::numeric_limits<int16_t>::max)())
                     {
                         // int 16
                         oa->write_character(to_char_type(0xD1));
                         write_number(static_cast<int16_t>(j.m_value.number_integer));
                     }
-                    else if (j.m_value.number_integer >= (std::numeric_limits<int32_t>::min)() and
+                    else if(j.m_value.number_integer >= (std::numeric_limits<int32_t>::min)() and
                              j.m_value.number_integer <= (std::numeric_limits<int32_t>::max)())
                     {
                         // int 32
                         oa->write_character(to_char_type(0xD2));
                         write_number(static_cast<int32_t>(j.m_value.number_integer));
                     }
-                    else if (j.m_value.number_integer >= (std::numeric_limits<int64_t>::min)() and
+                    else if(j.m_value.number_integer >= (std::numeric_limits<int64_t>::min)() and
                              j.m_value.number_integer <= (std::numeric_limits<int64_t>::max)())
                     {
                         // int 64
@@ -8737,30 +8739,30 @@ class binary_writer
 
             case value_t::number_unsigned:
             {
-                if (j.m_value.number_unsigned < 128)
+                if(j.m_value.number_unsigned < 128)
                 {
                     // positive fixnum
                     write_number(static_cast<uint8_t>(j.m_value.number_integer));
                 }
-                else if (j.m_value.number_unsigned <= (std::numeric_limits<uint8_t>::max)())
+                else if(j.m_value.number_unsigned <= (std::numeric_limits<uint8_t>::max)())
                 {
                     // uint 8
                     oa->write_character(to_char_type(0xCC));
                     write_number(static_cast<uint8_t>(j.m_value.number_integer));
                 }
-                else if (j.m_value.number_unsigned <= (std::numeric_limits<uint16_t>::max)())
+                else if(j.m_value.number_unsigned <= (std::numeric_limits<uint16_t>::max)())
                 {
                     // uint 16
                     oa->write_character(to_char_type(0xCD));
                     write_number(static_cast<uint16_t>(j.m_value.number_integer));
                 }
-                else if (j.m_value.number_unsigned <= (std::numeric_limits<uint32_t>::max)())
+                else if(j.m_value.number_unsigned <= (std::numeric_limits<uint32_t>::max)())
                 {
                     // uint 32
                     oa->write_character(to_char_type(0xCE));
                     write_number(static_cast<uint32_t>(j.m_value.number_integer));
                 }
-                else if (j.m_value.number_unsigned <= (std::numeric_limits<uint64_t>::max)())
+                else if(j.m_value.number_unsigned <= (std::numeric_limits<uint64_t>::max)())
                 {
                     // uint 64
                     oa->write_character(to_char_type(0xCF));
@@ -8780,24 +8782,24 @@ class binary_writer
             {
                 // step 1: write control byte and the string length
                 const auto N = j.m_value.string->size();
-                if (N <= 31)
+                if(N <= 31)
                 {
                     // fixstr
                     write_number(static_cast<uint8_t>(0xA0 | N));
                 }
-                else if (N <= (std::numeric_limits<uint8_t>::max)())
+                else if(N <= (std::numeric_limits<uint8_t>::max)())
                 {
                     // str 8
                     oa->write_character(to_char_type(0xD9));
                     write_number(static_cast<uint8_t>(N));
                 }
-                else if (N <= (std::numeric_limits<uint16_t>::max)())
+                else if(N <= (std::numeric_limits<uint16_t>::max)())
                 {
                     // str 16
                     oa->write_character(to_char_type(0xDA));
                     write_number(static_cast<uint16_t>(N));
                 }
-                else if (N <= (std::numeric_limits<uint32_t>::max)())
+                else if(N <= (std::numeric_limits<uint32_t>::max)())
                 {
                     // str 32
                     oa->write_character(to_char_type(0xDB));
@@ -8815,18 +8817,18 @@ class binary_writer
             {
                 // step 1: write control byte and the array size
                 const auto N = j.m_value.array->size();
-                if (N <= 15)
+                if(N <= 15)
                 {
                     // fixarray
                     write_number(static_cast<uint8_t>(0x90 | N));
                 }
-                else if (N <= (std::numeric_limits<uint16_t>::max)())
+                else if(N <= (std::numeric_limits<uint16_t>::max)())
                 {
                     // array 16
                     oa->write_character(to_char_type(0xDC));
                     write_number(static_cast<uint16_t>(N));
                 }
-                else if (N <= (std::numeric_limits<uint32_t>::max)())
+                else if(N <= (std::numeric_limits<uint32_t>::max)())
                 {
                     // array 32
                     oa->write_character(to_char_type(0xDD));
@@ -8834,7 +8836,7 @@ class binary_writer
                 }
 
                 // step 2: write each element
-                for (const auto& el : *j.m_value.array)
+                for(const auto& el : *j.m_value.array)
                 {
                     write_msgpack(el);
                 }
@@ -8845,18 +8847,18 @@ class binary_writer
             {
                 // step 1: write control byte and the object size
                 const auto N = j.m_value.object->size();
-                if (N <= 15)
+                if(N <= 15)
                 {
                     // fixmap
                     write_number(static_cast<uint8_t>(0x80 | (N & 0xF)));
                 }
-                else if (N <= (std::numeric_limits<uint16_t>::max)())
+                else if(N <= (std::numeric_limits<uint16_t>::max)())
                 {
                     // map 16
                     oa->write_character(to_char_type(0xDE));
                     write_number(static_cast<uint16_t>(N));
                 }
-                else if (N <= (std::numeric_limits<uint32_t>::max)())
+                else if(N <= (std::numeric_limits<uint32_t>::max)())
                 {
                     // map 32
                     oa->write_character(to_char_type(0xDF));
@@ -8864,7 +8866,7 @@ class binary_writer
                 }
 
                 // step 2: write each element
-                for (const auto& el : *j.m_value.object)
+                for(const auto& el : *j.m_value.object)
                 {
                     write_msgpack(el.first);
                     write_msgpack(el.second);
@@ -8890,7 +8892,7 @@ class binary_writer
         {
             case value_t::null:
             {
-                if (add_prefix)
+                if(add_prefix)
                 {
                     oa->write_character(to_char_type('Z'));
                 }
@@ -8899,7 +8901,7 @@ class binary_writer
 
             case value_t::boolean:
             {
-                if (add_prefix)
+                if(add_prefix)
                 {
                     oa->write_character(j.m_value.boolean
                                         ? to_char_type('T')
@@ -8928,7 +8930,7 @@ class binary_writer
 
             case value_t::string:
             {
-                if (add_prefix)
+                if(add_prefix)
                 {
                     oa->write_character(to_char_type('S'));
                 }
@@ -8941,13 +8943,13 @@ class binary_writer
 
             case value_t::array:
             {
-                if (add_prefix)
+                if(add_prefix)
                 {
                     oa->write_character(to_char_type('['));
                 }
 
                 bool prefix_required = true;
-                if (use_type and not j.m_value.array->empty())
+                if(use_type and not j.m_value.array->empty())
                 {
                     assert(use_count);
                     const CharType first_prefix = ubjson_prefix(j.front());
@@ -8957,7 +8959,7 @@ class binary_writer
                         return ubjson_prefix(v) == first_prefix;
                     });
 
-                    if (same_prefix)
+                    if(same_prefix)
                     {
                         prefix_required = false;
                         oa->write_character(to_char_type('$'));
@@ -8965,18 +8967,18 @@ class binary_writer
                     }
                 }
 
-                if (use_count)
+                if(use_count)
                 {
                     oa->write_character(to_char_type('#'));
                     write_number_with_ubjson_prefix(j.m_value.array->size(), true);
                 }
 
-                for (const auto& el : *j.m_value.array)
+                for(const auto& el : *j.m_value.array)
                 {
                     write_ubjson(el, use_count, use_type, prefix_required);
                 }
 
-                if (not use_count)
+                if(not use_count)
                 {
                     oa->write_character(to_char_type(']'));
                 }
@@ -8986,13 +8988,13 @@ class binary_writer
 
             case value_t::object:
             {
-                if (add_prefix)
+                if(add_prefix)
                 {
                     oa->write_character(to_char_type('{'));
                 }
 
                 bool prefix_required = true;
-                if (use_type and not j.m_value.object->empty())
+                if(use_type and not j.m_value.object->empty())
                 {
                     assert(use_count);
                     const CharType first_prefix = ubjson_prefix(j.front());
@@ -9002,7 +9004,7 @@ class binary_writer
                         return ubjson_prefix(v) == first_prefix;
                     });
 
-                    if (same_prefix)
+                    if(same_prefix)
                     {
                         prefix_required = false;
                         oa->write_character(to_char_type('$'));
@@ -9010,13 +9012,13 @@ class binary_writer
                     }
                 }
 
-                if (use_count)
+                if(use_count)
                 {
                     oa->write_character(to_char_type('#'));
                     write_number_with_ubjson_prefix(j.m_value.object->size(), true);
                 }
 
-                for (const auto& el : *j.m_value.object)
+                for(const auto& el : *j.m_value.object)
                 {
                     write_number_with_ubjson_prefix(el.first.size(), true);
                     oa->write_characters(
@@ -9025,7 +9027,7 @@ class binary_writer
                     write_ubjson(el.second, use_count, use_type, prefix_required);
                 }
 
-                if (not use_count)
+                if(not use_count)
                 {
                     oa->write_character(to_char_type('}'));
                 }
@@ -9050,7 +9052,7 @@ class binary_writer
     static std::size_t calc_bson_entry_header_size(const string_t& name)
     {
         const auto it = name.find(static_cast<typename string_t::value_type>(0));
-        if (JSON_UNLIKELY(it != BasicJsonType::string_t::npos))
+        if(JSON_UNLIKELY(it != BasicJsonType::string_t::npos))
         {
             JSON_THROW(out_of_range::create(409,
                                             "BSON key cannot contain code point U+0000 (at byte " + std::to_string(it) + ")"));
@@ -9126,7 +9128,7 @@ class binary_writer
     */
     static std::size_t calc_bson_integer_size(const std::int64_t value)
     {
-        if ((std::numeric_limits<std::int32_t>::min)() <= value and value <= (std::numeric_limits<std::int32_t>::max)())
+        if((std::numeric_limits<std::int32_t>::min)() <= value and value <= (std::numeric_limits<std::int32_t>::max)())
         {
             return sizeof(std::int32_t);
         }
@@ -9142,7 +9144,7 @@ class binary_writer
     void write_bson_integer(const string_t& name,
                             const std::int64_t value)
     {
-        if ((std::numeric_limits<std::int32_t>::min)() <= value and value <= (std::numeric_limits<std::int32_t>::max)())
+        if((std::numeric_limits<std::int32_t>::min)() <= value and value <= (std::numeric_limits<std::int32_t>::max)())
         {
             write_bson_entry_header(name, 0x10); // int32
             write_number<std::int32_t, true>(static_cast<std::int32_t>(value));
@@ -9170,12 +9172,12 @@ class binary_writer
     void write_bson_unsigned(const string_t& name,
                              const std::uint64_t value)
     {
-        if (value <= static_cast<std::uint64_t>((std::numeric_limits<std::int32_t>::max)()))
+        if(value <= static_cast<std::uint64_t>((std::numeric_limits<std::int32_t>::max)()))
         {
             write_bson_entry_header(name, 0x10 /* int32 */);
             write_number<std::int32_t, true>(static_cast<std::int32_t>(value));
         }
-        else if (value <= static_cast<std::uint64_t>((std::numeric_limits<std::int64_t>::max)()))
+        else if(value <= static_cast<std::uint64_t>((std::numeric_limits<std::int64_t>::max)()))
         {
             write_bson_entry_header(name, 0x12 /* int64 */);
             write_number<std::int64_t, true>(static_cast<std::int64_t>(value));
@@ -9204,7 +9206,7 @@ class binary_writer
         std::size_t embedded_document_size = 0ul;
         std::size_t array_index = 0ul;
 
-        for (const auto& el : value)
+        for(const auto& el : value)
         {
             embedded_document_size += calc_bson_element_size(std::to_string(array_index++), el);
         }
@@ -9223,7 +9225,7 @@ class binary_writer
 
         std::size_t array_index = 0ul;
 
-        for (const auto& el : value)
+        for(const auto& el : value)
         {
             write_bson_element(std::to_string(array_index++), el);
         }
@@ -9342,7 +9344,7 @@ class binary_writer
     {
         write_number<std::int32_t, true>(static_cast<std::int32_t>(calc_bson_object_size(value)));
 
-        for (const auto& el : value)
+        for(const auto& el : value)
         {
             write_bson_element(el.first, el.second);
         }
@@ -9388,7 +9390,7 @@ class binary_writer
     void write_number_with_ubjson_prefix(const NumberType n,
                                          const bool add_prefix)
     {
-        if (add_prefix)
+        if(add_prefix)
         {
             oa->write_character(get_ubjson_float_prefix(n));
         }
@@ -9401,41 +9403,41 @@ class binary_writer
     void write_number_with_ubjson_prefix(const NumberType n,
                                          const bool add_prefix)
     {
-        if (n <= static_cast<uint64_t>((std::numeric_limits<int8_t>::max)()))
+        if(n <= static_cast<uint64_t>((std::numeric_limits<int8_t>::max)()))
         {
-            if (add_prefix)
+            if(add_prefix)
             {
                 oa->write_character(to_char_type('i'));  // int8
             }
             write_number(static_cast<uint8_t>(n));
         }
-        else if (n <= (std::numeric_limits<uint8_t>::max)())
+        else if(n <= (std::numeric_limits<uint8_t>::max)())
         {
-            if (add_prefix)
+            if(add_prefix)
             {
                 oa->write_character(to_char_type('U'));  // uint8
             }
             write_number(static_cast<uint8_t>(n));
         }
-        else if (n <= static_cast<uint64_t>((std::numeric_limits<int16_t>::max)()))
+        else if(n <= static_cast<uint64_t>((std::numeric_limits<int16_t>::max)()))
         {
-            if (add_prefix)
+            if(add_prefix)
             {
                 oa->write_character(to_char_type('I'));  // int16
             }
             write_number(static_cast<int16_t>(n));
         }
-        else if (n <= static_cast<uint64_t>((std::numeric_limits<int32_t>::max)()))
+        else if(n <= static_cast<uint64_t>((std::numeric_limits<int32_t>::max)()))
         {
-            if (add_prefix)
+            if(add_prefix)
             {
                 oa->write_character(to_char_type('l'));  // int32
             }
             write_number(static_cast<int32_t>(n));
         }
-        else if (n <= static_cast<uint64_t>((std::numeric_limits<int64_t>::max)()))
+        else if(n <= static_cast<uint64_t>((std::numeric_limits<int64_t>::max)()))
         {
-            if (add_prefix)
+            if(add_prefix)
             {
                 oa->write_character(to_char_type('L'));  // int64
             }
@@ -9454,41 +9456,41 @@ class binary_writer
     void write_number_with_ubjson_prefix(const NumberType n,
                                          const bool add_prefix)
     {
-        if ((std::numeric_limits<int8_t>::min)() <= n and n <= (std::numeric_limits<int8_t>::max)())
+        if((std::numeric_limits<int8_t>::min)() <= n and n <= (std::numeric_limits<int8_t>::max)())
         {
-            if (add_prefix)
+            if(add_prefix)
             {
                 oa->write_character(to_char_type('i'));  // int8
             }
             write_number(static_cast<int8_t>(n));
         }
-        else if (static_cast<int64_t>((std::numeric_limits<uint8_t>::min)()) <= n and n <= static_cast<int64_t>((std::numeric_limits<uint8_t>::max)()))
+        else if(static_cast<int64_t>((std::numeric_limits<uint8_t>::min)()) <= n and n <= static_cast<int64_t>((std::numeric_limits<uint8_t>::max)()))
         {
-            if (add_prefix)
+            if(add_prefix)
             {
                 oa->write_character(to_char_type('U'));  // uint8
             }
             write_number(static_cast<uint8_t>(n));
         }
-        else if ((std::numeric_limits<int16_t>::min)() <= n and n <= (std::numeric_limits<int16_t>::max)())
+        else if((std::numeric_limits<int16_t>::min)() <= n and n <= (std::numeric_limits<int16_t>::max)())
         {
-            if (add_prefix)
+            if(add_prefix)
             {
                 oa->write_character(to_char_type('I'));  // int16
             }
             write_number(static_cast<int16_t>(n));
         }
-        else if ((std::numeric_limits<int32_t>::min)() <= n and n <= (std::numeric_limits<int32_t>::max)())
+        else if((std::numeric_limits<int32_t>::min)() <= n and n <= (std::numeric_limits<int32_t>::max)())
         {
-            if (add_prefix)
+            if(add_prefix)
             {
                 oa->write_character(to_char_type('l'));  // int32
             }
             write_number(static_cast<int32_t>(n));
         }
-        else if ((std::numeric_limits<int64_t>::min)() <= n and n <= (std::numeric_limits<int64_t>::max)())
+        else if((std::numeric_limits<int64_t>::min)() <= n and n <= (std::numeric_limits<int64_t>::max)())
         {
-            if (add_prefix)
+            if(add_prefix)
             {
                 oa->write_character(to_char_type('L'));  // int64
             }
@@ -9523,19 +9525,19 @@ class binary_writer
 
             case value_t::number_integer:
             {
-                if ((std::numeric_limits<int8_t>::min)() <= j.m_value.number_integer and j.m_value.number_integer <= (std::numeric_limits<int8_t>::max)())
+                if((std::numeric_limits<int8_t>::min)() <= j.m_value.number_integer and j.m_value.number_integer <= (std::numeric_limits<int8_t>::max)())
                 {
                     return 'i';
                 }
-                if ((std::numeric_limits<uint8_t>::min)() <= j.m_value.number_integer and j.m_value.number_integer <= (std::numeric_limits<uint8_t>::max)())
+                if((std::numeric_limits<uint8_t>::min)() <= j.m_value.number_integer and j.m_value.number_integer <= (std::numeric_limits<uint8_t>::max)())
                 {
                     return 'U';
                 }
-                if ((std::numeric_limits<int16_t>::min)() <= j.m_value.number_integer and j.m_value.number_integer <= (std::numeric_limits<int16_t>::max)())
+                if((std::numeric_limits<int16_t>::min)() <= j.m_value.number_integer and j.m_value.number_integer <= (std::numeric_limits<int16_t>::max)())
                 {
                     return 'I';
                 }
-                if ((std::numeric_limits<int32_t>::min)() <= j.m_value.number_integer and j.m_value.number_integer <= (std::numeric_limits<int32_t>::max)())
+                if((std::numeric_limits<int32_t>::min)() <= j.m_value.number_integer and j.m_value.number_integer <= (std::numeric_limits<int32_t>::max)())
                 {
                     return 'l';
                 }
@@ -9545,19 +9547,19 @@ class binary_writer
 
             case value_t::number_unsigned:
             {
-                if (j.m_value.number_unsigned <= (std::numeric_limits<int8_t>::max)())
+                if(j.m_value.number_unsigned <= (std::numeric_limits<int8_t>::max)())
                 {
                     return 'i';
                 }
-                if (j.m_value.number_unsigned <= (std::numeric_limits<uint8_t>::max)())
+                if(j.m_value.number_unsigned <= (std::numeric_limits<uint8_t>::max)())
                 {
                     return 'U';
                 }
-                if (j.m_value.number_unsigned <= (std::numeric_limits<int16_t>::max)())
+                if(j.m_value.number_unsigned <= (std::numeric_limits<int16_t>::max)())
                 {
                     return 'I';
                 }
-                if (j.m_value.number_unsigned <= (std::numeric_limits<int32_t>::max)())
+                if(j.m_value.number_unsigned <= (std::numeric_limits<int32_t>::max)())
                 {
                     return 'l';
                 }
@@ -9616,7 +9618,7 @@ class binary_writer
         std::copy((uint8_t *)&n, (uint8_t *)&n + sizeof(NumberType), (uint8_t *)vec.data());
 
         // step 2: write array to output (with possible reordering)
-        if (is_little_endian and not OutputIsLittleEndian)
+        if(is_little_endian and not OutputIsLittleEndian)
         {
             // reverse byte order prior to conversion if necessary
             std::reverse(vec.begin(), vec.end());
@@ -9645,7 +9647,7 @@ class binary_writer
         static_assert(std::is_pod<CharType>::value, "CharType must be POD");
         CharType result;
         //std::memcpy(&result, &x, sizeof(x));
-        std::copy(&x, &x + sizeof(x), (uint8_t *)&result);
+        std::copy((uint8_t *)&x, (uint8_t *)&x + sizeof(x), (uint8_t *)&result);
         return result;
     }
 
@@ -9779,12 +9781,12 @@ struct diyfp // f * 2^e
         //
         // p = u * v
         //   = (u_lo + 2^32 u_hi) (v_lo + 2^32 v_hi)
-        //   = (u_lo v_lo         ) + 2^32 ((u_lo v_hi         ) + (u_hi v_lo         )) + 2^64 (u_hi v_hi         )
-        //   = (p0                ) + 2^32 ((p1                ) + (p2                )) + 2^64 (p3                )
-        //   = (p0_lo + 2^32 p0_hi) + 2^32 ((p1_lo + 2^32 p1_hi) + (p2_lo + 2^32 p2_hi)) + 2^64 (p3                )
-        //   = (p0_lo             ) + 2^32 (p0_hi + p1_lo + p2_lo                      ) + 2^64 (p1_hi + p2_hi + p3)
-        //   = (p0_lo             ) + 2^32 (Q                                          ) + 2^64 (H                 )
-        //   = (p0_lo             ) + 2^32 (Q_lo + 2^32 Q_hi                           ) + 2^64 (H                 )
+        //   = (u_lo v_lo       ) + 2^32 ((u_lo v_hi       ) + (u_hi v_lo       )) + 2^64 (u_hi v_hi       )
+        //   = (p0              ) + 2^32 ((p1              ) + (p2              )) + 2^64 (p3              )
+        //   = (p0_lo + 2^32 p0_hi) + 2^32 ((p1_lo + 2^32 p1_hi) + (p2_lo + 2^32 p2_hi)) + 2^64 (p3              )
+        //   = (p0_lo           ) + 2^32 (p0_hi + p1_lo + p2_lo                    ) + 2^64 (p1_hi + p2_hi + p3)
+        //   = (p0_lo           ) + 2^32 (Q                                        ) + 2^64 (H               )
+        //   = (p0_lo           ) + 2^32 (Q_lo + 2^32 Q_hi                         ) + 2^64 (H               )
         //
         // (Since Q might be larger than 2^32 - 1)
         //
@@ -9836,7 +9838,7 @@ struct diyfp // f * 2^e
     {
         assert(x.f != 0);
 
-        while ((x.f >> 63) == 0)
+        while((x.f >> 63) == 0)
         {
             x.f <<= 1;
             x.e--;
@@ -9882,7 +9884,7 @@ boundaries compute_boundaries(FloatType value)
     // Convert the IEEE representation into a diyfp.
     //
     // If v is denormal:
-    //      value = 0.F * 2^(1 - bias) = (          F) * 2^(1 - bias - (p-1))
+    //      value = 0.F * 2^(1 - bias) = (         F) * 2^(1 - bias - (p-1))
     // If v is normalized:
     //      value = 1.F * 2^(E - bias) = (2^(p-1) + F) * 2^(E - bias - (p-1))
 
@@ -9967,7 +9969,7 @@ boundaries compute_boundaries(FloatType value)
 // The idea is to cut the number c * w = f * 2^e into two parts, which can be
 // processed independently: An integral part p1, and a fractional part p2:
 //
-//      f * 2^e = ( (f div 2^-e) * 2^-e + (f mod 2^-e) ) * 2^e
+//      f * 2^e = ((f div 2^-e) * 2^-e + (f mod 2^-e)) * 2^e
 //              = (f div 2^-e) + (f mod 2^-e) * 2^e
 //              = p1 + p2 * 2^e
 //
@@ -10027,8 +10029,8 @@ inline cached_power get_cached_power_for_binary_exponent(int e)
     //
     // If c were an exakt power of ten, i.e. c = 10^k, one may determine k as
     //
-    //      k = ceil( log_10( 2^(alpha - e - 1) ) )
-    //        = ceil( (alpha - e - 1) * log_10(2) )
+    //      k = ceil(log_10(2^(alpha - e - 1)))
+    //        = ceil((alpha - e - 1) * log_10(2))
     //
     // From the paper:
     // "In theory the result of the procedure could be wrong since c is rounded,
@@ -10058,7 +10060,7 @@ inline cached_power get_cached_power_for_binary_exponent(int e)
     // This implies that the difference of the decimal exponents of adjacent
     // table entries must be less than or equal to
     //
-    //      floor( (gamma - alpha) * log_10(2) ) = 8.
+    //      floor((gamma - alpha) * log_10(2)) = 8.
     //
     // (A smaller distance gamma-alpha would require a larger table.)
 
@@ -10180,48 +10182,48 @@ For n == 0, returns 1 and sets pow10 := 1.
 inline int find_largest_pow10(const uint32_t n, uint32_t& pow10)
 {
     // LCOV_EXCL_START
-    if (n >= 1000000000)
+    if(n >= 1000000000)
     {
         pow10 = 1000000000;
         return 10;
     }
     // LCOV_EXCL_STOP
-    else if (n >= 100000000)
+    else if(n >= 100000000)
     {
         pow10 = 100000000;
         return  9;
     }
-    else if (n >= 10000000)
+    else if(n >= 10000000)
     {
         pow10 = 10000000;
         return  8;
     }
-    else if (n >= 1000000)
+    else if(n >= 1000000)
     {
         pow10 = 1000000;
         return  7;
     }
-    else if (n >= 100000)
+    else if(n >= 100000)
     {
         pow10 = 100000;
         return  6;
     }
-    else if (n >= 10000)
+    else if(n >= 10000)
     {
         pow10 = 10000;
         return  5;
     }
-    else if (n >= 1000)
+    else if(n >= 1000)
     {
         pow10 = 1000;
         return  4;
     }
-    else if (n >= 100)
+    else if(n >= 100)
     {
         pow10 = 100;
         return  3;
     }
-    else if (n >= 10)
+    else if(n >= 10)
     {
         pow10 = 10;
         return  2;
@@ -10260,7 +10262,7 @@ inline void grisu2_round(char* buf, int len, uint64_t dist, uint64_t delta,
     // The tests are written in this order to avoid overflow in unsigned
     // integer arithmetic.
 
-    while (rest < dist
+    while(rest < dist
             and delta - rest >= ten_k
             and (rest + ten_k < dist or dist - rest > rest + ten_k - dist))
     {
@@ -10296,13 +10298,13 @@ inline void grisu2_digit_gen(char* buffer, int& length, int& decimal_exponent,
     assert(M_plus.e <= kGamma);
 
     uint64_t delta = diyfp::sub(M_plus, M_minus).f; // (significand of (M+ - M-), implicit exponent is e)
-    uint64_t dist  = diyfp::sub(M_plus, w      ).f; // (significand of (M+ - w ), implicit exponent is e)
+    uint64_t dist  = diyfp::sub(M_plus, w    ).f; // (significand of (M+ - w), implicit exponent is e)
 
     // Split M+ = f * 2^e into two parts p1 and p2 (note: e < 0):
     //
     //      M+ = f * 2^e
     //         = ((f div 2^-e) * 2^-e + (f mod 2^-e)) * 2^e
-    //         = ((p1        ) * 2^-e + (p2        )) * 2^e
+    //         = ((p1      ) * 2^-e + (p2      )) * 2^e
     //         = p1 + p2 * 2^e
 
     const diyfp one(uint64_t{1} << -M_plus.e, M_plus.e);
@@ -10322,12 +10324,12 @@ inline void grisu2_digit_gen(char* buffer, int& length, int& decimal_exponent,
     //      10^(k-1) <= p1 < 10^k, pow10 = 10^(k-1)
     //
     //      p1 = (p1 div 10^(k-1)) * 10^(k-1) + (p1 mod 10^(k-1))
-    //         = (d[k-1]         ) * 10^(k-1) + (p1 mod 10^(k-1))
+    //         = (d[k-1]       ) * 10^(k-1) + (p1 mod 10^(k-1))
     //
     //      M+ = p1                                             + p2 * 2^e
     //         = d[k-1] * 10^(k-1) + (p1 mod 10^(k-1))          + p2 * 2^e
     //         = d[k-1] * 10^(k-1) + ((p1 mod 10^(k-1)) * 2^-e + p2) * 2^e
-    //         = d[k-1] * 10^(k-1) + (                         rest) * 2^e
+    //         = d[k-1] * 10^(k-1) + (                        rest) * 2^e
     //
     // Now generate the digits d[n] of p1 from left to right (n = k-1,...,0)
     //
@@ -10338,7 +10340,7 @@ inline void grisu2_digit_gen(char* buffer, int& length, int& decimal_exponent,
     //      rest * 2^e = (d[n-1]...d[0] * 2^-e + p2) * 2^e <= delta * 2^e
 
     int n = k;
-    while (n > 0)
+    while(n > 0)
     {
         // Invariants:
         //      M+ = buffer * 10^n + (p1 + p2 * 2^e)    (buffer = 0 for n = k)
@@ -10371,7 +10373,7 @@ inline void grisu2_digit_gen(char* buffer, int& length, int& decimal_exponent,
         // Since rest and delta share the same exponent e, it suffices to
         // compare the significands.
         const uint64_t rest = (uint64_t{p1} << -one.e) + p2;
-        if (rest <= delta)
+        if(rest <= delta)
         {
             // V = buffer * 10^n, with M- <= V <= M+.
 
@@ -10424,7 +10426,7 @@ inline void grisu2_digit_gen(char* buffer, int& length, int& decimal_exponent,
     // using
     //
     //      10^m * p2 = ((10^m * p2) div 2^-e) * 2^-e + ((10^m * p2) mod 2^-e)
-    //                = (                   d) * 2^-e + (                   r)
+    //                = (                  d) * 2^-e + (                  r)
     //
     // or
     //      10^m * p2 * 2^e = d + r * 2^e
@@ -10440,12 +10442,12 @@ inline void grisu2_digit_gen(char* buffer, int& length, int& decimal_exponent,
     assert(p2 > delta);
 
     int m = 0;
-    for (;;)
+    for(;;)
     {
         // Invariant:
         //      M+ = buffer * 10^-m + 10^-m * (d[-m-1] / 10 + d[-m-2] / 10^2 + ...) * 2^e
-        //         = buffer * 10^-m + 10^-m * (p2                                 ) * 2^e
-        //         = buffer * 10^-m + 10^-m * (1/10 * (10 * p2)                   ) * 2^e
+        //         = buffer * 10^-m + 10^-m * (p2                               ) * 2^e
+        //         = buffer * 10^-m + 10^-m * (1/10 * (10 * p2)                 ) * 2^e
         //         = buffer * 10^-m + 10^-m * (1/10 * ((10*p2 div 2^-e) * 2^-e + (10*p2 mod 2^-e)) * 2^e
         //
         assert(p2 <= UINT64_MAX / 10);
@@ -10475,7 +10477,7 @@ inline void grisu2_digit_gen(char* buffer, int& length, int& decimal_exponent,
         //                    p2 <= 10^m * delta
         delta *= 10;
         dist  *= 10;
-        if (p2 <= delta)
+        if(p2 <= delta)
         {
             break;
         }
@@ -10560,7 +10562,7 @@ inline void grisu2(char* buf, int& len, int& decimal_exponent,
     // Note that this does not mean that Grisu2 always generates the shortest
     // possible number in the interval (m-, m+).
     const diyfp M_minus(w_minus.f + 1, w_minus.e);
-    const diyfp M_plus (w_plus.f  - 1, w_plus.e );
+    const diyfp M_plus (w_plus.f  - 1, w_plus.e);
 
     decimal_exponent = -cached.k; // = -(-k) = k
 
@@ -10616,7 +10618,7 @@ inline char* append_exponent(char* buf, int e)
     assert(e > -1000);
     assert(e <  1000);
 
-    if (e < 0)
+    if(e < 0)
     {
         e = -e;
         *buf++ = '-';
@@ -10627,14 +10629,14 @@ inline char* append_exponent(char* buf, int e)
     }
 
     auto k = static_cast<uint32_t>(e);
-    if (k < 10)
+    if(k < 10)
     {
         // Always print at least two digits in the exponent.
         // This is for compatibility with debug::log(0, "%g").
         *buf++ = '0';
         *buf++ = static_cast<char>('0' + k);
     }
-    else if (k < 100)
+    else if(k < 100)
     {
         *buf++ = static_cast<char>('0' + k / 10);
         k %= 10;
@@ -10674,7 +10676,7 @@ inline char* format_buffer(char* buf, int len, int decimal_exponent,
     // k is the length of the buffer (number of decimal digits)
     // n is the position of the decimal point relative to the start of the buffer.
 
-    if (k <= n and n <= max_exp)
+    if(k <= n and n <= max_exp)
     {
         // digits[000]
         // len <= max_exp + 2
@@ -10686,7 +10688,7 @@ inline char* format_buffer(char* buf, int len, int decimal_exponent,
         return buf + (n + 2);
     }
 
-    if (0 < n and n <= max_exp)
+    if(0 < n and n <= max_exp)
     {
         // dig.its
         // len <= max_digits10 + 1
@@ -10698,7 +10700,7 @@ inline char* format_buffer(char* buf, int len, int decimal_exponent,
         return buf + (k + 1);
     }
 
-    if (min_exp < n and n <= 0)
+    if(min_exp < n and n <= 0)
     {
         // 0.[000]digits
         // len <= 2 + (-min_exp - 1) + max_digits10
@@ -10710,7 +10712,7 @@ inline char* format_buffer(char* buf, int len, int decimal_exponent,
         return buf + (2 + (-n) + k);
     }
 
-    if (k == 1)
+    if(k == 1)
     {
         // dE+123
         // len <= 1 + 5
@@ -10750,13 +10752,13 @@ char* to_chars(char* first, const char* last, FloatType value)
     assert(std::isfinite(value));
 
     // Use signbit(value) instead of (value < 0) since signbit works for -0.
-    if (std::signbit(value))
+    if(std::signbit(value))
     {
         value = -value;
         *first++ = '-';
     }
 
-    if (value == 0) // +-0
+    if(value == 0) // +-0
     {
         *first++ = '0';
         // Make it look like a floating-point number (#362, #378)
@@ -10879,26 +10881,26 @@ class serializer
         {
             case value_t::object:
             {
-                if (val.m_value.object->empty())
+                if(val.m_value.object->empty())
                 {
                     o->write_characters("{}", 2);
                     return;
                 }
 
-                if (pretty_print)
+                if(pretty_print)
                 {
                     o->write_characters("{\n", 2);
 
                     // variable to hold indentation for recursive calls
                     const auto new_indent = current_indent + indent_step;
-                    if (JSON_UNLIKELY(indent_string.size() < new_indent))
+                    if(JSON_UNLIKELY(indent_string.size() < new_indent))
                     {
                         indent_string.resize(indent_string.size() * 2, ' ');
                     }
 
                     // first n-1 elements
                     auto i = val.m_value.object->cbegin();
-                    for (std::size_t cnt = 0; cnt < val.m_value.object->size() - 1; ++cnt, ++i)
+                    for(std::size_t cnt = 0; cnt < val.m_value.object->size() - 1; ++cnt, ++i)
                     {
                         o->write_characters(indent_string.c_str(), new_indent);
                         o->write_character('\"');
@@ -10927,7 +10929,7 @@ class serializer
 
                     // first n-1 elements
                     auto i = val.m_value.object->cbegin();
-                    for (std::size_t cnt = 0; cnt < val.m_value.object->size() - 1; ++cnt, ++i)
+                    for(std::size_t cnt = 0; cnt < val.m_value.object->size() - 1; ++cnt, ++i)
                     {
                         o->write_character('\"');
                         dump_escaped(i->first, ensure_ascii);
@@ -10952,25 +10954,25 @@ class serializer
 
             case value_t::array:
             {
-                if (val.m_value.array->empty())
+                if(val.m_value.array->empty())
                 {
                     o->write_characters("[]", 2);
                     return;
                 }
 
-                if (pretty_print)
+                if(pretty_print)
                 {
                     o->write_characters("[\n", 2);
 
                     // variable to hold indentation for recursive calls
                     const auto new_indent = current_indent + indent_step;
-                    if (JSON_UNLIKELY(indent_string.size() < new_indent))
+                    if(JSON_UNLIKELY(indent_string.size() < new_indent))
                     {
                         indent_string.resize(indent_string.size() * 2, ' ');
                     }
 
                     // first n-1 elements
-                    for (auto i = val.m_value.array->cbegin();
+                    for(auto i = val.m_value.array->cbegin();
                             i != val.m_value.array->cend() - 1; ++i)
                     {
                         o->write_characters(indent_string.c_str(), new_indent);
@@ -10992,7 +10994,7 @@ class serializer
                     o->write_character('[');
 
                     // first n-1 elements
-                    for (auto i = val.m_value.array->cbegin();
+                    for(auto i = val.m_value.array->cbegin();
                             i != val.m_value.array->cend() - 1; ++i)
                     {
                         dump(*i, false, ensure_ascii, indent_step, current_indent);
@@ -11019,7 +11021,7 @@ class serializer
 
             case value_t::boolean:
             {
-                if (val.m_value.boolean)
+                if(val.m_value.boolean)
                 {
                     o->write_characters("true", 4);
                 }
@@ -11087,7 +11089,7 @@ class serializer
         std::size_t bytes_after_last_accept = 0;
         std::size_t undumped_chars = 0;
 
-        for (std::size_t i = 0; i < s.size(); ++i)
+        for(std::size_t i = 0; i < s.size(); ++i)
         {
             const auto byte = static_cast<uint8_t>(s[i]);
 
@@ -11150,9 +11152,9 @@ class serializer
                         {
                             // escape control characters (0x00..0x1F) or, if
                             // ensure_ascii parameter is used, non-ASCII characters
-                            if ((codepoint <= 0x1F) or (ensure_ascii and (codepoint >= 0x7F)))
+                            if((codepoint <= 0x1F) or (ensure_ascii and (codepoint >= 0x7F)))
                             {
-                                if (codepoint <= 0xFFFF)
+                                if(codepoint <= 0xFFFF)
                                 {
                                     (std::snprintf)(string_buffer.data() + bytes, 7, "\\u%04x",
                                                     static_cast<uint16_t>(codepoint));
@@ -11179,7 +11181,7 @@ class serializer
                     // write buffer and reset index; there must be 13 bytes
                     // left, as this is the maximal number of bytes to be
                     // written ("\uxxxx\uxxxx\0") for one code point
-                    if (string_buffer.size() - bytes < 13)
+                    if(string_buffer.size() - bytes < 13)
                     {
                         o->write_characters(string_buffer.data(), bytes);
                         bytes = 0;
@@ -11209,7 +11211,7 @@ class serializer
                             // would like to read it again, because the byte
                             // may be OK for itself, but just not OK for the
                             // previous sequence
-                            if (undumped_chars > 0)
+                            if(undumped_chars > 0)
                             {
                                 --i;
                             }
@@ -11218,10 +11220,10 @@ class serializer
                             // thus removing/ignoring the invalid characters
                             bytes = bytes_after_last_accept;
 
-                            if (error_handler == error_handler_t::replace)
+                            if(error_handler == error_handler_t::replace)
                             {
                                 // add a replacement character
-                                if (ensure_ascii)
+                                if(ensure_ascii)
                                 {
                                     string_buffer[bytes++] = '\\';
                                     string_buffer[bytes++] = 'u';
@@ -11251,7 +11253,7 @@ class serializer
 
                 default:  // decode found yet incomplete multi-byte code point
                 {
-                    if (not ensure_ascii)
+                    if(not ensure_ascii)
                     {
                         // code point will not be escaped - copy byte to buffer
                         string_buffer[bytes++] = s[i];
@@ -11263,10 +11265,10 @@ class serializer
         }
 
         // we finished processing the string
-        if (JSON_LIKELY(state == UTF8_ACCEPT))
+        if(JSON_LIKELY(state == UTF8_ACCEPT))
         {
             // write buffer
-            if (bytes > 0)
+            if(bytes > 0)
             {
                 o->write_characters(string_buffer.data(), bytes);
             }
@@ -11295,7 +11297,7 @@ class serializer
                     // write all accepted bytes
                     o->write_characters(string_buffer.data(), bytes_after_last_accept);
                     // add a replacement character
-                    if (ensure_ascii)
+                    if(ensure_ascii)
                     {
                         o->write_characters("\\ufffd", 6);
                     }
@@ -11325,7 +11327,7 @@ class serializer
     void dump_integer(NumberType x)
     {
         // special case for "0"
-        if (x == 0)
+        if(x == 0)
         {
             o->write_character('0');
             return;
@@ -11334,7 +11336,7 @@ class serializer
         const bool is_negative = std::is_same<NumberType, number_integer_t>::value and not (x >= 0);  // see issue #755
         std::size_t i = 0;
 
-        while (x != 0)
+        while(x != 0)
         {
             // spare 1 byte for '\0'
             assert(i < number_buffer.size() - 1);
@@ -11344,7 +11346,7 @@ class serializer
             x /= 10;
         }
 
-        if (is_negative)
+        if(is_negative)
         {
             // make sure there is capacity for the '-'
             assert(i < number_buffer.size() - 2);
@@ -11366,7 +11368,7 @@ class serializer
     void dump_float(number_float_t x)
     {
         // NaN / inf
-        if (not std::isfinite(x))
+        if(not std::isfinite(x))
         {
             o->write_characters("null", 4);
             return;
@@ -11406,7 +11408,7 @@ class serializer
         assert(static_cast<std::size_t>(len) < number_buffer.size());
 
         // erase thousands separator
-        if (thousands_sep != '\0')
+        if(thousands_sep != '\0')
         {
             const auto end = std::remove(number_buffer.begin(),
                                          number_buffer.begin() + len, thousands_sep);
@@ -11416,10 +11418,10 @@ class serializer
         }
 
         // convert decimal point to '.'
-        if (decimal_point != '\0' and decimal_point != '.')
+        if(decimal_point != '\0' and decimal_point != '.')
         {
             const auto dec_pos = std::find(number_buffer.begin(), number_buffer.end(), decimal_point);
-            if (dec_pos != number_buffer.end())
+            if(dec_pos != number_buffer.end())
             {
                 *dec_pos = '.';
             }
@@ -11435,7 +11437,7 @@ class serializer
             return (c == '.' or c == 'e');
         });
 
-        if (value_is_int_like)
+        if(value_is_int_like)
         {
             o->write_characters(".0", 2);
         }
@@ -11569,7 +11571,7 @@ class json_ref
 
     value_type moved_or_copied() const
     {
-        if (is_rvalue)
+        if(is_rvalue)
         {
             return std::move(*value_ref);
         }
@@ -11688,7 +11690,7 @@ class json_pointer
         const int res = std::stoi(s, &processed_chars);
 
         // check if the string was completely read
-        if (JSON_UNLIKELY(processed_chars != s.size()))
+        if(JSON_UNLIKELY(processed_chars != s.size()))
         {
             JSON_THROW(detail::out_of_range::create(404, "unresolved reference token '" + s + "'"));
         }
@@ -11703,7 +11705,7 @@ class json_pointer
     */
     std::string pop_back()
     {
-        if (JSON_UNLIKELY(is_root()))
+        if(JSON_UNLIKELY(is_root()))
         {
             JSON_THROW(detail::out_of_range::create(405, "JSON pointer has no parent"));
         }
@@ -11721,7 +11723,7 @@ class json_pointer
 
     json_pointer top() const
     {
-        if (JSON_UNLIKELY(is_root()))
+        if(JSON_UNLIKELY(is_root()))
         {
             JSON_THROW(detail::out_of_range::create(405, "JSON pointer has no parent"));
         }
@@ -11746,13 +11748,13 @@ class json_pointer
 
         // in case no reference tokens exist, return a reference to the JSON value
         // j which will be overwritten by a primitive value
-        for (const auto& reference_token : reference_tokens)
+        for(const auto& reference_token : reference_tokens)
         {
             switch (result->m_type)
             {
                 case detail::value_t::null:
                 {
-                    if (reference_token == "0")
+                    if(reference_token == "0")
                     {
                         // start a new array if reference token is 0
                         result = &result->operator[](0);
@@ -11822,10 +11824,10 @@ class json_pointer
     BasicJsonType& get_unchecked(BasicJsonType* ptr) const
     {
         using size_type = typename BasicJsonType::size_type;
-        for (const auto& reference_token : reference_tokens)
+        for(const auto& reference_token : reference_tokens)
         {
             // convert null values to arrays or objects before continuing
-            if (ptr->m_type == detail::value_t::null)
+            if(ptr->m_type == detail::value_t::null)
             {
                 // check if reference token is a number
                 const bool nums =
@@ -11853,14 +11855,14 @@ class json_pointer
                 case detail::value_t::array:
                 {
                     // error condition (cf. RFC 6901, Sect. 4)
-                    if (JSON_UNLIKELY(reference_token.size() > 1 and reference_token[0] == '0'))
+                    if(JSON_UNLIKELY(reference_token.size() > 1 and reference_token[0] == '0'))
                     {
                         JSON_THROW(detail::parse_error::create(106, 0,
                                                                "array index '" + reference_token +
                                                                "' must not begin with '0'"));
                     }
 
-                    if (reference_token == "-")
+                    if(reference_token == "-")
                     {
                         // explicitly treat "-" as index beyond the end
                         ptr = &ptr->operator[](ptr->m_value.array->size());
@@ -11898,7 +11900,7 @@ class json_pointer
     BasicJsonType& get_checked(BasicJsonType* ptr) const
     {
         using size_type = typename BasicJsonType::size_type;
-        for (const auto& reference_token : reference_tokens)
+        for(const auto& reference_token : reference_tokens)
         {
             switch (ptr->m_type)
             {
@@ -11911,7 +11913,7 @@ class json_pointer
 
                 case detail::value_t::array:
                 {
-                    if (JSON_UNLIKELY(reference_token == "-"))
+                    if(JSON_UNLIKELY(reference_token == "-"))
                     {
                         // "-" always fails the range check
                         JSON_THROW(detail::out_of_range::create(402,
@@ -11920,7 +11922,7 @@ class json_pointer
                     }
 
                     // error condition (cf. RFC 6901, Sect. 4)
-                    if (JSON_UNLIKELY(reference_token.size() > 1 and reference_token[0] == '0'))
+                    if(JSON_UNLIKELY(reference_token.size() > 1 and reference_token[0] == '0'))
                     {
                         JSON_THROW(detail::parse_error::create(106, 0,
                                                                "array index '" + reference_token +
@@ -11963,7 +11965,7 @@ class json_pointer
     const BasicJsonType& get_unchecked(const BasicJsonType* ptr) const
     {
         using size_type = typename BasicJsonType::size_type;
-        for (const auto& reference_token : reference_tokens)
+        for(const auto& reference_token : reference_tokens)
         {
             switch (ptr->m_type)
             {
@@ -11976,7 +11978,7 @@ class json_pointer
 
                 case detail::value_t::array:
                 {
-                    if (JSON_UNLIKELY(reference_token == "-"))
+                    if(JSON_UNLIKELY(reference_token == "-"))
                     {
                         // "-" cannot be used for const access
                         JSON_THROW(detail::out_of_range::create(402,
@@ -11985,7 +11987,7 @@ class json_pointer
                     }
 
                     // error condition (cf. RFC 6901, Sect. 4)
-                    if (JSON_UNLIKELY(reference_token.size() > 1 and reference_token[0] == '0'))
+                    if(JSON_UNLIKELY(reference_token.size() > 1 and reference_token[0] == '0'))
                     {
                         JSON_THROW(detail::parse_error::create(106, 0,
                                                                "array index '" + reference_token +
@@ -12022,7 +12024,7 @@ class json_pointer
     const BasicJsonType& get_checked(const BasicJsonType* ptr) const
     {
         using size_type = typename BasicJsonType::size_type;
-        for (const auto& reference_token : reference_tokens)
+        for(const auto& reference_token : reference_tokens)
         {
             switch (ptr->m_type)
             {
@@ -12035,7 +12037,7 @@ class json_pointer
 
                 case detail::value_t::array:
                 {
-                    if (JSON_UNLIKELY(reference_token == "-"))
+                    if(JSON_UNLIKELY(reference_token == "-"))
                     {
                         // "-" always fails the range check
                         JSON_THROW(detail::out_of_range::create(402,
@@ -12044,7 +12046,7 @@ class json_pointer
                     }
 
                     // error condition (cf. RFC 6901, Sect. 4)
-                    if (JSON_UNLIKELY(reference_token.size() > 1 and reference_token[0] == '0'))
+                    if(JSON_UNLIKELY(reference_token.size() > 1 and reference_token[0] == '0'))
                     {
                         JSON_THROW(detail::parse_error::create(106, 0,
                                                                "array index '" + reference_token +
@@ -12085,13 +12087,13 @@ class json_pointer
         std::vector<std::string> result;
 
         // special case: empty reference string -> no reference tokens
-        if (reference_string.empty())
+        if(reference_string.empty())
         {
             return result;
         }
 
         // check if nonempty reference string begins with slash
-        if (JSON_UNLIKELY(reference_string[0] != '/'))
+        if(JSON_UNLIKELY(reference_string[0] != '/'))
         {
             JSON_THROW(detail::parse_error::create(107, 1,
                                                    "JSON pointer must be empty or begin with '/' - was: '" +
@@ -12101,7 +12103,7 @@ class json_pointer
         // extract the reference tokens:
         // - slash: position of the last read slash (or end of string)
         // - start: position after the previous slash
-        for (
+        for(
             // search for the first slash after the first character
             std::size_t slash = reference_string.find_first_of('/', 1),
             // set the beginning of the first reference token
@@ -12119,14 +12121,14 @@ class json_pointer
             auto reference_token = reference_string.substr(start, slash - start);
 
             // check reference tokens are properly escaped
-            for (std::size_t pos = reference_token.find_first_of('~');
+            for(std::size_t pos = reference_token.find_first_of('~');
                     pos != std::string::npos;
                     pos = reference_token.find_first_of('~', pos + 1))
             {
                 assert(reference_token[pos] == '~');
 
                 // ~ must be followed by 0 or 1
-                if (JSON_UNLIKELY(pos == reference_token.size() - 1 or
+                if(JSON_UNLIKELY(pos == reference_token.size() - 1 or
                                   (reference_token[pos + 1] != '0' and
                                    reference_token[pos + 1] != '1')))
                 {
@@ -12159,7 +12161,7 @@ class json_pointer
                                   const std::string& t)
     {
         assert(not f.empty());
-        for (auto pos = s.find(f);                // find first occurrence of f
+        for(auto pos = s.find(f);                // find first occurrence of f
                 pos != std::string::npos;         // make sure f was found
                 s.replace(pos, f.size(), t),      // replace with t, and
                 pos = s.find(f, pos + t.size()))  // find next occurrence of f
@@ -12196,7 +12198,7 @@ class json_pointer
         {
             case detail::value_t::array:
             {
-                if (value.m_value.array->empty())
+                if(value.m_value.array->empty())
                 {
                     // flatten empty array as null
                     result[reference_string] = nullptr;
@@ -12204,7 +12206,7 @@ class json_pointer
                 else
                 {
                     // iterate array and use index as reference string
-                    for (std::size_t i = 0; i < value.m_value.array->size(); ++i)
+                    for(std::size_t i = 0; i < value.m_value.array->size(); ++i)
                     {
                         flatten(reference_string + "/" + std::to_string(i),
                                 value.m_value.array->operator[](i), result);
@@ -12215,7 +12217,7 @@ class json_pointer
 
             case detail::value_t::object:
             {
-                if (value.m_value.object->empty())
+                if(value.m_value.object->empty())
                 {
                     // flatten empty object as null
                     result[reference_string] = nullptr;
@@ -12223,7 +12225,7 @@ class json_pointer
                 else
                 {
                     // iterate object and use keys as reference string
-                    for (const auto& element : *value.m_value.object)
+                    for(const auto& element : *value.m_value.object)
                     {
                         flatten(reference_string + "/" + escape(element.first), element.second, result);
                     }
@@ -12253,7 +12255,7 @@ class json_pointer
     static BasicJsonType
     unflatten(const BasicJsonType& value)
     {
-        if (JSON_UNLIKELY(not value.is_object()))
+        if(JSON_UNLIKELY(not value.is_object()))
         {
             JSON_THROW(detail::type_error::create(314, "only objects can be unflattened"));
         }
@@ -12261,9 +12263,9 @@ class json_pointer
         BasicJsonType result;
 
         // iterate the JSON object values
-        for (const auto& element : *value.m_value.object)
+        for(const auto& element : *value.m_value.object)
         {
-            if (JSON_UNLIKELY(not element.second.is_primitive()))
+            if(JSON_UNLIKELY(not element.second.is_primitive()))
             {
                 JSON_THROW(detail::type_error::create(315, "values in object must be primitive"));
             }
@@ -13226,7 +13228,7 @@ class basic_json
                 default:
                 {
                     object = nullptr;  // silence warning, see #821
-                    if (JSON_UNLIKELY(t == value_t::null))
+                    if(JSON_UNLIKELY(t == value_t::null))
                     {
                         JSON_THROW(other_error::create(500, "961c151d2e87f2686a955a9be24d316f1362bf21 3.4.0")); // LCOV_EXCL_LINE
                     }
@@ -13692,22 +13694,22 @@ class basic_json
         });
 
         // adjust type if type deduction is not wanted
-        if (not type_deduction)
+        if(not type_deduction)
         {
             // if array is wanted, do not create an object though possible
-            if (manual_type == value_t::array)
+            if(manual_type == value_t::array)
             {
                 is_an_object = false;
             }
 
             // if object is wanted but impossible, throw an exception
-            if (JSON_UNLIKELY(manual_type == value_t::object and not is_an_object))
+            if(JSON_UNLIKELY(manual_type == value_t::object and not is_an_object))
             {
                 JSON_THROW(type_error::create(301, "cannot create object from initializer list"));
             }
         }
 
-        if (is_an_object)
+        if(is_an_object)
         {
             // the initializer list is a list of pairs -> create object
             m_type = value_t::object;
@@ -13909,7 +13911,7 @@ class basic_json
         assert(last.m_object != nullptr);
 
         // make sure iterator fits the current value
-        if (JSON_UNLIKELY(first.m_object != last.m_object))
+        if(JSON_UNLIKELY(first.m_object != last.m_object))
         {
             JSON_THROW(invalid_iterator::create(201, "iterators are not compatible"));
         }
@@ -13926,7 +13928,7 @@ class basic_json
             case value_t::number_unsigned:
             case value_t::string:
             {
-                if (JSON_UNLIKELY(not first.m_it.primitive_iterator.is_begin()
+                if(JSON_UNLIKELY(not first.m_it.primitive_iterator.is_begin()
                                   or not last.m_it.primitive_iterator.is_end()))
                 {
                     JSON_THROW(invalid_iterator::create(204, "iterators out of range"));
@@ -14152,7 +14154,7 @@ class basic_json
         std::is_nothrow_move_assignable<value_t>::value and
         std::is_nothrow_move_constructible<json_value>::value and
         std::is_nothrow_move_assignable<json_value>::value
-    )
+  )
     {
         // check that passed value is valid
         other.assert_invariant();
@@ -14246,7 +14248,7 @@ class basic_json
         string_t result;
         serializer s(detail::output_adapter<char, string_t>(result), indent_char, error_handler);
 
-        if (indent >= 0)
+        if(indent >= 0)
         {
             s.dump(*this, true, ensure_ascii, static_cast<unsigned int>(indent));
         }
@@ -14640,7 +14642,7 @@ class basic_json
     /// get a boolean (explicit)
     boolean_t get_impl(boolean_t* /*unused*/) const
     {
-        if (JSON_LIKELY(is_boolean()))
+        if(JSON_LIKELY(is_boolean()))
         {
             return m_value.boolean;
         }
@@ -14749,7 +14751,7 @@ class basic_json
         // delegate the call to get_ptr<>()
         auto ptr = obj.template get_ptr<typename std::add_pointer<ReferenceType>::type>();
 
-        if (JSON_LIKELY(ptr != nullptr))
+        if(JSON_LIKELY(ptr != nullptr))
         {
             return *ptr;
         }
@@ -15187,7 +15189,7 @@ class basic_json
     reference at(size_type idx)
     {
         // at only works for arrays
-        if (JSON_LIKELY(is_array()))
+        if(JSON_LIKELY(is_array()))
         {
             JSON_TRY
             {
@@ -15234,7 +15236,7 @@ class basic_json
     const_reference at(size_type idx) const
     {
         // at only works for arrays
-        if (JSON_LIKELY(is_array()))
+        if(JSON_LIKELY(is_array()))
         {
             JSON_TRY
             {
@@ -15285,7 +15287,7 @@ class basic_json
     reference at(const typename object_t::key_type& key)
     {
         // at only works for objects
-        if (JSON_LIKELY(is_object()))
+        if(JSON_LIKELY(is_object()))
         {
             JSON_TRY
             {
@@ -15336,7 +15338,7 @@ class basic_json
     const_reference at(const typename object_t::key_type& key) const
     {
         // at only works for objects
-        if (JSON_LIKELY(is_object()))
+        if(JSON_LIKELY(is_object()))
         {
             JSON_TRY
             {
@@ -15382,7 +15384,7 @@ class basic_json
     reference operator[](size_type idx)
     {
         // implicitly convert null value to an empty array
-        if (is_null())
+        if(is_null())
         {
             m_type = value_t::array;
             m_value.array = create<array_t>();
@@ -15390,10 +15392,10 @@ class basic_json
         }
 
         // operator[] only works for arrays
-        if (JSON_LIKELY(is_array()))
+        if(JSON_LIKELY(is_array()))
         {
             // fill up array with null values if given idx is outside range
-            if (idx >= m_value.array->size())
+            if(idx >= m_value.array->size())
             {
                 m_value.array->insert(m_value.array->end(),
                                       idx - m_value.array->size() + 1,
@@ -15428,7 +15430,7 @@ class basic_json
     const_reference operator[](size_type idx) const
     {
         // const operator[] only works for arrays
-        if (JSON_LIKELY(is_array()))
+        if(JSON_LIKELY(is_array()))
         {
             return m_value.array->operator[](idx);
         }
@@ -15466,7 +15468,7 @@ class basic_json
     reference operator[](const typename object_t::key_type& key)
     {
         // implicitly convert null value to an empty object
-        if (is_null())
+        if(is_null())
         {
             m_type = value_t::object;
             m_value.object = create<object_t>();
@@ -15474,7 +15476,7 @@ class basic_json
         }
 
         // operator[] only works for objects
-        if (JSON_LIKELY(is_object()))
+        if(JSON_LIKELY(is_object()))
         {
             return m_value.object->operator[](key);
         }
@@ -15515,7 +15517,7 @@ class basic_json
     const_reference operator[](const typename object_t::key_type& key) const
     {
         // const operator[] only works for objects
-        if (JSON_LIKELY(is_object()))
+        if(JSON_LIKELY(is_object()))
         {
             assert(m_value.object->find(key) != m_value.object->end());
             return m_value.object->find(key)->second;
@@ -15555,7 +15557,7 @@ class basic_json
     reference operator[](T* key)
     {
         // implicitly convert null to object
-        if (is_null())
+        if(is_null())
         {
             m_type = value_t::object;
             m_value = value_t::object;
@@ -15563,7 +15565,7 @@ class basic_json
         }
 
         // at only works for objects
-        if (JSON_LIKELY(is_object()))
+        if(JSON_LIKELY(is_object()))
         {
             return m_value.object->operator[](key);
         }
@@ -15605,7 +15607,7 @@ class basic_json
     const_reference operator[](T* key) const
     {
         // at only works for objects
-        if (JSON_LIKELY(is_object()))
+        if(JSON_LIKELY(is_object()))
         {
             assert(m_value.object->find(key) != m_value.object->end());
             return m_value.object->find(key)->second;
@@ -15667,11 +15669,11 @@ class basic_json
     ValueType value(const typename object_t::key_type& key, const ValueType& default_value) const
     {
         // at only works for objects
-        if (JSON_LIKELY(is_object()))
+        if(JSON_LIKELY(is_object()))
         {
             // if key is found, return value and given default value otherwise
             const auto it = find(key);
-            if (it != end())
+            if(it != end())
             {
                 return *it;
             }
@@ -15737,7 +15739,7 @@ class basic_json
     ValueType value(const json_pointer& ptr, const ValueType& default_value) const
     {
         // at only works for objects
-        if (JSON_LIKELY(is_object()))
+        if(JSON_LIKELY(is_object()))
         {
             // if pointer resolves a value, return it or use default value
             JSON_TRY
@@ -15901,7 +15903,7 @@ class basic_json
     IteratorType erase(IteratorType pos)
     {
         // make sure iterator fits the current value
-        if (JSON_UNLIKELY(this != pos.m_object))
+        if(JSON_UNLIKELY(this != pos.m_object))
         {
             JSON_THROW(invalid_iterator::create(202, "iterator does not fit current value"));
         }
@@ -15916,12 +15918,12 @@ class basic_json
             case value_t::number_unsigned:
             case value_t::string:
             {
-                if (JSON_UNLIKELY(not pos.m_it.primitive_iterator.is_begin()))
+                if(JSON_UNLIKELY(not pos.m_it.primitive_iterator.is_begin()))
                 {
                     JSON_THROW(invalid_iterator::create(205, "iterator out of range"));
                 }
 
-                if (is_string())
+                if(is_string())
                 {
                     AllocatorType<string_t> alloc;
                     std::allocator_traits<decltype(alloc)>::destroy(alloc, m_value.string);
@@ -16006,7 +16008,7 @@ class basic_json
     IteratorType erase(IteratorType first, IteratorType last)
     {
         // make sure iterator fits the current value
-        if (JSON_UNLIKELY(this != first.m_object or this != last.m_object))
+        if(JSON_UNLIKELY(this != first.m_object or this != last.m_object))
         {
             JSON_THROW(invalid_iterator::create(203, "iterators do not fit current value"));
         }
@@ -16021,13 +16023,13 @@ class basic_json
             case value_t::number_unsigned:
             case value_t::string:
             {
-                if (JSON_LIKELY(not first.m_it.primitive_iterator.is_begin()
+                if(JSON_LIKELY(not first.m_it.primitive_iterator.is_begin()
                                 or not last.m_it.primitive_iterator.is_end()))
                 {
                     JSON_THROW(invalid_iterator::create(204, "iterators out of range"));
                 }
 
-                if (is_string())
+                if(is_string())
                 {
                     AllocatorType<string_t> alloc;
                     std::allocator_traits<decltype(alloc)>::destroy(alloc, m_value.string);
@@ -16093,7 +16095,7 @@ class basic_json
     size_type erase(const typename object_t::key_type& key)
     {
         // this erase only works for objects
-        if (JSON_LIKELY(is_object()))
+        if(JSON_LIKELY(is_object()))
         {
             return m_value.object->erase(key);
         }
@@ -16128,9 +16130,9 @@ class basic_json
     void erase(const size_type idx)
     {
         // this erase only works for arrays
-        if (JSON_LIKELY(is_array()))
+        if(JSON_LIKELY(is_array()))
         {
-            if (JSON_UNLIKELY(idx >= size()))
+            if(JSON_UNLIKELY(idx >= size()))
             {
                 JSON_THROW(out_of_range::create(401, "array index " + std::to_string(idx) + " is out of range"));
             }
@@ -16180,7 +16182,7 @@ class basic_json
     {
         auto result = end();
 
-        if (is_object())
+        if(is_object())
         {
             result.m_it.object_iterator = m_value.object->find(std::forward<KeyT>(key));
         }
@@ -16197,7 +16199,7 @@ class basic_json
     {
         auto result = cend();
 
-        if (is_object())
+        if(is_object())
         {
             result.m_it.object_iterator = m_value.object->find(std::forward<KeyT>(key));
         }
@@ -16528,7 +16530,7 @@ class basic_json
     For loop without iterator_wrapper:
 
     @code{cpp}
-    for (auto it = j_object.begin(); it != j_object.end(); ++it)
+    for(auto it = j_object.begin(); it != j_object.end(); ++it)
     {
         std::cout << "key: " << it.key() << ", value:" << it.value() << '\n';
     }
@@ -16537,7 +16539,7 @@ class basic_json
     Range-based for loop without iterator proxy:
 
     @code{cpp}
-    for (auto it : j_object)
+    for(auto it : j_object)
     {
         // "it" is of type json::reference and has no key() member
         std::cout << "value: " << it << '\n';
@@ -16547,7 +16549,7 @@ class basic_json
     Range-based for loop with iterator proxy:
 
     @code{cpp}
-    for (auto it : json::iterator_wrapper(j_object))
+    for(auto it : json::iterator_wrapper(j_object))
     {
         std::cout << "key: " << it.key() << ", value:" << it.value() << '\n';
     }
@@ -16600,7 +16602,7 @@ class basic_json
     For loop without `items()` function:
 
     @code{cpp}
-    for (auto it = j_object.begin(); it != j_object.end(); ++it)
+    for(auto it = j_object.begin(); it != j_object.end(); ++it)
     {
         std::cout << "key: " << it.key() << ", value:" << it.value() << '\n';
     }
@@ -16609,7 +16611,7 @@ class basic_json
     Range-based for loop without `items()` function:
 
     @code{cpp}
-    for (auto it : j_object)
+    for(auto it : j_object)
     {
         // "it" is of type json::reference and has no key() member
         std::cout << "value: " << it << '\n';
@@ -16619,7 +16621,7 @@ class basic_json
     Range-based for loop with `items()` function:
 
     @code{cpp}
-    for (auto it : j_object.items())
+    for(auto it : j_object.items())
     {
         std::cout << "key: " << it.key() << ", value:" << it.value() << '\n';
     }
@@ -16991,13 +16993,13 @@ class basic_json
     void push_back(basic_json&& val)
     {
         // push_back only works for null objects or arrays
-        if (JSON_UNLIKELY(not(is_null() or is_array())))
+        if(JSON_UNLIKELY(not(is_null() or is_array())))
         {
             JSON_THROW(type_error::create(308, "cannot use push_back() with " + std::string(type_name())));
         }
 
         // transform null object into an array
-        if (is_null())
+        if(is_null())
         {
             m_type = value_t::array;
             m_value = value_t::array;
@@ -17027,13 +17029,13 @@ class basic_json
     void push_back(const basic_json& val)
     {
         // push_back only works for null objects or arrays
-        if (JSON_UNLIKELY(not(is_null() or is_array())))
+        if(JSON_UNLIKELY(not(is_null() or is_array())))
         {
             JSON_THROW(type_error::create(308, "cannot use push_back() with " + std::string(type_name())));
         }
 
         // transform null object into an array
-        if (is_null())
+        if(is_null())
         {
             m_type = value_t::array;
             m_value = value_t::array;
@@ -17077,13 +17079,13 @@ class basic_json
     void push_back(const typename object_t::value_type& val)
     {
         // push_back only works for null objects or objects
-        if (JSON_UNLIKELY(not(is_null() or is_object())))
+        if(JSON_UNLIKELY(not(is_null() or is_object())))
         {
             JSON_THROW(type_error::create(308, "cannot use push_back() with " + std::string(type_name())));
         }
 
         // transform null object into an object
-        if (is_null())
+        if(is_null())
         {
             m_type = value_t::object;
             m_value = value_t::object;
@@ -17131,7 +17133,7 @@ class basic_json
     */
     void push_back(initializer_list_t init)
     {
-        if (is_object() and init.size() == 2 and (*init.begin())->is_string())
+        if(is_object() and init.size() == 2 and (*init.begin())->is_string())
         {
             basic_json&& key = init.begin()->moved_or_copied();
             push_back(typename object_t::value_type(
@@ -17178,13 +17180,13 @@ class basic_json
     void emplace_back(Args&& ... args)
     {
         // emplace_back only works for null objects or arrays
-        if (JSON_UNLIKELY(not(is_null() or is_array())))
+        if(JSON_UNLIKELY(not(is_null() or is_array())))
         {
             JSON_THROW(type_error::create(311, "cannot use emplace_back() with " + std::string(type_name())));
         }
 
         // transform null object into an array
-        if (is_null())
+        if(is_null())
         {
             m_type = value_t::array;
             m_value = value_t::array;
@@ -17226,13 +17228,13 @@ class basic_json
     std::pair<iterator, bool> emplace(Args&& ... args)
     {
         // emplace only works for null objects or arrays
-        if (JSON_UNLIKELY(not(is_null() or is_object())))
+        if(JSON_UNLIKELY(not(is_null() or is_object())))
         {
             JSON_THROW(type_error::create(311, "cannot use emplace() with " + std::string(type_name())));
         }
 
         // transform null object into an object
-        if (is_null())
+        if(is_null())
         {
             m_type = value_t::object;
             m_value = value_t::object;
@@ -17294,10 +17296,10 @@ class basic_json
     iterator insert(const_iterator pos, const basic_json& val)
     {
         // insert only works for arrays
-        if (JSON_LIKELY(is_array()))
+        if(JSON_LIKELY(is_array()))
         {
             // check if iterator pos fits to this JSON value
-            if (JSON_UNLIKELY(pos.m_object != this))
+            if(JSON_UNLIKELY(pos.m_object != this))
             {
                 JSON_THROW(invalid_iterator::create(202, "iterator does not fit current value"));
             }
@@ -17345,10 +17347,10 @@ class basic_json
     iterator insert(const_iterator pos, size_type cnt, const basic_json& val)
     {
         // insert only works for arrays
-        if (JSON_LIKELY(is_array()))
+        if(JSON_LIKELY(is_array()))
         {
             // check if iterator pos fits to this JSON value
-            if (JSON_UNLIKELY(pos.m_object != this))
+            if(JSON_UNLIKELY(pos.m_object != this))
             {
                 JSON_THROW(invalid_iterator::create(202, "iterator does not fit current value"));
             }
@@ -17393,24 +17395,24 @@ class basic_json
     iterator insert(const_iterator pos, const_iterator first, const_iterator last)
     {
         // insert only works for arrays
-        if (JSON_UNLIKELY(not is_array()))
+        if(JSON_UNLIKELY(not is_array()))
         {
             JSON_THROW(type_error::create(309, "cannot use insert() with " + std::string(type_name())));
         }
 
         // check if iterator pos fits to this JSON value
-        if (JSON_UNLIKELY(pos.m_object != this))
+        if(JSON_UNLIKELY(pos.m_object != this))
         {
             JSON_THROW(invalid_iterator::create(202, "iterator does not fit current value"));
         }
 
         // check if range iterators belong to the same JSON object
-        if (JSON_UNLIKELY(first.m_object != last.m_object))
+        if(JSON_UNLIKELY(first.m_object != last.m_object))
         {
             JSON_THROW(invalid_iterator::create(210, "iterators do not fit"));
         }
 
-        if (JSON_UNLIKELY(first.m_object == this))
+        if(JSON_UNLIKELY(first.m_object == this))
         {
             JSON_THROW(invalid_iterator::create(211, "passed iterators may not belong to container"));
         }
@@ -17446,13 +17448,13 @@ class basic_json
     iterator insert(const_iterator pos, initializer_list_t ilist)
     {
         // insert only works for arrays
-        if (JSON_UNLIKELY(not is_array()))
+        if(JSON_UNLIKELY(not is_array()))
         {
             JSON_THROW(type_error::create(309, "cannot use insert() with " + std::string(type_name())));
         }
 
         // check if iterator pos fits to this JSON value
-        if (JSON_UNLIKELY(pos.m_object != this))
+        if(JSON_UNLIKELY(pos.m_object != this))
         {
             JSON_THROW(invalid_iterator::create(202, "iterator does not fit current value"));
         }
@@ -17487,19 +17489,19 @@ class basic_json
     void insert(const_iterator first, const_iterator last)
     {
         // insert only works for objects
-        if (JSON_UNLIKELY(not is_object()))
+        if(JSON_UNLIKELY(not is_object()))
         {
             JSON_THROW(type_error::create(309, "cannot use insert() with " + std::string(type_name())));
         }
 
         // check if range iterators belong to the same JSON object
-        if (JSON_UNLIKELY(first.m_object != last.m_object))
+        if(JSON_UNLIKELY(first.m_object != last.m_object))
         {
             JSON_THROW(invalid_iterator::create(210, "iterators do not fit"));
         }
 
         // passed iterators must belong to objects
-        if (JSON_UNLIKELY(not first.m_object->is_object()))
+        if(JSON_UNLIKELY(not first.m_object->is_object()))
         {
             JSON_THROW(invalid_iterator::create(202, "iterators first and last must point to objects"));
         }
@@ -17529,23 +17531,23 @@ class basic_json
     void update(const_reference j)
     {
         // implicitly convert null value to an empty object
-        if (is_null())
+        if(is_null())
         {
             m_type = value_t::object;
             m_value.object = create<object_t>();
             assert_invariant();
         }
 
-        if (JSON_UNLIKELY(not is_object()))
+        if(JSON_UNLIKELY(not is_object()))
         {
             JSON_THROW(type_error::create(312, "cannot use update() with " + std::string(type_name())));
         }
-        if (JSON_UNLIKELY(not j.is_object()))
+        if(JSON_UNLIKELY(not j.is_object()))
         {
             JSON_THROW(type_error::create(312, "cannot use update() with " + std::string(j.type_name())));
         }
 
-        for (auto it = j.cbegin(); it != j.cend(); ++it)
+        for(auto it = j.cbegin(); it != j.cend(); ++it)
         {
             m_value.object->operator[](it.key()) = it.value();
         }
@@ -17580,32 +17582,32 @@ class basic_json
     void update(const_iterator first, const_iterator last)
     {
         // implicitly convert null value to an empty object
-        if (is_null())
+        if(is_null())
         {
             m_type = value_t::object;
             m_value.object = create<object_t>();
             assert_invariant();
         }
 
-        if (JSON_UNLIKELY(not is_object()))
+        if(JSON_UNLIKELY(not is_object()))
         {
             JSON_THROW(type_error::create(312, "cannot use update() with " + std::string(type_name())));
         }
 
         // check if range iterators belong to the same JSON object
-        if (JSON_UNLIKELY(first.m_object != last.m_object))
+        if(JSON_UNLIKELY(first.m_object != last.m_object))
         {
             JSON_THROW(invalid_iterator::create(210, "iterators do not fit"));
         }
 
         // passed iterators must belong to objects
-        if (JSON_UNLIKELY(not first.m_object->is_object()
+        if(JSON_UNLIKELY(not first.m_object->is_object()
                           or not last.m_object->is_object()))
         {
             JSON_THROW(invalid_iterator::create(202, "iterators first and last must point to objects"));
         }
 
-        for (auto it = first; it != last; ++it)
+        for(auto it = first; it != last; ++it)
         {
             m_value.object->operator[](it.key()) = it.value();
         }
@@ -17633,7 +17635,7 @@ class basic_json
         std::is_nothrow_move_assignable<value_t>::value and
         std::is_nothrow_move_constructible<json_value>::value and
         std::is_nothrow_move_assignable<json_value>::value
-    )
+  )
     {
         std::swap(m_type, other.m_type);
         std::swap(m_value, other.m_value);
@@ -17663,7 +17665,7 @@ class basic_json
     void swap(array_t& other)
     {
         // swap only works for arrays
-        if (JSON_LIKELY(is_array()))
+        if(JSON_LIKELY(is_array()))
         {
             std::swap(*(m_value.array), other);
         }
@@ -17696,7 +17698,7 @@ class basic_json
     void swap(object_t& other)
     {
         // swap only works for objects
-        if (JSON_LIKELY(is_object()))
+        if(JSON_LIKELY(is_object()))
         {
             std::swap(*(m_value.object), other);
         }
@@ -17729,7 +17731,7 @@ class basic_json
     void swap(string_t& other)
     {
         // swap only works for strings
-        if (JSON_LIKELY(is_string()))
+        if(JSON_LIKELY(is_string()))
         {
             std::swap(*(m_value.string), other);
         }
@@ -17753,7 +17755,7 @@ class basic_json
     @brief comparison: equal
 
     Compares two JSON values for equality according to the following rules:
-    - Two JSON values are equal if (1) they are from the same type and (2)
+    - Two JSON values are equal if(1) they are from the same type and (2)
       their stored values are the same according to their respective
       `operator==`.
     - Integer and floating-point numbers are automatically converted before
@@ -17793,7 +17795,7 @@ class basic_json
         const auto lhs_type = lhs.type();
         const auto rhs_type = rhs.type();
 
-        if (lhs_type == rhs_type)
+        if(lhs_type == rhs_type)
         {
             switch (lhs_type)
             {
@@ -17825,27 +17827,27 @@ class basic_json
                     return false;
             }
         }
-        else if (lhs_type == value_t::number_integer and rhs_type == value_t::number_float)
+        else if(lhs_type == value_t::number_integer and rhs_type == value_t::number_float)
         {
             return (static_cast<number_float_t>(lhs.m_value.number_integer) == rhs.m_value.number_float);
         }
-        else if (lhs_type == value_t::number_float and rhs_type == value_t::number_integer)
+        else if(lhs_type == value_t::number_float and rhs_type == value_t::number_integer)
         {
             return (lhs.m_value.number_float == static_cast<number_float_t>(rhs.m_value.number_integer));
         }
-        else if (lhs_type == value_t::number_unsigned and rhs_type == value_t::number_float)
+        else if(lhs_type == value_t::number_unsigned and rhs_type == value_t::number_float)
         {
             return (static_cast<number_float_t>(lhs.m_value.number_unsigned) == rhs.m_value.number_float);
         }
-        else if (lhs_type == value_t::number_float and rhs_type == value_t::number_unsigned)
+        else if(lhs_type == value_t::number_float and rhs_type == value_t::number_unsigned)
         {
             return (lhs.m_value.number_float == static_cast<number_float_t>(rhs.m_value.number_unsigned));
         }
-        else if (lhs_type == value_t::number_unsigned and rhs_type == value_t::number_integer)
+        else if(lhs_type == value_t::number_unsigned and rhs_type == value_t::number_integer)
         {
             return (static_cast<number_integer_t>(lhs.m_value.number_unsigned) == rhs.m_value.number_integer);
         }
-        else if (lhs_type == value_t::number_integer and rhs_type == value_t::number_unsigned)
+        else if(lhs_type == value_t::number_integer and rhs_type == value_t::number_unsigned)
         {
             return (lhs.m_value.number_integer == static_cast<number_integer_t>(rhs.m_value.number_unsigned));
         }
@@ -17951,7 +17953,7 @@ class basic_json
         const auto lhs_type = lhs.type();
         const auto rhs_type = rhs.type();
 
-        if (lhs_type == rhs_type)
+        if(lhs_type == rhs_type)
         {
             switch (lhs_type)
             {
@@ -17983,27 +17985,27 @@ class basic_json
                     return false;
             }
         }
-        else if (lhs_type == value_t::number_integer and rhs_type == value_t::number_float)
+        else if(lhs_type == value_t::number_integer and rhs_type == value_t::number_float)
         {
             return static_cast<number_float_t>(lhs.m_value.number_integer) < rhs.m_value.number_float;
         }
-        else if (lhs_type == value_t::number_float and rhs_type == value_t::number_integer)
+        else if(lhs_type == value_t::number_float and rhs_type == value_t::number_integer)
         {
             return lhs.m_value.number_float < static_cast<number_float_t>(rhs.m_value.number_integer);
         }
-        else if (lhs_type == value_t::number_unsigned and rhs_type == value_t::number_float)
+        else if(lhs_type == value_t::number_unsigned and rhs_type == value_t::number_float)
         {
             return static_cast<number_float_t>(lhs.m_value.number_unsigned) < rhs.m_value.number_float;
         }
-        else if (lhs_type == value_t::number_float and rhs_type == value_t::number_unsigned)
+        else if(lhs_type == value_t::number_float and rhs_type == value_t::number_unsigned)
         {
             return lhs.m_value.number_float < static_cast<number_float_t>(rhs.m_value.number_unsigned);
         }
-        else if (lhs_type == value_t::number_integer and rhs_type == value_t::number_unsigned)
+        else if(lhs_type == value_t::number_integer and rhs_type == value_t::number_unsigned)
         {
             return lhs.m_value.number_integer < static_cast<number_integer_t>(rhs.m_value.number_unsigned);
         }
-        else if (lhs_type == value_t::number_unsigned and rhs_type == value_t::number_integer)
+        else if(lhs_type == value_t::number_unsigned and rhs_type == value_t::number_integer)
         {
             return static_cast<number_integer_t>(lhs.m_value.number_unsigned) < rhs.m_value.number_integer;
         }
@@ -19678,27 +19680,27 @@ class basic_json
 
         const auto get_op = [](const std::string & op)
         {
-            if (op == "add")
+            if(op == "add")
             {
                 return patch_operations::add;
             }
-            if (op == "remove")
+            if(op == "remove")
             {
                 return patch_operations::remove;
             }
-            if (op == "replace")
+            if(op == "replace")
             {
                 return patch_operations::replace;
             }
-            if (op == "move")
+            if(op == "move")
             {
                 return patch_operations::move;
             }
-            if (op == "copy")
+            if(op == "copy")
             {
                 return patch_operations::copy;
             }
-            if (op == "test")
+            if(op == "test")
             {
                 return patch_operations::test;
             }
@@ -19710,7 +19712,7 @@ class basic_json
         const auto operation_add = [&result](json_pointer & ptr, basic_json val)
         {
             // adding to the root of the target document means replacing it
-            if (ptr.is_root())
+            if(ptr.is_root())
             {
                 result = val;
             }
@@ -19718,7 +19720,7 @@ class basic_json
             {
                 // make sure the top element of the pointer exists
                 json_pointer top_pointer = ptr.top();
-                if (top_pointer != ptr)
+                if(top_pointer != ptr)
                 {
                     result.at(top_pointer);
                 }
@@ -19739,7 +19741,7 @@ class basic_json
 
                     case value_t::array:
                     {
-                        if (last_path == "-")
+                        if(last_path == "-")
                         {
                             // special case: append to back
                             parent.push_back(val);
@@ -19747,7 +19749,7 @@ class basic_json
                         else
                         {
                             const auto idx = json_pointer::array_index(last_path);
-                            if (JSON_UNLIKELY(static_cast<size_type>(idx) > parent.size()))
+                            if(JSON_UNLIKELY(static_cast<size_type>(idx) > parent.size()))
                             {
                                 // avoid undefined behavior
                                 JSON_THROW(out_of_range::create(401, "array index " + std::to_string(idx) + " is out of range"));
@@ -19778,11 +19780,11 @@ class basic_json
             basic_json& parent = result.at(ptr);
 
             // remove child
-            if (parent.is_object())
+            if(parent.is_object())
             {
                 // perform range check
                 auto it = parent.find(last_path);
-                if (JSON_LIKELY(it != parent.end()))
+                if(JSON_LIKELY(it != parent.end()))
                 {
                     parent.erase(it);
                 }
@@ -19791,7 +19793,7 @@ class basic_json
                     JSON_THROW(out_of_range::create(403, "key '" + last_path + "' not found"));
                 }
             }
-            else if (parent.is_array())
+            else if(parent.is_array())
             {
                 // note erase performs range check
                 parent.erase(static_cast<size_type>(json_pointer::array_index(last_path)));
@@ -19799,13 +19801,13 @@ class basic_json
         };
 
         // type check: top level value must be an array
-        if (JSON_UNLIKELY(not json_patch.is_array()))
+        if(JSON_UNLIKELY(not json_patch.is_array()))
         {
             JSON_THROW(parse_error::create(104, 0, "JSON patch must be an array of objects"));
         }
 
         // iterate and apply the operations
-        for (const auto& val : json_patch)
+        for(const auto& val : json_patch)
         {
             // wrapper to get a value for an operation
             const auto get_value = [&val](const std::string & op,
@@ -19819,13 +19821,13 @@ class basic_json
                 const auto error_msg = (op == "op") ? "operation" : "operation '" + op + "'";
 
                 // check if desired value is present
-                if (JSON_UNLIKELY(it == val.m_value.object->end()))
+                if(JSON_UNLIKELY(it == val.m_value.object->end()))
                 {
                     JSON_THROW(parse_error::create(105, 0, error_msg + " must have member '" + member + "'"));
                 }
 
                 // check if result is of type string
-                if (JSON_UNLIKELY(string_type and not it->second.is_string()))
+                if(JSON_UNLIKELY(string_type and not it->second.is_string()))
                 {
                     JSON_THROW(parse_error::create(105, 0, error_msg + " must have string member '" + member + "'"));
                 }
@@ -19835,7 +19837,7 @@ class basic_json
             };
 
             // type check: every element of the array must be an object
-            if (JSON_UNLIKELY(not val.is_object()))
+            if(JSON_UNLIKELY(not val.is_object()))
             {
                 JSON_THROW(parse_error::create(104, 0, "JSON patch must be an array of objects"));
             }
@@ -19913,7 +19915,7 @@ class basic_json
                     }
 
                     // throw an exception if test fails
-                    if (JSON_UNLIKELY(not success))
+                    if(JSON_UNLIKELY(not success))
                     {
                         JSON_THROW(other_error::create(501, "unsuccessful: " + val.dump()));
                     }
@@ -19973,12 +19975,12 @@ class basic_json
         basic_json result(value_t::array);
 
         // if the values are the same, return empty patch
-        if (source == target)
+        if(source == target)
         {
             return result;
         }
 
-        if (source.type() != target.type())
+        if(source.type() != target.type())
         {
             // different types: replace value
             result.push_back(
@@ -19994,7 +19996,7 @@ class basic_json
                 {
                     // first pass: traverse common elements
                     std::size_t i = 0;
-                    while (i < source.size() and i < target.size())
+                    while(i < source.size() and i < target.size())
                     {
                         // recursive call to compare array values at index i
                         auto temp_diff = diff(source[i], target[i], path + "/" + std::to_string(i));
@@ -20007,7 +20009,7 @@ class basic_json
 
                     // remove my remaining elements
                     const auto end_index = static_cast<difference_type>(result.size());
-                    while (i < source.size())
+                    while(i < source.size())
                     {
                         // add operations in reverse order to avoid invalid
                         // indices
@@ -20020,7 +20022,7 @@ class basic_json
                     }
 
                     // add other remaining elements
-                    while (i < target.size())
+                    while(i < target.size())
                     {
                         result.push_back(
                         {
@@ -20037,12 +20039,12 @@ class basic_json
                 case value_t::object:
                 {
                     // first pass: traverse this object's elements
-                    for (auto it = source.cbegin(); it != source.cend(); ++it)
+                    for(auto it = source.cbegin(); it != source.cend(); ++it)
                     {
                         // escape the key name to be used in a JSON patch
                         const auto key = json_pointer::escape(it.key());
 
-                        if (target.find(it.key()) != target.end())
+                        if(target.find(it.key()) != target.end())
                         {
                             // recursive call to compare object values at key it
                             auto temp_diff = diff(it.value(), target[it.key()], path + "/" + key);
@@ -20059,9 +20061,9 @@ class basic_json
                     }
 
                     // second pass: traverse other object's elements
-                    for (auto it = target.cbegin(); it != target.cend(); ++it)
+                    for(auto it = target.cbegin(); it != target.cend(); ++it)
                     {
-                        if (source.find(it.key()) == source.end())
+                        if(source.find(it.key()) == source.end())
                         {
                             // found a key that is not in this -> add it
                             const auto key = json_pointer::escape(it.key());
@@ -20144,15 +20146,15 @@ class basic_json
     */
     void merge_patch(const basic_json& apply_patch)
     {
-        if (apply_patch.is_object())
+        if(apply_patch.is_object())
         {
-            if (not is_object())
+            if(not is_object())
             {
                 *this = object();
             }
-            for (auto it = apply_patch.begin(); it != apply_patch.end(); ++it)
+            for(auto it = apply_patch.begin(); it != apply_patch.end(); ++it)
             {
-                if (it.value().is_null())
+                if(it.value().is_null())
                 {
                     erase(it.key());
                 }

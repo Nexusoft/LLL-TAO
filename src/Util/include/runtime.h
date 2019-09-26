@@ -24,10 +24,12 @@ ________________________________________________________________________________
 #define ARRAYLEN(array)     (sizeof(array)/sizeof((array)[0]))
 
 /** The location of the unified time seed. To enable a Unified Time System push data to this variable. **/
-static std::atomic<int32_t> UNIFIED_AVERAGE_OFFSET;
+extern std::atomic<int32_t> UNIFIED_AVERAGE_OFFSET;
 
 /** The maximum time in the future clock can be. **/
-const uint32_t MAX_UNIFIED_DRIFT = 1;
+const uint32_t MAX_UNIFIED_DRIFT = 10;
+
+const uint32_t MAX_UNIFIED_DRIFT_LEGACY = 10;
 
 
 namespace runtime

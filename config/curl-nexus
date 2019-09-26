@@ -5,19 +5,8 @@
 # Use tritium API to get some info. If the URL has parameters encoded with
 # "?", then double quotes need to be used to call this bash script.
 #
-# Here is a sequence of curl commands to create an account, login, create
-# a supply-chain item, transfer ownership, and get the item:
-# 
-# ./curl-nexus "accounts/create?username=foo&password=foo&pin=1234"
-# ./curl-nexus "accounts/login?username=foo&password=foo"
-# ./curl-nexus "accounts/transactions?genesis=<genesis-id>"
-#
-# ./curl-nexus "supply/createitem?pin=1234&data=<data>&session=<ses-id>"
-# ./curl-nexus "supply/updateitem?pin=1234&data=<data>&session=<ses-id> \
-#                                &address=<addr>"    
-# ./curl-nexus "supply/getitem?address=<addr>"
-# ./curl-nexus "supply/transfer?pin=1234&session=<ses-id>&address=<addr>&destincation=bar
-# ./curl-nexus "supply/history?address=<addr>"
+# To find a cut-and-paste sequence of curl command you can us, check out
+# LLL-TAO/config/do-curls.
 #
 
 HOST=$1
@@ -28,11 +17,16 @@ COMMAND=$2
 #
 if [ -z "$HOST" ] && [ -z "$COMMAND" ] ; then
     echo "Nexus Tritium Supported APIs (<api>/<method>):"
-    echo "  Accounts API:          Supply API:"
-    echo "  accounts/create        supply/createitem"
-    echo "  accounts/login         supply/getitem"
-    echo "  accounts/logout        supply/transfer"
-    echo "  accounts/transactions  supply/history"
+    echo ""
+    echo "Accounts API:           Supply API:        Assets API:       Tokens API:"
+    echo "-------------           -----------        -----------       -----------"
+    echo "accounts/create         supply/createitem  assets/create     tokens/create"
+    echo "accounts/login          supply/getitem     assets/get        tokens/get"
+    echo "accounts/logout         supply/udpateitem  assets/transfer   tokens/debit"
+    echo "accounts/transactions   supply/transfer    assets/tokenize   tokens/credit"
+    echo "accounts/lock           supply/history     assets/history"
+    echo "accounts/unlock"
+    echo "accounts/notifications"
     echo ""
     echo "Use double quotes for command-line argument:"
     echo 'Usage: curl-nexus [<host>] "<api>/<method>?<key>=<value>&<key1>=<value1>&<key2>=<value2>"'
@@ -48,7 +42,7 @@ if [ -z "$COMMAND" ] ; then
 fi
 
 #
-# Check if parameters supplied.
+# Accounts API parameter help strings..
 #
 if [ "$COMMAND" = "accounts/create" ] ; then
     echo "Supply parameters:"
@@ -65,25 +59,51 @@ if [ "$COMMAND" = "accounts/logout" ] ; then
     echo "accounts/login?session=<session-id>"
     exit
 fi
+if [ "$COMMAND" = "accounts/lock" ] ; then
+    echo "Supply parameters:"
+    echo "accounts/lock?session=<session-id>"
+    exit
+fi
+if [ "$COMMAND" = "accounts/unlock" ] ; then
+    echo "Supply parameters:"
+    echo "accounts/unlock?session=<session-id>&pin=<pin>"
+    exit
+fi
 if [ "$COMMAND" = "accounts/transactions" ] ; then
     echo "Supply parameters:"
-    echo "accounts/transactions?genesis=<genesis-id>"
+    echo "accounts/transactions?genesis=<genesis-id>&page=<page-number>&limit=<records-per-page>&verbose=<verbose-level> or"
+    echo "accounts/transactions?username=<user>&page=<page-number>&limit=<records-per-page>&verbose=<verbose-level>"
+    exit
+fi
+if [ "$COMMAND" = "accounts/notifications" ] ; then
+    echo "Supply parameters:"
+    echo "accounts/notifications?genesis=<genesis-id>&page=<page-number>&limit=<records-per-page>&verbose=<verbose-level> or"
+    echo "accounts/notifications?username=<user>&page=<page-number>&limit=<records-per-page>&verbose=<verbose-level> or"
     exit
 fi
 
+#
+# Supply API parameter help strings..
+#
+if [ "$COMMAND" = "supply/createitem" ] ; then
+    echo "Supply parameters:"
+    echo "suppply/createitem?pin=<pin>&session=<session-id>&data=<data>"
+    exit
+fi
 if [ "$COMMAND" = "supply/getitem" ] ; then
     echo "Supply parameters:"
     echo "suppply/getitem?address=<register-address>"
     exit
 fi
-if [ "$COMMAND" = "supply/transfer" ] ; then
+if [ "$COMMAND" = "supply/updateitem" ] ; then
     echo "Supply parameters:"
-    echo "suppply/transfer?pin=<pin>&session=<session-id>&address=<register-address>&destination=<new-owner>"
+    echo "suppply/updateitem?pin=<pin>&session=<session-id>&address=<register-address>&data=<data>"
     exit
 fi
-if [ "$COMMAND" = "supply/createitem" ] ; then
+if [ "$COMMAND" = "supply/transfer" ] ; then
     echo "Supply parameters:"
-    echo "suppply/createitem?pin=<pin>&session=<session-id>&data=<data>"
+    echo "suppply/transfer?pin=<pin>&session=<session-id>&address=<register-address>&destination=<new-owner> or"
+    echo "suppply/transfer?pin=<pin>&session=<session-id>&address=<register-address>&username=<user>"
     exit
 fi
 if [ "$COMMAND" = "supply/history" ] ; then
@@ -94,6 +114,68 @@ fi
 if [ "$COMMAND" = "supply/updateitem" ] ; then
     echo "Supply parameters:"
     echo "suppply/updateitem?pin=<pin>&session=<session-id>&data=<data>&address=<register-address>"
+    exit
+fi
+
+#
+# Assets API.
+#
+if [ "$COMMAND" = "assets/create" ] ; then
+    echo "Supply parameters:"
+    echo "assets/create?pin=<pin>&session=<session-id>&data=<data>&name=<asset-name>"
+    exit
+fi
+if [ "$COMMAND" = "assets/get" ] ; then
+    echo "Supply parameters:"
+    echo "assets/get?name=<asset-name> or"
+    echo "assets/get?address=<register-address>"
+    exit
+fi
+if [ "$COMMAND" = "assets/transfer" ] ; then
+    echo "Supply parameters:"
+    echo "assets/transfer?pin=<pin>&session=<session-id>&destination=<dest>&address=<register-address> or"
+    echo "assets/transfer?pin=<pin>&session=<session-id>&username=<user>&name=<name>"
+    exit
+fi
+if [ "$COMMAND" = "assets/tokenize" ] ; then
+    echo "Supply parameters:"
+    echo "assets/tokenize?"
+    exit
+fi
+if [ "$COMMAND" = "assets/history" ] ; then
+    echo "Supply parameters:"
+    echo "assets/history?name=<asset-name> or"
+    echo "assets/history?address=<register-address>"
+    exit
+fi
+
+#
+# Tokens API.
+#
+if [ "$COMMAND" = "tokens/create" ] ; then
+    echo "Supply parameters:"
+    echo "tokens/create?pin=<pin>&session=<session-id>&identifier=<token-id>&type=token&supply=<amount>&name=<selected-name> or"
+    echo "tokens/create?pin=<pin>&session=<session-id>&identifier=<token-id>&type=account&supply=<amount>&name=<selected-name>"
+    exit
+fi
+if [ "$COMMAND" = "tokens/get" ] ; then
+    echo "Supply parameters:"
+    echo "tokens/get?name=<name>&type=token or"
+    echo "tokens/get?address=<address-register>&type=token or"
+    echo "tokens/get?name=<name>&type=account or"
+    echo "tokens/get?address=<address-register>&type=account"
+    exit
+fi
+if [ "$COMMAND" = "tokens/debit" ] ; then
+    echo "Supply parameters:"
+    echo "tokens/debit?pin=<pin>&session=<session-id>&amount=<amount>&name_from-<from-account>&name_to=<to-account> or"
+    echo "tokens/debit?pin=<pin>&session=<session-id>&amount=<amount>&address_from=<from-account-register>&address_to=<to-account-register>"
+    exit
+fi
+if [ "$COMMAND" = "tokens/credit" ] ; then
+    echo "Supply parameters:"
+    echo "tokens/credit?pin=<pin>&session=<session-id>&txid=<txid>&amount=<amount>&name_to=<destination-account>&proof=<proof> or"
+    echo "tokens/credit?pin=<pin>&session=<session-id>&txid=<txid>&amount=<amount>&address_to=<destination-account-register>&proof=<proof>"
     exit
 fi
 

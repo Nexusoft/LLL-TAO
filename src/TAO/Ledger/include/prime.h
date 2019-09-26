@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEDGER_INCLUDE_PRIME_H
 #define NEXUS_TAO_LEDGER_INCLUDE_PRIME_H
 
-#include <LLC/types/bignum.h>
+#include <LLC/types/uint1024.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -45,13 +45,12 @@ namespace TAO
          *  V is the whole number, or Cluster Size, X is a proportion
          *  of Fermat Remainder from last Composite Number [0 - 1]
          *
-         *  @param[in] bnPrime The prime to check.
-         *  @param[in] nChecks The check level
+         *  @param[in] hashPrime The prime to check.
          *
          *  @return The double value of prime difficulty.
          *
          **/
-        double GetPrimeDifficulty(const LLC::CBigNum& bnPrime, int32_t nChecks);
+        double GetPrimeDifficulty(const uint1024_t& hashPrime, const std::vector<uint8_t>& vOffsets);
 
 
         /** GetPrimeBits
@@ -63,58 +62,68 @@ namespace TAO
          *  @return uint32_t representation of prime difficulty.
          *
          **/
-        uint32_t GetPrimeBits(const LLC::CBigNum& bnPrime);
+        uint32_t GetPrimeBits(const uint1024_t& hashPrime);
 
 
         /** GetFractionalDifficulty
          *
          *  Breaks the remainder of last composite in Prime Cluster into an integer.
          *
-         *  @param[in] composite The composite number to get remainder of
+         *  @param[in] hashComposite The composite number to get remainder of
          *
          *  @return The fractional proportion
          *
          **/
-        uint32_t GetFractionalDifficulty(const LLC::CBigNum& bnComposite);
+        uint32_t GetFractionalDifficulty(const uint1024_t& hashComposite);
 
 
         /** PrimeCheck
          *
          *  Determines if given number is Prime.
          *
-         *	@param[in] bnTest The number to test for primality
-         *  @param[in] nChecks The number of times to check
+         *	@param[in] hashTest The number to test for primality
          *
          *  @return True if number passes prime tests.
          *
          **/
-        bool PrimeCheck(const LLC::CBigNum& bnTest, uint32_t nChecks);
+        bool PrimeCheck(const uint1024_t& hashTest);
 
 
         /** FermatTest
          *
          *  Used after Miller-Rabin and Divisor tests to verify primality.
          *
-         *  @param[in] bnPrime The prime to check
-         *  @param[in] bnBase The base to check from.
+         *  @param[in] hashTest The prime to check
          *
          *  @return The remainder of the fermat test.
          *
          **/
-        LLC::CBigNum FermatTest(const LLC::CBigNum& bnPrime, const LLC::CBigNum& bnBase);
+        uint1024_t FermatTest(const uint1024_t& hashTest);
 
 
         /** MillerRabin
          *
          *  Wrapper for is_prime from OpenSSL
          *
-         *  @param[in] bnPrime The prime to test
-         *  @param[in] nChecks The times to check the prime.
+         *  @param[in] hashTest The prime to test
          *
          *  @return True if bnPrime is prime
          *
          **/
-        bool Miller_Rabin(const LLC::CBigNum& bnPrime, uint32_t nChecks);
+        bool Miller_Rabin(const uint1024_t& hashTest);
+
+
+        /** SmallDivisors
+         *
+         *  Determine if the number passes small divisor test up to the first
+         *  eleven primes.
+         *
+         *  @param[in] hashTest The prime to test.
+         *
+         *  @return Returns True if nPrime passes small divisor tests, false otherwise.
+         *
+         **/
+        bool SmallDivisors(const uint1024_t& hashTest);
     }
 }
 

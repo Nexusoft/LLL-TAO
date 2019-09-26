@@ -12,7 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <LLC/hash/SK.h>
-#include <LLC/include/key.h>
+#include <LLC/include/eckey.h>
 
 #include <Legacy/types/address.h>
 
@@ -29,7 +29,7 @@ namespace Legacy
             /* Need crypto keystore lock to check and update fUseCrypto. Need to hold it between check and update */
             LOCK(cs_cryptoKeyStore);
 
-            if (fUseCrypto)
+            if(fUseCrypto)
                 return true;
 
             {
@@ -41,7 +41,7 @@ namespace Legacy
                 LOCK(cs_basicKeyStore);
 
                 /* Cannot activate encryption if key store contains any unencrypted keys */
-                if (!mapKeys.empty())
+                if(!mapKeys.empty())
                     return false;
             }
 
@@ -58,7 +58,7 @@ namespace Legacy
     {
 
         /* Check whether key store already encrypted */
-        if (IsCrypted() || !mapCryptedKeys.empty())
+        if(IsCrypted() || !mapCryptedKeys.empty())
             return false;
 
         /* Make a copy of the unencrypted key store. */
@@ -82,7 +82,7 @@ namespace Legacy
             LLC::ECKey key;
             LLC::CSecret vchSecret = mKey.second.first;
 
-            if (!key.SetSecret(vchSecret, mKey.second.second))
+            if(!key.SetSecret(vchSecret, mKey.second.second))
                 return false;
 
             const std::vector<uint8_t> vchPubKey = key.GetPubKey();
@@ -90,7 +90,7 @@ namespace Legacy
             bool fCompressed;
 
             /* Successful encryption will place encrypted private key into vchCryptedSecret */
-            if (!EncryptSecret(vMasterKeyIn, key.GetSecret(fCompressed), LLC::SK576(vchPubKey.begin(), vchPubKey.end()), vchCryptedSecret))
+            if(!EncryptSecret(vMasterKeyIn, key.GetSecret(fCompressed), LLC::SK576(vchPubKey.begin(), vchPubKey.end()), vchCryptedSecret))
                 return false;
 
             mapNewEncryptedKeys[NexusAddress(vchPubKey)] = make_pair(vchPubKey, vchCryptedSecret);
@@ -103,7 +103,7 @@ namespace Legacy
             mapCryptedKeys.clear();
 
             /* Copy the newly encrypted keys into the keystore */
-            for (const auto& mKey : mapNewEncryptedKeys)
+            for(const auto& mKey : mapNewEncryptedKeys)
                 mapCryptedKeys[mKey.first] = mKey.second;
 
             fUseCrypto = true;
@@ -125,7 +125,7 @@ namespace Legacy
     bool CryptoKeyStore::Unlock(const CKeyingMaterial& vMasterKeyIn)
     {
         /* Cannot unlock unencrypted key store (it is unlocked by default) */
-        if (!SetCrypted())
+        if(!SetCrypted())
             return false;
 
         LOCK(cs_cryptoKeyStore);
@@ -135,7 +135,7 @@ namespace Legacy
         /* Only need to check first entry in map to determine successful/unsuccessful unlock
          * Will also unlock successfully if map has no entries
          */
-        if (mi != mapCryptedKeys.cend())
+        if(mi != mapCryptedKeys.cend())
         {
             const std::vector<uint8_t> &vchPubKey = (*mi).second.first;
             const std::vector<uint8_t> &vchCryptedSecret = (*mi).second.second;
@@ -145,7 +145,7 @@ namespace Legacy
             if(!DecryptSecret(vMasterKeyIn, vchCryptedSecret, LLC::SK576(vchPubKey.begin(), vchPubKey.end()), vchSecret))
                 return false;
 
-            if (vchSecret.size() != 72)
+            if(vchSecret.size() != 72)
                 return false;
 
             LLC::ECKey key;
@@ -153,7 +153,7 @@ namespace Legacy
             key.SetSecret(vchSecret);
 
             /* When these are equal, the decryption is successful and vMasterKeyIn is a match */
-            if (key.GetPubKey() != vchPubKey)
+            if(key.GetPubKey() != vchPubKey)
                 return false;
         }
 
@@ -173,7 +173,7 @@ namespace Legacy
             LOCK(cs_cryptoKeyStore);
 
             /* Unencrypted key store is not locked */
-            if (!IsCrypted())
+            if(!IsCrypted())
                 return false;
 
             /* If encryption key is not stored, cannot decrypt keys and key store is locked */
@@ -188,7 +188,7 @@ namespace Legacy
     bool CryptoKeyStore::Lock()
     {
         /* Cannot lock unencrypted key store. This will enable encryption if not enabled already. */
-        if (!SetCrypted())
+        if(!SetCrypted())
             return false;
 
         {
@@ -206,7 +206,7 @@ namespace Legacy
     bool CryptoKeyStore::AddCryptedKey(const std::vector<uint8_t>& vchPubKey, const std::vector<uint8_t>& vchCryptedSecret)
     {
         /* Key store must be encrypted */
-        if (!SetCrypted())
+        if(!SetCrypted())
             return false;
 
         {
@@ -228,16 +228,16 @@ namespace Legacy
         {
             LOCK(cs_cryptoKeyStore);
 
-            if (IsCrypted())
+            if(IsCrypted())
                 fCrypted = true;
         }
 
         /* Add key to basic key store if encryption not active */
-        if (!fCrypted)
+        if(!fCrypted)
             return BasicKeyStore::AddKey(key);
 
         /* Cannot add key if key store is encrypted and locked */
-        if (IsLocked())
+        if(IsLocked())
             return false;
 
         /* When encryption active, first encrypt the key using vMaster key, then add to key store */
@@ -246,11 +246,11 @@ namespace Legacy
         bool fCompressed;
 
         /* Successful encryption will place encrypted private key into vchCryptedSecret */
-        if (!EncryptSecret(vMasterKey, key.GetSecret(fCompressed), LLC::SK576(vchPubKey.begin(), vchPubKey.end()), vchCryptedSecret))
+        if(!EncryptSecret(vMasterKey, key.GetSecret(fCompressed), LLC::SK576(vchPubKey.begin(), vchPubKey.end()), vchCryptedSecret))
             return false;
 
         /* AddCryptedKey contains LOCK for updating the crypto keystore. No lock here */
-        if (!AddCryptedKey(key.GetPubKey(), vchCryptedSecret))
+        if(!AddCryptedKey(key.GetPubKey(), vchCryptedSecret))
             return false;
 
         return true;
@@ -260,7 +260,7 @@ namespace Legacy
     /*  Retrieve a key from the key store. */
     bool CryptoKeyStore::GetKey(const NexusAddress& address, LLC::ECKey& keyOut) const
     {
-        if (!IsCrypted())
+        if(!IsCrypted())
             return BasicKeyStore::GetKey(address, keyOut);
 
 
@@ -268,16 +268,16 @@ namespace Legacy
             LOCK(cs_cryptoKeyStore);
 
             auto mi = mapCryptedKeys.find(address);
-            if (mi != mapCryptedKeys.end())
+            if(mi != mapCryptedKeys.end())
             {
                 const std::vector<uint8_t> &vchPubKey = (*mi).second.first;
                 const std::vector<uint8_t> &vchCryptedSecret = (*mi).second.second;
                 LLC::CSecret vchSecret;
 
-                if (!DecryptSecret(vMasterKey, vchCryptedSecret, LLC::SK576(vchPubKey.begin(), vchPubKey.end()), vchSecret))
+                if(!DecryptSecret(vMasterKey, vchCryptedSecret, LLC::SK576(vchPubKey.begin(), vchPubKey.end()), vchSecret))
                     return false;
 
-                if (vchSecret.size() != 72)
+                if(vchSecret.size() != 72)
                     return false;
 
                 keyOut.SetPubKey(vchPubKey);
@@ -300,12 +300,12 @@ namespace Legacy
         {
             LOCK(cs_cryptoKeyStore);
 
-            if (IsCrypted())
+            if(IsCrypted())
                 fCrypted = true;
         }
 
         /* Get keys from basic key store if encryption not active */
-        if (!fCrypted)
+        if(!fCrypted)
         {
             BasicKeyStore::GetKeys(setAddress);
             return;
@@ -317,7 +317,7 @@ namespace Legacy
 
             setAddress.clear();
 
-            for (auto &mapEntry : mapCryptedKeys)
+            for(auto &mapEntry : mapCryptedKeys)
                 setAddress.insert(mapEntry.first);
         }
     }
@@ -332,11 +332,11 @@ namespace Legacy
         {
             LOCK(cs_cryptoKeyStore);
 
-            if (IsCrypted())
+            if(IsCrypted())
                 fCrypted = true;
         }
 
-        if (!fCrypted)
+        if(!fCrypted)
             return BasicKeyStore::HaveKey(address);
 
         {
@@ -359,11 +359,11 @@ namespace Legacy
         {
             LOCK(cs_cryptoKeyStore);
 
-            if (IsCrypted())
+            if(IsCrypted())
                 fCrypted = true;
         }
 
-        if (!fCrypted)
+        if(!fCrypted)
             return KeyStore::GetPubKey(address, vchPubKeyOut);
 
         {
@@ -371,7 +371,7 @@ namespace Legacy
             LOCK(cs_cryptoKeyStore);
 
             auto mi = mapCryptedKeys.find(address);
-            if (mi != mapCryptedKeys.end())
+            if(mi != mapCryptedKeys.end())
             {
                 vchPubKeyOut = (*mi).second.first;
                 return true;

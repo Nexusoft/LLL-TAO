@@ -34,22 +34,27 @@ namespace TAO
          *
          *
          **/
-        struct ChainState
+        namespace ChainState
         {
+
             /** The best block height in the chain. **/
-            static std::atomic<uint32_t> nBestHeight;
+            extern std::atomic<uint32_t> nBestHeight;
 
 
             /** The best trust in the chain. **/
-            static std::atomic<uint64_t> nBestChainTrust;
+            extern std::atomic<uint64_t> nBestChainTrust;
+
+
+            /** The current checkpoint height. **/
+            extern std::atomic<uint64_t> nCheckpointHeight;
 
 
             /** The best hash in the chain. */
-            static memory::atomic<uint1024_t> hashBestChain;
+            extern memory::atomic<uint1024_t> hashBestChain;
 
 
             /** Hardened Checkpoint. **/
-            static memory::atomic<uint1024_t> hashCheckpoint;
+            extern memory::atomic<uint1024_t> hashCheckpoint;
 
 
             /** Synchronizing
@@ -57,7 +62,7 @@ namespace TAO
              *  Flag to tell if initial blocks are downloading.
              *
              **/
-            static bool Synchronizing();
+            bool Synchronizing();
 
 
             /** PercentSynchronized
@@ -65,7 +70,7 @@ namespace TAO
              *  Real value of the total synchronzation percent completion.
              *
              **/
-            static double PercentSynchronized();
+            double PercentSynchronized();
 
 
             /** Initialize
@@ -73,7 +78,7 @@ namespace TAO
              *  Initialize the Chain State.
              *
              **/
-            static bool Initialize();
+            bool Initialize();
 
 
             /** Genesis
@@ -81,17 +86,17 @@ namespace TAO
              *  Get the hash of the genesis block.
              *
              **/
-            static uint1024_t Genesis();
+            uint1024_t Genesis();
 
 
             /** The best block in the chain. **/
-            static memory::atomic<BlockState> stateBest;
+            extern memory::atomic<BlockState> stateBest;
 
 
             /** The best block in the chain. **/
-            static BlockState stateGenesis;
+            extern BlockState stateGenesis;
 
-        };
+        }
     }
 }
 

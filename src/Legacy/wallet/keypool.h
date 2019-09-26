@@ -15,10 +15,18 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_WALLET_KEYPOOL_H
 #define NEXUS_LEGACY_WALLET_KEYPOOL_H
 
+#include <Util/include/mutex.h>
+
 #include <set>
 #include <vector>
 
-#include <Util/include/mutex.h>
+
+/** Defines the default number of keys contained by a key pool **/
+#define DEFAULT_KEY_POOL_SIZE 100
+
+/** Defines the minimum key pool size **/
+#define MINIMUM_KEY_POOL_SIZE 10
+
 
 namespace Legacy
 {
@@ -54,15 +62,6 @@ namespace Legacy
     {
         /** WalletDB is declared friend so it can load data into KeyPool during LoadWallet() process */
         friend class WalletDB; 
-
-
-        /** Defines the default number of keys contained by a key pool **/
-        #define DEFAULT_KEY_POOL_SIZE 100
-
-
-        /** Defines the minimum key pool size **/
-        #define MINIMUM_KEY_POOL_SIZE 0
-
 
     private:
         /** Mutex for thread concurrency. **/
@@ -127,16 +126,20 @@ namespace Legacy
 
         /** TopUpKeyPool
          *
-         *  Adds keys to key pool to top up the number of entries. Does
-         *  nothing if key pool already full.
+         *  Adds keys to key pool to top up the number of entries if the current 
+         *  key pool is at or below its minimum size. Does nothing if key pool is 
+         *  currently larger than minimum size unless the force flag is set. In that case
+         *  it will top up the key pool to its maximum size regardless of current size.
          *
          *  Fills pool to KeyPool::DEFAULT_KEY_POOL_SIZE entries
          *  unless the value is overridden by startup arguments.
          *
+         *  @param[in] fForceRefill set true to force top up to max size regardless of current size
+         *
          *  @return false if wallet locked and unable to add keys, true otherwise
          *
          **/
-        bool TopUpKeyPool();
+        bool TopUpKeyPool(bool fForceRefill = false);
 
 
         /** ClearKeyPool

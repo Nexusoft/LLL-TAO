@@ -36,6 +36,22 @@ namespace LLP
      **/
     class LegacyNode : public BaseConnection<LegacyPacket>
     {
+        /** Mutex to protect connected sessions. **/
+        static std::mutex SESSIONS_MUTEX;
+
+
+        /** Map to keep track of duplicate nonce sessions. **/
+        static std::map<uint64_t, std::pair<uint32_t, uint32_t>> mapSessions;
+
+
+        /** Switch Node
+         *
+         *  Helper function to switch available nodes.
+         *
+         **/
+        static void SwitchNode();
+
+
     public:
 
         /** Name
@@ -46,78 +62,20 @@ namespace LLP
         static std::string Name() { return "Legacy"; }
 
 
-        /** Process
-         *
-         *  Verify a block and accept it into the block chain
-         *
-         *  @return True is no errors, false otherwise.
-         *
-         **/
-        static bool Process(const Legacy::LegacyBlock& block, LegacyNode* pnode);
-
-
         /** Default Constructor **/
-        LegacyNode()
-        : BaseConnection<LegacyPacket>()
-        , strNodeVersion()
-        , nCurrentVersion(LLP::PROTOCOL_VERSION)
-        , nCurrentSession(0)
-        , nStartingHeight(0)
-        , nConsecutiveFails(0)
-        , nConsecutiveOrphans(0)
-        , fInbound(false)
-        , nLastPing(runtime::timestamp())
-        , hashContinue(0)
-        , mapLatencyTracker()
-        , mapSentRequests()
-        {
-
-        }
+        LegacyNode();
 
 
         /** Constructor **/
-        LegacyNode(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false)
-        : BaseConnection<LegacyPacket>(SOCKET_IN, DDOS_IN, isDDOS)
-        , strNodeVersion()
-        , nCurrentVersion(LLP::PROTOCOL_VERSION)
-        , nCurrentSession(0)
-        , nStartingHeight(0)
-        , nConsecutiveFails(0)
-        , nConsecutiveOrphans(0)
-        , fInbound(false)
-        , nLastPing(runtime::timestamp())
-        , hashContinue(0)
-        , mapLatencyTracker()
-        , mapSentRequests()
-        {
-        }
+        LegacyNode(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false);
 
 
         /** Constructor **/
-        LegacyNode(DDOS_Filter* DDOS_IN, bool isDDOS = false)
-        : BaseConnection<LegacyPacket>(DDOS_IN, isDDOS)
-        , strNodeVersion()
-        , nCurrentVersion(LLP::PROTOCOL_VERSION)
-        , nCurrentSession(0)
-        , nStartingHeight(0)
-        , nConsecutiveFails(0)
-        , nConsecutiveOrphans(0)
-        , fInbound(false)
-        , nLastPing(runtime::timestamp())
-        , hashContinue(0)
-        , mapLatencyTracker()
-        , mapSentRequests()
-        {
-        }
+        LegacyNode(DDOS_Filter* DDOS_IN, bool isDDOS = false);
+
 
         /* Virtual destructor. */
-        virtual ~LegacyNode()
-        {
-        }
-
-
-        /** Randomly generated session ID. **/
-        static const uint64_t nSessionID;
+        virtual ~LegacyNode();
 
 
         /** String version of this Node's Version. **/
@@ -162,10 +120,6 @@ namespace LLP
 
         /** Handle an average calculation of fast sync blocks. */
         static std::atomic<uint64_t> nFastSyncAverage;
-
-
-        /** The current node that is being used for fast sync.l **/
-        static memory::atomic<BaseAddress> addrFastSync;
 
 
         /** The last time a block was accepted. **/
@@ -223,6 +177,30 @@ namespace LLP
         void PushAddress(const LegacyAddress& addr);
 
 
+        /** GetNode
+         *
+         *  Get a node by connected session.
+         *
+         *  @param[in] nSession The session to receive
+         *
+         *  @return a pointer to connected node.
+         *
+         **/
+        static memory::atomic_ptr<LegacyNode>& GetNode(const uint64_t nSession);
+
+
+        /** SessionActive
+         *
+         *  Determine whether a session is connected.
+         *
+         *  @param[in] nSession The session to check for
+         *
+         *  @return true if session is connected.
+         *
+         **/
+        static bool SessionActive(const uint64_t nSession);
+
+
         /** DoS
          *
          *  Send the DoS Score to DDOS Filte
@@ -233,7 +211,7 @@ namespace LLP
          **/
         inline bool DoS(int nDoS, bool fReturn)
         {
-            if(fDDOS)
+            if(DDOS)
                 DDOS->rSCORE += nDoS;
 
             return fReturn;
@@ -246,43 +224,10 @@ namespace LLP
          *  This keeps thread from spending too much time for each Connection.
          *
          **/
-        void ReadPacket() final
-        {
-            if(!INCOMING.Complete())
-            {
-                /** Handle Reading Packet Length Header. **/
-                if(INCOMING.IsNull() && Available() >= 24)
-                {
-                    std::vector<uint8_t> BYTES(24, 0);
-                    if(Read(BYTES, 24) == 24)
-                    {
-                        DataStream ssHeader(BYTES, SER_NETWORK, MIN_PROTO_VERSION);
-                        ssHeader >> INCOMING;
-
-                        Event(EVENT_HEADER);
-                    }
-                }
-
-                /** Handle Reading Packet Data. **/
-                uint32_t nAvailable = Available();
-                if(nAvailable > 0 && !INCOMING.IsNull() && INCOMING.DATA.size() < INCOMING.LENGTH)
-                {
-
-                    /* Create the packet data object. */
-                    std::vector<uint8_t> DATA( std::min( nAvailable, (uint32_t)(INCOMING.LENGTH - INCOMING.DATA.size())), 0);
-
-                    /* Read up to 512 bytes of data. */
-                    if(Read(DATA, DATA.size()) == DATA.size())
-                    {
-                        INCOMING.DATA.insert(INCOMING.DATA.end(), DATA.begin(), DATA.end());
-                        Event(EVENT_PACKET, static_cast<uint32_t>(DATA.size()));
-                    }
-                }
-            }
-        }
+        void ReadPacket() final;
 
 
-        /** Push Get Blocks
+        /** PushGetBlocks
          *
          *  Send a request to get recent inventory from remote node.
          *
@@ -290,39 +235,7 @@ namespace LLP
          *  @param[in] hashBlockTo The block to search to
          *
          **/
-        void PushGetBlocks(const uint1024_t& hashBlockFrom, const uint1024_t& hashBlockTo)
-        {
-            /* Filter out duplicate requests. */
-            if(hashLastGetblocks.load() == hashBlockFrom && nLastGetBlocks.load() + 1 > runtime::timestamp())
-                return;
-
-            /* Set the fast sync address. */
-            if(addrFastSync != GetAddress())
-            {
-                /* Set the new sync address. */
-                addrFastSync = GetAddress();
-
-                /* Reset the last time received. */
-                nLastTimeReceived = runtime::timestamp();
-
-                debug::log(0, NODE, "New sync address set");
-            }
-
-            /* Calculate the fast sync average. */
-            nFastSyncAverage = std::min((uint64_t)25, (nFastSyncAverage.load() + (runtime::timestamp() - nLastGetBlocks.load())) / 2);
-
-            /* Update the last timestamp this was called. */
-            nLastGetBlocks = runtime::timestamp();
-
-            /* Update the hash that was used for last request. */
-            hashLastGetblocks = hashBlockFrom;
-
-            /* Push the request to the node. */
-            PushMessage("getblocks", TAO::Ledger::Locator(hashBlockFrom), hashBlockTo);
-
-            /* Debug output for monitoring. */
-            debug::log(0, NODE, "(", nFastSyncAverage.load(), ") requesting getblocks from ", hashBlockFrom.ToString().substr(0, 20), " to ", hashBlockTo.ToString().substr(0, 20));
-        }
+        void PushGetBlocks(const uint1024_t& hashBlockFrom, const uint1024_t& hashBlockTo);
 
 
         /** NewMessage

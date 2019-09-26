@@ -47,13 +47,17 @@ namespace TAO
 
 
             /** Default Constructor. **/
-            Function() { };
+            Function()
+            : function()
+            , fEnabled(true)
+            {
+            }
 
 
             /** Function input **/
-            Function(std::function<json::json(const json::json&, bool)> functionIn) :
-            function(functionIn),
-            fEnabled(true)
+            Function(std::function<json::json(const json::json&, bool)> functionIn)
+            : function(functionIn)
+            , fEnabled(true)
             {
             }
 

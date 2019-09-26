@@ -11,23 +11,38 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLC/include/random.h>
+#include <TAO/Ledger/include/create.h>
+
+#include <Legacy/types/transaction.h>
+#include <Legacy/types/legacy.h>
+
+#include <LLC/types/bignum.h>
+#include <TAO/Register/types/address.h>
+#include <LLC/types/uint1024.h>
 
 #include <LLD/include/global.h>
 
-#include <TAO/Ledger/include/create.h>
+#include <LLP/types/tritium.h>
+
+#include <TAO/Ledger/include/ambassador.h>
+#include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/constants.h>
+#include <TAO/Ledger/include/difficulty.h>
+#include <TAO/Ledger/include/enum.h>
+#include <TAO/Ledger/include/retarget.h>
+#include <TAO/Ledger/include/supply.h>
+#include <TAO/Ledger/include/process.h>
 #include <TAO/Ledger/include/timelocks.h>
 
-#include <TAO/Ledger/include/difficulty.h>
-#include <TAO/Ledger/include/supply.h>
-#include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/types/mempool.h>
 
 #include <TAO/Operation/include/enum.h>
 
-#include <Legacy/types/transaction.h>
-#include <Legacy/types/legacy.h>
+#include <TAO/API/include/global.h> //for CREATE_MUTEX
+
+#include <Util/include/convert.h>
+#include <Util/include/debug.h>
+#include <Util/include/runtime.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -40,200 +55,498 @@ namespace TAO
         /* Condition variable for private blocks. */
         std::condition_variable PRIVATE_CONDITION;
 
+        /* Create a new block object from the chain.*/
+        static memory::atomic<TAO::Ledger::TritiumBlock> blockCache[4];
+
 
         /* Create a new transaction object from signature chain. */
-        bool CreateTransaction(TAO::Ledger::SignatureChain* user, SecureString pin, TAO::Ledger::Transaction& tx)
+        bool CreateTransaction(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin,
+                               TAO::Ledger::Transaction& tx)
         {
+            /* Get the genesis id of the sigchain. */
+            uint256_t hashGenesis = user->Genesis();
+
+            /* Last sigchain transaction. */
+            uint512_t hashLast = 0;
+
+            /* Set default signature types. */
+            tx.nNextType = SIGNATURE::FALCON;
+            tx.nKeyType  = SIGNATURE::FALCON;
+
+            /* Check for configuration options. */
+            if(config::GetBoolArg("-brainpool"))
+            {
+                tx.nKeyType  = SIGNATURE::BRAINPOOL;
+                tx.nNextType = SIGNATURE::BRAINPOOL;
+            }
+
+            /* Check mempool for other transactions. */
+            TAO::Ledger::Transaction txPrev;
+            if(mempool.Get(hashGenesis, txPrev))
+            {
+                /* Build new transaction object. */
+                tx.nSequence   = txPrev.nSequence + 1;
+                tx.hashGenesis = txPrev.hashGenesis;
+                tx.hashPrevTx  = txPrev.GetHash();
+                tx.nKeyType    = txPrev.nNextType;
+                tx.nTimestamp  = std::max(runtime::unifiedtimestamp(), txPrev.nTimestamp);
+            }
+
             /* Get the last transaction. */
-            uint512_t hashLast;
-            if(LLD::legDB->ReadLast(user->Genesis(), hashLast))
+            else if(LLD::Ledger->ReadLast(user->Genesis(), hashLast))
             {
                 /* Get previous transaction */
-                TAO::Ledger::Transaction txPrev;
-                if(!LLD::legDB->ReadTx(hashLast, txPrev))
+                if(!LLD::Ledger->ReadTx(hashLast, txPrev))
                     return debug::error(FUNCTION, "no prev tx ", hashLast.ToString(), " in ledger db");
 
                 /* Build new transaction object. */
                 tx.nSequence   = txPrev.nSequence + 1;
                 tx.hashGenesis = txPrev.hashGenesis;
                 tx.hashPrevTx  = hashLast;
-                tx.NextHash(user->Generate(tx.nSequence + 1, pin));
-
-                return true;
+                tx.nKeyType    = txPrev.nNextType;
+                tx.nTimestamp  = std::max(runtime::unifiedtimestamp(), txPrev.nTimestamp);
             }
 
             /* Genesis Transaction. */
-            tx.NextHash(user->Generate(tx.nSequence + 1, pin));
+            tx.NextHash(user->Generate(tx.nSequence + 1, pin), tx.nNextType);
             tx.hashGenesis = user->Genesis();
 
             return true;
         }
 
 
-        /* Create a new block object from the chain.*/
-        bool CreateBlock(TAO::Ledger::SignatureChain* user, SecureString pin, uint32_t nChannel, TAO::Ledger::TritiumBlock& block, uint64_t nExtraNonce)
+        /* Gets a list of transactions from memory pool for current block. */
+        void AddTransactions(TAO::Ledger::TritiumBlock& block)
         {
-            /* Set the block to null. */
-            block.SetNull();
-
-
-            /* Modulate the Block Versions if they correspond to their proper time stamp */
-            if(runtime::unifiedtimestamp() >= (config::fTestNet ?
-                TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] :
-                NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2]))
-                block.nVersion = config::fTestNet ?
-                TESTNET_BLOCK_CURRENT_VERSION :
-                NETWORK_BLOCK_CURRENT_VERSION; // --> New Block Versin Activation Switch
-            else
-                block.nVersion = config::fTestNet ?
-                TESTNET_BLOCK_CURRENT_VERSION - 1 :
-                NETWORK_BLOCK_CURRENT_VERSION - 1;
-
-
-            /* Setup the producer transaction. */
-            if(!CreateTransaction(user, pin, block.producer))
-                return debug::error(FUNCTION, "failed to create producer transactions");
-
-
-            /* Handle the coinstake */
-            if (nChannel == 0)
-            {
-                if(block.producer.IsGenesis())
-                {
-                    /* Create trust transaction. */
-                    block.producer << (uint8_t) TAO::Operation::OP::TRUST;
-
-                    /* The account that is being staked. */
-                    uint256_t hashAccount;
-                    block.producer << hashAccount;
-
-                    /* The previous trust block. */
-                    uint1024_t hashLastTrust = 0;
-                    block.producer << hashLastTrust;
-
-                    /* Previous trust sequence number. */
-                    uint32_t nSequence = 0;
-                    block.producer << nSequence;
-
-                    /* The previous trust calculated. */
-                    uint64_t nLastTrust = 0;
-                    block.producer << nLastTrust;
-
-                    /* The total to be staked. */
-                    uint64_t  nStake = 0; //account balance
-                    block.producer << nStake;
-                }
-                else
-                {
-                    /* Create trust transaction. */
-                    block.producer << (uint8_t) TAO::Operation::OP::TRUST;
-
-                    /* The account that is being staked. */
-                    uint256_t hashAccount;
-                    block.producer << hashAccount;
-
-                    /* The previous trust block. */
-                    uint1024_t hashLastTrust = 0; //GET LAST TRUST BLOCK FROM LOCAL DB
-                    block.producer << hashLastTrust;
-
-                    /* Previous trust sequence number. */
-                    uint32_t nSequence = 0; //GET LAST SEQUENCE FROM LOCAL DB
-                    block.producer << nSequence;
-
-                    /* The previous trust calculated. */
-                    uint64_t nLastTrust = 0; //GET LAST TRUST FROM LOCAL DB
-                    block.producer << nLastTrust;
-
-                    /* The total to be staked. */
-                    uint64_t  nStake = 0; //BALANCE IS PREVIOUS BALANCE + INTEREST RATE
-                    block.producer << nStake;
-                }
-            }
-
-            /* Create the Coinbase Transaction if the Channel specifies. */
-            else
-            {
-                /* Create coinbase transaction. */
-                block.producer << (uint8_t) TAO::Operation::OP::COINBASE;
-
-                /* The total to be credited. */
-                uint64_t  nCredit = GetCoinbaseReward(ChainState::stateBest.load(), nChannel, 0);
-                block.producer << nCredit;
-
-                /* The extra nonce to coinbase. */
-                block.producer << nExtraNonce;
-            }
-
-            /* Sign the producer transaction. */
-            block.producer.Sign(user->Generate(block.producer.nSequence, pin));
-
-            /* Add the transactions. */
-            std::vector<uint512_t> vHashes;
-            vHashes.push_back(block.producer.GetHash());
+            /* Clear the transactions. */
+            block.vtx.clear();
 
             /* Check the memory pool. */
             std::vector<uint512_t> vMempool;
             mempool.List(vMempool);
 
-            /* Add each transaction. */
+            /* Loop through the list of transactions. */
+            uint256_t hashGenesis = 0;
             for(const auto& hash : vMempool)
             {
                 /* Check the Size limits of the Current Block. */
-                if (::GetSerializeSize(block, SER_NETWORK, LLP::PROTOCOL_VERSION) + 193 >= MAX_BLOCK_SIZE)
+                if(::GetSerializeSize(block, SER_NETWORK, LLP::PROTOCOL_VERSION) + 200 >= MAX_BLOCK_SIZE)
                     break;
-
-                /* Skip the producer hash if included. */
-                if(hash == block.producer.GetHash())
-                    continue;
 
                 /* Get the transaction from the memory pool. */
                 TAO::Ledger::Transaction tx;
                 if(!mempool.Get(hash, tx))
                     continue;
 
-                /* Don't add transactions with the same genesis ID as producer. */
-                if(tx.hashGenesis == block.producer.hashGenesis)
+                /* Don't add transactions that are coinbase or coinstake. */
+                if(tx.IsCoinBase() || tx.IsCoinStake())
                     continue;
 
-                /* Don't add transactions that are coinbase or coinstake. */
-                if(tx.IsCoinbase() || tx.IsTrust())
+                /* Check for timestamp violations. */
+                if(tx.nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
                     continue;
 
                 /* Add the transaction to the block. */
-                block.vtx.push_back(std::make_pair(TRITIUM_TX, hash));
+                block.vtx.push_back(std::make_pair(TRANSACTION::TRITIUM, hash));
 
-
-                /* Add to the hashes for merkle root. */
-                vHashes.push_back(hash);
+                /* Set the last genesis used. */
+                hashGenesis = tx.hashGenesis;
             }
 
-            /** Populate the Block Data. **/
-            block.hashPrevBlock   = ChainState::stateBest.load().GetHash();
-            block.hashMerkleRoot = block.BuildMerkleTree(vHashes);
-            block.nChannel       = nChannel;
-            block.nHeight        = ChainState::stateBest.load().nHeight + 1;
-            block.nBits          = GetNextTargetRequired(ChainState::stateBest.load(), nChannel, false);
-            block.nNonce         = 1;
-            block.nTime          = static_cast<uint32_t>(std::max(ChainState::stateBest.load().GetBlockTime() + 1, runtime::unifiedtimestamp()));
+            /* Clear for legacy. */
+            vMempool.clear();
+
+            /* Retrieve list of transaction hashes from mempool. Limit list to a sane size that would typically more than fill a
+             * legacy block, rather than pulling entire pool if it is very large. */
+            TAO::Ledger::mempool.List(vMempool, 1000, true);
+
+            /* Loop through the list of transactions. */
+            for(const auto& hash : vMempool)
+            {
+                /* Check the Size limits of the Current Block. */
+                if(::GetSerializeSize(block, SER_NETWORK, LLP::PROTOCOL_VERSION) + 200 >= MAX_BLOCK_SIZE)
+                    break;
+
+                /* Get the transaction from the memory pool. */
+                Legacy::Transaction tx;
+                if(!mempool.Get(hash, tx))
+                    continue;
+
+                /* Don't add transactions that are coinbase or coinstake. */
+                if(tx.IsCoinBase() || tx.IsCoinStake())
+                    continue;
+
+                /* Check for timestamp violations. */
+                if(tx.nTime > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
+                    continue;
+
+                /* Add the transaction to the block. */
+                block.vtx.push_back(std::make_pair(TRANSACTION::LEGACY, hash));
+            }
+        }
+
+
+        /* Populate block header data for a new block. */
+        void AddBlockData(const TAO::Ledger::BlockState& stateBest, const uint32_t nChannel, TAO::Ledger::TritiumBlock& block)
+        {
+
+            /* Modulate the Block Versions if they correspond to their proper time stamp */
+            /* Normally, if condition is true and block version is current version unless an activation is pending */
+            uint32_t nCurrent = CurrentVersion();
+            if(VersionActive(runtime::unifiedtimestamp(), nCurrent)) // --> New Block Version Activation Switch
+                block.nVersion = nCurrent;
+            else
+                block.nVersion = nCurrent - 1;
+
+            /* Calculate the merkle root (stake minter must handle channel 0 after completing coinstake producer setup) */
+            if(nChannel != 0)
+            {
+                /* Add the transaction hashest. */
+                std::vector<uint512_t> vHashes;
+                for(const auto& tx : block.vtx)
+                    vHashes.push_back(tx.second);
+
+                /* Producer transaction is last. */
+                vHashes.push_back(block.producer.GetHash());
+
+                /* Build the block's merkle root. */
+                block.hashMerkleRoot = block.BuildMerkleTree(vHashes);
+            }
+
+            /* Add remaining block data */
+            block.hashPrevBlock = stateBest.GetHash();
+            block.nChannel      = nChannel;
+            block.nHeight       = stateBest.nHeight + 1;
+            block.nBits         = GetNextTargetRequired(stateBest, nChannel, false);
+            block.nNonce        = 1;
+            block.nTime         = static_cast<uint32_t>(std::max(stateBest.GetBlockTime() + 1, runtime::unifiedtimestamp()));
+        }
+
+
+        /* Create a new block object from the chain. */
+        bool CreateBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin,
+            const uint32_t nChannel, TAO::Ledger::TritiumBlock& block, const uint64_t nExtraNonce,
+            Legacy::Coinbase *pCoinbaseRecipients)
+        {
+            /* Only allow prime, hash, and private channels. */
+            if (nChannel < 1 || nChannel > 3)
+                return debug::error(FUNCTION, "Invalid channel: ", nChannel);
+
+            /* Set the block to null. */
+            block.SetNull();
+
+            /* Handle if the block is cached. */
+            if(ChainState::stateBest.load().GetHash() == blockCache[nChannel].load().hashPrevBlock)
+            {
+                /* Set the block to cached block. */
+                block = blockCache[nChannel].load();
+
+                /* Add new transactions. */
+                AddTransactions(block);
+
+                /* Check that the producer isn't going to orphan any transactions. */
+                TAO::Ledger::Transaction tx;
+                if(mempool.Get(block.producer.hashGenesis, tx) && block.producer.hashPrevTx != tx.GetHash())
+                {
+                    /* Handle for STALE producer. */
+                    debug::log(0, FUNCTION, "Producer is stale, rebuilding...");
+
+                    /* Setup the producer transaction. */
+                    if(!CreateTransaction(user, pin, block.producer))
+                        return debug::error(FUNCTION, "Failed to create producer transactions.");
+
+                    /* Store new block cache. */
+                    blockCache[nChannel].store(block);
+                }
+
+                /* Use the extra nonce if block is coinbase. */
+                if(nChannel == 1 || nChannel == 2)
+                {
+                    /* Output type 0 is mining/minting reward */
+                    uint64_t nBlockReward = GetCoinbaseReward(ChainState::stateBest.load(), nChannel, 0);
+
+                    /* Create coinbase transaction. */
+                    block.producer[0].Clear();
+                    block.producer[0] << uint8_t(TAO::Operation::OP::COINBASE);
+
+                    /* Add the spendable genesis. */
+                    block.producer[0] << user->Genesis();
+
+                    /* The total to be credited. */
+                    uint64_t  nCredit = nBlockReward;
+
+                    /* If there are coinbase recipients, set the reward to the coinbase wallet reward. */
+                    if(pCoinbaseRecipients && !pCoinbaseRecipients->IsNull())
+                        nCredit = pCoinbaseRecipients->WalletReward();
+
+                    /* Check to make sure credit is non-zero. */
+                    if(nCredit == 0)
+                        return debug::error(FUNCTION, "Empty block producer reward.");
+
+                    block.producer[0] << nCredit;
+
+                    /* The extra nonce to coinbase. */
+                    block.producer[0] << nExtraNonce;
+
+                    /* Add coinbase recipient amounts to block producer transaction if any. */
+                    if(pCoinbaseRecipients && !pCoinbaseRecipients->IsNull())
+                    {
+                        /* Ensure wallet reward and recipient amounts add up to correct block reward. */
+                        if(!pCoinbaseRecipients->IsValid())
+                            return debug::error(FUNCTION, "Coinbase recipients contain invalid amounts.");
+
+                        /* Get the map of outputs for this coinbase. */
+                        std::map<std::string, uint64_t> mapOutputs = pCoinbaseRecipients->Outputs();
+                        uint32_t nTx = 1;
+
+                        for(const auto&entry : mapOutputs)
+                        {
+                            /* Build the recipient address from a hex string. */
+                            uint256_t hashGenesis = uint256_t(entry.first);
+
+                            /* Ensure the address is valid. */
+                            if(!LLD::Ledger->HasGenesis(hashGenesis))
+                                return debug::error(FUNCTION, "Invaild recipient address: ", entry.first, " (", nTx, ")");
+
+                            /* Set coinbase operation. */
+                            block.producer[nTx].Clear();
+                            block.producer[nTx] << uint8_t(TAO::Operation::OP::COINBASE);
+
+                            /* Set sigchain recipient. */
+                            block.producer[nTx] << hashGenesis;
+
+                            /* Set coinbase amount for associated recipent. */
+                            block.producer[nTx] << entry.second;
+
+                            /* The extra nonce to coinbase. */
+                            block.producer[nTx] << nExtraNonce;
+
+                            ++nTx;
+                        }
+                    }
+                }
+                else if(nChannel == 3)
+                {
+                    /* Create an authorize producer. */
+                    block.producer[0].Clear();
+                    block.producer[0] << uint8_t(TAO::Operation::OP::AUTHORIZE);
+
+                    /* Get the sigchain txid. */
+                    block.producer[0] << block.producer.hashPrevTx;
+
+                    /* Set the genesis operation. */
+                    block.producer[0] << block.producer.hashGenesis;
+                }
+
+                /* Sign the producer transaction. */
+                block.producer.Sign(user->Generate(block.producer.nSequence, pin));
+
+                /* Rebuild the merkle tree for updated block. */
+                std::vector<uint512_t> vHashes;
+                for(const auto& tx : block.vtx)
+                    vHashes.push_back(tx.second);
+
+                /* Producer transaction is last. */
+                vHashes.push_back(block.producer.GetHash());
+
+                /* Build the block's merkle root. */
+                block.hashMerkleRoot  = block.BuildMerkleTree(vHashes);
+            }
+            else //block not cached, set up new block
+            {
+                LOCK(TAO::API::users->CREATE_MUTEX);
+
+                /* Cache the best chain before processing. */
+                const TAO::Ledger::BlockState stateBest = ChainState::stateBest.load();
+
+                /* Must add transactions first, before creating producer, so producer is sequenced last if user has tx in block */
+                AddTransactions(block);
+
+                /* Setup the producer transaction. */
+                if(!CreateTransaction(user, pin, block.producer))
+                    return debug::error(FUNCTION, "Failed to create producer transactions.");
+
+                /* Create the Coinbase Transaction if the Channel specifies. */
+                if(nChannel == 1 || nChannel == 2)
+                {
+                    /* Output type 0 is mining/minting reward */
+                    uint64_t nBlockReward = GetCoinbaseReward(stateBest, nChannel, 0);
+
+                    /* Create coinbase transaction. */
+                    block.producer[0] << uint8_t(TAO::Operation::OP::COINBASE);
+
+                    /* Add the spendable genesis. */
+                    block.producer[0] << user->Genesis();
+
+                    /* The total to be credited. */
+                    uint64_t  nCredit = nBlockReward;
+
+                    /* If there are coinbase recipients, set the reward to the coinbase wallet reward. */
+                    if(pCoinbaseRecipients && !pCoinbaseRecipients->IsNull())
+                        nCredit = pCoinbaseRecipients->WalletReward();
+
+                    /* Check to make sure credit is non-zero. */
+                    if(nCredit == 0)
+                        return debug::error(FUNCTION, "Empty block producer reward.");
+
+
+                    block.producer[0] << nCredit;
+
+                    /* The extra nonce to coinbase. */
+                    block.producer[0] << nExtraNonce;
+
+                    /* Add coinbase recipient amounts to block producer transaction if any. */
+                    if(pCoinbaseRecipients && !pCoinbaseRecipients->IsNull())
+                    {
+                        /* Ensure wallet reward and recipient amounts add up to correct block reward. */
+                        if(!pCoinbaseRecipients->IsValid())
+                            return debug::error(FUNCTION, "Coinbase recipients contain invalid amounts.");
+
+                        /* Get the map of outputs for this coinbase. */
+                        std::map<std::string, uint64_t> mapOutputs = pCoinbaseRecipients->Outputs();
+                        uint32_t nTx = 1;
+
+                        for(const auto&entry : mapOutputs)
+                        {
+                            /* Build the recipient address from a hex string. */
+                            uint256_t hashGenesis = uint256_t(entry.first);
+
+                            /* Ensure the address is valid. */
+                            if(!LLD::Ledger->HasGenesis(hashGenesis))
+                                return debug::error(FUNCTION, "Invaild recipient address: ", entry.first, " (", nTx, ")");
+
+                            /* Set coinbase operation. */
+                            block.producer[nTx] << uint8_t(TAO::Operation::OP::COINBASE);
+
+                            /* Set sigchain recipient. */
+                            block.producer[nTx] << hashGenesis;
+
+                            /* Set coinbase amount for associated recipent. */
+                            block.producer[nTx] << entry.second;
+
+                            /* The extra nonce to coinbase. */
+                            block.producer[nTx] << nExtraNonce;
+
+                            ++nTx;
+                        }
+                    }
+
+                    /* Get the last state block for channel. */
+                    TAO::Ledger::BlockState statePrev = stateBest;
+                    if(GetLastState(statePrev, nChannel))
+                    {
+                        /* Check for interval. */
+                        if(statePrev.nChannelHeight %
+                            (config::fTestNet.load() ? AMBASSADOR_PAYOUT_THRESHOLD_TESTNET : AMBASSADOR_PAYOUT_THRESHOLD) == 0)
+                        {
+                            /* Get the total in reserves. */
+                            int64_t nBalance = statePrev.nReleasedReserve[1] - (33 * NXS_COIN); //leave 33 coins in the reserve
+                            if(nBalance > 0)
+                            {
+                                /* Loop through the embassy sigchains. */
+                                for(auto it =  (config::fTestNet.load() ? AMBASSADOR_TESTNET.begin() : AMBASSADOR.begin());
+                                         it != (config::fTestNet.load() ? AMBASSADOR_TESTNET.end()   : AMBASSADOR.end()); ++it)
+                                {
+                                    /* Make sure to push to end. */
+                                    uint32_t nContract = block.producer.Size();
+
+                                    /* Create coinbase transaction. */
+                                    block.producer[nContract] << uint8_t(TAO::Operation::OP::COINBASE);
+                                    block.producer[nContract] << it->first;
+
+                                    /* The total to be credited. */
+                                    uint64_t nCredit = (nBalance * it->second.second) / 1000;
+                                    block.producer[nContract] << nCredit;
+                                    block.producer[nContract] << uint64_t(0);
+                                }
+                            }
+                        }
+                    }
+                }
+                else if(nChannel == 3)
+                {
+                    /* Create an authorize producer. */
+                    block.producer[0] << uint8_t(TAO::Operation::OP::AUTHORIZE);
+
+                    /* Get the sigchain txid. */
+                    block.producer[0] << block.producer.hashPrevTx;
+
+                    /* Set the genesis operation. */
+                    block.producer[0] << block.producer.hashGenesis;
+                }
+
+                /* Update the producer timestamp, making sure it is not earlier than the previous block.  However we can't simply
+                   set the timstamp to be last block time + 1, in case there is a long gap between blocks, as there is a consensus
+                   rule that the producer timestamp cannot be more than 3600 seconds before the current block time. */
+                if(ChainState::stateBest.load().GetBlockTime() + 1 > runtime::unifiedtimestamp())
+                    block.producer.nTimestamp = ChainState::stateBest.load().GetBlockTime() + 1;
+                else
+                    block.producer.nTimestamp = runtime::unifiedtimestamp();
+
+                /* Sign the producer transaction. */
+                block.producer.Sign(user->Generate(block.producer.nSequence, pin));
+
+                /* Populate the block metadata */
+                AddBlockData(stateBest, nChannel, block);
+
+                /* Store the cached block. */
+                blockCache[nChannel].store(block);
+            }
+
+            /* Update the time for the newly created block. */
+            block.UpdateTime();
 
             return true;
         }
 
 
-        /** Create Genesis
-         *
-         *  Creates the genesis block
-         *
-         *
-         **/
+        /* Create a new Proof of Stake (channel 0) block object from the chain. */
+        bool CreateStakeBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin,
+                              TAO::Ledger::TritiumBlock& block, const uint64_t isGenesis)
+        {
+
+            const uint32_t nChannel = 0;
+
+            /* Set the block to null. */
+            block.SetNull();
+
+            /* Cache the best chain before processing. */
+            const TAO::Ledger::BlockState stateBest = ChainState::stateBest.load();
+
+            /* Add the transactions to the block (no transactions for PoS Genesis block). */
+            /* Must add transactions first, before creating producer, so producer is sequenced last if user has tx in block */
+            if (!isGenesis)
+                AddTransactions(block);
+
+            /* Create the producer transaction. */
+            if(!CreateTransaction(user, pin, block.producer))
+                return debug::error(FUNCTION, "failed to create producer transactions");
+
+            /* Set the Coinstake timestamp. */
+            block.producer.nTimestamp = stateBest.GetBlockTime() + 1;
+
+            /* The remainder of Coinstake producer not configured here. Stake minter must handle it. */
+
+            /* Populate the block metadata */
+            AddBlockData(stateBest, nChannel, block);
+
+            return true;
+        }
+
+
+        /*  Creates the genesis block. */
         bool CreateGenesis()
         {
-            uint1024_t genesisHash = TAO::Ledger::ChainState::Genesis();
+            /* Get the genesis hash. */
+            uint1024_t hashGenesis = TAO::Ledger::ChainState::Genesis();
 
-            if(!LLD::legDB->ReadBlock(genesisHash, ChainState::stateGenesis))
+            /* Check for genesis from disk. */
+            if(!LLD::Ledger->ReadBlock(hashGenesis, ChainState::stateGenesis))
             {
                 /* Build the first transaction for genesis. */
                 const char* pszTimestamp = "Silver Doctors [2-19-2014] BANKER CLEAN-UP: WE ARE AT THE PRECIPICE OF SOMETHING BIG";
+
+                /* Main coinbase genesis. */
                 Legacy::Transaction genesis;
                 genesis.nTime = 1409456199;
                 genesis.vin.resize(1);
@@ -255,8 +568,8 @@ namespace TAO
                 block.nHeight  = 0;
                 block.nChannel = 2;
                 block.nTime    = 1409456199;
-                block.nBits    = bnProofOfWorkLimit[2].GetCompact();
-                block.nNonce   = config::fTestNet ? 122999499 : 2196828850;
+                block.nBits    = LLC::CBigNum(bnProofOfWorkLimit[2]).GetCompact();
+                block.nNonce   = config::fTestNet.load() ? 122999499 : 2196828850;
 
                 /* Ensure the hard coded merkle root is the same calculated merkle root. */
                 assert(block.hashMerkleRoot == uint512_t("0x8a971e1cec5455809241a3f345618a32dc8cb3583e03de27e6fe1bb4dfa210c413b7e6e15f233e938674a309df5a49db362feedbf96f93fb1c6bfeaa93bd1986"));
@@ -267,28 +580,24 @@ namespace TAO
                 /* Check that the genesis hash is correct. */
                 LLC::CBigNum target;
                 target.SetCompact(block.nBits);
-                if(block.GetHash() != genesisHash)
+                if(block.GetHash() != hashGenesis)
                     return debug::error(FUNCTION, "genesis hash does not match");
-
-                /* Check that the block passes basic validation. */
-                if(!block.Check())
-                    return debug::error(FUNCTION, "genesis block check failed");
 
                 /* Set the proper chain state variables. */
                 ChainState::stateGenesis = BlockState(block);
                 ChainState::stateGenesis.nChannelHeight = 1;
-                ChainState::stateGenesis.hashCheckpoint = genesisHash;
+                ChainState::stateGenesis.hashCheckpoint = hashGenesis;
 
                 /* Set the best block. */
                 ChainState::stateBest = ChainState::stateGenesis;
 
                 /* Write the block to disk. */
-                if(!LLD::legDB->WriteBlock(genesisHash, ChainState::stateGenesis))
+                if(!LLD::Ledger->WriteBlock(hashGenesis, ChainState::stateGenesis))
                     return debug::error(FUNCTION, "genesis didn't commit to disk");
 
                 /* Write the best chain to the database. */
-                ChainState::hashBestChain = genesisHash;
-                if(!LLD::legDB->WriteBestChain(genesisHash))
+                ChainState::hashBestChain = hashGenesis;
+                if(!LLD::Ledger->WriteBestChain(hashGenesis))
                     return debug::error(FUNCTION, "couldn't write best chain.");
             }
 
@@ -299,14 +608,52 @@ namespace TAO
         /* Handles the creation of a private block chain. */
         void ThreadGenerator()
         {
-            if(!config::GetBoolArg("-private"))
+            if(!config::GetBoolArg("-private") || !config::mapArgs.count("-generate"))
                 return;
+
+            /* Get the account. */
+            memory::encrypted_ptr<TAO::Ledger::SignatureChain> user =
+                new TAO::Ledger::SignatureChain("generate", config::GetArg("-generate", "").c_str());
+
+            /* Get the genesis ID. */
+            uint256_t hashGenesis = user->Genesis();
+
+            /* Check for duplicates in ledger db. */
+            TAO::Ledger::Transaction txPrev;
+            if(LLD::Ledger->HasGenesis(hashGenesis))
+            {
+                /* Get the last transaction. */
+                uint512_t hashLast;
+                if(!LLD::Ledger->ReadLast(hashGenesis, hashLast))
+                {
+                    debug::error(FUNCTION, "No previous transaction found... closing");
+
+                    return;
+                }
+
+                /* Get previous transaction */
+                if(!LLD::Ledger->ReadTx(hashLast, txPrev))
+                {
+                    debug::error(FUNCTION, "No previous transaction found... closing");
+
+                    return;
+                }
+
+                /* Genesis Transaction. */
+                TAO::Ledger::Transaction tx;
+                tx.NextHash(user->Generate(txPrev.nSequence + 1, "1234", false), txPrev.nNextType);
+
+                /* Check for consistency. */
+                if(txPrev.hashNext != tx.hashNext)
+                {
+                    debug::error(FUNCTION, "Invalid credentials... closing");
+
+                    return;
+                }
+            }
 
             /* Startup Debug. */
             debug::log(0, FUNCTION, "Generator Thread Started...");
-
-            /* Get the account. */
-            TAO::Ledger::SignatureChain* user = new TAO::Ledger::SignatureChain("user", "pass");
 
             std::mutex MUTEX;
             while(!config::fShutdown.load())
@@ -318,34 +665,65 @@ namespace TAO
                 if(config::fShutdown.load())
                     return;
 
+                /* Keep block production to five seconds. */
+                runtime::sleep(5000);
+
                 /* Create the block object. */
                 runtime::timer TIMER;
                 TIMER.Start();
+
                 TAO::Ledger::TritiumBlock block;
-                if(!TAO::Ledger::CreateBlock(user, std::string("1234").c_str(), 2, block))
+                if(!TAO::Ledger::CreateBlock(user, "1234", 3, block))
                     continue;
 
                 /* Get the secret from new key. */
                 std::vector<uint8_t> vBytes = user->Generate(block.producer.nSequence, "1234").GetBytes();
                 LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
-                /* Generate the EC Key. */
-                LLC::ECKey key(LLC::BRAINPOOL_P512_T1, 64);
-                if(!key.SetSecret(vchSecret, true))
-                    continue;
+                /* Switch based on signature type. */
+                switch(block.producer.nKeyType)
+                {
+                    /* Support for the FALCON signature scheeme. */
+                    case SIGNATURE::FALCON:
+                    {
+                        /* Create the FL Key object. */
+                        LLC::FLKey key;
 
-                /* Generate new block signature. */
-                block.GenerateSignature(key);
+                        /* Set the secret parameter. */
+                        if(!key.SetSecret(vchSecret, true))
+                            continue;
 
-                /* Add the producer into the memory pool. */
-                mempool.AddUnchecked(block.producer);
+                        /* Generate the signature. */
+                        if(!block.GenerateSignature(key))
+                            continue;
+
+                        break;
+                    }
+
+                    /* Support for the BRAINPOOL signature scheme. */
+                    case SIGNATURE::BRAINPOOL:
+                    {
+                        /* Create EC Key object. */
+                        LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
+
+                        /* Set the secret parameter. */
+                        if(!key.SetSecret(vchSecret, true))
+                            continue;
+
+                        /* Generate the signature. */
+                        if(!block.GenerateSignature(key))
+                            continue;
+
+                        break;
+                    }
+                }
 
                 /* Verify the block object. */
-                if(!block.Check())
-                    continue;
+                uint8_t nStatus = 0;
+                TAO::Ledger::Process(block, nStatus);
 
-                /* Create the state object. */
-                if(!block.Accept())
+                /* Check the statues. */
+                if(!(nStatus & PROCESS::ACCEPTED))
                     continue;
 
                 /* Debug output. */

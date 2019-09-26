@@ -27,6 +27,11 @@ ________________________________________________________________________________
 
 #include <Util/include/mutex.h>
 
+namespace LLP
+{
+    class TritiumNode;
+}
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -43,7 +48,7 @@ namespace TAO
          **/
         class Mempool
         {
-            mutable std::mutex MUTEX;
+            mutable std::recursive_mutex MUTEX;
 
             /** The transactions in the ledger memory pool. **/
             std::map<uint512_t, Legacy::Transaction> mapLegacy;
@@ -53,8 +58,16 @@ namespace TAO
             std::map<uint512_t, TAO::Ledger::Transaction> mapLedger;
 
 
-            /** Record of next hashes in the mempool. **/
-            std::map<uint256_t, uint512_t> mapPrevHashes;
+            /** The transactions in the conflicted ledger memory pool. **/
+            std::map<uint512_t, TAO::Ledger::Transaction> mapConflicts;
+
+
+            /** Oprhan transactions in queue. **/
+            std::map<uint512_t, TAO::Ledger::Transaction> mapOrphans;
+
+
+            /** Record of conflicted transactions in mempool. **/
+            std::map<uint512_t, uint512_t> mapClaimed;
 
 
             /** Record of legacy inputs in the mempool. **/
@@ -63,14 +76,12 @@ namespace TAO
         public:
 
             /** Default Constructor. **/
-            Mempool()
-            : mapLegacy()
-            , mapLedger()
-            , mapPrevHashes()
-            , mapInputs()
-            {
+            Mempool();
 
-            }
+
+            /** Default Destructor. **/
+            ~Mempool();
+
 
             /** AddUnchecked.
              *
@@ -81,7 +92,7 @@ namespace TAO
              *  @return true if added.
              *
              **/
-            bool AddUnchecked(TAO::Ledger::Transaction tx);
+            bool AddUnchecked(const TAO::Ledger::Transaction& tx);
 
 
             /** AddUnchecked
@@ -93,7 +104,7 @@ namespace TAO
              *  @return true if added.
              *
              **/
-            bool AddUnchecked(Legacy::Transaction tx);
+            bool AddUnchecked(const Legacy::Transaction& tx);
 
 
             /** Accept
@@ -101,11 +112,12 @@ namespace TAO
              *  Accepts a transaction with validation rules.
              *
              *  @param[in] tx The transaction to add.
+             *  @param[in] pnode The node that transaction is accepted from.
              *
              *  @return true if added.
              *
              **/
-            bool Accept(TAO::Ledger::Transaction tx);
+            bool Accept(TAO::Ledger::Transaction& tx, LLP::TritiumNode* pnode = nullptr);
 
 
             /** Accept
@@ -117,7 +129,20 @@ namespace TAO
              *  @return true if added.
              *
              **/
-            bool Accept(Legacy::Transaction tx);
+            bool Accept(const Legacy::Transaction& tx);
+
+
+            /** IsSpent
+             *
+             *  Checks if a given output is spent in memory.
+             *
+             *  @param[in] hash The hash of spent output
+             *  @param[in] n The output number being checked
+             *
+             *  @return true if spent.
+             *
+             **/
+            bool IsSpent(const uint512_t& hash, const uint32_t n);
 
 
             /** Get
@@ -131,7 +156,35 @@ namespace TAO
              *  @return true if pool contained transaction.
              *
              **/
-            bool Get(uint512_t hashTx, TAO::Ledger::Transaction& tx) const;
+            bool Get(const uint512_t& hashTx, TAO::Ledger::Transaction &tx) const;
+
+
+            /** Get
+             *
+             *  Gets a transaction by genesis.
+             *
+             *  @param[in] hashTx Hash of transaction to get.
+             *
+             *  @param[out] vTx The list of retrieved transaction
+             *
+             *  @return true if pool contained transaction.
+             *
+             **/
+            bool Get(const uint256_t& hashGenesis, std::vector<TAO::Ledger::Transaction> &vTx) const;
+
+
+            /** Get
+             *
+             *  Gets a transaction by genesis.
+             *
+             *  @param[in] hashTx Hash of transaction to get.
+             *
+             *  @param[out] tx The last tx by genesistransaction
+             *
+             *  @return true if pool contained transaction.
+             *
+             **/
+            bool Get(const uint256_t& hashGenesis, TAO::Ledger::Transaction &tx) const;
 
 
             /** Get
@@ -145,7 +198,7 @@ namespace TAO
              *  @return true if pool contained legacy transaction.
              *
              **/
-            bool Get(uint512_t hashTx, Legacy::Transaction& tx) const;
+            bool Get(const uint512_t& hashTx, Legacy::Transaction &tx) const;
 
 
             /** Has
@@ -157,7 +210,7 @@ namespace TAO
              *  @return true if transaction in mempool.
              *
              **/
-            bool Has(uint512_t hashTx) const;
+            bool Has(const uint512_t& hashTx) const;
 
 
             /** Has
@@ -169,19 +222,7 @@ namespace TAO
              *  @return true if transaction in mempool.
              *
              **/
-            bool Has(uint256_t hashGenesis) const;
-
-
-            /** HasLegacy
-             *
-             *  Checks if a legacy transaction exists.
-             *
-             *  @param[in] hashTx Hash of legacy transaction to check.
-             *
-             *  @return true if legacy transaction in mempool.
-             *
-             **/
-            bool HasLegacy(uint512_t hashTx) const;
+            bool Has(const uint256_t& hashGenesis) const;
 
 
             /** Remove
@@ -193,19 +234,15 @@ namespace TAO
              *  @return true if removed.
              *
              **/
-            bool Remove(uint512_t hashTx);
+            bool Remove(const uint512_t& hashTx);
 
 
-            /** RemoveLegacy
+            /** Check
              *
-             *  Remove a legacy transaction from pool.
-             *
-             *  @param[in] hashTx Hash of legacy transaction to remove.
-             *
-             *  @return true if removed.
+             *  Check the memory pool for consistency.
              *
              **/
-            bool RemoveLegacy(uint512_t hashTx);
+            void Check();
 
 
             /** List
@@ -218,20 +255,7 @@ namespace TAO
              *  @return true if list is not empty.
              *
              **/
-            bool List(std::vector<uint512_t> &vHashes, uint32_t nCount = std::numeric_limits<uint32_t>::max()) const;
-
-
-            /** ListLegacy
-             *
-             *  List legacy transactions in memory pool.
-             *
-             *  @param[out] vHashes List of legacy transaction hashes.
-             *  @param[in] nCount The total transactions to get.
-             *
-             *  @return true if list is not empty.
-             *
-             **/
-            bool ListLegacy(std::vector<uint512_t> &vHashes, uint32_t nCount = std::numeric_limits<uint32_t>::max()) const;
+            bool List(std::vector<uint512_t> &vHashes, uint32_t nCount = std::numeric_limits<uint32_t>::max(), bool fLegacy = false);
 
 
             /** Size

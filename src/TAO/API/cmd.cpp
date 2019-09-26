@@ -12,17 +12,19 @@
 ____________________________________________________________________________________________*/
 
 
-#include <LLP/types/corenode.h>
-#include <LLP/types/rpcnode.h>
-#include <LLP/include/base_address.h>
 #include <TAO/API/include/cmd.h>
 
-#include <Util/include/debug.h>
-#include <Util/include/runtime.h>
+#include <LLP/types/apinode.h>
+#include <LLP/include/base_address.h>
+#include <LLP/include/port.h>
+#include <LLP/types/rpcnode.h>
 
-#include <Util/include/json.h>
-#include <Util/include/config.h>
+#include <Util/include/args.h>
 #include <Util/include/base64.h>
+#include <Util/include/config.h>
+#include <Util/include/debug.h>
+#include <Util/include/json.h>
+#include <Util/include/runtime.h>
 
 
 /* Global TAO namespace. */
@@ -43,6 +45,10 @@ namespace TAO
 
                 return 0;
             }
+
+
+            /* HTTP basic authentication for API */
+            std::string strUserPass64 = encoding::EncodeBase64(config::mapArgs["-apiuser"] + ":" + config::mapArgs["-apipassword"]);
 
             /* Parse out the endpoints. */
             std::string endpoint = std::string(argv[argn]);
@@ -79,8 +85,12 @@ namespace TAO
                 /* Set the previous argument. */
                 prev = arg.substr(0, pos);
 
-                /* Add to parameters object. */
-                parameters[prev] = arg.substr(pos + 1);
+
+                // if the paramter is a JSON list or array then we need to parse it
+                if(arg.compare(pos + 1,1,"{") == 0 || arg.compare(pos + 1,1,"[") == 0)
+                    parameters[prev]=json::json::parse(arg.substr(pos + 1));
+                else
+                    parameters[prev] = arg.substr(pos + 1);
             }
 
 
@@ -93,6 +103,7 @@ namespace TAO
                     "Content-Length: ", strContent.size(), "\r\n",
                     "Content-Type: application/json\r\n",
                     "Server: Nexus-JSON-API\r\n",
+                    "Authorization: Basic ", strUserPass64, "\r\n",
                     "\r\n",
                     strContent);
 
@@ -100,9 +111,12 @@ namespace TAO
             std::vector<uint8_t> vBuffer(strReply.begin(), strReply.end());
 
             /* Make the connection to the API server. */
-            LLP::CoreNode apiNode;
+            LLP::APINode apiNode;
 
-            LLP::BaseAddress addr("127.0.0.1", 8080);
+            std::string strAddr = config::GetArg("-apiconnect", "127.0.0.1");
+            uint16_t nPort = static_cast<uint16_t>(config::GetArg(std::string("-apiport"), config::fTestNet.load() ? TESTNET_API_PORT : MAINNET_API_PORT));
+
+            LLP::BaseAddress addr(strAddr, nPort);
 
             if(!apiNode.Connect(addr))
             {
@@ -123,7 +137,6 @@ namespace TAO
                 if(!apiNode.Connected())
                 {
                     debug::log(0, "Connection Terminated");
-
                     return 0;
                 }
 
@@ -131,22 +144,23 @@ namespace TAO
                 if(apiNode.Errors())
                 {
                     debug::log(0, "Socket Error");
-
                     return 0;
                 }
 
                 /* Catch if the connection timed out. */
-                if(apiNode.Timeout(5))
+                if(apiNode.Timeout(120))
                 {
                     debug::log(0, "Socket Timeout");
-
                     return 0;
                 }
 
                 /* Read the response packet. */
                 apiNode.ReadPacket();
-                runtime::sleep(10);
+                runtime::sleep(1);
             }
+
+            /* Disconnect node. */
+            apiNode.Disconnect();
 
             /* Parse response JSON. */
             json::json ret = json::json::parse(apiNode.INCOMING.strContent);
@@ -176,14 +190,14 @@ namespace TAO
                 return 0;
             }
 
-            /** Check RPC user/pass are set */
-            if (config::mapArgs["-rpcuser"] == "" && config::mapArgs["-rpcpassword"] == "")
+            /* Check RPC user/pass are set */
+            if(config::mapArgs["-rpcuser"] == "" && config::mapArgs["-rpcpassword"] == "")
                 throw std::runtime_error(debug::safe_printstr(
                     "You must set rpcpassword=<password> in the configuration file: ",
                     config::GetConfigFile(), "\n",
                     "If the file does not exist, create it with owner-readable-only file permissions.\n"));
 
-             // HTTP basic authentication
+             /* HTTP basic authentication for RPC */
             std::string strUserPass64 = encoding::EncodeBase64(config::mapArgs["-rpcuser"] + ":" + config::mapArgs["-rpcpassword"]);
 
             /* Build the JSON request object. */
@@ -192,13 +206,20 @@ namespace TAO
             {
                 std::string strArg = argv[i];
                 // if the paramter is a JSON list or array then we need to parse it
-                if( strArg.compare(0,1,"{") == 0 || strArg.compare(0,1,"[") == 0)
+                if(strArg.compare(0,1,"{") == 0 || strArg.compare(0,1,"[") == 0)
                     parameters.push_back(json::json::parse(argv[i]));
                 else
                     parameters.push_back(argv[i]);
             }
+
             /* Build the HTTP Header. */
-            json::json body = { {"method", argv[argn]}, {"params", parameters}, {"id", 1} };
+            json::json body =
+            {
+                {"method", argv[argn]},
+                {"params", parameters},
+                {"id", 1}
+            };
+
             std::string strContent = body.dump();
             std::string strReply = debug::safe_printstr(
                     "POST / HTTP/1.1\r\n",
@@ -218,9 +239,9 @@ namespace TAO
             LLP::RPCNode rpcNode;
 
             std::string strAddr = config::GetArg("-rpcconnect", "127.0.0.1");
-            uint16_t port = config::GetArg("-rpcport",config::fTestNet? 8336 : 9336);
+            uint16_t nPort = static_cast<uint16_t>(config::GetArg(std::string("-rpcport"), config::fTestNet.load() ? TESTNET_RPC_PORT : MAINNET_RPC_PORT));
 
-            LLP::BaseAddress addr(strAddr, port);
+            LLP::BaseAddress addr(strAddr, nPort);
 
             if(!rpcNode.Connect(addr))
             {
@@ -255,13 +276,16 @@ namespace TAO
 
                 /* Read the response packet. */
                 rpcNode.ReadPacket();
-                runtime::sleep(10);
+                runtime::sleep(1);
             }
+
+            /* Disconnect node. */
+            rpcNode.Disconnect();
 
             /* Dump the response to the console. */
             int nRet = 0;
             std::string strPrint = "";
-            if( rpcNode.INCOMING.strContent.length() > 0)
+            if(rpcNode.INCOMING.strContent.length() > 0)
             {
                 json::json ret = json::json::parse(rpcNode.INCOMING.strContent);
 
@@ -272,8 +296,7 @@ namespace TAO
                 }
                 else
                 {
-
-                    if( ret["result"].is_string())
+                    if(ret["result"].is_string())
                         strPrint = ret["result"].get<std::string>();
                     else
                         strPrint = ret["result"].dump(4);
@@ -286,11 +309,9 @@ namespace TAO
             }
 
             // output to console
-            debug::log(0, strPrint);
+            printf("%s\n", strPrint.c_str());
 
             return nRet;
-
-            return 0;
         }
     }
 }

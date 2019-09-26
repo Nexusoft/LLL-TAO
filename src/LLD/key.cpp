@@ -17,41 +17,44 @@ ________________________________________________________________________________
 namespace LLD
 {
 
-    /** Default Constructor. **/
+    /* Default Constructor. */
     SectorKey::SectorKey()
     : nState(0)
     , nLength(0)
     , nSectorFile(0)
     , nSectorSize(0)
     , nSectorStart(0)
+    , vKey()
+    , nTimestamp(0)
     {
     }
 
 
-    /** Constructor **/
-    SectorKey::SectorKey(uint8_t nStateIn,
-              std::vector<uint8_t> vKeyIn,
-              uint16_t nSectorFileIn,
-              uint32_t nSectorStartIn,
-              uint32_t nSectorSizeIn)
+    /* Constructor */
+    SectorKey::SectorKey(const uint8_t nStateIn,
+              const std::vector<uint8_t>& vKeyIn,
+              const uint16_t nSectorFileIn,
+              const uint32_t nSectorStartIn,
+              const uint32_t nSectorSizeIn)
     : nState(nStateIn)
     , nLength(static_cast<uint16_t>(vKeyIn.size()))
     , nSectorFile(nSectorFileIn)
     , nSectorSize(nSectorSizeIn)
     , nSectorStart(nSectorStartIn)
     , vKey(vKeyIn)
+    , nTimestamp(0)
     {
     }
 
 
-    /** Default Destructor **/
+    /* Default Destructor */
     SectorKey::~SectorKey()
     {
 
     }
 
 
-    /** Copy Assignment Operator **/
+    /* Copy Assignment Operator */
     SectorKey& SectorKey::operator=(const SectorKey& key)
     {
         nState          = key.nState;
@@ -60,12 +63,28 @@ namespace LLD
         nSectorSize     = key.nSectorSize;
         nSectorStart    = key.nSectorStart;
         vKey            = key.vKey;
+        nTimestamp  = key.nTimestamp;
 
         return *this;
     }
 
 
-    /** Default Copy Constructor **/
+    /* Copy Assignment Operator */
+    SectorKey& SectorKey::operator=(SectorKey& key)
+    {
+        nState          = key.nState;
+        nLength         = key.nLength;
+        nSectorFile     = key.nSectorFile;
+        nSectorSize     = key.nSectorSize;
+        nSectorStart    = key.nSectorStart;
+        vKey            = key.vKey;
+        nTimestamp  = key.nTimestamp;
+
+        return *this;
+    }
+
+
+    /* Default Copy Constructor */
     SectorKey::SectorKey(const SectorKey& key)
     {
         nState          = key.nState;
@@ -74,6 +93,7 @@ namespace LLD
         nSectorSize     = key.nSectorSize;
         nSectorStart    = key.nSectorStart;
         vKey            = key.vKey;
+        nTimestamp  = key.nTimestamp;
     }
 
 
@@ -102,7 +122,7 @@ namespace LLD
     /*  Dump Key to Debug Console. */
     void SectorKey::Print() const
     {
-        debug::log(0, "SectorKey(nState=", nState,
+        debug::log(0, "SectorKey(nState=", uint32_t(nState),
         ", nLength=", nLength,
         ", nSectorFile=", nSectorFile,
         ", nSectorSize=", nSectorSize,
