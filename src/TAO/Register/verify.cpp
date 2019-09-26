@@ -339,6 +339,10 @@ namespace TAO
                     /* Coinstake operation. Requires an account. */
                     case TAO::Operation::OP::TRUST:
                     {
+                        /* Get trust account address for contract caller */
+                        uint256_t hashAddress =
+                            TAO::Register::Address(std::string("trust"), contract.Caller(), TAO::Register::Address::TRUST);
+
                         /* Seek to scores. */
                         contract.Seek(64);
 
@@ -363,20 +367,16 @@ namespace TAO
                             return debug::error(FUNCTION, "OP::TRUST: register state not in pre-state");
 
                         /* Verify the register's prestate. */
-                        State prestate;
+                        Object prestate;
                         contract >>= prestate;
-
-                        /* For trust, resolve to trust address. */
-                        TAO::Register::Address hashRegister =
-                            TAO::Register::Address(std::string("trust"), contract.Caller(), TAO::Register::Address::TRUST);
 
                         /* Check temporary memory states first. */
                         Object object;
-                        if(mapStates.count(hashRegister))
-                            object = TAO::Register::Object(mapStates[hashRegister]);
+                        if(mapStates.count(hashAddress))
+                            return debug::error(FUNCTION, "Reading from mapStates");
 
                         /* Read the register from database. */
-                        else if(!LLD::Register->ReadState(hashRegister, object))
+                        else if(!LLD::Register->ReadState(hashAddress, object))
                             return debug::error(FUNCTION, "OP::TRUST: failed to read pre-state");
 
                         /* Check that the checksums match. */
@@ -392,7 +392,7 @@ namespace TAO
                             return false;
 
                         /* Write the state to memory map. */
-                        mapStates[hashRegister] = TAO::Register::State(object);
+                        mapStates[hashAddress] = TAO::Register::State(object);
 
                         break;
                     }
@@ -401,9 +401,9 @@ namespace TAO
                     /* Coinstake operation. Requires an account. */
                     case TAO::Operation::OP::GENESIS:
                     {
-                        /* Get register address for genesis. */
-                        uint256_t hashAddress = 0;
-                        contract >> hashAddress;
+                        /* Get trust account address for contract caller */
+                        uint256_t hashAddress =
+                            TAO::Register::Address(std::string("trust"), contract.Caller(), TAO::Register::Address::TRUST);
 
                         /* Get the stake reward. */
                         uint64_t nReward = 0;
@@ -421,13 +421,9 @@ namespace TAO
                         State prestate;
                         contract >>= prestate;
 
-                        /* For genesis, resolve to trust address. */
-                        TAO::Register::Address hashRegister =
-                            TAO::Register::Address(std::string("trust"), contract.Caller(), TAO::Register::Address::TRUST);
-
                         /* Hard rule: genesis requires to resolve to trust account. */
-                        if(hashAddress != hashRegister)
-                            return debug::error(FUNCTION, "OP::GENESIS: genesis must be using deterministic trust address");
+                        if(prestate.hashOwner != contract.Caller())
+                            return debug::error(FUNCTION, "OP::GENESIS: caller is not state owner");
 
                         /* Check temporary memory states first. */
                         Object object;

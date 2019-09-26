@@ -127,7 +127,7 @@ namespace TAO
         }
 
         /* Converts the transaction to formatted JSON */
-        json::json TransactionToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction& tx, 
+        json::json TransactionToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction& tx,
                                      const TAO::Ledger::BlockState& block, uint32_t nVerbosity, const uint256_t& hashCoinbase)
         {
             /* Declare JSON object to return */
@@ -256,7 +256,7 @@ namespace TAO
             uint32_t nContracts = tx.Size();
             for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
             {
-                const TAO::Operation::Contract& contract = tx[nContract]; 
+                const TAO::Operation::Contract& contract = tx[nContract];
                 /* If the caller has requested to filter the coinbases then we only include those where the coinbase is meant for hashCoinbase  */
                 if(hashCoinbase != 0)
                 {
@@ -276,7 +276,7 @@ namespace TAO
 
                 /* JSONify the contract */
                 json::json contractJSON = ContractToJSON(hashCaller, contract, nContract, nVerbosity);
-                
+
                 /* add the contract to the array */
                 ret.push_back(contractJSON);
             }
@@ -530,17 +530,12 @@ namespace TAO
                     /* Genesis operation. Begins trust and stakes. */
                     case TAO::Operation::OP::GENESIS:
                     {
-                        /* Get the genesis. */
-                        uint256_t hashAddress = 0;
-                        contract >> hashAddress;
-
                         /* The total trust reward. */
                         uint64_t nReward = 0;
                         contract >> nReward;
 
                         /* Output the json information. */
                         ret["OP"]        = "GENESIS";
-                        ret["address"]   = hashAddress.ToString();
                         ret["amount"]    = (double) nReward / TAO::Ledger::NXS_COIN;;
 
                         break;
