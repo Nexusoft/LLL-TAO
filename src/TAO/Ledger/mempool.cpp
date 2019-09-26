@@ -507,106 +507,49 @@ namespace TAO
                 for(auto& list : mapTransactions)
                 {
                     /* Get reference of the vector. */
-                    std::vector<TAO::Ledger::Transaction>& vtx = list.second;
+                    std::vector<TAO::Ledger::Transaction>& vTx = list.second;
 
                     /* Sort the list by sequence numbers. */
-                    std::sort(vtx.begin(), vtx.end());
+                    std::sort(vTx.begin(), vTx.end());
 
                     /* Add the hashes into list. */
                     uint512_t hashLast = 0;
 
                     /* Check last hash for valid transactions. */
-                    if(!vtx[0].IsFirst())
+                    if(!vTx[0].IsFirst())
                     {
                         /* Read last index from disk. */
                         if(!LLD::Ledger->ReadLast(list.first, hashLast))
                             return debug::error(FUNCTION, "failed to read the last index");
 
                         /* Check the last hash. */
-                        if(vtx[0].hashPrevTx != hashLast)
+                        if(vTx[0].hashPrevTx != hashLast)
                             continue; //SKIP ANY ORPHANS FOUND
                     }
 
                     /* Set last from next transaction. */
-                    hashLast = vtx[0].GetHash();
+                    hashLast = vTx[0].GetHash();
 
                     /* Loop through transaction by genesis. */
-                    for(uint32_t n = 1; n < vtx.size(); ++n)
+                    for(uint32_t n = 1; n <= vTx.size(); ++n)
                     {
-                        /* Check that transaction is in sequence. */
-                        if(vtx[n].hashPrevTx != hashLast)
-                            break; //SKIP ANY ORPHANS FOUND
-
-                        /* Keep for dependants. */
-                        uint512_t hashPrev = 0;
-                        uint32_t nContract = 0;
-
-                        /* Keep track of fails. */
-                        bool fFailed = false;
-
-                        /* Run through all the contracts. */
-                        for(uint32_t i = 0; i < vtx[n].Size(); ++i)
-                        {
-                            /* Check for dependants. */
-                            const TAO::Operation::Contract contract = vtx[n][i];
-                            if(contract.Dependant(hashPrev, nContract))
-                            {
-                                /* Check that the previous transaction is indexed. */
-                                if(!LLD::Ledger->HasIndex(hashPrev))
-                                {
-                                    fFailed = true;
-                                    break;
-                                }
-
-                                /* Read previous transaction from disk. */
-                                const TAO::Operation::Contract dependant = LLD::Ledger->ReadContract(hashPrev, nContract);
-                                switch(dependant.Primitive())
-                                {
-                                    /* Handle coinbase rules. */
-                                    case TAO::Operation::OP::COINBASE:
-                                    {
-                                        /* Check for block. */
-                                        TAO::Ledger::BlockState state;
-                                        if(!LLD::Ledger->ReadBlock(hashPrev, state))
-                                        {
-                                            fFailed = true;
-                                            break;
-                                        }
-
-                                        /* Get the current height. */
-                                        uint32_t nHeight = ChainState::nBestHeight.load();
-                                        if(nHeight < state.nHeight)
-                                        {
-                                            fFailed = true;
-                                            break;
-                                        }
-
-                                        /* Check the intervals. */
-                                        if((nHeight - state.nHeight + 1) < MaturityCoinBase())
-                                        {
-                                            fFailed = true;
-                                            break;
-                                        }
-
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-
-                        /* Check for failures. */
-                        if(fFailed)
-                            break;
-
                         /* Add to the output queue. */
                         vHashes.push_back(hashLast);
+
+                        /* Check for end of index. */
+                        if(n == vTx.size())
+                            break;
 
                         /* Check count. */
                         if(--nCount == 0)
                             return true;
 
+                        /* Check that transaction is in sequence. */
+                        if(vTx[n].hashPrevTx != hashLast)
+                            break; //SKIP ANY ORPHANS FOUND
+
                         /* Set last hash. */
-                        hashLast = vtx[n].GetHash();
+                        hashLast = vTx[n].GetHash();
                     }
                 }
             }
