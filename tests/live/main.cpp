@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #include <LLC/hash/SK.h>
 #include <LLC/include/random.h>
 
+#include <LLD/include/global.h>
 #include <LLD/cache/binary_lru.h>
 #include <LLD/keychain/shard_hashmap.h>
 #include <LLD/templates/sector.h>
@@ -245,36 +246,15 @@ public:
 
 int main(int argc, char** argv)
 {
-    LLP::DDOS_Filter DDOS(10);
-
-    runtime::timer TIMER;
-
-    while(!DDOS.Banned())
+    std::vector<TAO::Register::Object> vAccounts;
+    if(LLD::Register->BatchRead("trust", vAccounts, 100000))
     {
-        if(TIMER.Elapsed() >= 1)
+        for(const auto& account : vAccounts)
         {
-            DDOS.rSCORE += 20;
-            DDOS.cSCORE += 2;
-            TIMER.Reset();
-
-            debug::log(0, "rSCORE: ", DDOS.rSCORE.Score() );
-            debug::log(0, "cSCORE: ", DDOS.cSCORE.Score() ); 
-
-            if(DDOS.rSCORE.Score() > 10)
-                DDOS.Ban("rSCORE");
-
-            if(DDOS.cSCORE.Score() > 1)
-                DDOS.Ban("rSCORE");
+            TAO::Register::Address address("trust", account.hashOwner, TAO::Register::Address::TRUST);
+            debug::log(0, address.ToString(), " : ", account.get<uint64_t>("trust"));
         }
-        else
-        {
-            runtime::sleep(100);
-        }
-        
     }
-
-    debug::log(0, "BANNED");
-
     return 0;
 
 }
