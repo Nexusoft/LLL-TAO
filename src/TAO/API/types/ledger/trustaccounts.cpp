@@ -126,6 +126,7 @@ namespace TAO
                     
                     /* Calculate and add the stake rate */
                     uint64_t nTrust = account.get<uint64_t>("trust");
+                    jsonAccount["trust"] = nTrust;
                     jsonAccount["stakerate"] = TAO::Ledger::StakeRate(nTrust, (nTrust == 0)) * 100.0;
 
                     jsonRet.push_back(jsonAccount);
