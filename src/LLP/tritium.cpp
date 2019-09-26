@@ -938,7 +938,7 @@ namespace LLP
                             {
                                 /* Loop through all available states. */
                                 for(const auto& state : vStates)
-                                {
+                                {    
                                     /* Skip if not in main chain. */
                                     if(!state.IsInMainChain())
                                         continue;

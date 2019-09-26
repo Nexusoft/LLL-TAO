@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <Util/include/mutex.h>
 #include <Util/include/debug.h>
+#include <Util/include/hex.h>
 
 namespace LLD
 {
@@ -419,7 +420,7 @@ namespace LLD
         RemoveNode(pthis);
 
         /* Dereference the pointers. */
-        hashmap[Bucket(pthis)]   = nullptr;
+        hashmap[nBucket]         = nullptr;
         pthis->pprev             = nullptr;
         pthis->pnext             = nullptr;
 
