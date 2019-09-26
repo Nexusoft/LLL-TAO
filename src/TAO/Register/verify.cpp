@@ -366,13 +366,17 @@ namespace TAO
                         State prestate;
                         contract >>= prestate;
 
+                        /* For trust, resolve to trust address. */
+                        TAO::Register::Address hashRegister =
+                            TAO::Register::Address(std::string("trust"), contract.Caller(), TAO::Register::Address::TRUST);
+
                         /* Check temporary memory states first. */
                         Object object;
-                        if(mapStates.count(contract.Caller())) //TODO: could have a collision between genesis and address)
-                            object = TAO::Register::Object(mapStates[contract.Caller()]);
+                        if(mapStates.count(hashRegister))
+                            object = TAO::Register::Object(mapStates[hashRegister]);
 
                         /* Read the register from database. */
-                        else if(!LLD::Register->ReadTrust(contract.Caller(), object))
+                        else if(!LLD::Register->ReadState(hashRegister, object))
                             return debug::error(FUNCTION, "OP::TRUST: failed to read pre-state");
 
                         /* Check that the checksums match. */
@@ -388,7 +392,7 @@ namespace TAO
                             return false;
 
                         /* Write the state to memory map. */
-                        mapStates[contract.Caller()] = TAO::Register::State(object);
+                        mapStates[hashRegister] = TAO::Register::State(object);
 
                         break;
                     }
@@ -397,7 +401,7 @@ namespace TAO
                     /* Coinstake operation. Requires an account. */
                     case TAO::Operation::OP::GENESIS:
                     {
-                        /* Get last trust block. */
+                        /* Get register address for genesis. */
                         uint256_t hashAddress = 0;
                         contract >> hashAddress;
 
@@ -417,10 +421,18 @@ namespace TAO
                         State prestate;
                         contract >>= prestate;
 
+                        /* For genesis, resolve to trust address. */
+                        TAO::Register::Address hashRegister =
+                            TAO::Register::Address(std::string("trust"), contract.Caller(), TAO::Register::Address::TRUST);
+
+                        /* Hard rule: genesis requires to resolve to trust account. */
+                        if(hashAddress != hashRegister)
+                            return debug::error(FUNCTION, "OP::GENESIS: genesis must be using deterministic trust address");
+
                         /* Check temporary memory states first. */
                         Object object;
-                        if(mapStates.count(contract.Caller()))
-                            object = TAO::Register::Object(mapStates[contract.Caller()]);
+                        if(mapStates.count(hashAddress))
+                            object = TAO::Register::Object(mapStates[hashAddress]);
 
                         /* Read the register from database. */
                         else if(!LLD::Register->ReadState(hashAddress, object, nFlags))
@@ -439,7 +451,7 @@ namespace TAO
                             return false;
 
                         /* Write the state to memory map. */
-                        mapStates[contract.Caller()] = TAO::Register::State(object);
+                        mapStates[hashAddress] = TAO::Register::State(object);
 
                         break;
                     }
@@ -543,7 +555,19 @@ namespace TAO
 
                         /* Check that the checksums match. */
                         if(prestate != object)
+                        {
+                            Object object1 = Object(object);
+                            object1.Parse();
+
+                            Object object2 = Object(prestate);
+                            object2.Parse();
+
+                            debug::log(0, FUNCTION, "Balance (dsk): ", object1.get<uint64_t>("balance"));
+                            debug::log(0, FUNCTION, "Balance (pre): ", object2.get<uint64_t>("balance"));
+
                             return debug::error(FUNCTION, "OP::CREDIT: pre-state verification failed");
+                        }
+
 
                         /* Check contract account */
                         if(contract.Caller() != prestate.hashOwner)
