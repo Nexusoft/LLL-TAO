@@ -1018,20 +1018,27 @@ TEST_CASE( "Register Rollback Tests", "[register]")
             }
         }
     }
+}
 
+TEST_CASE( "Register Rollback Tests - Stake operations", "[register]")
+{
+    using namespace TAO::Register;
+    using namespace TAO::Operation;
 
     TAO::Ledger::BlockState state;
     state.nHeight = 150;
 
     REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
 
-    //create a trust register from inputs spent on coinbase
     {
+        //create new user and get trust account address
         uint256_t hashGenesis  = TAO::Ledger::Genesis(LLC::GetRand256(), true);
-        TAO::Register::Address hashTrust = TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
+        uint256_t hashTrust = TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
 
         uint512_t hashCoinbaseTx = 0;
         uint512_t hashLastTrust = LLC::GetRand512();
+
+        //Create coinbase tx to mint some NXS
         {
             //create the transaction object
             TAO::Ledger::Transaction tx;
@@ -1141,7 +1148,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
             tx.nTimestamp  = runtime::timestamp();
 
             //payload with coinstake reward
-            tx[0] << uint8_t(OP::GENESIS) << hashTrust << uint64_t(5);
+            tx[0] << uint8_t(OP::GENESIS) << uint64_t(5);
 
             //generate the prestates and poststates
             REQUIRE(tx.Build());
@@ -1202,7 +1209,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
             tx.nTimestamp  = runtime::timestamp();
 
             //payload
-            tx[0] << uint8_t(OP::GENESIS) << hashTrust << uint64_t(6);
+            tx[0] << uint8_t(OP::GENESIS) << uint64_t(6);
 
             //generate the prestates and poststates
             REQUIRE(tx.Build());
