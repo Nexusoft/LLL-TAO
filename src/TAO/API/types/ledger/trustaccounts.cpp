@@ -57,16 +57,36 @@ namespace TAO
             /* The vector of trust accounts */
             std::vector<TAO::Register::Object> vAccounts;
 
+            /* Timestamp of 30 days ago, to use to include active accounts */
+            uint64_t nActive = runtime::unifiedtimestamp() - (60 * 60 * 24 * 30);
+
             /* Batch read up to 100,000 */
             if(LLD::Register->BatchRead("trust", vAccounts, 100000))
             {
+                /* The vector of active accounts */
+                std::vector<TAO::Register::Object> vActive;
+
                 /* Make sure they are all parsed so that we can sort them */
                 for(auto& account : vAccounts)
+                {
+                    /* Only include active within last 30 days */
+                    if(account.nModified < nActive)
+                        continue;
+
+                    /* Parse so we can access the data */
                     account.Parse();
+
+                    /* Only include accounts with trust */
+                    if(account.get<uint64_t>("trust") == 0)
+                        continue;
+
+                    /* Add the account to our active list */
+                    vActive.push_back(account);
+                }
 
                 /* Sort the list */
                 if(strSort == "stake" || strSort == "balance" || strSort == "trust")
-                    std::sort(vAccounts.begin(), vAccounts.end(), [strSort] 
+                    std::sort(vActive.begin(), vActive.end(), [strSort] 
                             (const TAO::Register::Object &a, const TAO::Register::Object &b)
                     { 
                         /* Sort in decending order */
@@ -75,7 +95,7 @@ namespace TAO
 
                 /* Iterate the list and build the response */
                 uint32_t nTotal = 0;
-                for(auto& account : vAccounts)
+                for(auto& account : vActive)
                 {
                     /* Get the current page. */
                     uint32_t nCurrentPage = (nTotal / nLimit) ;
