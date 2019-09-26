@@ -671,6 +671,8 @@ This will list all known trust accounts
 
 `stake` : The amount of NXS currently staked in the trust account.
 
+`trust` : The current raw trust score of the trust account.
+
 `stakerate` : The current annual reward rate earned for staking as an annual percent.
 
 ****
