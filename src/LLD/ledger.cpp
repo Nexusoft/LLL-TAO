@@ -38,6 +38,7 @@ namespace LLD
 
     , MEMORY_MUTEX()
     , pMemory(nullptr)
+    , pMiner(nullptr)
     , pCommit(new LedgerTransaction())
     {
     }
@@ -49,6 +50,10 @@ namespace LLD
         /* Free transaction memory. */
         if(pMemory)
             delete pMemory;
+
+        /* Free miner memory. */
+        if(pMiner)
+            delete pMiner;
 
         /* Free commited memory. */
         if(pCommit)
@@ -144,7 +149,7 @@ namespace LLD
     bool LedgerDB::ReadTx(const uint512_t& hashTx, TAO::Ledger::Transaction& tx, const uint8_t nFlags)
     {
         /* Special check for memory pool. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::MINER)
         {
             /* Get the transaction. */
             if(TAO::Ledger::mempool.Get(hashTx, tx))
@@ -184,6 +189,17 @@ namespace LLD
             pCommit->mapClaims[pair] = nClaimed;
 
             return true;
+        }
+        else if(nFlags == TAO::Ledger::FLAGS::MINER)
+        {
+            LOCK(MEMORY_MUTEX);
+
+            /* Check for pending tranasaction. */
+            if(pMiner)
+            {
+                pMiner->mapClaims[pair] = nClaimed;
+                return true;
+            }
         }
         else if(nFlags == TAO::Ledger::FLAGS::BLOCK)
         {
@@ -227,6 +243,19 @@ namespace LLD
             {
                 /* Set claimed from memory. */
                 nClaimed = pCommit->mapClaims[pair];
+
+                return true;
+            }
+        }
+        else if(nFlags == TAO::Ledger::FLAGS::MINER)
+        {
+            LOCK(MEMORY_MUTEX);
+
+            /* Check for pending transaction. */
+            if(pMiner && pMiner->mapClaims.count(pair))
+            {
+                /* Set claimed from memory. */
+                nClaimed = pMiner->mapClaims[pair];
 
                 return true;
             }
@@ -421,7 +450,7 @@ namespace LLD
     bool LedgerDB::HasTx(const uint512_t& hashTx, const uint8_t nFlags)
     {
         /* Special check for memory pool. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::MINER)
         {
             /* Get the transaction. */
             if(TAO::Ledger::mempool.Has(hashTx))
@@ -568,6 +597,21 @@ namespace LLD
 
             return true;
         }
+        else if(nFlags == TAO::Ledger::FLAGS::MINER)
+        {
+            LOCK(MEMORY_MUTEX);
+
+            /* Check for pending transactions. */
+            if(pMiner)
+            {
+                /* Write proof to memory. */
+                pMiner->setProofs.insert(tuple);
+
+                return true;
+            }
+
+            return true;
+        }
         else if(nFlags == TAO::Ledger::FLAGS::BLOCK)
         {
             LOCK(MEMORY_MUTEX);
@@ -599,6 +643,14 @@ namespace LLD
 
             /* Check commited memory. */
             if(pCommit->setProofs.count(tuple))
+                return true;
+        }
+        else if(nFlags == TAO::Ledger::FLAGS::MINER)
+        {
+            LOCK(MEMORY_MUTEX);
+
+            /* Check pending transaction memory. */
+            if(pMiner && pMiner->setProofs.count(tuple))
                 return true;
         }
 
@@ -719,29 +771,64 @@ namespace LLD
 
 
     /* Begin a memory transaction following ACID properties. */
-    void LedgerDB::MemoryBegin()
+    void LedgerDB::MemoryBegin(const uint8_t nFlags)
     {
         LOCK(MEMORY_MUTEX);
 
-        /* Set the pre-commit memory mode. */
-        if(pMemory)
-            delete pMemory;
+        /* Check for mempool. */
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        {
+            /* Set the pre-commit memory mode. */
+            if(pMemory)
+                delete pMemory;
 
-        pMemory = new LedgerTransaction();
+            pMemory = new LedgerTransaction();
+
+            return;
+        }
+
+        /* Check for miner. */
+        if(nFlags == TAO::Ledger::FLAGS::MINER)
+        {
+            /* Set the pre-commit memory mode. */
+            if(pMiner)
+                delete pMiner;
+
+            pMiner = new LedgerTransaction();
+
+            return;
+        }
     }
 
 
     /* Abort a memory transaction following ACID properties. */
-    void LedgerDB::MemoryRelease()
+    void LedgerDB::MemoryRelease(const uint8_t nFlags)
     {
         LOCK(MEMORY_MUTEX);
 
-        /* Abort the current memory mode. */
-        if(pMemory)
-            delete pMemory;
+        /* Check for mempool. */
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        {
+            /* Set the pre-commit memory mode. */
+            if(pMemory)
+                delete pMemory;
 
-        /* Set to null. */
-        pMemory = nullptr;
+            pMemory = nullptr;
+
+            return;
+        }
+
+        /* Check for miner. */
+        if(nFlags == TAO::Ledger::FLAGS::MINER)
+        {
+            /* Set the pre-commit memory mode. */
+            if(pMiner)
+                delete pMiner;
+
+            pMiner = nullptr;
+
+            return;
+        }
     }
 
 

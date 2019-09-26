@@ -58,23 +58,23 @@ namespace LLP
         enum
         {
             /* Key Types. */
-            UINT256_T   = 0x20,
-            UINT512_T   = 0x21,
-            UINT1024_T  = 0x22,
-            STRING      = 0x23,
-            BYTES       = 0x24,
-            LOCATOR     = 0x25,
-            LASTINDEX   = 0x26, //sends a last index notify after list
+            UINT256_T    = 0x20,
+            UINT512_T    = 0x21,
+            UINT1024_T   = 0x22,
+            STRING       = 0x23,
+            BYTES        = 0x24,
+            LOCATOR      = 0x25,
+            LASTINDEX    = 0x26, //sends a last index notify after list
 
             /* Object Types. */
-            BLOCK       = 0x30,
-            TRANSACTION = 0x31,
-            TIMESEED    = 0x32,
-            BESTHEIGHT  = 0x33,
-            CHECKPOINT  = 0x34,
-            ADDRESS     = 0x35,
-            BESTCHAIN   = 0x36,
-            MEMPOOL     = 0x37,
+            BLOCK        = 0x30,
+            TRANSACTION  = 0x31,
+            TIMESEED     = 0x32,
+            BESTHEIGHT   = 0x33,
+            CHECKPOINT   = 0x34,
+            ADDRESS      = 0x35,
+            BESTCHAIN    = 0x36,
+            MEMPOOL      = 0x37,
         };
     }
 
@@ -85,9 +85,10 @@ namespace LLP
         enum
         {
             /* Specifier. */
-            LEGACY      = 0x40, //specify for legacy data types
-            TRITIUM     = 0x41, //specify for tritium data types
-            SYNC        = 0x42  //specify a sync block type
+            LEGACY       = 0x40, //specify for legacy data types
+            TRITIUM      = 0x41, //specify for tritium data types
+            SYNC         = 0x42,  //specify a sync block type
+            TRANSACTIONS = 0x43, //specify to send memory transactions first
         };
     }
 
@@ -267,7 +268,7 @@ namespace LLP
 
         /** This node's current last index. **/
         uint1024_t hashLastIndex;
-        
+
 
         /** Counter of total orphans. **/
         uint32_t nConsecutiveOrphans;

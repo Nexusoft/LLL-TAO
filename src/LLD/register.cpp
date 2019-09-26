@@ -27,6 +27,7 @@ namespace LLD
 
     , MEMORY_MUTEX()
     , pMemory(nullptr)
+    , pMiner(nullptr)
     , pCommit(new RegisterTransaction())
     {
     }
@@ -38,6 +39,10 @@ namespace LLD
         /* Cleanup memory transactions. */
         if(pMemory)
             delete pMemory;
+
+        /* Cleanup memory transactions. */
+        if(pMiner)
+            delete pMiner;
 
         /* Cleanup commited states. */
         if(pCommit)
@@ -66,6 +71,16 @@ namespace LLD
 
             /* Otherwise commit like normal. */
             pCommit->mapStates[hashRegister] = state;
+
+            return true;
+        }
+        else if(nFlags == TAO::Ledger::FLAGS::MINER)
+        {
+            LOCK(MEMORY_MUTEX);
+
+            /* Check for memory mode. */
+            if(pMiner)
+                pMiner->mapStates[hashRegister] = state;
 
             return true;
         }
@@ -113,6 +128,19 @@ namespace LLD
             {
                 /* Get the state from commited memory. */
                 state = pCommit->mapStates[hashRegister];
+
+                return true;
+            }
+        }
+        else if(nFlags == TAO::Ledger::FLAGS::MINER)
+        {
+            LOCK(MEMORY_MUTEX);
+
+            /* Check for a memory transaction first */
+            if(pMiner && pMiner->mapStates.count(hashRegister))
+            {
+                /* Get the state from temporary transaction. */
+                state = pMiner->mapStates[hashRegister];
 
                 return true;
             }
@@ -219,34 +247,77 @@ namespace LLD
             if(pCommit->mapStates.count(hashRegister))
                 return true;
         }
+        else if(nFlags == TAO::Ledger::FLAGS::MINER)
+        {
+            LOCK(MEMORY_MUTEX);
+
+            /* Check internal memory state. */
+            if(pMiner && pMiner->mapStates.count(hashRegister))
+                return true;
+        }
 
         return Exists(std::make_pair(std::string("state"), hashRegister));
     }
 
     /* Begin a memory transaction following ACID properties. */
-    void RegisterDB::MemoryBegin()
+    void RegisterDB::MemoryBegin(const uint8_t nFlags)
     {
         LOCK(MEMORY_MUTEX);
 
-        /* Set the pre-commit memory mode. */
-        if(pMemory)
-            delete pMemory;
+        /* Check for mempool. */
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        {
+            /* Set the pre-commit memory mode. */
+            if(pMemory)
+                delete pMemory;
 
-        pMemory = new RegisterTransaction();
+            pMemory = new RegisterTransaction();
+
+            return;
+        }
+
+        /* Check for miner. */
+        if(nFlags == TAO::Ledger::FLAGS::MINER)
+        {
+            /* Set the pre-commit memory mode. */
+            if(pMiner)
+                delete pMiner;
+
+            pMiner = new RegisterTransaction();
+
+            return;
+        }
     }
 
 
     /* Abort a memory transaction following ACID properties. */
-    void RegisterDB::MemoryRelease()
+    void RegisterDB::MemoryRelease(const uint8_t nFlags)
     {
         LOCK(MEMORY_MUTEX);
 
-        /* Abort the current memory mode. */
-        if(pMemory)
-            delete pMemory;
+        /* Check for mempool. */
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        {
+            /* Set the pre-commit memory mode. */
+            if(pMemory)
+                delete pMemory;
 
-        /* Set to null. */
-        pMemory = nullptr;
+            pMemory = nullptr;
+
+            return;
+        }
+
+        /* Check for miner. */
+        if(nFlags == TAO::Ledger::FLAGS::MINER)
+        {
+            /* Set the pre-commit memory mode. */
+            if(pMiner)
+                delete pMiner;
+
+            pMiner = nullptr;
+
+            return;
+        }
     }
 
 

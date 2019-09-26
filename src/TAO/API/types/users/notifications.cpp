@@ -107,6 +107,10 @@ namespace TAO
             /* Get notifications for personal genesis indexes. */
             TAO::Ledger::Transaction tx;
 
+            /* Keep track of unique proofs. */
+            std::set<std::tuple<uint256_t, uint512_t, uint32_t>> setUnique;
+
+            /* Read back all the events. */
             uint32_t nSequence = 0;
             while(LLD::Ledger->ReadEvent(hashGenesis, nSequence, tx))
             {
@@ -115,88 +119,111 @@ namespace TAO
                 for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
                 {
                     /* Reference to contract to check */
-                    TAO::Operation::Contract& contract = tx[nContract];
+                    const TAO::Operation::Contract& contract = tx[nContract];
 
                     /* The proof to check for this contract */
-                    TAO::Register::Address hashProof;
+                    uint256_t hashProof = 0;
 
-                    /* REset the op stream */
+                    /* Reset the op stream */
                     contract.Reset();
 
                     /* The operation */
-                    uint8_t nOp;
-                    contract >> nOp;
+                    uint8_t nOP;
+                    contract >> nOP;
 
                     /* Check for that the debit is meant for us. */
-                    if(nOp == TAO::Operation::OP::DEBIT)
+                    switch(nOP)
                     {
-                        /* Get the source address which is the proof for the debit */
-                        contract >> hashProof;
+                        /* Check for debit events. */
+                        case TAO::Operation::OP::DEBIT:
+                        {
+                            /* Get the source address which is the proof for the debit */
+                            contract >> hashProof;
 
-                        /* Get the recipient account */
-                        TAO::Register::Address hashTo;
-                        contract >> hashTo;
+                            /* Get the recipient account */
+                            uint256_t hashTo;
+                            contract >> hashTo;
 
-                        /* Retrieve the account. */
-                        TAO::Register::State state;
-                        if(!LLD::Register->ReadState(hashTo, state))
-                            continue;
+                            /* Retrieve the account. */
+                            TAO::Register::State state;
+                            if(!LLD::Register->ReadState(hashTo, state))
+                                continue;
 
-                        /* Check owner that we are the owner of the recipient account  */
-                        if(state.hashOwner != hashGenesis)
+                            /* Check owner that we are the owner of the recipient account  */
+                            if(state.hashOwner != hashGenesis)
+                                continue;
+
+                            break;
+                        }
+
+                        /* Check for transfer events. */
+                        case TAO::Operation::OP::TRANSFER:
+                        {
+                            /* The register address being transferred */
+                            uint256_t hashRegister;
+                            contract >> hashRegister;
+
+                            /* Get recipient genesis hash */
+                            contract >> hashProof;
+
+                            /* Read the force transfer flag */
+                            uint8_t nType = 0;
+                            contract >> nType;
+
+                            /* Ensure this wasn't a forced transfer (which requires no Claim) */
+                            if(nType == TAO::Operation::TRANSFER::FORCE)
+                                continue;
+
+                            /* Check that we are the recipient */
+                            if(hashGenesis != hashProof)
+                                continue;
+
+                            /* Check that the sender has not claimed it back (voided) */
+                            TAO::Register::State state;
+                            if(!LLD::Register->ReadState(hashRegister, state))
+                                continue;
+
+                            /* Make sure the register claim is in SYSTEM pending from a transfer.  */
+                            if(state.hashOwner != 0)
+                                continue;
+
+                            break;
+                        }
+
+                        /* Check for coinbase events. */
+                        case TAO::Operation::OP::COINBASE:
+                        {
+                            /* Unpack the miners genesis from the contract */
+                            contract >> hashProof;
+
+                            /* Check that we mined it */
+                            if(hashGenesis != hashProof)
+                                continue;
+
+                            break;
+                        }
+
+                        /* Default continue. */
+                        default:
                             continue;
                     }
-                    else if(nOp == TAO::Operation::OP::TRANSFER)
-                    {
-                        /* The register address being transferred */
-                        TAO::Register::Address hashRegister;
-                        contract >> hashRegister;
-
-                        /* Get recipient genesis hash */
-                        contract >> hashProof;
-
-                        /* Read the force transfer flag */
-                        uint8_t nType = 0;
-                        contract >> nType;
-
-                        /* Ensure this wasn't a forced transfer (which requires no Claim) */
-                        if(nType == TAO::Operation::TRANSFER::FORCE)
-                            continue;
-
-                        /* Check that we are the recipient */
-                        if(hashGenesis != hashProof)
-                            continue;
-
-                        /* Check that the sender has not claimed it back (voided) */
-                        TAO::Register::State state;
-                        if(!LLD::Register->ReadState(hashRegister, state))
-                            continue;
-
-                        /* Make sure the register claim is in SYSTEM pending from a transfer.  */
-                        if(state.hashOwner != 0)
-                            continue;
-
-                    }
-                    else if(nOp == TAO::Operation::OP::COINBASE)
-                    {
-                        /* Unpack the miners genesis from the contract */
-                        if(!TAO::Register::Unpack(contract, hashProof))
-                            continue;
-
-                        /* Check that we mined it */
-                        if(hashGenesis != hashProof)
-                            continue;
-                    }
-                    else
-                        continue;
 
                     /* Check to see if we have already credited this debit. */
                     uint512_t hashTx = tx.GetHash();
                     if(LLD::Ledger->HasProof(hashProof, hashTx, nContract, TAO::Ledger::FLAGS::MEMPOOL))
                         continue;
 
+                    /* Check that this is a unique proof. */
+                    if(setUnique.count(std::make_tuple(hashProof, hashTx, nContract)))
+                    {
+                        //TODO: remove this debug print, this is to ensure consistency with the internal events
+                        debug::error(FUNCTION, "non unique event proof ", hashTx.SubString(), ", ", hashProof.SubString(), ", ", nContract);
+                        continue;
+                    }
+
                     /* Add the coinbase transaction and skip rest of contracts. */
                     vContracts.push_back(std::make_tuple(contract, nContract, 0));
+                    setUnique.insert(std::make_tuple(hashProof, hashTx, nContract));
                 }
 
                 /* Iterate the sequence id forward. */
@@ -258,6 +285,8 @@ namespace TAO
         bool Users::get_coinbases(const uint256_t& hashGenesis,
                 uint512_t hashLast, std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> &vContracts)
         {
+            /* Counter of consecutive claimed coinbases.  If this reaches 10 then assume there are none older to process */
+            uint8_t nConsecutive = 0;
             /* Reverse iterate until genesis (newest to oldest). */
             while(hashLast != 0)
             {
@@ -297,12 +326,25 @@ namespace TAO
 
                         /* Check if proofs are spent. */
                         if(LLD::Ledger->HasProof(hashGenesis, hashLast, nContract, TAO::Ledger::FLAGS::MEMPOOL))
+                        {
+                            /* Increment the counter of consecutive claims */
+                            ++nConsecutive;
                             continue;
+                        }
+
+                        /* Reset the counter since this one has not been claimed */
+                        nConsecutive = 0;
 
                         /* Add the coinbase transaction and skip rest of contracts. */
                         vContracts.push_back(std::make_tuple(contract, nContract, 0));
                     }
                 }
+
+                /* Check to see if we have reached 10 consecutive claims.  If so then we can assume that all previous coinbases
+                    are also claimed and therefore break out early.  This avoids us having to scan the entire sig chain each time
+                    which can be very expensive if you have many transactions (such as miners/stakers) */
+                if(nConsecutive == 10)
+                    break;
 
                 /* Set the next last. */
                 hashLast = tx.hashPrevTx;
@@ -338,7 +380,7 @@ namespace TAO
                     continue;
 
                 /* Check that this is an account */
-                if(object.Base() != TAO::Register::OBJECTS::ACCOUNT )
+                if(object.Base() != TAO::Register::OBJECTS::ACCOUNT)
                     continue;
 
                 /* Get the token address */
@@ -608,7 +650,8 @@ namespace TAO
                     break;
 
                 /* Get contract JSON data. */
-                json::json obj = ContractToJSON(hashCaller, refContract, 1);
+                json::json obj = ContractToJSON(hashCaller, refContract, std::get<1>(contract), 1);
+                
                 obj["txid"]      = refContract.Hash().ToString();
                 obj["time"]      = refContract.Timestamp();
 

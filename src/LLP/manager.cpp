@@ -206,6 +206,16 @@ namespace LLP
         return false;
     }
 
+    /* Gets a TrustAddress from the BaseAddress */
+    const LLP::TrustAddress& AddressManager::Get(const BaseAddress &addr)
+    {
+        uint64_t hash = addr.GetHash();
+        LOCK(MUTEX);
+
+        return mapTrustAddress[hash];
+
+    }
+
 
     /*  Gets the Connect State of the address in the manager if it exists. */
     uint8_t AddressManager::GetState(const BaseAddress &addr) const

@@ -303,11 +303,18 @@ namespace TAO
         }
 
 
-        /* Determines whether the signature chain has reached maturity after the last coinbase/coinstake transaction */
+        /* Determines whether the signature chain has reached desired maturity after the last coinbase/coinstake transaction */
         uint32_t Users::BlocksToMaturity(const uint256_t hashGenesis)
         {
             /* The number of blocks to maturity to return */
             uint32_t nBlocksToMaturity = 0;
+            
+            /* Get the user configurable required maturity */
+            uint32_t nMaturityRequired = config::GetArg("-maturityrequired", config::fTestNet ? 2 : 33);
+
+            /* If set to 0 then there is no point checking the maturity so return early */
+            if(nMaturityRequired == 0)
+                return 0; 
 
             /* The hash of the last transaction for this sig chain from disk */
             uint512_t hashLast = 0;
@@ -329,8 +336,8 @@ namespace TAO
                     nConfirms -= 1;
 
                     /* Check to see if it is mature */
-                    if(nConfirms < TAO::Ledger::MaturitySigChain())
-                        nBlocksToMaturity = TAO::Ledger::MaturitySigChain() - nConfirms;
+                    if(nConfirms < nMaturityRequired)
+                        nBlocksToMaturity = nMaturityRequired - nConfirms;
                 }
             }
 

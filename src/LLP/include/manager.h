@@ -173,6 +173,16 @@ namespace LLP
         bool Has(const BaseAddress &addr) const;
 
 
+        /** Get
+         *
+         *  Gets a TrustAddress from the BaseAddress
+         *
+         *  @param[in] addr The address to find.
+         *
+         **/
+        const LLP::TrustAddress& Get(const BaseAddress &addr);
+
+
         /** GetState
          *
          *  Gets the Connect State of the address in the manager if it exists.

@@ -880,11 +880,15 @@ This will list off all of the transactions for the requested signature chain gen
 
 `contracts` : The array of contracts bound to this transaction and their details with opcodes.    
 {    
+&nbsp;&nbsp;&nbsp;`id` : The sequential ID of this contract within the transaction.
+
 &nbsp;&nbsp;&nbsp;`OP` : The contract operation. Can be `APPEND`, `CLAIM`, `COINBASE`, `CREATE`, `CREDIT`, `DEBIT`, `FEE`, `GENESIS`, `LEGACY`, `TRANSFER`, `TRUST`, `STAKE`, `UNSTAKE`, `WRITE`.
 
 &nbsp;&nbsp;&nbsp;`for` : For `CREDIT` transactions, the contract that this credit was created for . Can be `COINBASE`, `DEBIT`, or`LEGACY`.
 
 &nbsp;&nbsp;&nbsp;`txid` : The transaction that was credited / claimed.
+
+&nbsp;&nbsp;&nbsp;`contract` : The ID of the contract within the transaction that was credited / claimed.
 
 &nbsp;&nbsp;&nbsp;`proof` : The register address proving the credit.
 

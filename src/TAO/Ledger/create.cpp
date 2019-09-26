@@ -89,6 +89,7 @@ namespace TAO
                 tx.hashGenesis = txPrev.hashGenesis;
                 tx.hashPrevTx  = txPrev.GetHash();
                 tx.nKeyType    = txPrev.nNextType;
+                tx.nTimestamp  = std::max(runtime::unifiedtimestamp(), txPrev.nTimestamp);
             }
 
             /* Get the last transaction. */
@@ -103,6 +104,7 @@ namespace TAO
                 tx.hashGenesis = txPrev.hashGenesis;
                 tx.hashPrevTx  = hashLast;
                 tx.nKeyType    = txPrev.nNextType;
+                tx.nTimestamp  = std::max(runtime::unifiedtimestamp(), txPrev.nTimestamp);
             }
 
             /* Genesis Transaction. */

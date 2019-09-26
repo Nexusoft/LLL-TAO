@@ -133,11 +133,7 @@ def format_transactions(data):
     if (data.has_key("result") == False): return(json.dumps(data))
     if (data["result"] == None): return('{"error": "no json returned"}')
 
-    output = '{"result": [<br><br>'
-    for tx in data["result"]:
-        output += json.dumps(tx) + "<br><br>"
-    #endfor
-    output += "]}"
+    output = json.dumps(data)
     return(output)
 #enddef
 

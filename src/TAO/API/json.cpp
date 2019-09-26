@@ -16,6 +16,8 @@ ________________________________________________________________________________
 
 #include <Legacy/include/evaluate.h>
 #include <Legacy/include/money.h>
+#include <Legacy/types/address.h>
+#include <Legacy/types/trustkey.h>
 
 #include <LLD/include/global.h>
 
@@ -125,7 +127,8 @@ namespace TAO
         }
 
         /* Converts the transaction to formatted JSON */
-        json::json TransactionToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nVerbosity)
+        json::json TransactionToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction& tx, 
+                                     const TAO::Ledger::BlockState& block, uint32_t nVerbosity, const uint256_t& hashCoinbase)
         {
             /* Declare JSON object to return */
             json::json ret;
@@ -159,7 +162,7 @@ namespace TAO
 
             /* Always add the contracts if level 2 and up */
             if(nVerbosity >= 2)
-                ret["contracts"] = ContractsToJSON(hashCaller, tx, nVerbosity);
+                ret["contracts"] = ContractsToJSON(hashCaller, tx, nVerbosity, hashCoinbase);
 
             return ret;
         }
@@ -244,7 +247,7 @@ namespace TAO
 
 
         /* Converts a transaction object into a formatted JSON list of contracts bound to the transaction. */
-        json::json ContractsToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction &tx, uint32_t nVerbosity)
+        json::json ContractsToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction &tx, uint32_t nVerbosity, const uint256_t& hashCoinbase)
         {
             /* Declare the return JSON object*/
             json::json ret = json::json::array();
@@ -252,17 +255,44 @@ namespace TAO
             /* Add a contract to the list of contracts. */
             uint32_t nContracts = tx.Size();
             for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
-                ret.push_back(ContractToJSON(hashCaller, tx[nContract], nVerbosity));
+            {
+                const TAO::Operation::Contract& contract = tx[nContract]; 
+                /* If the caller has requested to filter the coinbases then we only include those where the coinbase is meant for hashCoinbase  */
+                if(hashCoinbase != 0)
+                {
+                    if(TAO::Register::Unpack(contract, TAO::Operation::OP::COINBASE))
+                    {
+                        /* The proof (owner) of the coinbase */
+                        uint256_t hashProof = 0;
+
+                        /* Unpack the owner from the contract */
+                        TAO::Register::Unpack(contract, hashProof);
+
+                        /* Skip this contract if the proof is not the hashCoinbase */
+                        if(hashProof != hashCoinbase)
+                            continue;
+                    }
+                }
+
+                /* JSONify the contract */
+                json::json contractJSON = ContractToJSON(hashCaller, contract, nContract, nVerbosity);
+                
+                /* add the contract to the array */
+                ret.push_back(contractJSON);
+            }
 
             return ret;
         }
 
 
         /* Converts a serialized operation stream to formattted JSON */
-        json::json ContractToJSON(const uint256_t& hashCaller, const TAO::Operation::Contract& contract, uint32_t nVerbosity)
+        json::json ContractToJSON(const uint256_t& hashCaller, const TAO::Operation::Contract& contract, uint32_t nContract, uint32_t nVerbosity)
         {
             /* Declare the return JSON object*/
             json::json ret;
+
+            /* Add the id */
+            ret["id"] = nContract;
 
             /* Start the stream at the beginning. */
             contract.Reset();
@@ -422,7 +452,7 @@ namespace TAO
                         /* Output the json information. */
                         ret["OP"]         = "CLAIM";
                         ret["txid"]       = hashTx.ToString();
-                        ret["output"]     = nContract;
+                        ret["contract"]     = nContract;
                         ret["address"]    = hashAddress.ToString();
 
 
@@ -630,7 +660,7 @@ namespace TAO
                         ret["for"]      = strInput;
 
                         ret["txid"]    = hashTx.ToString();
-                        ret["output"]  = nID;
+                        ret["contract"]  = nID;
                         ret["proof"]   = hashProof.ToString();
                         ret["to"] = hashAddress.ToString();
 
@@ -684,7 +714,7 @@ namespace TAO
                                 const TAO::Operation::Contract& debitContract = txDebit[nID];
 
                                 /* Only add reference if the credit is for a debit (rather than a coinbase) */
-                                if( TAO::Register::Unpack(debitContract, TAO::Operation::OP::DEBIT))
+                                if(TAO::Register::Unpack(debitContract, TAO::Operation::OP::DEBIT))
                                 {
                                     /* Get the address the debit came from */
                                     TAO::Register::Address hashFrom;
@@ -721,27 +751,27 @@ namespace TAO
                     case TAO::Operation::OP::MIGRATE:
                     {
                         /* Extract the transaction from contract. */
-                        uint512_t hashTx = 0;
+                        uint512_t hashTx;
                         contract >> hashTx;
 
                         /* Get the trust register address. (hash to) */
                         TAO::Register::Address hashAccount;
                         contract >> hashAccount;
 
-                        /* Get the Legacy trust key hash (hash from) */
-                        uint512_t hashKey = 0;
-                        contract >> hashKey;
+                        /* Get thekey for the  Legacy trust key */
+                        uint576_t hashTrust;
+                        contract >> hashTrust;
 
                         /* Get the amount to migrate. */
-                        uint64_t nAmount = 0;
+                        uint64_t nAmount;
                         contract >> nAmount;
 
                         /* Get the trust score to migrate. */
-                        uint32_t nScore = 0;
+                        uint32_t nScore;
                         contract >> nScore;
 
                         /* Get the hash last stake. */
-                        uint512_t hashLast = 0;
+                        uint512_t hashLast;
                         contract >> hashLast;
 
                         /* Output the json information. */
@@ -754,7 +784,14 @@ namespace TAO
                         if(!strAccount.empty())
                             ret["account_name"] = strAccount;
 
-                        ret["hashkey"] = hashKey.ToString();
+                        Legacy::TrustKey trustKey;
+                        if(LLD::Trust->ReadTrustKey(hashTrust, trustKey))
+                        {
+                            Legacy::NexusAddress address;
+                            address.SetPubKey(trustKey.vchPubKey);
+                            ret["trustkey"] = address.ToString();
+                        }
+
                         ret["amount"] = (double) nAmount / TAO::Ledger::NXS_COIN;
                         ret["score"] = nScore;
                         ret["hashLast"] = hashLast.ToString();
@@ -794,12 +831,12 @@ namespace TAO
 
                         /* Output the json information. */
                         ret["OP"]      = "FEE";
-                        ret["to"] = hashAccount.ToString();
+                        ret["from"] = hashAccount.ToString();
 
                         /* Resolve the name of the account that the credit is to */
                         std::string strAccount = Names::ResolveName(hashCaller, hashAccount);
                         if(!strAccount.empty())
-                            ret["to_name"] = strAccount;
+                            ret["from_name"] = strAccount;
 
                         ret["amount"]  = (double) nFee / TAO::Ledger::NXS_COIN;
 

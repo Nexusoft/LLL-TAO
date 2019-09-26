@@ -85,6 +85,10 @@ namespace TAO
             mutable std::vector<std::pair<uint8_t, uint512_t> > vMissing;
 
 
+            /** MEMORY ONLY: hash of root block that missing tx's failed on. **/
+            mutable uint1024_t hashMissing;
+
+
 
             /** The default constructor. Sets block state to Null. **/
             Block();

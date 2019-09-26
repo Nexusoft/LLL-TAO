@@ -55,6 +55,8 @@ namespace TAO
         , nBits(0)
         , nNonce(0)
         , vchBlockSig()
+        , vMissing()
+        , hashMissing(0)
         {
         }
 
@@ -69,6 +71,8 @@ namespace TAO
         , nBits(block.nBits)
         , nNonce(block.nNonce)
         , vchBlockSig(block.vchBlockSig.begin(), block.vchBlockSig.end())
+        , vMissing(block.vMissing)
+        , hashMissing(block.hashMissing)
         {
         }
 

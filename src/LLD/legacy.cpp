@@ -153,25 +153,24 @@ namespace LLD
     }
 
 
-    /* Writes the hash of a trust key to record that it has been converted from Legacy to Tritium. */
-    bool LegacyDB::WriteTrustConversion(const uint512_t& hashTrust)
+    /* Writes the key of a trust key to record that it has been converted from Legacy to Tritium. */
+    bool LegacyDB::WriteTrustConversion(const uint576_t& hashTrust)
     {
         return Write(hashTrust);
     }
 
 
     /* Checks if a Legacy trust key has already been converted to Tritium. */
-    bool LegacyDB::HasTrustConversion(const uint512_t& hashTrust)
+    bool LegacyDB::HasTrustConversion(const uint576_t& hashTrust)
     {
         return Exists(hashTrust);
     }
 
 
     /* Erase a Legacy trust key conversion. */
-    bool LegacyDB::EraseTrustConversion(const uint512_t& hashTrust)
+    bool LegacyDB::EraseTrustConversion(const uint576_t& hashTrust)
     {
-        //TODO: this is never used. Might consdier removing since transactions are never erased
-        return EraseTrustConversion(hashTrust);
+        return Erase(hashTrust); //Needed if rollback migrate operation
     }
 
 }

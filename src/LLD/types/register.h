@@ -54,12 +54,17 @@ namespace LLD
      **/
     class RegisterDB : public SectorDatabase<BinaryHashMap, BinaryLRU>
     {
+        
         /** Memory mutex to lock when accessing internal memory states. **/
         std::mutex MEMORY_MUTEX;
 
 
         /** Register transaction to track current open transaction. **/
         RegisterTransaction* pMemory;
+
+
+        /** Miner transaction to track current states for miner verification. **/
+        RegisterTransaction* pMiner;
 
 
         /** Register transaction to keep open all commited data. **/
@@ -205,7 +210,7 @@ namespace LLD
          *  Begin a memory transaction following ACID properties.
          *
          **/
-        void MemoryBegin();
+        void MemoryBegin(const uint8_t nFlags = TAO::Ledger::FLAGS::MEMPOOL);
 
 
         /** MemoryRelease
@@ -213,7 +218,7 @@ namespace LLD
          *  Release a memory transaction following ACID properties.
          *
          **/
-        void MemoryRelease();
+        void MemoryRelease(const uint8_t nFlags = TAO::Ledger::FLAGS::MEMPOOL);
 
 
         /** MemoryCommit

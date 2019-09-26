@@ -44,19 +44,6 @@ namespace TAO
         {
             LOCK(PROCESSING_MUTEX);
 
-            /* Check if the block is valid. */
-            if(!block.Check())
-            {
-                /* Check for missing transactions. */
-                if(block.vMissing.size() != 0)
-                    nStatus |= PROCESS::INCOMPLETE;
-
-                /* Set the status. */
-                nStatus |= PROCESS::REJECTED;
-
-                return;
-            }
-
             /* Check for orphan. */
             if(!LLD::Ledger->HasBlock(block.hashPrevBlock))
             {
@@ -64,7 +51,7 @@ namespace TAO
                 if(!mapOrphans.count(block.hashPrevBlock))
                 {
                     /* Check the checkpoint height. */
-                    if(block.nHeight < TAO::Ledger::ChainState::nCheckpointHeight)
+                    if(!config::fTestNet.load() && block.nHeight < TAO::Ledger::ChainState::nCheckpointHeight)
                     {
                         /* Set the status. */
                         nStatus |= PROCESS::IGNORED;
@@ -73,8 +60,8 @@ namespace TAO
                     }
 
                     /* Fast sync block requests. */
-                    if(TAO::Ledger::ChainState::Synchronizing())
-                        nStatus |= PROCESS::IGNORED;
+                    //if(TAO::Ledger::ChainState::Synchronizing())
+                    //    nStatus |= PROCESS::IGNORED;
 
                     /* Add to the orphans map. */
                     mapOrphans.insert(std::make_pair(block.hashPrevBlock, std::unique_ptr<TAO::Ledger::Block>(block.Clone())));
@@ -89,6 +76,23 @@ namespace TAO
                 nStatus |= PROCESS::ORPHAN;
 
                 return;
+            }
+
+            /* Check if the block is valid. */
+            if(!block.Check())
+            {
+                /* Check for missing transactions. */
+                if(block.vMissing.size() == 0)
+                {
+                    nStatus |= PROCESS::REJECTED;
+                    return;
+                }
+
+                /* Incomplete blocks can pass through orphan checks. */
+                nStatus |= PROCESS::INCOMPLETE;
+
+                /* Set the missing block. */
+                block.hashMissing = block.GetHash();
             }
 
             /* Check if valid in the chain. */
@@ -126,6 +130,23 @@ namespace TAO
 
                 /* Debug output. */
                 debug::log(0, FUNCTION, "processing ORPHAN prev=", hashPrev.SubString(), " size=", mapOrphans.size());
+
+                /* Check if the block is valid. */
+                if(!mapOrphans.at(hash)->Check())
+                {
+                    /* Check for missing transactions. */
+                    if(mapOrphans.at(hash)->vMissing.size() == 0)
+                        return;
+
+                    /* Incomplete blocks can pass through orphan checks. */
+                    nStatus |= PROCESS::INCOMPLETE;
+
+                    /* Add the missing transactions to this current block. */
+                    block.vMissing.insert(block.vMissing.end(), mapOrphans.at(hash)->vMissing.begin(), mapOrphans.at(hash)->vMissing.end());
+
+                    /* Set the hash missing. */
+                    block.hashMissing = mapOrphans.at(hash)->GetHash();
+                }
 
                 /* Accept each orphan. */
                 if(!mapOrphans.at(hash)->Accept())

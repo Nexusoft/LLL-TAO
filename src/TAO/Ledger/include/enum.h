@@ -126,6 +126,9 @@ namespace TAO
 
                 /* Don't write data when calculating fees. */
                 FEES        = 0x03,
+
+                /* Special memory when building block. */
+                MINER       = 0x04,
             };
         }
 

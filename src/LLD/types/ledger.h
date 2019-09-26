@@ -83,6 +83,10 @@ namespace LLD
         LedgerTransaction* pMemory;
 
 
+        /** Miner transaction to track current states for miner verification. **/
+        LedgerTransaction* pMiner;
+
+
         /** Ledger transaction to keep open all commited data. **/
         LedgerTransaction* pCommit;
 
@@ -670,7 +674,7 @@ namespace LLD
          *  Begin a memory transaction following ACID properties.
          *
          **/
-        void MemoryBegin();
+        void MemoryBegin(const uint8_t nFlags = TAO::Ledger::FLAGS::MEMPOOL);
 
 
         /** MemoryRelease
@@ -678,7 +682,7 @@ namespace LLD
          *  Release a memory transaction following ACID properties.
          *
          **/
-        void MemoryRelease();
+        void MemoryRelease(const uint8_t nFlags = TAO::Ledger::FLAGS::MEMPOOL);
 
 
         /** MemoryCommit

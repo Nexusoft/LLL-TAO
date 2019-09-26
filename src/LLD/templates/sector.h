@@ -197,6 +197,9 @@ namespace LLD
             DataStream ssKey(SER_LLD, DATABASE_VERSION);
             ssKey << key;
 
+            /* Get reference of key. */
+            const std::vector<uint8_t>& vKey = ssKey.Bytes();
+
             /* Check that the key is not pending in a transaction for Erase. */
             {
                 LOCK(TRANSACTION_MUTEX);
@@ -204,30 +207,30 @@ namespace LLD
                 if(pTransaction)
                 {
                     /* Check if in erase queue. */
-                    if(pTransaction->mapEraseData.count(ssKey.Bytes()))
+                    if(pTransaction->mapEraseData.count(vKey))
                         return false;
 
                     /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
-                    if(pTransaction->mapTransactions.count(ssKey.Bytes()))
+                    if(pTransaction->mapTransactions.count(vKey))
                         return true;
 
                     /* Check for keychain commits. */
-                    if(pTransaction->mapKeychain.count(ssKey.Bytes()))
+                    if(pTransaction->mapKeychain.count(vKey))
                         return true;
 
                     /* Check for the indexes. */
-                    if(pTransaction->mapIndex.count(ssKey.Bytes()))
+                    if(pTransaction->mapIndex.count(vKey))
                         return true;
                 }
             }
 
             /* Check the cache pool. */
-            if(cachePool->Has(ssKey.Bytes()))
+            if(cachePool->Has(vKey))
                 return true;
 
             /* Return the Key existance in the Keychain Database. */
             SectorKey cKey;
-            return pSectorKeys->Get(ssKey.Bytes(), cKey);
+            return pSectorKeys->Get(vKey, cKey);
         }
 
 
@@ -456,21 +459,27 @@ namespace LLD
             /* Get the Data from Sector Database. */
             std::vector<uint8_t> vData;
 
+            /* Get reference of key. */
+            std::vector<uint8_t>& vKey = ssKey.Bytes();
+
             /* Check that the key is not pending in a transaction for Erase. */
             {
                 LOCK(TRANSACTION_MUTEX);
-
                 if(pTransaction)
                 {
                     /* Check if in erase queue. */
-                    if(pTransaction->mapEraseData.count(ssKey.Bytes()))
+                    if(pTransaction->mapEraseData.count(vKey))
                         return false;
 
+                    /* Check for indexes. */
+                    if(pTransaction->mapIndex.count(vKey))
+                        vKey = pTransaction->mapIndex[vKey];
+
                     /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
-                    if(pTransaction->mapTransactions.count(ssKey.Bytes()))
+                    if(pTransaction->mapTransactions.count(vKey))
                     {
                         /* Get the data from the transction object. */
-                        vData = pTransaction->mapTransactions[ssKey.Bytes()];
+                        vData = pTransaction->mapTransactions[vKey];
 
                         /* Deserialize Value. */
                         DataStream ssValue(vData, SER_LLD, DATABASE_VERSION);
@@ -488,7 +497,7 @@ namespace LLD
             }
 
             /* Get the data from the database. */
-            if(!Get(ssKey.Bytes(), vData))
+            if(!Get(vKey, vData))
                 return false;
 
             /* Deserialize Value. */
@@ -526,6 +535,10 @@ namespace LLD
             DataStream ssIndex(SER_LLD, DATABASE_VERSION);
             ssIndex << index;
 
+            /* Get reference of key and index. */
+            const std::vector<uint8_t>& vKey   = ssKey.Bytes();
+            const std::vector<uint8_t>& vIndex = ssIndex.Bytes();
+
             /* Check that the key is not pending in a transaction for Erase. */
             {
                 LOCK(TRANSACTION_MUTEX);
@@ -534,14 +547,18 @@ namespace LLD
                 {
                     /* Serialize the key. */
                     DataStream ssJournal(SER_LLD, DATABASE_VERSION);
-                    ssJournal << std::string("index") << ssKey.Bytes() << ssIndex.Bytes();
+                    ssJournal << std::string("index") << vKey << vIndex;
 
                     /* Write to the file.  */
                     const std::vector<uint8_t>& vBytes = ssJournal.Bytes();
                     STREAM.write((char*)&vBytes[0], vBytes.size());
 
+                    /* Check for erased data. */
+                    if(pTransaction->mapEraseData.count(vKey))
+                        pTransaction->mapEraseData.erase(vKey);
+
                     /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
-                    pTransaction->mapIndex[ssKey.Bytes()] = ssIndex.Bytes();
+                    pTransaction->mapIndex[vKey] = vIndex;
 
                     return true;
                 }
@@ -549,11 +566,11 @@ namespace LLD
 
             /* Get the key. */
             SectorKey cKey;
-            if(!pSectorKeys->Get(ssIndex.Bytes(), cKey))
+            if(!pSectorKeys->Get(vIndex, cKey))
                 return false;
 
             /* Write the new sector key. */
-            cKey.SetKey(ssKey.Bytes());
+            cKey.SetKey(vKey);
             return pSectorKeys->Put(cKey);
         }
 
@@ -577,6 +594,9 @@ namespace LLD
             DataStream ssKey(SER_LLD, DATABASE_VERSION);
             ssKey << key;
 
+            /* Get reference of key. */
+            const std::vector<uint8_t>& vKey = ssKey.Bytes();
+
             /* Check for transaction. */
             {
                 LOCK(TRANSACTION_MUTEX);
@@ -585,25 +605,25 @@ namespace LLD
                 {
                     /* Serialize the key. */
                     DataStream ssJournal(SER_LLD, DATABASE_VERSION);
-                    ssJournal << std::string("key") << ssKey.Bytes();
+                    ssJournal << std::string("key") << vKey;
 
                     /* Write to the file.  */
                     const std::vector<uint8_t>& vBytes = ssJournal.Bytes();
                     STREAM.write((char*)&vBytes[0], vBytes.size());
 
                     /* Check if data is in erase queue, if so remove it. */
-                    if(pTransaction->mapEraseData.count(ssKey.Bytes()))
-                        pTransaction->mapEraseData.erase(ssKey.Bytes());
+                    if(pTransaction->mapEraseData.count(vKey))
+                        pTransaction->mapEraseData.erase(vKey);
 
                     /* Set the transaction data. */
-                    pTransaction->mapKeychain[ssKey.Bytes()] = 0;
+                    pTransaction->mapKeychain[vKey] = 0;
 
                     return true;
                 }
             }
 
             /* Return the Key existance in the Keychain Database. */
-            SectorKey cKey(STATE::READY, ssKey.Bytes(), 0, 0, 0);
+            SectorKey cKey(STATE::READY, vKey, 0, 0, 0);
             return pSectorKeys->Put(cKey);
         }
 
@@ -633,6 +653,10 @@ namespace LLD
             ssData << strType;
             ssData << value;
 
+            /* Get reference of key and data. */
+            const std::vector<uint8_t>& vKey  = ssKey.Bytes();
+            const std::vector<uint8_t>& vData = ssData.Bytes();
+
             /* Check for transaction. */
             {
                 LOCK(TRANSACTION_MUTEX);
@@ -641,18 +665,18 @@ namespace LLD
                 {
                     /* Serialize the key. */
                     DataStream ssJournal(SER_LLD, DATABASE_VERSION);
-                    ssJournal << std::string("write") << ssKey.Bytes() << ssData.Bytes();
+                    ssJournal << std::string("write") << vKey << vData;
 
                     /* Write to the file.  */
                     const std::vector<uint8_t>& vBytes = ssJournal.Bytes();
                     STREAM.write((char*)&vBytes[0], vBytes.size());
 
                     /* Check if data is in erase queue, if so remove it. */
-                    if(pTransaction->mapEraseData.count(ssKey.Bytes()))
-                        pTransaction->mapEraseData.erase(ssKey.Bytes());
+                    if(pTransaction->mapEraseData.count(vKey))
+                        pTransaction->mapEraseData.erase(vKey);
 
                     /* Set the transaction data. */
-                    pTransaction->mapTransactions[ssKey.Bytes()] = ssData.Bytes();
+                    pTransaction->mapTransactions[vKey] = vData;
 
                     /* Handle for a record update that needs to be reverted in case of errors. */
                     //if(pSectorKeys->Get(ssKey.Bytes()))
@@ -670,7 +694,7 @@ namespace LLD
                 }
             }
 
-            return Put(ssKey.Bytes(), ssData.Bytes());
+            return Put(vKey, vData);
         }
 
 
@@ -725,7 +749,7 @@ namespace LLD
          *
          **/
         bool Force(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vData);
-        
+
 
         /** Put
          *

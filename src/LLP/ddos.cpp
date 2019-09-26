@@ -142,9 +142,9 @@ namespace LLP
 
         TIMER.Start();
 
-        //++TOTALBANS;
+        ++TOTALBANS;
 
-        //BANTIME = std::max(TOTALBANS * (rSCORE.Score() + 1) * (cSCORE.Score() + 1), TOTALBANS * 1200u);
+        BANTIME = std::max(TOTALBANS * (rSCORE.Score() + 1) * (cSCORE.Score() + 1), TOTALBANS * 1200u);
 
         debug::log(0, "XXXXX DDOS Filter cScore = ", cSCORE.Score(),
             " rScore = ", rSCORE.Score(),

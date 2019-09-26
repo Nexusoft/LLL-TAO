@@ -107,7 +107,23 @@ public:
     /** Destructor. */
     ~DataStream()
     {
-        std::vector<uint8_t>().swap(vData);
+    }
+
+
+    /** Operator |= overload to set flag **/
+    DataStream& operator|=(enum SER_OPERATIONS nFlags)
+    {
+        nSerType |= nFlags;
+
+        return *this;
+    }
+
+    /** Operator &= overload to unset flag **/
+    DataStream& operator&=(enum SER_OPERATIONS nFlags)
+    {
+        nSerType &= ~nFlags;
+
+        return *this;
     }
 
 
@@ -199,10 +215,18 @@ public:
 
     /** Bytes
      *
+     *  Get the data stream from the object as a const reference.
+     *
+     **/
+    const std::vector<uint8_t>& Bytes() const;
+
+
+    /** Bytes
+     *
      *  Get the data stream from the object.
      *
      **/
-    const std::vector<uint8_t>& Bytes();
+    std::vector<uint8_t>& Bytes();
 
 
     /** reserve

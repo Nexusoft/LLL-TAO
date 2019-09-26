@@ -194,6 +194,53 @@ namespace TAO
                 }
             }
 
+            /* Check for legacy server */
+            if(LLP::TRITIUM_SERVER)
+            {
+                for(uint16_t nThread = 0; nThread < LLP::TRITIUM_SERVER->MAX_THREADS; ++nThread)
+                {
+                    /* Get the data threads. */
+                    LLP::DataThread<LLP::TritiumNode>* dt = LLP::TRITIUM_SERVER->DATA_THREADS[nThread];
+
+                    /* Lock the data thread. */
+                    uint16_t nSize = static_cast<uint16_t>(dt->CONNECTIONS->size());
+
+                    /* Loop through connections in data thread. */
+                    for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
+                    {
+                        try
+                        {
+                            /* Skip over inactive connections. */
+                            if(!dt->CONNECTIONS->at(nIndex))
+                                continue;
+
+                            /* Push the active connection. */
+                            if(dt->CONNECTIONS->at(nIndex)->Connected())
+                            {
+                                json::json obj;
+
+                                obj["addr"]     = dt->CONNECTIONS->at(nIndex)->addr.ToString();
+                                obj["type"]     = dt->CONNECTIONS->at(nIndex)->strFullVersion;
+                                obj["version"]  = dt->CONNECTIONS->at(nIndex)->nProtocolVersion;
+                                obj["session"]  = dt->CONNECTIONS->at(nIndex)->nCurrentSession;
+                                obj["height"]   = dt->CONNECTIONS->at(nIndex)->nCurrentHeight;
+                                obj["best"]     = dt->CONNECTIONS->at(nIndex)->hashBestChain.SubString();
+                                obj["latency"]  = dt->CONNECTIONS->at(nIndex)->nLatency.load();
+                                obj["lastseen"] = dt->CONNECTIONS->at(nIndex)->nLastPing.load();
+                                obj["session"]  = dt->CONNECTIONS->at(nIndex)->nCurrentSession;
+                                obj["outgoing"] = dt->CONNECTIONS->at(nIndex)->fOUTGOING.load();
+
+                                response.push_back(obj);
+                            }
+                        }
+                        catch(const std::exception& e)
+                        {
+                            //debug::error(FUNCTION, e.what());
+                        }
+                    }
+                }
+            }
+
             return response;
         }
 

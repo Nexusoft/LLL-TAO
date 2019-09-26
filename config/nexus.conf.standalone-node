@@ -12,6 +12,11 @@ rpcpassword=password
 apiuser=username
 apipassword=password
 
+# API user/pass with no authentication. Use with caution.
+#apiuser=
+#apipassword=
+#apiauth=0
+
 rpcallowip=127.0.0.1
 testnet=1
 beta=0
