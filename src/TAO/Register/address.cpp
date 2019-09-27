@@ -69,7 +69,7 @@ namespace TAO
         : uint256_t(LLC::SK256(strName))
         {
             /* Check for valid types. */
-            if(nType!= NAMESPACE)
+            if(nType != NAMESPACE)
                 throw debug::exception(FUNCTION, "invalid type for namespace");
 
             SetType(nType);
