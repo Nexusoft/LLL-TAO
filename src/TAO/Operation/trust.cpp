@@ -29,12 +29,24 @@ namespace TAO
         /*  Commit the final state to disk. */
         bool Trust::Commit(const TAO::Register::State& state, const uint8_t nFlags)
         {
-            /* Attempt to write to disk.
-             * This should never be executed from mempool because Trust should be in producer, but
-             * check the nFlags as a precaution
-             */
-            if(nFlags == TAO::Ledger::FLAGS::BLOCK && !LLD::Register->WriteTrust(state.hashOwner, state))
-                return debug::error(FUNCTION, "failed to write post-state to disk");
+            /* Get trust account address for state owner */
+            uint256_t hashAddress =
+                TAO::Register::Address(std::string("trust"), state.hashOwner, TAO::Register::Address::TRUST);
+
+            /* Check that a trust register exists. */
+            if(!LLD::Register->HasTrust(state.hashOwner))
+                return debug::error(FUNCTION, "trust account not indexed");
+
+            /* Write the register to the database. */
+            if(!LLD::Register->WriteState(hashAddress, state, nFlags))
+                return debug::error(FUNCTION, "failed to write new state");
+
+            //  /* Attempt to write to disk.
+            //  * This should never be executed from mempool because Trust should be in producer, but
+            //  * check the nFlags as a precaution
+            //  */
+            // if(nFlags == TAO::Ledger::FLAGS::BLOCK && !LLD::Register->WriteTrust(state.hashOwner, state))
+            //     return debug::error(FUNCTION, "failed to write post-state to disk");
 
             return true;
         }
