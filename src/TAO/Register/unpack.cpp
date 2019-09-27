@@ -189,7 +189,6 @@ namespace TAO
                 switch(OPERATION)
                 {
                     case TAO::Operation::OP::COINBASE:
-                    case TAO::Operation::OP::GENESIS:
                     case TAO::Operation::OP::AMBASSADOR:
                     case TAO::Operation::OP::DEVELOPER:
                     {
@@ -206,6 +205,13 @@ namespace TAO
                         /* Seek to coinstake. */
                         contract.Seek(80);
 
+                        contract >> nAmount;
+
+                        return true;
+                    }
+
+                    case TAO::Operation::OP::GENESIS:
+                    {
                         contract >> nAmount;
 
                         return true;

@@ -34,7 +34,7 @@ namespace TAO
             mapFunctions["submit/transaction"] = Function(std::bind(&Ledger::Submit, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["void/transaction"] = Function(std::bind(&Ledger::VoidTransaction, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["get/mininginfo"] = Function(std::bind(&Ledger::MiningInfo, this, std::placeholders::_1, std::placeholders::_2));
-
+            mapFunctions["list/trustaccounts"] = Function(std::bind(&Ledger::TrustAccounts, this, std::placeholders::_1, std::placeholders::_2));
         }
 
 

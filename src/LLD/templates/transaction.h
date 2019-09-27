@@ -16,6 +16,9 @@ ________________________________________________________________________________
 #define NEXUS_LLD_TEMPLATES_TRANSACTION_H
 
 #include <LLC/types/uint1024.h>
+
+#include <Util/templates/datastream.h>
+
 #include <cstdint>
 #include <map>
 #include <vector>
@@ -64,17 +67,17 @@ namespace LLD
         /** New Data to be Added. **/
         std::map< std::vector<uint8_t>, std::vector<uint8_t> > mapTransactions;
 
-        /** Original data to be mapped. **/
-        std::map< std::vector<uint8_t>, std::vector<uint8_t> > mapOriginalData;
-
         /** Keychain items to commit. */
-        std::map< std::vector<uint8_t>, uint8_t > mapKeychain;
+        std::set< std::vector<uint8_t> > setKeychain;
 
         /** Index items to commit. */
         std::map< std::vector<uint8_t>, std::vector<uint8_t> > mapIndex;
 
         /** Vector to hold the keys of transactions to be erased. **/
-        std::map< std::vector<uint8_t>, uint32_t > mapEraseData;
+        std::set< std::vector<uint8_t> > setErasedData;
+
+        /** Binary stream with data to be written. **/
+        DataStream ssJournal;
 
         /** Default Constructor **/
         SectorTransaction();

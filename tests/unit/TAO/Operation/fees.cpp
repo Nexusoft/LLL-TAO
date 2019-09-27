@@ -41,10 +41,19 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
     /* Temporarily disable private mode so that fees are applicable */
     config::mapArgs["-private"] = "0";
 
+    /* Keep a track of the transaction timestamps so that we can avoid paying tx fees for this test */
+    uint64_t nTimestamp = runtime::unifiedtimestamp();
+
+    /* Set the timestamp on this first transaction to be 600s in the past so that we can create some transactions for free 
+           without hitting the tx fee limit*/
+    nTimestamp -= 600;
+
     /* Create a default NXS account so that we can load it funds for the future tests */
     {
         TAO::Ledger::Transaction tx;
         TAO::Ledger::CreateTransaction(user, strPin, tx);
+
+        tx.nTimestamp = nTimestamp;
 
         /* Add a Name record for the trust account */
         TAO::Register::Address hashNameAddress = TAO::Register::Address("default", hashGenesis, TAO::Register::Address::NAME);
@@ -84,6 +93,10 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
         TAO::Ledger::Transaction tx;
         TAO::Ledger::CreateTransaction(user, strPin, tx);
 
+        /* Force the timestamp to be 11s after the last so that there is no tx fee*/
+        nTimestamp += TAO::Ledger::TX_FEE_INTERVAL + 1;
+        tx.nTimestamp = nTimestamp;
+
         TAO::Register::Object object = TAO::Register::CreateAccount(0);
 
         //build the tx
@@ -110,6 +123,9 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
         TAO::Ledger::Transaction tx;
         TAO::Ledger::CreateTransaction(user, strPin, tx);
 
+        /* Force the timestamp to be 11s after the last so that there is no tx fee*/
+        tx.nTimestamp = nTimestamp + TAO::Ledger::TX_FEE_INTERVAL + 1;
+
         /* create object so that a fee is required */
         Object asset = CreateAsset();
 
@@ -129,6 +145,9 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
         /* Create transaction  */
         TAO::Ledger::Transaction tx;
         TAO::Ledger::CreateTransaction(user, strPin, tx);
+
+        /* Force the timestamp to be 11s after the last so that there is no tx fee*/
+        tx.nTimestamp = nTimestamp + TAO::Ledger::TX_FEE_INTERVAL + 1;
 
         /* Generate Random name */
         std::string strName = LLC::GetRand256().ToString();
@@ -150,6 +169,9 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
         TAO::Ledger::Transaction tx;
         TAO::Ledger::CreateTransaction(user, strPin, tx);
 
+        /* Force the timestamp to be 11s after the last so that there is no tx fee*/
+        tx.nTimestamp = nTimestamp + TAO::Ledger::TX_FEE_INTERVAL + 1;
+
         /* Generate Random name */
         std::string strName = LLC::GetRand256().ToString();
 
@@ -168,6 +190,9 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
         /* Create transaction  */
         TAO::Ledger::Transaction tx;
         TAO::Ledger::CreateTransaction(user, strPin, tx);
+
+        /* Force the timestamp to be 11s after the last so that there is no tx fee*/
+        tx.nTimestamp = nTimestamp + TAO::Ledger::TX_FEE_INTERVAL + 1;
 
         /* Generate Random name */
         std::string strNamespace = LLC::GetRand256().ToString();
@@ -188,6 +213,8 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
         TAO::Ledger::Transaction tx;
         TAO::Ledger::CreateTransaction(user, strPin, tx);
 
+        /* Force the timestamp to be 11s after the last so that there is no tx fee*/
+        tx.nTimestamp = nTimestamp + TAO::Ledger::TX_FEE_INTERVAL + 1;
 
         TAO::Register::Address hashAddress = TAO::Register::Address(TAO::Register::Address::TOKEN);
         /* Create token with 100 units */
@@ -204,6 +231,9 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
         /* Create transaction  */
         TAO::Ledger::Transaction tx;
         TAO::Ledger::CreateTransaction(user, strPin, tx);
+
+        /* Force the timestamp to be 11s after the last so that there is no tx fee*/
+        tx.nTimestamp = nTimestamp + TAO::Ledger::TX_FEE_INTERVAL + 1;
 
         TAO::Register::Address hashAddress = TAO::Register::Address(TAO::Register::Address::TOKEN);
 
@@ -222,6 +252,9 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
         TAO::Ledger::Transaction tx;
         TAO::Ledger::CreateTransaction(user, strPin, tx);
 
+        /* Force the timestamp to be 11s after the last so that there is no tx fee*/
+        tx.nTimestamp = nTimestamp + TAO::Ledger::TX_FEE_INTERVAL + 1;
+
         TAO::Register::Address hashAddress = TAO::Register::Address(TAO::Register::Address::TOKEN);
 
         /* Create token with 1000000 units */
@@ -239,6 +272,9 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
         TAO::Ledger::Transaction tx;
         TAO::Ledger::CreateTransaction(user, strPin, tx);
 
+        /* Force the timestamp to be 11s after the last so that there is no tx fee*/
+        tx.nTimestamp = nTimestamp + TAO::Ledger::TX_FEE_INTERVAL + 1;
+
         TAO::Register::Address hashAddress = TAO::Register::Address(TAO::Register::Address::TOKEN);
 
         /* Create token with 100000000000000 units*/
@@ -250,6 +286,30 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
         REQUIRE(tx.Cost() == (1200 * TAO::Ledger::NXS_COIN));
     }
 
+    /* Test transaction fee for creating transactions too fast*/
+    {
+        uint256_t hashAddress = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
+
+        TAO::Ledger::Transaction tx;
+        TAO::Ledger::CreateTransaction(user, strPin, tx);
+
+        tx.nTimestamp = nTimestamp;
+
+        /* Create an account object */
+        TAO::Register::Object object = TAO::Register::CreateAccount(0);
+
+        /* Create 3 account registers, which should be free themselves */
+        tx[0] << uint8_t(OP::CREATE) << TAO::Register::Address(TAO::Register::Address::ACCOUNT) << uint8_t(REGISTER::OBJECT) << object.GetState();
+        tx[1] << uint8_t(OP::CREATE) << TAO::Register::Address(TAO::Register::Address::ACCOUNT) << uint8_t(REGISTER::OBJECT) << object.GetState();
+        tx[2] << uint8_t(OP::CREATE) << TAO::Register::Address(TAO::Register::Address::ACCOUNT) << uint8_t(REGISTER::OBJECT) << object.GetState();
+
+        /* run tests */
+
+        /* Check the fee.  This shuld be 3 lots of account fee (free) and 3 x TX_FEE (0.03) */
+        REQUIRE(tx.Cost() == (3 *TAO::Ledger::ACCOUNT_FEE) + 3 * (TAO::Ledger::TX_FEE));
+
+    }
+
 
     /* Test failure with not enough fee */
     {
@@ -257,6 +317,11 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
 
         TAO::Ledger::Transaction tx;
         TAO::Ledger::CreateTransaction(user, strPin, tx);
+
+        /* Force the timestamp to be 11s after the last so that there is no tx fee*/
+        nTimestamp += TAO::Ledger::TX_FEE_INTERVAL + 1;
+        tx.nTimestamp = nTimestamp;
+        
 
         /* create object so that a fee is required */
         Object asset = CreateAsset();
@@ -282,6 +347,10 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
 
         TAO::Ledger::Transaction tx;
         TAO::Ledger::CreateTransaction(user, strPin, tx);
+
+        /* Force the timestamp to be 11s after the last so that there is no tx fee*/
+        nTimestamp += TAO::Ledger::TX_FEE_INTERVAL + 1;
+        tx.nTimestamp = nTimestamp;
 
         /* create object so that a fee is required */
         Object asset = CreateAsset();

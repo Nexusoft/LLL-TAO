@@ -338,6 +338,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_ledger_initialize.o \
 		build/API_types_ledger_state.o \
 		build/API_types_ledger_transaction.o \
+		build/API_types_ledger_trustaccounts.o \
 		build/API_types_ledger_void.o \
 		build/API_types_names_claim.o \
 		build/API_types_names_create.o \

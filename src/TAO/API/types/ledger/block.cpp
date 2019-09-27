@@ -225,6 +225,7 @@ namespace TAO
                 /* Get the current page. */
                 uint32_t nCurrentPage = nTotal / nLimit;
 
+                /* Increment the counter */
                 ++nTotal;
 
                 TAO::Ledger::BlockState blockToAdd = blockState;

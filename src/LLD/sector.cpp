@@ -199,7 +199,7 @@ namespace LLD
             }
 
             /* Add to cache */
-            cachePool->Put(vKey, vData);
+            cachePool->Put(cKey, vKey, vData);
 
             /* Verbose Debug Logging. */
             debug::log(5, FUNCTION, "Current File: ", cKey.nSectorFile,
@@ -221,6 +221,10 @@ namespace LLD
             LOCK(SECTOR_MUTEX);
 
             nBytesRead += static_cast<uint32_t>(cKey.vKey.size() + vData.size());
+
+            /* Check the cache pool for key first. */
+            if(cachePool->Get(cKey.vKey, vData))
+                return true;
 
             /* Find the file stream for LRU cache. */
             std::fstream *pstream;
@@ -277,7 +281,7 @@ namespace LLD
             return false;
 
         /* Write the data into the memory cache. */
-        cachePool->Put(vKey, vData, false);
+        cachePool->Put(key, vKey, vData, false);
 
         {
             LOCK(SECTOR_MUTEX);
@@ -329,8 +333,6 @@ namespace LLD
     {
         if(nFlags & FLAGS::APPEND || !Update(vKey, vData))
         {
-            /* Write the data into the memory cache. */
-            cachePool->Put(vKey, vData, false);
 
             {
                 LOCK(SECTOR_MUTEX);
@@ -395,6 +397,9 @@ namespace LLD
             if(!pSectorKeys->Put(key))
                 return debug::error(FUNCTION, "failed to write key to keychain");
 
+            /* Write the data into the memory cache. */
+            cachePool->Put(key, vKey, vData, false);
+
             /* Verboe output. */
             debug::log(5, FUNCTION, "Current File: ", key.nSectorFile,
                 " | Current File Size: ", key.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
@@ -408,9 +413,6 @@ namespace LLD
     template<class KeychainType, class CacheType>
     bool SectorDatabase<KeychainType, CacheType>::Put(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vData)
     {
-        /* Write the data into the memory cache. */
-        cachePool->Put(vKey, vData, !(nFlags & FLAGS::FORCE));
-
         /* Handle force write mode. */
         if(nFlags & FLAGS::FORCE)
             return Force(vKey, vData);
@@ -623,51 +625,7 @@ namespace LLD
 
         /* Create the new Database Transaction Object. */
         pTransaction = new SectorTransaction();
-
-        /* Create an append only stream. */
-        STREAM = std::ofstream(debug::safe_printstr(config::GetDataDir(), strName, "/journal.dat"), std::ios::app | std::ios::binary);
-        if(!STREAM.is_open())
-            throw std::runtime_error("Failed to open Journal File");
     }
-
-    /* Rollback the transaction to previous state. */
-     template<class KeychainType, class CacheType>
-     void SectorDatabase<KeychainType, CacheType>::TxnRollback()
-     {
-         LOCK(TRANSACTION_MUTEX);
-
-         /* Check that there is a valid transaction to apply to the database. */
-         assert(pTransaction);
-
-         /* Restore erase data. */
-         //for(const auto& item : pTransaction->mapEraseData)
-             //if(!pSectorKeys->Restore(item.first))
-            //     assert(debug::error(FUNCTION, "failed to rollback erase"));
-
-        /* Erase all the transactions. */
-        for(const auto& item : pTransaction->mapTransactions)
-            if(!pSectorKeys->Erase(item.first))
-                assert(debug::error(FUNCTION, "failed to rollback transactions"));
-
-         /* Commit the sector data. */
-         for(const auto& item : pTransaction->mapOriginalData)
-             if(!Force(item.first, item.second))
-                assert(debug::error(FUNCTION, "failed to rollback sector data"));
-
-         /* Commit keychain entries. */
-         for(const auto& item : pTransaction->mapKeychain)
-             if(!pSectorKeys->Erase(item.first))
-                assert(debug::error(FUNCTION, "failed to commit to keychain"));
-
-         /* Commit the index data. */
-         for(const auto& item : pTransaction->mapIndex)
-            if(!pSectorKeys->Erase(item.first))
-                assert(debug::error(FUNCTION, "failed to erase indexes"));
-
-         /* Cleanup the transaction object. */
-         delete pTransaction;
-         pTransaction = nullptr;
-     }
 
 
     /*  Write the transaction commitment message. */
@@ -676,14 +634,22 @@ namespace LLD
     {
         LOCK(TRANSACTION_MUTEX);
 
-        /* Serialize the key. */
-        DataStream ssJournal(SER_LLD, DATABASE_VERSION);
-        ssJournal << std::string("commit");
+        /* Check for active transaction. */
+        if(!pTransaction)
+            return false;
+
+        /* Set commit message into journal. */
+        pTransaction->ssJournal << std::string("commit");
+
+        /* Create an append only stream. */
+        std::ofstream stream = std::ofstream(debug::safe_printstr(config::GetDataDir(), strName, "/journal.dat"), std::ios::app | std::ios::binary);
+        if(!stream.is_open())
+            return debug::error(FUNCTION, "failed to open journal file");
 
         /* Write to the file.  */
-        const std::vector<uint8_t>& vBytes = ssJournal.Bytes();
-        STREAM.write((char*)&vBytes[0], vBytes.size());
-        STREAM.close();
+        const std::vector<uint8_t>& vBytes = pTransaction->ssJournal.Bytes();
+        stream.write((char*)&vBytes[0], vBytes.size());
+        stream.close();
 
         return true;
     }
@@ -718,54 +684,101 @@ namespace LLD
         if(!pTransaction)
             return false;
 
-        /* Erase data set to be removed. */
-        for(const auto& item : pTransaction->mapEraseData)
-            if(!pSectorKeys->Erase(item.first))
-                return debug::error(FUNCTION, "failed to erase from keychain");
-
-        /* Commit the sector data. */
-        for(const auto& item : pTransaction->mapTransactions)
-            if(!Force(item.first, item.second))
-                return debug::error(FUNCTION, "failed to commit sector data");
-
-        /* Commit keychain entries. */
-        for(const auto& item : pTransaction->mapKeychain)
-        {
-            SectorKey cKey(STATE::READY, item.first, 0, 0, 0);
-            if(!pSectorKeys->Put(cKey))
-                return debug::error(FUNCTION, "failed to commit to keychain");
-        }
-
-        /* Commit the index data. */
+        /* Keep track of indexes in memory. */
         std::map<std::vector<uint8_t>, SectorKey> mapIndex;
-        for(const auto& item : pTransaction->mapIndex)
+
+        /* Iterate through the journal. */
+        pTransaction->ssJournal.Reset();
+        while(!pTransaction->ssJournal.End())
         {
-            /* Get the key. */
-            SectorKey cKey;
-            if(mapIndex.count(item.second))
-                cKey = mapIndex[item.second];
-            else
+            /* Read the data entry type. */
+            std::string strType;
+            pTransaction->ssJournal >> strType;
+
+            /* Check for Erase. */
+            if(strType == "erase")
             {
-                if(!pSectorKeys->Get(item.second, cKey))
-                    return debug::error(FUNCTION, "failed to read indexing entry");
+                /* Get the key to erase. */
+                std::vector<uint8_t> vKey;
+                pTransaction->ssJournal >> vKey;
 
-                mapIndex[item.second] = cKey;
+                /* Erase the key. */
+                if(!pSectorKeys->Erase(vKey))
+                    return debug::error(FUNCTION, "failed to erase from keychain");
             }
+            else if(strType == "key")
+            {
+                /* Get the key to write. */
+                std::vector<uint8_t> vKey;
+                pTransaction->ssJournal >> vKey;
 
-            /* Write the new sector key. */
-            cKey.SetKey(item.first);
-            if(!pSectorKeys->Put(cKey))
-                return debug::error(FUNCTION, "failed to write indexing entry");
+                /* Write the key to keychain. */
+                SectorKey cKey(STATE::READY, vKey, 0, 0, 0);
+                if(!pSectorKeys->Put(cKey))
+                    return debug::error(FUNCTION, "failed to commit to keychain");
+            }
+            else if(strType == "write")
+            {
+                /* Get the key to write. */
+                std::vector<uint8_t> vKey;
+                pTransaction->ssJournal >> vKey;
+
+                /* Get the data to write. */
+                std::vector<uint8_t> vData;
+                pTransaction->ssJournal >> vData;
+
+                /* Write to disk. */
+                if(!Force(vKey, vData))
+                    return debug::error(FUNCTION, "failed to commit sector data");
+            }
+            else if(strType == "index")
+            {
+                /* Get the key to index. */
+                std::vector<uint8_t> vKey;
+                pTransaction->ssJournal >> vKey;
+
+                /* Get the data to index to. */
+                std::vector<uint8_t> vIndex;
+                pTransaction->ssJournal >> vIndex;
+
+                /* Get the key. */
+                SectorKey cKey;
+                if(mapIndex.count(vIndex))
+                    cKey = mapIndex[vIndex];
+                else
+                {
+                    /* Get the key from keychain. */
+                    if(!pSectorKeys->Get(vIndex, cKey))
+                        return debug::error(FUNCTION, "failed to read indexing entry");
+
+                    /* Cache key in local memory. */
+                    mapIndex[vIndex] = cKey;
+                }
+
+                /* Write the new sector key. */
+                cKey.SetKey(vKey);
+                if(!pSectorKeys->Put(cKey))
+                    return debug::error(FUNCTION, "failed to write indexing entry");
+
+                /* Remove the items from the cache pool. */
+                cachePool->Remove(vIndex);
+                cachePool->Remove(vKey);
+            }
+            if(strType == "commit")
+            {
+                /* Cleanup the transaction object. */
+                delete pTransaction;
+                pTransaction = nullptr;
+
+                return true;
+            }
         }
-
-        /* Flush the keychain buffers. */
-        //pSectorKeys->Flush();
 
         /* Cleanup the transaction object. */
         delete pTransaction;
         pTransaction = nullptr;
 
-        return true;
+        return debug::error(FUNCTION, "ACID transaction journal never reached commit");
     }
 
 
@@ -780,108 +793,33 @@ namespace LLD
 
         /* Get the Binary Size. */
         stream.ignore(std::numeric_limits<std::streamsize>::max());
-
-        /* Get the data buffer. */
         uint32_t nSize = static_cast<uint32_t>(stream.gcount());
 
         /* Check journal size for 0. */
         if(nSize == 0)
             return false;
 
+        /* Create the transaction object. */
+        TxnBegin();
+
         /* Create buffer to read into. */
-        std::vector<uint8_t> vBuffer(nSize, 0);
+        pTransaction->ssJournal.resize(nSize);
 
         /* Read the keychain file. */
         stream.seekg (0, std::ios::beg);
-        stream.read((char*) &vBuffer[0], vBuffer.size());
+        stream.read((char*)pTransaction->ssJournal.data(), nSize);
         stream.close();
 
         debug::log(0, FUNCTION, strName, " transaction journal detected of ", nSize, " bytes");
 
-        /* Create the transaction object. */
-        TxnBegin();
-
-        /* Serialize the key. */
-        const DataStream ssJournal(vBuffer, SER_LLD, DATABASE_VERSION);
-        while(!ssJournal.End())
-        {
-            /* Read the data entry type. */
-            std::string strType;
-            ssJournal >> strType;
-
-            /* Check for Erase. */
-            if(strType == "erase")
-            {
-                /* Get the key to erase. */
-                std::vector<uint8_t> vKey;
-                ssJournal >> vKey;
-
-                /* Erase the key. */
-                pTransaction->EraseTransaction(vKey);
-
-                /* Debug output. */
-                debug::log(0, FUNCTION, "erasing key ", HexStr(vKey.begin(), vKey.end()).substr(0, 20));
-            }
-            else if(strType == "key")
-            {
-                /* Get the key to write. */
-                std::vector<uint8_t> vKey;
-                ssJournal >> vKey;
-
-                /* Write the key. */
-                pTransaction->mapKeychain[vKey] = 0;
-
-                /* Debug output. */
-                debug::log(0, FUNCTION, "writing keychain ", HexStr(vKey.begin(), vKey.end()).substr(0, 20));
-            }
-            else if(strType == "write")
-            {
-                /* Get the key to write. */
-                std::vector<uint8_t> vKey;
-                ssJournal >> vKey;
-
-                /* Get the data to write. */
-                std::vector<uint8_t> vData;
-                ssJournal >> vData;
-
-                /* Write the sector data. */
-                pTransaction->mapTransactions[vKey] = vData;
-
-                /* Debug output. */
-                debug::log(0, FUNCTION, "writing data ", HexStr(vKey.begin(), vKey.end()).substr(0, 20));
-            }
-            else if(strType == "index")
-            {
-                /* Get the key to index. */
-                std::vector<uint8_t> vKey;
-                ssJournal >> vKey;
-
-                /* Get the data to index to. */
-                std::vector<uint8_t> vIndex;
-                ssJournal >> vIndex;
-
-                /* Set the indexing key. */
-                pTransaction->mapIndex[vKey] = vIndex;
-
-                /* Debug output. */
-                debug::log(0, FUNCTION, "indexing key ", HexStr(vKey.begin(), vKey.end()).substr(0, 20));
-            }
-            if(strType == "commit")
-            {
-                debug::log(0, FUNCTION, strName, " transaction journal ready to be restored");
-
-                return true;
-            }
-        }
-
-        return debug::error(FUNCTION, strName, " transaction journal never reached commit");
+        return true;
     }
 
 
     /* Explicity instantiate all template instances needed for compiler. */
     template class SectorDatabase<BinaryHashMap,  BinaryLRU>;
     //template class SectorDatabase<ShardHashMap,   BinaryLRU>;
-    template class SectorDatabase<BinaryHashMap,  BinaryLFU>;
+    //template class SectorDatabase<BinaryHashMap,  BinaryLFU>;
     //template class SectorDatabase<BinaryHashTree, BinaryLRU>;
 
 }

@@ -723,18 +723,8 @@ namespace TAO
                 if(OP != TAO::Operation::OP::GENESIS)
                     return debug::error(FUNCTION, "invalid producer operation for genesis");
 
-                uint256_t hashAddress = 0;
-                producer[0] >> hashAddress;
-
                 uint64_t nClaimedReward = 0;
                 producer[0] >> nClaimedReward;
-
-                /* Verify that hashAddress of trust account is for producer hashGenesis */
-                TAO::Register::Address hashRegister =
-                    TAO::Register::Address(std::string("trust"), producer.hashGenesis, TAO::Register::Address::TRUST);
-
-                if(hashAddress != hashRegister)
-                    return debug::error(FUNCTION, "genesis for trust account address not owned by producer hashGenesis");
 
                 /* Get Genesis stake from the trust account pre-state balance. Genesis reward based on balance (that will move to stake) */
                 nStake = account.get<uint64_t>("balance");

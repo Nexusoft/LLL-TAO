@@ -15,8 +15,9 @@ ________________________________________________________________________________
 #include <LLC/hash/SK.h>
 #include <LLC/include/random.h>
 
+#include <LLD/include/global.h>
 #include <LLD/cache/binary_lru.h>
-#include <LLD/keychain/shard_hashmap.h>
+#include <LLD/keychain/hashmap.h>
 #include <LLD/templates/sector.h>
 
 #include <Util/include/debug.h>
@@ -54,7 +55,7 @@ ________________________________________________________________________________
 #include <variant>
 
 
-class TestDB : public LLD::SectorDatabase<LLD::ShardHashMap, LLD::BinaryLRU>
+class TestDB : public LLD::SectorDatabase<LLD::BinaryHashMap, LLD::BinaryLRU>
 {
 public:
     TestDB()
@@ -87,10 +88,26 @@ public:
         return Write(std::make_pair(std::string("hash"), hash), hash, "hash");
     }
 
+    bool WriteHash2(const uint1024_t& hash, const uint1024_t& hash2)
+    {
+        return Write(std::make_pair(std::string("hash2"), hash), hash2, "hash");
+    }
+
+    bool IndexHash(const uint1024_t& hash)
+    {
+        return Index(std::make_pair(std::string("hash2"), hash), std::make_pair(std::string("hash"), hash));
+    }
+
 
     bool ReadHash(const uint1024_t& hash, uint1024_t& hash2)
     {
         return Read(std::make_pair(std::string("hash"), hash), hash2);
+    }
+
+
+    bool ReadHash2(const uint1024_t& hash, uint1024_t& hash2)
+    {
+        return Read(std::make_pair(std::string("hash2"), hash), hash2);
     }
 
 
@@ -170,34 +187,56 @@ public:
 
 
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
-/* int main(int argc, char** argv)
+int main(int argc, char** argv)
 {
-
-    Test2* test = new Test2();
-    test->Subscribed(55);
-
-    dynamic_cast<Test*>(test)->Subscribed("TEST!!!");
-
-    return 0;
-
-    //uint1024_t hash = ;
 
     TestDB* testDB = new TestDB();
 
-    std::vector<uint1024_t> vRecords;
-    if(!testDB->BatchRead("hash", vRecords, 10))
-        return debug::error("failed to batch read");
+    uint1024_t hash = LLC::GetRand();
 
-    for(const auto& a : vRecords)
+
+
+    debug::log(0, "Write Hash");
+    debug::log(0, "Hash ", hash.Get64());
+    testDB->WriteHash(hash);
+
+    debug::log(0, "Index Hash");
+    if(!testDB->IndexHash(hash))
+        return debug::error("failed to index");
+
+    testDB->TxnBegin();
+
+    debug::log(0, "Read Hash");
+    uint1024_t hashTest;
+    testDB->ReadHash(hash, hashTest);
+
+    debug::log(0, "Hash ", hashTest.Get64());
+
+    uint1024_t hashTest3 = hash + 1;
+    testDB->WriteHash2(hash, hashTest3);
+
+    testDB->TxnCheckpoint();
+    testDB->TxnCommit();
+
     {
-        debug::log(0, "Record ", a.Get64());
-        if(!testDB->Erase(std::make_pair(std::string("hash"), a)))
-            return debug::error("failed to erase");
+        debug::log(0, "Read Hash");
+        uint1024_t hashTest4;
+        testDB->ReadHash2(hash, hashTest4);
+
+        debug::log(0, "Hash New ", hashTest4.Get64());
+    }
+
+    {
+        debug::log(0, "Read Hash");
+        uint1024_t hashTest4;
+        testDB->ReadHash(hash, hashTest4);
+
+        debug::log(0, "Hash New ", hashTest4.Get64());
     }
 
     return 0;
 
-    for(int t = 0; t < 1000; ++t)
+    for(int t = 0; t < 1; ++t)
     {
         uint1024_t last = 0;
         testDB->ReadLast(last);
@@ -241,40 +280,4 @@ public:
 
 
     return 0;
-} */
-
-int main(int argc, char** argv)
-{
-    LLP::DDOS_Filter DDOS(10);
-
-    runtime::timer TIMER;
-
-    while(!DDOS.Banned())
-    {
-        if(TIMER.Elapsed() >= 1)
-        {
-            DDOS.rSCORE += 20;
-            DDOS.cSCORE += 2;
-            TIMER.Reset();
-
-            debug::log(0, "rSCORE: ", DDOS.rSCORE.Score() );
-            debug::log(0, "cSCORE: ", DDOS.cSCORE.Score() ); 
-
-            if(DDOS.rSCORE.Score() > 10)
-                DDOS.Ban("rSCORE");
-
-            if(DDOS.cSCORE.Score() > 1)
-                DDOS.Ban("rSCORE");
-        }
-        else
-        {
-            runtime::sleep(100);
-        }
-        
-    }
-
-    debug::log(0, "BANNED");
-
-    return 0;
-
 }

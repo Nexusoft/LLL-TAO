@@ -105,7 +105,7 @@ namespace TAO
                 READWRITE(nNextType);
 
                 /* Check for skipping public key. */
-                if(!(nSerType & SER_SKIPPUB))
+                if(!(nSerType & SER_GETHASH) && !(nSerType & SER_SKIPPUB))
                     READWRITE(vchPubKey);
 
                 /* Handle for when not getting hash or skipsig. */
@@ -394,10 +394,12 @@ namespace TAO
             *
             *  Calculates the cost of this transaction from the contracts within it
             *
+            *  @param[in] fApplyTxFee Flag indicating that transaction fees should also apply
+            *
             *  @return The calculated cost.
             *
             **/
-            uint64_t CalculatedCost() const;
+            uint64_t CalculatedCost(bool fApplyTxFee) const;
 
         };
     }

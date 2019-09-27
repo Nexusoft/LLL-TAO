@@ -505,8 +505,8 @@ namespace TAO
                         ++nGreater;
                 }
 
-                /* Check for better height. */
-                if(nHeight > ChainState::nBestHeight.load() + 1)
+                /* Check for better height if it is a battle between two channels. */
+                if(nHeight > ChainState::nBestHeight.load() + 1 && (nEquals == 1 && nGreater == 1))
                     ++nGreater;
 
                 /* Handle single channel having higher weight. */

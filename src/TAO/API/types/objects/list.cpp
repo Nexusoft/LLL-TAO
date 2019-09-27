@@ -111,7 +111,10 @@ namespace TAO
                 }
 
                 /* Get the current page. */
-                uint32_t nCurrentPage = ++nTotal / nLimit;
+                uint32_t nCurrentPage = (nTotal / nLimit) ;
+
+                /* Increment the counter */
+                ++nTotal;
 
                 /* Check the paged data. */
                 if(nCurrentPage < nPage)

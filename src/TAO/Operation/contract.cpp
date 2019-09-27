@@ -258,9 +258,6 @@ namespace TAO
                 /* Check for Genesis Coinstake. */
                 case OP::GENESIS:
                 {
-                    /* Skip over hashAddress. */
-                    ssOperation.seek(32);
-
                     /* Get stake reward for genesis. */
                     ssOperation >> nValue;
 
