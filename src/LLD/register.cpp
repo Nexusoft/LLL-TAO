@@ -262,36 +262,8 @@ namespace LLD
         uint256_t hashRegister =
             TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
 
-        /* Memory mode for pre-database commits. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
-        {
-            LOCK(MEMORY_MUTEX);
-
-            /* Check for memory mode. */
-            if(pMemory)
-            {
-                /* Commit to transactional memory. */
-                pMemory->mapStates[hashRegister] = state;
-
-                return true;
-            }
-
-            /* Otherwise commit like normal. */
-            pCommit->mapStates[hashRegister] = state;
-
-            return true;
-        }
-        else if(nFlags == TAO::Ledger::FLAGS::MINER)
-        {
-            LOCK(MEMORY_MUTEX);
-
-            /* Check for memory mode. */
-            if(pMiner)
-                pMiner->mapStates[hashRegister] = state;
-
-            return true;
-        }
-        else if(nFlags == TAO::Ledger::FLAGS::BLOCK)
+        /* Check for block to delete memory state. */
+        if(nFlags == TAO::Ledger::FLAGS::BLOCK)
         {
             LOCK(MEMORY_MUTEX);
 
@@ -312,6 +284,47 @@ namespace LLD
     /* Index a genesis to a register address. */
     bool RegisterDB::ReadTrust(const uint256_t& hashGenesis, TAO::Register::State& state)
     {
+        /* Get trust account address for contract caller */
+        uint256_t hashRegister =
+            TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
+
+        /* Memory mode for pre-database commits. */
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        {
+            LOCK(MEMORY_MUTEX);
+
+            /* Check for a memory transaction first */
+            if(pMemory && pMemory->mapStates.count(hashRegister))
+            {
+                /* Get the state from temporary transaction. */
+                state = pMemory->mapStates[hashRegister];
+
+                return true;
+            }
+
+            /* Check for state in memory map. */
+            if(pCommit->mapStates.count(hashRegister))
+            {
+                /* Get the state from commited memory. */
+                state = pCommit->mapStates[hashRegister];
+
+                return true;
+            }
+        }
+        else if(nFlags == TAO::Ledger::FLAGS::MINER)
+        {
+            LOCK(MEMORY_MUTEX);
+
+            /* Check for a memory transaction first */
+            if(pMiner && pMiner->mapStates.count(hashRegister))
+            {
+                /* Get the state from temporary transaction. */
+                state = pMiner->mapStates[hashRegister];
+
+                return true;
+            }
+        }
+
         return Read(std::make_pair(std::string("genesis"), hashGenesis), state);
     }
 
@@ -319,6 +332,46 @@ namespace LLD
     /* Erase a genesis from a register address. */
     bool RegisterDB::EraseTrust(const uint256_t& hashGenesis)
     {
+        /* Get trust account address for contract caller */
+        uint256_t hashRegister =
+            TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
+
+        /* Check for memory transaction. */
+        if(pMemory && nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        {
+            /* Check for available states. */
+            bool fExists = false;
+            if(pMemory->mapStates.count(hashRegister))
+            {
+                /* Erase state out of transaction. */
+                pMemory->mapStates.erase(hashRegister);
+
+                fExists = true;
+            }
+
+            /* Check that value exists to erase. */
+            if(pCommit->mapStates.count(hashRegister))
+            {
+                /* Set data to be in erase queue. */
+                pMemory->setErase.insert(hashRegister);
+
+                fExists = true;
+            }
+
+            return fExists;
+        }
+
+        /* Check for state in memory map. */
+        if(pCommit->mapStates.count(hashRegister))
+        {
+            /* Erase the states. */
+            pCommit->mapStates.erase(hashRegister);
+
+            /* If in memory only mode, break early. */
+            if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+                return true;
+        }
+
         return Erase(std::make_pair(std::string("genesis"), hashGenesis));
     }
 
