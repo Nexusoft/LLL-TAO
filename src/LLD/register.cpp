@@ -98,11 +98,56 @@ namespace LLD
             }
         }
 
-        /* Check for trust and index for sequential reads. */
-        if(hashRegister.GetType() == TAO::Register::Address::TRUST)
-            return Write(std::make_pair(std::string("state"), hashRegister), state, "trust");
+        /* Add sequential read keys for known address types. */
+        std::string strType = "NONE";
+        switch(hashRegister.GetType())
+        {
+            case TAO::Register::Address::ACCOUNT :
+                strType = "account";
+                break;
 
-        return Write(std::make_pair(std::string("state"), hashRegister), state);
+            case TAO::Register::Address::APPEND :
+                strType = "append";
+                break;
+
+            case TAO::Register::Address::CRYPTO :
+                strType = "crypto";
+                break;
+
+            case TAO::Register::Address::NAME :
+                strType = "name";
+                break;
+
+            case TAO::Register::Address::NAMESPACE :
+                strType = "namespace";
+                break;
+
+            case TAO::Register::Address::OBJECT :
+                strType = "object";
+                break;
+
+            case TAO::Register::Address::RAW :
+                strType = "raw";
+                break;
+
+            case TAO::Register::Address::READONLY :
+                strType = "readonly";
+                break;
+
+            case TAO::Register::Address::TOKEN :
+                strType = "token";
+                break;
+
+            case TAO::Register::Address::TRUST :
+                strType = "trust";
+                break;
+
+            default :
+                strType = "NONE";
+        }
+
+        /* Write the state to the register database */
+        return Write(std::make_pair(std::string("state"), hashRegister), state, strType);
     }
 
 
