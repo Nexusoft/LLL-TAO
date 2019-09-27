@@ -157,23 +157,11 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
         //generate the prestates and poststates (trust w/o genesis should fail)
         REQUIRE_FALSE(tx.Build());
 
-        //check register values
-        {
-            //check trust not indexed
-            REQUIRE_FALSE(LLD::Register->HasTrust(hashGenesis));
+        //check trust indexed
+        REQUIRE_FALSE(LLD::Register->HasTrust(hashGenesis));
 
-            TAO::Register::Object trust;
-            REQUIRE(LLD::Register->ReadState(hashTrust, trust));
-
-            //parse register
-            REQUIRE(trust.Parse());
-
-            //check values
-            REQUIRE(trust.get<uint64_t>("balance") == 5000);
-            REQUIRE(trust.get<uint64_t>("trust")   == 0);
-            REQUIRE(trust.get<uint64_t>("stake")   == 0);
-            REQUIRE(trust.get<uint256_t>("token")  == 0);
-        }
+        TAO::Register::Object trust;
+        REQUIRE_FALSE(LLD::Register->ReadTrust(hashGenesis, trust));
     }
 
 
@@ -217,6 +205,25 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             REQUIRE(trust.get<uint64_t>("stake")   == 5000);
             REQUIRE(trust.get<uint256_t>("token")  == 0);
         }
+
+
+        //check register values
+        {
+            uint256_t hashAddress =
+                TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
+
+            TAO::Register::Object trust;
+            REQUIRE(LLD::Register->ReadState(hashAddress, trust));
+
+            //parse register
+            REQUIRE(trust.Parse());
+
+            //check values
+            REQUIRE(trust.get<uint64_t>("balance") == 5);
+            REQUIRE(trust.get<uint64_t>("trust")   == 0);
+            REQUIRE(trust.get<uint64_t>("stake")   == 5000);
+            REQUIRE(trust.get<uint256_t>("token")  == 0);
+        }
     }
 
 
@@ -234,13 +241,32 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
         //generate the prestates and poststates
         REQUIRE_FALSE(tx.Build());
 
-        //check register values
+        //check register values with indexed trust
         {
             //check trust indexed
             REQUIRE(LLD::Register->HasTrust(hashGenesis));
 
             TAO::Register::Object trust;
             REQUIRE(LLD::Register->ReadTrust(hashGenesis, trust));
+
+            //parse register
+            REQUIRE(trust.Parse());
+
+            //check values
+            REQUIRE(trust.get<uint64_t>("balance") == 5);
+            REQUIRE(trust.get<uint64_t>("trust")   == 0);
+            REQUIRE(trust.get<uint64_t>("stake")   == 5000);
+            REQUIRE(trust.get<uint256_t>("token")  == 0);
+        }
+
+
+        //check register values with raw state address
+        {
+            uint256_t hashAddress =
+                TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
+
+            TAO::Register::Object trust;
+            REQUIRE(LLD::Register->ReadState(hashAddress, trust));
 
             //parse register
             REQUIRE(trust.Parse());
@@ -291,6 +317,26 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             REQUIRE(trust.get<uint64_t>("stake")   == 5000);
             REQUIRE(trust.get<uint256_t>("token")  == 0);
         }
+
+
+        //check register values
+        {
+            /* Get trust account address for contract caller */
+            uint256_t hashAddress =
+                TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
+
+            TAO::Register::Object trust;
+            REQUIRE(LLD::Register->ReadState(hashAddress, trust));
+
+            //parse register
+            REQUIRE(trust.Parse());
+
+            //check values
+            REQUIRE(trust.get<uint64_t>("balance") == 11);
+            REQUIRE(trust.get<uint64_t>("trust")   == 720);
+            REQUIRE(trust.get<uint64_t>("stake")   == 5000);
+            REQUIRE(trust.get<uint256_t>("token")  == 0);
+        }
     }
 
 
@@ -321,6 +367,26 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
         {
             TAO::Register::Object trust;
             REQUIRE(LLD::Register->ReadTrust(hashGenesis, trust));
+
+            //parse register
+            REQUIRE(trust.Parse());
+
+            //check values
+            REQUIRE(trust.get<uint64_t>("balance") == 18);
+            REQUIRE(trust.get<uint64_t>("trust")   == 2000);
+            REQUIRE(trust.get<uint64_t>("stake")   == 5000);
+            REQUIRE(trust.get<uint256_t>("token")  == 0);
+        }
+
+
+        //check register values
+        {
+            /* Get trust account address for contract caller */
+            uint256_t hashAddress =
+                TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
+
+            TAO::Register::Object trust;
+            REQUIRE(LLD::Register->ReadState(hashAddress, trust));
 
             //parse register
             REQUIRE(trust.Parse());
@@ -362,6 +428,26 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             REQUIRE(trust.get<uint64_t>("stake")   == 5000);
             REQUIRE(trust.get<uint256_t>("token")  == 0);
         }
+
+
+        //check register values
+        {
+            /* Get trust account address for contract caller */
+            uint256_t hashAddress =
+                TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
+
+            TAO::Register::Object trust;
+            REQUIRE(LLD::Register->ReadState(hashAddress, trust));
+
+            //parse register
+            REQUIRE(trust.Parse());
+
+            //check values
+            REQUIRE(trust.get<uint64_t>("balance") == 18);
+            REQUIRE(trust.get<uint64_t>("trust")   == 2000);
+            REQUIRE(trust.get<uint64_t>("stake")   == 5000);
+            REQUIRE(trust.get<uint256_t>("token")  == 0);
+        }
     }
 
 
@@ -383,6 +469,26 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
         {
             TAO::Register::Object trust;
             REQUIRE(LLD::Register->ReadTrust(hashGenesis, trust));
+
+            //parse register
+            REQUIRE(trust.Parse());
+
+            //check values
+            REQUIRE(trust.get<uint64_t>("balance") == 18);
+            REQUIRE(trust.get<uint64_t>("trust")   == 2000);
+            REQUIRE(trust.get<uint64_t>("stake")   == 5000);
+            REQUIRE(trust.get<uint256_t>("token")  == 0);
+        }
+
+
+        //check register values
+        {
+            /* Get trust account address for contract caller */
+            uint256_t hashAddress =
+                TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
+
+            TAO::Register::Object trust;
+            REQUIRE(LLD::Register->ReadState(hashAddress, trust));
 
             //parse register
             REQUIRE(trust.Parse());
@@ -430,6 +536,26 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             REQUIRE(trust.get<uint64_t>("stake")   == 3000);
             REQUIRE(trust.get<uint256_t>("token")  == 0);
         }
+
+
+        //check register values
+        {
+            /* Get trust account address for contract caller */
+            uint256_t hashAddress =
+                TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
+
+            TAO::Register::Object trust;
+            REQUIRE(LLD::Register->ReadState(hashAddress, trust));
+
+            //parse register
+            REQUIRE(trust.Parse());
+
+            //check values
+            REQUIRE(trust.get<uint64_t>("balance") == 2023);
+            REQUIRE(trust.get<uint64_t>("trust")   == 1200);
+            REQUIRE(trust.get<uint64_t>("stake")   == 3000);
+            REQUIRE(trust.get<uint256_t>("token")  == 0);
+        }
     }
 
 
@@ -457,6 +583,26 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
         {
             TAO::Register::Object trust;
             REQUIRE(LLD::Register->ReadTrust(hashGenesis, trust));
+
+            //parse register
+            REQUIRE(trust.Parse());
+
+            //check values
+            REQUIRE(trust.get<uint64_t>("balance") == 2009);
+            REQUIRE(trust.get<uint64_t>("trust")   == 2200);
+            REQUIRE(trust.get<uint64_t>("stake")   == 3020);
+            REQUIRE(trust.get<uint256_t>("token")  == 0);
+        }
+
+
+        //check register values
+        {
+            /* Get trust account address for contract caller */
+            uint256_t hashAddress =
+                TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
+
+            TAO::Register::Object trust;
+            REQUIRE(LLD::Register->ReadState(hashAddress, trust));
 
             //parse register
             REQUIRE(trust.Parse());
@@ -497,6 +643,26 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
         {
             TAO::Register::Object trust;
             REQUIRE(LLD::Register->ReadTrust(hashGenesis, trust));
+
+            //parse register
+            REQUIRE(trust.Parse());
+
+            //check values
+            REQUIRE(trust.get<uint64_t>("balance") == 2016);
+            REQUIRE(trust.get<uint64_t>("trust")   == 3000);
+            REQUIRE(trust.get<uint64_t>("stake")   == 3020);
+            REQUIRE(trust.get<uint256_t>("token")  == 0);
+        }
+
+
+        //check register values
+        {
+            /* Get trust account address for contract caller */
+            uint256_t hashAddress =
+                TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
+
+            TAO::Register::Object trust;
+            REQUIRE(LLD::Register->ReadState(hashAddress, trust));
 
             //parse register
             REQUIRE(trust.Parse());
