@@ -427,8 +427,8 @@ namespace TAO
                     return debug::error(FUNCTION, "prev transaction incorrect sequence");
 
                 /* Check timestamp to previous transaction. */
-                //if(nTimestamp < txPrev.nTimestamp)
-                //    return debug::error(FUNCTION, "timestamp too far in the past ", txPrev.nTimestamp - nTimestamp);
+                if(nTimestamp < txPrev.nTimestamp)
+                    return debug::error(FUNCTION, "timestamp too far in the past ", txPrev.nTimestamp - nTimestamp);
 
                 /* Check the previous next hash that is being claimed. */
                 bool fRecovery = false;
