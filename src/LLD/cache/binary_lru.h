@@ -22,6 +22,8 @@ ________________________________________________________________________________
 //TODO: Abstract base class for all cache systems
 namespace LLD
 {
+    class SectorKey;
+
 
     /** BinaryNode
      *
@@ -123,6 +125,16 @@ namespace LLD
          *
          *  Find a bucket for cache key management.
          *
+         *  @param[in] key The sector key to find bucket for.
+         *
+         **/
+        uint32_t Bucket(const SectorKey& key) const;
+
+
+        /** Bucket
+         *
+         *  Find a bucket for cache key management.
+         *
          *  @param[in] vKey The key to get bucket for.
          *
          **/
@@ -193,7 +205,7 @@ namespace LLD
          *  @param[in] fReserve Flag for if item should be saved from cache eviction.
          *
          **/
-        void Put(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vData, bool fReserve = false);
+        void Put(const SectorKey& key, const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vData, bool fReserve = false);
 
 
         /** Reserve

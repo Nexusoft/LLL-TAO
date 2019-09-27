@@ -11,6 +11,7 @@
 ____________________________________________________________________________________________*/
 
 #include <LLD/cache/binary_lru.h>
+#include <LLD/templates/key.h>
 #include <LLD/hash/xxh3.h>
 
 #include <Util/include/mutex.h>
@@ -111,6 +112,16 @@ namespace LLD
     }
 
 
+    /* Find a bucket for cache key management. */
+    uint32_t BinaryLRU::Bucket(const SectorKey& key) const
+    {
+        /* Get the bucket. */
+        uint64_t nBucket = key.nSectorFile * key.nSectorStart;
+
+        return static_cast<uint32_t>(nBucket % static_cast<uint64_t>(MAX_CACHE_BUCKETS));
+    }
+
+
     /*  Find a bucket for cache key management. */
     uint32_t BinaryLRU::Bucket(const std::vector<uint8_t>& vKey) const
     {
@@ -124,10 +135,7 @@ namespace LLD
     /*  Find a bucket for checksum key management. */
     uint32_t BinaryLRU::Bucket(const uint64_t nChecksum) const
     {
-        /* Get an xxHash. */
-        uint64_t nBucket = XXH64((uint8_t*)&nChecksum, 8, 0);
-
-        return static_cast<uint32_t>(nBucket % static_cast<uint64_t>(MAX_CACHE_BUCKETS));
+        return static_cast<uint32_t>(nChecksum % static_cast<uint64_t>(MAX_CACHE_BUCKETS));
     }
 
 
@@ -144,10 +152,6 @@ namespace LLD
         /* Check if the Record Exists. */
         const BinaryNode* pthis = hashmap[Bucket(nChecksum)];
         if(pthis == nullptr)
-            return false;
-
-        /* Check the data is expected. */
-        if(pthis->Checksum() != nChecksum)
             return false;
 
         /* Check the data is expected. */
@@ -251,10 +255,6 @@ namespace LLD
             return false;
         }
 
-        /* Check the data is expected. */
-        if(pthis->Checksum() != nChecksum)
-            return false;
-
         /* Check the keys are correct. */
         if(pthis->hashKey != XXH64(&vKey[0], vKey.size(), 0))
             return false;
@@ -270,17 +270,13 @@ namespace LLD
 
 
     /*  Add data in the Pool. */
-    void BinaryLRU::Put(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vData, bool fReserve)
+    void BinaryLRU::Put(const SectorKey& key, const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vData, bool fReserve)
     {
         LOCK(MUTEX);
 
         /* Check for empty slot. */
         uint32_t nChecksumBucket = Bucket(vKey);
         uint64_t nChecksum       = checksums[nChecksumBucket];
-
-        /* Check the checksums. */
-        if(nChecksum == Checksum(vData))
-            return;
 
         /* Get the binary node. */
         if(nChecksum != 0)
@@ -311,7 +307,7 @@ namespace LLD
 
         /* Create a new cache node. */
         BinaryNode* pnew = new BinaryNode(vKey, vData);
-        nChecksum = pnew->Checksum();
+        nChecksum = (key.nSectorFile * key.nSectorStart);
 
         /* Get the bucket. */
         uint32_t nBucket    = Bucket(nChecksum);

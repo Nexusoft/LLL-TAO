@@ -89,7 +89,7 @@ namespace TAO
                 tx.hashGenesis = txPrev.hashGenesis;
                 tx.hashPrevTx  = txPrev.GetHash();
                 tx.nKeyType    = txPrev.nNextType;
-                tx.nTimestamp  = std::max(runtime::unifiedtimestamp(), txPrev.nTimestamp);
+                tx.nTimestamp  = std::max(runtime::unifiedtimestamp(), txPrev.nTimestamp + 1);
             }
 
             /* Get the last transaction. */
@@ -104,7 +104,7 @@ namespace TAO
                 tx.hashGenesis = txPrev.hashGenesis;
                 tx.hashPrevTx  = hashLast;
                 tx.nKeyType    = txPrev.nNextType;
-                tx.nTimestamp  = std::max(runtime::unifiedtimestamp(), txPrev.nTimestamp);
+                tx.nTimestamp  = std::max(runtime::unifiedtimestamp(), txPrev.nTimestamp + 1);
             }
 
             /* Genesis Transaction. */
@@ -483,9 +483,9 @@ namespace TAO
                    set the timstamp to be last block time + 1, in case there is a long gap between blocks, as there is a consensus
                    rule that the producer timestamp cannot be more than 3600 seconds before the current block time. */
                 if(ChainState::stateBest.load().GetBlockTime() + 1 > runtime::unifiedtimestamp())
-                    block.producer.nTimestamp = ChainState::stateBest.load().GetBlockTime() + 1;
+                    block.producer.nTimestamp = std::max(block.producer.nTimestamp, ChainState::stateBest.load().GetBlockTime() + 1);
                 else
-                    block.producer.nTimestamp = runtime::unifiedtimestamp();
+                    block.producer.nTimestamp = std::max(block.producer.nTimestamp, runtime::unifiedtimestamp());
 
                 /* Sign the producer transaction. */
                 block.producer.Sign(user->Generate(block.producer.nSequence, pin));
@@ -527,7 +527,7 @@ namespace TAO
                 return debug::error(FUNCTION, "failed to create producer transactions");
 
             /* Set the Coinstake timestamp. */
-            block.producer.nTimestamp = stateBest.GetBlockTime() + 1;
+            block.producer.nTimestamp = std::max(block.producer.nTimestamp, stateBest.GetBlockTime() + 1);
 
             /* The remainder of Coinstake producer not configured here. Stake minter must handle it. */
 
