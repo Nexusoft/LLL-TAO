@@ -287,9 +287,17 @@ namespace TAO
                         State state;
                         contract >>= state;
 
-                        /* Write the register prestate to database. */
-                        if(!LLD::Register->WriteTrust(contract.Caller(), state))
+                        /* Get trust account address for state owner */
+                        uint256_t hashAddress =
+                            TAO::Register::Address(std::string("trust"), state.hashOwner, TAO::Register::Address::TRUST);
+
+                        /* Write the register prestate to the database. */
+                        if(!LLD::Register->WriteState(hashAddress, state, nFlags))
                             return debug::error(FUNCTION, "OP::TRUST: failed to rollback to pre-state");
+
+                        // /* Write the register prestate to database. */
+                        // if(!LLD::Register->WriteTrust(contract.Caller(), state))
+                        //     return debug::error(FUNCTION, "OP::TRUST: failed to rollback to pre-state");
 
                         break;
                     }
