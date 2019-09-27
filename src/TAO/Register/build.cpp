@@ -389,9 +389,9 @@ namespace TAO
                     /* Coinstake operation. Requires an account. */
                     case TAO::Operation::OP::GENESIS:
                     {
-                        /* Get register address for genesis. */
-                        uint256_t hashAddress = 0;
-                        contract >> hashAddress;
+                        /* Get trust account address for contract caller */
+                        uint256_t hashAddress =
+                            TAO::Register::Address(std::string("trust"), contract.Caller(), TAO::Register::Address::TRUST);
 
                         /* Get the stake reward. */
                         uint64_t nReward = 0;

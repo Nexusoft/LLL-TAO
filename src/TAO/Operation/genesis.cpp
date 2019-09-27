@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/include/reserved.h>
+#include <TAO/Register/types/address.h>
 #include <TAO/Register/types/object.h>
 
 /* Global TAO namespace. */
@@ -28,8 +29,13 @@ namespace TAO
     {
 
         /* Commit the final state to disk. */
-        bool Genesis::Commit(const TAO::Register::State& state, const uint256_t& hashAddress, const uint8_t nFlags)
+        bool Genesis::Commit(const TAO::Register::State& state, const uint8_t nFlags)
         {
+
+            /* Get trust account address for state owner */
+            uint256_t hashAddress =
+                TAO::Register::Address(std::string("trust"), state.hashOwner, TAO::Register::Address::TRUST);
+
             /* Check that a trust register exists. */
             if(LLD::Register->HasTrust(state.hashOwner))
                 return debug::error(FUNCTION, "cannot create genesis when already exists");
@@ -109,14 +115,6 @@ namespace TAO
             if(OP != OP::GENESIS)
                 return debug::error(FUNCTION, "called with incorrect OP");
 
-            /* Extract the address from contract. */
-            TAO::Register::Address hashAddress;
-            contract >> hashAddress;
-
-            /* Check for reserved values. */
-            if(TAO::Register::Reserved(hashAddress))
-                return debug::error(FUNCTION, "cannot write to register with reserved address");
-
             /* Get the state byte. */
             uint8_t nState = 0; //RESERVED
             contract >>= nState;
@@ -136,9 +134,6 @@ namespace TAO
             /* Check ownership of register. */
             if(state.hashOwner != contract.Caller())
                 return debug::error(FUNCTION, "caller not authorized ", contract.Caller().SubString());
-
-            /* Rewind back to primitive byte. */
-            contract.Rewind(32, Contract::OPERATIONS);
 
             /* Reset register streams. */
             contract.Reset(Contract::REGISTERS);

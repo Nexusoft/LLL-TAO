@@ -536,7 +536,7 @@ namespace TAO
                         if(nState != TAO::Register::STATES::PRESTATE)
                             return debug::error(FUNCTION, "OP::TRUST: register pre-state doesn't exist");
 
-                        /* Read the register from database. */
+                        /* Read the register prestate. */
                         TAO::Register::Object object;
                         contract >>= object;
 
@@ -548,7 +548,7 @@ namespace TAO
                         nState = 0;
                         contract >>= nState;
 
-                        /* Check for pre-state. */
+                        /* Check for post-state. */
                         if(nState != TAO::Register::STATES::POSTSTATE)
                             return debug::error(FUNCTION, "OP::TRUST: register post-state doesn't exist");
 
@@ -583,10 +583,6 @@ namespace TAO
                         if(!Genesis::Verify(contract))
                             return false;
 
-                        /* Get last trust block. */
-                        uint256_t hashAddress = 0;
-                        contract >> hashAddress;
-
                         /* Get the stake reward. */
                         uint64_t nReward = 0;
                         contract >> nReward;
@@ -599,7 +595,7 @@ namespace TAO
                         if(nState != TAO::Register::STATES::PRESTATE)
                             return debug::error(FUNCTION, "OP::GENESIS: register pre-state doesn't exist");
 
-                        /* Read the register from database. */
+                        /* Read the register prestate. */
                         TAO::Register::Object object;
                         contract >>= object;
 
@@ -611,7 +607,7 @@ namespace TAO
                         nState = 0;
                         contract >>= nState;
 
-                        /* Check for pre-state. */
+                        /* Check for post-state. */
                         if(nState != TAO::Register::STATES::POSTSTATE)
                             return debug::error(FUNCTION, "OP::GENESIS: register post-state doesn't exist");
 
@@ -624,7 +620,7 @@ namespace TAO
                             return debug::error(FUNCTION, "OP::GENESIS: invalid register post-state");
 
                         /* Commit the register to disk. */
-                        if(!Genesis::Commit(object, hashAddress, nFlags))
+                        if(!Genesis::Commit(object, nFlags))
                             return false;
 
                         break;

@@ -176,7 +176,6 @@ namespace TAO
         {
 
             /* Reset saved trust account data */
-            hashAddress = 0;
             account = TAO::Register::Object();
 
             /*
@@ -212,11 +211,11 @@ namespace TAO
                 fGenesis = true;
 
                 /* Staking Genesis for trust account. Trust account is not indexed, need to use trust account address. */
-                TAO::Register::Address hashRegister = TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
+                uint256_t hashAddress = TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
 
                 /* Retrieve the trust account */
                 TAO::Register::Object reg;
-                if(!LLD::Register->ReadState(hashRegister, reg))
+                if(!LLD::Register->ReadState(hashAddress, reg))
                     return debug::error(FUNCTION, "Stake Minter unable to retrieve trust account for Genesis.");
 
                 /* Verify we have trust account register for the user account */
@@ -236,8 +235,7 @@ namespace TAO
                 if(reg.get<uint64_t>("trust") != 0)
                     return debug::error(FUNCTION, "Cannot create Genesis with already existing trust");
 
-                /* Found valid trust account register. Save for minter use. For Genesis, need hashAddress also. */
-                hashAddress = hashRegister;
+                /* Found valid trust account register. Save for minter use. */
                 account = reg;
             }
 
@@ -424,10 +422,10 @@ namespace TAO
                         debug::error(FUNCTION, "Stake Minter: Failed to remove stake change request");
                 }
 
-                /* Initialize block producer for Genesis operation with hashAddress of trust account register.
+                /* Initialize block producer for Genesis operation. Only need the operation
                  * The coinstake reward will be added based on time when block is found.
                  */
-                block.producer[0] << uint8_t(TAO::Operation::OP::GENESIS) << hashAddress;
+                block.producer[0] << uint8_t(TAO::Operation::OP::GENESIS);
 
             }
 
@@ -701,10 +699,7 @@ namespace TAO
             /* Add coinstake reward to producer */
             block.producer[0] << nReward;
 
-            /* Execute operation pre- and post-state.
-             *   - for OP::TRUST, the operation can obtain the trust account from block.producer.hashGenesis
-             *   - for OP::GENESIS, the hashAddress of the trust account register is encoded into the block producer
-             */
+            /* Execute operation pre- and post-state. */
             if(!block.producer.Build())
                 return debug::error(FUNCTION, "Coinstake transaction failed to build");
 

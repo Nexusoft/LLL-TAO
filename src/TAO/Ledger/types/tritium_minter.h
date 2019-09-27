@@ -149,10 +149,6 @@ namespace TAO
         static std::thread tritiumMinterThread;
 
 
-        /** Register address for the trust account. Only used for staking Genesis. **/
-        uint256_t hashAddress;
-
-
         /** Trust account to use for staking. **/
         TAO::Register::Object account;
 
@@ -187,8 +183,7 @@ namespace TAO
 
         /** Default constructor **/
         TritiumMinter()
-        : hashAddress(0)
-        , account()
+        : account()
         , stateLast()
         , fStakeChange(false)
         , stakeChange()

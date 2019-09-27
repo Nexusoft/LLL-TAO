@@ -298,10 +298,6 @@ namespace TAO
                     /* Coinstake operation. Requires an account. */
                     case TAO::Operation::OP::GENESIS:
                     {
-                        /* Get trust account register address. */
-                        uint256_t hashAddress = 0;
-                        contract >> hashAddress;
-
                         /* Seek to end. */
                         contract.Seek(8);
 
@@ -316,6 +312,10 @@ namespace TAO
                         /* Verify the register's prestate. */
                         State state;
                         contract >>= state;
+
+                        /* Get trust account addresses for owner (caller = hashOwner was verified by op, can use either) */
+                        uint256_t hashAddress =
+                            TAO::Register::Address(std::string("trust"), state.hashOwner, TAO::Register::Address::TRUST);
 
                         /* Write the register prestate to database. */
                         if(!LLD::Register->WriteState(hashAddress, state))
