@@ -297,8 +297,9 @@ namespace LLP
         if(MINING_SERVER && MINING_SERVER->GetConnectionCount() == 0)
             return debug::error(FUNCTION, "No active connections.");
 
-        /* Make sure the mining server has a connection. */
-        if(TRITIUM_SERVER && TRITIUM_SERVER->GetConnectionCount() == 0)
+        /* Make sure the mining server has a connection. (skip check if running local testnet) */
+        bool fLocalTestnet = config::fTestNet.load() && !config::GetBoolArg("-dns", true);
+        if(!fLocalTestnet && TRITIUM_SERVER && TRITIUM_SERVER->GetConnectionCount() == 0)
             return debug::error(FUNCTION, "No network connections.");
 
         /* No mining when synchronizing. */
