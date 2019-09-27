@@ -142,6 +142,10 @@ namespace TAO
                 if(tx.IsCoinBase() || tx.IsCoinStake())
                     continue;
 
+                /* Check to see if this transaction connects. */
+                if(!tx.Connect(FLAGS::MINER))
+                    continue;
+
                 /* Check for timestamp violations. */
                 if(tx.nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
                     continue;
