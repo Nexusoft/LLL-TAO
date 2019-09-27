@@ -237,10 +237,13 @@ namespace TAO
             {
                 case OP::CLAIM:
                 case OP::FEE:
+                case OP::COINBASE:
+                case OP::TRUST:
+                case OP::GENESIS:
                 {
                     /* This case is included for clarity as it is essentially a no-op. Claim contracts attract no
-                       transaction fee as the fee is essentially paid by the debit/transfer. Fee contracts should also not incur 
-                       a tx fee.*/
+                       transaction fee as the fee is essentially paid by the transfer. Fee, coinbase, genesis, and trust 
+                       contracts should also not incur a tx fee. */
                     nCost += 0;
                     break;
                 }
