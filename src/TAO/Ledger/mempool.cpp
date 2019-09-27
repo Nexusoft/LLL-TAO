@@ -430,7 +430,7 @@ namespace TAO
                 hashLast = vtx[0].GetHash();
 
                 /* Loop through transaction by genesis. */
-                for(uint32_t n = 1; n <= vtx.size(); ++n)
+                for(uint32_t n = 1; n < vtx.size(); ++n)
                 {
                     /* Check that transaction is in sequence. */
                     if(vtx[n].hashPrevTx != hashLast)
