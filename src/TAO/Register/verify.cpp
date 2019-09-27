@@ -339,6 +339,10 @@ namespace TAO
                     /* Coinstake operation. Requires an account. */
                     case TAO::Operation::OP::TRUST:
                     {
+                        /* For trust, resolve to trust address. */
+                        uint256_t hashRegister =
+                            TAO::Register::Address(std::string("trust"), contract.Caller(), TAO::Register::Address::TRUST);
+
                         /* Seek to scores. */
                         contract.Seek(64);
 
@@ -365,10 +369,6 @@ namespace TAO
                         /* Verify the register's prestate. */
                         State prestate;
                         contract >>= prestate;
-
-                        /* For trust, resolve to trust address. */
-                        TAO::Register::Address hashRegister =
-                            TAO::Register::Address(std::string("trust"), contract.Caller(), TAO::Register::Address::TRUST);
 
                         /* Check temporary memory states first. */
                         Object object;
