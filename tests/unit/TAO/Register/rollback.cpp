@@ -1326,6 +1326,18 @@ TEST_CASE( "Register Rollback Tests", "[register]")
                 REQUIRE(trust.get<uint64_t>("trust")   == 2000);
                 REQUIRE(trust.get<uint64_t>("stake")   == 5000);
                 REQUIRE(trust.get<uint256_t>("token")  == 0);
+
+                Object trust2;
+                REQUIRE(LLD::Register->ReadState(hashTrust, trust2));
+
+                //parse register
+                REQUIRE(trust2.Parse());
+
+                //check register
+                REQUIRE(trust2.get<uint64_t>("balance") == 16);
+                REQUIRE(trust2.get<uint64_t>("trust")   == 2000);
+                REQUIRE(trust2.get<uint64_t>("stake")   == 5000);
+                REQUIRE(trust2.get<uint256_t>("token")  == 0);
             }
         }
 

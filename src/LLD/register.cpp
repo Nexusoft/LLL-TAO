@@ -99,7 +99,7 @@ namespace LLD
         }
 
         /* Check for trust and index for sequential reads. */
-        if(hashRegister.GetType() == TAO::Register::OBJECTS::TRUST)
+        if(hashRegister.GetType() == TAO::Register::Address::TRUST)
             return Write(std::make_pair(std::string("state"), hashRegister), state, "trust");
 
         return Write(std::make_pair(std::string("state"), hashRegister), state);
