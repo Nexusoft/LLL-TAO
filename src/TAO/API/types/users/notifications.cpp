@@ -641,6 +641,9 @@ namespace TAO
                 /* LOOP: Get the current page. */
                 uint32_t nCurrentPage = nTotal / nLimit;
 
+                /* Increment the total number of notifications. */
+                ++nTotal;
+
                 /* Check the paged data. */
                 if(nCurrentPage < nPage)
                     continue;
@@ -717,8 +720,7 @@ namespace TAO
                 /* Add to return object. */
                 ret.push_back(obj);
 
-                /* Increment the total number of notifications. */
-                ++nTotal;
+                
             }
 
             /* Get the outstanding legacy transactions not yet credited. */
@@ -730,6 +732,9 @@ namespace TAO
             {
                 /* LOOP: Get the current page. */
                 uint32_t nCurrentPage = nTotal / nLimit;
+
+                /* Increment the total number of notifications. */
+                ++nTotal;
 
                 /* Check the paged data. */
                 if(nCurrentPage < nPage)
@@ -759,9 +764,6 @@ namespace TAO
 
                 /* Add to return object. */
                 ret.push_back(obj);
-
-                /* Increment the total number of notifications. */
-                ++nTotal;
             }
 
             return ret;

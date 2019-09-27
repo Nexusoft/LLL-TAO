@@ -249,7 +249,7 @@ Additionally the API supports passing a field name in the URL after the account 
 
 `name` : The name identifying the account.  For privacy purposes, this is only included in the response if the caller is the owner of the account
 
-`address` : The register address of the account.  The address is a hash based on the owners username and account name.
+`address` : The register address of the account.  
 
 `token` : This will always be set to 0 for NXS accounts.
 
@@ -316,7 +316,7 @@ This will list off all of the NXS accounts belonging to the currently logged in 
 
 `name` : The name identifying the account.  For privacy purposes, this is only included in the response if the caller is the owner of the account
 
-`address` : The register address of the account.  The address is a hash based on the owners username and account name.
+`address` : The register address of the account.  
 
 `token_name` : This will always be set to `NXS`.
 
@@ -496,7 +496,7 @@ This will retrieve account values and staking metrics for the trust account belo
 
 ### Return values:
 
-`address` : The register address of the trust account. The address is a hash based on the owners username and account name.
+`address` : The register address of the trust account. 
 
 `balance` : The current NXS balance of the trust account. This is general account balance that is not staked.
 
