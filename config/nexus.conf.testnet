@@ -6,7 +6,7 @@
 #
 
 #this value can be any integer value, to make it simple to create new testnets on the fly.
-testnet=16
+testnet=19
 
 #default RPC user/pass.  PLEASE CHANGE THESE TO SUITABLE VALUES
 rpcuser=username
