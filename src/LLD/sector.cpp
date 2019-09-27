@@ -199,7 +199,7 @@ namespace LLD
             }
 
             /* Add to cache */
-            cachePool->Put(vKey, vData);
+            cachePool->Put(cKey, vKey, vData);
 
             /* Verbose Debug Logging. */
             debug::log(5, FUNCTION, "Current File: ", cKey.nSectorFile,
@@ -281,7 +281,7 @@ namespace LLD
             return false;
 
         /* Write the data into the memory cache. */
-        cachePool->Put(vKey, vData, false);
+        cachePool->Put(key, vKey, vData, false);
 
         {
             LOCK(SECTOR_MUTEX);
@@ -333,9 +333,6 @@ namespace LLD
     {
         if(nFlags & FLAGS::APPEND || !Update(vKey, vData))
         {
-
-            /* Write the data into the memory cache. */
-            cachePool->Put(vKey, vData, false);
 
             {
                 LOCK(SECTOR_MUTEX);
@@ -400,6 +397,9 @@ namespace LLD
             if(!pSectorKeys->Put(key))
                 return debug::error(FUNCTION, "failed to write key to keychain");
 
+            /* Write the data into the memory cache. */
+            cachePool->Put(key, vKey, vData, false);
+
             /* Verboe output. */
             debug::log(5, FUNCTION, "Current File: ", key.nSectorFile,
                 " | Current File Size: ", key.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
@@ -413,9 +413,6 @@ namespace LLD
     template<class KeychainType, class CacheType>
     bool SectorDatabase<KeychainType, CacheType>::Put(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vData)
     {
-        /* Write the data into the memory cache. */
-        cachePool->Put(vKey, vData, !(nFlags & FLAGS::FORCE));
-
         /* Handle force write mode. */
         if(nFlags & FLAGS::FORCE)
             return Force(vKey, vData);
@@ -822,7 +819,7 @@ namespace LLD
     /* Explicity instantiate all template instances needed for compiler. */
     template class SectorDatabase<BinaryHashMap,  BinaryLRU>;
     //template class SectorDatabase<ShardHashMap,   BinaryLRU>;
-    template class SectorDatabase<BinaryHashMap,  BinaryLFU>;
+    //template class SectorDatabase<BinaryHashMap,  BinaryLFU>;
     //template class SectorDatabase<BinaryHashTree, BinaryLRU>;
 
 }

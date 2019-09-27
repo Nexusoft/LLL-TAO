@@ -194,19 +194,17 @@ int main(int argc, char** argv)
 
     uint1024_t hash = LLC::GetRand();
 
-    testDB->TxnBegin();
+
 
     debug::log(0, "Write Hash");
     debug::log(0, "Hash ", hash.Get64());
     testDB->WriteHash(hash);
 
-    debug::log(0, "Write Hash2");
-    debug::log(0, "Hash ", hash.Get64());
-    testDB->WriteHash2(hash, hash);
-
     debug::log(0, "Index Hash");
     if(!testDB->IndexHash(hash))
         return debug::error("failed to index");
+
+    testDB->TxnBegin();
 
     debug::log(0, "Read Hash");
     uint1024_t hashTest;
@@ -214,16 +212,19 @@ int main(int argc, char** argv)
 
     debug::log(0, "Hash ", hashTest.Get64());
 
-    debug::log(0, "Read Hash2");
-    uint1024_t hashTest2;
-    testDB->ReadHash2(hash, hashTest2);
-
-    debug::log(0, "Hash2 ", hashTest2.Get64());
-
     uint1024_t hashTest3 = hash + 1;
     testDB->WriteHash2(hash, hashTest3);
 
+    testDB->TxnCheckpoint();
     testDB->TxnCommit();
+
+    {
+        debug::log(0, "Read Hash");
+        uint1024_t hashTest4;
+        testDB->ReadHash2(hash, hashTest4);
+
+        debug::log(0, "Hash New ", hashTest4.Get64());
+    }
 
     {
         debug::log(0, "Read Hash");
@@ -279,34 +280,4 @@ int main(int argc, char** argv)
 
 
     return 0;
-}
-
-int main2(int argc, char** argv)
-{
-    std::vector<TAO::Register::Object> vAccounts;
-    if(LLD::Register->BatchRead("trust", vAccounts, 100000))
-    {
-        for(const auto& account : vAccounts)
-        {
-            DDOS.rSCORE += 20;
-            DDOS.cSCORE += 2;
-            TIMER.Reset();
-
-            debug::log(0, "rSCORE: ", DDOS.rSCORE.Score() );
-            debug::log(0, "cSCORE: ", DDOS.cSCORE.Score() );
-
-            if(DDOS.rSCORE.Score() > 10)
-                DDOS.Ban("rSCORE");
-
-            if(DDOS.cSCORE.Score() > 1)
-                DDOS.Ban("rSCORE");
-        }
-        else
-        {
-            runtime::sleep(100);
-        }
-
-    }
-    return 0;
-
 }

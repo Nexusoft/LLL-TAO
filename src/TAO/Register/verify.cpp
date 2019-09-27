@@ -381,7 +381,19 @@ namespace TAO
 
                         /* Check that the checksums match. */
                         if(prestate != object)
+                        {
+                            Object object1 = Object(object);
+                            object1.Parse();
+
+                            Object object2 = Object(prestate);
+                            object2.Parse();
+
+                            debug::log(0, FUNCTION, "Balance (dsk): ", object1.get<uint64_t>("balance"));
+                            debug::log(0, FUNCTION, "Balance (pre): ", object2.get<uint64_t>("balance"));
+
                             return debug::error(FUNCTION, "OP::TRUST: pre-state verification failed");
+                        }
+
 
                         /* Check contract account */
                         if(contract.Caller() != prestate.hashOwner)
