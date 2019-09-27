@@ -1,0 +1,50 @@
+#!/bin/tcsh
+#
+# start-apps
+#
+# This is a script to start the 5 Nexus apps in LLL-TAO/apps.
+#
+
+if (`basename $PWD` != "apps") then
+    echo "Need to be in directory LLL-TAO/apps"
+    exit(1)
+endif
+
+#
+# cookbook runs on port 1111 by default.
+#        
+pushd cookbook
+python cookbook.py &
+popd
+
+#
+# qrsc runs on port 2222 by default.
+#        
+pushd qrsc
+python qrsc.py &
+popd
+
+#
+# mmp runs on port 3333 by default.
+#        
+pushd mmp
+python mmp.py &
+popd
+
+#
+# edu runs on port 4444 by default.
+#        
+pushd edu
+python edu.py &
+popd
+    
+#
+# watermark runs on port 5555 by default.
+#        
+pushd watermark
+python watermark.py &
+popd
+
+exit(0)
+        
+        
