@@ -419,9 +419,6 @@ namespace TAO
                 if(!LLD::Ledger->ReadTx(hashPrevTx, txPrev, nFlags))
                     return debug::error(FUNCTION, "prev transaction not on disk");
 
-                /* Work out the whether transaction fees should apply based on the interval between transactions */
-                fApplyTxFee = nTimestamp - txPrev.nTimestamp < TX_FEE_INTERVAL;
-
                 /* Double check sequence numbers here. */
                 if(txPrev.nSequence + 1 != nSequence)
                     return debug::error(FUNCTION, "prev transaction incorrect sequence");
@@ -429,6 +426,9 @@ namespace TAO
                 /* Check timestamp to previous transaction. */
                 if(nTimestamp < txPrev.nTimestamp)
                     return debug::error(FUNCTION, "timestamp too far in the past ", txPrev.nTimestamp - nTimestamp);
+
+                /* Work out the whether transaction fees should apply based on the interval between transactions */
+                fApplyTxFee = ((nTimestamp - txPrev.nTimestamp) < TX_FEE_INTERVAL);
 
                 /* Check the previous next hash that is being claimed. */
                 bool fRecovery = false;
