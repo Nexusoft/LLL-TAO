@@ -180,15 +180,15 @@ namespace LLD
     void TxnBegin(const uint8_t nFlags)
     {
         /* Handle memory commits if in memory m ode. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::MINER)
         {
             /* Start the register DB transacdtion. */
             if(Register)
-                Register->MemoryBegin();
+                Register->MemoryBegin(nFlags);
 
             /* Start the ledger DB transaction. */
             if(Ledger)
-                Ledger->MemoryBegin();
+                Ledger->MemoryBegin(nFlags);
 
             return;
         }
@@ -219,15 +219,15 @@ namespace LLD
     void TxnAbort(const uint8_t nFlags)
     {
         /* Handle memory commits if in memory m ode. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::MINER)
         {
             /* Start the register DB transacdtion. */
             if(Register)
-                Register->MemoryRelease();
+                Register->MemoryRelease(nFlags);
 
             /* Start the ledger DB transaction. */
             if(Ledger)
-                Ledger->MemoryRelease();
+                Ledger->MemoryRelease(nFlags);
 
             return;
         }

@@ -363,7 +363,7 @@ namespace TAO
                             object = TAO::Register::Object(mapStates[hashAddress]);
 
                         /* Read the register from database. */
-                        else if(!LLD::Register->ReadState(hashAddress, object))
+                        else if(!LLD::Register->ReadState(hashAddress, object, nFlags))
                             return debug::error(FUNCTION, "OP::TRUST: register pre-state doesn't exist");
 
                         /* Serialize the pre-state into contract. */
@@ -389,9 +389,9 @@ namespace TAO
                     /* Coinstake operation. Requires an account. */
                     case TAO::Operation::OP::GENESIS:
                     {
-                        /* Get trust account address for contract caller */
-                        uint256_t hashAddress =
-                            TAO::Register::Address(std::string("trust"), contract.Caller(), TAO::Register::Address::TRUST);
+                        /* Get register address for genesis. */
+                        uint256_t hashAddress = 0;
+                        contract >> hashAddress;
 
                         /* Get the stake reward. */
                         uint64_t nReward = 0;

@@ -125,6 +125,11 @@ namespace TAO
             std::vector<uint512_t> vMempool;
             mempool.List(vMempool);
 
+            /* Start a ACID transaction (to be disposed). */
+            LLD::TxnBegin(FLAGS::MINER);
+
+            debug::log(0, "BEGIN-------------------------------------");
+
             /* Loop through the list of transactions. */
             uint256_t hashGenesis = 0;
             for(const auto& hash : vMempool)
@@ -142,13 +147,22 @@ namespace TAO
                 if(tx.IsCoinBase() || tx.IsCoinStake())
                     continue;
 
-                /* Check to see if this transaction connects. */
-                if(!tx.Connect(FLAGS::MINER))
-                    continue;
+                //TODO: if any of these fail and it is our producer, we need to fail the entire block, or
+                //work on a prune option. Bad transctions should not be in here
 
                 /* Check for timestamp violations. */
                 if(tx.nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
                     continue;
+
+                /* Check the pre-states and post-states. */
+                //if(!tx.Verify(FLAGS::MINER))
+                //    continue;
+
+                /* Check to see if this transaction connects. */
+                if(!tx.Connect(FLAGS::MINER))
+                    continue;
+
+                tx.print();
 
                 /* Add the transaction to the block. */
                 block.vtx.push_back(std::make_pair(TRANSACTION::TRITIUM, hash));
@@ -156,6 +170,11 @@ namespace TAO
                 /* Set the last genesis used. */
                 hashGenesis = tx.hashGenesis;
             }
+
+            debug::log(0, "END-------------------------------------");
+
+            /* Abort the temporary ACID transaction. */
+            LLD::TxnAbort(FLAGS::MINER);
 
             /* Clear for legacy. */
             vMempool.clear();
@@ -232,6 +251,9 @@ namespace TAO
             const uint32_t nChannel, TAO::Ledger::TritiumBlock& block, const uint64_t nExtraNonce,
             Legacy::Coinbase *pCoinbaseRecipients)
         {
+            /* Lock this user's sigchain. */
+            LOCK(TAO::API::users->CREATE_MUTEX);
+
             /* Only allow prime, hash, and private channels. */
             if (nChannel < 1 || nChannel > 3)
                 return debug::error(FUNCTION, "Invalid channel: ", nChannel);
@@ -358,8 +380,6 @@ namespace TAO
             }
             else //block not cached, set up new block
             {
-                LOCK(TAO::API::users->CREATE_MUTEX);
-
                 /* Cache the best chain before processing. */
                 const TAO::Ledger::BlockState stateBest = ChainState::stateBest.load();
 
@@ -508,7 +528,10 @@ namespace TAO
         bool CreateStakeBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin,
                               TAO::Ledger::TritiumBlock& block, const uint64_t isGenesis)
         {
+            /* Lock this user's sigchain. */
+            LOCK(TAO::API::users->CREATE_MUTEX);
 
+            /* Proof of stake has channel-id of 0. */
             const uint32_t nChannel = 0;
 
             /* Set the block to null. */
@@ -526,10 +549,15 @@ namespace TAO
             if(!CreateTransaction(user, pin, block.producer))
                 return debug::error(FUNCTION, "failed to create producer transactions");
 
-            /* Set the Coinstake timestamp. */
-            block.producer.nTimestamp = std::max(block.producer.nTimestamp, stateBest.GetBlockTime() + 1);
+            /* Update the producer timestamp, making sure it is not earlier than the previous block.  However we can't simply
+               set the timstamp to be last block time + 1, in case there is a long gap between blocks, as there is a consensus
+               rule that the producer timestamp cannot be more than 3600 seconds before the current block time. */
+            if(ChainState::stateBest.load().GetBlockTime() + 1 > runtime::unifiedtimestamp())
+                block.producer.nTimestamp = std::max(block.producer.nTimestamp, ChainState::stateBest.load().GetBlockTime() + 1);
+            else
+                block.producer.nTimestamp = std::max(block.producer.nTimestamp, runtime::unifiedtimestamp());
 
-            /* The remainder of Coinstake producer not configured here. Stake minter must handle it. */
+            /* NOTE: The remainder of Coinstake producer not configured here. Stake minter must handle it. */
 
             /* Populate the block metadata */
             AddBlockData(stateBest, nChannel, block);

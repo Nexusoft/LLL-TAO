@@ -190,6 +190,12 @@ public:
 int main(int argc, char** argv)
 {
 
+    uint64_t nTest = 555;
+
+    nTest = std::max(nTest, uint64_t(888));
+
+    debug::log(0, "Test ", nTest);
+
     TestDB* testDB = new TestDB();
 
     uint1024_t hash = LLC::GetRand();

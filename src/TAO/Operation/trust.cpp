@@ -38,15 +38,15 @@ namespace TAO
                 return debug::error(FUNCTION, "trust account not indexed");
 
             /* Write the register to the database. */
-            //if(!LLD::Register->WriteState(hashAddress, state, nFlags))
-            //    return debug::error(FUNCTION, "failed to write new state");
+            if(nFlags == TAO::Ledger::FLAGS::BLOCK && !LLD::Register->WriteState(hashAddress, state, nFlags))
+                return debug::error(FUNCTION, "failed to write new state");
 
-            /* Attempt to write to disk.
-             * This should never be executed from mempool because Trust should be in producer, but
-             * check the nFlags as a precaution
-             */
-            if(nFlags == TAO::Ledger::FLAGS::BLOCK && !LLD::Register->WriteTrust(state.hashOwner, state))
-                return debug::error(FUNCTION, "failed to write post-state to disk");
+            //  /* Attempt to write to disk.
+            //  * This should never be executed from mempool because Trust should be in producer, but
+            //  * check the nFlags as a precaution
+            //  */
+            // if(nFlags == TAO::Ledger::FLAGS::BLOCK && !LLD::Register->WriteTrust(state.hashOwner, state))
+            //     return debug::error(FUNCTION, "failed to write post-state to disk");
 
             return true;
         }

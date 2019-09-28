@@ -388,12 +388,8 @@ namespace TAO
                 /* Check last hash for valid transactions. */
                 if(!vtx[0].IsFirst())
                 {
-                    /* Read last index from disk. */
-                    if(!LLD::Ledger->ReadLast(list.first, hashLast))
-                        continue;
-
                     /* Check the last hash. */
-                    if(vtx[0].hashPrevTx != hashLast)
+                    if(!LLD::Ledger->ReadLast(list.first, hashLast) || vtx[0].hashPrevTx != hashLast)
                     {
                         /* Debug information. */
                         debug::error(FUNCTION, "ROOT ORPHAN: last hash mismatch ", vtx[0].hashPrevTx.SubString());
@@ -413,14 +409,13 @@ namespace TAO
                             }
 
                             debug::log(2, FUNCTION, "REMOVED: ", vtx[i].GetHash().SubString());
+
+                            /* Remove from mempool. */
+                            Remove(vtx[i].GetHash());
                         }
 
                         /* Commit the memory transaction. */
                         LLD::TxnCommit(FLAGS::MEMPOOL);
-
-                        /* Remove all transactions after commited to memory. */
-                        for(const auto& tx : vtx)
-                            Remove(tx.GetHash());
 
                         break;
                     }
@@ -511,45 +506,14 @@ namespace TAO
 
                     /* Sort the list by sequence numbers. */
                     std::sort(vTx.begin(), vTx.end());
-
-                    /* Add the hashes into list. */
-                    uint512_t hashLast = 0;
-
-                    /* Check last hash for valid transactions. */
-                    if(!vTx[0].IsFirst())
+                    for(const auto& tx : vTx)
                     {
-                        /* Read last index from disk. */
-                        if(!LLD::Ledger->ReadLast(list.first, hashLast))
-                            return debug::error(FUNCTION, "failed to read the last index");
-
-                        /* Check the last hash. */
-                        if(vTx[0].hashPrevTx != hashLast)
-                            continue; //SKIP ANY ORPHANS FOUND
-                    }
-
-                    /* Set last from next transaction. */
-                    hashLast = vTx[0].GetHash();
-
-                    /* Loop through transaction by genesis. */
-                    for(uint32_t n = 1; n <= vTx.size(); ++n)
-                    {
-                        /* Add to the output queue. */
-                        vHashes.push_back(hashLast);
-
-                        /* Check for end of index. */
-                        if(n == vTx.size())
-                            break;
-
                         /* Check count. */
                         if(--nCount == 0)
                             return true;
 
-                        /* Check that transaction is in sequence. */
-                        if(vTx[n].hashPrevTx != hashLast)
-                            break; //SKIP ANY ORPHANS FOUND
-
-                        /* Set last hash. */
-                        hashLast = vTx[n].GetHash();
+                        /* Add to queue. */
+                        vHashes.push_back(tx.GetHash());
                     }
                 }
             }

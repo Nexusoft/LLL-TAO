@@ -55,11 +55,11 @@ namespace LLD
      *  memory to handle register state sequencing before blocks commit. */
     bool RegisterDB::WriteState(const uint256_t& hashRegister, const TAO::Register::State& state, const uint8_t nFlags)
     {
+        LOCK(MEMORY_MUTEX);
+
         /* Memory mode for pre-database commits. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
-            LOCK(MEMORY_MUTEX);
-
             /* Check for memory mode. */
             if(pMemory)
             {
@@ -76,8 +76,6 @@ namespace LLD
         }
         else if(nFlags == TAO::Ledger::FLAGS::MINER)
         {
-            LOCK(MEMORY_MUTEX);
-
             /* Check for memory mode. */
             if(pMiner)
                 pMiner->mapStates[hashRegister] = state;
@@ -86,8 +84,6 @@ namespace LLD
         }
         else if(nFlags == TAO::Ledger::FLAGS::BLOCK)
         {
-            LOCK(MEMORY_MUTEX);
-
             /* Remove the memory state if writing the disk state. */
             if(pCommit->mapStates.count(hashRegister))
             {
@@ -154,11 +150,11 @@ namespace LLD
     /* Read a state register from the register database. */
     bool RegisterDB::ReadState(const uint256_t& hashRegister, TAO::Register::State& state, const uint8_t nFlags)
     {
+        LOCK(MEMORY_MUTEX);
+
         /* Memory mode for pre-database commits. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
-            LOCK(MEMORY_MUTEX);
-
             /* Check for a memory transaction first */
             if(pMemory && pMemory->mapStates.count(hashRegister))
             {
@@ -179,8 +175,6 @@ namespace LLD
         }
         else if(nFlags == TAO::Ledger::FLAGS::MINER)
         {
-            LOCK(MEMORY_MUTEX);
-
             /* Check for a memory transaction first */
             if(pMiner && pMiner->mapStates.count(hashRegister))
             {
@@ -262,8 +256,36 @@ namespace LLD
         uint256_t hashRegister =
             TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
 
-        /* Check for block to delete memory state. */
-        if(nFlags == TAO::Ledger::FLAGS::BLOCK)
+        /* Memory mode for pre-database commits. */
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        {
+            LOCK(MEMORY_MUTEX);
+
+            /* Check for memory mode. */
+            if(pMemory)
+            {
+                /* Commit to transactional memory. */
+                pMemory->mapStates[hashRegister] = state;
+
+                return true;
+            }
+
+            /* Otherwise commit like normal. */
+            pCommit->mapStates[hashRegister] = state;
+
+            return true;
+        }
+        else if(nFlags == TAO::Ledger::FLAGS::MINER)
+        {
+            LOCK(MEMORY_MUTEX);
+
+            /* Check for memory mode. */
+            if(pMiner)
+                pMiner->mapStates[hashRegister] = state;
+
+            return true;
+        }
+        else if(nFlags == TAO::Ledger::FLAGS::BLOCK)
         {
             LOCK(MEMORY_MUTEX);
 

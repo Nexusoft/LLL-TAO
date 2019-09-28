@@ -503,7 +503,7 @@ namespace TAO
                     }
                 }
 
-                /* Skip contract execution when mining (for now) */
+                /* Don't check this if miner. */
                 if(nFlags != FLAGS::MINER)
                 {
                     /* Bind the contract to this transaction. */

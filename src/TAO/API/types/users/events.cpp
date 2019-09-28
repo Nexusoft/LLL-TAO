@@ -214,7 +214,7 @@ namespace TAO
                     SecureString strPIN = users->GetPin(params, TAO::Ledger::PinUnlock::NOTIFICATIONS);
 
                     /* Retrieve user's default NXS account. */
-                    std::string strAccount = "default";
+                    std::string strAccount = config::GetArg("-events_account", "default");
                     TAO::Register::Object defaultAccount;
                     if(!TAO::Register::GetNameRegister(hashGenesis, strAccount, defaultAccount))
                         throw APIException(-63, "Could not retrieve default NXS account to credit");
