@@ -516,11 +516,11 @@ namespace TAO
                     {
                         /* Read last index from disk. */
                         if(!LLD::Ledger->ReadLast(list.first, hashLast))
-                            return debug::error(FUNCTION, "failed to read the last index");
+                            break; //NOTE: this may need an error
 
                         /* Check the last hash. */
                         if(vtx[0].hashPrevTx != hashLast)
-                            continue; //SKIP ANY ORPHANS FOUND
+                            break;
                     }
 
                     /* Set last from next transaction. */

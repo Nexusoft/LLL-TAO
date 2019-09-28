@@ -155,8 +155,8 @@ namespace TAO
                     continue;
 
                 /* Check the pre-states and post-states. */
-                //if(!tx.Verify(FLAGS::MINER))
-                //    continue;
+                if(!tx.Verify(FLAGS::MINER))
+                    continue;
 
                 /* Check to see if this transaction connects. */
                 if(!tx.Connect(FLAGS::MINER))

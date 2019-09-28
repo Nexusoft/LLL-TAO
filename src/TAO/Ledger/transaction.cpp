@@ -503,16 +503,12 @@ namespace TAO
                     }
                 }
 
-                /* Don't check this if miner. */
-                if(nFlags != FLAGS::MINER)
-                {
-                    /* Bind the contract to this transaction. */
-                    contract.Bind(this);
+                /* Bind the contract to this transaction. */
+                contract.Bind(this);
 
-                    /* Execute the contracts to final state. */
-                    if(!TAO::Operation::Execute(contract, nFlags))
-                        return false;
-                }
+                /* Execute the contracts to final state. */
+                if(!TAO::Operation::Execute(contract, nFlags))
+                    return false;
             }
 
             /* Once we have executed the contracts we need to check the fees.

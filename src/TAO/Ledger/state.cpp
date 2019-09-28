@@ -631,11 +631,11 @@ namespace TAO
                 /* Log if there are blocks to disconnect. */
                 if(vDisconnect.size() > 0)
                 {
-                    debug::log(0, FUNCTION, "REORGANIZE: Disconnect ", vDisconnect.size(),
+                    debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "REORGANIZE:", ANSI_COLOR_RESET, " Disconnect ", vDisconnect.size(),
                         " blocks; ", fork.GetHash().SubString(),
                         "..",  ChainState::stateBest.load().GetHash().SubString());
 
-                    debug::log(0, FUNCTION, "REORGANIZE: Connect ", vConnect.size(), " blocks; ", fork.GetHash().SubString(),
+                    debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "REORGANIZE:", ANSI_COLOR_RESET," Connect ", vConnect.size(), " blocks; ", fork.GetHash().SubString(),
                         "..", hash.SubString());
                 }
 
@@ -711,8 +711,12 @@ namespace TAO
                         if(!LLD::Ledger->ReadTx(proof->second, tx))
                             return debug::error(FUNCTION, "transaction not on disk");
 
+                        /* Check for producer transaction. */
+                        if(tx.IsCoinBase() || tx.IsCoinStake())
+                            continue;
+
                         /* Add back into memory pool. */
-                        //mempool.AddUnchecked(tx);
+                        mempool.AddUnchecked(tx);
 
                         tx.print();
                     }
@@ -720,14 +724,40 @@ namespace TAO
                     {
 
                     }
-
                 }
 
                 debug::log(0, "END RESURRECT ------------------------------");
 
+
+                debug::log(0, "DELETE ------------------------------");
+
                 /* Delete from mempool. */
                 for(const auto& proof : vDelete)
+                {
+                    /* Check for tritium transctions. */
+                    if(proof.first == TRANSACTION::TRITIUM)
+                    {
+                        /* Make sure the transaction is on disk. */
+                        TAO::Ledger::Transaction tx;
+                        if(!LLD::Ledger->ReadTx(proof.second, tx))
+                            return debug::error(FUNCTION, "transaction not on disk");
+
+                        /* Check for producer transaction. */
+                        if(tx.IsCoinBase() || tx.IsCoinStake())
+                            continue;
+
+                        tx.print();
+                    }
+                    else if(proof.first == TRANSACTION::LEGACY)
+                    {
+
+                    }
+
                     mempool.Remove(proof.second);
+                }
+
+                debug::log(0, "END DELETE ------------------------------");
+
 
                 /* Debug output about the best chain. */
                 uint64_t nElapsed = (GetBlockTime() - ChainState::stateBest.load().GetBlockTime());
