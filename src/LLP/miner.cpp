@@ -294,10 +294,6 @@ namespace LLP
         Packet PACKET = this->INCOMING;
 
         /* Make sure the mining server has a connection. */
-        if(MINING_SERVER && MINING_SERVER->GetConnectionCount() == 0)
-            return debug::error(FUNCTION, "No active connections.");
-
-        /* Make sure the mining server has a connection. */
         if(TRITIUM_SERVER && TRITIUM_SERVER->GetConnectionCount() == 0)
             return debug::error(FUNCTION, "No network connections.");
 

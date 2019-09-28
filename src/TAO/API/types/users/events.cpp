@@ -192,6 +192,14 @@ namespace TAO
                     if(!LoggedIn() || Locked() || !CanProcessNotifications() || TAO::Ledger::ChainState::Synchronizing())
                         continue;
 
+                    /* Make sure the mining server has a connection. */
+                    if(LLP::TRITIUM_SERVER && LLP::TRITIUM_SERVER->GetConnectionCount() == 0)
+                        continue;
+
+                    /* No mining when synchronizing. */
+                    if(TAO::Ledger::ChainState::Synchronizing())
+                        continue;
+
                     /* Get the session to be used for this API call */
                     json::json params;
                     uint256_t nSession = users->GetSession(params);
