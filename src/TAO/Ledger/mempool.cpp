@@ -398,24 +398,23 @@ namespace TAO
                         LLD::TxnBegin(FLAGS::MEMPOOL);
 
                         /* Disconnect all transactions in reverse order. */
-                        for(int32_t i = vtx.size() - 1; i >= 0; --i)
+                        for(auto tx = vtx.rbegin(); tx != vtx.rend(); ++tx)
                         {
                             /* Reset memory states to disk indexes. */
-                            if(!vtx[i].Disconnect(FLAGS::MEMPOOL))
+                            if(!tx->Disconnect(FLAGS::MEMPOOL))
                             {
                                 LLD::TxnAbort(FLAGS::MEMPOOL);
 
                                 break;
                             }
-
-                            debug::log(2, FUNCTION, "REMOVED: ", vtx[i].GetHash().SubString());
-
-                            /* Remove from mempool. */
-                            Remove(vtx[i].GetHash());
                         }
 
                         /* Commit the memory transaction. */
                         LLD::TxnCommit(FLAGS::MEMPOOL);
+
+                        /* Remove all transactions after commited to memory. */
+                        for(const auto& tx : vtx)
+                            Remove(tx.GetHash());
 
                         break;
                     }
@@ -425,8 +424,12 @@ namespace TAO
                 hashLast = vtx[0].GetHash();
 
                 /* Loop through transaction by genesis. */
-                for(uint32_t n = 1; n < vtx.size(); ++n)
+                for(uint32_t n = 1; n <= vtx.size(); ++n)
                 {
+                    /* Check for end of index. */
+                    if(n == vtx.size())
+                        break;
+
                     /* Check that transaction is in sequence. */
                     if(vtx[n].hashPrevTx != hashLast)
                     {
@@ -437,31 +440,29 @@ namespace TAO
                         LLD::TxnBegin(FLAGS::MEMPOOL);
 
                         /* Disconnect all transactions in reverse order. */
-                        std::vector<uint512_t> vRemove;
-                        for(uint32_t i = vtx.size() - 1; i >= n; --i)
+                        for(auto tx = vtx.rbegin(); tx != vtx.rend(); ++tx)
                         {
-                            /* Reset memory states to previous indexes. */
-                            if(!vtx[i].Disconnect(FLAGS::MEMPOOL))
+                            /* Reset memory states to disk indexes. */
+                            if(!tx->Disconnect(FLAGS::MEMPOOL))
                             {
                                 LLD::TxnAbort(FLAGS::MEMPOOL);
 
                                 break;
                             }
-
-                            /* Add to remove queue. */
-                            vRemove.push_back(vtx[i].GetHash());
-                            debug::log(2, FUNCTION, "REMOVED: ", vRemove.back().SubString());
                         }
 
                         /* Commit the memory transaction. */
                         LLD::TxnCommit(FLAGS::MEMPOOL);
 
                         /* Remove all transactions after commited to memory. */
-                        for(const auto& hash : vRemove)
-                            Remove(hash);
+                        for(const auto& tx : vtx)
+                            Remove(tx.GetHash());
 
                         break;
                     }
+
+                    /* Set last hash. */
+                    hashLast = vtx[n].GetHash();
                 }
             }
         }
@@ -502,18 +503,49 @@ namespace TAO
                 for(auto& list : mapTransactions)
                 {
                     /* Get reference of the vector. */
-                    std::vector<TAO::Ledger::Transaction>& vTx = list.second;
+                    std::vector<TAO::Ledger::Transaction>& vtx = list.second;
 
                     /* Sort the list by sequence numbers. */
-                    std::sort(vTx.begin(), vTx.end());
-                    for(const auto& tx : vTx)
+                    std::sort(vtx.begin(), vtx.end());
+
+                    /* Add the hashes into list. */
+                    uint512_t hashLast = 0;
+
+                    /* Check last hash for valid transactions. */
+                    if(!vtx[0].IsFirst())
                     {
+                        /* Read last index from disk. */
+                        if(!LLD::Ledger->ReadLast(list.first, hashLast))
+                            return debug::error(FUNCTION, "failed to read the last index");
+
+                        /* Check the last hash. */
+                        if(vtx[0].hashPrevTx != hashLast)
+                            continue; //SKIP ANY ORPHANS FOUND
+                    }
+
+                    /* Set last from next transaction. */
+                    hashLast = vtx[0].GetHash();
+
+                    /* Loop through transaction by genesis. */
+                    for(uint32_t n = 1; n <= vtx.size(); ++n)
+                    {
+                        /* Add to the output queue. */
+                        vHashes.push_back(hashLast);
+
+                        /* Check for end of index. */
+                        if(n == vtx.size())
+                            break;
+
                         /* Check count. */
                         if(--nCount == 0)
                             return true;
 
-                        /* Add to queue. */
-                        vHashes.push_back(tx.GetHash());
+                        /* Check that transaction is in sequence. */
+                        if(vtx[n].hashPrevTx != hashLast)
+                            break; //SKIP ANY ORPHANS FOUND
+
+                        /* Set last hash. */
+                        hashLast = vtx[n].GetHash();
                     }
                 }
             }
