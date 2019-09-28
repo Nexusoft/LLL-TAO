@@ -388,11 +388,17 @@ namespace TAO
                 /* Check last hash for valid transactions. */
                 if(!vtx[0].IsFirst())
                 {
+                    /* Read last hash. */
+                    if(!LLD::Ledger->ReadLast(list.first, hashLast))
+                        break;
+
                     /* Check the last hash. */
-                    if(!LLD::Ledger->ReadLast(list.first, hashLast) || vtx[0].hashPrevTx != hashLast)
+                    if(vtx[0].hashPrevTx != hashLast)
                     {
                         /* Debug information. */
                         debug::error(FUNCTION, "ROOT ORPHAN: last hash mismatch ", vtx[0].hashPrevTx.SubString());
+
+                        debug::log(0, "REMOVE ------------------------------");
 
                         /* Begin the memory transaction. */
                         LLD::TxnBegin(FLAGS::MEMPOOL);
@@ -400,6 +406,11 @@ namespace TAO
                         /* Disconnect all transactions in reverse order. */
                         for(auto tx = vtx.rbegin(); tx != vtx.rend(); ++tx)
                         {
+                            tx->print();
+
+                            if(tx->GetHash() == hashLast)
+                                break;
+
                             /* Reset memory states to disk indexes. */
                             if(!tx->Disconnect(FLAGS::MEMPOOL))
                             {
@@ -407,14 +418,15 @@ namespace TAO
 
                                 break;
                             }
+
+                            Remove(tx->GetHash());
                         }
 
                         /* Commit the memory transaction. */
                         LLD::TxnCommit(FLAGS::MEMPOOL);
 
-                        /* Remove all transactions after commited to memory. */
-                        for(const auto& tx : vtx)
-                            Remove(tx.GetHash());
+                        debug::log(0, "END REMOVE ------------------------------");
+
 
                         break;
                     }
@@ -424,7 +436,7 @@ namespace TAO
                 hashLast = vtx[0].GetHash();
 
                 /* Loop through transaction by genesis. */
-                for(uint32_t n = 1; n <= vtx.size(); ++n)
+                for(uint32_t n = 1; n < vtx.size(); ++n)
                 {
                     /* Check for end of index. */
                     if(n == vtx.size())
@@ -434,7 +446,9 @@ namespace TAO
                     if(vtx[n].hashPrevTx != hashLast)
                     {
                         /* Debug information. */
-                        debug::error(FUNCTION, "ORPHAN DETECTED: last hash mismatch ", vtx[n].hashPrevTx.SubString());
+                        debug::error(FUNCTION, "ORPHAN DETECTED INDEX ", n, ": last hash mismatch ", vtx[n].hashPrevTx.SubString());
+
+                        debug::log(0, "REMOVE ------------------------------");
 
                         /* Begin the memory transaction. */
                         LLD::TxnBegin(FLAGS::MEMPOOL);
@@ -442,6 +456,11 @@ namespace TAO
                         /* Disconnect all transactions in reverse order. */
                         for(auto tx = vtx.rbegin(); tx != vtx.rend(); ++tx)
                         {
+                            tx->print();
+
+                            if(tx->GetHash() == hashLast)
+                                break;
+
                             /* Reset memory states to disk indexes. */
                             if(!tx->Disconnect(FLAGS::MEMPOOL))
                             {
@@ -449,14 +468,15 @@ namespace TAO
 
                                 break;
                             }
+
+                            Remove(tx->GetHash());
                         }
 
                         /* Commit the memory transaction. */
                         LLD::TxnCommit(FLAGS::MEMPOOL);
 
-                        /* Remove all transactions after commited to memory. */
-                        for(const auto& tx : vtx)
-                            Remove(tx.GetHash());
+                        debug::log(0, "END REMOVE ------------------------------");
+
 
                         break;
                     }
