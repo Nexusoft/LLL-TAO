@@ -382,8 +382,13 @@ namespace TAO
                 if(!LLD::Ledger->ReadBlock(hashLast, stateLast))
                     return debug::error(FUNCTION, "Failed to get last block for trust account");
 
+                /* Get block previous to our candidate. */
+                BlockState statePrev = BlockState();
+                if(!LLD::Ledger->ReadBlock(block.hashPrevBlock, statePrev))
+                    return debug::error(FUNCTION, "Failed to get previous block");
+
                 /* Calculate time since last stake block (block age = age of previous stake block at time of current stateBest). */
-                nBlockAge = TAO::Ledger::ChainState::stateBest.load().GetBlockTime() - stateLast.GetBlockTime();
+                nBlockAge = statePrev.GetBlockTime() - stateLast.GetBlockTime();
 
                 /* Calculate the new trust score */
                 nTrust = GetTrustScore(nTrustPrev, nBlockAge, nStake, nStakeChange);
