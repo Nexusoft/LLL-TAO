@@ -95,6 +95,7 @@ namespace TAO
             hashCaller = tx->hashGenesis;
             nTimestamp = tx->nTimestamp;
             hashTx     = tx->GetHash();
+            nCost      = 0;
         }
 
 

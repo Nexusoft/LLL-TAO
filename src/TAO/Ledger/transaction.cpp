@@ -875,7 +875,7 @@ namespace TAO
                 "pub = ", HexStr(vchPubKey).substr(0, 20), ", ",
                 "sig = ", HexStr(vchSig).substr(0, 20), ", ",
                 "hash = ", GetHash().SubString()
-          );
+            );
         }
 
 
@@ -889,27 +889,27 @@ namespace TAO
         std::string Transaction::ToStringShort() const
         {
             std::string str;
-            std::string txtype = TypeString();
-            str += debug::safe_printstr(GetHash().ToString(), " ", txtype);
+            std::string strType = TypeString();
+            str += debug::safe_printstr(GetHash().ToString(), " ", strType);
             return str;
         }
 
         /*  User readable description of the transaction type. */
         std::string Transaction::TypeString() const
         {
-            std::string txtype = "tritium ";
+            std::string strType = "tritium ";
             if(IsCoinBase())
-                txtype += "base";
+                strType += "base";
             else if(IsFirst())
-                txtype += "first";
+                strType += "first";
             else if(IsTrust())
-                txtype += "trust";
+                strType += "trust";
             else if(IsGenesis())
-                txtype += "genesis";
+                strType += "genesis";
             else
-                txtype += "user";
+                strType += "user";
 
-            return txtype;
+            return strType;
         }
 
         /* Calculates and returns the total fee included in this transaction */
@@ -943,8 +943,6 @@ namespace TAO
         {
             /* The calculated cost */
             uint64_t nCost = 0;
-
-
 
             /* Iterate through all contracts. */
             for(const auto& contract : vContracts)

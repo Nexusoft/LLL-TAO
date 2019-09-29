@@ -96,6 +96,10 @@ namespace TAO
             if(LLD::Ledger->HasTx(hashTx, FLAGS::MEMPOOL))
                 return false;
 
+            debug::log(0, "ACCEPT --------------------------------------");
+            tx.print();
+            debug::log(0, "END ACCEPT -----------------------------------");
+
             /* Runtime calculations. */
             runtime::timer time;
             time.Start();
