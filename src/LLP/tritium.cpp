@@ -1976,7 +1976,7 @@ namespace LLP
                         SwitchNode();
 
                     /* Drop pesky nodes. */
-                    //return debug::drop(NODE, "node reached failure limit");
+                    return debug::drop(NODE, "node reached failure limit");
                 }
 
                 break;

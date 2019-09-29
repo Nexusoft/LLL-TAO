@@ -94,7 +94,7 @@ namespace TAO
 
             /* Check for transaction on disk. */
             if(LLD::Ledger->HasTx(hashTx, FLAGS::MEMPOOL))
-                return false;
+                return true;
 
             debug::log(0, "ACCEPT --------------------------------------");
             tx.print();
