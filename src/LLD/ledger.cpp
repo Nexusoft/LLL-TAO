@@ -583,7 +583,7 @@ namespace LLD
         const std::tuple<uint256_t, uint512_t, uint32_t> tuple = std::make_tuple(hashProof, hashTx, nContract);
 
         /* Memory mode for pre-database commits. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::ERASE)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
             LOCK(MEMORY_MUTEX);
 
@@ -616,13 +616,17 @@ namespace LLD
 
             return true;
         }
-        else if(nFlags == TAO::Ledger::FLAGS::BLOCK)
+        else if(nFlags == TAO::Ledger::FLAGS::BLOCK || nFlags == TAO::Ledger::FLAGS::ERASE)
         {
             LOCK(MEMORY_MUTEX);
 
             /* Erase memory proof if they exist. */
             if(pCommit->setProofs.count(tuple))
                pCommit->setProofs.erase(tuple);
+
+            /* Check for erase to short circuit out. */
+            if(nFlags == TAO::Ledger::FLAGS::ERASE)
+                return true;
         }
 
         return Write(tuple);
@@ -674,7 +678,7 @@ namespace LLD
             LOCK(MEMORY_MUTEX);
 
             /* Check for memory transaction. */
-            if(pMemory && nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+            if(pMemory && (nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::ERASE))
             {
                 /* Check for available states. */
                 bool fExists = false;
