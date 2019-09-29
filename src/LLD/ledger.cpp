@@ -583,7 +583,7 @@ namespace LLD
         const std::tuple<uint256_t, uint512_t, uint32_t> tuple = std::make_tuple(hashProof, hashTx, nContract);
 
         /* Memory mode for pre-database commits. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::ERASE)
         {
             LOCK(MEMORY_MUTEX);
 
@@ -616,17 +616,13 @@ namespace LLD
 
             return true;
         }
-        else if(nFlags == TAO::Ledger::FLAGS::BLOCK || nFlags == TAO::Ledger::FLAGS::ERASE)
+        else if(nFlags == TAO::Ledger::FLAGS::BLOCK)
         {
             LOCK(MEMORY_MUTEX);
 
             /* Erase memory proof if they exist. */
             if(pCommit->setProofs.count(tuple))
                pCommit->setProofs.erase(tuple);
-
-           /* Quit when erasing. */
-           if(nFlags == TAO::Ledger::FLAGS::ERASE)
-               return true;
         }
 
         return Write(tuple);
@@ -641,7 +637,7 @@ namespace LLD
         const std::tuple<uint256_t, uint512_t, uint32_t> tuple = std::make_tuple(hashProof, hashTx, nContract);
 
         /* Memory mode for pre-database commits. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::ERASE)
         {
             LOCK(MEMORY_MUTEX);
 
