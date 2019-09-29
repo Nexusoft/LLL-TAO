@@ -134,15 +134,17 @@ namespace TAO
                         Transaction tx;
                         ssData >> tx;
 
-                        /* Accept into memory pool. */
-                        if(!LLD::Ledger->HasTx(tx.GetHash()))
-                            mempool.AddUnchecked(tx);
-
                         /* Add transaction to binary data. */
                         if(n == block.vtx.size() - 1)
                             producer = tx; //handle for the producer transaction
                         else
+                        {
+                            /* Accept into memory pool. */
+                            if(!LLD::Ledger->HasTx(tx.GetHash()))
+                                mempool.AddUnchecked(tx);
+
                             vtx.push_back(std::make_pair(block.vtx[n].first, tx.GetHash()));
+                        }
 
                         break;
                     }
