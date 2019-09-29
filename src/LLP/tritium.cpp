@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <LLC/include/random.h>
 
 #include <LLD/include/global.h>
+#include <LLD/cache/binary_key.h>
 
 #include <LLP/types/tritium.h>
 #include <LLP/include/global.h>
@@ -58,6 +59,10 @@ namespace LLP
 
     /* If node is completely sychronized. */
     std::atomic<bool> TritiumNode::fSynchronized(false);
+
+
+    /* The local relay inventory cache. */
+    static LLD::KeyLRU cacheInventory = LLD::KeyLRU(1024 * 1024);
 
 
     /** Default Constructor **/
@@ -918,7 +923,7 @@ namespace LLP
                                     }
 
                                     /* Debug output. */
-                                    debug::log(0, NODE, "ACTION::LIST: Locator ", hashStart.SubString(), " found");
+                                    //debug::log(0, NODE, "ACTION::LIST: Locator ", hashStart.SubString(), " found");
 
                                     break;
                                 }
@@ -938,7 +943,7 @@ namespace LLP
                             {
                                 /* Loop through all available states. */
                                 for(const auto& state : vStates)
-                                {    
+                                {
                                     /* Skip if not in main chain. */
                                     if(!state.IsInMainChain())
                                         continue;
@@ -1949,7 +1954,11 @@ namespace LLP
                             nConsecutiveFails = 0;
                         }
                         else
+                        {
                             ++nConsecutiveFails;
+                            cacheInventory.Ban(tx.GetHash());
+                        }
+
 
                         break;
                     }

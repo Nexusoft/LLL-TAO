@@ -154,6 +154,8 @@ namespace TAO
                 if(tx.nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
                     continue;
 
+                tx.print();
+
                 /* Check the pre-states and post-states. */
                 if(!tx.Verify(FLAGS::MINER))
                     continue;
@@ -161,8 +163,6 @@ namespace TAO
                 /* Check to see if this transaction connects. */
                 if(!tx.Connect(FLAGS::MINER))
                     continue;
-
-                tx.print();
 
                 /* Add the transaction to the block. */
                 block.vtx.push_back(std::make_pair(TRANSACTION::TRITIUM, hash));
