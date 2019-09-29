@@ -189,7 +189,6 @@ public:
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
-
     uint64_t nTest = 555;
 
     nTest = std::max(nTest, uint64_t(888));

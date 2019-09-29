@@ -409,11 +409,16 @@ namespace TAO
                             tx->print();
 
                             if(tx->GetHash() == hashLast)
+                            {
+                                debug::log(0, FUNCTION, "REACHED HASH STOP");
+
                                 break;
+                            }
 
                             /* Reset memory states to disk indexes. */
                             if(!tx->Disconnect(FLAGS::MEMPOOL))
                             {
+                                debug::error(FUNCTION, "failed to disconnect tx ", tx->GetHash().SubString());
                                 LLD::TxnAbort(FLAGS::MEMPOOL);
 
                                 break;

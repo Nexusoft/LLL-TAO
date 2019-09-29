@@ -1263,6 +1263,8 @@ TEST_CASE( "Mempool and memory sequencing tests", "[mempool]")
         }
 
 
+
+
         {
 
             //set private keys
@@ -1466,8 +1468,157 @@ TEST_CASE( "Mempool and memory sequencing tests", "[mempool]")
                 REQUIRE(object2.get<uint64_t>("balance") == 900);
             }
 
+        }
+
+
+        {
+
+            //set private keys
+            hashPrivKey1 = hashPrivKey2;
+            hashPrivKey2 = LLC::GetRand512();
+
+            TAO::Register::Address hashAddress2 = TAO::Register::Address(TAO::Register::Address::OBJECT);
+
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis;
+            tx.nSequence   = 6;
+            tx.hashPrevTx  = hashPrevTx;
+            tx.nTimestamp  = runtime::timestamp();
+            tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
+
+            //create object
+            Object object;
+            object << std::string("byte") << uint8_t(TAO::Register::TYPES::MUTABLE) << uint8_t(TAO::Register::TYPES::UINT8_T) << uint8_t(55)
+                   << std::string("test") << uint8_t(TAO::Register::TYPES::MUTABLE) << uint8_t(TAO::Register::TYPES::STRING) << std::string("this string")
+                   << std::string("token") << uint8_t(TAO::Register::TYPES::UINT256_T) << uint256_t(0);
+
+            //payload
+            tx[0] << uint8_t(OP::CREATE) << hashAddress2 << uint8_t(REGISTER::OBJECT) << object.GetState();
+
+            //generate the prestates and poststates
+            REQUIRE(tx.Build());
+
+            //sign
+            tx.Sign(hashPrivKey1);
+
+            uint512_t hash = tx.GetHash();
+
+            REQUIRE(LLD::Ledger->WriteTx(hash, tx));
+            REQUIRE(LLD::Ledger->WriteLast(hashGenesis, hash));
+
+            REQUIRE(tx.Verify());
+            REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+
+            hashPrevTx = tx.GetHash();
+        }
+
+
+        {
+
             //run unit test for the check function
             TAO::Ledger::mempool.Check();
+
+            //check token balance with mempool flag on
+            {
+                TAO::Register::Object object2;
+                REQUIRE(LLD::Register->ReadState(hashToken, object2, TAO::Ledger::FLAGS::MEMPOOL));
+
+                //parse
+                REQUIRE(object2.Parse());
+
+                //check values
+                REQUIRE(object2.get<uint64_t>("balance") == 900);
+            }
+
+            //run unit test for the check function
+            TAO::Ledger::mempool.Check();
+        }
+
+
+        {
+            //set private keys
+            hashPrivKey1 = hashPrivKey2;
+            hashPrivKey2 = LLC::GetRand512();
+
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis;
+            tx.nSequence   = 7;
+            tx.hashPrevTx  = hashPrevTx;
+            tx.nTimestamp  = runtime::timestamp();
+            tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
+
+            //payload
+            tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(300) << uint64_t(0);
+
+            //generate the prestates and poststates
+            REQUIRE(tx.Build());
+
+            //sign
+            tx.Sign(hashPrivKey1);
+
+            //commit to disk
+            REQUIRE(TAO::Ledger::mempool.Accept(tx));
+
+            //check values all match
+            TAO::Register::Object object2;
+            REQUIRE(LLD::Register->ReadState(hashToken, object2, TAO::Ledger::FLAGS::MEMPOOL));
+
+            //parse
+            REQUIRE(object2.Parse());
+
+            //check values
+            REQUIRE(object2.get<uint64_t>("balance") == 600);
+
+            //set previous
+            hashPrevTx = tx.GetHash();
+        }
+
+
+        {
+            //set private keys
+            hashPrivKey1 = hashPrivKey2;
+            hashPrivKey2 = LLC::GetRand512();
+
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis;
+            tx.nSequence   = 8;
+            tx.hashPrevTx  = hashPrevTx;
+            tx.nTimestamp  = runtime::timestamp();
+            tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
+
+            //payload
+            tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(100) << uint64_t(0);
+
+            //generate the prestates and poststates
+            REQUIRE(tx.Build());
+
+            //sign
+            tx.Sign(hashPrivKey1);
+
+            //commit to disk
+            REQUIRE(TAO::Ledger::mempool.Accept(tx));
+
+            //check values all match
+            TAO::Register::Object object2;
+            REQUIRE(LLD::Register->ReadState(hashToken, object2, TAO::Ledger::FLAGS::MEMPOOL));
+
+            //parse
+            REQUIRE(object2.Parse());
+
+            //check values
+            REQUIRE(object2.get<uint64_t>("balance") == 500);
+
+            //set previous
+            hashPrevTx = tx.GetHash();
         }
     }
 }
