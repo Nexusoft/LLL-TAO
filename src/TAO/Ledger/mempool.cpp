@@ -340,8 +340,8 @@ namespace TAO
                 const Legacy::Transaction& tx = mapLegacy[hashTx];
 
                 /* Erase the claimed inputs */
-                uint32_t s = static_cast<uint32_t>(tx.vin.size());
-                for(uint32_t i = 0; i < s; ++i)
+                uint32_t nSize = static_cast<uint32_t>(tx.vin.size());
+                for(uint32_t i = 0; i < nSize; ++i)
                     mapInputs.erase(tx.vin[i].prevout);
 
                 mapLegacy.erase(hashTx);
@@ -406,14 +406,8 @@ namespace TAO
                         /* Disconnect all transactions in reverse order. */
                         for(auto tx = vtx.rbegin(); tx != vtx.rend(); ++tx)
                         {
+                            /* Show the removal. */
                             tx->print();
-
-                            if(tx->GetHash() == hashLast)
-                            {
-                                debug::log(0, FUNCTION, "REACHED HASH STOP");
-
-                                break;
-                            }
 
                             /* Reset memory states to disk indexes. */
                             if(!tx->Disconnect(FLAGS::MEMPOOL))
@@ -424,7 +418,15 @@ namespace TAO
                                 break;
                             }
 
-                            Remove(tx->GetHash());
+                            /* Find the transaction in pool. */
+                            if(mapLedger.count(tx->GetHash()))
+                            {
+                                debug::log(0, "DELETED ", tx->GetHash().SubString());
+
+                                /* Erase from the memory map. */
+                                mapClaimed.erase(tx->hashPrevTx);
+                                mapLedger.erase(tx->GetHash());
+                            }
                         }
 
                         /* Commit the memory transaction. */
@@ -464,7 +466,10 @@ namespace TAO
                             tx->print();
 
                             if(tx->GetHash() == hashLast)
+                            {
+                                debug::log(0, "REACHED HASH LAST");
                                 break;
+                            }
 
                             /* Reset memory states to disk indexes. */
                             if(!tx->Disconnect(FLAGS::MEMPOOL))
