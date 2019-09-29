@@ -201,10 +201,10 @@ namespace TAO
 
 
         /* Calculate the stake rate corresponding to a given trust score. */
-        double StakeRate(const uint64_t nTrust, const bool isGenesis)
+        double StakeRate(const uint64_t nTrust, const bool fGenesis)
         {
             /* Stake rate fixed at 0.005 (0.5%) when staking Genesis */
-            if(isGenesis)
+            if(fGenesis)
                 return 0.005;
 
             /* Stake rate starts at 0.005 (0.5%) and grows to 0.03 (3%) when trust score reaches or exceeds one year */
@@ -215,10 +215,10 @@ namespace TAO
 
 
         /* Calculate the coinstake reward for a given stake. */
-        uint64_t GetCoinstakeReward(const uint64_t nStake, const uint64_t nStakeTime, const uint64_t nTrust, const bool isGenesis)
+        uint64_t GetCoinstakeReward(const uint64_t nStake, const uint64_t nStakeTime, const uint64_t nTrust, const bool fGenesis)
         {
 
-            double nStakeRate = StakeRate(nTrust, isGenesis);
+            double nStakeRate = StakeRate(nTrust, fGenesis);
 
             /* Reward rate for time period is annual rate * (time period / annual time) or nStakeRate * (nStakeTime / ONE_YEAR)
              * Then, overall nStakeReward = nStake * reward rate

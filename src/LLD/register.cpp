@@ -82,16 +82,20 @@ namespace LLD
 
             return true;
         }
-        else if(nFlags == TAO::Ledger::FLAGS::BLOCK)
+        else if(nFlags == TAO::Ledger::FLAGS::BLOCK || nFlags == TAO::Ledger::FLAGS::ERASE)
         {
             /* Remove the memory state if writing the disk state. */
             if(pCommit->mapStates.count(hashRegister))
             {
                 /* Check for most recent memory state, and remove if writing it. */
                 const TAO::Register::State& stateCheck = pCommit->mapStates[hashRegister];
-                if(stateCheck == state)
+                if(stateCheck == state || nFlags == TAO::Ledger::FLAGS::ERASE)
                     pCommit->mapStates.erase(hashRegister);
             }
+
+            /* Quit when erasing. */
+            if(nFlags == TAO::Ledger::FLAGS::ERASE)
+                return true;
         }
 
         /* Add sequential read keys for known address types. */
@@ -227,7 +231,7 @@ namespace LLD
             pCommit->mapStates.erase(hashRegister);
 
             /* If in memory only mode, break early. */
-            if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+            if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::ERASE)
                 return true;
         }
 
@@ -285,7 +289,7 @@ namespace LLD
 
             return true;
         }
-        else if(nFlags == TAO::Ledger::FLAGS::BLOCK)
+        else if(nFlags == TAO::Ledger::FLAGS::BLOCK || nFlags == TAO::Ledger::FLAGS::ERASE)
         {
             LOCK(MEMORY_MUTEX);
 
@@ -294,9 +298,13 @@ namespace LLD
             {
                 /* Check for most recent memory state, and remove if writing it. */
                 const TAO::Register::State& stateCheck = pCommit->mapStates[hashRegister];
-                if(stateCheck == state)
+                if(stateCheck == state || nFlags == TAO::Ledger::FLAGS::ERASE)
                     pCommit->mapStates.erase(hashRegister);
             }
+
+            /* Quit when erasing. */
+            if(nFlags == TAO::Ledger::FLAGS::ERASE)
+                return true;
         }
 
         return Write(std::make_pair(std::string("genesis"), hashGenesis), state, "trust");
@@ -390,7 +398,7 @@ namespace LLD
             pCommit->mapStates.erase(hashRegister);
 
             /* If in memory only mode, break early. */
-            if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+            if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::ERASE)
                 return true;
         }
 

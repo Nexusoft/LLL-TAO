@@ -376,7 +376,7 @@ namespace TAO
                             object = TAO::Register::Object(mapStates[hashAddress]);
 
                         /* Read the register from database. */
-                        else if(!LLD::Register->ReadState(hashAddress, object, nFlags))
+                        else if(!LLD::Register->ReadState(hashAddress, object))
                             return debug::error(FUNCTION, "OP::TRUST: failed to read pre-state");
 
                         /* Check that the checksums match. */
@@ -443,7 +443,7 @@ namespace TAO
                             object = TAO::Register::Object(mapStates[hashAddress]);
 
                         /* Read the register from database. */
-                        else if(!LLD::Register->ReadState(hashAddress, object, nFlags))
+                        else if(!LLD::Register->ReadState(hashAddress, object))
                             return debug::error(FUNCTION, "OP::GENESIS: failed to read pre-state");
 
                         /* Check that the checksums match. */

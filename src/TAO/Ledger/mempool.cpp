@@ -404,9 +404,6 @@ namespace TAO
 
                         debug::log(0, "REMOVE ------------------------------");
 
-                        /* Begin the memory transaction. */
-                        LLD::TxnBegin(FLAGS::MEMPOOL);
-
                         /* Disconnect all transactions in reverse order. */
                         for(auto tx = vtx.rbegin(); tx != vtx.rend(); ++tx)
                         {
@@ -414,10 +411,9 @@ namespace TAO
                             tx->print();
 
                             /* Reset memory states to disk indexes. */
-                            if(!tx->Disconnect(FLAGS::MEMPOOL))
+                            if(!tx->Disconnect(FLAGS::ERASE))
                             {
                                 debug::error(FUNCTION, "failed to disconnect tx ", tx->GetHash().SubString());
-                                LLD::TxnAbort(FLAGS::MEMPOOL);
 
                                 break;
                             }
@@ -432,9 +428,6 @@ namespace TAO
                                 mapLedger.erase(tx->GetHash());
                             }
                         }
-
-                        /* Commit the memory transaction. */
-                        LLD::TxnCommit(FLAGS::MEMPOOL);
 
                         debug::log(0, "END REMOVE ------------------------------");
 

@@ -201,7 +201,7 @@ namespace LLD
                 return true;
             }
         }
-        else if(nFlags == TAO::Ledger::FLAGS::BLOCK)
+        else if(nFlags == TAO::Ledger::FLAGS::BLOCK || nFlags == TAO::Ledger::FLAGS::ERASE)
         {
             LOCK(MEMORY_MUTEX);
 
@@ -212,6 +212,10 @@ namespace LLD
             /* Check for commited tranasactions. */
             if(pCommit && pCommit->mapClaims.count(pair))
                 pCommit->mapClaims.erase(pair);
+
+            /* Quit when erasing. */
+            if(nFlags == TAO::Ledger::FLAGS::ERASE)
+                return true;
         }
 
         return Write(pair, nClaimed);
@@ -612,13 +616,17 @@ namespace LLD
 
             return true;
         }
-        else if(nFlags == TAO::Ledger::FLAGS::BLOCK)
+        else if(nFlags == TAO::Ledger::FLAGS::BLOCK || nFlags == TAO::Ledger::FLAGS::ERASE)
         {
             LOCK(MEMORY_MUTEX);
 
             /* Erase memory proof if they exist. */
             if(pCommit->setProofs.count(tuple))
                pCommit->setProofs.erase(tuple);
+
+           /* Quit when erasing. */
+           if(nFlags == TAO::Ledger::FLAGS::ERASE)
+               return true;
         }
 
         return Write(tuple);
@@ -700,7 +708,7 @@ namespace LLD
                 /* Erase the proof. */
                 pCommit->setProofs.erase(tuple);
 
-                if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+                if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::ERASE)
                     return true;
             }
         }

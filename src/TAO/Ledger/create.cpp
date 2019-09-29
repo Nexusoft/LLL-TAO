@@ -526,7 +526,7 @@ namespace TAO
 
         /* Create a new Proof of Stake (channel 0) block object from the chain. */
         bool CreateStakeBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin,
-                              TAO::Ledger::TritiumBlock& block, const uint64_t isGenesis)
+                              TAO::Ledger::TritiumBlock& block, const bool fGenesis)
         {
             /* Lock this user's sigchain. */
             LOCK(TAO::API::users->CREATE_MUTEX);
@@ -542,7 +542,7 @@ namespace TAO
 
             /* Add the transactions to the block (no transactions for PoS Genesis block). */
             /* Must add transactions first, before creating producer, so producer is sequenced last if user has tx in block */
-            if (!isGenesis)
+            if(!fGenesis)
                 AddTransactions(block);
 
             /* Create the producer transaction. */
