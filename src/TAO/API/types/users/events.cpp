@@ -245,7 +245,6 @@ namespace TAO
 
                     /* Ensure that the signature is mature.  Note we only check this after we know there is something to process */
                     uint32_t nBlocksToMaturity = users->BlocksToMaturity(hashGenesis);
-
                     if(nBlocksToMaturity > 0)
                     {
                         debug::log(2, FUNCTION, "Skipping notifications as signature chain not mature. ", nBlocksToMaturity, " more confirmation(s) required.");

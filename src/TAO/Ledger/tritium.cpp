@@ -403,7 +403,7 @@ namespace TAO
 
                     /* Check the sequencing. */
                     if(mapLast.count(tx.hashGenesis) && tx.hashPrevTx != mapLast[tx.hashGenesis])
-                        debug::error(FUNCTION, "transaction in sigchain out of sequence");
+                        return debug::error(FUNCTION, "transaction in sigchain out of sequence");
 
                     /* Set the last hash for given genesis. */
                     mapLast[tx.hashGenesis] = tx.GetHash();
@@ -418,7 +418,7 @@ namespace TAO
 
             /* Check producer. */
             if(mapLast.count(producer.hashGenesis) && producer.hashPrevTx != mapLast[producer.hashGenesis])
-                debug::error(FUNCTION, "producer transaction out of sequence");
+                return debug::error(FUNCTION, "producer transaction out of sequence");
 
             /* Get producer hash. */
             uint512_t hashProducer = producer.GetHash();
