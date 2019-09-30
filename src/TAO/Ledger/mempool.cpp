@@ -104,6 +104,18 @@ namespace TAO
             runtime::timer time;
             time.Start();
 
+            /* Check for duplicate coinbase or coinstake. */
+            if(tx.IsCoinBase())
+                return debug::error(FUNCTION, "coinbase ", hashTx.SubString(), " not accepted in pool");
+
+            /* Check for duplicate coinbase or coinstake. */
+            if(tx.IsCoinStake())
+                return debug::error(FUNCTION, "coinstake ", hashTx.SubString(), " not accepted in pool");
+
+            /* Check that the transaction is in a valid state. */
+            if(!tx.Check())
+                return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
+
             /* Check for orphans and conflicts when not first transaction. */
             if(!tx.IsFirst())
             {
@@ -138,22 +150,6 @@ namespace TAO
                     return true;
                 }
             }
-
-            /* Check for duplicate coinbase or coinstake. */
-            if(tx.IsCoinBase())
-                return debug::error(FUNCTION, "coinbase ", hashTx.SubString(), " not accepted in pool");
-
-            /* Check for duplicate coinbase or coinstake. */
-            if(tx.IsCoinStake())
-                return debug::error(FUNCTION, "coinstake ", hashTx.SubString(), " not accepted in pool");
-
-            /* Check for duplicate coinbase or coinstake. */
-            if(tx.nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
-                return debug::error(FUNCTION, "tx ", hashTx.SubString(), " too far in the future");
-
-            /* Check that the transaction is in a valid state. */
-            if(!tx.Check())
-                return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
 
             /* Check for last hash conflicts. */
             if(!tx.IsFirst())

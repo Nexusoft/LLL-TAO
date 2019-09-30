@@ -160,6 +160,7 @@ namespace TAO
 
             /* Count of non-fee contracts in the transaction */
             uint8_t nContracts = 0;
+
             /* Run through all the contracts. */
             for(const auto& contract : vContracts)
             {
