@@ -173,12 +173,12 @@ namespace TAO
          *  Returned value is absolute rate. To display a percent, multiply by 100.
          *
          *  @param[in] nTrust - Current trust score (ignored when fGenesis = true)
-         *  @param[in] isGenesis - Set true if staking for Genesis transaction
+         *  @param[in] fGenesis - Set true if staking for Genesis transaction
          *
          *  @return value for stake rate
          *
          **/
-        double StakeRate(const uint64_t nTrust, const bool isGenesis = false);
+        double StakeRate(const uint64_t nTrust, const bool fGenesis = false);
 
 
         /** GetCoinstakeReward
@@ -188,13 +188,13 @@ namespace TAO
          *  @param[in] nStake - Stake balance on which reward is to be paid
          *  @param[in] nStakeTime - Amount of time reward is for
          *  @param[in] nTrust - Current trust score (ignored when fGenesis = true)
-         *  @param[in] isGenesis - Set true if staking for Genesis transaction
+         *  @param[in] fGenesis - Set true if staking for Genesis transaction
          *
          *  @return amount of coinstake reward
          *
          **/
         uint64_t GetCoinstakeReward(const uint64_t nStake, const uint64_t nStakeTime,
-                                    const uint64_t nTrust, const bool isGenesis = false);
+                                    const uint64_t nTrust, const bool fGenesis = false);
 
 
         /** FindLastStake

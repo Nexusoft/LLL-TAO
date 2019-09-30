@@ -94,11 +94,28 @@ namespace TAO
 
             /* Check for transaction on disk. */
             if(LLD::Ledger->HasTx(hashTx, FLAGS::MEMPOOL))
-                return false;
+                return true;
+
+            debug::log(3, "ACCEPT --------------------------------------");
+            if(config::GetArg("-verbose", 0) >= 3)
+                tx.print();
+            debug::log(3, "END ACCEPT -----------------------------------");
 
             /* Runtime calculations. */
             runtime::timer time;
             time.Start();
+
+            /* Check for duplicate coinbase or coinstake. */
+            if(tx.IsCoinBase())
+                return debug::error(FUNCTION, "coinbase ", hashTx.SubString(), " not accepted in pool");
+
+            /* Check for duplicate coinbase or coinstake. */
+            if(tx.IsCoinStake())
+                return debug::error(FUNCTION, "coinstake ", hashTx.SubString(), " not accepted in pool");
+
+            /* Check that the transaction is in a valid state. */
+            if(!tx.Check())
+                return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
 
             /* Check for orphans and conflicts when not first transaction. */
             if(!tx.IsFirst())
@@ -122,27 +139,36 @@ namespace TAO
                 }
 
                 /* Check for conflicts. */
-                if(mapClaimed.count(tx.hashPrevTx))
-                    return debug::error(0, FUNCTION, "conflict detected");
+                if(mapClaimed.count(tx.hashPrevTx) || mapConflicts.count(tx.hashPrevTx))
+                {
+                    /* Add to conflicts map. */
+                    debug::error(FUNCTION, "CONFLICT: prev tx ", (mapClaimed.count(tx.hashPrevTx) ? "CLAIMED " : "CONFLICTED "), tx.hashPrevTx.SubString());
+                    mapConflicts[hashTx] = tx;
+
+                    /* Process orphan queue. */
+                    ProcessOrphans(hashTx);
+
+                    return true;
+                }
+
+                /* Get the last hash. */
+                uint512_t hashLast = 0;
+                if(!LLD::Ledger->ReadLast(tx.hashGenesis, hashLast, FLAGS::MEMPOOL))
+                    return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: Failed to read hash last");
+
+                /* Check for conflicts. */
+                if(tx.hashPrevTx != hashLast)
+                {
+                    /* Add to conflicts map. */
+                    debug::error(FUNCTION, "CONFLICT: hash last mismatch ", tx.hashPrevTx.SubString());
+                    mapConflicts[hashTx] = tx;
+
+                    /* Process orphan queue. */
+                    ProcessOrphans(hashTx);
+
+                    return true;
+                }
             }
-
-            //TODO: add mapConflcts map to soft-ban conflicting blocks
-
-            /* Check for duplicate coinbase or coinstake. */
-            if(tx.IsCoinBase())
-                return debug::error(FUNCTION, "coinbase ", hashTx.SubString(), " not accepted in pool");
-
-            /* Check for duplicate coinbase or coinstake. */
-            if(tx.IsCoinStake())
-                return debug::error(FUNCTION, "coinstake ", hashTx.SubString(), " not accepted in pool");
-
-            /* Check for duplicate coinbase or coinstake. */
-            if(tx.nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
-                return debug::error(FUNCTION, "tx ", hashTx.SubString(), " too far in the future");
-
-            /* Check that the transaction is in a valid state. */
-            if(!tx.Check())
-                return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
 
             /* Begin an ACID transction for internal memory commits. */
             if(!tx.Verify(FLAGS::MEMPOOL))
@@ -174,6 +200,7 @@ namespace TAO
             /* Relay the transaction. */
             if(LLP::TRITIUM_SERVER)
             {
+                runtime::sleep(500);
                 LLP::TRITIUM_SERVER->Relay
                 (
                     LLP::ACTION::NOTIFY,
@@ -182,20 +209,37 @@ namespace TAO
                 );
             }
 
+            /* Process orphan queue. */
+            ProcessOrphans(hashTx);
+
+            /* Notify private to produce block if valid. */
+            if(config::GetBoolArg("-private"))
+                PRIVATE_CONDITION.notify_all();
+
+            return true;
+        }
+
+
+        /* Process orphan transactions if triggered in queue. */
+        void Mempool::ProcessOrphans(const uint512_t& hash)
+        {
+            RLOCK(MUTEX);
+
             /* Check orphan queue. */
+            uint512_t hashTx = hash;
             while(mapOrphans.count(hashTx))
             {
                 /* Get the transaction from map. */
-                TAO::Ledger::Transaction& txOrphan = mapOrphans[hashTx];
+                TAO::Ledger::Transaction& tx = mapOrphans[hashTx];
 
                 /* Get the previous hash. */
-                uint512_t hashThis = txOrphan.GetHash();
+                uint512_t hashThis = tx.GetHash();
 
                 /* Debug output. */
-                debug::log(0, FUNCTION, "PROCESSING ORPHAN tx ", hashTx.SubString());
+                debug::log(0, FUNCTION, "PROCESSING ORPHAN tx ", hashThis.SubString());
 
                 /* Accept the transaction into memory pool. */
-                if(!Accept(txOrphan))
+                if(!Accept(tx))
                 {
                     hashTx = hashThis;
 
@@ -210,12 +254,35 @@ namespace TAO
                 /* Set the hashTx. */
                 hashTx = hashThis;
             }
+        }
 
-            /* Notify private to produce block if valid. */
-            if(config::GetBoolArg("-private"))
-                PRIVATE_CONDITION.notify_all();
 
-            return true;
+        /* Gets a transaction from mempool */
+        bool Mempool::Get(const uint512_t& hashTx, TAO::Ledger::Transaction &tx, bool &fConflicted) const
+        {
+            RLOCK(MUTEX);
+
+            /* Check in conflict memory. */
+            if(mapConflicts.count(hashTx))
+            {
+                /* Get from conflicts map. */
+                tx = mapConflicts.at(hashTx);
+                fConflicted = true;
+
+                debug::log(0, FUNCTION, "CONFLICTED TRANSACTION: ", hashTx.SubString());
+
+                return true;
+            }
+
+            /* Check in ledger memory. */
+            if(mapLedger.count(hashTx))
+            {
+                tx = mapLedger.at(hashTx);
+
+                return true;
+            }
+
+            return false;
         }
 
 
@@ -224,14 +291,15 @@ namespace TAO
         {
             RLOCK(MUTEX);
 
-            /* Fail if not found. */
-            if(!mapLedger.count(hashTx))
-                return false;
+            /* Check in ledger memory. */
+            if(mapLedger.count(hashTx))
+            {
+                tx = mapLedger.at(hashTx);
 
-            /* Find the object. */
-            tx = mapLedger.at(hashTx);
+                return true;
+            }
 
-            return true;
+            return false;
         }
 
 
@@ -298,7 +366,7 @@ namespace TAO
         {
             RLOCK(MUTEX);
 
-            return mapLedger.count(hashTx) || mapLegacy.count(hashTx);
+            return mapLedger.count(hashTx) || mapLegacy.count(hashTx) || mapConflicts.count(hashTx);
         }
 
 
@@ -321,6 +389,10 @@ namespace TAO
         {
             RLOCK(MUTEX);
 
+            /* Erase from conflicted memory. */
+            if(mapConflicts.count(hashTx))
+                mapConflicts.erase(hashTx);
+
             /* Find the transaction in pool. */
             if(mapLedger.count(hashTx))
             {
@@ -340,8 +412,8 @@ namespace TAO
                 const Legacy::Transaction& tx = mapLegacy[hashTx];
 
                 /* Erase the claimed inputs */
-                uint32_t s = static_cast<uint32_t>(tx.vin.size());
-                for(uint32_t i = 0; i < s; ++i)
+                uint32_t nSize = static_cast<uint32_t>(tx.vin.size());
+                for(uint32_t i = 0; i < nSize; ++i)
                     mapInputs.erase(tx.vin[i].prevout);
 
                 mapLegacy.erase(hashTx);
@@ -355,6 +427,8 @@ namespace TAO
         void Mempool::Check()
         {
             RLOCK(MUTEX);
+
+            //TODO: evict conflicted transctions from mempool
 
             /* Create map of transactions by genesis. */
             std::map<uint256_t, std::vector<TAO::Ledger::Transaction> > mapTransactions;
@@ -388,9 +462,9 @@ namespace TAO
                 /* Check last hash for valid transactions. */
                 if(!vtx[0].IsFirst())
                 {
-                    /* Read last index from disk. */
+                    /* Read last hash. */
                     if(!LLD::Ledger->ReadLast(list.first, hashLast))
-                        continue;
+                        break;
 
                     /* Check the last hash. */
                     if(vtx[0].hashPrevTx != hashLast)
@@ -398,29 +472,35 @@ namespace TAO
                         /* Debug information. */
                         debug::error(FUNCTION, "ROOT ORPHAN: last hash mismatch ", vtx[0].hashPrevTx.SubString());
 
-                        /* Begin the memory transaction. */
-                        LLD::TxnBegin(FLAGS::MEMPOOL);
+                        debug::log(3, "REMOVE ------------------------------");
 
                         /* Disconnect all transactions in reverse order. */
-                        for(int32_t i = vtx.size() - 1; i >= 0; --i)
+                        for(auto tx = vtx.rbegin(); tx != vtx.rend(); ++tx)
                         {
+                            /* Show the removal. */
+                            tx->print();
+
                             /* Reset memory states to disk indexes. */
-                            if(!vtx[i].Disconnect(FLAGS::MEMPOOL))
+                            if(!tx->Disconnect(FLAGS::ERASE))
                             {
-                                LLD::TxnAbort(FLAGS::MEMPOOL);
+                                debug::error(FUNCTION, "failed to disconnect tx ", tx->GetHash().SubString());
 
                                 break;
                             }
 
-                            debug::log(2, FUNCTION, "REMOVED: ", vtx[i].GetHash().SubString());
+                            /* Find the transaction in pool. */
+                            if(mapLedger.count(tx->GetHash()))
+                            {
+                                debug::log(0, "DELETED ", tx->GetHash().SubString());
+
+                                /* Erase from the memory map. */
+                                mapClaimed.erase(tx->hashPrevTx);
+                                mapLedger.erase(tx->GetHash());
+                            }
                         }
 
-                        /* Commit the memory transaction. */
-                        LLD::TxnCommit(FLAGS::MEMPOOL);
+                        debug::log(3, "END REMOVE ------------------------------");
 
-                        /* Remove all transactions after commited to memory. */
-                        for(const auto& tx : vtx)
-                            Remove(tx.GetHash());
 
                         break;
                     }
@@ -432,41 +512,54 @@ namespace TAO
                 /* Loop through transaction by genesis. */
                 for(uint32_t n = 1; n < vtx.size(); ++n)
                 {
+                    /* Check for end of index. */
+                    if(n == vtx.size())
+                        break;
+
                     /* Check that transaction is in sequence. */
                     if(vtx[n].hashPrevTx != hashLast)
                     {
                         /* Debug information. */
-                        debug::error(FUNCTION, "ORPHAN DETECTED: last hash mismatch ", vtx[n].hashPrevTx.SubString());
+                        debug::error(FUNCTION, "ORPHAN DETECTED INDEX ", n, ": last hash mismatch ", vtx[n].hashPrevTx.SubString());
+
+                        debug::log(3, "REMOVE ------------------------------");
 
                         /* Begin the memory transaction. */
                         LLD::TxnBegin(FLAGS::MEMPOOL);
 
                         /* Disconnect all transactions in reverse order. */
-                        std::vector<uint512_t> vRemove;
-                        for(uint32_t i = vtx.size() - 1; i >= n; --i)
+                        for(auto tx = vtx.rbegin(); tx != vtx.rend(); ++tx)
                         {
-                            /* Reset memory states to previous indexes. */
-                            if(!vtx[i].Disconnect(FLAGS::MEMPOOL))
+                            tx->print();
+
+                            if(tx->GetHash() == hashLast)
+                            {
+                                debug::log(0, "REACHED HASH LAST");
+                                break;
+                            }
+
+                            /* Reset memory states to disk indexes. */
+                            if(!tx->Disconnect(FLAGS::MEMPOOL))
                             {
                                 LLD::TxnAbort(FLAGS::MEMPOOL);
 
                                 break;
                             }
 
-                            /* Add to remove queue. */
-                            vRemove.push_back(vtx[i].GetHash());
-                            debug::log(2, FUNCTION, "REMOVED: ", vRemove.back().SubString());
+                            Remove(tx->GetHash());
                         }
 
                         /* Commit the memory transaction. */
                         LLD::TxnCommit(FLAGS::MEMPOOL);
 
-                        /* Remove all transactions after commited to memory. */
-                        for(const auto& hash : vRemove)
-                            Remove(hash);
+                        debug::log(3, "END REMOVE ------------------------------");
+
 
                         break;
                     }
+
+                    /* Set last hash. */
+                    hashLast = vtx[n].GetHash();
                 }
             }
         }
@@ -507,37 +600,37 @@ namespace TAO
                 for(auto& list : mapTransactions)
                 {
                     /* Get reference of the vector. */
-                    std::vector<TAO::Ledger::Transaction>& vTx = list.second;
+                    std::vector<TAO::Ledger::Transaction>& vtx = list.second;
 
                     /* Sort the list by sequence numbers. */
-                    std::sort(vTx.begin(), vTx.end());
+                    std::sort(vtx.begin(), vtx.end());
 
                     /* Add the hashes into list. */
                     uint512_t hashLast = 0;
 
                     /* Check last hash for valid transactions. */
-                    if(!vTx[0].IsFirst())
+                    if(!vtx[0].IsFirst())
                     {
                         /* Read last index from disk. */
                         if(!LLD::Ledger->ReadLast(list.first, hashLast))
-                            return debug::error(FUNCTION, "failed to read the last index");
+                            break; //NOTE: this may need an error
 
                         /* Check the last hash. */
-                        if(vTx[0].hashPrevTx != hashLast)
-                            continue; //SKIP ANY ORPHANS FOUND
+                        if(vtx[0].hashPrevTx != hashLast)
+                            break;
                     }
 
                     /* Set last from next transaction. */
-                    hashLast = vTx[0].GetHash();
+                    hashLast = vtx[0].GetHash();
 
                     /* Loop through transaction by genesis. */
-                    for(uint32_t n = 1; n <= vTx.size(); ++n)
+                    for(uint32_t n = 1; n <= vtx.size(); ++n)
                     {
                         /* Add to the output queue. */
                         vHashes.push_back(hashLast);
 
                         /* Check for end of index. */
-                        if(n == vTx.size())
+                        if(n == vtx.size())
                             break;
 
                         /* Check count. */
@@ -545,11 +638,11 @@ namespace TAO
                             return true;
 
                         /* Check that transaction is in sequence. */
-                        if(vTx[n].hashPrevTx != hashLast)
+                        if(vtx[n].hashPrevTx != hashLast)
                             break; //SKIP ANY ORPHANS FOUND
 
                         /* Set last hash. */
-                        hashLast = vTx[n].GetHash();
+                        hashLast = vtx[n].GetHash();
                     }
                 }
             }

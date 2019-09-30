@@ -72,7 +72,7 @@ namespace TAO
         , nTime(runtime::unifiedtimestamp())
         , producer()
         , ssSystem()
-        , vtx(0)
+        , vtx()
         {
 
         }
@@ -134,15 +134,17 @@ namespace TAO
                         Transaction tx;
                         ssData >> tx;
 
-                        /* Accept into memory pool. */
-                        if(!LLD::Ledger->HasTx(tx.GetHash()))
-                            mempool.AddUnchecked(tx);
-
                         /* Add transaction to binary data. */
                         if(n == block.vtx.size() - 1)
                             producer = tx; //handle for the producer transaction
                         else
+                        {
+                            /* Accept into memory pool. */
+                            if(!LLD::Ledger->HasTx(tx.GetHash()))
+                                mempool.AddUnchecked(tx);
+
                             vtx.push_back(std::make_pair(block.vtx[n].first, tx.GetHash()));
+                        }
 
                         break;
                     }
@@ -341,6 +343,9 @@ namespace TAO
             /* Get the signature operations for legacy tx's. */
             uint32_t nSigOps = 0;
 
+            /* Get list of producer transactions. */
+            std::map<uint256_t, uint512_t> mapLast;
+
             /* Get the signature operations for legacy tx's. */
             uint32_t nSize = (uint32_t)vtx.size();
             for(uint32_t i = 0; i < nSize; ++i)
@@ -384,7 +389,7 @@ namespace TAO
                 {
                     /* Check the memory pool. */
                     TAO::Ledger::Transaction tx;
-                    if(!LLD::Ledger->ReadTx(vtx[i].second, tx, FLAGS::MEMPOOL))
+                    if(!LLD::Ledger->ReadTx(vtx[i].second, tx, fConflicted, FLAGS::MEMPOOL))
                     {
                         /* Push missing transaction to memory. */
                         vMissing.push_back(vtx[i]);
@@ -396,6 +401,13 @@ namespace TAO
                     if(tx.IsCoinBase() || tx.IsCoinStake())
                         return debug::error(FUNCTION, "more than one coinbase / coinstake");
 
+                    /* Check the sequencing. */
+                    if(mapLast.count(tx.hashGenesis) && tx.hashPrevTx != mapLast[tx.hashGenesis])
+                        return debug::error(FUNCTION, "transaction in sigchain out of sequence");
+
+                    /* Set the last hash for given genesis. */
+                    mapLast[tx.hashGenesis] = tx.GetHash();
+
                     /* Check the transaction for validity. */
                     //if(!tx.Check()) //NOTE: this is pre-processing stuff
                     //    return debug::error(FUNCTION, "contains an invalid transaction");
@@ -403,6 +415,10 @@ namespace TAO
                 else
                     return debug::error(FUNCTION, "unknown transaction type");
             }
+
+            /* Check producer. */
+            if(mapLast.count(producer.hashGenesis) && producer.hashPrevTx != mapLast[producer.hashGenesis])
+                return debug::error(FUNCTION, "producer transaction out of sequence");
 
             /* Get producer hash. */
             uint512_t hashProducer = producer.GetHash();
@@ -536,6 +552,7 @@ namespace TAO
             /* Write the transactions. */
             for(const auto& proof : vtx)
             {
+                /* Get the tritium transction. */
                 if(proof.first == TRANSACTION::TRITIUM)
                 {
                     /* Get the transaction hash. */
@@ -543,13 +560,15 @@ namespace TAO
 
                     /* Check the memory pool. */
                     TAO::Ledger::Transaction tx;
-                    if(!LLD::Ledger->ReadTx(hash, tx, FLAGS::MEMPOOL))
+                    if(!LLD::Ledger->ReadTx(hash, tx, state.fConflicted, FLAGS::MEMPOOL))
                         return debug::error(FUNCTION, "transaction is not in memory pool");
 
                     /* Write to disk. */
                     if(!LLD::Ledger->WriteTx(hash, tx))
                         return debug::error(FUNCTION, "failed to write tx to disk");
                 }
+
+                /* Get the legacy transaction. */
                 else if(proof.first == TRANSACTION::LEGACY)
                 {
                     /* Get the transaction hash. */
@@ -557,13 +576,15 @@ namespace TAO
 
                     /* Check if in memory pool. */
                     Legacy::Transaction tx;
-                    if(!LLD::Legacy->ReadTx(hash, tx, FLAGS::MEMPOOL))
+                    if(!LLD::Legacy->ReadTx(hash, tx, FLAGS::MEMPOOL)) //TODO: handle pre-processing conflicts for legacy tx
                         return debug::error(FUNCTION, "transaction is not in memory pool");
 
                     /* Write to disk. */
                     if(!LLD::Legacy->WriteTx(hash, tx))
                         return debug::error(FUNCTION, "failed to write tx to disk");
                 }
+
+                /* Checkpoints DISABLED for now. */
                 else
                     return debug::error(FUNCTION, "using an unknown transaction type");
             }

@@ -63,7 +63,8 @@ namespace LLD
             /* Check for memory mode. */
             if(pMemory)
             {
-                /* Commit to transactional memory. */
+                /* Check erase queue. */
+                pMemory->setErase.erase(hashRegister);
                 pMemory->mapStates[hashRegister] = state;
 
                 return true;
@@ -84,7 +85,7 @@ namespace LLD
 
             return true;
         }
-        else if(nFlags == TAO::Ledger::FLAGS::BLOCK)
+        else if(nFlags == TAO::Ledger::FLAGS::BLOCK || nFlags == TAO::Ledger::FLAGS::ERASE)
         {
             LOCK(MEMORY_MUTEX);
 
@@ -93,9 +94,22 @@ namespace LLD
             {
                 /* Check for most recent memory state, and remove if writing it. */
                 const TAO::Register::State& stateCheck = pCommit->mapStates[hashRegister];
-                if(stateCheck == state)
-                    pCommit->mapStates.erase(hashRegister);
+                if(stateCheck == state || nFlags == TAO::Ledger::FLAGS::ERASE)
+                {
+                    /* Erase if transaction. */
+                    if(pMemory)
+                    {
+                        pMemory->setErase.insert(hashRegister);
+                        pMemory->mapStates.erase(hashRegister);
+                    }
+                    else
+                        pCommit->mapStates.erase(hashRegister);
+                }
             }
+
+            /* Quit when erasing. */
+            if(nFlags == TAO::Ledger::FLAGS::ERASE)
+                return true;
         }
 
         /* Add sequential read keys for known address types. */
@@ -160,7 +174,7 @@ namespace LLD
             LOCK(MEMORY_MUTEX);
 
             /* Check for a memory transaction first */
-            if(pMemory && pMemory->mapStates.count(hashRegister))
+            if(pMemory && pMemory->mapStates.count(hashRegister) && !pMemory->setErase.count(hashRegister))
             {
                 /* Get the state from temporary transaction. */
                 state = pMemory->mapStates[hashRegister];
@@ -198,43 +212,45 @@ namespace LLD
     /* Erase a state register from the register database. */
     bool RegisterDB::EraseState(const uint256_t& hashRegister, const uint8_t nFlags)
     {
-        /* Memory mode for pre-database commits. */
-        LOCK(MEMORY_MUTEX);
-
         /* Check for memory transaction. */
-        if(pMemory && nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
+            LOCK(MEMORY_MUTEX);
+
             /* Check for available states. */
-            bool fExists = false;
-            if(pMemory->mapStates.count(hashRegister))
+            if(pMemory)
             {
-                /* Erase state out of transaction. */
                 pMemory->mapStates.erase(hashRegister);
-
-                fExists = true;
-            }
-
-            /* Check that value exists to erase. */
-            if(pCommit->mapStates.count(hashRegister))
-            {
-                /* Set data to be in erase queue. */
                 pMemory->setErase.insert(hashRegister);
 
-                fExists = true;
+                return true;
             }
 
-            return fExists;
-        }
-
-        /* Check for state in memory map. */
-        if(pCommit->mapStates.count(hashRegister))
-        {
-            /* Erase the states. */
+            /* Erase state from mempool. */
             pCommit->mapStates.erase(hashRegister);
 
-            /* If in memory only mode, break early. */
-            if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
-                return true;
+            return true;
+        }
+        else if(nFlags == TAO::Ledger::FLAGS::BLOCK || nFlags == TAO::Ledger::FLAGS::ERASE)
+        {
+            LOCK(MEMORY_MUTEX);
+
+            /* Erase from memory if on block. */
+            if(pCommit->mapStates.count(hashRegister))
+            {
+                /* Check for transction. */
+                if(pMemory)
+                {
+                    pMemory->setErase.insert(hashRegister);
+                    pMemory->mapStates.erase(hashRegister);
+                }
+                else
+                    pCommit->mapStates.erase(hashRegister);
+
+                /* Break on erase.  */
+                if(nFlags == TAO::Ledger::FLAGS::ERASE)
+                    return true;
+            }
         }
 
         return Erase(std::make_pair(std::string("state"), hashRegister));
@@ -262,8 +278,37 @@ namespace LLD
         uint256_t hashRegister =
             TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
 
-        /* Check for block to delete memory state. */
-        if(nFlags == TAO::Ledger::FLAGS::BLOCK)
+        /* Memory mode for pre-database commits. */
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        {
+            LOCK(MEMORY_MUTEX);
+
+            /* Check for memory mode. */
+            if(pMemory)
+            {
+                /* Check erase queue. */
+                pMemory->setErase.erase(hashRegister);
+                pMemory->mapStates[hashRegister] = state;
+
+                return true;
+            }
+
+            /* Otherwise commit like normal. */
+            pCommit->mapStates[hashRegister] = state;
+
+            return true;
+        }
+        else if(nFlags == TAO::Ledger::FLAGS::MINER)
+        {
+            LOCK(MEMORY_MUTEX);
+
+            /* Check for memory mode. */
+            if(pMiner)
+                pMiner->mapStates[hashRegister] = state;
+
+            return true;
+        }
+        else if(nFlags == TAO::Ledger::FLAGS::BLOCK || nFlags == TAO::Ledger::FLAGS::ERASE)
         {
             LOCK(MEMORY_MUTEX);
 
@@ -272,9 +317,22 @@ namespace LLD
             {
                 /* Check for most recent memory state, and remove if writing it. */
                 const TAO::Register::State& stateCheck = pCommit->mapStates[hashRegister];
-                if(stateCheck == state)
-                    pCommit->mapStates.erase(hashRegister);
+                if(stateCheck == state || nFlags == TAO::Ledger::FLAGS::ERASE)
+                {
+                    /* Erase if transaction. */
+                    if(pMemory)
+                    {
+                        pMemory->setErase.insert(hashRegister);
+                        pMemory->mapStates.erase(hashRegister);
+                    }
+                    else
+                        pCommit->mapStates.erase(hashRegister);
+                }
             }
+
+            /* Quit when erasing. */
+            if(nFlags == TAO::Ledger::FLAGS::ERASE)
+                return true;
         }
 
         return Write(std::make_pair(std::string("genesis"), hashGenesis), state, "trust");
@@ -336,42 +394,6 @@ namespace LLD
         uint256_t hashRegister =
             TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
 
-        /* Check for memory transaction. */
-        if(pMemory && nFlags == TAO::Ledger::FLAGS::MEMPOOL)
-        {
-            /* Check for available states. */
-            bool fExists = false;
-            if(pMemory->mapStates.count(hashRegister))
-            {
-                /* Erase state out of transaction. */
-                pMemory->mapStates.erase(hashRegister);
-
-                fExists = true;
-            }
-
-            /* Check that value exists to erase. */
-            if(pCommit->mapStates.count(hashRegister))
-            {
-                /* Set data to be in erase queue. */
-                pMemory->setErase.insert(hashRegister);
-
-                fExists = true;
-            }
-
-            return fExists;
-        }
-
-        /* Check for state in memory map. */
-        if(pCommit->mapStates.count(hashRegister))
-        {
-            /* Erase the states. */
-            pCommit->mapStates.erase(hashRegister);
-
-            /* If in memory only mode, break early. */
-            if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
-                return true;
-        }
-
         return Erase(std::make_pair(std::string("genesis"), hashGenesis));
     }
 
@@ -409,18 +431,6 @@ namespace LLD
     {
         LOCK(MEMORY_MUTEX);
 
-        /* Check for mempool. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
-        {
-            /* Set the pre-commit memory mode. */
-            if(pMemory)
-                delete pMemory;
-
-            pMemory = new RegisterTransaction();
-
-            return;
-        }
-
         /* Check for miner. */
         if(nFlags == TAO::Ledger::FLAGS::MINER)
         {
@@ -432,6 +442,12 @@ namespace LLD
 
             return;
         }
+
+        /* Set the pre-commit memory mode. */
+        if(pMemory)
+            delete pMemory;
+
+        pMemory = new RegisterTransaction();
     }
 
 
@@ -439,18 +455,6 @@ namespace LLD
     void RegisterDB::MemoryRelease(const uint8_t nFlags)
     {
         LOCK(MEMORY_MUTEX);
-
-        /* Check for mempool. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
-        {
-            /* Set the pre-commit memory mode. */
-            if(pMemory)
-                delete pMemory;
-
-            pMemory = nullptr;
-
-            return;
-        }
 
         /* Check for miner. */
         if(nFlags == TAO::Ledger::FLAGS::MINER)
@@ -463,6 +467,16 @@ namespace LLD
 
             return;
         }
+
+        /* Set the pre-commit memory mode. */
+        if(pMemory)
+        {
+            delete pMemory;
+
+            debug::log(0, FUNCTION, "RegisterDB::Releasing MEMORY ACID Transaction");
+        }
+
+        pMemory = nullptr;
     }
 
 

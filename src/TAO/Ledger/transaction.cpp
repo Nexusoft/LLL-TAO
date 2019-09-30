@@ -160,6 +160,7 @@ namespace TAO
 
             /* Count of non-fee contracts in the transaction */
             uint8_t nContracts = 0;
+
             /* Run through all the contracts. */
             for(const auto& contract : vContracts)
             {
@@ -419,9 +420,6 @@ namespace TAO
                 if(!LLD::Ledger->ReadTx(hashPrevTx, txPrev, nFlags))
                     return debug::error(FUNCTION, "prev transaction not on disk");
 
-                /* Work out the whether transaction fees should apply based on the interval between transactions */
-                fApplyTxFee = nTimestamp - txPrev.nTimestamp < TX_FEE_INTERVAL;
-
                 /* Double check sequence numbers here. */
                 if(txPrev.nSequence + 1 != nSequence)
                     return debug::error(FUNCTION, "prev transaction incorrect sequence");
@@ -429,6 +427,9 @@ namespace TAO
                 /* Check timestamp to previous transaction. */
                 if(nTimestamp < txPrev.nTimestamp)
                     return debug::error(FUNCTION, "timestamp too far in the past ", txPrev.nTimestamp - nTimestamp);
+
+                /* Work out the whether transaction fees should apply based on the interval between transactions */
+                fApplyTxFee = ((nTimestamp - txPrev.nTimestamp) < TX_FEE_INTERVAL);
 
                 /* Check the previous next hash that is being claimed. */
                 bool fRecovery = false;
@@ -503,16 +504,12 @@ namespace TAO
                     }
                 }
 
-                /* Skip contract execution when mining (for now) */
-                if(nFlags != FLAGS::MINER)
-                {
-                    /* Bind the contract to this transaction. */
-                    contract.Bind(this);
+                /* Bind the contract to this transaction. */
+                contract.Bind(this);
 
-                    /* Execute the contracts to final state. */
-                    if(!TAO::Operation::Execute(contract, nFlags))
-                        return false;
-                }
+                /* Execute the contracts to final state. */
+                if(!TAO::Operation::Execute(contract, nFlags))
+                    return false;
             }
 
             /* Once we have executed the contracts we need to check the fees.
@@ -879,7 +876,7 @@ namespace TAO
                 "pub = ", HexStr(vchPubKey).substr(0, 20), ", ",
                 "sig = ", HexStr(vchSig).substr(0, 20), ", ",
                 "hash = ", GetHash().SubString()
-          );
+            );
         }
 
 
@@ -893,27 +890,27 @@ namespace TAO
         std::string Transaction::ToStringShort() const
         {
             std::string str;
-            std::string txtype = TypeString();
-            str += debug::safe_printstr(GetHash().ToString(), " ", txtype);
+            std::string strType = TypeString();
+            str += debug::safe_printstr(GetHash().ToString(), " ", strType);
             return str;
         }
 
         /*  User readable description of the transaction type. */
         std::string Transaction::TypeString() const
         {
-            std::string txtype = "tritium ";
+            std::string strType = "tritium ";
             if(IsCoinBase())
-                txtype += "base";
+                strType += "base";
             else if(IsFirst())
-                txtype += "first";
+                strType += "first";
             else if(IsTrust())
-                txtype += "trust";
+                strType += "trust";
             else if(IsGenesis())
-                txtype += "genesis";
+                strType += "genesis";
             else
-                txtype += "user";
+                strType += "user";
 
-            return txtype;
+            return strType;
         }
 
         /* Calculates and returns the total fee included in this transaction */
@@ -947,8 +944,6 @@ namespace TAO
         {
             /* The calculated cost */
             uint64_t nCost = 0;
-
-
 
             /* Iterate through all contracts. */
             for(const auto& contract : vContracts)

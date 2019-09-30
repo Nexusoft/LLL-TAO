@@ -163,6 +163,7 @@ namespace TAO
         /** The stake threshold weight multiplier. **/
         const uint64_t MAX_STAKE_WEIGHT = 1000 * NXS_COIN;
 
+
         /* The fee-free interval between transactions in seconds*/
         const uint64_t TX_FEE_INTERVAL = 10;
 

@@ -22,6 +22,8 @@ ________________________________________________________________________________
 #include <TAO/Register/include/reserved.h>
 #include <TAO/Register/types/object.h>
 
+#include <TAO/Ledger/types/state.h>
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -37,7 +39,16 @@ namespace TAO
         {
             /* Check if this transfer is already claimed. */
             if(LLD::Ledger->HasProof(hashProof, hashTx, nContract, nFlags))
-                return debug::error(FUNCTION, "credit is already claimed");
+            {
+                TAO::Ledger::BlockState state;
+                if(!LLD::Ledger->ReadBlock(hashTx, state))
+                    return debug::error(FUNCTION, "failed to read block");
+
+                state.print();
+
+                return debug::error(FUNCTION, "credit is already claimed ", hashProof.SubString(), " txid ", hashTx.SubString(), " contract ", nContract);
+            }
+
 
             /* Write the claimed proof. */
             if(!LLD::Ledger->WriteProof(hashProof, hashTx, nContract, nFlags))
@@ -57,10 +68,10 @@ namespace TAO
             /* Flag indicating this is a split dividend payment / partial credit. We can determine this by comparing the hashFrom
                to the hashProof as, for a normal account to account debit, the hashFrom and hashProof are the same, whereas for
                a split dividend payment the hashProof is the address of the token account proving your partial payment. */
-            bool fIsPartial = hashFrom != hashProof;
+            bool fIsPartial = (hashFrom != hashProof);
 
             /* Flag indicating this is a return to self credit, i.e. the hashFrom account is the same as the hashAddress account */
-            bool fIsReturn = hashFrom == hashAddress;
+            bool fIsReturn = (hashFrom == hashAddress);
 
             /* Check if there are any partial claims against the debit and update the the claimed amount to reflect this credit.
                NOTE we can skip this check for coinbase transactions or for regular account to account transactions, unless
@@ -70,8 +81,7 @@ namespace TAO
                to see if it is a non-account and then checking that the owner is a token (e.g. a tokenized asset).  However we do
                not want to incur the overhead of a DB read to check this for every credit, so instead we will incur the hit of
                reading the claimed and writing the claimed whenever we are returning to self, which occurs far less often. */
-            if(nType != OP::COINBASE
-            && (fIsPartial || fIsReturn))
+            if(nType != OP::COINBASE && (fIsPartial || fIsReturn))
             {
                 /* Get the partial amount. */
                 uint64_t nClaimed = 0;

@@ -124,7 +124,7 @@ namespace LLD
          *  @return True if the read was successful, false otherwise.
          *
          **/
-        bool ReadBestChain(uint1024_t& hashBest);
+        bool ReadBestChain(uint1024_t &hashBest);
 
 
         /** ReadBestChain
@@ -136,7 +136,7 @@ namespace LLD
          *  @return True if the read was successful, false otherwise.
          *
          **/
-        bool ReadBestChain(memory::atomic<uint1024_t>& atomicBest);
+        bool ReadBestChain(memory::atomic<uint1024_t> &atomicBest);
 
 
         /** ReadContract
@@ -172,13 +172,28 @@ namespace LLD
          *  Reads a transaction from the ledger DB.
          *
          *  @param[in] hashTx The txid of transaction to read.
-         *  @param[in] tx The transaction object to read.
+         *  @param[out] tx The transaction object to read.
          *  @param[in] nFlags The flags to determine memory pool or disk
          *
          *  @return True if the transaction was successfully read, false otherwise.
          *
          **/
-        bool ReadTx(const uint512_t& hashTx, TAO::Ledger::Transaction& tx, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
+        bool ReadTx(const uint512_t& hashTx, TAO::Ledger::Transaction &tx, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
+
+
+        /** ReadTx
+         *
+         *  Reads a transaction from the ledger DB including checking conflicted memory.
+         *
+         *  @param[in] hashTx The txid of transaction to read.
+         *  @param[out] tx The transaction object to read.
+         *  @param[out] fConflicted The flags to determine if transaction is conflicted.
+         *  @param[in] nFlags The flags to determine memory pool or disk
+         *
+         *  @return True if the transaction was successfully read, false otherwise.
+         *
+         **/
+        bool ReadTx(const uint512_t& hashTx, TAO::Ledger::Transaction &tx, bool &fConflicted, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
         /** EraseTx
@@ -342,12 +357,12 @@ namespace LLD
          *  Reads a block state from disk from a tx index.
          *
          *  @param[in] hashBlock The block hash to read.
-         *  @param[in] state The block state object to read.
+         *  @param[out] state The block state object to read.
          *
          *  @return True if the read was successful, false otherwise.
          *
          **/
-        bool ReadBlock(const uint512_t& hashTx, TAO::Ledger::BlockState& state);
+        bool ReadBlock(const uint512_t& hashTx, TAO::Ledger::BlockState &state);
 
 
         /** ReadBlock
@@ -355,12 +370,12 @@ namespace LLD
          *  Reads a block state from disk from a tx index.
          *
          *  @param[in] nBlockHeight The block height to read.
-         *  @param[in] state The block state object to read.
+         *  @param[out] state The block state object to read.
          *
          *  @return True if the read was successful, false otherwise.
          *
          **/
-        bool ReadBlock(const uint32_t& nBlockHeight, TAO::Ledger::BlockState& state);
+        bool ReadBlock(const uint32_t& nBlockHeight, TAO::Ledger::BlockState &state);
 
 
         /** HasTx
@@ -586,12 +601,12 @@ namespace LLD
          *  Reads a block state object from disk.
          *
          *  @param[in] hashBlock The block hash to read.
-         *  @param[in] state The block state object to read.
+         *  @param[out] state The block state object to read.
          *
          *  @return True if the read was successful, false otherwise.
          *
          **/
-        bool ReadBlock(const uint1024_t& hashBlock, TAO::Ledger::BlockState& state);
+        bool ReadBlock(const uint1024_t& hashBlock, TAO::Ledger::BlockState &state);
 
 
         /** ReadBlock
@@ -599,12 +614,12 @@ namespace LLD
          *  Reads a block state object from disk for an atomic object.
          *
          *  @param[in] hashBlock The block hash to read.
-         *  @param[in] atomicState The block state object to read in atomic form.
+         *  @param[out] atomicState The block state object to read in atomic form.
          *
          *  @return True if the read was successful, false otherwise.
          *
          **/
-        bool ReadBlock(const uint1024_t& hashBlock, memory::atomic<TAO::Ledger::BlockState>& atomicState);
+        bool ReadBlock(const uint1024_t& hashBlock, memory::atomic<TAO::Ledger::BlockState> &atomicState);
 
 
         /** HasBlock

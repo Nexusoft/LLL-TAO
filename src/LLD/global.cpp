@@ -33,6 +33,14 @@ namespace LLD
     {
         debug::log(0, FUNCTION, "Initializing LLD");
 
+        /* Create the contract database instance. */
+        Contract = new ContractDB(
+                        FLAGS::CREATE | FLAGS::FORCE);
+
+        /* Create the contract database instance. */
+        Register = new RegisterDB(
+                        FLAGS::CREATE | FLAGS::FORCE);
+
         /* Create the ledger database instance. */
         Ledger    = new LedgerDB(
                         FLAGS::CREATE | FLAGS::FORCE,
@@ -47,14 +55,6 @@ namespace LLD
 
         /* Create the trust database instance. */
         Trust  = new TrustDB(
-                        FLAGS::CREATE | FLAGS::FORCE);
-
-        /* Create the contract database instance. */
-        Contract = new ContractDB(
-                        FLAGS::CREATE | FLAGS::FORCE);
-
-        /* Create the contract database instance. */
-        Register = new RegisterDB(
                         FLAGS::CREATE | FLAGS::FORCE);
 
         /* Create the local database instance. */
@@ -125,6 +125,10 @@ namespace LLD
         /* Flag to determine if there are any failures. */
         bool fRecovery = true;
 
+        /* Check the contract DB journal. */
+        if(Contract && !Contract->TxnRecovery())
+            fRecovery = false;
+
         /* Check the register DB journal. */
         if(Register && !Register->TxnRecovery())
             fRecovery = false;
@@ -150,11 +154,15 @@ namespace LLD
         {
             debug::log(0, FUNCTION, "all transactions are complete, recovering...");
 
+            /* Commit contract DB transaction. */
+            if(Contract)
+                Contract->TxnCommit();
+
             /* Commit register DB transaction. */
             if(Register)
                 Register->TxnCommit();
 
-            /* Commit legacy DB transaction. */
+            /* Commit ledger DB transaction. */
             if(Ledger)
                 Ledger->TxnCommit();
 
@@ -179,19 +187,25 @@ namespace LLD
     /* Global handler for all LLD instances. */
     void TxnBegin(const uint8_t nFlags)
     {
+        /* Start the contract DB transaction. */
+        if(Contract)
+            Contract->MemoryBegin(nFlags);
+
+        /* Start the register DB transacdtion. */
+        if(Register)
+            Register->MemoryBegin(nFlags);
+
+        /* Start the ledger DB transaction. */
+        if(Ledger)
+            Ledger->MemoryBegin(nFlags);
+
         /* Handle memory commits if in memory m ode. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
-        {
-            /* Start the register DB transacdtion. */
-            if(Register)
-                Register->MemoryBegin();
-
-            /* Start the ledger DB transaction. */
-            if(Ledger)
-                Ledger->MemoryBegin();
-
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::MINER)
             return;
-        }
+
+        /* Start the contract DB transaction. */
+        if(Contract)
+            Contract->TxnBegin();
 
         /* Start the register DB transacdtion. */
         if(Register)
@@ -218,19 +232,25 @@ namespace LLD
     /* Global handler for all LLD instances. */
     void TxnAbort(const uint8_t nFlags)
     {
+        /* Abort the contract DB transaction. */
+        if(Contract)
+            Contract->MemoryRelease(nFlags);
+
+        /* Abort the register DB transacdtion. */
+        if(Register)
+            Register->MemoryRelease(nFlags);
+
+        /* Abort the ledger DB transaction. */
+        if(Ledger)
+            Ledger->MemoryRelease(nFlags);
+
         /* Handle memory commits if in memory m ode. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
-        {
-            /* Start the register DB transacdtion. */
-            if(Register)
-                Register->MemoryRelease();
-
-            /* Start the ledger DB transaction. */
-            if(Ledger)
-                Ledger->MemoryRelease();
-
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::MINER)
             return;
-        }
+
+        /* Abort the contract DB transaction. */
+        if(Contract)
+            Contract->TxnRelease();
 
         /* Abort the register DB transaction. */
         if(Register)
@@ -257,19 +277,25 @@ namespace LLD
     /* Global handler for all LLD instances. */
     void TxnCommit(const uint8_t nFlags)
     {
-        /* Handle memory commits if in memory m ode. */
+        /* Commit the contract DB transaction. */
+        if(Contract)
+            Contract->MemoryCommit();
+
+        /* Commit the register DB transacdtion. */
+        if(Register)
+            Register->MemoryCommit();
+
+        /* Commit the ledger DB transaction. */
+        if(Ledger)
+            Ledger->MemoryCommit();
+
+        /* Handle memory commits if in memory mode. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
-        {
-            /* Start the register DB transacdtion. */
-            if(Register)
-                Register->MemoryCommit();
-
-            /* Start the ledger DB transaction. */
-            if(Ledger)
-                Ledger->MemoryCommit();
-
             return;
-        }
+
+        /* Set a checkpoint for contract DB. */
+        if(Contract)
+            Contract->TxnCheckpoint();
 
         /* Set a checkpoint for register DB. */
         if(Register)
@@ -292,6 +318,10 @@ namespace LLD
             Legacy->TxnCheckpoint();
 
 
+        /* Commit contract DB transaction. */
+        if(Contract)
+            Contract->TxnCommit();
+
         /* Commit register DB transaction. */
         if(Register)
             Register->TxnCommit();
@@ -312,6 +342,10 @@ namespace LLD
         if(Legacy)
             Legacy->TxnCommit();
 
+
+        /* Abort the contract DB transaction. */
+        if(Contract)
+            Contract->TxnRelease();
 
         /* Abort the register DB transaction. */
         if(Register)

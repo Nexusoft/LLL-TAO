@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <LLC/include/random.h>
 
 #include <LLD/include/global.h>
+#include <LLD/cache/binary_key.h>
 
 #include <LLP/types/tritium.h>
 #include <LLP/include/global.h>
@@ -58,6 +59,10 @@ namespace LLP
 
     /* If node is completely sychronized. */
     std::atomic<bool> TritiumNode::fSynchronized(false);
+
+
+    /* The local relay inventory cache. */
+    static LLD::KeyLRU cacheInventory = LLD::KeyLRU(1024 * 1024);
 
 
     /** Default Constructor **/
@@ -907,8 +912,11 @@ namespace LLP
                                                 if(!LLD::Ledger->ReadBlock(have, state))
                                                     return debug::drop(NODE, "failed to read locator block");
 
-                                                /* Go back to last checkpoint from locator. */
-                                                hashStart = state.hashCheckpoint;
+                                                /* Check for being in main chain. */
+                                                if(!state.IsInMainChain())
+                                                    continue;
+
+                                                hashStart = state.hashPrevBlock;
                                             }
                                             else //on genesis, don't rever to previous block
                                                 hashStart = have;
@@ -918,7 +926,7 @@ namespace LLP
                                     }
 
                                     /* Debug output. */
-                                    debug::log(0, NODE, "ACTION::LIST: Locator ", hashStart.SubString(), " found");
+                                    //debug::log(0, NODE, "ACTION::LIST: Locator ", hashStart.SubString(), " found");
 
                                     break;
                                 }
@@ -931,20 +939,34 @@ namespace LLP
                             uint1024_t hashStop;
                             ssPacket >> hashStop;
 
+                            /* Keep track of the last state. */
+                            TAO::Ledger::BlockState stateLast;
+                            if(!LLD::Ledger->ReadBlock(hashStart, stateLast))
+                                return debug::drop(NODE, "failed to read starting block");
+
                             /* Do a sequential read to obtain the list. */
                             std::vector<TAO::Ledger::BlockState> vStates;
                             while(--nLimits > 0 && hashStart != hashStop &&
-                                LLD::Ledger->BatchRead(hashStart, "block", vStates, 1000))
+                                LLD::Ledger->BatchRead(hashStart, "block", vStates, 1000, true))
                             {
                                 /* Loop through all available states. */
-                                for(const auto& state : vStates)
-                                {    
+                                for(auto& state : vStates)
+                                {
                                     /* Skip if not in main chain. */
                                     if(!state.IsInMainChain())
                                         continue;
 
+                                    /* Check for matching hashes. */
+                                    if(state.hashPrevBlock != hashStart)
+                                    {
+                                        /* Read the correct block from next index. */
+                                        if(!LLD::Ledger->ReadBlock(stateLast.hashNextBlock, state))
+                                           return debug::drop(NODE, "failed to read current block");
+                                    }
+
                                     /* Cache the block hash. */
                                     hashStart = state.GetHash();
+                                    stateLast = state;
 
                                     /* Handle for special sync block type specifier. */
                                     if(fSyncBlock)
@@ -1417,13 +1439,13 @@ namespace LLP
                             if(fLegacy)
                             {
                                 /* Check legacy database. */
-                                if(!LLD::Legacy->HasTx(hashTx, TAO::Ledger::FLAGS::MEMPOOL))
+                                if(!cacheInventory.Has(hashTx) && !LLD::Legacy->HasTx(hashTx, TAO::Ledger::FLAGS::MEMPOOL))
                                     ssResponse << uint8_t(SPECIFIER::LEGACY) << uint8_t(TYPES::TRANSACTION) << hashTx;
                             }
                             else
                             {
                                 /* Check ledger database. */
-                                if(!LLD::Ledger->HasTx(hashTx, TAO::Ledger::FLAGS::MEMPOOL))
+                                if(!cacheInventory.Has(hashTx) && !LLD::Ledger->HasTx(hashTx, TAO::Ledger::FLAGS::MEMPOOL))
                                     ssResponse << uint8_t(TYPES::TRANSACTION) << hashTx;
                             }
 
@@ -1949,7 +1971,11 @@ namespace LLP
                             nConsecutiveFails = 0;
                         }
                         else
+                        {
                             ++nConsecutiveFails;
+                            cacheInventory.Ban(tx.GetHash());
+                        }
+
 
                         break;
                     }

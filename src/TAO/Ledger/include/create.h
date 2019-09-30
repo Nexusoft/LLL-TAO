@@ -106,11 +106,11 @@ namespace TAO
          *  @param[in] user The signature chain to generate this block
          *  @param[in] pin The pin number to generate with.
          *  @param[out] block The block object being created.
-         *  @param[in] isGenesis Set true if staking for Genesis, false if staking for Trust
+         *  @param[in] fGenesis Set true if staking for Genesis, false if staking for Trust
          *
          **/
         bool CreateStakeBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin,
-                              TAO::Ledger::TritiumBlock& block, const uint64_t isGenesis = false);
+                              TAO::Ledger::TritiumBlock& block, const bool fGenesis = false);
 
 
         /** CreateGenesis

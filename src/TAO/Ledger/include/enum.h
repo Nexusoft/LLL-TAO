@@ -129,6 +129,9 @@ namespace TAO
 
                 /* Special memory when building block. */
                 MINER       = 0x04,
+
+                /* Wipe the memory states when writing. */
+                ERASE       = 0x05
             };
         }
 

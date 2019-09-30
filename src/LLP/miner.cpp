@@ -293,10 +293,6 @@ namespace LLP
         /* Get the incoming packet. */
         Packet PACKET = this->INCOMING;
 
-        /* Make sure the mining server has a connection. */
-        if(MINING_SERVER && MINING_SERVER->GetConnectionCount() == 0)
-            return debug::error(FUNCTION, "No active connections.");
-
         /* Make sure the mining server has a connection. (skip check if running local testnet) */
         bool fLocalTestnet = config::fTestNet.load() && !config::GetBoolArg("-dns", true);
         if(!fLocalTestnet && TRITIUM_SERVER && TRITIUM_SERVER->GetConnectionCount() == 0)

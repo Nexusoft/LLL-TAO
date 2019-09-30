@@ -198,7 +198,13 @@ namespace TAO
             nHeight             = state.nHeight;
             nBits               = state.nBits;
             nNonce              = state.nNonce;
+            vOffsets            = state.vOffsets;
             vchBlockSig         = state.vchBlockSig;
+
+            //MEMORY ONLY
+            vMissing            = state.vMissing;
+            hashMissing         = state.hashMissing;
+            fConflicted         = state.fConflicted;
 
             nTime               = state.nTime;
             ssSystem            = state.ssSystem;
@@ -310,13 +316,8 @@ namespace TAO
             /* Compute the Channel Height. */
             nChannelHeight = stateLast.nChannelHeight + 1;
 
-            /* Check if fees are available. */
-            uint64_t nPayout = 0;
-            if(stateLast.nFeeReserve > 1000 * NXS_COIN)
-                nPayout = (vtx.size() - 1) * 1000; //NOTE: 1000 viz paid as a constant per transaction.
-
             /* Carry over the fee reserves from last block. */
-            nFeeReserve = stateLast.nFeeReserve - nPayout;
+            nFeeReserve = stateLast.nFeeReserve;
 
             /* Compute the Released Reserves. */
             if(IsProofOfWork())
@@ -457,6 +458,9 @@ namespace TAO
                     if(nVersion >= 7)
                         nMint += nCoinbaseRewards[nType];
                 }
+
+                /* Log the accumulated fee reserves. */
+                debug::log(2, "Fee Reserves | ", std::fixed, nFeeReserve / double(TAO::Ledger::NXS_COIN));
             }
 
             /* Add the Pending Checkpoint into the Blockchain. */
@@ -509,8 +513,16 @@ namespace TAO
                 if(nHeight > ChainState::nBestHeight.load() + 1 && (nEquals == 1 && nGreater == 1))
                     ++nGreater;
 
+                /* Check for conflicted blocks. */
+                if(fConflicted) //NOTE: we don't connect conflicted blocks unless built on by another miner
+                {
+                    debug::error(FUNCTION, "CONFLICTED BLOCK: ", GetHash().SubString());
+
+                    return true;
+                }
+
                 /* Handle single channel having higher weight. */
-                if((nEquals == 2 && nGreater == 1) || nGreater > 1)
+                else if((nEquals == 2 && nGreater == 1) || nGreater > 1)
                 {
                     /* Log the weights. */
                     debug::log(2, FUNCTION, "WEIGHTS [", uint32_t(nGreater), "]",
@@ -520,35 +532,15 @@ namespace TAO
 
                     /* Set the best chain. */
                     if(!SetBest())
-                    {
-                        LLD::TxnAbort();
-
                         return debug::error(FUNCTION, "failed to set best chain");
-                    }
                 }
             }
             else if(nChainTrust > ChainState::nBestChainTrust.load())
             {
                 /* Attempt to set the best chain. */
                 if(!SetBest())
-                {
-                    LLD::TxnAbort();
-
                     return debug::error(FUNCTION, "failed to set best chain");
-                }
             }
-
-
-            timer.Reset();
-
-            /* Check timer.
-            if(timer.ElapsedMilliseconds() > 100)
-            {
-                debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_RED, "!!!SLOW BLOCK WRITE ", ANSI_COLOR_RESET, timer.ElapsedMilliseconds(), " ms ", GetHash().SubString());
-
-                debug::log(0, ToString(debug::flags::header | debug::flags::tx));
-            }
-            */
 
             /* Debug output. */
             debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION, "ACCEPTED");
@@ -601,12 +593,7 @@ namespace TAO
                         /* Iterate backwards in chain. */
                         longer = longer.Prev();
                         if(!longer)
-                        {
-                            /* Abort the Transaction. */
-                            LLD::TxnAbort();
-
                             return debug::error(FUNCTION, "failed to find longer ancestor block");
-                        }
                     }
 
                     /* Break if found. */
@@ -619,25 +606,22 @@ namespace TAO
                     /* Iterate to previous block. */
                     fork = fork.Prev();
                     if(!fork)
-                    {
-                        /* Abort the Transaction. */
-                        LLD::TxnAbort();
-
-                        /* Debug errors. */
                         return debug::error(FUNCTION, "failed to find ancestor fork block");
-                    }
                 }
 
                 /* Log if there are blocks to disconnect. */
                 if(vDisconnect.size() > 0)
                 {
-                    debug::log(0, FUNCTION, "REORGANIZE: Disconnect ", vDisconnect.size(),
+                    debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "REORGANIZE:", ANSI_COLOR_RESET, " Disconnect ", vDisconnect.size(),
                         " blocks; ", fork.GetHash().SubString(),
                         "..",  ChainState::stateBest.load().GetHash().SubString());
 
-                    debug::log(0, FUNCTION, "REORGANIZE: Connect ", vConnect.size(), " blocks; ", fork.GetHash().SubString(),
+                    debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "REORGANIZE:", ANSI_COLOR_RESET," Connect ", vConnect.size(), " blocks; ", fork.GetHash().SubString(),
                         "..", hash.SubString());
                 }
+
+                /* Keep track of mempool transactions to delete. */
+                std::vector<std::pair<uint8_t, uint512_t>> vResurrect;
 
                 /* Disconnect given blocks. */
                 for(auto& state : vDisconnect)
@@ -648,13 +632,7 @@ namespace TAO
 
                     /* Connect the block. */
                     if(!state.Disconnect())
-                    {
-                        /* Abort the Transaction. */
-                        LLD::TxnAbort();
-
-                        /* Debug errors. */
                         return debug::error(FUNCTION, "failed to disconnect ", state.GetHash().SubString());
-                    }
 
                     /* Erase block if not connecting anything. */
                     if(vConnect.empty())
@@ -662,6 +640,9 @@ namespace TAO
                         LLD::Ledger->EraseBlock(state.GetHash());
                         //LLD::Ledger->EraseIndex(state.nHeight);
                     }
+
+                    /* Insert into resurrect queue. */
+                    vResurrect.insert(vResurrect.end(), state.vtx.rbegin(), state.vtx.rend());
                 }
 
                 /* Keep track of mempool transactions to delete. */
@@ -676,14 +657,7 @@ namespace TAO
 
                     /* Connect the block. */
                     if(!state->Connect())
-                    {
-                        /* Abort the Transaction. */
-                        LLD::TxnAbort(); //TODO: when a txn is aborted, we need to ensure that the memory states stay intact
-
-                        /* Debug errors. */
-                        return debug::error(FUNCTION, "failed to connect ",
-                            state->GetHash().SubString());
-                    }
+                        return debug::error(FUNCTION, "failed to connect ", state->GetHash().SubString());
 
                     /* Harden a checkpoint if there is any. */
                     HardenCheckpoint(Prev());
@@ -692,11 +666,92 @@ namespace TAO
                     vDelete.insert(vDelete.end(), state->vtx.begin(), state->vtx.end());
                 }
 
+                debug::log(3, "RESURRECT ------------------------------");
+
+                /* Reverse the transction to connect to connect in ascending height. */
+                for(auto proof = vResurrect.rbegin(); proof != vResurrect.rend(); ++proof)
+                {
+                    /* Check for tritium transctions. */
+                    if(proof->first == TRANSACTION::TRITIUM)
+                    {
+                        /* Make sure the transaction is on disk. */
+                        TAO::Ledger::Transaction tx;
+                        if(!LLD::Ledger->ReadTx(proof->second, tx))
+                            return debug::error(FUNCTION, "transaction not on disk");
+
+                        /* Check for producer transaction. */
+                        if(tx.IsCoinBase() || tx.IsCoinStake())
+                            continue;
+
+                        /* Add back into memory pool. */
+                        mempool.Accept(tx);
+
+                        if(config::GetArg("-verbose", 0) >= 3)
+                            tx.print();
+                    }
+                    else if(proof->first == TRANSACTION::LEGACY)
+                    {
+
+                    }
+                }
+
+                debug::log(3, "END RESURRECT ------------------------------");
+
+
+                debug::log(3, "DELETE ------------------------------");
+
                 /* Delete from mempool. */
                 for(const auto& proof : vDelete)
+                {
+                    /* Check for tritium transctions. */
+                    if(proof.first == TRANSACTION::TRITIUM)
+                    {
+                        /* Make sure the transaction is on disk. */
+                        TAO::Ledger::Transaction tx;
+                        if(!LLD::Ledger->ReadTx(proof.second, tx))
+                            return debug::error(FUNCTION, "transaction not on disk");
+
+                        /* Check for producer transaction. */
+                        if(tx.IsCoinBase() || tx.IsCoinStake())
+                            continue;
+
+                        if(config::GetArg("-verbose", 0) >= 3)
+                            tx.print();
+                    }
+                    else if(proof.first == TRANSACTION::LEGACY)
+                    {
+
+                    }
+
                     mempool.Remove(proof.second);
+                }
+
+                debug::log(3, "END DELETE ------------------------------");
+
+
+                /* Debug output about the best chain. */
+                uint64_t nElapsed = (GetBlockTime() - ChainState::stateBest.load().GetBlockTime());
+                uint64_t nTimer   = timer.ElapsedMilliseconds();
+                debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION,
+                    "New Best Block hash=", hash.SubString(),
+                    " height=", nHeight,
+                    " trust=", nChainTrust,
+                    " tx=", vtx.size(),
+                    " [", (nElapsed == 0 ? 0 : double(nTotalContracts / nElapsed)), " contracts/s]"
+                    " [verified in ", nTimer, " ms]",
+                    " [processing ", (nTotalContracts * 1000.0) / (nTimer + 1), " contracts/s]",
+                    " [", ::GetSerializeSize(*this, SER_LLD, nVersion), " bytes]");
+
+                /* Do a quick mempool processing check for ORPHANS. */
+                timer.Reset();
+                mempool.Check();
+
+                /* Log the mempool consistency checking. */
+                nElapsed = timer.ElapsedMilliseconds();
+                debug::log(0, FUNCTION, "Mempool Consistency Check Complete in ", nElapsed,  " ms");
 
                 /* Set the best chain variables. */
+                ChainState::stateBest          = *this;
                 ChainState::hashBestChain      = hash;
                 ChainState::nBestChainTrust    = nChainTrust;
                 ChainState::nBestHeight        = nHeight;
@@ -705,22 +760,8 @@ namespace TAO
                 if(!LLD::Ledger->WriteBestChain(ChainState::hashBestChain.load()))
                     return debug::error(FUNCTION, "failed to write best chain");
 
-                /* Debug output about the best chain. */
-                uint64_t nElapsed = (GetBlockTime() - ChainState::stateBest.load().GetBlockTime());
-                uint64_t nTimer   = timer.ElapsedMilliseconds();
-                debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION,
-                    "New Best Block hash=", hash.SubString(),
-                    " height=", ChainState::nBestHeight.load(),
-                    " trust=", ChainState::nBestChainTrust.load(),
-                    " tx=", vtx.size(),
-                    " [", (nElapsed == 0 ? 0 : double(nTotalContracts / nElapsed)), " contracts/s]"
-                    " [verified in ", nTimer, " ms]",
-                    " [processing ", (nTotalContracts * 1000.0) / (nTimer + 1), " contracts/s]",
-                    " [", ::GetSerializeSize(*this, SER_LLD, nVersion), " bytes]");
-
-                /* Set best block state. */
-                ChainState::stateBest = *this;
-                nTotalContracts = 0; //one contract per block
+                /* Reset contract meters. */
+                nTotalContracts = 0;
 
                 /* Broadcast the block to nodes if not synchronizing. */
                 if(!ChainState::Synchronizing())
@@ -761,16 +802,6 @@ namespace TAO
                             nHeight
                         );
                     }
-
-
-                    /* Do a quick mempool processing check for ORPHANS. */
-                    timer.Reset();
-                    mempool.Check();
-
-                    /* Log the mempool consistency checking. */
-                    nElapsed = timer.ElapsedMilliseconds();
-                    debug::log(0, FUNCTION, "Mempool Consistency Check Complete in ", nElapsed,  " ms");
-
                 }
             }
 
@@ -783,6 +814,8 @@ namespace TAO
         {
             /* Reset the transaction fees. */
             nFees = 0;
+
+            debug::log(3, "BLOCK BEGIN-------------------------------------");
 
             /* Check through all the transactions. */
             for(const auto& proof : vtx)
@@ -801,6 +834,9 @@ namespace TAO
                     TAO::Ledger::Transaction tx;
                     if(!LLD::Ledger->ReadTx(hash, tx))
                         return debug::error(FUNCTION, "transaction not on disk");
+
+                    if(config::GetArg("-verbose", 0) >= 3)
+                        tx.print();
 
                     /* Check the ledger rules for sigchain at end. */
                     if(!tx.IsFirst())
@@ -890,6 +926,9 @@ namespace TAO
                 /* Write the indexing entries. */
                 LLD::Ledger->IndexBlock(proof.second, GetHash());
             }
+
+
+            debug::log(3, "BLOCK END-------------------------------------");
 
             /* Update the previous state's next pointer. */
             BlockState prev = Prev();

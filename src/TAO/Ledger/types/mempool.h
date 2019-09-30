@@ -50,6 +50,7 @@ namespace TAO
         {
             mutable std::recursive_mutex MUTEX;
 
+
             /** The transactions in the ledger memory pool. **/
             std::map<uint512_t, Legacy::Transaction> mapLegacy;
 
@@ -132,6 +133,18 @@ namespace TAO
             bool Accept(const Legacy::Transaction& tx);
 
 
+            /** ProcessOrphans
+             *
+             *  Process orphan transactions if triggered in queue.
+             *
+             *  @param[in] hash The hash of spent output
+             *
+             *  @return true if spent.
+             *
+             **/
+            void ProcessOrphans(const uint512_t& hash);
+
+
             /** IsSpent
              *
              *  Checks if a given output is spent in memory.
@@ -143,6 +156,21 @@ namespace TAO
              *
              **/
             bool IsSpent(const uint512_t& hash, const uint32_t n);
+
+
+            /** Get
+             *
+             *  Gets a transaction from mempool including conflicted memory.
+             *
+             *  @param[in] hashTx Hash of transaction to get.
+             *
+             *  @param[out] tx The retrieved transaction
+             *  @param[out] fConflicted Flag to determine if transaction is conflicted
+             *
+             *  @return true if pool contained transaction.
+             *
+             **/
+            bool Get(const uint512_t& hashTx, TAO::Ledger::Transaction &tx, bool &fConflicted) const;
 
 
             /** Get

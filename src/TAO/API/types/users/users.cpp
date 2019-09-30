@@ -62,7 +62,7 @@ namespace TAO
         {
             /* Set the shutdown flag and join events processing thread. */
             fShutdown = true;
-            
+
             /* Events processor only enabled if multi-user session is disabled. */
             if(EVENTS_THREAD.joinable())
             {
@@ -308,13 +308,13 @@ namespace TAO
         {
             /* The number of blocks to maturity to return */
             uint32_t nBlocksToMaturity = 0;
-            
+
             /* Get the user configurable required maturity */
             uint32_t nMaturityRequired = config::GetArg("-maturityrequired", config::fTestNet ? 2 : 33);
 
             /* If set to 0 then there is no point checking the maturity so return early */
             if(nMaturityRequired == 0)
-                return 0; 
+                return 0;
 
             /* The hash of the last transaction for this sig chain from disk */
             uint512_t hashLast = 0;
@@ -324,16 +324,13 @@ namespace TAO
                 TAO::Ledger::Transaction txLast;
                 if(!LLD::Ledger->ReadTx(hashLast, txLast))
                     return debug::error(FUNCTION, "last transaction not on disk");
-                
+
                 /* If the previous transaction is a coinbase or coinstake then check the maturity */
                 if(txLast.IsCoinBase() || txLast.IsCoinStake())
                 {
                     /* Get number of confirmations of previous TX */
                     uint32_t nConfirms;
                     LLD::Ledger->ReadConfirmations(hashLast, nConfirms);
-
-                    /* Exclude the confirmation from out own block */
-                    nConfirms -= 1;
 
                     /* Check to see if it is mature */
                     if(nConfirms < nMaturityRequired)

@@ -192,6 +192,14 @@ namespace TAO
                     if(!LoggedIn() || Locked() || !CanProcessNotifications() || TAO::Ledger::ChainState::Synchronizing())
                         continue;
 
+                    /* Make sure the mining server has a connection. */
+                    if(LLP::TRITIUM_SERVER && LLP::TRITIUM_SERVER->GetConnectionCount() == 0)
+                        continue;
+
+                    /* No mining when synchronizing. */
+                    if(TAO::Ledger::ChainState::Synchronizing())
+                        continue;
+
                     /* Get the session to be used for this API call */
                     json::json params;
                     uint256_t nSession = users->GetSession(params);
@@ -214,7 +222,7 @@ namespace TAO
                     SecureString strPIN = users->GetPin(params, TAO::Ledger::PinUnlock::NOTIFICATIONS);
 
                     /* Retrieve user's default NXS account. */
-                    std::string strAccount = "default";
+                    std::string strAccount = config::GetArg("-events_account", "default");
                     TAO::Register::Object defaultAccount;
                     if(!TAO::Register::GetNameRegister(hashGenesis, strAccount, defaultAccount))
                         throw APIException(-63, "Could not retrieve default NXS account to credit");
@@ -237,7 +245,6 @@ namespace TAO
 
                     /* Ensure that the signature is mature.  Note we only check this after we know there is something to process */
                     uint32_t nBlocksToMaturity = users->BlocksToMaturity(hashGenesis);
-
                     if(nBlocksToMaturity > 0)
                     {
                         debug::log(2, FUNCTION, "Skipping notifications as signature chain not mature. ", nBlocksToMaturity, " more confirmation(s) required.");

@@ -69,14 +69,14 @@ namespace LLD
 
 
     /* Reads the best chain pointer from the ledger DB. */
-    bool LedgerDB::ReadBestChain(uint1024_t& hashBest)
+    bool LedgerDB::ReadBestChain(uint1024_t &hashBest)
     {
         return Read(std::string("hashbestchain"), hashBest);
     }
 
 
     /* Reads the best chain pointer from the ledger DB. */
-    bool LedgerDB::ReadBestChain(memory::atomic<uint1024_t>& atomicBest)
+    bool LedgerDB::ReadBestChain(memory::atomic<uint1024_t> &atomicBest)
     {
         uint1024_t hashBest = 0;
         if(!Read(std::string("hashbestchain"), hashBest))
@@ -146,13 +146,28 @@ namespace LLD
 
 
     /* Reads a transaction from the ledger DB. */
-    bool LedgerDB::ReadTx(const uint512_t& hashTx, TAO::Ledger::Transaction& tx, const uint8_t nFlags)
+    bool LedgerDB::ReadTx(const uint512_t& hashTx, TAO::Ledger::Transaction &tx, const uint8_t nFlags)
     {
         /* Special check for memory pool. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::MINER)
         {
             /* Get the transaction. */
             if(TAO::Ledger::mempool.Get(hashTx, tx))
+                return true;
+        }
+
+        return Read(hashTx, tx);
+    }
+
+
+    /* Reads a transaction from the ledger DB. */
+    bool LedgerDB::ReadTx(const uint512_t& hashTx, TAO::Ledger::Transaction &tx, bool &fConflicted, const uint8_t nFlags)
+    {
+        /* Special check for memory pool. */
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::MINER)
+        {
+            /* Get the transaction. */
+            if(TAO::Ledger::mempool.Get(hashTx, tx, fConflicted))
                 return true;
         }
 
@@ -181,7 +196,9 @@ namespace LLD
             /* Check for pending tranasaction. */
             if(pMemory)
             {
+                pMemory->setEraseClaims.erase(pair);
                 pMemory->mapClaims[pair] = nClaimed;
+
                 return true;
             }
 
@@ -196,22 +213,35 @@ namespace LLD
 
             /* Check for pending tranasaction. */
             if(pMiner)
-            {
                 pMiner->mapClaims[pair] = nClaimed;
-                return true;
-            }
+
+            return true;
         }
-        else if(nFlags == TAO::Ledger::FLAGS::BLOCK)
+        else if(nFlags == TAO::Ledger::FLAGS::BLOCK || nFlags == TAO::Ledger::FLAGS::ERASE)
         {
             LOCK(MEMORY_MUTEX);
 
             /* Check for pending tranasaction. */
-            if(pMemory && pMemory->mapClaims.count(pair))
-                pMemory->mapClaims.erase(pair);
+            if(pCommit->mapClaims.count(pair))
+            {
+                /* Check for last claimed amount. */
+                const uint64_t nMemoryClaimed = pCommit->mapClaims[pair];
+                if(nMemoryClaimed == nClaimed || nFlags != TAO::Ledger::FLAGS::ERASE)
+                {
+                    /* Erase if a transaction. */
+                    if(pMemory)
+                    {
+                        pMemory->mapClaims.erase(pair);
+                        pMemory->setEraseClaims.insert(pair);
+                    }
+                    else
+                        pCommit->mapClaims.erase(pair);
+                }
+            }
 
-            /* Check for commited tranasactions. */
-            if(pCommit && pCommit->mapClaims.count(pair))
-                pCommit->mapClaims.erase(pair);
+            /* Quit when erasing. */
+            if(nFlags == TAO::Ledger::FLAGS::ERASE)
+                return true;
         }
 
         return Write(pair, nClaimed);
@@ -433,14 +463,14 @@ namespace LLD
 
 
     /* Reads a block state from disk from a tx index. */
-    bool LedgerDB::ReadBlock(const uint512_t& hashTx, TAO::Ledger::BlockState& state)
+    bool LedgerDB::ReadBlock(const uint512_t& hashTx, TAO::Ledger::BlockState &state)
     {
         return Read(std::make_pair(std::string("index"), hashTx), state);
     }
 
 
     /* Reads a block state from disk from a tx index. */
-    bool LedgerDB::ReadBlock(const uint32_t& nBlockHeight, TAO::Ledger::BlockState& state)
+    bool LedgerDB::ReadBlock(const uint32_t& nBlockHeight, TAO::Ledger::BlockState &state)
     {
         return Read(std::make_pair(std::string("height"), nBlockHeight), state);
     }
@@ -469,7 +499,7 @@ namespace LLD
 
 
     /* Reads a new sequence from the ledger database */
-    bool LedgerDB::ReadSequence(const uint256_t& hashAddress, uint32_t& nSequence)
+    bool LedgerDB::ReadSequence(const uint256_t& hashAddress, uint32_t &nSequence)
     {
         return Read(std::make_pair(std::string("sequence"), hashAddress), nSequence);
     }
@@ -509,7 +539,7 @@ namespace LLD
 
     /*  Reads a new event to the ledger database of foreign index.
      *  This is responsible for knowing foreign sigchain events that correlate to your own. */
-    bool LedgerDB::ReadEvent(const uint256_t& hashAddress, const uint32_t nSequence, TAO::Ledger::Transaction& tx)
+    bool LedgerDB::ReadEvent(const uint256_t& hashAddress, const uint32_t nSequence, TAO::Ledger::Transaction &tx)
     {
         return Read(std::make_pair(hashAddress, nSequence), tx);
     }
@@ -564,7 +594,7 @@ namespace LLD
 
 
     /* Reads the last stake transaction of sigchain. */
-    bool LedgerDB::ReadStake(const uint256_t& hashGenesis, uint512_t& hashLast, const uint8_t nFlags)
+    bool LedgerDB::ReadStake(const uint256_t& hashGenesis, uint512_t &hashLast, const uint8_t nFlags)
     {
         /* If we haven't checked the mempool or haven't found one in the mempool then read the last from the ledger DB */
         return Read(std::make_pair(std::string("stake"), hashGenesis), hashLast);
@@ -587,6 +617,7 @@ namespace LLD
             if(pMemory)
             {
                 /* Write proof to memory. */
+                pMemory->setEraseProofs.erase(tuple);
                 pMemory->setProofs.insert(tuple);
 
                 return true;
@@ -603,22 +634,26 @@ namespace LLD
 
             /* Check for pending transactions. */
             if(pMiner)
-            {
-                /* Write proof to memory. */
                 pMiner->setProofs.insert(tuple);
-
-                return true;
-            }
 
             return true;
         }
-        else if(nFlags == TAO::Ledger::FLAGS::BLOCK)
+        else if(nFlags == TAO::Ledger::FLAGS::BLOCK || nFlags == TAO::Ledger::FLAGS::ERASE)
         {
             LOCK(MEMORY_MUTEX);
 
             /* Erase memory proof if they exist. */
-            if(pCommit->setProofs.count(tuple))
+            if(pMemory)
+            {
+                pMemory->setEraseProofs.insert(tuple);
+                pMemory->setProofs.erase(tuple);
+            }
+            else
                pCommit->setProofs.erase(tuple);
+
+            /* Check for erase to short circuit out. */
+            if(nFlags == TAO::Ledger::FLAGS::ERASE)
+                return true;
         }
 
         return Write(tuple);
@@ -654,6 +689,8 @@ namespace LLD
                 return true;
         }
 
+        //debug::log(0, FUNCTION, "Checking for Proof ", hashProof.SubString(), " txid ", hashTx.SubString(), " contract ", nContract);
+
         return Exists(tuple);
     }
 
@@ -665,45 +702,51 @@ namespace LLD
         /* Get the key pair. */
         std::tuple<uint256_t, uint512_t, uint32_t> tuple = std::make_tuple(hashProof, hashTx, nContract);
 
-        /* Memory mode for pre-database commits. */
+        /* Check for memory transaction. */
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
             LOCK(MEMORY_MUTEX);
 
-            /* Check for memory transaction. */
-            if(pMemory && nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+            /* Check for available states. */
+            if(pMemory)
             {
-                /* Check for available states. */
-                bool fExists = false;
-                if(pMemory->setProofs.count(tuple))
-                {
-                    /* Erase state out of transaction. */
-                    pMemory->setProofs.erase(tuple);
+                /* Erase state out of transaction. */
+                pMemory->setProofs.erase(tuple);
+                pMemory->setEraseProofs.insert(tuple);
 
-                    fExists = true;
-                }
-
-                /* Check that value exists to erase. */
-                if(pCommit->setProofs.count(tuple))
-                {
-                    /* Set data to be in erase queue. */
-                    pMemory->setEraseProofs.insert(tuple);
-
-                    fExists = true;
-                }
-
-                return fExists;
+                return true;
             }
+
+            /* Erase proof from mempool. */
+            pCommit->setProofs.erase(tuple);
+
+            return true;
+        }
+        else if(nFlags == TAO::Ledger::FLAGS::BLOCK || nFlags == TAO::Ledger::FLAGS::ERASE)
+        {
+            LOCK(MEMORY_MUTEX);
 
             /* Erase memory proof if they exist. */
             if(pCommit->setProofs.count(tuple))
             {
                 /* Erase the proof. */
-                pCommit->setProofs.erase(tuple);
+                if(pMemory)
+                {
+                    pMemory->setEraseProofs.insert(tuple);
+                    pMemory->setProofs.erase(tuple);
 
-                if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+                    debug::log(0, FUNCTION, "MEMORY::Erasing Proof ", hashProof.SubString(), " txid ", hashTx.SubString(), " contract ", nContract);
+                }
+                else
+                    pCommit->setProofs.erase(tuple);
+
+                /* Break on erase.  */
+                if(nFlags == TAO::Ledger::FLAGS::ERASE)
                     return true;
             }
         }
+
+        debug::log(0, FUNCTION, "Erasing Proof ", hashProof.SubString(), " txid ", hashTx.SubString(), " contract ", nContract);
 
         return Erase(tuple);
     }
@@ -717,14 +760,14 @@ namespace LLD
 
 
     /* Reads a block state object from disk. */
-    bool LedgerDB::ReadBlock(const uint1024_t& hashBlock, TAO::Ledger::BlockState& state)
+    bool LedgerDB::ReadBlock(const uint1024_t& hashBlock, TAO::Ledger::BlockState &state)
     {
         return Read(hashBlock, state);
     }
 
 
     /* Reads a block state object from disk for an atomic object. */
-    bool LedgerDB::ReadBlock(const uint1024_t& hashBlock, memory::atomic<TAO::Ledger::BlockState>& atomicState)
+    bool LedgerDB::ReadBlock(const uint1024_t& hashBlock, memory::atomic<TAO::Ledger::BlockState> &atomicState)
     {
         TAO::Ledger::BlockState state;
         if(!Read(hashBlock, state))
@@ -775,18 +818,6 @@ namespace LLD
     {
         LOCK(MEMORY_MUTEX);
 
-        /* Check for mempool. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
-        {
-            /* Set the pre-commit memory mode. */
-            if(pMemory)
-                delete pMemory;
-
-            pMemory = new LedgerTransaction();
-
-            return;
-        }
-
         /* Check for miner. */
         if(nFlags == TAO::Ledger::FLAGS::MINER)
         {
@@ -798,6 +829,12 @@ namespace LLD
 
             return;
         }
+
+        /* Set the pre-commit memory mode. */
+        if(pMemory)
+            delete pMemory;
+
+        pMemory = new LedgerTransaction();
     }
 
 
@@ -805,18 +842,6 @@ namespace LLD
     void LedgerDB::MemoryRelease(const uint8_t nFlags)
     {
         LOCK(MEMORY_MUTEX);
-
-        /* Check for mempool. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
-        {
-            /* Set the pre-commit memory mode. */
-            if(pMemory)
-                delete pMemory;
-
-            pMemory = nullptr;
-
-            return;
-        }
 
         /* Check for miner. */
         if(nFlags == TAO::Ledger::FLAGS::MINER)
@@ -829,6 +854,17 @@ namespace LLD
 
             return;
         }
+
+        /* Set the pre-commit memory mode. */
+        if(pMemory)
+        {
+            delete pMemory;
+
+            debug::log(0, FUNCTION, "LedgerDB::Releasing MEMORY ACID Transaction");
+        }
+
+
+        pMemory = nullptr;
     }
 
 

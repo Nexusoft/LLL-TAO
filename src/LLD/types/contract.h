@@ -27,19 +27,46 @@ ________________________________________________________________________________
 namespace LLD
 {
 
-  /** LocalDB
-   *
-   *  Database class for storing local wallet transactions.
-   *
-   **/
+    /** RegisterTransaction
+     *
+     *  Helper class for managing memory states in register database.
+     *
+     **/
+    class ContractTransaction
+    {
+    public:
+
+        /** Map of states that are stored in memory mode until commited. **/
+        std::map<std::pair<uint512_t, uint32_t>, uint256_t> mapContracts;
+
+
+        /** Set of indexes to remove during commit. **/
+        std::set<std::pair<uint512_t, uint32_t>> setErase;
+
+    };
+
+    /** ContractDB
+     *
+     *  Database class for storing local wallet transactions.
+     *
+     **/
     class ContractDB : public SectorDatabase<BinaryHashMap, BinaryLRU>
     {
         /** Internal mutex for MEMPOOL mode. **/
         std::mutex MEMORY_MUTEX;
 
 
-        /** Internal map for MEMPOOL mode. **/
-        std::map<std::pair<uint512_t, uint32_t>, uint256_t> mapContracts;
+        /** Register transaction to track current open transaction. **/
+        ContractTransaction* pMemory;
+
+
+        /** Miner transaction to track current states for miner verification. **/
+        ContractTransaction* pMiner;
+
+
+        /** Register transaction to keep open all commited data. **/
+        ContractTransaction* pCommit;
+
 
     public:
 
@@ -63,7 +90,7 @@ namespace LLD
          *  @return True if written, false otherwise.
          *
          **/
-        bool WriteContract(const std::pair<uint512_t, uint32_t>& pairContract, const uint256_t& hashCaller,
+        bool WriteContract(const std::pair<uint512_t, uint32_t>& pair, const uint256_t& hashCaller,
                            const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
@@ -76,7 +103,7 @@ namespace LLD
          *  @return True if erased, false otherwise.
          *
          **/
-        bool EraseContract(const std::pair<uint512_t, uint32_t>& pairContract);
+        bool EraseContract(const std::pair<uint512_t, uint32_t>& pair);
 
 
         /** ReadContract
@@ -90,7 +117,7 @@ namespace LLD
          *  @return True if the caller was read, false otherwise.
          *
          **/
-        bool ReadContract(const std::pair<uint512_t, uint32_t>& pairContract, uint256_t& hashCaller,
+        bool ReadContract(const std::pair<uint512_t, uint32_t>& pair, uint256_t& hashCaller,
                           const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
@@ -104,7 +131,31 @@ namespace LLD
          *  @return True if a contract exists
          *
          **/
-        bool HasContract(const std::pair<uint512_t, uint32_t>& pairContract, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
+        bool HasContract(const std::pair<uint512_t, uint32_t>& pair, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
+
+
+        /** MemoryBegin
+         *
+         *  Begin a memory transaction following ACID properties.
+         *
+         **/
+        void MemoryBegin(const uint8_t nFlags = TAO::Ledger::FLAGS::MEMPOOL);
+
+
+        /** MemoryRelease
+         *
+         *  Release a memory transaction following ACID properties.
+         *
+         **/
+        void MemoryRelease(const uint8_t nFlags = TAO::Ledger::FLAGS::MEMPOOL);
+
+
+        /** MemoryCommit
+         *
+         *  Commit a memory transaction following ACID properties.
+         *
+         **/
+        void MemoryCommit();
 
     };
 }
