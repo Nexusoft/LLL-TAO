@@ -96,9 +96,10 @@ namespace TAO
             if(LLD::Ledger->HasTx(hashTx, FLAGS::MEMPOOL))
                 return true;
 
-            debug::log(0, "ACCEPT --------------------------------------");
-            tx.print();
-            debug::log(0, "END ACCEPT -----------------------------------");
+            debug::log(3, "ACCEPT --------------------------------------");
+            if(config::GetArg("-verbose", 0) >= 3)
+                tx.print();
+            debug::log(3, "END ACCEPT -----------------------------------");
 
             /* Runtime calculations. */
             runtime::timer time;
@@ -471,7 +472,7 @@ namespace TAO
                         /* Debug information. */
                         debug::error(FUNCTION, "ROOT ORPHAN: last hash mismatch ", vtx[0].hashPrevTx.SubString());
 
-                        debug::log(0, "REMOVE ------------------------------");
+                        debug::log(3, "REMOVE ------------------------------");
 
                         /* Disconnect all transactions in reverse order. */
                         for(auto tx = vtx.rbegin(); tx != vtx.rend(); ++tx)
@@ -498,7 +499,7 @@ namespace TAO
                             }
                         }
 
-                        debug::log(0, "END REMOVE ------------------------------");
+                        debug::log(3, "END REMOVE ------------------------------");
 
 
                         break;
@@ -521,7 +522,7 @@ namespace TAO
                         /* Debug information. */
                         debug::error(FUNCTION, "ORPHAN DETECTED INDEX ", n, ": last hash mismatch ", vtx[n].hashPrevTx.SubString());
 
-                        debug::log(0, "REMOVE ------------------------------");
+                        debug::log(3, "REMOVE ------------------------------");
 
                         /* Begin the memory transaction. */
                         LLD::TxnBegin(FLAGS::MEMPOOL);
@@ -551,7 +552,7 @@ namespace TAO
                         /* Commit the memory transaction. */
                         LLD::TxnCommit(FLAGS::MEMPOOL);
 
-                        debug::log(0, "END REMOVE ------------------------------");
+                        debug::log(3, "END REMOVE ------------------------------");
 
 
                         break;

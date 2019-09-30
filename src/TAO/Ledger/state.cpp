@@ -680,7 +680,7 @@ namespace TAO
                     vDelete.insert(vDelete.end(), state->vtx.begin(), state->vtx.end());
                 }
 
-                debug::log(0, "RESURRECT ------------------------------");
+                debug::log(3, "RESURRECT ------------------------------");
 
                 /* Reverse the transction to connect to connect in ascending height. */
                 for(auto proof = vResurrect.rbegin(); proof != vResurrect.rend(); ++proof)
@@ -698,9 +698,10 @@ namespace TAO
                             continue;
 
                         /* Add back into memory pool. */
-                        mempool.AddUnchecked(tx);
+                        mempool.Accept(tx);
 
-                        tx.print();
+                        if(config::GetArg("-verbose", 0) >= 3)
+                            tx.print();
                     }
                     else if(proof->first == TRANSACTION::LEGACY)
                     {
@@ -708,10 +709,10 @@ namespace TAO
                     }
                 }
 
-                debug::log(0, "END RESURRECT ------------------------------");
+                debug::log(3, "END RESURRECT ------------------------------");
 
 
-                debug::log(0, "DELETE ------------------------------");
+                debug::log(3, "DELETE ------------------------------");
 
                 /* Delete from mempool. */
                 for(const auto& proof : vDelete)
@@ -728,7 +729,8 @@ namespace TAO
                         if(tx.IsCoinBase() || tx.IsCoinStake())
                             continue;
 
-                        tx.print();
+                        if(config::GetArg("-verbose", 0) >= 3)
+                            tx.print();
                     }
                     else if(proof.first == TRANSACTION::LEGACY)
                     {
@@ -738,7 +740,7 @@ namespace TAO
                     mempool.Remove(proof.second);
                 }
 
-                debug::log(0, "END DELETE ------------------------------");
+                debug::log(3, "END DELETE ------------------------------");
 
 
                 /* Debug output about the best chain. */
@@ -827,7 +829,7 @@ namespace TAO
             /* Reset the transaction fees. */
             nFees = 0;
 
-            debug::log(0, "BLOCK BEGIN-------------------------------------");
+            debug::log(3, "BLOCK BEGIN-------------------------------------");
 
             /* Check through all the transactions. */
             for(const auto& proof : vtx)
@@ -847,7 +849,8 @@ namespace TAO
                     if(!LLD::Ledger->ReadTx(hash, tx))
                         return debug::error(FUNCTION, "transaction not on disk");
 
-                    tx.print();
+                    if(config::GetArg("-verbose", 0) >= 3)
+                        tx.print();
 
                     /* Check the ledger rules for sigchain at end. */
                     if(!tx.IsFirst())
@@ -939,7 +942,7 @@ namespace TAO
             }
 
 
-            debug::log(0, "BLOCK END-------------------------------------");
+            debug::log(3, "BLOCK END-------------------------------------");
 
             /* Update the previous state's next pointer. */
             BlockState prev = Prev();

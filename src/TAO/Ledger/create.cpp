@@ -128,7 +128,7 @@ namespace TAO
             /* Start a ACID transaction (to be disposed). */
             LLD::TxnBegin(FLAGS::MINER);
 
-            debug::log(0, "BEGIN-------------------------------------");
+            debug::log(3, "BEGIN-------------------------------------");
 
             /* Loop through the list of transactions. */
             uint256_t hashGenesis = 0;
@@ -162,7 +162,8 @@ namespace TAO
                 if(!tx.Connect(FLAGS::MINER))
                     continue;
 
-                tx.print();
+                if(config::GetArg("-verbose", 0) >= 3)
+                    tx.print();
 
                 /* Add the transaction to the block. */
                 block.vtx.push_back(std::make_pair(TRANSACTION::TRITIUM, hash));
@@ -171,7 +172,7 @@ namespace TAO
                 hashGenesis = tx.hashGenesis;
             }
 
-            debug::log(0, "END-------------------------------------");
+            debug::log(3, "END-------------------------------------");
 
             /* Abort the temporary ACID transaction. */
             LLD::TxnAbort(FLAGS::MINER);
