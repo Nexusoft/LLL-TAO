@@ -728,7 +728,7 @@ namespace LLD
         delete pTransaction;
         pTransaction = nullptr;
 
-        return debug::error(FUNCTION, "ACID transaction journal never reached commit");
+        return true;
     }
 
 
