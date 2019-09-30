@@ -34,7 +34,7 @@ namespace TAO
     namespace API
     {
         /* Retrieves the transaction for the given hash. */
-        json::json Ledger::TrustAccounts(const json::json& params, bool fHelp)
+        json::json Finance::TrustAccounts(const json::json& params, bool fHelp)
         {
             /* The return json array */
             json::json jsonRet = json::json::array();

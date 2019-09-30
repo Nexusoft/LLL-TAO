@@ -185,18 +185,6 @@ namespace TAO
             json::json VoidTransaction(const json::json& params, bool fHelp);
 
 
-            /** TrustAccounts
-             *
-             *  Lists all trust accounts in the chain 
-             *
-             *  @param[in] params The parameters from the API call.
-             *  @param[in] fHelp Trigger for help data.
-             *
-             *  @return The return object in JSON.
-             *
-             **/
-            json::json TrustAccounts(const json::json& params, bool fHelp);
-
         };
     }
 }

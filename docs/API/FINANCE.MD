@@ -29,7 +29,7 @@ The following methods are currently supported by this API
 [`set/stake`](#setstake)    
 [`migrate/stake`](#migratestake)    
 [`get/balances`](#getbalances)    
-
+[`list/trustaccounts`](#listtrustaccounts)
 
 -----------------------------------
 ***
@@ -644,6 +644,71 @@ This will retrieve a summary of balance information for all NXS accounts belongi
 `immature`  The sum of all coinbase transactions that have not yet reached maturity.   
 
 `stake` : The amount of NXS currently staked in the trust account.
+
+
+***
+
+# `list/trustaccounts`
+
+This will list all known trust accounts
+
+### Endpoint:
+
+`/finance/list/trustaccounts`
+
+
+### Parameters:
+
+`page` : Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) transactions. The default value is 0 if not supplied.
+
+`limit` : The number of transactions to return for the current page. The default is 100.
+
+`sort` : Determines the sort order of the results.  Values can be `balance`, `stake`, or `trust`.  Default is `trust`
+
+
+### Return value JSON object:
+```
+[
+    {
+        "address": "8FJxzexVDUN5YiQYK4QjvfRNrAUym8FNu4B8yvYGXgKFJL8nBse",
+        "owner": "a2cfad9f505f8166203df2685ee7cb8582be9ae017dcafa4ca4530cd5b4f1dca",
+        "created": 1569298627,
+        "modified": 1569359986,
+        "balance": 9.897773,
+        "stake": 1000000.0,
+        "stakerate": 0.5179354594112684
+    },
+    {
+        "address": "8FBtvmLSLqhVM9PsJ5Zzy1XzcZyP9XaEErjSoGPaoN5fBJaQbp8",
+        "owner": "a2e7b433a4dcb54c3b4dc1111d7945394dc3e140c9a400dc623b3f6d53ec758b",
+        "created": 1569306341,
+        "modified": 1569312960,
+        "balance": 0.004081,
+        "stake": 5000.0,
+        "stakerate": 0.5013274626265375
+    }
+]
+
+```
+
+
+### Return values:
+
+`address` : The register address of the trust account
+
+`owner` : The genesis hash of the trust account owner
+
+`created` : The UNIX timestamp when the account was created.
+
+`modified` : The UNIX timestamp when the account was last modified.
+
+`balance` : The current NXS balance of the trust account. This is general account balance that is not staked.
+
+`stake` : The amount of NXS currently staked in the trust account.
+
+`trust` : The current raw trust score of the trust account.
+
+`stakerate` : The current annual reward rate earned for staking as an annual percent.
 
 
 ***

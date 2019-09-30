@@ -2,7 +2,7 @@
 # Objects API
 -----------------------------------
 
-An Object is a user-defined data structure that is stored in an object register, owned by a particular signature chain. Objects can hold one or more pieces of data and users can define the fields (name, data type, mutability) that data is stored in.  The Objects API provides functionality for accessing and manipulating Objects and object registers in a generic and programmable way. The API supports several formats for defining the object data structures giving users and developers varying levels of functionality, including per-field type definition and mutability.   
+An Object is a user-defined data structure that is stored in an object register, owned by a particular signature chain. Objects can hold one or more pieces of data and users can define the fields (name, data type, mutability) that data is stored in.  The Objects API provides functionality for querying, accessing, and manipulating object registers in a generic and programmable way. The API supports several formats for defining the object data structures giving users and developers varying levels of functionality, including per-field type definition and mutability.   
 
 The `basic` format allows callers to define an object in terms of simple key-value pairs. It assumes that all fields are read-only and all values are stored using the string data type. `basic ` objects are always immutable and cannot be updated once created.
 
