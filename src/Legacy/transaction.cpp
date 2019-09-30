@@ -418,7 +418,7 @@ namespace Legacy
                  * fail because coinstake tx not in database. But this tx is the coinstake tx
                  * so can call the version that takes tx directly and pass *this
                  */
-                nStakeRate = trustKey.StakeRate(block, nTime);
+                nStakeRate = trustKey.StakeRate(*this, block.nVersion, nTime);
             }
 
             /* Check if it failed to read and this is genesis. */
