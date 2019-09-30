@@ -128,7 +128,7 @@ namespace TAO
                 /* Check for conflicts. */
                 if(mapClaimed.count(tx.hashPrevTx))
                 {
-                    debug::error(0, FUNCTION, "CONFLICT: prev tx already claimed ", tx.hashPrevTx.SubString());
+                    debug::error(FUNCTION, "CONFLICT: prev tx already claimed ", tx.hashPrevTx.SubString());
                     mapConflicts[hashTx] = tx;
 
                     return true;
@@ -158,13 +158,13 @@ namespace TAO
             {
                 /* Get the last hash. */
                 uint512_t hashLast = 0;
-                if(!LLD::Ledger->ReadLast(tx.hashGenesis, hashLast))
+                if(!LLD::Ledger->ReadLast(tx.hashGenesis, hashLast, FLAGS::MEMPOOL))
                     return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: Failed to read hash last");
 
                 /* Check for conflicts. */
                 if(tx.hashPrevTx != hashLast)
                 {
-                    debug::error(0, FUNCTION, "CONFLICT: hash last mismatch ", tx.hashPrevTx.SubString());
+                    debug::error(FUNCTION, "CONFLICT: hash last mismatch ", tx.hashPrevTx.SubString());
                     mapConflicts[hashTx] = tx;
 
                     return true;
