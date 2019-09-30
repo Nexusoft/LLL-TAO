@@ -684,94 +684,44 @@ namespace LLD
         if(!pTransaction)
             return false;
 
-        /* Keep track of indexes in memory. */
-        std::map<std::vector<uint8_t>, SectorKey> mapIndex;
+        /* Erase data set to be removed. */
+        for(const auto& item : pTransaction->setErasedData)
+            if(!pSectorKeys->Erase(item))
+                return debug::error(FUNCTION, "failed to erase from keychain");
 
-        /* Iterate through the journal. */
-        pTransaction->ssJournal.Reset();
-        while(!pTransaction->ssJournal.End())
+        /* Commit the sector data. */
+        for(const auto& item : pTransaction->mapTransactions)
+            if(!Force(item.first, item.second))
+                return debug::error(FUNCTION, "failed to commit sector data");
+
+        /* Commit keychain entries. */
+        for(const auto& item : pTransaction->setKeychain)
         {
-            /* Read the data entry type. */
-            std::string strType;
-            pTransaction->ssJournal >> strType;
+            SectorKey cKey(STATE::READY, item, 0, 0, 0);
+            if(!pSectorKeys->Put(cKey))
+                return debug::error(FUNCTION, "failed to commit to keychain");
+        }
 
-            /* Check for Erase. */
-            if(strType == "erase")
+        /* Commit the index data. */
+        std::map<std::vector<uint8_t>, SectorKey> mapIndex;
+        for(const auto& item : pTransaction->mapIndex)
+        {
+            /* Get the key. */
+            SectorKey cKey;
+            if(mapIndex.count(item.second))
+                cKey = mapIndex[item.second];
+            else
             {
-                /* Get the key to erase. */
-                std::vector<uint8_t> vKey;
-                pTransaction->ssJournal >> vKey;
+                if(!pSectorKeys->Get(item.second, cKey))
+                    return debug::error(FUNCTION, "failed to read indexing entry");
 
-                /* Erase the key. */
-                if(!pSectorKeys->Erase(vKey))
-                    return debug::error(FUNCTION, "failed to erase from keychain");
+                mapIndex[item.second] = cKey;
             }
-            else if(strType == "key")
-            {
-                /* Get the key to write. */
-                std::vector<uint8_t> vKey;
-                pTransaction->ssJournal >> vKey;
 
-                /* Write the key to keychain. */
-                SectorKey cKey(STATE::READY, vKey, 0, 0, 0);
-                if(!pSectorKeys->Put(cKey))
-                    return debug::error(FUNCTION, "failed to commit to keychain");
-            }
-            else if(strType == "write")
-            {
-                /* Get the key to write. */
-                std::vector<uint8_t> vKey;
-                pTransaction->ssJournal >> vKey;
-
-                /* Get the data to write. */
-                std::vector<uint8_t> vData;
-                pTransaction->ssJournal >> vData;
-
-                /* Write to disk. */
-                if(!Force(vKey, vData))
-                    return debug::error(FUNCTION, "failed to commit sector data");
-            }
-            else if(strType == "index")
-            {
-                /* Get the key to index. */
-                std::vector<uint8_t> vKey;
-                pTransaction->ssJournal >> vKey;
-
-                /* Get the data to index to. */
-                std::vector<uint8_t> vIndex;
-                pTransaction->ssJournal >> vIndex;
-
-                /* Get the key. */
-                SectorKey cKey;
-                if(mapIndex.count(vIndex))
-                    cKey = mapIndex[vIndex];
-                else
-                {
-                    /* Get the key from keychain. */
-                    if(!pSectorKeys->Get(vIndex, cKey))
-                        return debug::error(FUNCTION, "failed to read indexing entry");
-
-                    /* Cache key in local memory. */
-                    mapIndex[vIndex] = cKey;
-                }
-
-                /* Write the new sector key. */
-                cKey.SetKey(vKey);
-                if(!pSectorKeys->Put(cKey))
-                    return debug::error(FUNCTION, "failed to write indexing entry");
-
-                /* Remove the items from the cache pool. */
-                cachePool->Remove(vIndex);
-                cachePool->Remove(vKey);
-            }
-            if(strType == "commit")
-            {
-                /* Cleanup the transaction object. */
-                delete pTransaction;
-                pTransaction = nullptr;
-
-                return true;
-            }
+            /* Write the new sector key. */
+            cKey.SetKey(item.first);
+            if(!pSectorKeys->Put(cKey))
+                return debug::error(FUNCTION, "failed to write indexing entry");
         }
 
         /* Cleanup the transaction object. */
