@@ -344,9 +344,7 @@ namespace TAO
             uint32_t nSigOps = 0;
 
             /* Get list of producer transactions. */
-            uint512_t hashLast = 0;
-
-            debug::log(0, "CHECK ------------------------------------------------------");
+            std::map<uint256_t, uint512_t> mapLast;
 
             /* Get the signature operations for legacy tx's. */
             uint32_t nSize = (uint32_t)vtx.size();
@@ -403,18 +401,12 @@ namespace TAO
                     if(tx.IsCoinBase() || tx.IsCoinStake())
                         return debug::error(FUNCTION, "more than one coinbase / coinstake");
 
-                    /* Check for producer transaction sequencing. */
-                    if(producer.hashGenesis == tx.hashGenesis)
-                    {
-                        tx.print();
+                    /* Check the sequencing. */
+                    if(mapLast.count(tx.hashGenesis) && tx.hashPrevTx != mapLast[tx.hashGenesis])
+                        return debug::error(FUNCTION, "transaction in sigchain out of sequence");
 
-                        /* Check previous tx sequence. */
-                        if(tx.hashPrevTx != hashLast && hashLast != 0)
-                            return debug::error(FUNCTION, "producer sigchain out of sequence");
-
-                        /* Check for genesis. */
-                        hashLast = tx.GetHash();
-                    }
+                    /* Set the last hash for given genesis. */
+                    mapLast[tx.hashGenesis] = tx.GetHash();
 
                     /* Check the transaction for validity. */
                     //if(!tx.Check()) //NOTE: this is pre-processing stuff
@@ -425,11 +417,8 @@ namespace TAO
             }
 
             /* Check producer. */
-            if(hashLast != 0 && producer.hashPrevTx != hashLast)
+            if(mapLast.count(producer.hashGenesis) && producer.hashPrevTx != mapLast[producer.hashGenesis])
                 return debug::error(FUNCTION, "producer transaction out of sequence");
-
-
-            debug::log(0, "END CHECK ------------------------------------------------------");
 
             /* Get producer hash. */
             uint512_t hashProducer = producer.GetHash();
