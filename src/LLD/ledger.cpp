@@ -689,8 +689,6 @@ namespace LLD
                 return true;
         }
 
-        debug::log(0, FUNCTION, "Checking for Proof ", hashProof.SubString(), " txid ", hashTx.SubString(), " contract ", nContract);
-
         return Exists(tuple);
     }
 

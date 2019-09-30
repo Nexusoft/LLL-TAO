@@ -389,7 +389,7 @@ namespace TAO
                 {
                     /* Check the memory pool. */
                     TAO::Ledger::Transaction tx;
-                    if(!LLD::Ledger->ReadTx(vtx[i].second, tx, FLAGS::MEMPOOL))
+                    if(!LLD::Ledger->ReadTx(vtx[i].second, tx, fConflicted, FLAGS::MEMPOOL))
                     {
                         /* Push missing transaction to memory. */
                         vMissing.push_back(vtx[i]);
