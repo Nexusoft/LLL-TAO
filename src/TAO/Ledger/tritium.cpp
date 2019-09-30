@@ -560,7 +560,7 @@ namespace TAO
 
                     /* Check the memory pool. */
                     TAO::Ledger::Transaction tx;
-                    if(!LLD::Ledger->ReadTx(hash, tx, FLAGS::MEMPOOL, state.fConflicted))
+                    if(!LLD::Ledger->ReadTx(hash, tx, state.fConflicted, FLAGS::MEMPOOL))
                         return debug::error(FUNCTION, "transaction is not in memory pool");
 
                     /* Write to disk. */
