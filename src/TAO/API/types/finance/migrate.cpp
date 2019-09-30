@@ -76,6 +76,8 @@ namespace TAO
                     trustKey.SetNull();
                     wallet.RemoveTrustKey();
                 }
+
+                debug::log(2, FUNCTION, "Current wallet contains trust key for migration");
             }
 
             /* If wallet does not contain trust key, need to scan for it within the trust database.
@@ -289,49 +291,97 @@ namespace TAO
                     throw APIException(-180, "Incorrect walletpassphrase for Legacy wallet");
             }
 
-            /* Retrieve the trust key to migrate from */
+            /* Need to save any exception after unlock so we can re-lock wallet before throwing.
+             * If nException gets assigned, skip the remainder of the process.
+             */
+            int32_t nException = 0;
+            std::string strException;
+
+            /* Retrieve the trust key to migrate from (requires wallet unlock) */
             Legacy::TrustKey trustKey;
-            if(!FindTrustKey(wallet, trustKey))
-                throw APIException(-181, "Trust key not found for Legacy wallet");
+            try
+            {
+                if(!FindTrustKey(wallet, trustKey))
+                {
+                    nException = -181;
+                    strException = "Trust key not found for Legacy wallet";
+                }
+            }
+            catch(const APIException& e)
+            {
+                nException = e.id;
+                strException = std::string(e.what());
+            }
 
             /* Trust key checks complete. Now can use trust key address as input to migration transaction */
             Legacy::WalletTx wtx;
-            Legacy::NexusAddress trustAddress(trustKey.vchPubKey);
-            wtx.fromAddress = trustAddress;
+            Legacy::NexusAddress trustAddress;
+
+            if(nException == 0)
+            {
+                trustAddress.SetPubKey(trustKey.vchPubKey);
+                wtx.fromAddress = trustAddress;
+            }
 
             /* Get the available addresses from the wallet with their balances */
             std::map<Legacy::NexusAddress, int64_t> mapAddresses;
-            if(!wallet.GetAddressBook().AvailableAddresses(wtx.nTime, mapAddresses))
-                throw APIException(-187, "Could not get addresses for Legacy wallet");
+            if(nException == 0 && !wallet.GetAddressBook().AvailableAddresses(wtx.nTime, mapAddresses))
+            {
+                nException = -187;
+                strException = "Could not get addresses for Legacy wallet";
+            }
 
             /* Amount is current trust address balance less fee to send */
             int64_t nAmount = 0;
-            for(const auto& entry : mapAddresses)
+
+            if(nException == 0)
             {
-                if(entry.first == trustAddress)
+                for(const auto& entry : mapAddresses)
                 {
-                    /* Found address entry for trust key address */
-                    nAmount = entry.second;
-                    break;
+                    if(entry.first == trustAddress)
+                    {
+                        /* Found address entry for trust key address */
+                        nAmount = entry.second;
+                        break;
+                    }
+                }
+
+                if(Legacy::TRANSACTION_FEE > nAmount)
+                {
+                    nException = -69;
+                    strException = "Insufficient funds";
                 }
             }
 
-            if(Legacy::TRANSACTION_FEE > nAmount)
-                throw APIException(-69, "Insufficient funds");
-
             nAmount -= Legacy::TRANSACTION_FEE;
 
-            if(nAmount < Legacy::MIN_TXOUT_AMOUNT)
-                throw APIException(-68, "Amount too small");
+            if(nException == 0 && nAmount < Legacy::MIN_TXOUT_AMOUNT)
+            {
+                nException = -68;
+                strException = "Amount too small";
+            }
 
             /* Lock the signature chain. */
             LOCK(users->CREATE_MUTEX);
 
             /* Get trust account. Any trust account that has completed Genesis will be indexed. */
             TAO::Register::Address hashAddress;
-            if(!FindTrustAccount(user, hashAddress))
-                throw APIException(-70, "Trust account not found");
-
+            if(nException == 0)
+            {
+                try
+                {
+                    if(!FindTrustAccount(user, hashAddress))
+                    {
+                        nException = -70;
+                        strException = "Trust account not found";
+                    }
+                }
+                catch(const APIException& e)
+                {
+                    nException = e.id;
+                    strException = std::string(e.what());
+                }
+            }
 
             /* Create the transaction. */
 
@@ -339,9 +389,12 @@ namespace TAO
             Legacy::Script scriptPubKey;
 
             //Migration transaction sends from legacy trust key address to trust account register address
-            scriptPubKey.SetRegisterAddress(hashAddress);
+            if(nException == 0)
+            {
+                scriptPubKey.SetRegisterAddress(hashAddress);
 
-            std::string strError = wallet.SendToNexusAddress(scriptPubKey, nAmount, wtx);
+                strException = wallet.SendToNexusAddress(scriptPubKey, nAmount, wtx);
+            }
 
             /* If used walletpassphrase to temporarily unlock wallet, re-lock the wallet
              * This does not return unlocked for minting state, because we are migrating from the trust key and
@@ -351,8 +404,15 @@ namespace TAO
                 wallet.Lock();
 
             /* Check result of SendToNexusAddress only after returning to prior lock state */
-            if(strError != "")
-                throw APIException(-3, strError);
+            if(strException != "")
+            {
+                debug::log(0, FUNCTION, "Cannot migrate trust key: ", strException);
+
+                if(nException != 0)
+                    throw APIException(nException, strException);
+                else
+                    throw APIException(-3, strException);
+            }
             else
             {
                 debug::log(0, FUNCTION, "Initiated trust key migration from trust address ", trustAddress.ToString(),
