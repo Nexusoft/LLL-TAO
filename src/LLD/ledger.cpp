@@ -715,7 +715,10 @@ namespace LLD
             {
                 /* Erase the proof. */
                 if(pMemory)
+                {
                     pMemory->setEraseProofs.insert(tuple);
+                    pMemory->setProofs.erase(tuple);
+                }
                 else
                     pCommit->setProofs.erase(tuple);
 
