@@ -141,7 +141,7 @@ namespace TAO
                 if(mapClaimed.count(tx.hashPrevTx) || mapConflicts.count(tx.hashPrevTx))
                 {
                     /* Add to conflicts map. */
-                    debug::error(FUNCTION, "CONFLICT: prev tx ", (mapClaimed.count(tx.hashPrevTx) ? "CLAIMED" : "CONFLICTED"), tx.hashPrevTx.SubString());
+                    debug::error(FUNCTION, "CONFLICT: prev tx ", (mapClaimed.count(tx.hashPrevTx) ? "CLAIMED " : "CONFLICTED "), tx.hashPrevTx.SubString());
                     mapConflicts[hashTx] = tx;
 
                     /* Process orphan queue. */

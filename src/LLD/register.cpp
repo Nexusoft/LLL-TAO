@@ -174,7 +174,7 @@ namespace LLD
             LOCK(MEMORY_MUTEX);
 
             /* Check for a memory transaction first */
-            if(pMemory && pMemory->mapStates.count(hashRegister))
+            if(pMemory && pMemory->mapStates.count(hashRegister) && !pMemory->setErase.count(hashRegister))
             {
                 /* Get the state from temporary transaction. */
                 state = pMemory->mapStates[hashRegister];

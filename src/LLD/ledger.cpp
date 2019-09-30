@@ -673,7 +673,7 @@ namespace LLD
             LOCK(MEMORY_MUTEX);
 
             /* Check pending transaction memory. */
-            if(pMemory && pMemory->setProofs.count(tuple))
+            if(pMemory && pMemory->setProofs.count(tuple) && !pMemory->setEraseProofs.count(tuple))
                 return true;
 
             /* Check commited memory. */
