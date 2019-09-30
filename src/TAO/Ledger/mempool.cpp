@@ -126,9 +126,9 @@ namespace TAO
                 }
 
                 /* Check for conflicts. */
-                if(mapClaimed.count(tx.hashPrevTx))
+                if(mapClaimed.count(tx.hashPrevTx) || mapConflicts.count(tx.hashPrevTx))
                 {
-                    debug::error(FUNCTION, "CONFLICT: prev tx already claimed ", tx.hashPrevTx.SubString());
+                    debug::error(FUNCTION, "CONFLICT: prev tx ", (mapClaimed.count(tx.hashPrevTx) ? "CLAIMED" : "CONFLICTED"), tx.hashPrevTx.SubString());
                     mapConflicts[hashTx] = tx;
 
                     return true;
@@ -416,6 +416,8 @@ namespace TAO
         void Mempool::Check()
         {
             RLOCK(MUTEX);
+
+            //TODO: evict conflicted transctions from mempool
 
             /* Create map of transactions by genesis. */
             std::map<uint256_t, std::vector<TAO::Ledger::Transaction> > mapTransactions;
