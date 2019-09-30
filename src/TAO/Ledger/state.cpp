@@ -318,8 +318,8 @@ namespace TAO
 
             /* Check if fees are available. */
             uint64_t nPayout = 0;
-            if(stateLast.nFeeReserve > 1000 * NXS_COIN)
-                nPayout = (vtx.size() - 1) * 1000; //NOTE: 1000 viz paid as a constant per transaction.
+            //if(stateLast.nFeeReserve > 1000 * NXS_COIN)
+                //nPayout = (vtx.size() - 1) * 1000; //NOTE: 1000 viz paid as a constant per transaction.
 
             /* Carry over the fee reserves from last block. */
             nFeeReserve = stateLast.nFeeReserve - nPayout;
@@ -463,6 +463,9 @@ namespace TAO
                     if(nVersion >= 7)
                         nMint += nCoinbaseRewards[nType];
                 }
+
+                /* Log the accumulated fee reserves. */
+                debug::log(2, "Fee Reserves | ", std::fixed, nFeeReserve / double(TAO::Ledger::NXS_COIN));
             }
 
             /* Add the Pending Checkpoint into the Blockchain. */
