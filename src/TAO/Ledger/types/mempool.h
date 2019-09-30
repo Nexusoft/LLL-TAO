@@ -147,6 +147,21 @@ namespace TAO
 
             /** Get
              *
+             *  Gets a transaction from mempool including conflicted memory.
+             *
+             *  @param[in] hashTx Hash of transaction to get.
+             *
+             *  @param[out] tx The retrieved transaction
+             *  @param[out] fConflicted Flag to determine if transaction is conflicted
+             *
+             *  @return true if pool contained transaction.
+             *
+             **/
+            bool Get(const uint512_t& hashTx, TAO::Ledger::Transaction &tx, bool &fConflicted) const;
+
+
+            /** Get
+             *
              *  Gets a transaction from mempool
              *
              *  @param[in] hashTx Hash of transaction to get.

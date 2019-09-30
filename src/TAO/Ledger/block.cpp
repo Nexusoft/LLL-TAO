@@ -54,9 +54,11 @@ namespace TAO
         , nHeight(nHeightIn)
         , nBits(0)
         , nNonce(0)
+        , vOffsets()
         , vchBlockSig()
         , vMissing()
         , hashMissing(0)
+        , fConflicted(false)
         {
         }
 
@@ -70,9 +72,11 @@ namespace TAO
         , nHeight(block.nHeight)
         , nBits(block.nBits)
         , nNonce(block.nNonce)
+        , vOffsets(block.vOffsets)
         , vchBlockSig(block.vchBlockSig.begin(), block.vchBlockSig.end())
         , vMissing(block.vMissing)
         , hashMissing(block.hashMissing)
+        , fConflicted(block.fConflicted)
         {
         }
 

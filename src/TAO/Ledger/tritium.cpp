@@ -72,7 +72,7 @@ namespace TAO
         , nTime(runtime::unifiedtimestamp())
         , producer()
         , ssSystem()
-        , vtx(0)
+        , vtx()
         {
 
         }
@@ -552,6 +552,7 @@ namespace TAO
             /* Write the transactions. */
             for(const auto& proof : vtx)
             {
+                /* Get the tritium transction. */
                 if(proof.first == TRANSACTION::TRITIUM)
                 {
                     /* Get the transaction hash. */
@@ -559,13 +560,15 @@ namespace TAO
 
                     /* Check the memory pool. */
                     TAO::Ledger::Transaction tx;
-                    if(!LLD::Ledger->ReadTx(hash, tx, FLAGS::MEMPOOL))
+                    if(!LLD::Ledger->ReadTx(hash, tx, FLAGS::MEMPOOL, state.fConflicted))
                         return debug::error(FUNCTION, "transaction is not in memory pool");
 
                     /* Write to disk. */
                     if(!LLD::Ledger->WriteTx(hash, tx))
                         return debug::error(FUNCTION, "failed to write tx to disk");
                 }
+
+                /* Get the legacy transaction. */
                 else if(proof.first == TRANSACTION::LEGACY)
                 {
                     /* Get the transaction hash. */
@@ -573,13 +576,15 @@ namespace TAO
 
                     /* Check if in memory pool. */
                     Legacy::Transaction tx;
-                    if(!LLD::Legacy->ReadTx(hash, tx, FLAGS::MEMPOOL))
+                    if(!LLD::Legacy->ReadTx(hash, tx, FLAGS::MEMPOOL)) //TODO: handle pre-processing conflicts for legacy tx
                         return debug::error(FUNCTION, "transaction is not in memory pool");
 
                     /* Write to disk. */
                     if(!LLD::Legacy->WriteTx(hash, tx))
                         return debug::error(FUNCTION, "failed to write tx to disk");
                 }
+
+                /* Checkpoints DISABLED for now. */
                 else
                     return debug::error(FUNCTION, "using an unknown transaction type");
             }

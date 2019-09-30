@@ -198,7 +198,13 @@ namespace TAO
             nHeight             = state.nHeight;
             nBits               = state.nBits;
             nNonce              = state.nNonce;
+            vOffsets            = state.vOffsets;
             vchBlockSig         = state.vchBlockSig;
+
+            //MEMORY ONLY
+            vMissing            = state.vMissing;
+            hashMissing         = state.hashMissing;
+            fConflicted         = state.fConflicted;
 
             nTime               = state.nTime;
             ssSystem            = state.ssSystem;
@@ -509,8 +515,16 @@ namespace TAO
                 if(nHeight > ChainState::nBestHeight.load() + 1 && (nEquals == 1 && nGreater == 1))
                     ++nGreater;
 
+                /* Check for conflicted blocks. */
+                if(fConflicted) //NOTE: we don't connect conflicted blocks unless built on by another miner
+                {
+                    debug::error(FUNCTION, "CONFLICTED BLOCK: ", GetHash().SubString());
+
+                    return true;
+                }
+
                 /* Handle single channel having higher weight. */
-                if((nEquals == 2 && nGreater == 1) || nGreater > 1)
+                else if((nEquals == 2 && nGreater == 1) || nGreater > 1)
                 {
                     /* Log the weights. */
                     debug::log(2, FUNCTION, "WEIGHTS [", uint32_t(nGreater), "]",

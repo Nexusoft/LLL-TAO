@@ -160,6 +160,21 @@ namespace LLD
     }
 
 
+    /* Reads a transaction from the ledger DB. */
+    bool LedgerDB::ReadTx(const uint512_t& hashTx, TAO::Ledger::Transaction& tx, const uint8_t nFlags, bool &fConflicted)
+    {
+        /* Special check for memory pool. */
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::MINER)
+        {
+            /* Get the transaction. */
+            if(TAO::Ledger::mempool.Get(hashTx, tx, fConflicted))
+                return true;
+        }
+
+        return Read(hashTx, tx);
+    }
+
+
     /* Erases a transaction from the ledger DB. */
     bool LedgerDB::EraseTx(const uint512_t& hashTx)
     {

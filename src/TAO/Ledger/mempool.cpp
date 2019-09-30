@@ -247,9 +247,19 @@ namespace TAO
 
 
         /* Gets a transaction from mempool */
-        bool Mempool::Get(const uint512_t& hashTx, TAO::Ledger::Transaction &tx) const
+        bool Mempool::Get(const uint512_t& hashTx, TAO::Ledger::Transaction &tx, bool &fConflicted) const
         {
             RLOCK(MUTEX);
+
+            /* Check in conflict memory. */
+            if(mapConflicts.count(hashTx))
+            {
+                /* Get from conflicts map. */
+                tx = mapConflicts.at(hashTx);
+                fConflicted = true;
+
+                return true;
+            }
 
             /* Check in ledger memory. */
             if(mapLedger.count(hashTx))
@@ -259,10 +269,19 @@ namespace TAO
                 return true;
             }
 
-            /* Check in conflict memory. */
-            if(mapConflicts.count(hashTx))
+            return false;
+        }
+
+
+        /* Gets a transaction from mempool */
+        bool Mempool::Get(const uint512_t& hashTx, TAO::Ledger::Transaction &tx) const
+        {
+            RLOCK(MUTEX);
+
+            /* Check in ledger memory. */
+            if(mapLedger.count(hashTx))
             {
-                tx = mapConflicts.at(hashTx);
+                tx = mapLedger.at(hashTx);
 
                 return true;
             }
@@ -334,7 +353,7 @@ namespace TAO
         {
             RLOCK(MUTEX);
 
-            return mapLedger.count(hashTx) || mapLegacy.count(hashTx);
+            return mapLedger.count(hashTx) || mapLegacy.count(hashTx) || mapConflicts.count(hashTx);
         }
 
 

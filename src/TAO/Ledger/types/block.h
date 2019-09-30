@@ -89,6 +89,9 @@ namespace TAO
             mutable uint1024_t hashMissing;
 
 
+            /** MEMORY ONLY: Flag to determine if this block contains conflicted transactions. **/
+            mutable bool fConflicted;
+
 
             /** The default constructor. Sets block state to Null. **/
             Block();

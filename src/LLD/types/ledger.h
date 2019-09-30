@@ -181,6 +181,21 @@ namespace LLD
         bool ReadTx(const uint512_t& hashTx, TAO::Ledger::Transaction& tx, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
+        /** ReadTx
+         *
+         *  Reads a transaction from the ledger DB including checking conflicted memory.
+         *
+         *  @param[in] hashTx The txid of transaction to read.
+         *  @param[in] tx The transaction object to read.
+         *  @param[in] nFlags The flags to determine memory pool or disk
+         *  @param[out] fConflicted The flags to determine if transaction is conflicted.
+         *
+         *  @return True if the transaction was successfully read, false otherwise.
+         *
+         **/
+        bool ReadTx(const uint512_t& hashTx, TAO::Ledger::Transaction& tx, const uint8_t nFlags, bool &fConflicted);
+
+
         /** EraseTx
          *
          *  Erases a transaction from the ledger DB.

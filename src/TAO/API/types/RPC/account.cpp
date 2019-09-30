@@ -1791,7 +1791,7 @@ namespace TAO
                 ret["outputs"] = outputs;
 
             }
-            else if(TAO::Ledger::mempool.Get(hash, txTritium) || LLD::Ledger->ReadTx(hash, txTritium))
+            else if(LLD::Ledger->ReadTx(hash, txTritium, TAO::Ledger::FLAGS::MEMPOOL))
             {
                 /* Sun of OP::LEGACY contracts for this transaction  */
                 uint64_t nTotal = 0;
