@@ -250,17 +250,6 @@ namespace LLD
             }
         }
 
-        /* Check for state in memory map. */
-        if(pCommit->mapStates.count(hashRegister))
-        {
-            /* Erase the states. */
-            pCommit->mapStates.erase(hashRegister);
-
-            /* If in memory only mode, break early. */
-            if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::ERASE)
-                return true;
-        }
-
         return Erase(std::make_pair(std::string("state"), hashRegister));
     }
 
