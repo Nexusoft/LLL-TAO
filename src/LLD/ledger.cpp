@@ -625,7 +625,10 @@ namespace LLD
 
             /* Erase memory proof if they exist. */
             if(pMemory)
+            {
                 pMemory->setEraseProofs.insert(tuple);
+                pMemory->setProofs.erase(tuple);
+            }
             else if(pCommit->setProofs.count(tuple))
                pCommit->setProofs.erase(tuple);
 
