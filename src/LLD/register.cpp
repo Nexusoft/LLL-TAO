@@ -96,7 +96,7 @@ namespace LLD
                 if(stateCheck == state || nFlags == TAO::Ledger::FLAGS::ERASE)
                 {
                     /* Erse if transaction. */
-                    if(pMemory && nFlags != TAO::Ledger::FLAGS::ERASE)
+                    if(pMemory)
                     {
                         pMemory->setErase.insert(hashRegister);
                         pMemory->mapStates.erase(hashRegister);

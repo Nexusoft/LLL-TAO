@@ -213,7 +213,7 @@ namespace LLD
                 if(nMemoryClaimed == nClaimed || nFlags != TAO::Ledger::FLAGS::ERASE)
                 {
                     /* Erase if a transaction. */
-                    if(pMemory && nFlags != TAO::Ledger::FLAGS::ERASE)
+                    if(pMemory)
                     {
                         pMemory->mapClaims.erase(pair);
                         pMemory->setEraseClaims.insert(pair);
@@ -626,7 +626,7 @@ namespace LLD
             LOCK(MEMORY_MUTEX);
 
             /* Erase memory proof if they exist. */
-            if(pMemory && nFlags != TAO::Ledger::FLAGS::ERASE)
+            if(pMemory)
             {
                 pMemory->setEraseProofs.insert(tuple);
                 pMemory->setProofs.erase(tuple);
