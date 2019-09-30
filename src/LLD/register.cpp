@@ -55,11 +55,11 @@ namespace LLD
      *  memory to handle register state sequencing before blocks commit. */
     bool RegisterDB::WriteState(const uint256_t& hashRegister, const TAO::Register::State& state, const uint8_t nFlags)
     {
-        LOCK(MEMORY_MUTEX);
-
         /* Memory mode for pre-database commits. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
+            LOCK(MEMORY_MUTEX);
+
             /* Check for memory mode. */
             if(pMemory)
             {
@@ -76,6 +76,8 @@ namespace LLD
         }
         else if(nFlags == TAO::Ledger::FLAGS::MINER)
         {
+            LOCK(MEMORY_MUTEX);
+
             /* Check for memory mode. */
             if(pMiner)
                 pMiner->mapStates[hashRegister] = state;
@@ -84,6 +86,8 @@ namespace LLD
         }
         else if(nFlags == TAO::Ledger::FLAGS::BLOCK || nFlags == TAO::Ledger::FLAGS::ERASE)
         {
+            LOCK(MEMORY_MUTEX);
+
             /* Remove the memory state if writing the disk state. */
             if(pCommit->mapStates.count(hashRegister))
             {
@@ -93,7 +97,10 @@ namespace LLD
                 {
                     /* Erse if transaction. */
                     if(pMemory && nFlags != TAO::Ledger::FLAGS::ERASE)
+                    {
                         pMemory->setErase.insert(hashRegister);
+                        pMemory->mapStates.erase(hashRegister);
+                    }
                     else
                         pCommit->mapStates.erase(hashRegister);
                 }
@@ -202,32 +209,45 @@ namespace LLD
     /* Erase a state register from the register database. */
     bool RegisterDB::EraseState(const uint256_t& hashRegister, const uint8_t nFlags)
     {
-        /* Memory mode for pre-database commits. */
-        LOCK(MEMORY_MUTEX);
-
         /* Check for memory transaction. */
-        if(pMemory && nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
+            LOCK(MEMORY_MUTEX);
+
             /* Check for available states. */
-            bool fExists = false;
-            if(pMemory->mapStates.count(hashRegister))
+            if(pMemory)
             {
-                /* Erase state out of transaction. */
                 pMemory->mapStates.erase(hashRegister);
-
-                fExists = true;
-            }
-
-            /* Check that value exists to erase. */
-            if(pCommit->mapStates.count(hashRegister))
-            {
-                /* Set data to be in erase queue. */
                 pMemory->setErase.insert(hashRegister);
 
-                fExists = true;
+                return true;
             }
 
-            return fExists;
+            /* Erase state from mempool. */
+            pCommit->mapStates.erase(hashRegister);
+
+            return true;
+        }
+        else if(nFlags == TAO::Ledger::FLAGS::BLOCK || nFlags == TAO::Ledger::FLAGS::ERASE)
+        {
+            LOCK(MEMORY_MUTEX);
+
+            /* Erase from memory if on block. */
+            if(pCommit->mapStates.count(hashRegister))
+            {
+                /* Check for transction. */
+                if(pMemory)
+                {
+                    pMemory->setErase.insert(hashRegister);
+                    pMemory->mapStates.erase(hashRegister);
+                }
+                else
+                    pCommit->mapStates.erase(hashRegister);
+
+                /* Break on erase.  */
+                if(nFlags == TAO::Ledger::FLAGS::ERASE)
+                    return true;
+            }
         }
 
         /* Check for state in memory map. */

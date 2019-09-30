@@ -182,6 +182,7 @@ namespace LLD
             if(pMemory)
             {
                 pMemory->mapClaims[pair] = nClaimed;
+
                 return true;
             }
 
@@ -196,25 +197,31 @@ namespace LLD
 
             /* Check for pending tranasaction. */
             if(pMiner)
-            {
                 pMiner->mapClaims[pair] = nClaimed;
-                return true;
-            }
+
+            return true;
         }
         else if(nFlags == TAO::Ledger::FLAGS::BLOCK || nFlags == TAO::Ledger::FLAGS::ERASE)
         {
             LOCK(MEMORY_MUTEX);
 
             /* Check for pending tranasaction. */
-            if(pMemory)
+            if(pCommit->mapClaims.count(pair))
             {
-                pMemory->mapClaims.erase(pair);
-                pMemory->setEraseClaims.insert(pair);
+                /* Check for last claimed amount. */
+                const uint64_t nMemoryClaimed = pCommit->mapClaims[pair];
+                if(nMemoryClaimed == nClaimed || nFlags != TAO::Ledger::FLAGS::ERASE)
+                {
+                    /* Erase if a transaction. */
+                    if(pMemory && nFlags != TAO::Ledger::FLAGS::ERASE)
+                    {
+                        pMemory->mapClaims.erase(pair);
+                        pMemory->setEraseClaims.insert(pair);
+                    }
+                    else
+                        pCommit->mapClaims.erase(pair);
+                }
             }
-
-            /* Check for commited tranasactions. */
-            if(pCommit && pCommit->mapClaims.count(pair))
-                pCommit->mapClaims.erase(pair);
 
             /* Quit when erasing. */
             if(nFlags == TAO::Ledger::FLAGS::ERASE)
@@ -610,12 +617,7 @@ namespace LLD
 
             /* Check for pending transactions. */
             if(pMiner)
-            {
-                /* Write proof to memory. */
                 pMiner->setProofs.insert(tuple);
-
-                return true;
-            }
 
             return true;
         }
@@ -624,12 +626,12 @@ namespace LLD
             LOCK(MEMORY_MUTEX);
 
             /* Erase memory proof if they exist. */
-            if(pMemory)
+            if(pMemory && nFlags != TAO::Ledger::FLAGS::ERASE)
             {
                 pMemory->setEraseProofs.insert(tuple);
                 pMemory->setProofs.erase(tuple);
             }
-            else if(pCommit->setProofs.count(tuple))
+            else
                pCommit->setProofs.erase(tuple);
 
             /* Check for erase to short circuit out. */
@@ -649,7 +651,7 @@ namespace LLD
         const std::tuple<uint256_t, uint512_t, uint32_t> tuple = std::make_tuple(hashProof, hashTx, nContract);
 
         /* Memory mode for pre-database commits. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::ERASE)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
             LOCK(MEMORY_MUTEX);
 
@@ -681,34 +683,29 @@ namespace LLD
         /* Get the key pair. */
         std::tuple<uint256_t, uint512_t, uint32_t> tuple = std::make_tuple(hashProof, hashTx, nContract);
 
-        /* Memory mode for pre-database commits. */
+        /* Check for memory transaction. */
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
             LOCK(MEMORY_MUTEX);
 
-            /* Check for memory transaction. */
-            if(pMemory && (nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::ERASE))
+            /* Check for available states. */
+            if(pMemory)
             {
-                /* Check for available states. */
-                bool fExists = false;
-                if(pMemory->setProofs.count(tuple))
-                {
-                    /* Erase state out of transaction. */
-                    pMemory->setProofs.erase(tuple);
+                /* Erase state out of transaction. */
+                pMemory->setProofs.erase(tuple);
+                pMemory->setEraseProofs.insert(tuple);
 
-                    fExists = true;
-                }
-
-                /* Check that value exists to erase. */
-                if(pCommit->setProofs.count(tuple))
-                {
-                    /* Set data to be in erase queue. */
-                    pMemory->setEraseProofs.insert(tuple);
-
-                    fExists = true;
-                }
-
-                return fExists;
+                return true;
             }
+
+            /* Erase proof from mempool. */
+            pCommit->setProofs.erase(tuple);
+
+            return true;
+        }
+        else if(nFlags == TAO::Ledger::FLAGS::BLOCK || nFlags == TAO::Ledger::FLAGS::ERASE)
+        {
+            LOCK(MEMORY_MUTEX);
 
             /* Erase memory proof if they exist. */
             if(pCommit->setProofs.count(tuple))
@@ -722,7 +719,8 @@ namespace LLD
                 else
                     pCommit->setProofs.erase(tuple);
 
-                if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::ERASE)
+                /* Break on erase.  */
+                if(nFlags == TAO::Ledger::FLAGS::ERASE)
                     return true;
             }
         }
