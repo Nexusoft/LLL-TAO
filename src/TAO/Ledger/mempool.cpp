@@ -127,7 +127,12 @@ namespace TAO
 
                 /* Check for conflicts. */
                 if(mapClaimed.count(tx.hashPrevTx))
-                    return debug::error(0, FUNCTION, "conflict detected");
+                {
+                    debug::error(0, FUNCTION, "CONFLICT: prev tx already claimed ", tx.hashPrevTx.SubString());
+                    mapConflicts[hashTx] = tx;
+
+                    return true;
+                }
             }
 
             //TODO: add mapConflcts map to soft-ban conflicting blocks
@@ -147,6 +152,24 @@ namespace TAO
             /* Check that the transaction is in a valid state. */
             if(!tx.Check())
                 return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
+
+            /* Check for last hash conflicts. */
+            if(!tx.IsFirst())
+            {
+                /* Get the last hash. */
+                uint512_t hashLast = 0;
+                if(!LLD::Ledger->ReadLast(tx.hashGenesis, hashLast))
+                    return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: Failed to read hash last");
+
+                /* Check for conflicts. */
+                if(tx.hashPrevTx != hashLast)
+                {
+                    debug::error(0, FUNCTION, "CONFLICT: hash last mismatch ", tx.hashPrevTx.SubString());
+                    mapConflicts[hashTx] = tx;
+
+                    return true;
+                }
+            }
 
             /* Begin an ACID transction for internal memory commits. */
             if(!tx.Verify(FLAGS::MEMPOOL))
@@ -228,14 +251,23 @@ namespace TAO
         {
             RLOCK(MUTEX);
 
-            /* Fail if not found. */
-            if(!mapLedger.count(hashTx))
-                return false;
+            /* Check in ledger memory. */
+            if(mapLedger.count(hashTx))
+            {
+                tx = mapLedger.at(hashTx);
 
-            /* Find the object. */
-            tx = mapLedger.at(hashTx);
+                return true;
+            }
 
-            return true;
+            /* Check in conflict memory. */
+            if(mapConflicts.count(hashTx))
+            {
+                tx = mapConflicts.at(hashTx);
+
+                return true;
+            }
+
+            return false;
         }
 
 
@@ -324,6 +356,10 @@ namespace TAO
         bool Mempool::Remove(const uint512_t& hashTx)
         {
             RLOCK(MUTEX);
+
+            /* Erase from conflicted memory. */
+            if(mapConflicts.count(hashTx))
+                mapConflicts.erase(hashTx);
 
             /* Find the transaction in pool. */
             if(mapLedger.count(hashTx))
