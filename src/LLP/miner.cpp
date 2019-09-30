@@ -685,18 +685,18 @@ namespace LLP
                 if(TAO::Ledger::mempool.Has(hashGenesis))
                 {
                     /* Get the last hash of the last transaction created by the sig chain */
-                    LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL);
+                    //LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL);
 
                     /* Update nHashLast if it changed. */
-                    if(nHashLast != hashLast)
+                    //if(nHashLast != hashLast)
                     {
-                        nHashLast = hashLast;
+                        //nHashLast = hashLast;
 
-                        clear_map();
+                        //clear_map();
 
-                        debug::log(2, FUNCTION, "Block producer will orphan new sig chain transactions, resetting blocks");
+                        //debug::log(2, FUNCTION, "Block producer will orphan new sig chain transactions, resetting blocks");
 
-                        return false;
+                        //return false;
                     }
                 }
 

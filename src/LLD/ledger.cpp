@@ -206,8 +206,11 @@ namespace LLD
             LOCK(MEMORY_MUTEX);
 
             /* Check for pending tranasaction. */
-            if(pMemory && pMemory->mapClaims.count(pair))
+            if(pMemory)
+            {
                 pMemory->mapClaims.erase(pair);
+                pMemory->setEraseClaims.insert(pair);
+            }
 
             /* Check for commited tranasactions. */
             if(pCommit && pCommit->mapClaims.count(pair))
@@ -621,7 +624,9 @@ namespace LLD
             LOCK(MEMORY_MUTEX);
 
             /* Erase memory proof if they exist. */
-            if(pCommit->setProofs.count(tuple))
+            if(pMemory)
+                pMemory->setEraseProofs.insert(tuple);
+            else if(pCommit->setProofs.count(tuple))
                pCommit->setProofs.erase(tuple);
 
             /* Check for erase to short circuit out. */
@@ -706,7 +711,10 @@ namespace LLD
             if(pCommit->setProofs.count(tuple))
             {
                 /* Erase the proof. */
-                pCommit->setProofs.erase(tuple);
+                if(pMemory)
+                    pMemory->setEraseProofs.insert(tuple);
+                else
+                    pCommit->setProofs.erase(tuple);
 
                 if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::ERASE)
                     return true;

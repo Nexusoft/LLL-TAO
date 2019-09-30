@@ -278,8 +278,8 @@ namespace TAO
                     debug::log(0, FUNCTION, "Producer is stale, rebuilding...");
 
                     /* Setup the producer transaction. */
-                    if(!CreateTransaction(user, pin, block.producer))
-                        return debug::error(FUNCTION, "Failed to create producer transactions.");
+                    //if(!CreateTransaction(user, pin, block.producer))
+                    //    return debug::error(FUNCTION, "Failed to create producer transactions.");
 
                     /* Store new block cache. */
                     blockCache[nChannel].store(block);

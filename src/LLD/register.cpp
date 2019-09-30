@@ -90,7 +90,13 @@ namespace LLD
                 /* Check for most recent memory state, and remove if writing it. */
                 const TAO::Register::State& stateCheck = pCommit->mapStates[hashRegister];
                 if(stateCheck == state || nFlags == TAO::Ledger::FLAGS::ERASE)
-                    pCommit->mapStates.erase(hashRegister);
+                {
+                    /* Erse if transaction. */
+                    if(pMemory && nFlags != TAO::Ledger::FLAGS::ERASE)
+                        pMemory->setErase.insert(hashRegister);
+                    else
+                        pCommit->mapStates.erase(hashRegister);
+                }
             }
 
             /* Quit when erasing. */
@@ -299,7 +305,13 @@ namespace LLD
                 /* Check for most recent memory state, and remove if writing it. */
                 const TAO::Register::State& stateCheck = pCommit->mapStates[hashRegister];
                 if(stateCheck == state || nFlags == TAO::Ledger::FLAGS::ERASE)
-                    pCommit->mapStates.erase(hashRegister);
+                {
+                    /* Erse if transaction. */
+                    if(pMemory && nFlags != TAO::Ledger::FLAGS::ERASE)
+                        pMemory->setErase.insert(hashRegister);
+                    else
+                        pCommit->mapStates.erase(hashRegister);
+                }
             }
 
             /* Quit when erasing. */

@@ -179,19 +179,17 @@ namespace LLD
     /* Global handler for all LLD instances. */
     void TxnBegin(const uint8_t nFlags)
     {
+        /* Start the register DB transacdtion. */
+        if(Register)
+            Register->MemoryBegin(nFlags);
+
+        /* Start the ledger DB transaction. */
+        if(Ledger)
+            Ledger->MemoryBegin(nFlags);
+
         /* Handle memory commits if in memory m ode. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::MINER)
-        {
-            /* Start the register DB transacdtion. */
-            if(Register)
-                Register->MemoryBegin(nFlags);
-
-            /* Start the ledger DB transaction. */
-            if(Ledger)
-                Ledger->MemoryBegin(nFlags);
-
             return;
-        }
 
         /* Start the register DB transacdtion. */
         if(Register)
@@ -218,19 +216,17 @@ namespace LLD
     /* Global handler for all LLD instances. */
     void TxnAbort(const uint8_t nFlags)
     {
+        /* Start the register DB transacdtion. */
+        if(Register)
+            Register->MemoryRelease(nFlags);
+
+        /* Start the ledger DB transaction. */
+        if(Ledger)
+            Ledger->MemoryRelease(nFlags);
+
         /* Handle memory commits if in memory m ode. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::MINER)
-        {
-            /* Start the register DB transacdtion. */
-            if(Register)
-                Register->MemoryRelease(nFlags);
-
-            /* Start the ledger DB transaction. */
-            if(Ledger)
-                Ledger->MemoryRelease(nFlags);
-
             return;
-        }
 
         /* Abort the register DB transaction. */
         if(Register)
@@ -257,19 +253,17 @@ namespace LLD
     /* Global handler for all LLD instances. */
     void TxnCommit(const uint8_t nFlags)
     {
+        /* Start the register DB transacdtion. */
+        if(Register)
+            Register->MemoryCommit();
+
+        /* Start the ledger DB transaction. */
+        if(Ledger)
+            Ledger->MemoryCommit();
+
         /* Handle memory commits if in memory m ode. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
-        {
-            /* Start the register DB transacdtion. */
-            if(Register)
-                Register->MemoryCommit();
-
-            /* Start the ledger DB transaction. */
-            if(Ledger)
-                Ledger->MemoryCommit();
-
             return;
-        }
 
         /* Set a checkpoint for register DB. */
         if(Register)

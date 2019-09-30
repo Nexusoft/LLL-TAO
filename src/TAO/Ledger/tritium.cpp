@@ -343,6 +343,11 @@ namespace TAO
             /* Get the signature operations for legacy tx's. */
             uint32_t nSigOps = 0;
 
+            /* Get list of producer transactions. */
+            uint512_t hashLast = 0;
+
+            debug::log(0, "CHECK ------------------------------------------------------");
+
             /* Get the signature operations for legacy tx's. */
             uint32_t nSize = (uint32_t)vtx.size();
             for(uint32_t i = 0; i < nSize; ++i)
@@ -398,6 +403,19 @@ namespace TAO
                     if(tx.IsCoinBase() || tx.IsCoinStake())
                         return debug::error(FUNCTION, "more than one coinbase / coinstake");
 
+                    /* Check for producer transaction sequencing. */
+                    if(producer.hashGenesis == tx.hashGenesis)
+                    {
+                        tx.print();
+
+                        /* Check previous tx sequence. */
+                        if(tx.hashPrevTx != hashLast && hashLast != 0)
+                            debug::error(FUNCTION, "producer sigchain out of sequence");
+
+                        /* Check for genesis. */
+                        hashLast = tx.GetHash();
+                    }
+
                     /* Check the transaction for validity. */
                     //if(!tx.Check()) //NOTE: this is pre-processing stuff
                     //    return debug::error(FUNCTION, "contains an invalid transaction");
@@ -405,6 +423,13 @@ namespace TAO
                 else
                     return debug::error(FUNCTION, "unknown transaction type");
             }
+
+            /* Check producer. */
+            if(hashLast != 0 && producer.hashPrevTx != hashLast)
+                debug::error(FUNCTION, "producer transaction out of sequence");
+
+
+            debug::log(0, "END CHECK ------------------------------------------------------");
 
             /* Get producer hash. */
             uint512_t hashProducer = producer.GetHash();
