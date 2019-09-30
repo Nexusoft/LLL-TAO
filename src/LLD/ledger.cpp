@@ -689,7 +689,7 @@ namespace LLD
                 return true;
         }
 
-        debug::log(0, FUNCTION, "Checking for Proof ", hashProof.SubString());
+        debug::log(0, FUNCTION, "Checking for Proof ", hashProof.SubString(), " txid ", hashTx.SubString(), " contract ", nContract);
 
         return Exists(tuple);
     }
@@ -744,7 +744,7 @@ namespace LLD
             }
         }
 
-        debug::log(0, FUNCTION, "Erasing Proof ", hashProof.SubString());
+        debug::log(0, FUNCTION, "Erasing Proof ", hashProof.SubString(), " txid ", hashTx.SubString(), " contract ", nContract);
 
         return Erase(tuple);
     }
