@@ -732,6 +732,8 @@ namespace LLD
                 {
                     pMemory->setEraseProofs.insert(tuple);
                     pMemory->setProofs.erase(tuple);
+
+                    debug::log(0, FUNCTION, "Erasing Proof ", hashProof.SubString());
                 }
                 else
                     pCommit->setProofs.erase(tuple);

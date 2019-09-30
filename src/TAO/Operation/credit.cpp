@@ -37,7 +37,7 @@ namespace TAO
         {
             /* Check if this transfer is already claimed. */
             if(LLD::Ledger->HasProof(hashProof, hashTx, nContract, nFlags))
-                return debug::error(FUNCTION, "credit is already claimed");
+                return debug::error(FUNCTION, "credit is already claimed ", hashProof.SubString());
 
             /* Write the claimed proof. */
             if(!LLD::Ledger->WriteProof(hashProof, hashTx, nContract, nFlags))
