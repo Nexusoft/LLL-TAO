@@ -41,6 +41,18 @@ namespace TAO
 
         /** The default constructor. Sets block state to Null. **/
         Block::Block()
+        : nVersion(TAO::Ledger::CurrentVersion())
+        , hashPrevBlock(0)
+        , hashMerkleRoot(0)
+        , nChannel(0)
+        , nHeight(0)
+        , nBits(0)
+        , nNonce(0)
+        , vOffsets()
+        , vchBlockSig()
+        , vMissing()
+        , hashMissing(0)
+        , fConflicted(false)
         {
             SetNull();
         }
@@ -105,7 +117,11 @@ namespace TAO
             nHeight = 0;
             nBits = 0;
             nNonce = 0;
+            vOffsets.clear();
             vchBlockSig.clear();
+            vMissing.clear();
+            hashMissing = 0;
+            fConflicted = false;
         }
 
 

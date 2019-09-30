@@ -258,6 +258,8 @@ namespace TAO
                 tx = mapConflicts.at(hashTx);
                 fConflicted = true;
 
+                debug::log(0, FUNCTION, "CONFLICTED TRANSACTION: ", hashTx.SubString());
+
                 return true;
             }
 
