@@ -23,6 +23,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/Ledger/include/constants.h>
+#include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/types/state.h>
 
 #include <Util/include/debug.h>
@@ -49,9 +50,13 @@ namespace Legacy
             if(state.GetHash() == trustKey.hashGenesisBlock)
                 return true;
 
-            /* If serach block isn't proof of stake, return an error. */
+            /* If search block isn't a proof of stake, return an error. */
             if(!state.IsProofOfStake())
                 return debug::error(FUNCTION, "block is not proof of stake");
+
+            /* Skip any Tritium proof of stake blocks */
+            if(state.vtx[0].first != TAO::Ledger::TRANSACTION::LEGACY)
+                continue;
 
             /* Get the previous coinstake transaction. */
             Legacy::Transaction tx;
