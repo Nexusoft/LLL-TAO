@@ -520,22 +520,14 @@ namespace TAO
 
                     /* Set the best chain. */
                     if(!SetBest())
-                    {
-                        LLD::TxnAbort();
-
                         return debug::error(FUNCTION, "failed to set best chain");
-                    }
                 }
             }
             else if(nChainTrust > ChainState::nBestChainTrust.load())
             {
                 /* Attempt to set the best chain. */
                 if(!SetBest())
-                {
-                    LLD::TxnAbort();
-
                     return debug::error(FUNCTION, "failed to set best chain");
-                }
             }
 
 
@@ -601,12 +593,7 @@ namespace TAO
                         /* Iterate backwards in chain. */
                         longer = longer.Prev();
                         if(!longer)
-                        {
-                            /* Abort the Transaction. */
-                            LLD::TxnAbort();
-
                             return debug::error(FUNCTION, "failed to find longer ancestor block");
-                        }
                     }
 
                     /* Break if found. */
@@ -619,13 +606,7 @@ namespace TAO
                     /* Iterate to previous block. */
                     fork = fork.Prev();
                     if(!fork)
-                    {
-                        /* Abort the Transaction. */
-                        LLD::TxnAbort();
-
-                        /* Debug errors. */
                         return debug::error(FUNCTION, "failed to find ancestor fork block");
-                    }
                 }
 
                 /* Log if there are blocks to disconnect. */
@@ -651,13 +632,7 @@ namespace TAO
 
                     /* Connect the block. */
                     if(!state.Disconnect())
-                    {
-                        /* Abort the Transaction. */
-                        LLD::TxnAbort();
-
-                        /* Debug errors. */
                         return debug::error(FUNCTION, "failed to disconnect ", state.GetHash().SubString());
-                    }
 
                     /* Erase block if not connecting anything. */
                     if(vConnect.empty())
@@ -682,14 +657,7 @@ namespace TAO
 
                     /* Connect the block. */
                     if(!state->Connect())
-                    {
-                        /* Abort the Transaction. */
-                        LLD::TxnAbort(); //TODO: when a txn is aborted, we need to ensure that the memory states stay intact
-
-                        /* Debug errors. */
-                        return debug::error(FUNCTION, "failed to connect ",
-                            state->GetHash().SubString());
-                    }
+                        return debug::error(FUNCTION, "failed to connect ", state->GetHash().SubString());
 
                     /* Harden a checkpoint if there is any. */
                     HardenCheckpoint(Prev());
