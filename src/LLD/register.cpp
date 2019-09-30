@@ -63,6 +63,9 @@ namespace LLD
             /* Check for memory mode. */
             if(pMemory)
             {
+                /* Check erase queue. */
+                pMemory->setErase.erase(hashRegister);
+
                 /* Commit to transactional memory. */
                 pMemory->mapStates[hashRegister] = state;
 
@@ -95,7 +98,7 @@ namespace LLD
                 const TAO::Register::State& stateCheck = pCommit->mapStates[hashRegister];
                 if(stateCheck == state || nFlags == TAO::Ledger::FLAGS::ERASE)
                 {
-                    /* Erse if transaction. */
+                    /* Erase if transaction. */
                     if(pMemory)
                     {
                         pMemory->setErase.insert(hashRegister);
