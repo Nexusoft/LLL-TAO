@@ -673,7 +673,7 @@ namespace LLD
             LOCK(MEMORY_MUTEX);
 
             /* Check pending transaction memory. */
-            if(pMemory && pMemory->setProofs.count(tuple) && !pMemory->setEraseProofs.count(tuple))
+            if(pMemory && pMemory->setProofs.count(tuple))
                 return true;
 
             /* Check commited memory. */
@@ -688,6 +688,8 @@ namespace LLD
             if(pMiner && pMiner->setProofs.count(tuple))
                 return true;
         }
+
+        //debug::log(0, FUNCTION, "Checking for Proof ", hashProof.SubString(), " txid ", hashTx.SubString(), " contract ", nContract);
 
         return Exists(tuple);
     }
@@ -732,6 +734,8 @@ namespace LLD
                 {
                     pMemory->setEraseProofs.insert(tuple);
                     pMemory->setProofs.erase(tuple);
+
+                    debug::log(0, FUNCTION, "MEMORY::Erasing Proof ", hashProof.SubString(), " txid ", hashTx.SubString(), " contract ", nContract);
                 }
                 else
                     pCommit->setProofs.erase(tuple);
@@ -741,6 +745,8 @@ namespace LLD
                     return true;
             }
         }
+
+        debug::log(0, FUNCTION, "Erasing Proof ", hashProof.SubString(), " txid ", hashTx.SubString(), " contract ", nContract);
 
         return Erase(tuple);
     }

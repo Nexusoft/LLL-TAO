@@ -261,6 +261,8 @@ namespace TAO
                         /* Seek to end. */
                         contract.Seek(16);
 
+                        debug::log(0, FUNCTION, "Delete COINBASE ", hashGenesis.SubString());
+
                         /* Commit to disk. */
                         if(nFlags == TAO::Ledger::FLAGS::BLOCK && contract.Caller() != hashGenesis && !LLD::Ledger->EraseEvent(hashGenesis))
                             return false;

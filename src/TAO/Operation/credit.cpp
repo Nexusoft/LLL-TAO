@@ -22,6 +22,8 @@ ________________________________________________________________________________
 #include <TAO/Register/include/reserved.h>
 #include <TAO/Register/types/object.h>
 
+#include <TAO/Ledger/types/state.h>
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -37,7 +39,16 @@ namespace TAO
         {
             /* Check if this transfer is already claimed. */
             if(LLD::Ledger->HasProof(hashProof, hashTx, nContract, nFlags))
-                return debug::error(FUNCTION, "credit is already claimed ", hashProof.SubString());
+            {
+                TAO::Ledger::BlockState state;
+                if(!LLD::Ledger->ReadBlock(hashTx, state))
+                    return debug::error(FUNCTION, "failed to read block");
+
+                state.print();
+
+                return debug::error(FUNCTION, "credit is already claimed ", hashProof.SubString(), " txid ", hashTx.SubString(), " contract ", nContract);
+            }
+
 
             /* Write the claimed proof. */
             if(!LLD::Ledger->WriteProof(hashProof, hashTx, nContract, nFlags))
