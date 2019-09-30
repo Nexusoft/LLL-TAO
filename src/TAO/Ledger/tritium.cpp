@@ -410,7 +410,7 @@ namespace TAO
 
                         /* Check previous tx sequence. */
                         if(tx.hashPrevTx != hashLast && hashLast != 0)
-                            debug::error(FUNCTION, "producer sigchain out of sequence");
+                            return debug::error(FUNCTION, "producer sigchain out of sequence");
 
                         /* Check for genesis. */
                         hashLast = tx.GetHash();
@@ -426,7 +426,7 @@ namespace TAO
 
             /* Check producer. */
             if(hashLast != 0 && producer.hashPrevTx != hashLast)
-                debug::error(FUNCTION, "producer transaction out of sequence");
+                return debug::error(FUNCTION, "producer transaction out of sequence");
 
 
             debug::log(0, "END CHECK ------------------------------------------------------");
