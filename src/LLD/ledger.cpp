@@ -742,8 +742,6 @@ namespace LLD
             }
         }
 
-        debug::log(0, FUNCTION, "Erasing Proof ", hashProof.SubString(), " txid ", hashTx.SubString(), " contract ", nContract);
-
         return Erase(tuple);
     }
 
