@@ -149,11 +149,7 @@ namespace TAO
 
                     return true;
                 }
-            }
 
-            /* Check for last hash conflicts. */
-            if(!tx.IsFirst())
-            {
                 /* Get the last hash. */
                 uint512_t hashLast = 0;
                 if(!LLD::Ledger->ReadLast(tx.hashGenesis, hashLast, FLAGS::MEMPOOL))
