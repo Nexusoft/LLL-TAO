@@ -50,6 +50,7 @@ namespace TAO
         {
             mutable std::recursive_mutex MUTEX;
 
+
             /** The transactions in the ledger memory pool. **/
             std::map<uint512_t, Legacy::Transaction> mapLegacy;
 
@@ -130,6 +131,18 @@ namespace TAO
              *
              **/
             bool Accept(const Legacy::Transaction& tx);
+
+
+            /** ProcessOrphans
+             *
+             *  Process orphan transactions if triggered in queue.
+             *
+             *  @param[in] hash The hash of spent output
+             *
+             *  @return true if spent.
+             *
+             **/
+            void ProcessOrphans(const uint512_t& hash);
 
 
             /** IsSpent

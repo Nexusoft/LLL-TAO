@@ -128,14 +128,16 @@ namespace TAO
                 /* Check for conflicts. */
                 if(mapClaimed.count(tx.hashPrevTx) || mapConflicts.count(tx.hashPrevTx))
                 {
+                    /* Add to conflicts map. */
                     debug::error(FUNCTION, "CONFLICT: prev tx ", (mapClaimed.count(tx.hashPrevTx) ? "CLAIMED" : "CONFLICTED"), tx.hashPrevTx.SubString());
                     mapConflicts[hashTx] = tx;
+
+                    /* Process orphan queue. */
+                    ProcessOrphans(hashTx);
 
                     return true;
                 }
             }
-
-            //TODO: add mapConflcts map to soft-ban conflicting blocks
 
             /* Check for duplicate coinbase or coinstake. */
             if(tx.IsCoinBase())
@@ -164,8 +166,12 @@ namespace TAO
                 /* Check for conflicts. */
                 if(tx.hashPrevTx != hashLast)
                 {
+                    /* Add to conflicts map. */
                     debug::error(FUNCTION, "CONFLICT: hash last mismatch ", tx.hashPrevTx.SubString());
                     mapConflicts[hashTx] = tx;
+
+                    /* Process orphan queue. */
+                    ProcessOrphans(hashTx);
 
                     return true;
                 }
@@ -209,20 +215,37 @@ namespace TAO
                 );
             }
 
+            /* Process orphan queue. */
+            ProcessOrphans(hashTx);
+
+            /* Notify private to produce block if valid. */
+            if(config::GetBoolArg("-private"))
+                PRIVATE_CONDITION.notify_all();
+
+            return true;
+        }
+
+
+        /* Process orphan transactions if triggered in queue. */
+        void Mempool::ProcessOrphans(const uint512_t& hash)
+        {
+            RLOCK(MUTEX);
+
             /* Check orphan queue. */
+            uint512_t hashTx = hash;
             while(mapOrphans.count(hashTx))
             {
                 /* Get the transaction from map. */
-                TAO::Ledger::Transaction& txOrphan = mapOrphans[hashTx];
+                TAO::Ledger::Transaction& tx = mapOrphans[hashTx];
 
                 /* Get the previous hash. */
-                uint512_t hashThis = txOrphan.GetHash();
+                uint512_t hashThis = tx.GetHash();
 
                 /* Debug output. */
-                debug::log(0, FUNCTION, "PROCESSING ORPHAN tx ", hashTx.SubString());
+                debug::log(0, FUNCTION, "PROCESSING ORPHAN tx ", hashThis.SubString());
 
                 /* Accept the transaction into memory pool. */
-                if(!Accept(txOrphan))
+                if(!Accept(tx))
                 {
                     hashTx = hashThis;
 
@@ -237,12 +260,6 @@ namespace TAO
                 /* Set the hashTx. */
                 hashTx = hashThis;
             }
-
-            /* Notify private to produce block if valid. */
-            if(config::GetBoolArg("-private"))
-                PRIVATE_CONDITION.notify_all();
-
-            return true;
         }
 
 
