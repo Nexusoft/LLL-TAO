@@ -689,6 +689,8 @@ namespace LLD
                 return true;
         }
 
+        debug::log(0, FUNCTION, "Checking for Proof ", hashProof.SubString());
+
         return Exists(tuple);
     }
 
