@@ -144,22 +144,20 @@ namespace Legacy
             return false;
         }
 
-        //beta mode removed for release
-        // /* Disable stake minter if not in beta mode. */
-        // if(!config::GetBoolArg("-beta"))
-        // {
-        //     debug::error(FUNCTION, "Stake minter disabled if not in -beta mode");
-
-        //     return false;
-        // }
-
     	/* Check that stake minter is configured to run.
     	 * Stake Minter default is to run for non-server and not to run for server
     	 */
-        if(!config::GetBoolArg("-stake"))
+        if(!(config::GetBoolArg("-stake") || config::GetBoolArg("-staking")))
     	{
     		debug::log(2, "Stake Minter not configured. Startup cancelled.");
 
+            return false;
+        }
+
+        /* After v7 activates, legacy minter will no longer run */
+        if(TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 7) || TAO::Ledger::CurrentVersion() > 7)
+        {
+            debug::log(0, FUNCTION, "Legacy stake minter does not support block version 7 or higher. Use Tritium stake minter");
             return false;
         }
 
@@ -678,7 +676,7 @@ namespace Legacy
          * Minter can only mine Proof of Stake when current threshold exceeds this value.
          *
          * Staking weights (trust and block) reduce the required threshold by reducing the numerator of this calculation.
-         * Weight from staking balance (based on nValue out of coinstake) reduces the required threshold by increasing the denominator.
+         * Weight from stake balance (based on nValue from coinstake) reduces the required threshold by increasing the denominator.
          */
         uint64_t nStake = block.vtx[0].vout[0].nValue;
         double nRequired = ((108.0 - nTrustWeight.load() - nBlockWeight.load()) * TAO::Ledger::MAX_STAKE_WEIGHT) / nStake;
@@ -692,11 +690,22 @@ namespace Legacy
                                 " at weight ", (nTrustWeight.load() + nBlockWeight.load()),
                                 " and stake rate ", nStakeRate.load());
 
+        /* Minting will exit if stop minter, shutdown, or v7 activation reached mid-process */
+        bool fstop = LegacyMinter::fStopMinter.load() || config::fShutdown.load()
+            || TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 7) || TAO::Ledger::CurrentVersion() > 7;
+
         /* Search for the proof of stake hash solution until it mines a block, minter is stopped,
          * or network generates a new block (minter must start over with new candidate)
          */
-        while(!LegacyMinter::fStopMinter.load() && !config::fShutdown.load() && hashLastBlock == TAO::Ledger::ChainState::hashBestChain.load())
+        while(hashLastBlock == TAO::Ledger::ChainState::hashBestChain.load() && !fstop)
         {
+            /* Check for stop before attempting to mint block */
+            fstop = LegacyMinter::fStopMinter.load() || config::fShutdown.load()
+                || TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 7) || TAO::Ledger::CurrentVersion() > 7;
+
+            if(fstop)
+                continue;
+
             /* Update the block time for difficulty accuracy. */
             block.UpdateTime();
             uint32_t nBlockTime = block.GetBlockTime() - block.vtx[0].nTime; // How long have we been working on this block
@@ -723,7 +732,8 @@ namespace Legacy
 
             /* Log every 1000 attempts */
             if(block.nNonce % 1000 == 0)
-                debug::log(3, FUNCTION, "Threshold ", nThreshold, " exceeds required ", nRequired,", mining Proof of Stake with nonce ", block.nNonce);
+                debug::log(3, FUNCTION, "Threshold ", nThreshold, " exceeds required ", nRequired,
+                                        ", mining Proof of Stake with nonce ", block.nNonce);
 
             /* Handle if block is found. */
             uint1024_t hashProof = block.StakeHash();
@@ -764,7 +774,7 @@ namespace Legacy
         if(!block.Check())
             return debug::error(FUNCTION, "Check block failed");
 
-        /* Check the workand process the block.
+        /* Check the work and process the block.
          * After a successful check, CheckWork() calls LLP::Process() for the new block.
          * That method will call LegacyBlock::Accept() and BlockState::Accept()
          * After all is accepted, BlockState::Accept() will call BlockState::SetBest()
@@ -818,17 +828,24 @@ namespace Legacy
 
         pLegacyMinter->nSleepTime = 1000;
 
-        /* Minting thread will continue repeating this loop until shutdown */
-        while(!LegacyMinter::fStopMinter.load() && !config::fShutdown.load())
+        /* Stake minter will cease operation if stop minter, shutdown, or v7 activation reached */
+        bool fexit = LegacyMinter::fStopMinter.load() || config::fShutdown.load()
+            || TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 7) || TAO::Ledger::CurrentVersion() > 7;
+
+        /* Minting thread will continue repeating this loop until exit flag set. */
+        while(!fexit)
         {
             runtime::sleep(pLegacyMinter->nSleepTime);
 
+            /* Check stop/shutdown status after wakeup */
+            fexit = LegacyMinter::fStopMinter.load() || config::fShutdown.load()
+                || TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 7) || TAO::Ledger::CurrentVersion() > 7;
+
+            if(fexit)
+                continue;
+
             /* Save the current best block hash immediately after sleep in case it changes while we do setup */
             pLegacyMinter->hashLastBlock = TAO::Ledger::ChainState::hashBestChain.load();
-
-            /* Check stop/shutdown status after wakeup */
-            if(LegacyMinter::fStopMinter.load() || config::fShutdown.load())
-                continue;
 
             /* Reload trust key each block iteration to assure we get updates after new block or orphan disconnect.
              * Don't need to do this if staking Genesis.
@@ -846,12 +863,13 @@ namespace Legacy
 
             /* Attempt to mine the current proof of stake block */
             pLegacyMinter->MintBlock();
-
         }
 
-        /* If get here because fShutdown set, have to wait for join. Join is issued in Stop, which needs to be called by shutdown process, too. */
+        /* If get here because fShutdown set or v7 activates, have to wait for join.
+         * Join is issued in Stop, which needs to be called by shutdown process, too.
+         */
         while(!LegacyMinter::fStopMinter.load())
-            runtime::sleep(100);
+            runtime::sleep(500);
 
 
         /* Stop has been issued. Now thread can end. */
