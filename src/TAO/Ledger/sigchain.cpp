@@ -445,7 +445,7 @@ namespace TAO
             /* Parse the object. */
             if(!crypto.Parse())
                 throw debug::exception(FUNCTION, "failed to parse crypto register");
-            
+
             /* Check that the requested key is in the crypto register */
             if(!crypto.CheckName(strType))
                 throw debug::exception(FUNCTION, "Key type not found in crypto register: ", strType);
@@ -477,7 +477,7 @@ namespace TAO
                         throw debug::exception(FUNCTION, "failed to sign data");
 
                     break;
-                    
+
                 }
 
                 /* Support for the BRAINPOOL signature scheme. */
