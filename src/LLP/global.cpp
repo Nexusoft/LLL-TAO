@@ -99,6 +99,9 @@ namespace LLP
             /* Mining server should always listen */
             true,
 
+            /* Mining server should always allow remote connections */
+            true,
+
             /* Flag to determine if meters should be active. */
             config::GetBoolArg(std::string("-meters"), false),
 

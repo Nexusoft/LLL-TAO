@@ -124,11 +124,12 @@ int main(int argc, char** argv)
         nPort,
         10,
         30,
-        false,
+        true,
         1,
         10,
         10,
         config::GetBoolArg(std::string("-unified"), false),
+        true,
         config::GetBoolArg(std::string("-meters"), false),
         true,
         30000);
@@ -142,10 +143,19 @@ int main(int argc, char** argv)
         static_cast<uint16_t>(config::GetArg(std::string("-rpcthreads"), 4)),
         30,
         true,
-        1,
-        10,
-        30,
+        /* The connection score (total connections per second, default 5). */
+        static_cast<uint32_t>(config::GetArg(std::string("-rpccscore"), 5)),
+
+        /* The request score (total requests per second, default 5.) */
+        static_cast<uint32_t>(config::GetArg(std::string("-rpcrscore"), 5)),
+
+        /* The DDOS moving average timespan (default: 60 seconds). */
+        static_cast<uint32_t>(config::GetArg(std::string("-rpctimespan"), 60)),
         config::GetBoolArg("-listen", true),
+
+        /* Flag to determine if server should allow remote connections. */
+        config::GetBoolArg(std::string("-rpcremote"), false),
+
         false,
         false);
 
@@ -242,15 +252,37 @@ int main(int argc, char** argv)
         {
             /* Create the Core API Server. */
             LLP::API_SERVER = new LLP::Server<LLP::APINode>(
+                /* The port this server listens on. */
                 nPort,
-                10,
-                30,
-                false,
-                1,
-                10,
-                30,
+
+                /* The total data I/O threads. */
+                static_cast<uint16_t>(config::GetArg(std::string("-apithreads"), 10)),
+                
+                /* The timeout value (default: 30 seconds). */
+                static_cast<uint32_t>(config::GetArg(std::string("-apitimeout"), 30)),
+
+                /* Enable DDOS protection, always on */
                 true,
+
+                /* The connection score (total connections per second, default 5). */
+                static_cast<uint32_t>(config::GetArg(std::string("-apicscore"), 5)),
+
+                /* The request score (total requests per second, default 5.) */
+                static_cast<uint32_t>(config::GetArg(std::string("-apirscore"), 5)),
+
+                /* The DDOS moving average timespan (default: 60 seconds). */
+                static_cast<uint32_t>(config::GetArg(std::string("-apitimespan"), 60)),
+
+                /* listen, always on */
+                true,
+
+                /* Flag to determine if server should allow remote connections. */
+                config::GetBoolArg(std::string("-apiremote"), false),
+
+                /* meters, always off */
                 false,
+
+                /* connection manager, always off, not required for API as connections are ephemeral */
                 false);
         }
 

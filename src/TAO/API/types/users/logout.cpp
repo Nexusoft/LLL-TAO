@@ -60,16 +60,20 @@ namespace TAO
                 if(!mapSessions.count(nSession))
                     throw APIException(-141, "Already logged out");
 
-                memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = mapSessions[nSession];
+                {
+                    /* Lock the signature chain in case another process attempts to create a transaction . */
+                    LOCK(CREATE_MUTEX);
 
-                user.free();
+                    memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = mapSessions[nSession];
 
-                /* Erase the session. */
-                mapSessions.erase(nSession);
+                    user.free();
 
-                if(!pActivePIN.IsNull())
-                    pActivePIN.free();
+                    /* Erase the session. */
+                    mapSessions.erase(nSession);
 
+                    if(!pActivePIN.IsNull())
+                        pActivePIN.free();
+                }
             }
 
             /* If not using multi-user then we need to send a deauth message to all peers */

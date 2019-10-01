@@ -49,7 +49,7 @@ namespace LLP
     /** Constructor **/
     template <class ProtocolType>
     Server<ProtocolType>::Server(uint16_t nPort, uint16_t nMaxThreads, uint32_t nTimeout, bool fDDOS_,
-                         uint32_t cScore, uint32_t rScore, uint32_t nTimespan, bool fListen,
+                         uint32_t cScore, uint32_t rScore, uint32_t nTimespan, bool fListen, bool fRemote, 
                          bool fMeter, bool fManager, uint32_t nSleepTimeIn)
     : fDDOS(fDDOS_)
     , PORT(nPort)
@@ -80,7 +80,7 @@ namespace LLP
         if(fListen)
         {
             /* Bind the Listener. */
-            if(!BindListenPort(hListenSocket.first, true))
+            if(!BindListenPort(hListenSocket.first, true, fRemote))
             {
                 ::Shutdown();
                 return;
@@ -564,7 +564,7 @@ namespace LLP
 
     /*  Bind connection to a listening port. */
     template <class ProtocolType>
-    bool Server<ProtocolType>::BindListenPort(int32_t & hListenSocket, bool fIPv4)
+    bool Server<ProtocolType>::BindListenPort(int32_t & hListenSocket, bool fIPv4, bool fRemote)
     {
         std::string strError = "";
         /* Conditional declaration to avoid "unused variable" */
@@ -609,7 +609,10 @@ namespace LLP
             struct sockaddr_in sockaddr;
             memset(&sockaddr, 0, sizeof(sockaddr));
             sockaddr.sin_family = AF_INET;
-            sockaddr.sin_addr.s_addr = INADDR_ANY; // bind to all IPs on this computer
+
+            /* Bind to all interfaces if fRemote has been specified, otherwise only use local interface */
+            sockaddr.sin_addr.s_addr = fRemote ? INADDR_ANY : htonl(INADDR_LOOPBACK);
+            
             sockaddr.sin_port = htons(PORT);
             if(::bind(hListenSocket, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR)
             {
@@ -627,7 +630,13 @@ namespace LLP
             struct sockaddr_in6 sockaddr;
             memset(&sockaddr, 0, sizeof(sockaddr));
             sockaddr.sin6_family = AF_INET6;
-            sockaddr.sin6_addr = IN6ADDR_ANY_INIT; // bind to all IPs on this computer
+            
+            /* Bind to all interfaces if fRemote has been specified, otherwise only use local interface */
+            if(fRemote)
+                sockaddr.sin6_addr = IN6ADDR_ANY_INIT;
+            else
+                sockaddr.sin6_addr = IN6ADDR_LOOPBACK_INIT;
+            
             sockaddr.sin6_port = htons(PORT);
             if(::bind(hListenSocket, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR)
             {

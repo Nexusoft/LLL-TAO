@@ -102,6 +102,7 @@ namespace LLP
                              uint32_t rScore = 0,
                              uint32_t nTimespan = 60,
                              bool fListen = true,
+                             bool fRemote = false,
                              bool fMeter = false,
                              bool fManager = false,
                              uint32_t nSleepTimeIn = 1000);
@@ -258,12 +259,13 @@ namespace LLP
          *  Bind connection to a listening port.
          *
          *  @param[in] hListenSocket
-         *  @param[in] fIPv4
+         *  @param[in] fIPv4 Flag indicating the connection is IPv4
+         *  @param[in] fRemote Flag indicating that the socket should listen on all interfaced (true) or local only (false)
          *
          *  @return
          *
          **/
-        bool BindListenPort(int32_t & hListenSocket, bool fIPv4 = true);
+        bool BindListenPort(int32_t & hListenSocket, bool fIPv4 = true, bool fRemote = false);
 
 
         /** Meter

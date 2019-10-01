@@ -5,11 +5,13 @@
 #default RPC user/pass.  PLEASE CHANGE THESE TO SUITABLE VALUES
 rpcuser=username
 rpcpassword=password
+rpcremote=1
 
 #default API user/pass to blank for private network and disable authentication of API requests
 apiauth=0
 apiuser=
 apipassword=
+apiremote=1
 
 rpcallowip=127.0.0.1
 testnet=100

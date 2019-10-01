@@ -104,5 +104,6 @@ TEST_CASE("Arguments Tests", "[args]")
         60,
         true,
         false,
+        false,
         false);
 }
