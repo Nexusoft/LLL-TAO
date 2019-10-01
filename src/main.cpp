@@ -129,6 +129,7 @@ int main(int argc, char** argv)
         10,
         10,
         config::GetBoolArg(std::string("-unified"), false),
+        true,
         config::GetBoolArg(std::string("-meters"), false),
         true,
         30000);
@@ -151,6 +152,10 @@ int main(int argc, char** argv)
         /* The DDOS moving average timespan (default: 60 seconds). */
         static_cast<uint32_t>(config::GetArg(std::string("-rpctimespan"), 60)),
         config::GetBoolArg("-listen", true),
+
+        /* Flag to determine if server should allow remote connections. */
+        config::GetBoolArg(std::string("-rpcremote"), false),
+
         false,
         false);
 
@@ -270,6 +275,9 @@ int main(int argc, char** argv)
 
                 /* listen, always on */
                 true,
+
+                /* Flag to determine if server should allow remote connections. */
+                config::GetBoolArg(std::string("-apiremote"), false),
 
                 /* meters, always off */
                 false,

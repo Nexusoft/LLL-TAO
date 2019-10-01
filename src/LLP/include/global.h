@@ -133,6 +133,9 @@ namespace LLP
             /* Flag to determine if server should listen. */
             config::GetBoolArg(std::string("-listen"), true),
 
+            /* Flag to determine if server should allow remote connections. */
+            true,
+
             /* Flag to determine if meters should be active. */
             config::GetBoolArg(std::string("-meters"), false),
 
