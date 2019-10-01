@@ -743,26 +743,101 @@ namespace LLD
 
         /* Get the Binary Size. */
         stream.ignore(std::numeric_limits<std::streamsize>::max());
+
+        /* Get the data buffer. */
         uint32_t nSize = static_cast<uint32_t>(stream.gcount());
 
         /* Check journal size for 0. */
         if(nSize == 0)
             return false;
 
-        /* Create the transaction object. */
-        TxnBegin();
-
         /* Create buffer to read into. */
-        pTransaction->ssJournal.resize(nSize);
+        std::vector<uint8_t> vBuffer(nSize, 0);
 
         /* Read the keychain file. */
         stream.seekg (0, std::ios::beg);
-        stream.read((char*)pTransaction->ssJournal.data(), nSize);
+        stream.read((char*) &vBuffer[0], vBuffer.size());
         stream.close();
 
         debug::log(0, FUNCTION, strName, " transaction journal detected of ", nSize, " bytes");
 
-        return true;
+        /* Create the transaction object. */
+        TxnBegin();
+
+        /* Serialize the key. */
+        const DataStream ssJournal(vBuffer, SER_LLD, DATABASE_VERSION);
+        while(!ssJournal.End())
+        {
+            /* Read the data entry type. */
+            std::string strType;
+            ssJournal >> strType;
+
+            /* Check for Erase. */
+            if(strType == "erase")
+            {
+                /* Get the key to erase. */
+                std::vector<uint8_t> vKey;
+                ssJournal >> vKey;
+
+                /* Erase the key. */
+                pTransaction->EraseTransaction(vKey);
+
+                /* Debug output. */
+                debug::log(0, FUNCTION, "erasing key ", HexStr(vKey.begin(), vKey.end()).substr(0, 20));
+            }
+            else if(strType == "key")
+            {
+                /* Get the key to write. */
+                std::vector<uint8_t> vKey;
+                ssJournal >> vKey;
+
+                /* Write the key. */
+                pTransaction->setKeychain.insert(vKey);
+
+                /* Debug output. */
+                debug::log(0, FUNCTION, "writing keychain ", HexStr(vKey.begin(), vKey.end()).substr(0, 20));
+            }
+            else if(strType == "write")
+            {
+                /* Get the key to write. */
+                std::vector<uint8_t> vKey;
+                ssJournal >> vKey;
+
+                /* Get the data to write. */
+                std::vector<uint8_t> vData;
+                ssJournal >> vData;
+
+                /* Write the sector data. */
+                pTransaction->mapTransactions[vKey] = vData;
+
+                /* Debug output. */
+                debug::log(0, FUNCTION, "writing data ", HexStr(vKey.begin(), vKey.end()).substr(0, 20));
+            }
+            else if(strType == "index")
+            {
+                /* Get the key to index. */
+                std::vector<uint8_t> vKey;
+                ssJournal >> vKey;
+
+                /* Get the data to index to. */
+                std::vector<uint8_t> vIndex;
+                ssJournal >> vIndex;
+
+                /* Set the indexing key. */
+                pTransaction->mapIndex[vKey] = vIndex;
+
+                /* Debug output. */
+                debug::log(0, FUNCTION, "indexing key ", HexStr(vKey.begin(), vKey.end()).substr(0, 20));
+            }
+            if(strType == "commit")
+            {
+                debug::log(0, FUNCTION, strName, " transaction journal ready to be restored");
+
+                return true;
+            }
+        }
+
+        return debug::error(FUNCTION, strName, " transaction journal never reached commit");
     }
 
 
