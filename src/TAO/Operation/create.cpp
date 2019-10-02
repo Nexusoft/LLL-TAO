@@ -65,11 +65,15 @@ namespace TAO
                                 return debug::error(FUNCTION, "address type mismatch with object type");
 
                             /* Get the identifier. */
-                            uint256_t hashIdentifier = object.get<uint256_t>("token");
+                            TAO::Register::Address hashToken = object.get<uint256_t>("token");
 
                             /* Check that the register doesn't exist yet. */
-                            if(hashIdentifier != 0 && !LLD::Register->HasState(hashIdentifier, nFlags))
-                                return debug::error(FUNCTION, "cannot create account without identifier");
+                            if(hashToken != 0 && !LLD::Register->HasState(hashToken, nFlags))
+                                return debug::error(FUNCTION, "cannot create account without token identifier");
+
+                            /* Check that the token identifier is for a token */
+                            if(hashToken != 0 && !hashToken.IsToken())
+                                return debug::error(FUNCTION, "token identifier is not for a token register");
 
                             break;
                         }

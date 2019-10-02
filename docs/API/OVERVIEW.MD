@@ -346,6 +346,7 @@ Error Codes
 | -209 | Recipient is not a valid account |
 | -210 | Recipient account is for a different token |
 | -211 | Recipient object has not been tokenized |
+| -212 | Invalid token |
 
 
 
