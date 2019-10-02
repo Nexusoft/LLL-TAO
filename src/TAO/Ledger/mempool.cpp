@@ -200,7 +200,6 @@ namespace TAO
             /* Relay the transaction. */
             if(LLP::TRITIUM_SERVER)
             {
-                runtime::sleep(500);
                 LLP::TRITIUM_SERVER->Relay
                 (
                     LLP::ACTION::NOTIFY,

@@ -257,12 +257,12 @@ int main(int argc, char** argv)
 
                 /* The total data I/O threads. */
                 static_cast<uint16_t>(config::GetArg(std::string("-apithreads"), 10)),
-                
+
                 /* The timeout value (default: 30 seconds). */
                 static_cast<uint32_t>(config::GetArg(std::string("-apitimeout"), 30)),
 
                 /* Enable DDOS protection, always on */
-                true,
+                false,
 
                 /* The connection score (total connections per second, default 5). */
                 static_cast<uint32_t>(config::GetArg(std::string("-apicscore"), 5)),

@@ -748,7 +748,7 @@ namespace TAO
 
                 /* Log the mempool consistency checking. */
                 nElapsed = timer.ElapsedMilliseconds();
-                debug::log(0, FUNCTION, "Mempool Consistency Check Complete in ", nElapsed,  " ms");
+                debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION, "Mempool Consistency Check Complete in ", nElapsed,  " ms");
 
                 /* Set the best chain variables. */
                 ChainState::stateBest          = *this;
