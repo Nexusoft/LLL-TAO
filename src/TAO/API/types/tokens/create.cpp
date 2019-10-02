@@ -14,6 +14,8 @@ ________________________________________________________________________________
 #include <TAO/Register/types/address.h>
 #include <LLC/hash/SK.h>
 
+#include <LLD/include/global.h>
+
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/utils.h>
 
@@ -100,6 +102,25 @@ namespace TAO
                     hashIdentifier.SetBase58(strTokenIdentifier);
                 else
                     hashIdentifier = Names::ResolveAddress(params, strTokenIdentifier);
+
+                /* If this is not a NXS token account, verify that the token identifier is for a valid token */
+                if(hashIdentifier != 0)
+                {
+                    if(hashIdentifier.GetType() != TAO::Register::Address::TOKEN)
+                        throw APIException(-212, "Invalid token");
+
+                    TAO::Register::Object token;
+                    if(!LLD::Register->ReadState(hashIdentifier, token, TAO::Ledger::FLAGS::MEMPOOL))
+                        throw APIException(-125, "Token not found");
+
+                    /* Parse the object register. */
+                    if(!token.Parse())
+                        throw APIException(-14, "Object failed to parse");
+
+                    /* Check the standard */
+                    if(token.Standard() != TAO::Register::OBJECTS::TOKEN)
+                        throw APIException(-212, "Invalid token");
+                }
 
                 /* Create an account object register. */
                 TAO::Register::Object account = TAO::Register::CreateAccount(hashIdentifier);
