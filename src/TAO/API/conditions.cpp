@@ -47,7 +47,7 @@ namespace TAO
                 /* The expiration time as a string */
                 std::string strExpires = params["expires"].get<std::string>();
 
-                /* Check that the expiration time contains only numeric characters and that it can be converted to a uint64 
+                /* Check that the expiration time contains only numeric characters and that it can be converted to a uint64
                    before attempting to convert it */
                 if(!IsAllDigit(strExpires) || !IsUINT64(strExpires))
                     throw APIException(-168, "Invalid expiration time");
@@ -60,8 +60,8 @@ namespace TAO
                 /* Default Expiration of 1 day (86400 seconds) */
                 nExpires = 86400;
             }
-                        
-            
+
+
             /* Add conditional statements to only allow the transaction to be credited before the expiration time. */
             contract <= uint8_t(OP::GROUP);
             contract <= uint8_t(OP::CALLER::GENESIS) <= uint8_t(OP::NOTEQUALS) <= uint8_t(OP::TYPES::UINT256_T) <= hashCaller;
@@ -78,6 +78,20 @@ namespace TAO
             contract <= uint8_t(OP::AND);
             contract <= uint8_t(OP::THIS::TIMESTAMP) <= uint8_t(OP::ADD) <= uint8_t(OP::TYPES::UINT64_T) <= uint64_t(nExpires);
             contract <= uint8_t(OP::LESSTHAN) <= uint8_t(OP::CALLER::TIMESTAMP);
+            contract <= uint8_t(OP::UNGROUP);
+
+            contract <= uint8_t(OP::OR);
+
+            /* Add condition to allow receiver to claim a partial before expiration if from same sigchain */
+            contract <= uint8_t(OP::GROUP);
+            contract <= uint8_t(OP::CALLER::GENESIS) <= uint8_t(OP::EQUALS) <= uint8_t(OP::TYPES::UINT256_T) <= hashCaller;
+            contract <= uint8_t(OP::AND);
+            contract <= uint8_t(OP::CALLER::OPERATIONS) <= uint8_t(OP::SUBDATA) <= uint16_t(1) <= uint16_t(32); //hashFrom
+            contract <= uint8_t(OP::NOTEQUALS); //if the proof is not the hashFrom we can assume it is a split dividend payment
+            contract <= uint8_t(OP::THIS::OPERATIONS)   <= uint8_t(OP::SUBDATA) <= uint16_t(101) <= uint16_t(32);  //hashProof
+            contract <= uint8_t(OP::AND);
+            contract <= uint8_t(OP::THIS::TIMESTAMP) <= uint8_t(OP::ADD) <= uint8_t(OP::TYPES::UINT64_T) <= uint64_t(nExpires);
+            contract <= uint8_t(OP::GREATERTHAN) <= uint8_t(OP::CALLER::TIMESTAMP);
             contract <= uint8_t(OP::UNGROUP);
 
             fAdded = true;
