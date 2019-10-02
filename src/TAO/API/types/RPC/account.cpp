@@ -1410,7 +1410,7 @@ namespace TAO
              *
              * Filter out this pair of entries from listSent and listReceived to remove them from output.
              */
-            std::map<Legacy::NexusAddress, int64_t> mapExclude;
+            std::map<Legacy::Script, int64_t> mapExclude;
 
             if (wtx.IsFromMe())
             {
