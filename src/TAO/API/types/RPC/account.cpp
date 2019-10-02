@@ -1410,7 +1410,7 @@ namespace TAO
              *
              * Filter out this pair of entries from listSent and listReceived to remove them from output.
              */
-            std::map<Legacy::NexusAddress, int64_t> mapExclude;
+            std::map<Legacy::Script, int64_t> mapExclude;
 
             if (wtx.IsFromMe())
             {
@@ -1428,12 +1428,12 @@ namespace TAO
                 for(const auto& s : listSent)
                 {
                     Legacy::NexusAddress address;
-                    Legacy::ExtractAddress( s.first, address);
+                    Legacy::ExtractAddress(s.first, address);
 
                     TAO::Register::Address hashRegister;
-                    Legacy::ExtractRegister( s.first, hashRegister);
+                    Legacy::ExtractRegister(s.first, hashRegister);
 
-                    if(mapExclude.count(address))
+                    if(mapExclude.count(s.first))
                         continue;
 
                     if(config::GetBoolArg("-legacy") && strSentAccount == "default")
@@ -1457,12 +1457,12 @@ namespace TAO
                 for(const auto& r : listReceived)
                 {
                     Legacy::NexusAddress address;
-                    Legacy::ExtractAddress( r.first, address);
+                    Legacy::ExtractAddress(r.first, address);
 
                     TAO::Register::Address hashRegister;
-                    Legacy::ExtractRegister( r.first, hashRegister);
+                    Legacy::ExtractRegister(r.first, hashRegister);
 
-                    if(mapExclude.count(address))
+                    if(mapExclude.count(r.first))
                         continue;
 
                     std::string account;
