@@ -331,7 +331,7 @@ namespace TAO
             /* Handle one-to-one debit to credit or return to self. */
             if(hashTo == hashAccount    //regular debit to credit
             || hashTo == TAO::Register::WILDCARD_ADDRESS  //wildcard address (anyone can credit)
-            || hashFrom == hashAccount) //return to self
+            || (hashFrom == hashAccount && hashProof == hashAccount)) //return to self
             {
                 /* Check the proof as being the caller. */
                 if(hashProof != hashFrom)
