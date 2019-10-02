@@ -198,12 +198,27 @@ namespace TAO
                     throw APIException(-14, "Object failed to parse");
 
                 /* Check recipient account type */
-                nStandard = recipient.Base();
-                if(nStandard != TAO::Register::OBJECTS::ACCOUNT
-                || (recipient.get<uint256_t>("token") != object.get<uint256_t>("token")))
+                switch(recipient.Base())
                 {
-                    throw APIException(-209, "Recipient is not a valid account.");
+                    case TAO::Register::OBJECTS::ACCOUNT:
+                    {
+                        if(recipient.get<uint256_t>("token") != object.get<uint256_t>("token"))
+                            throw APIException(-209, "Recipient account is for a different token.");
+                        
+                        break;
+                    }
+                    case TAO::Register::OBJECTS::NONSTANDARD :
+                    {
+                        /* For payments to objects, they must be owned by a token */
+                        if(recipient.hashOwner.GetType() != TAO::Register::Address::TOKEN)
+                            throw APIException(-211, "Recipient object has not been tokenized.");
+
+                        break;
+                    }
+                    default :
+                        throw APIException(-209, "Recipient is not a valid account.");
                 }
+
                 /* Build the OP:DEBIT */
                 tx[0] << (uint8_t)OP::DEBIT << hashFrom << hashTo << nAmount << nReference;
             

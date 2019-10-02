@@ -318,11 +318,9 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
         TAO::Ledger::Transaction tx;
         TAO::Ledger::CreateTransaction(user, strPin, tx);
 
-        /* Force the timestamp to be 11s after the last so that there is no tx fee*/
-        nTimestamp += TAO::Ledger::TX_FEE_INTERVAL + 1;
-        tx.nTimestamp = nTimestamp;
+        /* Force the timestamp to be 1s after the last so that there is a tx fee*/
+        tx.nTimestamp = nTimestamp + 1;
         
-
         /* create object so that a fee is required */
         Object asset = CreateAsset();
 
