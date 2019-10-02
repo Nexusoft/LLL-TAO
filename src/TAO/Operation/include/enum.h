@@ -146,7 +146,7 @@ namespace TAO
             }
 
 
-            /** Caller Values (The validation script caller). **/
+            /** Caller Values (The conditional script caller). **/
             namespace CALLER
             {
                 enum
@@ -182,6 +182,8 @@ namespace TAO
                 {
                     GENESIS      = 0xca,
                     TIMESTAMP    = 0xcb,
+                    OPERATIONS   = 0xcc,
+                    CONDITIONS   = 0xcd,
                 };
             }
 
