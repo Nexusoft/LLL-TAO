@@ -40,6 +40,20 @@ namespace TAO
          **/
         bool Execute(const Contract& contract, const uint8_t nFlags);
 
+
+        /** Execute
+         *
+         *  Executes a given contract and calculates its cost
+         *
+         *  @param[in] contract The contract to execute
+         *  @param[in] nFlags The flags to execute with.
+         *  @param[out] nCost The calculated cost to execute this contract
+         *
+         *  @return True if operations executed successfully, false otherwise.
+         *
+         **/
+        bool Execute(const Contract& contract, const uint8_t nFlags, uint64_t &nCost);
+
     }
 }
 
