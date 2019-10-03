@@ -206,10 +206,9 @@ namespace TAO
 
             if(LLP::LEGACY_SERVER)
                 nConnections += LLP::LEGACY_SERVER->GetConnectionCount();
-            else if(LLP::TRITIUM_SERVER)
+
+            if(LLP::TRITIUM_SERVER)
                 nConnections += LLP::TRITIUM_SERVER->GetConnectionCount();
-
-
 
             return nConnections;
         }
