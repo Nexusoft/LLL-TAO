@@ -489,6 +489,9 @@ namespace Legacy
                 }
                 else if(config::GetBoolArg("-walletcheck", true))
                 {
+                    /* Flag indicating to check the hash.  This is always true, except in the case where this is a tritium
+                       transaction that we have successfully read from the ledger DB */
+                    bool fCheckHash = true;
                     /* Skip check for tritium transactions. */
                     if((TAO::Ledger::VersionActive(wtx.nTime, 7) || TAO::Ledger::CurrentVersion() > 7)
                         && hash.GetType() == TAO::Ledger::TRITIUM)
@@ -513,11 +516,11 @@ namespace Legacy
                                 fBind = false;
                             }
 
-                            continue;
+                            fCheckHash = false;
                         }
                     }
 
-                    if(wtx.GetHash() != hash)
+                    if(fCheckHash && wtx.GetHash() != hash)
                     {
                         debug::error(FUNCTION, "Error in ", strWalletFile, ", hash mismatch, resolving");
 debug::log(0, FUNCTION, "Legacy check");
