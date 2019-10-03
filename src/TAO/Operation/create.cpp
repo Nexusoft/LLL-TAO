@@ -36,9 +36,6 @@ namespace TAO
         /* Commit the final state to disk. */
         bool Create::Commit(const TAO::Register::State& state, const TAO::Register::Address& address, uint64_t& nCost, const uint8_t nFlags)
         {
-            /* Set cost to zero. */
-            nCost = 0;
-
             /* Check register types specific rules. */
             switch(state.nType)
             {
@@ -53,7 +50,7 @@ namespace TAO
                         return debug::error(FUNCTION, "object register failed to parse");
 
                     /* Get the cost. */
-                    nCost = object.Cost();
+                    nCost += object.Cost();
 
                     /* Switch based on standard types. */
                     uint8_t nStandard = object.Standard();

@@ -46,7 +46,7 @@ namespace TAO
 
 
         /* Verify validation rules and caller. */
-        bool Validate::Verify(const Contract& contract, const Contract& condition)
+        bool Validate::Verify(const Contract& contract, const Contract& condition, uint64_t &nCost)
         {
             /* Reset the condition. */
             condition.Reset();
@@ -139,7 +139,7 @@ namespace TAO
 
             /* Assess the fees for the computation limits. */
             if(conditions.nCost > CONDITION_LIMIT_FREE)
-                contract.AddCost(conditions.nCost - CONDITION_LIMIT_FREE);
+                nCost += conditions.nCost - CONDITION_LIMIT_FREE;
 
             return true;
         }

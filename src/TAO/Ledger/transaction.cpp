@@ -379,6 +379,9 @@ namespace TAO
             /* flag indicating that transaction fees should apply, depending on the time since the last transaction */
             bool fApplyTxFee = false;
 
+            /* The total cost of this transaction.  This is calculated from executing each contract. */
+            uint64_t nCost = 0;
+
             /* Check for first. */
             if(IsFirst())
             {
@@ -508,8 +511,12 @@ namespace TAO
                 contract.Bind(this);
 
                 /* Execute the contracts to final state. */
-                if(!TAO::Operation::Execute(contract, nFlags))
+                if(!TAO::Operation::Execute(contract, nFlags, nCost))
                     return false;
+
+                /* If transaction fees should apply, calculate the additional transaction cost for the contract */
+                if(fApplyTxFee)
+                    TAO::Operation::TxCost(contract, nCost);
             }
 
             /* Once we have executed the contracts we need to check the fees.
@@ -519,10 +526,6 @@ namespace TAO
             {
                 /* The fee applied to this transaction */
                 uint64_t nFees = 0;
-
-                /* The total cost of this transaction.  We use the calculated cost for this as the individual contract costs would
-                   have already been calculated during the execution of each contract (Operation::Execute)*/
-                uint64_t nCost = CalculatedCost(fApplyTxFee);
 
                 if(IsFirst())
                 {
@@ -936,29 +939,6 @@ namespace TAO
             }
 
             return nFee;
-        }
-
-
-        /* Calculates the cost of this transaction from the contracts within it */
-        uint64_t Transaction::CalculatedCost(bool fApplyTxFee) const
-        {
-            /* The calculated cost */
-            uint64_t nCost = 0;
-
-            /* Iterate through all contracts. */
-            for(const auto& contract : vContracts)
-            {
-                /* Bind the contract to this transaction. */
-                contract.Bind(this);
-
-                nCost += contract.Cost();
-
-                /* If transaction fees should apply, calculate the additional transaction cost for the contract */
-                if(fApplyTxFee)
-                    TAO::Operation::TxCost(contract, nCost);
-            }
-
-            return nCost;
         }
     }
 }

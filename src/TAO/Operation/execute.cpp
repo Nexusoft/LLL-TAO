@@ -47,9 +47,16 @@ namespace TAO
 
     namespace Operation
     {
-
-        /* Executes a given operation byte sequence. */
+        /* Executes a given contract. */
         bool Execute(const Contract& contract, const uint8_t nFlags)
+        {
+            uint64_t nCost = 0;
+            return Execute(contract, nFlags, nCost);
+        }
+
+
+        /* Executes a given contract and calculates its cost. */
+        bool Execute(const Contract& contract, const uint8_t nFlags, uint64_t &nCost)
         {
             /* Reset the contract streams. */
             contract.Reset();
@@ -103,7 +110,7 @@ namespace TAO
 
                         /* Verify the operation rules. */
                         const Contract condition = LLD::Ledger->ReadContract(hashTx, nContract);
-                        if(!Validate::Verify(contract, condition))
+                        if(!Validate::Verify(contract, condition, nCost))
                             return false;
 
                         /* Commit the validation to disk. */
@@ -300,15 +307,9 @@ namespace TAO
                         if(nChecksum != state.GetHash())
                             return debug::error(FUNCTION, "OP::CREATE: invalid register post-state");
 
-                        /* Check for the fees. */
-                        uint64_t nCost = 0;
-
                         /* Commit the register to disk. */
                         if(!Create::Commit(state, hashAddress, nCost, nFlags))
                             return false;
-
-                        /* Set the fee cost to the contract. */
-                        contract.AddCost(nCost);
 
                         break;
                     }
@@ -429,7 +430,7 @@ namespace TAO
 
                             /* Assess the fees for the computation limits. */
                             if(conditions.nCost > CONDITION_LIMIT_FREE)
-                                contract.AddCost(conditions.nCost - CONDITION_LIMIT_FREE);
+                                nCost += conditions.nCost - CONDITION_LIMIT_FREE;
                         }
 
                         /* Get the state byte. */
@@ -751,7 +752,7 @@ namespace TAO
 
                             /* Assess the fees for the computation limits. */
                             if(conditions.nCost > CONDITION_LIMIT_FREE)
-                                contract.AddCost(conditions.nCost - CONDITION_LIMIT_FREE);
+                                nCost += conditions.nCost - CONDITION_LIMIT_FREE;
                         }
 
                         /* Deserialize the pre-state byte from the contract. */

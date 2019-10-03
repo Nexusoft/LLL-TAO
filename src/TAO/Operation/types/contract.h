@@ -58,10 +58,6 @@ namespace TAO
             /** Contract register stream. **/
             TAO::Register::Stream  ssRegister;
 
-            /* MEMORY ONLY: The cached cost of this contract */
-            mutable uint64_t nCost;
-
-
             /** MEMORY ONLY: the calling public-id. **/
             mutable uint256_t hashCaller;
 
@@ -119,26 +115,6 @@ namespace TAO
              *
              **/
             void Bind(const TAO::Ledger::Transaction* tx) const;
-
-
-            /** AddCost
-             *
-             *  Adds the costs to the contract.
-             *
-             *  @param[in] nFee The total cost to add to the contract.
-             *
-             **/
-            void AddCost(const uint64_t nCost) const;
-
-
-            /** Cost
-             *
-             *  Get the cost of this contract.
-             *
-             *  @return The cost of this contract.
-             *
-             **/
-            uint64_t Cost() const;
 
 
             /** Primitive

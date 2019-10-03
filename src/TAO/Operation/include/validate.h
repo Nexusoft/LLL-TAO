@@ -66,11 +66,12 @@ namespace TAO
              *
              *  @param[in] contract The contract that is executing.
              *  @param[in] condition The contract that is being verified.
+             *  @param[out] nCost The calculated cost to execute the condition
              *
              *  @return true if successful.
              *
              **/
-            bool Verify(const Contract& contract, const Contract& condition);
+            bool Verify(const Contract& contract, const Contract& condition, uint64_t &nCost);
         }
     }
 }

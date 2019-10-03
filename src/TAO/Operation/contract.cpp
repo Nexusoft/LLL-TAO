@@ -31,7 +31,6 @@ namespace TAO
         : ssOperation()
         , ssCondition()
         , ssRegister()
-        , nCost()
         , hashCaller(0)
         , nTimestamp(0)
         , hashTx(0)
@@ -44,7 +43,6 @@ namespace TAO
         : ssOperation(contract.ssOperation)
         , ssCondition(contract.ssCondition)
         , ssRegister(contract.ssRegister)
-        , nCost(contract.nCost)
         , hashCaller(contract.hashCaller)
         , nTimestamp(contract.nTimestamp)
         , hashTx(contract.hashTx)
@@ -57,7 +55,6 @@ namespace TAO
         : ssOperation(contract.ssOperation)
         , ssCondition(contract.ssCondition)
         , ssRegister(contract.ssRegister)
-        , nCost(contract.nCost)
         , hashCaller(contract.hashCaller)
         , nTimestamp(contract.nTimestamp)
         , hashTx(contract.hashTx)
@@ -72,9 +69,6 @@ namespace TAO
             ssOperation = contract.ssOperation;
             ssCondition = contract.ssCondition;
             ssRegister  = contract.ssRegister;
-
-            /* set the cached cost */
-            nCost       = contract.nCost;
 
             /* Set the transaction reference. */
             hashCaller  = contract.hashCaller;
@@ -96,21 +90,6 @@ namespace TAO
             nTimestamp = tx->nTimestamp;
             hashTx     = tx->GetHash();
         }
-
-
-        /* Add costs to the contract. */
-        void Contract::AddCost(const uint64_t nCost) const
-        {
-            this->nCost += nCost;
-        }
-
-
-        /* Get the cost of this contract. */
-        uint64_t Contract::Cost() const
-        {
-            return nCost;
-        }
-
 
         /* Get the primitive operation. */
         uint8_t Contract::Primitive() const
