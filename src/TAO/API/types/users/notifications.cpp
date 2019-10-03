@@ -699,11 +699,24 @@ namespace TAO
                     uint64_t nAmount = 0;
                     TAO::Register::Unpack(refContract, nAmount);
 
+                    /* Get the from account the debit contract*/
+                    TAO::Register::Address hashFrom;
+                    TAO::Register::Unpack(refContract, hashFrom);
+
+                    /* Get the account that made the debit, so that we can determine the decimals */
+                    TAO::Register::Object accountFrom;
+                    if(!LLD::Register->ReadState(hashFrom, accountFrom, TAO::Ledger::FLAGS::MEMPOOL))
+                        throw APIException(-13, "Account not found");
+
+                    /* Parse the object register. */
+                    if(!accountFrom.Parse())
+                        throw APIException(-36, "Failed to parse object register");
+
                     /* Calculate the partial debit amount that this token holder is entitled to. */
                     uint64_t nPartial = (nAmount * nBalance) / nSupply;
 
                     /* Update the JSON with the partial amount */
-                    obj["amount"] = (double) nPartial / pow(10, GetDecimals(token));
+                    obj["amount"] = (double) nPartial / pow(10, GetDecimals(accountFrom));
 
                     /* Add the token account to the notification */
                     obj["proof"] = hashProof.ToString();
