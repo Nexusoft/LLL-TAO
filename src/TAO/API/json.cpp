@@ -925,11 +925,14 @@ namespace TAO
             /* Get callers hashGenesis . */
             uint256_t hashGenesis = users->GetCallersGenesis(params);
 
+            /* The resolved name for this object */
+            std::string strName = "";
+
             /* If the caller has specified to look up the name */
             if(fLookupName)
             {
                 /* Look up the object name based on the Name records in the caller's sig chain */
-                std::string strName = Names::ResolveName(hashGenesis, hashRegister);
+                strName = Names::ResolveName(hashGenesis, hashRegister);
 
                 /* Add the name to the response if one is found. */
                 if(!strName.empty())
@@ -1108,10 +1111,30 @@ namespace TAO
                     /* Handle for all nonstandard object registers. */
                     default:
                     {
+                        /* Get the owner of the object */
+                        TAO::Register::Address hashOwner = TAO::Register::Address(object.hashOwner);
+
+                        /* If this is a tokenized asset and we haven't resolved a name for it based on the callers sig chain
+                           then attempt to resolve the name of it based on the token owners sig chain */
+                        if(strName.empty() && hashOwner.IsToken())
+                        {
+                            /* Retrieve the token owning the asset */
+                            TAO::Register::Object token;
+                            if(LLD::Register->ReadState(hashOwner, token))
+                            {
+                                /* Look up the object name based on the Name records in the token owners sig chain */
+                                strName = Names::ResolveName(token.hashOwner, hashRegister);
+
+                                /* Add the name to the response if one is found. */
+                                if(!strName.empty())
+                                    ret["name"] = strName;
+                            }
+                        }
+
+                        /* Add the register address */
                         ret["address"]    = hashRegister.ToString();
 
                         /* Add ownership details */
-                        TAO::Register::Address hashOwner = TAO::Register::Address(object.hashOwner);
                         ret["owner"]    = hashOwner.ToString();
 
                         /* If this is a tokenized asset then work out what % the caller owns */
