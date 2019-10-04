@@ -154,7 +154,7 @@ namespace TAO
 
                     /* Otherwise create a new name from the previous owners name */
                     else
-                        nameContract = Names::CreateName(user->Genesis(), params, hashTx);
+                        nameContract = Names::CreateName(user->Genesis(), hashTx);
 
                     /* If the Name contract operation was created then add it to the transaction */
                     if(!nameContract.Empty())
