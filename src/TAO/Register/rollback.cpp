@@ -433,8 +433,14 @@ namespace TAO
                         uint256_t hashFrom = 0;
                         debit  >> hashFrom;
 
-                        /* Check for partial credits. */
-                        if(state.hashOwner != hashProof && hashFrom != hashProof)
+                        /* Get the to address */
+                        TAO::Register::Address hashTo;
+                        debit >> hashTo;
+
+                        /* If the debit has not been made to an account then it will be a tokenized asset and could have 
+                           partial credits.  Therefore we need check the credit amount with respect to the other claimed amounts
+                           and then subtract this credit from the current claimed amount. */
+                        if(!hashTo.IsAccount())
                         {
                             /* Get the partial amount. */
                             uint64_t nClaimed = 0;
