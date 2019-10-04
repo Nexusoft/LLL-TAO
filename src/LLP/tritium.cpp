@@ -238,7 +238,8 @@ namespace LLP
 
                     /* Subscribe to notifications. */
                     Subscribe(
-                           SUBSCRIPTION::BESTHEIGHT
+                           SUBSCRIPTION::BESTCHAIN
+                         | SUBSCRIPTION::BESTHEIGHT
                          | SUBSCRIPTION::CHECKPOINT
                          | SUBSCRIPTION::BLOCK
                          | SUBSCRIPTION::TRANSACTION
