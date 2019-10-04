@@ -188,6 +188,9 @@ namespace TAO
             }
             else
             {
+                /* flag indicating if the contract is a debit to a tokenized asset  */
+                bool fTokenizedDebit = false;
+
                 /* Get the recipent account object. */
                 TAO::Register::Object recipient;
                 if(!LLD::Register->ReadState(hashTo, recipient, TAO::Ledger::FLAGS::MEMPOOL))
@@ -209,6 +212,8 @@ namespace TAO
                     }
                     case TAO::Register::OBJECTS::NONSTANDARD :
                     {
+                        fTokenizedDebit = true;
+
                         /* For payments to objects, they must be owned by a token */
                         if(recipient.hashOwner.GetType() != TAO::Register::Address::TOKEN)
                             throw APIException(-211, "Recipient object has not been tokenized.");
@@ -224,7 +229,7 @@ namespace TAO
             
                 /* Add expiration condition unless sending to self */
                 if(recipient.hashOwner != object.hashOwner)
-                    AddExpires( params, user->Genesis(), tx[0]);
+                    AddExpires( params, user->Genesis(), tx[0], fTokenizedDebit);
             }
 
             /* Add the fee */

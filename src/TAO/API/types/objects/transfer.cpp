@@ -128,7 +128,7 @@ namespace TAO
             tx[0] << (uint8_t)TAO::Operation::OP::TRANSFER << hashRegister << hashTo << uint8_t(TAO::Operation::TRANSFER::CLAIM);
 
             /* Add expiration condition. */
-            AddExpires(params, user->Genesis(), tx[0]);
+            AddExpires(params, user->Genesis(), tx[0], false);
 
             /* Add the fee */
             AddFee(tx);
