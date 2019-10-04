@@ -187,6 +187,10 @@ namespace TAO
                             if(state.hashOwner != 0)
                                 continue;
 
+                            /* Make sure we haven't already claimed it */
+                            if(LLD::Ledger->HasProof(hashRegister, tx.GetHash(), nContract, TAO::Ledger::FLAGS::MEMPOOL))
+                                continue;
+
                             break;
                         }
 

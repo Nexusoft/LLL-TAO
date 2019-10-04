@@ -444,13 +444,36 @@ namespace TAO
                                 if(nType == TAO::Operation::TRANSFER::FORCE)
                                     continue;
 
-                                /* Submit the payload object. */
-                                txout[nOut] << uint8_t(TAO::Operation::OP::CLAIM);
-                                txout[nOut] << hashTx << std::get<1>(contract);
-                                txout[nOut] << hashFrom;
+                                /* Create a name object for the claimed object unless this is a Name or Namespace already */
+                                if(!hashFrom.IsName() && !hashFrom.IsNamespace())
+                                {
+                                    /* Create a new name from the previous owners name */
+                                    TAO::Operation::Contract nameContract = Names::CreateName(user->Genesis(), hashTx);
+
+                                    /* If the Name contract operation was created then add it to the transaction */
+                                    if(!nameContract.Empty())
+                                    {
+                                        /* If we need to add a name contract, ensure we don't breach the max contracts/per transaction, 
+                                        leaving room for the claim contract and fee contract */
+                                        if(txout.Size() == TAO::Ledger::MAX_TRANSACTION_CONTRACTS -2 )
+                                            break;
+                                            
+                                        txout[nOut] = nameContract;
+
+                                        /* Increment the contract ID. */
+                                        ++nOut;
+                                    }
+                                }                                
+
+                                /* Add the CLAIM operation */
+                                txout[nOut] << uint8_t(TAO::Operation::OP::CLAIM); // the op code
+                                txout[nOut] << hashTx << std::get<1>(contract); // the transaction hash
+                                txout[nOut] << hashFrom; // the proof
 
                                 /* Increment the contract ID. */
                                 ++nOut;
+
+                                
 
                                 /* Log debug message. */
                                 debug::log(0, FUNCTION, "Matching TRANSFER with CLAIM");

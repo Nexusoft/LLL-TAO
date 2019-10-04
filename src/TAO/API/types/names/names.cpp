@@ -117,7 +117,6 @@ namespace TAO
 
         /* Creates a new Name Object register for an object being transferred */
         TAO::Operation::Contract Names::CreateName(const uint256_t& hashGenesis,
-                                                   const json::json& params,
                                                    const uint512_t& hashTransfer)
         {
             /* Declare the contract for the response */
@@ -151,12 +150,18 @@ namespace TAO
                     TAO::Register::Address hashAddress;
                     check >> hashAddress;
 
+                    /* Check to see if the caller already has a name for this register in their sig chain */
+                    if(!ResolveName(hashGenesis, hashAddress).empty())
+                        continue;
+
                     /* Now check the previous owners Name records to see if there was a Name for this object */
                     std::string strAssetName = ResolveName(txTransfer.hashGenesis, hashAddress);
 
                     /* If a name was found then create a Name record for the new owner using the same name */
                     if(!strAssetName.empty())
+                    {
                         contract = Names::CreateName(hashGenesis, strAssetName, "", hashAddress);
+                    }
 
                     /* If found break. */
                     break;
