@@ -532,7 +532,7 @@ namespace TAO
                     /* For the genesis transaction we allow a fixed amount of default registers to be created for free. */
                     nFees = 2 * TAO::Ledger::ACCOUNT_FEE    // 2 accounts
                           + 2 * TAO::Ledger::NAME_FEE       // 2 names
-                          + 1 * TAO::Ledger::CRYPTO_FEE;  // 1 crypto register
+                          + 1 * TAO::Ledger::CRYPTO_FEE;    // 1 crypto register
                 }
                 else
                     /* For all other transactions we check the actual fee contracts included in the transaction */

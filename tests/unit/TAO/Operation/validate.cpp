@@ -323,7 +323,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
 
             tx[0] <= uint8_t(OP::OR);
 
-            tx[0] <= uint8_t(OP::CALLER::GENESIS) <= uint8_t(OP::EQUALS) <= uint8_t(OP::THIS::GENESIS);
+            tx[0] <= uint8_t(OP::CALLER::GENESIS) <= uint8_t(OP::EQUALS) <= uint8_t(OP::CONTRACT::GENESIS);
 
 
             //get tx hash
@@ -654,7 +654,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
 
             tx[0] <= uint8_t(OP::OR);
 
-            tx[0] <= uint8_t(OP::CALLER::GENESIS) <= uint8_t(OP::EQUALS) <= uint8_t(OP::THIS::GENESIS);
+            tx[0] <= uint8_t(OP::CALLER::GENESIS) <= uint8_t(OP::EQUALS) <= uint8_t(OP::CONTRACT::GENESIS);
 
 
             //get tx hash

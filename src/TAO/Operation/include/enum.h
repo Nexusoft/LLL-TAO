@@ -175,8 +175,8 @@ namespace TAO
             }
 
 
-            /** This Values (The condition creator). **/
-            namespace THIS
+            /** Source contract values. **/
+            namespace CONTRACT
             {
                 enum
                 {
