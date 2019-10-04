@@ -24,7 +24,7 @@ namespace TAO
     {
 
         /** The 'free' limit for conditions. **/
-        const uint64_t CONDITION_LIMIT_FREE = 2048;
+        const uint64_t CONDITION_LIMIT_FREE = 4096;
 
     }
 }

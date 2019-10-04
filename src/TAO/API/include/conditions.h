@@ -30,12 +30,13 @@ namespace TAO
         *
         *  @param[in] params The parameters passed in the request
         *  @param[in] hashCaller The genesis hash of the API caller 
-        *  @param[in] contract The contract to add the conditions to 
+        *  @param[in] contract The contract to add the conditions to
+        *  @param[in] fTokenizedDebit flag indicating if the contract is a debit to a tokenized asset 
         *
         *  @return true if the conditions were successfully added, otherwise false
         *
         **/
-        bool AddExpires(const json::json& params, const uint256_t& hashCaller, TAO::Operation::Contract& contract);
+        bool AddExpires(const json::json& params, const uint256_t& hashCaller, TAO::Operation::Contract& contract, bool fTokenizedDebit);
 
     
     } /* End API namespace */

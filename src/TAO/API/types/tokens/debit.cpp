@@ -168,7 +168,7 @@ namespace TAO
 
             /* Add expiration condition unless sending to self */
             if(recipient.hashOwner != object.hashOwner)
-                AddExpires( params, user->Genesis(), tx[0]);
+                AddExpires( params, user->Genesis(), tx[0], false);
 
             /* Add the fee */
             AddFee(tx);
