@@ -251,14 +251,12 @@ namespace TAO
              *  Creates a new Name Object register for an object being transferred and adds it to a contract
              *
              *  @param[in] uint256_t hashGenesis The genesis hash of the signature chain to create the Name for
-             *  @param[in] params The json request params
              *  @param[in] hashTransfer The transaction ID of the transfer transaction being claimed
              *
              *  @return The contract to containing the Name object creation .
              *
              **/
             static TAO::Operation::Contract CreateName(const uint256_t& hashGenesis,
-                                                       const json::json& params,
                                                        const uint512_t& hashTransfer);
 
 
