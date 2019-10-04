@@ -427,33 +427,39 @@ namespace TAO
 
                         /* Read the debit. */
                         const TAO::Operation::Contract debit = LLD::Ledger->ReadContract(hashTx, nContract);
-                        debit.Seek(1);
 
-                        /* Get address from. */
-                        uint256_t hashFrom = 0;
-                        debit  >> hashFrom;
-
-                        /* Get the to address */
-                        TAO::Register::Address hashTo;
-                        debit >> hashTo;
-
-                        /* If the debit has not been made to an account then it will be a tokenized asset and could have 
-                           partial credits.  Therefore we need check the credit amount with respect to the other claimed amounts
-                           and then subtract this credit from the current claimed amount. */
-                        if(!hashTo.IsAccount())
+                        /* Check for non coinbase. */
+                        uint8_t nDebit = 0;
+                        debit >> nDebit;
+                        if(nDebit == TAO::Operation::OP::DEBIT)
                         {
-                            /* Get the partial amount. */
-                            uint64_t nClaimed = 0;
-                            if(!LLD::Ledger->ReadClaimed(hashTx, nContract, nClaimed, nFlags))
-                                return debug::error(FUNCTION, "OP::CREDIT: failed to read claimed amount");
+                            /* Get address from. */
+                            uint256_t hashFrom = 0;
+                            debit  >> hashFrom;
 
-                            /* Sanity check for claimed overflow. */
-                            if(nClaimed < nAmount)
-                                return debug::error(FUNCTION, "OP::CREDIT: amount larger than claimed (overflow)");
+                            /* Get the to address */
+                            TAO::Register::Address hashTo;
+                            debit >> hashTo;
 
-                            /* Write the new claimed amount. */
-                            if(!LLD::Ledger->WriteClaimed(hashTx, nContract, (nClaimed - nAmount), nFlags))
-                                return debug::error(FUNCTION, "OP::CREDIT: failed to rollback claimed amount");
+                            /* If the debit has not been made to an account then it will be a tokenized asset and could have
+                               partial credits.  Therefore we need check the credit amount with respect to the other claimed amounts
+                               and then subtract this credit from the current claimed amount. */
+                            if(!hashTo.IsAccount())
+                            {
+                                /* Get the partial amount. */
+                                uint64_t nClaimed = 0;
+                                if(!LLD::Ledger->ReadClaimed(hashTx, nContract, nClaimed, nFlags))
+                                    return debug::error(FUNCTION, "OP::CREDIT: failed to read claimed amount");
+
+                                /* Sanity check for claimed overflow. */
+                                if(nClaimed < nAmount)
+                                    return debug::error(FUNCTION, "OP::CREDIT: amount larger than claimed (overflow)");
+
+                                /* Write the new claimed amount. */
+                                if(!LLD::Ledger->WriteClaimed(hashTx, nContract, (nClaimed - nAmount), nFlags))
+                                    return debug::error(FUNCTION, "OP::CREDIT: failed to rollback claimed amount");
+                            }
+
                         }
 
                         break;
