@@ -1581,14 +1581,14 @@ namespace TAO
 
 
                     /* Get the genesis id of the transaction creator. */
-                    case OP::THIS::GENESIS:
+                    case OP::CONTRACT::GENESIS:
                     {
                         /* Allocate to the registers. */
                         allocate(contract.Caller(), vRet);
 
                         /* Check for overflows. */
                         if(nCost + 32 < nCost)
-                            throw debug::exception("OP::THIS::GENESIS costs value overflow");
+                            throw debug::exception("OP::CONTRACT::GENESIS costs value overflow");
 
                         /* Reduce the costs to prevent operation exhuastive attacks. */
                         nCost += 32;
@@ -1598,14 +1598,14 @@ namespace TAO
 
 
                     /* Get the timestamp of the transaction caller. */
-                    case OP::THIS::TIMESTAMP:
+                    case OP::CONTRACT::TIMESTAMP:
                     {
                         /* Allocate to the registers. */
                         allocate(contract.Timestamp(), vRet);
 
                         /* Check for overflows. */
                         if(nCost + 8 < nCost)
-                            throw debug::exception("OP::THIS::TIMESTAMP costs value overflow");
+                            throw debug::exception("OP::CONTRACT::TIMESTAMP costs value overflow");
 
                         /* Reduce the costs to prevent operation exhuastive attacks. */
                         nCost += 8;
@@ -1615,14 +1615,14 @@ namespace TAO
 
 
                     /* Get the operations of the transaction caller. */
-                    case OP::THIS::OPERATIONS:
+                    case OP::CONTRACT::OPERATIONS:
                     {
                         /* Get the bytes from caller. */
                         const std::vector<uint8_t>& vBytes = contract.Operations();
 
                         /* Check for empty operations. */
                         if(vBytes.empty())
-                            throw debug::exception("OP::THIS::OPERATIONS contract has empty operations");
+                            throw debug::exception("OP::CONTRACT::OPERATIONS contract has empty operations");
 
                         /* Check for condition or validate. */
                         uint8_t nOffset = 0;
@@ -1649,7 +1649,7 @@ namespace TAO
 
                         /* Check that offset is within memory range. */
                         if(vBytes.size() <= nOffset)
-                            throw debug::exception("OP::THIS::OPERATIONS offset is not within size");
+                            throw debug::exception("OP::CONTRACT::OPERATIONS offset is not within size");
 
                         /* Allocate to the registers. */
                         allocate(vBytes, vRet, nOffset);
@@ -1657,7 +1657,7 @@ namespace TAO
                         /* Check for overflows. */
                         uint32_t nSize = vBytes.size();
                         if(nCost + nSize < nCost)
-                            throw debug::exception("OP::THIS::OPERATIONS costs value overflow");
+                            throw debug::exception("OP::CONTRACT::OPERATIONS costs value overflow");
 
                         /* Reduce the costs to prevent operation exhuastive attacks. */
                         nCost += nCost;
