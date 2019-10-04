@@ -192,8 +192,9 @@ namespace TAO
                     if(!LoggedIn() || Locked() || !CanProcessNotifications() || TAO::Ledger::ChainState::Synchronizing())
                         continue;
 
-                    /* Make sure the mining server has a connection. */
-                    if(LLP::TRITIUM_SERVER && LLP::TRITIUM_SERVER->GetConnectionCount() == 0)
+                    /* Make sure the mining server has a connection. (skip check if running local testnet) */
+                    bool fLocalTestnet = config::fTestNet.load() && !config::GetBoolArg("-dns", true);
+                    if(!fLocalTestnet && LLP::TRITIUM_SERVER && LLP::TRITIUM_SERVER->GetConnectionCount() == 0)
                         continue;
 
                     /* No mining when synchronizing. */
