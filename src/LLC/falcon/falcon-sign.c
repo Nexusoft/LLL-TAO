@@ -52,9 +52,9 @@
 
 /*
  * If SAMPLER_CDF is non-zero, then the discrete Gaussian sampler will
- * use a tabulated distribution with 128 bits of precision and a constant
+ * use a tabulated distribution with 128 bits of precision and a constant 
  * number of PRNG invocations; use -DSAMPLER_CDF (or -DSAMPLER_CDF=1)
- * to enable this code. The default Gaussian sampler uses a tabulated
+ * to enable this code. The default Gaussian sampler uses a tabulated 
  * distribution with 136 bits of precision and a variable number of PRNG
  * invocations.
  */
@@ -181,7 +181,7 @@ ffLDL_fft_inner(fpr *restrict tree,
 	size_t n, hn;
 
 	n = MKN(logn, 0);
-	if(n == 1) {
+	if (n == 1) {
 		tree[0] = g0[0];
 		return;
 	}
@@ -233,7 +233,7 @@ ffLDL_fft(fpr *restrict tree, const fpr *restrict g00,
 	fpr *d00, *d11;
 
 	n = MKN(logn, 0);
-	if(n == 1) {
+	if (n == 1) {
 		tree[0] = g00[0];
 		return;
 	}
@@ -267,7 +267,7 @@ ffLDL_binary_normalize(fpr *tree, fpr sigma, unsigned logn)
 	size_t n;
 
 	n = MKN(logn, 0);
-	if(n == 1) {
+	if (n == 1) {
 		tree[0] = fpr_div(sigma, fpr_sqrt(tree[0]));
 	} else {
 		ffLDL_binary_normalize(tree + n,
@@ -428,7 +428,7 @@ ffLDL_inner_fft3(fpr *restrict tree, const fpr *restrict g00,
 	n = (size_t)1 << logn;
 	hn = n >> 1;
 
-	if(logn == 1) {
+	if (logn == 1) {
 		/*
 		 * When N = 2, diagonal elements (of D in the LDL
 		 * decomposition) are real numbers (since they are
@@ -578,20 +578,18 @@ ffLDL_fft3(fpr *restrict tree, const fpr *restrict g00,
  * Get the size of the LDL tree for an input with polynomials of size
  * 2^logn. The size is expressed in the number of elements.
  */
- /* NOTE: disabled due to no use
 static inline unsigned
 ffLDL_ternary_treesize(unsigned logn)
 {
 	return 3 * ((logn + 2) << (logn - 1));
 }
-*/
 
 static size_t
 ffLDL_ternary_normalize_inner(fpr *tree, fpr sigma, unsigned logn)
 {
 	size_t s;
 
-	if(logn == 1) {
+	if (logn == 1) {
 		/*
 		 * At logn = 1, tree consists in three polynomials,
 		 * one parent node and two leaves. We normalize the
@@ -643,7 +641,7 @@ smallints_to_fpr(fpr *r, const int16_t *t, unsigned logn, unsigned ter)
 	size_t n, u;
 
 	n = MKN(logn, ter);
-	for(u = 0; u < n; u ++) {
+	for (u = 0; u < n; u ++) {
 		r[u] = fpr_of(t[u]);
 	}
 }
@@ -733,7 +731,7 @@ load_skey(fpr *restrict sk, unsigned q,
 	/*
 	 * Compute the FFT for the key elements, and negate f and F.
 	 */
-	if(ter) {
+	if (ter) {
 		falcon_FFT3(f, logn, 1);
 		falcon_FFT3(g, logn, 1);
 		falcon_FFT3(F, logn, 1);
@@ -756,7 +754,7 @@ load_skey(fpr *restrict sk, unsigned q,
 	 *   g10 = b10*adj(b00) + b11*adj(b01)
 	 *   g11 = b10*adj(b10) + b11*adj(b11)
 	 */
-	if(ter) {
+	if (ter) {
 		fpr *g00, *g10, *g11, *gxx;
 
 		g00 = tmp;
@@ -865,7 +863,7 @@ ffSampling_fft(samplerZ samp, void *samp_ctx,
 	const fpr *tree0, *tree1;
 
 	n = (size_t)1 << logn;
-	if(n == 1) {
+	if (n == 1) {
 		fpr x0, x1, sigma;
 
 		x0 = t0[0];
@@ -924,7 +922,7 @@ ffSampling_inner_fft3(samplerZ samp, void *samp_ctx,
 	 * the fact that the split() and merge() function
 	 * implementations actually supports logn = 1.
 	 */
-	if(logn == 0) {
+	if (logn == 0) {
 		fpr r0, r1, rx;
 		fpr sigma;
 
@@ -1165,14 +1163,14 @@ do_sign(samplerZ samp, void *samp_ctx,
 	/*
 	 * Set the target vector to [hm, 0] (hm is the hashed message).
 	 */
-	for(u = 0; u < n; u ++) {
+	for (u = 0; u < n; u ++) {
 		t0[u] = fpr_of(hm[u]);
 		/* This is implicit.
 		t1[u] = fpr_of(0);
 		*/
 	}
 
-	if(ter) {
+	if (ter) {
 		/*
 		 * Apply the lattice basis to obtain the real target
 		 * vector (after normalization with regards to modulus).
@@ -1211,7 +1209,7 @@ do_sign(samplerZ samp, void *samp_ctx,
 		/*
 		 * Compute the signature.
 		 */
-		for(u = 0; u < n; u ++) {
+		for (u = 0; u < n; u ++) {
 			s1[u] = (int16_t)fpr_rint(t0[u]);
 			s2[u] = (int16_t)fpr_rint(t1[u]);
 		}
@@ -1254,7 +1252,7 @@ do_sign(samplerZ samp, void *samp_ctx,
 		/*
 		 * Compute the signature.
 		 */
-		for(u = 0; u < n; u ++) {
+		for (u = 0; u < n; u ++) {
 			s1[u] = (int16_t)(hm[u] - fpr_rint(t0[u]));
 			s2[u] = (int16_t)-fpr_rint(t1[u]);
 		}
@@ -1325,8 +1323,8 @@ gaussian0_sampler(prng *p)
 {
 	int z;
 
-	for(z = 0;; z ++) {
-		if(falcon_prng_get_u64(p) <= CoDF[z]) {
+	for (z = 0;; z ++) {
+		if (falcon_prng_get_u64(p) <= CoDF[z]) {
 			return z;
 		}
 	}
@@ -1356,8 +1354,8 @@ gaussian0_sampler_large(prng *p)
 {
 	int z;
 
-	for(z = 0;; z ++) {
-		if(falcon_prng_get_u64(p) <= CoDF_large[z]) {
+	for (z = 0;; z ++) {
+		if (falcon_prng_get_u64(p) <= CoDF_large[z]) {
 			return z;
 		}
 	}
@@ -1428,8 +1426,8 @@ gaussian0_sampler(prng *p)
 	/*
 	 * Loop below MUST exit, since the last CDF[] table entry is 0.
 	 */
-	for(z = 0;; z ++) {
-		if(hi > CDF[z].hi || (hi == CDF[z].hi && lo >= CDF[z].lo)) {
+	for (z = 0;; z ++) {
+		if (hi > CDF[z].hi || (hi == CDF[z].hi && lo >= CDF[z].lo)) {
 			return z;
 		}
 	}
@@ -1481,8 +1479,8 @@ gaussian0_sampler_large(prng *p)
 
 	hi = falcon_prng_get_u64(p);
 	lo = falcon_prng_get_u64(p);
-	for(z = 0;; z ++) {
-		if(hi > CDF_large[z].hi
+	for (z = 0;; z ++) {
+		if (hi > CDF_large[z].hi
 			|| (hi == CDF_large[z].hi && lo >= CDF_large[z].lo))
 		{
 			return z;
@@ -1498,8 +1496,8 @@ gaussian0_sampler_large(prng *p)
  *  - CDFs holds the next 128 MSBs of the same CDF images as CDF8;
  *  - CDF0 holds the next 128 MSBs of each CDF image starting with 0x00.
  *
- * We use the same distribution and indexation as above (i.e. CDF8[z] and
- * CDFs[z] correspond to CDF[z]) exept that D(z) is scaled to 2^136 and CDF0
+ * We use the same distribution and indexation as above (i.e. CDF8[z] and 
+ * CDFs[z] correspond to CDF[z]) exept that D(z) is scaled to 2^136 and CDF0 
  * is offset by 6 slots (i.e. CDF0[z] corresponds to CDF[z + 6]).
  *
  * Values below have been computed with 256 bits of precision, then
@@ -1559,19 +1557,19 @@ gaussian0_sampler(prng *p)
 	int z;
 
 	msb = falcon_prng_get_u8(p);
-	if(msb != 0x00) {
+	if (msb != 0x00) {
 		/*
-		 * The loop below return the sample when the byte drawn is
+		 * The loop below return the sample when the byte drawn is 
 		 * equal to the MSBs of at most one CDF image (i.e. msb != 0x00
 		 * by construction of CDF8 and CDFs).
 		 */
-		for(z = 0; z < (int)sizeof CDF8; z ++) {
+		for (z = 0; z < (int)sizeof CDF8; z ++) {
 			/*
 			 * We conclude directly when the byte drawn differs
-			 * from all CDF images, since 8 bits are enough to
+			 * from all CDF images, since 8 bits are enough to 
 			 * compare it to any CDF image.
 			 */
-			if(msb > CDF8[z]) {
+			if (msb > CDF8[z]) {
 				return z;
 			}
 
@@ -1579,10 +1577,10 @@ gaussian0_sampler(prng *p)
 			 * We draw 128 bits more when the byte drawn is equal
 			 * to the MSBs of a CDF image to compare these two.
 			 */
-			if(msb == CDF8[z]) {
+			if (msb == CDF8[z]) {
 				hi = falcon_prng_get_u64(p);
 				lo = falcon_prng_get_u64(p);
-				if(hi > CDFs[z].hi
+				if (hi > CDFs[z].hi
 					|| (hi == CDFs[z].hi
 					&& lo >= CDFs[z].lo))
 				{
@@ -1594,13 +1592,13 @@ gaussian0_sampler(prng *p)
 	}
 
 	/*
-	 * Otherwise (case msb == 0x00), we draw 128 bits more and compare
+	 * Otherwise (case msb == 0x00), we draw 128 bits more and compare 
 	 * it with the CDF images whose the 8 MSBs are equal to 0x00.
 	 */
 	hi = falcon_prng_get_u64(p);
 	lo = falcon_prng_get_u64(p);
-	for(z = 0;; z ++) {
-		if(hi > CDF0[z].hi || (hi == CDF0[z].hi && lo >= CDF0[z].lo)) {
+	for (z = 0;; z ++) {
+		if (hi > CDF0[z].hi || (hi == CDF0[z].hi && lo >= CDF0[z].lo)) {
 			return z + (int)sizeof CDF8;
 		}
 	}
@@ -1660,15 +1658,15 @@ gaussian0_sampler_large(prng *p)
 	int z;
 
 	msb = falcon_prng_get_u8(p);
-	if(msb != 0x00) {
-		for(z = 0; z < (int)sizeof CDF8_large; z ++) {
-			if(msb > CDF8_large[z]) {
+	if (msb != 0x00) {
+		for (z = 0; z < (int)sizeof CDF8_large; z ++) {
+			if (msb > CDF8_large[z]) {
 				return z;
 			}
-			if(msb == CDF8_large[z]) {
+			if (msb == CDF8_large[z]) {
 				hi = falcon_prng_get_u64(p);
 				lo = falcon_prng_get_u64(p);
-				if(hi > CDFs_large[z].hi
+				if (hi > CDFs_large[z].hi
 					|| (hi == CDFs_large[z].hi
 					&& lo >= CDFs_large[z].lo))
 				{
@@ -1681,8 +1679,8 @@ gaussian0_sampler_large(prng *p)
 
 	hi = falcon_prng_get_u64(p);
 	lo = falcon_prng_get_u64(p);
-	for(z = 0;; z ++) {
-		if(hi > CDF0_large[z].hi
+	for (z = 0;; z ++) {
+		if (hi > CDF0_large[z].hi
 			|| (hi == CDF0_large[z].hi && lo >= CDF0_large[z].lo))
 		{
 			return z + (int)sizeof CDF8_large;
@@ -1804,7 +1802,7 @@ BerExp(prng *p, fpr x)
 	do {
 		i -= 8;
 		w = falcon_prng_get_u8(p) - ((z >> i) & (uint64_t)0xFF);
-	} while(!w && i > 0);
+	} while (!w && i > 0);
 	return (int)(w >> 63);
 }
 
@@ -1847,7 +1845,7 @@ sampler(void *ctx, fpr mu, fpr sigma)
 	/*
 	 * We now need to sample on center r.
 	 */
-	for(;;) {
+	for (;;) {
 		int z, b;
 		fpr x;
 
@@ -1889,7 +1887,7 @@ sampler(void *ctx, fpr mu, fpr sigma)
 		 */
 		x = fpr_mul(fpr_sqr(fpr_sub(fpr_of(z), r)), dss);
 		x = fpr_sub(x, fpr_div(fpr_of((z - b) * (z - b)), fpr_of(8)));
-		if(BerExp(p, x)) {
+		if (BerExp(p, x)) {
 			/*
 			 * Rejection sampling was centered on r, but the
 			 * actual center is mu = s + r.
@@ -1923,7 +1921,7 @@ sampler_large(void *ctx, fpr mu, fpr sigma)
 	r = fpr_sub(mu, fpr_of(s));
 	dss = fpr_inv(fpr_mul(fpr_sqr(sigma), fpr_of(2)));
 
-	for(;;) {
+	for (;;) {
 		int z, b;
 		fpr x;
 
@@ -1932,7 +1930,7 @@ sampler_large(void *ctx, fpr mu, fpr sigma)
 		z = b + ((b << 1) - 1) * z;
 		x = fpr_mul(fpr_sqr(fpr_sub(fpr_of(z), r)), dss);
 		x = fpr_sub(x, fpr_div(fpr_of((z - b) * (z - b)), fpr_of(10)));
-		if(BerExp(p, x)) {
+		if (BerExp(p, x)) {
 			return s + z;
 		}
 	}
@@ -1948,7 +1946,7 @@ cleanse(void *data, size_t len)
 	volatile unsigned char *p;
 
 	p = (volatile unsigned char *)data;
-	while(len -- > 0) {
+	while (len -- > 0) {
 		*p ++ = 0;
 	}
 }
@@ -1978,7 +1976,7 @@ struct falcon_sign_ {
 static void
 clear_private(falcon_sign *fs)
 {
-	if(fs->sk != NULL) {
+	if (fs->sk != NULL) {
 #if CLEANSE
 		cleanse(fs->sk, fs->sk_len);
 #endif
@@ -1986,7 +1984,7 @@ clear_private(falcon_sign *fs)
 		fs->sk = NULL;
 		fs->sk_len = 0;
 	}
-	if(fs->tmp != NULL) {
+	if (fs->tmp != NULL) {
 #if CLEANSE
 		cleanse(fs->tmp, fs->tmp_len);
 #endif
@@ -2006,7 +2004,7 @@ falcon_sign_new(void)
 	falcon_sign *fs;
 
 	fs = malloc(sizeof *fs);
-	if(fs == NULL) {
+	if (fs == NULL) {
 		return NULL;
 	}
 	fs->seeded = 0;
@@ -2026,7 +2024,7 @@ falcon_sign_new(void)
 void
 falcon_sign_free(falcon_sign *fs)
 {
-	if(fs != NULL) {
+	if (fs != NULL) {
 		clear_private(fs);
 		free(fs);
 	}
@@ -2037,14 +2035,14 @@ void
 falcon_sign_set_seed(falcon_sign *fs,
 	const void *seed, size_t len, int replace)
 {
-	if(replace) {
+	if (replace) {
 		shake_init(&fs->rng, 512);
 		shake_inject(&fs->rng, seed, len);
 		fs->seeded = 1;
 		fs->flipped = 0;
 		return;
 	}
-	if(fs->flipped) {
+	if (fs->flipped) {
 		unsigned char tmp[32];
 
 		shake_extract(&fs->rng, tmp, sizeof tmp);
@@ -2058,16 +2056,16 @@ falcon_sign_set_seed(falcon_sign *fs,
 static int
 rng_ready(falcon_sign *fs)
 {
-	if(!fs->seeded) {
+	if (!fs->seeded) {
 		unsigned char tmp[32];
 
-		if(!falcon_get_seed(tmp, sizeof tmp)) {
+		if (!falcon_get_seed(tmp, sizeof tmp)) {
 			return 0;
 		}
 		falcon_sign_set_seed(fs, tmp, sizeof tmp, 0);
 		fs->seeded = 1;
 	}
-	if(!fs->flipped) {
+	if (!fs->flipped) {
 		shake_flip(&fs->rng);
 		fs->flipped = 1;
 	}
@@ -2116,14 +2114,14 @@ falcon_sign_set_private_key(falcon_sign *fs,
 	fs->logn = fb & 0x0F;
 	has_G = !(fb & 0x10);
 	fs->ternary = fb >> 7;
-	if(fs->ternary) {
+	if (fs->ternary) {
 		fs->q = 18433;
-		if(fs->logn < 3 || fs->logn > 9) {
+		if (fs->logn < 3 || fs->logn > 9) {
 			goto bad_skey;
 		}
 	} else {
 		fs->q = 12289;
-		if(fs->logn < 1 || fs->logn > 10) {
+		if (fs->logn < 1 || fs->logn > 10) {
 			goto bad_skey;
 		}
 	}
@@ -2133,26 +2131,26 @@ falcon_sign_set_private_key(falcon_sign *fs,
 	 * The f, g, F (and optionally G) short vectors should follow in
 	 * due order.
 	 */
-	for(i = 0; i < 3 + has_G; i ++) {
+	for (i = 0; i < 3 + has_G; i ++) {
 		size_t elen;
 
 		elen = falcon_decode_small(ske[i], fs->logn,
 			comp, fs->q, skey_buf, len);
-		if(elen == 0) {
+		if (elen == 0) {
 			goto bad_skey;
 		}
 		skey_buf += elen;
 		len -= elen;
 	}
-	if(len != 0) {
+	if (len != 0) {
 		goto bad_skey;
 	}
 
 	/*
 	 * Recompute G if not provided.
 	 */
-	if(!has_G) {
-		if(!falcon_complete_private(ske[3],
+	if (!has_G) {
+		if (!falcon_complete_private(ske[3],
 			ske[0], ske[1], ske[2], fs->logn, fs->ternary))
 		{
 			goto bad_skey;
@@ -2162,7 +2160,7 @@ falcon_sign_set_private_key(falcon_sign *fs,
 	/*
 	 * Perform pre-computations on private key.
 	 */
-	if(fs->ternary) {
+	if (fs->ternary) {
 		fs->sk_len = ((size_t)(3 * (fs->logn + 6)) << (fs->logn - 1))
 			* sizeof(fpr);
 		fs->tmp_len = ((size_t)21 << (fs->logn - 1)) * sizeof(fpr);
@@ -2172,11 +2170,11 @@ falcon_sign_set_private_key(falcon_sign *fs,
 		fs->tmp_len = ((size_t)7 << fs->logn) * sizeof(fpr);
 	}
 	fs->sk = malloc(fs->sk_len);
-	if(fs->sk == NULL) {
+	if (fs->sk == NULL) {
 		goto bad_skey;
 	}
 	fs->tmp = malloc(fs->tmp_len);
-	if(fs->tmp == NULL) {
+	if (fs->tmp == NULL) {
 		goto bad_skey;
 	}
 
@@ -2193,7 +2191,7 @@ bad_skey:
 int
 falcon_sign_start(falcon_sign *fs, void *r)
 {
-	if(!rng_ready(fs)) {
+	if (!rng_ready(fs)) {
 		return 0;
 	}
 	shake_extract(&fs->rng, r, 40);
@@ -2225,19 +2223,19 @@ falcon_sign_generate(falcon_sign *fs, void *sig, size_t sig_max_len, int comp)
 	unsigned char *sig_buf;
 	size_t sig_len;
 
-	if(fs->sk == NULL) {
+	if (fs->sk == NULL) {
 		return 0;
 	}
-	if(!rng_ready(fs)) {
+	if (!rng_ready(fs)) {
 		return 0;
 	}
-	if(sig_max_len < 2) {
+	if (sig_max_len < 2) {
 		return 0;
 	}
 	shake_flip(&fs->sc);
 	falcon_hash_to_point(&fs->sc, fs->q, hm, fs->logn);
 
-	for(;;) {
+	for (;;) {
 		/*
 		 * Signature produces short vectors s1 and s2. The
 		 * signature is acceptable only if the aggregate vector
@@ -2273,7 +2271,7 @@ falcon_sign_generate(falcon_sign *fs, void *sig, size_t sig_max_len, int comp)
 		 * end up with an invalidly large signature, in which
 		 * case we just loop.
 		 */
-		if(falcon_is_short(s1, s2, fs->logn, fs->ternary)) {
+		if (falcon_is_short(s1, s2, fs->logn, fs->ternary)) {
 			break;
 		}
 	}
@@ -2281,7 +2279,7 @@ falcon_sign_generate(falcon_sign *fs, void *sig, size_t sig_max_len, int comp)
 	sig_buf = sig;
 	sig_len = falcon_encode_small(sig_buf + 1, sig_max_len - 1,
 		comp, fs->q, s2, fs->logn);
-	if(sig_len == 0) {
+	if (sig_len == 0) {
 		return 0;
 	}
 	sig_buf[0] = (fs->ternary << 7) | (comp << 5) | fs->logn;

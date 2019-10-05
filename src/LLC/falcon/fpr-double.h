@@ -199,11 +199,11 @@ fpr_exp_small(fpr x)
 	 * are constant-time (which is a big "if", especially for the
 	 * division operation).
 	 */
-#define FPR_P1   (1.66666666666666019037e-01)
+#define FPR_P1   ( 1.66666666666666019037e-01)
 #define FPR_P2   (-2.77777777770155933842e-03)
-#define FPR_P3   (6.61375632143793436117e-05)
+#define FPR_P3   ( 6.61375632143793436117e-05)
 #define FPR_P4   (-1.65339022054652515390e-06)
-#define FPR_P5   (4.13813679705723846039e-08)
+#define FPR_P5   ( 4.13813679705723846039e-08)
 
 	double s, t, c;
 

@@ -806,17 +806,17 @@ mq_NTT_binary(uint16_t *a, unsigned logn)
 
 	n = (size_t)1 << logn;
 	t = n;
-	for(m = 1; m < n; m <<= 1) {
+	for (m = 1; m < n; m <<= 1) {
 		size_t ht, i, j1;
 
 		ht = t >> 1;
-		for(i = 0, j1 = 0; i < m; i ++, j1 += t) {
+		for (i = 0, j1 = 0; i < m; i ++, j1 += t) {
 			size_t j, j2;
 			uint32_t s;
 
 			s = GMb[m + i];
 			j2 = j1 + ht;
-			for(j = j1; j < j2; j ++) {
+			for (j = j1; j < j2; j ++) {
 				uint32_t u, v;
 
 				u = a[j];
@@ -841,18 +841,18 @@ mq_iNTT_binary(uint16_t *a, unsigned logn)
 	n = (size_t)1 << logn;
 	t = 1;
 	m = n;
-	while(m > 1) {
+	while (m > 1) {
 		size_t hm, dt, i, j1;
 
 		hm = m >> 1;
 		dt = t << 1;
-		for(i = 0, j1 = 0; i < hm; i ++, j1 += dt) {
+		for (i = 0, j1 = 0; i < hm; i ++, j1 += dt) {
 			size_t j, j2;
 			uint32_t s;
 
 			j2 = j1 + t;
 			s = iGMb[hm + i];
-			for(j = j1; j < j2; j ++) {
+			for (j = j1; j < j2; j ++) {
 				uint32_t u, v, w;
 
 				u = a[j];
@@ -877,10 +877,10 @@ mq_iNTT_binary(uint16_t *a, unsigned logn)
 	 * its computation time is negligible.
 	 */
 	ni = Rb;
-	for(m = n; m > 1; m >>= 1) {
+	for (m = n; m > 1; m >>= 1) {
 		ni = mq_rshift1(ni, Qb);
 	}
-	for(m = 0; m < n; m ++) {
+	for (m = 0; m < n; m ++) {
 		a[m] = (uint16_t)mq_montymul(a[m], ni, Qb, Q0Ib);
 	}
 }
@@ -901,7 +901,7 @@ mq_NTT_ternary(uint16_t *a, unsigned logn)
 	 * Modulo X^2-X+1.
 	 */
 	r = GMt_square[1];
-	for(u = 0; u < hn; u ++) {
+	for (u = 0; u < hn; u ++) {
 		uint32_t a0, a1, b;
 
 		a0 = a[u];
@@ -915,17 +915,17 @@ mq_NTT_ternary(uint16_t *a, unsigned logn)
 	 * Intermediate steps for degree doubling.
 	 */
 	t = hn;
-	for(m = 2; t > 3; m <<= 1) {
+	for (m = 2; t > 3; m <<= 1) {
 		size_t ht, u1, v1;
 
 		ht = t >> 1;
-		for(u1 = 0, v1 = 0; u1 < m; u1 ++, v1 += t) {
+		for (u1 = 0, v1 = 0; u1 < m; u1 ++, v1 += t) {
 			size_t v2;
 			uint32_t s;
 
 			s = GMt_square[m + u1];
 			v2 = v1 + ht;
-			for(v = v1; v < v2; v ++) {
+			for (v = v1; v < v2; v ++) {
 				uint32_t a0, a1;
 
 				a0 = a[v];
@@ -942,7 +942,7 @@ mq_NTT_ternary(uint16_t *a, unsigned logn)
 	 * Degree tripling.
 	 */
 	w = mq_montymul(GMt_square[1], GMt_square[1], Qt, Q0It);
-	for(u = 0, v = (size_t)1 << (logn - 1); u < n; u += 3, v ++) {
+	for (u = 0, v = (size_t)1 << (logn - 1); u < n; u += 3, v ++) {
 		uint32_t fA, fB, fC, x, x2;
 		uint32_t fB0, fB1, fB2, fC0, fC1, fC2;
 
@@ -979,7 +979,7 @@ mq_iNTT_ternary(uint16_t *a, unsigned logn)
 	 * Dividing degree by 3.
 	 */
 	w = mq_montymul(iGMt_square[1], iGMt_square[1], Qt, Q0It);
-	for(u = 0, v = (size_t)1 << (logn - 1); u < n; u += 3, v ++) {
+	for (u = 0, v = (size_t)1 << (logn - 1); u < n; u += 3, v ++) {
 		uint32_t f0, f1, f2, x, x2;
 		uint32_t f11, f12, f21, f22;
 
@@ -1003,17 +1003,17 @@ mq_iNTT_ternary(uint16_t *a, unsigned logn)
 	 * Intermediate steps for degree halving.
 	 */
 	t = 6;
-	for(m = (size_t)1 << (logn - 2); t < n; m >>= 1) {
+	for (m = (size_t)1 << (logn - 2); t < n; m >>= 1) {
 		size_t ht, u1, v1;
 
 		ht = t >> 1;
-		for(u1 = 0, v1 = 0; u1 < m; u1 ++, v1 += t) {
+		for (u1 = 0, v1 = 0; u1 < m; u1 ++, v1 += t) {
 			size_t v2;
 			uint32_t s;
 
 			s = iGMt_square[m + u1];
 			v2 = v1 + ht;
-			for(v = v1; v < v2; v ++) {
+			for (v = v1; v < v2; v ++) {
 				uint32_t a0, a1;
 
 				a0 = a[v];
@@ -1030,7 +1030,7 @@ mq_iNTT_ternary(uint16_t *a, unsigned logn)
 	 * Modulo X^2-X+1.
 	 */
 	r = iGMt_square[0];
-	for(u = 0; u < hn; u ++) {
+	for (u = 0; u < hn; u ++) {
 		uint32_t a0, a1, b;
 
 		a0 = a[u];
@@ -1045,7 +1045,7 @@ mq_iNTT_ternary(uint16_t *a, unsigned logn)
 	 * multiplied by n. Inverses of n modulo q have been precomputed.
 	 */
 	ni = INVNQt[logn];
-	for(u = 0; u < n; u ++) {
+	for (u = 0; u < n; u ++) {
 		a[u] = mq_montymul(a[u], ni, Qt, Q0It);
 	}
 }
@@ -1053,7 +1053,7 @@ mq_iNTT_ternary(uint16_t *a, unsigned logn)
 static void
 mq_NTT(uint16_t *a, unsigned logn, int ternary)
 {
-	if(ternary) {
+	if (ternary) {
 		mq_NTT_ternary(a, logn);
 	} else {
 		mq_NTT_binary(a, logn);
@@ -1063,7 +1063,7 @@ mq_NTT(uint16_t *a, unsigned logn, int ternary)
 static void
 mq_iNTT(uint16_t *a, unsigned logn, int ternary)
 {
-	if(ternary) {
+	if (ternary) {
 		mq_iNTT_ternary(a, logn);
 	} else {
 		mq_iNTT_binary(a, logn);
@@ -1078,14 +1078,14 @@ mq_poly_tomonty(uint16_t *f, unsigned logn, int ternary)
 {
 	size_t u, n;
 
-	if(ternary) {
+	if (ternary) {
 		n = (size_t)3 << (logn - 1);
-		for(u = 0; u < n; u ++) {
+		for (u = 0; u < n; u ++) {
 			f[u] = (uint16_t)mq_montymul(f[u], R2t, Qt, Q0It);
 		}
 	} else {
 		n = (size_t)1 << logn;
-		for(u = 0; u < n; u ++) {
+		for (u = 0; u < n; u ++) {
 			f[u] = (uint16_t)mq_montymul(f[u], R2b, Qb, Q0Ib);
 		}
 	}
@@ -1100,14 +1100,14 @@ mq_poly_montymul_ntt(uint16_t *f, const uint16_t *g, unsigned logn, int ternary)
 {
 	size_t u, n;
 
-	if(ternary) {
+	if (ternary) {
 		n = (size_t)3 << (logn - 1);
-		for(u = 0; u < n; u ++) {
+		for (u = 0; u < n; u ++) {
 			f[u] = (uint16_t)mq_montymul(f[u], g[u], Qt, Q0It);
 		}
 	} else {
 		n = (size_t)1 << logn;
-		for(u = 0; u < n; u ++) {
+		for (u = 0; u < n; u ++) {
 			f[u] = (uint16_t)mq_montymul(f[u], g[u], Qb, Q0Ib);
 		}
 	}
@@ -1121,14 +1121,14 @@ mq_poly_sub(uint16_t *f, const uint16_t *g, unsigned logn, int ternary)
 {
 	size_t u, n;
 
-	if(ternary) {
+	if (ternary) {
 		n = (size_t)3 << (logn - 1);
-		for(u = 0; u < n; u ++) {
+		for (u = 0; u < n; u ++) {
 			f[u] = (uint16_t)mq_sub(f[u], g[u], Qt);
 		}
 	} else {
 		n = (size_t)1 << logn;
-		for(u = 0; u < n; u ++) {
+		for (u = 0; u < n; u ++) {
 			f[u] = (uint16_t)mq_sub(f[u], g[u], Qb);
 		}
 	}
@@ -1154,7 +1154,7 @@ falcon_vrfy_new(void)
 	falcon_vrfy *fv;
 
 	fv = malloc(sizeof *fv);
-	if(fv == NULL) {
+	if (fv == NULL) {
 		return NULL;
 	}
 	fv->logn = 0;
@@ -1166,7 +1166,7 @@ falcon_vrfy_new(void)
 void
 falcon_vrfy_free(falcon_vrfy *fv)
 {
-	if(fv != NULL) {
+	if (fv != NULL) {
 		free(fv);
 	}
 }
@@ -1194,36 +1194,36 @@ falcon_vrfy_set_public_key(falcon_vrfy *fv,
 	 *   |
 	 *   +------------- 1 for ternary, 0 for binary
 	 */
-	if(len <= 1) {
+	if (len <= 1) {
 		goto bad_pkey;
 	}
 	fb = *buf ++;
 	len --;
 	fv->logn = fb & 0x0F;
-	if((fb >> 7) != 0) {
+	if ((fb >> 7) != 0) {
 		fv->ternary = 1;
-		if(fv->logn < 2 || fv->logn > 9) {
+		if (fv->logn < 2 || fv->logn > 9) {
 			goto bad_pkey;
 		}
 	} else {
 		fv->ternary = 0;
-		if(fv->logn < 1 || fv->logn > 10) {
+		if (fv->logn < 1 || fv->logn > 10) {
 			goto bad_pkey;
 		}
 	}
-	if(((fb >> 4) & 0x07) != 0) {
+	if (((fb >> 4) & 0x07) != 0) {
 		goto bad_pkey;
 	}
 
 	/*
 	 * Decode public vector.
 	 */
-	if(fv->ternary) {
-		if(falcon_decode_18433(fv->h, fv->logn, buf, len) != len) {
+	if (fv->ternary) {
+		if (falcon_decode_18433(fv->h, fv->logn, buf, len) != len) {
 			goto bad_pkey;
 		}
 	} else {
-		if(falcon_decode_12289(fv->h, fv->logn, buf, len) != len) {
+		if (falcon_decode_12289(fv->h, fv->logn, buf, len) != len) {
 			goto bad_pkey;
 		}
 	}
@@ -1271,7 +1271,7 @@ falcon_vrfy_verify_raw(const uint16_t *c0, const int16_t *s2,
 	size_t u, n;
 	uint32_t q;
 
-	if(ternary) {
+	if (ternary) {
 		n = (size_t)3 << (logn - 1);
 		q = Qt;
 	} else {
@@ -1282,7 +1282,7 @@ falcon_vrfy_verify_raw(const uint16_t *c0, const int16_t *s2,
 	/*
 	 * Reduce s2 elements modulo q ([0..q-1] range).
 	 */
-	for(u = 0; u < n; u ++) {
+	for (u = 0; u < n; u ++) {
 		uint32_t w;
 
 		w = (uint32_t)s2[u];
@@ -1301,7 +1301,7 @@ falcon_vrfy_verify_raw(const uint16_t *c0, const int16_t *s2,
 	/*
 	 * Normalize s1 elements into the [-q/2..q/2] range.
 	 */
-	for(u = 0; u < n; u ++) {
+	for (u = 0; u < n; u ++) {
 		int32_t w;
 
 		w = (int32_t)x[u];
@@ -1329,14 +1329,14 @@ falcon_vrfy_verify(falcon_vrfy *fv, const void *sig, size_t len)
 	/*
 	 * Public key must have been set.
 	 */
-	if(fv->logn == 0) {
+	if (fv->logn == 0) {
 		return -2;
 	}
 
 	/*
 	 * Signature cannot be too short.
 	 */
-	if(len <= 2) {
+	if (len <= 2) {
 		return -1;
 	}
 
@@ -1363,21 +1363,21 @@ falcon_vrfy_verify(falcon_vrfy *fv, const void *sig, size_t len)
 	len --;
 
 	/* Check reserved bit. */
-	if((fb & 0x10) != 0) {
+	if ((fb & 0x10) != 0) {
 		return -1;
 	}
 
 	/* Check degree. */
-	if((fb & 0x0F) != fv->logn) {
+	if ((fb & 0x0F) != fv->logn) {
 		return -1;
 	}
-	if((fb >> 7) != fv->ternary) {
+	if ((fb >> 7) != fv->ternary) {
 		return -1;
 	}
 	q = fv->ternary ? Qt : Qb;
 
 	/* Decode value. */
-	if(falcon_decode_small(s2, fv->logn,
+	if (falcon_decode_small(s2, fv->logn,
 		(fb >> 5) & 0x03, q, sig_buf, len) != len)
 	{
 		return -1;
@@ -1401,21 +1401,21 @@ falcon_compute_public(uint16_t *h,
 	uint16_t t[1024];
 	uint32_t q;
 
-	if(ternary) {
+	if (ternary) {
 		n = (size_t)3 << (logn - 1);
 		q = Qt;
 	} else {
 		n = (size_t)1 << logn;
 		q = Qb;
 	}
-	for(u = 0; u < n; u ++) {
+	for (u = 0; u < n; u ++) {
 		t[u] = mq_conv_small(f[u], q);
 		h[u] = mq_conv_small(g[u], q);
 	}
 	mq_NTT(h, logn, ternary);
 	mq_NTT(t, logn, ternary);
-	for(u = 0; u < n; u ++) {
-		if(t[u] == 0) {
+	for (u = 0; u < n; u ++) {
+		if (t[u] == 0) {
 			return 0;
 		}
 		h[u] = ternary
@@ -1436,14 +1436,14 @@ falcon_complete_private(int16_t *G,
 	uint16_t t1[1024], t2[1024];
 	uint32_t q;
 
-	if(ternary) {
+	if (ternary) {
 		n = (size_t)3 << (logn - 1);
 		q = Qt;
 	} else {
 		n = (size_t)1 << logn;
 		q = Qb;
 	}
-	for(u = 0; u < n; u ++) {
+	for (u = 0; u < n; u ++) {
 		t1[u] = mq_conv_small(g[u], q);
 		t2[u] = mq_conv_small(F[u], q);
 	}
@@ -1451,12 +1451,12 @@ falcon_complete_private(int16_t *G,
 	mq_NTT(t2, logn, ternary);
 	mq_poly_tomonty(t1, logn, ternary);
 	mq_poly_montymul_ntt(t1, t2, logn, ternary);
-	for(u = 0; u < n; u ++) {
+	for (u = 0; u < n; u ++) {
 		t2[u] = mq_conv_small(f[u], q);
 	}
 	mq_NTT(t2, logn, ternary);
-	for(u = 0; u < n; u ++) {
-		if(t2[u] == 0) {
+	for (u = 0; u < n; u ++) {
+		if (t2[u] == 0) {
 			return 0;
 		}
 		t1[u] = ternary
@@ -1464,7 +1464,7 @@ falcon_complete_private(int16_t *G,
 			: mq_div_12289(t1[u], t2[u]);
 	}
 	mq_iNTT(t1, logn, ternary);
-	for(u = 0; u < n; u ++) {
+	for (u = 0; u < n; u ++) {
 		uint32_t w;
 
 		w = t1[u];

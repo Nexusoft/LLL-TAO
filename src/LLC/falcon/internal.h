@@ -49,7 +49,7 @@ extern "C" {
  * quite often.
  */
 #if _MSC_VER
-#pragma warning(disable : 4146)
+#pragma warning( disable : 4146 )
 #endif
 
 /*
@@ -813,7 +813,7 @@ falcon_prng_get_u64(prng *p)
 	 * an empty buffer.
 	 */
 	u = p->ptr;
-	if(u >= (sizeof p->buf.d) - 9) {
+	if (u >= (sizeof p->buf.d) - 9) {
 		falcon_prng_refill(p);
 		u = 0;
 	}
@@ -846,7 +846,7 @@ falcon_prng_get_u8(prng *p)
 	unsigned v;
 
 	v = p->buf.d[p->ptr ++];
-	if(p->ptr == sizeof p->buf.d) {
+	if (p->ptr == sizeof p->buf.d) {
 		falcon_prng_refill(p);
 	}
 	return v;

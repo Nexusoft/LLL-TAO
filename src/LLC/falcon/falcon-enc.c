@@ -101,14 +101,14 @@ falcon_encode_12289(void *out, size_t max_out_len,
 	u = 0;
 	acc = 0;
 	acc_len = 0;
-	while(n > 0) {
+	while (n > 0) {
 		acc = (acc << 14) | (*x ++);
 		n --;
 		acc_len += 14;
-		while(acc_len >= 8) {
+		while (acc_len >= 8) {
 			acc_len -= 8;
-			if(out != NULL) {
-				if(u >= max_out_len) {
+			if (out != NULL) {
+				if (u >= max_out_len) {
 					return 0;
 				}
 				buf[u] = (unsigned char)(acc >> acc_len);
@@ -117,9 +117,9 @@ falcon_encode_12289(void *out, size_t max_out_len,
 			acc &= (1U << acc_len) - 1U;
 		}
 	}
-	if(acc_len > 0) {
-		if(out != NULL) {
-			if(u >= max_out_len) {
+	if (acc_len > 0) {
+		if (out != NULL) {
+			if (u >= max_out_len) {
 				return 0;
 			}
 			buf[u] = (unsigned char)(acc << (8 - acc_len));
@@ -143,18 +143,18 @@ falcon_decode_12289(uint16_t *x, unsigned logn, const void *data, size_t len)
 	u = 0;
 	acc = 0;
 	acc_len = 0;
-	while(n > 0) {
-		if(u >= len) {
+	while (n > 0) {
+		if (u >= len) {
 			return 0;
 		}
 		acc = (acc << 8) | buf[u ++];
 		acc_len += 8;
-		if(acc_len >= 14) {
+		if (acc_len >= 14) {
 			uint32_t w;
 
 			acc_len -= 14;
 			w = acc >> acc_len;
-			if(w >= 12289) {
+			if (w >= 12289) {
 				return 0;
 			}
 			*x ++ = (uint16_t)w;
@@ -162,7 +162,7 @@ falcon_decode_12289(uint16_t *x, unsigned logn, const void *data, size_t len)
 			acc &= (1U << acc_len) - 1U;
 		}
 	}
-	if(acc != 0) {
+	if (acc != 0) {
 		return 0;
 	}
 	return len;
@@ -183,14 +183,14 @@ falcon_encode_18433(void *out, size_t max_out_len,
 	u = 0;
 	acc = 0;
 	acc_len = 0;
-	while(n > 0) {
+	while (n > 0) {
 		acc = (acc << 15) | (*x ++);
 		n --;
 		acc_len += 15;
-		while(acc_len >= 8) {
+		while (acc_len >= 8) {
 			acc_len -= 8;
-			if(out != NULL) {
-				if(u >= max_out_len) {
+			if (out != NULL) {
+				if (u >= max_out_len) {
 					return 0;
 				}
 				buf[u] = (unsigned char)(acc >> acc_len);
@@ -199,9 +199,9 @@ falcon_encode_18433(void *out, size_t max_out_len,
 			acc &= (1U << acc_len) - 1U;
 		}
 	}
-	if(acc_len > 0) {
-		if(out != NULL) {
-			if(u >= max_out_len) {
+	if (acc_len > 0) {
+		if (out != NULL) {
+			if (u >= max_out_len) {
 				return 0;
 			}
 			buf[u] = (unsigned char)(acc << (8 - acc_len));
@@ -225,18 +225,18 @@ falcon_decode_18433(uint16_t *x, unsigned logn, const void *data, size_t len)
 	u = 0;
 	acc = 0;
 	acc_len = 0;
-	while(n > 0) {
-		if(u >= len) {
+	while (n > 0) {
+		if (u >= len) {
 			return 0;
 		}
 		acc = (acc << 8) | buf[u ++];
 		acc_len += 8;
-		if(acc_len >= 15) {
+		if (acc_len >= 15) {
 			uint32_t w;
 
 			acc_len -= 15;
 			w = acc >> acc_len;
-			if(w >= 18433) {
+			if (w >= 18433) {
 				return 0;
 			}
 			*x ++ = (uint16_t)w;
@@ -244,7 +244,7 @@ falcon_decode_18433(uint16_t *x, unsigned logn, const void *data, size_t len)
 			acc &= (1U << acc_len) - 1U;
 		}
 	}
-	if(acc != 0) {
+	if (acc != 0) {
 		return 0;
 	}
 	return len;
@@ -260,19 +260,19 @@ compress_none(void *out, size_t max_out_len,
 	size_t len, u;
 	unsigned char *buf;
 
-	if(q == 12289) {
+	if (q == 12289) {
 		len = (size_t)2 << logn;
 	} else {
 		len = (size_t)3 << logn;
 	}
-	if(out == NULL) {
+	if (out == NULL) {
 		return len;
 	}
-	if(max_out_len < len) {
+	if (max_out_len < len) {
 		return 0;
 	}
 	buf = out;
-	for(u = 0; u < len; u += 2) {
+	for (u = 0; u < len; u += 2) {
 		unsigned w;
 
 		w = *x ++;
@@ -304,7 +304,7 @@ compress_static(void *out, size_t max_out_len,
 	 * We use j = 7 for q = 12289, j = 8 for q = 18433.
 	 */
 
-	if(q == 12289) {
+	if (q == 12289) {
 		n = (size_t)1 << logn;
 		j = 7;
 	} else {
@@ -316,7 +316,7 @@ compress_static(void *out, size_t max_out_len,
 	u = 0;
 	acc = 0;
 	acc_len = 0;
-	while(n > 0) {
+	while (n > 0) {
 		int w;
 		unsigned lo;
 		int ne;
@@ -328,7 +328,7 @@ compress_static(void *out, size_t max_out_len,
 		 * First part: 1 bit for sign, and then the 7 low bits of
 		 * the absolute value of the integer.
 		 */
-		if(w < 0) {
+		if (w < 0) {
 			w = -w;
 			lo = 1U << j;
 		} else {
@@ -338,10 +338,10 @@ compress_static(void *out, size_t max_out_len,
 		ne = w >> j;
 		acc = (acc << (j + 1)) | lo;
 		acc_len += j + 1;
-		while(acc_len >= 8) {
+		while (acc_len >= 8) {
 			acc_len -= 8;
-			if(buf != NULL) {
-				if(u >= max_out_len) {
+			if (buf != NULL) {
+				if (u >= max_out_len) {
 					return 0;
 				}
 				buf[u] = (unsigned char)(acc >> acc_len);
@@ -352,12 +352,12 @@ compress_static(void *out, size_t max_out_len,
 		/*
 		 * Second part: 'ne' bits of value 0, and one bit of value 1.
 		 */
-		while(ne -- >= 0) {
+		while (ne -- >= 0) {
 			acc <<= 1;
 			acc += ((unsigned)ne >> 15) & 1;
-			if(++ acc_len == 8) {
-				if(buf != NULL) {
-					if(u >= max_out_len) {
+			if (++ acc_len == 8) {
+				if (buf != NULL) {
+					if (u >= max_out_len) {
 						return 0;
 					}
 					buf[u] = (unsigned char)acc;
@@ -367,9 +367,9 @@ compress_static(void *out, size_t max_out_len,
 			}
 		}
 	}
-	if(acc_len > 0) {
-		if(buf != NULL) {
-			if(u >= max_out_len) {
+	if (acc_len > 0) {
+		if (buf != NULL) {
+			if (u >= max_out_len) {
 				return 0;
 			}
 			buf[u] = (unsigned char)(acc << (8 - acc_len));
@@ -405,12 +405,12 @@ uncompress_none(int16_t *x, unsigned logn,
 	const unsigned char *buf;
 	uint32_t hq, tq;
 
-	if(q == 12289) {
+	if (q == 12289) {
 		n = (size_t)1 << logn;
 	} else {
 		n = (size_t)3 << (logn - 1);
 	}
-	if(len < (n << 1)) {
+	if (len < (n << 1)) {
 		return 0;
 	}
 
@@ -423,7 +423,7 @@ uncompress_none(int16_t *x, unsigned logn,
 	tq = hq + q + 1;
 
 	buf = data;
-	for(u = 0; u < n; u ++) {
+	for (u = 0; u < n; u ++) {
 		uint32_t w;
 		long y;
 
@@ -440,7 +440,7 @@ uncompress_none(int16_t *x, unsigned logn,
 		 * than 3q/2.
 		 */
 		w += q;
-		if(!(((hq - w) & (w - tq)) >> 31)) {
+		if (!(((hq - w) & (w - tq)) >> 31)) {
 			return 0;
 		}
 
@@ -467,7 +467,7 @@ uncompress_static(int16_t *x, unsigned logn,
 	unsigned db, mask;
 	unsigned db_len, j;
 
-	if(q == 12289) {
+	if (q == 12289) {
 		n = (size_t)1 << logn;
 		j = 7;
 	} else {
@@ -480,7 +480,7 @@ uncompress_static(int16_t *x, unsigned logn,
 	v = 0;
 	db = 0;
 	db_len = 0;
-	for(;;) {
+	for (;;) {
 		unsigned sign;
 		unsigned lo;
 		unsigned ne;
@@ -489,8 +489,8 @@ uncompress_static(int16_t *x, unsigned logn,
 		 * Read next byte(s) for the sign bit and the low j bits
 		 * of the absolute value of the next integer.
 		 */
-		while(db_len <= j) {
-			if(v >= len) {
+		while (db_len <= j) {
+			if (v >= len) {
 				return 0;
 			}
 			db = (db << 8) + buf[v ++];
@@ -503,11 +503,11 @@ uncompress_static(int16_t *x, unsigned logn,
 		/*
 		 * Read subsequent bits until next '1' (inclusive).
 		 */
-		for(ne = 0;; ne ++) {
+		for (ne = 0;; ne ++) {
 			unsigned bit;
 
-			if(db_len == 0) {
-				if(v >= len) {
+			if (db_len == 0) {
+				if (v >= len) {
 					return 0;
 				}
 				db = buf[v ++];
@@ -515,7 +515,7 @@ uncompress_static(int16_t *x, unsigned logn,
 			}
 			db_len --;
 			bit = (db >> db_len) & 1;
-			if(bit) {
+			if (bit) {
 				break;
 			}
 		}
@@ -523,20 +523,20 @@ uncompress_static(int16_t *x, unsigned logn,
 		/*
 		 * Write value.
 		 */
-		if(ne > 255) {
+		if (ne > 255) {
 			return 0;
 		}
 		lo += (ne << j);
-		if(sign) {
+		if (sign) {
 			x[u] = -(int16_t)lo;
 		} else {
 			x[u] = (int16_t)lo;
 		}
-		if(++ u >= n) {
+		if (++ u >= n) {
 			/*
 			 * Check that the remaining bits are all zero.
 			 */
-			if((db & ((1U << db_len) - 1U)) != 0) {
+			if ((db & ((1U << db_len) - 1U)) != 0) {
 				return 0;
 			}
 			return v;
@@ -573,19 +573,19 @@ falcon_hash_to_point(shake_context *sc, unsigned q, uint16_t *x, unsigned logn)
 	size_t n;
 	uint32_t lim;
 
-	if(q == 12289) {
+	if (q == 12289) {
 		n = (size_t)1 << logn;
 	} else {
 		n = (size_t)3 << (logn - 1);
 	}
 	lim = (uint32_t)65536 - ((uint32_t)65536 % q);
-	while(n > 0) {
+	while (n > 0) {
 		unsigned char buf[2];
 		uint32_t w;
 
 		shake_extract(sc, buf, sizeof buf);
 		w = (buf[0] << 8) | buf[1];
-		if(w < lim) {
+		if (w < lim) {
 			*x ++ = (uint16_t)(w % q);
 			n --;
 		}
@@ -597,7 +597,7 @@ int
 falcon_is_short(const int16_t *s1, const int16_t *s2,
 	unsigned logn, unsigned ter)
 {
-	if(ter) {
+	if (ter) {
 		/*
 		 * In the ternary case, we must compute the norm in
 		 * the FFT embedding. Fortunately, this can be done
@@ -609,7 +609,7 @@ falcon_is_short(const int16_t *s1, const int16_t *s2,
 		n = (size_t)3 << (logn - 1);
 		hn = n >> 1;
 		s = 0;
-		for(u = 0; u < n; u ++) {
+		for (u = 0; u < n; u ++) {
 			int32_t z;
 
 			z = s1[u];
@@ -617,7 +617,7 @@ falcon_is_short(const int16_t *s1, const int16_t *s2,
 			z = s2[u];
 			s += z * z;
 		}
-		for(u = 0; u < hn; u ++) {
+		for (u = 0; u < hn; u ++) {
 			s += (int32_t)s1[u] * (int32_t)s1[u + hn];
 			s += (int32_t)s2[u] * (int32_t)s2[u + hn];
 		}
@@ -651,7 +651,7 @@ falcon_is_short(const int16_t *s1, const int16_t *s2,
 		n = (size_t)1 << logn;
 		s = 0;
 		ng = 0;
-		for(u = 0; u < n; u ++) {
+		for (u = 0; u < n; u ++) {
 			int32_t z;
 
 			z = s1[u];
