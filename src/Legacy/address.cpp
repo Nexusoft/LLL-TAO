@@ -69,6 +69,7 @@ namespace Legacy
     NexusAddress::~NexusAddress()
     {
     }
+    
 
     /* Constructor Set the hash256 */
     NexusAddress::NexusAddress(const uint256_t& hash256In)
