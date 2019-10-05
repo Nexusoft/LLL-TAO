@@ -41,60 +41,122 @@ namespace TAO
 
         /** The default constructor. Sets block state to Null. **/
         Block::Block()
-        : nVersion(TAO::Ledger::CurrentVersion())
-        , hashPrevBlock(0)
-        , hashMerkleRoot(0)
-        , nChannel(0)
-        , nHeight(0)
-        , nBits(0)
-        , nNonce(0)
-        , vOffsets()
-        , vchBlockSig()
-        , vMissing()
-        , hashMissing(0)
-        , fConflicted(false)
+        : nVersion       (TAO::Ledger::CurrentVersion())
+        , hashPrevBlock  (0)
+        , hashMerkleRoot (0)
+        , nChannel       (0)
+        , nHeight        (0)
+        , nBits          (0)
+        , nNonce         (0)
+        , vOffsets       ( )
+        , vchBlockSig    ( )
+        , vMissing       ( )
+        , hashMissing    (0)
+        , fConflicted    (false)
         {
             SetNull();
-        }
-
-        /** A base constructor. **/
-        Block::Block(uint32_t nVersionIn, uint1024_t hashPrevBlockIn, uint32_t nChannelIn, uint32_t nHeightIn)
-        : nVersion(nVersionIn)
-        , hashPrevBlock(hashPrevBlockIn)
-        , hashMerkleRoot()
-        , nChannel(nChannelIn)
-        , nHeight(nHeightIn)
-        , nBits(0)
-        , nNonce(0)
-        , vOffsets()
-        , vchBlockSig()
-        , vMissing()
-        , hashMissing(0)
-        , fConflicted(false)
-        {
         }
 
 
         /** Copy constructor. **/
         Block::Block(const Block& block)
-        : nVersion(block.nVersion)
-        , hashPrevBlock(block.hashPrevBlock)
-        , hashMerkleRoot(block.hashMerkleRoot)
-        , nChannel(block.nChannel)
-        , nHeight(block.nHeight)
-        , nBits(block.nBits)
-        , nNonce(block.nNonce)
-        , vOffsets(block.vOffsets)
-        , vchBlockSig(block.vchBlockSig.begin(), block.vchBlockSig.end())
-        , vMissing(block.vMissing)
-        , hashMissing(block.hashMissing)
-        , fConflicted(block.fConflicted)
+        : nVersion       (block.nVersion)
+        , hashPrevBlock  (block.hashPrevBlock)
+        , hashMerkleRoot (block.hashMerkleRoot)
+        , nChannel       (block.nChannel)
+        , nHeight        (block.nHeight)
+        , nBits          (block.nBits)
+        , nNonce         (block.nNonce)
+        , vOffsets       (block.vOffsets)
+        , vchBlockSig    (block.vchBlockSig)
+        , vMissing       (block.vMissing)
+        , hashMissing    (block.hashMissing)
+        , fConflicted    (block.fConflicted)
         {
+        }
+
+
+        /** Move constructor. **/
+        Block::Block(Block&& block) noexcept
+        : nVersion       (std::move(block.nVersion))
+        , hashPrevBlock  (std::move(block.hashPrevBlock))
+        , hashMerkleRoot (std::move(block.hashMerkleRoot))
+        , nChannel       (std::move(block.nChannel))
+        , nHeight        (std::move(block.nHeight))
+        , nBits          (std::move(block.nBits))
+        , nNonce         (std::move(block.nNonce))
+        , vOffsets       (std::move(block.vOffsets))
+        , vchBlockSig    (std::move(block.vchBlockSig))
+        , vMissing       (std::move(block.vMissing))
+        , hashMissing    (std::move(block.hashMissing))
+        , fConflicted    (std::move(block.fConflicted))
+        {
+        }
+
+
+        /** Copy assignment. **/
+        Block& Block::operator=(const Block& block)
+        {
+            nVersion       = block.nVersion;
+            hashPrevBlock  = block.hashPrevBlock;
+            hashMerkleRoot = block.hashMerkleRoot;
+            nChannel       = block.nChannel;
+            nHeight        = block.nHeight;
+            nBits          = block.nBits;
+            nNonce         = block.nNonce;
+
+            vOffsets       = block.vOffsets;
+            vchBlockSig    = block.vchBlockSig;
+            vMissing       = block.vMissing;
+            hashMissing    = block.hashMissing;
+            fConflicted    = block.fConflicted;
+
+            return *this;
+        }
+
+
+        /** Move assignment. **/
+        Block& Block::operator=(Block&& block) noexcept
+        {
+            nVersion       = std::move(block.nVersion);
+            hashPrevBlock  = std::move(block.hashPrevBlock);
+            hashMerkleRoot = std::move(block.hashMerkleRoot);
+            nChannel       = std::move(block.nChannel);
+            nHeight        = std::move(block.nHeight);
+            nBits          = std::move(block.nBits);
+            nNonce         = std::move(block.nNonce);
+
+            vOffsets       = std::move(block.vOffsets);
+            vchBlockSig    = std::move(block.vchBlockSig);
+            vMissing       = std::move(block.vMissing);
+            hashMissing    = std::move(block.hashMissing);
+
+            fConflicted    = std::move(block.fConflicted);
+
+            return *this;
         }
 
 
         /** Default Destructor **/
         Block::~Block()
+        {
+        }
+
+
+        /** A base constructor. **/
+        Block::Block(const uint32_t nVersionIn, const uint1024_t& hashPrevBlockIn, const uint32_t nChannelIn, const uint32_t nHeightIn)
+        : nVersion       (nVersionIn)
+        , hashPrevBlock  (hashPrevBlockIn)
+        , hashMerkleRoot (0)
+        , nChannel       (nChannelIn)
+        , nHeight        (nHeightIn)
+        , nBits          (0)
+        , nNonce         (0)
+        , vOffsets       ( )
+        , vchBlockSig    ( )
+        , vMissing       ( )
+        , hashMissing    (0)
+        , fConflicted    (false)
         {
         }
 

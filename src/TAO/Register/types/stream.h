@@ -58,11 +58,45 @@ namespace TAO
             }
 
 
+            /** Copy Constructor. **/
+            Stream(const Stream& stream)
+            : BaseStream(stream.vchData)
+            {
+            }
+
+
+            /** Move Constructor. **/
+            Stream(Stream&& stream) noexcept
+            : BaseStream(std::move(stream.vchData))
+            {
+            }
+
+
+            /** Copy Assignment. **/
+            Stream& operator=(const Stream& stream)
+            {
+                vchData  = stream.vchData;
+                nReadPos = stream.nReadPos;
+
+                return *this;
+            }
+
+
+            /** Move Assignment. **/
+            Stream& operator=(Stream&& stream)
+            {
+                vchData  = std::move(stream.vchData);
+                nReadPos = std::move(stream.nReadPos);
+
+                return *this;
+            }
+
+
             /** Serialization **/
             IMPLEMENT_SERIALIZE
             (
                 READWRITE(vchData);
-          )
+            )
 
 
             /** Operator Overload <<

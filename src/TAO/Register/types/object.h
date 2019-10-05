@@ -50,12 +50,24 @@ namespace TAO
             Object(const Object& object);
 
 
-            /** Copy Constructor. **/
-            Object(const State& state);
+            /** Move Constructor. **/
+            Object(Object&& object) noexcept;
+
+
+            /** Copy Assignment operator overload **/
+            Object& operator=(const Object& object);
+
+
+            /** Move Assignment operator overload **/
+            Object& operator=(Object&& object) noexcept;
 
 
             /** Default Destructor **/
             ~Object();
+
+
+            /** Copy Constructor. **/
+            Object(const State& state);
 
 
             IMPLEMENT_SERIALIZE

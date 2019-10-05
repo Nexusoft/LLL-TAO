@@ -74,6 +74,19 @@ namespace Legacy
         /** Copy Constructor. **/
         LegacyBlock(const LegacyBlock& block);
 
+
+        /** Move Constructor. **/
+        LegacyBlock(LegacyBlock&& block) noexcept;
+
+
+        /** Copy Assignment. **/
+        LegacyBlock& operator=(const LegacyBlock& block);
+
+
+        /** Move Assignment. **/
+        LegacyBlock& operator=(LegacyBlock&& block) noexcept;
+
+
         /** Clone
         *
         *  Allows polymorphic copying of blocks

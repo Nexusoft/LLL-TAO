@@ -367,6 +367,18 @@ namespace Legacy
         }
 
 
+        /** Operator overload+=
+         *
+         *  Set Script Object
+         *
+         **/
+        Script& operator=(const Script& b)
+        {
+            *this = b;
+            return *this;
+        }
+
+
         /** Operator overload +
          *
          *  Concatenate two Script Objects

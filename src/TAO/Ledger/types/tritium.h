@@ -115,6 +115,10 @@ namespace TAO
             TritiumBlock(const SyncBlock& block);
 
 
+            /** Assignment operator. **/
+            TritiumBlock& operator=(const TritiumBlock& block);
+
+
             /** Default Destructor **/
             virtual ~TritiumBlock();
 

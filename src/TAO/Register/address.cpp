@@ -31,10 +31,38 @@ namespace TAO
         {
         }
 
+
         /* Build from uint256_t.. */
-        Address::Address(const uint256_t& nAddress)
-        : uint256_t(nAddress)
+        Address::Address(const uint256_t& hashAddress)
+        : uint256_t(hashAddress)
         {
+        }
+
+
+        /* Move from uint256_t hash. */
+        Address::Address(uint256_t&& hashAddress) noexcept
+        : uint256_t(std::move(hashAddress))
+        {
+        }
+
+
+        /* Assignment operator. */
+        Address& Address::operator=(const uint256_t& value)
+        {
+            /* Copy each word. */
+            uint256_t::operator=(value);
+
+            return *this;
+        }
+
+
+        /* Move assignment operator. */
+        Address& Address::operator=(uint256_t&& value) noexcept
+        {
+            /* Copy each word. */
+            uint256_t::operator=(std::move(value));
+
+            return *this;
         }
 
 
@@ -96,25 +124,6 @@ namespace TAO
                 throw debug::exception(FUNCTION, "invalid type for deterministic address");
 
             SetType(nType);
-        }
-
-
-        /* Assignment operator. */
-        Address& Address::operator=(const Address& addr)
-        {
-            /* Copy each word. */
-            for(uint32_t i = 0; i < WIDTH; ++i)
-                pn[i] = addr.pn[i];
-
-            return *this;
-        }
-
-        /* Assignment operator. */
-        Address& Address::operator=(const uint256_t& value)
-        {
-            uint256_t::operator=(value);
-
-            return *this;
         }
 
 

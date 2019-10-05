@@ -188,6 +188,13 @@ namespace TAO
             }
         }
 
+        /* Assignment operator. */
+        TritiumBlock& TritiumBlock::operator=(const TritiumBlock& block)
+        {
+            *this = block;
+            return *this;
+        }
+
 
         /** Default Destructor **/
         TritiumBlock::~TritiumBlock()

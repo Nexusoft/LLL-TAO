@@ -71,18 +71,81 @@ namespace Legacy
 
     /* The default constructor. */
     LegacyBlock::LegacyBlock()
-    : Block()
-    , nTime(static_cast<uint32_t>(runtime::unifiedtimestamp()))
-    , vtx()
+    : Block ( )
+    , nTime (static_cast<uint32_t>(runtime::unifiedtimestamp()))
+    , vtx   ( )
     {
         SetNull();
     }
 
     /* Copy Constructor. */
     LegacyBlock::LegacyBlock(const LegacyBlock& block)
-    : Block(block)
-    , nTime(block.nTime)
-    , vtx(block.vtx)
+    : Block (block)
+    , nTime (block.nTime)
+    , vtx   (block.vtx)
+    {
+    }
+
+
+    /* Move Constructor. */
+    LegacyBlock::LegacyBlock(LegacyBlock&& block) noexcept
+    : Block (std::move(block))
+    , nTime (std::move(block.nTime))
+    , vtx   (std::move(block.vtx))
+    {
+    }
+
+
+    /* Copy Assignment. */
+    LegacyBlock& LegacyBlock::operator=(const LegacyBlock& block)
+    {
+        nVersion       = block.nVersion;
+        hashPrevBlock  = block.hashPrevBlock;
+        hashMerkleRoot = block.hashMerkleRoot;
+        nChannel       = block.nChannel;
+        nHeight        = block.nHeight;
+        nBits          = block.nBits;
+        nNonce         = block.nNonce;
+
+        vOffsets       = block.vOffsets;
+        vchBlockSig    = block.vchBlockSig;
+        vMissing       = block.vMissing;
+        hashMissing    = block.hashMissing;
+        fConflicted    = block.fConflicted;
+
+        nTime          = block.nTime;
+        vtx            = block.vtx;
+
+        return *this;
+    }
+
+
+    /** Move Assignment. **/
+    LegacyBlock& LegacyBlock::operator=(LegacyBlock&& block) noexcept
+    {
+        nVersion       = std::move(block.nVersion);
+        hashPrevBlock  = std::move(block.hashPrevBlock);
+        hashMerkleRoot = std::move(block.hashMerkleRoot);
+        nChannel       = std::move(block.nChannel);
+        nHeight        = std::move(block.nHeight);
+        nBits          = std::move(block.nBits);
+        nNonce         = std::move(block.nNonce);
+
+        vOffsets       = std::move(block.vOffsets);
+        vchBlockSig    = std::move(block.vchBlockSig);
+        vMissing       = std::move(block.vMissing);
+        hashMissing    = std::move(block.hashMissing);
+        fConflicted    = std::move(block.fConflicted);
+
+        nTime          = std::move(block.nTime);
+        vtx            = std::move(block.vtx);
+
+        return *this;
+    }
+
+
+    /* Default Destructor */
+    LegacyBlock::~LegacyBlock()
     {
     }
 
@@ -143,12 +206,6 @@ namespace Legacy
                     throw debug::exception(FUNCTION, "invalid transaction type for legacy block");
             }
         }
-    }
-
-
-    /* Default Destructor */
-    LegacyBlock::~LegacyBlock()
-    {
     }
 
 

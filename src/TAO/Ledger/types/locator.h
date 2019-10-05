@@ -37,7 +37,7 @@ namespace TAO
                     READWRITE(nSerVersion);
 
                 READWRITE(vHave);
-          )
+            )
 
 
             /** Default constructor. **/
