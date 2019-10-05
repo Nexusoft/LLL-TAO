@@ -101,7 +101,6 @@ namespace Legacy
         Script& operator=(Script&& b) noexcept;
 
 
-
         /** Construct from iterators
          *
          *  Initialize with a copy using iterators

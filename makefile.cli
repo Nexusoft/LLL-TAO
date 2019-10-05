@@ -249,10 +249,13 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLC_eckey.o \
 		build/LLC_flkey.o \
 		build/LLC_random.o \
-		build/LLC_Keccak-compact64.o \
-		build/LLC_KeccakDuplex.o \
-		build/LLC_KeccakHash.o \
-		build/LLC_KeccakSponge.o \
+		build/LLC_SK_Keccak-compact64.o \
+		build/LLC_SK_KeccakDuplex.o \
+		build/LLC_SK_KeccakHash.o \
+		build/LLC_SK_KeccakSponge.o \
+		build/LLC_SK_skein.o \
+		build/LLC_SK_skein_block.o \
+		build/LLC_sha3.o \
 		build/LLC_skein.o \
 		build/LLC_skein_block.o \
 		build/LLC_blake2b.o \
@@ -552,10 +555,16 @@ build/LLC_%.o: ./src/LLC/%.cpp $(HEADERS)
 build/LLC_%.o: ./src/LLC/hash/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/LLC_%.o: ./src/LLC/hash/SK/%.cpp $(HEADERS)
+build/LLC_SK_%.o: ./src/LLC/hash/SK/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/LLC_%.o: ./src/LLC/hash/SK/%.c $(HEADERS)
+build/LLC_%.o: ./src/LLC/hash/Skein/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -x c -o $@ $<
+
+build/LLC_%.o: ./src/LLC/hash/SHA3/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -x c -o $@ $<
+
+build/LLC_SK_%.o: ./src/LLC/hash/SK/%.c $(HEADERS)
 	$(CXX) -c $(CFLAGS) -x c -o $@ $<
 
 build/LLC_%.o: ./src/LLC/hash/argon2/%.c $(HEADERS)
@@ -758,14 +767,28 @@ build/LLC_%.o: src/LLC/hash/%.cpp $(HEADERS)
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/LLC_%.o: src/LLC/hash/SK/%.cpp $(HEADERS)
+build/LLC_SK_%.o: src/LLC/hash/SK/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/LLC_%.o: src/LLC/hash/SK/%.c $(HEADERS)
+build/LLC_%.o: src/LLC/hash/Skein3Fish/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/LLC_%.o: src/LLC/hash/SHA3/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/LLC_SK_%.o: src/LLC/hash/SK/%.c $(HEADERS)
 	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -1153,14 +1176,28 @@ build/LLC_%.o: src/LLC/hash/%.cpp
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/LLC_%.o: src/LLC/hash/SK/%.cpp
+build/LLC_SK_%.o: src/LLC/hash/SK/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/LLC_%.o: src/LLC/hash/SK/%.c $(HEADERS)
+build/LLC_%.o: src/LLC/hash/Skein/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/LLC_%.o: src/LLC/hash/SHA3/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/LLC_SK_%.o: src/LLC/hash/SK/%.c $(HEADERS)
 	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
