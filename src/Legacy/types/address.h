@@ -32,9 +32,27 @@ namespace Legacy
     public:
 
         /** Default Constructor. **/
-        NexusAddress()
-        {
-        }
+        NexusAddress();
+
+
+        /** Copy Constructor. **/
+        NexusAddress(const NexusAddress& address);
+
+
+        /** Move Constructor. **/
+        NexusAddress(NexusAddress&& address) noexcept;
+
+
+        /** Copy assignment. **/
+        NexusAddress& operator=(const NexusAddress& address);
+
+
+        /** Move assignment. **/
+        NexusAddress& operator=(NexusAddress&& address) noexcept;
+
+
+        /** Destructor **/
+        virtual ~NexusAddress();
 
 
         /** Constructor
@@ -44,7 +62,7 @@ namespace Legacy
          *  @param[in] hash256 The input hash to copy in
          *
          **/
-        NexusAddress(uint256_t hash256In);
+        NexusAddress(const uint256_t& hash256In);
 
 
         /** Constructor
@@ -75,12 +93,6 @@ namespace Legacy
          *
          **/
         NexusAddress(const char* pszAddress);
-
-
-        /** Destructor **/
-        virtual ~NexusAddress()
-        {
-        }
 
 
         /** SetHash256

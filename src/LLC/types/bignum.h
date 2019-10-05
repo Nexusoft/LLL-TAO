@@ -90,7 +90,7 @@ namespace LLC
 
         /** CBigNum
          *
-         *  default copy constructor
+         *  copy constructor
          *
          **/
         CBigNum(const CBigNum& b);
@@ -98,7 +98,7 @@ namespace LLC
 
         /** operator=
          *
-         *  assignment operator
+         *  Copy assignment operator
          *
          **/
         CBigNum& operator=(const CBigNum& b);

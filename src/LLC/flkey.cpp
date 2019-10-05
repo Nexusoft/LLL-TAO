@@ -25,34 +25,60 @@ namespace LLC
 {
     /* The default constructor. */
     FLKey::FLKey()
-    : vchPubKey()
-    , vchPrivKey()
-    , fSet(false)
-    , fCompressedPubKey(false)
+    : vchPubKey   ( )
+    , vchPrivKey  ( )
+    , fSet        (false)
+    , fCompressed (false)
     {
 
     }
 
-    /* Copy Constructor. */
+    /** Copy Constructor. **/
     FLKey::FLKey(const FLKey& b)
-    : vchPubKey(b.vchPubKey)
-    , vchPrivKey(b.vchPrivKey)
-    , fSet(b.fSet)
-    , fCompressedPubKey(b.fCompressedPubKey)
+    : vchPubKey   (b.vchPubKey)
+    , vchPrivKey  (b.vchPrivKey)
+    , fSet        (b.fSet)
+    , fCompressed (b.fCompressed)
     {
-
     }
 
 
-    /* Assignment Operator */
+    /** Move Constructor. **/
+    FLKey::FLKey(FLKey&& b) noexcept
+    : vchPubKey   (std::move(b.vchPubKey))
+    , vchPrivKey  (std::move(b.vchPrivKey))
+    , fSet        (std::move(b.fSet))
+    , fCompressed (std::move(b.fCompressed))
+    {
+    }
+
+
+    /** Copy Assignment Operator **/
     FLKey& FLKey::operator=(const FLKey& b)
     {
-        vchPubKey         = b.vchPubKey;
-        vchPrivKey        = b.vchPrivKey;
-        fSet              = b.fSet;
-        fCompressedPubKey = b.fCompressedPubKey;
+        vchPubKey   = b.vchPubKey;
+        vchPrivKey  = b.vchPrivKey;
+        fSet        = b.fSet;
+        fCompressed = b.fCompressed;
 
-        return (*this);
+        return *this;
+    }
+
+
+    /** Move Assignment Operator **/
+    FLKey& FLKey::operator=(FLKey&& b) noexcept
+    {
+        vchPubKey   = std::move(b.vchPubKey);
+        vchPrivKey  = std::move(b.vchPrivKey);
+        fSet        = std::move(b.fSet);
+        fCompressed = std::move(b.fCompressed);
+
+        return *this;
+    }
+
+    /** Default Destructor. **/
+    FLKey::~FLKey()
+    {
     }
 
 
@@ -66,7 +92,7 @@ namespace LLC
     /* Reset internal key data. */
     void FLKey::Reset()
     {
-        fCompressedPubKey = false;
+        fCompressed = false;
 
         vchPubKey.clear();
         vchPrivKey.clear();
@@ -85,7 +111,7 @@ namespace LLC
     /* Flag to determine if the key is in compressed form. */
     bool FLKey::IsCompressed() const
     {
-        return fCompressedPubKey;
+        return fCompressed;
     }
 
 
@@ -120,7 +146,7 @@ namespace LLC
         vchPubKey.resize(nPubKeySize);
 
         /* Flag if the key is compressed. */
-        fCompressedPubKey = fCompressed;
+        fCompressed = fCompressed;
 
         /* Show key as successfully set. */
         fSet = true;
@@ -164,7 +190,7 @@ namespace LLC
         vchPubKey.resize(nPubKeySize);
 
         /* Flag if the key is compressed. */
-        fCompressedPubKey = fCompressed;
+        fCompressed = fCompressed;
 
         /* Show key as successfully set. */
         fSet = true;
@@ -241,7 +267,7 @@ namespace LLC
 
         /* Get the new signature size. */
         int32_t nSize = falcon_sign_generate(signer, &vchSig[0], vchSig.size(),
-            fCompressedPubKey ? FALCON_COMP_STATIC : FALCON_COMP_NONE);
+            fCompressed ? FALCON_COMP_STATIC : FALCON_COMP_NONE);
 
         /* Check for errors. */
         if(nSize < 1)

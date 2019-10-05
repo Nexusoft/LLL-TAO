@@ -22,7 +22,6 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/transaction.h>
 #include <Legacy/types/transaction.h>
 
-#include <Legacy/types/inpoint.h>
 #include <Legacy/types/outpoint.h>
 
 #include <Util/include/mutex.h>

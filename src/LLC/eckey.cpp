@@ -269,8 +269,6 @@ namespace LLC
     , nCurveID(NID_sect571r1)
     , nKeySize(72)
     {
-        /* Set the Default Curve ID as sect571r1 */
-
         /* Check for failure. */
         if(pkey == nullptr)
             throw key_error("ECKey::ECKey() : EC_KEY_new_by_curve_name failed");
@@ -278,7 +276,7 @@ namespace LLC
 
 
     /* Constructor from a new curve type. */
-    ECKey::ECKey(const int nID, const int nKeySizeIn)
+    ECKey::ECKey(const uint32_t nID, const uint32_t nKeySizeIn)
     : pkey(nullptr)
     , fSet(false)
     , fCompressedPubKey(false)

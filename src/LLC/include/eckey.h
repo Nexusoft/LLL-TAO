@@ -32,13 +32,6 @@ namespace LLC
         BRAINPOOL_P512_T1 = 1,
     };
 
-    /** CPrivKey is a serialized private key, with all parameters included **/
-    typedef std::vector<uint8_t, secure_allocator<uint8_t> > CPrivKey;
-
-
-    /** CSecret is a serialization of just the secret parameter **/
-    typedef std::vector<uint8_t, secure_allocator<uint8_t> > CSecret;
-
 
     /** ECKey
      *
@@ -61,7 +54,7 @@ namespace LLC
 
 
         /** The curve type implemented. **/
-        int nCurveID;
+        int32_t nCurveID;
 
 
         /** The size of the curve finite field in bytes (Secret). **/
@@ -71,7 +64,7 @@ namespace LLC
 
         ECKey();
         ECKey(const ECKey& b);
-        ECKey(const int nID, const int nKeySizeIn = 72);
+        ECKey(const uint32_t nID, const uint32_t nKeySizeIn = 72);
         ~ECKey();
 
 

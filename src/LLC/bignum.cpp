@@ -67,23 +67,27 @@ namespace LLC
         allocate();
     }
 
+
+    /* copy constructor */
     CBigNum::CBigNum(const CBigNum& b)
     : m_BN(BN_dup(b.getBN()))
     {
         if(nullptr == m_BN)
-        {
             throw bignum_error("CBigNum::CBigNum(const CBigNum&): BN_dup failed");
-        }
     }
 
+
+    /* Copy assignment operator */
     CBigNum& CBigNum::operator=(const CBigNum& b)
     {
         if(nullptr == BN_copy(m_BN, b.getBN()))
         {
             throw bignum_error("CBigNum::operator=(const CBigNum&): BN_copy failed");
         }
-        return (*this);
+
+        return *this;
     }
+
 
     CBigNum::~CBigNum()
     {

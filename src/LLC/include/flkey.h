@@ -57,21 +57,33 @@ namespace LLC
 
 
         /** Flag to Determine if the Key has been Compressed. **/
-        bool fCompressedPubKey;
+        bool fCompressed;
 
 
     public:
 
+        /** Default Constructor. **/
         FLKey();
+
+
+        /** Copy Constructor. **/
         FLKey(const FLKey& b);
-        ~FLKey()
-        {
-
-        }
 
 
-        /** Assignment Operator **/
+        /** Move Constructor. **/
+        FLKey(FLKey&& b) noexcept;
+
+
+        /** Copy Assignment Operator **/
         FLKey& operator=(const FLKey& b);
+
+
+        /** Move Assignment Operator **/
+        FLKey& operator=(FLKey&& b) noexcept;
+
+
+        /** Default Destructor. **/
+        ~FLKey();
 
 
         /** Comparison Operator **/

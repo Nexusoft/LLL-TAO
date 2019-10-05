@@ -16,7 +16,7 @@ ________________________________________________________________________________
 
 #include <TAO/Register/types/address.h>
 
-#include <Util/include/base58.h>
+#include <Util/include/encoding.h>
 #include <Util/include/debug.h>
 
 namespace TAO
@@ -49,8 +49,8 @@ namespace TAO
         /* Assignment operator. */
         Address& Address::operator=(const uint256_t& value)
         {
-            /* Copy each word. */
-            uint256_t::operator=(value);
+            for(uint8_t i = 0; i < WIDTH; ++i)
+                pn[i] = value.pn[i];
 
             return *this;
         }
@@ -59,8 +59,8 @@ namespace TAO
         /* Move assignment operator. */
         Address& Address::operator=(uint256_t&& value) noexcept
         {
-            /* Copy each word. */
-            uint256_t::operator=(std::move(value));
+            for(uint8_t i = 0; i < WIDTH; ++i)
+                pn[i] = std::move(value.pn[i]);
 
             return *this;
         }

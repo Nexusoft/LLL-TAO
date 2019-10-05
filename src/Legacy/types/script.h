@@ -81,21 +81,25 @@ namespace Legacy
 
     public:
 
-        /** Default Constructors **/
-        Script() { }
+        /** Default Constructor **/
+        Script();
 
 
-        /** Construct from another Script
-         *
-         *  Initialize with a copy of the Script
-         *
-         *  @param[in] b The object to copy into the vector.
-         *
-         **/
-        Script(const Script& b)
-        : std::vector<uint8_t>(b.begin(), b.end())
-        {
-        }
+        /** Copy Constructor **/
+        Script(const Script& b);
+
+
+        /** Move Constructor **/
+        Script(Script&& b) noexcept;
+
+
+        /** Copy Assignment **/
+        Script& operator=(const Script& b);
+
+
+        /** Move Assignment **/
+        Script& operator=(Script&& b) noexcept;
+
 
 
         /** Construct from iterators
@@ -128,12 +132,6 @@ namespace Legacy
         }
 
     #endif
-
-        /** Default Destructor **/
-        ~Script()
-        {
-        }
-
 
         /** GetOP
          *
@@ -363,18 +361,6 @@ namespace Legacy
         Script& operator+=(const Script& b)
         {
             insert(end(), b.begin(), b.end());
-            return *this;
-        }
-
-
-        /** Operator overload+=
-         *
-         *  Set Script Object
-         *
-         **/
-        Script& operator=(const Script& b)
-        {
-            *this = b;
             return *this;
         }
 
