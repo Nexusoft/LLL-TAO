@@ -189,6 +189,26 @@ public:
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
+    Legacy::LegacyBlock block;
+    block.nTime = 49339439;
+    block.nBits = 34934;
+    block.nVersion = 444;
+
+    block.print();
+
+
+    runtime::timer timer;
+    timer.Start();
+    Legacy::LegacyBlock block2 = std::move(block);
+
+    uint64_t nTotal = timer.ElapsedNanoseconds();
+
+    debug::log(0, "Took ", nTotal, " nanoseconds");
+
+    block2.print();
+
+    return 0;
+
     uint64_t nTest = 555;
 
     nTest = std::max(nTest, uint64_t(888));

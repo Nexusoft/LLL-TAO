@@ -59,6 +59,7 @@ namespace Legacy
         return true;
     }
 
+
     /* Compare Two Vectors Element by Element. */
     bool VerifyAddressList(const std::vector<uint8_t> script, const std::vector<uint8_t> sigs[13])
     {
@@ -69,6 +70,7 @@ namespace Legacy
         return false;
     }
 
+
     /* The default constructor. */
     LegacyBlock::LegacyBlock()
     : Block ( )
@@ -77,6 +79,7 @@ namespace Legacy
     {
         SetNull();
     }
+
 
     /* Copy Constructor. */
     LegacyBlock::LegacyBlock(const LegacyBlock& block)

@@ -45,20 +45,28 @@ namespace Legacy
         Coinbase();
 
 
-        /** Constructor. **/
-        Coinbase(const std::map<std::string, uint64_t>& vTxOutputs, uint64_t nValue, uint64_t nLocalFee);
-
-
         /** Copy constructor. **/
-        Coinbase(const Coinbase& rhs);
+        Coinbase(const Coinbase& coinbase);
 
 
-        /** Assignment operator. **/
-        Coinbase &operator=(const Coinbase& rhs);
+		/** Move constructor. **/
+		Coinbase(Coinbase&& coinbase) noexcept;
+
+
+        /** Copy assignment. **/
+        Coinbase& operator=(const Coinbase& coinbase);
+
+
+		/** Move assignment. **/
+		Coinbase& operator=(Coinbase&& coinbase) noexcept;
 
 
 		/** Destructor **/
 		~Coinbase();
+
+
+		/** Constructor. **/
+		Coinbase(const std::map<std::string, uint64_t>& vTxOutputs, const uint64_t nValue, const uint64_t nLocalFee);
 
 
         /** SetNull
