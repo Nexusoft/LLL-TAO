@@ -43,13 +43,146 @@
  * a single, portable PRNG based on ChaCha20. Other PRNG implementations,
  * e.g. using SSE2 or AES-NI intrinsics, could provide a speed-up.
  *
+ * (NIST_API_REMOVE_BEGIN)
+ *
+ * Seeding
+ * -------
+ *
+ * Two sources of seeding are used:
+ *
+ *  - The /dev/urandom file, on Unix-like systems.
+ *
+ *  - CryptGenRandom(), on Windows systems (Win32).
+ *
+ *
+ * Configuration
+ * -------------
+ *
+ * Normally everything is auto-detected. To override detection, define
+ * macros explicitly, with a value of 1 (to enable) or 0 (to disable).
+ * Available macros are:
+ *
+ *  USE_URANDOM      /dev/urandom seeding
+ *  USE_WIN32_RAND   CryptGenRandom() seeding
+ *
+ * (NIST_API_REMOVE_END)
  */
 
+/* NIST_API_REMOVE_BEGIN */
+/*
+ * /dev/urandom is accessible on a variety of Unix-like systems.
+ */
+#ifndef USE_URANDOM
+#if defined _AIX \
+	|| defined __ANDROID__ \
+	|| defined __FreeBSD__ \
+	|| defined __NetBSD__ \
+	|| defined __OpenBSD__ \
+	|| defined __DragonFly__ \
+	|| defined __linux__ \
+	|| (defined __sun && (defined __SVR4 || defined __svr4__)) \
+	|| (defined __APPLE__ && defined __MACH__)
+#define USE_URANDOM   1
+#endif
+#endif
+
+/*
+ * CryptGenRandom() exists on Windows.
+ */
+#ifndef USE_WIN32_RAND
+#if defined _WIN32 || defined _WIN64
+#define USE_WIN32_RAND   1
+#endif
+#endif
+
+/*
+ * Accessing /dev/urandom requires using some file descriptors.
+ */
+#if USE_URANDOM
+#include <sys/types.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
+#endif
+
+/*
+ * CryptGenRandom() is defined in specific headers and requires linking
+ * with advapi32.lib (to use advapi32.dll).
+ */
+#if USE_WIN32_RAND
+#include <windows.h>
+#include <wincrypt.h>
+#pragma comment(lib, "advapi32")
+#endif
+
+#if USE_URANDOM
+static int
+urandom_get_seed(void *seed, size_t len)
+{
+	int f;
+
+	if (len == 0) {
+		return 1;
+	}
+	f = open("/dev/urandom", O_RDONLY);
+	if (f >= 0) {
+		while (len > 0) {
+			ssize_t rlen;
+
+			rlen = read(f, seed, len);
+			if (rlen < 0) {
+				if (errno == EINTR) {
+					continue;
+				}
+				break;
+			}
+			seed = (unsigned char *)seed + rlen;
+			len -= (size_t)rlen;
+		}
+		close(f);
+		return len == 0;
+	} else {
+		return 0;
+	}
+}
+#endif
+
+#if USE_WIN32_RAND
+static int
+win32_get_seed(void *seed, size_t len)
+{
+	HCRYPTPROV hp;
+
+	if (CryptAcquireContext(&hp, 0, 0, PROV_RSA_FULL,
+		CRYPT_VERIFYCONTEXT | CRYPT_SILENT))
+	{
+		BOOL r;
+
+		r = CryptGenRandom(hp, len, seed);
+		CryptReleaseContext(hp, 0);
+		return r != 0;
+	}
+	return 0;
+}
+#endif
+/* NIST_API_REMOVE_END */
 
 /* see internal.h */
 int
 falcon_get_seed(void *seed, size_t len)
 {
+	/* (NIST_API_REMOVE_BEGIN) */
+#if USE_URANDOM
+	if (urandom_get_seed(seed, len)) {
+		return 1;
+	}
+#endif
+#if USE_WIN32_RAND
+	if (win32_get_seed(seed, len)) {
+		return 1;
+	}
+#endif
+	/* (NIST_API_REMOVE_END) */
 	return 0;
 }
 
