@@ -298,7 +298,7 @@ namespace TAO
              *  @return true if succeeded
              *
              **/
-            bool GetTrustInfo(uint64_t& nBalance, uint64_t& nTrust, uint64_t& nStake) const;
+            bool GetTrustInfo(uint64_t &nBalance, uint64_t &nTrust, uint64_t &nStake) const;
 
 
             /** GetHash

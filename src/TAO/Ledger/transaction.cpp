@@ -381,8 +381,7 @@ namespace TAO
                 while(!config::fShutdown)
                 {
                     /* Break when value is found. */
-                    uint512_t hash = ProofHash();
-                    if(hash < FIRST_REQUIRED_WORK)
+                    if(ProofHash() < FIRST_REQUIRED_WORK)
                         break;
 
                     ++hashPrevTx;
@@ -728,7 +727,7 @@ namespace TAO
 
 
         /*  Gets the total trust and stake of pre-state. */
-        bool Transaction::GetTrustInfo(uint64_t& nBalance, uint64_t& nTrust, uint64_t& nStake) const
+        bool Transaction::GetTrustInfo(uint64_t &nBalance, uint64_t &nTrust, uint64_t &nStake) const
         {
             /* Check values. */
             if(!IsCoinStake())
