@@ -956,6 +956,13 @@ namespace TAO
                 prev.hashNextBlock = GetHash();
                 if(!LLD::Ledger->WriteBlock(prev.GetHash(), prev))
                     return debug::error(FUNCTION, "failed to update previous block state");
+
+                /* If we just updated hashNextBlock for genesis block, update the in-memory genesis */
+                if(prev.GetHash() == ChainState::Genesis())
+                {
+debug::log(0, FUNCTION, "Updating in-memory genesis to save next hash update");
+                    ChainState::stateGenesis = prev;
+                }
             }
 
             return true;
