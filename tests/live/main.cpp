@@ -187,11 +187,88 @@ public:
 };
 
 
+#include <Util/math/softfloat.h>
 
+
+class precision64_t
+{
+public:
+    float64_t value;
+
+    precision64_t()
+    {
+    }
+
+    precision64_t(float64_t a)
+    : value(a)
+    {
+    }
+
+    precision64_t& operator=(const double& a)
+    {
+        std::copy((uint8_t*)&a, (uint8_t*)&a + 8, (uint8_t*)&value);
+
+        return *this;
+    }
+
+    void set(double a)
+    {
+        std::copy((uint8_t*)&a, (uint8_t*)&a + 8, (uint8_t*)&value);
+    }
+
+    double get() const
+    {
+        double ret = 0;
+        std::copy((uint8_t*)&value, (uint8_t*)&value + 8, (uint8_t*)&ret);
+
+        return ret;
+    }
+
+    precision64_t operator*(const precision64_t& b)
+    {
+        return precision64_t(f64_mul(value, b.value));
+    }
+
+    precision64_t operator/(const precision64_t& b)
+    {
+        return precision64_t(f64_div(value, b.value));
+    }
+
+    precision64_t operator+(const precision64_t& b)
+    {
+        return precision64_t(f64_add(value, b.value));
+    }
+
+    precision64_t operator-(const precision64_t& b)
+    {
+        return precision64_t(f64_sub(value, b.value));
+    }
+};
 
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
+
+    double x = 8.3923929234232;
+    double y = 3.28234233828382;
+
+    double r = x * y;
+
+    //double_t x1 = 8.392392932;
+    precision64_t x1;
+    x1.set(x);
+
+    precision64_t y1;
+    y1.set(y);
+
+    precision64_t r1 = x1 * y1;
+
+    printf("Value is %0.15f\n", r);
+    printf("Value is %.15f\n", r1.get());
+
+    return 0;
+
+
     //debug::log(0, "Chain Age ", GetChainAge(time(NULL)));
     uint32_t nTotals = 1000000;
 
