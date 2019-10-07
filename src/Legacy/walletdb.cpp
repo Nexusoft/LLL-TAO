@@ -24,6 +24,7 @@ ________________________________________________________________________________
 #include <Legacy/wallet/walletkey.h>
 #include <Legacy/wallet/wallettx.h>
 
+#include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/timelocks.h>
 
 #include <Util/include/args.h>
@@ -492,25 +493,36 @@ namespace Legacy
                     /* Flag indicating to check the hash.  This is always true, except in the case where this is a tritium
                        transaction that we have successfully read from the ledger DB */
                     bool fCheckHash = true;
-                    /* Skip check for tritium transactions. */
+
+                    /* When the wtx is version 7, and a Tritium hash type, we need to verify its hash against the Tritium tx hash.
+                     * Have to account for the possiblity of a collision between old Legacy hash and Tritium hash type.
+                     * Therefore, we only check Tritium hash if we have the Tritium tx in the ledger db.
+                     *
+                     * Doing this introduces the possibility of not finding the Tritium tx if the chain is not synced.
+                     * Thus, we skip all checks if the best block is not version 7, or the tx hash is not yet in
+                     * either the ledger db or the legacy db.
+                     */
                     if((TAO::Ledger::VersionActive(wtx.nTime, 7) || TAO::Ledger::CurrentVersion() > 7)
                         && hash.GetType() == TAO::Ledger::TRITIUM)
                     {
-                        /* Read the transaction from ledger database.
-                         * In the event of a collision between old Legacy hash and Tritium hash type, this
-                         * read will fail and it will fall through to Legacy check below.
-                         */
                         TAO::Ledger::Transaction tx;
-                        if(LLD::Ledger->ReadTx(hash, tx))
+                        Legacy::Transaction txLegacy;
+
+                        /* If the best block is not version 7, skip hash checks */
+                        if(TAO::Ledger::ChainState::stateBest.load().nVersion < 7)
+                            fCheckHash = false;
+
+                        /* Read the transaction from ledger db. */
+                        else if(LLD::Ledger->ReadTx(hash, tx))
                         {
                             /* Convert the disk transaction into WalletTx. */
                             Transaction ltx(tx);
                             WalletTx wtx2(&wallet, ltx);
 
-                            /* Add mismatched transaction to list of transactions to remove from database */
                             if(wtx.GetHash() != wtx2.GetHash())
                             {
-                                debug::error(FUNCTION, "Error in ", strWalletFile, ", hash mismatch, resolving");
+                                /* Add mismatched transaction to list of transactions to remove from database */
+                                debug::error(FUNCTION, "Error in ", strWalletFile, ", Tritium hash mismatch, resolving");
                                 vRemove.push_back(hash);
 
                                 fBind = false;
@@ -518,11 +530,17 @@ namespace Legacy
 
                             fCheckHash = false;
                         }
+
+                        /* If Tritium tx not in ledger db, check legacy db. Skip hash checks if not there.
+                         * If it is there, this is the collision case. Fall through to legacy check below.
+                         */
+                        else if(!LLD::Legacy->ReadTx(hash, txLegacy))
+                            fCheckHash = false;
                     }
 
                     if(fCheckHash && wtx.GetHash() != hash)
                     {
-                        debug::error(FUNCTION, "Error in ", strWalletFile, ", hash mismatch, resolving");
+                        debug::error(FUNCTION, "Error in ", strWalletFile, ", Legacy hash mismatch, resolving");
 debug::log(0, FUNCTION, "Legacy check");
 debug::log(0, FUNCTION, "wtx ", wtx.GetHash().SubString());
 debug::log(0, FUNCTION, "hash ", hash.SubString());
