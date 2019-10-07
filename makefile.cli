@@ -457,6 +457,99 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Util_datastream.o \
 		build/Util_debug.o \
 		build/Util_encoding.o \
+		build/Util_f32_to_ui32.o \
+		build/Util_f32_to_ui64.o \
+		build/Util_f32_to_i32.o \
+		build/Util_f32_to_i64.o \
+		build/Util_f32_to_ui32_r_minMag.o \
+		build/Util_f32_to_ui64_r_minMag.o \
+		build/Util_f32_to_i32_r_minMag.o \
+		build/Util_f32_to_i64_r_minMag.o \
+		build/Util_f32_to_f64.o \
+		build/Util_f32_roundToInt.o \
+		build/Util_f32_add.o \
+		build/Util_f32_sub.o \
+		build/Util_f32_mul.o \
+		build/Util_f32_mulAdd.o \
+		build/Util_f32_div.o \
+		build/Util_f32_rem.o \
+		build/Util_f32_sqrt.o \
+		build/Util_f32_eq.o \
+		build/Util_f32_le.o \
+		build/Util_f32_lt.o \
+		build/Util_f32_eq_signaling.o \
+		build/Util_f32_le_quiet.o \
+		build/Util_f32_lt_quiet.o \
+		build/Util_f32_isSignalingNaN.o \
+		build/Util_f64_to_ui32.o \
+		build/Util_f64_to_ui64.o \
+		build/Util_f64_to_i32.o \
+		build/Util_f64_to_i64.o \
+		build/Util_f64_to_ui32_r_minMag.o \
+		build/Util_f64_to_ui64_r_minMag.o \
+		build/Util_f64_to_i32_r_minMag.o \
+		build/Util_f64_to_i64_r_minMag.o \
+		build/Util_f64_to_f32.o \
+		build/Util_f64_roundToInt.o \
+		build/Util_f64_add.o \
+		build/Util_f64_sub.o \
+		build/Util_f64_mul.o \
+		build/Util_f64_mulAdd.o \
+		build/Util_f64_div.o \
+		build/Util_f64_rem.o \
+		build/Util_f64_sqrt.o \
+		build/Util_f64_eq.o \
+		build/Util_f64_le.o \
+		build/Util_f64_lt.o \
+		build/Util_f64_eq_signaling.o \
+		build/Util_f64_le_quiet.o \
+		build/Util_f64_lt_quiet.o \
+		build/Util_f64_isSignalingNaN.o \
+		build/Util_softfloat_raiseFlags.o \
+		build/Util_softfloat_state.o \
+		build/Util_s_addMagsF32.o \
+		build/Util_s_addMagsF64.o \
+		build/Util_s_approxRecip32_1.o \
+		build/Util_s_approxRecipSqrt32_1.o \
+		build/Util_s_approxRecip_1Ks.o \
+		build/Util_s_approxRecipSqrt_1Ks.o \
+		build/Util_s_commonNaNToF32UI.o \
+		build/Util_s_commonNaNToF64UI.o \
+		build/Util_s_countLeadingZeros8.o \
+		build/Util_s_countLeadingZeros32.o \
+		build/Util_s_countLeadingZeros64.o \
+		build/Util_s_f32UIToCommonNaN.o \
+		build/Util_s_f64UIToCommonNaN.o \
+		build/Util_s_mulAddF32.o \
+		build/Util_s_mulAddF64.o \
+		build/Util_s_mul64To128M.o \
+		build/Util_s_negXM.o \
+		build/Util_s_normSubnormalF32Sig.o \
+		build/Util_s_normSubnormalF64Sig.o \
+		build/Util_s_normRoundPackToF32.o \
+		build/Util_s_normRoundPackToF64.o \
+		build/Util_s_propagateNaNF32UI.o \
+		build/Util_s_propagateNaNF64UI.o \
+		build/Util_s_roundToI32.o \
+		build/Util_s_roundToI64.o \
+		build/Util_s_roundToUI32.o \
+		build/Util_s_roundToUI64.o \
+		build/Util_s_roundMToI64.o \
+		build/Util_s_roundMToUI64.o \
+		build/Util_s_roundPackToF32.o \
+		build/Util_s_roundPackToF64.o \
+		build/Util_s_shiftLeftM.o \
+		build/Util_s_shiftRightJamM.o \
+		build/Util_s_shiftRightJam32.o \
+		build/Util_s_shiftRightJam64.o \
+		build/Util_s_shortShiftRightJam64.o \
+		build/Util_s_shortShiftRightJamM.o \
+		build/Util_s_shortShiftRightM.o \
+		build/Util_s_shortShiftLeftM.o \
+		build/Util_s_subMagsF32.o \
+		build/Util_s_subMagsF64.o \
+		build/Util_s_subM.o \
+		build/Util_s_addM.o \
         build/Util_hex.o \
 		build/Util_filesystem.o \
 		build/Util_memory.o \
@@ -538,9 +631,15 @@ CXXFLAGS+= -mthreads \
 CFLAGS:= $(CXXFLAGS)
 CFLAGS+= $(CWARNINGS)
 
+#Use Software Emulated Floating Points
+#CFLAGS+= -mfloat-abi=soft
+
 #set -std=c++ for all but c compiling
 CXXFLAGS+=-std=c++11
 CXXFLAGS+= $(CXXWARNINGS)
+
+#Use Software Emulated Floating Points
+#CXXFLAGS+= -mfloat-abi=soft
 
 
 #OS Specific Targets and instructions
@@ -635,6 +734,9 @@ build/Register_%.o: ./src/TAO/Register/%.cpp $(HEADERS)
 
 build/Util_%.o: ./src/Util/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/Util_%.o: ./src/Util/math/softfloat/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -Wimplicit-fallthrough=0 -x c -o $@ $<
 
 build/Legacy_%.o: ./src/Legacy/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
@@ -951,6 +1053,13 @@ build/Register_%.o: src/TAO/Register/%.cpp $(HEADERS)
 
 build/Util_%.o: src/Util/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/Util_%.o: src/Util/math/softfloat/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -Wimplicit-fallthrough=0 -x c -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
@@ -1360,6 +1469,13 @@ build/Register_%.o: src/TAO/Register/%.cpp
 
 build/Util_%.o: src/Util/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/Util_%.o: src/Util/math/softfloat/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -Wimplicit-fallthrough=0 -x c -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \

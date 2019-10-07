@@ -41,6 +41,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/genesis.h>
 #include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/types/transaction.h>
 
 #include <TAO/Ledger/include/ambassador.h>
@@ -191,6 +192,24 @@ public:
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
+    //debug::log(0, "Chain Age ", GetChainAge(time(NULL)));
+    uint32_t nTotals = 1000000;
+
+    runtime::timer timer;
+    timer.Start();
+    for(int i = 0; i < nTotals; i++)
+    {
+        if(i % 10000 == 0)
+            printf("%u\n", i);
+
+        TAO::Ledger::GetSubsidy(i, 0);
+    }
+    uint64_t nElapsed = timer.ElapsedMilliseconds();
+
+    debug::log(0, "Elapsed ", nElapsed, " ms");
+
+    return 0;
+
     Legacy::LegacyBlock block;
     block.nTime = 49339439;
     block.nBits = 34934;
@@ -199,7 +218,7 @@ int main(int argc, char** argv)
     block.print();
 
 
-    runtime::timer timer;
+    //runtime::timer timer;
     timer.Start();
     Legacy::LegacyBlock block2 = std::move(block);
 
