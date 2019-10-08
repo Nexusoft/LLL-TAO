@@ -11,6 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
+#include <TAO/Ledger/types/state.h>
+
 #include <string>
 
 #include <LLD/include/global.h>
@@ -26,18 +28,19 @@ ________________________________________________________________________________
 #include <TAO/Register/include/rollback.h>
 #include <TAO/Register/include/verify.h>
 
-#include <TAO/Ledger/include/chainstate.h>
-#include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/ambassador.h>
-#include <TAO/Ledger/include/enum.h>
-#include <TAO/Ledger/include/difficulty.h>
+#include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/checkpoints.h>
+#include <TAO/Ledger/include/constants.h>
+#include <TAO/Ledger/include/difficulty.h>
+#include <TAO/Ledger/include/enum.h>
+#include <TAO/Ledger/include/prime.h>
 #include <TAO/Ledger/include/stake_change.h>
 #include <TAO/Ledger/include/supply.h>
-#include <TAO/Ledger/include/prime.h>
-#include <TAO/Ledger/types/state.h>
-#include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/include/timelocks.h>
+
 #include <TAO/Ledger/types/genesis.h>
+#include <TAO/Ledger/types/mempool.h>
 
 #include <Util/include/string.h>
 
@@ -1259,16 +1262,20 @@ namespace TAO
         /* Prove that you staked a number of seconds based on weight. */
         uint1024_t BlockState::StakeHash() const
         {
-            if(vtx[0].first == TRANSACTION::TRITIUM)
+            /* Version 7 or later stake block should have Tritium coinstake producer, stored as last tx in vtx */
+            if((TAO::Ledger::VersionActive(nTime, 7) || TAO::Ledger::CurrentVersion() > 7)
+                && vtx.back().first == TRANSACTION::TRITIUM)
             {
-                /* Get the tritium transaction  from the database*/
+                /* Get the tritium transaction from the database*/
                 TAO::Ledger::Transaction tx;
-                if(!LLD::Ledger->ReadTx(vtx[0].second, tx))
+                if(!LLD::Ledger->ReadTx(vtx.back().second, tx))
                     return debug::error(FUNCTION, "transaction is not on disk");
 
                 return Block::StakeHash(tx.IsGenesis(), tx.hashGenesis);
             }
-            else if(vtx[0].first == TRANSACTION::LEGACY)
+
+            /* pre-version 7 should have Legacy coinstake stored as vtx[0] */
+            else if(TAO::Ledger::CurrentVersion() < 7 && vtx[0].first == TRANSACTION::LEGACY)
             {
                 /* Get the legacy transaction from the database. */
                 Legacy::Transaction tx;
