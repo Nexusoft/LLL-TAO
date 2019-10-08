@@ -119,7 +119,7 @@ namespace LLC
          *  @param[in] fCompressed Flag whether to make key in compressed form.
          *
          **/
-        void MakeNewKey(bool fCompressed);
+        void MakeNewKey(bool fCompressedIn);
 
 
         /** SetPrivKey
@@ -144,19 +144,7 @@ namespace LLC
          *  @return True if the key was successfully created.
          *
          **/
-        bool SetSecret(const CSecret& vchSecret, bool fCompressed = false);
-
-
-        /** GetSecret
-         *
-         *  Obtain the secret key used in the private key.
-         *
-         *  @param[in] fCompressed Flag if the key is in compressed form.
-         *
-         *  @return the secret phrase in the secure allocator.
-         *
-         **/
-        CSecret GetSecret(bool &fCompressed) const;
+        bool SetSecret(const CSecret& vchSecret, bool fCompressedIn = false);
 
 
         /** GetPrivKey

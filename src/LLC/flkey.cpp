@@ -116,8 +116,11 @@ namespace LLC
 
 
     /* Create a new key from the Falcon random PRNG seeds */
-    void FLKey::MakeNewKey(bool fCompressed)
+    void FLKey::MakeNewKey(bool fCompressedIn)
     {
+        /* Flag if the key is compressed. */
+        fCompressed = fCompressedIn;
+
         /* Create a new keygen pointer. */
         falcon_keygen* keygen = falcon_keygen_new(9, 0); //NOTE: using log(9) for 512-bit Log(10) is for 1024-bit
 
@@ -145,9 +148,6 @@ namespace LLC
         vchPrivKey.resize(nPrivKeySize);
         vchPubKey.resize(nPubKeySize);
 
-        /* Flag if the key is compressed. */
-        fCompressed = fCompressed;
-
         /* Show key as successfully set. */
         fSet = true;
 
@@ -157,8 +157,11 @@ namespace LLC
 
 
     /* Set the secret phrase / key used in the private key. */
-    bool FLKey::SetSecret(const CSecret& vchSecret, bool fCompressed)
+    bool FLKey::SetSecret(const CSecret& vchSecret, bool fCompressedIn)
     {
+        /* Flag if the key is compressed. */
+        fCompressed = fCompressedIn;
+
         /* Create a new keygen pointer. */
         falcon_keygen* keygen = falcon_keygen_new(9, 0); //NOTE: using log(9) for 512-bit Log(10) is for 1024-bit
 
@@ -188,9 +191,6 @@ namespace LLC
         /* Resize to the actual returned sizes. */
         vchPrivKey.resize(nPrivKeySize);
         vchPubKey.resize(nPubKeySize);
-
-        /* Flag if the key is compressed. */
-        fCompressed = fCompressed;
 
         /* Show key as successfully set. */
         fSet = true;
