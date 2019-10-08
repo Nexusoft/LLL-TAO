@@ -192,31 +192,39 @@ public:
 
 class precision64_t
 {
-public:
-    float64_t value;
-
-    precision64_t()
-    {
-    }
-
-    precision64_t(float64_t a)
-    : value(a)
-    {
-    }
-
-    precision64_t& operator=(const double& a)
-    {
-        std::copy((uint8_t*)&a, (uint8_t*)&a + 8, (uint8_t*)&value);
-
-        return *this;
-    }
-
     void set(double a)
     {
         std::copy((uint8_t*)&a, (uint8_t*)&a + 8, (uint8_t*)&value);
     }
 
-    double get() const
+protected:
+
+    float64_t value;
+
+public:
+
+    precision64_t()
+    {
+    }
+
+    precision64_t(const float64_t& a)
+    : value(a)
+    {
+    }
+
+    precision64_t(const double& a)
+    {
+        set(a);
+    }
+
+    precision64_t& operator=(const double& a)
+    {
+        set(a);
+
+        return *this;
+    }
+
+    operator double()
     {
         double ret = 0;
         std::copy((uint8_t*)&value, (uint8_t*)&value + 8, (uint8_t*)&ret);
@@ -243,28 +251,108 @@ public:
     {
         return precision64_t(f64_sub(value, b.value));
     }
+
+    bool operator<(const precision64_t& b) const
+    {
+        return f64_lt(value, b.value);
+    }
+
+    bool operator>(const precision64_t& b) const
+    {
+        return !f64_eq(value, b.value) && !f64_lt(value, b.value);
+    }
+
+    bool operator==(const precision64_t& b) const
+    {
+        return f64_eq(value, b.value);
+    }
+
+    bool operator==(const double& b)
+    {
+        return f64_eq(value, precision64_t(b).value);
+    }
+
+    bool operator <=(const precision64_t& b)
+    {
+        return f64_lt(value, b.value) || f64_eq(value, b.value);
+    }
+
+    bool operator >=(const precision64_t& b)
+    {
+        return !f64_lt(value, b.value) || f64_eq(value, b.value);
+    }
 };
+
+#include <Util/math/fdlibm.h>
+
+#include <math.h>
+
+/* These values reflect the Three Decay Equations for Miners, Ambassadors, and Developers. */
+const double decay[3][3] =
+{
+    {50.0, -0.00000110, 1.000},
+    {10.0, -0.00000055, 1.000},
+    {01.0, -0.00000059, 0.032}
+};
+
+
+/* Get the Total Amount to be Released at a given Minute since the NETWORK_TIMELOCK. */
+uint64_t GetSubsidy(const uint32_t nMinutes, const uint8_t nType)
+{
+    return (((decay[nType][0] * exp(decay[nType][1] * nMinutes)) + decay[nType][2]) * (500000));
+}
+
+/* Get the Total Amount to be Released at a given Minute since the NETWORK_TIMELOCK. */
+uint64_t GetSubsidy2(const uint32_t nMinutes, const uint8_t nType)
+{
+    return (((decay[nType][0] * exp2(decay[nType][1] * nMinutes)) + decay[nType][2]) * (500000));
+}
 
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
+    for(int i = 0; i < 1000000; ++i)
+    {
+        if(GetSubsidy(i, 0) != GetSubsidy2(i, 0))
+        {
+            debug::error("FAILED AT ", i, "Base ", GetSubsidy(i, 0), " Check ", GetSubsidy2(i, 0));
+
+            //return 0;
+        }
+
+        if(i % 10000 == 0)
+            debug::log(0, "Iterated ", i);
+    }
 
     double x = 8.3923929234232;
     double y = 3.28234233828382;
 
     double r = x * y;
 
-    //double_t x1 = 8.392392932;
-    precision64_t x1;
-    x1.set(x);
+    precision64_t x1 = x;
+    //precision64_t x1;
+    //x1.set(x);
 
-    precision64_t y1;
-    y1.set(y);
+    precision64_t y1 = y;
 
     precision64_t r1 = x1 * y1;
 
+    bool fEquals = (x == x1);
+    debug::log(0, "Equals ", fEquals ? "YES" : "NO");
+
+    double dPow = std::pow(x, y);
+
+    double dPow2 = pow(x, y);
+
+    printf("POW %.15f\n", dPow);
+    printf("POW %.15f\n", dPow2);
+
     printf("Value is %0.15f\n", r);
-    printf("Value is %.15f\n", r1.get());
+    printf("Value is %.15f\n", double(r1));
+
+    precision64_t dPow1 = std::pow(x1, y1);
+
+    printf("dPOW %.15f\n", double(dPow1));
 
     return 0;
 

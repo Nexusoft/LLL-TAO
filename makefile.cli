@@ -180,7 +180,7 @@ endif
 #Display Warnings while compiling
 ifdef ENABLE_WARNINGS
 	CXXWARNINGS := -Wall -Wextra -Wno-sign-compare -Wno-invalid-offsetof -Wno-unused-parameter -Wformat -Wformat-security -pedantic
-	CWARNINGS := -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-unknown-pragmas -Wformat -Wformat-security -pedantic
+	CWARNINGS := -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-unknown-pragmas -Wformat -Wformat-security -pedantic
 else
 	CXXFLAGS+= -w
 endif
@@ -507,6 +507,21 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Util_f64_isSignalingNaN.o \
 		build/Util_softfloat_raiseFlags.o \
 		build/Util_softfloat_state.o \
+		build/Util_e_exp.o \
+		build/Util_e_log.o \
+		build/Util_e_log10.o \
+		build/Util_e_pow.o \
+		build/Util_e_sqrt.o \
+		build/Util_k_standard.o \
+		build/Util_s_fabs.o \
+		build/Util_s_isnan.o \
+		build/Util_s_lib_version.o \
+		build/Util_s_matherr.o \
+		build/Util_w_exp.o \
+		build/Util_w_log.o \
+		build/Util_w_log10.o \
+		build/Util_w_pow.o \
+		build/Util_w_sqrt.o \
 		build/Util_s_addMagsF32.o \
 		build/Util_s_addMagsF64.o \
 		build/Util_s_approxRecip32_1.o \
@@ -736,6 +751,9 @@ build/Util_%.o: ./src/Util/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/Util_%.o: ./src/Util/math/softfloat/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -Wimplicit-fallthrough=0 -x c -o $@ $<
+
+build/Util_%.o: ./src/Util/math/fdlibm/%.c $(HEADERS)
 	$(CXX) -c $(CFLAGS) -Wimplicit-fallthrough=0 -x c -o $@ $<
 
 build/Legacy_%.o: ./src/Legacy/%.cpp $(HEADERS)
@@ -1059,6 +1077,13 @@ build/Util_%.o: src/Util/%.cpp $(HEADERS)
 	rm -f $(@:%.o=%.d)
 
 build/Util_%.o: src/Util/math/softfloat/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -Wimplicit-fallthrough=0 -x c -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/Util_%.o: src/Util/math/fdlibm/%.c $(HEADERS)
 	$(CXX) -c $(CFLAGS) -Wimplicit-fallthrough=0 -x c -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -1475,6 +1500,13 @@ build/Util_%.o: src/Util/%.cpp
 	rm -f $(@:%.o=%.d)
 
 build/Util_%.o: src/Util/math/softfloat/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -Wimplicit-fallthrough=0 -x c -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/Util_%.o: src/Util/math/fdlibm/%.c $(HEADERS)
 	$(CXX) -c $(CFLAGS) -Wimplicit-fallthrough=0 -x c -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \

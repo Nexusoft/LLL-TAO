@@ -9274,8 +9274,8 @@ using Matchers::Impl::MatcherBase;
 // start catch_polyfills.hpp
 
 namespace Catch {
-    bool isnan(float f);
-    bool isnan(double d);
+    bool _isnan(float f);
+    bool _isnan(double d);
 }
 
 // end catch_polyfills.hpp
@@ -9344,7 +9344,7 @@ template <typename FP>
 bool almostEqualUlps(FP lhs, FP rhs, int maxUlpDiff) {
     // Comparison with NaN should always be false.
     // This way we can rule it out before getting into the ugly details
-    if(Catch::isnan(lhs) || Catch::isnan(rhs)) {
+    if(Catch::_isnan(lhs) || Catch::_isnan(rhs)) {
         return false;
     }
 
@@ -9917,18 +9917,18 @@ namespace Catch {
 namespace Catch {
 
 #if !defined(CATCH_CONFIG_POLYFILL_ISNAN)
-    bool isnan(float f) {
-        return std::isnan(f);
+    bool _isnan(float f) {
+        return std::_isnan(f);
     }
-    bool isnan(double d) {
-        return std::isnan(d);
+    bool _isnan(double d) {
+        return std::_isnan(d);
     }
 #else
     // For now we only use this for embarcadero
-    bool isnan(float f) {
+    bool _isnan(float f) {
         return std::_isnan(f);
     }
-    bool isnan(double d) {
+    bool _isnan(double d) {
         return std::_isnan(d);
     }
 #endif
@@ -12396,7 +12396,7 @@ namespace Detail {
 
 template<typename T>
 std::string fpToString( T value, int precision) {
-    if(Catch::isnan(value)) {
+    if(Catch::_isnan(value)) {
         return "nan";
     }
 

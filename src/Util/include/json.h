@@ -9687,7 +9687,7 @@ class binary_writer
 #include <cassert> // assert
 #include <ciso646> // and, or
 #include <clocale> // localeconv, lconv
-#include <cmath> // labs, isfinite, isnan, signbit
+#include <cmath> // labs, isfinite, _isnan, signbit
 #include <cstddef> // size_t, ptrdiff_t
 #include <cstdint> // uint8_t
 #include <cstdio> // snprintf
