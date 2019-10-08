@@ -28,16 +28,19 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/difficulty.h>
+#include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/types/tritium.h>
 #include <TAO/Ledger/types/mempool.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/create.h>
+#include <TAO/Operation/types/contract.h>
 
 #include <TAO/Register/include/unpack.h>
 
 #include <Util/include/args.h>
 #include <Util/include/convert.h>
+#include <Util/include/debug.h>
 #include <Util/include/hex.h>
 #include <Util/include/json.h>
 #include <Util/include/base64.h>
@@ -194,26 +197,63 @@ namespace TAO
                     for(const Legacy::TxIn& txin : tx.vin)
                     {
                         json::json input;
-                        /* Read the previous transaction in order to get its outputs */
-                        Legacy::Transaction txprev;
-                        if(!LLD::Legacy->ReadTx(txin.prevout.hash, txprev))
-                            throw APIException(-7, "Invalid transaction id");
+                        bool fFound = false;
 
-                        /* Extract the Nexus Address. */
-                        Legacy::NexusAddress address;
-                        TAO::Register::Address hashRegister;
-                        if(Legacy::ExtractAddress(txprev.vout[txin.prevout.n].scriptPubKey, address))
-                            input["address"] = address.ToString();
-                        else if(Legacy::ExtractRegister(txprev.vout[txin.prevout.n].scriptPubKey, hashRegister))
-                            input["address"] = hashRegister.ToString();
-                        else
-                            throw APIException(-8, "Unable to Extract Input Address");
+                        if((TAO::Ledger::VersionActive(tx.nTime, 7) || TAO::Ledger::CurrentVersion() > 7)
+                            && txin.prevout.hash.GetType() == TAO::Ledger::TRITIUM)
+                        {
+                            /* Previous output likely a Tritium send-to-legacy contract. Check for that first. It is possible for
+                             * an older legacy tx to collide with the tritium hash type, so if not found still must check legacy.
+                             */
+                            TAO::Ledger::Transaction txPrev;
 
-                        input["amount"] = (double) tx.vout[txin.prevout.n].nValue / TAO::Ledger::NXS_COIN;
+                            if(LLD::Ledger->ReadTx(txin.prevout.hash, txPrev))
+                            {
+                                fFound = true;
 
-                        inputs.push_back(input);
+                                if(txPrev.Size() < txin.prevout.n)
+                                    throw APIException(-87, "Invalid or unknown transaction");
 
+                                const uint256_t hashCaller = txPrev[txin.prevout.n].Caller();
+
+                                input = ContractToJSON(hashCaller, txPrev[txin.prevout.n], txin.prevout.n, nVerbosity);
+
+                                inputs.push_back(input);
+                            }
+                        }
+
+                        if(!fFound)
+                        {
+                            /* Read the previous legacy transaction in order to get its outputs */
+                            Legacy::Transaction txPrev;
+
+                            if(LLD::Legacy->ReadTx(txin.prevout.hash, txPrev))
+                            {
+                                fFound = true;
+
+                                /* Extract the Nexus Address. */
+                                Legacy::NexusAddress address;
+                                TAO::Register::Address hashRegister;
+
+                                if(Legacy::ExtractAddress(txPrev.vout[txin.prevout.n].scriptPubKey, address))
+                                    input["address"] = address.ToString();
+
+                                else if(Legacy::ExtractRegister(txPrev.vout[txin.prevout.n].scriptPubKey, hashRegister))
+                                    input["address"] = hashRegister.ToString();
+
+                                else
+                                    throw APIException(-8, "Unable to Extract Input Address");
+
+                                input["amount"] = (double) tx.vout[txin.prevout.n].nValue / TAO::Ledger::NXS_COIN;
+
+                                inputs.push_back(input);
+                            }
+                        }
+
+                        if(!fFound)
+                                throw APIException(-7, "Invalid transaction id");
                     }
+
                     ret["inputs"] = inputs;
                 }
 
@@ -227,10 +267,13 @@ namespace TAO
                     /* Extract the Nexus Address. */
                     Legacy::NexusAddress address;
                     TAO::Register::Address hashRegister;
+
                     if(Legacy::ExtractAddress(txout.scriptPubKey, address))
                         output["address"] = address.ToString();
+
                     else if(Legacy::ExtractRegister(txout.scriptPubKey, hashRegister))
                         output["address"] = hashRegister.ToString();
+
                     else
                         throw APIException(-8, "Unable to Extract Output Address");
 
@@ -844,7 +887,6 @@ namespace TAO
                         /* Get the register address. */
                         TAO::Register::Address hashFrom;
                         contract >> hashFrom;
-
 
                         /* Get the transfer amount. */
                         uint64_t  nAmount = 0;
