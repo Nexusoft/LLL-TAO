@@ -620,6 +620,10 @@ namespace TAO
                                         if(!LLD::Legacy->ReadTx(stateLast.vtx[0].second, txLast))
                                             break;
 
+                                        /* Verify that the transaction is a coinstake */
+                                        if(!txLast.IsCoinStake())
+                                            break;
+
                                         hashLast = txLast.GetHash();
 
                                         /* Extract the trust score from the coinstake */
