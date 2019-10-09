@@ -189,102 +189,6 @@ public:
 
 #include <Util/math/softfloat.h>
 
-
-class precision64_t
-{
-    void set(double a)
-    {
-        std::copy((uint8_t*)&a, (uint8_t*)&a + 8, (uint8_t*)&value);
-    }
-
-protected:
-
-    float64_t value;
-
-public:
-
-    precision64_t()
-    {
-    }
-
-    precision64_t(const float64_t& a)
-    : value(a)
-    {
-    }
-
-    precision64_t(const double& a)
-    {
-        set(a);
-    }
-
-    precision64_t& operator=(const double& a)
-    {
-        set(a);
-
-        return *this;
-    }
-
-    operator double()
-    {
-        double ret = 0;
-        std::copy((uint8_t*)&value, (uint8_t*)&value + 8, (uint8_t*)&ret);
-
-        return ret;
-    }
-
-    precision64_t operator*(const precision64_t& b)
-    {
-        return precision64_t(f64_mul(value, b.value));
-    }
-
-    precision64_t operator/(const precision64_t& b)
-    {
-        return precision64_t(f64_div(value, b.value));
-    }
-
-    precision64_t operator+(const precision64_t& b)
-    {
-        return precision64_t(f64_add(value, b.value));
-    }
-
-    precision64_t operator-(const precision64_t& b)
-    {
-        return precision64_t(f64_sub(value, b.value));
-    }
-
-    bool operator<(const precision64_t& b) const
-    {
-        return f64_lt(value, b.value);
-    }
-
-    bool operator>(const precision64_t& b) const
-    {
-        return !f64_eq(value, b.value) && !f64_lt(value, b.value);
-    }
-
-    bool operator==(const precision64_t& b) const
-    {
-        return f64_eq(value, b.value);
-    }
-
-    bool operator==(const double& b)
-    {
-        return f64_eq(value, precision64_t(b).value);
-    }
-
-    bool operator <=(const precision64_t& b)
-    {
-        return f64_lt(value, b.value) || f64_eq(value, b.value);
-    }
-
-    bool operator >=(const precision64_t& b)
-    {
-        return !f64_lt(value, b.value) || f64_eq(value, b.value);
-    }
-};
-
-#include <Util/math/fdlibm.h>
-
 #include <math.h>
 
 /* These values reflect the Three Decay Equations for Miners, Ambassadors, and Developers. */
@@ -296,26 +200,81 @@ const double decay[3][3] =
 };
 
 
+const cv::softdouble decay_s[3][3] =
+{
+    {cv::softdouble(50.0), cv::softdouble(-0.00000110), cv::softdouble(1.000)},
+    {cv::softdouble(10.0), cv::softdouble(-0.00000055), cv::softdouble(1.000)},
+    {cv::softdouble(01.0), cv::softdouble(-0.00000059), cv::softdouble(0.032)}
+};
+
+
 /* Get the Total Amount to be Released at a given Minute since the NETWORK_TIMELOCK. */
 uint64_t GetSubsidy(const uint32_t nMinutes, const uint8_t nType)
 {
-    return (((decay[nType][0] * exp(decay[nType][1] * nMinutes)) + decay[nType][2]) * (500000));
+    return (((decay[nType][0] * std::exp(decay[nType][1] * nMinutes)) + decay[nType][2]) * (500000));
 }
+
 
 /* Get the Total Amount to be Released at a given Minute since the NETWORK_TIMELOCK. */
 uint64_t GetSubsidy2(const uint32_t nMinutes, const uint8_t nType)
 {
-    return (((decay[nType][0] * exp2(decay[nType][1] * nMinutes)) + decay[nType][2]) * (500000));
+    return (((decay_s[nType][0] * cv::exp(cv::softdouble(decay_s[nType][1] * nMinutes))) + decay_s[nType][2]) * (500000));
 }
 
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
+
+    cv::softdouble dValue = cv::softdouble(5.55555);
+
+    printf("Soft Value %.15f\n", double(dValue));
+
+    runtime::timer timer2;
+    timer2.Start();
     for(int i = 0; i < 1000000; ++i)
+    {
+        GetSubsidy(i, 0);
+        GetSubsidy(i, 1);
+        GetSubsidy(i, 2);
+    }
+
+    uint64_t nElapsed = timer2.ElapsedMicroseconds();
+
+    debug::log(0, "Elapsed ", nElapsed, " microseconds");
+
+
+    timer2.Reset();
+    for(int i = 0; i < 1000000; ++i)
+    {
+        GetSubsidy2(i, 0);
+        GetSubsidy2(i, 1);
+        GetSubsidy2(i, 2);
+    }
+
+    nElapsed = timer2.ElapsedMicroseconds();
+
+    debug::log(0, "Elapsed ", nElapsed, " microseconds");
+
+
+    for(int i = 0; i < 100000000; ++i)
     {
         if(GetSubsidy(i, 0) != GetSubsidy2(i, 0))
         {
-            debug::error("FAILED AT ", i, "Base ", GetSubsidy(i, 0), " Check ", GetSubsidy2(i, 0));
+            debug::error("FAILED AT ", i, " Base ", GetSubsidy(i, 0), " Check ", GetSubsidy2(i, 0));
+
+            //return 0;
+        }
+
+        if(GetSubsidy(i, 1) != GetSubsidy2(i, 1))
+        {
+            debug::error("FAILED AT ", i, " Base ", GetSubsidy(i, 1), " Check ", GetSubsidy2(i, 1));
+
+            //return 0;
+        }
+
+        if(GetSubsidy(i, 2) != GetSubsidy2(i, 2))
+        {
+            debug::error("FAILED AT ", i, " Base ", GetSubsidy(i, 2), " Check ", GetSubsidy2(i, 2));
 
             //return 0;
         }
@@ -323,36 +282,6 @@ int main(int argc, char** argv)
         if(i % 10000 == 0)
             debug::log(0, "Iterated ", i);
     }
-
-    double x = 8.3923929234232;
-    double y = 3.28234233828382;
-
-    double r = x * y;
-
-    precision64_t x1 = x;
-    //precision64_t x1;
-    //x1.set(x);
-
-    precision64_t y1 = y;
-
-    precision64_t r1 = x1 * y1;
-
-    bool fEquals = (x == x1);
-    debug::log(0, "Equals ", fEquals ? "YES" : "NO");
-
-    double dPow = std::pow(x, y);
-
-    double dPow2 = pow(x, y);
-
-    printf("POW %.15f\n", dPow);
-    printf("POW %.15f\n", dPow2);
-
-    printf("Value is %0.15f\n", r);
-    printf("Value is %.15f\n", double(r1));
-
-    precision64_t dPow1 = std::pow(x1, y1);
-
-    printf("dPOW %.15f\n", double(dPow1));
 
     return 0;
 
@@ -369,7 +298,8 @@ int main(int argc, char** argv)
 
         TAO::Ledger::GetSubsidy(i, 0);
     }
-    uint64_t nElapsed = timer.ElapsedMilliseconds();
+
+    nElapsed = timer.ElapsedMilliseconds();
 
     debug::log(0, "Elapsed ", nElapsed, " ms");
 
