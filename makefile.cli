@@ -467,6 +467,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Util_softfloat.o \
         build/Util_string.o \
 		build/Util_version.o \
+		build/Legacy_account.o \
 		build/Legacy_address.o \
 		build/Legacy_addressbook.o \
 		build/Legacy_ambassador.o \
@@ -479,12 +480,15 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Legacy_enum.o \
 		build/Legacy_evaluate.o \
 		build/Legacy_keypool.o \
+		build/Legacy_keypoolentry.o \
 		build/Legacy_keystore.o \
 		build/Legacy_legacy.o \
 		build/Legacy_legacy_minter.o \
+		build/Legacy_masterkey.o \
 		build/Legacy_mempool.o \
 		build/Legacy_merkle.o \
 		build/Legacy_outpoint.o \
+		build/Legacy_output.o \
 		build/Legacy_reservekey.o \
 		build/Legacy_script.o \
 		build/Legacy_secret.o \
@@ -496,6 +500,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Legacy_txout.o \
 		build/Legacy_wallet.o \
 		build/Legacy_walletdb.o \
+		build/Legacy_walletkey.o \
 		build/Legacy_wallettx.o
 
 ###############################################################################

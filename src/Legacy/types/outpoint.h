@@ -42,15 +42,24 @@ namespace Legacy
 		)
 
 
-		/** Constructor.
-		 *
-		 *	Set state to Null.
-		 *
-		 **/
-		OutPoint()
-		{
-			SetNull();
-		}
+		/** Default Constructor. **/
+		OutPoint();
+
+
+		/** Copy Constructor. **/
+		OutPoint(const OutPoint& out);
+
+
+		/** Move Constructor. **/
+		OutPoint(OutPoint&& out) noexcept;
+
+
+		/** Copy assignment. **/
+		OutPoint& operator=(const OutPoint& out);
+
+
+		/** Move assignment. **/
+		OutPoint& operator=(OutPoint&& out) noexcept;
 
 
 		/** Constructor
@@ -59,17 +68,11 @@ namespace Legacy
 		 *	@param[in] nIn The output number of previous transaction.
 		 *
 		 **/
-		OutPoint(uint512_t hashIn, uint32_t nIn)
-		{
-			hash = hashIn;
-			n = nIn;
-		}
+		OutPoint(const uint512_t& hashIn, const uint32_t nIn);
 
 
 		/** Destructor **/
-		~OutPoint()
-		{
-		}
+		virtual ~OutPoint();
 
 
 		/** SetNull

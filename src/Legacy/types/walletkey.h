@@ -12,12 +12,11 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_LEGACY_WALLET_WALLETKEY_H
-#define NEXUS_LEGACY_WALLET_WALLETKEY_H
+#ifndef NEXUS_LEGACY_TYPES_WALLETKEY_H
+#define NEXUS_LEGACY_TYPES_WALLETKEY_H
 
 #include <LLC/include/eckey.h>
 
-#include <Util/include/runtime.h>
 #include <Util/templates/serialize.h>
 
 namespace Legacy
@@ -36,46 +35,58 @@ namespace Legacy
     class WalletKey
     {
     public:
+
         /** Unencrypted private key data **/
         LLC::CPrivKey vchPrivKey;
+
 
         /** timestamp when this wallet key was created. Only relevant if nTimeExpires has a value **/
         uint64_t nTimeCreated;
 
+
         /** Number of seconds after nTimeCreated that this wallet key expires **/
         uint64_t nTimeExpires;
 
+
         /** Space to include comments **/
         std::string strComment;
-
-
-        /** Constructor
-         *
-         *  Sets nTimeCreated to current time if nExpires has a value.
-         *
-         **/
-        WalletKey(const uint64_t nExpires=0)
-        {
-            nTimeCreated = (nExpires ? runtime::unifiedtimestamp() : 0);
-            nTimeExpires = nExpires;
-        }
-
-
-        /** Destructor **/
-        ~WalletKey()
-        {
-        }
 
 
         IMPLEMENT_SERIALIZE
         (
             if(!(nSerType & SER_GETHASH))
                 READWRITE(nSerVersion);
+
             READWRITE(vchPrivKey);
             READWRITE(nTimeCreated);
             READWRITE(nTimeExpires);
             READWRITE(strComment);
-      )
+        )
+        
+
+        /** Default Constructor **/
+        WalletKey(const uint64_t nExpires = 0);
+
+
+        /** Copy Constructor. **/
+        WalletKey(const WalletKey& key);
+
+
+        /** Move Constructor. **/
+        WalletKey(WalletKey&& key) noexcept;
+
+
+        /** Copy Assignment. **/
+        WalletKey& operator=(const WalletKey& key);
+
+
+        /** Move Assignment. **/
+        WalletKey& operator=(WalletKey&& key) noexcept;
+
+
+        /** Default Destructor **/
+        ~WalletKey();
+
     };
 
 }

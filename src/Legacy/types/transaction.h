@@ -79,23 +79,31 @@ namespace Legacy
 
 
 		/** Default Constructor. **/
-		Transaction()
-		: nVersion(1)
-		, nTime(0)
-		, vin()
-		, vout()
-		, nLockTime(0)
-		{
-			SetNull();
-		}
+		Transaction();
+
+
+		/** Copy Constructor. **/
+		Transaction(const Transaction& tx);
+
+
+		/** Move Constructor. **/
+		Transaction(Transaction&& tx) noexcept;
+
+
+		/** Copy assignment. **/
+		Transaction& operator=(const Transaction& tx);
+
+
+		/** Move assignment. **/
+		Transaction& operator=(Transaction&& tx) noexcept;
+
+
+		/** Default destructor. **/
+		virtual ~Transaction();
 
 
 		/** Copy Constructor (From Tritium). **/
 		Transaction(const TAO::Ledger::Transaction& tx);
-
-
-		/** Default destructor. **/
-		virtual ~Transaction() {}
 
 
 		/** Comparison overload (equals). **/

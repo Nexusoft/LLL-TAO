@@ -43,6 +43,7 @@ namespace Legacy
         std::vector<Transaction> vtx;
 
 
+        //serialize methods
         IMPLEMENT_SERIALIZE
         (
             READWRITE(nVersion);
@@ -87,6 +88,10 @@ namespace Legacy
         LegacyBlock& operator=(LegacyBlock&& block) noexcept;
 
 
+        /** Default Destructor **/
+        virtual ~LegacyBlock();
+
+
         /** Clone
         *
         *  Allows polymorphic copying of blocks
@@ -106,10 +111,6 @@ namespace Legacy
 
         /** Copy Constructor. **/
         LegacyBlock(const TAO::Ledger::SyncBlock& block);
-
-
-        /** Default Destructor **/
-        virtual ~LegacyBlock();
 
 
         /** SetNull

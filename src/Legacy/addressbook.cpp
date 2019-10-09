@@ -17,7 +17,7 @@ ________________________________________________________________________________
 #include <Legacy/wallet/addressbook.h>
 #include <Legacy/wallet/wallet.h>
 #include <Legacy/wallet/walletdb.h>
-#include <Legacy/wallet/wallettx.h>
+#include <Legacy/types/wallettx.h>
 
 #include <algorithm>
 #include <exception>
@@ -28,6 +28,22 @@ namespace Legacy
 
     /* Initialize static variables */
     std::mutex AddressBook::cs_addressBook;
+
+
+    /** Move Constructor. **/
+    AddressBook::AddressBook(AddressBook&& book)
+    : mapAddressBook    (std::move(book.mapAddressBook))
+    , addressBookWallet (book.addressBookWallet)
+    {
+    }
+
+
+    /* Constructor */
+    AddressBook::AddressBook(Wallet& walletIn)
+    : mapAddressBook    ( )
+    , addressBookWallet (walletIn)
+    {
+    }
 
 
     /* Adds an address book entry for a given Nexus address and address label. */

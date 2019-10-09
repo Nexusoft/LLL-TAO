@@ -39,6 +39,7 @@ namespace Legacy
     class TrustKey
     {
     public:
+
         /** The Public Key associated with this Trust Key. **/
         std::vector<uint8_t> vchPubKey;
 
@@ -71,23 +72,42 @@ namespace Legacy
         double nStakeRate;
 
 
-        /** Constructor
-         *
-         *  Initializes a null Trust Key.
-         *
-         **/
-        TrustKey()
-        : vchPubKey()
-        , nVersion(1)
-        , hashGenesisBlock(0)
-        , hashGenesisTx(0)
-        , nGenesisTime(0)
-        , hashLastBlock(0)
-        , nLastBlockTime(0)
-        , nStakeRate(0)
-        {
+        /* Define Serialization/Deserialization for Trust Key */
+        IMPLEMENT_SERIALIZE
+        (
+            READWRITE(nVersion);
+            READWRITE(vchPubKey);
+            READWRITE(hashGenesisBlock);
+            READWRITE(hashGenesisTx);
+            READWRITE(nGenesisTime);
+            READWRITE(hashLastBlock);
+            READWRITE(nLastBlockTime);
+            READWRITE(nStakeRate);
+        )
 
-        }
+
+        /** Default Constructor. **/
+        TrustKey();
+
+
+        /** Copy Constructor. **/
+        TrustKey(const TrustKey& key);
+
+
+        /** Move Constructor. **/
+        TrustKey(TrustKey&& key) noexcept;
+
+
+        /** Copy assignment. **/
+        TrustKey& operator=(const TrustKey& key);
+
+
+        /** Move assignment. **/
+        TrustKey& operator=(TrustKey&& key) noexcept;
+
+
+        /** Default destructor. **/
+        ~TrustKey();
 
 
         /** Constructor
@@ -100,32 +120,7 @@ namespace Legacy
          *  @param[in] nTimeIn The nGenesisTime value for this Trust Key
          *
          **/
-        TrustKey(const std::vector<uint8_t> vchPubKeyIn, const uint1024_t hashBlockIn, const uint512_t hashTxIn, const int32_t nTimeIn)
-        : vchPubKey(vchPubKeyIn)
-        , nVersion(1)
-        , hashGenesisBlock(hashBlockIn)
-        , hashGenesisTx(hashTxIn)
-        , nGenesisTime(nTimeIn)
-        , hashLastBlock(0)
-        , nLastBlockTime(0)
-        , nStakeRate(0)
-        {
-
-        }
-
-
-        /* Define Serialization/Deserialization for Trust Key */
-        IMPLEMENT_SERIALIZE
-        (
-            READWRITE(nVersion);
-            READWRITE(vchPubKey);
-            READWRITE(hashGenesisBlock);
-            READWRITE(hashGenesisTx);
-            READWRITE(nGenesisTime);
-            READWRITE(hashLastBlock);
-            READWRITE(nLastBlockTime);
-            READWRITE(nStakeRate);
-      )
+        TrustKey(const std::vector<uint8_t> vchPubKeyIn, const uint1024_t hashBlockIn, const uint512_t hashTxIn, const int32_t nTimeIn);
 
 
         /** SetNull
@@ -216,8 +211,8 @@ namespace Legacy
          *  to calculate stake rate. For v4 blocks, the difference between nTime
          *  and the nGenesisTime of the trust key is used (age of trust key).
          *
-         *  This version of the method takes a LegacyBlock that contains the coinstake transaction. It does not require that 
-         *  the coinstake transaction be contained within the ledger database. Use this when stake rate is needed while 
+         *  This version of the method takes a LegacyBlock that contains the coinstake transaction. It does not require that
+         *  the coinstake transaction be contained within the ledger database. Use this when stake rate is needed while
          *  creating a candidate block for minting.
          *
          *  @param[in] block The block to check against. Does not need to be available in LLD, can be new candidate block.
@@ -237,8 +232,8 @@ namespace Legacy
          *  to calculate stake rate. For v4 blocks, the difference between nTime
          *  and the nGenesisTime of the trust key is used (age of trust key).
          *
-             *  This version of the method takes a BlockState, which requires that the ledger database contain the coinstake 
-             *  transaction. Use this to validate blocks. 
+             *  This version of the method takes a BlockState, which requires that the ledger database contain the coinstake
+             *  transaction. Use this to validate blocks.
              *
          *  @param[in] block The block state to check against. Must be previously connected block stored in LLD.
          *  @param[in] nTime The time to check against. Ignored for v5+ blocks
@@ -255,7 +250,7 @@ namespace Legacy
          *
          *  This version of the method takes a legacy Transaction, which must be a coinstake transaction. The
          *  other two versions of this method retrieve the coinstake and call this one to perform calculations.
-         *  It may also be called directly. 
+         *  It may also be called directly.
          *
          *  @param[in] coinstakeTx Legacy coinstake transaction
          *  @param[in] nVersion The block version of the Proof of Stake block containing this transaction

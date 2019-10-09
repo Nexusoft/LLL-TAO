@@ -25,6 +25,64 @@ ________________________________________________________________________________
 namespace Legacy
 {
 
+	/** Default Constructor. **/
+	TxOut::TxOut()
+	: nValue       (-1)
+	, scriptPubKey ( )
+	{
+	}
+
+
+	/** Copy Constructor. **/
+	TxOut::TxOut(const TxOut& out)
+	: nValue       (out.nValue)
+	, scriptPubKey (out.scriptPubKey)
+	{
+	}
+
+
+	/** Move Constructor. **/
+	TxOut::TxOut(TxOut&& out) noexcept
+	: nValue       (std::move(out.nValue))
+	, scriptPubKey (std::move(out.scriptPubKey))
+	{
+	}
+
+
+	/** Copy assignment. **/
+	TxOut& TxOut::operator=(const TxOut& out)
+	{
+		nValue       = out.nValue;
+		scriptPubKey = out.scriptPubKey;
+
+		return *this;
+	}
+
+
+	/** Move assignment. **/
+	TxOut& TxOut::operator=(TxOut&& out) noexcept
+	{
+		nValue       = std::move(out.nValue);
+		scriptPubKey = std::move(out.scriptPubKey);
+
+		return *this;
+	}
+
+
+	/** Default destructor. **/
+	TxOut::~TxOut()
+	{
+	}
+
+
+	/* Constructor */
+	TxOut::TxOut(const int64_t nValueIn, const Script& scriptPubKeyIn)
+	: nValue       (nValueIn)
+	, scriptPubKey (scriptPubKeyIn)
+	{
+	}
+
+
 	/* Set the object to null state. */
 	void TxOut::SetNull()
 	{

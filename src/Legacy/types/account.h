@@ -12,8 +12,8 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_LEGACY_WALLET_WALLETACCOUNT_H
-#define NEXUS_LEGACY_WALLET_WALLETACCOUNT_H
+#ifndef NEXUS_LEGACY_TYPES_ACCOUNT_H
+#define NEXUS_LEGACY_TYPES_ACCOUNT_H
 
 #include <Util/templates/serialize.h>
 
@@ -35,25 +35,43 @@ namespace Legacy
     class Account
     {
     public:
+
         /** Public key for the account **/
         std::vector<uint8_t> vchPubKey;
 
 
-        /** Constructor
-         *
-         *  Calls SetNull() to initialize the account.
-         *
-         **/
-        Account()
-        {
-            SetNull();
-        }
+        //serialization methods
+        IMPLEMENT_SERIALIZE
+        (
+            if(!(nSerType & SER_GETHASH))
+                READWRITE(nSerVersion);
+
+            READWRITE(vchPubKey);
+        )
 
 
-        /** Destructor **/
-        ~Account()
-        {
-        }
+        /** The default constructor. **/
+        Account();
+
+
+        /** Copy Constructor. **/
+        Account(const Account& account);
+
+
+        /** Move Constructor. **/
+        Account(Account&& account) noexcept;
+
+
+        /** Copy Assignment. **/
+        Account& operator=(const Account& account);
+
+
+        /** Move Assignment. **/
+        Account& operator=(Account&& account) noexcept;
+
+
+        /** Default Destructor **/
+        ~Account();
 
 
         /** SetNull
@@ -61,18 +79,7 @@ namespace Legacy
          *  Clears the current public key value.
          *
          **/
-        void SetNull()
-        {
-            vchPubKey.clear();
-        }
-
-
-        IMPLEMENT_SERIALIZE
-        (
-            if(!(nSerType & SER_GETHASH))
-                READWRITE(nSerVersion);
-            READWRITE(vchPubKey);
-      )
+        void SetNull();
     };
 
 }

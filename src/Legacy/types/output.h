@@ -12,19 +12,15 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_LEGACY_WALLET_OUTPUT_H
-#define NEXUS_LEGACY_WALLET_OUTPUT_H
-
-#include <Legacy/wallet/wallettx.h>
-
-#include <Util/include/debug.h>
-#include <Util/include/string.h> /* for FormatMoney() */
+#ifndef NEXUS_LEGACY_TYPES_OUTPUT_H
+#define NEXUS_LEGACY_TYPES_OUTPUT_H
 
 #include <string>
 
-
 namespace Legacy
 {
+    class WalletTx;
+    
 
      /** @class Output
       *
@@ -36,6 +32,7 @@ namespace Legacy
     class Output
     {
     public:
+
         /** The wallet transaction containing this output **/
         const WalletTx& walletTx;
 
@@ -46,6 +43,26 @@ namespace Legacy
 
         /** Depth of transaction in chain at the time this Output created **/
         uint32_t nDepth;
+
+
+        /** The default constructor. **/
+        Output()                             = delete;
+
+
+        /** Copy Constructor. **/
+        Output(const Output& out);
+
+
+        /** Move Constructor. **/
+        Output(Output&& out) noexcept;
+
+
+        /** Copy Assignment. **/
+        Output& operator=(const Output& out) = delete;
+
+
+        /** Move Assignment. **/
+        Output& operator=(Output&& out)      = delete;
 
 
         /** Constructor
@@ -59,18 +76,11 @@ namespace Legacy
          *  @param[in] nDepthIn The depth of the transaction at time of Output creation
          *
          **/
-        Output(const WalletTx& walletTxIn, const uint32_t iIn, const uint32_t nDepthIn)
-        : walletTx(walletTxIn)
-        , i(iIn)
-        , nDepth(nDepthIn)
-        {
-        }
+        Output(const WalletTx& walletTxIn, const uint32_t iIn, const uint32_t nDepthIn);
 
 
         /** Destructor **/
-        ~Output()
-        {
-        }
+        ~Output();
 
 
         /** ToString
@@ -80,10 +90,7 @@ namespace Legacy
          *  @return String representation of this output
          *
          **/
-        std::string ToString() const
-        {
-            return debug::safe_printstr("Output(", walletTx.GetHash().SubString(10), ", ", i, ", ", nDepth, ") [", FormatMoney(walletTx.vout[i].nValue), "]");
-        }
+        std::string ToString() const;
 
 
         /** print
@@ -91,10 +98,8 @@ namespace Legacy
          *  Print a string representation of this output
          *
          **/
-        inline void print() const
-        {
-            debug::log(0, ToString());
-        }
+        void print() const;
+
     };
 
 }

@@ -12,19 +12,14 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_LEGACY_WALLET_RESERVEKEY_H
-#define NEXUS_LEGACY_WALLET_RESERVEKEY_H
-
-#include <Legacy/wallet/keypool.h>
-#include <Legacy/wallet/wallet.h>
-
-#include <Util/include/args.h>
+#ifndef NEXUS_LEGACY_TYPES_RESERVEKEY_H
+#define NEXUS_LEGACY_TYPES_RESERVEKEY_H
 
 #include <vector>
 
-
 namespace Legacy
 {
+    class Wallet;
 
     /** @class ReserveKey
      *
@@ -36,17 +31,43 @@ namespace Legacy
     class ReserveKey
     {
     protected:
+
         /** Wallet containing the key pool where we want to reserve keys **/
         Wallet& wallet;
 
+
         /** The key pool index of a reserved key in the key pool, or -1 if no key reserved **/
         uint64_t nPoolIndex;
+
 
         /** The public key value of the reserved key. Empty if no key reserved. **/
         std::vector<uint8_t> vchPubKey;
 
 
     public:
+
+
+        /** Default Constructor. **/
+        ReserveKey()                                   = delete;
+
+
+        /** Copy Constructor. **/
+        ReserveKey(const ReserveKey& store)            = delete;
+
+
+        /** Move Constructor. **/
+        ReserveKey(ReserveKey&& store)                 = delete;
+
+
+        /** Copy Assignment. **/
+        ReserveKey& operator=(const ReserveKey& store) = delete;
+
+
+        /** Move Assignment. **/
+        ReserveKey& operator=(ReserveKey&& store)      = delete;
+
+
+
         /** Constructor
          *
          *  Initializes reserve key from wallet pointer.
@@ -56,11 +77,7 @@ namespace Legacy
          *  @deprecated supported for backward compatability
          *
          **/
-        ReserveKey(Wallet* pWalletIn)
-        : wallet(*pWalletIn)
-        , nPoolIndex(-1)
-        , vchPubKey()
-        { }
+        ReserveKey(Wallet* pWalletIn);
 
 
         /** Constructor
@@ -70,11 +87,7 @@ namespace Legacy
          *  @param[in] walletIn The wallet where keys will be reserved
          *
          **/
-        ReserveKey(Wallet& walletIn)
-        : wallet(walletIn)
-        , nPoolIndex(-1)
-        , vchPubKey()
-        { }
+        ReserveKey(Wallet& walletIn);
 
 
         /** Destructor
@@ -82,25 +95,7 @@ namespace Legacy
          *  Returns any reserved key to the key pool.
          *
          **/
-        ~ReserveKey()
-        {
-            if(!config::fShutdown.load())
-                ReturnKey();
-        }
-
-
-        /* If you copy a ReserveKey that has a key reserved, then keep/return it in one copy, the other
-         * copy becomes invalid but could still be used. For example, it would be a problem if KeepKey()
-         * were called on one copy, then ReturnKey() called on the other. The key would be put back into
-         * the key pool even though it had been used. All of this is why copy disallowed.
-         */
-
-        /** Copy constructor deleted. No copy allowed **/
-        ReserveKey(const ReserveKey&) = delete;
-
-
-        /** Copy assignment operator deleted. No copy allowed **/
-        ReserveKey& operator= (const ReserveKey& rhs) = delete;
+        ~ReserveKey();
 
 
         /** GetReservedKey

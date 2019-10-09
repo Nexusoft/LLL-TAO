@@ -39,8 +39,10 @@ namespace Legacy
     /** Map to store private keys, keyed by Base 58-encoded address. bool=true indicates compressed key **/
     typedef std::map<NexusAddress, std::pair<LLC::CSecret, bool> > KeyMap;
 
+
     /** Map to store scripts, keyed by 256 bit script hash **/
     typedef std::map<uint256_t, Script > ScriptMap;
+
 
     /** @class BasicKeyStore
      *
@@ -64,18 +66,30 @@ namespace Legacy
 
     public:
 
-        /* Default Constructor */
-        BasicKeyStore()
-        : cs_basicKeyStore()
-        , mapKeys()
-        , mapScripts()
-        {
-        }
 
-        /* Default Destructor */
-        virtual ~BasicKeyStore()
-        {
-        }
+        /** The default constructor. **/
+        BasicKeyStore();
+
+
+        /** Copy Constructor. **/
+        BasicKeyStore(const BasicKeyStore& store)            = delete;
+
+
+        /** Move Constructor. **/
+        BasicKeyStore(BasicKeyStore&& store)                 = delete;
+
+
+        /** Copy Assignment. **/
+        BasicKeyStore& operator=(const BasicKeyStore& store) = delete;
+
+
+        /** Move Assignment. **/
+        BasicKeyStore& operator=(BasicKeyStore&& store)      = delete;
+
+
+        /** Default Destructor **/
+        virtual ~BasicKeyStore();
+
 
         /** AddKey
          *
@@ -148,7 +162,7 @@ namespace Legacy
          *  @return true if script successfully retrieved
          *
          **/
-        virtual bool GetScript(const uint256_t& hash, Script& redeemScriptOut) const override;
+        virtual bool GetScript(const uint256_t& hash, Script &redeemScriptOut) const override;
 
 
         /** HaveScript

@@ -27,9 +27,27 @@ namespace Legacy
     public:
 
         /** Default Constructor. **/
-        NexusSecret()
-        {
-        }
+        NexusSecret();
+        
+
+        /** Copy Constructor. **/
+        NexusSecret(const NexusSecret& secret);
+
+
+        /** Move Constructor. **/
+        NexusSecret(NexusSecret&& secret) noexcept;
+
+
+        /** Copy assignment. **/
+        NexusSecret& operator=(const NexusSecret& secret);
+
+
+        /** Move assignment. **/
+        NexusSecret& operator=(NexusSecret&& secret) noexcept;
+
+
+        /** Destructor **/
+        virtual ~NexusSecret();
 
 
         /** Constructor
@@ -41,12 +59,6 @@ namespace Legacy
          *
          **/
         NexusSecret(const LLC::CSecret& vchSecret, bool fCompressed);
-
-
-        /** Destructor **/
-        virtual ~NexusSecret()
-        {
-        }
 
 
         /** SetSecret

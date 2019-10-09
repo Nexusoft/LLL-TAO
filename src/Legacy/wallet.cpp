@@ -34,8 +34,8 @@ ________________________________________________________________________________
 #include <Legacy/types/script.h>
 
 #include <Legacy/wallet/crypter.h>
-#include <Legacy/wallet/output.h>
-#include <Legacy/wallet/reservekey.h>
+#include <Legacy/types/output.h>
+#include <Legacy/types/reservekey.h>
 #include <Legacy/wallet/wallet.h>
 #include <Legacy/wallet/walletdb.h>
 
@@ -43,6 +43,7 @@ ________________________________________________________________________________
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
 #include <Util/include/signals.h>
+#include <Util/include/string.h>
 
 #include <openssl/rand.h>   // For RAND_bytes
 
@@ -67,21 +68,21 @@ namespace Legacy
 
     /** Constructor **/
     Wallet::Wallet()
-    : CryptoKeyStore()
-    , nWalletVersion(FEATURE_BASE)
-    , nWalletMaxVersion(FEATURE_BASE)
-    , fFileBacked(false)
-    , fLoaded(false)
-    , strWalletFile("")
-    , mapMasterKeys()
-    , nMasterKeyMaxID(0)
-    , addressBook(AddressBook(*this))
-    , keyPool(KeyPool(*this))
-    , vchDefaultKey()
-    , vchTrustKey()
-    , nWalletUnlockTime(0)
-    , cs_wallet()
-    , mapWallet()
+    : CryptoKeyStore    ( )
+    , nWalletVersion    (FEATURE_BASE)
+    , nWalletMaxVersion (FEATURE_BASE)
+    , fFileBacked       (false)
+    , fLoaded           (false)
+    , strWalletFile     ("")
+    , mapMasterKeys     ( )
+    , nMasterKeyMaxID   (0)
+    , addressBook       (AddressBook(*this))
+    , keyPool           (KeyPool(*this))
+    , vchDefaultKey     ( )
+    , vchTrustKey       ( )
+    , nWalletUnlockTime (0)
+    , cs_wallet         ( )
+    , mapWallet         ( )
     {
     }
 

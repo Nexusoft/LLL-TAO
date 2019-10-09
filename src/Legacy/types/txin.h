@@ -56,17 +56,28 @@ namespace Legacy
 		)
 
 
-		/** Default Constructor
-		 *
-		 *	Sets the sequence to numeric limits of 32 bit uint32_t
-		 *
-		 **/
-		TxIn()
-        : prevout()
-        , scriptSig()
-        , nSequence(std::numeric_limits<uint32_t>::max())
-		{
-		}
+		/** Default Constructor. **/
+		TxIn();
+
+
+		/** Copy Constructor. **/
+		TxIn(const TxIn& in);
+
+
+		/** Move Constructor. **/
+		TxIn(TxIn&& in) noexcept;
+
+
+		/** Copy assignment. **/
+		TxIn& operator=(const TxIn& in);
+
+
+		/** Move assignment. **/
+		TxIn& operator=(TxIn&& in) noexcept;
+
+
+		/** Default destructor. **/
+		~TxIn();
 
 
 		/** Constructor
@@ -76,12 +87,7 @@ namespace Legacy
 		 *	@param[in] nSequenceIn The sequence number (default uint32_t numeric limits)
 		 *
 		 **/
-		explicit TxIn(OutPoint prevoutIn, Script scriptSigIn=Script(), uint32_t nSequenceIn=std::numeric_limits<uint32_t>::max())
-		{
-			prevout = prevoutIn;
-			scriptSig = scriptSigIn;
-			nSequence = nSequenceIn;
-		}
+		explicit TxIn(const OutPoint& prevoutIn, Script scriptSigIn=Script(), uint32_t nSequenceIn=std::numeric_limits<uint32_t>::max());
 
 
 		/** Constructor
@@ -92,13 +98,7 @@ namespace Legacy
 		 *	@param[in] nSequenceIn The sequence number (default uint32_t numeric limits)
 		 *
 		 **/
-		TxIn(uint512_t hashPrevTx, uint32_t nOut, Script scriptSigIn=Script(), uint32_t nSequenceIn=std::numeric_limits<uint32_t>::max());
-
-
-		/** Destructor **/
-		~TxIn()
-		{
-		}
+		TxIn(const uint512_t& hashPrevTx, const uint32_t nOut, Script scriptSigIn=Script(), uint32_t nSequenceIn=std::numeric_limits<uint32_t>::max());
 
 
 		/** Comparison Operator overload

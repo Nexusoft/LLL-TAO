@@ -12,14 +12,12 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_LEGACY_WALLET_KEYPOOLENTRY_H
-#define NEXUS_LEGACY_WALLET_KEYPOOLENTRY_H
+#ifndef NEXUS_LEGACY_TYPES_KEYPOOLENTRY_H
+#define NEXUS_LEGACY_TYPES_KEYPOOLENTRY_H
 
-#include <Util/include/runtime.h>
 #include <Util/templates/serialize.h>
 
 #include <vector>
-
 
 namespace Legacy
 {
@@ -38,22 +36,48 @@ namespace Legacy
     class KeyPoolEntry
     {
     public:
-        /** timestamp when key pool entry created **/
+
+        /** Timestamp when key pool entry created **/
         uint64_t nTime;
+
 
         /** Public key for this key pool entry **/
         std::vector<uint8_t> vchPubKey;
 
 
-        /** Constructor
-         *
-         *  Initializes a key pool entry with an empty public key.
-         *
-         **/
-        KeyPoolEntry()
-        {
-            nTime = runtime::unifiedtimestamp();
-        }
+        //serialization methods
+        IMPLEMENT_SERIALIZE
+        (
+            if(!(nSerType & SER_GETHASH))
+                READWRITE(nSerVersion);
+
+            READWRITE(nTime);
+            READWRITE(vchPubKey);
+        )
+
+
+        /** The default constructor. **/
+        KeyPoolEntry();
+
+
+        /** Copy Constructor. **/
+        KeyPoolEntry(const KeyPoolEntry& entry);
+
+
+        /** Move Constructor. **/
+        KeyPoolEntry(KeyPoolEntry&& entry) noexcept;
+
+
+        /** Copy Assignment. **/
+        KeyPoolEntry& operator=(const KeyPoolEntry& entry);
+
+
+        /** Move Assignment. **/
+        KeyPoolEntry& operator=(KeyPoolEntry&& entry) noexcept;
+
+
+        /** Default Destructor **/
+        ~KeyPoolEntry();
 
 
         /** Constructor
@@ -63,26 +87,8 @@ namespace Legacy
          *  @param[in] vchPubKeyIn The public key to use for initialization
          *
          **/
-        KeyPoolEntry(const std::vector<uint8_t>& vchPubKeyIn)
-        {
-            nTime = runtime::unifiedtimestamp();
-            vchPubKey = vchPubKeyIn;
-        }
+        KeyPoolEntry(const std::vector<uint8_t>& vchPubKeyIn);
 
-
-        /** Destructor **/
-        ~KeyPoolEntry()
-        {
-        }
-
-
-        IMPLEMENT_SERIALIZE
-        (
-            if(!(nSerType & SER_GETHASH))
-                READWRITE(nSerVersion);
-            READWRITE(nTime);
-            READWRITE(vchPubKey);
-      )
     };
 
 }
