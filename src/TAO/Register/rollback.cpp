@@ -437,10 +437,12 @@ namespace TAO
                             TAO::Register::Address hashTo;
                             debit >> hashTo;
 
-                            /* If the debit has not been made to an account then it will be a tokenized asset and could have
-                               partial credits.  Therefore we need check the credit amount with respect to the other claimed amounts
-                               and then subtract this credit from the current claimed amount. */
-                            if(!hashTo.IsAccount())
+                            bool fIsReturn = (hashFrom == hashAddress); //credit is return to self if true
+
+                            /* If the debit is to a tokenized asset, it could have partial credits. Also, a return to self will
+                               have recorded amount as claimed. For these cases, we need check the credit amount with respect
+                               to the other claimed amounts and then subtract this credit from the current claimed amount. */
+                            if(hashTo.IsObject() || fIsReturn)
                             {
                                 /* Get the partial amount. */
                                 uint64_t nClaimed = 0;
