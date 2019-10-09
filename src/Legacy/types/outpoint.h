@@ -38,7 +38,8 @@ namespace Legacy
 		//the serizliation methods
 		IMPLEMENT_SERIALIZE
 		(
-			READWRITE(FLATDATA(*this));
+			READWRITE(hash);
+			READWRITE(n);
 		)
 
 

@@ -12,6 +12,8 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
+#ifndef NEXUS_LEGACY_TYPES_COINBASE_H
+#define NEXUS_LEGACY_TYPES_COINBASE_H
 
 #include <map>
 #include <cstdint>
@@ -120,3 +122,5 @@ namespace Legacy
 
 	};
 }
+
+#endif

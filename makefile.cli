@@ -256,8 +256,6 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLC_SK_skein.o \
 		build/LLC_SK_skein_block.o \
 		build/LLC_sha3.o \
-		build/LLC_skein.o \
-		build/LLC_skein_block.o \
 		build/LLC_blake2b.o \
 		build/LLC_argon2.o \
 		build/LLC_core.o \

@@ -32,7 +32,7 @@ namespace Legacy
 
     /** Default Constructor **/
     Script::Script()
-    : std::vector<uint8_t>()
+    : std::vector<uint8_t>( )
     {
     }
 
@@ -46,8 +46,9 @@ namespace Legacy
 
     /** Move Constructor **/
     Script::Script(Script&& b) noexcept
-    : std::vector<uint8_t>(std::move(b))
+    : std::vector<uint8_t>( )
     {
+        swap(b);
     }
 
 
@@ -63,7 +64,7 @@ namespace Legacy
     /** Move Assignment **/
     Script& Script::operator=(Script&& b) noexcept
     {
-        std::vector<uint8_t>::operator=(std::move(b));
+        swap(b);
 
         return *this;
     }

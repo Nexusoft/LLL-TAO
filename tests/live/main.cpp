@@ -191,6 +191,15 @@ public:
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
+    uint64_t nTest  = 555;
+    uint64_t nTest1 = 595;
+
+    uint512_t hashCheck = LLC::SK512(BEGIN(nTest), END(nTest1));
+
+    debug::log(0, "Hash ", hashCheck.ToString());
+
+    return 0;
+
     cv::softdouble a = cv::softdouble(5.55555);
 
     debug::log(0, "Soft Double ", double(a));
@@ -216,8 +225,6 @@ int main(int argc, char** argv)
     block2.print();
 
     return 0;
-
-    uint64_t nTest = 555;
 
     nTest = std::max(nTest, uint64_t(888));
 
