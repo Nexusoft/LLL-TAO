@@ -39,7 +39,7 @@ namespace TAO
         json::json Objects::ListTransactions(const json::json& params, bool fHelp)
         {
             /* JSON return value. */
-            json::json ret;
+            json::json ret = json::json::array();
 
             /* Get the Genesis ID. */
             uint256_t hashGenesis = 0;
