@@ -374,7 +374,7 @@ namespace TAO
 
 
         /* Sign the block with the key that found the block. */
-        bool Block::GenerateSignature(const LLC::FLKey& key)
+        bool Block::GenerateSignature(LLC::FLKey& key)
         {
             return key.Sign(GetHash().GetBytes(), vchBlockSig);
         }

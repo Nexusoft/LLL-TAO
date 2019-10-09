@@ -299,7 +299,7 @@ namespace TAO
              *  Sign the block with the key that found the block.
              *
              */
-            bool GenerateSignature(const LLC::FLKey& key);
+            bool GenerateSignature(LLC::FLKey& key);
 
 
             /** Verify Signature

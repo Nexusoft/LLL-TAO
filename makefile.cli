@@ -265,13 +265,16 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLC_ref.o \
 		build/LLC_thread.o \
 		build/LLC_aes.o \
-		build/LLC_falcon-enc.o \
-		build/LLC_falcon-fft.o \
-		build/LLC_falcon-keygen.o \
-		build/LLC_falcon-sign.o \
-		build/LLC_falcon-vrfy.o \
-		build/LLC_frng.o \
+		build/LLC_codec.o \
+		build/LLC_common.o \
+		build/LLC_falcon.o \
+		build/LLC_fft.o \
+		build/LLC_fpr.o \
+		build/LLC_keygen.o \
+		build/LLC_rng.o \
 		build/LLC_shake.o \
+		build/LLC_sign.o \
+		build/LLC_vrfy.o \
         build/LLC_x509_cert.o \
         build/LLD_address.o \
         build/LLD_ledger.o \

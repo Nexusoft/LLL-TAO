@@ -21,6 +21,8 @@ ________________________________________________________________________________
 #include <LLC/types/uint1024.h>
 #include <LLC/types/typedef.h>
 
+#include <LLC/falcon/falcon.h>
+
 namespace LLC
 {
 
@@ -58,6 +60,10 @@ namespace LLC
 
         /** Flag to Determine if the Key has been Compressed. **/
         bool fCompressed;
+
+
+        /** FALCON context. **/
+        shake256_context ctx;
 
 
     public:
@@ -193,7 +199,7 @@ namespace LLC
          *  @return True if the Signature was created successfully.
          *
          **/
-        bool Sign(const std::vector<uint8_t>& vchData, std::vector<uint8_t>& vchSig) const;
+        bool Sign(const std::vector<uint8_t>& vchData, std::vector<uint8_t>& vchSig);
 
 
         /** Verify
