@@ -558,10 +558,18 @@ namespace TAO
                         /* Ensure this wasn't a forced transfer (which requires no Claim) */
                         if(nType == TAO::Operation::TRANSFER::FORCE)
                             continue;
+                        
+                        /* Check that the sender has not claimed it back (voided) */
+                        TAO::Register::State state;
+                        if(!LLD::Register->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
+                            continue;
+
+                        /* Make sure the register claim is in SYSTEM pending from a transfer.  */
+                        if(state.hashOwner != 0)
+                            continue;
 
                         /* Check to see if this transfer has already been claimed by the recipient or us */
-                        if(LLD::Ledger->HasProof(hashProof, tx.GetHash(), nContract, TAO::Ledger::FLAGS::MEMPOOL)
-                        || LLD::Ledger->HasProof(hashGenesis, tx.GetHash(), nContract, TAO::Ledger::FLAGS::MEMPOOL))
+                        if(LLD::Ledger->HasProof(hashRegister, tx.GetHash(), nContract, TAO::Ledger::FLAGS::MEMPOOL))
                             continue;
 
                         /* Populate the temp void contract */
