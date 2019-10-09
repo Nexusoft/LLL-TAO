@@ -461,6 +461,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Util_filesystem.o \
 		build/Util_memory.o \
 		build/Util_signals.o \
+		build/Util_softfloat.o \
         build/Util_string.o \
 		build/Util_version.o \
 		build/Legacy_address.o \
