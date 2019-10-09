@@ -857,7 +857,7 @@ namespace TAO
                     LLC::FLKey key;
 
                     /* Set the secret key. */
-                    if(!key.SetSecret(vchSecret, true))
+                    if(!key.SetSecret(vchSecret))
                         return;
 
                     /* Calculate the next hash. */
@@ -918,7 +918,7 @@ namespace TAO
                     LLC::FLKey key;
 
                     /* Set the secret key. */
-                    if(!key.SetSecret(vchSecret, true))
+                    if(!key.SetSecret(vchSecret))
                         return false;
 
                     /* Set the public key. */

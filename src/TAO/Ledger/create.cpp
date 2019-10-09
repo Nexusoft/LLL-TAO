@@ -731,7 +731,7 @@ namespace TAO
                         LLC::FLKey key;
 
                         /* Set the secret parameter. */
-                        if(!key.SetSecret(vchSecret, true))
+                        if(!key.SetSecret(vchSecret))
                             continue;
 
                         /* Generate the signature. */

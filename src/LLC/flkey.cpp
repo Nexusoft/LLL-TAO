@@ -26,7 +26,6 @@ namespace LLC
     : vchPubKey   ( )
     , vchPrivKey  ( )
     , fSet        (false)
-    , fCompressed (false)
     , ctx         ( )
     {
 
@@ -37,7 +36,6 @@ namespace LLC
     : vchPubKey   (b.vchPubKey)
     , vchPrivKey  (b.vchPrivKey)
     , fSet        (b.fSet)
-    , fCompressed (b.fCompressed)
     , ctx         (b.ctx)
     {
     }
@@ -48,7 +46,6 @@ namespace LLC
     : vchPubKey   (std::move(b.vchPubKey))
     , vchPrivKey  (std::move(b.vchPrivKey))
     , fSet        (std::move(b.fSet))
-    , fCompressed (std::move(b.fCompressed))
     , ctx         (std::move(b.ctx))
     {
     }
@@ -60,7 +57,6 @@ namespace LLC
         vchPubKey   = b.vchPubKey;
         vchPrivKey  = b.vchPrivKey;
         fSet        = b.fSet;
-        fCompressed = b.fCompressed;
         ctx         = b.ctx;
 
         return *this;
@@ -73,7 +69,6 @@ namespace LLC
         vchPubKey   = std::move(b.vchPubKey);
         vchPrivKey  = std::move(b.vchPrivKey);
         fSet        = std::move(b.fSet);
-        fCompressed = std::move(b.fCompressed);
         ctx         = std::move(b.ctx);
 
         return *this;
@@ -95,8 +90,6 @@ namespace LLC
     /* Reset internal key data. */
     void FLKey::Reset()
     {
-        fCompressed = false;
-
         vchPubKey.clear();
         vchPrivKey.clear();
 
@@ -111,19 +104,9 @@ namespace LLC
     }
 
 
-    /* Flag to determine if the key is in compressed form. */
-    bool FLKey::IsCompressed() const
-    {
-        return fCompressed;
-    }
-
-
     /* Create a new key from the Falcon random PRNG seeds */
-    void FLKey::MakeNewKey(bool fCompressedIn)
+    void FLKey::MakeNewKey()
     {
-        /* Flag if the key is compressed. */
-        fCompressed = fCompressedIn;
-
         /* Generate random seed from system. */
         if(shake256_init_prng_from_system(&ctx))
         {
@@ -154,11 +137,8 @@ namespace LLC
 
 
     /* Set the secret phrase / key used in the private key. */
-    bool FLKey::SetSecret(const CSecret& vchSecret, bool fCompressedIn)
+    bool FLKey::SetSecret(const CSecret& vchSecret)
     {
-        /* Flag if the key is compressed. */
-        fCompressed = fCompressedIn;
-
         /* Create the shake256 context. */
         shake256_init_prng_from_seed(&ctx, &vchSecret[0], vchSecret.size());
 

@@ -58,10 +58,6 @@ namespace LLC
         bool fSet;
 
 
-        /** Flag to Determine if the Key has been Compressed. **/
-        bool fCompressed;
-
-
         /** FALCON context. **/
         shake256_context ctx;
 
@@ -125,7 +121,7 @@ namespace LLC
          *  @param[in] fCompressed Flag whether to make key in compressed form.
          *
          **/
-        void MakeNewKey(bool fCompressedIn);
+        void MakeNewKey();
 
 
         /** SetPrivKey
@@ -145,12 +141,11 @@ namespace LLC
          *  Set the secret phrase / key used in the private key.
          *
          *  @param[in] vchSecret the secret phrase in byte code in secure allocator.
-         *  @param[in] fCompressed flag whether key is compressed or not.
          *
          *  @return True if the key was successfully created.
          *
          **/
-        bool SetSecret(const CSecret& vchSecret, bool fCompressedIn = false);
+        bool SetSecret(const CSecret& vchSecret);
 
 
         /** GetPrivKey

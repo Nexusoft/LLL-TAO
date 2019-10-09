@@ -918,7 +918,7 @@ namespace LLP
                   LLC::FLKey key;
 
                   /* Set the secret parameter. */
-                  if(!key.SetSecret(vchSecret, true))
+                  if(!key.SetSecret(vchSecret))
                       return debug::error(FUNCTION, "FLKey::SetSecret failed for ", hashMerkleRoot.SubString());
 
                   /* Generate the signature. */

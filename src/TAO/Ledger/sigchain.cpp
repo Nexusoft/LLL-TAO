@@ -371,7 +371,7 @@ namespace TAO
                     LLC::FLKey key;
 
                     /* Set the secret key. */
-                    if(!key.SetSecret(vchSecret, true))
+                    if(!key.SetSecret(vchSecret))
                         throw debug::exception(FUNCTION, "failed to set falcon secret key");
 
                     /* Calculate the next hash. */
@@ -466,7 +466,7 @@ namespace TAO
                     LLC::FLKey key;
 
                     /* Set the secret key. */
-                    if(!key.SetSecret(vchSecret, true))
+                    if(!key.SetSecret(vchSecret))
                         throw debug::exception(FUNCTION, "failed to set falcon secret key");
 
                     /* Generate the public key */
