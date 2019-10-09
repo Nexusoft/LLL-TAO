@@ -159,12 +159,24 @@ namespace TAO
                 return debug::error(FUNCTION, "disk index inconsistent with best chain");
 
             /* Rewind the chain a total number of blocks. */
-            if(config::GetArg("-forkblocks", 0) > 0)
+            int64_t nForkblocks = config::GetArg("-forkblocks", 0);
+            if(nForkblocks > 0)
             {
                 /* Rollback the chain a given number of blocks. */
                 TAO::Ledger::BlockState state = stateBest.load();
-                for(int i = 0; i < config::GetArg("-forkblocks", 0); ++i)
+
+                debug::log(0, FUNCTION, "forkblocks requested removal of ", nForkblocks, " blocks");
+
+                for(int i = 0; i < nForkblocks; ++i)
+                {
+                    if(state.hashPrevBlock == 0)
+                        break; //Stop if reach genesis
+
                     state = state.Prev();
+
+                    if(!state)
+                        return debug::error(FUNCTION, "failed to find ancestor block");
+                }
 
                 /* Set the best to older block. */
                 LLD::TxnBegin();

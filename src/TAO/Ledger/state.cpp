@@ -615,12 +615,15 @@ namespace TAO
                 /* Log if there are blocks to disconnect. */
                 if(vDisconnect.size() > 0)
                 {
-                    debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "REORGANIZE:", ANSI_COLOR_RESET, " Disconnect ", vDisconnect.size(),
-                        " blocks; ", fork.GetHash().SubString(),
+                    debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "REORGANIZE:", ANSI_COLOR_RESET,
+                        " Disconnect ", vDisconnect.size(), " blocks; ", fork.GetHash().SubString(),
                         "..",  ChainState::stateBest.load().GetHash().SubString());
 
-                    debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "REORGANIZE:", ANSI_COLOR_RESET," Connect ", vConnect.size(), " blocks; ", fork.GetHash().SubString(),
-                        "..", hash.SubString());
+                    /* Keep this in vDisconnect check, or it will print every block, but only print on reorg if have at least 1 */
+                    if(vConnect.size() > 0)
+                        debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "REORGANIZE:", ANSI_COLOR_RESET,
+                            " Connect ", vConnect.size(), " blocks; ", fork.GetHash().SubString(),
+                            "..", hash.SubString());
                 }
 
                 /* Keep track of mempool transactions to delete. */
