@@ -246,16 +246,16 @@ namespace TAO
 
         /** VoidContract
         *
-        *  Creates a void contract for the specified transaction and adds it to the txVoid transaction
+        *  Creates a void contract for the specified transaction
         *
         *  @param[in] contract The contract to void
         *  @param[in] the ID of the contract in the transaction
-        *  @param[out] txVoid The transaction to add the void contract to
+        *  @param[out] voidContract The void contract to be created
         * 
-        *  @return True if a void contract was added.
+        *  @return True if a void contract was created.
         *
         **/
-        bool VoidContract(const TAO::Operation::Contract& contract, const uint32_t nContract, TAO::Ledger::Transaction& txVoid);
+        bool VoidContract(const TAO::Operation::Contract& contract, const uint32_t nContract, TAO::Operation::Contract &voidContract);
 
 
     }

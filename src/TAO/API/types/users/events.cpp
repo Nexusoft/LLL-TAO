@@ -26,6 +26,7 @@ ________________________________________________________________________________
 #include <TAO/Register/include/constants.h>
 #include <TAO/Register/include/names.h>
 #include <TAO/Register/include/unpack.h>
+#include <TAO/Register/include/build.h>
 #include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/include/create.h>
@@ -53,18 +54,6 @@ namespace TAO
 {
     namespace API
     {
-
-        // TODO:
-        // get identifer from notification (you need to add identifier to notification JSON)
-        // check event processor config to see if we have an account or register address configured for identifier X
-        // if so then use that to process this debit...
-        //2 = jack:savings OR 2=asdfasdfsdfsdf
-        // if they have configured a register address then set hashTo from that address
-        // if they have configured an account name then we need to generate the register address from that name
-        //  - register address is namespacehash:token:name
-        //  - namespacehash is argon2 hash of username
-        //  - Look at Names::ResolveAddress() method as you can probably use that
-
         /*  Background thread to handle/suppress sigchain notifications. */
         void Users::EventsThread()
         {
@@ -259,7 +248,6 @@ namespace TAO
                     TAO::Register::Address hashFrom;
                     TAO::Register::Address hashTo;
 
-
                     uint64_t nAmount = 0;
                     uint32_t nOut = 0;
 
@@ -268,399 +256,508 @@ namespace TAO
                     if(!TAO::Ledger::CreateTransaction(user, strPIN, txout))
                         throw APIException(-17, "Failed to create transaction");
 
-                    /* Loop through each contract in the notification queue. */
-                    for(const auto& contract : vContracts)
+                    try
                     {
-                        /* Ensure we don't breach the max contracts/per transaction, leaving room for the fee contract */
-                        if(txout.Size() == TAO::Ledger::MAX_TRANSACTION_CONTRACTS -1)
-                            break;
+                        /* Lock the mempool at this point so that we can start processing contracts inside a mempool transaction */
+                        RLOCK(TAO::Ledger::mempool.MUTEX);
+                        
+                        /* Start a ACID transaction (to be disposed). */
+                        LLD::TxnBegin(TAO::Ledger::FLAGS::MEMPOOL);
 
-                        /* Get a reference to the contract */
-                        const TAO::Operation::Contract& refContract = std::get<0>(contract);
+                        /* Temporary map for pre-states to be passed into the sanitization Build() for each contract. */
+                        std::map<uint256_t, TAO::Register::State> mapStates;
 
-                        /* Set the transaction hash. */
-                        hashTx = refContract.Hash();
-
-                        /* Get the maturity for this transaction. */
-                        bool fMature = LLD::Ledger->ReadMature(hashTx);
-
-                        /* Reset the contract operation stream. */
-                        refContract.Reset();
-
-                        /* Get the opcode. */
-                        uint8_t OPERATION;
-                        refContract >> OPERATION;
-
-                        /* Check the opcodes for debit, coinbase or transfers. */
-                        switch (OPERATION)
+                        /* Loop through each contract in the notification queue. */
+                        for(const auto& contract : vContracts)
                         {
-                            /* Check for Debits. */
-                            case Operation::OP::DEBIT:
+                            /* Ensure we don't breach the max contracts/per transaction, leaving room for the fee contract */
+                            if(txout.Size() == TAO::Ledger::MAX_TRANSACTION_CONTRACTS -1)
+                                break;
+
+                            /* Get a reference to the contract */
+                            const TAO::Operation::Contract& refContract = std::get<0>(contract);
+
+                            /* Set the transaction hash. */
+                            hashTx = refContract.Hash();
+
+                            /* Get the maturity for this transaction. */
+                            bool fMature = LLD::Ledger->ReadMature(hashTx);
+
+                            /* Reset the contract operation stream. */
+                            refContract.Reset();
+
+                            /* Get the opcode. */
+                            uint8_t OPERATION;
+                            refContract >> OPERATION;
+
+                            /* Check the opcodes for debit, coinbase or transfers. */
+                            switch (OPERATION)
                             {
-                                /* Check to see if there is a proof for the contract, indicating this is a split dividend payment
-                                   and the hashProof is the account the proves the ownership of it*/
-                                TAO::Register::Address hashProof;
-                                hashProof = std::get<2>(contract);
-
-                                if(hashProof != 0)
+                                /* Check for Debits. */
+                                case Operation::OP::DEBIT:
                                 {
-                                    /* If this is a split dividend payment then we can only (currently) process it if it is NXS.
-                                       Therefore we need to retrieve the account/token the debit is from so that we can check */
+                                    /* Check to see if there is a proof for the contract, indicating this is a split dividend payment
+                                    and the hashProof is the account the proves the ownership of it*/
+                                    TAO::Register::Address hashProof;
+                                    hashProof = std::get<2>(contract);
 
-                                    /* Get the token/account we are debiting from */
-                                    refContract >> hashFrom;
-                                    TAO::Register::Object from;
-                                    if(!LLD::Register->ReadState(hashFrom, from))
-                                        continue;
-
-                                    /* Parse the object register. */
-                                    if(!from.Parse())
-                                        continue;
-
-                                    /* Check the token type */
-                                    if(from.get<uint256_t>("token") != 0)
+                                    if(hashProof != 0)
                                     {
-                                        debug::log(2, FUNCTION, "Skipping split dividend DEBIT as token is not NXS");
+                                        /* If this is a split dividend payment then we can only (currently) process it if it is NXS.
+                                        Therefore we need to retrieve the account/token the debit is from so that we can check */
+
+                                        /* Get the token/account we are debiting from */
+                                        refContract >> hashFrom;
+                                        TAO::Register::Object from;
+                                        if(!LLD::Register->ReadState(hashFrom, from))
+                                            continue;
+
+                                        /* Parse the object register. */
+                                        if(!from.Parse())
+                                            continue;
+
+                                        /* Check the token type */
+                                        if(from.get<uint256_t>("token") != 0)
+                                        {
+                                            debug::log(2, FUNCTION, "Skipping split dividend DEBIT as token is not NXS");
+                                            continue;
+                                        }
+
+                                        /* If this is a NXS debit then process the credit to the default account */
+                                        hashTo = defaultAccount.get<uint256_t>("address");
+
+                                        /* Read the object register, which is the proof account . */
+                                        TAO::Register::Object account;
+                                        if(!LLD::Register->ReadState(hashProof, account, TAO::Ledger::FLAGS::MEMPOOL))
+                                            continue;
+
+                                        /* Parse the object register. */
+                                        if(!account.Parse())
+                                            continue;
+
+                                        /* Check that this is an account */
+                                        if(account.Standard() != TAO::Register::OBJECTS::ACCOUNT )
+                                            continue;
+
+                                        /* Get the token address */
+                                        TAO::Register::Address hashToken = account.get<uint256_t>("token");
+
+                                        /* Read the token register. */
+                                        TAO::Register::Object token;
+                                        if(!LLD::Register->ReadState(hashToken, token, TAO::Ledger::FLAGS::MEMPOOL))
+                                            continue;
+
+                                        /* Parse the object register. */
+                                        if(!token.Parse())
+                                            continue;
+
+                                        /* Get the token supply so that we an determine our share */
+                                        uint64_t nSupply = token.get<uint64_t>("supply");
+
+                                        /* Get the balance of our token account */
+                                        uint64_t nBalance = account.get<uint64_t>("balance");
+
+                                        /* Get the amount from the debit contract*/
+                                        uint64_t nAmount = 0;
+                                        TAO::Register::Unpack(refContract, nAmount);
+
+                                        /* Calculate the partial debit amount that this token holder is entitled to. */
+                                        uint64_t nPartial = (nAmount * nBalance) / nSupply;
+
+                                        /* Submit the payload object for the split dividend. Notice we use the hashProof */
+                                        TAO::Operation::Contract credit;
+                                        credit << uint8_t(TAO::Operation::OP::CREDIT);
+                                        credit << hashTx << std::get<1>(contract);
+                                        credit << hashTo << hashProof;
+                                        credit << nPartial;
+
+                                        /* Bind the contract to the tx so that the genesis and timestamp are bound prior to sanitizing */
+                                        credit.Bind(&txout);
+
+                                        /* Sanitize the contract to make sure it builds and executes before we add it to the transaction */
+                                        if(!TAO::Register::Build(credit, mapStates, TAO::Ledger::FLAGS::MEMPOOL)
+                                        || !TAO::Operation::Execute(credit, TAO::Ledger::FLAGS::MEMPOOL))
                                         continue;
+                                        
+                                        /* Add the contract to the transaction */
+                                        txout[nOut] = credit;
+
                                     }
-
-                                    /* If this is a NXS debit then process the credit to the default account */
-                                    hashTo = defaultAccount.get<uint256_t>("address");
-
-                                    /* Read the object register, which is the proof account . */
-                                    TAO::Register::Object account;
-                                    if(!LLD::Register->ReadState(hashProof, account, TAO::Ledger::FLAGS::MEMPOOL))
-                                        continue;
-
-                                    /* Parse the object register. */
-                                    if(!account.Parse())
-                                        continue;
-
-                                    /* Check that this is an account */
-                                    if(account.Standard() != TAO::Register::OBJECTS::ACCOUNT )
-                                        continue;
-
-                                    /* Get the token address */
-                                    TAO::Register::Address hashToken = account.get<uint256_t>("token");
-
-                                    /* Read the token register. */
-                                    TAO::Register::Object token;
-                                    if(!LLD::Register->ReadState(hashToken, token, TAO::Ledger::FLAGS::MEMPOOL))
-                                        continue;
-
-                                    /* Parse the object register. */
-                                    if(!token.Parse())
-                                        continue;
-
-                                    /* Get the token supply so that we an determine our share */
-                                    uint64_t nSupply = token.get<uint64_t>("supply");
-
-                                    /* Get the balance of our token account */
-                                    uint64_t nBalance = account.get<uint64_t>("balance");
-
-                                    /* Get the amount from the debit contract*/
-                                    uint64_t nAmount = 0;
-                                    TAO::Register::Unpack(refContract, nAmount);
-
-                                    /* Calculate the partial debit amount that this token holder is entitled to. */
-                                    uint64_t nPartial = (nAmount * nBalance) / nSupply;
-
-                                    /* Submit the payload object for the split dividend. Notice we use the hashProof */
-                                    txout[nOut] << uint8_t(TAO::Operation::OP::CREDIT);
-                                    txout[nOut] << hashTx << std::get<1>(contract);
-                                    txout[nOut] << hashTo << hashProof;
-                                    txout[nOut] << nPartial;
-
-                                }
-                                else
-                                {
-                                    /* Set to and from hashes and amount. */
-                                    refContract >> hashFrom;
-                                    refContract >> hashTo;
-                                    refContract >> nAmount;
-
-                                    /* Submit the payload object. */
-                                    txout[nOut] << uint8_t(TAO::Operation::OP::CREDIT);
-                                    txout[nOut] << hashTx << std::get<1>(contract);
-                                    txout[nOut] << hashTo << hashFrom;
-                                    txout[nOut] << nAmount;
-                                }
-
-                                /* Increment the contract ID. */
-                                ++nOut;
-
-                                /* Log debug message. */
-                                debug::log(0, FUNCTION, "Matching DEBIT with CREDIT");
-
-                                break;
-                            }
-
-                            /* Check for Coinbases. */
-                            case Operation::OP::COINBASE:
-                            {
-                                /* Check that the coinbase is mature and ready to be credited. */
-                                if(!fMature)
-                                {
-                                    //debug::error(FUNCTION, "Immature coinbase.");
-                                    continue;
-                                }
-
-                                /* Set the genesis hash and the amount. */
-                                refContract >> hashFrom;
-                                refContract >> nAmount;
-
-                                /* Get the address that this name register for default account is pointing to. */
-                                hashTo = defaultAccount.get<uint256_t>("address");
-
-                                /* Submit the payload object. */
-                                txout[nOut] << uint8_t(TAO::Operation::OP::CREDIT);
-                                txout[nOut] << hashTx << std::get<1>(contract);
-                                txout[nOut] << hashTo << hashFrom;
-                                txout[nOut] << nAmount;
-
-                                /* Increment the contract ID. */
-                                ++nOut;
-
-                                /* Log debug message. */
-                                debug::log(0, FUNCTION, "Matching COINBASE with CREDIT");
-
-                                break;
-                            }
-
-                            /* Check for Transfers. */
-                            case Operation::OP::TRANSFER:
-                            {
-                                /* Get the address of the asset being transfered from the transaction. */
-                                refContract >> hashFrom;
-
-                                /* Get the genesis hash (recipient) of the transfer. */
-                                refContract >> hashTo;
-
-                                /* Read the force transfer flag */
-                                uint8_t nType = 0;
-                                refContract >> nType;
-
-                                /* Ensure this wasn't a forced transfer (which requires no Claim) */
-                                if(nType == TAO::Operation::TRANSFER::FORCE)
-                                    continue;
-
-                                /* Create a name object for the claimed object unless this is a Name or Namespace already */
-                                if(!hashFrom.IsName() && !hashFrom.IsNamespace())
-                                {
-                                    /* Create a new name from the previous owners name */
-                                    TAO::Operation::Contract nameContract = Names::CreateName(user->Genesis(), hashTx);
-
-                                    /* If the Name contract operation was created then add it to the transaction */
-                                    if(!nameContract.Empty())
+                                    else
                                     {
-                                        /* If we need to add a name contract, ensure we don't breach the max contracts/per transaction, 
-                                        leaving room for the claim contract and fee contract */
-                                        if(txout.Size() == TAO::Ledger::MAX_TRANSACTION_CONTRACTS -2 )
-                                            break;
-                                            
-                                        txout[nOut] = nameContract;
+                                        /* Set to and from hashes and amount. */
+                                        refContract >> hashFrom;
+                                        refContract >> hashTo;
+                                        refContract >> nAmount;
 
-                                        /* Increment the contract ID. */
-                                        ++nOut;
+                                        /* Submit the payload object. */
+                                        TAO::Operation::Contract credit;
+                                        credit << uint8_t(TAO::Operation::OP::CREDIT);
+                                        credit << hashTx << std::get<1>(contract);
+                                        credit << hashTo << hashFrom;
+                                        credit << nAmount;
+
+                                        /* Bind the contract to the tx so that the genesis and timestamp are bound prior to sanitizing */
+                                        credit.Bind(&txout);
+
+                                        /* Sanitize the contract to make sure it builds and executes before we add it to the transaction */
+                                        if(!TAO::Register::Build(credit, mapStates, TAO::Ledger::FLAGS::MEMPOOL)
+                                        || !TAO::Operation::Execute(credit, TAO::Ledger::FLAGS::MEMPOOL))
+                                        continue;
+
+                                        /* Add the contract to the transaction */
+                                        txout[nOut] = credit;
                                     }
-                                }                                
-
-                                /* Add the CLAIM operation */
-                                txout[nOut] << uint8_t(TAO::Operation::OP::CLAIM); // the op code
-                                txout[nOut] << hashTx << std::get<1>(contract); // the transaction hash
-                                txout[nOut] << hashFrom; // the proof
-
-                                /* Increment the contract ID. */
-                                ++nOut;
-
-                                
-
-                                /* Log debug message. */
-                                debug::log(0, FUNCTION, "Matching TRANSFER with CLAIM");
-
-                                break;
-                            }
-                            default:
-                                break;
-                        }
-                    }
-
-
-                    /* Now process the legacy transactions */
-                    for(const auto& contract : vLegacyTx)
-                    {
-                        /* Ensure we don't breach the max contracts/per transaction, leaving room for the fee contract */
-                        if(txout.Size() == TAO::Ledger::MAX_TRANSACTION_CONTRACTS -1)
-                            break;
-
-                        /* Set the transaction hash. */
-                        hashTx = contract.first->GetHash();
-
-                        /* The index of the output in the legacy transaction */
-                        uint32_t nContract = contract.second;
-
-                        /* The TxOut to be checked */
-                        const Legacy::TxOut& txLegacy = contract.first->vout[nContract];
-
-                        /* The hash of the receiving account. */
-                        TAO::Register::Address hashAccount;
-
-                        /* Extract the sig chain account register address from the legacy script */
-                        if(!Legacy::ExtractRegister(txLegacy.scriptPubKey, hashAccount))
-                            continue;
-
-                        /* Get the token / account object that the debit was made to. */
-                        TAO::Register::Object debit;
-                        if(!LLD::Register->ReadState(hashAccount, debit))
-                            continue;
-
-                        /* Parse the object register. */
-                        if(!debit.Parse())
-                            throw APIException(-41, "Failed to parse object from debit transaction");
-
-                        /* Check for the owner to make sure this was a send to the current users account */
-                        if(debit.hashOwner == user->Genesis())
-                        {
-                            /* Identify trust migration to create OP::MIGRATE instead of OP::CREDIT */
-
-                            /* Check if output is new trust account (no stake or balance) */
-                            if(debit.Standard() == TAO::Register::OBJECTS::TRUST
-                                    && debit.get<uint64_t>("stake") == 0 && debit.get<uint64_t>("trust") == 0)
-                            {
-                                /* Need to check for migration.
-                                 * Trust migration converts a legacy trust key to a trust account register.
-                                 * It will send all inputs from an existing trust key, with one output to a new trust account.
-                                 */
-                                bool fMigration = false; //if this stays false, not a migration, fall through to OP::CREDIT
-
-                                /* Trust key data we need for OP::MIGRATE */
-                                uint32_t nScore;
-                                uint576_t hashTrust;
-                                uint512_t hashLast;
-                                Legacy::TrustKey trustKey;
-
-                                /* This loop will only have one iteration. If it breaks out before end, fMigration stays false */
-                                while(1)
-                                {
-                                    /* Trust account output must be only output for the transaction */
-                                    if(nContract != 0 || contract.first->vout.size() > 1)
-                                        break;
-
-                                    /* Trust account must be new (not indexed) */
-                                    if(LLD::Register->HasTrust(hashGenesis))
-                                        break;
-
-                                    /* Retrieve the trust key being converted */
-                                    if(!Legacy::FindMigratedTrustKey(*contract.first, trustKey))
-                                        break;
-
-                                    /* Verify trust key not already converted */
-                                    hashTrust.SetBytes(trustKey.vchPubKey);
-                                    if(LLD::Legacy->HasTrustConversion(hashTrust))
-                                        break;
-
-                                    /* Get last trust for the legacy trust key */
-                                    TAO::Ledger::BlockState stateLast;
-                                    if(!LLD::Ledger->ReadBlock(trustKey.hashLastBlock, stateLast))
-                                        break;
-
-                                    /* Last stake block must be at least v5 and coinstake must be a legacy transaction */
-                                    if(stateLast.nVersion < 5 || stateLast.vtx[0].first != TAO::Ledger::TRANSACTION::LEGACY)
-                                        break;
-
-                                    /* Extract the coinstake from the last trust block */
-                                    Legacy::Transaction txLast;
-                                    if(!LLD::Legacy->ReadTx(stateLast.vtx[0].second, txLast))
-                                        break;
-
-                                    hashLast = txLast.GetHash();
-
-                                    /* Extract the trust score from the coinstake */
-                                    uint1024_t hashLastBlock;
-                                    uint32_t nSequence;
-
-                                    if(txLast.IsGenesis())
-                                        nScore = 0;
-
-                                    else if(!txLast.ExtractTrust(hashLastBlock, nSequence, nScore))
-                                        break;
-
-                                    fMigration = true;
-                                    break;
-                                }
-
-                                /* Everything verified for migration and we have the data we need. Set up OP::MIGRATE */
-                                if(fMigration)
-                                {
-                                    /* The amount to migrate */
-                                    const int64_t nLegacyAmount = txLegacy.nValue;
-                                    uint64_t nAmount = 0;
-                                    if(nLegacyAmount > 0)
-                                        nAmount = nLegacyAmount;
-
-                                    /* Set up the OP::MIGRATE */
-                                    txout[nOut] << uint8_t(TAO::Operation::OP::MIGRATE) << hashTx << hashAccount << hashTrust
-                                                << nAmount << nScore << hashLast;
 
                                     /* Increment the contract ID. */
                                     ++nOut;
 
                                     /* Log debug message. */
-                                    debug::log(0, FUNCTION, "Matching LEGACY SEND with trust key MIGRATE",
-                                        "\n    Migrated amount: ", std::fixed, (nAmount / (double)TAO::Ledger::NXS_COIN),
-                                        "\n    Migrated trust: ", nScore,
-                                        "\n    To trust account: ", hashAccount.ToString(),
-                                        "\n    Last stake block: ", trustKey.hashLastBlock.SubString(),
-                                        "\n    Last stake tx: ", hashLast.SubString());
+                                    debug::log(0, FUNCTION, "Matching DEBIT with CREDIT");
 
-                                    continue;
+                                    break;
                                 }
+
+                                /* Check for Coinbases. */
+                                case Operation::OP::COINBASE:
+                                {
+                                    /* Check that the coinbase is mature and ready to be credited. */
+                                    if(!fMature)
+                                    {
+                                        //debug::error(FUNCTION, "Immature coinbase.");
+                                        continue;
+                                    }
+
+                                    /* Set the genesis hash and the amount. */
+                                    refContract >> hashFrom;
+                                    refContract >> nAmount;
+
+                                    /* Get the address that this name register for default account is pointing to. */
+                                    hashTo = defaultAccount.get<uint256_t>("address");
+
+                                    /* Submit the payload object. */
+                                    TAO::Operation::Contract credit;
+                                    credit<< uint8_t(TAO::Operation::OP::CREDIT);
+                                    credit << hashTx << std::get<1>(contract);
+                                    credit << hashTo << hashFrom;
+                                    credit << nAmount;
+
+                                    /* Bind the contract to the tx so that the genesis and timestamp are bound prior to sanitizing */
+                                    credit.Bind(&txout);
+
+                                    /* Sanitize the contract to make sure it builds and executes before we add it to the transaction */
+                                    if(!TAO::Register::Build(credit, mapStates, TAO::Ledger::FLAGS::MEMPOOL)
+                                        || !TAO::Operation::Execute(credit, TAO::Ledger::FLAGS::MEMPOOL))
+                                        continue;
+
+                                    /* Add the contract to the transaction */
+                                    txout[nOut] = credit;
+
+                                    /* Increment the contract ID. */
+                                    ++nOut;
+
+                                    /* Log debug message. */
+                                    debug::log(0, FUNCTION, "Matching COINBASE with CREDIT");
+
+                                    break;
+                                }
+
+                                /* Check for Transfers. */
+                                case Operation::OP::TRANSFER:
+                                {
+                                    /* Get the address of the asset being transfered from the transaction. */
+                                    refContract >> hashFrom;
+
+                                    /* Get the genesis hash (recipient) of the transfer. */
+                                    refContract >> hashTo;
+
+                                    /* Read the force transfer flag */
+                                    uint8_t nType = 0;
+                                    refContract >> nType;
+
+                                    /* Ensure this wasn't a forced transfer (which requires no Claim) */
+                                    if(nType == TAO::Operation::TRANSFER::FORCE)
+                                        continue;
+
+                                    /* Create a name object for the claimed object unless this is a Name or Namespace already */
+                                    if(!hashFrom.IsName() && !hashFrom.IsNamespace())
+                                    {
+                                        /* Create a new name from the previous owners name */
+                                        TAO::Operation::Contract nameContract = Names::CreateName(user->Genesis(), hashTx);
+
+                                        /* If the Name contract operation was created then add it to the transaction */
+                                        if(!nameContract.Empty())
+                                        {
+                                            /* If we need to add a name contract, ensure we don't breach the max contracts/per transaction, 
+                                            leaving room for the claim contract and fee contract */
+                                            if(txout.Size() == TAO::Ledger::MAX_TRANSACTION_CONTRACTS -2 )
+                                                break;
+                                                
+                                            txout[nOut] = nameContract;
+
+                                            /* Increment the contract ID. */
+                                            ++nOut;
+                                        }
+                                    }                                
+
+                                    /* Add the CLAIM operation */
+                                    TAO::Operation::Contract claim;
+                                    claim << uint8_t(TAO::Operation::OP::CLAIM); // the op code
+                                    claim << hashTx << std::get<1>(contract); // the transaction hash
+                                    claim << hashFrom; // the proof
+
+                                    /* Bind the contract to the tx so that the genesis and timestamp are bound prior to sanitizing */
+                                    claim.Bind(&txout);
+
+                                    /* Sanitize the contract to make sure it builds and executes before we add it to the transaction */
+                                    if(!TAO::Register::Build(claim, mapStates, TAO::Ledger::FLAGS::MEMPOOL)
+                                        || !TAO::Operation::Execute(claim, TAO::Ledger::FLAGS::MEMPOOL))
+                                        continue;
+
+                                    /* Add the contract to the transaction */
+                                    txout[nOut] = claim;
+                                    
+                                    /* Increment the contract ID. */
+                                    ++nOut;
+
+                                    
+
+                                    /* Log debug message. */
+                                    debug::log(0, FUNCTION, "Matching TRANSFER with CLAIM");
+
+                                    break;
+                                }
+                                default:
+                                    break;
                             }
-
-                            /* No migration. Use normal credit process */
-
-                            /* Check the object base to see whether it is an account. */
-                            if(debit.Base() == TAO::Register::OBJECTS::ACCOUNT)
-                            {
-                                if(debit.get<uint256_t>("token") != 0)
-                                    throw APIException(-51, "Debit transaction is not for a NXS account.  Please use the tokens API for crediting token accounts.");
-
-                                /* The amount to credit */
-                                const uint64_t nAmount = txLegacy.nValue;
-
-                                /* if we passed these checks then insert the credit contract into the tx */
-                                txout[nOut] << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract) << hashAccount <<  TAO::Register::WILDCARD_ADDRESS << nAmount;
-
-                                /* Increment the contract ID. */
-                                ++nOut;
-
-                                /* Log debug message. */
-                                debug::log(0, FUNCTION, "Matching LEGACY SEND with CREDIT");
-                            }
-                            else
-                                continue;
                         }
+
+
+                        /* Now process the legacy transactions */
+                        for(const auto& contract : vLegacyTx)
+                        {
+                            /* Ensure we don't breach the max contracts/per transaction, leaving room for the fee contract */
+                            if(txout.Size() == TAO::Ledger::MAX_TRANSACTION_CONTRACTS -1)
+                                break;
+
+                            /* Set the transaction hash. */
+                            hashTx = contract.first->GetHash();
+
+                            /* The index of the output in the legacy transaction */
+                            uint32_t nContract = contract.second;
+
+                            /* The TxOut to be checked */
+                            const Legacy::TxOut& txLegacy = contract.first->vout[nContract];
+
+                            /* The hash of the receiving account. */
+                            TAO::Register::Address hashAccount;
+
+                            /* Extract the sig chain account register address from the legacy script */
+                            if(!Legacy::ExtractRegister(txLegacy.scriptPubKey, hashAccount))
+                                continue;
+
+                            /* Get the token / account object that the debit was made to. */
+                            TAO::Register::Object debit;
+                            if(!LLD::Register->ReadState(hashAccount, debit))
+                                continue;
+
+                            /* Parse the object register. */
+                            if(!debit.Parse())
+                                throw APIException(-41, "Failed to parse object from debit transaction");
+
+                            /* Check for the owner to make sure this was a send to the current users account */
+                            if(debit.hashOwner == user->Genesis())
+                            {
+                                /* Identify trust migration to create OP::MIGRATE instead of OP::CREDIT */
+
+                                /* Check if output is new trust account (no stake or balance) */
+                                if(debit.Standard() == TAO::Register::OBJECTS::TRUST
+                                        && debit.get<uint64_t>("stake") == 0 && debit.get<uint64_t>("trust") == 0)
+                                {
+                                    /* Need to check for migration.
+                                    * Trust migration converts a legacy trust key to a trust account register.
+                                    * It will send all inputs from an existing trust key, with one output to a new trust account.
+                                    */
+                                    bool fMigration = false; //if this stays false, not a migration, fall through to OP::CREDIT
+
+                                    /* Trust key data we need for OP::MIGRATE */
+                                    uint32_t nScore;
+                                    uint576_t hashTrust;
+                                    uint512_t hashLast;
+                                    Legacy::TrustKey trustKey;
+
+                                    /* This loop will only have one iteration. If it breaks out before end, fMigration stays false */
+                                    while(1)
+                                    {
+                                        /* Trust account output must be only output for the transaction */
+                                        if(nContract != 0 || contract.first->vout.size() > 1)
+                                            break;
+
+                                        /* Trust account must be new (not indexed) */
+                                        if(LLD::Register->HasTrust(hashGenesis))
+                                            break;
+
+                                        /* Retrieve the trust key being converted */
+                                        if(!Legacy::FindMigratedTrustKey(*contract.first, trustKey))
+                                            break;
+
+                                        /* Verify trust key not already converted */
+                                        hashTrust.SetBytes(trustKey.vchPubKey);
+                                        if(LLD::Legacy->HasTrustConversion(hashTrust))
+                                            break;
+
+                                        /* Get last trust for the legacy trust key */
+                                        TAO::Ledger::BlockState stateLast;
+                                        if(!LLD::Ledger->ReadBlock(trustKey.hashLastBlock, stateLast))
+                                            break;
+
+                                        /* Last stake block must be at least v5 and coinstake must be a legacy transaction */
+                                        if(stateLast.nVersion < 5 || stateLast.vtx[0].first != TAO::Ledger::TRANSACTION::LEGACY)
+                                            break;
+
+                                        /* Extract the coinstake from the last trust block */
+                                        Legacy::Transaction txLast;
+                                        if(!LLD::Legacy->ReadTx(stateLast.vtx[0].second, txLast))
+                                            break;
+
+                                        hashLast = txLast.GetHash();
+
+                                        /* Extract the trust score from the coinstake */
+                                        uint1024_t hashLastBlock;
+                                        uint32_t nSequence;
+
+                                        if(txLast.IsGenesis())
+                                            nScore = 0;
+
+                                        else if(!txLast.ExtractTrust(hashLastBlock, nSequence, nScore))
+                                            break;
+
+                                        fMigration = true;
+                                        break;
+                                    }
+
+                                    /* Everything verified for migration and we have the data we need. Set up OP::MIGRATE */
+                                    if(fMigration)
+                                    {
+                                        /* The amount to migrate */
+                                        const int64_t nLegacyAmount = txLegacy.nValue;
+                                        uint64_t nAmount = 0;
+                                        if(nLegacyAmount > 0)
+                                            nAmount = nLegacyAmount;
+
+                                        /* Set up the OP::MIGRATE */
+                                        TAO::Operation::Contract migrate;
+                                        migrate << uint8_t(TAO::Operation::OP::MIGRATE) << hashTx << hashAccount << hashTrust
+                                                    << nAmount << nScore << hashLast;
+
+                                        /* Bind the contract to the tx so that the genesis and timestamp are bound prior to sanitizing */
+                                        migrate.Bind(&txout);
+
+                                        /* Sanitize the contract to make sure it builds and executes before we add it to the transaction */
+                                        if(!TAO::Register::Build(migrate, mapStates, TAO::Ledger::FLAGS::MEMPOOL)
+                                            || !TAO::Operation::Execute(migrate, TAO::Ledger::FLAGS::MEMPOOL))
+                                            continue;
+
+                                        /* Add the contract to the transaction */
+                                        txout[nOut] = migrate;
+
+                                        /* Increment the contract ID. */
+                                        ++nOut;
+
+                                        /* Log debug message. */
+                                        debug::log(0, FUNCTION, "Matching LEGACY SEND with trust key MIGRATE",
+                                            "\n    Migrated amount: ", std::fixed, (nAmount / (double)TAO::Ledger::NXS_COIN),
+                                            "\n    Migrated trust: ", nScore,
+                                            "\n    To trust account: ", hashAccount.ToString(),
+                                            "\n    Last stake block: ", trustKey.hashLastBlock.SubString(),
+                                            "\n    Last stake tx: ", hashLast.SubString());
+
+                                        continue;
+                                    }
+                                }
+
+                                /* No migration. Use normal credit process */
+
+                                /* Check the object base to see whether it is an account. */
+                                if(debit.Base() == TAO::Register::OBJECTS::ACCOUNT)
+                                {
+                                    if(debit.get<uint256_t>("token") != 0)
+                                        throw APIException(-51, "Debit transaction is not for a NXS account.  Please use the tokens API for crediting token accounts.");
+
+                                    /* The amount to credit */
+                                    const uint64_t nAmount = txLegacy.nValue;
+
+                                    /* if we passed these checks then insert the credit contract into the tx */
+                                    TAO::Operation::Contract credit;
+                                    credit << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract) << hashAccount <<  TAO::Register::WILDCARD_ADDRESS << nAmount;
+                                    
+                                    /* Bind the contract to the tx so that the genesis and timestamp are bound prior to sanitizing */
+                                    credit.Bind(&txout);
+
+                                    /* Sanitize the contract to make sure it builds and executes before we add it to the transaction */
+                                    if(!TAO::Register::Build(credit, mapStates, TAO::Ledger::FLAGS::MEMPOOL)
+                                        || !TAO::Operation::Execute(credit, TAO::Ledger::FLAGS::MEMPOOL))
+                                        continue;
+
+                                    /* Add the contract to the transaction */
+                                    txout[nOut] = credit;
+                                    
+                                    /* Increment the contract ID. */
+                                    ++nOut;
+
+                                    /* Log debug message. */
+                                    debug::log(0, FUNCTION, "Matching LEGACY SEND with CREDIT");
+                                }
+                                else
+                                    continue;
+                            }
+                        }
+
+
+                        /* Finally process any expired transactions that can be voided. */
+                        for(const auto& contract : vExpired)
+                        {
+                            /* Ensure we don't breach the max contracts/per transaction, leaving room for the fee contract */
+                            if(txout.Size() == TAO::Ledger::MAX_TRANSACTION_CONTRACTS -1)
+                                break;
+
+                            /* Get a reference to the contract */
+                            const TAO::Operation::Contract& refContract = std::get<0>(contract);
+
+                            /* Get the contract ID */
+                            const uint32_t& nContract = std::get<1>(contract);
+
+                            /* Attempt to add the void contract */
+                            TAO::Operation::Contract voidContract;
+                            if(VoidContract(refContract, nContract, voidContract))
+                            {
+                                /* Bind the contract to the tx so that the genesis and timestamp are bound prior to sanitizing */
+                                voidContract.Bind(&txout);
+
+                                /* Sanitize the contract to make sure it builds and executes before we add it to the transaction */
+                                if(!TAO::Register::Build(voidContract, mapStates, TAO::Ledger::FLAGS::MEMPOOL)
+                                    || !TAO::Operation::Execute(voidContract, TAO::Ledger::FLAGS::MEMPOOL))
+                                    continue;
+
+                                /* Add the void contract */
+                                txout[nOut] = voidContract;
+                                ++nOut;
+                            }
+                        }
+
+                        /* Once we are happy we have added all of the contracts to the transaction  we abort the mempool ACID 
+                        transaction as we have no more contracts to sanitize */
+                        LLD::TxnAbort(TAO::Ledger::FLAGS::MEMPOOL);
+
                     }
-
-
-                    /* Finally process any expired transactions that can be voided. */
-                    for(const auto& contract : vExpired)
+                    catch(const std::exception& e)
                     {
-                        /* Ensure we don't breach the max contracts/per transaction, leaving room for the fee contract */
-                        if(txout.Size() == TAO::Ledger::MAX_TRANSACTION_CONTRACTS -1)
-                            break;
+                        /* Abort the mempool ACID transaction that gets started on each iteration*/
+                        LLD::TxnAbort(TAO::Ledger::FLAGS::MEMPOOL); 
 
-                        /* Get a reference to the contract */
-                        const TAO::Operation::Contract& refContract = std::get<0>(contract);
-
-                        /* Get the contract ID */
-                        const uint32_t& nContract = std::get<1>(contract);
-
-                        /* Attempt to add the void contract */
-                        if(VoidContract(refContract, nContract, txout))
-                            ++nOut;
+                        /* Log the error and attempt to continue processing */
+                        debug::error(FUNCTION, e.what());
                     }
-
 
                     /* If any of the notifications have been matched, execute the operations layer and sign the transaction. */
                     if(nOut)
@@ -680,9 +777,13 @@ namespace TAO
                         if(!TAO::Ledger::mempool.Accept(txout))
                             throw APIException(-32, "Failed to accept");
                     }
+                    
                 }
-                catch(const APIException& e)
+                catch(const std::exception& e)
                 {
+                    
+                    
+                    /* Log the error and attempt to continue processing */
                     debug::error(FUNCTION, e.what());
                 }
 
