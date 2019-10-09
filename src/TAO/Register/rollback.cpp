@@ -293,13 +293,9 @@ namespace TAO
                         uint256_t hashAddress =
                             TAO::Register::Address(std::string("trust"), state.hashOwner, TAO::Register::Address::TRUST);
 
-                        /* Write the register prestate to the database. */
-                        if(!LLD::Register->WriteState(hashAddress, state, nFlags))
+                        /* Write the register prestate to database. */
+                        if(!LLD::Register->WriteTrust(contract.Caller(), state))
                             return debug::error(FUNCTION, "OP::TRUST: failed to rollback to pre-state");
-
-                        // /* Write the register prestate to database. */
-                        // if(!LLD::Register->WriteTrust(contract.Caller(), state))
-                        //     return debug::error(FUNCTION, "OP::TRUST: failed to rollback to pre-state");
 
                         break;
                     }
@@ -565,8 +561,12 @@ namespace TAO
                         uint256_t hashFrom = 0;
                         contract >> hashFrom;
 
-                        /* Seek to end. */
+                        /* Skip amount */
                         contract.Seek(8);
+
+                        /* Extract the script data. (move to end) */
+                        ::Legacy::Script script;
+                        contract >> script;
 
                         /* Verify the first register code. */
                         uint8_t nState = 0;
