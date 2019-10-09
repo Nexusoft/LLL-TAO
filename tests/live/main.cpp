@@ -186,11 +186,17 @@ public:
 };
 
 
-
+#include <Util/include/softfloat.h>
 
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
+    cv::softdouble a = cv::softdouble(5.55555);
+
+    debug::log(0, "Soft Double ", double(a));
+
+    return 0;
+
     Legacy::LegacyBlock block;
     block.nTime = 49339439;
     block.nBits = 34934;
