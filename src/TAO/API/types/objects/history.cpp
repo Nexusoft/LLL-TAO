@@ -81,7 +81,7 @@ namespace TAO
                     throw APIException(-108, "Failed to read transaction");
 
                 /* Set the next last. */
-                hashLast = tx.hashPrevTx;
+                hashLast = !tx.IsFirst() ? tx.hashPrevTx : 0;
 
                 /* Check through all the contracts. */
                 for(int32_t nContract = tx.Size() - 1; nContract >= 0; --nContract)

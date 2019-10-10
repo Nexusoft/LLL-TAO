@@ -214,7 +214,7 @@ namespace TAO
                 }
 
                 /* Set the next last. */
-                hashLast = tx.hashPrevTx;
+                hashLast = !tx.IsFirst() ? tx.hashPrevTx : 0;
 
                 /* skip this transaction if none of its contracts relate to the register */
                 if(vContracts.size() == 0)

@@ -311,6 +311,16 @@ namespace TAO
             uint512_t GetHash() const;
 
 
+            /** ProofHash
+             *
+             *  Gets a proof hash of the transaction object.
+             *
+             *  @return 512-bit unsigned integer of hash.
+             *
+             **/
+            uint512_t ProofHash() const;
+
+
             /** NextHash
              *
              *  Sets the Next Hash from the key
