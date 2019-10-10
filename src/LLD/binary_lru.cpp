@@ -359,11 +359,14 @@ namespace LLD
             if(plast)
                 plast->pnext = nullptr;
 
+            /* Calculate the buckets for the node being deleted */
+            uint32_t nBucket = static_cast<uint32_t>(pnode->hashKey % static_cast<uint64_t>(MAX_CACHE_BUCKETS));
+            uint64_t nHashMapBucket = Bucket(checksums[nBucket]);
+
             /* Clear the pointers. */
-            hashmap[Bucket(pnode)]   = nullptr;
+            hashmap[nHashMapBucket] = nullptr;
 
             /* Set the checksums. */
-            uint32_t nBucket = static_cast<uint32_t>(pnode->hashKey % static_cast<uint64_t>(MAX_CACHE_BUCKETS));
             checksums[nBucket] = 0;
 
             /* Reset the memory linking. */
