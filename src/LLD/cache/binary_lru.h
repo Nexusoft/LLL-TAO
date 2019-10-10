@@ -77,6 +77,10 @@ namespace LLD
         BinaryNode* plast;
 
 
+        /* Keep track of pool of instantiated nodes that can be reused. */
+        BinaryNode* pPool;
+
+
 
     public:
 
@@ -163,14 +167,14 @@ namespace LLD
         bool Has(const std::vector<uint8_t>& vKey) const;
 
 
-        /** RemoveNode
+        /** UnlinkNode
          *
-         *  Remove a node from the double linked list.
+         *  Unlinks a node from the double linked list.
          *
          *  @param[in] pthis The node to remove from list.
          *
          **/
-        void RemoveNode(BinaryNode* pthis);
+        void UnlinkNode(BinaryNode* pthis);
 
 
         /** MoveToFront
@@ -229,6 +233,32 @@ namespace LLD
          *
          **/
         bool Remove(const std::vector<uint8_t>& vKey);
+
+
+        /** AddNode
+        *
+        *  Creates a new node for the cache.  If there is a node in the pool of previously instantated instances then it will be 
+        *  used, otherwise a new instance will be instantiated 
+        *
+        *  @param[in] vKey The key in binary form.
+        *  @param[in] vData The input data in binary form.
+        *
+        *  @return The newly added node.
+        *
+        **/
+        BinaryNode* AddNode(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vDataIn);
+
+
+        /** RemoveNode
+        *
+        *  Removes a node from the cache and adds it to the node pool for resuse
+        *
+        *  @param[in] pnode The node to be removed
+        *  @param[in] nChecksumBucket Index into the checksum buckets for this node's checksum
+        *  @param[in] nHashMapBucket Index into the hashmap bucket for this node
+        *
+        **/
+        void RemoveNode(BinaryNode* pnode, uint32_t nChecksumBucket, uint64_t nHashMapBucket);
     };
 }
 

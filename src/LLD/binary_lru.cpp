@@ -38,6 +38,9 @@ namespace LLD
         /** Default constructor **/
         BinaryNode(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vDataIn);
 
+        /** Method to update this node with a new key and data **/
+        void Update(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vDataIn);
+
         /** Checksum. **/
         uint64_t Checksum() const
         {
@@ -55,6 +58,16 @@ namespace LLD
     {
     }
 
+    /** Method to update this node with a new key and data **/
+    void BinaryNode::Update(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vDataIn)
+    {
+        pprev = nullptr;
+        pnext = nullptr;
+        hashKey  = XXH64(&vKey[0], vKey.size(), 0);
+        vData.clear();
+        vData = vDataIn;
+    }
+
 
     /** Base Constructor.  **/
     BinaryLRU::BinaryLRU()
@@ -66,6 +79,7 @@ namespace LLD
     , checksums(MAX_CACHE_BUCKETS, 0)
     , pfirst(nullptr)
     , plast(nullptr)
+    , pPool(nullptr)
     {
     }
 
@@ -80,6 +94,7 @@ namespace LLD
     , checksums(MAX_CACHE_BUCKETS, 0)
     , pfirst(nullptr)
     , plast(nullptr)
+    , pPool(nullptr)
     {
     }
 
@@ -91,6 +106,19 @@ namespace LLD
         for(auto& item : hashmap)
             if(item != nullptr)
                 delete item;
+
+        /* Clean up those in the pool */
+        while(pPool != nullptr)
+        {
+            /* Get pointer to node to delete */
+            BinaryNode* pDelete = pPool;
+
+            /* Update the pool pointer */
+            pPool = pDelete->pnext;
+
+            /* delete the node */
+            delete pDelete;
+        }
     }
 
 
@@ -159,8 +187,8 @@ namespace LLD
     }
 
 
-    /*  Remove a node from the double linked list. */
-    void BinaryLRU::RemoveNode(BinaryNode* pthis)
+    /*  Unlinks a node from the double linked list. */
+    void BinaryLRU::UnlinkNode(BinaryNode* pthis)
     {
         /* Relink last pointer. */
         if(plast && pthis == plast)
@@ -206,7 +234,7 @@ namespace LLD
             plast->pnext = nullptr;
         }
         else
-            RemoveNode(pthis);
+            UnlinkNode(pthis);
 
         /* Set prev to null to signal front of list */
         pthis->pprev = nullptr;
@@ -288,25 +316,17 @@ namespace LLD
             if(pthis != nullptr)
             {
                 /* Remove from the linked list. */
-                RemoveNode(pthis);
+                UnlinkNode(pthis);
 
-                /* Dereference the pointers. */
-                hashmap[nBucket]           = nullptr;
-                pthis->pprev               = nullptr;
-                pthis->pnext               = nullptr;
-
-                /* Reduce the current size. */
-                nCurrentSize -= static_cast<uint32_t>(pthis->vData.size() + 48);
-
-                /* Free the memory. */
-                delete pthis;
+                /* Remove from the cache */
+                RemoveNode(pthis, nChecksumBucket, nBucket);
             }
 
             checksums[nChecksumBucket] = 0;
         }
 
         /* Create a new cache node. */
-        BinaryNode* pnew = new BinaryNode(vKey, vData);
+        BinaryNode* pnew = AddNode(vKey, vData);
         nChecksum = (key.nSectorFile * key.nSectorStart);
 
         /* Get the bucket. */
@@ -319,18 +339,11 @@ namespace LLD
             BinaryNode* pthis = hashmap[nBucket];
 
             /* Remove from the linked list. */
-            RemoveNode(pthis);
+            UnlinkNode(pthis);
 
-            /* Dereference the pointers. */
-            hashmap[nBucket]           = nullptr;
-            pthis->pprev               = nullptr;
-            pthis->pnext               = nullptr;
+            /* Remove from the cache */
+            RemoveNode(pthis, nChecksumBucket, nBucket);
 
-            /* Reduce the current size. */
-            nCurrentSize -= static_cast<uint32_t>(pthis->vData.size() + 48);
-
-            /* Free the memory. */
-            delete pthis;
         }
 
         /* Add cache node to objects map. */
@@ -360,23 +373,11 @@ namespace LLD
                 plast->pnext = nullptr;
 
             /* Calculate the buckets for the node being deleted */
-            uint32_t nBucket = static_cast<uint32_t>(pnode->hashKey % static_cast<uint64_t>(MAX_CACHE_BUCKETS));
+            uint32_t nChecksumBucket = static_cast<uint32_t>(pnode->hashKey % static_cast<uint64_t>(MAX_CACHE_BUCKETS));
             uint64_t nHashMapBucket = Bucket(checksums[nBucket]);
 
-            /* Clear the pointers. */
-            hashmap[nHashMapBucket] = nullptr;
-
-            /* Set the checksums. */
-            checksums[nBucket] = 0;
-
-            /* Reset the memory linking. */
-            pnode->pprev = nullptr;
-            pnode->pnext = nullptr;
-
-            /* Free the memory */
-            nCurrentSize -= static_cast<uint32_t>(pnode->vData.size() + 48);
-
-            delete pnode;
+            /* Remove from the cache */
+            RemoveNode(pnode, nChecksumBucket, nHashMapBucket);
         }
 
         /* Set the new cache size. */
@@ -396,7 +397,8 @@ namespace LLD
         LOCK(MUTEX);
 
         /* Get the data. */
-        const uint64_t& nChecksum = checksums[Bucket(vKey)];
+        uint64_t nChecksumBucket = Bucket(vKey);
+        const uint64_t& nChecksum = checksums[nChecksumBucket];
 
         /* Check for data. */
         if(nChecksum == 0)
@@ -410,25 +412,68 @@ namespace LLD
         if(pthis == nullptr)
         {
             /* Reset the checksum. */
-            checksums[Bucket(vKey)] = 0;
+            checksums[nChecksumBucket] = 0;
 
             return false;
         }
 
         /* Remove from the linked list. */
-        RemoveNode(pthis);
+        UnlinkNode(pthis);
 
-        /* Dereference the pointers. */
-        hashmap[nBucket]         = nullptr;
-        pthis->pprev             = nullptr;
-        pthis->pnext             = nullptr;
-
-        /* Free the memory. */
-        nCurrentSize -= static_cast<uint32_t>(pthis->vData.size() + 48);
-        checksums[Bucket(vKey)] = 0;
-
-        delete pthis;
+        /* Remove from the cache */
+        RemoveNode(pthis, nChecksumBucket, nBucket);
 
         return true;
+    }
+
+    /* Creates a new node for the cache.  If there is a node in the pool of previously instantated instances then it will be 
+    *  used, otherwise a new instance will be instantiated  */
+    BinaryNode* BinaryLRU::AddNode(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vDataIn)
+    {
+        BinaryNode* pAdd = nullptr;
+
+        /* If we already have a node in the pool then reuse it */
+        if(pPool)
+        {
+            /* Get pointer to node from pool */
+            pAdd = pPool;
+
+            /* Update the pool pointer */
+            pPool = pPool->pnext;
+
+            /* Update the node with the incoming data */
+            pAdd->Update(vKey, vDataIn);
+        }
+        else
+        {
+            /* Instantiate a new instance */
+            pAdd = new BinaryNode(vKey, vDataIn);
+        }
+
+        /* return the newly added node */
+        return pAdd;
+        
+    }
+
+    /* Removes a node from the cache and adds it to the node pool for resuse */
+    void BinaryLRU::RemoveNode(BinaryNode* pnode, uint32_t nChecksumBucket, uint64_t nHashMapBucket)
+    {
+        /* Dereference the pointers. */
+        pnode->pprev             = nullptr;
+        pnode->pnext             = nullptr;
+
+        /* Free the memory. */
+        nCurrentSize -= static_cast<uint32_t>(pnode->vData.size() + 48);
+        
+        /* Clear the buckets */
+        checksums[nChecksumBucket] = 0;    
+        hashmap[nHashMapBucket] = nullptr;
+
+        /* Add the node into the pool */
+        if(pPool)
+            pnode->pnext = pPool;
+        
+        /* Update pool pointer to node being put back into the pool */
+        pPool = pnode;
     }
 }
