@@ -398,9 +398,9 @@ Create a new token account for receiving tokens. The API supports an alternative
 
 `name` : An optional name to identify the account. If provided a Name object will also be created in the users local namespace, allowing the account to be accessed/retrieved by name. If no name is provided the account will need to be accessed/retrieved by its 256-bit register address.
 
-`token_name` : This is the name of the token that the account can be used for.  The token name should be supplied in the format `username:tokenname`.  This is optional if the token_address is supplied.
+`token_name` : This is the name of the token that the account can be used for.  The token name should be supplied in the format `username:tokenname`.  This is optional if the token address is supplied.
 
-`token_addresss` : This is the address of the token that the account can be used for.  This is optional if token_name is supploed.
+`token` : This is the address of the token that the account can be used for.  This is optional if token_name is supplied.
 
 
 

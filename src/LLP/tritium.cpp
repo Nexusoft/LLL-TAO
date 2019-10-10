@@ -238,7 +238,8 @@ namespace LLP
 
                     /* Subscribe to notifications. */
                     Subscribe(
-                           SUBSCRIPTION::BESTHEIGHT
+                           SUBSCRIPTION::BESTCHAIN
+                         | SUBSCRIPTION::BESTHEIGHT
                          | SUBSCRIPTION::CHECKPOINT
                          | SUBSCRIPTION::BLOCK
                          | SUBSCRIPTION::TRANSACTION
@@ -1575,7 +1576,7 @@ namespace LLP
                             ssPacket >> hashBestChain;
 
                             /* Check if is sync node. */
-                            if(nCurrentSession == TAO::Ledger::nSyncSession.load() && LLD::Ledger->HasBlock(hashBestChain))
+                            if(TAO::Ledger::nSyncSession.load() != 0 && nCurrentSession == TAO::Ledger::nSyncSession.load() && LLD::Ledger->HasBlock(hashBestChain))
                             {
                                 /* Set state to synchronized. */
                                 fSynchronized.store(true);

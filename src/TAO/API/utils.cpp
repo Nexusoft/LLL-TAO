@@ -1227,8 +1227,8 @@ namespace TAO
         }
 
 
-        /* Creates a void contract for the specified transaction and adds it to the txVoid transaction */
-        bool VoidContract(const TAO::Operation::Contract& contract, const uint32_t nContract, TAO::Ledger::Transaction& txVoid)
+        /* Creates a void contract for the specified transaction  */
+        bool VoidContract(const TAO::Operation::Contract& contract, const uint32_t nContract, TAO::Operation::Contract &voidContract)
         {
             /* The return flag indicating the contract was voided */
             bool bVoided = false;
@@ -1283,8 +1283,9 @@ namespace TAO
                 /* Reduce the amount to credit by the amount already claimed */
                 nAmount -= nClaimed;
 
-                /* Insert the credit contract into the tx */
-                txVoid[txVoid.Size()] << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract) << hashFrom <<  hashFrom << nAmount;
+                /* Create the credit contract  */
+                voidContract<< uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract) << hashFrom <<  hashFrom << nAmount;
+                
                 bVoided = true;   
             }
             /* Process voiding a transfer */
@@ -1306,8 +1307,9 @@ namespace TAO
                 if(nForceFlag == TAO::Operation::TRANSFER::FORCE)
                     return false;
 
-                /* Insert the claim contract into the tx. */
-                txVoid[txVoid.Size()] << (uint8_t)TAO::Operation::OP::CLAIM << hashTx << uint32_t(nContract) << hashAddress;
+                /* Create the claim contract  */
+                voidContract << (uint8_t)TAO::Operation::OP::CLAIM << hashTx << uint32_t(nContract) << hashAddress;
+                
                 bVoided = true;
             }
 

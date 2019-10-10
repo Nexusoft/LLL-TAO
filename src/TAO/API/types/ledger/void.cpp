@@ -91,7 +91,10 @@ namespace TAO
                 for(uint32_t nContract = 0; nContract < txVoid.Size(); ++nContract)
                 {
                     /* Process the contract and attempt to void it */
-                    VoidContract(txVoid[nContract], nContract, tx);
+                    TAO::Operation::Contract voidContract;
+
+                    if(VoidContract(txVoid[nContract], nContract, voidContract))
+                        tx[tx.Size()] = voidContract;
                 }
             }
             else

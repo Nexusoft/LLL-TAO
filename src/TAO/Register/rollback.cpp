@@ -293,13 +293,9 @@ namespace TAO
                         uint256_t hashAddress =
                             TAO::Register::Address(std::string("trust"), state.hashOwner, TAO::Register::Address::TRUST);
 
-                        /* Write the register prestate to the database. */
-                        if(!LLD::Register->WriteState(hashAddress, state, nFlags))
+                        /* Write the register prestate to database. */
+                        if(!LLD::Register->WriteTrust(contract.Caller(), state))
                             return debug::error(FUNCTION, "OP::TRUST: failed to rollback to pre-state");
-
-                        // /* Write the register prestate to database. */
-                        // if(!LLD::Register->WriteTrust(contract.Caller(), state))
-                        //     return debug::error(FUNCTION, "OP::TRUST: failed to rollback to pre-state");
 
                         break;
                     }
@@ -427,33 +423,39 @@ namespace TAO
 
                         /* Read the debit. */
                         const TAO::Operation::Contract debit = LLD::Ledger->ReadContract(hashTx, nContract);
-                        debit.Seek(1);
 
-                        /* Get address from. */
-                        uint256_t hashFrom = 0;
-                        debit  >> hashFrom;
-
-                        /* Get the to address */
-                        TAO::Register::Address hashTo;
-                        debit >> hashTo;
-
-                        /* If the debit has not been made to an account then it will be a tokenized asset and could have 
-                           partial credits.  Therefore we need check the credit amount with respect to the other claimed amounts
-                           and then subtract this credit from the current claimed amount. */
-                        if(!hashTo.IsAccount())
+                        /* Check for non coinbase. */
+                        uint8_t nDebit = 0;
+                        debit >> nDebit;
+                        if(nDebit == TAO::Operation::OP::DEBIT)
                         {
-                            /* Get the partial amount. */
-                            uint64_t nClaimed = 0;
-                            if(!LLD::Ledger->ReadClaimed(hashTx, nContract, nClaimed, nFlags))
-                                return debug::error(FUNCTION, "OP::CREDIT: failed to read claimed amount");
+                            /* Get address from. */
+                            uint256_t hashFrom = 0;
+                            debit  >> hashFrom;
 
-                            /* Sanity check for claimed overflow. */
-                            if(nClaimed < nAmount)
-                                return debug::error(FUNCTION, "OP::CREDIT: amount larger than claimed (overflow)");
+                            /* Get the to address */
+                            TAO::Register::Address hashTo;
+                            debit >> hashTo;
 
-                            /* Write the new claimed amount. */
-                            if(!LLD::Ledger->WriteClaimed(hashTx, nContract, (nClaimed - nAmount), nFlags))
-                                return debug::error(FUNCTION, "OP::CREDIT: failed to rollback claimed amount");
+                            /* If the debit is to a tokenized asset, it could have partial credits. Therefore we need check the 
+                               credit amount with respect to the other claimed amounts and then subtract this credit from the 
+                               current claimed amount. */
+                            if(hashTo.IsObject())
+                            {
+                                /* Get the partial amount. */
+                                uint64_t nClaimed = 0;
+                                if(!LLD::Ledger->ReadClaimed(hashTx, nContract, nClaimed, nFlags))
+                                    return debug::error(FUNCTION, "OP::CREDIT: failed to read claimed amount");
+
+                                /* Sanity check for claimed overflow. */
+                                if(nClaimed < nAmount)
+                                    return debug::error(FUNCTION, "OP::CREDIT: amount larger than claimed (overflow)");
+
+                                /* Write the new claimed amount. */
+                                if(!LLD::Ledger->WriteClaimed(hashTx, nContract, (nClaimed - nAmount), nFlags))
+                                    return debug::error(FUNCTION, "OP::CREDIT: failed to rollback claimed amount");
+                            }
+
                         }
 
                         break;
@@ -559,8 +561,12 @@ namespace TAO
                         uint256_t hashFrom = 0;
                         contract >> hashFrom;
 
-                        /* Seek to end. */
+                        /* Skip amount */
                         contract.Seek(8);
+
+                        /* Extract the script data. (move to end) */
+                        ::Legacy::Script script;
+                        contract >> script;
 
                         /* Verify the first register code. */
                         uint8_t nState = 0;

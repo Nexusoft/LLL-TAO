@@ -189,6 +189,9 @@ namespace Legacy
         if(!LLD::Legacy->ReadTx(state.vtx[0].second, txLast))
             return debug::error(FUNCTION, "debit missing last stake");
 
+        if(!txLast.IsCoinStake())
+            return debug::error(FUNCTION, "last stake tx is not a coinstake");
+
         uint32_t nScore;
         uint1024_t hashLastBlock;
         uint32_t nSequence;

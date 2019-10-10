@@ -47,8 +47,14 @@ namespace TAO
          **/
         class Mempool
         {
+        /* Public members */
+        public:
+
+            /* Mutex to local access to the mempool */
             mutable std::recursive_mutex MUTEX;
 
+        /* Private members */
+        private:
 
             /** The transactions in the ledger memory pool. **/
             std::map<uint512_t, Legacy::Transaction> mapLegacy;
@@ -73,6 +79,7 @@ namespace TAO
             /** Record of legacy inputs in the mempool. **/
             std::map<Legacy::OutPoint, uint512_t> mapInputs;
 
+        /* Public methods */
         public:
 
             /** Default Constructor. **/

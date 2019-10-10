@@ -1214,34 +1214,58 @@ namespace Legacy
         runtime::timer timer;
         timer.Start();
 
+        debug::log(0, FUNCTION, "Begin rescan");
         /* Check for null. */
         if(!stateBegin)
             return debug::error(FUNCTION, "search from block is invalid");
 
-        /* Check for genesis. */
         uint512_t hashLast = 0;
-        if(stateBegin.nHeight == 0)
+        TAO::Ledger::BlockState stateStart = stateBegin;
+        bool fFirst = true;
+
+        /* Check for genesis. */
+        if(stateStart.nHeight == 0)
         {
-            /* Check next block. */
-            TAO::Ledger::BlockState stateNext = stateBegin.Next();
-            if(!stateNext)
+            /* If beginning from genesis block, move to height 1 */
+            stateStart = stateStart.Next();
+            if(!stateStart)
                 return debug::error(FUNCTION, "next block is null");
-
-            hashLast = stateNext.vtx[0].second;
         }
-        else
-            hashLast = stateBegin.vtx[0].second;
 
-        /* Check for Tritium Timestamp. */
-        if(stateBegin.nVersion < 7)
+        /* Begin by scanning all Legacy transactions from the starting block. */
+
+        /* Starting point for scan is the first Legacy transaction within the starting block. */
+        for(auto item : stateStart.vtx)
         {
-            /* Loop until complete. */
+            if(item.first == TAO::Ledger::TRANSACTION::LEGACY)
+            {
+                hashLast = item.second;
+                break;
+            }
+        }
+
+        /* If we were passed a starting block without a Legacy transaction, start from beginning */
+        if(hashLast == 0)
+        {
+            /* Read the first Legacy transaction and begin scan from its hash */
+            std::vector<Transaction> vtx;
+
+            if(LLD::Legacy->BatchRead("tx", vtx, 1))
+                hashLast = vtx[0].GetHash();
+        }
+
+        if(hashLast != 0)
+        {
             debug::log(0, FUNCTION, "Scanning Legacy from tx ", hashLast.SubString());
+
+            /* Loop until complete. */
             while(!config::fShutdown.load())
             {
-                /* Read the next batch of inventory. */
-                std::vector<Legacy::Transaction> vtx;
-                if(!LLD::Legacy->BatchRead(std::make_pair(std::string("tx"), hashLast), "tx", vtx, 1000, nScannedCount > 0))
+                /* Read the next batch of inventory.
+                 * The starting hash is only included in results on first iteration when fFirst is true.
+                 */
+                std::vector<Transaction> vtx;
+                if(!LLD::Legacy->BatchRead(std::make_pair(std::string("tx"), hashLast), "tx", vtx, 1000, !fFirst))
                     break;
 
                 /* Loop through found transactions. */
@@ -1268,65 +1292,91 @@ namespace Legacy
 
                 /* Set hash Last. */
                 hashLast = vtx.back().GetHash();
+
+                /* Check for end. */
+                if(vtx.size() != 1000)
+                    break;
+
+                /* Set first flag. */
+                fFirst = false;
             }
         }
 
-
-        /* Check for version 7. */
+        /* After completing Legacy scan, also scan Tritium tx. These may contains send-to-legacy contracts to add into wallet */
         hashLast = 0;
-        if(stateBegin.nVersion < 7)
+        fFirst = true;
+
+        if(stateStart.nVersion < 7)
         {
-            /* Read the next batch of inventory. */
+            /* If started from a Legacy block, read the first Tritium tx to set hashLast */
             std::vector<TAO::Ledger::Transaction> vtx;
+
             if(LLD::Ledger->BatchRead("tx", vtx, 1))
-                hashLast = vtx.back().GetHash();
+                hashLast = vtx[0].GetHash();
         }
-
-
-        /* Loop through tritium transactions. */
-        bool fFirst = true;
-        while(!config::fShutdown.load())
+        else
         {
-            /* Read the next batch of inventory. */
-            std::vector<TAO::Ledger::Transaction> vtx;
-            if(!LLD::Legacy->BatchRead(std::make_pair(std::string("tx"), hashLast), "tx", vtx, 1000, !fFirst))
-                break;
-
-            /* Loop through found transactions. */
-            TAO::Ledger::BlockState state;
-            for(const auto& tx : vtx)
+            /* If started scan from a Tritium block, starting tx hash is first Tritium transaction it contains
+             * (it must have at least one, because BlockState stores producer as last vtx entry)
+             */
+            for(auto item : stateStart.vtx)
             {
-                /* Add to the wallet */
-                if (AddToWalletIfInvolvingMe(tx, state, fUpdate, true, true))
-                    ++nTransactionCount;
-
-                /* Update the scanned count for meters. */
-                ++nScannedCount;
-
-                /* Meter for output. */
-                if(nScannedCount % 100000 == 0)
+                if(item.first == TAO::Ledger::TRANSACTION::TRITIUM)
                 {
-                    /* Get the time it took to rescan. */
-                    uint32_t nElapsedSeconds = timer.Elapsed();
-                    debug::log(0, FUNCTION, "Processed ", nTransactionCount,
-                        " tx of ", nScannedCount, " in ", nElapsedSeconds, " seconds (",
-                        std::fixed, (double)(nScannedCount / (nElapsedSeconds > 0 ? nElapsedSeconds : 1 )), " tx/s)");
+                    hashLast = item.second;
+                    break;
                 }
             }
+        }
 
-            /* Set hash Last. */
-            hashLast = vtx.back().GetHash();
+        /* Loop through tritium transactions. */
+        if(hashLast != 0)
+        {
+            debug::log(0, FUNCTION, "Scanning Tritium from tx ", hashLast.SubString());
+            while(!config::fShutdown.load())
+            {
+                /* Read the next batch of inventory. */
+                std::vector<TAO::Ledger::Transaction> vtx;
+                if(!LLD::Ledger->BatchRead(hashLast, "tx", vtx, 1000, !fFirst))
+                    break;
 
-            /* Check for end. */
-            if(vtx.size() != 1000)
-                break;
+                /* Loop through found transactions. */
+                TAO::Ledger::BlockState state;
+                for(const auto& tx : vtx)
+                {
+                    /* Add to the wallet */
+                    if (AddToWalletIfInvolvingMe(tx, state, fUpdate, true, true))
+                        ++nTransactionCount;
 
-            /* Set first flag. */
-            fFirst = false;
+                    /* Update the scanned count for meters. */
+                    ++nScannedCount;
+
+                    /* Meter for output. */
+                    if(nScannedCount % 100000 == 0)
+                    {
+                        /* Get the time it took to rescan. */
+                        uint32_t nElapsedSeconds = timer.Elapsed();
+                        debug::log(0, FUNCTION, "Processed ", nTransactionCount,
+                            " tx of ", nScannedCount, " in ", nElapsedSeconds, " seconds (",
+                            std::fixed, (double)(nScannedCount / (nElapsedSeconds > 0 ? nElapsedSeconds : 1 )), " tx/s)");
+                    }
+                }
+
+                /* Set hash Last. */
+                hashLast = vtx.back().GetHash();
+
+                /* Check for end. */
+                if(vtx.size() != 1000)
+                    break;
+
+                /* Set first flag. */
+                fFirst = false;
+            }
         }
 
         /* Get the time it took to rescan. */
         uint32_t nElapsedSeconds = timer.Elapsed();
+        debug::log(0, FUNCTION, "Rescan complete");
         debug::log(0, FUNCTION, "Processed ", nTransactionCount,
             " tx of ", nScannedCount, " in ", nElapsedSeconds, " seconds (",
             std::fixed, (double)(nScannedCount / (nElapsedSeconds > 0 ? nElapsedSeconds : 1 )), " tx/s)");

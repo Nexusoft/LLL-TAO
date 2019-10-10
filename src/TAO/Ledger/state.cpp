@@ -11,6 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
+#include <TAO/Ledger/types/state.h>
+
 #include <string>
 
 #include <LLD/include/global.h>
@@ -26,18 +28,19 @@ ________________________________________________________________________________
 #include <TAO/Register/include/rollback.h>
 #include <TAO/Register/include/verify.h>
 
-#include <TAO/Ledger/include/chainstate.h>
-#include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/ambassador.h>
-#include <TAO/Ledger/include/enum.h>
-#include <TAO/Ledger/include/difficulty.h>
+#include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/checkpoints.h>
+#include <TAO/Ledger/include/constants.h>
+#include <TAO/Ledger/include/difficulty.h>
+#include <TAO/Ledger/include/enum.h>
+#include <TAO/Ledger/include/prime.h>
 #include <TAO/Ledger/include/stake_change.h>
 #include <TAO/Ledger/include/supply.h>
-#include <TAO/Ledger/include/prime.h>
-#include <TAO/Ledger/types/state.h>
-#include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/include/timelocks.h>
+
 #include <TAO/Ledger/types/genesis.h>
+#include <TAO/Ledger/types/mempool.h>
 
 #include <Util/include/string.h>
 
@@ -612,12 +615,15 @@ namespace TAO
                 /* Log if there are blocks to disconnect. */
                 if(vDisconnect.size() > 0)
                 {
-                    debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "REORGANIZE:", ANSI_COLOR_RESET, " Disconnect ", vDisconnect.size(),
-                        " blocks; ", fork.GetHash().SubString(),
+                    debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "REORGANIZE:", ANSI_COLOR_RESET,
+                        " Disconnect ", vDisconnect.size(), " blocks; ", fork.GetHash().SubString(),
                         "..",  ChainState::stateBest.load().GetHash().SubString());
 
-                    debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "REORGANIZE:", ANSI_COLOR_RESET," Connect ", vConnect.size(), " blocks; ", fork.GetHash().SubString(),
-                        "..", hash.SubString());
+                    /* Keep this in vDisconnect check, or it will print every block, but only print on reorg if have at least 1 */
+                    if(vConnect.size() > 0)
+                        debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "REORGANIZE:", ANSI_COLOR_RESET,
+                            " Connect ", vConnect.size(), " blocks; ", fork.GetHash().SubString(),
+                            "..", hash.SubString());
                 }
 
                 /* Keep track of mempool transactions to delete. */
@@ -956,6 +962,10 @@ namespace TAO
                 prev.hashNextBlock = GetHash();
                 if(!LLD::Ledger->WriteBlock(prev.GetHash(), prev))
                     return debug::error(FUNCTION, "failed to update previous block state");
+
+                /* If we just updated hashNextBlock for genesis block, update the in-memory genesis */
+                if(prev.GetHash() == ChainState::Genesis())
+                    ChainState::stateGenesis = prev;
             }
 
             return true;
@@ -1255,16 +1265,20 @@ namespace TAO
         /* Prove that you staked a number of seconds based on weight. */
         uint1024_t BlockState::StakeHash() const
         {
-            if(vtx[0].first == TRANSACTION::TRITIUM)
+            /* Version 7 or later stake block should have Tritium coinstake producer, stored as last tx in vtx */
+            if((TAO::Ledger::VersionActive(nTime, 7) || TAO::Ledger::CurrentVersion() > 7)
+                && vtx.back().first == TRANSACTION::TRITIUM)
             {
-                /* Get the tritium transaction  from the database*/
+                /* Get the tritium transaction from the database*/
                 TAO::Ledger::Transaction tx;
-                if(!LLD::Ledger->ReadTx(vtx[0].second, tx))
+                if(!LLD::Ledger->ReadTx(vtx.back().second, tx))
                     return debug::error(FUNCTION, "transaction is not on disk");
 
                 return Block::StakeHash(tx.IsGenesis(), tx.hashGenesis);
             }
-            else if(vtx[0].first == TRANSACTION::LEGACY)
+
+            /* pre-version 7 should have Legacy coinstake stored as vtx[0] */
+            else if(TAO::Ledger::CurrentVersion() < 7 && vtx[0].first == TRANSACTION::LEGACY)
             {
                 /* Get the legacy transaction from the database. */
                 Legacy::Transaction tx;
