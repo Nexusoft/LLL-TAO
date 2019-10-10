@@ -156,6 +156,18 @@ namespace LLD
             /* Check for dereferencing nullptr. */
             if(pthis != nullptr)
             {
+                /* Check for matching key. */
+                if(pthis->hashKey == XXH64(&vKey[0], vKey.size(), 0))
+                {
+                    /* Set new value. */
+                    pthis->vData = vData;
+
+                    /* Move to front. */
+                    move_to_front(pthis);
+
+                    return;
+                }
+
                 /* Remove from the linked list. */
                 remove_node(pthis);
 
@@ -206,17 +218,19 @@ namespace LLD
                 if (plast)
                     plast->pnext = nullptr;
 
-                /* Calculate the buckets for the node being deleted */
-                uint32_t nBucket = pnode->Bucket(MAX_CACHE_BUCKETS);
-                uint64_t nSlot   = slot(indexes[nBucket]);
-
-                /* Clear the pointers. */
-                indexes[nBucket] = 0;
-                hashmap[nSlot]   = nullptr;
-
                 /* Reset the memory linking. */
                 pnode->pprev = nullptr;
                 pnode->pnext = nullptr;
+
+                /* Calculate the buckets for the node being deleted */
+                uint32_t  nBucket = pnode->Bucket(MAX_CACHE_BUCKETS);
+                uint64_t& nRemove = indexes[nBucket];
+                if(nRemove == 0)
+                    continue;
+
+                /* Reset the slot. */
+                hashmap[slot(nRemove)] = nullptr;
+                nRemove                = 0;
 
                 /* Free the memory */
                 nCurrentSize -= static_cast<uint32_t>(pnode->vData.size() + 48);
