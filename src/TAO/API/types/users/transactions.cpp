@@ -98,7 +98,7 @@ namespace TAO
                     throw APIException(-108, "Failed to read transaction");
 
                 /* Set the next last. */
-                hashLast = tx.hashPrevTx;
+                hashLast = !tx.IsFirst() ? tx.hashPrevTx : 0;
                 ++nTotal;
 
                 /* Check the paged data. */

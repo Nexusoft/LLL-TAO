@@ -184,7 +184,7 @@ namespace TAO
                     throw APIException(-108, "Failed to read transaction");
 
                 /* Set the next last. */
-                hashPrev = tx.hashPrevTx;
+                hashPrev = !tx.IsFirst() ? tx.hashPrevTx : 0;
 
                 /* Iterate through all contracts. */
                 for(uint32_t nContract = 0; nContract < tx.Size(); ++nContract)
@@ -960,7 +960,7 @@ namespace TAO
                     if(LLD::Ledger->ReadMature(hashLast))
                     {
                         /* Set the next last. */
-                        hashLast = tx.hashPrevTx;
+                        hashLast = !tx.IsFirst() ? tx.hashPrevTx : 0;
                         continue;
                     }
 
@@ -998,7 +998,7 @@ namespace TAO
                     }
 
                     /* Set the next last. */
-                    hashLast = tx.hashPrevTx;
+                    hashLast = !tx.IsFirst() ? tx.hashPrevTx : 0;
                 }
             }
 

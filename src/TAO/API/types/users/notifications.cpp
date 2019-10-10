@@ -303,7 +303,7 @@ namespace TAO
                 if(!LLD::Ledger->ReadMature(hashLast))
                 {
                     /* Set the next last. */
-                    hashLast = tx.hashPrevTx;
+                    hashLast = !tx.IsFirst() ? tx.hashPrevTx : 0;
                     continue;
                 }
 
@@ -351,7 +351,7 @@ namespace TAO
                     break;
 
                 /* Set the next last. */
-                hashLast = tx.hashPrevTx;
+                hashLast = !tx.IsFirst() ? tx.hashPrevTx : 0;
             }
 
             return true;
@@ -588,7 +588,7 @@ namespace TAO
                 }
 
                 /* Set the next last. */
-                hashLast = tx.hashPrevTx;
+                hashLast = !tx.IsFirst() ? tx.hashPrevTx : 0;
             }
 
             return true;

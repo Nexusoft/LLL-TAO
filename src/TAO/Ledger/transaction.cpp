@@ -14,6 +14,7 @@ ________________________________________________________________________________
 
 #include <LLC/hash/SK.h>
 #include <LLC/hash/macro.h>
+#include <LLC/hash/argon2.h>
 
 #include <LLC/include/flkey.h>
 #include <LLC/include/eckey.h>
@@ -180,6 +181,10 @@ namespace TAO
                NOTE: we do not make this limitation in private mode */
             if(IsFirst() && !config::GetBoolArg("-private", false))
             {
+                /* Check the difficulty of the hash. */
+                if(ProofHash() > FIRST_REQUIRED_WORK)
+                    return debug::error(FUNCTION, "first transaction not enough work");
+
                 /* Number of Name contracts */
                 uint8_t nNames = 0;
 
@@ -234,7 +239,6 @@ namespace TAO
                     {
                         return debug::error(FUNCTION, "genesis transaction contains invalid contracts.");
                     }
-
                 }
 
                 /* Check that the there are not more than the allowable default contracts */
@@ -364,6 +368,27 @@ namespace TAO
                 /* Calculate the pre-states and post-states. */
                 if(!TAO::Register::Build(contract, mapStates, FLAGS::MEMPOOL))
                     return false;
+            }
+
+            /* Check for first. */
+            if(IsFirst() && !config::GetBoolArg("-private"))
+            {
+                /* Timer to track proof of work time. */
+                runtime::timer timer;
+                timer.Reset();
+
+                /* Solve proof of work. */
+                while(!config::fShutdown)
+                {
+                    /* Break when value is found. */
+                    uint512_t hash = ProofHash();
+                    if(hash < FIRST_REQUIRED_WORK)
+                        break;
+
+                    ++hashPrevTx;
+                }
+
+                debug::log(0, FUNCTION, "Proof ", ProofHash().SubString(), " PoW in ", timer.Elapsed(), " seconds");
             }
 
             return true;
@@ -698,7 +723,7 @@ namespace TAO
         /* Determines if the transaction is a genesis transaction */
         bool Transaction::IsFirst() const
         {
-            return (nSequence == 0 && hashPrevTx == 0);
+            return nSequence == 0;
         }
 
 
@@ -749,6 +774,69 @@ namespace TAO
             hash.SetType(TAO::Ledger::TRITIUM);
 
             return hash;
+        }
+
+
+        /* Gets a proof hash of the transaction object. */
+        uint512_t Transaction::ProofHash() const
+        {
+            /* Set the return hash. */
+            uint512_t hashKey = ~uint512_t(0);
+
+            /* Check for first transaction. */
+            if(!IsFirst())
+                return hashKey; //this will always fail proof of work checks
+
+            /* Serialize data into binary stream. */
+            DataStream ss(SER_GETHASH, nVersion);
+            ss << *this;
+
+            /* Create the hash context. */
+            argon2_context context =
+            {
+                /* Hash Return Value. */
+                (uint8_t*)&hashKey,
+                64,
+
+                /* Password input data. */
+                ss.data(),
+                static_cast<uint32_t>(ss.size()),
+
+                /* The salt for usernames */
+                (uint8_t*)&hashGenesis,
+                32,
+
+                /* Optional secret data */
+                NULL, 0,
+
+                /* Optional associated data */
+                NULL, 0,
+
+                /* Computational Cost. */
+                1,
+
+                /* Memory Cost. */
+                (1 << 8),
+
+                /* The number of threads and lanes */
+                1, 1,
+
+                /* Algorithm Version */
+                ARGON2_VERSION_13,
+
+                /* Custom memory allocation / deallocation functions. */
+                NULL, NULL,
+
+                /* By default only internal memory is cleared (pwd is not wiped) */
+                ARGON2_DEFAULT_FLAGS
+            };
+
+            /* Run the argon2 computation. */
+            int32_t nRet = argon2id_ctx(&context);
+            if(nRet != ARGON2_OK)
+                return ~uint512_t(0);
+
+            return hashKey;
         }
 
 
