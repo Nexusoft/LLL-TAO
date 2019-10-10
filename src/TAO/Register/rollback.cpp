@@ -437,12 +437,10 @@ namespace TAO
                             TAO::Register::Address hashTo;
                             debit >> hashTo;
 
-                            bool fIsReturn = (hashFrom == hashAddress); //credit is return to self if true
-
-                            /* If the debit is to a tokenized asset, it could have partial credits. Also, a return to self will
-                               have recorded amount as claimed. For these cases, we need check the credit amount with respect
-                               to the other claimed amounts and then subtract this credit from the current claimed amount. */
-                            if(hashTo.IsObject() || fIsReturn)
+                            /* If the debit is to a tokenized asset, it could have partial credits. Therefore we need check the 
+                               credit amount with respect to the other claimed amounts and then subtract this credit from the 
+                               current claimed amount. */
+                            if(hashTo.IsObject())
                             {
                                 /* Get the partial amount. */
                                 uint64_t nClaimed = 0;

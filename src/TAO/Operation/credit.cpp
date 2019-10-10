@@ -61,36 +61,31 @@ namespace TAO
             uint8_t nType = 0;
             debit >> nType;
 
-            /* Get address from. */
-            uint256_t hashFrom = 0;
-            debit >> hashFrom;
-
-            /* Flag indicating this is a split dividend payment / partial credit. We can determine this by comparing the hashFrom
-               to the hashProof as, for a normal account to account debit, the hashFrom and hashProof are the same, whereas for
-               a split dividend payment the hashProof is the address of the token account proving your partial payment. */
-            bool fIsPartial = (hashFrom != hashProof);
-
-            /* Flag indicating this is a return to self credit, i.e. the hashFrom account is the same as the hashAddress account */
-            bool fIsReturn = (hashFrom == hashAddress);
-
-            /* Check if there are any partial claims against the debit and update the the claimed amount to reflect this credit.
-               NOTE we can skip this check for coinbase transactions or for regular account to account transactions, unless
-               we are returning to self.
-               NOTE We cannot rely on the IsPartial flag if IsReturn is true because, when returning to self (voiding), the only way
-               we can know for sure that this is a potential partial credit is by checking the object type of the hashTo in the debit
-               to see if it is a non-account and then checking that the owner is a token (e.g. a tokenized asset).  However we do
-               not want to incur the overhead of a DB read to check this for every credit, so instead we will incur the hit of
-               reading the claimed and writing the claimed whenever we are returning to self, which occurs far less often. */
-            if(nType != OP::COINBASE && (fIsPartial || fIsReturn))
+            /* If this credit is for a debit (as opposed to for a coinbase) then we need to check to see whether the debit is a
+               split dividend / partial payment.  IF so then we need to update the Claimed amount in the ledger */
+            if(nType == OP::DEBIT)
             {
-                /* Get the partial amount. */
-                uint64_t nClaimed = 0;
-                if(!LLD::Ledger->ReadClaimed(hashTx, nContract, nClaimed, nFlags))
-                    nClaimed = 0; //reset value to double check here and continue
+                /* Get address from. */
+                TAO::Register::Address hashFrom;
+                debit >> hashFrom;
 
-                /* Write the new claimed amount. */
-                if(!LLD::Ledger->WriteClaimed(hashTx, nContract, (nClaimed + nAmount), nFlags))
-                    return debug::error(FUNCTION, "failed to update claimed amount");
+                /* Get the to address */
+                TAO::Register::Address hashTo;
+                debit >> hashTo;
+
+                /* Check to see if the debit was made to an object register (as opposed to an account/token) indicating a 
+                   tokenized debit .*/
+                if(hashTo.IsObject())
+                {
+                    /* Get the partial amount already claimed. */
+                    uint64_t nClaimed = 0;
+                    if(!LLD::Ledger->ReadClaimed(hashTx, nContract, nClaimed, nFlags))
+                        nClaimed = 0; //reset value to double check here and continue
+
+                    /* Update the the claimed amount to reflect this credit */
+                    if(!LLD::Ledger->WriteClaimed(hashTx, nContract, (nClaimed + nAmount), nFlags))
+                        return debug::error(FUNCTION, "failed to update claimed amount");
+                }
             }
 
             /* Write the new register's state. */
