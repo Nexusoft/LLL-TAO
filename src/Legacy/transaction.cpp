@@ -126,7 +126,6 @@ namespace Legacy
             /* Get legacy converted output.*/
             TxOut txout;
             if(tx[n].Legacy(txout))
-                /* Add the output. */
                 vout.push_back(txout);
         }
     }
