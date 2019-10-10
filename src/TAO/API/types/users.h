@@ -645,6 +645,19 @@ namespace TAO
                 TAO::Ledger::Transaction &tx);
 
 
+            /** SanitizeContract
+            *
+            *  Checks that the contract passes both Build() and Execute() 
+            *
+            *  @param[in] contract The contract to sanitize 
+            *  @param[in] mapStates map of register states used by Build()
+            * 
+            *  @return Return value description.
+            *
+            **/
+            bool SanitizeContract(TAO::Operation::Contract& contract, std::map<uint256_t, TAO::Register::State> &mapStates );
+
+
         };
     }
 }
