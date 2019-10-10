@@ -70,7 +70,7 @@ public:
 
 
     /** Assignment operator. (64-bit) **/
-    base_uint& operator=(const uint64_t nn);
+    base_uint& operator=(const uint64_t n);
 
 
     /** Copy Assignment Variable Width Template. **/

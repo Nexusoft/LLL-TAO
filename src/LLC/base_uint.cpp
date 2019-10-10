@@ -80,10 +80,10 @@ base_uint<BITS>& base_uint<BITS>::operator=(base_uint&& n) noexcept
 
 /* Assignment operator. (64-bit) */
 template<uint32_t BITS>
-base_uint<BITS>& base_uint<BITS>::operator=(const uint64_t nn)
+base_uint<BITS>& base_uint<BITS>::operator=(const uint64_t n)
 {
-    pn[0] = (uint32_t) nn;
-    pn[1] = (uint32_t)(nn >> 32);
+    pn[0] = (uint32_t) n;
+    pn[1] = (uint32_t)(n >> 32);
 
     for(uint8_t i = 2; i < WIDTH; ++i)
         pn[i] = 0;
@@ -97,18 +97,6 @@ template<uint32_t BITS>
 base_uint<BITS>::~base_uint()
 {
 }
-
-
-/*
-template<uint32_t BITS>
-base_uint<BITS>::base_uint(template<uint32_t BITS2> const base_uint<BITS2> &b)
-{
-    uint32_t nMinWidth = std::min(WIDTH, b.WIDTH);
-
-    for(uint8_t i = 0; i < nMinWidth; ++i)
-        pn[i] = b.pn[i];
-}
-*/
 
 
 /* Constructor. (from string) */
