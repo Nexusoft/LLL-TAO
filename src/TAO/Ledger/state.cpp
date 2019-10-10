@@ -1266,8 +1266,7 @@ namespace TAO
         uint1024_t BlockState::StakeHash() const
         {
             /* Version 7 or later stake block should have Tritium coinstake producer, stored as last tx in vtx */
-            if((TAO::Ledger::VersionActive(nTime, 7) || TAO::Ledger::CurrentVersion() > 7)
-                && vtx.back().first == TRANSACTION::TRITIUM)
+            if(nVersion >= 7 && vtx.back().first == TRANSACTION::TRITIUM)
             {
                 /* Get the tritium transaction from the database*/
                 TAO::Ledger::Transaction tx;
@@ -1278,7 +1277,7 @@ namespace TAO
             }
 
             /* pre-version 7 should have Legacy coinstake stored as vtx[0] */
-            else if(TAO::Ledger::CurrentVersion() < 7 && vtx[0].first == TRANSACTION::LEGACY)
+            else if(nVersion < 7 && vtx[0].first == TRANSACTION::LEGACY)
             {
                 /* Get the legacy transaction from the database. */
                 Legacy::Transaction tx;
