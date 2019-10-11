@@ -866,6 +866,8 @@ This will list off all of the transactions for the requested signature chain gen
 
 `timestamp` : The Unix timestamp of when the transaction was created.
 
+`blockhash` : The hash of the block that this transaction is included in.  Blank if not yet included in a block.
+
 `confirmations` : The number of confirmations that this transaction obtained by the network.
 
 `genesis` : The signature chain genesis hash.

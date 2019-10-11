@@ -334,6 +334,8 @@ This will list off all of the transactions related to a given token. You DO NOT 
 
 `timestamp` : The Unix timestamp of when the transaction was created.
 
+`blockhash` : The hash of the block that this transaction is included in.  Blank if not yet included in a block.
+
 `confirmations` : The number of confirmations that this transaction obtained by the network.
 
 `genesis` : The signature chain genesis hash.
@@ -692,6 +694,8 @@ This will list off all of the transactions related to a given account. You DO NO
 `sequence` : The sequence number of this transaction within the signature chain.
 
 `timestamp` : The Unix timestamp of when the transaction was created.
+
+`blockhash` : The hash of the block that this transaction is included in.  Blank if not yet included in a block.
 
 `confirmations` : The number of confirmations that this transaction obtained by the network.
 
