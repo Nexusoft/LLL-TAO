@@ -26,47 +26,29 @@ namespace TAO
 
         /* Default Constructor */
         State::State()
-        : vchState()
-        , nVersion(0)
-        , nType(0)
-        , hashOwner(0)
-        , nCreated(runtime::unifiedtimestamp())
-        , nModified(runtime::unifiedtimestamp())
-        , hashChecksum(0)
-        , nReadPos(0)
+        : vchState     ( )
+        , nVersion     (0)
+        , nType        (0)
+        , hashOwner    (0)
+        , nCreated     (runtime::unifiedtimestamp())
+        , nModified    (runtime::unifiedtimestamp())
+        , hashChecksum (0)
+        , nReadPos     (0)
         {
         }
 
 
         /* Copy Constructor */
         State::State(const State& state)
-        : vchState(state.vchState)
-        , nVersion(state.nVersion)
-        , nType(state.nType)
-        , hashOwner(state.hashOwner)
-        , nCreated(state.nCreated)
-        , nModified(state.nModified)
-        , hashChecksum(state.hashChecksum)
-        , nReadPos(0)
+        : vchState     (state.vchState)
+        , nVersion     (state.nVersion)
+        , nType        (state.nType)
+        , hashOwner    (state.hashOwner)
+        , nCreated     (state.nCreated)
+        , nModified    (state.nModified)
+        , hashChecksum (state.hashChecksum)
+        , nReadPos     (0)
         {
-        }
-
-
-        /* Copy assignment overload */
-        State& State::operator=(const State& state)
-        {
-            vchState     = state.vchState;
-
-            nVersion     = state.nVersion;
-            nType        = state.nType;
-            hashOwner    = state.hashOwner;
-            nCreated     = state.nCreated;
-            nModified    = state.nModified;
-            hashChecksum = state.hashChecksum;
-
-            nReadPos     = 0; //don't copy over read position
-
-            return *this;
         }
 
 
@@ -84,11 +66,27 @@ namespace TAO
         }
 
 
+        /* Copy assignment overload */
+        State& State::operator=(const State& state)
+        {
+            vchState     = state.vchState;
+            nVersion     = state.nVersion;
+            nType        = state.nType;
+            hashOwner    = state.hashOwner;
+            nCreated     = state.nCreated;
+            nModified    = state.nModified;
+            hashChecksum = state.hashChecksum;
+
+            nReadPos     = 0; //don't copy over read position
+
+            return *this;
+        }
+
+
         /* Move assignment overload */
         State& State::operator=(State&& state) noexcept
         {
             vchState     = std::move(state.vchState);
-
             nVersion     = std::move(state.nVersion);
             nType        = std::move(state.nType);
             hashOwner    = std::move(state.hashOwner);
@@ -110,7 +108,7 @@ namespace TAO
 
         /* Basic Type Constructor */
         State::State(const uint8_t nTypeIn)
-        : vchState     ()
+        : vchState     ( )
         , nVersion     (1)
         , nType        (nTypeIn)
         , hashOwner    (9)
@@ -139,7 +137,7 @@ namespace TAO
 
         /* Default Constructor */
         State::State(const uint8_t nTypeIn, const uint256_t& hashOwnerIn)
-        : vchState     ()
+        : vchState     ( )
         , nVersion     (1)
         , nType        (nTypeIn)
         , hashOwner    (hashOwnerIn)
@@ -168,7 +166,7 @@ namespace TAO
 
         /* Default Constructor */
         State::State(const uint64_t hashChecksumIn)
-        : vchState     ()
+        : vchState     ( )
         , nVersion     (1)
         , nType        (0)
         , hashOwner    (uint256_t(0))

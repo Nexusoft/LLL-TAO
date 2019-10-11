@@ -326,8 +326,8 @@ namespace LLP
             /* Unreliabilitiy re-requesting (max time since getblocks) */
             if(TAO::Ledger::ChainState::Synchronizing()
             && nCurrentSession == TAO::Ledger::nSyncSession.load()
-            && nLastTimeReceived.load() + 15 < nTimestamp
-            && nLastGetBlocks.load() + 15 < nTimestamp)
+            && nLastTimeReceived.load() + 30 < nTimestamp
+            && nLastGetBlocks.load() + 30 < nTimestamp)
             {
                 debug::log(0, NODE, "Sync Node Timeout");
 
@@ -400,7 +400,7 @@ namespace LLP
             /* Detect if the fast sync node was disconnected. */
             if(nCurrentSession == TAO::Ledger::nSyncSession.load())
             {
-                debug::log(0, NODE, "Sync Node Disconnected");
+                debug::log(0, NODE, "Sync Node Disconnected ", strReason);
 
                 /* Switch the node. */
                 SwitchNode();
@@ -593,6 +593,8 @@ namespace LLP
                     /* Find a new fast sync node if too many failures. */
                     if(nCurrentSession == TAO::Ledger::nSyncSession.load())
                     {
+                        debug::log(0, FUNCTION, "node reached failure limit... closing");
+
                         /* Switch to a new node. */
                         SwitchNode();
                     }

@@ -51,8 +51,15 @@ namespace LLD
         }
 
 
+        /** Erase the data. **/
+        void Erase()
+        {
+            std::vector<uint8_t>().swap(vData);
+        }
+
+
         /** Check if node is in null state. **/
-        bool IsNull()
+        bool IsNull() const
         {
             return hashKey == 0;
         }
@@ -65,7 +72,7 @@ namespace LLD
             pnext   = nullptr;
             hashKey = 0;
 
-            std::vector<uint8_t>().swap(vData);
+            Erase();
         }
     };
 
@@ -111,6 +118,10 @@ namespace LLD
         if(pthis == nullptr)
             return false;
 
+        /* Check for null state. */
+        if(pthis->IsNull())
+            return false;
+
         /* Check the data is expected. */
         return (pthis->hashKey == XXH64(&vKey[0], vKey.size(), 0));
     }
@@ -144,6 +155,13 @@ namespace LLD
             return false;
         }
 
+        /* Check for null state. */
+        if(pthis->IsNull())
+        {
+            nIndex = 0; //reset by reference
+            return false;
+        }
+
         /* Check the keys are correct. */
         if(pthis->hashKey != XXH64(&vKey[0], vKey.size(), 0))
             return false;
@@ -172,22 +190,10 @@ namespace LLD
             BinaryNode* pthis = hashmap[nSlot];
 
             /* Check for dereferencing nullptr. */
-            if(pthis != nullptr)
+            if(pthis != nullptr && !pthis->IsNull())
             {
-                /* Check for matching key. */
-                if(pthis->hashKey == XXH64(&vKey[0], vKey.size(), 0))
-                {
-                    /* Set new value. */
-                    pthis->vData = vData;
-
-                    /* Move to front. */
-                    move_to_front(pthis);
-
-                    return;
-                }
-
                 /* Reduce the current size. */
-                nCurrentSize -= static_cast<uint32_t>(pthis->vData.size() + 48);
+                nCurrentSize -= static_cast<uint32_t>(pthis->vData.size());
 
                 /* Free the memory. */
                 remove_node(pthis);
@@ -203,8 +209,12 @@ namespace LLD
         if(hashmap[nSlot] != nullptr)
         {
             /* Claiming an empty hashmap slot. */
-            if(hashmap[nSlot]->IsNull())
-                nCurrentSize += static_cast<uint32_t>(vData.size() + 48);
+            if(!hashmap[nSlot]->IsNull())
+            {
+                /* Erase data on collision. */
+                nCurrentSize -= static_cast<uint32_t>(hashmap[nSlot]->vData.size());
+                hashmap[nSlot]->Erase();
+            }
 
             /* Set new values. */
             hashmap[nSlot]->hashKey = XXH64(&vKey[0], vKey.size(), 0);
@@ -218,9 +228,6 @@ namespace LLD
             /* Add cache node to objects map. */
             hashmap[nSlot] = new BinaryNode(vKey, vData);;
             move_to_front(hashmap[nSlot]);
-
-            /* Set the new cache size. */
-            nCurrentSize += static_cast<uint32_t>(vData.size() + 48);
         }
 
         /* Remove the last node if cache too large. */
@@ -251,6 +258,8 @@ namespace LLD
             /* Free the memory */
             nCurrentSize -= static_cast<uint32_t>(pnode->vData.size() + 48);
         }
+
+        nCurrentSize += static_cast<uint32_t>(vData.size());
     }
 
 

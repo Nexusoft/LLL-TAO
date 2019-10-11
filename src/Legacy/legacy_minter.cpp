@@ -661,9 +661,9 @@ namespace Legacy
             nCurrentBlockWeight = 0.0;
         }
 
-    		/* Update instance settings */
-    		nBlockWeight.store(nCurrentBlockWeight);
-    		nTrustWeight.store(nCurrentTrustWeight);
+		/* Update instance settings */
+		nBlockWeight.store(nCurrentBlockWeight);
+		nTrustWeight.store(nCurrentTrustWeight);
 
         return true;
     }
