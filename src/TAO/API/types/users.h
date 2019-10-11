@@ -20,6 +20,8 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/pinunlock.h>
 
+#include <TAO/Register/types/state.h>
+
 #include <Legacy/types/transaction.h>
 
 #include <Util/include/mutex.h>
