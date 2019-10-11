@@ -207,8 +207,11 @@ namespace TAO
             if(fGenesis)
                 return 0.005;
 
+            /* No trust score cap in Tritium staking, but use testnet max for testnet stake rate (so it grows faster) */
+            static const uint32_t nRateBase = config::fTestNet ? TRUST_SCORE_MAX_TESTNET : ONE_YEAR;
+
             /* Stake rate starts at 0.005 (0.5%) and grows to 0.03 (3%) when trust score reaches or exceeds one year */
-            double nTrustRatio = (double)nTrust / (double)ONE_YEAR;
+            double nTrustRatio = (double)nTrust / (double)nRateBase;
 
             return std::min(0.03, (0.025 * log((9.0 * nTrustRatio) + 1.0) / LOG10) + 0.005);
         }
