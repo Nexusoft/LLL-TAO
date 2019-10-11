@@ -87,9 +87,8 @@ namespace TAO
             json::json ret;
 
 
-            /* Get the transaction either from disk or mempool.
-               First try to see if it is a tritium tx in the leger db*/
-            if(TAO::Ledger::mempool.Get(hash, txTritium) || LLD::Ledger->ReadTx(hash, txTritium))
+            /* Get the transaction either from disk or mempool. */
+            if(LLD::Ledger->ReadTx(hash, txTritium, TAO::Ledger::FLAGS::MEMPOOL))
             {
                 if(strFormat == "JSON")
                     ret = TAO::API::TransactionToJSON (hashCaller, txTritium, blockState, nVerbose);
@@ -103,7 +102,7 @@ namespace TAO
             }
 
             /* If it is not a tritium transaction then see if it is a legacy tx in the legacy DB */
-            else if(TAO::Ledger::mempool.Get(hash, txLegacy) || LLD::Legacy->ReadTx(hash, txLegacy))
+            else if(LLD::Legacy->ReadTx(hash, txLegacy, TAO::Ledger::FLAGS::MEMPOOL))
             {
                 if(strFormat == "JSON")
                     ret = TAO::API::TransactionToJSON (txLegacy, blockState, nVerbose);

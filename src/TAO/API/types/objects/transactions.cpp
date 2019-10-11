@@ -250,6 +250,7 @@ namespace TAO
                     jsonTx["version"]   = tx.nVersion;
                     jsonTx["sequence"]  = tx.nSequence;
                     jsonTx["timestamp"] = tx.nTimestamp;
+                    jsonTx["blockhash"] = blockState.IsNull() ? "" : blockState.GetHash().GetHex();
                     jsonTx["confirmations"] = blockState.IsNull() ? 0 : TAO::Ledger::ChainState::nBestHeight.load() - blockState.nHeight + 1;
 
                     /* Genesis and hashes are verbose 3 and up. */

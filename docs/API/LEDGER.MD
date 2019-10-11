@@ -151,6 +151,8 @@ Retrieving block data by height is only allowed if the daemon has been configure
 
 `timestamp` : The Unix timestamp of when the transaction was created.
 
+`blockhash` : The hash of the block that this transaction is included in.  Blank if not yet included in a block.
+
 `confirmations` : The number of confirmations that this transaction has obtained by the network.
 
 `genesis` : The signature chain genesis hash.
@@ -316,6 +318,8 @@ Retrieving block data by height is only allowed if the daemon has been configure
 
 `timestamp` : The Unix timestamp of when the transaction was created.
 
+`blockhash` : The hash of the block that this transaction is included in.  Blank if not yet included in a block.
+
 `confirmations` : The number of confirmations that this transaction has obtained by the network.
 
 `genesis` : The signature chain genesis hash.
@@ -432,6 +436,8 @@ Retrieves transaction data for a given transaction hash.
 `sequence` : The sequence number of this transaction within the signature chain.
 
 `timestamp` : The Unix timestamp of when the transaction was created.
+
+`blockhash` : The hash of the block that this transaction is included in.  Blank if not yet included in a block.
 
 `confirmations` : The number of confirmations that this transaction obtained by the network.
 

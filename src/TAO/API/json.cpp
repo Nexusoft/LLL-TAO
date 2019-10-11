@@ -147,6 +147,7 @@ namespace TAO
                 ret["version"]   = tx.nVersion;
                 ret["sequence"]  = tx.nSequence;
                 ret["timestamp"] = tx.nTimestamp;
+                ret["blockhash"] = block.IsNull() ? "" : block.GetHash().GetHex();
                 ret["confirmations"] = block.IsNull() ? 0 : TAO::Ledger::ChainState::nBestHeight.load() - block.nHeight + 1;
 
                 /* Genesis and hashes are verbose 3 and up. */
@@ -185,6 +186,7 @@ namespace TAO
                 ret["type"] = tx.TypeString();
                 ret["timestamp"] = tx.nTime;
                 ret["amount"] = Legacy::SatoshisToAmount(tx.GetValueOut());
+                ret["blockhash"] = block.IsNull() ? "" : block.GetHash().GetHex();
                 ret["confirmations"] = block.IsNull() ? 0 : TAO::Ledger::ChainState::nBestHeight.load() - block.nHeight + 1;
 
                 /* Don't add inputs for coinbase or coinstake transactions */
@@ -671,11 +673,11 @@ namespace TAO
                         uint32_t nID = 0;
                         contract >> nID;
 
-                        /* Get the transfer address. */
+                        /* Get the account address. */
                         TAO::Register::Address hashAddress;
                         contract >> hashAddress;
 
-                        /* Get the transfer address. */
+                        /* Get the proof address. */
                         TAO::Register::Address hashProof;
                         contract >> hashProof;
 
@@ -690,10 +692,10 @@ namespace TAO
                         std::string strInput;
                         if(hashTx.GetType() == TAO::Ledger::LEGACY)
                             strInput = "LEGACY";
-                        else if(hashProof == hashCaller)
-                            strInput = "COINBASE";
-                        else
+                        else if(hashProof.IsAccount() || hashProof.IsToken() || hashProof.IsTrust())
                             strInput = "DEBIT";
+                        else
+                            strInput = "COINBASE";
 
                         ret["for"]      = strInput;
 
