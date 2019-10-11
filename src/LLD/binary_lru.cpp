@@ -49,6 +49,24 @@ namespace LLD
         {
             return static_cast<uint32_t>(hashKey % static_cast<uint64_t>(nBuckets));
         }
+
+
+        /** Check if node is in null state. **/
+        bool IsNull()
+        {
+            return hashKey == 0;
+        }
+
+
+        /** Set node into null state. **/
+        void SetNull()
+        {
+            pprev   = nullptr;
+            pnext   = nullptr;
+            hashKey = 0;
+
+            std::vector<uint8_t>().swap(vData);
+        }
     };
 
 
@@ -168,20 +186,12 @@ namespace LLD
                     return;
                 }
 
-                /* Remove from the linked list. */
-                remove_node(pthis);
-
-                /* Dereference the pointers. */
-                hashmap[nSlot]             = nullptr;
-                pthis->pprev               = nullptr;
-                pthis->pnext               = nullptr;
-
                 /* Reduce the current size. */
                 nCurrentSize -= static_cast<uint32_t>(pthis->vData.size() + 48);
 
                 /* Free the memory. */
-                delete pthis;
-                pthis = nullptr;
+                remove_node(pthis);
+                pthis->SetNull();
             }
         }
 
@@ -192,6 +202,10 @@ namespace LLD
         uint32_t nSlot = slot(nIndex);
         if(hashmap[nSlot] != nullptr)
         {
+            /* Claiming an empty hashmap slot. */
+            if(hashmap[nSlot]->IsNull())
+                nCurrentSize += static_cast<uint32_t>(vData.size() + 48);
+
             /* Set new values. */
             hashmap[nSlot]->hashKey = XXH64(&vKey[0], vKey.size(), 0);
             hashmap[nSlot]->vData   = vData;
@@ -205,42 +219,37 @@ namespace LLD
             hashmap[nSlot] = new BinaryNode(vKey, vData);;
             move_to_front(hashmap[nSlot]);
 
-            /* Remove the last node if cache too large. */
-            while(nCurrentSize > MAX_CACHE_SIZE)
-            {
-                /* Get last pointer. */
-                BinaryNode* pnode = plast;
-                if(!pnode)
-                    return;
-
-                /* Set the new links. */
-                plast = plast->pprev;
-                if (plast)
-                    plast->pnext = nullptr;
-
-                /* Reset the memory linking. */
-                pnode->pprev = nullptr;
-                pnode->pnext = nullptr;
-
-                /* Calculate the buckets for the node being deleted */
-                uint32_t  nBucket = pnode->Bucket(MAX_CACHE_BUCKETS);
-                uint64_t& nRemove = indexes[nBucket];
-                if(nRemove == 0)
-                    continue;
-
-                /* Reset the slot. */
-                hashmap[slot(nRemove)] = nullptr;
-                nRemove                = 0;
-
-                /* Free the memory */
-                nCurrentSize -= static_cast<uint32_t>(pnode->vData.size() + 48);
-
-                delete pnode;
-                pnode = nullptr;
-            }
-
             /* Set the new cache size. */
             nCurrentSize += static_cast<uint32_t>(vData.size() + 48);
+        }
+
+        /* Remove the last node if cache too large. */
+        while(nCurrentSize > MAX_CACHE_SIZE)
+        {
+            /* Get last pointer. */
+            BinaryNode* pnode = plast;
+            if(!pnode)
+                return;
+
+            /* Set the new links. */
+            plast = plast->pprev;
+            if (plast)
+                plast->pnext = nullptr;
+
+            /* Reset the memory linking. */
+            pnode->pprev = nullptr;
+            pnode->pnext = nullptr;
+
+            /* Calculate the buckets for the node being deleted */
+            uint32_t  nBucket = pnode->Bucket(MAX_CACHE_BUCKETS);
+            uint64_t& nRemove = indexes[nBucket];
+
+            /* Reset the slot. */
+            hashmap[slot(nRemove)]->SetNull();
+            nRemove                = 0;
+
+            /* Free the memory */
+            nCurrentSize -= static_cast<uint32_t>(pnode->vData.size() + 48);
         }
     }
 
@@ -273,16 +282,12 @@ namespace LLD
         BinaryNode* pthis = hashmap[nSlot];
         remove_node(pthis);
 
-        /* Dereference the pointers. */
-        hashmap[nSlot] = nullptr;
-        pthis->pprev   = nullptr;
-        pthis->pnext   = nullptr;
+        /* Set to null state. */
+        hashmap[nSlot]->SetNull();
 
         /* Free the memory. */
         nCurrentSize  -= static_cast<uint32_t>(pthis->vData.size() + 48);
         nIndex         = 0; //reset by reference
-
-        delete pthis;
 
         return true;
     }
