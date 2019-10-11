@@ -20,6 +20,8 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/pinunlock.h>
 
+#include <TAO/Register/types/state.h>
+
 #include <Legacy/types/transaction.h>
 
 #include <Util/include/mutex.h>
@@ -55,8 +57,10 @@ namespace TAO
             /** The active pin for sessionless API use **/
             mutable memory::encrypted_ptr<TAO::Ledger::PinUnlock> pActivePIN;
 
+
             /** The auth private key for sessionless API use **/
             mutable memory::encrypted_ptr<memory::encrypted_type<uint512_t>> pAuthKey;
+
 
             /** The mutex for locking. **/
             mutable std::mutex MUTEX;
@@ -643,6 +647,19 @@ namespace TAO
              **/
             void CreateSigchain(const SecureString& strUsername, const SecureString& strPassword,  const SecureString& strPin,
                 TAO::Ledger::Transaction &tx);
+
+
+            /** SanitizeContract
+            *
+            *  Checks that the contract passes both Build() and Execute()
+            *
+            *  @param[in] contract The contract to sanitize
+            *  @param[in] mapStates map of register states used by Build()
+            *
+            *  @return Return value description.
+            *
+            **/
+            bool SanitizeContract(TAO::Operation::Contract& contract, std::map<uint256_t, TAO::Register::State> &mapStates );
 
 
         };

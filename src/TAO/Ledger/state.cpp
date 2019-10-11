@@ -458,8 +458,7 @@ namespace TAO
                         std::fixed, (nReserve - stateLast.nReleasedReserve[nType]) / (double)TAO::Ledger::NXS_COIN);
 
                     /* Update the mint values. */
-                    if(nVersion >= 7)
-                        nMint += nCoinbaseRewards[nType];
+                    nMint += nCoinbaseRewards[nType];
                 }
 
                 /* Log the accumulated fee reserves. */

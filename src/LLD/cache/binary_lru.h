@@ -42,6 +42,9 @@ namespace LLD
     **/
     class BinaryLRU
     {
+
+    protected:
+
         /* The Maximum Size of the Cache. */
         uint32_t MAX_CACHE_SIZE;
 
@@ -62,8 +65,8 @@ namespace LLD
         std::vector<BinaryNode*> hashmap;
 
 
-        /* Map of the current data indexes. */
-        std::vector<uint64_t> indexes;
+        /* Map of the current data checksum. */
+        std::vector<uint64_t> checksums;
 
 
         /* Keep track of the first object in linked list. */
@@ -74,31 +77,20 @@ namespace LLD
         BinaryNode* plast;
 
 
+        /* Keep track of pool of instantiated nodes that can be reused. */
+        BinaryNode* pPool;
+
+
+
     public:
 
-
-        /** Default Constructor. **/
-        BinaryLRU()                                  = delete;
-
-
-		/** Copy Constructor. **/
-		BinaryLRU(const BinaryLRU& cache)            = delete;
-
-
-		/** Move Constructor. **/
-		BinaryLRU(BinaryLRU&& cache)                 = delete;
-
-
-		/** Copy assignment. **/
-		BinaryLRU& operator=(const BinaryLRU& cache) = delete;
-
-
-		/** Move assignment. **/
-		BinaryLRU& operator=(BinaryLRU&& cache)      = delete;
-
-
-        /** Class Destructor. **/
-        ~BinaryLRU();
+        /** Base Constructor.
+         *
+         *  MAX_CACHE_SIZE default value is 32 MB
+         *  MAX_CACHE_BUCKETS default value is 65,539 (2 bytes)
+         *
+         **/
+        BinaryLRU();
 
 
         /** Cache Size Constructor
@@ -106,7 +98,51 @@ namespace LLD
          *  @param[in] nCacheSizeIn The maximum size of this Cache Pool
          *
          **/
-        BinaryLRU(const uint32_t nCacheSizeIn);
+        BinaryLRU(uint32_t nCacheSizeIn);
+
+
+        /** Class Destructor. **/
+        ~BinaryLRU();
+
+
+        /** Bucket
+         *
+         *  Get the checksum of a data object.
+         *
+         *  @param[in] vData The data to get checksum of.
+         *
+         **/
+        uint64_t Checksum(const std::vector<uint8_t>& vData) const;
+
+
+        /** Bucket
+         *
+         *  Find a bucket for cache key management.
+         *
+         *  @param[in] key The sector key to find bucket for.
+         *
+         **/
+        uint32_t Bucket(const SectorKey& key) const;
+
+
+        /** Bucket
+         *
+         *  Find a bucket for cache key management.
+         *
+         *  @param[in] vKey The key to get bucket for.
+         *
+         **/
+        uint32_t Bucket(const std::vector<uint8_t>& vKey) const;
+
+
+        /** Bucket
+         *
+         *  Find a bucket for checksum key management.
+         *
+         *  @param[in] nChecksum The checksum to get bucket for.
+         *
+         **/
+        uint32_t Bucket(const uint64_t nChecksum) const;
 
 
         /** Has
@@ -119,6 +155,26 @@ namespace LLD
          *
          **/
         bool Has(const std::vector<uint8_t>& vKey) const;
+
+
+        /** UnlinkNode
+         *
+         *  Unlinks a node from the double linked list.
+         *
+         *  @param[in] pthis The node to remove from list.
+         *
+         **/
+        void UnlinkNode(BinaryNode* pthis);
+
+
+        /** MoveToFront
+         *
+         *  Move the node in double linked list to front.
+         *
+         *  @param[in] pthis The node to move to front.
+         *
+         **/
+        void MoveToFront(BinaryNode* pthis);
 
 
         /** Get
@@ -169,46 +225,30 @@ namespace LLD
         bool Remove(const std::vector<uint8_t>& vKey);
 
 
-    private:
+        /** AddNode
+        *
+        *  Creates a new node for the cache.  If there is a node in the pool of previously instantated instances then it will be
+        *  used, otherwise a new instance will be instantiated
+        *
+        *  @param[in] vKey The key in binary form.
+        *  @param[in] vData The input data in binary form.
+        *
+        *  @return The newly added node.
+        *
+        **/
+        BinaryNode* AddNode(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vDataIn);
+
 
         /** RemoveNode
-         *
-         *  Remove a node from the double linked list.
-         *
-         *  @param[in] pthis The node to remove from list.
-         *
-         **/
-        void remove_node(BinaryNode* pthis);
-
-
-        /** MoveToFront
-         *
-         *  Move the node in double linked list to front.
-         *
-         *  @param[in] pthis The node to move to front.
-         *
-         **/
-        void move_to_front(BinaryNode* pthis);
-
-
-        /** Bucket
-         *
-         *  Find a bucket for cache key management.
-         *
-         *  @param[in] vKey The key to get bucket for.
-         *
-         **/
-        uint32_t bucket(const std::vector<uint8_t>& vKey) const;
-
-
-        /** Bucket
-         *
-         *  Find a bucket for checksum key management.
-         *
-         *  @param[in] nIndex The checksum to get bucket for.
-         *
-         **/
-        uint32_t slot(const uint64_t nIndex) const;
+        *
+        *  Removes a node from the cache and adds it to the node pool for resuse
+        *
+        *  @param[in] pnode The node to be removed
+        *  @param[in] nChecksumBucket Index into the checksum buckets for this node's checksum
+        *  @param[in] nHashMapBucket Index into the hashmap bucket for this node
+        *
+        **/
+        void RemoveNode(BinaryNode* pnode, uint32_t nChecksumBucket, uint64_t nHashMapBucket);
     };
 }
 
