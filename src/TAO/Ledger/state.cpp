@@ -1277,7 +1277,7 @@ namespace TAO
             }
 
             /* pre-version 7 should have Legacy coinstake stored as vtx[0] */
-            else if(TAO::Ledger::CurrentVersion() < 7 && vtx[0].first == TRANSACTION::LEGACY)
+            else if(TAO::Ledger::CurrentVersion() <= 7 && vtx[0].first == TRANSACTION::LEGACY)
             {
                 /* Get the legacy transaction from the database. */
                 Legacy::Transaction tx;
