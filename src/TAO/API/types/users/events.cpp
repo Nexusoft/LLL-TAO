@@ -788,7 +788,7 @@ namespace TAO
                 LLD::TxnBegin(TAO::Ledger::FLAGS::MEMPOOL);
             
                 fSanitized = TAO::Register::Build(contract, mapStates, TAO::Ledger::FLAGS::MEMPOOL)
-                             && !TAO::Operation::Execute(contract, TAO::Ledger::FLAGS::MEMPOOL);
+                             && TAO::Operation::Execute(contract, TAO::Ledger::FLAGS::MEMPOOL);
 
                 /* Abort the mempool ACID transaction once the contract is sanitized */
                 LLD::TxnAbort(TAO::Ledger::FLAGS::MEMPOOL);
