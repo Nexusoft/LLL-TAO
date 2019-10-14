@@ -86,153 +86,200 @@ namespace TAO
 
         /** Default Constructor. **/
         BlockState::BlockState()
-        : Block()
-        , nTime(runtime::unifiedtimestamp())
-        , ssSystem()
-        , vtx()
-        , nChainTrust(0)
-        , nMoneySupply(0)
-        , nMint(0)
-        , nFees(0)
-        , nChannelHeight(0)
-        , nChannelWeight {0, 0, 0}
+        : Block            ( )
+        , nTime            (runtime::unifiedtimestamp())
+        , ssSystem         ( )
+        , vtx              ( )
+        , nChainTrust      (0)
+        , nMoneySupply     (0)
+        , nMint            (0)
+        , nFees            (0)
+        , nChannelHeight   (0)
+        , nChannelWeight   {0, 0, 0}
         , nReleasedReserve {0, 0, 0}
-        , nFeeReserve(0)
-        , hashNextBlock(0)
-        , hashCheckpoint(0)
+        , nFeeReserve      (0)
+        , hashNextBlock    (0)
+        , hashCheckpoint   (0)
         {
-            SetNull();
         }
 
 
-        /** Default Constructor. **/
+        /* Copy constructor. */
+        BlockState::BlockState(const BlockState& block)
+        : Block            (block)
+        , nTime            (block.nTime)
+        , ssSystem         (block.ssSystem)
+        , vtx              (block.vtx)
+        , nChainTrust      (block.nChainTrust)
+        , nMoneySupply     (block.nMoneySupply)
+        , nMint            (block.nMint)
+        , nFees            (block.nFees)
+        , nChannelWeight   {block.nChannelWeight[0]
+                           ,block.nChannelWeight[1]
+                           ,block.nChannelWeight[2]}
+        , nReleasedReserve {block.nReleasedReserve[0]
+                           ,block.nReleasedReserve[1]
+                           ,block.nReleasedReserve[2]}
+        , nFeeReserve      (block.nFeeReserve)
+        , hashNextBlock    (block.hashNextBlock)
+        , hashCheckpoint   (block.hashCheckpoint)
+        {
+        }
+
+
+        /* Move constructor. */
+        BlockState::BlockState(BlockState&& block) noexcept
+        : Block            (std::move(block))
+        , nTime            (std::move(block.nTime))
+        , ssSystem         (std::move(block.ssSystem))
+        , vtx              (std::move(block.vtx))
+        , nChainTrust      (std::move(block.nChainTrust))
+        , nMoneySupply     (std::move(block.nMoneySupply))
+        , nMint            (std::move(block.nMint))
+        , nFees            (std::move(block.nFees))
+        , nChannelWeight   {std::move(block.nChannelWeight[0])
+                           ,std::move(block.nChannelWeight[1])
+                           ,std::move(block.nChannelWeight[2])}
+        , nReleasedReserve {std::move(block.nReleasedReserve[0])
+                           ,std::move(block.nReleasedReserve[1])
+                           ,std::move(block.nReleasedReserve[2])}
+        , nFeeReserve      (std::move(block.nFeeReserve))
+        , hashNextBlock    (std::move(block.hashNextBlock))
+        , hashCheckpoint   (std::move(block.hashCheckpoint))
+        {
+        }
+
+
+        /* Copy assignment. */
+        BlockState& BlockState::operator=(const BlockState& block)
+        {
+            nVersion            = block.nVersion;
+            hashPrevBlock       = block.hashPrevBlock;
+            hashMerkleRoot      = block.hashMerkleRoot;
+            nChannel            = block.nChannel;
+            nHeight             = block.nHeight;
+            nBits               = block.nBits;
+            nNonce              = block.nNonce;
+            vOffsets            = block.vOffsets;
+            vchBlockSig         = block.vchBlockSig;
+            vMissing            = block.vMissing;
+            hashMissing         = block.hashMissing;
+            fConflicted         = block.fConflicted;
+
+            nTime               = block.nTime;
+            ssSystem            = block.ssSystem;
+            vtx                 = block.vtx;
+            nChainTrust         = block.nChainTrust;
+            nMoneySupply        = block.nMoneySupply;
+            nMint               = block.nMint;
+            nFees               = block.nFees;
+            nChannelHeight      = block.nChannelHeight;
+            nChannelWeight[0]   = block.nChannelWeight[0];
+            nChannelWeight[1]   = block.nChannelWeight[1];
+            nChannelWeight[2]   = block.nChannelWeight[2];
+            nReleasedReserve[0] = block.nReleasedReserve[0];
+            nReleasedReserve[1] = block.nReleasedReserve[1];
+            nReleasedReserve[2] = block.nReleasedReserve[2];
+            nFeeReserve         = block.nFeeReserve;
+            hashNextBlock       = block.hashNextBlock;
+            hashCheckpoint      = block.hashCheckpoint;
+
+            return *this;
+        }
+
+
+        /* Move assignment. */
+        BlockState& BlockState::operator=(BlockState&& block) noexcept
+        {
+            nVersion            = std::move(block.nVersion);
+            hashPrevBlock       = std::move(block.hashPrevBlock);
+            hashMerkleRoot      = std::move(block.hashMerkleRoot);
+            nChannel            = std::move(block.nChannel);
+            nHeight             = std::move(block.nHeight);
+            nBits               = std::move(block.nBits);
+            nNonce              = std::move(block.nNonce);
+            vOffsets            = std::move(block.vOffsets);
+            vchBlockSig         = std::move(block.vchBlockSig);
+            vMissing            = std::move(block.vMissing);
+            hashMissing         = std::move(block.hashMissing);
+            fConflicted         = std::move(block.fConflicted);
+
+            nTime               = std::move(block.nTime);
+            ssSystem            = std::move(block.ssSystem);
+            vtx                 = std::move(block.vtx);
+            nChainTrust         = std::move(block.nChainTrust);
+            nMoneySupply        = std::move(block.nMoneySupply);
+            nMint               = std::move(block.nMint);
+            nFees               = std::move(block.nFees);
+            nChannelHeight      = std::move(block.nChannelHeight);
+            nChannelWeight[0]   = std::move(block.nChannelWeight[0]);
+            nChannelWeight[1]   = std::move(block.nChannelWeight[1]);
+            nChannelWeight[2]   = std::move(block.nChannelWeight[2]);
+            nReleasedReserve[0] = std::move(block.nReleasedReserve[0]);
+            nReleasedReserve[1] = std::move(block.nReleasedReserve[1]);
+            nReleasedReserve[2] = std::move(block.nReleasedReserve[2]);
+            nFeeReserve         = std::move(block.nFeeReserve);
+            hashNextBlock       = std::move(block.hashNextBlock);
+            hashCheckpoint      = std::move(block.hashCheckpoint);
+
+            return *this;
+        }
+
+
+        /** Default Destructor **/
+        BlockState::~BlockState()
+        {
+        }
+
+
+        /* Default Constructor. */
         BlockState::BlockState(const TritiumBlock& block)
-        : Block(block)
-        , nTime(block.nTime)
-        , ssSystem()
-        , vtx(block.vtx.begin(), block.vtx.end())
-        , nChainTrust(0)
-        , nMoneySupply(0)
-        , nMint(0)
-        , nFees(0)
-        , nChannelHeight(0)
-        , nChannelWeight {0, 0, 0}
+        : Block            (block)
+        , nTime            (block.nTime)
+        , ssSystem         (block.ssSystem)
+        , vtx              (block.vtx)
+        , nChainTrust      (0)
+        , nMoneySupply     (0)
+        , nMint            (0)
+        , nFees            (0)
+        , nChannelHeight   (0)
+        , nChannelWeight   {0, 0, 0}
         , nReleasedReserve {0, 0, 0}
-        , nFeeReserve(0)
-        , hashNextBlock(0)
-        , hashCheckpoint(0)
+        , nFeeReserve      (0)
+        , hashNextBlock    (0)
+        , hashCheckpoint   (0)
         {
             /* Set producer to be last transaction. */
             vtx.push_back(std::make_pair(TRANSACTION::TRITIUM, block.producer.GetHash()));
 
             /* Check that sizes are expected. */
             if(vtx.size() != block.vtx.size() + 1)
-                throw std::runtime_error(debug::safe_printstr(FUNCTION, "tritium block to state incorrect sizes"));
+                throw debug::exception(FUNCTION, "tritium block to state incorrect sizes");
         }
 
 
         /* Construct a block state from a legacy block. */
         BlockState::BlockState(const Legacy::LegacyBlock& block)
-        : Block(block)
-        , nTime(block.nTime)
-        , ssSystem()
-        , vtx()
-        , nChainTrust(0)
-        , nMoneySupply(0)
-        , nMint(0)
-        , nFees(0)
-        , nChannelHeight(0)
-        , nChannelWeight {0, 0, 0}
+        : Block            (block)
+        , nTime            (block.nTime)
+        , ssSystem         ( )
+        , vtx              ( )
+        , nChainTrust      (0)
+        , nMoneySupply     (0)
+        , nMint            (0)
+        , nFees            (0)
+        , nChannelHeight   (0)
+        , nChannelWeight   {0, 0, 0}
         , nReleasedReserve {0, 0, 0}
-        , nFeeReserve(0)
-        , hashNextBlock(0)
-        , hashCheckpoint(0)
+        , nFeeReserve      (0)
+        , hashNextBlock    (0)
+        , hashCheckpoint   (0)
         {
             for(const auto& tx : block.vtx)
                 vtx.push_back(std::make_pair(TRANSACTION::LEGACY, tx.GetHash()));
 
             if(vtx.size() != block.vtx.size())
-                throw std::runtime_error(debug::safe_printstr(FUNCTION, "legacy block to state incorrect sizes"));
-        }
-
-
-        /** Default Destructor. **/
-        BlockState::~BlockState()
-        {
-        }
-
-
-        /** Copy Constructor. **/
-        BlockState::BlockState(const BlockState& state)
-        : Block(state)
-        {
-            nTime               = state.nTime;
-            ssSystem            = state.ssSystem;
-            vtx                 = state.vtx;
-
-            nChainTrust         = state.nChainTrust;
-            nMoneySupply        = state.nMoneySupply;
-            nMint               = state.nMint;
-            nFees               = state.nFees;
-            nChannelHeight      = state.nChannelHeight;
-
-            nChannelWeight[0]   = state.nChannelWeight[0];
-            nChannelWeight[1]   = state.nChannelWeight[1];
-            nChannelWeight[2]   = state.nChannelWeight[2];
-
-            nReleasedReserve[0] = state.nReleasedReserve[0];
-            nReleasedReserve[1] = state.nReleasedReserve[1];
-            nReleasedReserve[2] = state.nReleasedReserve[2];
-
-            nFeeReserve         = state.nFeeReserve;
-
-            hashNextBlock       = state.hashNextBlock;
-            hashCheckpoint      = state.hashCheckpoint;
-        }
-
-
-        /** Copy Assignment Operator. **/
-        BlockState& BlockState::operator=(const BlockState& state)
-        {
-            nVersion            = state.nVersion;
-            hashPrevBlock       = state.hashPrevBlock;
-            hashMerkleRoot      = state.hashMerkleRoot;
-            nChannel            = state.nChannel;
-            nHeight             = state.nHeight;
-            nBits               = state.nBits;
-            nNonce              = state.nNonce;
-            vOffsets            = state.vOffsets;
-            vchBlockSig         = state.vchBlockSig;
-
-            //MEMORY ONLY
-            vMissing            = state.vMissing;
-            hashMissing         = state.hashMissing;
-            fConflicted         = state.fConflicted;
-
-            nTime               = state.nTime;
-            ssSystem            = state.ssSystem;
-            vtx                 = state.vtx;
-
-            nChainTrust         = state.nChainTrust;
-            nMoneySupply        = state.nMoneySupply;
-            nMint               = state.nMint;
-            nFees               = state.nFees;
-            nChannelHeight      = state.nChannelHeight;
-
-            nChannelWeight[0]   = state.nChannelWeight[0];
-            nChannelWeight[1]   = state.nChannelWeight[1];
-            nChannelWeight[2]   = state.nChannelWeight[2];
-
-            nReleasedReserve[0] = state.nReleasedReserve[0];
-            nReleasedReserve[1] = state.nReleasedReserve[1];
-            nReleasedReserve[2] = state.nReleasedReserve[2];
-
-            nFeeReserve         = state.nFeeReserve;
-
-            hashNextBlock       = state.hashNextBlock;
-            hashCheckpoint      = state.hashCheckpoint;
-
-            return *this;
+                throw debug::exception(FUNCTION, "legacy block to state incorrect sizes");
         }
 
 

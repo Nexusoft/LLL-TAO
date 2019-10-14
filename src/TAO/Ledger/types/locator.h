@@ -44,6 +44,26 @@ namespace TAO
             Locator();
 
 
+            /** Copy Constructor. **/
+            Locator(const Locator& locator);
+
+
+            /** Move Constructor. **/
+            Locator(Locator&& locator) noexcept;
+
+
+            /** Copy Assignment Operator **/
+            Locator& operator=(const Locator& locator);
+
+
+            /** Move Assignment Operator **/
+            Locator& operator=(Locator&& locator) noexcept;
+
+
+            /** Destructor. **/
+            ~Locator();
+
+
             /** Constructor
              *
              *  Set a locator from block state.
@@ -72,10 +92,6 @@ namespace TAO
              *
              **/
             Locator(const std::vector<uint1024_t>& vHaveIn);
-
-
-            /** Destructor **/
-            ~Locator();
 
 
             /** Set Null

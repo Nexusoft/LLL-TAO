@@ -55,17 +55,95 @@ namespace TAO
 
         /* Default Constructor. */
         Transaction::Transaction()
-        : vContracts()
-        , nVersion(1)
-        , nSequence(0)
-        , nTimestamp(runtime::unifiedtimestamp())
-        , hashNext(0)
-        , hashRecovery(0)
-        , hashGenesis(0)
-        , hashPrevTx(0)
-        , vchPubKey()
-        , vchSig()
+        : vContracts   ( )
+        , nVersion     (1)
+        , nSequence    (0)
+        , nTimestamp   (runtime::unifiedtimestamp())
+        , hashNext     (0)
+        , hashRecovery (0)
+        , hashGenesis  (0)
+        , hashPrevTx   (0)
+        , nKeyType     (0)
+        , nNextType    (0)
+        , vchPubKey    ( )
+        , vchSig       ( )
         {
+        }
+
+
+        /* Copy constructor. */
+        Transaction::Transaction(const Transaction& tx)
+        : vContracts   (tx.vContracts)
+        , nVersion     (tx.nVersion)
+        , nSequence    (tx.nSequence)
+        , nTimestamp   (tx.nTimestamp)
+        , hashNext     (tx.hashNext)
+        , hashRecovery (tx.hashRecovery)
+        , hashGenesis  (tx.hashGenesis)
+        , hashPrevTx   (tx.hashPrevTx)
+        , nKeyType     (tx.nKeyType)
+        , nNextType    (tx.nNextType)
+        , vchPubKey    (tx.vchPubKey)
+        , vchSig       (tx.vchSig)
+        {
+        }
+
+
+        /* Move constructor. */
+        Transaction::Transaction(Transaction&& tx) noexcept
+        : vContracts   (std::move(tx.vContracts))
+        , nVersion     (std::move(tx.nVersion))
+        , nSequence    (std::move(tx.nSequence))
+        , nTimestamp   (std::move(tx.nTimestamp))
+        , hashNext     (std::move(tx.hashNext))
+        , hashRecovery (std::move(tx.hashRecovery))
+        , hashGenesis  (std::move(tx.hashGenesis))
+        , hashPrevTx   (std::move(tx.hashPrevTx))
+        , nKeyType     (std::move(tx.nKeyType))
+        , nNextType    (std::move(tx.nNextType))
+        , vchPubKey    (std::move(tx.vchPubKey))
+        , vchSig       (std::move(tx.vchSig))
+        {
+        }
+
+
+        /* Copy assignment. */
+        Transaction& Transaction::operator=(const Transaction& tx)
+        {
+            vContracts   = tx.vContracts;
+            nVersion     = tx.nVersion;
+            nSequence    = tx.nSequence;
+            nTimestamp   = tx.nTimestamp;
+            hashNext     = tx.hashNext;
+            hashRecovery = tx.hashRecovery;
+            hashGenesis  = tx.hashGenesis;
+            hashPrevTx   = tx.hashPrevTx;
+            nKeyType     = tx.nKeyType;
+            nNextType    = tx.nNextType;
+            vchPubKey    = tx.vchPubKey;
+            vchSig       = tx.vchSig;
+
+            return *this;
+        }
+
+
+        /* Move assignment. */
+        Transaction& Transaction::operator=(Transaction&& tx) noexcept
+        {
+            vContracts   = std::move(tx.vContracts);
+            nVersion     = std::move(tx.nVersion);
+            nSequence    = std::move(tx.nSequence);
+            nTimestamp   = std::move(tx.nTimestamp);
+            hashNext     = std::move(tx.hashNext);
+            hashRecovery = std::move(tx.hashRecovery);
+            hashGenesis  = std::move(tx.hashGenesis);
+            hashPrevTx   = std::move(tx.hashPrevTx);
+            nKeyType     = std::move(tx.nKeyType);
+            nNextType    = std::move(tx.nNextType);
+            vchPubKey    = std::move(tx.vchPubKey);
+            vchSig       = std::move(tx.vchSig);
+
+            return *this;
         }
 
 

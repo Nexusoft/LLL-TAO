@@ -90,16 +90,28 @@ namespace TAO
             SyncBlock();
 
 
-            /** Copy constructor from base block. **/
-            SyncBlock(const Block& block);
+            /** Copy constructor. **/
+            SyncBlock(const SyncBlock& block);
 
 
-            /** Copy Constructor. **/
-            SyncBlock(const BlockState& state);
+            /** Move constructor. **/
+            SyncBlock(SyncBlock&& block) noexcept;
+
+
+            /** Copy assignment. **/
+            SyncBlock& operator=(const SyncBlock& block);
+
+
+            /** Move assignment. **/
+            SyncBlock& operator=(SyncBlock&& block) noexcept;
 
 
             /** Default Destructor **/
             virtual ~SyncBlock();
+
+
+            /** Copy Constructor. **/
+            SyncBlock(const BlockState& state);
 
         };
     }

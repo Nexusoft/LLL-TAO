@@ -31,20 +31,36 @@ namespace TAO
 
 
         /* Copy Constructor */
-        Genesis::Genesis(const uint256_t& hashAddress, bool fSet)
-        : uint256_t(hashAddress)
+        Genesis::Genesis(const uint256_t& value, bool fSet)
+        : uint256_t(value)
         {
             if(fSet)
                 SetType(config::fTestNet.load() ? 0xa2 : 0xa1);
         }
 
 
-        /* Assignment operator.*/
-        Genesis& Genesis::operator=(const Genesis& gen)
+        /* Move Constructor */
+        Genesis::Genesis(uint256_t&& value) noexcept
+        : uint256_t(std::move(value))
         {
-            /* Copy each word. */
-            for(uint32_t i = 0; i < WIDTH; ++i)
-                pn[i] = gen.pn[i];
+        }
+
+
+        /* Copy Assignment operator. */
+        Genesis& Genesis::operator=(const uint256_t& value)
+        {
+            for(uint8_t i = 0; i < WIDTH; ++i)
+                pn[i] = value.pn[i];
+
+            return *this;
+        }
+
+
+        /* Move Assignment operator. */
+        Genesis& Genesis::operator=(uint256_t&& value) noexcept
+        {
+            for(uint8_t i = 0; i < WIDTH; ++i)
+                pn[i] = std::move(value.pn[i]);
 
             return *this;
         }

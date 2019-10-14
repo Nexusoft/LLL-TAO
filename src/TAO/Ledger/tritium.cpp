@@ -54,48 +54,102 @@ namespace TAO
     namespace Ledger
     {
 
-        /** The default constructor. **/
+        /* Default constructor. */
         TritiumBlock::TritiumBlock()
-        : Block()
-        , nTime(runtime::unifiedtimestamp())
-        , producer()
-        , ssSystem()
-        , vtx()
+        : Block    ( )
+        , nTime    (runtime::unifiedtimestamp())
+        , producer ( )
+        , ssSystem ( )
+        , vtx      ( )
         {
-            SetNull();
         }
 
 
-        /** Copy constructor from base block. **/
-        TritiumBlock::TritiumBlock(const Block& block)
-        : Block(block)
-        , nTime(runtime::unifiedtimestamp())
-        , producer()
-        , ssSystem()
-        , vtx()
-        {
-
-        }
-
-
-        /** Copy Constructor. **/
+        /* Copy constructor. */
         TritiumBlock::TritiumBlock(const TritiumBlock& block)
-        : Block(block)
-        , nTime(block.nTime)
-        , producer(block.producer)
-        , ssSystem(block.ssSystem)
-        , vtx(block.vtx)
+        : Block    (block)
+        , nTime    (block.nTime)
+        , producer (block.producer)
+        , ssSystem (block.ssSystem)
+        , vtx      (block.vtx)
         {
         }
 
 
-        /** Copy Constructor. **/
+        /* Move constructor. */
+        TritiumBlock::TritiumBlock(TritiumBlock&& block) noexcept
+        : Block    (std::move(block))
+        , nTime    (std::move(block.nTime))
+        , producer (std::move(block.producer))
+        , ssSystem (std::move(block.ssSystem))
+        , vtx      (std::move(block.vtx))
+        {
+        }
+
+
+        /* Copy assignment. */
+        TritiumBlock& TritiumBlock::operator=(const TritiumBlock& block)
+        {
+            nVersion       = block.nVersion;
+            hashPrevBlock  = block.hashPrevBlock;
+            hashMerkleRoot = block.hashMerkleRoot;
+            nChannel       = block.nChannel;
+            nHeight        = block.nHeight;
+            nBits          = block.nBits;
+            nNonce         = block.nNonce;
+            vOffsets       = block.vOffsets;
+            vchBlockSig    = block.vchBlockSig;
+            vMissing       = block.vMissing;
+            hashMissing    = block.hashMissing;
+            fConflicted    = block.fConflicted;
+
+            nTime          = block.nTime;
+            producer       = block.producer;
+            ssSystem       = block.ssSystem;
+            vtx            = block.vtx;
+
+            return *this;
+        }
+
+
+        /* Move assignment. */
+        TritiumBlock& TritiumBlock::operator=(TritiumBlock&& block) noexcept
+        {
+            nVersion       = std::move(block.nVersion);
+            hashPrevBlock  = std::move(block.hashPrevBlock);
+            hashMerkleRoot = std::move(block.hashMerkleRoot);
+            nChannel       = std::move(block.nChannel);
+            nHeight        = std::move(block.nHeight);
+            nBits          = std::move(block.nBits);
+            nNonce         = std::move(block.nNonce);
+            vOffsets       = std::move(block.vOffsets);
+            vchBlockSig    = std::move(block.vchBlockSig);
+            vMissing       = std::move(block.vMissing);
+            hashMissing    = std::move(block.hashMissing);
+            fConflicted    = std::move(block.fConflicted);
+
+            nTime          = std::move(block.nTime);
+            producer       = std::move(block.producer);
+            ssSystem       = std::move(block.ssSystem);
+            vtx            = std::move(block.vtx);
+
+            return *this;
+        }
+
+
+        /* Default Destructor */
+        TritiumBlock::~TritiumBlock()
+        {
+        }
+
+
+        /* Copy Constructor. */
         TritiumBlock::TritiumBlock(const BlockState& state)
-        : Block(state)
-        , nTime(state.nTime)
-        , producer()
-        , ssSystem(state.ssSystem)
-        , vtx(state.vtx)
+        : Block    (state)
+        , nTime    (state.nTime)
+        , producer ( )
+        , ssSystem (state.ssSystem)
+        , vtx      (state.vtx)
         {
             /* Read the producer transaction from disk. */
             if(!LLD::Ledger->ReadTx(state.vtx.back().second, producer))
@@ -106,13 +160,13 @@ namespace TAO
         }
 
 
-        /** Copy Constructor. **/
+        /* Copy Constructor. */
         TritiumBlock::TritiumBlock(const SyncBlock& block)
-        : Block(block)
-        , nTime(block.nTime)
-        , producer()
-        , ssSystem(block.ssSystem)
-        , vtx()
+        : Block    (block)
+        , nTime    (block.nTime)
+        , producer ( )
+        , ssSystem (block.ssSystem)
+        , vtx      ( )
         {
             /* Check for version conversions. */
             if(block.nVersion < 7)
@@ -186,19 +240,6 @@ namespace TAO
                     }
                 }
             }
-        }
-
-        /* Assignment operator. */
-        TritiumBlock& TritiumBlock::operator=(const TritiumBlock& block)
-        {
-            *this = block;
-            return *this;
-        }
-
-
-        /** Default Destructor **/
-        TritiumBlock::~TritiumBlock()
-        {
         }
 
 

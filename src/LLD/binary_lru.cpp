@@ -183,6 +183,25 @@ namespace LLD
 
         /* Get the binary node. */
         uint64_t& nIndex = indexes[bucket(vKey)];
+        if(nIndex != 0)
+        {
+            /* Get the node from checksum. */
+            uint32_t nSlot    = slot(nIndex);
+            BinaryNode* pthis = hashmap[nSlot];
+
+            /* Check for dereferencing nullptr. */
+            if(pthis != nullptr && !pthis->IsNull())
+            {
+                /* Reduce the current size. */
+                nCurrentSize -= static_cast<uint32_t>(pthis->vData.size());
+
+                /* Free the memory. */
+                remove_node(pthis);
+                pthis->SetNull();
+            }
+        }
+
+        /* Set the new index. */
         nIndex = (key.nSectorFile * key.nSectorStart);
 
         /* Cleanup if colliding with another bucket. */

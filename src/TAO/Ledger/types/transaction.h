@@ -118,6 +118,22 @@ namespace TAO
             Transaction();
 
 
+            /** Copy constructor. **/
+            Transaction(const Transaction& tx);
+
+
+            /** Move constructor. **/
+            Transaction(Transaction&& tx) noexcept;
+
+
+            /** Copy assignment. **/
+            Transaction& operator=(const Transaction& tx);
+
+
+            /** Move assignment. **/
+            Transaction& operator=(Transaction&& tx) noexcept;
+
+
             /** Default Destructor. **/
             ~Transaction();
 

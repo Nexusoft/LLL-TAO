@@ -22,7 +22,11 @@ ________________________________________________________________________________
 
 
 //forward declarations
-namespace TAO { namespace Register { class Address; } }
+namespace TAO
+{
+    namespace Register { class Address; }
+    namespace Ledger   { class Genesis; }
+}
 
 
 /** base_uint
@@ -517,6 +521,7 @@ public:
 
     /* Needed for specialized copy and assignment constructors. */
     friend class TAO::Register::Address;
+    friend class TAO::Ledger::Genesis;
 
     friend class base_uint<1088>;
     friend class base_uint<1056>;

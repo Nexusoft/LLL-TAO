@@ -37,16 +37,40 @@ namespace TAO
             Genesis();
 
 
-            /** Copy Constructor */
-            Genesis(const uint256_t& hashAddress, bool fSet = false);
-
-
-            /** Assignment operator.
+            /** Copy Constructor
              *
-             *  @param[in] gen Address to assign this to.
+             *  Build from uint256_t hash.
+             *
+             *  @param[in] hashAddress The hash.
              *
              **/
-            Genesis& operator=(const Genesis& gen);
+            Genesis(const uint256_t& value, bool fSet = false);
+
+
+            /** Move Constructor
+             *
+             *  Build from uint256_t hash.
+             *
+             *  @param[in] hashAddress The hash.
+             *
+             **/
+            Genesis(uint256_t&& value) noexcept;
+
+
+            /** Copy Assignment operator.
+             *
+             *  @param[in] value The value to assign this to.
+             *
+             **/
+            Genesis& operator=(const uint256_t& value);
+
+
+            /** Move Assignment operator.
+             *
+             *  @param[in] value The value to assign this to.
+             *
+             **/
+            Genesis& operator=(uint256_t&& value) noexcept;
 
 
             /** IsValid
