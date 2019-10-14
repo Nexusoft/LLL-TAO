@@ -25,35 +25,83 @@ namespace TAO
     namespace Register
     {
 
-        /** Default constructor. **/
+        /* Default constructor. */
         Object::Object()
-        : State(uint8_t(REGISTER::OBJECT))
-        , vchSystem(512, 0) //system memory by default is 512 bytes
-        , mapData()
+        : State     (uint8_t(REGISTER::OBJECT))
+        , vchSystem (512, 0) //system memory by default is 512 bytes
+        , mapData   ()
         {
         }
 
 
-        /** Copy Constructor. **/
+        /* Copy Constructor. */
         Object::Object(const Object& object)
-        : State(object)
-        , vchSystem(object.vchSystem)
-        , mapData(object.mapData)
+        : State     (object)
+        , vchSystem (object.vchSystem)
+        , mapData   (object.mapData)
         {
         }
 
 
-        /** Copy Constructor. **/
-        Object::Object(const State& state)
-        : State(state)
-        , vchSystem(512, 0)
-        , mapData()
+        /* Move Constructor. */
+        Object::Object(Object&& object) noexcept
+        : State     (std::move(object))
+        , vchSystem (std::move(object.vchSystem))
+        , mapData   (std::move(object.mapData))
         {
         }
 
 
-        /** Default Destructor **/
+        /* Assignment operator overload */
+        Object& Object::operator=(const Object& object)
+        {
+            vchState     = object.vchState;
+
+            nVersion     = object.nVersion;
+            nType        = object.nType;
+            hashOwner    = object.hashOwner;
+            nCreated     = object.nCreated;
+            nModified    = object.nModified;
+            hashChecksum = object.hashChecksum;
+
+            nReadPos     = 0; //don't copy over read position
+
+            mapData      = object.mapData;
+
+            return *this;
+        }
+
+
+        /* Assignment operator overload */
+        Object& Object::operator=(Object&& object) noexcept
+        {
+            vchState     = std::move(object.vchState);
+
+            nVersion     = std::move(object.nVersion);
+            nType        = std::move(object.nType);
+            hashOwner    = std::move(object.hashOwner);
+            nCreated     = std::move(object.nCreated);
+            nModified    = std::move(object.nModified);
+            hashChecksum = std::move(object.hashChecksum);
+
+            nReadPos     = 0; //don't copy over read position
+            mapData      = std::move(object.mapData);
+
+            return *this;
+        }
+
+
+        /* Default Destructor */
         Object::~Object()
+        {
+        }
+
+
+        /* Copy Constructor. */
+        Object::Object(const State& state)
+        : State     (state)
+        , vchSystem ()
+        , mapData   ()
         {
         }
 

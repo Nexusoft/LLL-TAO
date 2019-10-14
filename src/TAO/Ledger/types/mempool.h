@@ -22,7 +22,6 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/transaction.h>
 #include <Legacy/types/transaction.h>
 
-#include <Legacy/types/inpoint.h>
 #include <Legacy/types/outpoint.h>
 
 #include <Util/include/mutex.h>
@@ -48,13 +47,11 @@ namespace TAO
          **/
         class Mempool
         {
-        /* Public members */
         public:
 
             /* Mutex to local access to the mempool */
             mutable std::recursive_mutex MUTEX;
 
-        /* Private members */
         private:
 
             /** The transactions in the ledger memory pool. **/
@@ -80,7 +77,6 @@ namespace TAO
             /** Record of legacy inputs in the mempool. **/
             std::map<Legacy::OutPoint, uint512_t> mapInputs;
 
-        /* Public methods */
         public:
 
             /** Default Constructor. **/

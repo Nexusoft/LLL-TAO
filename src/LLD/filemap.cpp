@@ -24,15 +24,76 @@ ________________________________________________________________________________
 namespace LLD
 {
 
-    /** The Database Constructor. To determine file location and the Bytes per Record. **/
-    BinaryFileMap::BinaryFileMap(std::string strBaseLocationIn, uint8_t nFlagsIn)
-    : KEY_MUTEX()
-    , strBaseLocation(strBaseLocationIn)
-    , nCurrentFileSize(0)
-    , nCurrentFile(0)
-    , nFlags(nFlagsIn)
+    /* The Database Constructor. */
+    BinaryFileMap::BinaryFileMap(const std::string& strBaseLocationIn, const uint8_t nFlagsIn)
+    : KEY_MUTEX        ( )
+    , strBaseLocation  (strBaseLocationIn)
+    , nCacheSize       (0)
+    , nCurrentFileSize (0)
+    , nCurrentFile     (0)
+    , nFlags           (nFlagsIn)
+    , fMemoryCaching   (false)
+    , mapKeys          ( )
     {
         Initialize();
+    }
+
+
+    /* Copy Constructor */
+    BinaryFileMap::BinaryFileMap(const BinaryFileMap& map)
+    : KEY_MUTEX        ( )
+    , strBaseLocation  (map.strBaseLocation)
+    , nCacheSize       (map.nCacheSize)
+    , nCurrentFileSize (map.nCurrentFileSize)
+    , nCurrentFile     (map.nCurrentFile)
+    , nFlags           (map.nFlags)
+    , fMemoryCaching   (map.fMemoryCaching)
+    , mapKeys          (map.mapKeys)
+    {
+    }
+
+
+    /* Move Constructor */
+    BinaryFileMap::BinaryFileMap(BinaryFileMap&& map) noexcept
+    : KEY_MUTEX        ( )
+    , strBaseLocation  (std::move(map.strBaseLocation))
+    , nCacheSize       (std::move(map.nCacheSize))
+    , nCurrentFileSize (std::move(map.nCurrentFileSize))
+    , nCurrentFile     (std::move(map.nCurrentFile))
+    , nFlags           (std::move(map.nFlags))
+    , fMemoryCaching   (std::move(map.fMemoryCaching))
+    , mapKeys          (std::move(map.mapKeys))
+    {
+    }
+
+
+    /** Copy Assignment Operator **/
+    BinaryFileMap& BinaryFileMap::operator=(const BinaryFileMap& map)
+    {
+        strBaseLocation  = map.strBaseLocation;
+        nCacheSize       = map.nCacheSize;
+        nCurrentFileSize = map.nCurrentFileSize;
+        nCurrentFile     = map.nCurrentFile;
+        nFlags           = map.nFlags;
+        fMemoryCaching   = map.fMemoryCaching;
+        mapKeys          = map.mapKeys;
+
+        return *this;
+    }
+
+
+    /** Move Assignment Operator **/
+    BinaryFileMap& BinaryFileMap::operator=(BinaryFileMap&& map) noexcept
+    {
+        strBaseLocation  = std::move(map.strBaseLocation);
+        nCacheSize       = std::move(map.nCacheSize);
+        nCurrentFileSize = std::move(map.nCurrentFileSize);
+        nCurrentFile     = std::move(map.nCurrentFile);
+        nFlags           = std::move(map.nFlags);
+        fMemoryCaching   = std::move(map.fMemoryCaching);
+        mapKeys          = std::move(map.mapKeys);
+
+        return *this;
     }
 
 
@@ -41,35 +102,6 @@ namespace LLD
     {
     }
 
-
-    /** Copy assignment operator **/
-    BinaryFileMap& BinaryFileMap::operator=(BinaryFileMap map)
-    {
-        strBaseLocation    = map.strBaseLocation;
-        fMemoryCaching     = map.fMemoryCaching;
-        nCacheSize         = map.nCacheSize;
-        nCurrentFile       = map.nCurrentFile;
-        nCurrentFileSize   = map.nCurrentFileSize;
-
-        Initialize();
-
-        return *this;
-    }
-
-
-    /** Copy Constructor **/
-    BinaryFileMap::BinaryFileMap(const BinaryFileMap& map)
-    {
-        strBaseLocation    = map.strBaseLocation;
-        fMemoryCaching     = map.fMemoryCaching;
-        nCacheSize         = map.nCacheSize;
-        nCurrentFileSize   = map.nCurrentFileSize;
-        nCurrentFile       = map.nCurrentFile;
-
-
-        Initialize();
-    }
-    
 
     /*  Determines if the database has the Key. */
     bool BinaryFileMap::HasKey(const std::vector<uint8_t>& vKey) const

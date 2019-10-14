@@ -46,13 +46,79 @@ namespace Legacy
     const int64_t LOCKTIME_THRESHOLD = 500000000;
 
 
-    /** Copy Constructor (From Tritium). **/
+    /* Default Constructor. */
+    Transaction::Transaction()
+    : nVersion  (1)
+    , nTime     (0)
+    , vin       ( )
+    , vout      ( )
+    , nLockTime (0)
+    {
+        SetNull();
+    }
+
+
+    /* Copy Constructor. */
+    Transaction::Transaction(const Transaction& tx)
+    : nVersion  (tx.nVersion)
+    , nTime     (tx.nTime)
+    , vin       (tx.vin)
+    , vout      (tx.vout)
+    , nLockTime (tx.nLockTime)
+    {
+    }
+
+
+    /* Move Constructor. */
+    Transaction::Transaction(Transaction&& tx) noexcept
+    : nVersion  (std::move(tx.nVersion))
+    , nTime     (std::move(tx.nTime))
+    , vin       (std::move(tx.vin))
+    , vout      (std::move(tx.vout))
+    , nLockTime (std::move(tx.nLockTime))
+    {
+    }
+
+
+    /* Copy assignment. */
+    Transaction& Transaction::operator=(const Transaction& tx)
+    {
+        nVersion  = tx.nVersion;
+        nTime     = tx.nTime;
+        vin       = tx.vin;
+        vout      = tx.vout;
+        nLockTime = tx.nLockTime;
+
+        return *this;
+    }
+
+
+    /* Move assignment. */
+    Transaction& Transaction::operator=(Transaction&& tx) noexcept
+    {
+        nVersion  = std::move(tx.nVersion);
+        nTime     = std::move(tx.nTime);
+        vin       = std::move(tx.vin);
+        vout      = std::move(tx.vout);
+        nLockTime = std::move(tx.nLockTime);
+
+        return *this;
+    }
+
+
+    /* Default destructor. */
+    Transaction::~Transaction()
+    {
+    }
+
+
+    /* Copy Constructor (From Tritium). */
     Transaction::Transaction(const TAO::Ledger::Transaction& tx)
-    : nVersion(tx.nVersion)
-    , nTime(tx.nTimestamp)
-    , vin()
-    , vout()
-    , nLockTime(0)
+    : nVersion  (tx.nVersion)
+    , nTime     (tx.nTimestamp)
+    , vin       ( )
+    , vout      ( )
+    , nLockTime (0)
     {
         /* Loop through the contracts. */
         for(uint32_t n = 0; n < tx.Size(); ++n)
@@ -60,7 +126,6 @@ namespace Legacy
             /* Get legacy converted output.*/
             TxOut txout;
             if(tx[n].Legacy(txout))
-                /* Add the output. */
                 vout.push_back(txout);
         }
     }

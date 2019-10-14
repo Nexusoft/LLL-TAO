@@ -26,59 +26,84 @@ namespace LLD
         uint64_t nTimestamp;
 
         /** Default constructor **/
-        BinaryKey(const std::vector<uint8_t>& vKeyIn);
+        BinaryKey(const std::vector<uint8_t>& vKeyIn)
+        : pprev(nullptr)
+        , pnext(nullptr)
+        , vKey(vKeyIn)
+        , nTimestamp(runtime::timestamp())
+        {
+        }
     };
 
 
-    /** Default constructor **/
-    BinaryKey::BinaryKey(const std::vector<uint8_t>& vKeyIn)
-    : pprev(nullptr)
-    , pnext(nullptr)
-    , vKey(vKeyIn)
-    , nTimestamp(runtime::timestamp())
-    {
-    }
-
-
-    /** Base Constructor.  **/
+    /* Default Constructor.  */
     KeyLRU::KeyLRU()
-    : MAX_CACHE_SIZE(1024 * 1024)
-    , MAX_CACHE_BUCKETS(MAX_CACHE_SIZE / 32)
-    , nCurrentSize(MAX_CACHE_BUCKETS * 8)
-    , MUTEX()
-    , hashmap(MAX_CACHE_BUCKETS)
-    , pfirst(nullptr)
-    , plast(nullptr)
+    : MAX_CACHE_SIZE    (1024 * 1024)
+    , MAX_CACHE_BUCKETS (MAX_CACHE_SIZE / 32)
+    , nCurrentSize      (MAX_CACHE_BUCKETS * 8)
+    , MUTEX             ( )
+    , hashmap           (MAX_CACHE_BUCKETS)
+    , pfirst            (nullptr)
+    , plast             (nullptr)
     {
     }
 
 
-    /** Cache Size Constructor **/
-    KeyLRU::KeyLRU(uint32_t nCacheSizeIn)
-    : MAX_CACHE_SIZE(nCacheSizeIn)
-    , MAX_CACHE_BUCKETS(nCacheSizeIn / 32)
-    , nCurrentSize(MAX_CACHE_BUCKETS * 8)
-    , MUTEX()
-    , hashmap(MAX_CACHE_BUCKETS)
-    , pfirst(nullptr)
-    , plast(nullptr)
-    {
-    }
-
-    /** Copy constructor. **/
+    /* Copy Constructor. */
     KeyLRU::KeyLRU(const KeyLRU& cache)
-    : MAX_CACHE_SIZE(cache.MAX_CACHE_SIZE)
-    , MAX_CACHE_BUCKETS(cache.MAX_CACHE_BUCKETS)
-    , nCurrentSize(cache.nCurrentSize)
-    , MUTEX()
-    , hashmap(cache.hashmap)
-    , pfirst(cache.pfirst)
-    , plast(cache.plast)
+    : MAX_CACHE_SIZE    (cache.MAX_CACHE_SIZE)
+    , MAX_CACHE_BUCKETS (cache.MAX_CACHE_BUCKETS)
+    , nCurrentSize      (cache.nCurrentSize)
+    , MUTEX             ( )
+    , hashmap           (cache.hashmap)
+    , pfirst            (cache.pfirst)
+    , plast             (cache.plast)
     {
     }
 
 
-    /** Class Destructor. **/
+    /* Move Constructor. */
+    KeyLRU::KeyLRU(KeyLRU&& cache) noexcept
+    : MAX_CACHE_SIZE    (std::move(cache.MAX_CACHE_SIZE))
+    , MAX_CACHE_BUCKETS (std::move(cache.MAX_CACHE_BUCKETS))
+    , nCurrentSize      (std::move(cache.nCurrentSize))
+    , MUTEX             ( )
+    , hashmap           (std::move(cache.hashmap))
+    , pfirst            (std::move(cache.pfirst))
+    , plast             (std::move(cache.plast))
+    {
+    }
+
+
+    /* Copy assignment. */
+    KeyLRU& KeyLRU::operator=(const KeyLRU& cache)
+    {
+        MAX_CACHE_SIZE    = cache.MAX_CACHE_SIZE;
+        MAX_CACHE_BUCKETS = cache.MAX_CACHE_BUCKETS;
+        nCurrentSize      = cache.nCurrentSize;
+        hashmap           = cache.hashmap;
+        pfirst            = cache.pfirst;
+        plast             = cache.plast;
+
+        return *this;
+    }
+
+
+	/* Move assignment. */
+	KeyLRU& KeyLRU::operator=(KeyLRU&& cache) noexcept
+    {
+        MAX_CACHE_SIZE    = std::move(cache.MAX_CACHE_SIZE);
+        MAX_CACHE_BUCKETS = std::move(cache.MAX_CACHE_BUCKETS);
+        nCurrentSize      = std::move(cache.nCurrentSize);
+        hashmap           = std::move(cache.hashmap);
+        pfirst            = std::move(cache.pfirst);
+        plast             = std::move(cache.plast);
+
+        return *this;
+    }
+
+
+    /* Class Destructor. */
     KeyLRU::~KeyLRU()
     {
         /* Loop through the linked list. */
@@ -88,7 +113,20 @@ namespace LLD
     }
 
 
-    /*  Find a bucket for cache key management. */
+    /* Cache Size Constructor */
+    KeyLRU::KeyLRU(const uint32_t nCacheSizeIn)
+    : MAX_CACHE_SIZE    (nCacheSizeIn)
+    , MAX_CACHE_BUCKETS (nCacheSizeIn / 32)
+    , nCurrentSize      (MAX_CACHE_BUCKETS * 8)
+    , MUTEX             ( )
+    , hashmap           (MAX_CACHE_BUCKETS)
+    , pfirst            (nullptr)
+    , plast             (nullptr)
+    {
+    }
+
+
+    /* Find a bucket for cache key management. */
     uint32_t KeyLRU::Bucket(const std::vector<uint8_t>& vKey) const
     {
         /* Get an xxHash. */
@@ -98,7 +136,7 @@ namespace LLD
     }
 
 
-    /*  Check if data exists. */
+    /* Check if data exists. */
     bool KeyLRU::Get(const std::vector<uint8_t>& vKey)
     {
         LOCK(MUTEX);
@@ -125,7 +163,7 @@ namespace LLD
     }
 
 
-    /*  Remove a node from the double linked list. */
+    /* Remove a node from the double linked list. */
     void KeyLRU::RemoveNode(BinaryKey* pthis)
     {
         /* Relink last pointer. */
@@ -156,7 +194,7 @@ namespace LLD
     }
 
 
-    /*  Move the node in double linked list to front. */
+    /* Move the node in double linked list to front. */
     void KeyLRU::MoveToFront(BinaryKey* pthis)
     {
         /* Don't move to front if already in the front. */
@@ -196,7 +234,7 @@ namespace LLD
     }
 
 
-    /*  Add data in the Pool. */
+    /* Add data in the Pool. */
     void KeyLRU::Put(const std::vector<uint8_t>& vKey)
     {
         LOCK(MUTEX);
@@ -279,7 +317,7 @@ namespace LLD
     }
 
 
-    /*  Penalize Object by Index. */
+    /* Penalize Object by Index. */
     void KeyLRU::Penalize(const std::vector<uint8_t>& vKey, const uint32_t nPenalties)
     {
         LOCK(MUTEX);
@@ -299,7 +337,7 @@ namespace LLD
     }
 
 
-    /*  Force Remove Object by Index. */
+    /* Force Remove Object by Index. */
     bool KeyLRU::Remove(const std::vector<uint8_t>& vKey)
     {
         LOCK(MUTEX);

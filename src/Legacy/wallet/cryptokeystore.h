@@ -34,9 +34,8 @@ namespace LLC
 
 namespace Legacy
 {
-
-    /* forward declaration */
     class NexusAddress;
+
 
     /** Map to store public key/encrypted private key pairs, mapped by Base 58-encoded address **/
     typedef std::map<NexusAddress, std::pair<std::vector<uint8_t>, std::vector<uint8_t> > > CryptedKeyMap;
@@ -66,23 +65,25 @@ namespace Legacy
 
         /** Indicates whether key store is storing private keys in encrypted or unencrypted format.
          *
-         * If fUseCrypto is true, mapCryptedKeys is used and mapKeys must be empty
-         * if fUseCrypto is false, mapKeys (from BasicKeyStore) is used and vMasterKey/mapCryptedKeys must be empty
+         *  If fUseCrypto is true, mapCryptedKeys is used and mapKeys must be empty
+         *  If fUseCrypto is false, mapKeys (from BasicKeyStore) is used and vMasterKey/mapCryptedKeys must be empty
          */
         bool fUseCrypto;
 
 
     protected:
+
+        
         /** Mutex for thread concurrency. **/
         mutable std::mutex cs_cryptoKeyStore;
 
 
         /** SetCrypted
          *
-         * Activate encryption for an empty key store.
-         * To activate successfully, the key store cannot contain any unencrypted keys.
+         *  Activate encryption for an empty key store.
+         *  To activate successfully, the key store cannot contain any unencrypted keys.
          *
-         * @return true if encryption successfully activated or previously active
+         *  @return true if encryption successfully activated or previously active
          *
          **/
         virtual bool SetCrypted();
@@ -93,7 +94,7 @@ namespace Legacy
          *  Convert the key store keys from unencrypted to encrypted and returns the encrypted keys.
          *
          *  This method converts all the key store keys to encrypted format and stores them in the output map.
-         *  It only updates the key store, removing the unencrypted key and storing the encrypted key 
+         *  It only updates the key store, removing the unencrypted key and storing the encrypted key
          *  in its place. It does not update any backing file or database.
          *
          *  If the keystore is already encrypted, this method does nothing and returns false.

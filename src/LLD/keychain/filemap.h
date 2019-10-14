@@ -63,31 +63,41 @@ namespace LLD
         /* The flags */
         uint8_t nFlags;
 
-        /** Caching Flag TODO: Expand the Caching System. **/
-        bool fMemoryCaching = false;
+        /** Caching Flag */
+        bool fMemoryCaching;
 
     public:
-        /** Map to Contain the Binary Positions of Each Key.
-            Used to Quickly Read the Database File at Given Position
-            To Obtain the Record from its Database Key. This is Read
-            Into Memory on Database Initialization. **/
+
+        /** Map to Contain the Binary Positions of Each Key **/
         mutable typename std::map< std::vector<uint8_t>, std::pair<uint16_t, uint32_t> > mapKeys;
 
 
+        /** Default Constructor. **/
+        BinaryFileMap() = delete;
+
+
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        BinaryFileMap(std::string strBaseLocationIn, uint8_t nFlagsIn);
-
-
-        /** Default Destructor **/
-        ~BinaryFileMap();
-
-
-        /** Copy assignment operator **/
-        BinaryFileMap& operator=(BinaryFileMap map);
+        BinaryFileMap(const std::string& strBaseLocationIn, const uint8_t nFlagsIn);
 
 
         /** Copy Constructor **/
         BinaryFileMap(const BinaryFileMap& map);
+
+
+        /** Move Constructor **/
+        BinaryFileMap(BinaryFileMap&& map) noexcept;
+
+
+        /** Copy Assignment Operator **/
+        BinaryFileMap& operator=(const BinaryFileMap& map);
+
+
+        /** Move Assignment Operator **/
+        BinaryFileMap& operator=(BinaryFileMap&& map) noexcept;
+
+
+        /** Default Destructor **/
+        ~BinaryFileMap();
 
 
         /** HasKey

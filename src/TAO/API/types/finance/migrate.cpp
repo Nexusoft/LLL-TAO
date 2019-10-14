@@ -39,7 +39,7 @@ ________________________________________________________________________________
 #include <Legacy/types/trustkey.h>
 
 #include <Legacy/wallet/wallet.h>
-#include <Legacy/wallet/wallettx.h>
+#include <Legacy/types/wallettx.h>
 
 #include <vector>
 

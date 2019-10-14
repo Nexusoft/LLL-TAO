@@ -91,8 +91,28 @@ namespace TAO
             State();
 
 
+            /** Copy Constructor **/
+            State(const State& state);
+
+
+            /** Move Constructor **/
+            State(State&& state) noexcept;
+
+
+            /** Copy assignment overload **/
+            State& operator=(const State& state);
+
+
+            /** Move assignment overload **/
+            State& operator=(State&& state) noexcept;
+
+
+            /** Default Destructor **/
+            ~State();
+
+
             /** Basic Type Constructor **/
-            State(uint8_t nTypeIn);
+            State(const uint8_t nTypeIn);
 
 
             /** Default Constructor **/
@@ -100,19 +120,15 @@ namespace TAO
 
 
             /** Default Constructor **/
-            State(uint8_t nTypeIn, const uint256_t& hashOwnerIn);
+            State(const uint8_t nTypeIn, const uint256_t& hashOwnerIn);
 
 
             /** Default Constructor **/
-            State(std::vector<uint8_t> vchData, uint8_t nTypeIn, const uint256_t& hashOwnerIn);
+            State(const std::vector<uint8_t>& vchData, const uint8_t nTypeIn, const uint256_t& hashOwnerIn);
 
 
             /** Default Constructor **/
-            State(uint64_t hashChecksumIn);
-
-
-            /** Default Destructor **/
-            ~State();
+            State(const uint64_t hashChecksumIn);
 
 
             /** Operator overload to check for equivilence. **/

@@ -55,17 +55,95 @@ namespace TAO
 
         /* Default Constructor. */
         Transaction::Transaction()
-        : vContracts()
-        , nVersion(1)
-        , nSequence(0)
-        , nTimestamp(runtime::unifiedtimestamp())
-        , hashNext(0)
-        , hashRecovery(0)
-        , hashGenesis(0)
-        , hashPrevTx(0)
-        , vchPubKey()
-        , vchSig()
+        : vContracts   ( )
+        , nVersion     (1)
+        , nSequence    (0)
+        , nTimestamp   (runtime::unifiedtimestamp())
+        , hashNext     (0)
+        , hashRecovery (0)
+        , hashGenesis  (0)
+        , hashPrevTx   (0)
+        , nKeyType     (0)
+        , nNextType    (0)
+        , vchPubKey    ( )
+        , vchSig       ( )
         {
+        }
+
+
+        /* Copy constructor. */
+        Transaction::Transaction(const Transaction& tx)
+        : vContracts   (tx.vContracts)
+        , nVersion     (tx.nVersion)
+        , nSequence    (tx.nSequence)
+        , nTimestamp   (tx.nTimestamp)
+        , hashNext     (tx.hashNext)
+        , hashRecovery (tx.hashRecovery)
+        , hashGenesis  (tx.hashGenesis)
+        , hashPrevTx   (tx.hashPrevTx)
+        , nKeyType     (tx.nKeyType)
+        , nNextType    (tx.nNextType)
+        , vchPubKey    (tx.vchPubKey)
+        , vchSig       (tx.vchSig)
+        {
+        }
+
+
+        /* Move constructor. */
+        Transaction::Transaction(Transaction&& tx) noexcept
+        : vContracts   (std::move(tx.vContracts))
+        , nVersion     (std::move(tx.nVersion))
+        , nSequence    (std::move(tx.nSequence))
+        , nTimestamp   (std::move(tx.nTimestamp))
+        , hashNext     (std::move(tx.hashNext))
+        , hashRecovery (std::move(tx.hashRecovery))
+        , hashGenesis  (std::move(tx.hashGenesis))
+        , hashPrevTx   (std::move(tx.hashPrevTx))
+        , nKeyType     (std::move(tx.nKeyType))
+        , nNextType    (std::move(tx.nNextType))
+        , vchPubKey    (std::move(tx.vchPubKey))
+        , vchSig       (std::move(tx.vchSig))
+        {
+        }
+
+
+        /* Copy assignment. */
+        Transaction& Transaction::operator=(const Transaction& tx)
+        {
+            vContracts   = tx.vContracts;
+            nVersion     = tx.nVersion;
+            nSequence    = tx.nSequence;
+            nTimestamp   = tx.nTimestamp;
+            hashNext     = tx.hashNext;
+            hashRecovery = tx.hashRecovery;
+            hashGenesis  = tx.hashGenesis;
+            hashPrevTx   = tx.hashPrevTx;
+            nKeyType     = tx.nKeyType;
+            nNextType    = tx.nNextType;
+            vchPubKey    = tx.vchPubKey;
+            vchSig       = tx.vchSig;
+
+            return *this;
+        }
+
+
+        /* Move assignment. */
+        Transaction& Transaction::operator=(Transaction&& tx) noexcept
+        {
+            vContracts   = std::move(tx.vContracts);
+            nVersion     = std::move(tx.nVersion);
+            nSequence    = std::move(tx.nSequence);
+            nTimestamp   = std::move(tx.nTimestamp);
+            hashNext     = std::move(tx.hashNext);
+            hashRecovery = std::move(tx.hashRecovery);
+            hashGenesis  = std::move(tx.hashGenesis);
+            hashPrevTx   = std::move(tx.hashPrevTx);
+            nKeyType     = std::move(tx.nKeyType);
+            nNextType    = std::move(tx.nNextType);
+            vchPubKey    = std::move(tx.vchPubKey);
+            vchSig       = std::move(tx.vchSig);
+
+            return *this;
         }
 
 
@@ -179,11 +257,16 @@ namespace TAO
 
             /* If genesis then check that the only contracts are those for the default registers.
                NOTE: we do not make this limitation in private mode */
-            if(IsFirst() && !config::GetBoolArg("-private", false))
+            if(IsFirst() && !config::GetBoolArg("-private"))
             {
+                //skip proof of work for unit tests
+                #ifndef UNIT_TESTS
+
                 /* Check the difficulty of the hash. */
                 if(ProofHash() > FIRST_REQUIRED_WORK)
                     return debug::error(FUNCTION, "first transaction not enough work");
+
+                #endif
 
                 /* Number of Name contracts */
                 uint8_t nNames = 0;
@@ -370,6 +453,10 @@ namespace TAO
                     return false;
             }
 
+
+            //skip proof of work for unit tests
+            #ifndef UNIT_TESTS
+
             /* Check for first. */
             if(IsFirst() && !config::GetBoolArg("-private"))
             {
@@ -381,8 +468,7 @@ namespace TAO
                 while(!config::fShutdown)
                 {
                     /* Break when value is found. */
-                    uint512_t hash = ProofHash();
-                    if(hash < FIRST_REQUIRED_WORK)
+                    if(ProofHash() < FIRST_REQUIRED_WORK)
                         break;
 
                     ++hashPrevTx;
@@ -390,6 +476,8 @@ namespace TAO
 
                 debug::log(0, FUNCTION, "Proof ", ProofHash().SubString(), " PoW in ", timer.Elapsed(), " seconds");
             }
+
+            #endif
 
             return true;
         }
@@ -728,7 +816,7 @@ namespace TAO
 
 
         /*  Gets the total trust and stake of pre-state. */
-        bool Transaction::GetTrustInfo(uint64_t& nBalance, uint64_t& nTrust, uint64_t& nStake) const
+        bool Transaction::GetTrustInfo(uint64_t &nBalance, uint64_t &nTrust, uint64_t &nStake) const
         {
             /* Check values. */
             if(!IsCoinStake())
@@ -858,7 +946,7 @@ namespace TAO
                     LLC::FLKey key;
 
                     /* Set the secret key. */
-                    if(!key.SetSecret(vchSecret, true))
+                    if(!key.SetSecret(vchSecret))
                         return;
 
                     /* Calculate the next hash. */
@@ -919,7 +1007,7 @@ namespace TAO
                     LLC::FLKey key;
 
                     /* Set the secret key. */
-                    if(!key.SetSecret(vchSecret, true))
+                    if(!key.SetSecret(vchSecret))
                         return false;
 
                     /* Set the public key. */

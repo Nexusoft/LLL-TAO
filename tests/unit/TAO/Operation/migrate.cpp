@@ -36,9 +36,9 @@ ________________________________________________________________________________
 #include <Legacy/types/transaction.h>
 #include <Legacy/types/trustkey.h>
 #include <Legacy/types/txin.h>
-#include <Legacy/wallet/reservekey.h>
+#include <Legacy/types/reservekey.h>
 #include <Legacy/wallet/wallet.h>
-#include <Legacy/wallet/wallettx.h>
+#include <Legacy/types/wallettx.h>
 
 #include <unit/catch2/catch.hpp>
 

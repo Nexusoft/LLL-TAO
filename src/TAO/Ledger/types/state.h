@@ -139,11 +139,31 @@ namespace TAO
                 READWRITE(ssSystem);
                 READWRITE(vOffsets);
                 READWRITE(vtx);
-          )
+            )
 
 
             /** Default Constructor. **/
             BlockState();
+
+
+            /** Copy constructor. **/
+            BlockState(const BlockState& block);
+
+
+            /** Move constructor. **/
+            BlockState(BlockState&& block) noexcept;
+
+
+            /** Copy assignment. **/
+            BlockState& operator=(const BlockState& block);
+
+
+            /** Move assignment. **/
+            BlockState& operator=(BlockState&& block) noexcept;
+
+
+            /** Default Destructor **/
+            virtual ~BlockState();
 
 
             /** Default Constructor. **/
@@ -152,18 +172,6 @@ namespace TAO
 
             /** Default Constructor. **/
             BlockState(const Legacy::LegacyBlock& block);
-
-
-            /** Virtual Destructor. **/
-            virtual ~BlockState();
-
-
-            /** Copy Constructor. **/
-            BlockState(const BlockState& state);
-
-
-            /** Copy Assignment Operator. **/
-            BlockState& operator=(const BlockState& state);
 
 
             /** Equivilence checking **/

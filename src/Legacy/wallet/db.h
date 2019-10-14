@@ -144,6 +144,27 @@ namespace Legacy
 
 
     public:
+        
+
+        /** Default constructor **/
+        BerkeleyDB()                                   = delete;
+
+
+        /** Copy Constructor. **/
+        BerkeleyDB(const BerkeleyDB& store)            = delete;
+
+
+        /** Move Constructor. **/
+        BerkeleyDB(BerkeleyDB&& store)                 = delete;
+
+
+        /** Copy Assignment. **/
+        BerkeleyDB& operator=(const BerkeleyDB& store) = delete;
+
+
+        /** Move Assignment. **/
+        BerkeleyDB& operator=(BerkeleyDB&& store)      = delete;
+
 
         /** Destructor
          *
@@ -151,14 +172,6 @@ namespace Legacy
          *
          **/
         ~BerkeleyDB();
-
-
-        /** Copy constructor deleted. No copy allowed **/
-        BerkeleyDB(const BerkeleyDB&) = delete;
-
-
-        /** Copy assignment operator deleted. No assignment allowed **/
-        BerkeleyDB& operator= (const BerkeleyDB&) = delete;
 
 
         /** GetDatabaseFile

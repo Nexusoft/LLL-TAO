@@ -62,7 +62,7 @@ namespace TAO
 
             /** Internal genesis hash. **/
             const uint256_t hashGenesis;
-            
+
 
 
         public:
@@ -70,7 +70,27 @@ namespace TAO
 
 
             /** Default constructor. **/
-            SignatureChain();
+            SignatureChain() = delete;
+
+
+            /** Copy Constructor **/
+            SignatureChain(const SignatureChain& sigchain);
+
+
+            /** Move Constructor **/
+            SignatureChain(SignatureChain&& sigchain) noexcept;
+
+
+            /** Copy Assignment Operator **/
+            SignatureChain& operator=(const SignatureChain& sigchain)    = delete;
+
+
+            /** Move Assignment Operator **/
+            SignatureChain& operator=(SignatureChain&& sigchain) noexcept = delete;
+
+
+            /** Destructor. **/
+            ~SignatureChain();
 
 
             /** Constructor to generate Keychain
@@ -80,22 +100,6 @@ namespace TAO
              *
              **/
             SignatureChain(const SecureString& strUsernameIn, const SecureString& strPasswordIn);
-
-
-            /** Copy constructor **/
-            SignatureChain(const SignatureChain& chain);
-
-
-            /** Move constructor
-             *
-             *  @param[in] chain The signature chain to move from.
-             *
-             **/
-            SignatureChain(const SignatureChain&& chain);
-
-
-            /** Destructor. **/
-            ~SignatureChain();
 
 
             /** Genesis

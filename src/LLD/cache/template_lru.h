@@ -34,7 +34,7 @@ namespace LLD
      *
      **/
     template<typename KeyType, typename DataType>
-    struct TemplateNode
+    class TemplateNode
     {
         /** Delete
          *
@@ -43,7 +43,7 @@ namespace LLD
          *
          **/
         template<typename Type>
-        void Delete(Type data)
+        void _delete(Type data)
         { }
 
 
@@ -53,29 +53,31 @@ namespace LLD
          *
          **/
         template<typename Type>
-        void Delete(Type* data)
+        void _delete(Type* data)
         {
             if(data)
                 delete data;
         }
 
+    public:
+
         TemplateNode(const KeyType& KeyIn, const DataType& DataIn)
-        : pprev(nullptr)
-        , pnext(nullptr)
-        , Key(KeyIn)
-        , Data(DataIn)
+        : pprev (nullptr)
+        , pnext (nullptr)
+        , Key   (KeyIn)
+        , Data  (DataIn)
         {
         }
 
         /** Destructor. **/
         ~TemplateNode()
         {
-            Delete(Key);
-            Delete(Data);
+            _delete(Key);
+            _delete(Data);
         }
 
-        TemplateNode<KeyType, DataType> *pprev;
-        TemplateNode<KeyType, DataType> *pnext;
+        TemplateNode<KeyType, DataType>* pprev;
+        TemplateNode<KeyType, DataType>* pnext;
 
         KeyType  Key;
         DataType Data;
@@ -92,8 +94,6 @@ namespace LLD
     template<typename KeyType, typename DataType>
     class TemplateLRU
     {
-
-    protected:
 
         /* The Maximum Size of the Cache. */
         uint32_t MAX_CACHE_ELEMENTS;
@@ -117,46 +117,31 @@ namespace LLD
         TemplateNode<KeyType, DataType>* plast;
 
 
-        /** Base Constructor.
-         *
-         *  MAX_CACHE_ELEMENTS default value is 256 objects
-         *  MAX_CACHE_BUCKETS default value is number of elements
-         *
-         **/
-        TemplateLRU()
-        : MAX_CACHE_ELEMENTS(256)
-        , MUTEX()
-        , cache()
-        , pfirst(0)
-        , plast(0)
-        {
-            /* Set the start and end pointers. */
-            pfirst = nullptr;
-            plast  = nullptr;
-        }
+        /** Default Constructor. **/
+        TemplateLRU()                                    = delete;
 
 
-        /** Total Elements Constructor
-         *
-         * @param[in] nTotalElementsIn The maximum size of this Cache Pool
-         *
-         **/
-        TemplateLRU(uint32_t nTotalElementsIn)
-        : MAX_CACHE_ELEMENTS(nTotalElementsIn)
-        , MUTEX()
-        , cache()
-        , pfirst(0)
-        , plast(0)
-        {
-            /* Set the start and end pointers. */
-            pfirst = nullptr;
-            plast  = nullptr;
-        }
+        /** Copy Constructor. **/
+        TemplateLRU(const TemplateLRU& cache)            = delete;
+
+
+        /** Move Constructor. **/
+        TemplateLRU(TemplateLRU&& cache)                 = delete;
+
+
+        /** Copy assignment. **/
+        TemplateLRU& operator=(const TemplateLRU& cache) = delete;
+
+
+        /** Move assignment. **/
+        TemplateLRU& operator=(TemplateLRU&& cache)      = delete;
 
 
         /** Class Destructor. **/
         ~TemplateLRU()
         {
+            LOCK(MUTEX);
+
             /* Loop through the linked list. */
             for(auto & item : cache)
             {
@@ -165,27 +150,19 @@ namespace LLD
             }
         }
 
-        /** Copy assignment operator **/
-        TemplateLRU& operator=(TemplateLRU map)
+
+        /** Total Elements Constructor
+         *
+         * @param[in] nElements The maximum size of this Cache Pool
+         *
+         **/
+        TemplateLRU(const uint32_t nElements)
+        : MAX_CACHE_ELEMENTS (nElements)
+        , MUTEX              ( )
+        , cache              ( )
+        , pfirst             (nullptr)
+        , plast              (nullptr)
         {
-            MAX_CACHE_ELEMENTS = map.MAX_CACHE_ELEMENTS;
-
-            cache              = map.cache;
-            pfirst             = map.pfirst;
-            plast              = map.plast;
-
-            return *this;
-        }
-
-
-        /** Copy Constructor **/
-        TemplateLRU(const TemplateLRU& map)
-        {
-            MAX_CACHE_ELEMENTS = map.MAX_CACHE_ELEMENTS;
-
-            cache              = map.cache;
-            pfirst             = map.pfirst;
-            plast              = map.plast;
         }
 
 
@@ -203,89 +180,6 @@ namespace LLD
             LOCK(MUTEX);
 
             return cache.count(Key);
-        }
-
-
-        /** RemoveNode
-         *
-         *  Remove a node from the double linked list.
-         *
-         *  @param[in] pthis The node to remove from list.
-         *
-         **/
-        void RemoveNode(TemplateNode<KeyType, DataType>* pthis)
-        {
-            /* Relink last pointer. */
-            if(plast && pthis == plast)
-            {
-                plast = plast->pprev;
-
-                if(plast)
-                    plast->pnext = nullptr;
-            }
-
-            /* Relink first pointer. */
-            if(pfirst && pthis == pfirst)
-            {
-                pfirst = pfirst->pnext;
-
-                if(pfirst)
-                    pfirst->pprev = nullptr;
-            }
-
-            /* Link the next pointer if not null */
-            if(pthis->pnext)
-                pthis->pnext->pprev = pthis->pprev;
-
-            /* Link the previous pointer if not null. */
-            if(pthis->pprev)
-                pthis->pprev->pnext = pthis->pnext;
-        }
-
-
-        /** MoveToFront
-         *
-         *  Move the node in double linked list to front.
-         *
-         *  @param[in] pthis The node to move to front.
-         *
-         **/
-        void MoveToFront(TemplateNode<KeyType, DataType>* pthis)
-        {
-            /* Don't move to front if already in the front. */
-            if(pthis == pfirst)
-                return;
-
-            /* Move last pointer if moving from back. */
-            if(pthis == plast)
-            {
-                if(plast->pprev)
-                    plast = plast->pprev;
-
-                plast->pnext = nullptr;
-            }
-            else
-                RemoveNode(pthis);
-
-            /* Set prev to null to signal front of list */
-            pthis->pprev = nullptr;
-
-            /* Set next to the current first */
-            pthis->pnext = pfirst;
-
-            /* Update the first reference prev */
-            if(pfirst)
-            {
-                pfirst->pprev = pthis;
-                if(!plast)
-                {
-                    plast = pfirst;
-                    plast->pnext = nullptr;
-                }
-            }
-
-            /* Update the first reference. */
-            pfirst        = pthis;
         }
 
 
@@ -309,12 +203,10 @@ namespace LLD
 
             /* Get the data. */
             TemplateNode<KeyType, DataType> *pthis = cache[Key];
-
-            /* Get the data. */
             Data = pthis->Data;
 
             /* Move to front of double linked list. */
-            MoveToFront(pthis);
+            move_to_front(pthis);
 
             return true;
         }
@@ -339,7 +231,7 @@ namespace LLD
                 TemplateNode<KeyType, DataType>* pthis = cache[Key];
 
                 /* Remove the node from the linked list. */
-                RemoveNode(pthis);
+                remove_node(pthis);
 
                 /* Clear the pointer data. */
                 cache.erase(Key);
@@ -349,35 +241,32 @@ namespace LLD
             }
 
             /* Create a new cache node. */
-            TemplateNode<KeyType, DataType>* pthis = new TemplateNode<KeyType, DataType>(Key, Data);
-            cache[Key] = pthis;
-
-            /* Set the new cache node to the front */
-            MoveToFront(pthis);
+            cache[Key] = new TemplateNode<KeyType, DataType>(Key, Data);
+            move_to_front(cache[Key]);
 
             /* Remove the last node if cache too large. */
             if(cache.size() > MAX_CACHE_ELEMENTS)
             {
-                if(plast && plast->pprev)
-                {
-                    /* Get the last key. */
-                    TemplateNode<KeyType, DataType>* pnode = plast;
+                /* Get last pointer. */
+                TemplateNode<KeyType, DataType>* pnode = plast;
+                if(!pnode)
+                    return;
 
-                    /* Relink in memory. */
-                    plast = pnode->pprev;
+                /* Set the new links. */
+                plast = plast->pprev;
+
+                /* Check for nullptr. */
+                if (plast)
                     plast->pnext = nullptr;
 
-                    /* Reset hashmap pointer */
-                    cache.erase(pnode->Key);
-                    pnode->pprev = nullptr;
-                    pnode->pnext = nullptr;
+                /* Reset hashmap pointer */
+                cache.erase(pnode->Key);
+                pnode->pprev = nullptr;
+                pnode->pnext = nullptr;
 
-                    /* Free memory. */
-                    delete pnode;
-
-                    /* Clear the pointers. */
-                    pnode = nullptr;
-                }
+                /* Free memory. */
+                delete pnode;
+                pnode = nullptr;
             }
         }
 
@@ -403,7 +292,7 @@ namespace LLD
             TemplateNode<KeyType, DataType>* pthis = cache[Key];
 
             /* Remove the node from the linked list. */
-            RemoveNode(pthis);
+            remove_node(pthis);
 
             /* Clear the pointer data. */
             cache.erase(Key);
@@ -414,6 +303,83 @@ namespace LLD
             delete pthis;
 
             return true;
+        }
+
+
+    private:
+
+        /** remove_node
+         *
+         *  Remove a node from the double linked list.
+         *
+         *  @param[in] pthis The node to remove from list.
+         *
+         **/
+        void remove_node(TemplateNode<KeyType, DataType>* pthis)
+        {
+            /* Relink last pointer. */
+            if(pthis == plast)
+            {
+                plast = plast->pprev;
+                if(plast)
+                    plast->pnext = nullptr;
+            }
+
+            /* Relink first pointer. */
+            if(pthis == pfirst)
+            {
+                pfirst = pfirst->pnext;
+                if(pfirst)
+                    pfirst->pprev = nullptr;
+            }
+
+            /* Link the next pointer if not null */
+            if (pthis->pnext)
+                pthis->pnext->pprev = pthis->pprev;
+
+            /* Link the previous pointer if not null. */
+            if (pthis->pprev)
+                pthis->pprev->pnext = pthis->pnext;
+
+            /* Unlink next and prev. */
+            pthis->pnext = nullptr;
+            pthis->pprev = nullptr;
+        }
+
+
+        /** move_to_front
+         *
+         *  Move the node in double linked list to front.
+         *
+         *  @param[in] pthis The node to move to front.
+         *
+         **/
+        void move_to_front(TemplateNode<KeyType, DataType>* pthis)
+        {
+            /* Don't move to front if already in the front. */
+            if(pthis == pfirst)
+                return;
+
+            /* Move last pointer if moving from back. */
+            remove_node(pthis);
+
+            /* Link to front. */
+            pthis->pprev = nullptr;
+            pthis->pnext = pfirst;
+
+            /* Update the first reference prev */
+            if(pfirst)
+            {
+                pfirst->pprev = pthis;
+                if(!plast)
+                {
+                    plast = pfirst;
+                    plast->pnext = nullptr;
+                }
+            }
+
+            /* Update the first reference. */
+            pfirst        = pthis;
         }
     };
 }

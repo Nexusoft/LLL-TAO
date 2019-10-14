@@ -35,14 +35,89 @@ namespace LLP
 
         /** Default Constructor **/
         HTTPPacket()
+        : strType        ("")
+        , strRequest     ("")
+        , strVersion     ("")
+        , mapHeaders     ( )
+        , nContentLength (0)
+        , strContent     ("")
+        , fHeader        (false)
         {
-            SetNull();
         }
 
-        /** Constructor **/
-        HTTPPacket(uint32_t nStatus)
+
+        /** Copy Constructor. **/
+        HTTPPacket(const HTTPPacket& packet)
+        : strType        (packet.strType)
+        , strRequest     (packet.strRequest)
+        , strVersion     (packet.strVersion)
+        , mapHeaders     (packet.mapHeaders)
+        , nContentLength (packet.nContentLength)
+        , strContent     (packet.strContent)
+        , fHeader        (packet.fHeader)
         {
-            SetNull();
+        }
+
+
+        /** Move Constructor. **/
+        HTTPPacket(HTTPPacket&& packet) noexcept
+        : strType        (std::move(packet.strType))
+        , strRequest     (std::move(packet.strRequest))
+        , strVersion     (std::move(packet.strVersion))
+        , mapHeaders     (std::move(packet.mapHeaders))
+        , nContentLength (std::move(packet.nContentLength))
+        , strContent     (std::move(packet.strContent))
+        , fHeader        (std::move(packet.fHeader))
+        {
+        }
+
+
+        /** Copy assignment. **/
+        HTTPPacket& operator=(const HTTPPacket& packet)
+        {
+            strType        = packet.strType;
+            strRequest     = packet.strRequest;
+            strVersion     = packet.strVersion;
+            mapHeaders     = packet.mapHeaders;
+            nContentLength = packet.nContentLength;
+            strContent     = packet.strContent;
+            fHeader        = packet.fHeader;
+
+            return *this;
+        }
+
+
+        /** Move assignment. **/
+        HTTPPacket& operator=(HTTPPacket&& packet) noexcept
+        {
+            strType        = std::move(packet.strType);
+            strRequest     = std::move(packet.strRequest);
+            strVersion     = std::move(packet.strVersion);
+            mapHeaders     = std::move(packet.mapHeaders);
+            nContentLength = std::move(packet.nContentLength);
+            strContent     = std::move(packet.strContent);
+            fHeader        = std::move(packet.fHeader);
+
+            return *this;
+        }
+
+
+        /** Destructor. **/
+        ~HTTPPacket()
+        {
+        }
+
+
+        /** Constructor **/
+        HTTPPacket(const uint32_t nStatus)
+        : strType        ("")
+        , strRequest     ("")
+        , strVersion     ("")
+        , mapHeaders     ( )
+        , nContentLength (0)
+        , strContent     ("")
+        , fHeader        (false)
+        {
             SetStatus(nStatus);
         }
 

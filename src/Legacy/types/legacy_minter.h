@@ -17,7 +17,7 @@ ________________________________________________________________________________
 
 #include <Legacy/types/legacy.h>
 #include <Legacy/types/trustkey.h>
-#include <Legacy/wallet/reservekey.h>
+#include <Legacy/types/reservekey.h>
 #include <Legacy/wallet/wallet.h>
 
 #include <LLC/types/uint1024.h>

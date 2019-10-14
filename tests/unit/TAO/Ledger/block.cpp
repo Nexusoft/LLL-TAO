@@ -45,7 +45,7 @@ TEST_CASE( "Block primitive values", "[ledger]")
     REQUIRE(block2.hashMerkleRoot == 555);
     REQUIRE(block2.nBits     == 333);
     REQUIRE(block2.nNonce    == 222);
-    block2.nTime  = 999; // nTime set to current unifiedtimestamp on copy from base block so set it to testable value here 
+    block2.nTime  = 999; // nTime set to current unifiedtimestamp on copy from base block so set it to testable value here
 
 
     //test a copy from tritium block

@@ -3,7 +3,7 @@
  *
  * ==========================(LICENSE BEGIN)============================
  *
- * Copyright (c) 2017  Falcon Project
+ * Copyright (c) 2017-2019  Falcon Project
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -26,12 +26,599 @@
  *
  * ===========================(LICENSE END)=============================
  *
- * @author   Thomas Pornin <thomas.pornin@nccgroup.trust>
+ * @author   Thomas Pornin <thomas.pornin@nccgroup.com>
  */
 
 #include <string.h>
 
-#include "shake.h"
+#include "inner.h"
+
+#if FALCON_ASM_CORTEXM4  // yyyASM_CORTEXM4+1
+
+__attribute__((naked))
+static void
+process_block(uint64_t *A __attribute__((unused)))
+{
+	__asm__ (
+	"push	{ r1, r2, r3, r4, r5, r6, r7, r8, r10, r11, r12, lr }\n\t"
+	"sub	sp, sp, #232\n\t"
+	"\n\t"
+	"@ Invert some words (alternate internal representation, which\n\t"
+	"@ saves some operations).\n\t"
+	"\n\t"
+
+#define INVERT_WORDS \
+	"@ Invert A[1] and A[2].\n\t" \
+	"adds	r1, r0, #8\n\t" \
+	"ldm	r1, { r2, r3, r4, r5 }\n\t" \
+	"mvns	r2, r2\n\t" \
+	"mvns	r3, r3\n\t" \
+	"mvns	r4, r4\n\t" \
+	"mvns	r5, r5\n\t" \
+	"stm	r1!, { r2, r3, r4, r5 }\n\t" \
+	"@ Invert A[8]\n\t" \
+	"adds	r1, r0, #64\n\t" \
+	"ldm	r1, { r2, r3 }\n\t" \
+	"mvns	r2, r2\n\t" \
+	"mvns	r3, r3\n\t" \
+	"stm	r1!, { r2, r3 }\n\t" \
+	"@ Invert A[12]\n\t" \
+	"adds	r1, r0, #96\n\t" \
+	"ldm	r1, { r2, r3 }\n\t" \
+	"mvns	r2, r2\n\t" \
+	"mvns	r3, r3\n\t" \
+	"stm	r1!, { r2, r3 }\n\t" \
+	"@ Invert A[17]\n\t" \
+	"adds	r1, r0, #136\n\t" \
+	"ldm	r1, { r2, r3 }\n\t" \
+	"mvns	r2, r2\n\t" \
+	"mvns	r3, r3\n\t" \
+	"stm	r1!, { r2, r3 }\n\t" \
+	"@ Invert A[20]\n\t" \
+	"adds	r1, r0, #160\n\t" \
+	"ldm	r1, { r2, r3 }\n\t" \
+	"mvns	r2, r2\n\t" \
+	"mvns	r3, r3\n\t" \
+	"stm	r1!, { r2, r3 }\n\t" \
+	"\n\t"
+
+	INVERT_WORDS
+
+	"@ Do 24 rounds. Each loop iteration performs one rounds. We\n\t"
+	"@ keep eight times the current round counter in [sp] (i.e.\n\t"
+	"@ a multiple of 8, from 0 to 184).\n\t"
+	"\n\t"
+	"eors	r1, r1\n\t"
+	"str	r1, [sp, #0]\n\t"
+".process_block_loop:\n\t"
+	"\n\t"
+	"@ xor(A[5*i+0]) -> r1:r2\n\t"
+	"@ xor(A[5*i+1]) -> r3:r4\n\t"
+	"@ xor(A[5*i+2]) -> r5:r6\n\t"
+	"@ xor(A[5*i+3]) -> r7:r8\n\t"
+	"@ xor(A[5*i+4]) -> r10:r11\n\t"
+	"ldm	r0!, { r1, r2, r3, r4, r5, r6, r7, r8 }\n\t"
+	"adds	r0, #8\n\t"
+	"ldm	r0!, { r10, r11, r12 }\n\t"
+	"eors	r1, r10\n\t"
+	"eors	r2, r11\n\t"
+	"eors	r3, r12\n\t"
+	"ldm	r0!, { r10, r11, r12 }\n\t"
+	"eors	r4, r10\n\t"
+	"eors	r5, r11\n\t"
+	"eors	r6, r12\n\t"
+	"ldm	r0!, { r10, r11 }\n\t"
+	"eors	r7, r10\n\t"
+	"eors	r8, r11\n\t"
+	"adds	r0, #8\n\t"
+	"ldm	r0!, { r10, r11, r12 }\n\t"
+	"eors	r1, r10\n\t"
+	"eors	r2, r11\n\t"
+	"eors	r3, r12\n\t"
+	"ldm	r0!, { r10, r11, r12 }\n\t"
+	"eors	r4, r10\n\t"
+	"eors	r5, r11\n\t"
+	"eors	r6, r12\n\t"
+	"ldm	r0!, { r10, r11 }\n\t"
+	"eors	r7, r10\n\t"
+	"eors	r8, r11\n\t"
+	"adds	r0, #8\n\t"
+	"ldm	r0!, { r10, r11, r12 }\n\t"
+	"eors	r1, r10\n\t"
+	"eors	r2, r11\n\t"
+	"eors	r3, r12\n\t"
+	"ldm	r0!, { r10, r11, r12 }\n\t"
+	"eors	r4, r10\n\t"
+	"eors	r5, r11\n\t"
+	"eors	r6, r12\n\t"
+	"ldm	r0!, { r10, r11 }\n\t"
+	"eors	r7, r10\n\t"
+	"eors	r8, r11\n\t"
+	"adds	r0, #8\n\t"
+	"ldm	r0!, { r10, r11, r12 }\n\t"
+	"eors	r1, r10\n\t"
+	"eors	r2, r11\n\t"
+	"eors	r3, r12\n\t"
+	"ldm	r0!, { r10, r11, r12 }\n\t"
+	"eors	r4, r10\n\t"
+	"eors	r5, r11\n\t"
+	"eors	r6, r12\n\t"
+	"ldm	r0!, { r10, r11 }\n\t"
+	"eors	r7, r10\n\t"
+	"eors	r8, r11\n\t"
+	"ldm	r0!, { r10, r11 }\n\t"
+	"subs	r0, #200\n\t"
+	"ldr	r12, [r0, #32]\n\t"
+	"eors	r10, r12\n\t"
+	"ldr	r12, [r0, #36]\n\t"
+	"eors	r11, r12\n\t"
+	"ldr	r12, [r0, #72]\n\t"
+	"eors	r10, r12\n\t"
+	"ldr	r12, [r0, #76]\n\t"
+	"eors	r11, r12\n\t"
+	"ldr	r12, [r0, #112]\n\t"
+	"eors	r10, r12\n\t"
+	"ldr	r12, [r0, #116]\n\t"
+	"eors	r11, r12\n\t"
+	"ldr	r12, [r0, #152]\n\t"
+	"eors	r10, r12\n\t"
+	"ldr	r12, [r0, #156]\n\t"
+	"eors	r11, r12\n\t"
+	"\n\t"
+	"@ t0 = xor(A[5*i+4]) ^ rotl1(xor(A[5*i+1])) -> r10:r11\n\t"
+	"@ t1 = xor(A[5*i+0]) ^ rotl1(xor(A[5*i+2])) -> r1:r2\n\t"
+	"@ t2 = xor(A[5*i+1]) ^ rotl1(xor(A[5*i+3])) -> r3:r4\n\t"
+	"@ t3 = xor(A[5*i+2]) ^ rotl1(xor(A[5*i+4])) -> r5:r6\n\t"
+	"@ t4 = xor(A[5*i+3]) ^ rotl1(xor(A[5*i+0])) -> r7:r8\n\t"
+	"str	r11, [sp, #4]\n\t"
+	"mov	r12, r10\n\t"
+	"eors	r10, r10, r3, lsl #1\n\t"
+	"eors	r10, r10, r4, lsr #31\n\t"
+	"eors	r11, r11, r4, lsl #1\n\t"
+	"eors	r11, r11, r3, lsr #31\n\t"
+	"eors	r3, r3, r7, lsl #1\n\t"
+	"eors	r3, r3, r8, lsr #31\n\t"
+	"eors	r4, r4, r8, lsl #1\n\t"
+	"eors	r4, r4, r7, lsr #31\n\t"
+	"eors	r7, r7, r1, lsl #1\n\t"
+	"eors	r7, r7, r2, lsr #31\n\t"
+	"eors	r8, r8, r2, lsl #1\n\t"
+	"eors	r8, r8, r1, lsr #31\n\t"
+	"eors	r1, r1, r5, lsl #1\n\t"
+	"eors	r1, r1, r6, lsr #31\n\t"
+	"eors	r2, r2, r6, lsl #1\n\t"
+	"eors	r2, r2, r5, lsr #31\n\t"
+	"eors	r5, r5, r12, lsl #1\n\t"
+	"eors	r6, r6, r12, lsr #31\n\t"
+	"ldr	r12, [sp, #4]\n\t"
+	"eors	r5, r5, r12, lsr #31\n\t"
+	"eors	r6, r6, r12, lsl #1\n\t"
+	"\n\t"
+	"@ Save t2, t3 and t4 on the stack.\n\t"
+	"addw	r12, sp, #4\n\t"
+	"stm	r12, { r3, r4, r5, r6, r7, r8 }\n\t"
+	"\n\t"
+	"@ We XOR one of the t0..t4 values into each A[] word, and\n\t"
+	"@ rotate the result by some amount (each word has its own\n\t"
+	"@ amount). The results are written back into a stack buffer\n\t"
+	"@ that starts at sp+32\n\t"
+	"addw	r12, sp, #32\n\t"
+	"\n\t"
+	"@ XOR t0 into A[5*i+0] and t1 into A[5*i+1]; each A[i] is also\n\t"
+	"@ rotated left by some amount.\n\t"
+	"\n\t"
+	"@ A[0] and A[1]\n\t"
+	"ldm	r0!, { r5, r6, r7, r8 }\n\t"
+	"eors	r5, r10\n\t"
+	"eors	r6, r11\n\t"
+	"eors	r3, r7, r1\n\t"
+	"eors	r4, r8, r2\n\t"
+	"lsl	r7, r3, #1\n\t"
+	"orr	r7, r7, r4, lsr #31\n\t"
+	"lsl	r8, r4, #1\n\t"
+	"orr	r8, r8, r3, lsr #31\n\t"
+	"stm	r12!, { r5, r6, r7, r8 }\n\t"
+	"\n\t"
+	"@ A[5] and A[6]\n\t"
+	"adds	r0, #24\n\t"
+	"ldm	r0!, { r5, r6, r7, r8 }\n\t"
+	"eors	r3, r5, r10\n\t"
+	"eors	r4, r6, r11\n\t"
+	"lsl	r5, r4, #4\n\t"
+	"orr	r5, r5, r3, lsr #28\n\t"
+	"lsl	r6, r3, #4\n\t"
+	"orr	r6, r6, r4, lsr #28\n\t"
+	"eors	r3, r7, r1\n\t"
+	"eors	r4, r8, r2\n\t"
+	"lsl	r7, r4, #12\n\t"
+	"orr	r7, r7, r3, lsr #20\n\t"
+	"lsl	r8, r3, #12\n\t"
+	"orr	r8, r8, r4, lsr #20\n\t"
+	"stm	r12!, { r5, r6, r7, r8 }\n\t"
+	"\n\t"
+	"@ A[10] and A[11]\n\t"
+	"adds	r0, #24\n\t"
+	"ldm	r0!, { r5, r6, r7, r8 }\n\t"
+	"eors	r3, r5, r10\n\t"
+	"eors	r4, r6, r11\n\t"
+	"lsl	r5, r3, #3\n\t"
+	"orr	r5, r5, r4, lsr #29\n\t"
+	"lsl	r6, r4, #3\n\t"
+	"orr	r6, r6, r3, lsr #29\n\t"
+	"eors	r3, r7, r1\n\t"
+	"eors	r4, r8, r2\n\t"
+	"lsl	r7, r3, #10\n\t"
+	"orr	r7, r7, r4, lsr #22\n\t"
+	"lsl	r8, r4, #10\n\t"
+	"orr	r8, r8, r3, lsr #22\n\t"
+	"stm	r12!, { r5, r6, r7, r8 }\n\t"
+	"\n\t"
+	"@ A[15] and A[16]\n\t"
+	"adds	r0, #24\n\t"
+	"ldm	r0!, { r5, r6, r7, r8 }\n\t"
+	"eors	r3, r5, r10\n\t"
+	"eors	r4, r6, r11\n\t"
+	"lsl	r5, r4, #9\n\t"
+	"orr	r5, r5, r3, lsr #23\n\t"
+	"lsl	r6, r3, #9\n\t"
+	"orr	r6, r6, r4, lsr #23\n\t"
+	"eors	r3, r7, r1\n\t"
+	"eors	r4, r8, r2\n\t"
+	"lsl	r7, r4, #13\n\t"
+	"orr	r7, r7, r3, lsr #19\n\t"
+	"lsl	r8, r3, #13\n\t"
+	"orr	r8, r8, r4, lsr #19\n\t"
+	"stm	r12!, { r5, r6, r7, r8 }\n\t"
+	"\n\t"
+	"@ A[20] and A[21]\n\t"
+	"adds	r0, #24\n\t"
+	"ldm	r0!, { r5, r6, r7, r8 }\n\t"
+	"eors	r3, r5, r10\n\t"
+	"eors	r4, r6, r11\n\t"
+	"lsl	r5, r3, #18\n\t"
+	"orr	r5, r5, r4, lsr #14\n\t"
+	"lsl	r6, r4, #18\n\t"
+	"orr	r6, r6, r3, lsr #14\n\t"
+	"eors	r3, r7, r1\n\t"
+	"eors	r4, r8, r2\n\t"
+	"lsl	r7, r3, #2\n\t"
+	"orr	r7, r7, r4, lsr #30\n\t"
+	"lsl	r8, r4, #2\n\t"
+	"orr	r8, r8, r3, lsr #30\n\t"
+	"stm	r12!, { r5, r6, r7, r8 }\n\t"
+	"\n\t"
+	"@ XOR t2 into A[5*i+2] and t3 into A[5*i+3]; each A[i] is also\n\t"
+	"@ rotated left by some amount. We reload t2 into r1:r2 and t3\n\t"
+	"@ into r3:r4.\n\t"
+	"addw	r5, sp, #4\n\t"
+	"ldm	r5!, { r1, r2, r3, r4 }\n\t"
+	"\n\t"
+	"@ A[2] and A[3]\n\t"
+	"subs	r0, #160\n\t"
+	"ldm	r0!, { r5, r6, r7, r8 }\n\t"
+	"eors	r10, r5, r1\n\t"
+	"eors	r11, r6, r2\n\t"
+	"lsl	r5, r11, #30\n\t"
+	"orr	r5, r5, r10, lsr #2\n\t"
+	"lsl	r6, r10, #30\n\t"
+	"orr	r6, r6, r11, lsr #2\n\t"
+	"eors	r10, r7, r3\n\t"
+	"eors	r11, r8, r4\n\t"
+	"lsl	r7, r10, #28\n\t"
+	"orr	r7, r7, r11, lsr #4\n\t"
+	"lsl	r8, r11, #28\n\t"
+	"orr	r8, r8, r10, lsr #4\n\t"
+	"stm	r12!, { r5, r6, r7, r8 }\n\t"
+	"\n\t"
+	"@ A[7] and A[8]\n\t"
+	"adds	r0, #24\n\t"
+	"ldm	r0!, { r5, r6, r7, r8 }\n\t"
+	"eors	r10, r5, r1\n\t"
+	"eors	r11, r6, r2\n\t"
+	"lsl	r5, r10, #6\n\t"
+	"orr	r5, r5, r11, lsr #26\n\t"
+	"lsl	r6, r11, #6\n\t"
+	"orr	r6, r6, r10, lsr #26\n\t"
+	"eors	r10, r7, r3\n\t"
+	"eors	r11, r8, r4\n\t"
+	"lsl	r7, r11, #23\n\t"
+	"orr	r7, r7, r10, lsr #9\n\t"
+	"lsl	r8, r10, #23\n\t"
+	"orr	r8, r8, r11, lsr #9\n\t"
+	"stm	r12!, { r5, r6, r7, r8 }\n\t"
+	"\n\t"
+	"@ A[12] and A[13]\n\t"
+	"adds	r0, #24\n\t"
+	"ldm	r0!, { r5, r6, r7, r8 }\n\t"
+	"eors	r10, r5, r1\n\t"
+	"eors	r11, r6, r2\n\t"
+	"lsl	r5, r11, #11\n\t"
+	"orr	r5, r5, r10, lsr #21\n\t"
+	"lsl	r6, r10, #11\n\t"
+	"orr	r6, r6, r11, lsr #21\n\t"
+	"eors	r10, r7, r3\n\t"
+	"eors	r11, r8, r4\n\t"
+	"lsl	r7, r10, #25\n\t"
+	"orr	r7, r7, r11, lsr #7\n\t"
+	"lsl	r8, r11, #25\n\t"
+	"orr	r8, r8, r10, lsr #7\n\t"
+	"stm	r12!, { r5, r6, r7, r8 }\n\t"
+	"\n\t"
+	"@ A[17] and A[18]\n\t"
+	"adds	r0, #24\n\t"
+	"ldm	r0!, { r5, r6, r7, r8 }\n\t"
+	"eors	r10, r5, r1\n\t"
+	"eors	r11, r6, r2\n\t"
+	"lsl	r5, r10, #15\n\t"
+	"orr	r5, r5, r11, lsr #17\n\t"
+	"lsl	r6, r11, #15\n\t"
+	"orr	r6, r6, r10, lsr #17\n\t"
+	"eors	r10, r7, r3\n\t"
+	"eors	r11, r8, r4\n\t"
+	"lsl	r7, r10, #21\n\t"
+	"orr	r7, r7, r11, lsr #11\n\t"
+	"lsl	r8, r11, #21\n\t"
+	"orr	r8, r8, r10, lsr #11\n\t"
+	"stm	r12!, { r5, r6, r7, r8 }\n\t"
+	"\n\t"
+	"@ A[22] and A[23]\n\t"
+	"adds	r0, #24\n\t"
+	"ldm	r0!, { r5, r6, r7, r8 }\n\t"
+	"eors	r10, r5, r1\n\t"
+	"eors	r11, r6, r2\n\t"
+	"lsl	r5, r11, #29\n\t"
+	"orr	r5, r5, r10, lsr #3\n\t"
+	"lsl	r6, r10, #29\n\t"
+	"orr	r6, r6, r11, lsr #3\n\t"
+	"eors	r10, r7, r3\n\t"
+	"eors	r11, r8, r4\n\t"
+	"lsl	r7, r11, #24\n\t"
+	"orr	r7, r7, r10, lsr #8\n\t"
+	"lsl	r8, r10, #24\n\t"
+	"orr	r8, r8, r11, lsr #8\n\t"
+	"stm	r12!, { r5, r6, r7, r8 }\n\t"
+	"\n\t"
+	"@ XOR t4 into A[5*i+4]; each A[i] is also rotated left by some\n\t"
+	"@ amount. We reload t4 into r1:r2.\n\t"
+	"ldr	r1, [sp, #20]\n\t"
+	"ldr	r2, [sp, #24]\n\t"
+	"\n\t"
+	"@ A[4]\n\t"
+	"subs	r0, #160\n\t"
+	"ldm	r0!, { r5, r6 }\n\t"
+	"eors	r3, r5, r1\n\t"
+	"eors	r4, r6, r2\n\t"
+	"lsl	r5, r3, #27\n\t"
+	"orr	r5, r5, r4, lsr #5\n\t"
+	"lsl	r6, r4, #27\n\t"
+	"orr	r6, r6, r3, lsr #5\n\t"
+	"stm	r12!, { r5, r6 }\n\t"
+	"\n\t"
+	"@ A[9]\n\t"
+	"adds	r0, #32\n\t"
+	"ldm	r0!, { r5, r6 }\n\t"
+	"eors	r3, r5, r1\n\t"
+	"eors	r4, r6, r2\n\t"
+	"lsl	r5, r3, #20\n\t"
+	"orr	r5, r5, r4, lsr #12\n\t"
+	"lsl	r6, r4, #20\n\t"
+	"orr	r6, r6, r3, lsr #12\n\t"
+	"stm	r12!, { r5, r6 }\n\t"
+	"\n\t"
+	"@ A[14]\n\t"
+	"adds	r0, #32\n\t"
+	"ldm	r0!, { r5, r6 }\n\t"
+	"eors	r3, r5, r1\n\t"
+	"eors	r4, r6, r2\n\t"
+	"lsl	r5, r4, #7\n\t"
+	"orr	r5, r5, r3, lsr #25\n\t"
+	"lsl	r6, r3, #7\n\t"
+	"orr	r6, r6, r4, lsr #25\n\t"
+	"stm	r12!, { r5, r6 }\n\t"
+	"\n\t"
+	"@ A[19]\n\t"
+	"adds	r0, #32\n\t"
+	"ldm	r0!, { r5, r6 }\n\t"
+	"eors	r3, r5, r1\n\t"
+	"eors	r4, r6, r2\n\t"
+	"lsl	r5, r3, #8\n\t"
+	"orr	r5, r5, r4, lsr #24\n\t"
+	"lsl	r6, r4, #8\n\t"
+	"orr	r6, r6, r3, lsr #24\n\t"
+	"stm	r12!, { r5, r6 }\n\t"
+	"\n\t"
+	"@ A[24]\n\t"
+	"adds	r0, #32\n\t"
+	"ldm	r0!, { r5, r6 }\n\t"
+	"eors	r3, r5, r1\n\t"
+	"eors	r4, r6, r2\n\t"
+	"lsl	r5, r3, #14\n\t"
+	"orr	r5, r5, r4, lsr #18\n\t"
+	"lsl	r6, r4, #14\n\t"
+	"orr	r6, r6, r3, lsr #18\n\t"
+	"stm	r12!, { r5, r6 }\n\t"
+	"\n\t"
+	"subs	r0, #200\n\t"
+	"\n\t"
+	"@ At that point, the stack buffer at sp+32 contains the words\n\t"
+	"@ at the following indexes (0 to 24) and offsets (from sp)\n\t"
+	"@   A[ 0]    0      32\n\t"
+	"@   A[ 1]    1      40\n\t"
+	"@   A[ 2]   10     112\n\t"
+	"@   A[ 3]   11     120\n\t"
+	"@   A[ 4]   20     192\n\t"
+	"@   A[ 5]    2      48\n\t"
+	"@   A[ 6]    3      56\n\t"
+	"@   A[ 7]   12     128\n\t"
+	"@   A[ 8]   13     136\n\t"
+	"@   A[ 9]   21     200\n\t"
+	"@   A[10]    4      64\n\t"
+	"@   A[11]    5      72\n\t"
+	"@   A[12]   14     144\n\t"
+	"@   A[13]   15     152\n\t"
+	"@   A[14]   22     208\n\t"
+	"@   A[15]    6      80\n\t"
+	"@   A[16]    7      88\n\t"
+	"@   A[17]   16     160\n\t"
+	"@   A[18]   17     168\n\t"
+	"@   A[19]   23     216\n\t"
+	"@   A[20]    8      96\n\t"
+	"@   A[21]    9     104\n\t"
+	"@   A[22]   18     176\n\t"
+	"@   A[23]   19     184\n\t"
+	"@   A[24]   24     224\n\t"
+
+#define KHI_LOAD(s0, s1, s2, s3, s4) \
+	"ldr	r1, [sp, #(32 + 8 * " #s0 ")]\n\t" \
+	"ldr	r2, [sp, #(36 + 8 * " #s0 ")]\n\t" \
+	"ldr	r3, [sp, #(32 + 8 * " #s1 ")]\n\t" \
+	"ldr	r4, [sp, #(36 + 8 * " #s1 ")]\n\t" \
+	"ldr	r5, [sp, #(32 + 8 * " #s2 ")]\n\t" \
+	"ldr	r6, [sp, #(36 + 8 * " #s2 ")]\n\t" \
+	"ldr	r7, [sp, #(32 + 8 * " #s3 ")]\n\t" \
+	"ldr	r8, [sp, #(36 + 8 * " #s3 ")]\n\t" \
+	"ldr	r10, [sp, #(32 + 8 * " #s4 ")]\n\t" \
+	"ldr	r11, [sp, #(36 + 8 * " #s4 ")]\n\t"
+
+#define KHI_STEP(op, x0, x1, x2, x3, x4, x5, d) \
+	#op "	r12, " #x0 ", " #x2 "\n\t" \
+	"eors	r12, " #x4 "\n\t" \
+	"str	r12, [r0, #(8 * " #d ")]\n\t" \
+	#op "	r12, " #x1 ", " #x3 "\n\t" \
+	"eors	r12, " #x5 "\n\t" \
+	"str	r12, [r0, #(4 + 8 * " #d ")]\n\t"
+
+	"@ A[0], A[6], A[12], A[18] and A[24]\n\t"
+	KHI_LOAD(0, 3, 14, 17, 24)
+	KHI_STEP(orrs, r3, r4, r5, r6, r1, r2, 0)
+	KHI_STEP(orns, r7, r8, r5, r6, r3, r4, 1)
+	KHI_STEP(ands, r7, r8, r10, r11, r5, r6, 2)
+	KHI_STEP(orrs, r1, r2, r10, r11, r7, r8, 3)
+	KHI_STEP(ands, r1, r2, r3, r4, r10, r11, 4)
+	"\n\t"
+
+	"@ A[3], A[9], A[10], A[16] and A[22]\n\t"
+	KHI_LOAD(11, 21, 4, 7, 18)
+	KHI_STEP(orrs, r3, r4, r5, r6, r1, r2, 5)
+	KHI_STEP(ands, r7, r8, r5, r6, r3, r4, 6)
+	KHI_STEP(orns, r7, r8, r10, r11, r5, r6, 7)
+	KHI_STEP(orrs, r1, r2, r10, r11, r7, r8, 8)
+	KHI_STEP(ands, r1, r2, r3, r4, r10, r11, 9)
+	"\n\t"
+
+	"@ A[1], A[7], A[13], A[19] and A[20]\n\t"
+	KHI_LOAD(1, 12, 15, 23, 8)
+	KHI_STEP(orrs, r3, r4, r5, r6, r1, r2, 10)
+	KHI_STEP(ands, r7, r8, r5, r6, r3, r4, 11)
+	KHI_STEP(bics, r10, r11, r7, r8, r5, r6, 12)
+	"mvns	r7, r7\n\t"
+	"mvns	r8, r8\n\t"
+	KHI_STEP(orrs, r1, r2, r10, r11, r7, r8, 13)
+	KHI_STEP(ands, r1, r2, r3, r4, r10, r11, 14)
+	"\n\t"
+
+	"@ A[4], A[5], A[11], A[17] and A[23]\n\t"
+	KHI_LOAD(20, 2, 5, 16, 19)
+	KHI_STEP(ands, r3, r4, r5, r6, r1, r2, 15)
+	KHI_STEP(orrs, r7, r8, r5, r6, r3, r4, 16)
+	KHI_STEP(orns, r10, r11, r7, r8, r5, r6, 17)
+	"mvns	r7, r7\n\t"
+	"mvns	r8, r8\n\t"
+	KHI_STEP(ands, r1, r2, r10, r11, r7, r8, 18)
+	KHI_STEP(orrs, r1, r2, r3, r4, r10, r11, 19)
+	"\n\t"
+
+	"@ A[2], A[8], A[14], A[15] and A[21]\n\t"
+	KHI_LOAD(10, 13, 22, 6, 9)
+	KHI_STEP(bics, r5, r6, r3, r4, r1, r2, 20)
+	KHI_STEP(ands, r1, r2, r3, r4, r10, r11, 24)
+	"mvns	r3, r3\n\t"
+	"mvns	r4, r4\n\t"
+	KHI_STEP(orrs, r7, r8, r5, r6, r3, r4, 21)
+	KHI_STEP(ands, r7, r8, r10, r11, r5, r6, 22)
+	KHI_STEP(orrs, r1, r2, r10, r11, r7, r8, 23)
+	"\n\t"
+
+	"@ Get round counter XOR round constant into A[0]\n\t"
+	"ldr	r1, [sp, #0]\n\t"
+	"adr	r2, .process_block_RC\n\t"
+	"adds	r2, r1\n\t"
+	"ldm	r2, { r3, r4 }\n\t"
+	"ldm	r0, { r5, r6 }\n\t"
+	"eors	r5, r3\n\t"
+	"eors	r6, r4\n\t"
+	"stm	r0, { r5, r6 }\n\t"
+	"\n\t"
+	"@ Increment round counter, loop until all 24 rounds are done.\n\t"
+	"\n\t"
+	"adds	r1, #8\n\t"
+	"str	r1, [sp, #0]\n\t"
+	"cmp	r1, #192\n\t"
+	"blo	.process_block_loop\n\t"
+
+	INVERT_WORDS
+
+	"add	sp, sp, #232\n\t"
+	"pop	{ r1, r2, r3, r4, r5, r6, r7, r8, r10, r11, r12, pc }\n\t"
+	"\n\t"
+".process_block_RC:\n\t"
+	".word	0x00000001\n\t"
+	".word	0x00000000\n\t"
+	".word	0x00008082\n\t"
+	".word	0x00000000\n\t"
+	".word	0x0000808A\n\t"
+	".word	0x80000000\n\t"
+	".word	0x80008000\n\t"
+	".word	0x80000000\n\t"
+	".word	0x0000808B\n\t"
+	".word	0x00000000\n\t"
+	".word	0x80000001\n\t"
+	".word	0x00000000\n\t"
+	".word	0x80008081\n\t"
+	".word	0x80000000\n\t"
+	".word	0x00008009\n\t"
+	".word	0x80000000\n\t"
+	".word	0x0000008A\n\t"
+	".word	0x00000000\n\t"
+	".word	0x00000088\n\t"
+	".word	0x00000000\n\t"
+	".word	0x80008009\n\t"
+	".word	0x00000000\n\t"
+	".word	0x8000000A\n\t"
+	".word	0x00000000\n\t"
+	".word	0x8000808B\n\t"
+	".word	0x00000000\n\t"
+	".word	0x0000008B\n\t"
+	".word	0x80000000\n\t"
+	".word	0x00008089\n\t"
+	".word	0x80000000\n\t"
+	".word	0x00008003\n\t"
+	".word	0x80000000\n\t"
+	".word	0x00008002\n\t"
+	".word	0x80000000\n\t"
+	".word	0x00000080\n\t"
+	".word	0x80000000\n\t"
+	".word	0x0000800A\n\t"
+	".word	0x00000000\n\t"
+	".word	0x8000000A\n\t"
+	".word	0x80000000\n\t"
+	".word	0x80008081\n\t"
+	".word	0x80000000\n\t"
+	".word	0x00008080\n\t"
+	".word	0x80000000\n\t"
+	".word	0x80000001\n\t"
+	".word	0x00000000\n\t"
+	".word	0x80008008\n\t"
+	".word	0x80000000\n\t"
+
+#undef INVERT_WORDS
+#undef KHI_LOAD
+#undef KHI_STEP
+
+	);
+}
+
+#else  // yyyASM_CORTEXM4+0
 
 /*
  * Round constants.
@@ -52,60 +639,7 @@ static const uint64_t RC[] = {
 };
 
 /*
- * Decode a 64-bit word, little-endian encoding.
- */
-static inline uint64_t
-dec64le(const void *data)
-{
-	const unsigned char *buf;
-
-	buf = data;
-	return (uint64_t)buf[0]
-		| ((uint64_t)buf[1] << 8)
-		| ((uint64_t)buf[2] << 16)
-		| ((uint64_t)buf[3] << 24)
-		| ((uint64_t)buf[4] << 32)
-		| ((uint64_t)buf[5] << 40)
-		| ((uint64_t)buf[6] << 48)
-		| ((uint64_t)buf[7] << 56);
-}
-
-/*
- * Encode a 64-bit word, little-endian encoding.
- */
-static inline void
-enc64le(void *out, uint64_t x)
-{
-	unsigned char *buf;
-
-	buf = out;
-	buf[0] = (unsigned char)x;
-	buf[1] = (unsigned char)(x >> 8);
-	buf[2] = (unsigned char)(x >> 16);
-	buf[3] = (unsigned char)(x >> 24);
-	buf[4] = (unsigned char)(x >> 32);
-	buf[5] = (unsigned char)(x >> 40);
-	buf[6] = (unsigned char)(x >> 48);
-	buf[7] = (unsigned char)(x >> 56);
-}
-
-/*
- * XOR a block of data into the provided state. This supports only
- * blocks whose length is a multiple of 64 bits.
- */
-static void
-xor_block(uint64_t *A, const void *data, size_t rate)
-{
-	size_t u;
-
-	for(u = 0; u < rate; u += 8) {
-		A[u >> 3] ^= dec64le((const unsigned char *)data + u);
-	}
-}
-
-/*
- * Process a block with the provided data. The data length must be a
- * multiple of 8 (in bytes); normally, this is the "rate".
+ * Process the provided state.
  */
 static void
 process_block(uint64_t *A)
@@ -117,10 +651,21 @@ process_block(uint64_t *A)
 	int j;
 
 	/*
+	 * Invert some words (alternate internal representation, which
+	 * saves some operations).
+	 */
+	A[ 1] = ~A[ 1];
+	A[ 2] = ~A[ 2];
+	A[ 8] = ~A[ 8];
+	A[12] = ~A[12];
+	A[17] = ~A[17];
+	A[20] = ~A[20];
+
+	/*
 	 * Compute the 24 rounds. This loop is partially unrolled (each
 	 * iteration computes two rounds).
 	 */
-	for(j = 0; j < 24; j += 2) {
+	for (j = 0; j < 24; j += 2) {
 
 		tt0 = A[ 1] ^ A[ 6];
 		tt1 = A[11] ^ A[16];
@@ -221,6 +766,7 @@ process_block(uint64_t *A)
 		A[14] = (A[14] << 39) | (A[14] >> (64 - 39));
 		A[19] = (A[19] <<  8) | (A[19] >> (64 -  8));
 		A[24] = (A[24] << 14) | (A[24] >> (64 - 14));
+
 		bnn = ~A[12];
 		kt = A[ 6] | A[12];
 		c0 = A[ 0] ^ kt;
@@ -402,6 +948,7 @@ process_block(uint64_t *A)
 		A[20] = (A[20] << 39) | (A[20] >> (64 - 39));
 		A[23] = (A[23] <<  8) | (A[23] >> (64 -  8));
 		A[21] = (A[21] << 14) | (A[21] >> (64 - 14));
+
 		bnn = ~A[13];
 		kt = A[ 9] | A[13];
 		c0 = A[ 0] ^ kt;
@@ -510,47 +1057,64 @@ process_block(uint64_t *A)
 		A[17] = A[ 7];
 		A[ 7] = t;
 	}
+
+	/*
+	 * Invert some words back to normal representation.
+	 */
+	A[ 1] = ~A[ 1];
+	A[ 2] = ~A[ 2];
+	A[ 8] = ~A[ 8];
+	A[12] = ~A[12];
+	A[17] = ~A[17];
+	A[20] = ~A[20];
 }
 
-/* see falcon.h */
+#endif  // yyyASM_CORTEXM4-
+
+/* see inner.h */
 void
-shake_init(shake_context *sc, int capacity)
+Zf(i_shake256_init)(inner_shake256_context *sc)
 {
-	sc->rate = 200 - (size_t)(capacity >> 3);
 	sc->dptr = 0;
-	memset(sc->A, 0, sizeof sc->A);
-	sc->A[ 1] = ~(uint64_t)0;
-	sc->A[ 2] = ~(uint64_t)0;
-	sc->A[ 8] = ~(uint64_t)0;
-	sc->A[12] = ~(uint64_t)0;
-	sc->A[17] = ~(uint64_t)0;
-	sc->A[20] = ~(uint64_t)0;
+
+	/*
+	 * Representation of an all-ones uint64_t is the same regardless
+	 * of local endianness.
+	 */
+	memset(sc->st.A, 0, sizeof sc->st.A);
 }
 
-/* see falcon.h */
+/* see inner.h */
 void
-shake_inject(shake_context *sc, const void *data, size_t len)
+Zf(i_shake256_inject)(inner_shake256_context *sc, const uint8_t *in, size_t len)
 {
-	const unsigned char *buf;
-	size_t rate, dptr;
+	size_t dptr;
 
-	buf = data;
-	rate = sc->rate;
-	dptr = sc->dptr;
-	while(len > 0) {
-		size_t clen;
+	dptr = (size_t)sc->dptr;
+	while (len > 0) {
+		size_t clen, u;
 
-		clen = rate - dptr;
-		if(clen > len) {
+		clen = 136 - dptr;
+		if (clen > len) {
 			clen = len;
 		}
-		memcpy(sc->dbuf + dptr, buf, clen);
+#if FALCON_LE  // yyyLE+1
+		for (u = 0; u < clen; u ++) {
+			sc->st.dbuf[dptr + u] ^= in[u];
+		}
+#else  // yyyLE+0
+		for (u = 0; u < clen; u ++) {
+			size_t v;
+
+			v = u + dptr;
+			sc->st.A[v >> 3] ^= (uint64_t)in[u] << ((v & 7) << 3);
+		}
+#endif  // yyyLE-
 		dptr += clen;
-		buf += clen;
+		in += clen;
 		len -= clen;
-		if(dptr == rate) {
-			xor_block(sc->A, sc->dbuf, rate);
-			process_block(sc->A);
+		if (dptr == 136) {
+			process_block(sc->st.A);
 			dptr = 0;
 		}
 	}
@@ -559,79 +1123,55 @@ shake_inject(shake_context *sc, const void *data, size_t len)
 
 /* see falcon.h */
 void
-shake_flip(shake_context *sc)
+Zf(i_shake256_flip)(inner_shake256_context *sc)
 {
 	/*
 	 * We apply padding and pre-XOR the value into the state. We
 	 * set dptr to the end of the buffer, so that first call to
 	 * shake_extract() will process the block.
 	 */
-	if((sc->dptr + 1) == sc->rate) {
-		sc->dbuf[sc->dptr ++] = 0x9F;
-	} else {
-		sc->dbuf[sc->dptr ++] = 0x1F;
-		memset(sc->dbuf + sc->dptr, 0x00, sc->rate - sc->dptr - 1);
-		sc->dbuf[sc->rate - 1] = 0x80;
-		sc->dptr = sc->rate;
-	}
-	xor_block(sc->A, sc->dbuf, sc->rate);
+#if FALCON_LE  // yyyLE+1
+	sc->st.dbuf[sc->dptr] ^= 0x1F;
+	sc->st.dbuf[135] ^= 0x80;
+#else  // yyyLE+0
+	unsigned v;
+
+	v = sc->dptr;
+	sc->st.A[v >> 3] ^= (uint64_t)0x1F << ((v & 7) << 3);
+	sc->st.A[16] ^= (uint64_t)0x80 << 56;
+#endif  // yyyLE-
+	sc->dptr = 136;
 }
 
 /* see falcon.h */
 void
-shake_extract(shake_context *sc, void *out, size_t len)
+Zf(i_shake256_extract)(inner_shake256_context *sc, uint8_t *out, size_t len)
 {
-	unsigned char *buf;
-	size_t dptr, rate;
+	size_t dptr;
 
-	buf = out;
-	dptr = sc->dptr;
-	rate = sc->rate;
-	while(len > 0) {
+	dptr = (size_t)sc->dptr;
+	while (len > 0) {
 		size_t clen;
 
-		if(dptr == rate) {
-			unsigned char *dbuf;
-			uint64_t *A;
-
-			A = sc->A;
-			dbuf = sc->dbuf;
-			process_block(A);
-			enc64le(dbuf +   0,  A[ 0]);
-			enc64le(dbuf +   8, ~A[ 1]);
-			enc64le(dbuf +  16, ~A[ 2]);
-			enc64le(dbuf +  24,  A[ 3]);
-			enc64le(dbuf +  32,  A[ 4]);
-			enc64le(dbuf +  40,  A[ 5]);
-			enc64le(dbuf +  48,  A[ 6]);
-			enc64le(dbuf +  56,  A[ 7]);
-			enc64le(dbuf +  64, ~A[ 8]);
-			enc64le(dbuf +  72,  A[ 9]);
-			enc64le(dbuf +  80,  A[10]);
-			enc64le(dbuf +  88,  A[11]);
-			enc64le(dbuf +  96, ~A[12]);
-			enc64le(dbuf + 104,  A[13]);
-			enc64le(dbuf + 112,  A[14]);
-			enc64le(dbuf + 120,  A[15]);
-			enc64le(dbuf + 128,  A[16]);
-			enc64le(dbuf + 136, ~A[17]);
-			enc64le(dbuf + 144,  A[18]);
-			enc64le(dbuf + 152,  A[19]);
-			enc64le(dbuf + 160, ~A[20]);
-			enc64le(dbuf + 168,  A[21]);
-			enc64le(dbuf + 176,  A[22]);
-			enc64le(dbuf + 184,  A[23]);
-			enc64le(dbuf + 192,  A[24]);
+		if (dptr == 136) {
+			process_block(sc->st.A);
 			dptr = 0;
 		}
-		clen = rate - dptr;
-		if(clen > len) {
+		clen = 136 - dptr;
+		if (clen > len) {
 			clen = len;
 		}
-		memcpy(buf, sc->dbuf + dptr, clen);
-		dptr += clen;
-		buf += clen;
 		len -= clen;
+#if FALCON_LE  // yyyLE+1
+		memcpy(out, sc->st.dbuf + dptr, clen);
+		dptr += clen;
+		out += clen;
+#else  // yyyLE+0
+		while (clen -- > 0) {
+			*out ++ = sc->st.A[dptr >> 3] >> ((dptr & 7) << 3);
+			dptr ++;
+		}
+#endif  // yyyLE-
 	}
 	sc->dptr = dptr;
 }

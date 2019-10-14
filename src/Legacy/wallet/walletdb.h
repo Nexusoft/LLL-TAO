@@ -35,7 +35,6 @@ namespace Legacy
     /* forward declarations */
     class Script;
     class Account;
-    class AccountingEntry;
     class KeyPoolEntry;
     class MasterKey;
     class Wallet;
@@ -96,31 +95,32 @@ namespace Legacy
         static std::atomic<uint32_t> nWalletDBUpdated;
 
 
-        /**
-         *  An internal counter for accounting entries.
-         *  At load time, this value is calculated and assigned when the wallet is loaded,
-         *  then incremented each time a new accounting entry is written to the database.
-         *  The resulting entry number is used as part of the database key.
-         *
-         *  Supports multiple accounting entries for the same account with each having a
-         *  unique database key.
-         **/
-        static uint64_t nAccountingEntryNumber;
-
-
         /** The file name of the wallet database file **/
         std::string strWalletFile;
 
 
-        /** Constructor
-         *
-         *  Initializes database access to wallet database using WalletDB::DEFAULT_WALLET_DB
-         *  for the file name.
-         *
-         **/
-        WalletDB()
-        : strWalletFile(WalletDB::DEFAULT_WALLET_DB)
-        { }
+        /* Default Constructor */
+        WalletDB();
+
+
+        /** Copy Constructor. **/
+        WalletDB(const WalletDB& wallet)            = delete;
+
+
+        /** Move Constructor. **/
+        WalletDB(WalletDB&& wallet)                 = delete;
+
+
+        /** Copy Assignment. **/
+        WalletDB& operator=(const WalletDB& wallet) = delete;
+
+
+        /** Move Assignment. **/
+        WalletDB& operator=(WalletDB&& wallet)      = delete;
+
+
+        /** Default Destructor **/
+        virtual ~WalletDB();
 
 
         /** Constructor
@@ -131,23 +131,7 @@ namespace Legacy
          *                     will put the file in data directory automatically.
          *
          **/
-        WalletDB(const std::string& strFileName)
-        : strWalletFile(strFileName)
-        { }
-
-
-        /** Default Destructor **/
-        virtual ~WalletDB()
-        {
-        }
-
-
-        /** Copy constructor deleted. No copy allowed **/
-        WalletDB(const WalletDB&) = delete;
-
-
-        /** Copy assignment operator deleted. No assignment allowed **/
-        WalletDB& operator=(const WalletDB&) = delete;
+        WalletDB(const std::string& strFileName);
 
 
         /** WriteMasterKey
@@ -492,47 +476,6 @@ namespace Legacy
          *
          **/
         bool ErasePool(const uint64_t nPool);
-
-
-        /** WriteAccountingEntry
-         *
-         *  Stores an accounting entry in the wallet database.
-         *
-         *  @param[in] acentry The accounting entry to store
-         *
-         *  @return true if database entry successfully written
-         *
-         **/
-        bool WriteAccountingEntry(const AccountingEntry& acentry);
-
-
-        /** GetAccountCreditDebit
-         *
-         *  Retrieves the net total of all accounting entries for an account (Nexus address).
-         *
-         *  This method calls ListAccountCreditDebit() so passing * for the account will
-         *  retrieve the net total of all accounting entries in the database, but because all
-         *  entries should be created as credit/debit pairs this net total should always be zero
-         *  and isn't of much use.
-         *
-         *  @param[in] strAccount Nexus address in string form of accounting entries to read
-         *
-         *  @return net credit or debit of all accounting entries for the provided account
-         *
-         **/
-        int64_t GetAccountCreditDebit(const std::string& strAccount);
-
-
-        /** ListAccountCreditDebit
-         *
-         *  Retrieves a list of individual accounting entries for an account (Nexus address)
-         *
-         *  @param[in] strAccount Nexus address in string form of accounting entries to read, * lists entries for all accounts
-         *
-         *  @param[out] acentries Accounting entries for the given account will be appended to this list
-         *
-         **/
-        void ListAccountCreditDebit(const std::string& strAccount, std::list<AccountingEntry>& acentries);
 
 
         /** InitializeDatabase

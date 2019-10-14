@@ -16,13 +16,13 @@ ________________________________________________________________________________
 #include <Legacy/types/script.h>
 #include <Legacy/types/transaction.h>
 
-#include <Legacy/wallet/accountingentry.h>
-#include <Legacy/wallet/keypoolentry.h>
+#include <Legacy/types/keypoolentry.h>
 #include <Legacy/wallet/wallet.h>
-#include <Legacy/wallet/walletaccount.h>
 #include <Legacy/wallet/walletdb.h>
-#include <Legacy/wallet/walletkey.h>
-#include <Legacy/wallet/wallettx.h>
+#include <Legacy/types/walletkey.h>
+
+#include <Legacy/types/account.h>
+#include <Legacy/types/wallettx.h>
 
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/timelocks.h>
@@ -47,17 +47,45 @@ namespace Legacy
     /* Initialize static values */
     const std::string WalletDB::DEFAULT_WALLET_DB("wallet.dat");
 
+
+    /* Last time database was flushed. */
     std::atomic<uint32_t> WalletDB::nWalletDBUpdated(0);
 
-    uint64_t WalletDB::nAccountingEntryNumber = 0;
 
+    /* Background thread to handle flushing. */
     std::thread WalletDB::flushThread;
 
+
+    /* Flag to set if flushing is started. */
     std::atomic<bool> WalletDB::fFlushThreadStarted(false);
 
+
+    /* Flag for shutdown sequence. */
     std::atomic<bool> WalletDB::fShutdownFlushThread(false);
 
+
+    /* Flag if flush thread is currently writing. */
     std::atomic<bool> WalletDB::fDbInProgress(false);
+
+
+    /* Constructor */
+    WalletDB::WalletDB()
+    : strWalletFile(WalletDB::DEFAULT_WALLET_DB)
+    {
+    }
+
+
+    /* Initializes database access for a given file name and access mode. */
+    WalletDB::WalletDB(const std::string& strFileName)
+    : strWalletFile(strFileName)
+    {
+    }
+
+
+    /* Default Destructor */
+    WalletDB::~WalletDB()
+    {
+    }
 
 
     /* Stores an encrypted master key into the database. */
@@ -256,102 +284,6 @@ namespace Legacy
     {
         ++WalletDB::nWalletDBUpdated;
         return BerkeleyDB::GetInstance().Erase(std::make_pair(std::string("pool"), nPool));
-    }
-
-
-    /* Stores an accounting entry in the wallet database. */
-    bool WalletDB::WriteAccountingEntry(const AccountingEntry& acentry)
-    {
-        return BerkeleyDB::GetInstance().Write(
-                    std::make_tuple(std::string("acentry"), acentry.strAccount, ++WalletDB::nAccountingEntryNumber), acentry);
-    }
-
-
-    /* Retrieves the net total of all accounting entries for an account (Nexus address). */
-    int64_t WalletDB::GetAccountCreditDebit(const std::string& strAccount)
-    {
-        std::list<AccountingEntry> entries;
-        ListAccountCreditDebit(strAccount, entries);
-
-        int64_t nCreditDebitTotal = 0;
-        for(AccountingEntry& entry : entries)
-            nCreditDebitTotal += entry.nCreditDebit;
-
-        return nCreditDebitTotal;
-    }
-
-
-    /* Retrieves a list of individual accounting entries for an account (Nexus address) */
-    void WalletDB::ListAccountCreditDebit(const std::string& strAccount, std::list<AccountingEntry>& entries)
-    {
-        bool fAllAccounts = (strAccount == "*");
-
-        /* Don't flush during cursor operations. See LoadWallet() for discussion of this code. */
-        bool fExpectedValue = false;
-        bool fDesiredValue = true;
-        while (!WalletDB::fDbInProgress.compare_exchange_weak(fExpectedValue, fDesiredValue))
-        {
-            runtime::sleep(100);
-            fExpectedValue = false;
-        }
-
-        BerkeleyDB& db = BerkeleyDB::GetInstance();
-
-        auto pcursor = db.GetCursor();
-
-        if(pcursor == nullptr)
-            throw std::runtime_error("WalletDB::ListAccountCreditDebit : Cannot create DB cursor");
-
-        uint32_t fFlags = DB_SET_RANGE;
-
-        while(true) {
-            /* Read next record */
-            DataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
-            if(fFlags == DB_SET_RANGE)
-            {
-                /* Set key input to acentry<account><0> when set range flag is set (first iteration)
-                 * This will return all entries beginning with ID 0, with DB_NEXT reading the next entry each time
-                 * Read until key does not begin with acentry, does not match requested account, or DB_NOTFOUND (end of database)
-                 */
-                ssKey << std::make_tuple(std::string("acentry"), (fAllAccounts? std::string("") : strAccount), uint64_t(0));
-            }
-
-            DataStream ssValue(SER_DISK, LLD::DATABASE_VERSION);
-            int32_t ret = db.ReadAtCursor(pcursor, ssKey, ssValue, fFlags);
-
-            /* After initial read, change flag setting to DB_NEXT so additional reads just get the next database entry */
-            fFlags = DB_NEXT;
-            if(ret == DB_NOTFOUND)
-            {
-                /* End of database reached, no further entries to read */
-                break;
-            }
-            else if(ret != 0)
-            {
-                /* Error retrieving accounting entries */
-                db.CloseCursor(pcursor);
-                throw std::runtime_error("WalletDB::ListAccountCreditDebit : Error scanning DB");
-            }
-
-            /* Unserialize */
-            std::string strType;
-            ssKey >> strType;
-            if(strType != "acentry")
-                break; // Read an entry with a different key type (finished with read)
-
-            AccountingEntry acentry;
-            ssKey >> acentry.strAccount;
-            if(!fAllAccounts && acentry.strAccount != strAccount)
-                break; // Read an entry for a different account (finished with read)
-
-            /* Database entry read matches both acentry key type and requested account, add to list */
-            ssValue >> acentry;
-            entries.push_back(acentry);
-        }
-
-        db.CloseCursor(pcursor);
-
-        WalletDB::fDbInProgress.store(false);
     }
 
 
@@ -717,10 +649,6 @@ debug::log(0, FUNCTION, "hash ", hash.SubString());
                 ssKey >> strAccount;
                 uint64_t nNumber;
                 ssKey >> nNumber;
-
-                /* After load, nAccountingEntryNumber will contain the maximum accounting entry number currently stored in the database */
-                if(nNumber > WalletDB::nAccountingEntryNumber)
-                    WalletDB::nAccountingEntryNumber = nNumber;
 
             }
 

@@ -99,12 +99,28 @@ namespace TAO
             TritiumBlock();
 
 
-            /** Copy constructor from base block. **/
-            TritiumBlock(const Block& block);
+            /** Copy constructor. **/
+            TritiumBlock(const TritiumBlock& block);
+
+
+            /** Move constructor. **/
+            TritiumBlock(TritiumBlock&& block) noexcept;
+
+
+            /** Copy assignment. **/
+            TritiumBlock& operator=(const TritiumBlock& block);
+
+
+            /** Move assignment. **/
+            TritiumBlock& operator=(TritiumBlock&& block) noexcept;
+
+
+            /** Default Destructor **/
+            virtual ~TritiumBlock();
 
 
             /** Copy Constructor. **/
-            TritiumBlock(const TritiumBlock& block);
+            TritiumBlock(const Block& block);
 
 
             /** Copy Constructor. **/
@@ -114,9 +130,6 @@ namespace TAO
             /** Copy Constructor. **/
             TritiumBlock(const SyncBlock& block);
 
-
-            /** Default Destructor **/
-            virtual ~TritiumBlock();
 
 
             /** Clone

@@ -97,6 +97,26 @@ namespace TAO
             Block();
 
 
+            /** Copy constructor. **/
+            Block(const Block& block);
+
+
+            /** Move constructor. **/
+            Block(Block&& block) noexcept;
+
+
+            /** Copy assignment. **/
+            Block& operator=(const Block& block);
+
+
+            /** Move assignment. **/
+            Block& operator=(Block&& block) noexcept;
+
+
+            /** Default Destructor **/
+            virtual ~Block();
+
+
             /** A base constructor.
              *
              *  @param[in] nVersionIn The version to set block to
@@ -105,15 +125,7 @@ namespace TAO
              *  @param[in] nHeightIn The height this block is being created at.
              *
              **/
-            Block(uint32_t nVersionIn, uint1024_t hashPrevBlockIn, uint32_t nChannelIn, uint32_t nHeightIn);
-
-
-            /** Copy constructor. **/
-            Block(const Block& block);
-
-
-            /** Default Destructor **/
-            virtual ~Block();
+            Block(const uint32_t nVersionIn, const uint1024_t& hashPrevBlockIn, const uint32_t nChannelIn, const uint32_t nHeightIn);
 
 
             /** Clone
@@ -287,7 +299,7 @@ namespace TAO
              *  Sign the block with the key that found the block.
              *
              */
-            bool GenerateSignature(const LLC::FLKey& key);
+            bool GenerateSignature(LLC::FLKey& key);
 
 
             /** Verify Signature

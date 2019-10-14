@@ -18,6 +18,64 @@ ________________________________________________________________________________
 namespace Legacy
 {
 
+	/* Default Constructor. */
+	OutPoint::OutPoint()
+	: hash (0)
+	, n    (-1)
+	{
+	}
+
+
+	/* Copy Constructor. */
+	OutPoint::OutPoint(const OutPoint& out)
+	: hash (out.hash)
+	, n    (out.n)
+	{
+	}
+
+
+	/* Move Constructor. */
+	OutPoint::OutPoint(OutPoint&& out) noexcept
+	: hash (std::move(out.hash))
+	, n    (std::move(out.n))
+	{
+	}
+
+
+	/* Copy assignment. */
+	OutPoint& OutPoint::operator=(const OutPoint& out)
+	{
+		hash = out.hash;
+		n    = out.n;
+
+		return *this;
+	}
+
+
+	/* Move assignment. */
+	OutPoint& OutPoint::operator=(OutPoint&& out) noexcept
+	{
+		hash = std::move(out.hash);
+		n    = std::move(out.n);
+
+		return *this;
+	}
+
+
+	/* Constructor */
+	OutPoint::OutPoint(const uint512_t& hashIn, const uint32_t nIn)
+	: hash (hashIn)
+	, n    (nIn)
+	{
+	}
+
+
+	/* Destructor. */
+	OutPoint::~OutPoint()
+	{
+	}
+
+
 	/* Full object debug output */
 	std::string OutPoint::ToString() const
 	{

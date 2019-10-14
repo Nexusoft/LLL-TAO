@@ -16,7 +16,7 @@ ________________________________________________________________________________
 
 #include <Legacy/include/money.h>
 
-#include <cmath>
+#include <Util/include/softfloat.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -27,18 +27,18 @@ namespace TAO
     {
 
         /* These values reflect the Three Decay Equations for Miners, Ambassadors, and Developers. */
-        const double decay[3][3] =
+        const cv::softdouble decay[3][3] =
         {
-            {50.0, -0.00000110, 1.000},
-            {10.0, -0.00000055, 1.000},
-            {01.0, -0.00000059, 0.032}
+            {cv::softdouble(50.0), cv::softdouble(-0.00000110), cv::softdouble(1.000) },
+            {cv::softdouble(10.0), cv::softdouble(-0.00000055), cv::softdouble(1.000) },
+            {cv::softdouble(01.0), cv::softdouble(-0.00000059), cv::softdouble(0.032) }
         };
 
 
         /* Get the Total Amount to be Released at a given Minute since the NETWORK_TIMELOCK. */
         uint64_t GetSubsidy(const uint32_t nMinutes, const uint8_t nType)
         {
-            return (((decay[nType][0] * exp(decay[nType][1] * nMinutes)) + decay[nType][2]) * (Legacy::COIN / 2.0));
+            return (((decay[nType][0] * cv::exp(cv::softdouble(decay[nType][1] * nMinutes))) + decay[nType][2]) * 500000);
         }
 
 

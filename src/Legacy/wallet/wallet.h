@@ -31,9 +31,9 @@ ________________________________________________________________________________
 #include <Legacy/wallet/addressbook.h>
 #include <Legacy/wallet/cryptokeystore.h>
 #include <Legacy/wallet/keypool.h>
-#include <Legacy/wallet/masterkey.h>
+#include <Legacy/types/masterkey.h>
 #include <Legacy/wallet/walletdb.h>
-#include <Legacy/wallet/wallettx.h>
+#include <Legacy/types/wallettx.h>
 
 #include <Util/include/allocators.h> /* for SecureString */
 
@@ -110,12 +110,24 @@ namespace Legacy
 
     public:
 
-        /** Constructor
-         *
-         *  Initializes a wallet instance for FEATURE_BASE that is not file backed.
-         *
-         **/
+        /* Constructor */
         Wallet();
+
+
+        /** Copy Constructor. **/
+        Wallet(const Wallet& wallet)            = delete;
+
+
+        /** Move Constructor. **/
+        Wallet(Wallet&& wallet)                 = delete;
+
+
+        /** Copy Assignment. **/
+        Wallet& operator=(const Wallet& wallet) = delete;
+
+
+        /** Move Assignment. **/
+        Wallet& operator=(Wallet&& wallet)      = delete;
 
 
         /** Destructor **/
