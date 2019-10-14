@@ -39,52 +39,41 @@ namespace TAO
     namespace Ledger
     {
 
-        /** Default constructor. **/
-        SignatureChain::SignatureChain()
-        : strUsername()
-        , strPassword()
-        , MUTEX()
-        , pairCache(std::make_pair(std::numeric_limits<uint32_t>::max(), ""))
-        , hashGenesis()
+        /* Copy Constructor */
+        SignatureChain::SignatureChain(const SignatureChain& sigchain)
+        : strUsername (sigchain.strUsername)
+        , strPassword (sigchain.strPassword)
+        , MUTEX       ( )
+        , pairCache   (sigchain.pairCache)
+        , hashGenesis (sigchain.hashGenesis)
         {
         }
 
 
-        /** Constructor to generate Keychain **/
-        SignatureChain::SignatureChain(const SecureString& strUsernameIn, const SecureString& strPasswordIn)
-        : strUsername(strUsernameIn.c_str())
-        , strPassword(strPasswordIn.c_str())
-        , MUTEX()
-        , pairCache(std::make_pair(std::numeric_limits<uint32_t>::max(), ""))
-        , hashGenesis(SignatureChain::Genesis(strUsernameIn))
-        {
-        }
-
-
-        /** Copy constructor **/
-        SignatureChain::SignatureChain(const SignatureChain& chain)
-        : strUsername(chain.strUsername)
-        , strPassword(chain.strPassword)
-        , MUTEX()
-        , pairCache(std::make_pair(std::numeric_limits<uint32_t>::max(), ""))
-        , hashGenesis(chain.hashGenesis)
-        {
-        }
-
-
-        /** Move constructor **/
-        SignatureChain::SignatureChain(const SignatureChain&& chain)
-        : strUsername(chain.strUsername)
-        , strPassword(chain.strPassword)
-        , MUTEX()
-        , pairCache(std::make_pair(std::numeric_limits<uint32_t>::max(), ""))
-        , hashGenesis(chain.hashGenesis)
+        /** Move Constructor **/
+        SignatureChain::SignatureChain(SignatureChain&& sigchain) noexcept
+        : strUsername (std::move(sigchain.strUsername.c_str()))
+        , strPassword (std::move(sigchain.strPassword.c_str()))
+        , MUTEX       ( )
+        , pairCache   (std::move(sigchain.pairCache))
+        , hashGenesis (std::move(sigchain.hashGenesis))
         {
         }
 
 
         /** Destructor. **/
         SignatureChain::~SignatureChain()
+        {
+        }
+
+
+        /* Constructor to generate Keychain */
+        SignatureChain::SignatureChain(const SecureString& strUsernameIn, const SecureString& strPasswordIn)
+        : strUsername (strUsernameIn.c_str())
+        , strPassword (strPasswordIn.c_str())
+        , MUTEX       ( )
+        , pairCache   (std::make_pair(std::numeric_limits<uint32_t>::max(), ""))
+        , hashGenesis (SignatureChain::Genesis(strUsernameIn))
         {
         }
 
