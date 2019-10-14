@@ -38,19 +38,17 @@ namespace TAO
     /* Ledger Layer namespace. */
     namespace Ledger
     {
-
         Mempool mempool;
-
 
         /** Default Constructor. **/
         Mempool::Mempool()
-        : MUTEX()
-        , mapLegacy()
-        , mapLedger()
-        , mapConflicts()
-        , mapOrphans()
-        , mapClaimed()
-        , mapInputs()
+        : MUTEX        ( )
+        , mapLegacy    ( )
+        , mapLedger    ( )
+        , mapConflicts ( )
+        , mapOrphans   ( )
+        , mapClaimed   ( )
+        , mapInputs    ( )
         {
         }
 

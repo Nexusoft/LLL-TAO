@@ -15,11 +15,18 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLC_TYPES_BASE_UINT_H
 #define NEXUS_LLC_TYPES_BASE_UINT_H
 
-
 #include <string>
 #include <vector>
 #include <cstdint>
 #include <cmath>
+
+
+//forward declarations
+namespace TAO
+{
+    namespace Register { class Address; }
+    namespace Ledger   { class Genesis; }
+}
 
 
 /** base_uint
@@ -50,56 +57,81 @@ public:
     base_uint();
 
 
-    /** Destructor. **/
-    ~base_uint();
-
-
     /** Copy Constructor. **/
-    base_uint(const base_uint& rhs);
+    base_uint(const base_uint& n);
 
 
-    /** Copy Constructor. **/
+    /** Move Constructor. **/
+    base_uint(base_uint&& n) noexcept;
+
+
+    /** Copy Assignment. **/
+    base_uint& operator=(const base_uint& n);
+
+
+    /** Move Assignment. **/
+    base_uint& operator=(base_uint&& n) noexcept;
+
+
+    /** Assignment operator. (64-bit) **/
+    base_uint& operator=(const uint64_t n);
+
+
+    /** Copy Assignment Variable Width Template. **/
     template<uint32_t BITS2>
-    base_uint(const base_uint<BITS2>& rhs)
+    base_uint& operator=(const base_uint<BITS2>& n)
     {
-        for(uint8_t i = 0; i < rhs.WIDTH; ++i)
+        for(uint8_t i = 0; i < n.WIDTH; ++i)
         {
             if(i < WIDTH)
-                pn[i] = rhs.pn[i];
+                pn[i] = n.pn[i];
         }
 
-        for(uint8_t i = rhs.WIDTH; i < WIDTH; ++i)
-            pn[i] = 0;
-    }
-
-
-    /** Constructor. (64-bit) **/
-    base_uint(uint64_t rhs64);
-
-
-    /** Assignment operator. **/
-    base_uint& operator=(const base_uint& rhs);
-
-
-    /** Assignment operator. **/
-    template<uint32_t BITS2>
-    base_uint& operator=(const base_uint<BITS2>& rhs)
-    {
-        for(uint8_t i = 0; i < rhs.WIDTH; ++i)
-        {
-            if(i < WIDTH)
-                pn[i] = rhs.pn[i];
-        }
-
-        for(uint8_t i = rhs.WIDTH; i < WIDTH; ++i)
+        for(uint8_t i = n.WIDTH; i < WIDTH; ++i)
             pn[i] = 0;
 
         return *this;
     }
 
 
-    /** Assignment operator. (64-bit) **/
-    base_uint& operator=(uint64_t rhs64);
+    /** Move Assignment Variable Width Template. **/
+    template<uint32_t BITS2>
+    base_uint& operator=(base_uint<BITS2>&& n) noexcept
+    {
+        for(uint8_t i = 0; i < n.WIDTH; ++i)
+        {
+            if(i < WIDTH)
+                pn[i] = std::move(n.pn[i]);
+        }
+
+        for(uint8_t i = n.WIDTH; i < WIDTH; ++i)
+            pn[i] = 0;
+
+        return *this;
+    }
+
+
+    /** Destructor. **/
+    ~base_uint();
+
+
+    /** Copy Constructor. **/
+    template<uint32_t BITS2>
+    base_uint(const base_uint<BITS2>& n)
+    {
+        for(uint8_t i = 0; i < n.WIDTH; ++i)
+        {
+            if(i < WIDTH)
+                pn[i] = n.pn[i];
+        }
+
+        for(uint8_t i = n.WIDTH; i < WIDTH; ++i)
+            pn[i] = 0;
+    }
+
+
+    /** Constructor. (64-bit) **/
+    base_uint(const uint64_t n);
 
 
     /** Constructor. (from string) **/
@@ -123,23 +155,23 @@ public:
 
 
     /** XOR assignment operator. **/
-    base_uint& operator^=(const base_uint& rhs);
+    base_uint& operator^=(const base_uint& n);
 
 
     /** XOR assignment operator. (64-bit) **/
-    base_uint& operator^=(uint64_t rhs64);
+    base_uint& operator^=(uint64_t n);
 
 
     /** OR assignment operator. **/
-    base_uint& operator|=(const base_uint& rhs);
+    base_uint& operator|=(const base_uint& n);
 
 
     /** OR assignment operator. (64-bit) **/
-    base_uint& operator|=(uint64_t rhs64);
+    base_uint& operator|=(uint64_t n);
 
 
     /** AND assignment operator. **/
-    base_uint& operator&=(const base_uint& rhs);
+    base_uint& operator&=(const base_uint& n);
 
 
     /** Left shift assignment operator. **/
@@ -151,35 +183,35 @@ public:
 
 
     /** Addition assignment operator. **/
-    base_uint& operator+=(const base_uint& rhs);
+    base_uint& operator+=(const base_uint& n);
 
 
     /** Addition assignment operator. (64-bit) **/
-    base_uint& operator+=(uint64_t rhs64);
+    base_uint& operator+=(uint64_t n);
 
 
     /** Subtraction assignment operator. **/
-    base_uint& operator-=(const base_uint& rhs);
+    base_uint& operator-=(const base_uint& n);
 
 
     /** Subtraction assignment operator. (64-bit) **/
-    base_uint& operator-=(uint64_t rhs64);
+    base_uint& operator-=(uint64_t n);
 
 
     /** Multiply assignment operator. **/
-    base_uint& operator*=(const base_uint& rhs);
+    base_uint& operator*=(const base_uint& n);
 
 
     /** Multiply assignment operator. (64-bit) **/
-    base_uint& operator*=(uint64_t rhs64);
+    base_uint& operator*=(uint64_t n);
 
 
     /** Divide assignment operator. **/
-    base_uint& operator/=(const base_uint& rhs);
+    base_uint& operator/=(const base_uint& n);
 
 
     /** Divide assignment operator. (64-bit) **/
-    base_uint& operator/=(uint64_t rhs);
+    base_uint& operator/=(uint64_t n);
 
 
     /** Prefix increment operator. **/
@@ -199,35 +231,35 @@ public:
 
 
     /** Relational less-than operator. **/
-    bool operator<(const base_uint& rhs) const;
+    bool operator<(const base_uint& n) const;
 
 
     /** Relational less-than-or-equal operator. **/
-    bool operator<=(const base_uint& rhs) const;
+    bool operator<=(const base_uint& n) const;
 
 
     /** Relational greater-than operator. **/
-    bool operator>(const base_uint& rhs) const;
+    bool operator>(const base_uint& n) const;
 
 
     /** Relational greater-than-or-equal operator. **/
-    bool operator>=(const base_uint& rhs) const;
+    bool operator>=(const base_uint& n) const;
 
 
     /** Relational equivalence operator. **/
-    bool operator==(const base_uint& rhs) const;
+    bool operator==(const base_uint& n) const;
 
 
     /** Relational equivalence operator. (64-bit) **/
-    bool operator==(uint64_t rhs) const;
+    bool operator==(uint64_t n) const;
 
 
     /** Relational inequivalence operator. **/
-    bool operator!=(const base_uint& rhs) const;
+    bool operator!=(const base_uint& n) const;
 
 
     /** Relational inequivalence operator. (64-bit) **/
-    bool operator!=(uint64_t rhs) const;
+    bool operator!=(uint64_t n) const;
 
 
     /** GetHex
@@ -488,6 +520,8 @@ public:
 
 
     /* Needed for specialized copy and assignment constructors. */
+    friend class TAO::Register::Address;
+    friend class TAO::Ledger::Genesis;
 
     friend class base_uint<1088>;
     friend class base_uint<1056>;
@@ -496,6 +530,7 @@ public:
     friend class base_uint<512>;
     friend class base_uint<256>;
     friend class base_uint<192>;
+    friend class base_uint<128>;
 
 };
 
@@ -661,70 +696,70 @@ const base_uint<BITS> operator>>(const base_uint<BITS> &lhs, uint32_t shift)
 
 /** Bitwise XOR binary operator. **/
 template<uint32_t BITS>
-const base_uint<BITS> operator^(const base_uint<BITS> &lhs, const base_uint<BITS> &rhs)
+const base_uint<BITS> operator^(const base_uint<BITS> &lhs, const base_uint<BITS> &n)
 {
-    return base_uint<BITS>(lhs) ^= rhs;
+    return base_uint<BITS>(lhs) ^= n;
 }
 
 
 /** Bitwise OR binary operator. **/
 template<uint32_t BITS>
-const base_uint<BITS> operator|(const base_uint<BITS> &lhs, const base_uint<BITS> &rhs)
+const base_uint<BITS> operator|(const base_uint<BITS> &lhs, const base_uint<BITS> &n)
 {
-    return base_uint<BITS>(lhs) |= rhs;
+    return base_uint<BITS>(lhs) |= n;
 }
 
 
 /** Bitwise AND binary operator. **/
 template<uint32_t BITS>
-const base_uint<BITS> operator&(const base_uint<BITS> &lhs, const base_uint<BITS> &rhs)
+const base_uint<BITS> operator&(const base_uint<BITS> &lhs, const base_uint<BITS> &n)
 {
-    return base_uint<BITS>(lhs) &= rhs;
+    return base_uint<BITS>(lhs) &= n;
 }
 
 
 /** Multiply binary operator. **/
 template<uint32_t BITS>
-const base_uint<BITS> operator*(const base_uint<BITS> &lhs, const base_uint<BITS> &rhs)
+const base_uint<BITS> operator*(const base_uint<BITS> &lhs, const base_uint<BITS> &n)
 {
-    return base_uint<BITS>(lhs) *= rhs;
+    return base_uint<BITS>(lhs) *= n;
 }
 
 
 /** Multiply binary operator. (64-bit) **/
 template<uint32_t BITS>
-const base_uint<BITS> operator*(const base_uint<BITS> &lhs, uint64_t rhs)
+const base_uint<BITS> operator*(const base_uint<BITS> &lhs, uint64_t n)
 {
-    return base_uint<BITS>(lhs) *= rhs;
+    return base_uint<BITS>(lhs) *= n;
 }
 
 
 /** Multiply binary operator. (64-bit) **/
 template<uint32_t BITS>
-const base_uint<BITS> operator*(uint64_t rhs, const base_uint<BITS> &lhs)
+const base_uint<BITS> operator*(uint64_t n, const base_uint<BITS> &lhs)
 {
-    return base_uint<BITS>(lhs) *= rhs;
+    return base_uint<BITS>(lhs) *= n;
 }
 
 
 /** Divide binary operator. **/
 template<uint32_t BITS>
-const base_uint<BITS> operator/(const base_uint<BITS> &lhs, const base_uint<BITS> &rhs)
+const base_uint<BITS> operator/(const base_uint<BITS> &lhs, const base_uint<BITS> &n)
 {
-    return base_uint<BITS>(lhs) /= rhs;
+    return base_uint<BITS>(lhs) /= n;
 }
 
 
 /** Divide binary operator. (64-bit) **/
 template<uint32_t BITS>
-const base_uint<BITS> operator/(const base_uint<BITS> &lhs, uint64_t rhs)
+const base_uint<BITS> operator/(const base_uint<BITS> &lhs, uint64_t n)
 {
-    return base_uint<BITS>(lhs) /= rhs;
+    return base_uint<BITS>(lhs) /= n;
 }
 
 /** Modulo binary operator. (16-bit) **/
 template<uint32_t BITS>
-uint32_t operator%(const base_uint<BITS> &lhs, uint16_t rhs)
+uint32_t operator%(const base_uint<BITS> &lhs, uint16_t n)
 {
 	uint32_t x=0;
     uint32_t y=0;
@@ -734,12 +769,12 @@ uint32_t operator%(const base_uint<BITS> &lhs, uint16_t rhs)
 	{
 		x = lhs.get(i);
 		y = (y << 16) | (x >> 16);
-		z = y / rhs;
-		y -= z * rhs;
+		z = y / n;
+		y -= z * n;
 		x <<= 16;
 		y = (y << 16) | (x >> 16);
-		z = y / rhs;
-		y -= z * rhs;
+		z = y / n;
+		y -= z * n;
 	}
 
 	return y;
@@ -748,49 +783,49 @@ uint32_t operator%(const base_uint<BITS> &lhs, uint16_t rhs)
 
 /** Addition binary operator. **/
 template<uint32_t BITS>
-const base_uint<BITS> operator+(const base_uint<BITS> &lhs, const base_uint<BITS> &rhs)
+const base_uint<BITS> operator+(const base_uint<BITS> &lhs, const base_uint<BITS> &n)
 {
-    return base_uint<BITS>(lhs) += rhs;
+    return base_uint<BITS>(lhs) += n;
 }
 
 
 /** Addition binary operator. (64-bit)**/
 template<uint32_t BITS>
-const base_uint<BITS> operator+(const base_uint<BITS> &lhs, uint64_t rhs)
+const base_uint<BITS> operator+(const base_uint<BITS> &lhs, uint64_t n)
 {
-    return base_uint<BITS>(lhs) += rhs;
+    return base_uint<BITS>(lhs) += n;
 }
 
 
 /** Addition binary operator. (64-bit)**/
 template<uint32_t BITS>
-const base_uint<BITS> operator+(uint64_t rhs, const base_uint<BITS> &lhs)
+const base_uint<BITS> operator+(uint64_t n, const base_uint<BITS> &lhs)
 {
-    return base_uint<BITS>(lhs) += rhs;
+    return base_uint<BITS>(lhs) += n;
 }
 
 
 /** Subtraction binary operator **/
 template<uint32_t BITS>
-const base_uint<BITS> operator-(const base_uint<BITS> &lhs, const base_uint<BITS> &rhs)
+const base_uint<BITS> operator-(const base_uint<BITS> &lhs, const base_uint<BITS> &n)
 {
-    return base_uint<BITS>(lhs) -= rhs;
+    return base_uint<BITS>(lhs) -= n;
 }
 
 
 /** Subtraction binary operator. (64-bit)**/
 template<uint32_t BITS>
-const base_uint<BITS> operator-(const base_uint<BITS> &lhs, uint64_t rhs)
+const base_uint<BITS> operator-(const base_uint<BITS> &lhs, uint64_t n)
 {
-    return base_uint<BITS>(lhs) -= rhs;
+    return base_uint<BITS>(lhs) -= n;
 }
 
 
 /** Subtraction binary operator. (64-bit)**/
 template<uint32_t BITS>
-const base_uint<BITS> operator-(uint64_t lhs, const base_uint<BITS> &rhs)
+const base_uint<BITS> operator-(uint64_t lhs, const base_uint<BITS> &n)
 {
-    return base_uint<BITS>(lhs) -= rhs;
+    return base_uint<BITS>(lhs) -= n;
 }
 
 

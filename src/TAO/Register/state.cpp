@@ -24,105 +24,168 @@ namespace TAO
     namespace Register
     {
 
-        /** Default Constructor **/
+        /* Default Constructor */
         State::State()
-        : vchState()
-        , nVersion(0)
-        , nType(0)
-        , hashOwner(0)
-        , nCreated(runtime::unifiedtimestamp())
-        , nModified(runtime::unifiedtimestamp())
-        , hashChecksum(0)
-        , nReadPos(0)
-        {
-            vchState.clear();
-        }
-
-
-        /** Basic Type Constructor **/
-        State::State(uint8_t nTypeIn)
-        : vchState()
-        , nVersion(1)
-        , nType(nTypeIn)
-        , hashOwner(9)
-        , nCreated(runtime::unifiedtimestamp())
-        , nModified(runtime::unifiedtimestamp())
-        , hashChecksum(0)
-        , nReadPos(0)
-        {
-            vchState.clear();
-        }
-
-
-        /** Default Constructor **/
-        State::State(const std::vector<uint8_t>& vchData)
-        : vchState(vchData)
-        , nVersion(1)
-        , nType(0)
-        , hashOwner(0)
-        , nCreated(runtime::unifiedtimestamp())
-        , nModified(runtime::unifiedtimestamp())
-        , nReadPos(0)
-        {
-            SetChecksum();
-        }
-
-        /** Default Constructor **/
-        State::State(uint8_t nTypeIn, const uint256_t& hashOwnerIn)
-        : vchState()
-        , nVersion(1)
-        , nType(nTypeIn)
-        , hashOwner(hashOwnerIn)
-        , nCreated(runtime::unifiedtimestamp())
-        , nModified(runtime::unifiedtimestamp())
-        , hashChecksum(0)
-        , nReadPos(0)
+        : vchState     ( )
+        , nVersion     (0)
+        , nType        (0)
+        , hashOwner    (0)
+        , nCreated     (runtime::unifiedtimestamp())
+        , nModified    (runtime::unifiedtimestamp())
+        , hashChecksum (0)
+        , nReadPos     (0)
         {
         }
 
 
-        /** Default Constructor **/
-        State::State(std::vector<uint8_t> vchData, uint8_t nTypeIn, const uint256_t& hashOwnerIn)
-        : vchState(vchData)
-        , nVersion(1)
-        , nType(nTypeIn)
-        , hashOwner(hashOwnerIn)
-        , nCreated(runtime::unifiedtimestamp())
-        , nModified(runtime::unifiedtimestamp())
-        , nReadPos(0)
-        {
-            SetChecksum();
-        }
-
-
-        /** Default Constructor **/
-        State::State(uint64_t hashChecksumIn)
-        : vchState()
-        , nVersion(1)
-        , nType(0)
-        , hashOwner(uint256_t(0))
-        , nCreated(runtime::unifiedtimestamp())
-        , nModified(runtime::unifiedtimestamp())
-        , hashChecksum(hashChecksumIn)
-        , nReadPos(0)
+        /* Copy Constructor */
+        State::State(const State& state)
+        : vchState     (state.vchState)
+        , nVersion     (state.nVersion)
+        , nType        (state.nType)
+        , hashOwner    (state.hashOwner)
+        , nCreated     (state.nCreated)
+        , nModified    (state.nModified)
+        , hashChecksum (state.hashChecksum)
+        , nReadPos     (0)
         {
         }
 
 
-        /** Default Destructor **/
+        /* Move Constructor. */
+        State::State(State&& state) noexcept
+        : vchState     (std::move(state.vchState))
+        , nVersion     (std::move(state.nVersion))
+        , nType        (std::move(state.nType))
+        , hashOwner    (std::move(state.hashOwner))
+        , nCreated     (std::move(state.nCreated))
+        , nModified    (std::move(state.nModified))
+        , hashChecksum (std::move(state.hashChecksum))
+        , nReadPos     (0)
+        {
+        }
+
+
+        /* Copy assignment overload */
+        State& State::operator=(const State& state)
+        {
+            vchState     = state.vchState;
+            nVersion     = state.nVersion;
+            nType        = state.nType;
+            hashOwner    = state.hashOwner;
+            nCreated     = state.nCreated;
+            nModified    = state.nModified;
+            hashChecksum = state.hashChecksum;
+
+            nReadPos     = 0; //don't copy over read position
+
+            return *this;
+        }
+
+
+        /* Move assignment overload */
+        State& State::operator=(State&& state) noexcept
+        {
+            vchState     = std::move(state.vchState);
+            nVersion     = std::move(state.nVersion);
+            nType        = std::move(state.nType);
+            hashOwner    = std::move(state.hashOwner);
+            nCreated     = std::move(state.nCreated);
+            nModified    = std::move(state.nModified);
+            hashChecksum = std::move(state.hashChecksum);
+
+            nReadPos     = 0; //don't copy over read position
+
+            return *this;
+        }
+
+
+        /* Default Destructor */
         State::~State()
         {
         }
 
 
-        /** Operator overload to check for equivilence. **/
+        /* Basic Type Constructor */
+        State::State(const uint8_t nTypeIn)
+        : vchState     ( )
+        , nVersion     (1)
+        , nType        (nTypeIn)
+        , hashOwner    (9)
+        , nCreated     (runtime::unifiedtimestamp())
+        , nModified    (runtime::unifiedtimestamp())
+        , hashChecksum (0)
+        , nReadPos     (0)
+        {
+            vchState.clear();
+        }
+
+
+        /* Default Constructor */
+        State::State(const std::vector<uint8_t>& vchData)
+        : vchState     (vchData)
+        , nVersion     (1)
+        , nType        (0)
+        , hashOwner    (0)
+        , nCreated     (runtime::unifiedtimestamp())
+        , nModified    (runtime::unifiedtimestamp())
+        , hashChecksum (0)
+        , nReadPos     (0)
+        {
+            SetChecksum();
+        }
+
+        /* Default Constructor */
+        State::State(const uint8_t nTypeIn, const uint256_t& hashOwnerIn)
+        : vchState     ( )
+        , nVersion     (1)
+        , nType        (nTypeIn)
+        , hashOwner    (hashOwnerIn)
+        , nCreated     (runtime::unifiedtimestamp())
+        , nModified    (runtime::unifiedtimestamp())
+        , hashChecksum (0)
+        , nReadPos     (0)
+        {
+        }
+
+
+        /* Default Constructor */
+        State::State(const std::vector<uint8_t>& vchData, const uint8_t nTypeIn, const uint256_t& hashOwnerIn)
+        : vchState     (vchData)
+        , nVersion     (1)
+        , nType        (nTypeIn)
+        , hashOwner    (hashOwnerIn)
+        , nCreated     (runtime::unifiedtimestamp())
+        , nModified    (runtime::unifiedtimestamp())
+        , hashChecksum (0)
+        , nReadPos     (0)
+        {
+            SetChecksum();
+        }
+
+
+        /* Default Constructor */
+        State::State(const uint64_t hashChecksumIn)
+        : vchState     ( )
+        , nVersion     (1)
+        , nType        (0)
+        , hashOwner    (uint256_t(0))
+        , nCreated     (runtime::unifiedtimestamp())
+        , nModified    (runtime::unifiedtimestamp())
+        , hashChecksum (hashChecksumIn)
+        , nReadPos     (0)
+        {
+        }
+
+
+        /* Operator overload to check for equivilence. */
         bool State::operator==(const State& state) const
         {
             return GetHash() == state.GetHash();
         }
 
 
-        /** Operator overload to check for non-equivilence. **/
+        /* Operator overload to check for non-equivilence. */
         bool State::operator!=(const State& state) const
         {
             return GetHash() != state.GetHash();

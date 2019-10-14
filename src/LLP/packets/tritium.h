@@ -44,6 +44,7 @@ namespace LLP
     class TritiumPacket
     {
     public:
+        
         /* Message enumeration. */
         uint16_t       MESSAGE;
 
@@ -59,8 +60,62 @@ namespace LLP
 
         /** Default Constructor **/
         TritiumPacket()
+        : MESSAGE (0)
+        , FLAGS   (0)
+        , LENGTH  (0)
+        , DATA    ( )
         {
-            SetNull();
+        }
+
+
+        /** Copy Constructor **/
+        TritiumPacket(const TritiumPacket& packet)
+        : MESSAGE (packet.MESSAGE)
+        , FLAGS   (packet.FLAGS)
+        , LENGTH  (packet.LENGTH)
+        , DATA    (packet.DATA)
+        {
+        }
+
+
+        /** Move Constructor **/
+        TritiumPacket(TritiumPacket&& packet) noexcept
+        : MESSAGE (std::move(packet.MESSAGE))
+        , FLAGS   (std::move(packet.FLAGS))
+        , LENGTH  (std::move(packet.LENGTH))
+        , DATA    (std::move(packet.DATA))
+        {
+        }
+
+
+        /** Copy Assignment Operator **/
+        TritiumPacket& operator=(const TritiumPacket& packet)
+        {
+            MESSAGE = packet.MESSAGE;
+            FLAGS   = packet.FLAGS;
+            LENGTH  = packet.LENGTH;
+            DATA    = packet.DATA;
+
+            return *this;
+        }
+
+
+        /** Move Assignment Operator **/
+        TritiumPacket& operator=(TritiumPacket&& packet) noexcept
+        {
+            MESSAGE = std::move(packet.MESSAGE);
+            FLAGS   = std::move(packet.FLAGS);
+            LENGTH  = std::move(packet.LENGTH);
+            DATA    = std::move(packet.DATA);
+
+            return *this;
+        }
+
+
+        /** Destructor. **/
+        ~TritiumPacket()
+        {
+            std::vector<uint8_t>().swap(DATA);
         }
 
 

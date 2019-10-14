@@ -26,39 +26,59 @@ namespace Legacy
 	}
 
 
-    /* Constructor. */
-    Coinbase::Coinbase(const std::map<std::string, uint64_t>& vTxOutputs, uint64_t nValue, uint64_t nLocalFee)
-    : vOutputs(vTxOutputs)
-	, nMaxValue(nValue)
-	, nWalletFee(nLocalFee)
-	{
-	}
-
-
     /* Copy constructor. */
-    Coinbase::Coinbase(const Coinbase& rhs)
-    : vOutputs(rhs.vOutputs)
-    , nMaxValue(rhs.nMaxValue)
-    , nWalletFee(rhs.nWalletFee)
+    Coinbase::Coinbase(const Coinbase& coinbase)
+    : vOutputs   (coinbase.vOutputs)
+    , nMaxValue  (coinbase.nMaxValue)
+    , nWalletFee (coinbase.nWalletFee)
 	{
 	}
 
 
-    /* Assignment operator. */
-    Coinbase &Coinbase::operator=(const Coinbase& rhs)
+    /** Move constructor. **/
+    Coinbase::Coinbase(Coinbase&& coinbase) noexcept
+    : vOutputs   (std::move(coinbase.vOutputs))
+    , nMaxValue  (std::move(coinbase.nMaxValue))
+    , nWalletFee (std::move(coinbase.nWalletFee))
+    {
+    }
+
+
+    /* Copy assignment operator. */
+    Coinbase& Coinbase::operator=(const Coinbase& coinbase)
 	{
-        vOutputs = rhs.vOutputs;
-        nMaxValue = rhs.nMaxValue;
-        nWalletFee = rhs.nWalletFee;
+        vOutputs   = coinbase.vOutputs;
+        nMaxValue  = coinbase.nMaxValue;
+        nWalletFee = coinbase.nWalletFee;
 
         return *this;
 	}
+
+
+    /** Move assignment. **/
+    Coinbase& Coinbase::operator=(Coinbase&& coinbase) noexcept
+    {
+        vOutputs   = std::move(coinbase.vOutputs);
+        nMaxValue  = std::move(coinbase.nMaxValue);
+        nWalletFee = std::move(coinbase.nWalletFee);
+
+        return *this;
+    }
 
 
 	/* Destructor */
 	Coinbase::~Coinbase()
 	{
 	}
+
+
+    /* Constructor. */
+    Coinbase::Coinbase(const std::map<std::string, uint64_t>& vTxOutputs, const uint64_t nValue, const uint64_t nLocalFee)
+    : vOutputs   (vTxOutputs)
+    , nMaxValue  (nValue)
+    , nWalletFee (nLocalFee)
+    {
+    }
 
 
     /** SetNull

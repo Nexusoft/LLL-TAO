@@ -38,32 +38,65 @@ base_uint<BITS>::base_uint()
 }
 
 
+/* Copy Constructor. */
+template<uint32_t BITS>
+base_uint<BITS>::base_uint(const base_uint<BITS>& n)
+{
+    for(uint8_t i = 0; i < WIDTH; ++i)
+        pn[i] = n.pn[i];
+}
+
+
+/** Move Constructor. **/
+template<uint32_t BITS>
+base_uint<BITS>::base_uint(base_uint&& n) noexcept
+{
+    for(uint8_t i = 0; i < WIDTH; ++i)
+        pn[i] = std::move(n.pn[i]);
+}
+
+
+/** Copy Assignment. **/
+template<uint32_t BITS>
+base_uint<BITS>& base_uint<BITS>::operator=(const base_uint& n)
+{
+    for(uint8_t i = 0; i < WIDTH; ++i)
+        pn[i] = n.pn[i];
+
+    return *this;
+}
+
+
+/** Move Assignment. **/
+template<uint32_t BITS>
+base_uint<BITS>& base_uint<BITS>::operator=(base_uint&& n) noexcept
+{
+    for(uint8_t i = 0; i < WIDTH; ++i)
+        pn[i] = std::move(n.pn[i]);
+
+    return *this;
+}
+
+
+/* Assignment operator. (64-bit) */
+template<uint32_t BITS>
+base_uint<BITS>& base_uint<BITS>::operator=(const uint64_t n)
+{
+    pn[0] = (uint32_t) n;
+    pn[1] = (uint32_t)(n >> 32);
+
+    for(uint8_t i = 2; i < WIDTH; ++i)
+        pn[i] = 0;
+
+    return *this;
+}
+
+
 /* Destructor. */
 template<uint32_t BITS>
 base_uint<BITS>::~base_uint()
 {
 }
-
-
-/* Copy Constructor. */
-template<uint32_t BITS>
-base_uint<BITS>::base_uint(const base_uint<BITS>& b)
-{
-    for(uint8_t i = 0; i < WIDTH; ++i)
-        pn[i] = b.pn[i];
-}
-
-
-/*
-template<uint32_t BITS>
-base_uint<BITS>::base_uint(template<uint32_t BITS2> const base_uint<BITS2> &b)
-{
-    uint32_t nMinWidth = std::min(WIDTH, b.WIDTH);
-
-    for(uint8_t i = 0; i < nMinWidth; ++i)
-        pn[i] = b.pn[i];
-}
-*/
 
 
 /* Constructor. (from string) */
@@ -82,31 +115,6 @@ base_uint<BITS>::base_uint(const std::vector<uint8_t>& vch)
         std::copy(&vch[0], &vch[0] + sizeof(pn), (uint8_t *)pn);
     else
         *this = 0u;
-}
-
-
-/* Assignment operator. */
-template<uint32_t BITS>
-base_uint<BITS>& base_uint<BITS>::operator=(const base_uint<BITS>& b)
-{
-    for(uint8_t i = 0; i < WIDTH; ++i)
-        pn[i] = b.pn[i];
-
-    return *this;
-}
-
-
-/* Assignment operator. (64-bit) */
-template<uint32_t BITS>
-base_uint<BITS>& base_uint<BITS>::operator=(uint64_t b)
-{
-    pn[0] = (uint32_t)b;
-    pn[1] = (uint32_t)(b >> 32);
-
-    for(uint8_t i = 2; i < WIDTH; ++i)
-        pn[i] = 0;
-
-    return *this;
 }
 
 
@@ -340,13 +348,13 @@ base_uint<BITS>& base_uint<BITS>::operator*=(const base_uint<BITS>& b)
 
 /* Multiply assignment operator. (64-bit) */
 template<uint32_t BITS>
-base_uint<BITS>& base_uint<BITS>::operator*=(uint64_t rhs)
+base_uint<BITS>& base_uint<BITS>::operator*=(uint64_t n)
 {
     base_uint<BITS> a;
     a = 0u;
 
     base_uint<BITS> b;
-    b = rhs;
+    b = n;
 
     for(int j = 0; j < WIDTH; j++)
     {
@@ -466,13 +474,13 @@ const base_uint<BITS> base_uint<BITS>::operator--(int)
 
 /* Relational less-than operator. */
 template<uint32_t BITS>
-bool base_uint<BITS>::operator<(const base_uint<BITS>& rhs) const
+bool base_uint<BITS>::operator<(const base_uint<BITS>& n) const
 {
     for(int8_t i = WIDTH-1; i >= 0; --i)
     {
-        if(this->pn[i] < rhs.pn[i])
+        if(this->pn[i] < n.pn[i])
             return true;
-        else if(this->pn[i] > rhs.pn[i])
+        else if(this->pn[i] > n.pn[i])
             return false;
     }
 
@@ -482,13 +490,13 @@ bool base_uint<BITS>::operator<(const base_uint<BITS>& rhs) const
 
 /* Relational less-than-or-equal operator. */
 template<uint32_t BITS>
-bool base_uint<BITS>::operator<=(const base_uint<BITS>& rhs) const
+bool base_uint<BITS>::operator<=(const base_uint<BITS>& n) const
 {
     for(int8_t i = WIDTH-1; i >= 0; --i)
     {
-        if(this->pn[i] < rhs.pn[i])
+        if(this->pn[i] < n.pn[i])
             return true;
-        else if(this->pn[i] > rhs.pn[i])
+        else if(this->pn[i] > n.pn[i])
             return false;
     }
 
@@ -498,13 +506,13 @@ bool base_uint<BITS>::operator<=(const base_uint<BITS>& rhs) const
 
 /* Relational greater-than operator. */
 template<uint32_t BITS>
-bool base_uint<BITS>::operator>(const base_uint<BITS>& rhs) const
+bool base_uint<BITS>::operator>(const base_uint<BITS>& n) const
 {
     for(int8_t i = WIDTH-1; i >= 0; --i)
     {
-        if(this->pn[i] > rhs.pn[i])
+        if(this->pn[i] > n.pn[i])
             return true;
-        else if(this->pn[i] < rhs.pn[i])
+        else if(this->pn[i] < n.pn[i])
             return false;
     }
 
@@ -514,13 +522,13 @@ bool base_uint<BITS>::operator>(const base_uint<BITS>& rhs) const
 
 /* Relational greater-than-or-equal operator. */
 template<uint32_t BITS>
-bool base_uint<BITS>::operator>=(const base_uint<BITS>& rhs) const
+bool base_uint<BITS>::operator>=(const base_uint<BITS>& n) const
 {
     for(int8_t i = WIDTH-1; i >= 0; --i)
     {
-        if(this->pn[i] > rhs.pn[i])
+        if(this->pn[i] > n.pn[i])
             return true;
-        else if(this->pn[i] < rhs.pn[i])
+        else if(this->pn[i] < n.pn[i])
             return false;
     }
 
@@ -530,10 +538,10 @@ bool base_uint<BITS>::operator>=(const base_uint<BITS>& rhs) const
 
 /* Relational equivalence operator. */
 template<uint32_t BITS>
-bool base_uint<BITS>::operator==(const base_uint<BITS>& rhs) const
+bool base_uint<BITS>::operator==(const base_uint<BITS>& n) const
 {
     for(uint8_t i = 0; i < WIDTH; ++i)
-        if(this->pn[i] != rhs.pn[i])
+        if(this->pn[i] != n.pn[i])
             return false;
 
     return true;
@@ -542,11 +550,11 @@ bool base_uint<BITS>::operator==(const base_uint<BITS>& rhs) const
 
 /* Relational equivalence operator. (64-bit) */
 template<uint32_t BITS>
-bool base_uint<BITS>::operator==(uint64_t rhs) const
+bool base_uint<BITS>::operator==(uint64_t n) const
 {
-    if(this->pn[0] != (uint32_t)rhs)
+    if(this->pn[0] != (uint32_t)n)
         return false;
-    if(this->pn[1] != (uint32_t)(rhs >> 32))
+    if(this->pn[1] != (uint32_t)(n >> 32))
         return false;
 
     for(uint8_t i = 2; i < WIDTH; ++i)
@@ -559,17 +567,17 @@ bool base_uint<BITS>::operator==(uint64_t rhs) const
 
 /* Relational inequivalence operator. */
 template<uint32_t BITS>
-bool base_uint<BITS>::operator!=(const base_uint<BITS>& rhs) const
+bool base_uint<BITS>::operator!=(const base_uint<BITS>& n) const
 {
-    return (!(*this == rhs));
+    return (!(*this == n));
 }
 
 
 /* Relational inequivalence operator. (64-bit) */
 template<uint32_t BITS>
-bool base_uint<BITS>::operator!=(uint64_t rhs) const
+bool base_uint<BITS>::operator!=(uint64_t n) const
 {
-    return (!(*this == rhs));
+    return (!(*this == n));
 }
 
 

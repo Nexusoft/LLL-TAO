@@ -23,6 +23,53 @@ ________________________________________________________________________________
 namespace Legacy
 {
 
+    /* Default Constructor. */
+    NexusSecret::NexusSecret()
+    : encoding::CBase58Data()
+    {
+    }
+
+
+    /* Copy Constructor. */
+    NexusSecret::NexusSecret(const NexusSecret& secret)
+    : encoding::CBase58Data(secret)
+    {
+    }
+
+
+    /* Move Constructor. */
+    NexusSecret::NexusSecret(NexusSecret&& secret) noexcept
+    : encoding::CBase58Data(std::move(secret))
+    {
+    }
+
+
+    /* Copy assignment. */
+    NexusSecret& NexusSecret::operator=(const NexusSecret& secret)
+    {
+        nVersion = secret.nVersion;
+        vchData  = secret.vchData;
+
+        return *this;
+    }
+
+
+    /* Move assignment. */
+    NexusSecret& NexusSecret::operator=(NexusSecret&& secret) noexcept
+    {
+        nVersion = std::move(secret.nVersion);
+        vchData  = std::move(secret.vchData);
+
+        return *this;
+    }
+
+
+    /* Destructor */
+    NexusSecret::~NexusSecret()
+    {
+    }
+    
+
     /* Sets from a CSecret phrase (byte vector in secure allocator) */
     NexusSecret::NexusSecret(const LLC::CSecret& vchSecret, bool fCompressed)
     {

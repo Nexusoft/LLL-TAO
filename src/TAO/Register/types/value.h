@@ -50,7 +50,6 @@ namespace TAO
             : nBegin(0)
             , nEnd(0)
             {
-
             }
 
 

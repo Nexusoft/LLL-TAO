@@ -13,8 +13,10 @@ ________________________________________________________________________________
 
 #include <LLP/include/network.h>
 
-#include <Legacy/wallet/keypoolentry.h>
-#include <Legacy/wallet/reservekey.h>
+#include <Legacy/types/keypoolentry.h>
+#include <Legacy/types/reservekey.h>
+
+#include <Legacy/wallet/wallet.h>
 
 #include <Util/include/debug.h>
 
@@ -25,6 +27,32 @@ ________________________________________________________________________________
 
 namespace Legacy
 {
+
+    /* Initializes reserve key from wallet pointer. */
+    ReserveKey::ReserveKey(Wallet* pWalletIn)
+    : wallet     (*pWalletIn)
+    , nPoolIndex (-1)
+    , vchPubKey  ()
+    {
+    }
+
+
+    /* Initializes reserve key from wallet reference. */
+    ReserveKey::ReserveKey(Wallet& walletIn)
+    : wallet     (walletIn)
+    , nPoolIndex (-1)
+    , vchPubKey  ( )
+    {
+    }
+
+
+    /* Destructor */
+    ReserveKey::~ReserveKey()
+    {
+        if(!config::fShutdown.load())
+            ReturnKey();
+    }
+
 
     /* Retrieves the public key value for the currently reserved key. */
     std::vector<uint8_t> ReserveKey::GetReservedKey()

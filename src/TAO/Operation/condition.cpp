@@ -30,26 +30,43 @@ namespace TAO
     namespace Operation
     {
 
-        Condition::Condition(const Contract& contractIn, const Contract& callerIn, const int64_t nCostIn)
-        : TAO::Register::BaseVM() //512 bytes of register memory.
-        , contract(contractIn)
-        , caller(callerIn)
-        , vEvaluate()
-        , nCost(nCostIn)
+        /* Copy constructor. */
+        Condition::Condition(const Condition& condition)
+        : TAO::Register::BaseVM (condition)
+        , contract              (condition.contract)
+        , caller                (condition.caller)
+        , vEvaluate             (condition.vEvaluate)
+        , nCost                 (condition.nCost)
         {
-            /* Push base group, which is what contains final return value. */
-            vEvaluate.push(std::make_pair(false, OP::RESERVED));
         }
 
 
-        /** Copy constructor. **/
-        Condition::Condition(const Condition& in)
-        : TAO::Register::BaseVM(in)
-        , contract(in.contract)
-        , caller(in.caller)
-        , vEvaluate(in.vEvaluate)
-        , nCost(in.nCost)
+        /* Move constructor. */
+        Condition::Condition(Condition&& condition) noexcept
+        : TAO::Register::BaseVM (std::move(condition))
+        , contract              (std::move(condition.contract))
+        , caller                (std::move(condition.caller))
+        , vEvaluate             (std::move(condition.vEvaluate))
+        , nCost                 (std::move(condition.nCost))
         {
+        }
+
+
+        /* Default Destructor */
+        Condition::~Condition()
+        {
+        }
+
+
+        Condition::Condition(const Contract& contractIn, const Contract& callerIn, const int64_t nCostIn)
+        : TAO::Register::BaseVM ( ) //512 bytes of register memory.
+        , contract              (contractIn)
+        , caller                (callerIn)
+        , vEvaluate             ( )
+        , nCost                 (nCostIn)
+        {
+            /* Push base group, which is what contains final return value. */
+            vEvaluate.push(std::make_pair(false, OP::RESERVED));
         }
 
 

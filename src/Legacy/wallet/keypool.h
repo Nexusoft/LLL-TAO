@@ -61,7 +61,7 @@ namespace Legacy
     class KeyPool
     {
         /** WalletDB is declared friend so it can load data into KeyPool during LoadWallet() process */
-        friend class WalletDB; 
+        friend class WalletDB;
 
     private:
         /** Mutex for thread concurrency. **/
@@ -81,6 +81,27 @@ namespace Legacy
 
 
     public:
+
+        /** The default constructor. **/
+        KeyPool()                               = delete;
+
+
+        /** Copy Constructor. **/
+        KeyPool(const KeyPool& pool)            = delete;
+
+
+        /** Move Constructor. **/
+        KeyPool(KeyPool&& pool);
+
+
+        /** Copy Assignment. **/
+        KeyPool& operator=(const KeyPool& pool) = delete;
+
+
+        /** Move Assignment. **/
+        KeyPool& operator=(KeyPool&& pool)      = delete;
+
+
         /** Constructor
          *
          *  Initializes a key pool associated with a given wallet.
@@ -92,14 +113,6 @@ namespace Legacy
         : cs_keyPool()
         , setKeyPool()
         , poolWallet(walletIn)
-        {
-        }
-
-
-        KeyPool(const KeyPool &other)
-        : cs_keyPool()
-        , setKeyPool(other.setKeyPool)
-        , poolWallet(other.poolWallet)
         {
         }
 
@@ -126,8 +139,8 @@ namespace Legacy
 
         /** TopUpKeyPool
          *
-         *  Adds keys to key pool to top up the number of entries if the current 
-         *  key pool is at or below its minimum size. Does nothing if key pool is 
+         *  Adds keys to key pool to top up the number of entries if the current
+         *  key pool is at or below its minimum size. Does nothing if key pool is
          *  currently larger than minimum size unless the force flag is set. In that case
          *  it will top up the key pool to its maximum size regardless of current size.
          *

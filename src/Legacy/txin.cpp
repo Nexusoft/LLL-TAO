@@ -12,8 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #include <Legacy/types/address.h>
-#include <Legacy/types/outpoint.h>
-#include <Legacy/types/script.h>
 #include <Legacy/types/txin.h>
 
 #include <Util/include/hex.h>
@@ -21,23 +19,94 @@ ________________________________________________________________________________
 namespace Legacy
 {
 
-	/* Basic Constructor. */
-	TxIn::TxIn(uint512_t hashPrevTx, uint32_t nOut, Script scriptSigIn, uint32_t nSequenceIn)
+	/* Default Constructor */
+	TxIn::TxIn()
+	: prevout   ( )
+	, scriptSig ( )
+	, nSequence (std::numeric_limits<uint32_t>::max())
 	{
-		prevout = OutPoint(hashPrevTx, nOut);
-		scriptSig = scriptSigIn;
-		nSequence = nSequenceIn;
+	}
+
+	/* Copy Constructor. */
+	TxIn::TxIn(const TxIn& in)
+	: prevout   (in.prevout)
+	, scriptSig (in.scriptSig)
+	, nSequence (in.nSequence)
+	{
+	}
+
+
+	/* Move Constructor. */
+	TxIn::TxIn(TxIn&& in) noexcept
+	: prevout   (std::move(in.prevout))
+	, scriptSig (std::move(in.scriptSig))
+	, nSequence (std::move(in.nSequence))
+	{
+	}
+
+
+	/* Copy assignment. */
+	TxIn& TxIn::operator=(const TxIn& in)
+	{
+		prevout   = in.prevout;
+		scriptSig = in.scriptSig;
+		nSequence = in.nSequence;
+
+		return *this;
+	}
+
+
+	/* Move assignment. */
+	TxIn& TxIn::operator=(TxIn&& in) noexcept
+	{
+		prevout   = std::move(in.prevout);
+		scriptSig = std::move(in.scriptSig);
+		nSequence = std::move(in.nSequence);
+
+		return *this;
+	}
+
+
+	/* Default destructor. */
+	TxIn::~TxIn()
+	{
+	}
+
+
+	/* Constructor */
+	TxIn::TxIn(const OutPoint& prevoutIn, Script scriptSigIn, uint32_t nSequenceIn)
+	: prevout   (prevoutIn)
+	, scriptSig (scriptSigIn)
+	, nSequence (nSequenceIn)
+	{
+	}
+
+
+	/* Basic Constructor. */
+	TxIn::TxIn(const uint512_t& hashPrevTx, const uint32_t nOut, Script scriptSigIn, uint32_t nSequenceIn)
+	: prevout   (OutPoint(hashPrevTx, nOut))
+	, scriptSig (scriptSigIn)
+	, nSequence (nSequenceIn)
+	{
 	}
 
 
 	/* Flag to tell if this input is the flag for proof of stake Transactions */
 	bool TxIn::IsStakeSig() const
 	{
+		/* Check for size. */
 		if(scriptSig.size() < 8)
 			return false;
 
-		if(scriptSig[0] != 1 || scriptSig[1] != 2 || scriptSig[2] != 3 || scriptSig[3] != 5 ||
-			scriptSig[4] != 8 || scriptSig[5] != 13 || scriptSig[6] != 21 || scriptSig[7] != 34)
+		/* Check for fibanacci */
+		if(scriptSig[0] != 1
+		|| scriptSig[1] != 2
+		|| scriptSig[2] != 3
+		|| scriptSig[3] != 5
+		|| scriptSig[4] != 8
+		|| scriptSig[5] != 13
+		|| scriptSig[6] != 21
+		|| scriptSig[7] != 34)
 			return false;
 
 		return true;

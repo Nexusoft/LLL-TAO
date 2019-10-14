@@ -37,7 +37,7 @@ ________________________________________________________________________________
 #include <Legacy/include/create.h>
 #include <Legacy/types/legacy.h>
 #include <Legacy/wallet/wallet.h>
-#include <Legacy/wallet/reservekey.h>
+#include <Legacy/types/reservekey.h>
 
 #include <Util/include/config.h>
 #include <Util/include/convert.h>
@@ -668,43 +668,41 @@ namespace LLP
     }
 
 
-
-        /* For Tritium, this checks the mempool to make sure that there are no new transactions that would be orphaned by the
-         *  the current round block. */
-        bool Miner::check_round()
+    /* For Tritium, this checks the mempool to make sure that there are no new transactions that would be orphaned */
+    bool Miner::check_round()
+    {
+        /* Only need to check the round for version 7 and above */
+        if(TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 7) || TAO::Ledger::CurrentVersion() > 7)
         {
-            /* Only need to check the round for version 7 and above */
-            if(TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 7) || TAO::Ledger::CurrentVersion() > 7)
+            /* Get the hash genesis. */
+            uint256_t hashGenesis = TAO::API::users->GetGenesis(0);
+
+            /* Read hashLast from hashGenesis' sigchain and also check mempool. */
+            uint512_t hashLast;
+
+            /* Check to see whether there are any new transactions in the mempool for the sig chain */
+            if(TAO::Ledger::mempool.Has(hashGenesis))
             {
-                /* Get the hash genesis. */
-                uint256_t hashGenesis = TAO::API::users->GetGenesis(0);
+                /* Get the last hash of the last transaction created by the sig chain */
+                LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL);
 
-                /* Read hashLast from hashGenesis' sigchain and also check mempool. */
-                uint512_t hashLast;
-
-                /* Check to see whether there are any new transactions in the mempool for the sig chain */
-                if(TAO::Ledger::mempool.Has(hashGenesis))
+                /* Update nHashLast if it changed. */
+                if(nHashLast != hashLast)
                 {
-                    /* Get the last hash of the last transaction created by the sig chain */
-                    LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL);
+                    nHashLast = hashLast;
 
-                    /* Update nHashLast if it changed. */
-                    if(nHashLast != hashLast)
-                    {
-                        nHashLast = hashLast;
+                    clear_map();
 
-                        clear_map();
+                    debug::log(2, FUNCTION, "Block producer will orphan new sig chain transactions, resetting blocks");
 
-                        debug::log(2, FUNCTION, "Block producer will orphan new sig chain transactions, resetting blocks");
-
-                        return false;
-                    }
+                    return false;
                 }
-
             }
 
-            return true;
         }
+
+        return true;
+    }
 
 
     /* Checks the current height index and updates best height. Clears the block map if the height is outdated or stale. */
@@ -918,7 +916,7 @@ namespace LLP
                   LLC::FLKey key;
 
                   /* Set the secret parameter. */
-                  if(!key.SetSecret(vchSecret, true))
+                  if(!key.SetSecret(vchSecret))
                       return debug::error(FUNCTION, "FLKey::SetSecret failed for ", hashMerkleRoot.SubString());
 
                   /* Generate the signature. */

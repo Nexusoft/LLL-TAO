@@ -41,10 +41,57 @@ namespace LLP
 
         /** Default Constructor **/
         Packet()
-        : HEADER(255)
-        , LENGTH(0)
-        , DATA()
+        : HEADER (255)
+        , LENGTH (0)
+        , DATA   ( )
         {
+        }
+
+
+        /** Copy Constructor **/
+        Packet(const Packet& packet)
+        : HEADER (packet.HEADER)
+        , LENGTH (packet.LENGTH)
+        , DATA   (packet.DATA)
+        {
+        }
+
+
+        /** Move Constructor **/
+        Packet(Packet&& packet) noexcept
+        : HEADER (std::move(packet.HEADER))
+        , LENGTH (std::move(packet.LENGTH))
+        , DATA   (std::move(packet.DATA))
+        {
+        }
+
+
+        /** Copy Assignment Operator **/
+        Packet& operator=(const Packet& packet)
+        {
+            HEADER = packet.HEADER;
+            LENGTH = packet.LENGTH;
+            DATA   = packet.DATA;
+
+            return *this;
+        }
+
+
+        /** Move Assignment Operator **/
+        Packet& operator=(Packet&& packet) noexcept
+        {
+            HEADER = std::move(packet.HEADER);
+            LENGTH = std::move(packet.LENGTH);
+            DATA   = std::move(packet.DATA);
+
+            return *this;
+        }
+
+
+        /** Destructor. **/
+        ~Packet()
+        {
+            std::vector<uint8_t>().swap(DATA);
         }
 
 

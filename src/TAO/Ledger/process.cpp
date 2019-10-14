@@ -60,10 +60,10 @@ namespace TAO
                     }
 
                     /* Fast sync block requests. */
-                    //if(TAO::Ledger::ChainState::Synchronizing())
-                    //    nStatus |= PROCESS::IGNORED;
+                    if(TAO::Ledger::ChainState::Synchronizing())
+                        nStatus |= PROCESS::IGNORED;
 
-                    /* Add to the orphans map. */
+                    /* Insert into orphans map. */
                     mapOrphans.insert(std::make_pair(block.hashPrevBlock, std::unique_ptr<TAO::Ledger::Block>(block.Clone())));
 
                     /* Debug output. */

@@ -48,35 +48,32 @@ namespace Legacy
 		)
 
 
-		/** Default constructor
-		 *
-		 *	Sets object to null state.
-		 *
-		 **/
-		TxOut()
-        : nValue(-1)
-        , scriptPubKey()
-		{
-		}
+		/** Default Constructor. **/
+		TxOut();
 
 
-		/** Constructor
-		 *
-		 *	@param[in] nValueIn The value to be transferred in output.
-		 *	@param[in] scriptPubKeyIn The script to be evaluated on spend.
-		 *
-		 **/
-		TxOut(int64_t nValueIn, Script scriptPubKeyIn)
-        : nValue(nValueIn)
-        , scriptPubKey(scriptPubKeyIn)
-		{
-		}
+		/** Copy Constructor. **/
+		TxOut(const TxOut& out);
 
 
-		/** Destructor **/
-		~TxOut()
-		{
-		}
+		/** Move Constructor. **/
+		TxOut(TxOut&& out) noexcept;
+
+
+		/** Copy assignment. **/
+		TxOut& operator=(const TxOut& out);
+
+
+		/** Move assignment. **/
+		TxOut& operator=(TxOut&& out) noexcept;
+
+
+		/** Default destructor. **/
+		~TxOut();
+
+
+		/* Constructor */
+		TxOut(const int64_t nValueIn, const Script& scriptPubKeyIn);
 
 
 		/** SetNull

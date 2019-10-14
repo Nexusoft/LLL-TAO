@@ -30,6 +30,45 @@ ________________________________________________________________________________
 namespace Legacy
 {
 
+    /** Default Constructor **/
+    Script::Script()
+    : std::vector<uint8_t>( )
+    {
+    }
+
+
+    /** Copy Constructor **/
+    Script::Script(const Script& b)
+    : std::vector<uint8_t>(b)
+    {
+    }
+
+
+    /** Move Constructor **/
+    Script::Script(Script&& b) noexcept
+    : std::vector<uint8_t>(std::move(b))
+    {
+    }
+
+
+    /** Copy Assignment **/
+    Script& Script::operator=(const Script& b)
+    {
+        std::vector<uint8_t>::operator=(b);
+
+        return *this;
+    }
+
+
+    /** Move Assignment **/
+    Script& Script::operator=(Script&& b) noexcept
+    {
+        std::vector<uint8_t>::operator=(std::move(b));
+
+        return *this;
+    }
+
+
     /* Returns a string in integer value. */
     std::string ValueString(const std::vector<uint8_t>& vch)
     {

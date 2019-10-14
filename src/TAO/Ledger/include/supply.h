@@ -17,6 +17,8 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
+namespace cv { class softdouble; }
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -30,7 +32,7 @@ namespace TAO
 
 
         /* These values reflect the Three Decay Equations for Miners, Ambassadors, and Developers. */
-        extern const double decay[3][3];
+        extern const cv::softdouble decay[3][3];
 
 
         /** GetSubsidy

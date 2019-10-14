@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #include <LLC/hash/SK.h>
 
 #include <Legacy/wallet/keypool.h>
-#include <Legacy/wallet/keypoolentry.h>
+#include <Legacy/types/keypoolentry.h>
 #include <Legacy/wallet/wallet.h>
 #include <Legacy/wallet/walletdb.h>
 
@@ -28,6 +28,13 @@ ________________________________________________________________________________
 
 namespace Legacy
 {
+
+    /** Move Constructor. **/
+    KeyPool::KeyPool(KeyPool&& pool)
+    : setKeyPool (std::move(pool.setKeyPool))
+    , poolWallet (pool.poolWallet)
+    {
+    }
 
 
     /*  Clears any existing keys in the pool and the wallet database
@@ -180,7 +187,7 @@ namespace Legacy
                     nPoolIndex += *(--setKeyPool.cend());
 
                 /* This "reserves" the index so we can release pool lock before writing to database */
-                setKeyPool.insert(nPoolIndex); 
+                setKeyPool.insert(nPoolIndex);
             }
 
             WalletDB walletdb(poolWallet.GetWalletFile());

@@ -63,44 +63,6 @@ namespace Legacy
 		int32_t nIndex;
 
 
-        /** Constructor
-         *
-         *  Initializes an empty merkle transaction
-         *
-         **/
-		MerkleTx()
-		: Transaction()
-		, hashBlock(0)
-		, vMerkleBranch()
-		, nIndex(-1)
-		{
-		}
-
-
-        /** Constructor
-         *
-         *  Initializes a merkle transaction with data copied from a Transaction.
-         *
-         *  @param[in] pwalletIn The wallet for this wallet transaction
-         *
-         *  @param[in] txIn Transaction data to copy into this merkle transaction
-         *
-         **/
-		MerkleTx(const Transaction& txIn)
-		: Transaction(txIn)
-		, hashBlock(0)
-		, vMerkleBranch()
-		, nIndex(-1)
-		{
-		}
-
-
-		/** Destructor **/
-		virtual ~MerkleTx()
-		{
-		}
-
-
 		/* Implement serialization/deserializaiton for MerkleTx, first by serializing/deserializing
 		 * base class data then processing local data
 		 */
@@ -112,6 +74,45 @@ namespace Legacy
 			READWRITE(vMerkleBranch);
 			READWRITE(nIndex);
 		)
+
+
+        /** Constructor
+         *
+         *  Initializes an empty merkle transaction
+         *
+         **/
+		MerkleTx();
+
+
+		/** Copy Constructor. **/
+		MerkleTx(const MerkleTx& tx);
+
+
+		/** Move Constructor. **/
+		MerkleTx(MerkleTx&& tx) noexcept;
+
+
+		/** Copy assignment. **/
+		MerkleTx& operator=(const MerkleTx& tx);
+
+
+		/** Move assignment. **/
+		MerkleTx& operator=(MerkleTx&& tx) noexcept;
+
+		/** Destructor **/
+		virtual ~MerkleTx();
+
+
+        /** Constructor
+         *
+         *  Initializes a merkle transaction with data copied from a Transaction.
+         *
+         *  @param[in] pwalletIn The wallet for this wallet transaction
+         *
+         *  @param[in] txIn Transaction data to copy into this merkle transaction
+         *
+         **/
+		MerkleTx(const Transaction& txIn);
 
 
         /** GetDepthInMainChain

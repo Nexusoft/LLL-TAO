@@ -28,33 +28,96 @@ namespace TAO
     namespace Ledger
     {
 
-        /* The default constructor. */
+        /* Default constructor. */
         SyncBlock::SyncBlock()
-        : Block()
-        , nTime(runtime::unifiedtimestamp())
-        , ssSystem()
-        , vtx()
+        : Block    ( )
+        , nTime    (runtime::unifiedtimestamp())
+        , ssSystem ( )
+        , vtx      ( )
         {
-            SetNull();
         }
 
 
-        /* Copy constructor from base block. */
-        SyncBlock::SyncBlock(const Block& block)
-        : Block(block)
-        , nTime(runtime::unifiedtimestamp())
-        , ssSystem()
-        , vtx()
+        /* Copy constructor. */
+        SyncBlock::SyncBlock(const SyncBlock& block)
+        : Block    (block)
+        , nTime    (block.nTime)
+        , ssSystem (block.ssSystem)
+        , vtx      (block.vtx)
+        {
+        }
+
+
+        /* Move constructor. */
+        SyncBlock::SyncBlock(SyncBlock&& block) noexcept
+        : Block    (std::move(block))
+        , nTime    (std::move(block.nTime))
+        , ssSystem (std::move(block.ssSystem))
+        , vtx      (std::move(block.vtx))
+        {
+        }
+
+
+        /* Copy assignment. */
+        SyncBlock& SyncBlock::operator=(const SyncBlock& block)
+        {
+            nVersion       = block.nVersion;
+            hashPrevBlock  = block.hashPrevBlock;
+            hashMerkleRoot = block.hashMerkleRoot;
+            nChannel       = block.nChannel;
+            nHeight        = block.nHeight;
+            nBits          = block.nBits;
+            nNonce         = block.nNonce;
+            vOffsets       = block.vOffsets;
+            vchBlockSig    = block.vchBlockSig;
+            vMissing       = block.vMissing;
+            hashMissing    = block.hashMissing;
+            fConflicted    = block.fConflicted;
+
+            nTime          = block.nTime;
+            ssSystem       = block.ssSystem;
+            vtx            = block.vtx;
+
+            return *this;
+        }
+
+
+        /* Move assignment. */
+        SyncBlock& SyncBlock::operator=(SyncBlock&& block) noexcept
+        {
+            nVersion       = std::move(block.nVersion);
+            hashPrevBlock  = std::move(block.hashPrevBlock);
+            hashMerkleRoot = std::move(block.hashMerkleRoot);
+            nChannel       = std::move(block.nChannel);
+            nHeight        = std::move(block.nHeight);
+            nBits          = std::move(block.nBits);
+            nNonce         = std::move(block.nNonce);
+            vOffsets       = std::move(block.vOffsets);
+            vchBlockSig    = std::move(block.vchBlockSig);
+            vMissing       = std::move(block.vMissing);
+            hashMissing    = std::move(block.hashMissing);
+            fConflicted    = std::move(block.fConflicted);
+
+            nTime          = std::move(block.nTime);
+            ssSystem       = std::move(block.ssSystem);
+            vtx            = std::move(block.vtx);
+
+            return *this;
+        }
+
+
+        /* Destructor. */
+        SyncBlock::~SyncBlock()
         {
         }
 
 
         /* Copy Constructor. */
         SyncBlock::SyncBlock(const BlockState& state)
-        : Block(state)
-        , nTime(state.nTime)
-        , ssSystem(state.ssSystem)
-        , vtx()
+        : Block    (state)
+        , nTime    (state.nTime)
+        , ssSystem (state.ssSystem)
+        , vtx      ( )
         {
             /* Loop through transactions in state block. */
             for(const auto& proof : state.vtx)
@@ -112,12 +175,6 @@ namespace TAO
                     }
                 }
             }
-        }
-
-
-        /* Default Destructor */
-        SyncBlock::~SyncBlock()
-        {
         }
     }
 }

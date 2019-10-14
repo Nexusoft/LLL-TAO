@@ -41,53 +41,12 @@ ________________________________________________________________________________
 namespace Legacy
 {
 
-    /* Copy constructor */
-    Crypter::Crypter(const Crypter& c)
+    /* Default constructor */
+    Crypter::Crypter()
+    : fKeySet(false)
     {
-        if(c.IsKeySet())
-        {
-            mlock(&chKey[0], sizeof(chKey));
-            mlock(&chIV[0], sizeof(chIV));
-
-            //memcpy(&chKey[0], &c.chKey[0], sizeof(chKey));
-            //memcpy(&chIV[0], &c.chIV[0], sizeof(chIV));
-
-            std::copy(&c.chKey[0], &c.chKey[0] + sizeof(chKey), &chKey[0]);
-            std::copy(&c.chIV[0], &c.chIV[0] + sizeof(chIV), &chIV[0]);
-
-            fKeySet = true;
-        }
-        else
-            fKeySet = false;
     }
-
-
-    /* Copy assignment operator */
-    Crypter& Crypter::operator= (const Crypter& rhs)
-    {
-        if(this != &rhs)
-        {
-            if(IsKeySet())
-                CleanKey();
-
-            if(rhs.IsKeySet())
-            {
-                mlock(&chKey[0], sizeof(chKey));
-                mlock(&chIV[0], sizeof(chIV));
-
-                //memcpy(&chKey[0], &rhs.chKey[0], sizeof(chKey));
-                //memcpy(&chIV[0], &rhs.chIV[0], sizeof(chIV));
-
-                std::copy(&rhs.chKey[0], &rhs.chKey[0] + sizeof(chKey), &chKey[0]);
-                std::copy(&rhs.chIV[0],  &rhs.chIV[0]  + sizeof(chIV),  &chIV[0]);
-
-                fKeySet = true;
-            }
-        }
-
-        return *this;
-    }
-
+    
 
     /* Destructor */
     Crypter::~Crypter()
@@ -252,7 +211,7 @@ namespace Legacy
         std::vector<uint8_t> chIV(WALLET_CRYPTO_KEY_SIZE);
         //memcpy(&chIV[0], &nIV, WALLET_CRYPTO_KEY_SIZE);
         std::copy((uint8_t *)&nIV, (uint8_t *)&nIV + WALLET_CRYPTO_KEY_SIZE, &chIV[0]);
-        
+
         if(!cKeyCrypter.SetKey(vMasterKey, chIV))
             return false;
 

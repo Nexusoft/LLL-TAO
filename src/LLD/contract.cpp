@@ -37,6 +37,17 @@ namespace LLD
     /* Default Destructor */
     ContractDB::~ContractDB()
     {
+        /* Free transaction memory. */
+        if(pMemory)
+            delete pMemory;
+
+        /* Free miner memory. */
+        if(pMiner)
+            delete pMiner;
+
+        /* Free commited memory. */
+        if(pCommit)
+            delete pCommit;
     }
 
 
