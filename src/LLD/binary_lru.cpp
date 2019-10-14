@@ -183,25 +183,6 @@ namespace LLD
 
         /* Get the binary node. */
         uint64_t& nIndex = indexes[bucket(vKey)];
-        if(nIndex != 0)
-        {
-            /* Get the node from checksum. */
-            uint32_t nSlot    = slot(nIndex);
-            BinaryNode* pthis = hashmap[nSlot];
-
-            /* Check for dereferencing nullptr. */
-            if(pthis != nullptr && !pthis->IsNull())
-            {
-                /* Reduce the current size. */
-                nCurrentSize -= static_cast<uint32_t>(pthis->vData.size());
-
-                /* Free the memory. */
-                remove_node(pthis);
-                pthis->SetNull();
-            }
-        }
-
-        /* Set the new checksum. */
         nIndex = (key.nSectorFile * key.nSectorStart);
 
         /* Cleanup if colliding with another bucket. */
@@ -228,6 +209,9 @@ namespace LLD
             /* Add cache node to objects map. */
             hashmap[nSlot] = new BinaryNode(vKey, vData);;
             move_to_front(hashmap[nSlot]);
+
+            /* Account for the node's memory size. */
+            nCurrentSize += sizeof(*hashmap[nSlot]);
         }
 
         /* Remove the last node if cache too large. */
@@ -247,6 +231,9 @@ namespace LLD
             pnode->pprev = nullptr;
             pnode->pnext = nullptr;
 
+            /* Reduce memory size. */
+            nCurrentSize -= static_cast<uint32_t>(pnode->vData.size());
+
             /* Calculate the buckets for the node being deleted */
             uint32_t  nBucket = pnode->Bucket(MAX_CACHE_BUCKETS);
             uint64_t& nRemove = indexes[nBucket];
@@ -254,9 +241,6 @@ namespace LLD
             /* Reset the slot. */
             hashmap[slot(nRemove)]->SetNull();
             nRemove                = 0;
-
-            /* Free the memory */
-            nCurrentSize -= static_cast<uint32_t>(pnode->vData.size() + 48);
         }
 
         nCurrentSize += static_cast<uint32_t>(vData.size());

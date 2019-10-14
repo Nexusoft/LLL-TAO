@@ -210,7 +210,13 @@ namespace LLP
         if(pBest != nullptr)
         {
             /* Send out another getblocks request. */
-            try { pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0)); }
+            try
+            {
+                /* Set the new sync address. */
+                TAO::Ledger::nSyncSession.store(pBest->nCurrentSession);
+
+                pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
+            }
             catch(const std::runtime_error& e)
             {
                 /* Recurse on failure. */
@@ -584,7 +590,7 @@ namespace LLP
             }
 
             /* Check for failure limit on node. */
-            if(nConsecutiveFails >= 500)
+            if(nConsecutiveFails >= 1000)
             {
                 /* Fast Sync node switch. */
                 if(TAO::Ledger::ChainState::Synchronizing())
@@ -605,7 +611,7 @@ namespace LLP
 
 
             /* Detect large orphan chains and ask for new blocks from origin again. */
-            if(nConsecutiveOrphans >= 500)
+            if(nConsecutiveOrphans >= 1000)
             {
                 LOCK(TAO::Ledger::PROCESSING_MUTEX);
 
