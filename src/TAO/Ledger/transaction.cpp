@@ -257,11 +257,16 @@ namespace TAO
 
             /* If genesis then check that the only contracts are those for the default registers.
                NOTE: we do not make this limitation in private mode */
-            if(IsFirst() && !config::GetBoolArg("-private", false))
+            if(IsFirst() && !config::GetBoolArg("-private"))
             {
+                //skip proof of work for unit tests
+                #ifndef UNIT_TESTS
+
                 /* Check the difficulty of the hash. */
                 if(ProofHash() > FIRST_REQUIRED_WORK)
                     return debug::error(FUNCTION, "first transaction not enough work");
+
+                #endif
 
                 /* Number of Name contracts */
                 uint8_t nNames = 0;
@@ -448,6 +453,10 @@ namespace TAO
                     return false;
             }
 
+
+            //skip proof of work for unit tests
+            #ifndef UNIT_TESTS
+
             /* Check for first. */
             if(IsFirst() && !config::GetBoolArg("-private"))
             {
@@ -467,6 +476,8 @@ namespace TAO
 
                 debug::log(0, FUNCTION, "Proof ", ProofHash().SubString(), " PoW in ", timer.Elapsed(), " seconds");
             }
+
+            #endif
 
             return true;
         }

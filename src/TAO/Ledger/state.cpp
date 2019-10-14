@@ -114,6 +114,7 @@ namespace TAO
         , nMoneySupply     (block.nMoneySupply)
         , nMint            (block.nMint)
         , nFees            (block.nFees)
+        , nChannelHeight   (block.nChannelHeight)
         , nChannelWeight   {block.nChannelWeight[0]
                            ,block.nChannelWeight[1]
                            ,block.nChannelWeight[2]}
@@ -137,6 +138,7 @@ namespace TAO
         , nMoneySupply     (std::move(block.nMoneySupply))
         , nMint            (std::move(block.nMint))
         , nFees            (std::move(block.nFees))
+        , nChannelHeight   (std::move(block.nChannelHeight))
         , nChannelWeight   {std::move(block.nChannelWeight[0])
                            ,std::move(block.nChannelWeight[1])
                            ,std::move(block.nChannelWeight[2])}
@@ -321,7 +323,7 @@ namespace TAO
 
             /* Read the previous block from ledger. */
             if(!LLD::Ledger->ReadBlock(hashPrevBlock, state))
-                throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to read previous block state ", hashPrevBlock.SubString()));
+                throw debug::exception(FUNCTION, "failed to read previous block state ", hashPrevBlock.SubString());
 
             return state;
         }
@@ -337,7 +339,7 @@ namespace TAO
 
             /* Read next block from the ledger. */
             if(!LLD::Ledger->ReadBlock(hashNextBlock, state))
-                throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to read next block state ", hashNextBlock.SubString()));
+                throw debug::exception(FUNCTION, "failed to read next block state ", hashNextBlock.SubString());
 
             return state;
         }

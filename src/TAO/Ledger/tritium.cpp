@@ -144,6 +144,17 @@ namespace TAO
 
 
         /* Copy Constructor. */
+        TritiumBlock::TritiumBlock(const Block& block)
+        : Block    (block)
+        , nTime    (runtime::unifiedtimestamp())
+        , producer ( )
+        , ssSystem ( )
+        , vtx      ( )
+        {
+        }
+
+
+        /* Copy Constructor. */
         TritiumBlock::TritiumBlock(const BlockState& state)
         : Block    (state)
         , nTime    (state.nTime)
