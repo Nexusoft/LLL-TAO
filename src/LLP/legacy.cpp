@@ -165,26 +165,19 @@ namespace LLP
         if(hashLastGetblocks.load() == hashBlockFrom && nLastGetBlocks.load() + 1 > runtime::timestamp())
             return;
 
-        /* Set the fast sync address. */
-        if(nCurrentSession != TAO::Ledger::nSyncSession.load())
+        /* Update values for sync node. */
+        if(nCurrentSession == TAO::Ledger::nSyncSession.load())
         {
-            /* Set the new sync address. */
-            TAO::Ledger::nSyncSession.store(nCurrentSession);
-
-            /* Reset the last time received. */
+            /* Update the last timestamp this was called. */
+            nLastGetBlocks    = runtime::timestamp();
             nLastTimeReceived = runtime::timestamp();
 
-            debug::log(0, NODE, "New sync address set");
+            /* Update the hash that was used for last request. */
+            hashLastGetblocks = hashBlockFrom;
+
+            /* Calculate the fast sync average. */
+            nFastSyncAverage = std::min((uint64_t)25, (nFastSyncAverage.load() + (runtime::timestamp() - nLastGetBlocks.load())) / 2);
         }
-
-        /* Calculate the fast sync average. */
-        nFastSyncAverage = std::min((uint64_t)25, (nFastSyncAverage.load() + (runtime::timestamp() - nLastGetBlocks.load())) / 2);
-
-        /* Update the last timestamp this was called. */
-        nLastGetBlocks = runtime::timestamp();
-
-        /* Update the hash that was used for last request. */
-        hashLastGetblocks = hashBlockFrom;
 
         /* Push the request to the node. */
         PushMessage("getblocks", TAO::Ledger::Locator(hashBlockFrom), hashBlockTo);
@@ -326,8 +319,7 @@ namespace LLP
             /* Unreliabilitiy re-requesting (max time since getblocks) */
             if(TAO::Ledger::ChainState::Synchronizing()
             && nCurrentSession == TAO::Ledger::nSyncSession.load()
-            && nLastTimeReceived.load() + 30 < nTimestamp
-            && nLastGetBlocks.load() + 30 < nTimestamp)
+            && nLastTimeReceived.load() + 45 < nTimestamp)
             {
                 debug::log(0, NODE, "Sync Node Timeout");
 
@@ -504,7 +496,14 @@ namespace LLP
 
             /* Push our version back since we just completed getting the version from the other node. */
             if(fOUTGOING && TAO::Ledger::nSyncSession.load() == 0)
+            {
+                /* Set the new sync address. */
+                TAO::Ledger::nSyncSession.store(nCurrentSession);
+
+                /* Push a getblocks request. */
                 PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
+                debug::log(0, NODE, "New sync address set");
+            }
 
             PushMessage("getaddr");
         }

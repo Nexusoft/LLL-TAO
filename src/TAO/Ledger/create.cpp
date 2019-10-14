@@ -213,7 +213,6 @@ namespace TAO
         /* Populate block header data for a new block. */
         void AddBlockData(const TAO::Ledger::BlockState& stateBest, const uint32_t nChannel, TAO::Ledger::TritiumBlock& block)
         {
-
             /* Modulate the Block Versions if they correspond to their proper time stamp */
             /* Normally, if condition is true and block version is current version unless an activation is pending */
             uint32_t nCurrent = CurrentVersion();

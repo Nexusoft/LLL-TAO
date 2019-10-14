@@ -26,18 +26,18 @@ ________________________________________________________________________________
 namespace LLD
 {
 
-    /** The Database Constructor. To determine file location and the Bytes per Record. **/
-    BinaryHashMap::BinaryHashMap(std::string strBaseLocationIn, uint8_t nFlagsIn, uint64_t nBucketsIn)
-    : KEY_MUTEX()
-    , strBaseLocation(strBaseLocationIn)
-    , fileCache(new TemplateLRU<uint16_t, std::fstream*>(8))
-    , pindex(nullptr)
-    , hashmap(nBucketsIn)
-    , HASHMAP_TOTAL_BUCKETS(nBucketsIn)
-    , HASHMAP_MAX_KEY_SIZE(32)
-    , HASHMAP_KEY_ALLOCATION(static_cast<uint16_t>(HASHMAP_MAX_KEY_SIZE + 13))
-    , nFlags(nFlagsIn)
-    , RECORD_MUTEX(1024)
+    /* The Database Constructor. To determine file location and the Bytes per Record. */
+    BinaryHashMap::BinaryHashMap(const std::string& strBaseLocationIn, const uint8_t nFlagsIn, const uint64_t nBucketsIn)
+    : KEY_MUTEX              ( )
+    , strBaseLocation        (strBaseLocationIn)
+    , fileCache              (new TemplateLRU<uint16_t, std::fstream*>(8))
+    , pindex                 (nullptr)
+    , hashmap                (nBucketsIn)
+    , HASHMAP_TOTAL_BUCKETS  (nBucketsIn)
+    , HASHMAP_MAX_KEY_SIZE   (32)
+    , HASHMAP_KEY_ALLOCATION (static_cast<uint16_t>(HASHMAP_MAX_KEY_SIZE + 13))
+    , nFlags                 (nFlagsIn)
+    , RECORD_MUTEX           (1024)
     {
         Initialize();
     }
@@ -45,16 +45,33 @@ namespace LLD
 
     /* Copy Constructor */
     BinaryHashMap::BinaryHashMap(const BinaryHashMap& map)
-    : KEY_MUTEX()
-    , strBaseLocation(map.strBaseLocation)
-    , fileCache(map.fileCache)
-    , pindex(map.pindex)
-    , hashmap(map.hashmap)
-    , HASHMAP_TOTAL_BUCKETS(map.HASHMAP_TOTAL_BUCKETS)
-    , HASHMAP_MAX_KEY_SIZE(map.HASHMAP_MAX_KEY_SIZE)
-    , HASHMAP_KEY_ALLOCATION(map.HASHMAP_KEY_ALLOCATION)
-    , nFlags(map.nFlags)
-    , RECORD_MUTEX(map.RECORD_MUTEX.size())
+    : KEY_MUTEX              ( )
+    , strBaseLocation        (map.strBaseLocation)
+    , fileCache              (map.fileCache)
+    , pindex                 (map.pindex)
+    , hashmap                (map.hashmap)
+    , HASHMAP_TOTAL_BUCKETS  (map.HASHMAP_TOTAL_BUCKETS)
+    , HASHMAP_MAX_KEY_SIZE   (map.HASHMAP_MAX_KEY_SIZE)
+    , HASHMAP_KEY_ALLOCATION (map.HASHMAP_KEY_ALLOCATION)
+    , nFlags                 (map.nFlags)
+    , RECORD_MUTEX           (map.RECORD_MUTEX.size())
+    {
+        Initialize();
+    }
+
+
+    /* Move Constructor */
+    BinaryHashMap::BinaryHashMap(BinaryHashMap&& map)
+    : KEY_MUTEX              ( )
+    , strBaseLocation        (std::move(map.strBaseLocation))
+    , fileCache              (std::move(map.fileCache))
+    , pindex                 (std::move(map.pindex))
+    , hashmap                (std::move(map.hashmap))
+    , HASHMAP_TOTAL_BUCKETS  (std::move(map.HASHMAP_TOTAL_BUCKETS))
+    , HASHMAP_MAX_KEY_SIZE   (std::move(map.HASHMAP_MAX_KEY_SIZE))
+    , HASHMAP_KEY_ALLOCATION (std::move(map.HASHMAP_KEY_ALLOCATION))
+    , nFlags                 (std::move(map.nFlags))
+    , RECORD_MUTEX           (map.RECORD_MUTEX.size())
     {
         Initialize();
     }
@@ -78,16 +95,36 @@ namespace LLD
     }
 
 
-    /** Default Destructor **/
-    BinaryHashMap::~BinaryHashMap()
+    /* Move Assignment Operator */
+    BinaryHashMap& BinaryHashMap::operator=(BinaryHashMap&& map)
     {
-        delete fileCache;
-        delete pindex;
+        strBaseLocation        = std::move(map.strBaseLocation);
+        fileCache              = std::move(map.fileCache);
+        pindex                 = std::move(map.pindex);
+        hashmap                = std::move(map.hashmap);
+        HASHMAP_TOTAL_BUCKETS  = std::move(map.HASHMAP_TOTAL_BUCKETS);
+        HASHMAP_MAX_KEY_SIZE   = std::move(map.HASHMAP_MAX_KEY_SIZE);
+        HASHMAP_KEY_ALLOCATION = std::move(map.HASHMAP_KEY_ALLOCATION);
+        nFlags                 = std::move(map.nFlags);
+
+        Initialize();
+
+        return *this;
     }
 
 
-    /*  Compresses a given key until it matches size criteria.
-     *  This function is one way and efficient for reducing key sizes. */
+    /* Default Destructor */
+    BinaryHashMap::~BinaryHashMap()
+    {
+        if(fileCache)
+            delete fileCache;
+
+        if(pindex)
+            delete pindex;
+    }
+
+
+    /*  Compresses a given key until it matches size criteria. */
     void BinaryHashMap::CompressKey(std::vector<uint8_t>& vData, uint16_t nSize)
     {
         /* Loop until key is of desired size. */
@@ -108,7 +145,7 @@ namespace LLD
     }
 
 
-    /*  Calculates a bucket to be used for the hashmap allocation. */
+    /* Calculates a bucket to be used for the hashmap allocation. */
     uint32_t BinaryHashMap::GetBucket(const std::vector<uint8_t>& vKey)
     {
         /* Get an xxHash. */
@@ -118,7 +155,7 @@ namespace LLD
     }
 
 
-    /*  Read a key index from the disk hashmaps. */
+    /* Read a key index from the disk hashmaps. */
     void BinaryHashMap::Initialize()
     {
         /* Create directories if they don't exist yet. */
@@ -189,7 +226,7 @@ namespace LLD
     }
 
 
-    /*  Read a key index from the disk hashmaps. */
+    /* Read a key index from the disk hashmaps. */
     bool BinaryHashMap::Get(const std::vector<uint8_t>& vKey, SectorKey &cKey)
     {
         LOCK(KEY_MUTEX);
@@ -265,7 +302,7 @@ namespace LLD
     }
 
 
-    /*  Write a key to the disk hashmaps. */
+    /* Write a key to the disk hashmaps. */
     bool BinaryHashMap::Put(const SectorKey& cKey)
     {
         LOCK(KEY_MUTEX);
@@ -533,7 +570,7 @@ namespace LLD
     }
 
 
-    /*  Restore an index in the hashmap if it is found. */
+    /* Restore an index in the hashmap if it is found. */
     bool BinaryHashMap::Restore(const std::vector<uint8_t> &vKey)
     {
         LOCK(KEY_MUTEX);

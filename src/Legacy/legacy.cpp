@@ -259,7 +259,7 @@ namespace Legacy
     {
         /* Read ledger DB for duplicate block. */
         if(LLD::Ledger->HasBlock(GetHash()))
-            return false;//debug::error(FUNCTION, "already have block ", GetHash().SubString());
+            return true;//debug::error(FUNCTION, "already have block ", GetHash().SubString(), " height ", nHeight);
 
         /* Check the Size limits of the Current Block. */
         if(::GetSerializeSize(*this, SER_NETWORK, LLP::PROTOCOL_VERSION) > TAO::Ledger::MAX_BLOCK_SIZE)
@@ -271,9 +271,7 @@ namespace Legacy
 
         /* Check that the time was within range. If before v7 activation, keep legacy block compatible with legacy setting. */
         uint64_t nMaxDrift = MAX_UNIFIED_DRIFT;
-        uint32_t nCurrent = TAO::Ledger::CurrentVersion();
-
-        if(nCurrent < 7 || (nCurrent == 7 && !TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 7)))
+        if(nVersion < 7)
             nMaxDrift = MAX_UNIFIED_DRIFT_LEGACY;
 
         if(GetBlockTime() > runtime::unifiedtimestamp() + nMaxDrift)
@@ -335,9 +333,7 @@ namespace Legacy
              * If before v7 activation, keep legacy coinstake compatible with legacy setting.
              */
             uint64_t nMaxDrift = MAX_UNIFIED_DRIFT;
-            uint32_t nCurrent = TAO::Ledger::CurrentVersion();
-
-            if(nCurrent < 7 || (nCurrent == 7 && !TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 7)))
+            if(nVersion < 7)
                 nMaxDrift = MAX_UNIFIED_DRIFT_LEGACY;
 
             if(vtx[0].nTime > (runtime::unifiedtimestamp() + nMaxDrift))
