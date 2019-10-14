@@ -52,31 +52,31 @@ namespace LLP
 
 
         /** Copy constructor **/
-        BaseAddress(const BaseAddress &other, uint16_t port = 0);
+        BaseAddress(const BaseAddress& other, uint16_t port = 0);
 
 
         /** Copy constructor **/
-        BaseAddress(const struct in_addr &ipv4Addr, uint16_t port = 0);
+        BaseAddress(const struct in_addr& ipv4Addr, uint16_t port = 0);
 
 
         /** Copy constructor **/
-        BaseAddress(const struct in6_addr &ipv6Addr, uint16_t port = 0);
+        BaseAddress(const struct in6_addr& ipv6Addr, uint16_t port = 0);
 
 
         /** Copy constructor **/
-        BaseAddress(const struct sockaddr_in &addr);
+        BaseAddress(const struct sockaddr_in& addr);
 
 
         /** Copy constructor **/
-        BaseAddress(const struct sockaddr_in6 &addr);
+        BaseAddress(const struct sockaddr_in6& addr);
 
 
         /** Copy constructor **/
-        BaseAddress(const std::string &strIp, uint16_t portDefault = 0, bool fAllowLookup = false);
+        BaseAddress(const std::string& strIp, uint16_t portDefault = 0, bool fAllowLookup = false);
 
 
         /** Copy assignment operator **/
-        BaseAddress &operator=(const BaseAddress &other);
+        BaseAddress &operator=(const BaseAddress& other);
 
 
         /** SetPort
