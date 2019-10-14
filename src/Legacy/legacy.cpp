@@ -39,6 +39,7 @@ ________________________________________________________________________________
 #include <Util/include/args.h>
 #include <Util/include/hex.h>
 #include <Util/include/runtime.h>
+#include <Util/include/softfloat.h>
 
 #include <cmath>
 
@@ -581,7 +582,7 @@ namespace Legacy
     bool LegacyBlock::CheckStake() const
     {
         /* Make static const for reducing repeated computation. */
-        static const double LOG3 = log(3);
+        static const cv::softdouble LOG3 = cv::log(cv::softdouble(3));
 
         /* Use appropriate settings for Testnet or Mainnet */
         static const uint32_t nTrustWeightBase = config::fTestNet ? TAO::Ledger::TRUST_WEIGHT_BASE_TESTNET : TAO::Ledger::TRUST_WEIGHT_BASE;
@@ -595,8 +596,8 @@ namespace Legacy
             return debug::error(FUNCTION, "proof of stake hash not meeting target");
 
         /* Weight for Trust transactions combine block weight and stake weight. */
-        double nTrustWeight = 0.0;
-        double nBlockWeight = 0.0;
+        cv::softdouble nTrustWeight = cv::softdouble(0.0);
+        cv::softdouble nBlockWeight = cv::softdouble(0.0);
         uint32_t nTrustScore = 0;
         uint32_t nBlockAge = 0;
 
@@ -611,12 +612,12 @@ namespace Legacy
                 return debug::error(FUNCTION, "failed to get block age");
 
             /* Trust Weight Continues to grow the longer you have staked and higher your interest rate */
-            double nTrustWeightRatio = (double)nTrustScore / (double)nTrustWeightBase;
-            nTrustWeight = std::min(90.0, (44.0 * log((2.0 * nTrustWeightRatio) + 1.0) / LOG3) + 1.0);
+            cv::softdouble nTrustWeightRatio = cv::softdouble(nTrustScore) / cv::softdouble(nTrustWeightBase);
+            nTrustWeight = std::min(cv::softdouble(90.0), (cv::softdouble(44.0) * cv::log((cv::softdouble(2.0) * nTrustWeightRatio) + cv::softdouble(1.0)) / LOG3) + cv::softdouble(1.0));
 
             /* Block Weight Reaches Maximum At Trust Key Expiration. */
-            double nBlockAgeRatio = (double)nBlockAge / (double)nMaxBlockAge;
-            nBlockWeight = std::min(10.0, (9.0 * log((2.0 * nBlockAgeRatio) + 1.0) / LOG3) + 1.0);
+            cv::softdouble nBlockAgeRatio = cv::softdouble(nBlockAge) / cv::softdouble(nMaxBlockAge);
+            nBlockWeight = std::min(cv::softdouble(10.0), (cv::softdouble(9.0) * cv::log((cv::softdouble(2.0) * nBlockAgeRatio) + cv::softdouble(1.0)) / LOG3) + cv::softdouble(1.0));
 
         }
 
@@ -637,16 +638,16 @@ namespace Legacy
                 return debug::error(FUNCTION, "genesis age is immature");
 
             /* Trust Weight For Genesis Transaction Reaches Maximum at 90 day Limit. */
-            double nGenesisTrustRatio = (double)nCoinAge / (double)nTrustWeightBase;
-            nTrustWeight = std::min(10.0, (9.0 * log((2.0 * nGenesisTrustRatio) + 1.0) / LOG3) + 1.0);
+            cv::softdouble nGenesisTrustRatio = cv::softdouble(nCoinAge) / cv::softdouble(nTrustWeightBase);
+            nTrustWeight = std::min(cv::softdouble(10.0), (cv::softdouble(9.0) * cv::log((cv::softdouble(2.0) * nGenesisTrustRatio) + cv::softdouble(1.0)) / LOG3) + cv::softdouble(1.0));
 
             /* Block Weight remains zero while staking for Genesis */
-            nBlockWeight = 0.0;
+            nBlockWeight = cv::softdouble(0.0);
         }
 
         /* Check the energy efficiency requirements. */
-        double nRequired  = ((108.0 - nTrustWeight - nBlockWeight) * TAO::Ledger::MAX_STAKE_WEIGHT) / vtx[0].vout[0].nValue;
-        double nThreshold = ((nTime - vtx[0].nTime) * 100.0) / nNonce;
+        cv::softdouble nRequired  = cv::softdouble((cv::softdouble(108.0) - nTrustWeight - nBlockWeight) * TAO::Ledger::MAX_STAKE_WEIGHT) / cv::softdouble(vtx[0].vout[0].nValue);
+        cv::softdouble nThreshold = cv::softdouble((nTime - vtx[0].nTime) * cv::softdouble(100.0)) / cv::softdouble(nNonce);
 
         if(nThreshold < nRequired)
             return debug::error(FUNCTION, "energy threshold too low ", nThreshold, " required ", nRequired);
@@ -659,8 +660,8 @@ namespace Legacy
             "blockage=", nBlockAge, ", ",
             "trustweight=", nTrustWeight, ", ",
             "blockweight=", nBlockWeight, ", ",
-            "threshold=", nThreshold, ", ",
-            "required=", nRequired, ", ",
+            "threshold=", double(nThreshold), ", ",
+            "required=", double(nRequired), ", ",
             "time=", (nTime - vtx[0].nTime), ", ",
             "nonce=", nNonce, ")");
 
