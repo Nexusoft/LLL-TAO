@@ -53,7 +53,7 @@ namespace TAO
             value.nBytes = 1;
 
             /* Check for memory overflows. */
-            if(value.nEnd >= vRegister.size())
+            if(value.nEnd > vRegister.size())
                 throw BaseVMException("Out of register memory");
 
             /* Copy data into register. */
@@ -70,7 +70,7 @@ namespace TAO
             value.nBytes = 2;
 
             /* Check for memory overflows. */
-            if(value.nEnd >= vRegister.size())
+            if(value.nEnd > vRegister.size())
                 throw BaseVMException("Out of register memory");
 
             /* Copy data into register. */
@@ -87,7 +87,7 @@ namespace TAO
             value.nBytes = 4;
 
             /* Check for memory overflows. */
-            if(value.nEnd >= vRegister.size())
+            if(value.nEnd > vRegister.size())
                 throw BaseVMException("Out of register memory");
 
             /* Copy data into register. */
@@ -104,7 +104,7 @@ namespace TAO
             value.nBytes = 8;
 
             /* Check for memory overflows. */
-            if(value.nEnd >= vRegister.size())
+            if(value.nEnd > vRegister.size())
                 throw BaseVMException("Out of register memory");
 
             /* Copy data into register. */
@@ -124,7 +124,7 @@ namespace TAO
             value.nBytes = (data.size() - nOffset);
 
             /* Check for memory overflows. */
-            if(value.nEnd >= vRegister.size())
+            if(value.nEnd > vRegister.size())
                 throw BaseVMException("Out of register memory");
 
             /* Copy data into the registers. */
@@ -147,7 +147,7 @@ namespace TAO
             value.nBytes = data.size();
 
             /* Check for memory overflows. */
-            if(value.nEnd >= vRegister.size())
+            if(value.nEnd > vRegister.size())
                 throw BaseVMException("Out of register memory");
 
             /* Copy data into the registers. */

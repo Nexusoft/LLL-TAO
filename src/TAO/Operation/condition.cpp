@@ -68,11 +68,27 @@ namespace TAO
         }
 
 
-        /* Validates that the contract conditions script is not malformed and can be executed. */
-        bool Condition::Validate(const Contract& contract, std::vector<std::pair<uint16_t, uint64_t>> &vWarnings)
+        /* Verifies that the contract conditions script is not malformed and can be executed. */
+        bool Condition::Verify(const Contract& contract)
+        {
+            /* Warnings raised */
+            std::vector<std::pair<uint16_t, uint64_t>> vWarnings;
+
+            /* Validate the conditions, ignoring any warnings */
+            return Verify(contract, vWarnings);
+        }
+
+
+        /* Verifies that the contract conditions script is not malformed and can be executed.  Populates vWarnings with
+           warning flags and stream positions, which the caller can use to identify potential problems such as overflows. */
+        bool Condition::Verify(const Contract& contract, std::vector<std::pair<uint16_t, uint64_t>> &vWarnings)
         {
             /* Return flag */
             bool fValid = false;
+
+            /* Always return true if there are no conditions to verify! */
+            if(contract.Empty(TAO::Operation::Contract::CONDITIONS))
+                return true;
 
             try
             {
@@ -82,14 +98,9 @@ namespace TAO
                    conditions based on the caller operations data will result in a overflow) */
                 TAO::Operation::Contract caller;
 
-                /* Create 1024 bytes if data */
-                std::vector<uint8_t> vData(1024);
-
-                /* Fill with 0x02 */
-                std::fill(vData.begin(), vData.end(), 0x02);
-
-                /* Serialize the dta into the caller contract's operations stream */
-                caller << vData;
+                /* Fill contract's operations stream with 1024 bytes all set to 0x02*/
+                for(int i=0; i<1024; i++)
+                    caller << uint8_t(0x02);
 
                 /* Create a conditions object for the the two contracts */
                 Condition condition(contract, caller);
@@ -259,7 +270,7 @@ namespace TAO
 
                         /* Check that nothing has been evaluated. */
                         if(vEvaluate.empty())
-                            throw TAO::Register::MalformedException("Malformed condition");
+                            throw TAO::Register::MalformedException("Malformed conditions");
 
                         /* Check for evalute state. */
                         switch(vEvaluate.top().second)
@@ -328,6 +339,10 @@ namespace TAO
             TAO::Register::Value vLeft;
             if(!get_value(vLeft, nWarnings))
                 return false;
+
+            /* Ensure there is am operation after the lValue */
+            if(contract.End(Contract::CONDITIONS))
+                throw TAO::Register::MalformedException("Malformed conditions");
 
             /* Grab the next operation. */
             uint8_t OPERATION = 0;

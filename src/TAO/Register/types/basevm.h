@@ -46,7 +46,7 @@ namespace TAO
         public:
 
             /** Default constructor. **/
-            BaseVM(uint32_t nSize = 64)
+            BaseVM(uint32_t nSize = 128)
             : vRegister(nSize, 0)
             , nPointer(0)
             {
@@ -149,7 +149,7 @@ namespace TAO
                 value.nBytes = sizeof(data);
 
                 /* Check for memory overflows. */
-                if(value.nEnd >= vRegister.size())
+                if(value.nEnd > vRegister.size())
                     throw BaseVMException("Out of register memory");
 
                 /* Copy data into the registers. */
