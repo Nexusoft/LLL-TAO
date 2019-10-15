@@ -100,22 +100,18 @@ namespace TAO
             if(!GetLastState(first, 0))
                 return bnProofOfWorkStart[0].GetCompact();
 
-
             /* Get Last Block Index [2nd block back in Channel]. */
             BlockState last = first.Prev();
             if(!GetLastState(last, 0))
                 return bnProofOfWorkStart[0].GetCompact();
 
-
             /* Get the Block Time and Target Spacing. */
             uint64_t nBlockTime   = GetWeightedTimes(first, 5);
             uint64_t nBlockTarget = config::fTestNet.load() ? TESTNET_STAKE_TARGET_SPACING : STAKE_TARGET_SPACING;
 
-
             /* The Upper and Lower Bound Adjusters. */
             uint64_t nUpperBound = nBlockTarget;
             uint64_t nLowerBound = nBlockTarget;
-
 
             /** If the time is above target, reduce difficulty by modular
             of one interval past timespan multiplied by maximum decrease. **/
@@ -152,26 +148,21 @@ namespace TAO
             LLC::CBigNum bnNew;
             bnNew.SetCompact(first.nBits);
 
-
             /* Change Number from Upper and Lower Bounds. */
             bnNew *= nUpperBound;
             bnNew /= nLowerBound;
-
 
             /* Check for maximum overflows. */
             if(bnNew.GetCompact() == 0)
                 bnNew.SetCompact(first.nBits);
 
-
             /* Don't allow Difficulty to decrease below minimum. */
             if(bnNew > bnProofOfWorkLimit[0])
                 bnNew = bnProofOfWorkLimit[0];
 
-
             /* Handle for regression testing blocks. */
             if(config::GetBoolArg("-regtest"))
                 bnNew = bnProofOfWorkLimit[0];
-
 
             /* Debug output. */
             if(fDebug)
@@ -180,13 +171,14 @@ namespace TAO
                 GetChainTimes(GetChainAge(first.GetBlockTime()), nDays, nHours, nMinutes);
 
                 debug::log(2,
-                "RETARGET weighted time=", nBlockTime,
-                " actual time =", std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t) 1),
-                "[", ((100.0 * static_cast<double>(nLowerBound)) / static_cast<double>(nUpperBound)), "%]\n",
-                "\tchain time: [", nBlockTarget, " / ", nBlockTime, "]\n",
-                "\tdifficulty: [", std::fixed, GetDifficulty(first.nBits, 0), " to ", std::fixed, GetDifficulty(bnNew.GetCompact(), 0), "]\n",
-                "\ttrust height: ", first.nChannelHeight,
-                " [AGE ", nDays, " days, ", nHours, " hours, ", nMinutes, " minutes]\n");
+                    "RETARGET weighted time=", nBlockTime,
+                    " actual time =", std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t) 1),
+                    "[", ((100.0 * static_cast<double>(nLowerBound)) / static_cast<double>(nUpperBound)), "%]\n",
+                    "\tchain time: [", nBlockTarget, " / ", nBlockTime, "]\n",
+                    "\tdifficulty: [", std::fixed, GetDifficulty(first.nBits, 0), " to ", std::fixed, GetDifficulty(bnNew.GetCompact(), 0), "]\n",
+                    "\ttrust height: ", first.nChannelHeight,
+                    " [AGE ", nDays, " days, ", nHours, " hours, ", nMinutes, " minutes]\n"
+                );
             }
 
             return bnNew.GetCompact();
@@ -197,24 +189,20 @@ namespace TAO
         /* Prime Retargeting: Modulate Difficulty based on production rate. */
         uint32_t RetargetPrime(const BlockState& state, bool fDebug)
         {
-
             /* Get Last Block Index [1st block back in Channel]. **/
             BlockState first = state;
             if(!GetLastState(first, 1))
                 return bnProofOfWorkStart[1].getuint32();
-
 
             /* Get Last Block Index [2nd block back in Channel]. */
             BlockState last = first.Prev();
             if(!GetLastState(last, 1))
                 return bnProofOfWorkStart[1].getuint32();
 
-
             /* Standard Time Proportions */
             uint64_t nBlockTime = ((state.nVersion >= 4) ?
                 GetWeightedTimes(first, 5) : std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t)1));
             uint64_t nBlockTarget = config::fTestNet.load() ? TESTNET_MINING_TARGET_SPACING : MINING_TARGET_SPACING;
-
 
             /* Chain Mod: Is a proportion to reflect outstanding released funds. Version 1 Deflates difficulty slightly
             to allow more blocks through when blockchain has been slow, Version 2 Deflates Target Timespan to lower the minimum difficulty.
@@ -225,25 +213,20 @@ namespace TAO
             nChainMod = std::min(nChainMod, cv::softdouble(1.0));
             nChainMod = std::max(nChainMod, (state.nVersion == 1) ? cv::softdouble(0.75) : cv::softdouble(0.5));
 
-
             /* Enforce Block Version 2 Rule. Chain mod changes block time requirements, not actual mod after block times. */
             if(state.nVersion >= 2)
                 nBlockTarget = static_cast<uint64_t>(cv::softdouble(nBlockTarget) * nChainMod);
-
 
             /* These figures reduce the increase and decrease max and mins as difficulty rises
             this is due to the time difference between each cluster size [ex. 1, 2, 3] being 50x */
             cv::softdouble nDifficulty = cv::softdouble(GetDifficulty(first.nBits, 1));
 
-
             /* The Mod to Change Difficulty. */
             cv::softdouble nMod = cv::softdouble(1.0);
-
 
             /* Handle for Version 3 Blocks. Mod determined by time multiplied by max / min. */
             if(state.nVersion >= 3)
             {
-
                 /* If the time is above target, reduce difficulty by modular
                     of one interval past timespan multiplied by maximum decrease. */
                 if(nBlockTime >= nBlockTarget)
@@ -297,29 +280,23 @@ namespace TAO
                 nMod = std::max(nMod, nMaxDown);
             }
 
-
             /* If there is a change in difficulty, multiply by mod. */
             nDifficulty *= nMod;
 
-
             /* Keep the target difficulty at minimum (allow -regtest difficulty) */
             uint32_t nBits = SetBits(nDifficulty);
-
 
             /* Check for maximum value. */
             if(nBits == 0)
                 nBits = first.nBits;
 
-
             /* Check for minimum value. */
             if(nBits < bnProofOfWorkLimit[1].getuint32())
                 nBits = bnProofOfWorkLimit[1].getuint32();
 
-
             /* Handle for regression testing blocks. */
             if(config::GetBoolArg("-regtest"))
                 nBits = bnProofOfWorkLimit[1].getuint32();
-
 
             /* Debug output. */
             if(fDebug)
@@ -328,15 +305,16 @@ namespace TAO
                 GetChainTimes(GetChainAge(first.GetBlockTime()), nDays, nHours, nMinutes);
 
                 debug::log(2,
-                "RETARGET weighted time=", nBlockTime,
-                " actual time ", std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t) 1),
-                ", [", nMod * 100.0, " %]\n",
-                "\tchain time: [", nBlockTarget, " / ", nBlockTime, "]\n",
-                "\treleased reward: ", first.nReleasedReserve[0] / Legacy::COIN,
-                " [", 100.0 * nChainMod, " %]\n",
-                "\tdifficulty: [", std::fixed, GetDifficulty(first.nBits, 1), " to ", std::fixed, GetDifficulty(nBits, 1), "]\n"
-                "\tprime height: ", first.nChannelHeight,
-                " [AGE ", nDays, " days, ", nHours, " hours, ", nMinutes, " minutes]\n");
+                    "RETARGET weighted time=", nBlockTime,
+                    " actual time ", std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t) 1),
+                    ", [", nMod * 100.0, " %]\n",
+                    "\tchain time: [", nBlockTarget, " / ", nBlockTime, "]\n",
+                    "\treleased reward: ", first.nReleasedReserve[0] / Legacy::COIN,
+                    " [", 100.0 * nChainMod, " %]\n",
+                    "\tdifficulty: [", std::fixed, GetDifficulty(first.nBits, 1), " to ", std::fixed, GetDifficulty(nBits, 1), "]\n"
+                    "\tprime height: ", first.nChannelHeight,
+                    " [AGE ", nDays, " days, ", nHours, " hours, ", nMinutes, " minutes]\n"
+                );
             }
 
 
@@ -348,27 +326,22 @@ namespace TAO
         /* Trust Retargeting: Modulate Difficulty based on production rate. */
         uint32_t RetargetHash(const BlockState& state, bool fDebug)
         {
-
             /* Get Last Block Index [1st block back in Channel]. **/
             BlockState first = state;
             if(!GetLastState(first, 2))
                 return bnProofOfWorkStart[2].GetCompact();
-
 
             /* Get Last Block Index [2nd block back in Channel]. */
             BlockState last = first.Prev();
             if(!GetLastState(last, 2))
                 return bnProofOfWorkStart[2].GetCompact();
 
-
             /* Get the Block Times with Minimum of 1 to Prevent Time Warps. */
             uint64_t nBlockTime = ((state.nVersion >= 4) ?
                 GetWeightedTimes(first, 5) : std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t) 1));
 
-
             /* Set the block target timespan. */
             uint64_t nBlockTarget = config::fTestNet.load() ? TESTNET_MINING_TARGET_SPACING : MINING_TARGET_SPACING;
-
 
             /* Get the Chain Modular from Reserves. */
             cv::softdouble nChainMod = cv::softdouble(GetFractionalSubsidy(GetChainAge(first.GetBlockTime()), 0,
@@ -377,16 +350,13 @@ namespace TAO
             nChainMod = std::min(nChainMod, cv::softdouble(1.0));
             nChainMod = std::max(nChainMod, (state.nVersion == 1) ? cv::softdouble(0.75) : cv::softdouble(0.5));
 
-
             /* Enforce Block Version 2 Rule. Chain mod changes block time requirements, not actual mod after block times. */
             if(state.nVersion >= 2)
                 nBlockTarget = static_cast<uint64_t>(cv::softdouble(nBlockTarget) * nChainMod);
 
-
             /* The Upper and Lower Bound Adjusters. */
             uint64_t nUpperBound = nBlockTarget;
             uint64_t nLowerBound = nBlockTarget;
-
 
             /* Handle for Version 3 Blocks. Mod determined by time multiplied by max / min. */
             if(state.nVersion >= 3)
@@ -442,11 +412,9 @@ namespace TAO
                 nLowerBound = std::max(nLowerBound, (3 * nUpperBound) / 4);
             }
 
-
             /* Get the Difficulty Stored in Bignum Compact. */
             LLC::CBigNum bnNew;
             bnNew.SetCompact(first.nBits);
-
 
             /* Change Number from Upper and Lower Bounds. */
             bnNew *= nUpperBound;
@@ -479,7 +447,7 @@ namespace TAO
                     "\tdifficulty: [", std::fixed, GetDifficulty(first.nBits, 2), " to ", std::fixed, GetDifficulty(bnNew.GetCompact(), 2), "]\n",
                     "\thash height: ", first.nChannelHeight,
                     " [AGE ", nDays, " days, ", nHours, " hours, ", nMinutes, " minutes]\n"
-              );
+                );
             }
 
             return bnNew.GetCompact();

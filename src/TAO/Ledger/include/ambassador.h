@@ -68,7 +68,7 @@ namespace TAO
             {
                 uint256_t("a2cfad9f505f8166203df2685ee7cb8582be9ae017dcafa4ca4530cd5b4f1dca"),
                 {
-                    uint256_t("cbad41aa9ffe345559b091e5edb8c4f199fe044e7d52dd3ec917a857a4bcab95"), //password authentication
+                    uint256_t("5422b97efbfd5b5ea11440cd04de48b86ec6838a408a171199f87a63b0f573d5"), //password authentication
                     1000 //100%
                 }
             }
