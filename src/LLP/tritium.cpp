@@ -947,8 +947,7 @@ namespace LLP
 
                             /* Do a sequential read to obtain the list. */
                             std::vector<TAO::Ledger::BlockState> vStates;
-                            while(--nLimits > 0 && hashStart != hashStop &&
-                                LLD::Ledger->BatchRead(hashStart, "block", vStates, 1000, true))
+                            while(hashStart != hashStop && LLD::Ledger->BatchRead(hashStart, "block", vStates, 1000, true))
                             {
                                 /* Loop through all available states. */
                                 for(auto& state : vStates)
@@ -960,6 +959,8 @@ namespace LLP
                                     /* Check for matching hashes. */
                                     if(state.hashPrevBlock != hashStart)
                                     {
+                                        debug::log(3, FUNCTION, "Reading block ", stateLast.hashNextBlock.SubString());
+                                        
                                         /* Read the correct block from next index. */
                                         if(!LLD::Ledger->ReadBlock(stateLast.hashNextBlock, state))
                                            return debug::drop(NODE, "failed to read current block");
