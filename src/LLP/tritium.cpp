@@ -975,8 +975,6 @@ namespace LLP
                                            return debug::drop(NODE, "failed to read current block");
                                     }
 
-                                    state.print();
-
                                     /* Cache the block hash. */
                                     stateLast = state;
 
