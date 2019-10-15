@@ -83,9 +83,9 @@ public:
     }
 
 
-    bool WriteHash(const uint1024_t& hash)
+    bool WriteHash(const uint1024_t& hash, const uint1024_t& hash2)
     {
-        return Write(std::make_pair(std::string("hash"), hash), hash, "hash");
+        return Write(std::make_pair(std::string("hash"), hash), hash2, "hash");
     }
 
     bool WriteHash2(const uint1024_t& hash, const uint1024_t& hash2)
@@ -191,46 +191,6 @@ public:
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
-
-    uint64_t nTest  = 555;
-    uint64_t nTest1 = 595;
-
-    uint512_t hashCheck = LLC::SK512(BEGIN(nTest), END(nTest1));
-
-    debug::log(0, "Hash ", hashCheck.ToString());
-
-    return 0;
-
-    cv::softdouble a = cv::softdouble(5.55555);
-
-    debug::log(0, "Soft Double ", double(a));
-
-    return 0;
-
-    Legacy::LegacyBlock block;
-    block.nTime = 49339439;
-    block.nBits = 34934;
-    block.nVersion = 444;
-
-    block.print();
-
-
-    runtime::timer timer;
-    timer.Start();
-    Legacy::LegacyBlock block2 = std::move(block);
-
-    uint64_t nTotal = timer.ElapsedNanoseconds();
-
-    debug::log(0, "Took ", nTotal, " nanoseconds");
-
-    block2.print();
-
-    return 0;
-
-    nTest = std::max(nTest, uint64_t(888));
-
-    debug::log(0, "Test ", nTest);
-
     TestDB* testDB = new TestDB();
 
     uint1024_t hash = LLC::GetRand();
@@ -239,13 +199,13 @@ int main(int argc, char** argv)
 
     debug::log(0, "Write Hash");
     debug::log(0, "Hash ", hash.Get64());
-    testDB->WriteHash(hash);
+    testDB->WriteHash(hash, hash);
 
     debug::log(0, "Index Hash");
     if(!testDB->IndexHash(hash))
         return debug::error("failed to index");
 
-    testDB->TxnBegin();
+    //testDB->TxnBegin();
 
     debug::log(0, "Read Hash");
     uint1024_t hashTest;
@@ -256,13 +216,25 @@ int main(int argc, char** argv)
     uint1024_t hashTest3 = hash + 1;
     testDB->WriteHash2(hash, hashTest3);
 
-    testDB->TxnCheckpoint();
-    testDB->TxnCommit();
+    //testDB->TxnCheckpoint();
+    //testDB->TxnCommit();
+
+
+    testDB->WriteHash(hash, hashTest3 + 3);
+
+    uint1024_t hashN = 0;
+    testDB->ReadHash(hash, hashN);
+
+    testDB->WriteHash2(hash, hashTest3 + 10);
+
+    testDB->ReadHash2(hash, hashN);
+
+
 
     {
         debug::log(0, "Read Hash");
         uint1024_t hashTest4;
-        testDB->ReadHash2(hash, hashTest4);
+        testDB->ReadHash(hash, hashTest4);
 
         debug::log(0, "Hash New ", hashTest4.Get64());
     }
@@ -270,7 +242,7 @@ int main(int argc, char** argv)
     {
         debug::log(0, "Read Hash");
         uint1024_t hashTest4;
-        testDB->ReadHash(hash, hashTest4);
+        testDB->ReadHash2(hash, hashTest4);
 
         debug::log(0, "Hash New ", hashTest4.Get64());
     }
@@ -309,7 +281,7 @@ int main(int argc, char** argv)
                 debug::log(0, "Wrote ", nTotal, " Total Records in ", nElapsed, " ms (", nTotal * 1000 / nElapsed, " per / s)");
             }
 
-            testDB->WriteHash(i);
+            testDB->WriteHash(i, i);
         }
 
         testDB->WriteLast(last + 100000);

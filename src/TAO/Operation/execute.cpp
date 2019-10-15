@@ -715,7 +715,7 @@ namespace TAO
                         uint256_t hashAddress = 0;
                         contract >> hashAddress;
 
-                        /* Get the transfer address. */
+                        /* Get the proof address. */
                         uint256_t hashProof = 0;
                         contract >> hashProof;
 

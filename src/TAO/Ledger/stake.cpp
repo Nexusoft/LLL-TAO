@@ -191,7 +191,7 @@ namespace TAO
 
 
         /* Calculate the minimum Required Energy Efficiency Threshold. */
-        double GetRequiredThreshold(double nTrustWeight, double nBlockWeight, uint64_t nStake)
+        double GetRequiredThreshold(double nTrustWeight, double nBlockWeight, const uint64_t nStake)
         {
             /*  Staking weights (trust and block) reduce the required threshold by reducing the numerator of this calculation.
              *  Weight from staking balance reduces the required threshold by increasing the denominator.

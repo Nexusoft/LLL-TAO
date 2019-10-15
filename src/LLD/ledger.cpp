@@ -226,7 +226,7 @@ namespace LLD
             {
                 /* Check for last claimed amount. */
                 const uint64_t nMemoryClaimed = pCommit->mapClaims[pair];
-                if(nMemoryClaimed == nClaimed || nFlags != TAO::Ledger::FLAGS::ERASE)
+                if(nMemoryClaimed == nClaimed || nFlags == TAO::Ledger::FLAGS::ERASE)
                 {
                     /* Erase if a transaction. */
                     if(pMemory)
@@ -739,14 +739,12 @@ namespace LLD
                 }
                 else
                     pCommit->setProofs.erase(tuple);
-
-                /* Break on erase.  */
-                if(nFlags == TAO::Ledger::FLAGS::ERASE)
-                    return true;
             }
-        }
 
-        debug::log(0, FUNCTION, "Erasing Proof ", hashProof.SubString(), " txid ", hashTx.SubString(), " contract ", nContract);
+            /* Break on erase.  */
+            if(nFlags == TAO::Ledger::FLAGS::ERASE)
+                return true;
+        }
 
         return Erase(tuple);
     }

@@ -246,11 +246,11 @@ namespace LLD
                 }
                 else
                     pCommit->mapStates.erase(hashRegister);
-
-                /* Break on erase.  */
-                if(nFlags == TAO::Ledger::FLAGS::ERASE)
-                    return true;
             }
+
+            /* Break on erase.  */
+            if(nFlags == TAO::Ledger::FLAGS::ERASE)
+                return true;
         }
 
         return Erase(std::make_pair(std::string("state"), hashRegister));

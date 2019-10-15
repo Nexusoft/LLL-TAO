@@ -261,8 +261,6 @@ namespace TAO
                         /* Seek to end. */
                         contract.Seek(16);
 
-                        debug::log(0, FUNCTION, "Delete COINBASE ", hashGenesis.SubString());
-
                         /* Commit to disk. */
                         if(nFlags == TAO::Ledger::FLAGS::BLOCK && contract.Caller() != hashGenesis && !LLD::Ledger->EraseEvent(hashGenesis))
                             return false;
@@ -294,7 +292,7 @@ namespace TAO
                             TAO::Register::Address(std::string("trust"), state.hashOwner, TAO::Register::Address::TRUST);
 
                         /* Write the register prestate to database. */
-                        if(!LLD::Register->WriteTrust(contract.Caller(), state))
+                        if(!LLD::Register->WriteState(hashAddress, state))
                             return debug::error(FUNCTION, "OP::TRUST: failed to rollback to pre-state");
 
                         break;
@@ -393,13 +391,15 @@ namespace TAO
                         uint256_t hashAddress = 0;
                         contract >> hashAddress;
 
-                        /* Get the transfer address. */
+                        /* Get the proof address. */
                         uint256_t hashProof = 0;
                         contract >> hashProof;
 
                         /* Get the transfer amount. */
                         uint64_t  nAmount = 0;
                         contract >> nAmount;
+
+                        debug::log(0, FUNCTION, "OP::CREDIT: Erasing Proof ", hashProof.SubString(), " txid ", hashTx.SubString(), " contract ", nContract);
 
                         /* Write the claimed proof. */
                         if(!LLD::Ledger->EraseProof(hashProof, hashTx, nContract, nFlags))
@@ -437,8 +437,8 @@ namespace TAO
                             TAO::Register::Address hashTo;
                             debit >> hashTo;
 
-                            /* If the debit is to a tokenized asset, it could have partial credits. Therefore we need check the 
-                               credit amount with respect to the other claimed amounts and then subtract this credit from the 
+                            /* If the debit is to a tokenized asset, it could have partial credits. Therefore we need check the
+                               credit amount with respect to the other claimed amounts and then subtract this credit from the
                                current claimed amount. */
                             if(hashTo.IsObject())
                             {

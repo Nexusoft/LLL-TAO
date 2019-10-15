@@ -198,6 +198,18 @@ namespace TAO
             bool Verify(const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK) const;
 
 
+            /** CheckTrust
+             *
+             *  Check the trust score that is claimed is correct.
+             *
+             *  @param[in] pblock Pointer to the block that is connecting
+             *
+             *  @return true if trust score is correct.
+             *
+             **/
+            bool CheckTrust(const BlockState* pblock = nullptr) const;
+
+
             /** Cost
              *
              *  Get the total cost of this transaction.
