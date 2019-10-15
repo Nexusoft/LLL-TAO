@@ -952,8 +952,6 @@ namespace LLP
                                 /* Loop through all available states. */
                                 for(auto& state : vStates)
                                 {
-                                    state.print();
-                                    
                                     /* Skip if not in main chain. */
                                     if(!state.IsInMainChain())
                                         continue;
@@ -967,6 +965,8 @@ namespace LLP
                                         if(!LLD::Ledger->ReadBlock(stateLast.hashNextBlock, state))
                                            return debug::drop(NODE, "failed to read current block");
                                     }
+
+                                    state.print();
 
                                     /* Cache the block hash. */
                                     hashStart = state.GetHash();
