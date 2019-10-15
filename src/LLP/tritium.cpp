@@ -927,7 +927,7 @@ namespace LLP
                                     }
 
                                     /* Debug output. */
-                                    //debug::log(0, NODE, "ACTION::LIST: Locator ", hashStart.SubString(), " found");
+                                    debug::log(3, NODE, "ACTION::LIST: Locator ", hashStart.SubString(), " found");
 
                                     break;
                                 }
@@ -952,6 +952,8 @@ namespace LLP
                                 /* Loop through all available states. */
                                 for(auto& state : vStates)
                                 {
+                                    state.print();
+                                    
                                     /* Skip if not in main chain. */
                                     if(!state.IsInMainChain())
                                         continue;
@@ -960,7 +962,7 @@ namespace LLP
                                     if(state.hashPrevBlock != hashStart)
                                     {
                                         debug::log(3, FUNCTION, "Reading block ", stateLast.hashNextBlock.SubString());
-                                        
+
                                         /* Read the correct block from next index. */
                                         if(!LLD::Ledger->ReadBlock(stateLast.hashNextBlock, state))
                                            return debug::drop(NODE, "failed to read current block");
