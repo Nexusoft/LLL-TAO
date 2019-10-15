@@ -958,12 +958,15 @@ namespace LLP
                                 /* Loop through all available states. */
                                 for(auto& state : vStates)
                                 {
+                                    /* Update start every iteration. */
+                                    hashStart = state.GetHash();
+
                                     /* Skip if not in main chain. */
                                     if(!state.IsInMainChain())
                                         continue;
 
                                     /* Check for matching hashes. */
-                                    if(state.hashPrevBlock != hashStart)
+                                    if(state.hashPrevBlock != stateLast.GetHash())
                                     {
                                         debug::log(3, FUNCTION, "Reading block ", stateLast.hashNextBlock.SubString());
 
@@ -975,7 +978,6 @@ namespace LLP
                                     state.print();
 
                                     /* Cache the block hash. */
-                                    hashStart = state.GetHash();
                                     stateLast = state;
 
                                     /* Handle for special sync block type specifier. */
