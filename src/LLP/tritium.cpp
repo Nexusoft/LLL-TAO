@@ -947,7 +947,7 @@ namespace LLP
 
                             /* Do a sequential read to obtain the list. */
                             std::vector<TAO::Ledger::BlockState> vStates;
-                            while(--nLimits >= 0 || !LLD::Ledger->BatchRead(hashStart, "block", vStates, 1000, true))
+                            while(--nLimits >= 0 && LLD::Ledger->BatchRead(hashStart, "block", vStates, 1000, true))
                             {
                                 /* Loop through all available states. */
                                 for(auto& state : vStates)
