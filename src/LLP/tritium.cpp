@@ -840,7 +840,7 @@ namespace LLP
             case ACTION::LIST:
             {
                 /* Set the limits. */
-                int32_t nLimits = 1000;
+                int32_t nLimits = 1001;
 
                 /* Loop through the binary stream. */
                 while(!ssPacket.End() && nLimits != 0)
@@ -947,14 +947,8 @@ namespace LLP
 
                             /* Do a sequential read to obtain the list. */
                             std::vector<TAO::Ledger::BlockState> vStates;
-                            while(true)
+                            while(--nLimits >= 0 || !LLD::Ledger->BatchRead(hashStart, "block", vStates, 1000, true))
                             {
-                                if(!LLD::Ledger->BatchRead(hashStart, "block", vStates, 1000, true))
-                                {
-                                    debug::log(3, FUNCTION, "Failed to batch read at ", hashStart.SubString());
-                                    break;
-                                }
-
                                 /* Loop through all available states. */
                                 for(auto& state : vStates)
                                 {
