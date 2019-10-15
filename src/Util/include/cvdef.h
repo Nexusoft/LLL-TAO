@@ -157,6 +157,7 @@ namespace cv { namespace debug_build_guard { } using namespace debug_build_guard
 #undef Complex
 
 #include <limits.h>
+#include <cstdlib>
 #include "interface.h"
 
 #if defined __ICL
