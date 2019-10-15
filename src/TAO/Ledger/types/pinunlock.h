@@ -33,6 +33,14 @@ namespace TAO
          */
         class PinUnlock : public memory::encrypted
         {
+        protected:
+
+            /* Bitmask of actions that can be performed on the sigchain when unlocked  */
+            uint8_t nUnlockedActions;
+
+            /** The PIN to unlock a signature chain. **/
+            SecureString strPIN;
+            
         public:
 
             /* Enumeration of allowable actions that can be performed on an unlocked signature chain */
@@ -50,16 +58,58 @@ namespace TAO
 
             /** Default constructor. **/
             PinUnlock()
-            : nUnlockedActions(UnlockActions::NONE)
-            , strPIN()
+            : nUnlockedActions (UnlockActions::NONE)
+            , strPIN           ( )
+            {
+            }
+
+
+            /** Copy Constructor. **/
+            PinUnlock(const PinUnlock& pin)
+            : nUnlockedActions (pin.nUnlockedActions)
+            , strPIN           (pin.strPIN)
+            {
+            }
+
+
+            /** Move Constructor. **/
+            PinUnlock(PinUnlock&& pin) noexcept
+            : nUnlockedActions (std::move(pin.nUnlockedActions))
+            , strPIN           (std::move(pin.strPIN))
+            {
+            }
+
+
+            /** Copy Assignment Operator **/
+            PinUnlock& operator=(const PinUnlock& pin)
+            {
+                nUnlockedActions = pin.nUnlockedActions;
+                strPIN           = pin.strPIN;
+
+                return *this;
+            }
+
+
+            /** Move Assignment Operator **/
+            PinUnlock& operator=(PinUnlock&& pin) noexcept
+            {
+                nUnlockedActions = std::move(pin.nUnlockedActions);
+                strPIN           = std::move(pin.strPIN);
+
+                return *this;
+            }
+
+
+            /** Destructor. **/
+            ~PinUnlock()
             {
             }
 
 
             /** Constructor with pin and actions. **/
             PinUnlock(const SecureString& PIN, uint8_t UnlockedActions)
-            : nUnlockedActions(UnlockedActions)
-            , strPIN(PIN)
+            : nUnlockedActions (UnlockedActions)
+            , strPIN           (PIN)
             {
             }
 
@@ -149,16 +199,6 @@ namespace TAO
             {
                 return nUnlockedActions;
             }
-
-
-        protected:
-
-            /* Bitmask of actions that can be performed on the sigchain when unlocked  */
-            uint8_t nUnlockedActions;
-
-            /** The PIN to unlock a signature chain. **/
-            SecureString strPIN;
-
         };
     }
 }

@@ -23,8 +23,56 @@ ________________________________________________________________________________
 namespace Legacy
 {
 
+    /** Default Constructor. **/
+    NexusAddress::NexusAddress()
+    : encoding::CBase58Data()
+    {
+    }
+
+
+
+    /** Copy Constructor. **/
+    NexusAddress::NexusAddress(const NexusAddress& address)
+    : encoding::CBase58Data(address)
+    {
+    }
+
+
+    /** Move Constructor. **/
+    NexusAddress::NexusAddress(NexusAddress&& address) noexcept
+    : encoding::CBase58Data(std::move(address))
+    {
+    }
+
+
+    /** Copy assignment. **/
+    NexusAddress& NexusAddress::operator=(const NexusAddress& address)
+    {
+        nVersion = address.nVersion;
+        vchData  = address.vchData;
+
+        return *this;
+    }
+
+
+    /** Move assignment. **/
+    NexusAddress& NexusAddress::operator=(NexusAddress&& address) noexcept
+    {
+        nVersion = std::move(address.nVersion);
+        vchData  = std::move(address.vchData);
+
+        return *this;
+    }
+
+
+    /** Destructor **/
+    NexusAddress::~NexusAddress()
+    {
+    }
+    
+
     /* Constructor Set the hash256 */
-    NexusAddress::NexusAddress(uint256_t hash256In)
+    NexusAddress::NexusAddress(const uint256_t& hash256In)
     {
         SetHash256(hash256In);
     }

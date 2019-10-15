@@ -77,28 +77,29 @@ namespace LLD
         SectorKey();
 
 
-        /** Constructor **/
-        SectorKey(const uint8_t nStateIn,
-                  const std::vector<uint8_t>& vKeyIn,
-                  const uint16_t nSectorFileIn,
-                  const uint32_t nSectorStartIn,
-                  const uint32_t nSectorSizeIn);
+        /** Copy Constructor **/
+        SectorKey(const SectorKey& key);
+
+
+        /** Move Constructor **/
+        SectorKey(SectorKey&& key) noexcept;
+
+
+        /** Copy Assignment Operator **/
+        SectorKey& operator=(const SectorKey& key);
+
+
+        /** Move Assignment Operator **/
+        SectorKey& operator=(SectorKey&& key) noexcept;
 
 
         /** Default Destructor **/
         ~SectorKey();
 
 
-        /** Copy Assignment Operator **/
-        SectorKey& operator=(const SectorKey& key);
-        SectorKey& operator=(SectorKey &key);
-
-
-
-
-
-        /** Default Copy Constructor **/
-        SectorKey(const SectorKey& key);
+        /** Constructor **/
+        SectorKey(const uint8_t nStateIn, const std::vector<uint8_t>& vKeyIn,
+                  const uint16_t nSectorFileIn, const uint32_t nSectorStartIn, const uint32_t nSectorSizeIn);
 
 
         /** SetKey

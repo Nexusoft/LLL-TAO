@@ -23,6 +23,57 @@ namespace TAO
     namespace Register
     {
 
+
+        /* Default constructor. */
+        BaseVM::BaseVM(const uint32_t nSize)
+        : vRegister (nSize, 0)
+        , nPointer  (0)
+        {
+        }
+
+
+        /* Copy constructor. */
+        BaseVM::BaseVM(const BaseVM& vm)
+        : vRegister (vm.vRegister)
+        , nPointer  (vm.nPointer)
+        {
+        }
+
+
+        /* Move constructor. */
+        BaseVM::BaseVM(BaseVM&& vm) noexcept
+        : vRegister (std::move(vm.vRegister))
+        , nPointer  (std::move(vm.nPointer))
+        {
+        }
+
+
+        /* Copy assignment. */
+        BaseVM& BaseVM::operator=(const BaseVM& vm)
+        {
+            vRegister = vm.vRegister;
+            nPointer  = vm.nPointer;
+
+            return *this;
+        }
+
+
+        /* Move assignment. */
+        BaseVM& BaseVM::operator=(BaseVM&& vm) noexcept
+        {
+            vRegister = std::move(vm.vRegister);
+            nPointer  = std::move(vm.nPointer);
+
+            return *this;
+        }
+
+
+        /* Default Destructor */
+        BaseVM::~BaseVM()
+        {
+        }
+
+
         /* Get the internal byte level pointers for value. */
         const uint8_t* BaseVM::begin(const Value& value) const
         {

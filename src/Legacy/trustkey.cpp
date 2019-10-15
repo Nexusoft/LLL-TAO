@@ -28,6 +28,101 @@ ________________________________________________________________________________
 namespace Legacy
 {
 
+    /* Default Constructor. */
+    TrustKey::TrustKey()
+    : vchPubKey()
+    , nVersion(1)
+    , hashGenesisBlock(0)
+    , hashGenesisTx(0)
+    , nGenesisTime(0)
+    , hashLastBlock(0)
+    , nLastBlockTime(0)
+    , nStakeRate(0)
+    {
+    }
+
+
+    /* Copy Constructor. */
+    TrustKey::TrustKey(const TrustKey& key)
+    : vchPubKey        (key.vchPubKey)
+    , nVersion         (key.nVersion)
+    , hashGenesisBlock (key.hashGenesisBlock)
+    , hashGenesisTx    (key.hashGenesisTx)
+    , nGenesisTime     (key.nGenesisTime)
+    , hashLastBlock    (key.hashLastBlock)
+    , nLastBlockTime   (key.nLastBlockTime)
+    , nStakeRate       (key.nStakeRate)
+    {
+    }
+
+
+    /* Move Constructor. */
+    TrustKey::TrustKey(TrustKey&& key) noexcept
+    : vchPubKey        (std::move(key.vchPubKey))
+    , nVersion         (std::move(key.nVersion))
+    , hashGenesisBlock (std::move(key.hashGenesisBlock))
+    , hashGenesisTx    (std::move(key.hashGenesisTx))
+    , nGenesisTime     (std::move(key.nGenesisTime))
+    , hashLastBlock    (std::move(key.hashLastBlock))
+    , nLastBlockTime   (std::move(key.nLastBlockTime))
+    , nStakeRate       (std::move(key.nStakeRate))
+    {
+    }
+
+
+    /* Copy assignment. */
+    TrustKey& TrustKey::operator=(const TrustKey& key)
+    {
+        vchPubKey        = key.vchPubKey;
+        nVersion         = key.nVersion;
+        hashGenesisBlock = key.hashGenesisBlock;
+        hashGenesisTx    = key.hashGenesisTx;
+        nGenesisTime     = key.nGenesisTime;
+        hashLastBlock    = key.hashLastBlock;
+        nLastBlockTime   = key.nLastBlockTime;
+        nStakeRate       = key.nStakeRate;
+
+        return *this;
+    }
+
+
+    /* Move assignment. */
+    TrustKey& TrustKey::operator=(TrustKey&& key) noexcept
+    {
+        vchPubKey        = std::move(key.vchPubKey);
+        nVersion         = std::move(key.nVersion);
+        hashGenesisBlock = std::move(key.hashGenesisBlock);
+        hashGenesisTx    = std::move(key.hashGenesisTx);
+        nGenesisTime     = std::move(key.nGenesisTime);
+        hashLastBlock    = std::move(key.hashLastBlock);
+        nLastBlockTime   = std::move(key.nLastBlockTime);
+        nStakeRate       = std::move(key.nStakeRate);
+
+        return *this;
+    }
+
+
+    /* Default destructor. **/
+    TrustKey::~TrustKey()
+    {
+    }
+
+
+    /* Constructor*/
+    TrustKey::TrustKey(const std::vector<uint8_t> vchPubKeyIn, const uint1024_t hashBlockIn, const uint512_t hashTxIn, const int32_t nTimeIn)
+    : vchPubKey        (vchPubKeyIn)
+    , nVersion         (1)
+    , hashGenesisBlock (hashBlockIn)
+    , hashGenesisTx    (hashTxIn)
+    , nGenesisTime     (nTimeIn)
+    , hashLastBlock    (0)
+    , nLastBlockTime   (0)
+    , nStakeRate       (0)
+    {
+    }
+
+
+
     /* Set the Trust Key data to Null (uninitialized) values. */
     void TrustKey::SetNull()
     {

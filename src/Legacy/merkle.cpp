@@ -26,6 +26,83 @@ ________________________________________________________________________________
 namespace Legacy
 {
 
+    /* Default Constructor. */
+    MerkleTx::MerkleTx()
+    : Transaction   ( )
+    , hashBlock     (0)
+    , vMerkleBranch ( )
+    , nIndex        (-1)
+    {
+    }
+
+    /* Copy Constructor. */
+    MerkleTx::MerkleTx(const MerkleTx& tx)
+    : Transaction   (tx)
+    , hashBlock     (tx.hashBlock)
+    , vMerkleBranch (tx.vMerkleBranch)
+    , nIndex        (tx.nIndex)
+    {
+    }
+
+
+    /* Move Constructor. */
+    MerkleTx::MerkleTx(MerkleTx&& tx) noexcept
+    : Transaction   (std::move(tx))
+    , hashBlock     (std::move(tx.hashBlock))
+    , vMerkleBranch (std::move(tx.vMerkleBranch))
+    , nIndex        (std::move(tx.nIndex))
+    {
+    }
+
+
+    /* Copy assignment. */
+    MerkleTx& MerkleTx::operator=(const MerkleTx& tx)
+    {
+        nVersion      = tx.nVersion;
+        nTime         = tx.nTime;
+        vin           = tx.vin;
+        vout          = tx.vout;
+        nLockTime     = tx.nLockTime;
+        hashBlock     = tx.hashBlock;
+        vMerkleBranch = tx.vMerkleBranch;
+        nIndex        = tx.nIndex;
+
+        return *this;
+    }
+
+
+    /* Move assignment. */
+    MerkleTx& MerkleTx::operator=(MerkleTx&& tx) noexcept
+    {
+        nVersion      = std::move(tx.nVersion);
+        nTime         = std::move(tx.nTime);
+        vin           = std::move(tx.vin);
+        vout          = std::move(tx.vout);
+        nLockTime     = std::move(tx.nLockTime);
+        hashBlock     = std::move(tx.hashBlock);
+        vMerkleBranch = std::move(tx.vMerkleBranch);
+        nIndex        = std::move(tx.nIndex);
+
+        return *this;
+    }
+
+
+    /* Destructor. */
+    MerkleTx::~MerkleTx()
+    {
+    }
+
+
+    /* Constructor */
+    MerkleTx::MerkleTx(const Transaction& txIn)
+    : Transaction   (txIn)
+    , hashBlock     (0)
+    , vMerkleBranch ( )
+    , nIndex        (-1)
+    {
+    }
+
+
     uint32_t MerkleTx::GetDepthInMainChain() const
     {
         if(hashBlock == 0)

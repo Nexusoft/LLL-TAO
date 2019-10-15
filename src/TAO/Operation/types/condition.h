@@ -59,12 +59,32 @@ namespace TAO
             uint64_t nCost;
 
 
-            /** Default constructor. **/
-            Condition(const Contract& contractIn, const Contract& callerIn, const int64_t nCostIn = 0);
+            /** Default Constructor. **/
+            Condition() = delete;
 
 
             /** Copy constructor. **/
-            Condition(const Condition& in);
+            Condition(const Condition& condition);
+
+
+            /** Move constructor. **/
+            Condition(Condition&& condition) noexcept;
+
+
+            /** Copy assignment. **/
+            Condition& operator=(const Condition& condition) = delete;
+
+
+            /** Move assignment. **/
+            Condition& operator=(Condition&& condition)      = delete;
+
+
+            /** Default Destructor **/
+            virtual ~Condition();
+
+
+            /** Default constructor. **/
+            Condition(const Contract& contractIn, const Contract& callerIn, const int64_t nCostIn = 0);
 
 
             /** Reset

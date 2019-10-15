@@ -165,26 +165,19 @@ namespace LLP
         if(hashLastGetblocks.load() == hashBlockFrom && nLastGetBlocks.load() + 1 > runtime::timestamp())
             return;
 
-        /* Set the fast sync address. */
-        if(nCurrentSession != TAO::Ledger::nSyncSession.load())
+        /* Update values for sync node. */
+        if(nCurrentSession == TAO::Ledger::nSyncSession.load())
         {
-            /* Set the new sync address. */
-            TAO::Ledger::nSyncSession.store(nCurrentSession);
-
-            /* Reset the last time received. */
+            /* Update the last timestamp this was called. */
+            nLastGetBlocks    = runtime::timestamp();
             nLastTimeReceived = runtime::timestamp();
 
-            debug::log(0, NODE, "New sync address set");
+            /* Update the hash that was used for last request. */
+            hashLastGetblocks = hashBlockFrom;
+
+            /* Calculate the fast sync average. */
+            nFastSyncAverage = std::min((uint64_t)25, (nFastSyncAverage.load() + (runtime::timestamp() - nLastGetBlocks.load())) / 2);
         }
-
-        /* Calculate the fast sync average. */
-        nFastSyncAverage = std::min((uint64_t)25, (nFastSyncAverage.load() + (runtime::timestamp() - nLastGetBlocks.load())) / 2);
-
-        /* Update the last timestamp this was called. */
-        nLastGetBlocks = runtime::timestamp();
-
-        /* Update the hash that was used for last request. */
-        hashLastGetblocks = hashBlockFrom;
 
         /* Push the request to the node. */
         PushMessage("getblocks", TAO::Ledger::Locator(hashBlockFrom), hashBlockTo);
@@ -217,7 +210,13 @@ namespace LLP
         if(pBest != nullptr)
         {
             /* Send out another getblocks request. */
-            try { pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0)); }
+            try
+            {
+                /* Set the new sync address. */
+                TAO::Ledger::nSyncSession.store(pBest->nCurrentSession);
+
+                pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
+            }
             catch(const std::runtime_error& e)
             {
                 /* Recurse on failure. */
@@ -326,8 +325,7 @@ namespace LLP
             /* Unreliabilitiy re-requesting (max time since getblocks) */
             if(TAO::Ledger::ChainState::Synchronizing()
             && nCurrentSession == TAO::Ledger::nSyncSession.load()
-            && nLastTimeReceived.load() + 15 < nTimestamp
-            && nLastGetBlocks.load() + 15 < nTimestamp)
+            && nLastTimeReceived.load() + 45 < nTimestamp)
             {
                 debug::log(0, NODE, "Sync Node Timeout");
 
@@ -400,7 +398,7 @@ namespace LLP
             /* Detect if the fast sync node was disconnected. */
             if(nCurrentSession == TAO::Ledger::nSyncSession.load())
             {
-                debug::log(0, NODE, "Sync Node Disconnected");
+                debug::log(0, NODE, "Sync Node Disconnected ", strReason);
 
                 /* Switch the node. */
                 SwitchNode();
@@ -504,7 +502,14 @@ namespace LLP
 
             /* Push our version back since we just completed getting the version from the other node. */
             if(fOUTGOING && TAO::Ledger::nSyncSession.load() == 0)
+            {
+                /* Set the new sync address. */
+                TAO::Ledger::nSyncSession.store(nCurrentSession);
+
+                /* Push a getblocks request. */
                 PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
+                debug::log(0, NODE, "New sync address set");
+            }
 
             PushMessage("getaddr");
         }
@@ -585,7 +590,7 @@ namespace LLP
             }
 
             /* Check for failure limit on node. */
-            if(nConsecutiveFails >= 500)
+            if(nConsecutiveFails >= 1000)
             {
                 /* Fast Sync node switch. */
                 if(TAO::Ledger::ChainState::Synchronizing())
@@ -593,6 +598,8 @@ namespace LLP
                     /* Find a new fast sync node if too many failures. */
                     if(nCurrentSession == TAO::Ledger::nSyncSession.load())
                     {
+                        debug::log(0, FUNCTION, "node reached failure limit... closing");
+
                         /* Switch to a new node. */
                         SwitchNode();
                     }
@@ -604,7 +611,7 @@ namespace LLP
 
 
             /* Detect large orphan chains and ask for new blocks from origin again. */
-            if(nConsecutiveOrphans >= 500)
+            if(nConsecutiveOrphans >= 1000)
             {
                 LOCK(TAO::Ledger::PROCESSING_MUTEX);
 

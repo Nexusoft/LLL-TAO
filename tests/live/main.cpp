@@ -189,13 +189,47 @@ public:
 #include <TAO/Operation/include/execute.h>
 #include <TAO/Operation/types/condition.h>
 
+#include <Util/include/softfloat.h>
+
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
-    uint256_t hashGenesis  = TAO::Ledger::Genesis(LLC::GetRand256(), true);
-    uint256_t hashAsset  = TAO::Register::Address(TAO::Register::Address::OBJECT);
+    uint64_t nTest  = 555;
+    uint64_t nTest1 = 595;
 
-    using namespace TAO::Operation;
+    uint512_t hashCheck = LLC::SK512(BEGIN(nTest), END(nTest1));
+
+    debug::log(0, "Hash ", hashCheck.ToString());
+
+    return 0;
+
+    cv::softdouble a = cv::softdouble(5.55555);
+
+    debug::log(0, "Soft Double ", double(a));
+
+    return 0;
+
+    Legacy::LegacyBlock block;
+    block.nTime = 49339439;
+    block.nBits = 34934;
+    block.nVersion = 444;
+
+    block.print();
+
+
+    runtime::timer timer;
+    timer.Start();
+    Legacy::LegacyBlock block2 = std::move(block);
+
+    uint64_t nTotal = timer.ElapsedNanoseconds();
+
+    debug::log(0, "Took ", nTotal, " nanoseconds");
+
+    block2.print();
+
+    return 0;
+
+    nTest = std::max(nTest, uint64_t(888));
 
     std::vector<std::pair<uint16_t, uint64_t>> vWarnings;
 

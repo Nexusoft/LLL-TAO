@@ -69,10 +69,36 @@ namespace TAO
              *
              *  Build from uint256_t hash.
              *
-             *  @param[in] nAddress The hash.
+             *  @param[in] hashAddress The hash.
              *
              **/
-            Address(const uint256_t& nAddress);
+            Address(const uint256_t& hashAddress);
+
+
+            /** Address Move Constructor
+             *
+             *  Build from uint256_t hash.
+             *
+             *  @param[in] hashAddress The hash.
+             *
+             **/
+            Address(uint256_t&& hashAddress) noexcept;
+
+
+            /** Assignment operator.
+             *
+             *  @param[in] value The value to assign this to.
+             *
+             **/
+            Address& operator=(const uint256_t& value);
+
+
+            /** Assignment operator.
+             *
+             *  @param[in] value The value to assign this to.
+             *
+             **/
+            Address& operator=(uint256_t&& value) noexcept;
 
 
             /** Address Constructor
@@ -106,7 +132,6 @@ namespace TAO
             Address(const std::string& strName, const uint8_t nType);
 
 
-
             /** Address Constructor
              *
              *  Build an address deterministically from a key and namespace hash.
@@ -117,22 +142,6 @@ namespace TAO
              *
              **/
             Address(const std::string& strKey, const uint256_t& hashNamespace, const uint8_t nType);
-
-
-            /** Assignment operator.
-             *
-             *  @param[in] addr Address to assign this to.
-             *
-             **/
-            Address& operator=(const Address& addr);
-
-
-            /** Assignment operator.
-             *
-             *  @param[in] value The value to assign this to.
-             *
-             **/
-            Address& operator=(const uint256_t& value);
 
 
             /** IsValid

@@ -58,6 +58,7 @@ namespace TAO
             /** Contract register stream. **/
             TAO::Register::Stream  ssRegister;
 
+
             /** MEMORY ONLY: the calling public-id. **/
             mutable uint256_t hashCaller;
 
@@ -92,11 +93,19 @@ namespace TAO
 
 
             /** Move Constructor. **/
-            Contract(const Contract&& contract);
+            Contract(Contract&& contract) noexcept;
 
 
-            /** Assignment Operator **/
+            /** Copy Assignment Operator **/
             Contract& operator=(const Contract& contract);
+
+
+            /** Move Assignment Operator **/
+            Contract& operator=(Contract&& contract) noexcept;
+
+
+            /** Destructor. **/
+            ~Contract();
 
 
             IMPLEMENT_SERIALIZE

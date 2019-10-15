@@ -118,6 +118,22 @@ namespace TAO
             Transaction();
 
 
+            /** Copy constructor. **/
+            Transaction(const Transaction& tx);
+
+
+            /** Move constructor. **/
+            Transaction(Transaction&& tx) noexcept;
+
+
+            /** Copy assignment. **/
+            Transaction& operator=(const Transaction& tx);
+
+
+            /** Move assignment. **/
+            Transaction& operator=(Transaction&& tx) noexcept;
+
+
             /** Default Destructor. **/
             ~Transaction();
 
@@ -298,7 +314,7 @@ namespace TAO
              *  @return true if succeeded
              *
              **/
-            bool GetTrustInfo(uint64_t& nBalance, uint64_t& nTrust, uint64_t& nStake) const;
+            bool GetTrustInfo(uint64_t &nBalance, uint64_t &nTrust, uint64_t &nStake) const;
 
 
             /** GetHash

@@ -21,6 +21,8 @@ ________________________________________________________________________________
 #include <LLC/types/uint1024.h>
 #include <LLC/types/typedef.h>
 
+#include <LLC/falcon/falcon.h>
+
 namespace LLC
 {
 
@@ -56,22 +58,34 @@ namespace LLC
         bool fSet;
 
 
-        /** Flag to Determine if the Key has been Compressed. **/
-        bool fCompressedPubKey;
+        /** FALCON context. **/
+        shake256_context ctx;
 
 
     public:
 
+        /** Default Constructor. **/
         FLKey();
+
+
+        /** Copy Constructor. **/
         FLKey(const FLKey& b);
-        ~FLKey()
-        {
-
-        }
 
 
-        /** Assignment Operator **/
+        /** Move Constructor. **/
+        FLKey(FLKey&& b) noexcept;
+
+
+        /** Copy Assignment Operator **/
         FLKey& operator=(const FLKey& b);
+
+
+        /** Move Assignment Operator **/
+        FLKey& operator=(FLKey&& b) noexcept;
+
+
+        /** Default Destructor. **/
+        ~FLKey();
 
 
         /** Comparison Operator **/
@@ -107,7 +121,7 @@ namespace LLC
          *  @param[in] fCompressed Flag whether to make key in compressed form.
          *
          **/
-        void MakeNewKey(bool fCompressed);
+        void MakeNewKey();
 
 
         /** SetPrivKey
@@ -127,24 +141,11 @@ namespace LLC
          *  Set the secret phrase / key used in the private key.
          *
          *  @param[in] vchSecret the secret phrase in byte code in secure allocator.
-         *  @param[in] fCompressed flag whether key is compressed or not.
          *
          *  @return True if the key was successfully created.
          *
          **/
-        bool SetSecret(const CSecret& vchSecret, bool fCompressed = false);
-
-
-        /** GetSecret
-         *
-         *  Obtain the secret key used in the private key.
-         *
-         *  @param[in] fCompressed Flag if the key is in compressed form.
-         *
-         *  @return the secret phrase in the secure allocator.
-         *
-         **/
-        CSecret GetSecret(bool &fCompressed) const;
+        bool SetSecret(const CSecret& vchSecret);
 
 
         /** GetPrivKey
@@ -193,7 +194,7 @@ namespace LLC
          *  @return True if the Signature was created successfully.
          *
          **/
-        bool Sign(const std::vector<uint8_t>& vchData, std::vector<uint8_t>& vchSig) const;
+        bool Sign(const std::vector<uint8_t>& vchData, std::vector<uint8_t>& vchSig);
 
 
         /** Verify

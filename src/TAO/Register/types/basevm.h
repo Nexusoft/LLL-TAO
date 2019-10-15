@@ -46,11 +46,27 @@ namespace TAO
         public:
 
             /** Default constructor. **/
-            BaseVM(uint32_t nSize = 128)
-            : vRegister(nSize, 0)
-            , nPointer(0)
-            {
-            }
+            BaseVM(const uint32_t nSize = 128);
+
+
+            /** Copy constructor. **/
+            BaseVM(const BaseVM& vm);
+
+
+            /** Move constructor. **/
+            BaseVM(BaseVM&& vm) noexcept;
+
+
+            /** Copy assignment. **/
+            BaseVM& operator=(const BaseVM& vm);
+
+
+            /** Move assignment. **/
+            BaseVM& operator=(BaseVM&& vm) noexcept;
+
+
+            /** Default Destructor **/
+            virtual ~BaseVM();
 
 
             /** begin

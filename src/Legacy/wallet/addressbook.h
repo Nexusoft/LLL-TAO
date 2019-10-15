@@ -49,6 +49,7 @@ namespace Legacy
 
 
     private:
+
         /** Mutex for thread concurrency.
          *
          *  Static because having instance-specific mutex causes move constructor (used in Wallet initialization) to be deleted.
@@ -78,10 +79,34 @@ namespace Legacy
          *  @see WalletDB::LoadWallet
          *
          **/
-        inline void LoadAddressBookName(const NexusAddress& address, const std::string& strName) { mapAddressBook[address] = strName; }
+        inline void LoadAddressBookName(const NexusAddress& address, const std::string& strName)
+        {
+            mapAddressBook[address] = strName;
+        }
 
 
     public:
+
+        /** The default constructor. **/
+        AddressBook()                                   = delete;
+
+
+        /** Copy Constructor. **/
+        AddressBook(const AddressBook& book)            = delete;
+
+
+        /** Move Constructor. **/
+        AddressBook(AddressBook&& book);
+
+
+        /** Copy Assignment. **/
+        AddressBook& operator=(const AddressBook& book) = delete;
+
+
+        /** Move Assignment. **/
+        AddressBook& operator=(AddressBook&& book)      = delete;
+
+
         /** Constructor
          *
          *  Initializes an address book associated with a given wallet.
@@ -89,10 +114,7 @@ namespace Legacy
          *  @param[in] walletIn The wallet containing this address book
          *
          **/
-        AddressBook(Wallet& walletIn)
-        : addressBookWallet(walletIn)
-        {
-        }
+        AddressBook(Wallet& walletIn);
 
 
         /** Destructor **/

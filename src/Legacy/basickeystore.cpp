@@ -18,6 +18,20 @@ ________________________________________________________________________________
 namespace Legacy
 {
 
+    /* The default constructor. */
+    BasicKeyStore::BasicKeyStore()
+    : mapKeys    ( )
+    , mapScripts ( )
+    {
+    }
+
+
+    /* Default Destructor */
+    BasicKeyStore::~BasicKeyStore()
+    {
+    }
+
+
     /*  Add a key to the key store. */
     bool BasicKeyStore::AddKey(const LLC::ECKey& key)
     {
@@ -27,6 +41,7 @@ namespace Legacy
             LOCK(cs_basicKeyStore);
             mapKeys[NexusAddress(key.GetPubKey())] = make_pair(secret, fCompressed);
         }
+        
         return true;
     }
 
@@ -88,7 +103,7 @@ namespace Legacy
 
 
     /*  Retrieve a script from the key store. */
-    bool BasicKeyStore::GetScript(const uint256_t& hash, Script& redeemScriptOut) const
+    bool BasicKeyStore::GetScript(const uint256_t& hash, Script &redeemScriptOut) const
     {
         {
             LOCK(cs_basicKeyStore);

@@ -23,7 +23,7 @@ ________________________________________________________________________________
 #include <Legacy/types/txout.h>
 #include <Legacy/wallet/wallet.h>
 #include <Legacy/wallet/walletdb.h>
-#include <Legacy/wallet/wallettx.h>
+#include <Legacy/types/wallettx.h>
 
 #include <TAO/Ledger/types/mempool.h>
 

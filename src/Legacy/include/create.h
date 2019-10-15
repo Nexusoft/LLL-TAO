@@ -17,7 +17,7 @@ ________________________________________________________________________________
 
 #include <Legacy/types/legacy.h>
 #include <Legacy/types/coinbase.h>
-#include <Legacy/wallet/reservekey.h>
+#include <Legacy/types/reservekey.h>
 #include <Legacy/wallet/wallet.h>
 
 

@@ -83,20 +83,32 @@ namespace LLD
         KeyLRU();
 
 
+		/** Copy Constructor. **/
+		KeyLRU(const KeyLRU& cache);
+
+
+		/** Move Constructor. **/
+		KeyLRU(KeyLRU&& cache) noexcept;
+
+
+		/** Copy assignment. **/
+		KeyLRU& operator=(const KeyLRU& cache);
+
+
+		/** Move assignment. **/
+		KeyLRU& operator=(KeyLRU&& cache) noexcept;
+
+
+        /** Class Destructor. **/
+        ~KeyLRU();
+
+
         /** Cache Size Constructor
          *
          *  @param[in] nCacheSizeIn The maximum size of this Cache Pool
          *
          **/
         KeyLRU(uint32_t nCacheSizeIn);
-
-
-        /** Copy constructor. **/
-        KeyLRU(const KeyLRU& cache);
-
-
-        /** Class Destructor. **/
-        ~KeyLRU();
 
 
         /** Add

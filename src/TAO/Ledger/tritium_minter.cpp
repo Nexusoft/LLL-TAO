@@ -799,7 +799,7 @@ namespace TAO
                     LLC::FLKey key;
 
                     /* Set the secret parameter. */
-                    if(!key.SetSecret(vchSecret, true))
+                    if(!key.SetSecret(vchSecret))
                         return debug::error(FUNCTION, "TritiumMinter: Unable to set key for signing Tritium Block ",
                                             block.GetHash().SubString());
 

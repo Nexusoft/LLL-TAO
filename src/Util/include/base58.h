@@ -21,95 +21,6 @@ ________________________________________________________________________________
 namespace encoding
 {
 
-    /** EncodeBase58
-     *
-     *	Encode into base58 returning a std::string
-     *
-     *  @param[in] pbegin The begin iterator
-     *  @param[in] pend The end iterator
-     *
-     *	@return Base58 encoded string.
-     *
-     **/
-    std::string EncodeBase58(const uint8_t* pbegin, const uint8_t* pend);
-
-
-    /** EncodeBase58
-     *
-     *	Encode into base58 returning a std::string
-     *
-     *  @param[in] vch Vector byte char of data
-     *
-     *	@return Base58 encoded string.
-     *
-     **/
-    std::string EncodeBase58(const std::vector<uint8_t>& vch);
-
-
-    /** DecodeBase58
-     *
-     *	Encode into base58 returning a std::string
-     *
-     *  @param[in] psz The input string (c style)
-     *  @param[out] vchRet The vector char to return
-     *
-     *	@return true if decoded successfully
-     *
-     **/
-    bool DecodeBase58(const char* psz, std::vector<uint8_t>& vchRet);
-
-
-    /** DecodeBase58
-     *
-     *	Decode base58 string into byte vector
-     *
-     *  @param[in] str Input string
-     *  @param[out] vchRet The byte vector return value
-     *
-     *	@return true if successful
-     *
-     **/
-    bool DecodeBase58(const std::string& str, std::vector<uint8_t>& vchRet);
-
-
-    /** EncodeBase58Check
-     *
-     *	Encode into base58 including a checksum
-     *
-     *  @param[in] vchIn The vector char to encode
-     *
-     *	@return Base58 encoded string with checksum.
-     *
-     **/
-    std::string EncodeBase58Check(const std::vector<uint8_t>& vchIn);
-
-
-    /** DecodeBase58Check
-     *
-     *	Decode into base58 inlucding a checksum
-     *
-     *  @param[in] psz The c-style input string
-     *  @param[out] vchRet The byte vector of return data
-     *
-     *	@return True if decoding was successful
-     *
-     **/
-    bool DecodeBase58Check(const char* psz, std::vector<uint8_t>& vchRet);
-
-
-    /** DecodeBase58Check
-     *
-     *	Decode into base58 inlucding a checksum
-     *
-     *  @param[in] str The input string (STL)
-     *  @param[out] vchRet The byte vector of return data
-     *
-     *	@return True if decoding was successful
-     *
-     **/
-    bool DecodeBase58Check(const std::string& str, std::vector<uint8_t>& vchRet);
-
-
     /** Base class for all base58-encoded data */
     class CBase58Data
     {
@@ -132,7 +43,7 @@ namespace encoding
          *  @param[in] nSize The size of input data set.
          *
          **/
-        void SetData(int nVersionIn, const void* pdata, size_t nSize);
+        void SetData(const uint8_t nVersionIn, const void* pdata, const size_t nSize);
 
 
         /** SetData
@@ -144,13 +55,29 @@ namespace encoding
          *  @param[in] pend The end pointer iterator
          *
          **/
-        void SetData(int nVersionIn, const uint8_t *pbegin, const uint8_t *pend);
+        void SetData(const uint8_t nVersionIn, const uint8_t *pbegin, const uint8_t *pend);
 
     public:
 
 
         /** Default Constructor. **/
         CBase58Data();
+
+
+        /** Copy Constructor. **/
+        CBase58Data(const CBase58Data& data);
+
+
+        /** Move Constructor. **/
+        CBase58Data(CBase58Data&& data) noexcept;
+
+
+        /** Copy assignment. **/
+        CBase58Data& operator=(const CBase58Data& data);
+
+
+        /** Move assignment. **/
+        CBase58Data& operator=(CBase58Data&& data) noexcept;
 
 
         /** Default Destructor. **/

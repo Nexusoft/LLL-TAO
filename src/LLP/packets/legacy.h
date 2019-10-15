@@ -55,7 +55,7 @@ namespace LLP
     {
     public:
 
-        uint8_t       HEADER[4];
+        uint8_t         HEADER[4];
         char	        MESSAGE[12];
         uint32_t	    LENGTH;
         uint32_t	    CHECKSUM;
@@ -64,15 +64,47 @@ namespace LLP
 
         /** Default Constructor **/
         LegacyPacket()
+        : HEADER   ( )
+        , MESSAGE  ( )
+        , LENGTH   (0)
+        , CHECKSUM (0)
+        , DATA     ( )
         {
-            SetNull();
             SetHeader();
         }
 
+
+        /** Copy Constructor **/
+        LegacyPacket(const LegacyPacket& packet)            = default;
+
+
+        /** Move Constructor **/
+        LegacyPacket(LegacyPacket&& packet)                 = default;
+
+
+        /** Copy Assignment Operator **/
+        LegacyPacket& operator=(const LegacyPacket& packet) = default;
+
+
+        /** Move Assignment Operator **/
+        LegacyPacket& operator=(LegacyPacket&& packet)      = default;
+
+
+        /** Destructor. **/
+        ~LegacyPacket()
+        {
+            std::vector<uint8_t>().swap(DATA);
+        }
+
+
         /** Constructor **/
         LegacyPacket(const char* chMessage)
+        : HEADER   ( )
+        , MESSAGE  ( )
+        , LENGTH   (0)
+        , CHECKSUM (0)
+        , DATA     ( )
         {
-            SetNull();
             SetHeader();
             SetMessage(chMessage);
         }
@@ -84,7 +116,7 @@ namespace LLP
             READWRITE(FLATDATA(MESSAGE));
             READWRITE(LENGTH);
             READWRITE(CHECKSUM);
-      )
+        )
 
 
         /** SetNull

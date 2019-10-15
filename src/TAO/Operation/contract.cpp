@@ -28,54 +28,71 @@ namespace TAO
 
         /* Default Constructor. */
         Contract::Contract()
-        : ssOperation()
-        , ssCondition()
-        , ssRegister()
-        , hashCaller(0)
-        , nTimestamp(0)
-        , hashTx(0)
+        : ssOperation ( )
+        , ssCondition ( )
+        , ssRegister  ( )
+        , hashCaller  (0)
+        , nTimestamp  (0)
+        , hashTx      (0)
         {
         }
 
 
         /* Copy Constructor. */
         Contract::Contract(const Contract& contract)
-        : ssOperation(contract.ssOperation)
-        , ssCondition(contract.ssCondition)
-        , ssRegister(contract.ssRegister)
-        , hashCaller(contract.hashCaller)
-        , nTimestamp(contract.nTimestamp)
-        , hashTx(contract.hashTx)
+        : ssOperation (contract.ssOperation)
+        , ssCondition (contract.ssCondition)
+        , ssRegister  (contract.ssRegister)
+        , hashCaller  (contract.hashCaller)
+        , nTimestamp  (contract.nTimestamp)
+        , hashTx      (contract.hashTx)
         {
         }
 
 
         /* Move Constructor. */
-        Contract::Contract(const Contract&& contract)
-        : ssOperation(contract.ssOperation)
-        , ssCondition(contract.ssCondition)
-        , ssRegister(contract.ssRegister)
-        , hashCaller(contract.hashCaller)
-        , nTimestamp(contract.nTimestamp)
-        , hashTx(contract.hashTx)
+        Contract::Contract(Contract&& contract) noexcept
+        : ssOperation (std::move(contract.ssOperation))
+        , ssCondition (std::move(contract.ssCondition))
+        , ssRegister  (std::move(contract.ssRegister))
+        , hashCaller  (std::move(contract.hashCaller))
+        , nTimestamp  (std::move(contract.nTimestamp))
+        , hashTx      (std::move(contract.hashTx))
         {
         }
 
 
-        /* Assignment Operator */
+        /* Copy Assignment Operator */
         Contract& Contract::operator=(const Contract& contract)
         {
-            /* Set the main streams. */
             ssOperation = contract.ssOperation;
             ssCondition = contract.ssCondition;
             ssRegister  = contract.ssRegister;
-
-            /* Set the transaction reference. */
             hashCaller  = contract.hashCaller;
             nTimestamp  = contract.nTimestamp;
             hashTx      = contract.hashTx;
 
             return *this;
+        }
+
+
+        /* Move Assignment Operator */
+        Contract& Contract::operator=(Contract&& contract) noexcept
+        {
+            ssOperation = std::move(contract.ssOperation);
+            ssCondition = std::move(contract.ssCondition);
+            ssRegister  = std::move(contract.ssRegister);
+            hashCaller  = std::move(contract.hashCaller);
+            nTimestamp  = std::move(contract.nTimestamp);
+            hashTx      = std::move(contract.hashTx);
+
+            return *this;
+        }
+
+
+        /* Destructor. */
+        Contract::~Contract()
+        {
         }
 
 

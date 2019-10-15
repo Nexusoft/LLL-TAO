@@ -15,18 +15,13 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_WALLET_KEYSTORE_H
 #define NEXUS_LEGACY_WALLET_KEYSTORE_H
 
-#include <LLC/include/eckey.h>
-#include <LLC/types/uint1024.h>
-
 #include <set>
 #include <vector>
 
 #include <LLC/include/eckey.h>
-#include <LLC/types/uint1024.h>
 
 namespace Legacy
 {
-
     /* forward declarations */
     class NexusAddress;
     class Script;
@@ -42,6 +37,28 @@ namespace Legacy
     {
     public:
 
+        /** The default constructor. **/
+        KeyStore()
+        {
+        }
+
+
+        /** Copy Constructor. **/
+        KeyStore(const KeyStore& store)            = delete;
+
+
+        /** Move Constructor. **/
+        KeyStore(KeyStore&& store)                 = delete;
+
+
+        /** Copy Assignment. **/
+        KeyStore& operator=(const KeyStore& store) = delete;
+
+
+        /** Move Assignment. **/
+        KeyStore& operator=(KeyStore&& store)      = delete;
+
+
         /** Virtual Destructor
          *
          *  Supports dynamic allocation of objects in inheritance hierarchy.
@@ -49,7 +66,7 @@ namespace Legacy
          **/
         virtual ~KeyStore()
         {
-        };
+        }
 
 
         /** AddKey

@@ -42,39 +42,39 @@ namespace Legacy
     class Crypter
     {
     private:
+
         /** Key used to perform encryption **/
         uint8_t chKey[WALLET_CRYPTO_KEY_SIZE];
 
+
         /** Initialization Vector (IV) used in combination with key to perform encryption **/
         uint8_t chIV[WALLET_CRYPTO_KEY_SIZE];
+
 
         /** Set to true when chKey and chIV have values **/
         bool fKeySet;
 
 
     public:
-        /** Default constructor
-         *
-         *  Initializes fKeySet = false
-         *
-         **/
-        Crypter()
-        : fKeySet(false)
-        {
-        }
+
+        /** Default constructor **/
+        Crypter();
 
 
-        /* Because this class defines a destructor and manages memory with lock/unlock, it also needs copy implementations. */
-        /* Move operations will also use copy, so they are not defined. */
-
-        /** Copy constructor
-         **/
-        Crypter(const Crypter& c);
+        /** Copy Constructor. **/
+        Crypter(const Crypter& store)            = delete;
 
 
-         /** Copy assignment operator
-         **/
-        Crypter& operator= (const Crypter& rhs);
+        /** Move Constructor. **/
+        Crypter(Crypter&& store)                 = delete;
+
+
+        /** Copy Assignment. **/
+        Crypter& operator=(const Crypter& store) = delete;
+
+
+        /** Move Assignment. **/
+        Crypter& operator=(Crypter&& store)      = delete;
 
 
         /** Destructor

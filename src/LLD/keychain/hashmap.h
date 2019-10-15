@@ -85,16 +85,28 @@ namespace LLD
     public:
 
 
+        /** Default Constructor. **/
+        BinaryHashMap() = delete;
+
+
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        BinaryHashMap(std::string strBaseLocationIn, uint8_t nFlagsIn = FLAGS::APPEND, uint64_t nBucketsIn = 256 * 256 * 64);
+        BinaryHashMap(const std::string& strBaseLocationIn, const uint8_t nFlagsIn = FLAGS::APPEND, const uint64_t nBucketsIn = 256 * 256 * 64);
+
+
+        /** Copy Constructor **/
+        BinaryHashMap(const BinaryHashMap& map);
+
+
+        /** Move Constructor **/
+        BinaryHashMap(BinaryHashMap&& map);
 
 
         /** Copy Assignment Operator **/
         BinaryHashMap& operator=(const BinaryHashMap& map);
 
 
-        /** Copy Constructor **/
-        BinaryHashMap(const BinaryHashMap& map);
+        /** Move Assignment Operator **/
+        BinaryHashMap& operator=(BinaryHashMap&& map);
 
 
         /** Default Destructor **/

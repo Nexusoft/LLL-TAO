@@ -19,9 +19,8 @@ ________________________________________________________________________________
 #include <Legacy/include/evaluate.h>
 #include <Legacy/types/script.h>
 
-#include <Legacy/wallet/accountingentry.h>
-#include <Legacy/wallet/output.h>
-#include <Legacy/wallet/reservekey.h>
+#include <Legacy/types/output.h>
+#include <Legacy/types/reservekey.h>
 #include <Legacy/wallet/wallet.h>
 #include <Legacy/wallet/walletdb.h>
 
@@ -1514,7 +1513,7 @@ namespace TAO
 
             json::json ret = json::json::array();
 
-            // First: get all Legacy::WalletTx and Wallet::AccountingEntry into a sorted-by-time multimap.
+            // First: get all Legacy::WalletTx into a sorted-by-time multimap.
             typedef std::multimap<uint64_t, const Legacy::WalletTx* > TxItems;
             TxItems txByTime;
 
