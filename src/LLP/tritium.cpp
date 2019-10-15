@@ -1844,7 +1844,7 @@ namespace LLP
                             TAO::Ledger::TritiumBlock tritium(block);
 
                             /* Verbose debug output. */
-                            debug::log(3, FUNCTION, "received sync block ", tritium.GetHash().SubString());
+                            debug::log(3, FUNCTION, "received sync block ", tritium.GetHash().SubString(), " height = ", block.nHeight);
 
                             /* Process the block. */
                             TAO::Ledger::Process(tritium, nStatus);
@@ -1855,13 +1855,11 @@ namespace LLP
                             Legacy::LegacyBlock legacy(block);
 
                             /* Verbose debug output. */
-                            debug::log(3, FUNCTION, "received sync block ", legacy.GetHash().SubString());
+                            debug::log(3, FUNCTION, "received sync block ", legacy.GetHash().SubString(), " height = ", block.nHeight);
 
                             /* Process the block. */
                             TAO::Ledger::Process(legacy, nStatus);
                         }
-
-
 
                         break;
                     }

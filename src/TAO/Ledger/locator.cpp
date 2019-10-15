@@ -133,7 +133,7 @@ namespace TAO
             while(!statePrev.IsNull())
             {
                 /* Break when locator size is large enough. */
-                if(vHave.size() > 20)
+                if(vHave.size() > 31)
                     break;
 
                 /* Loop back the total blocks of step iterator. */
