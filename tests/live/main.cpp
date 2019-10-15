@@ -185,102 +185,102 @@ public:
     }
 };
 
+#include <TAO/Operation/include/enum.h>
+#include <TAO/Operation/include/execute.h>
+#include <TAO/Operation/types/condition.h>
 
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
-    uint64_t nTest = 555;
+    uint256_t hashGenesis  = TAO::Ledger::Genesis(LLC::GetRand256(), true);
+    uint256_t hashAsset  = TAO::Register::Address(TAO::Register::Address::OBJECT);
 
-    nTest = std::max(nTest, uint64_t(888));
+    using namespace TAO::Operation;
 
-    debug::log(0, "Test ", nTest);
-
-    TestDB* testDB = new TestDB();
-
-    uint1024_t hash = LLC::GetRand();
-
-
-
-    debug::log(0, "Write Hash");
-    debug::log(0, "Hash ", hash.Get64());
-    testDB->WriteHash(hash);
-
-    debug::log(0, "Index Hash");
-    if(!testDB->IndexHash(hash))
-        return debug::error("failed to index");
-
-    testDB->TxnBegin();
-
-    debug::log(0, "Read Hash");
-    uint1024_t hashTest;
-    testDB->ReadHash(hash, hashTest);
-
-    debug::log(0, "Hash ", hashTest.Get64());
-
-    uint1024_t hashTest3 = hash + 1;
-    testDB->WriteHash2(hash, hashTest3);
-
-    testDB->TxnCheckpoint();
-    testDB->TxnCommit();
+    std::vector<std::pair<uint16_t, uint64_t>> vWarnings;
 
     {
-        debug::log(0, "Read Hash");
-        uint1024_t hashTest4;
-        testDB->ReadHash2(hash, hashTest4);
+        TAO::Operation::Contract contract;
+        contract << uint8_t(OP::TRANSFER) << hashAsset << hashGenesis << uint8_t(TAO::Operation::TRANSFER::CLAIM);
 
-        debug::log(0, "Hash New ", hashTest4.Get64());
+        contract <= uint8_t(OP::CONTRACT::OPERATIONS) <= uint8_t(OP::SUBDATA) <= uint16_t(1) <= uint16_t(32); //hashFrom
+        contract <= uint8_t(OP::NOTEQUALS); //if the proof is not the hashFrom we can assume it is a split dividend payment
+        contract <= uint8_t(0xd3)   <= uint8_t(OP::SUBDATA) <= uint16_t(101) <= uint16_t(32);  //hashProof
+
+        if(!TAO::Operation::Condition::Validate(contract, vWarnings))
+            debug::error("Validate Error");
+        else
+            debug::error("Validate Success");
     }
 
     {
-        debug::log(0, "Read Hash");
-        uint1024_t hashTest4;
-        testDB->ReadHash(hash, hashTest4);
+        TAO::Operation::Contract contract;
+        contract << uint8_t(OP::TRANSFER) << hashAsset << hashGenesis << uint8_t(TAO::Operation::TRANSFER::CLAIM);
 
-        debug::log(0, "Hash New ", hashTest4.Get64());
+        contract <= uint8_t(OP::CONTRACT::OPERATIONS) <= uint8_t(OP::SUBDATA) <= uint16_t(32); //hashFrom
+        contract <= uint8_t(OP::NOTEQUALS); //if the proof is not the hashFrom we can assume it is a split dividend payment
+        contract <= uint8_t(OP::CALLER::OPERATIONS)   <= uint8_t(OP::SUBDATA) <= uint16_t(101) <= uint16_t(32);  //hashProof
+
+        if(!TAO::Operation::Condition::Validate(contract, vWarnings))
+            debug::error("Validate Error");
+        else
+            debug::error("Validate Success");
     }
 
-    return 0;
-
-    for(int t = 0; t < 1; ++t)
     {
-        uint1024_t last = 0;
-        testDB->ReadLast(last);
+        TAO::Operation::Contract contract;
+        contract << uint8_t(OP::TRANSFER) << hashAsset << hashGenesis << uint8_t(TAO::Operation::TRANSFER::CLAIM);
+    
+        //contract <= uint8_t(OP::GROUP);
+        contract <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(0) <= (uint8_t) OP::SUB <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(100) <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= 222u;
+        //contract <= uint8_t(OP::UNGROUP);
 
-        debug::log(0, "Last is ", last.Get64());
+        contract <= uint8_t(OP::AND);
 
-        runtime::timer timer;
-        timer.Start();
-        for(uint1024_t i = 1 ; i < last; ++i)
-        {
-            if(i.Get64() % 10000 == 0)
-            {
-                uint64_t nElapsed = timer.ElapsedMilliseconds();
-                debug::log(0, "Read ", i.Get64(), " Total Records in ", nElapsed, " ms (", i.Get64() * 1000 / nElapsed, " per / s)");
-            }
+        contract <= (uint8_t)OP::TYPES::UINT64_T <= std::numeric_limits<uint64_t>::max() <= (uint8_t) OP::ADD <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(100) <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= 222u;
+        
+        contract <= uint8_t(OP::OR);
 
-            uint1024_t hash;
-            testDB->ReadHash(i, hash);
-        }
+        /* 5 + 5 = 10 */
+        contract <= uint8_t(OP::GROUP);
+        contract <= uint8_t(OP::TYPES::UINT64_T) <= uint64_t(5) <= uint8_t(OP::ADD) <= uint8_t(OP::TYPES::UINT64_T) <= uint64_t(5);
+        contract <= uint8_t(OP::NOTEQUALS);
+        contract <= uint8_t(OP::TYPES::UINT64_T) <= uint64_t(5);
+        contract <= uint8_t(OP::UNGROUP);
 
+        if(!TAO::Operation::Condition::Validate(contract, vWarnings))
+            debug::error("Validate Error");
+        else
+            debug::error("Validate Success");
 
-        timer.Reset();
-        uint32_t nTotal = 0;
-        for(uint1024_t i = last + 1 ; i < last + 100000; ++i)
-        {
-            if(++nTotal % 10000 == 0)
-            {
-                uint64_t nElapsed = timer.ElapsedMilliseconds();
-                debug::log(0, "Wrote ", nTotal, " Total Records in ", nElapsed, " ms (", nTotal * 1000 / nElapsed, " per / s)");
-            }
+        TAO::Operation::Contract caller;
 
-            testDB->WriteHash(i);
-        }
+        /* Create 1024 bytes if data */
+        std::vector<uint8_t> vData(1024);
 
-        testDB->WriteLast(last + 100000);
+        /* Fill with 0x02 */
+        std::fill(vData.begin(), vData.end(), 0x02);
 
+        Condition condition(contract, caller);
+        if(!condition.Execute())
+            debug::error("Execute Error");
+        else
+            debug::error("Execute Success");
     }
 
-    delete testDB;
+    {
+        TAO::Operation::Contract contract;
+        contract << uint8_t(OP::TRANSFER) << hashAsset << hashGenesis << uint8_t(TAO::Operation::TRANSFER::CLAIM);
+    
+        contract <= uint8_t(OP::CONTRACT::TIMESTAMP) <= uint8_t(OP::ADD) <= uint8_t(OP::TYPES::UINT64_T) <= uint64_t(5);
+        contract <= uint8_t(OP::GREATERTHAN) <= uint8_t(OP::CALLER::TIMESTAMP);
+
+        if(!TAO::Operation::Condition::Validate(contract, vWarnings))
+            debug::error("Validate Error");
+        else
+            debug::error("Validate Success");
+    }
+
 
 
 
