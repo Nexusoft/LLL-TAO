@@ -947,7 +947,7 @@ namespace LLP
 
                             /* Do a sequential read to obtain the list. */
                             std::vector<TAO::Ledger::BlockState> vStates;
-                            while(hashStart != hashStop)
+                            while(true)
                             {
                                 if(!LLD::Ledger->BatchRead(hashStart, "block", vStates, 1000, true))
                                 {
@@ -1043,7 +1043,10 @@ namespace LLP
 
                                     /* Check for stop hash. */
                                     if(--nLimits <= 0 || hashStart == hashStop)
+                                    {
+                                        debug::log(3, FUNCTION, "Limits ", nLimits, " Reached ", hashStart.SubString(), " == ", hashStop.SubString());
                                         break;
+                                    }
                                 }
                             }
 
