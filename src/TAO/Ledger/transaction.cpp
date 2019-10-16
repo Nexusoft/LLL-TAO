@@ -390,6 +390,168 @@ namespace TAO
         }
 
 
+        /* Check the trust score that is claimed is correct. */
+        bool Transaction::CheckTrust(const BlockState* pblock) const
+        {
+            /* Check for proof of stake. */
+            if(!IsCoinStake())
+                return debug::error(FUNCTION, "no trust on non coinstake");
+
+            /* Reset the coinstake contract streams. */
+            vContracts[0].Reset();
+
+            /* Get the trust object register. */
+            TAO::Register::Object account;
+
+            /* Deserialize from the stream. */
+            uint8_t nState = 0;
+            vContracts[0] >>= nState;
+            vContracts[0] >>= account;
+
+            /* Parse the object. */
+            if(!account.Parse())
+                return debug::error(FUNCTION, "failed to parse object register from pre-state");
+
+            /* Validate that it is a trust account. */
+            if(account.Standard() != TAO::Register::OBJECTS::TRUST)
+                return debug::error(FUNCTION, "stake producer account is not a trust account");
+
+            /* Values for trust calculations. */
+            uint64_t nTrust       = 0;
+            uint64_t nTrustPrev   = 0;
+            uint64_t nReward      = 0;
+            uint64_t nBlockAge    = 0;
+            uint64_t nStake       = 0;
+            int64_t  nStakeChange = 0;
+
+            /* Check for trust calculations. */
+            if(IsTrust())
+            {
+                /* Extract values from producer operation */
+                vContracts[0].Seek(1, TAO::Operation::Contract::OPERATIONS);
+
+                /* Get last trust hash. */
+                uint512_t hashLastClaimed = 0;
+                vContracts[0] >> hashLastClaimed;
+
+                /* Get claimed trust score. */
+                uint64_t nClaimedTrust = 0;
+                vContracts[0] >> nClaimedTrust;
+                vContracts[0] >> nStakeChange;
+
+                /* Get claimed rewards. */
+                uint64_t nClaimedReward = 0;
+                vContracts[0] >> nClaimedReward;
+
+                /* Validate the claimed hash last stake */
+                uint512_t hashLast;
+                if(!LLD::Ledger->ReadStake(hashGenesis, hashLast))
+                    return debug::error(FUNCTION, "last stake not in database");
+
+                /* Check for last hash consistency. */
+                if(hashLast != hashLastClaimed)
+                {
+                    Transaction tx1;
+                    if(!LLD::Ledger->ReadTx(hashLast, tx1))
+                        return debug::error(FUNCTION, "failed to read ", tx1.GetHash().SubString());
+
+                    Transaction tx2;
+                    if(!LLD::Ledger->ReadTx(hashLastClaimed, tx2))
+                        return debug::error(FUNCTION, "failed to read ", tx2.GetHash().SubString());
+
+                    tx1.print();
+                    tx2.print();
+
+                    return debug::error(FUNCTION, "claimed last stake ", hashLastClaimed.SubString(),
+                                                  " does not match actual last stake ", hashLast.SubString());
+                }
+
+                /* Get pre-state trust account values */
+                nTrustPrev = account.get<uint64_t>("trust");
+                nStake = account.get<uint64_t>("stake");
+
+                /* Get previous block. Block time used for block age/coin age calculation */
+                TAO::Ledger::BlockState statePrev;
+                if(!LLD::Ledger->ReadBlock(pblock->hashPrevBlock, statePrev))
+                    return debug::error(FUNCTION, "prev block not in database");
+
+                /* Get the last stake block. */
+                TAO::Ledger::BlockState stateLast;
+                if(!LLD::Ledger->ReadBlock(hashLastClaimed, stateLast))
+                    return debug::error(FUNCTION, "last block not in database");
+
+                /* Calculate Block Age (time from last stake block until previous block) */
+                nBlockAge = statePrev.GetBlockTime() - stateLast.GetBlockTime();
+                nTrust = GetTrustScore(nTrustPrev, nBlockAge, nStake, nStakeChange);
+
+                /* Validate the trust score calculation */
+                if(nClaimedTrust != nTrust)
+                    return debug::error(FUNCTION, "claimed trust score ", nClaimedTrust,
+                                                  " does not match calculated trust score ", nTrust);
+
+                /* Enforce the minimum interval between stake blocks. */
+                const uint32_t nInterval = pblock->nHeight - stateLast.nHeight;
+                if(nInterval <= MinStakeInterval())
+                    return debug::error(FUNCTION, "stake block interval ", nInterval, " below minimum interval");
+
+                /* Calculate the coinstake reward */
+                const uint64_t nTime = pblock->GetBlockTime() - stateLast.GetBlockTime();
+                nReward = GetCoinstakeReward(nStake, nTime, nTrust, false);
+
+                /* Validate the coinstake reward calculation */
+                if(nClaimedReward != nReward)
+                    return debug::error(FUNCTION, "claimed stake reward ", nClaimedReward,
+                                                  " does not match calculated reward ", nReward);
+            }
+
+            else if(IsGenesis())
+            {
+                /* Seek to claimed reward. */
+                vContracts[0].Seek(1, TAO::Operation::Contract::OPERATIONS);
+
+                /* Check claimed reward calculations. */
+                uint64_t nClaimedReward = 0;
+                vContracts[0] >> nClaimedReward;
+
+                /* Get Genesis stake from the trust account pre-state balance. Genesis reward based on balance (that will move to stake) */
+                nStake = account.get<uint64_t>("balance");
+
+                /* Calculate the Coin Age. */
+                const uint64_t nAge = pblock->GetBlockTime() - account.nModified;
+
+                /* Calculate the coinstake reward */
+                nReward = GetCoinstakeReward(nStake, nAge, 0, true);
+
+                /* Validate the coinstake reward calculation */
+                if(nClaimedReward != nReward)
+                    return debug::error(FUNCTION, "claimed hashGenesis reward ", nClaimedReward, " does not match calculated reward ", nReward);
+            }
+
+            else
+                return debug::error(FUNCTION, "invalid stake operation");
+
+            /* Set target for logging */
+            LLC::CBigNum bnTarget;
+            bnTarget.SetCompact(pblock->nBits);
+
+            /* Verbose logging. */
+            debug::log(2, FUNCTION,
+                "stake hash=", pblock->StakeHash().SubString(), ", ",
+                "target=", bnTarget.getuint1024().SubString(), ", ",
+                "type=", (IsTrust() ? "Trust" : "Genesis"), ", ",
+                "trust score=", nTrust, ", ",
+                "prev trust score=", nTrustPrev, ", ",
+                "trust change=", int64_t(nTrust - nTrustPrev), ", ",
+                "block age=", nBlockAge, ", ",
+                "stake=", nStake, ", ",
+                "reward=", nReward, ", ",
+                "add stake=", ((nStakeChange > 0) ? nStakeChange : 0), ", ",
+                "unstake=", ((nStakeChange < 0) ? (0 - nStakeChange) : 0));
+
+            return true;
+        }
+
+
         /* Get the total cost of this transaction. */
         uint64_t Transaction::Cost()
         {
@@ -644,7 +806,6 @@ namespace TAO
             {
                 /* The fee applied to this transaction */
                 uint64_t nFees = 0;
-
                 if(IsFirst())
                 {
                     /* For the genesis transaction we allow a fixed amount of default registers to be created for free. */

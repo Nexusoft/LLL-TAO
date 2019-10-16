@@ -927,7 +927,7 @@ namespace LLP
                                     }
 
                                     /* Debug output. */
-                                    //debug::log(0, NODE, "ACTION::LIST: Locator ", hashStart.SubString(), " found");
+                                    debug::log(3, NODE, "ACTION::LIST: Locator ", hashStart.SubString(), " found");
 
                                     break;
                                 }
@@ -947,26 +947,29 @@ namespace LLP
 
                             /* Do a sequential read to obtain the list. */
                             std::vector<TAO::Ledger::BlockState> vStates;
-                            while(--nLimits > 0 && hashStart != hashStop &&
-                                LLD::Ledger->BatchRead(hashStart, "block", vStates, 1000, true))
+                            while(--nLimits >= 0 && LLD::Ledger->BatchRead(hashStart, "block", vStates, 1000, true))
                             {
                                 /* Loop through all available states. */
                                 for(auto& state : vStates)
                                 {
+                                    /* Update start every iteration. */
+                                    hashStart = state.GetHash();
+
                                     /* Skip if not in main chain. */
                                     if(!state.IsInMainChain())
                                         continue;
 
                                     /* Check for matching hashes. */
-                                    if(state.hashPrevBlock != hashStart)
+                                    if(state.hashPrevBlock != stateLast.GetHash())
                                     {
+                                        debug::log(3, FUNCTION, "Reading block ", stateLast.hashNextBlock.SubString());
+
                                         /* Read the correct block from next index. */
                                         if(!LLD::Ledger->ReadBlock(stateLast.hashNextBlock, state))
                                            return debug::drop(NODE, "failed to read current block");
                                     }
 
                                     /* Cache the block hash. */
-                                    hashStart = state.GetHash();
                                     stateLast = state;
 
                                     /* Handle for special sync block type specifier. */
@@ -1034,7 +1037,10 @@ namespace LLP
 
                                     /* Check for stop hash. */
                                     if(--nLimits <= 0 || hashStart == hashStop)
+                                    {
+                                        debug::log(3, FUNCTION, "Limits ", nLimits, " Reached ", hashStart.SubString(), " == ", hashStop.SubString());
                                         break;
+                                    }
                                 }
                             }
 
@@ -1844,7 +1850,7 @@ namespace LLP
                             TAO::Ledger::TritiumBlock tritium(block);
 
                             /* Verbose debug output. */
-                            debug::log(3, FUNCTION, "received sync block ", tritium.GetHash().SubString());
+                            debug::log(3, FUNCTION, "received sync block ", tritium.GetHash().SubString(), " height = ", block.nHeight);
 
                             /* Process the block. */
                             TAO::Ledger::Process(tritium, nStatus);
@@ -1855,13 +1861,11 @@ namespace LLP
                             Legacy::LegacyBlock legacy(block);
 
                             /* Verbose debug output. */
-                            debug::log(3, FUNCTION, "received sync block ", legacy.GetHash().SubString());
+                            debug::log(3, FUNCTION, "received sync block ", legacy.GetHash().SubString(), " height = ", block.nHeight);
 
                             /* Process the block. */
                             TAO::Ledger::Process(legacy, nStatus);
                         }
-
-
 
                         break;
                     }

@@ -83,9 +83,9 @@ public:
     }
 
 
-    bool WriteHash(const uint1024_t& hash)
+    bool WriteHash(const uint1024_t& hash, const uint1024_t& hash2)
     {
-        return Write(std::make_pair(std::string("hash"), hash), hash, "hash");
+        return Write(std::make_pair(std::string("hash"), hash), hash2, "hash");
     }
 
     bool WriteHash2(const uint1024_t& hash, const uint1024_t& hash2)

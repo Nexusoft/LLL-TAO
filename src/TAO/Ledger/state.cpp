@@ -926,6 +926,11 @@ namespace TAO
                     /* If tx is coinstake, also write the last stake. */
                     if(tx.IsCoinStake())
                     {
+                        /* Check the trust values. */
+                        if(!tx.CheckTrust(this))
+                            return debug::error(FUNCTION, "trust checks failed");
+
+                        /* Write the last stake value into the database. */
                         if(!LLD::Ledger->WriteStake(tx.hashGenesis, hash))
                             return debug::error(FUNCTION, "failed to write last stake");
 
@@ -980,6 +985,9 @@ namespace TAO
                 /* Write the indexing entries. */
                 LLD::Ledger->IndexBlock(proof.second, GetHash());
             }
+
+
+            debug::log(3, "Block Height ", nHeight, " Hash ", GetHash().SubString());
 
 
             debug::log(3, "BLOCK END-------------------------------------");

@@ -145,11 +145,11 @@ namespace LLD
                 }
                 else
                     pCommit->mapContracts.erase(pair);
-
-                /* Break on erase.  */
-                if(nFlags == TAO::Ledger::FLAGS::ERASE)
-                    return true;
             }
+
+            /* Break on erase.  */
+            if(nFlags == TAO::Ledger::FLAGS::ERASE)
+                return true;
         }
 
         return Erase(pair);

@@ -255,7 +255,6 @@ namespace TAO
             {
                 /* Update the Ledger with found last stake */
                 hashLast = tx.GetHash();
-                LLD::Ledger->WriteStake(hashGenesis, hashLast);
 
                 return true;
             }
