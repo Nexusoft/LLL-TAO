@@ -857,6 +857,8 @@ namespace TAO
                         );
                     }
                 }
+                else
+                    debug::log(3, FUNCTION, "Skipping relay until chain is done synchronizing");
             }
 
             return true;
