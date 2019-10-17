@@ -471,6 +471,8 @@ namespace TAO
 
                         debug::log(3, "REMOVE ------------------------------");
 
+                        LLD::TxnBegin(FLAGS::ERASE);
+
                         /* Disconnect all transactions in reverse order. */
                         for(auto tx = vtx.rbegin(); tx != vtx.rend(); ++tx)
                         {
@@ -495,6 +497,8 @@ namespace TAO
                                 mapLedger.erase(tx->GetHash());
                             }
                         }
+
+                        LLD::TxnCommit(FLAGS::ERASE);
 
                         debug::log(3, "END REMOVE ------------------------------");
 
