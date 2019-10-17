@@ -177,7 +177,7 @@ namespace LLP
 
             /* Check for origin. */
             if(strOrigin != "")
-                RESPONSE.mapHeaders["Origin"] = strOrigin;
+                RESPONSE.mapHeaders["Access-Control-Allow-Origin"] = strOrigin;
 
             /* Add content. */
             RESPONSE.strContent = strContent;
