@@ -375,7 +375,7 @@ namespace TAO
                     return debug::error(FUNCTION, "producer transaction has to be coinbase for proof of work");
 
                 /* Check the Proof of Work Claims. */
-                if(!VerifyWork())
+                if(!ChainState::Synchronizing() && !VerifyWork())
                     return debug::error(FUNCTION, "invalid proof of work");
             }
 
