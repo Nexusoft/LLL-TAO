@@ -451,6 +451,9 @@ namespace TAO
                                 if(nClaimed < nAmount)
                                     return debug::error(FUNCTION, "OP::CREDIT: amount larger than claimed (overflow)");
 
+                                debug::log(0, FUNCTION, "OP::CREDIT: Writing Partial ", (nClaimed - nAmount), " ",
+                                    hashProof.SubString(), " txid ", hashTx.SubString(), " contract ", nContract);
+
                                 /* Write the new claimed amount. */
                                 if(!LLD::Ledger->WriteClaimed(hashTx, nContract, (nClaimed - nAmount), nFlags))
                                     return debug::error(FUNCTION, "OP::CREDIT: failed to rollback claimed amount");

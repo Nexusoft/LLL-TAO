@@ -323,8 +323,8 @@ namespace TAO
                 return debug::error(FUNCTION, "credit can't be of different identifier");
 
             /* Handle one-to-one debit to credit or return to self. */
-            if(hashTo == hashAccount    //regular debit to credit
-            || hashTo == TAO::Register::WILDCARD_ADDRESS  //wildcard address (anyone can credit)
+            if (hashTo == hashAccount    //regular debit to credit
+            ||  hashTo == TAO::Register::WILDCARD_ADDRESS  //wildcard address (anyone can credit)
             || (hashFrom == hashAccount && hashProof == hashAccount)) //return to self
             {
                 /* Check the proof as being the caller. */
@@ -336,7 +336,7 @@ namespace TAO
                 debit >> nDebit;
 
                 /* Special rule for credit back to self on partial payments. */
-                if(hashFrom == hashAccount)
+                if(hashTo.IsObject())
                 {
                     /* Get the partial amount. */
                     uint64_t nClaimed = 0;
@@ -365,6 +365,10 @@ namespace TAO
 
                 return true;
             }
+
+            /* Check that partial is sent to object. */
+            if(!hashTo.IsObject())
+                return debug::error(FUNCTION, "partial payment is not to object");
 
             /* Read the register to address. */
             TAO::Register::State stateTo;
