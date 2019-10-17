@@ -83,16 +83,6 @@ namespace LLP
         bool ProcessPacket() final;
 
 
-        /** ErrorReply
-         *
-         *  Handles a reply error code and response.
-         *
-         *  @param[in] jsonError The error object.
-         *
-         **/
-        void ErrorReply(const json::json& jsonError);
-
-
         /** Authorized
          *
          *  Check if an authorization base64 encoded string is correct.

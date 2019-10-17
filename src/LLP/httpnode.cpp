@@ -25,7 +25,6 @@ namespace LLP
     HTTPNode::HTTPNode()
     : BaseConnection<HTTPPacket> ( )
     , vchBuffer                  ( )
-    , strOrigin                  ( )
     {
     }
 
@@ -34,7 +33,6 @@ namespace LLP
     HTTPNode::HTTPNode(const Socket &SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS)
     : BaseConnection<HTTPPacket> (SOCKET_IN, DDOS_IN, isDDOS)
     , vchBuffer                  ( )
-    , strOrigin                  ( )
     {
     }
 
@@ -43,7 +41,6 @@ namespace LLP
     HTTPNode::HTTPNode(DDOS_Filter* DDOS_IN, bool isDDOS)
     : BaseConnection<HTTPPacket> (DDOS_IN, isDDOS)
     , vchBuffer                  ( )
-    , strOrigin                  ( )
     {
     }
 
@@ -150,10 +147,6 @@ namespace LLP
                         if(strField == "content-length")
                             INCOMING.nContentLength = std::stoul(strLine.substr(pos + 2));
 
-                        /* Parse out origin. */
-                        if(strField == "origin")
-                            strOrigin = strLine.substr(pos + 2);
-
                         /* Add line to the headers map. */
                         INCOMING.mapHeaders[strField] = strLine.substr(pos + 2);
 
@@ -174,13 +167,8 @@ namespace LLP
         {
             /* Build packet. */
             HTTPPacket RESPONSE(nMsg);
-
-            /* Check for origin. */
-            if(strOrigin != "")
-                RESPONSE.mapHeaders["Access-Control-Allow-Origin"] = strOrigin;
-
-            /* Add content. */
             RESPONSE.strContent = strContent;
+
             this->WritePacket(RESPONSE);
         }
         catch(...)
