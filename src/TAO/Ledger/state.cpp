@@ -796,14 +796,6 @@ namespace TAO
                     " [processing ", (nTotalContracts * 1000.0) / (nTimer + 1), " contracts/s]",
                     " [", ::GetSerializeSize(*this, SER_LLD, nVersion), " bytes]");
 
-                /* Do a quick mempool processing check for ORPHANS. */
-                timer.Reset();
-                mempool.Check();
-
-                /* Log the mempool consistency checking. */
-                nElapsed = timer.ElapsedMilliseconds();
-                debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION, "Mempool Consistency Check Complete in ", nElapsed,  " ms");
-
                 /* Set the best chain variables. */
                 ChainState::stateBest          = *this;
                 ChainState::hashBestChain      = hash;
