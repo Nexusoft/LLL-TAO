@@ -53,6 +53,10 @@ namespace LLP
         std::vector<int8_t> vchBuffer;
 
 
+        /* Origin header for cross origin policies. */
+        std::string strOrigin;
+
+
     public:
 
         /** Default Constructor **/

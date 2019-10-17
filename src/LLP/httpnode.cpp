@@ -23,21 +23,27 @@ namespace LLP
 
     /** Default Constructor **/
     HTTPNode::HTTPNode()
-    : BaseConnection<HTTPPacket>()
+    : BaseConnection<HTTPPacket> ( )
+    , vchBuffer                  ( )
+    , strOrigin                  ( )
     {
     }
 
 
     /** Constructor **/
     HTTPNode::HTTPNode(const Socket &SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS)
-    : BaseConnection<HTTPPacket>(SOCKET_IN, DDOS_IN, isDDOS)
+    : BaseConnection<HTTPPacket> (SOCKET_IN, DDOS_IN, isDDOS)
+    , vchBuffer                  ( )
+    , strOrigin                  ( )
     {
     }
 
 
     /** Constructor **/
     HTTPNode::HTTPNode(DDOS_Filter* DDOS_IN, bool isDDOS)
-    : BaseConnection<HTTPPacket>(DDOS_IN, isDDOS)
+    : BaseConnection<HTTPPacket> (DDOS_IN, isDDOS)
+    , vchBuffer                  ( )
+    , strOrigin                  ( )
     {
     }
 
@@ -138,14 +144,18 @@ namespace LLP
                     else if(pos != std::string::npos)
                     {
                         /* Set the field value to lowercase. */
-                        std::string field = ToLower(strLine.substr(0, pos));
+                        std::string strField = ToLower(strLine.substr(0, pos));
 
                         /* Parse out the content length field. */
-                        if(field == "content-length")
+                        if(strField == "content-length")
                             INCOMING.nContentLength = std::stoul(strLine.substr(pos + 2));
 
+                        /* Parse out origin. */
+                        if(strField == "origin")
+                            strOrigin = strLine.substr(pos + 2);
+
                         /* Add line to the headers map. */
-                        INCOMING.mapHeaders[field] = strLine.substr(pos + 2);
+                        INCOMING.mapHeaders[strField] = strLine.substr(pos + 2);
 
                     }
 
@@ -162,9 +172,15 @@ namespace LLP
     {
         try
         {
+            /* Build packet. */
             HTTPPacket RESPONSE(nMsg);
-            RESPONSE.strContent = strContent;
 
+            /* Check for origin. */
+            if(strOrigin != "")
+                RESPONSE.mapHeaders["Origin"] = strOrigin;
+
+            /* Add content. */
+            RESPONSE.strContent = strContent;
             this->WritePacket(RESPONSE);
         }
         catch(...)
