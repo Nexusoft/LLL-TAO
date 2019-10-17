@@ -34,6 +34,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/process.h>
+#include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/state.h>
@@ -54,23 +55,30 @@ namespace TAO
 {
     namespace API
     {
-        /*  Background thread to handle/suppress sigchain notifications. */
-        void Users::EventsThread()
+        /* Automatically logs in the sig chain using the credentials configured in the config file.  Will also create the sig
+        *  chain if it doesn't exist and configured with autocreate=1. */
+        void Users::auto_login()
         {
-            /* Auto-login feature if configured. */
+            /* Flag indicating that the auto login has successfully run.  Once it has run successfully once it will not run again 
+               for the lifespan of the application, to avoid auto-logging you back in if you intentionally log out. */
+            static bool fAutoLoggedIn = false;
+
             try
             {
-                if(config::GetBoolArg("-autologin") && !config::fMultiuser.load())
+                /* If we haven't already logged in at least once, are configured for auto login, and are not currently logged in */
+                if(!fAutoLoggedIn && config::GetBoolArg("-autologin") && !config::fMultiuser.load() && !LoggedIn())
                 {
-                    /* Check for username and password. */
-                    if(config::GetArg("-username", "") != ""
-                    && config::GetArg("-password", "") != ""
-                    && config::GetArg("-pin", "")      != "")
+                    /* First check that Tritium sig chains are active */
+                    if(TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 7) || TAO::Ledger::CurrentVersion() > 7)
                     {
                         /* Keep a the credentials in secure allocated strings. */
                         SecureString strUsername = config::GetArg("-username", "").c_str();
                         SecureString strPassword = config::GetArg("-password", "").c_str();
                         SecureString strPin = config::GetArg("-pin", "").c_str();
+
+                        /* Check we have user/pass/pin */
+                        if(strUsername.empty() || strPassword.empty() || strPin.empty())
+                            throw APIException(-203, "Autologin missing username/password/pin");
 
                         /* Create the sigchain. */
                         memory::encrypted_ptr<TAO::Ledger::SignatureChain> user =
@@ -89,7 +97,7 @@ namespace TAO
                                 TAO::Ledger::Transaction tx;
 
                                 /* Create the sig chain genesis transaction */
-                                CreateSigchain(strUsername, strPassword, strPin, tx);
+                                create_sig_chain(strUsername, strPassword, strPin, tx);
 
                             }
                             else
@@ -144,7 +152,10 @@ namespace TAO
                         pActivePIN = new TAO::Ledger::PinUnlock(config::GetArg("-pin", "").c_str(), nUnlockActions);
 
                         /* Display that login was successful. */
-                        debug::log(0, FUNCTION, "Auto-Login Successful");
+                        debug::log(0, "Auto-Login Successful");
+
+                        /* Set the flag so that we don't attempt to log in again */
+                        fAutoLoggedIn = true;
 
                         /* Start the stake minter if successful login. */
                         TAO::Ledger::TritiumMinter::GetInstance().Start();
@@ -156,6 +167,12 @@ namespace TAO
                 debug::error(FUNCTION, e.what());
             }
 
+        }
+
+
+        /*  Background thread to handle/suppress sigchain notifications. */
+        void Users::EventsThread()
+        {
             /* Loop the events processing thread until shutdown. */
             while(!fShutdown.load())
             {
@@ -177,6 +194,10 @@ namespace TAO
 
                 try
                 {
+                    /* Auto-login feature if configured and not already logged in. */
+                    if(!config::fMultiuser.load() && !LoggedIn() && config::GetBoolArg("-autologin"))
+                        auto_login();
+                    
                     /* Ensure that the user is logged, in, wallet unlocked, and unlocked for notifications. */
                     if(!LoggedIn() || Locked() || !CanProcessNotifications() || TAO::Ledger::ChainState::Synchronizing())
                         continue;
@@ -368,7 +389,7 @@ namespace TAO
                                     credit.Bind(&txout);
 
                                     /* Sanitize the contract to make sure it builds and executes before we add it to the transaction */
-                                    if(!SanitizeContract(credit, mapStates))
+                                    if(!sanitize_contract(credit, mapStates))
                                         continue;
                                     
                                     /* Add the contract to the transaction */
@@ -393,7 +414,7 @@ namespace TAO
                                     credit.Bind(&txout);
 
                                     /* Sanitize the contract to make sure it builds and executes before we add it to the transaction */
-                                    if(!SanitizeContract(credit, mapStates))
+                                    if(!sanitize_contract(credit, mapStates))
                                         continue;
 
                                     /* Add the contract to the transaction */
@@ -437,7 +458,7 @@ namespace TAO
                                 credit.Bind(&txout);
 
                                 /* Sanitize the contract to make sure it builds and executes before we add it to the transaction */
-                                if(!SanitizeContract(credit, mapStates))
+                                if(!sanitize_contract(credit, mapStates))
                                     continue;
 
                                 /* Add the contract to the transaction */
@@ -500,7 +521,7 @@ namespace TAO
                                 claim.Bind(&txout);
 
                                 /* Sanitize the contract to make sure it builds and executes before we add it to the transaction */
-                                if(!SanitizeContract(claim, mapStates))
+                                if(!sanitize_contract(claim, mapStates))
                                     continue;
 
                                 /* Add the contract to the transaction */
@@ -647,7 +668,7 @@ namespace TAO
                                     migrate.Bind(&txout);
 
                                     /* Sanitize the contract to make sure it builds and executes before we add it to the transaction */
-                                    if(!SanitizeContract(migrate, mapStates))
+                                    if(!sanitize_contract(migrate, mapStates))
                                         continue;
 
                                     /* Add the contract to the transaction */
@@ -687,7 +708,7 @@ namespace TAO
                                 credit.Bind(&txout);
 
                                 /* Sanitize the contract to make sure it builds and executes before we add it to the transaction */
-                                if(!SanitizeContract(credit, mapStates))
+                                if(!sanitize_contract(credit, mapStates))
                                     continue;
 
                                 /* Add the contract to the transaction */
@@ -726,7 +747,7 @@ namespace TAO
                             voidContract.Bind(&txout);
 
                             /* Sanitize the contract to make sure it builds and executes before we add it to the transaction */
-                            if(!SanitizeContract(voidContract, mapStates))
+                            if(!sanitize_contract(voidContract, mapStates))
                                 continue;
 
                             /* Add the void contract */
@@ -774,7 +795,7 @@ namespace TAO
         }
 
         /* Checks that the contract passes both Build() and Execute() */
-        bool Users::SanitizeContract(TAO::Operation::Contract& contract, std::map<uint256_t, TAO::Register::State> &mapStates)
+        bool Users::sanitize_contract(TAO::Operation::Contract& contract, std::map<uint256_t, TAO::Register::State> &mapStates)
         {
             /* Return flag */
             bool fSanitized = false;
