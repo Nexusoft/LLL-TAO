@@ -189,8 +189,9 @@ namespace LLP
                     RESPONSE.mapHeaders["Access-Control-Request-Headers"] = INCOMING.mapHeaders["access-control-request-headers"];
 
                 /* Set conneciton headers. */
-                RESPONSE.mapHeaders["Connection"] = "keep-alive";
+                RESPONSE.mapHeaders["Connection"]             = "keep-alive";
                 RESPONSE.mapHeaders["Access-Control-Max-Age"] = "86400";
+                RESPONSE.mapHeaders["Content-Length"]         = "0";
 
                 /* Add content. */
                 this->WritePacket(RESPONSE);
