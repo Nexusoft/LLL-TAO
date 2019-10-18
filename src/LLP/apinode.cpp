@@ -106,46 +106,45 @@ namespace LLP
             json::json params;
             if(INCOMING.strType == "POST")
             {
-                /* Check for empty content. */
-                if(INCOMING.strContent.size() == 0)
-                    return debug::error(FUNCTION, "empty content on POST");
-
-                /* Handle different content types. */
-                if(INCOMING.mapHeaders.count("content-type"))
+                /* Only parse content if some has been provided */
+                if(INCOMING.strContent.size() > 0)
                 {
-                    /* Form encoding. */
-                    if(INCOMING.mapHeaders["content-type"] == "application/x-www-form-urlencoded")
+                    /* Handle different content types. */
+                    if(INCOMING.mapHeaders.count("content-type"))
                     {
-                        /* Decode if url-form-encoded. */
-                        INCOMING.strContent = encoding::urldecode(INCOMING.strContent);
-
-                        /* Split by delimiter. */
-                        std::vector<std::string> vParams;
-                        ParseString(INCOMING.strContent, '&', vParams);
-
-                        /* Get the parameters. */
-                        for(std::string strParam : vParams)
+                        /* Form encoding. */
+                        if(INCOMING.mapHeaders["content-type"] == "application/x-www-form-urlencoded")
                         {
-                            std::string::size_type pos2 = strParam.find("=");
-                            if(pos2 == strParam.npos)
-                                break;
+                            /* Decode if url-form-encoded. */
+                            INCOMING.strContent = encoding::urldecode(INCOMING.strContent);
 
-                            std::string key   = strParam.substr(0, pos2);
-                            std::string value = strParam.substr(pos2 + 1);
+                            /* Split by delimiter. */
+                            std::vector<std::string> vParams;
+                            ParseString(INCOMING.strContent, '&', vParams);
 
-                            params[key] = value;
+                            /* Get the parameters. */
+                            for(std::string strParam : vParams)
+                            {
+                                std::string::size_type pos2 = strParam.find("=");
+                                if(pos2 == strParam.npos)
+                                    break;
+
+                                std::string key   = strParam.substr(0, pos2);
+                                std::string value = strParam.substr(pos2 + 1);
+
+                                params[key] = value;
+                            }
                         }
+
+                        /* JSON encoding. */
+                        else if(INCOMING.mapHeaders["content-type"] == "application/json")
+                            params = json::json::parse(INCOMING.strContent);
+                        else
+                            throw TAO::API::APIException(-5, debug::safe_printstr("content-type ", INCOMING.mapHeaders["content-type"], " not supported"));
                     }
-
-                    /* JSON encoding. */
-                    else if(INCOMING.mapHeaders["content-type"] == "application/json")
-                        params = json::json::parse(INCOMING.strContent);
                     else
-                        throw TAO::API::APIException(-5, debug::safe_printstr("content-type ", INCOMING.mapHeaders["content-type"], " not supported"));
+                        throw TAO::API::APIException(-6, "content-type not provided when content included");
                 }
-                else
-                    throw TAO::API::APIException(-6, "content-type not provided when content included");
-
             }
             else if(INCOMING.strType == "GET")
             {
