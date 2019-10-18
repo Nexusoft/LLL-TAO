@@ -176,7 +176,7 @@ namespace LLP
             else if(INCOMING.strType == "OPTIONS")
             {
                 /* Build packet. */
-                HTTPPacket RESPONSE(204);
+                HTTPPacket RESPONSE(200);
                 if(INCOMING.mapHeaders.count("origin"))
                     RESPONSE.mapHeaders["Access-Control-Allow-Origin"] = INCOMING.mapHeaders["origin"];;
 
@@ -189,11 +189,10 @@ namespace LLP
                     RESPONSE.mapHeaders["Access-Control-Request-Headers"] = INCOMING.mapHeaders["access-control-request-headers"];
 
                 /* Set conneciton headers. */
-                RESPONSE.mapHeaders["Connection"] = "Keep-Alive";
+                RESPONSE.mapHeaders["Connection"] = "keep-alive";
                 RESPONSE.mapHeaders["Access-Control-Max-Age"] = "86400";
 
                 /* Add content. */
-                RESPONSE.strContent = ret.dump();
                 this->WritePacket(RESPONSE);
 
                 return true;
