@@ -176,22 +176,22 @@ namespace LLP
             else if(INCOMING.strType == "OPTIONS")
             {
                 /* Build packet. */
-                HTTPPacket RESPONSE(200);
+                HTTPPacket RESPONSE(204);
                 if(INCOMING.mapHeaders.count("origin"))
                     RESPONSE.mapHeaders["Access-Control-Allow-Origin"] = INCOMING.mapHeaders["origin"];;
 
                 /* Check for access methods. */
                 if(INCOMING.mapHeaders.count("access-control-request-method"))
-                    RESPONSE.mapHeaders["Access-Control-Request-Methods"] = "POST, GET, OPTIONS";
+                    RESPONSE.mapHeaders["Access-Control-Allow-Methods"] = "POST, GET, OPTIONS";
 
                 /* Check for access headers. */
                 if(INCOMING.mapHeaders.count("access-control-request-headers"))
-                    RESPONSE.mapHeaders["Access-Control-Request-Headers"] = INCOMING.mapHeaders["access-control-request-headers"];
+                    RESPONSE.mapHeaders["Access-Control-Allow-Headers"] = INCOMING.mapHeaders["access-control-request-headers"];
 
                 /* Set conneciton headers. */
                 RESPONSE.mapHeaders["Connection"]             = "keep-alive";
                 RESPONSE.mapHeaders["Access-Control-Max-Age"] = "86400";
-                RESPONSE.mapHeaders["Content-Length"]         = "0";
+                //RESPONSE.mapHeaders["Content-Length"]         = "0";
                 RESPONSE.mapHeaders["Accept"]                 = "*/*";
 
                 /* Add content. */
