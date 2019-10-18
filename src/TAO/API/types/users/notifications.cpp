@@ -437,12 +437,25 @@ namespace TAO
                         if(!TAO::Register::Unpack(contract, Operation::OP::DEBIT))
                             continue;
 
+
+                        /* Get the token supply so that we an determine our share */
+                        uint64_t nSupply = token.get<uint64_t>("supply");
+
+                        /* Get the amount from the debit contract*/
+                        uint64_t nAmount = 0;
+                        TAO::Register::Unpack(contract, nAmount);
+
+                        /* Calculate the partial debit amount that this token holder is entitled to. */
+                        uint64_t nPartial = (nAmount * nBalance) / nSupply;
+
+                        /* If the NXS amount cannot be divided by the percentage of tokens that they own then the nPartial amount
+                           will be zero.  In which case we can ignore this notification as there is nothing to credit. */
+                        if(nPartial == 0)
+                            continue; 
+
                         /* The account/token the debit came from  */
                         TAO::Register::Address hashFrom;
-
-                        /* Seek to the hash from. */
-                        contract.Seek(1, Operation::Contract::OPERATIONS);
-                        contract >> hashFrom;
+                        TAO::Register::Unpack(contract, hashFrom);
 
                         /* Check to see if we have already claimed our credit. */
                         if(LLD::Ledger->HasProof(hashRegister, tx.GetHash(), nContract, TAO::Ledger::FLAGS::MEMPOOL))
