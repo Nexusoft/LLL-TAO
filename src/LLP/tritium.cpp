@@ -1539,7 +1539,7 @@ namespace LLP
                                     if(nCurrentSession == TAO::Ledger::nSyncSession.load())
                                     {
                                         /* Check for complete synchronization. */
-                                        if((hashLast == TAO::Ledger::ChainState::hashBestChain.load() && hashLast == hashBestChain))
+                                        if(hashLast == hashLastIndex || (hashLast == TAO::Ledger::ChainState::hashBestChain.load() && hashLast == hashBestChain))
                                         {
                                             /* Set state to synchronized. */
                                             fSynchronized.store(true);

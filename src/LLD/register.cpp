@@ -274,15 +274,17 @@ namespace LLD
     /* Write a genesis to a register address. */
     bool RegisterDB::WriteTrust(const uint256_t& hashGenesis, const TAO::Register::State& state)
     {
-        LOCK(MEMORY_MUTEX);
-
         /* Get trust account address for contract caller */
         uint256_t hashRegister =
             TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
 
-        /* Remove the memory state if writing the disk state. */
-        if(pCommit->mapStates.count(hashRegister))
-            pCommit->mapStates.erase(hashRegister);
+        {
+            LOCK(MEMORY_MUTEX);
+
+            /* Remove the memory state if writing the disk state. */
+            if(pCommit->mapStates.count(hashRegister))
+                pCommit->mapStates.erase(hashRegister);
+        }
 
         /* We want to write the state like normal, but ensure we wipe memory states. */
         return WriteState(hashRegister, state);
