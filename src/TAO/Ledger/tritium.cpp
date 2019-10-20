@@ -652,14 +652,18 @@ namespace TAO
             /* Commit the transaction to database. */
             LLD::TxnCommit();
 
-            /* Do a quick mempool processing check for ORPHANS. */
-            runtime::timer timer;
-            timer.Reset();
-            mempool.Check();
+            /* Check for best chain. */
+            if(GetHash() == ChainState::hashBestChain.load())
+            {
+                /* Do a quick mempool processing check for ORPHANS. */
+                runtime::timer timer;
+                timer.Reset();
+                mempool.Check();
 
-            /* Log the mempool consistency checking. */
-            uint64_t nElapsed = timer.ElapsedMilliseconds();
-            debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION, "Mempool Consistency Check Complete in ", nElapsed,  " ms");
+                /* Log the mempool consistency checking. */
+                uint64_t nElapsed = timer.ElapsedMilliseconds();
+                debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION, "Mempool Consistency Check Complete in ", nElapsed,  " ms");
+            }
 
             return true;
         }

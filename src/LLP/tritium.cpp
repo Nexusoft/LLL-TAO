@@ -1447,17 +1447,24 @@ namespace LLP
                             {
                                 /* Check legacy database. */
                                 if(!cacheInventory.Has(hashTx) && !LLD::Legacy->HasTx(hashTx, TAO::Ledger::FLAGS::MEMPOOL))
+                                {
+                                    /* Debug output. */
+                                    debug::log(3, NODE, "ACTION::NOTIFY: LEGACY TRANSACTION ", hashTx.SubString()); //TODO: fix chatty relays
+
                                     ssResponse << uint8_t(SPECIFIER::LEGACY) << uint8_t(TYPES::TRANSACTION) << hashTx;
+                                }
                             }
                             else
                             {
                                 /* Check ledger database. */
                                 if(!cacheInventory.Has(hashTx) && !LLD::Ledger->HasTx(hashTx, TAO::Ledger::FLAGS::MEMPOOL))
-                                    ssResponse << uint8_t(TYPES::TRANSACTION) << hashTx;
-                            }
+                                {
+                                    /* Debug output. */
+                                    debug::log(3, NODE, "ACTION::NOTIFY: TRITIUM TRANSACTION ", hashTx.SubString());
 
-                            /* Debug output. */
-                            debug::log(3, NODE, "ACTION::NOTIFY: TRANSACTION ", hashTx.SubString());
+                                    ssResponse << uint8_t(TYPES::TRANSACTION) << hashTx;
+                                }
+                            }
 
                             break;
                         }
