@@ -274,68 +274,18 @@ namespace LLD
     /* Write a genesis to a register address. */
     bool RegisterDB::WriteTrust(const uint256_t& hashGenesis, const TAO::Register::State& state)
     {
+        LOCK(MEMORY_MUTEX);
+
         /* Get trust account address for contract caller */
         uint256_t hashRegister =
             TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
 
-        /* Memory mode for pre-database commits. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
-        {
-            LOCK(MEMORY_MUTEX);
+        /* Remove the memory state if writing the disk state. */
+        if(pCommit->mapStates.count(hashRegister))
+            pCommit->mapStates.erase(hashRegister);
 
-            /* Check for memory mode. */
-            if(pMemory)
-            {
-                /* Check erase queue. */
-                pMemory->setErase.erase(hashRegister);
-                pMemory->mapStates[hashRegister] = state;
-
-                return true;
-            }
-
-            /* Otherwise commit like normal. */
-            pCommit->mapStates[hashRegister] = state;
-
-            return true;
-        }
-        else if(nFlags == TAO::Ledger::FLAGS::MINER)
-        {
-            LOCK(MEMORY_MUTEX);
-
-            /* Check for memory mode. */
-            if(pMiner)
-                pMiner->mapStates[hashRegister] = state;
-
-            return true;
-        }
-        else if(nFlags == TAO::Ledger::FLAGS::BLOCK || nFlags == TAO::Ledger::FLAGS::ERASE)
-        {
-            LOCK(MEMORY_MUTEX);
-
-            /* Remove the memory state if writing the disk state. */
-            if(pCommit->mapStates.count(hashRegister))
-            {
-                /* Check for most recent memory state, and remove if writing it. */
-                const TAO::Register::State& stateCheck = pCommit->mapStates[hashRegister];
-                if(stateCheck == state || nFlags == TAO::Ledger::FLAGS::ERASE)
-                {
-                    /* Erase if transaction. */
-                    if(pMemory)
-                    {
-                        pMemory->setErase.insert(hashRegister);
-                        pMemory->mapStates.erase(hashRegister);
-                    }
-                    else
-                        pCommit->mapStates.erase(hashRegister);
-                }
-            }
-
-            /* Quit when erasing. */
-            if(nFlags == TAO::Ledger::FLAGS::ERASE)
-                return true;
-        }
-
-        return Write(std::make_pair(std::string("genesis"), hashGenesis), state, "trust");
+        /* We want to write the state like normal, but ensure we wipe memory states. */
+        return WriteState(hashRegister, state);
     }
 
 

@@ -31,6 +31,11 @@ namespace TAO
         /* Commit the final state to disk. */
         bool Genesis::Commit(const TAO::Register::State& state, const uint8_t nFlags)
         {
+            /* This should never be executed from mempool because Genesis should be in producer, but
+             * check the nFlags as a precaution
+             */
+            if(nFlags != TAO::Ledger::FLAGS::BLOCK)
+                return debug::error(FUNCTION, "can't commit genesis with invalid flags");
 
             /* Get trust account address for state owner */
             uint256_t hashAddress =
@@ -41,15 +46,12 @@ namespace TAO
                 return debug::error(FUNCTION, "cannot create genesis when already exists");
 
             /* Write the register to the database. */
-            if(!LLD::Register->WriteState(hashAddress, state, nFlags))
+            if(!LLD::Register->WriteTrust(state.hashOwner, state))
                 return debug::error(FUNCTION, "failed to write new state");
 
-            /* Update the register database with the index.
-             * This should never be executed from mempool because Genesis should be in producer, but
-             * check the nFlags as a precaution
-             */
-            if(nFlags == TAO::Ledger::FLAGS::BLOCK && !LLD::Register->IndexTrust(state.hashOwner, hashAddress))
-                    return debug::error(FUNCTION, "could not index the address to the genesis");
+            /* Index register to genesis-id. */
+            if(!LLD::Register->IndexTrust(state.hashOwner, hashAddress))
+                return debug::error(FUNCTION, "could not index the address to the genesis");
 
             return true;
         }
