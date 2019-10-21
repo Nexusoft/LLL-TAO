@@ -60,9 +60,13 @@ namespace TAO
             /* Get the genesis block hash. */
             uint1024_t hashGenesis =  ChainState::Genesis();
 
-            /* Loop back until genesis. */
-            while(state.GetHash() != hashGenesis)
+            /* Loop back 1440 blocks. */
+            while(true)
             {
+                /* Return false on genesis. */
+                if(state.GetHash() == hashGenesis)
+                    return false;
+
                 /* Return true on channel found. */
                 if(state.GetChannel() == nChannel)
                     return true;
@@ -71,11 +75,10 @@ namespace TAO
                 state = state.Prev();
                 if(!state)
                     return false;
-
-                /* Check that the requested channel was active at this time */
-                if(!ChannelActive(state.GetBlockTime(), nChannel))
-                    return false;
             }
+
+            /* If the max depth expired, return the genesis. */
+            state = ChainState::stateGenesis;
 
             return false;
         }
