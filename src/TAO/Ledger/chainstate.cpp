@@ -61,8 +61,8 @@ namespace TAO
         bool ChainState::Synchronizing()
         {
             /* Persistent switch once synchronized. */
-            if(!fSynchronizing.load())
-                return false;
+            //if(!fSynchronizing.load())
+            //    return false;
 
             #ifndef UNIT_TESTS
 
