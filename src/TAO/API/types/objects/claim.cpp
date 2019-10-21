@@ -56,17 +56,14 @@ namespace TAO
             /* Lock the signature chain. */
             LOCK(users->CREATE_MUTEX);
 
-            /* Check that the sig chain is mature after the last coinbase/coinstake transaction in the chain. */
-            CheckMature(user->Genesis());
+            /* Create the transaction. */
+            TAO::Ledger::Transaction tx;
+            if(!Users::CreateTransaction(user, strPIN, tx))
+                throw APIException(-17, "Failed to create transaction");
 
             /* Get the transaction id. */
             uint512_t hashTx;
             hashTx.SetHex(params["txid"].get<std::string>());
-
-            /* Create the transaction. */
-            TAO::Ledger::Transaction tx;
-            if(!TAO::Ledger::CreateTransaction(user, strPIN, tx))
-                throw APIException(-17, "Failed to create transaction.");
 
             /* Read the Transfer transaction being claimed. */
             TAO::Ledger::Transaction txPrev;

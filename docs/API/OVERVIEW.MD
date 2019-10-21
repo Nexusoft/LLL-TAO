@@ -347,6 +347,7 @@ Error Codes
 | -210 | Recipient account is for a different token |
 | -211 | Recipient object has not been tokenized |
 | -212 | Invalid token |
+| -213 | Cannot create transactions whilst synchronizing |
 
 
 

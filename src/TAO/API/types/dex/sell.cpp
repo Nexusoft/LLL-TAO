@@ -100,13 +100,10 @@ namespace TAO
             if(!objectTo.Parse())
                 throw APIException(-49, "Failed to parse to state");
 
-            /* Check that the sig chain is mature after the last coinbase/coinstake transaction in the chain. */
-            CheckMature(user->Genesis());
-
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
-            if(!TAO::Ledger::CreateTransaction(user, strPIN, tx))
-                throw APIException(-17, "Failed to create transaction.");
+            if(!Users::CreateTransaction(user, strPIN, tx))
+                throw APIException(-17, "Failed to create transaction");
 
             /* Transation payload. */
             tx[0] << uint8_t(TAO::Operation::OP::CONDITION) << uint8_t(TAO::Operation::OP::DEBIT) << hashFrom << TAO::Register::WILDCARD_ADDRESS << nAmount << uint64_t(0);

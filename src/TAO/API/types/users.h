@@ -606,6 +606,21 @@ namespace TAO
             static uint32_t BlocksToMaturity(const uint256_t hashGenesis);
 
 
+            /** CreateTransaction
+            *
+            *  Create a new transaction object for signature chain, if allowed to do so
+            *
+            *  @param[in] user The signature chain to generate this tx
+            *  @param[in] pin The pin number to generate with.
+            *  @param[out] tx The traansaction object being created
+            *
+            *  @return True of the transaction was successfully created
+            *
+            **/
+            static bool CreateTransaction(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin,
+                               TAO::Ledger::Transaction& tx);
+
+
           private:
 
 
