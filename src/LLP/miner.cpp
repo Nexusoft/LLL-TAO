@@ -26,6 +26,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/supply.h>
+#include <TAO/Ledger/include/prime.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/include/process.h>
@@ -889,6 +890,9 @@ namespace LLP
           /* Update the block's timestamp. */
           pBlock->UpdateTime();
 
+          /* Calculate prime offsets before signing. */
+          TAO::Ledger::GetOffsets(pBlock->GetPrime(), pBlock->vOffsets);
+
           /* Check that the account is unlocked for minting */
           if(!TAO::API::users->CanMine())
               return debug::error(FUNCTION, "Account has not been unlocked for mining");
@@ -900,7 +904,6 @@ namespace LLP
           memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pSigChain = TAO::API::users->GetAccount(0);
           if(!pSigChain)
               return debug::error(FUNCTION, "Couldn't get the unlocked sigchain");
-
 
           /* Sign the submitted block */
           std::vector<uint8_t> vBytes = pSigChain->Generate(pBlock->producer.nSequence, PIN).GetBytes();

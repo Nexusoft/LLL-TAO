@@ -374,8 +374,16 @@ namespace TAO
                 if(!producer.IsCoinBase())
                     return debug::error(FUNCTION, "producer transaction has to be coinbase for proof of work");
 
+                /* Check for prime offsets. */
+                if(GetChannel() == CHANNEL::PRIME && vOffsets.empty())
+                    return debug::error(FUNCTION, "prime block requires valid offsets");
+
+                /* Check that other channels do not have offsets. */
+                if(GetChannel() != CHANNEL::PRIME && !vOffsets.empty())
+                    return debug::error(FUNCTION, "offsets included in non prime block");
+
                 /* Check the Proof of Work Claims. */
-                if(!ChainState::Synchronizing() && !VerifyWork())
+                if(!VerifyWork())
                     return debug::error(FUNCTION, "invalid proof of work");
             }
 
@@ -561,7 +569,7 @@ namespace TAO
             debug::log(2, "  proof:  ", (GetChannel() == 0 ? StakeHash() : ProofHash()).SubString());
 
             /* Channel switched output. */
-            if(GetChannel() == 1)
+            if(GetChannel() == CHANNEL::PRIME)
                 debug::log(2, "  prime cluster verified of size ", GetDifficulty(nBits, 1));
             else
                 debug::log(2, "  target: ", LLC::CBigNum().SetCompact(nBits).getuint1024().SubString());

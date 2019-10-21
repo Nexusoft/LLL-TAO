@@ -337,7 +337,7 @@ namespace TAO
                     return debug::error(FUNCTION, "prime origins below 1016-bits");
 
                 /* Check proof of work limits. */
-                uint32_t nPrimeBits = GetPrimeBits(GetPrime());
+                uint32_t nPrimeBits = GetPrimeBits(GetPrime(), vOffsets);
                 if(nPrimeBits < bnProofOfWorkLimit[1])
                     return debug::error(FUNCTION, "prime-cluster below minimum work" "(", nPrimeBits, ")");
 
@@ -356,7 +356,6 @@ namespace TAO
                 /* Check that the hash is within range. */
                 if(bnTarget <= 0 || bnTarget > bnProofOfWorkLimit[2])
                     return debug::error(FUNCTION, "proof-of-work hash not in range");
-
 
                 /* Check that the that enough work was done on this block. */
                 if(ProofHash() > bnTarget.getuint1024())

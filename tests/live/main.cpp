@@ -187,10 +187,33 @@ public:
 
 
 #include <Util/include/softfloat.h>
+#include <TAO/Ledger/include/prime.h>
 
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
+    uint1024_t hashOrigin = uint1024_t("0x01001a8938c1b4620c106b072a02c8799da027dabfd864e9130d4ee32e8fbf67280d93e21424ee57d2045a0a1e88a4af6a74f2b1eaddede19fb3a7cea2eef8dcfe4c7f0099c9324eb49f7f06eb15e77a121a4919a27d2fc67ba0de6a68a78ad53bd77fd8f6adad237747c08582634526737b544b073464addf3c7df6f67eb162");
+    uint64_t nNonce = 2705923963233114459;
+
+
+    std::vector<uint8_t> vOffsets;
+
+    runtime::timer benchmark;
+    benchmark.Reset();
+    double nDifficulty = TAO::Ledger::GetPrimeDifficulty(hashOrigin + nNonce, vOffsets);
+
+    debug::log(0, "Difficulty ", nDifficulty, " in ", benchmark.ElapsedMilliseconds(), "ms");
+
+    TAO::Ledger::GetOffsets(hashOrigin + nNonce, vOffsets);
+
+    benchmark.Reset();
+    double nDifficulty2 = TAO::Ledger::GetPrimeDifficulty(hashOrigin + nNonce, vOffsets);
+
+    debug::log(0, "Difficulty ", nDifficulty2, " in ", benchmark.ElapsedMilliseconds(), "ms");
+
+    return 0;
+
+
     TestDB* testDB = new TestDB();
 
     uint1024_t hash = LLC::GetRand();

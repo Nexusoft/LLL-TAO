@@ -371,7 +371,7 @@ namespace TAO
             /* Compute the Released Reserves. */
             if(IsProofOfWork())
             {
-                if(nHeight==74454)  
+                if(nHeight==74454)
                     debug::log(0,"TEST");
 
                 /* Calculate the coinbase rewards from the coinbase transaction. */
