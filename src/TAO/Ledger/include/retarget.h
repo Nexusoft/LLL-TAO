@@ -37,11 +37,11 @@ namespace TAO
 
 
         /* Target Timespan of 300 Seconds. */
-        const uint32_t TESTNET_MINING_TARGET_SPACING = 40;
+        const uint32_t TESTNET_MINING_TARGET_SPACING = 80;
 
 
         /* Target Timespan of 150 seconds. */
-        const uint32_t TESTNET_STAKE_TARGET_SPACING = 20;
+        const uint32_t TESTNET_STAKE_TARGET_SPACING = 40;
 
 
         /** GetChainTimes

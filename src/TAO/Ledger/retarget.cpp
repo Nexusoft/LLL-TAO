@@ -94,7 +94,6 @@ namespace TAO
         /* Trust Retargeting: Modulate Difficulty based on production rate. */
         uint32_t RetargetTrust(const BlockState& state, bool fDebug)
         {
-
             /* Get Last Block Index [1st block back in Channel]. **/
             BlockState first = state;
             if(!GetLastState(first, 0))
@@ -106,7 +105,13 @@ namespace TAO
                 return bnProofOfWorkStart[0].GetCompact();
 
             /* Get the Block Time and Target Spacing. */
-            uint64_t nBlockTime   = GetWeightedTimes(first, 5);
+            uint64_t nBlockTime   = GetWeightedTimes(first, state.nVersion >= 7 ? 3 : 5);
+
+            /* Check for minimum difficulty reset for testnet. */
+            if(config::fTestNet.load() && nBlockTime > 600) //if more than 10 minutes since last block, reset difficulty
+                return bnProofOfWorkLimit[0].GetCompact();
+
+            /* Get target difficulty. */
             uint64_t nBlockTarget = config::fTestNet.load() ? TESTNET_STAKE_TARGET_SPACING : STAKE_TARGET_SPACING;
 
             /* The Upper and Lower Bound Adjusters. */
@@ -124,7 +129,7 @@ namespace TAO
                 cv::softdouble nProportions = cv::softdouble(nOverlap) / cv::softdouble(nBlockTarget * 2);
 
                 /** Get Mod from Maximum Decrease Equation with Decimal portions multiplied by Propotions. **/
-                cv::softdouble nMod = cv::softdouble(1.0) - (cv::softdouble(0.15) * nProportions);
+                cv::softdouble nMod = cv::softdouble(1.0) - (cv::softdouble(state.nVersion >= 7 ? 0.075 : 0.15) * nProportions);
                 nLowerBound = static_cast<uint64_t>(cv::softdouble(nBlockTarget) * nMod);
             }
 
@@ -201,7 +206,12 @@ namespace TAO
 
             /* Standard Time Proportions */
             uint64_t nBlockTime = ((state.nVersion >= 4) ?
-                GetWeightedTimes(first, 5) : std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t)1));
+                GetWeightedTimes(first, state.nVersion >= 7 ? 3 : 5) : std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t)1));
+
+            /* Check for minimum difficulty reset for testnet. */
+            if(config::fTestNet.load() && nBlockTime > 600) //if more than 10 minutes since last block, reset difficulty
+                return bnProofOfWorkLimit[1].getuint32();
+
             uint64_t nBlockTarget = config::fTestNet.load() ? TESTNET_MINING_TARGET_SPACING : MINING_TARGET_SPACING;
 
             /* Chain Mod: Is a proportion to reflect outstanding released funds. Version 1 Deflates difficulty slightly
@@ -238,7 +248,7 @@ namespace TAO
                     cv::softdouble nProportions = cv::softdouble(nOverlap) / cv::softdouble(nBlockTarget * 2);
 
                     /* Get Mod from Maximum Decrease Equation with Decimal portions multiplied by Propotions. */
-                    nMod = cv::softdouble(cv::softdouble(1) - (nProportions * (cv::softdouble(0.5) / ((nDifficulty - 1) * cv::softdouble(5)))));
+                    nMod = cv::softdouble(cv::softdouble(1) - (nProportions * (cv::softdouble(state.nVersion >= 7 ? 0.125 : 0.5) / ((nDifficulty - 1) * cv::softdouble(5)))));
                 }
 
                 /* If the time is below target, increase difficulty by modular
@@ -338,7 +348,11 @@ namespace TAO
 
             /* Get the Block Times with Minimum of 1 to Prevent Time Warps. */
             uint64_t nBlockTime = ((state.nVersion >= 4) ?
-                GetWeightedTimes(first, 5) : std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t) 1));
+                GetWeightedTimes(first, state.nVersion >= 7 ? 3 : 5) : std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t) 1));
+
+            /* Check for minimum difficulty reset for testnet. */
+            if(config::fTestNet.load() && nBlockTime > 600) //if more than 10 minutes since last block, reset difficulty
+                return bnProofOfWorkLimit[2].GetCompact();
 
             /* Set the block target timespan. */
             uint64_t nBlockTarget = config::fTestNet.load() ? TESTNET_MINING_TARGET_SPACING : MINING_TARGET_SPACING;
@@ -372,7 +386,7 @@ namespace TAO
                     cv::softdouble nProportions = cv::softdouble(nOverlap) / cv::softdouble(nBlockTarget * 2);
 
                     /* Get Mod from Maximum Decrease Equation with Decimal portions multiplied by Propotions. */
-                    cv::softdouble nMod = cv::softdouble(1.0) - (((state.nVersion >= 4) ? cv::softdouble(0.15) : cv::softdouble(0.75)) * nProportions);
+                    cv::softdouble nMod = cv::softdouble(1.0) - (((state.nVersion >= 4) ? cv::softdouble(state.nVersion >= 7 ? 0.075 : 0.15) : cv::softdouble(0.75)) * nProportions);
                     nLowerBound = static_cast<uint64_t>(cv::softdouble(nBlockTarget) * nMod);
                 }
 
