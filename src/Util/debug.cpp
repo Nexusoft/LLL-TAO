@@ -148,9 +148,12 @@ namespace debug
                 {
                     confFileParams += argItem.first;
 
-                    /* Check for password parameters and hide them in the debug output. */
+                    /* Check for password/autologin parameters and hide them in the debug output. */
                     if(argItem.first.compare(0, 12, "-rpcpassword") == 0
-                    || argItem.first.compare(0, 12, "-apipassword") == 0)
+                    || argItem.first.compare(0, 12, "-apipassword") == 0
+                    || argItem.first.compare(0, 9, "-username") == 0
+                    || argItem.first.compare(0, 9, "-password") == 0
+                    || argItem.first.compare(0, 4, "-pin") == 0)
                         confFileParams += "=XXXXXXXX";
                     else if(!argItem.second[i].empty())
                         confFileParams += "=" + argItem.second[i];
@@ -176,6 +179,15 @@ namespace debug
 
             else if(std::string(argv[i]).compare(0, 12, "-apipassword") == 0)
                 cmdLineParms += "-apipassword=XXXXXXXX ";
+
+            else if(std::string(argv[i]).compare(0, 9, "-username") == 0)
+                cmdLineParms += "-username=XXXXXXXX ";
+
+            else if(std::string(argv[i]).compare(0, 9, "-password") == 0)
+                cmdLineParms += "-password=XXXXXXXX ";
+
+            else if(std::string(argv[i]).compare(0, 4, "-pin") == 0)
+                cmdLineParms += "-pin=XXXXXXXX ";
 
             else
                 cmdLineParms += std::string(argv[i]) + " ";
