@@ -60,13 +60,9 @@ namespace TAO
             /* Get the genesis block hash. */
             uint1024_t hashGenesis =  ChainState::Genesis();
 
-            /* Loop back 1440 blocks. */
-            for(uint_t i = 0; i < 1440; ++i)
+            /* Loop back until genesis. */
+            while(state.GetHash() != hashGenesis)
             {
-                /* Return false on genesis. */
-                if(state.GetHash() == hashGenesis)
-                    return false;
-
                 /* Return true on channel found. */
                 if(state.GetChannel() == nChannel)
                     return true;
@@ -75,10 +71,11 @@ namespace TAO
                 state = state.Prev();
                 if(!state)
                     return false;
-            }
 
-            /* If the max depth expired, return the genesis. */
-            state = ChainState::stateGenesis;
+                /* Check that the requested channel was active at this time */
+                if(!ChannelActive(state.GetBlockTime(), nChannel))
+                    return false;
+            }
 
             return false;
         }
@@ -374,6 +371,9 @@ namespace TAO
             /* Compute the Released Reserves. */
             if(IsProofOfWork())
             {
+                if(nHeight==74454)  
+                    debug::log(0,"TEST");
+
                 /* Calculate the coinbase rewards from the coinbase transaction. */
                 uint64_t nCoinbaseRewards[3] = { 0, 0, 0 };
                 if(nVersion < 7) //legacy blocks
