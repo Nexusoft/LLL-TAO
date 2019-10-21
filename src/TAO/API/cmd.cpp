@@ -102,6 +102,7 @@ namespace TAO
                     "Connection: close\r\n",
                     "Content-Length: ", strContent.size(), "\r\n",
                     "Content-Type: application/json\r\n",
+                    "Origin: http://localhost:8080\r\n",
                     "Server: Nexus-JSON-API\r\n",
                     "Authorization: Basic ", strUserPass64, "\r\n",
                     "\r\n",

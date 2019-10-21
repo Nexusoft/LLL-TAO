@@ -189,7 +189,7 @@ namespace LLD
         const std::pair<uint512_t, uint32_t> pair = std::make_pair(hashTx, nContract);
 
         /* Memory mode for pre-database commits. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::ERASE)
         {
             LOCK(MEMORY_MUTEX);
 
@@ -217,7 +217,7 @@ namespace LLD
 
             return true;
         }
-        else if(nFlags == TAO::Ledger::FLAGS::BLOCK || nFlags == TAO::Ledger::FLAGS::ERASE)
+        else if(nFlags == TAO::Ledger::FLAGS::BLOCK)
         {
             LOCK(MEMORY_MUTEX);
 
@@ -226,7 +226,7 @@ namespace LLD
             {
                 /* Check for last claimed amount. */
                 const uint64_t nMemoryClaimed = pCommit->mapClaims[pair];
-                if(nMemoryClaimed == nClaimed || nFlags == TAO::Ledger::FLAGS::ERASE)
+                if(nMemoryClaimed == nClaimed)
                 {
                     /* Erase if a transaction. */
                     if(pMemory)
@@ -238,10 +238,6 @@ namespace LLD
                         pCommit->mapClaims.erase(pair);
                 }
             }
-
-            /* Quit when erasing. */
-            if(nFlags == TAO::Ledger::FLAGS::ERASE)
-                return true;
         }
 
         return Write(pair, nClaimed);
@@ -255,7 +251,7 @@ namespace LLD
         const std::pair<uint512_t, uint32_t> pair = std::make_pair(hashTx, nContract);
 
         /* Memory mode for pre-database commits. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::ERASE)
         {
             LOCK(MEMORY_MUTEX);
 

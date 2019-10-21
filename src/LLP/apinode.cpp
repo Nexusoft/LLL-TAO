@@ -104,65 +104,100 @@ namespace LLP
         try
         {
             json::json params;
-            if(INCOMING.strContent.size() > 0)
+            if(INCOMING.strType == "POST")
             {
-                if(INCOMING.mapHeaders.count("content-type"))
+                /* Only parse content if some has been provided */
+                if(INCOMING.strContent.size() > 0)
                 {
-                    if(INCOMING.mapHeaders["content-type"] == "application/x-www-form-urlencoded")
+                    /* Handle different content types. */
+                    if(INCOMING.mapHeaders.count("content-type"))
                     {
-                        /* Decode if url-form-encoded. */
-                        INCOMING.strContent = encoding::urldecode(INCOMING.strContent);
-
-                        /* Split by delimiter. */
-                        std::vector<std::string> vParams;
-                        ParseString(INCOMING.strContent, '&', vParams);
-
-                        /* Get the parameters. */
-                        for(std::string strParam : vParams)
+                        /* Form encoding. */
+                        if(INCOMING.mapHeaders["content-type"] == "application/x-www-form-urlencoded")
                         {
-                            std::string::size_type pos2 = strParam.find("=");
-                            if(pos2 == strParam.npos)
-                                break;
+                            /* Decode if url-form-encoded. */
+                            INCOMING.strContent = encoding::urldecode(INCOMING.strContent);
 
-                            std::string key   = strParam.substr(0, pos2);
-                            std::string value = strParam.substr(pos2 + 1);
+                            /* Split by delimiter. */
+                            std::vector<std::string> vParams;
+                            ParseString(INCOMING.strContent, '&', vParams);
 
-                            params[key] = value;
+                            /* Get the parameters. */
+                            for(std::string strParam : vParams)
+                            {
+                                std::string::size_type pos2 = strParam.find("=");
+                                if(pos2 == strParam.npos)
+                                    break;
+
+                                std::string key   = strParam.substr(0, pos2);
+                                std::string value = strParam.substr(pos2 + 1);
+
+                                params[key] = value;
+                            }
                         }
+
+                        /* JSON encoding. */
+                        else if(INCOMING.mapHeaders["content-type"] == "application/json")
+                            params = json::json::parse(INCOMING.strContent);
+                        else
+                            throw TAO::API::APIException(-5, debug::safe_printstr("content-type ", INCOMING.mapHeaders["content-type"], " not supported"));
                     }
-                    else if(INCOMING.mapHeaders["content-type"] == "application/json")
-                        params = json::json::parse(INCOMING.strContent);
                     else
-                        throw TAO::API::APIException(-5, debug::safe_printstr("content-type ", INCOMING.mapHeaders["content-type"], " not supported"));
+                        throw TAO::API::APIException(-6, "content-type not provided when content included");
                 }
-                else
-                    throw TAO::API::APIException(-6, "content-type not provided when content included");
-
             }
-
-            /* Detect if it is url form encoding. */
-            std::string::size_type pos = METHOD.find("?");
-            if(pos != METHOD.npos)
+            else if(INCOMING.strType == "GET")
             {
-                /* Parse out the form entries by char '&' */
-                std::vector<std::string> vParams;
-                ParseString(encoding::urldecode(METHOD.substr(pos + 1)), '&', vParams);
-
-                /* Parse the form from the end of method. */
-                METHOD = METHOD.substr(0, pos);
-
-                /* Check each form entry. */
-                for(std::string strParam : vParams)
+                /* Detect if it is url form encoding. */
+                std::string::size_type pos = METHOD.find("?");
+                if(pos != METHOD.npos)
                 {
-                    std::string::size_type pos2 = strParam.find("=");
-                    if(pos2 == strParam.npos)
-                        break;
+                    /* Parse out the form entries by char '&' */
+                    std::vector<std::string> vParams;
+                    ParseString(encoding::urldecode(METHOD.substr(pos + 1)), '&', vParams);
 
-                    std::string key   = strParam.substr(0, pos2);
-                    std::string value = strParam.substr(pos2 + 1);
+                    /* Parse the form from the end of method. */
+                    METHOD = METHOD.substr(0, pos);
 
-                    params[key] = value;
+                    /* Check each form entry. */
+                    for(std::string strParam : vParams)
+                    {
+                        std::string::size_type pos2 = strParam.find("=");
+                        if(pos2 == strParam.npos)
+                            break;
+
+                        std::string key   = strParam.substr(0, pos2);
+                        std::string value = strParam.substr(pos2 + 1);
+
+                        params[key] = value;
+                    }
                 }
+            }
+            else if(INCOMING.strType == "OPTIONS")
+            {
+                /* Build packet. */
+                HTTPPacket RESPONSE(204);
+                if(INCOMING.mapHeaders.count("origin"))
+                    RESPONSE.mapHeaders["Access-Control-Allow-Origin"] = INCOMING.mapHeaders["origin"];;
+
+                /* Check for access methods. */
+                if(INCOMING.mapHeaders.count("access-control-request-method"))
+                    RESPONSE.mapHeaders["Access-Control-Allow-Methods"] = "POST, GET, OPTIONS";
+
+                /* Check for access headers. */
+                if(INCOMING.mapHeaders.count("access-control-request-headers"))
+                    RESPONSE.mapHeaders["Access-Control-Allow-Headers"] = INCOMING.mapHeaders["access-control-request-headers"];
+
+                /* Set conneciton headers. */
+                RESPONSE.mapHeaders["Connection"]             = "keep-alive";
+                RESPONSE.mapHeaders["Access-Control-Max-Age"] = "86400";
+                //RESPONSE.mapHeaders["Content-Length"]         = "0";
+                RESPONSE.mapHeaders["Accept"]                 = "*/*";
+
+                /* Add content. */
+                this->WritePacket(RESPONSE);
+
+                return true;
             }
 
             /* Execute the api and methods. */
@@ -191,49 +226,58 @@ namespace LLP
         /* Handle for custom API exceptions. */
         catch(TAO::API::APIException& e)
         {
-            ErrorReply(e.ToJSON());
+            /* Get error from exception. */
+            json::json jsonError = e.ToJSON();
+
+            /* Default error status code is 500. */
+            uint16_t nStatus = 500;
+            int32_t nError = jsonError["code"].get<int32_t>();
+
+            /* Set status by error code. */
+            switch(nError)
+            {
+                //API not found error code
+                case -4:
+                    nStatus = 404;
+                    break;
+
+                //unsupported content type
+                case -5:
+                    nStatus = 500;
+                    break;
+
+                //content type not provided
+                case -6:
+                    nStatus = 500;
+                    break;
+            }
+
+            /* Send the response packet. */
+            json::json ret = { { "error", jsonError } };
+
+            /* Build packet. */
+            HTTPPacket RESPONSE(nStatus);
+            if(INCOMING.mapHeaders.count("origin"))
+                RESPONSE.mapHeaders["Access-Control-Allow-Origin"] = INCOMING.mapHeaders["origin"];
+
+            /* Add content. */
+            RESPONSE.strContent = ret.dump();
+            this->WritePacket(RESPONSE);
 
             return false;
         }
 
-        /* Push a response. */
-        PushResponse(200, ret.dump());
+
+        /* Build packet. */
+        HTTPPacket RESPONSE(200);
+        if(INCOMING.mapHeaders.count("origin"))
+            RESPONSE.mapHeaders["Access-Control-Allow-Origin"] = INCOMING.mapHeaders["origin"];
+
+        /* Add content. */
+        RESPONSE.strContent = ret.dump();
+        this->WritePacket(RESPONSE);
 
         return true;
-    }
-
-
-    /* Handles a reply error code and response. */
-    void APINode::ErrorReply(const json::json& jsonError)
-    {
-        /* Default error status code is 500. */
-        uint16_t nStatus = 500;
-
-        /* Get the error code from json. */
-        int32_t nError = jsonError["code"].get<int32_t>();
-
-        /* Set status by error code. */
-        switch(nError)
-        {
-            //API not found error code
-            case -4:
-                nStatus = 404;
-                break;
-
-            //unsupported content type
-            case -5:
-                nStatus = 500;
-                break;
-
-            //content type not provided
-            case -6:
-                nStatus = 500;
-                break;
-        }
-
-        /* Send the response packet. */
-        json::json ret = { { "error", jsonError } };
-        PushResponse(nStatus, ret.dump());
     }
 
 

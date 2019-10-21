@@ -15,6 +15,8 @@ ________________________________________________________________________________
 #include <LLC/types/bignum.h>
 #include <openssl/bn.h>
 
+#include <Util/include/debug.h>
+
 
 /* Global TAO namespace. */
 namespace TAO
@@ -54,6 +56,10 @@ namespace TAO
                 /* Loop through offsets pattern. */
                 for(const auto& nOffset : vOffsets)
                 {
+                    /* Check for valid offsets. */
+                    if(nOffset > 12)
+                        return 0.0;
+
                     /* Set the next offset position. */
                     hashNext += nOffset;
 
@@ -91,10 +97,37 @@ namespace TAO
         }
 
 
-        /* Gets the unsigned int representative of a decimal prime difficulty. */
-        uint32_t GetPrimeBits(const uint1024_t& hashPrime)
+        /* Return list of offsets for use in optimized prime proof of work calculations. */
+        void GetOffsets(const uint1024_t& hashPrime, std::vector<uint8_t> &vOffsets)
         {
-            std::vector<uint8_t> vOffsets;
+            /* Check first prime. */
+            if(!PrimeCheck(hashPrime))
+                return;
+
+            /* Erase offsets if any */
+            vOffsets.clear();
+            uint8_t nOffset = 2;
+
+            /* Set temporary variables for the checks. */
+            uint1024_t hashLast = hashPrime;
+            for(uint1024_t hashNext = hashPrime + 2; nOffset <= 12; hashNext += 2, nOffset += 2)
+            {
+                /* Check if this interval is prime. */
+                if(PrimeCheck(hashNext))
+                {
+                    hashLast = hashNext;
+
+                    /* Add offset to vector. */
+                    vOffsets.push_back(nOffset);
+                    nOffset = 0;
+                }
+            }
+        }
+
+
+        /* Gets the unsigned int representative of a decimal prime difficulty. */
+        uint32_t GetPrimeBits(const uint1024_t& hashPrime, const std::vector<uint8_t>& vOffsets)
+        {
             return SetBits(GetPrimeDifficulty(hashPrime, vOffsets));
         }
 

@@ -120,8 +120,12 @@ namespace TAO
                 return debug::error(FUNCTION, "cannot debit to reserved address");
 
             /* Check the contract for conditions. */
-            if(hashTo == TAO::Register::WILDCARD_ADDRESS && contract.Empty(Contract::CONDITIONS))
+            if(hashTo.IsWildcard() && contract.Empty(Contract::CONDITIONS))
                 return debug::error(FUNCTION, "cannot debit to wildcard with no conditions");
+
+            /* Check for valid addresses. */
+            if(!hashTo.IsWildcard() && !hashTo.IsAccount() && !hashTo.IsToken() && !hashTo.IsTrust() && !hashTo.IsObject())
+                return debug::error(FUNCTION, "cannot debit to unsupported object register");
 
             /* Check for debit to and from same account. */
             if(hashFrom == hashTo)

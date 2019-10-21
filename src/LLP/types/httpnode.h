@@ -52,7 +52,6 @@ namespace LLP
         /* Internal Read Buffer. */
         std::vector<int8_t> vchBuffer;
 
-
     public:
 
         /** Default Constructor **/

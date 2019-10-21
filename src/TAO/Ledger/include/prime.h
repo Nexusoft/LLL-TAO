@@ -46,11 +46,24 @@ namespace TAO
          *  of Fermat Remainder from last Composite Number [0 - 1]
          *
          *  @param[in] hashPrime The prime to check.
+         *  @param[in] vOffsets Optional offsets for quicker checking.
          *
          *  @return The double value of prime difficulty.
          *
          **/
         double GetPrimeDifficulty(const uint1024_t& hashPrime, const std::vector<uint8_t>& vOffsets);
+
+
+        /** GetOffsets
+         *
+         *  Return list of offsets for use in optimized prime proof of work calculations.
+         *
+         *  @param[in] hashPrime The prime to check.
+         *  @param[out] vOffsets The list of offsets to return.
+         *
+         *
+         **/
+        void GetOffsets(const uint1024_t& hashPrime, std::vector<uint8_t> &vOffsets);
 
 
         /** GetPrimeBits
@@ -62,7 +75,7 @@ namespace TAO
          *  @return uint32_t representation of prime difficulty.
          *
          **/
-        uint32_t GetPrimeBits(const uint1024_t& hashPrime);
+        uint32_t GetPrimeBits(const uint1024_t& hashPrime, const std::vector<uint8_t>& vOffsets);
 
 
         /** GetFractionalDifficulty

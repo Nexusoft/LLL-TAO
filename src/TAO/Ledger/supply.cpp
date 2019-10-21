@@ -51,9 +51,9 @@ namespace TAO
             /* Compound all the minutes of the interval and types. */
             for(uint32_t nMinute = nMinutes; nMinute < (nInterval + nMinutes); ++nMinute)
             {
-                    nMoneySupply += GetSubsidy(nMinute, 0);
-                    nMoneySupply += GetSubsidy(nMinute, 1);
-                    nMoneySupply += GetSubsidy(nMinute, 2);
+                nMoneySupply += GetSubsidy(nMinute, 0);
+                nMoneySupply += GetSubsidy(nMinute, 1);
+                nMoneySupply += GetSubsidy(nMinute, 2);
             }
 
             return nMoneySupply * 2;

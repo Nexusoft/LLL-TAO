@@ -13,10 +13,15 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <LLP/include/global.h>
+#include <LLP/types/tritium.h>
+
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/utils.h>
 
+#include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/constants.h>
+#include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/transaction.h>
 
@@ -339,6 +344,29 @@ namespace TAO
             }
 
             return nBlocksToMaturity;
+        }
+
+
+        /* Create a new transaction object for signature chain, if allowed to do so */
+        bool Users::CreateTransaction(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin,
+                            TAO::Ledger::Transaction& tx)
+        {
+            /* No need to check connections or maturity in private mode as there is no PoS/Pow */
+            if(!config::GetBoolArg("-private"))
+            {
+                /* If not on local-only testnet then we need to ensure we are connected to the network and 
+                synchronized before allowing any sig chain transactions to be created */
+                bool fLocalTestnet = config::fTestNet.load() && !config::GetBoolArg("-dns", true);
+
+                if(TAO::Ledger::ChainState::Synchronizing() || (LLP::TRITIUM_SERVER->GetConnectionCount() == 0 && !fLocalTestnet))
+                    throw APIException(-213, "Cannot create transactions whilst synchronizing");
+
+                /* Check that the sig chain is mature after the last coinbase/coinstake transaction in the chain. */
+                CheckMature(user->Genesis());
+            }
+
+            /* Create the transaction and return */
+            return TAO::Ledger::CreateTransaction(user, pin, tx);
         }
     }
 }

@@ -606,6 +606,21 @@ namespace TAO
             static uint32_t BlocksToMaturity(const uint256_t hashGenesis);
 
 
+            /** CreateTransaction
+            *
+            *  Create a new transaction object for signature chain, if allowed to do so
+            *
+            *  @param[in] user The signature chain to generate this tx
+            *  @param[in] pin The pin number to generate with.
+            *  @param[out] tx The traansaction object being created
+            *
+            *  @return True of the transaction was successfully created
+            *
+            **/
+            static bool CreateTransaction(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin,
+                               TAO::Ledger::Transaction& tx);
+
+
           private:
 
 
@@ -633,7 +648,7 @@ namespace TAO
                 std::vector<std::pair<std::shared_ptr<Legacy::Transaction>, uint32_t>> &vContracts);
 
 
-            /** CreateSigchain
+            /** create_sig_chain
              *
              *  Creates a signature chain for the given credentials and returns the transaction object if successful
              *
@@ -643,11 +658,11 @@ namespace TAO
              *  @param[out] tx The transaction object that was created.
              *
              **/
-            void CreateSigchain(const SecureString& strUsername, const SecureString& strPassword,  const SecureString& strPin,
+            void create_sig_chain(const SecureString& strUsername, const SecureString& strPassword,  const SecureString& strPin,
                 TAO::Ledger::Transaction &tx);
 
 
-            /** SanitizeContract
+            /** sanitize_contract
             *
             *  Checks that the contract passes both Build() and Execute() 
             *
@@ -657,7 +672,17 @@ namespace TAO
             *  @return Return value description.
             *
             **/
-            bool SanitizeContract(TAO::Operation::Contract& contract, std::map<uint256_t, TAO::Register::State> &mapStates );
+            bool sanitize_contract(TAO::Operation::Contract& contract, std::map<uint256_t, TAO::Register::State> &mapStates );
+
+
+
+            /** auto_login
+            *
+            *  Automatically logs in the sig chain using the credentials configured in the config file.  Will also create the sig
+            *  chain if it doesn't exist and configured with autocreate=1  
+            *
+            **/
+            void auto_login();
 
 
         };

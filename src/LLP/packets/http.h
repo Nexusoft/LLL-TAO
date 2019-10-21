@@ -209,6 +209,10 @@ namespace LLP
                     strType = "200 OK";
                     break;
 
+                case 204:
+                    strType = "204 No Content";
+                    break;
+
                 case 400:
                     strType = "400 Bad Request";
                     break;
@@ -229,6 +233,9 @@ namespace LLP
                     strType = "500 Internal Server Error";
                     break;
             }
+
+            /* Set connection header. */
+            mapHeaders["Connection"] = "close";
         }
 
 
@@ -243,16 +250,29 @@ namespace LLP
         std::vector<uint8_t> GetBytes() const
         {
             //TODO: use constant format (not ...) -> ostringstream
-            //TODO: add headers map to build more complex response rather than const as follows
-            std::string strReply = debug::safe_printstr(
-                    "HTTP/1.1 ", strType, "\r\n",
-                    "Date: ", debug::rfc1123Time(), "\r\n",
-                    "Connection: close\r\n",
+            std::string strReply = debug::safe_printstr
+            (
+                "HTTP/1.1 ", strType, "\r\n",
+                "Date: ", debug::rfc1123Time(), "\r\n",
+                "Server: Tritium HTTP\r\n"
+            );
+
+            /* Check for content. */
+            if(strContent.size() > 0)
+            {
+                strReply += debug::safe_printstr
+                (
                     "Content-Length: ", strContent.size(), "\r\n",
-                    "Content-Type: application/json\r\n",
-                    "Server: Nexus-JSON-RPC\r\n",
-                    "\r\n",
-                    strContent);
+                    "Content-Type: application/json\r\n"
+                );
+            }
+
+            /* Add custom header fields. */
+            for(const auto& header : mapHeaders)
+                strReply += debug::safe_printstr(header.first, ": ", header.second, "\r\n");;
+
+            /* Add end of header and content. */
+            strReply += debug::safe_printstr("\r\n", strContent);
 
             //get the bytes to submit over socket
             std::vector<uint8_t> vBytes(strReply.begin(), strReply.end());

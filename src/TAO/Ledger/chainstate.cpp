@@ -57,12 +57,13 @@ namespace TAO
 
 
         /* Flag to tell if initial blocks are downloading. */
-        static std::atomic<bool> fSynchronizing(true);
+        //static std::atomic<bool> fSynchronizing(true);
         bool ChainState::Synchronizing()
         {
+            bool fSynchronizing = true;
             /* Persistent switch once synchronized. */
-            if(!fSynchronizing.load())
-                return false;
+            //if(!fSynchronizing.load())
+            //    return false;
 
             #ifndef UNIT_TESTS
 
@@ -72,11 +73,11 @@ namespace TAO
 
             /* Check if there's been a new block. */
             static memory::atomic<uint1024_t> hashLast;
-            static std::atomic<uint32_t> nLastTime;
+            static std::atomic<uint64_t> nLastTime;
             if(hashBestChain.load() != hashLast.load())
             {
                 hashLast = hashBestChain.load();
-                nLastTime = static_cast<uint32_t>(runtime::unifiedtimestamp());
+                nLastTime = runtime::unifiedtimestamp();
             }
 
             /* Special testnet rule. */

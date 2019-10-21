@@ -29,6 +29,12 @@ namespace TAO
         /*  Commit the final state to disk. */
         bool Trust::Commit(const TAO::Register::State& state, const uint8_t nFlags)
         {
+            /* This should never be executed from mempool because Genesis should be in producer, but
+             * check the nFlags as a precaution
+             */
+            if(nFlags != TAO::Ledger::FLAGS::BLOCK)
+                return debug::error(FUNCTION, "can't commit trust with invalid flags");
+
             /* Get trust account address for state owner */
             uint256_t hashAddress =
                 TAO::Register::Address(std::string("trust"), state.hashOwner, TAO::Register::Address::TRUST);
@@ -37,16 +43,9 @@ namespace TAO
             if(!LLD::Register->HasTrust(state.hashOwner))
                 return debug::error(FUNCTION, "trust account not indexed");
 
-            /* Write the register to the database. */
-            if(nFlags == TAO::Ledger::FLAGS::BLOCK && !LLD::Register->WriteState(hashAddress, state, nFlags))
-                return debug::error(FUNCTION, "failed to write new state");
-
-            //  /* Attempt to write to disk.
-            //  * This should never be executed from mempool because Trust should be in producer, but
-            //  * check the nFlags as a precaution
-            //  */
-            // if(nFlags == TAO::Ledger::FLAGS::BLOCK && !LLD::Register->WriteTrust(state.hashOwner, state))
-            //     return debug::error(FUNCTION, "failed to write post-state to disk");
+            /* Attempt to write to disk. */
+            if(!LLD::Register->WriteTrust(state.hashOwner, state))
+                return debug::error(FUNCTION, "failed to write post-state to disk");
 
             return true;
         }

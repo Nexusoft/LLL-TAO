@@ -61,7 +61,7 @@ namespace TAO
             uint1024_t hashGenesis =  ChainState::Genesis();
 
             /* Loop back 1440 blocks. */
-            for(uint_t i = 0; i < 1440; ++i)
+            while(true)
             {
                 /* Return false on genesis. */
                 if(state.GetHash() == hashGenesis)
@@ -374,6 +374,9 @@ namespace TAO
             /* Compute the Released Reserves. */
             if(IsProofOfWork())
             {
+                if(nHeight==74454)
+                    debug::log(0,"TEST");
+
                 /* Calculate the coinbase rewards from the coinbase transaction. */
                 uint64_t nCoinbaseRewards[3] = { 0, 0, 0 };
                 if(nVersion < 7) //legacy blocks
@@ -796,14 +799,6 @@ namespace TAO
                     " [processing ", (nTotalContracts * 1000.0) / (nTimer + 1), " contracts/s]",
                     " [", ::GetSerializeSize(*this, SER_LLD, nVersion), " bytes]");
 
-                /* Do a quick mempool processing check for ORPHANS. */
-                timer.Reset();
-                mempool.Check();
-
-                /* Log the mempool consistency checking. */
-                nElapsed = timer.ElapsedMilliseconds();
-                debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION, "Mempool Consistency Check Complete in ", nElapsed,  " ms");
-
                 /* Set the best chain variables. */
                 ChainState::stateBest          = *this;
                 ChainState::hashBestChain      = hash;
@@ -857,6 +852,8 @@ namespace TAO
                         );
                     }
                 }
+                else
+                    debug::log(3, FUNCTION, "Skipping relay until chain is done synchronizing");
             }
 
             return true;

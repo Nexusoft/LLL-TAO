@@ -374,6 +374,14 @@ namespace TAO
                 if(!producer.IsCoinBase())
                     return debug::error(FUNCTION, "producer transaction has to be coinbase for proof of work");
 
+                /* Check for prime offsets. */
+                if(GetChannel() == CHANNEL::PRIME && vOffsets.empty())
+                    return debug::error(FUNCTION, "prime block requires valid offsets");
+
+                /* Check that other channels do not have offsets. */
+                if(GetChannel() != CHANNEL::PRIME && !vOffsets.empty())
+                    return debug::error(FUNCTION, "offsets included in non prime block");
+
                 /* Check the Proof of Work Claims. */
                 if(!VerifyWork())
                     return debug::error(FUNCTION, "invalid proof of work");
@@ -557,14 +565,12 @@ namespace TAO
             if(statePrev.nHeight + 1 != nHeight)
                 return debug::error(FUNCTION, "incorrect block height.");
 
-            /* Verbose logging of proof and target. */
-            debug::log(2, "  proof:  ", (GetChannel() == 0 ? StakeHash() : ProofHash()).SubString());
-
             /* Channel switched output. */
-            if(GetChannel() == 1)
-                debug::log(2, "  prime cluster verified of size ", GetDifficulty(nBits, 1));
-            else
+            if(GetChannel() != CHANNEL::PRIME)
+            {
+                debug::log(2, "  proof:  ", (GetChannel() == 0 ? StakeHash() : ProofHash()).SubString());
                 debug::log(2, "  target: ", LLC::CBigNum().SetCompact(nBits).getuint1024().SubString());
+            }
 
             /* Check that the nBits match the current Difficulty. **/
             if(nBits != GetNextTargetRequired(statePrev, GetChannel()))
@@ -651,6 +657,19 @@ namespace TAO
 
             /* Commit the transaction to database. */
             LLD::TxnCommit();
+
+            /* Check for best chain. */
+            if(GetHash() == ChainState::hashBestChain.load())
+            {
+                /* Do a quick mempool processing check for ORPHANS. */
+                runtime::timer timer;
+                timer.Reset();
+                mempool.Check();
+
+                /* Log the mempool consistency checking. */
+                uint64_t nElapsed = timer.ElapsedMilliseconds();
+                debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION, "Mempool Consistency Check Complete in ", nElapsed,  " ms");
+            }
 
             return true;
         }
