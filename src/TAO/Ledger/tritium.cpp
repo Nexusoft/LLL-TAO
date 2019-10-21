@@ -565,14 +565,12 @@ namespace TAO
             if(statePrev.nHeight + 1 != nHeight)
                 return debug::error(FUNCTION, "incorrect block height.");
 
-            /* Verbose logging of proof and target. */
-            debug::log(2, "  proof:  ", (GetChannel() == 0 ? StakeHash() : ProofHash()).SubString());
-
             /* Channel switched output. */
-            if(GetChannel() == CHANNEL::PRIME)
-                debug::log(2, "  prime cluster verified of size ", GetDifficulty(nBits, 1));
-            else
+            if(GetChannel() != CHANNEL::PRIME)
+            {
+                debug::log(2, "  proof:  ", (GetChannel() == 0 ? StakeHash() : ProofHash()).SubString());
                 debug::log(2, "  target: ", LLC::CBigNum().SetCompact(nBits).getuint1024().SubString());
+            }
 
             /* Check that the nBits match the current Difficulty. **/
             if(nBits != GetNextTargetRequired(statePrev, GetChannel()))

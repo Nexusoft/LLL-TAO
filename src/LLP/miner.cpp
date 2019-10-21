@@ -995,19 +995,9 @@ namespace LLP
            {
                std::string strTimestamp(convert::DateTimeStrFormat(runtime::unifiedtimestamp()));
                if(pBlock->nChannel == 1)
-               {
                    debug::log(1, FUNCTION, "new prime block found at unified time ", strTimestamp);
-                   debug::log(1, "  blockHash: ", pBlock->ProofHash().SubString(30), " block height: ", pBlock->nHeight);
-                   debug::log(1, "  prime cluster verified of size ", TAO::Ledger::GetDifficulty(pBlock->nBits, 1));
-               }
-               else if(pBlock->nChannel == 2)
-               {
-                   uint1024_t hashTarget = LLC::CBigNum().SetCompact(pBlock->nBits).getuint1024();
-
+               else
                    debug::log(1, FUNCTION, "new hash block found at unified time ", strTimestamp);
-                   debug::log(1, "  blockHash: ", pBlock->ProofHash().SubString(30), " block height: ", pBlock->nHeight);
-                   debug::log(1, "  target: ", hashTarget.SubString(30));
-               }
            }
 
            //TODO: check if block will orphan any transactions

@@ -26,6 +26,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/prime.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/constants.h>
+#include <TAO/Ledger/include/difficulty.h>
 #include <TAO/Ledger/include/timelocks.h>
 
 #include <ios>
@@ -344,6 +345,19 @@ namespace TAO
                 /* Check the prime difficulty target. */
                 if(nPrimeBits < nBits)
                     return debug::error(FUNCTION, "prime-cluster below target ", "(proof: ", nPrimeBits, " target: ", nBits, ")");
+
+                /* Build offset list. */
+                std::string strOffsets = "";
+                for(uint32_t i = 0; i < vOffsets.size(); ++i)
+                {
+                    strOffsets += debug::safe_printstr("+ ", uint32_t(vOffsets[i]));
+                    if(i < vOffsets.size() - 1)
+                        strOffsets += ", ";
+                }
+
+                /* Output offset list. */
+                debug::log(2, "  prime:  ", GetDifficulty(nPrimeBits, 1), " [", strOffsets, "]");
+                debug::log(2, "  target: ", GetDifficulty(nBits, 1));
 
                 return true;
             }
