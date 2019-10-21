@@ -57,9 +57,10 @@ namespace TAO
 
 
         /* Flag to tell if initial blocks are downloading. */
-        static std::atomic<bool> fSynchronizing(true);
+        //static std::atomic<bool> fSynchronizing(true);
         bool ChainState::Synchronizing()
         {
+            bool fSynchronizing = true;
             /* Persistent switch once synchronized. */
             //if(!fSynchronizing.load())
             //    return false;
