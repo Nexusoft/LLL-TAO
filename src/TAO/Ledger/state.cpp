@@ -64,7 +64,7 @@ namespace TAO
             while(true)
             {
                 /* Return false on genesis. */
-                if(state.GetHash() == hashGenesis)
+                if(state.nHeight == 0)
                     return false;
 
                 /* Return true on channel found. */
