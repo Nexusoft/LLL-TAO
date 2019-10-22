@@ -509,7 +509,6 @@ def grant_tokens(user, address, module, tokens, sid):
 # claim them and mark with filename append with "-yes".
 #
 def student_tokens_claimed(api, module, tokens):
-    user_type = api.username.split("-")[0]
     user = api.username.split("-")[-1]
     txid, yesno = get_student_granted_txid_yesno(user, module)
 
@@ -732,6 +731,33 @@ def create_scholarship(user):
 #enddef
 
 #
+# wait_for_debit_notifcation
+#
+# Check notifications for a debit and return the txid. Loop for a few tries.
+#
+def wait_for_debit_notifcation(api):
+    for i in range(0,4):
+        status = api.nexus_users_list_notifications_by_username(0, 1)
+        if (status.has_key("error")): 
+            sleep()
+            continue
+        #endif
+        entries = status["result"]
+        if (entries == []):
+            sleep()
+            continue
+        #endif
+        entry = entries[0]
+        if (entry.has_key("OP") == False or entry["OP"] != "DEBIT"):
+            sleep()
+            continue
+        #endif
+        return(entry["txid"])
+    #endfor
+    return(None)
+#enddef
+
+#
 # move_scholarship_tokens
 #
 # Move 10 scholarship-tokens from reserve to univeristy's token account.
@@ -749,8 +775,14 @@ def move_scholarship_tokens(college):
     status = api.nexus_tokens_debit_token_by_name(tn, dta, tokens)
     if (status.has_key("error")): return(False)
 
-    txid = status["result"]["txid"]
-    sleep()
+    #
+    # Wait for debit notification.
+    #
+    txid = wait_for_debit_notifcation(college)
+    if (txid == None): 
+        print "Timeout waiting for debit notification for {}".format(cta)
+        return(False)
+    #endif
     
     #
     # Do credi to unversity token account.
@@ -893,8 +925,14 @@ def spend_atokens_for_stokens(student, user, buy_stokens, cost):
         return(("Debit from token account '{}' failed for {} award " + \
                "tokens<br>{}").format(from_ta, total_cost, m))
     #endif
-    txid = s["result"]["txid"]
-    sleep()
+
+    #
+    # Have college wait for debit notification.
+    #
+    txid = wait_for_debit_notifcation(college)
+    if (txid == None): 
+        return("Timeout waiting for debit notification for {}".format(to_ta))
+    #endif
 
     to_ta = college.username + "-atoken"
     s = college.nexus_tokens_credit_account_by_name(to_ta, total_cost, txid)
@@ -903,8 +941,6 @@ def spend_atokens_for_stokens(student, user, buy_stokens, cost):
         return(("Credit to token account '{}' failed for {} award " + \
                "tokens<br>{}").format(to_ta, total_cost, m))
     #endif
-
-    sleep(3)
 
     #
     # Now move scholarship tokens from college to student.
@@ -918,8 +954,14 @@ def spend_atokens_for_stokens(student, user, buy_stokens, cost):
         return(("Debit from token account '{}' failed for {} scholarship " + \
             "tokens<br>{}").format(from_ta, buy_stokens, m))
     #endif
-    txid = s["result"]["txid"]
-    sleep()
+
+    #
+    # Have student wait for debit notification.
+    #
+    txid = wait_for_debit_notifcation(student)
+    if (txid == None): 
+        return("Timeout waiting for debit notification for {}".format(to_ta))
+    #endif
 
     to_ta = student.username + "-stoken"
     s = student.nexus_tokens_credit_account_by_name(to_ta, buy_stokens, txid)
@@ -1056,6 +1098,8 @@ form_footer = '''
 #
 def init():
     global admin_account
+
+    print "Checking admin account for award/scholarship token creation ..."
     
     #
     # Need to create/use an account to create the token.
@@ -1095,8 +1139,9 @@ def init():
         sleep()
     else:
         s = get["result"]["maxsupply"]
-        c = get["result"]["currentsupply"]
-        print "Token-Name '{}' exists, supply {}, current {}".format(tn, s, c)
+        b = get["result"]["balance"]
+        print "Token-Name '{}' exists, supply {}, balance {}". \
+            format(tn, s, b)
     #endif
 
     #
@@ -1116,8 +1161,9 @@ def init():
         print "Created {} scholarship tokens".format(supply)
     else:
         s = get["result"]["maxsupply"]
-        c = get["result"]["currentsupply"]
-        print "Token-Name '{}' exists, supply {}, current {}".format(tn, s, c)
+        b = get["result"]["balance"]
+        print "Token-Name '{}' exists, supply {}, balance {}". \
+            format(tn, s, b)
     #endif
 #enddef
 
@@ -1194,7 +1240,7 @@ def account_info(sid):
     output = ""
     
     output += "<br>"
-    ts = api.nexus_users_list_transactions_by_username(0, 50)
+    ts = api.nexus_users_list_transactions_by_username(0, 50, "summary")
     if (ts.has_key("error")):
         output += "Could not retrieve account transactions"
     else:
