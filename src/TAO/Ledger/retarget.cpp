@@ -105,7 +105,7 @@ namespace TAO
                 return bnProofOfWorkStart[0].GetCompact();
 
             /* Get the Block Time and Target Spacing. */
-            uint64_t nBlockTime   = GetWeightedTimes(first, state.nVersion >= 7 ? 3 : 5);
+            uint64_t nBlockTime   = GetWeightedTimes(first, state.nVersion >= 7 ? 2 : 5);
 
             /* Check for minimum difficulty reset for testnet. */
             if(config::fTestNet.load() && nBlockTime > 3600) //if more than one hour since last block, reset difficulty
@@ -144,7 +144,7 @@ namespace TAO
                 cv::softdouble nProportions = cv::softdouble(nOverlap) / cv::softdouble(nBlockTarget);
 
                 /* Get the Mod from the Maximum Increase Equation with Decimal portion multiplied by Proportions. */
-                cv::softdouble nMod = cv::softdouble(1.0) + (nProportions * cv::softdouble(state.nVersion >= 7 ? 0.0333 : 0.075));
+                cv::softdouble nMod = cv::softdouble(1.0) + (nProportions * cv::softdouble(state.nVersion >= 7 ? 0.0222 : 0.075));
                 nLowerBound = uint64_t(cv::softdouble(nBlockTarget) * nMod * (state.nVersion >= 7 ? 1000000 : 1));
             }
 
@@ -208,7 +208,7 @@ namespace TAO
 
             /* Standard Time Proportions */
             uint64_t nBlockTime = ((state.nVersion >= 4) ?
-                GetWeightedTimes(first, state.nVersion >= 7 ? 3 : 5) : std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t)1));
+                GetWeightedTimes(first, state.nVersion >= 7 ? 2 : 5) : std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t)1));
 
             /* Check for minimum difficulty reset for testnet. */
             if(config::fTestNet.load() && nBlockTime > 3600) //if more than one hour since last block, reset difficulty
@@ -250,7 +250,7 @@ namespace TAO
                     cv::softdouble nProportions = cv::softdouble(nOverlap) / cv::softdouble(nBlockTarget * (state.nVersion >= 7 ? 1 : 2));
 
                     /* Get Mod from Maximum Decrease Equation with Decimal portions multiplied by Propotions. */
-                    nMod = cv::softdouble(cv::softdouble(1) - (nProportions * (cv::softdouble(state.nVersion >= 7 ? 0.125 : 0.5) / ((nDifficulty - 1) * cv::softdouble(5)))));
+                    nMod = cv::softdouble(cv::softdouble(1) - (nProportions * (cv::softdouble(state.nVersion >= 7 ? 0.0777 : 0.5) / ((nDifficulty - 1) * cv::softdouble(5)))));
                 }
 
                 /* If the time is below target, increase difficulty by modular
@@ -264,7 +264,7 @@ namespace TAO
                     cv::softdouble nProportions = cv::softdouble(nOverlap) / cv::softdouble(nBlockTarget);
 
                     /* Get the Mod from the Maximum Increase Equation with Decimal portion multiplied by Proportions. */
-                    nMod = cv::softdouble(cv::softdouble(1.0) + (nProportions * (cv::softdouble(0.125) / ((nDifficulty - 1) * cv::softdouble(10.0)))));
+                    nMod = cv::softdouble(cv::softdouble(1.0) + (nProportions * (cv::softdouble(state.nVersion >= 7 ? 0.0222 : 0.125) / ((nDifficulty - 1) * cv::softdouble(10.0)))));
                 }
             }
 
@@ -328,7 +328,6 @@ namespace TAO
                     " [AGE ", nDays, " days, ", nHours, " hours, ", nMinutes, " minutes]\n"
                 );
             }
-
 
             return nBits;
         }
