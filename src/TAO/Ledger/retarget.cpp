@@ -105,7 +105,7 @@ namespace TAO
                 return bnProofOfWorkStart[0].GetCompact();
 
             /* Get the Block Time and Target Spacing. */
-            uint64_t nBlockTime   = GetWeightedTimes(first, state.nVersion >= 7 ? 3 : 5);
+            uint64_t nBlockTime   = GetWeightedTimes(first, state.nVersion >= 7 ? 2 : 5);
 
             /* Check for minimum difficulty reset for testnet. */
             if(config::fTestNet.load() && nBlockTime > 3600) //if more than one hour since last block, reset difficulty
@@ -123,14 +123,14 @@ namespace TAO
             if(nBlockTime >= nBlockTarget)
             {
                 /* Take the Minimum overlap of Target Timespan to make that maximum interval. */
-                uint64_t nOverlap = (uint64_t)std::min((nBlockTime - nBlockTarget), (nBlockTarget * 2));
+                uint64_t nOverlap = (uint64_t)std::min((nBlockTime - nBlockTarget), (nBlockTarget * (state.nVersion >= 7 ? 1 : 2)));
 
                 /* Get the Mod from the Proportion of Overlap in one Interval. */
-                cv::softdouble nProportions = cv::softdouble(nOverlap) / cv::softdouble(nBlockTarget * 2);
+                cv::softdouble nProportions = cv::softdouble(nOverlap) / cv::softdouble(nBlockTarget * (state.nVersion >= 7 ? 1 : 2));
 
                 /* Get Mod from Maximum Decrease Equation with Decimal portions multiplied by Propotions. */
-                cv::softdouble nMod = cv::softdouble(1.0) - (cv::softdouble(state.nVersion >= 7 ? 0.075 : 0.15) * nProportions);
-                nLowerBound = static_cast<uint64_t>(cv::softdouble(nBlockTarget) * nMod);
+                cv::softdouble nMod = cv::softdouble(1.0) - (cv::softdouble(state.nVersion >= 7 ? 0.0333 : 0.15) * nProportions);
+                nLowerBound = uint64_t(cv::softdouble(nBlockTarget) * nMod * (state.nVersion >= 7 ? 1000000 : 1));
             }
 
             /* If the time is below target, increase difficulty by modular
@@ -144,10 +144,12 @@ namespace TAO
                 cv::softdouble nProportions = cv::softdouble(nOverlap) / cv::softdouble(nBlockTarget);
 
                 /* Get the Mod from the Maximum Increase Equation with Decimal portion multiplied by Proportions. */
-                cv::softdouble nMod = cv::softdouble(1.0) + (nProportions * cv::softdouble(state.nVersion >= 7 ? 0.0333 : 0.075));
-                nLowerBound = static_cast<uint64_t>(cv::softdouble(nBlockTarget) * nMod);
+                cv::softdouble nMod = cv::softdouble(1.0) + (nProportions * cv::softdouble(state.nVersion >= 7 ? 0.0222 : 0.075));
+                nLowerBound = uint64_t(cv::softdouble(nBlockTarget) * nMod * (state.nVersion >= 7 ? 1000000 : 1));
             }
 
+            /* Handle significant figures. */
+            nUpperBound *= (state.nVersion >= 7 ? 1000000 : 1);
 
             /* Get the Difficulty Stored in Bignum Compact. */
             LLC::CBigNum bnNew;
@@ -206,7 +208,7 @@ namespace TAO
 
             /* Standard Time Proportions */
             uint64_t nBlockTime = ((state.nVersion >= 4) ?
-                GetWeightedTimes(first, state.nVersion >= 7 ? 3 : 5) : std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t)1));
+                GetWeightedTimes(first, state.nVersion >= 7 ? 2 : 5) : std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t)1));
 
             /* Check for minimum difficulty reset for testnet. */
             if(config::fTestNet.load() && nBlockTime > 3600) //if more than one hour since last block, reset difficulty
@@ -224,7 +226,7 @@ namespace TAO
             nChainMod = std::max(nChainMod, (state.nVersion == 1) ? cv::softdouble(0.75) : cv::softdouble(0.5));
 
             /* Enforce Block Version 2 Rule. Chain mod changes block time requirements, not actual mod after block times. */
-            if(state.nVersion >= 2 && state.nVersion < 7)
+            if(state.nVersion >= 2)
                 nBlockTarget = static_cast<uint64_t>(cv::softdouble(nBlockTarget) * nChainMod);
 
             /* These figures reduce the increase and decrease max and mins as difficulty rises
@@ -242,13 +244,13 @@ namespace TAO
                 if(nBlockTime >= nBlockTarget)
                 {
                     /* Take the Minimum overlap of Target Timespan to make that maximum interval. */
-                    uint64_t nOverlap = (uint64_t)std::min((nBlockTime - nBlockTarget), (nBlockTarget * 2));
+                    uint64_t nOverlap = (uint64_t)std::min((nBlockTime - nBlockTarget), (nBlockTarget * (state.nVersion >= 7 ? 1 : 2)));
 
                     /* Get the Mod from the Proportion of Overlap in one Interval. */
-                    cv::softdouble nProportions = cv::softdouble(nOverlap) / cv::softdouble(nBlockTarget * 2);
+                    cv::softdouble nProportions = cv::softdouble(nOverlap) / cv::softdouble(nBlockTarget * (state.nVersion >= 7 ? 1 : 2));
 
                     /* Get Mod from Maximum Decrease Equation with Decimal portions multiplied by Propotions. */
-                    nMod = cv::softdouble(cv::softdouble(1) - (nProportions * (cv::softdouble(state.nVersion >= 7 ? 0.125 : 0.5) / ((nDifficulty - 1) * cv::softdouble(5)))));
+                    nMod = cv::softdouble(cv::softdouble(1) - (nProportions * (cv::softdouble(state.nVersion >= 7 ? 0.0333 : 0.5) / ((nDifficulty - 1) * cv::softdouble(5)))));
                 }
 
                 /* If the time is below target, increase difficulty by modular
@@ -262,7 +264,7 @@ namespace TAO
                     cv::softdouble nProportions = cv::softdouble(nOverlap) / cv::softdouble(nBlockTarget);
 
                     /* Get the Mod from the Maximum Increase Equation with Decimal portion multiplied by Proportions. */
-                    nMod = cv::softdouble(cv::softdouble(1.0) + (nProportions * (cv::softdouble(0.125) / ((nDifficulty - 1) * cv::softdouble(10.0)))));
+                    nMod = cv::softdouble(cv::softdouble(1.0) + (nProportions * (cv::softdouble(state.nVersion >= 7 ? 0.0222 : 0.125) / ((nDifficulty - 1) * cv::softdouble(10.0)))));
                 }
             }
 
@@ -327,7 +329,6 @@ namespace TAO
                 );
             }
 
-
             return nBits;
         }
 
@@ -348,7 +349,7 @@ namespace TAO
 
             /* Get the Block Times with Minimum of 1 to Prevent Time Warps. */
             uint64_t nBlockTime = ((state.nVersion >= 4) ?
-                GetWeightedTimes(first, state.nVersion >= 7 ? 3 : 5) : std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t) 1));
+                GetWeightedTimes(first, state.nVersion >= 7 ? 2 : 5) : std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t) 1));
 
             /* Check for minimum difficulty reset for testnet. */
             if(config::fTestNet.load() && nBlockTime > 3600) //if more than one hour since last block, reset difficulty
@@ -365,7 +366,7 @@ namespace TAO
             nChainMod = std::max(nChainMod, (state.nVersion == 1) ? cv::softdouble(0.75) : cv::softdouble(0.5));
 
             /* Enforce Block Version 2 Rule. Chain mod changes block time requirements, not actual mod after block times. */
-            if(state.nVersion >= 2 && state.nVersion < 7)
+            if(state.nVersion >= 2)
                 nBlockTarget = static_cast<uint64_t>(cv::softdouble(nBlockTarget) * nChainMod);
 
             /* The Upper and Lower Bound Adjusters. */
@@ -380,14 +381,15 @@ namespace TAO
                 if(nBlockTime >= nBlockTarget)
                 {
                     /* Take the Minimum overlap of Target Timespan to make that maximum interval. */
-                    uint64_t nOverlap = (uint64_t)std::min((nBlockTime - nBlockTarget), (nBlockTarget * 2));
+                    uint64_t nOverlap = (uint64_t)std::min((nBlockTime - nBlockTarget), nBlockTarget * (state.nVersion >= 7 ? 1 : 2));
+                    debug::log(0, "Overlap ", nOverlap);
 
                     /* Get the Mod from the Proportion of Overlap in one Interval. */
-                    cv::softdouble nProportions = cv::softdouble(nOverlap) / cv::softdouble(nBlockTarget * 2);
+                    cv::softdouble nProportions = cv::softdouble(nOverlap) / cv::softdouble(nBlockTarget * (state.nVersion >= 7 ? 1 : 2));
 
                     /* Get Mod from Maximum Decrease Equation with Decimal portions multiplied by Propotions. */
-                    cv::softdouble nMod = cv::softdouble(1.0) - (((state.nVersion >= 4) ? cv::softdouble(state.nVersion >= 7 ? 0.075 : 0.15) : cv::softdouble(0.75)) * nProportions);
-                    nLowerBound = static_cast<uint64_t>(cv::softdouble(nBlockTarget) * nMod);
+                    cv::softdouble nMod = cv::softdouble(1.0) - (((state.nVersion >= 4) ? cv::softdouble(state.nVersion >= 7 ? 0.0333 : 0.15) : cv::softdouble(0.75)) * nProportions);
+                    nLowerBound = uint64_t(cv::softdouble(nBlockTarget) * nMod * (state.nVersion >= 7 ? 1000000 : 1));
                 }
 
                 /* If the time is below target, increase difficulty by modular
@@ -396,14 +398,18 @@ namespace TAO
                 {
                     /* Get the overlap in reference from Target Timespan. */
                     uint64_t nOverlap = nBlockTarget - nBlockTime;
+                    debug::log(0, "Overlap ", nOverlap);
 
                     /* Get the mod from overlap proportion. Time of 1 will be closest to mod of 1. */
                     cv::softdouble nProportions = cv::softdouble(nOverlap) / cv::softdouble(nBlockTarget);
 
                     /* Get the Mod from the Maximum Increase Equation with Decimal portion multiplied by Proportions. */
-                    cv::softdouble nMod = cv::softdouble(1.0) + (nProportions * cv::softdouble(state.nVersion >= 7 ? 0.0333 : 0.075));
-                    nLowerBound = static_cast<uint64_t>(cv::softdouble(nBlockTarget) * nMod);
+                    cv::softdouble nMod = cv::softdouble(1.0) + (nProportions * cv::softdouble(state.nVersion >= 7 ? 0.0222 : 0.075));
+                    nLowerBound = uint64_t(cv::softdouble(nBlockTarget) * nMod * (state.nVersion >= 7 ? 1000000 : 1));
                 }
+
+                /* Handle significant figures. */
+                nUpperBound *= (state.nVersion >= 7 ? 1000000 : 1);
             }
 
 

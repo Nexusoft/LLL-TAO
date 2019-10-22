@@ -175,12 +175,12 @@ namespace LLP
             return debug::error(NODE, "cannot self-connect");
 
         /* Debug information. */
-        debug::log(1, NODE, "Connecting to ", strConnect);
+        debug::log(3, NODE, "Connecting to ", strConnect);
 
         // Connect
         if(Attempt(addrConnect))
         {
-            debug::log(1, NODE, "Connected to ", strConnect);
+            debug::log(3, NODE, "Connected to ", strConnect);
 
             fCONNECTED  = true;
             fOUTGOING   = true;
