@@ -338,7 +338,7 @@ namespace TAO
                     return debug::error(FUNCTION, "prime origins below 1016-bits");
 
                 /* Check proof of work limits. */
-                uint32_t nPrimeBits = GetPrimeBits(GetPrime(), vOffsets);
+                uint32_t nPrimeBits = GetPrimeBits(GetPrime(), vOffsets, !ChainState::Synchronizing());
                 if(nPrimeBits < bnProofOfWorkLimit[1])
                     return debug::error(FUNCTION, "prime-cluster below minimum work" "(", nPrimeBits, ")");
 

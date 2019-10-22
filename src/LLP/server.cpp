@@ -49,7 +49,7 @@ namespace LLP
     /** Constructor **/
     template <class ProtocolType>
     Server<ProtocolType>::Server(uint16_t nPort, uint16_t nMaxThreads, uint32_t nTimeout, bool fDDOS_,
-                         uint32_t cScore, uint32_t rScore, uint32_t nTimespan, bool fListen, bool fRemote, 
+                         uint32_t cScore, uint32_t rScore, uint32_t nTimespan, bool fListen, bool fRemote,
                          bool fMeter, bool fManager, uint32_t nSleepTimeIn)
     : fDDOS(fDDOS_)
     , PORT(nPort)
@@ -612,7 +612,7 @@ namespace LLP
 
             /* Bind to all interfaces if fRemote has been specified, otherwise only use local interface */
             sockaddr.sin_addr.s_addr = fRemote ? INADDR_ANY : htonl(INADDR_LOOPBACK);
-            
+
             sockaddr.sin_port = htons(PORT);
             if(::bind(hListenSocket, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR)
             {
@@ -630,13 +630,13 @@ namespace LLP
             struct sockaddr_in6 sockaddr;
             memset(&sockaddr, 0, sizeof(sockaddr));
             sockaddr.sin6_family = AF_INET6;
-            
+
             /* Bind to all interfaces if fRemote has been specified, otherwise only use local interface */
             if(fRemote)
                 sockaddr.sin6_addr = IN6ADDR_ANY_INIT;
             else
                 sockaddr.sin6_addr = IN6ADDR_LOOPBACK_INIT;
-            
+
             sockaddr.sin6_port = htons(PORT);
             if(::bind(hListenSocket, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR)
             {

@@ -179,7 +179,7 @@ namespace LLD
         {
             LOCK(MUTEX);
 
-            return cache.count(Key);
+            return cache.find(Key) != cache.end();
         }
 
 
@@ -198,7 +198,7 @@ namespace LLD
             LOCK(MUTEX);
 
             /* Check if the Record Exists. */
-            if(!cache.count(Key))
+            if(cache.find(Key) == cache.end())
                 return false;
 
             /* Get the data. */
@@ -225,7 +225,7 @@ namespace LLD
             LOCK(MUTEX);
 
             /* Check for bucket collisions. */
-            if(cache.count(Key))
+            if(cache.find(Key) != cache.end())
             {
                 /* Get the node we are working on. */
                 TemplateNode<KeyType, DataType>* pthis = cache[Key];
@@ -285,7 +285,7 @@ namespace LLD
             LOCK(MUTEX);
 
             /* Check for key. */
-            if(!cache.count(Key))
+            if(cache.find(Key) == cache.end())
                 return false;
 
             /* Get the node we are working on. */

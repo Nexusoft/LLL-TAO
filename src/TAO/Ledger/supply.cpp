@@ -84,22 +84,22 @@ namespace TAO
         /* Get the age of the Nexus blockchain in seconds. */
         uint32_t GetChainAge(const uint64_t nTime)
         {
-            return floor((nTime - (uint64_t)(config::fTestNet.load() ?
-                NEXUS_TESTNET_TIMELOCK : NEXUS_NETWORK_TIMELOCK)) / 60.0);
+            return uint32_t((nTime - uint64_t(config::fTestNet.load() ?
+                NEXUS_TESTNET_TIMELOCK : NEXUS_NETWORK_TIMELOCK)) / cv::softdouble(60.0));
         }
 
 
         /* Get a fractional reward based on time. */
-        uint64_t GetFractionalSubsidy(const uint32_t nMinutes, const uint8_t nType, const double nFraction)
+        uint64_t GetFractionalSubsidy(const uint32_t nMinutes, const uint8_t nType, const cv::softdouble nFraction)
         {
-            uint32_t nInterval = floor(nFraction);
-            double nRemainder  = nFraction - nInterval;
+            uint32_t nInterval = uint32_t(nFraction);
+            cv::softdouble nRemainder  = cv::softdouble(nFraction) - cv::softdouble(nInterval);
 
             uint64_t nSubsidy = 0;
             for(uint32_t nMinute = 0; nMinute < nInterval; ++nMinute)
                 nSubsidy += GetSubsidy(nMinutes + nMinute, nType);
 
-            return nSubsidy + GetSubsidy(nMinutes + nInterval, nType) * nRemainder;
+            return nSubsidy + uint64_t(GetSubsidy(nMinutes + nInterval, nType) * nRemainder);
         }
 
 
@@ -111,45 +111,35 @@ namespace TAO
             if(!GetLastState(first, nChannel))
                 return Legacy::COIN;
 
-
             /* Get Last Block Index [2nd block back in Channel]. */
             BlockState last = first.Prev();
             if(!GetLastState(last, nChannel))
                 return GetSubsidy(1, nType);
 
-
             /* Calculate the times between blocks. */
-            uint64_t nBlockTime = std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t) 1);
+            uint64_t nBlockTime = std::max(first.GetBlockTime() - last.GetBlockTime(), uint64_t(1));
             uint64_t nMinutes   = ((state.nVersion >= 3) ?
                 GetChainAge(first.GetBlockTime()) : std::min(first.nChannelHeight,  GetChainAge(first.GetBlockTime())));
-
 
             /* Block Version 3 Coinbase Tx Calculations. */
             if(state.nVersion >= 3)
             {
-
                 /* For Block Version 3: Release 3 Minute Reward decayed at Channel Height when Reserves above 20 Minute Supply. */
-                if(first.nReleasedReserve[nType] > GetFractionalSubsidy(first.nChannelHeight, nType, 20.0))
-                    return GetFractionalSubsidy(first.nChannelHeight, nType, 3.0);
-
+                if(first.nReleasedReserve[nType] > GetFractionalSubsidy(first.nChannelHeight, nType, cv::softdouble(20.0)))
+                    return GetFractionalSubsidy(first.nChannelHeight, nType, cv::softdouble(3.0));
 
                 /* Otherwise release 2.5 Minute Reward decayed at Chain Age when Reserves are above 4 Minute Supply. */
-                else if(first.nReleasedReserve[nType] > GetFractionalSubsidy(nMinutes, nType, 4.0))
-                    return GetFractionalSubsidy(nMinutes, nType, 2.5);
-
+                else if(first.nReleasedReserve[nType] > GetFractionalSubsidy(nMinutes, nType, cv::softdouble(4.0)))
+                    return GetFractionalSubsidy(nMinutes, nType, cv::softdouble(2.5));
             }
 
-
             /* Block Version 1 Coinbase Tx Calculations: Release 2.5 minute reward if supply is behind 4 minutes */
-            else if(first.nReleasedReserve[nType] > GetFractionalSubsidy(nMinutes, nType, 4.0))
-                return GetFractionalSubsidy(nMinutes, nType, 2.5);
-
+            else if(first.nReleasedReserve[nType] > GetFractionalSubsidy(nMinutes, nType, cv::softdouble(4.0)))
+                return GetFractionalSubsidy(nMinutes, nType, cv::softdouble(2.5));
 
             /* Calculate the fraction of 2.5 minutes. */
-            double nFraction = std::min(nBlockTime / 60.0, 2.5);
-
-
-            return std::min(GetFractionalSubsidy(nMinutes, nType, nFraction), (uint64_t)first.nReleasedReserve[nType]);
+            cv::softdouble nFraction = std::min(cv::softdouble(nBlockTime) / cv::softdouble(60.0), cv::softdouble(2.5));
+            return std::min(GetFractionalSubsidy(nMinutes, nType, nFraction), uint64_t(first.nReleasedReserve[nType]));
         }
 
 
@@ -157,7 +147,6 @@ namespace TAO
         uint64_t ReleaseRewards(const uint32_t nTimespan, const uint32_t nStart, const uint8_t nType)
         {
             uint64_t nSubsidy = 0;
-
             for(uint32_t nMinutes = nStart; nMinutes < (nStart + nTimespan); ++nMinutes)
                 nSubsidy += GetSubsidy(nMinutes, nType);
 

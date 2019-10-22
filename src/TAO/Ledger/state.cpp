@@ -64,7 +64,7 @@ namespace TAO
             while(true)
             {
                 /* Return false on genesis. */
-                if(state.GetHash() == hashGenesis)
+                if(state.nHeight == 0)
                     return false;
 
                 /* Return true on channel found. */
@@ -1216,7 +1216,7 @@ namespace TAO
                         return nBits * 25;
 
                     /* Get the prime difficulty. */
-                    uint64_t nWeight = SetBits(GetPrimeDifficulty(GetPrime(), vOffsets)) * 25;
+                    uint64_t nWeight = SetBits(GetPrimeDifficulty(GetPrime(), vOffsets, false)) * 25;
 
                     return nWeight + 1;
                 }

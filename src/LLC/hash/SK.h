@@ -19,11 +19,19 @@ ________________________________________________________________________________
 #include <LLC/hash/SK/skein.h>
 #include <LLC/hash/SK/KeccakHash.h>
 
+#include <LLD/cache/template_lru.h>
+
 /** Namespace LLC (Lower Level Crypto) **/
 namespace LLC
 {
 
 	static uint8_t pblank[1];
+
+	/* LRU cache of hashed values  */
+	extern LLD::TemplateLRU<std::vector<uint8_t>, uint64_t> cache64;
+	extern LLD::TemplateLRU<std::vector<uint8_t>, uint256_t> cache256;
+	extern LLD::TemplateLRU<std::vector<uint8_t>, uint512_t> cache512;
+	extern LLD::TemplateLRU<std::vector<uint8_t>, uint1024_t> cache1024;
 
 
     /** SK32
@@ -82,16 +90,32 @@ namespace LLC
 	inline uint64_t SK64(const T1 pbegin, const T1 pend)
 	{
 		uint64_t skein;
-		Skein_256_Ctxt_t ctx;
-		Skein_256_Init  (&ctx, 64);
-		Skein_256_Update(&ctx, (pbegin == pend ? pblank : (uint8_t*)&pbegin[0]), (pend - pbegin) * sizeof(pbegin[0]));
-		Skein_256_Final (&ctx, (uint8_t *)&skein);
-
 		uint64_t keccak;
-		Keccak_HashInstance ctx_keccak;
-		Keccak_HashInitialize(&ctx_keccak, 1344, 256, 64, 0x06);
-		Keccak_HashUpdate(&ctx_keccak, (uint8_t *)&skein, 64);
-		Keccak_HashFinal(&ctx_keccak, (uint8_t *)&keccak);
+
+		/* Copy the data into a vector of bytes so we can cache the hashed value */
+		std::vector<uint8_t> data(pbegin, pend);
+
+		/* Check the cache for this data */
+		if(!cache64.Has(data))
+		{
+			Skein_256_Ctxt_t ctx;
+			Skein_256_Init  (&ctx, 64);
+			Skein_256_Update(&ctx, (pbegin == pend ? pblank : (uint8_t*)&pbegin[0]), (pend - pbegin) * sizeof(pbegin[0]));
+			Skein_256_Final (&ctx, (uint8_t *)&skein);
+
+			Keccak_HashInstance ctx_keccak;
+			Keccak_HashInitialize(&ctx_keccak, 1344, 256, 64, 0x06);
+			Keccak_HashUpdate(&ctx_keccak, (uint8_t *)&skein, 64);
+			Keccak_HashFinal(&ctx_keccak, (uint8_t *)&keccak);
+
+			/* Cache the hashed value */
+			cache64.Put(data, keccak);
+		}
+		else
+		{
+			/* Retrieve the cached value */
+			cache64.Get(data, keccak);
+		}
 
 		return keccak;
 	}
@@ -105,16 +129,30 @@ namespace LLC
 	inline uint64_t SK64(const std::vector<uint8_t>& vch)
 	{
 		uint64_t skein;
-		Skein_256_Ctxt_t ctx;
-		Skein_256_Init(&ctx, 64);
-		Skein_256_Update(&ctx, (uint8_t *)&vch[0], vch.size());
-		Skein_256_Final(&ctx, (uint8_t *)&skein);
-
 		uint64_t keccak;
-		Keccak_HashInstance ctx_keccak;
-		Keccak_HashInitialize(&ctx_keccak, 1344, 256, 64, 0x06);
-		Keccak_HashUpdate(&ctx_keccak, (uint8_t *)&skein, 64);
-		Keccak_HashFinal(&ctx_keccak, (uint8_t *)&keccak);
+
+
+		/* Check the cache for this data */
+		if(!cache64.Has(vch))
+		{
+			Skein_256_Ctxt_t ctx;
+			Skein_256_Init(&ctx, 64);
+			Skein_256_Update(&ctx, (uint8_t *)&vch[0], vch.size());
+			Skein_256_Final(&ctx, (uint8_t *)&skein);
+
+			Keccak_HashInstance ctx_keccak;
+			Keccak_HashInitialize(&ctx_keccak, 1344, 256, 64, 0x06);
+			Keccak_HashUpdate(&ctx_keccak, (uint8_t *)&skein, 64);
+			Keccak_HashFinal(&ctx_keccak, (uint8_t *)&keccak);
+
+			/* Cache the hashed value */
+			cache64.Put(vch, keccak);
+		}
+		else
+		{
+			/* Retrieve the cached value */
+			cache64.Get(vch, keccak);
+		}
 
 		return keccak;
 	}
@@ -128,16 +166,30 @@ namespace LLC
 	inline uint256_t SK256(const std::vector<uint8_t>& vch)
 	{
 		uint256_t skein;
-		Skein_256_Ctxt_t ctx;
-		Skein_256_Init(&ctx, 256);
-		Skein_256_Update(&ctx, (uint8_t *)&vch[0], vch.size());
-		Skein_256_Final(&ctx, (uint8_t *)&skein);
-
 		uint256_t keccak;
-		Keccak_HashInstance ctx_keccak;
-		Keccak_HashInitialize_SHA3_256(&ctx_keccak);
-		Keccak_HashUpdate(&ctx_keccak, (uint8_t *)&skein, 256);
-		Keccak_HashFinal(&ctx_keccak, (uint8_t *)&keccak);
+
+		/* Check the cache for this data */
+		if(!cache256.Has(vch))
+		{
+
+			Skein_256_Ctxt_t ctx;
+			Skein_256_Init(&ctx, 256);
+			Skein_256_Update(&ctx, (uint8_t *)&vch[0], vch.size());
+			Skein_256_Final(&ctx, (uint8_t *)&skein);
+
+			Keccak_HashInstance ctx_keccak;
+			Keccak_HashInitialize_SHA3_256(&ctx_keccak);
+			Keccak_HashUpdate(&ctx_keccak, (uint8_t *)&skein, 256);
+			Keccak_HashFinal(&ctx_keccak, (uint8_t *)&keccak);
+
+			/* Cache the hashed value */
+			cache256.Put(vch, keccak);
+		}
+		else
+		{
+			/* Retrieve the cached value */
+			cache256.Get(vch, keccak);
+		}
 
 		return keccak;
 	}
@@ -152,16 +204,33 @@ namespace LLC
 	inline uint256_t SK256(const T1 pbegin, const T1 pend)
 	{
 		uint256_t skein;
-		Skein_256_Ctxt_t ctx;
-		Skein_256_Init  (&ctx, 256);
-		Skein_256_Update(&ctx, (pbegin == pend ? pblank : (uint8_t*)&pbegin[0]), (pend - pbegin) * sizeof(pbegin[0]));
-		Skein_256_Final (&ctx, (uint8_t *)&skein);
-
 		uint256_t keccak;
-		Keccak_HashInstance ctx_keccak;
-		Keccak_HashInitialize_SHA3_256(&ctx_keccak);
-		Keccak_HashUpdate(&ctx_keccak, (uint8_t *)&skein, 256);
-		Keccak_HashFinal(&ctx_keccak, (uint8_t *)&keccak);
+
+		/* Copy the data into a vector of bytes so we can cache the hashed value */
+		std::vector<uint8_t> data(pbegin, pend);
+
+		/* Check the cache for this data */
+		if(!cache256.Has(data))
+		{
+
+			Skein_256_Ctxt_t ctx;
+			Skein_256_Init  (&ctx, 256);
+			Skein_256_Update(&ctx, (pbegin == pend ? pblank : (uint8_t*)&pbegin[0]), (pend - pbegin) * sizeof(pbegin[0]));
+			Skein_256_Final (&ctx, (uint8_t *)&skein);
+
+			Keccak_HashInstance ctx_keccak;
+			Keccak_HashInitialize_SHA3_256(&ctx_keccak);
+			Keccak_HashUpdate(&ctx_keccak, (uint8_t *)&skein, 256);
+			Keccak_HashFinal(&ctx_keccak, (uint8_t *)&keccak);
+
+			/* Cache the hashed value */
+			cache256.Put(data, keccak);
+		}
+		else
+		{
+			/* Retrieve the cached value */
+			cache256.Get(data, keccak);
+		}
 
 		return keccak;
 	}
@@ -191,16 +260,29 @@ namespace LLC
     inline uint512_t SK512(const std::vector<uint8_t>& vch)
 	{
 		uint512_t skein;
-		Skein_512_Ctxt_t ctx;
-		Skein_512_Init(&ctx, 512);
-		Skein_512_Update(&ctx, (uint8_t *)&vch[0], vch.size());
-		Skein_512_Final(&ctx, (uint8_t *)&skein);
-
 		uint512_t keccak;
-		Keccak_HashInstance ctx_keccak;
-		Keccak_HashInitialize_SHA3_512(&ctx_keccak);
-		Keccak_HashUpdate(&ctx_keccak, (uint8_t *)&skein, 512);
-		Keccak_HashFinal(&ctx_keccak, (uint8_t *)&keccak);
+
+		/* Check the cache for this data */
+		if(!cache512.Has(vch))
+		{
+			Skein_512_Ctxt_t ctx;
+			Skein_512_Init(&ctx, 512);
+			Skein_512_Update(&ctx, (uint8_t *)&vch[0], vch.size());
+			Skein_512_Final(&ctx, (uint8_t *)&skein);
+
+			Keccak_HashInstance ctx_keccak;
+			Keccak_HashInitialize_SHA3_512(&ctx_keccak);
+			Keccak_HashUpdate(&ctx_keccak, (uint8_t *)&skein, 512);
+			Keccak_HashFinal(&ctx_keccak, (uint8_t *)&keccak);
+
+			/* Cache the hashed value */
+			cache512.Put(vch, keccak);
+		}
+		else
+		{
+			/* Retrieve the cached value */
+			cache512.Get(vch, keccak);
+		}
 
 		return keccak;
 	}
@@ -240,16 +322,33 @@ namespace LLC
 	inline uint512_t SK512(const T1 pbegin, const T1 pend)
 	{
 		uint512_t skein;
-		Skein_512_Ctxt_t ctx;
-		Skein_512_Init  (&ctx, 512);
-		Skein_512_Update(&ctx, (pbegin == pend ? pblank : (uint8_t*)&pbegin[0]), (pend - pbegin) * sizeof(pbegin[0]));
-		Skein_512_Final (&ctx, (uint8_t *)&skein);
-
 		uint512_t keccak;
-		Keccak_HashInstance ctx_keccak;
-		Keccak_HashInitialize_SHA3_512(&ctx_keccak);
-		Keccak_HashUpdate(&ctx_keccak, (uint8_t *)&skein, 512);
-		Keccak_HashFinal(&ctx_keccak, (uint8_t *)&keccak);
+
+		/* Copy the data into a vector of bytes so we can cache the hashed value */
+		std::vector<uint8_t> data(pbegin, pend);
+
+		/* Check the cache for this data */
+		if(!cache512.Has(data))
+		{
+
+			Skein_512_Ctxt_t ctx;
+			Skein_512_Init  (&ctx, 512);
+			Skein_512_Update(&ctx, (pbegin == pend ? pblank : (uint8_t*)&pbegin[0]), (pend - pbegin) * sizeof(pbegin[0]));
+			Skein_512_Final (&ctx, (uint8_t *)&skein);
+
+			Keccak_HashInstance ctx_keccak;
+			Keccak_HashInitialize_SHA3_512(&ctx_keccak);
+			Keccak_HashUpdate(&ctx_keccak, (uint8_t *)&skein, 512);
+			Keccak_HashFinal(&ctx_keccak, (uint8_t *)&keccak);
+
+			/* Cache the hashed value */
+			cache512.Put(data, keccak);
+		}
+		else
+		{
+			/* Retrieve the cached value */
+			cache512.Get(data, keccak);
+		}
 
 		return keccak;
 	}
@@ -341,16 +440,29 @@ namespace LLC
     inline uint1024_t SK1024(const std::vector<uint8_t>& vch)
 	{
 		uint1024_t skein;
-		Skein1024_Ctxt_t ctx;
-		Skein1024_Init(&ctx, 1024);
-		Skein1024_Update(&ctx, (uint8_t *)&vch[0], vch.size());
-		Skein1024_Final(&ctx, (uint8_t *)&skein);
-
 		uint1024_t keccak;
-		Keccak_HashInstance ctx_keccak;
-		Keccak_HashInitialize(&ctx_keccak, 576, 1024, 1024, 0x05);
-		Keccak_HashUpdate(&ctx_keccak, (uint8_t *)&skein, 1024);
-		Keccak_HashFinal(&ctx_keccak, (uint8_t *)&keccak);
+
+		/* Check the cache for this data */
+		if(!cache1024.Has(vch))
+		{
+			Skein1024_Ctxt_t ctx;
+			Skein1024_Init(&ctx, 1024);
+			Skein1024_Update(&ctx, (uint8_t *)&vch[0], vch.size());
+			Skein1024_Final(&ctx, (uint8_t *)&skein);
+
+			Keccak_HashInstance ctx_keccak;
+			Keccak_HashInitialize(&ctx_keccak, 576, 1024, 1024, 0x05);
+			Keccak_HashUpdate(&ctx_keccak, (uint8_t *)&skein, 1024);
+			Keccak_HashFinal(&ctx_keccak, (uint8_t *)&keccak);
+
+			/* Cache the hashed value */
+			cache1024.Put(vch, keccak);
+		}
+		else
+		{
+			/* Retrieve the cached value */
+			cache1024.Get(vch, keccak);
+		}
 
 		return keccak;
 	}
@@ -365,16 +477,32 @@ namespace LLC
 	inline uint1024_t SK1024(const T1 pbegin, const T1 pend)
 	{
 		uint1024_t skein;
-		Skein1024_Ctxt_t ctx;
-		Skein1024_Init(&ctx, 1024);
-		Skein1024_Update(&ctx, (pbegin == pend ? pblank : (uint8_t*)&pbegin[0]), (pend - pbegin) * sizeof(pbegin[0]));
-		Skein1024_Final(&ctx, (uint8_t *)&skein);
-
 		uint1024_t keccak;
-		Keccak_HashInstance ctx_keccak;
-		Keccak_HashInitialize(&ctx_keccak, 576, 1024, 1024, 0x05);
-		Keccak_HashUpdate(&ctx_keccak, (uint8_t *)&skein, 1024);
-		Keccak_HashFinal(&ctx_keccak, (uint8_t *)&keccak);
+
+		/* Copy the data into a vector of bytes so we can cache the hashed value */
+		std::vector<uint8_t> data(pbegin, pend);
+		
+		/* Check the cache for this data */
+		if(!cache1024.Has(data))
+		{				
+			Skein1024_Ctxt_t ctx;
+			Skein1024_Init(&ctx, 1024);
+			Skein1024_Update(&ctx, (pbegin == pend ? pblank : (uint8_t*)&pbegin[0]), (pend - pbegin) * sizeof(pbegin[0]));
+			Skein1024_Final(&ctx, (uint8_t *)&skein);
+
+			Keccak_HashInstance ctx_keccak;
+			Keccak_HashInitialize(&ctx_keccak, 576, 1024, 1024, 0x05);
+			Keccak_HashUpdate(&ctx_keccak, (uint8_t *)&skein, 1024);
+			Keccak_HashFinal(&ctx_keccak, (uint8_t *)&keccak);
+
+			/* Cache the hashed value */
+			cache1024.Put(data, keccak);
+		}
+		else
+		{
+			/* Retrieve the cached value */
+			cache1024.Get(data, keccak);
+		}
 
 		return keccak;
 	}

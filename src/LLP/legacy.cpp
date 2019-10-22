@@ -100,17 +100,17 @@ namespace LLP
     /** Constructor **/
     LegacyNode::LegacyNode(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS)
     : BaseConnection<LegacyPacket>(SOCKET_IN, DDOS_IN, isDDOS)
-    , strNodeVersion()
-    , nCurrentVersion(LLP::PROTOCOL_VERSION)
-    , nCurrentSession(0)
-    , nStartingHeight(0)
-    , nConsecutiveFails(0)
-    , nConsecutiveOrphans(0)
-    , fInbound(false)
-    , nLastPing(runtime::timestamp())
-    , hashContinue(0)
-    , mapLatencyTracker()
-    , mapSentRequests()
+    , strNodeVersion      ( )
+    , nCurrentVersion     (LLP::PROTOCOL_VERSION)
+    , nCurrentSession     (0)
+    , nStartingHeight     (0)
+    , nConsecutiveFails   (0)
+    , nConsecutiveOrphans (0)
+    , fInbound            (false)
+    , nLastPing           (runtime::timestamp())
+    , hashContinue        (0)
+    , mapLatencyTracker   ( )
+    , mapSentRequests     ( )
     {
     }
 
@@ -118,17 +118,17 @@ namespace LLP
     /** Constructor **/
     LegacyNode::LegacyNode(DDOS_Filter* DDOS_IN, bool isDDOS)
     : BaseConnection<LegacyPacket>(DDOS_IN, isDDOS)
-    , strNodeVersion()
-    , nCurrentVersion(LLP::PROTOCOL_VERSION)
-    , nCurrentSession(0)
-    , nStartingHeight(0)
-    , nConsecutiveFails(0)
-    , nConsecutiveOrphans(0)
-    , fInbound(false)
-    , nLastPing(runtime::timestamp())
-    , hashContinue(0)
-    , mapLatencyTracker()
-    , mapSentRequests()
+    , strNodeVersion      ( )
+    , nCurrentVersion     (LLP::PROTOCOL_VERSION)
+    , nCurrentSession     (0)
+    , nStartingHeight     (0)
+    , nConsecutiveFails   (0)
+    , nConsecutiveOrphans (0)
+    , fInbound            (false)
+    , nLastPing           (runtime::timestamp())
+    , hashContinue        (0)
+    , mapLatencyTracker   ( )
+    , mapSentRequests     ( )
     {
     }
 
@@ -300,6 +300,10 @@ namespace LLP
         /* Handle Node Pings on Generic Events */
         if(EVENT == EVENT_GENERIC)
         {
+            /* Check for a valid session. */
+            if(nCurrentSession == 0)
+                return;
+
             /* Handle sending the pings to remote node.. */
             if(nLastPing + 15 < runtime::unifiedtimestamp())
             {
@@ -503,6 +507,10 @@ namespace LLP
             /* Push our version back since we just completed getting the version from the other node. */
             if(fOUTGOING && TAO::Ledger::nSyncSession.load() == 0)
             {
+                /* Set the appropriate timestamps. */
+                nLastTimeReceived = runtime::timestamp();
+                nLastGetBlocks    = runtime::timestamp();
+
                 /* Set the new sync address. */
                 TAO::Ledger::nSyncSession.store(nCurrentSession);
 

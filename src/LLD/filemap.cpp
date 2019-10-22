@@ -106,7 +106,7 @@ namespace LLD
     /*  Determines if the database has the Key. */
     bool BinaryFileMap::HasKey(const std::vector<uint8_t>& vKey) const
     {
-        return mapKeys.count(vKey);
+        return mapKeys.find(vKey) != mapKeys.end();
     }
 
 
@@ -182,7 +182,8 @@ namespace LLD
                     mapKeys[vKey] = std::make_pair(nCurrentFile, nIterator);
 
                     /* Debug Output of Sector Key Information. */
-                    debug::log(5, FUNCTION, "State: ", cKey.nState, " Length: ", cKey.nLength, " File: ", mapKeys[vKey].first, " Location: ", mapKeys[vKey].second, " Key: ", HexStr(vKey.begin(), vKey.end()));
+                    if(config::GetArg("-verbose", 0) >= 5)
+                        debug::log(5, FUNCTION, "State: ", cKey.nState, " Length: ", cKey.nLength, " File: ", mapKeys[vKey].first, " Location: ", mapKeys[vKey].second, " Key: ", HexStr(vKey.begin(), vKey.end()));
 
                     ++nTotalKeys;
                 }
@@ -217,7 +218,7 @@ namespace LLD
         LOCK(KEY_MUTEX);
 
         /* Write Header if First Update. */
-        if(!mapKeys.count(cKey.vKey))
+        if(mapKeys.find(cKey.vKey) == mapKeys.end())
         {
             /* Check the Binary File Size. */
             if(nCurrentFileSize > FILEMAP_MAX_FILE_SIZE)
@@ -260,12 +261,13 @@ namespace LLD
 
 
         /* Debug Output of Sector Key Information. */
-        debug::log(4, FUNCTION, "State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
-            " | Length: ", cKey.nLength, " | Location: ", mapKeys[cKey.vKey].second,
-            " | File: ", mapKeys[cKey.vKey].first, " | Sector File: ", cKey.nSectorFile,
-            " | Sector Size: ", cKey.nSectorSize, " | Sector Start: ", cKey.nSectorStart,
-            " | Key: ", HexStr(cKey.vKey.begin(), cKey.vKey.end()),
-            " | Current File: ", nCurrentFile, " | Current File Size: ", nCurrentFileSize);
+        if(config::GetArg("-verbose", 0) >= 4)
+            debug::log(4, FUNCTION, "State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
+                " | Length: ", cKey.nLength, " | Location: ", mapKeys[cKey.vKey].second,
+                " | File: ", mapKeys[cKey.vKey].first, " | Sector File: ", cKey.nSectorFile,
+                " | Sector Size: ", cKey.nSectorSize, " | Sector Start: ", cKey.nSectorStart,
+                " | Key: ", HexStr(cKey.vKey.begin(), cKey.vKey.end()),
+                " | Current File: ", nCurrentFile, " | Current File Size: ", nCurrentFileSize);
 
 
         return true;
@@ -279,7 +281,7 @@ namespace LLD
         LOCK(KEY_MUTEX);
 
         /* Check for the Key. */
-        if(!mapKeys.count(vKey))
+        if(mapKeys.find(vKey) == mapKeys.end())
             return debug::error(FUNCTION, "Key doesn't Exist");
 
 
@@ -312,7 +314,7 @@ namespace LLD
         LOCK(KEY_MUTEX);
 
         /* Check for the Key. */
-        if(!mapKeys.count(vKey))
+        if(mapKeys.find(vKey) == mapKeys.end())
             return debug::error(FUNCTION, "Key doesn't Exist");
 
 
@@ -345,7 +347,7 @@ namespace LLD
         LOCK(KEY_MUTEX);
 
         /* Read a Record from Binary Data. */
-        if(mapKeys.count(vKey))
+        if(mapKeys.find(vKey) != mapKeys.end())
         {
             /* Open the Stream Object. */
             std::string strFilename = debug::safe_printstr(strBaseLocation, "_filemap.", std::setfill('0'), std::setw(5), mapKeys[vKey].first);
@@ -367,11 +369,12 @@ namespace LLD
 
 
             /* Debug Output of Sector Key Information. */
-            debug::log(4, FUNCTION, "State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
-                " | Length: ", cKey.nLength, " | Location: ", mapKeys[vKey].second,
-                " | File: ",  mapKeys[vKey].first, " | Sector File: ", cKey.nSectorFile,
-                " | Sector Size: ", cKey.nSectorSize, " | Sector Start: ", cKey.nSectorStart,
-                " | Key: ",  HexStr(vKey.begin(), vKey.end()));
+            if(config::GetArg("-verbose", 0) >= 4)
+                debug::log(4, FUNCTION, "State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
+                    " | Length: ", cKey.nLength, " | Location: ", mapKeys[vKey].second,
+                    " | File: ",  mapKeys[vKey].first, " | Sector File: ", cKey.nSectorFile,
+                    " | Sector Size: ", cKey.nSectorSize, " | Sector Start: ", cKey.nSectorStart,
+                    " | Key: ",  HexStr(vKey.begin(), vKey.end()));
 
 
             /* Skip Empty Sectors for Now. (TODO: Expand to Reads / Writes) */

@@ -110,7 +110,7 @@ namespace TAO
          *  @return The subsidy reward at a fractional amount.
          *
          **/
-        uint64_t GetFractionalSubsidy(const uint32_t nMinutes, const uint8_t nType, const double nFraction);
+        uint64_t GetFractionalSubsidy(const uint32_t nMinutes, const uint8_t nType, const cv::softdouble nFraction);
 
 
         /** GetCoinbaseReward
