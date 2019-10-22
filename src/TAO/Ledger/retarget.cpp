@@ -129,7 +129,7 @@ namespace TAO
                 cv::softdouble nProportions = cv::softdouble(nOverlap) / cv::softdouble(nBlockTarget * (state.nVersion >= 7 ? 1 : 2));
 
                 /* Get Mod from Maximum Decrease Equation with Decimal portions multiplied by Propotions. */
-                cv::softdouble nMod = cv::softdouble(1.0) - (cv::softdouble(state.nVersion >= 7 ? 0.0777 : 0.15) * nProportions);
+                cv::softdouble nMod = cv::softdouble(1.0) - (cv::softdouble(state.nVersion >= 7 ? 0.0333 : 0.15) * nProportions);
                 nLowerBound = uint64_t(cv::softdouble(nBlockTarget) * nMod * (state.nVersion >= 7 ? 1000000 : 1));
             }
 
@@ -250,7 +250,7 @@ namespace TAO
                     cv::softdouble nProportions = cv::softdouble(nOverlap) / cv::softdouble(nBlockTarget * (state.nVersion >= 7 ? 1 : 2));
 
                     /* Get Mod from Maximum Decrease Equation with Decimal portions multiplied by Propotions. */
-                    nMod = cv::softdouble(cv::softdouble(1) - (nProportions * (cv::softdouble(state.nVersion >= 7 ? 0.0777 : 0.5) / ((nDifficulty - 1) * cv::softdouble(5)))));
+                    nMod = cv::softdouble(cv::softdouble(1) - (nProportions * (cv::softdouble(state.nVersion >= 7 ? 0.0333 : 0.5) / ((nDifficulty - 1) * cv::softdouble(5)))));
                 }
 
                 /* If the time is below target, increase difficulty by modular
@@ -388,7 +388,7 @@ namespace TAO
                     cv::softdouble nProportions = cv::softdouble(nOverlap) / cv::softdouble(nBlockTarget * (state.nVersion >= 7 ? 1 : 2));
 
                     /* Get Mod from Maximum Decrease Equation with Decimal portions multiplied by Propotions. */
-                    cv::softdouble nMod = cv::softdouble(1.0) - (((state.nVersion >= 4) ? cv::softdouble(state.nVersion >= 7 ? 0.0777 : 0.15) : cv::softdouble(0.75)) * nProportions);
+                    cv::softdouble nMod = cv::softdouble(1.0) - (((state.nVersion >= 4) ? cv::softdouble(state.nVersion >= 7 ? 0.0333 : 0.15) : cv::softdouble(0.75)) * nProportions);
                     nLowerBound = uint64_t(cv::softdouble(nBlockTarget) * nMod * (state.nVersion >= 7 ? 1000000 : 1));
                 }
 
