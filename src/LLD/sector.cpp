@@ -202,8 +202,9 @@ namespace LLD
             cachePool->Put(cKey, vKey, vData);
 
             /* Verbose Debug Logging. */
-            debug::log(5, FUNCTION, "Current File: ", cKey.nSectorFile,
-                " | Current File Size: ", cKey.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
+            if(config::GetArg("-verbose", 0) >= 5)
+                debug::log(5, FUNCTION, "Current File: ", cKey.nSectorFile,
+                    " | Current File Size: ", cKey.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
 
             return true;
         }
@@ -256,8 +257,9 @@ namespace LLD
                 return debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes read");
 
             /* Verboe output. */
-            debug::log(5, FUNCTION, "Current File: ", cKey.nSectorFile,
-                " | Current File Size: ", cKey.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
+            if(config::GetArg("-verbose", 0) >= 5)
+                debug::log(5, FUNCTION, "Current File: ", cKey.nSectorFile,
+                    " | Current File Size: ", cKey.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
         }
 
         return true;
@@ -318,9 +320,10 @@ namespace LLD
             ++nRecordsFlushed;
             nBytesWrote += static_cast<uint32_t>(vData.size());
 
-            /* Verboe output. */
-            debug::log(5, FUNCTION, "Current File: ", key.nSectorFile,
-                " | Current File Size: ", key.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
+            /* Verbose output. */
+            if(config::GetArg("-verbose", 0) >= 5)
+                debug::log(5, FUNCTION, "Current File: ", key.nSectorFile,
+                    " | Current File Size: ", key.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
         }
 
         return true;
@@ -401,8 +404,9 @@ namespace LLD
             cachePool->Put(key, vKey, vData, false);
 
             /* Verboe output. */
-            debug::log(5, FUNCTION, "Current File: ", key.nSectorFile,
-                " | Current File Size: ", key.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
+            if(config::GetArg("-verbose", 0) >= 5)
+                debug::log(5, FUNCTION, "Current File: ", key.nSectorFile,
+                    " | Current File Size: ", key.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
         }
 
         return true;

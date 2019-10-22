@@ -314,15 +314,16 @@ namespace LLD
                     continue;
 
                 /* Debug Output of Sector Key Information. */
-                debug::log(4, FUNCTION, "State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
-                    " | Length: ", cKey.nLength,
-                    " | Bucket ", nBucket,
-                    " | Location: ", nFilePos,
-                    " | File: ", hashmap->at(nBucket) - 1,
-                    " | Sector File: ", cKey.nSectorFile,
-                    " | Sector Size: ", cKey.nSectorSize,
-                    " | Sector Start: ", cKey.nSectorStart, "\n",
-                    HexStr(vKeyCompressed.begin(), vKeyCompressed.end(), true));
+                if(config::GetArg("-verbose", 0) >= 4)
+                    debug::log(4, FUNCTION, "State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
+                        " | Length: ", cKey.nLength,
+                        " | Bucket ", nBucket,
+                        " | Location: ", nFilePos,
+                        " | File: ", hashmap->at(nBucket) - 1,
+                        " | Sector File: ", cKey.nSectorFile,
+                        " | Sector Size: ", cKey.nSectorSize,
+                        " | Sector Start: ", cKey.nSectorStart, "\n",
+                        HexStr(vKeyCompressed.begin(), vKeyCompressed.end(), true));
 
                 return true;
             }
@@ -406,15 +407,16 @@ namespace LLD
                 vKeys.push_back(cKey);
 
                 /* Debug Output of Sector Key Information. */
-                debug::log(4, FUNCTION, "Found State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
-                    " | Length: ", cKey.nLength,
-                    " | Bucket ", nBucket,
-                    " | Location: ", nFilePos,
-                    " | File: ", hashmap->at(nBucket) - 1,
-                    " | Sector File: ", cKey.nSectorFile,
-                    " | Sector Size: ", cKey.nSectorSize,
-                    " | Sector Start: ", cKey.nSectorStart, "\n",
-                    HexStr(vKeyCompressed.begin(), vKeyCompressed.end(), true));
+                if(config::GetArg("-verbose", 0) >= 4)
+                    debug::log(4, FUNCTION, "Found State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
+                        " | Length: ", cKey.nLength,
+                        " | Bucket ", nBucket,
+                        " | Location: ", nFilePos,
+                        " | File: ", hashmap->at(nBucket) - 1,
+                        " | Sector File: ", cKey.nSectorFile,
+                        " | Sector Size: ", cKey.nSectorSize,
+                        " | Sector Start: ", cKey.nSectorStart, "\n",
+                        HexStr(vKeyCompressed.begin(), vKeyCompressed.end(), true));
             }
         }
 
@@ -495,15 +497,16 @@ namespace LLD
                     pstream->flush();
 
                     /* Debug Output of Sector Key Information. */
-                    debug::log(4, FUNCTION, "State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
-                        " | Length: ", cKey.nLength,
-                        " | Bucket ", nBucket,
-                        " | Location: ", nFilePos,
-                        " | File: ", hashmap->at(nBucket) - 1,
-                        " | Sector File: ", cKey.nSectorFile,
-                        " | Sector Size: ", cKey.nSectorSize,
-                        " | Sector Start: ", cKey.nSectorStart, "\n",
-                        HexStr(vKeyCompressed.begin(), vKeyCompressed.end(), true));
+                    if(config::GetArg("-verbose", 0) >= 4)
+                        debug::log(4, FUNCTION, "State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
+                            " | Length: ", cKey.nLength,
+                            " | Bucket ", nBucket,
+                            " | Location: ", nFilePos,
+                            " | File: ", hashmap->at(nBucket) - 1,
+                            " | Sector File: ", cKey.nSectorFile,
+                            " | Sector Size: ", cKey.nSectorSize,
+                            " | Sector Start: ", cKey.nSectorStart, "\n",
+                            HexStr(vKeyCompressed.begin(), vKeyCompressed.end(), true));
 
                     return true;
                 }
@@ -602,15 +605,16 @@ namespace LLD
         pindex->flush();
 
         /* Debug Output of Sector Key Information. */
-        debug::log(4, FUNCTION, "State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
-            " | Length: ", cKey.nLength,
-            " | Bucket ", nBucket,
-            " | Location: ", nFilePos,
-            " | File: ", hashmap->at(nBucket) - 1,
-            " | Sector File: ", cKey.nSectorFile,
-            " | Sector Size: ", cKey.nSectorSize,
-            " | Sector Start: ", cKey.nSectorStart,
-            " | Key: ",  HexStr(vKeyCompressed.begin(), vKeyCompressed.end()));
+        if(config::GetArg("-verbose", 0) >= 4)
+            debug::log(4, FUNCTION, "State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
+                " | Length: ", cKey.nLength,
+                " | Bucket ", nBucket,
+                " | Location: ", nFilePos,
+                " | File: ", hashmap->at(nBucket) - 1,
+                " | Sector File: ", cKey.nSectorFile,
+                " | Sector Size: ", cKey.nSectorSize,
+                " | Sector Start: ", cKey.nSectorStart,
+                " | Key: ",  HexStr(vKeyCompressed.begin(), vKeyCompressed.end()));
 
         return true;
     }
@@ -689,15 +693,16 @@ namespace LLD
                 pstream->flush();
 
                 /* Debug Output of Sector Key Information. */
-                debug::log(4, FUNCTION, "Erased State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
-                    " | Length: ", cKey.nLength,
-                    " | Bucket ", nBucket,
-                    " | Location: ", nFilePos,
-                    " | File: ", hashmap->at(nBucket) - 1,
-                    " | Sector File: ", cKey.nSectorFile,
-                    " | Sector Size: ", cKey.nSectorSize,
-                    " | Sector Start: ", cKey.nSectorStart,
-                    " | Key: ", HexStr(vKeyCompressed.begin(), vKeyCompressed.end()));
+                if(config::GetArg("-verbose", 0) >= 4)
+                    debug::log(4, FUNCTION, "Erased State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
+                        " | Length: ", cKey.nLength,
+                        " | Bucket ", nBucket,
+                        " | Location: ", nFilePos,
+                        " | File: ", hashmap->at(nBucket) - 1,
+                        " | Sector File: ", cKey.nSectorFile,
+                        " | Sector Size: ", cKey.nSectorSize,
+                        " | Sector Start: ", cKey.nSectorStart,
+                        " | Key: ", HexStr(vKeyCompressed.begin(), vKeyCompressed.end()));
 
                 return true;
             }
@@ -778,15 +783,16 @@ namespace LLD
                 pstream->flush();
 
                 /* Debug Output of Sector Key Information. */
-                debug::log(4, FUNCTION, "Restored State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
-                    " | Length: ", cKey.nLength,
-                    " | Bucket ", nBucket,
-                    " | Location: ", nFilePos,
-                    " | File: ", hashmap->at(nBucket) - 1,
-                    " | Sector File: ", cKey.nSectorFile,
-                    " | Sector Size: ", cKey.nSectorSize,
-                    " | Sector Start: ", cKey.nSectorStart,
-                    " | Key: ", HexStr(vKeyCompressed.begin(), vKeyCompressed.end()));
+                if(config::GetArg("-verbose", 0) >= 4)
+                    debug::log(4, FUNCTION, "Restored State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
+                        " | Length: ", cKey.nLength,
+                        " | Bucket ", nBucket,
+                        " | Location: ", nFilePos,
+                        " | File: ", hashmap->at(nBucket) - 1,
+                        " | Sector File: ", cKey.nSectorFile,
+                        " | Sector Size: ", cKey.nSectorSize,
+                        " | Sector Start: ", cKey.nSectorStart,
+                        " | Key: ", HexStr(vKeyCompressed.begin(), vKeyCompressed.end()));
 
                 return true;
             }
