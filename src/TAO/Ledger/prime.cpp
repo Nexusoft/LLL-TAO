@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <openssl/bn.h>
 
 #include <Util/include/debug.h>
+#include <Util/include/softfloat.h>
 
 
 /* Global TAO namespace. */
@@ -40,10 +41,10 @@ namespace TAO
 
 
         /* Determines the difficulty of the Given Prime Number. */
-        double GetPrimeDifficulty(const uint1024_t& hashPrime, const std::vector<uint8_t>& vOffsets)
+        double GetPrimeDifficulty(const uint1024_t& hashPrime, const std::vector<uint8_t>& vOffsets, const bool fVerify)
         {
             /* Return 0 if base is not prime. */
-            if(!PrimeCheck(hashPrime))
+            if(fVerify && !PrimeCheck(hashPrime))
                 return 0.0;
 
             /* Keep track of the cluster size. */
@@ -64,7 +65,7 @@ namespace TAO
                     hashNext += nOffset;
 
                     /* Check prime at offset. */
-                    if(PrimeCheck(hashNext))
+                    if(!fVerify || PrimeCheck(hashNext))
                         ++nClusterSize;
                 }
 
@@ -89,11 +90,11 @@ namespace TAO
             }
 
             /* Calculate the rarity of cluster from proportion of fermat remainder of last prime + 2. */
-            double nRemainder = 1000000.0 / GetFractionalDifficulty(hashNext);
-            if(nRemainder > 1.0 || nRemainder < 0.0)
-                nRemainder = 0.0;
+            cv::softdouble nRemainder = cv::softdouble(1000000.0) / cv::softdouble(GetFractionalDifficulty(hashNext));
+            if(nRemainder > cv::softdouble(1.0) || nRemainder < cv::softdouble(0.0))
+                nRemainder = cv::softdouble(0.0);
 
-            return (nClusterSize + nRemainder);
+            return double(nClusterSize + nRemainder);
         }
 
 
@@ -126,9 +127,9 @@ namespace TAO
 
 
         /* Gets the unsigned int representative of a decimal prime difficulty. */
-        uint32_t GetPrimeBits(const uint1024_t& hashPrime, const std::vector<uint8_t>& vOffsets)
+        uint32_t GetPrimeBits(const uint1024_t& hashPrime, const std::vector<uint8_t>& vOffsets, const bool fVerify)
         {
-            return SetBits(GetPrimeDifficulty(hashPrime, vOffsets));
+            return SetBits(GetPrimeDifficulty(hashPrime, vOffsets, fVerify));
         }
 
 

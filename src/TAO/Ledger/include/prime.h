@@ -51,7 +51,7 @@ namespace TAO
          *  @return The double value of prime difficulty.
          *
          **/
-        double GetPrimeDifficulty(const uint1024_t& hashPrime, const std::vector<uint8_t>& vOffsets);
+        double GetPrimeDifficulty(const uint1024_t& hashPrime, const std::vector<uint8_t>& vOffsets, const bool fVerify = true);
 
 
         /** GetOffsets
@@ -75,7 +75,7 @@ namespace TAO
          *  @return uint32_t representation of prime difficulty.
          *
          **/
-        uint32_t GetPrimeBits(const uint1024_t& hashPrime, const std::vector<uint8_t>& vOffsets);
+        uint32_t GetPrimeBits(const uint1024_t& hashPrime, const std::vector<uint8_t>& vOffsets, const bool fVerify = true);
 
 
         /** GetFractionalDifficulty
