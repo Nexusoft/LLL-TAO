@@ -106,7 +106,7 @@ namespace LLD
     /*  Determines if the database has the Key. */
     bool BinaryFileMap::HasKey(const std::vector<uint8_t>& vKey) const
     {
-        return mapKeys.count(vKey);
+        return mapKeys.find(vKey) != mapKeys.end();
     }
 
 
@@ -218,7 +218,7 @@ namespace LLD
         LOCK(KEY_MUTEX);
 
         /* Write Header if First Update. */
-        if(!mapKeys.count(cKey.vKey))
+        if(mapKeys.find(cKey.vKey) == mapKeys.end())
         {
             /* Check the Binary File Size. */
             if(nCurrentFileSize > FILEMAP_MAX_FILE_SIZE)
@@ -281,7 +281,7 @@ namespace LLD
         LOCK(KEY_MUTEX);
 
         /* Check for the Key. */
-        if(!mapKeys.count(vKey))
+        if(mapKeys.find(vKey) == mapKeys.end())
             return debug::error(FUNCTION, "Key doesn't Exist");
 
 
@@ -314,7 +314,7 @@ namespace LLD
         LOCK(KEY_MUTEX);
 
         /* Check for the Key. */
-        if(!mapKeys.count(vKey))
+        if(mapKeys.find(vKey) == mapKeys.end())
             return debug::error(FUNCTION, "Key doesn't Exist");
 
 
@@ -347,7 +347,7 @@ namespace LLD
         LOCK(KEY_MUTEX);
 
         /* Read a Record from Binary Data. */
-        if(mapKeys.count(vKey))
+        if(mapKeys.find(vKey) != mapKeys.end())
         {
             /* Open the Stream Object. */
             std::string strFilename = debug::safe_printstr(strBaseLocation, "_filemap.", std::setfill('0'), std::setw(5), mapKeys[vKey].first);
