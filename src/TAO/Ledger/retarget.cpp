@@ -382,7 +382,6 @@ namespace TAO
                 {
                     /* Take the Minimum overlap of Target Timespan to make that maximum interval. */
                     uint64_t nOverlap = (uint64_t)std::min((nBlockTime - nBlockTarget), nBlockTarget * (state.nVersion >= 7 ? 1 : 2));
-                    debug::log(0, "Overlap ", nOverlap);
 
                     /* Get the Mod from the Proportion of Overlap in one Interval. */
                     cv::softdouble nProportions = cv::softdouble(nOverlap) / cv::softdouble(nBlockTarget * (state.nVersion >= 7 ? 1 : 2));
@@ -398,7 +397,6 @@ namespace TAO
                 {
                     /* Get the overlap in reference from Target Timespan. */
                     uint64_t nOverlap = nBlockTarget - nBlockTime;
-                    debug::log(0, "Overlap ", nOverlap);
 
                     /* Get the mod from overlap proportion. Time of 1 will be closest to mod of 1. */
                     cv::softdouble nProportions = cv::softdouble(nOverlap) / cv::softdouble(nBlockTarget);
