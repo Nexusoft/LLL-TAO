@@ -253,6 +253,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLC_SK_KeccakDuplex.o \
 		build/LLC_SK_KeccakHash.o \
 		build/LLC_SK_KeccakSponge.o \
+		build/LLC_SK_SK.o \
 		build/LLC_SK_skein.o \
 		build/LLC_SK_skein_block.o \
 		build/LLC_sha3.o \
