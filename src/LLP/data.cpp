@@ -35,19 +35,21 @@ namespace LLP
     DataThread<ProtocolType>::DataThread(uint32_t nID, bool fIsDDOS,
                                          uint32_t rScore, uint32_t cScore,
                                          uint32_t nTimeout, bool fMeter)
-    : SLOT_MUTEX()
-    , fDDOS(fIsDDOS)
-    , fMETER(fMeter)
-    , fDestruct(false)
-    , nConnections(0)
-    , ID(nID)
-    , REQUESTS(0)
-    , TIMEOUT(nTimeout)
-    , DDOS_rSCORE(rScore)
-    , DDOS_cSCORE(cScore)
-    , CONNECTIONS(memory::atomic_ptr< std::vector<memory::atomic_ptr<ProtocolType>> >(new std::vector<memory::atomic_ptr<ProtocolType>>()))
-    , CONDITION()
-    , DATA_THREAD(std::bind(&DataThread::Thread, this))
+    : SLOT_MUTEX      ( )
+    , fDDOS           (fIsDDOS)
+    , fMETER          (fMeter)
+    , fDestruct       (false)
+    , nConnections    (0)
+    , ID              (nID)
+    , REQUESTS        (0)
+    , TIMEOUT         (nTimeout)
+    , DDOS_rSCORE     (rScore)
+    , DDOS_cSCORE     (cScore)
+    , CONNECTIONS     (memory::atomic_ptr< std::vector<memory::atomic_ptr<ProtocolType>> >(new std::vector<memory::atomic_ptr<ProtocolType>>()))
+    , CONDITION       ( )
+    , DATA_THREAD     (std::bind(&DataThread::Thread, this))
+    , FLUSH_CONDITION ( )
+    , FLUSH_THREAD    (std::bind(&DataThread::Flush, this))
     {
     }
 
@@ -61,6 +63,10 @@ namespace LLP
 
         if(DATA_THREAD.joinable())
             DATA_THREAD.join();
+
+        FLUSH_CONDITION.notify_all();
+        if(FLUSH_THREAD.joinable())
+            FLUSH_THREAD.join();
 
         DisconnectAll();
 
@@ -85,8 +91,9 @@ namespace LLP
                 uint32_t nSlot = find_slot();
 
                 /* Update the indexes. */
-                pnode->nDataThread = ID;
-                pnode->nDataIndex  = nSlot;
+                pnode->nDataThread     = ID;
+                pnode->nDataIndex      = nSlot;
+                pnode->FLUSH_CONDITION = &FLUSH_CONDITION;
 
                 /* Find a slot that is empty. */
                 if(nSlot == CONNECTIONS->size())
@@ -139,8 +146,9 @@ namespace LLP
                 uint32_t nSlot = find_slot();
 
                 /* Update the indexes. */
-                pnode->nDataThread = ID;
-                pnode->nDataIndex  = nSlot;
+                pnode->nDataThread     = ID;
+                pnode->nDataIndex      = nSlot;
+                pnode->FLUSH_CONDITION = &FLUSH_CONDITION;
 
                 /* Find a slot that is empty. */
                 if(nSlot == CONNECTIONS->size())
@@ -259,9 +267,9 @@ namespace LLP
 
             /* Poll the sockets. */
 #ifdef WIN32
-            WSAPoll((pollfd*)&POLLFDS[0], nSize, 5);
+            WSAPoll((pollfd*)&POLLFDS[0], nSize, 100);
 #else
-            poll((pollfd*)&POLLFDS[0], nSize, 5);
+            poll((pollfd*)&POLLFDS[0], nSize, 100);
 #endif
 
 
@@ -340,9 +348,6 @@ namespace LLP
                     /* Generic event for Connection. */
                     pConnection->Event(EVENT_GENERIC);
 
-                    /* Flush the write buffer. */
-                    pConnection->Flush();
-
                     /* Work on Reading a Packet. **/
                     pConnection->ReadPacket();
 
@@ -385,21 +390,58 @@ namespace LLP
     }
 
 
+    /*  Thread that handles all the Reading / Writing of Data from Sockets.
+     *  Creates a Packet QUEUE on this connection to be processed by an
+     *  LLP Messaging Thread. */
+    template <class ProtocolType>
+    void DataThread<ProtocolType>::Flush()
+    {
+        /* The mutex for the condition. */
+        std::mutex CONDITION_MUTEX;
+
+        /* The main connection handler loop. */
+        while(!fDestruct.load() && !config::fShutdown.load())
+        {
+            /* Keep data threads waiting for work.
+             * Will wait until have one or more connections, DataThread is disposed, or system shutdown
+             * While loop catches potential for spurious wakeups. Also has the effect of skipping the wait() call after connections established.
+             */
+            std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
+            FLUSH_CONDITION.wait(CONDITION_LOCK, [this]{ return fDestruct.load() || config::fShutdown.load() || nConnections.load() > 0; });
+
+            /* Check for close. */
+            if(fDestruct.load() || config::fShutdown.load())
+                return;
+
+            /* Wrapped mutex lock. */
+            uint32_t nSize = static_cast<uint32_t>(CONNECTIONS->size());
+
+            /* We should have connections, as predicate of releasing condition wait.
+             * This is a precaution, checking after getting MUTEX lock
+             */
+            if(nConnections.load() == 0)
+                continue;
+
+            /* Check all connections for data and packets. */
+            for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
+            {
+                try { CONNECTIONS->at(nIndex)->Flush(); }
+                catch(const std::exception& e) { }
+            }
+        }
+    }
+
+
     /* Tell the data thread an event has occured and notify each connection. */
     template<class ProtocolType>
     void DataThread<ProtocolType>::NotifyEvent()
     {
         /* Loop through each connection. */
         uint32_t nSize = static_cast<uint32_t>(CONNECTIONS->size());
-        for(uint32_t i = 0; i < nSize; ++i)
+        for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
         {
-            ProtocolType* connection = CONNECTIONS->at(i).load();
-
-            if(!connection)
-                continue;
-
-            /* Notify the connection that an event has occurred. */
-            connection->NotifyEvent();
+            try { CONNECTIONS->at(nIndex)->NotifyEvent(); }
+            catch(const std::exception& e) { }
         }
     }
 

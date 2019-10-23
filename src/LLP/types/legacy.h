@@ -248,7 +248,7 @@ namespace LLP
          *  @return Returns a filled out legacy packet.
          *
          **/
-        LegacyPacket NewMessage(const char* chCommand, const DataStream& ssData)
+        static LegacyPacket NewMessage(const char* chCommand, const DataStream& ssData)
         {
             LegacyPacket RESPONSE(chCommand);
             RESPONSE.SetData(ssData);
