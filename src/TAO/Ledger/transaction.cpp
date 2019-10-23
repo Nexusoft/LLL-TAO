@@ -490,7 +490,7 @@ namespace TAO
 
                 /* Enforce the minimum interval between stake blocks. */
                 const uint32_t nInterval = pblock->nHeight - stateLast.nHeight;
-                if(nInterval <= MinStakeInterval())
+                if(nInterval <= MinStakeInterval(*pblock))
                     return debug::error(FUNCTION, "stake block interval ", nInterval, " below minimum interval");
 
                 /* Calculate the coinstake reward */
