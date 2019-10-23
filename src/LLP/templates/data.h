@@ -77,6 +77,11 @@ namespace LLP
             message_args(s, std::forward<Tail>(tail)...);
         }
 
+
+        /** Lock access to find slot to ensure no race conditions happend between threads. **/
+        std::mutex SLOT_MUTEX;
+        
+
     public:
 
         /* Variables to track Connection / Request Count. */

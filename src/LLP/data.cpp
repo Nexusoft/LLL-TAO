@@ -35,7 +35,8 @@ namespace LLP
     DataThread<ProtocolType>::DataThread(uint32_t id, bool isDDOS,
                                          uint32_t rScore, uint32_t cScore,
                                          uint32_t nTimeout, bool fMeter)
-    : fDDOS(isDDOS)
+    : SLOT_MUTEX()
+    , fDDOS(isDDOS)
     , fMETER(fMeter)
     , fDestruct(false)
     , nConnections(0)
@@ -77,29 +78,33 @@ namespace LLP
             ProtocolType* pnode = new ProtocolType(SOCKET, DDOS, fDDOS);
             pnode->fCONNECTED.store(true);
 
-            /* Find an available slot. */
-            uint32_t nSlot = find_slot();
+            {
+                LOCK(SLOT_MUTEX);
 
-            /* Update the indexes. */
-            pnode->nDataThread = ID;
-            pnode->nDataIndex  = nSlot;
+                /* Find an available slot. */
+                uint32_t nSlot = find_slot();
 
-            /* Find a slot that is empty. */
-            if(nSlot == CONNECTIONS->size())
-                CONNECTIONS->push_back(memory::atomic_ptr<ProtocolType>(pnode));
-            else
-                CONNECTIONS->at(nSlot).store(pnode);
+                /* Update the indexes. */
+                pnode->nDataThread = ID;
+                pnode->nDataIndex  = nSlot;
 
-            /* Fire the connected event. */
-            memory::atomic_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nSlot);
-            CONNECTION->Event(EVENT_CONNECT);
+                /* Find a slot that is empty. */
+                if(nSlot == CONNECTIONS->size())
+                    CONNECTIONS->push_back(memory::atomic_ptr<ProtocolType>(pnode));
+                else
+                    CONNECTIONS->at(nSlot).store(pnode);
 
-            /* Iterate the DDOS cScore (Connection score). */
-            if(DDOS)
-                DDOS -> cSCORE += 1;
+                /* Fire the connected event. */
+                memory::atomic_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nSlot);
+                CONNECTION->Event(EVENT_CONNECT);
 
-            /* Bump the total connections atomic counter. */
-            ++nConnections;
+                /* Iterate the DDOS cScore (Connection score). */
+                if(DDOS)
+                    DDOS -> cSCORE += 1;
+
+                /* Bump the total connections atomic counter. */
+                ++nConnections;
+            }
 
             /* Notify data thread to wake up. */
             CONDITION.notify_all();
@@ -120,13 +125,6 @@ namespace LLP
             /* Create a new pointer on the heap. */
             ProtocolType* pnode = new ProtocolType(nullptr, false); //turn off DDOS for outgoing connections
 
-            /* Find an available slot. */
-            uint32_t nSlot = find_slot();
-
-            /* Update the indexes. */
-            pnode->nDataThread = ID;
-            pnode->nDataIndex  = nSlot;
-
             /* Attempt to make the connection. */
             if(!pnode->Connect(addr))
             {
@@ -134,18 +132,29 @@ namespace LLP
                 return false;
             }
 
-            /* Find a slot that is empty. */
-            if(nSlot == CONNECTIONS->size())
-                CONNECTIONS->push_back(memory::atomic_ptr<ProtocolType>(pnode));
-            else
-                CONNECTIONS->at(nSlot).store(pnode);
+            {
+                LOCK(SLOT_MUTEX);
 
-            /* Fire the connected event. */
-            memory::atomic_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nSlot);
-            CONNECTION->Event(EVENT_CONNECT);
+                /* Find an available slot. */
+                uint32_t nSlot = find_slot();
 
-            /* Bump the total connections atomic counter. */
-            ++nConnections;
+                /* Update the indexes. */
+                pnode->nDataThread = ID;
+                pnode->nDataIndex  = nSlot;
+
+                /* Find a slot that is empty. */
+                if(nSlot == CONNECTIONS->size())
+                    CONNECTIONS->push_back(memory::atomic_ptr<ProtocolType>(pnode));
+                else
+                    CONNECTIONS->at(nSlot).store(pnode);
+
+                /* Fire the connected event. */
+                memory::atomic_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nSlot);
+                CONNECTION->Event(EVENT_CONNECT);
+
+                /* Bump the total connections atomic counter. */
+                ++nConnections;
+            }
 
             /* Notify data thread to wake up. */
             CONDITION.notify_all();
