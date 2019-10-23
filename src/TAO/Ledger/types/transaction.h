@@ -111,12 +111,6 @@ namespace TAO
                 /* Handle for when not getting hash or skipsig. */
                 if(!(nSerType & SER_GETHASH) && !(nSerType & SER_SKIPSIG))
                     READWRITE(vchSig);
-
-                /* Checksum hash only serialized for the LLD */
-                if(nSerType & SER_LLD)
-                    READWRITE(hashCached);
-
-
             )
 
 
@@ -433,11 +427,6 @@ namespace TAO
             **/
             uint64_t Fees() const;
 
-        
-        private:
-
-            /** In memory cache of the transaction hash to avoid needing to calculate it with each call **/
-            mutable uint512_t hashCached;
         };
     }
 }

@@ -102,7 +102,6 @@ namespace TAO
             vMissing       = block.vMissing;
             hashMissing    = block.hashMissing;
             fConflicted    = block.fConflicted;
-            hashCached     = block.hashCached;
 
             nTime          = block.nTime;
             producer       = block.producer;
@@ -128,7 +127,6 @@ namespace TAO
             vMissing       = std::move(block.vMissing);
             hashMissing    = std::move(block.hashMissing);
             fConflicted    = std::move(block.fConflicted);
-            hashCached     = std::move(block.hashCached);
 
             nTime          = std::move(block.nTime);
             producer       = std::move(block.producer);

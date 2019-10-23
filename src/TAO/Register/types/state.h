@@ -42,10 +42,6 @@ namespace TAO
             /** The byte level data of the register. **/
             std::vector<uint8_t> vchState;
 
-
-            /** In memory cache of the block hash to avoid needing to calculate it with each call **/
-            mutable uint64_t hashCached;
-
         public:
             /** The version of the state register. */
             uint8_t nVersion;
@@ -88,11 +84,8 @@ namespace TAO
                 //checksum hash not serialized on gethash
                 if(!(nSerType & SER_GETHASH))
                     READWRITE(hashChecksum);
-
-                /* Checksum hash only serialized for the LLD */
-                if(nSerType & SER_LLD)
-                   READWRITE(hashCached);
             )
+
 
             /** Default Constructor **/
             State();

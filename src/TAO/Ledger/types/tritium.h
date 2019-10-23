@@ -92,10 +92,6 @@ namespace TAO
                 READWRITE(ssSystem);
                 READWRITE(vOffsets);
                 READWRITE(vtx);
-
-                /* Checksum hash only serialized for the LLD */
-                if(nSerType & SER_LLD)
-                   READWRITE(hashCached);
             )
 
 
