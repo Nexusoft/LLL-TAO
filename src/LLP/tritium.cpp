@@ -231,7 +231,7 @@ namespace LLP
 
 
                 /* Handle subscribing to events from other nodes. */
-                if(!fInitialized && fSynchronized && nCurrentSession != 0)
+                if(!fInitialized.load() && fSynchronized.load() && nCurrentSession != 0)
                 {
                     /* Simple log to let us know we are making the subscription requests. */
                     debug::log(1, NODE, "Initializing Subscriptions with REMOTE HOST");
@@ -249,7 +249,7 @@ namespace LLP
                     PushMessage(ACTION::LIST, uint8_t(TYPES::MEMPOOL));
 
                     /* Set node as initialized. */
-                    fInitialized = true;
+                    fInitialized.store(true);
                 }
 
                 break;
