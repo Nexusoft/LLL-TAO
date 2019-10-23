@@ -80,7 +80,7 @@ namespace LLP
 
         /** Lock access to find slot to ensure no race conditions happend between threads. **/
         std::mutex SLOT_MUTEX;
-        
+
 
     public:
 
@@ -114,7 +114,7 @@ namespace LLP
         /** Default Constructor
          *
          **/
-        DataThread<ProtocolType>(uint32_t id, bool isDDOS, uint32_t rScore, uint32_t cScore,
+        DataThread<ProtocolType>(uint32_t nID, bool fIsDDOS, uint32_t rScore, uint32_t cScore,
                                  uint32_t nTimeout, bool fMeter = false);
 
 

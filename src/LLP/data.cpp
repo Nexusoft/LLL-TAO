@@ -32,15 +32,15 @@ namespace LLP
 
     /** Default Constructor **/
     template <class ProtocolType>
-    DataThread<ProtocolType>::DataThread(uint32_t id, bool isDDOS,
+    DataThread<ProtocolType>::DataThread(uint32_t nID, bool fIsDDOS,
                                          uint32_t rScore, uint32_t cScore,
                                          uint32_t nTimeout, bool fMeter)
     : SLOT_MUTEX()
-    , fDDOS(isDDOS)
+    , fDDOS(fIsDDOS)
     , fMETER(fMeter)
     , fDestruct(false)
     , nConnections(0)
-    , ID(id)
+    , ID(nID)
     , REQUESTS(0)
     , TIMEOUT(nTimeout)
     , DDOS_rSCORE(rScore)
