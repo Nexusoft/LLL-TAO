@@ -729,7 +729,7 @@ namespace TAO
             block.print();
 
             /* Log block found */
-            if(config::GetArg("-verbose", 0) > 0)
+            if(config::nVerbose > 0)
             {
                 std::string strTimestamp = std::string(convert::DateTimeStrFormat(runtime::unifiedtimestamp()));
 

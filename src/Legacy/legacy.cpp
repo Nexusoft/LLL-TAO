@@ -444,7 +444,7 @@ namespace Legacy
     bool LegacyBlock::Accept() const
     {
         /* Print the block on verbose 2. */
-        if(config::GetArg("-verbose", 0) >= 2)
+        if(config::nVerbose >= 2)
             print();
 
         /* Read leger DB for previous block. */

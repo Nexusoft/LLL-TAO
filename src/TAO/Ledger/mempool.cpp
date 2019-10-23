@@ -95,7 +95,7 @@ namespace TAO
                 return true;
 
             debug::log(3, "ACCEPT --------------------------------------");
-            if(config::GetArg("-verbose", 0) >= 3)
+            if(config::nVerbose >= 3)
                 tx.print();
             debug::log(3, "END ACCEPT -----------------------------------");
 

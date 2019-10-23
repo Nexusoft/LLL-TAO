@@ -353,7 +353,7 @@ namespace LLP
                         debug::log(4, FUNCTION, "recieved packet (", pConnection->INCOMING.GetBytes().size(), " bytes)");
 
                         /* Debug dump of packet data. */
-                        if(config::GetArg("-verbose", 0) >= 5)
+                        if(config::nVerbose >= 5)
                             PrintHex(pConnection->INCOMING.GetBytes());
 
                         /* Handle Meters and DDOS. */

@@ -289,7 +289,7 @@ namespace LLP
             {
                 debug::log(4, NODE, "Received Packet (", INCOMING.LENGTH, ", ", INCOMING.GetBytes().size(), ")");
 
-                if(config::GetArg("-verbose", 0) >= 5)
+                if(config::nVerbose >= 5)
                     PrintHex(INCOMING.GetBytes());
             }
 

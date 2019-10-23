@@ -156,7 +156,7 @@ namespace LLP
         debug::log(4, NODE, "sent packet (", vBytes.size(), " bytes)");
 
         /* Debug dump of packet data. */
-        if(config::GetArg("-verbose", 0) >= 5)
+        if(config::nVerbose >= 5)
             PrintHex(vBytes);
 
         /* Write the packet to socket buffer. */

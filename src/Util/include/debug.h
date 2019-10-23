@@ -178,7 +178,7 @@ namespace debug
     void log(uint32_t nLevel, Args&&... args)
     {
         /* Don't write if log level is below set level. */
-        if(config::GetArg("-verbose", 0) < nLevel)
+        if(config::nVerbose < nLevel)
             return;
 
         /* Lock the mutex. */

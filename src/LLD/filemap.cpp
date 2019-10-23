@@ -182,7 +182,7 @@ namespace LLD
                     mapKeys[vKey] = std::make_pair(nCurrentFile, nIterator);
 
                     /* Debug Output of Sector Key Information. */
-                    if(config::GetArg("-verbose", 0) >= 5)
+                    if(config::nVerbose >= 5)
                         debug::log(5, FUNCTION, "State: ", cKey.nState, " Length: ", cKey.nLength, " File: ", mapKeys[vKey].first, " Location: ", mapKeys[vKey].second, " Key: ", HexStr(vKey.begin(), vKey.end()));
 
                     ++nTotalKeys;
@@ -261,7 +261,7 @@ namespace LLD
 
 
         /* Debug Output of Sector Key Information. */
-        if(config::GetArg("-verbose", 0) >= 4)
+        if(config::nVerbose >= 4)
             debug::log(4, FUNCTION, "State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
                 " | Length: ", cKey.nLength, " | Location: ", mapKeys[cKey.vKey].second,
                 " | File: ", mapKeys[cKey.vKey].first, " | Sector File: ", cKey.nSectorFile,
@@ -369,7 +369,7 @@ namespace LLD
 
 
             /* Debug Output of Sector Key Information. */
-            if(config::GetArg("-verbose", 0) >= 4)
+            if(config::nVerbose >= 4)
                 debug::log(4, FUNCTION, "State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
                     " | Length: ", cKey.nLength, " | Location: ", mapKeys[vKey].second,
                     " | File: ",  mapKeys[vKey].first, " | Sector File: ", cKey.nSectorFile,

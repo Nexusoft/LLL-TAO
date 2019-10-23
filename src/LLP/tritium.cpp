@@ -189,7 +189,7 @@ namespace LLP
 
                 if(INCOMING.Complete())
                 {
-                    if(config::GetArg("-verbose", 0) >= 5)
+                    if(config::nVerbose >= 5)
                         PrintHex(INCOMING.GetBytes());
                 }
 
@@ -927,7 +927,7 @@ namespace LLP
                                     }
 
                                     /* Debug output. */
-                                    if(config::GetArg("-verbose", 0) >= 3)
+                                    if(config::nVerbose >= 3)
                                         debug::log(3, NODE, "ACTION::LIST: Locator ", hashStart.SubString(), " found");
 
                                     break;
@@ -963,7 +963,7 @@ namespace LLP
                                     /* Check for matching hashes. */
                                     if(state.hashPrevBlock != stateLast.GetHash())
                                     {
-                                        if(config::GetArg("-verbose", 0) >= 3)
+                                        if(config::nVerbose >= 3)
                                             debug::log(3, FUNCTION, "Reading block ", stateLast.hashNextBlock.SubString());
 
                                         /* Read the correct block from next index. */
@@ -1040,7 +1040,7 @@ namespace LLP
                                     /* Check for stop hash. */
                                     if(--nLimits <= 0 || hashStart == hashStop)
                                     {
-                                        if(config::GetArg("-verbose", 0) >= 3)
+                                        if(config::nVerbose >= 3)
                                             debug::log(3, FUNCTION, "Limits ", nLimits, " Reached ", hashStart.SubString(), " == ", hashStop.SubString());
                                         break;
                                     }
@@ -1860,7 +1860,7 @@ namespace LLP
                             TAO::Ledger::TritiumBlock tritium(block);
 
                             /* Verbose debug output. */
-                            if(config::GetArg("-verbose", 0) >= 3)
+                            if(config::nVerbose >= 3)
                                 debug::log(3, FUNCTION, "received sync block ", tritium.GetHash().SubString(), " height = ", block.nHeight);
 
                             /* Process the block. */
@@ -1872,7 +1872,7 @@ namespace LLP
                             Legacy::LegacyBlock legacy(block);
 
                             /* Verbose debug output. */
-                            if(config::GetArg("-verbose", 0) >= 3)
+                            if(config::nVerbose >= 3)
                                 debug::log(3, FUNCTION, "received sync block ", legacy.GetHash().SubString(), " height = ", block.nHeight);
 
                             /* Process the block. */
