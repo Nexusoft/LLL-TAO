@@ -371,11 +371,11 @@ namespace Legacy
 
         static uint32_t nWaitCounter = 0; //Prevents log spam during wait period
 
-        /* Retrieve the current setting for minimum stake interval */
-        const uint32_t nMinimumInterval = TAO::Ledger::MinStakeInterval();
-
         /* Create the block to work on */
         block = LegacyBlock();
+
+        /* Retrieve the current setting for minimum stake interval */
+        const uint32_t nMinimumInterval = TAO::Ledger::MinStakeInterval(block);
 
         ReserveKey dummyReserveKey(pStakingWallet); //Reserve key not used by CreateBlock for nChannel=0
         Coinbase dummyCoinbase; // Coinbase not used for staking
