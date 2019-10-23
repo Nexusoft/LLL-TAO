@@ -363,7 +363,7 @@ namespace TAO
                     return debug::error(FUNCTION, "coinstake timestamp is after block timestamp");
 
                 /* Check the Proof of Stake Claims. */
-                if(!VerifyWork())
+                if(!TAO::Ledger::ChainState::Synchronizing() && !VerifyWork())
                     return debug::error(FUNCTION, "invalid proof of stake");
             }
 
@@ -383,7 +383,7 @@ namespace TAO
                     return debug::error(FUNCTION, "offsets included in non prime block");
 
                 /* Check the Proof of Work Claims. */
-                if(!VerifyWork())
+                if(!TAO::Ledger::ChainState::Synchronizing() && !VerifyWork())
                     return debug::error(FUNCTION, "invalid proof of work");
             }
 
@@ -510,43 +510,47 @@ namespace TAO
             if(hashMerkleRoot != BuildMerkleTree(vHashes))
                 return debug::error(FUNCTION, "hashMerkleRoot mismatch");
 
-            /* Switch based on signature type. */
-            switch(producer.nKeyType)
+            /* Verify producer signature (if not synchronizing) */
+            if(!TAO::Ledger::ChainState::Synchronizing())
             {
-                /* Support for the FALCON signature scheeme. */
-                case SIGNATURE::FALCON:
+                /* Switch based on signature type. */
+                switch(producer.nKeyType)
                 {
-                    /* Create the FL Key object. */
-                    LLC::FLKey key;
+                    /* Support for the FALCON signature scheeme. */
+                    case SIGNATURE::FALCON:
+                    {
+                        /* Create the FL Key object. */
+                        LLC::FLKey key;
 
-                    /* Set the public key and verify. */
-                    key.SetPubKey(producer.vchPubKey);
+                        /* Set the public key and verify. */
+                        key.SetPubKey(producer.vchPubKey);
 
-                    /* Check the Block Signature. */
-                    if(!VerifySignature(key))
-                        return debug::error(FUNCTION, "bad block signature");
+                        /* Check the Block Signature. */
+                        if(!VerifySignature(key))
+                            return debug::error(FUNCTION, "bad block signature");
 
-                    break;
+                        break;
+                    }
+
+                    /* Support for the BRAINPOOL signature scheme. */
+                    case SIGNATURE::BRAINPOOL:
+                    {
+                        /* Create EC Key object. */
+                        LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
+
+                        /* Set the public key and verify. */
+                        key.SetPubKey(producer.vchPubKey);
+
+                        /* Check the Block Signature. */
+                        if(!VerifySignature(key))
+                            return debug::error(FUNCTION, "bad block signature");
+
+                        break;
+                    }
+
+                    default:
+                        return debug::error(FUNCTION, "unknown signature type");
                 }
-
-                /* Support for the BRAINPOOL signature scheme. */
-                case SIGNATURE::BRAINPOOL:
-                {
-                    /* Create EC Key object. */
-                    LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
-
-                    /* Set the public key and verify. */
-                    key.SetPubKey(producer.vchPubKey);
-
-                    /* Check the Block Signature. */
-                    if(!VerifySignature(key))
-                        return debug::error(FUNCTION, "bad block signature");
-
-                    break;
-                }
-
-                default:
-                    return debug::error(FUNCTION, "unknown signature type");
             }
 
             return true;

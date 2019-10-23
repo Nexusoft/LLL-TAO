@@ -329,39 +329,43 @@ namespace TAO
                     return debug::error(FUNCTION, "genesis transaction contains invalid contracts.");
             }
 
-            /* Switch based on signature type. */
-            switch(nKeyType)
+            /* Verify the block signature (if not synchronizing) */
+            if(!TAO::Ledger::ChainState::Synchronizing())
             {
-                /* Support for the FALCON signature scheeme. */
-                case SIGNATURE::FALCON:
+                /* Switch based on signature type. */
+                switch(nKeyType)
                 {
-                    /* Create the FL Key object. */
-                    LLC::FLKey key;
+                    /* Support for the FALCON signature scheeme. */
+                    case SIGNATURE::FALCON:
+                    {
+                        /* Create the FL Key object. */
+                        LLC::FLKey key;
 
-                    /* Set the public key and verify. */
-                    key.SetPubKey(vchPubKey);
-                    if(!key.Verify(GetHash().GetBytes(), vchSig))
-                        return debug::error(FUNCTION, "invalid transaction signature");
+                        /* Set the public key and verify. */
+                        key.SetPubKey(vchPubKey);
+                        if(!key.Verify(GetHash().GetBytes(), vchSig))
+                            return debug::error(FUNCTION, "invalid transaction signature");
 
-                    break;
+                        break;
+                    }
+
+                    /* Support for the BRAINPOOL signature scheme. */
+                    case SIGNATURE::BRAINPOOL:
+                    {
+                        /* Create EC Key object. */
+                        LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
+
+                        /* Set the public key and verify. */
+                        key.SetPubKey(vchPubKey);
+                        if(!key.Verify(GetHash().GetBytes(), vchSig))
+                            return debug::error(FUNCTION, "invalid transaction signature");
+
+                        break;
+                    }
+
+                    default:
+                        return debug::error(FUNCTION, "unknown signature type");
                 }
-
-                /* Support for the BRAINPOOL signature scheme. */
-                case SIGNATURE::BRAINPOOL:
-                {
-                    /* Create EC Key object. */
-                    LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
-
-                    /* Set the public key and verify. */
-                    key.SetPubKey(vchPubKey);
-                    if(!key.Verify(GetHash().GetBytes(), vchSig))
-                        return debug::error(FUNCTION, "invalid transaction signature");
-
-                    break;
-                }
-
-                default:
-                    return debug::error(FUNCTION, "unknown signature type");
             }
 
             return true;
