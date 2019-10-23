@@ -182,7 +182,8 @@ namespace LLD
         LOCK(MUTEX);
 
         /* Get the binary node. */
-        uint64_t& nIndex = indexes[bucket(vKey)];
+        uint32_t nIndexBucket = bucket(vKey);
+        uint64_t& nIndex = indexes[nIndexBucket];
         if(nIndex != 0)
         {
             /* Get the node from checksum. */
@@ -201,8 +202,8 @@ namespace LLD
             }
         }
 
-        /* Set the new index. */
-        nIndex = (key.nSectorFile * key.nSectorStart);
+        /* Set the new index. NOTE nSectorFile is 0-based so we add 1 to it to ensure we always have an index*/
+        nIndex = ((key.nSectorFile + 1) * key.nSectorStart);
 
         /* Cleanup if colliding with another bucket. */
         uint32_t nSlot = slot(nIndex);
@@ -232,6 +233,9 @@ namespace LLD
             /* Account for the node's memory size. */
             nCurrentSize += sizeof(*hashmap[nSlot]);
         }
+
+        /* Update the index */
+        indexes[nIndexBucket] = nIndex;
 
         /* Remove the last node if cache too large. */
         while(nCurrentSize > MAX_CACHE_SIZE)
