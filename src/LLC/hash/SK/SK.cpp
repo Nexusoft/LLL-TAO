@@ -16,9 +16,8 @@ ________________________________________________________________________________
 namespace LLC
 {
     /* Implementation of SK function caches */
-    LLD::TemplateLRU<std::vector<uint8_t>, uint64_t> cache64(16);
-    LLD::TemplateLRU<std::vector<uint8_t>, uint256_t> cache256(16);
-    LLD::TemplateLRU<std::vector<uint8_t>, uint512_t> cache512(16);
-    LLD::TemplateLRU<std::vector<uint8_t>, uint1024_t> cache1024(9);
-
+    LLD::TemplateLRU<std::vector<uint8_t>, uint64_t>   cache64   (32);
+    LLD::TemplateLRU<std::vector<uint8_t>, uint256_t>  cache256  (32);
+    LLD::TemplateLRU<std::vector<uint8_t>, uint512_t>  cache512  (32);
+    LLD::TemplateLRU<std::vector<uint8_t>, uint1024_t> cache1024 (32);
 }
