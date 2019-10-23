@@ -427,6 +427,11 @@ namespace TAO
             **/
             uint64_t Fees() const;
 
+        
+        private:
+
+            /** In memory cache of the transaction hash to avoid needing to calculate it with each call **/
+            mutable uint512_t hashCached;
         };
     }
 }

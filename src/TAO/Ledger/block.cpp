@@ -54,6 +54,7 @@ namespace TAO
         , vMissing       ( )
         , hashMissing    (0)
         , fConflicted    (false)
+        , hashCached     (0)
         {
             SetNull();
         }
@@ -73,6 +74,7 @@ namespace TAO
         , vMissing       (block.vMissing)
         , hashMissing    (block.hashMissing)
         , fConflicted    (block.fConflicted)
+        , hashCached     (block.hashCached)
         {
         }
 
@@ -91,6 +93,7 @@ namespace TAO
         , vMissing       (std::move(block.vMissing))
         , hashMissing    (std::move(block.hashMissing))
         , fConflicted    (std::move(block.fConflicted))
+        , hashCached     (std::move(block.hashCached))
         {
         }
 
@@ -111,6 +114,7 @@ namespace TAO
             vMissing       = block.vMissing;
             hashMissing    = block.hashMissing;
             fConflicted    = block.fConflicted;
+            hashCached     = block.hashCached;
 
             return *this;
         }
@@ -133,6 +137,7 @@ namespace TAO
             hashMissing    = std::move(block.hashMissing);
 
             fConflicted    = std::move(block.fConflicted);
+            hashCached     = std::move(block.hashCached);
 
             return *this;
         }
@@ -158,6 +163,7 @@ namespace TAO
         , vMissing       ( )
         , hashMissing    (0)
         , fConflicted    (false)
+        , hashCached     (0)
         {
         }
 
@@ -185,6 +191,7 @@ namespace TAO
             vMissing.clear();
             hashMissing = 0;
             fConflicted = false;
+            hashCached = 0;
         }
 
 
@@ -252,11 +259,17 @@ namespace TAO
         /* Generate a Hash For the Block from the Header. */
         uint1024_t Block::GetHash() const
         {
-            /* Pre-Version 5 rule of being block hash. */
-            if(nVersion < 5)
-                return ProofHash();
+            /* Cache the hash if it is not already cached */
+            if(!IsNull() && hashCached == 0)
+            {
+                /* Pre-Version 5 rule of being block hash. */
+                if(nVersion < 5)
+                    hashCached = ProofHash();
 
-            return SignatureHash();
+                hashCached = SignatureHash();
+            }
+
+            return hashCached;
         }
 
 

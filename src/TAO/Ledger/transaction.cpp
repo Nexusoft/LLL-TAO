@@ -67,6 +67,7 @@ namespace TAO
         , nNextType    (0)
         , vchPubKey    ( )
         , vchSig       ( )
+        , hashCached   ( )
         {
         }
 
@@ -85,6 +86,7 @@ namespace TAO
         , nNextType    (tx.nNextType)
         , vchPubKey    (tx.vchPubKey)
         , vchSig       (tx.vchSig)
+        , hashCached   (tx.hashCached)
         {
         }
 
@@ -103,6 +105,7 @@ namespace TAO
         , nNextType    (std::move(tx.nNextType))
         , vchPubKey    (std::move(tx.vchPubKey))
         , vchSig       (std::move(tx.vchSig))
+        , hashCached   (std::move(tx.hashCached))
         {
         }
 
@@ -122,6 +125,7 @@ namespace TAO
             nNextType    = tx.nNextType;
             vchPubKey    = tx.vchPubKey;
             vchSig       = tx.vchSig;
+            hashCached   = tx.hashCached;
 
             return *this;
         }
@@ -142,6 +146,7 @@ namespace TAO
             nNextType    = std::move(tx.nNextType);
             vchPubKey    = std::move(tx.vchPubKey);
             vchSig       = std::move(tx.vchSig);
+            hashCached   = std::move(tx.hashCached);
 
             return *this;
         }
@@ -1014,16 +1019,20 @@ namespace TAO
         /* Gets the hash of the transaction object. */
         uint512_t Transaction::GetHash() const
         {
-            DataStream ss(SER_GETHASH, nVersion);
-            ss << *this;
+            /* Cache the hash if it is not already cached */
+            if(hashCached == 0)
+            {
+                DataStream ss(SER_GETHASH, nVersion);
+                ss << *this;
 
-            /* Get the hash. */
-            uint512_t hash = LLC::SK512(ss.begin(), ss.end());
+                /* Get the hash. */
+                hashCached = LLC::SK512(ss.begin(), ss.end());
 
-            /* Type of 0xff designates tritium tx. */
-            hash.SetType(TAO::Ledger::TRITIUM);
+                /* Type of 0xff designates tritium tx. */
+                hashCached.SetType(TAO::Ledger::TRITIUM);
+            }
 
-            return hash;
+            return hashCached;
         }
 
 

@@ -116,6 +116,7 @@ namespace Legacy
         vMissing       = block.vMissing;
         hashMissing    = block.hashMissing;
         fConflicted    = block.fConflicted;
+        hashCached     = block.hashCached;
 
         nTime          = block.nTime;
         vtx            = block.vtx;
@@ -140,6 +141,7 @@ namespace Legacy
         vMissing       = std::move(block.vMissing);
         hashMissing    = std::move(block.hashMissing);
         fConflicted    = std::move(block.fConflicted);
+        hashCached     = std::move(block.hashCached);
 
         nTime          = std::move(block.nTime);
         vtx            = std::move(block.vtx);

@@ -373,6 +373,10 @@ namespace TAO
              *
              **/
             uint1024_t StakeHash(bool fIsGenesis, const uint576_t &trustKey) const;
+
+
+            /** In memory cache of the block hash to avoid needing to calculate it with each call **/
+            mutable uint1024_t hashCached;
         };
     }
 }

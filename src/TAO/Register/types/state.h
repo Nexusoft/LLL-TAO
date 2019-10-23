@@ -42,6 +42,10 @@ namespace TAO
             /** The byte level data of the register. **/
             std::vector<uint8_t> vchState;
 
+
+            /** In memory cache of the block hash to avoid needing to calculate it with each call **/
+            mutable uint64_t hashCached;
+
         public:
             /** The version of the state register. */
             uint8_t nVersion;

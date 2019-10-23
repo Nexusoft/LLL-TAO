@@ -73,6 +73,7 @@ namespace TAO
             vMissing       = block.vMissing;
             hashMissing    = block.hashMissing;
             fConflicted    = block.fConflicted;
+            hashCached     = block.hashCached;
 
             nTime          = block.nTime;
             ssSystem       = block.ssSystem;
@@ -97,6 +98,7 @@ namespace TAO
             vMissing       = std::move(block.vMissing);
             hashMissing    = std::move(block.hashMissing);
             fConflicted    = std::move(block.fConflicted);
+            hashCached     = std::move(block.hashCached);
 
             nTime          = std::move(block.nTime);
             ssSystem       = std::move(block.ssSystem);

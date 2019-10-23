@@ -27,6 +27,7 @@ namespace TAO
         /* Default Constructor */
         State::State()
         : vchState     ( )
+        , hashCached   (0)
         , nVersion     (0)
         , nType        (0)
         , hashOwner    (0)
@@ -41,6 +42,7 @@ namespace TAO
         /* Copy Constructor */
         State::State(const State& state)
         : vchState     (state.vchState)
+        , hashCached   (state.hashCached)
         , nVersion     (state.nVersion)
         , nType        (state.nType)
         , hashOwner    (state.hashOwner)
@@ -55,6 +57,7 @@ namespace TAO
         /* Move Constructor. */
         State::State(State&& state) noexcept
         : vchState     (std::move(state.vchState))
+        , hashCached   (std::move(state.hashCached))
         , nVersion     (std::move(state.nVersion))
         , nType        (std::move(state.nType))
         , hashOwner    (std::move(state.hashOwner))
@@ -70,6 +73,7 @@ namespace TAO
         State& State::operator=(const State& state)
         {
             vchState     = state.vchState;
+            hashCached   = state.hashCached;
             nVersion     = state.nVersion;
             nType        = state.nType;
             hashOwner    = state.hashOwner;
@@ -87,6 +91,7 @@ namespace TAO
         State& State::operator=(State&& state) noexcept
         {
             vchState     = std::move(state.vchState);
+            hashCached   = std::move(state.hashCached);
             nVersion     = std::move(state.nVersion);
             nType        = std::move(state.nType);
             hashOwner    = std::move(state.hashOwner);
@@ -109,6 +114,7 @@ namespace TAO
         /* Basic Type Constructor */
         State::State(const uint8_t nTypeIn)
         : vchState     ( )
+        , hashCached   (0)
         , nVersion     (1)
         , nType        (nTypeIn)
         , hashOwner    (9)
@@ -124,6 +130,7 @@ namespace TAO
         /* Default Constructor */
         State::State(const std::vector<uint8_t>& vchData)
         : vchState     (vchData)
+        , hashCached   (0)
         , nVersion     (1)
         , nType        (0)
         , hashOwner    (0)
@@ -138,6 +145,7 @@ namespace TAO
         /* Default Constructor */
         State::State(const uint8_t nTypeIn, const uint256_t& hashOwnerIn)
         : vchState     ( )
+        , hashCached   (0)
         , nVersion     (1)
         , nType        (nTypeIn)
         , hashOwner    (hashOwnerIn)
@@ -152,6 +160,7 @@ namespace TAO
         /* Default Constructor */
         State::State(const std::vector<uint8_t>& vchData, const uint8_t nTypeIn, const uint256_t& hashOwnerIn)
         : vchState     (vchData)
+        , hashCached   (0)
         , nVersion     (1)
         , nType        (nTypeIn)
         , hashOwner    (hashOwnerIn)
@@ -167,6 +176,7 @@ namespace TAO
         /* Default Constructor */
         State::State(const uint64_t hashChecksumIn)
         : vchState     ( )
+        , hashCached   (0)
         , nVersion     (1)
         , nType        (0)
         , hashOwner    (uint256_t(0))
@@ -195,6 +205,7 @@ namespace TAO
         /* Set the State Register into a nullptr state. */
         void State::SetNull()
         {
+            hashCached   = 0;
             nVersion     = 0;
             nType        = 0;
             hashOwner    = uint256_t(0);
@@ -224,16 +235,25 @@ namespace TAO
         /* Get the hash of the current state. */
         uint64_t State::GetHash() const
         {
-            DataStream ss(SER_GETHASH, nVersion);
-            ss << *this;
+            /* Cache the hash if it is not already cached */
+            if(!IsNull() && hashCached == 0)
+            {
+                DataStream ss(SER_GETHASH, nVersion);
+                ss << *this;
 
-            return LLC::SK64(ss.begin(), ss.end());
+                hashCached = LLC::SK64(ss.begin(), ss.end());
+            }
+
+            return hashCached;
         }
 
 
         /* Set the Checksum of this Register. */
         void State::SetChecksum()
         {
+            /* invalidate the cached hash as the checksum is changing */
+            hashCached = 0;
+            
             hashChecksum = GetHash();
         }
 
