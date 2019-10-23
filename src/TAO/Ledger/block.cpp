@@ -265,8 +265,8 @@ namespace TAO
                 /* Pre-Version 5 rule of being block hash. */
                 if(nVersion < 5)
                     hashCached = ProofHash();
-
-                hashCached = SignatureHash();
+                else
+                    hashCached = SignatureHash();
             }
 
             return hashCached;

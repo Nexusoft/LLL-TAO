@@ -88,8 +88,11 @@ namespace TAO
                 //checksum hash not serialized on gethash
                 if(!(nSerType & SER_GETHASH))
                     READWRITE(hashChecksum);
-            )
 
+                /* Checksum hash only serialized for the LLD */
+                if(nSerType & SER_LLD)
+                   READWRITE(hashCached);
+            )
 
             /** Default Constructor **/
             State();

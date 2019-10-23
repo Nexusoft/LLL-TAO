@@ -111,6 +111,12 @@ namespace TAO
                 /* Handle for when not getting hash or skipsig. */
                 if(!(nSerType & SER_GETHASH) && !(nSerType & SER_SKIPSIG))
                     READWRITE(vchSig);
+
+                /* Checksum hash only serialized for the LLD */
+                if(nSerType & SER_LLD)
+                    READWRITE(hashCached);
+
+
             )
 
 
