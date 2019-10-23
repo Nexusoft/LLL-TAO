@@ -520,14 +520,16 @@ namespace TAO
                 /* Set new checkpoint hash. */
                 hashCheckpoint = GetHash();
 
-                debug::log(1, "===== New Pending Checkpoint Hash = ", hashCheckpoint.SubString(15));
+                if(config::nVerbose >= 1)
+                    debug::log(1, "===== New Pending Checkpoint Hash = ", hashCheckpoint.SubString(15));
             }
             else
             {
                 /* Continue the old checkpoint through chain. */
                 hashCheckpoint = statePrev.hashCheckpoint;
 
-                debug::log(1, "===== Pending Checkpoint Hash = ", hashCheckpoint.SubString(15));
+                if(config::nVerbose >= 1)
+                    debug::log(1, "===== Pending Checkpoint Hash = ", hashCheckpoint.SubString(15));
             }
 
             /* Add new weights for this channel. */
@@ -786,15 +788,17 @@ namespace TAO
                 /* Debug output about the best chain. */
                 uint64_t nElapsed = (GetBlockTime() - ChainState::stateBest.load().GetBlockTime());
                 uint64_t nTimer   = timer.ElapsedMilliseconds();
-                debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION,
-                    "New Best Block hash=", hash.SubString(),
-                    " height=", nHeight,
-                    " trust=", nChainTrust,
-                    " tx=", vtx.size(),
-                    " [", (nElapsed == 0 ? 0 : double(nTotalContracts / nElapsed)), " contracts/s]"
-                    " [verified in ", nTimer, " ms]",
-                    " [processing ", (nTotalContracts * 1000.0) / (nTimer + 1), " contracts/s]",
-                    " [", ::GetSerializeSize(*this, SER_LLD, nVersion), " bytes]");
+
+                if(config::nVerbose >= TAO::Ledger::ChainState::Synchronizing() ? 1 : 0)
+                    debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION,
+                        "New Best Block hash=", hash.SubString(),
+                        " height=", nHeight,
+                        " trust=", nChainTrust,
+                        " tx=", vtx.size(),
+                        " [", (nElapsed == 0 ? 0 : double(nTotalContracts / nElapsed)), " contracts/s]"
+                        " [verified in ", nTimer, " ms]",
+                        " [processing ", (nTotalContracts * 1000.0) / (nTimer + 1), " contracts/s]",
+                        " [", ::GetSerializeSize(*this, SER_LLD, nVersion), " bytes]");
 
                 /* Set the best chain variables. */
                 ChainState::stateBest          = *this;
@@ -980,8 +984,8 @@ namespace TAO
                 LLD::Ledger->IndexBlock(proof.second, GetHash());
             }
 
-
-            debug::log(3, "Block Height ", nHeight, " Hash ", GetHash().SubString());
+            if(config::nVerbose >= 3)
+                debug::log(3, "Block Height ", nHeight, " Hash ", GetHash().SubString());
 
 
             debug::log(3, "BLOCK END-------------------------------------");

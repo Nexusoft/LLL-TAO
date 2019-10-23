@@ -139,7 +139,8 @@ namespace TAO
             ChainState::nCheckpointHeight = stateCheckpoint.nHeight;
 
             /* Dump the Checkpoint if not Initializing. */
-            debug::log(ChainState::Synchronizing() ? 1 : 0, "===== Hardened Checkpoint ", ChainState::hashCheckpoint.load().SubString(), " Height ", ChainState::nCheckpointHeight.load());
+            if(config::nVerbose >= ChainState::Synchronizing() ? 1 : 0)
+                debug::log(ChainState::Synchronizing() ? 1 : 0, "===== Hardened Checkpoint ", ChainState::hashCheckpoint.load().SubString(), " Height ", ChainState::nCheckpointHeight.load());
 
             return true;
         }

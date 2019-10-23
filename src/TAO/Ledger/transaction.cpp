@@ -534,18 +534,19 @@ namespace TAO
             bnTarget.SetCompact(pblock->nBits);
 
             /* Verbose logging. */
-            debug::log(2, FUNCTION,
-                "stake hash=", pblock->StakeHash().SubString(), ", ",
-                "target=", bnTarget.getuint1024().SubString(), ", ",
-                "type=", (IsTrust() ? "Trust" : "Genesis"), ", ",
-                "trust score=", nTrust, ", ",
-                "prev trust score=", nTrustPrev, ", ",
-                "trust change=", int64_t(nTrust - nTrustPrev), ", ",
-                "block age=", nBlockAge, ", ",
-                "stake=", nStake, ", ",
-                "reward=", nReward, ", ",
-                "add stake=", ((nStakeChange > 0) ? nStakeChange : 0), ", ",
-                "unstake=", ((nStakeChange < 0) ? (0 - nStakeChange) : 0));
+            if(config::nVerbose >= 2)
+                debug::log(2, FUNCTION,
+                    "stake hash=", pblock->StakeHash().SubString(), ", ",
+                    "target=", bnTarget.getuint1024().SubString(), ", ",
+                    "type=", (IsTrust() ? "Trust" : "Genesis"), ", ",
+                    "trust score=", nTrust, ", ",
+                    "prev trust score=", nTrustPrev, ", ",
+                    "trust change=", int64_t(nTrust - nTrustPrev), ", ",
+                    "block age=", nBlockAge, ", ",
+                    "stake=", nStake, ", ",
+                    "reward=", nReward, ", ",
+                    "add stake=", ((nStakeChange > 0) ? nStakeChange : 0), ", ",
+                    "unstake=", ((nStakeChange < 0) ? (0 - nStakeChange) : 0));
 
             return true;
         }

@@ -566,7 +566,7 @@ namespace TAO
                 return debug::error(FUNCTION, "incorrect block height.");
 
             /* Channel switched output. */
-            if(GetChannel() != CHANNEL::PRIME)
+            if(GetChannel() != CHANNEL::PRIME && config::nVerbose >= 2)
             {
                 debug::log(2, "  proof:  ", (GetChannel() == 0 ? StakeHash() : ProofHash()).SubString());
                 debug::log(2, "  target: ", LLC::CBigNum().SetCompact(nBits).getuint1024().SubString());
