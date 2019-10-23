@@ -259,9 +259,9 @@ namespace LLP
 
             /* Poll the sockets. */
 #ifdef WIN32
-            WSAPoll((pollfd*)&POLLFDS[0], nSize, 1);
+            WSAPoll((pollfd*)&POLLFDS[0], nSize, 5);
 #else
-            poll((pollfd*)&POLLFDS[0], nSize, 1);
+            poll((pollfd*)&POLLFDS[0], nSize, 5);
 #endif
 
 
