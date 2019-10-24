@@ -189,9 +189,44 @@ public:
 #include <Util/include/softfloat.h>
 #include <TAO/Ledger/include/prime.h>
 
+#include <Util/include/condition_variable.h>
+
+
+condition_variable condition;
+
+uint32_t nValue = 0;
+
+void Thread()
+{
+    while(true)
+    {
+        debug::log(0, "Waiting for work!");
+        condition.wait([]{ return nValue > 0; });
+
+        debug::log(0, "Doing Work! ", nValue);
+    }
+}
+
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
+    std::thread t(Thread);
+    std::thread t1(Thread);
+
+    for(int i = 0; i < 5; ++i)
+    {
+        runtime::sleep(1000);
+
+        nValue = i;
+
+        condition.notify_all();
+    }
+
+    runtime::sleep(5000);
+
+    return 0;
+
+
     LLC::FLKey key = LLC::FLKey();
     key.MakeNewKey();
 

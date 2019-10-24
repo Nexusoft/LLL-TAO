@@ -396,9 +396,6 @@ namespace LLP
     template <class ProtocolType>
     void DataThread<ProtocolType>::Flush()
     {
-        /* The mutex for the condition. */
-        std::mutex CONDITION_MUTEX;
-
         /* The main connection handler loop. */
         while(!fDestruct.load() && !config::fShutdown.load())
         {
@@ -406,8 +403,7 @@ namespace LLP
              * Will wait until have one or more connections, DataThread is disposed, or system shutdown
              * While loop catches potential for spurious wakeups. Also has the effect of skipping the wait() call after connections established.
              */
-            std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
-            FLUSH_CONDITION.wait(CONDITION_LOCK, [this]{ return fDestruct.load() || config::fShutdown.load() || nConnections.load() > 0; });
+            FLUSH_CONDITION.wait([this]{ return fDestruct.load() || config::fShutdown.load() || nConnections.load() > 0; });
 
             /* Check for close. */
             if(fDestruct.load() || config::fShutdown.load())
