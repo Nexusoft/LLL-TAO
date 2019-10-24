@@ -26,7 +26,7 @@ namespace TAO
     /* Ledger Layer namespace. */
     namespace Ledger
     {
-        /* Retrieve the number of blocks (confirmations) required for coinbase maturity. */
+        /* Retrieve the number of blocks (confirmations) required for coinbase maturity for the current network version. */
         uint32_t MaturityCoinBase()
         {
             if(config::fTestNet)
@@ -38,15 +38,29 @@ namespace TAO
             if(nCurrent < 7)
                 return NEXUS_MATURITY_LEGACY;
 
-            /* Legacy maturity as long as version 6 is active (includes one hour after v7 timelock)  */
-            if(nCurrent == 7 && VersionActive(runtime::unifiedtimestamp(), (nCurrent - 1)))
+            /* Legacy maturity until version 7 is active */
+            if(nCurrent == 7 && !VersionActive(runtime::unifiedtimestamp(), 7))
                 return NEXUS_MATURITY_LEGACY;
 
             return NEXUS_MATURITY_COINBASE;
         }
 
 
-        /* Retrieve the number of blocks (confirmations) required for coinstake maturity. */
+        /* Retrieve the number of blocks (confirmations) required for coinbase maturity for a given block. */
+        uint32_t MaturityCoinBase(const BlockState& block)
+        {
+            if(config::fTestNet)
+                return TESTNET_MATURITY_BLOCKS;
+
+            /* Apply legacy interval for all versions prior to version 7 */
+            if(block.nVersion < 7)
+                return NEXUS_MATURITY_LEGACY;
+
+            return NEXUS_MATURITY_COINBASE;
+        }
+
+
+        /* Retrieve the number of blocks (confirmations) required for coinstake maturity for the current network version. */
         uint32_t MaturityCoinStake()
         {
             if(config::fTestNet)
@@ -58,8 +72,22 @@ namespace TAO
             if(nCurrent < 7)
                 return NEXUS_MATURITY_LEGACY;
 
-            /* Legacy maturity as long as version 6 is active (includes one hour after v7 timelock)  */
-            if(nCurrent == 7 && VersionActive(runtime::unifiedtimestamp(), (nCurrent - 1)))
+            /* Legacy maturity until version 7 is active */
+            if(nCurrent == 7 && !VersionActive(runtime::unifiedtimestamp(), 7))
+                return NEXUS_MATURITY_LEGACY;
+
+            return NEXUS_MATURITY_COINSTAKE;
+        }
+
+
+        /* Retrieve the number of blocks (confirmations) required for coinstake maturity for a given block. */
+        uint32_t MaturityCoinStake(const BlockState& block)
+        {
+            if(config::fTestNet)
+                return TESTNET_MATURITY_BLOCKS;
+
+            /* Apply legacy interval for all versions prior to version 7 */
+            if(block.nVersion < 7)
                 return NEXUS_MATURITY_LEGACY;
 
             return NEXUS_MATURITY_COINSTAKE;

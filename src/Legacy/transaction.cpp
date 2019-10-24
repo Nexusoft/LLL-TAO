@@ -1081,9 +1081,9 @@ namespace Legacy
                         /* Check the maturity. */
                         uint32_t nMaturity;
                         if(txPrev.IsCoinBase())
-                            nMaturity = TAO::Ledger::MaturityCoinBase();
+                            nMaturity = TAO::Ledger::MaturityCoinBase(state);
                         else
-                            nMaturity = TAO::Ledger::MaturityCoinStake();
+                            nMaturity = TAO::Ledger::MaturityCoinStake(state);
 
                         if((state.nHeight - statePrev.nHeight) < nMaturity)
                             return debug::error(FUNCTION, "tried to spend immature balance ", (state.nHeight - statePrev.nHeight));

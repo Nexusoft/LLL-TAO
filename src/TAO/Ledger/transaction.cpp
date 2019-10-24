@@ -778,7 +778,7 @@ namespace TAO
                                     return debug::error(FUNCTION, "failed to read confirmations for coinbase");
 
                                 /* Check that the previous TX has reached sig chain maturity */
-                                if(nConfirms + 1 < MaturityCoinBase()) //NOTE: assess this +1
+                                if(nConfirms + 1 < MaturityCoinBase(*pblock)) //NOTE: assess this +1
                                     return debug::error(FUNCTION, "coinbase is immature ", nConfirms);
 
                                 break;
