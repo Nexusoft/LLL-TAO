@@ -218,6 +218,16 @@ namespace LLP
         char* Error() const;
 
 
+        /** AwaitingFlush
+        *
+        *  Checks to see if there is any data in the overflow buffer that requires flushing.
+        *
+        *  @return if there is any data in the overflow buffer that requires flushing.
+        *
+        **/
+        bool AwaitingFlush() const;
+
+
     private:
 
         /** error_code
