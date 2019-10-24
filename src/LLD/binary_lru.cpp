@@ -238,8 +238,8 @@ namespace LLD
         {
             /* Get last pointer. */
             BinaryNode* pnode = plast;
-            if(!pnode)
-                return;
+            if(!pnode || pnode->IsNull())
+                break;
 
             /* Set the new links. */
             plast = plast->pprev;
