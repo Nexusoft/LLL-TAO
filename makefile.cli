@@ -1,3 +1,6 @@
+#remove assertions
+DEFS = -DNDEBUG
+
 ifeq ($(OS),Windows_NT)
 detected_OS:= Windows
 else ifeq ($(shell uname -s),Darwin)
