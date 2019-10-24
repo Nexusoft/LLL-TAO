@@ -407,23 +407,7 @@ namespace LLP
              * While loop catches potential for spurious wakeups. Also has the effect of skipping the wait() call after connections established.
              */
             std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
-            FLUSH_CONDITION.wait(CONDITION_LOCK, [this]
-            { 
-                /* Indicates at least one connection requires a flush */
-                bool fFlush = false;
-
-                if(nConnections.load() > 0)
-                {
-                    uint32_t nSize = static_cast<uint32_t>(CONNECTIONS->size());
-
-                    /* Check to see if there are any connections requiring a flush */
-                    for(uint32_t nIndex = 0; nIndex < nSize && !fFlush; ++nIndex)
-                        try { fFlush = CONNECTIONS->at(nIndex)->AwaitingFlush(); }
-                        catch(const std::exception& e) { }
-                }
-
-                return fDestruct.load() || config::fShutdown.load() || fFlush; 
-            });
+            FLUSH_CONDITION.wait(CONDITION_LOCK, [this]{ return fDestruct.load() || config::fShutdown.load() || nConnections.load() > 0; });
 
             /* Check for close. */
             if(fDestruct.load() || config::fShutdown.load())

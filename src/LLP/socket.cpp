@@ -491,14 +491,5 @@ namespace LLP
         return nError;
     }
 
-    /* Checks to see if there is any data in the overflow buffer that requires flushing */
-    bool Socket::AwaitingFlush() const
-    {
-        LOCK(DATA_MUTEX);
-        
-        /* Check overflow buffer. */
-        return vBuffer.size() > 0;
-    }
-
 
 }
