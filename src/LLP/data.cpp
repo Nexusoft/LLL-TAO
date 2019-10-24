@@ -396,6 +396,9 @@ namespace LLP
     template <class ProtocolType>
     void DataThread<ProtocolType>::Flush()
     {
+        /* The mutex for the condition. */
+        std::mutex CONDITION_MUTEX;
+
         /* The main connection handler loop. */
         while(!fDestruct.load() && !config::fShutdown.load())
         {
@@ -403,23 +406,35 @@ namespace LLP
              * Will wait until have one or more connections, DataThread is disposed, or system shutdown
              * While loop catches potential for spurious wakeups. Also has the effect of skipping the wait() call after connections established.
              */
-            FLUSH_CONDITION.wait([this]{ return fDestruct.load() || config::fShutdown.load() || nConnections.load() > 0; });
+            std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
+            FLUSH_CONDITION.wait(CONDITION_LOCK,
+                [this]{
+
+                    /* Break on shutdown or destructor. */
+                    if(fDestruct.load() || config::fShutdown.load())
+                        return true;
+
+                    /* Check for buffered connection. */
+                    for(uint32_t nIndex = 0; nIndex < CONNECTIONS->size(); ++nIndex)
+                    {
+                        try
+                        {
+                            /* Check for buffered connection. */
+                            if(CONNECTIONS->at(nIndex)->Buffered())
+                                return true;
+                        }
+                        catch(const std::exception& e) { }
+                    }
+
+                    return false;
+                });
 
             /* Check for close. */
             if(fDestruct.load() || config::fShutdown.load())
                 return;
 
-            /* Wrapped mutex lock. */
-            uint32_t nSize = static_cast<uint32_t>(CONNECTIONS->size());
-
-            /* We should have connections, as predicate of releasing condition wait.
-             * This is a precaution, checking after getting MUTEX lock
-             */
-            if(nConnections.load() == 0)
-                continue;
-
             /* Check all connections for data and packets. */
-            for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
+            for(uint32_t nIndex = 0; nIndex < CONNECTIONS->size(); ++nIndex)
             {
                 try { CONNECTIONS->at(nIndex)->Flush(); }
                 catch(const std::exception& e) { }

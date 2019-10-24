@@ -1320,6 +1320,9 @@ namespace LLP
                                 }
                             }
 
+                            /* Debug output. */
+                            debug::log(3, NODE, "ACTION::GET: BLOCK ", hashBlock.SubString());
+
                             break;
                         }
 
@@ -1367,6 +1370,9 @@ namespace LLP
                                 }
 
                             }
+
+                            /* Debug output. */
+                            debug::log(3, NODE, "ACTION::GET: TRANSACTION ", hashTx.SubString());
 
                             break;
                         }
@@ -2361,13 +2367,13 @@ namespace LLP
                     uint1024_t hashBlock;
                     ssData >> hashBlock;
 
+                    /* Skip malformed requests. */
+                    if(fLegacy)
+                        continue;
+
                     /* Check subscription. */
                     if(nNotifications & SUBSCRIPTION::BLOCK)
                     {
-                        /* Check for legacy. */
-                        if(fLegacy)
-                            ssRelay << uint8_t(SPECIFIER::LEGACY);
-
                         /* Write block to stream. */
                         ssRelay << uint8_t(TYPES::BLOCK);
                         ssRelay << hashBlock;
@@ -2493,7 +2499,10 @@ namespace LLP
 
                 /* Default catch (relay up to this point) */
                 default:
+                {
+                    debug::error(FUNCTION, "Malformed binary stream");
                     return ssRelay;
+                }
             }
         }
 

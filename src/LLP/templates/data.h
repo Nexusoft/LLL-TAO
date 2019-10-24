@@ -20,7 +20,6 @@ ________________________________________________________________________________
 
 #include <Util/include/mutex.h>
 #include <Util/include/memory.h>
-#include <Util/include/condition_variable.h>
 
 #include <Util/templates/datastream.h>
 
@@ -114,7 +113,7 @@ namespace LLP
 
 
         /** The condition for thread sleeping. **/
-        condition_variable FLUSH_CONDITION;
+        std::condition_variable FLUSH_CONDITION;
 
 
         /** Data Thread. **/

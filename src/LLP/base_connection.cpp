@@ -156,8 +156,7 @@ namespace LLP
         std::vector<uint8_t> vBytes = PACKET.GetBytes();
 
         /* Debug dump of message type. */
-        if(config::nVerbose >= 4)
-            debug::log(4, NODE, "sent packet (", vBytes.size(), " bytes)");
+        debug::log(4, NODE, "sent packet (", vBytes.size(), " bytes)");
 
         /* Debug dump of packet data. */
         if(config::nVerbose >= 5)
@@ -167,7 +166,7 @@ namespace LLP
         Write(vBytes, vBytes.size());
 
         /* Notify condition if available. */
-        if(FLUSH_CONDITION)
+        if(FLUSH_CONDITION && vBuffer.size() != 0)
             FLUSH_CONDITION->notify_all();
     }
 

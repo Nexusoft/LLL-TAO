@@ -23,8 +23,6 @@ ________________________________________________________________________________
 #include <vector>
 #include <condition_variable>
 
-#include <Util/include/condition_variable.h>
-
 
 namespace LLP
 {
@@ -102,7 +100,7 @@ namespace LLP
 
 
         /** Condition variable pointer from data thread. **/
-        condition_variable* FLUSH_CONDITION;
+        std::condition_variable* FLUSH_CONDITION;
 
 
     private:
