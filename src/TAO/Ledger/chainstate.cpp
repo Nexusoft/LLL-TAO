@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <LLP/types/tritium.h>
+#include <LLP/include/global.h>
 
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/constants.h>
@@ -80,14 +81,24 @@ namespace TAO
                 nLastTime = runtime::unifiedtimestamp();
             }
 
-            /* Special testnet rule. */
+            /* Special testnet rule. s*/
             if(config::fTestNet.load())
             {
+                bool fLocalTestnet = config::fTestNet.load() && !config::GetBoolArg("-dns", true);
+                bool fHasConnections = LLP::TRITIUM_SERVER && LLP::TRITIUM_SERVER->GetConnectionCount() > 0;
                 /* Set the synchronizing flag. */
                 fSynchronizing =
                 (
-                    (stateBest.load().GetBlockTime() < runtime::unifiedtimestamp() - 20 * 60) &&
-                    (runtime::unifiedtimestamp() - nLastTime < 30)
+                    /* If using main testnet then rely on the LLP synchronized flag */
+                    (!fLocalTestnet && !LLP::TritiumNode::fSynchronized.load() 
+                        && stateBest.load().GetBlockTime() < runtime::unifiedtimestamp() - 20 * 60) 
+                    
+                    /* If local testnet with connections then rely on LLP flag  */
+                    || (fLocalTestnet && fHasConnections && !LLP::TritiumNode::fSynchronized.load() )
+
+                    /* If local testnet with no connections then assume sync'd if the last block was more than 30s ago,
+                       which gives us a 30s window to connect to a local peer */
+                    || (fLocalTestnet && !fHasConnections && runtime::unifiedtimestamp() - nLastTime < 30)
                 );
 
                 return fSynchronizing;
