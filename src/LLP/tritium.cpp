@@ -428,6 +428,11 @@ namespace LLP
                     /* Start sync on startup, or override any legacy syncing currently in process. */
                     if(TAO::Ledger::nSyncSession.load() == 0 || LegacyNode::SessionActive(TAO::Ledger::nSyncSession.load()))
                     {
+                        /* Set the sync session-id. */
+                        TAO::Ledger::nSyncSession.store(nCurrentSession);
+
+                        debug::log(0, NODE, "New sync address set");
+
                         /* Cache the height at the start of the sync */
                         nSyncStart = TAO::Ledger::ChainState::stateBest.load().nHeight;
 
@@ -436,9 +441,6 @@ namespace LLP
 
                         /* Subscribe to this node. */
                         Subscribe(SUBSCRIPTION::LASTINDEX | SUBSCRIPTION::BESTCHAIN);
-
-                        /* Set the sync session-id. */
-                        TAO::Ledger::nSyncSession.store(nCurrentSession);
 
                         /* Ask for list of blocks if this is current sync node. */
                         PushMessage(ACTION::LIST,
