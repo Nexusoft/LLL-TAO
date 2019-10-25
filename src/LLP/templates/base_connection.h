@@ -99,6 +99,10 @@ namespace LLP
         int32_t nDataIndex;
 
 
+        /** Condition variable pointer from data thread. **/
+        std::condition_variable* FLUSH_CONDITION;
+
+
     private:
 
         /** Flag to determine if event occurred. **/

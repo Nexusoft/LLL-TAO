@@ -314,7 +314,7 @@ namespace LLD
                     continue;
 
                 /* Debug Output of Sector Key Information. */
-                if(config::GetArg("-verbose", 0) >= 4)
+                if(config::nVerbose >= 4)
                     debug::log(4, FUNCTION, "State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
                         " | Length: ", cKey.nLength,
                         " | Bucket ", nBucket,
@@ -407,7 +407,7 @@ namespace LLD
                 vKeys.push_back(cKey);
 
                 /* Debug Output of Sector Key Information. */
-                if(config::GetArg("-verbose", 0) >= 4)
+                if(config::nVerbose >= 4)
                     debug::log(4, FUNCTION, "Found State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
                         " | Length: ", cKey.nLength,
                         " | Bucket ", nBucket,
@@ -497,7 +497,7 @@ namespace LLD
                     pstream->flush();
 
                     /* Debug Output of Sector Key Information. */
-                    if(config::GetArg("-verbose", 0) >= 4)
+                    if(config::nVerbose >= 4)
                         debug::log(4, FUNCTION, "State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
                             " | Length: ", cKey.nLength,
                             " | Bucket ", nBucket,
@@ -605,7 +605,7 @@ namespace LLD
         pindex->flush();
 
         /* Debug Output of Sector Key Information. */
-        if(config::GetArg("-verbose", 0) >= 4)
+        if(config::nVerbose >= 4)
             debug::log(4, FUNCTION, "State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
                 " | Length: ", cKey.nLength,
                 " | Bucket ", nBucket,
@@ -693,7 +693,7 @@ namespace LLD
                 pstream->flush();
 
                 /* Debug Output of Sector Key Information. */
-                if(config::GetArg("-verbose", 0) >= 4)
+                if(config::nVerbose >= 4)
                     debug::log(4, FUNCTION, "Erased State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
                         " | Length: ", cKey.nLength,
                         " | Bucket ", nBucket,
@@ -783,7 +783,7 @@ namespace LLD
                 pstream->flush();
 
                 /* Debug Output of Sector Key Information. */
-                if(config::GetArg("-verbose", 0) >= 4)
+                if(config::nVerbose >= 4)
                     debug::log(4, FUNCTION, "Restored State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
                         " | Length: ", cKey.nLength,
                         " | Bucket ", nBucket,

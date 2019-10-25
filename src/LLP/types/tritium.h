@@ -399,7 +399,7 @@ namespace LLP
          *  @return Returns a filled out tritium packet.
          *
          **/
-        TritiumPacket NewMessage(const uint16_t nMsg, const DataStream& ssData)
+        static TritiumPacket NewMessage(const uint16_t nMsg, const DataStream& ssData)
         {
             TritiumPacket RESPONSE(nMsg);
             RESPONSE.SetData(ssData);

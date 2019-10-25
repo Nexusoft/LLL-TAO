@@ -59,19 +59,13 @@ namespace TAO
 
 
         /* Retrieve the minimum number of blocks required between an account's stake transactions.*/
-        uint32_t MinStakeInterval()
+        uint32_t MinStakeInterval(const Block& block)
         {
             if(config::fTestNet)
                 return TESTNET_MINIMUM_INTERVAL;
 
-            int32_t nCurrent = CurrentVersion();
-
             /* Apply legacy interval for all versions prior to version 7 */
-            if(nCurrent < 7)
-                return MAINNET_MINIMUM_INTERVAL_LEGACY;
-
-            /* Legacy interval for version 7 until after timelock activation */
-            if(nCurrent == 7 && !VersionActive(runtime::unifiedtimestamp(), 7))
+            if(block.nVersion < 7)
                 return MAINNET_MINIMUM_INTERVAL_LEGACY;
 
             return MAINNET_MINIMUM_INTERVAL;
@@ -241,7 +235,7 @@ namespace TAO
 
 
         /** Retrieves the most recent stake transaction for a user account. */
-        bool FindLastStake(const Genesis& hashGenesis, Transaction& tx)
+        bool FindLastStake(const uint256_t& hashGenesis, Transaction& tx)
         {
             /* Start with most recent signature chain transaction. */
             uint512_t hashLast = 0;

@@ -17,6 +17,7 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
+#include <TAO/Ledger/types/block.h>
 #include <TAO/Ledger/types/genesis.h>
 #include <TAO/Ledger/types/transaction.h>
 
@@ -69,10 +70,12 @@ namespace TAO
          *
          *  Retrieve the minimum number of blocks required between an account's stake transactions.
          *
+         *  @param[in] block - Proof of Stake block to which this interval will apply
+         *
          *  @return the current system setting for minimum stake interval
          *
          **/
-        uint32_t MinStakeInterval();
+        uint32_t MinStakeInterval(const Block& block);
 
 
         /** TrustWeightBase
@@ -207,7 +210,7 @@ namespace TAO
          *  @return True if last stake found, false otherwise
          *
          **/
-        bool FindLastStake(const Genesis& hashGenesis, Transaction& tx);
+        bool FindLastStake(const uint256_t& hashGenesis, Transaction& tx);
 
     }
 }

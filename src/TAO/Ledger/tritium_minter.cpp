@@ -533,8 +533,9 @@ namespace TAO
              * change appropriately. For example, they will see block weight reset after minting a block.
              */
             const uint32_t nInterval = block.nHeight - stateLast.nHeight;
+            const uint32_t nMinInterval = MinStakeInterval(block);
 
-            if(nInterval <= MinStakeInterval())
+            if(nInterval <= nMinInterval)
             {
                 /* Below minimum interval for generating stake blocks. Increase sleep time until can continue normally. */
                 nSleepTime = 5000; //5 second wait is reset below (can't sleep too long or will hang until wakes up on shutdown)
@@ -542,7 +543,7 @@ namespace TAO
                 /* Update log every 60 iterations (5 minutes) */
                 if((nCounter % 60) == 0)
                     debug::log(0, FUNCTION, "Stake Minter: Too soon after mining last stake block. ",
-                               (MinStakeInterval() - nInterval + 1), " blocks remaining until staking available.");
+                               (nMinInterval - nInterval + 1), " blocks remaining until staking available.");
 
                 ++nCounter;
 
@@ -729,7 +730,7 @@ namespace TAO
             block.print();
 
             /* Log block found */
-            if(config::GetArg("-verbose", 0) > 0)
+            if(config::nVerbose > 0)
             {
                 std::string strTimestamp = std::string(convert::DateTimeStrFormat(runtime::unifiedtimestamp()));
 

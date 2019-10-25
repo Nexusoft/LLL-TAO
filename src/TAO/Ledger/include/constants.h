@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #define NEXUS_TAO_LEDGER_INCLUDE_CONSTANTS_H
 
 #include <LLC/types/bignum.h>
+#include <TAO/Ledger/types/state.h>
 
 
 /* Global TAO namespace. */
@@ -218,22 +219,46 @@ namespace TAO
 
         /** MaturityCoinbase
          *
-         *  Retrieve the number of blocks (confirmations) required for coinbase maturity.
+         *  Retrieve the number of blocks (confirmations) required for coinbase maturity for the current network version.
          *
-         *  @return maturity setting for coinbase producer, based on current testnet or mainnet
+         *  @return current maturity setting for coinbase producer, based on current testnet or mainnet
          *
          **/
         uint32_t MaturityCoinBase();
 
 
+        /** MaturityCoinbase
+         *
+         *  Retrieve the number of blocks (confirmations) required for coinbase maturity for a given block.
+         *
+         *  @param[in] block - Block to which this maturity requirement will apply
+         *
+         *  @return maturity setting for coinbase producer, based on current testnet or mainnet and block version
+         *
+         **/
+        uint32_t MaturityCoinBase(const BlockState& block);
+
+
         /** MaturityCoinstake
          *
-         *  Retrieve the number of blocks (confirmations) required for coinstake maturity.
+         *  Retrieve the number of blocks (confirmations) required for coinstake maturity for the current network version.
          *
-         *  @return maturity setting for coinstake producer, based on current testnet or mainnet
+         *  @return current maturity setting for coinstake producer, based on current testnet or mainnet
          *
          **/
         uint32_t MaturityCoinStake();
+
+
+        /** MaturityCoinstake
+         *
+         *  Retrieve the number of blocks (confirmations) required for coinstake maturity for a given block.
+         *
+         *  @param[in] block - Block to which this maturity requirement will apply
+         *
+         *  @return maturity setting for coinstake producer, based on current testnet or mainnet and block version
+         *
+         **/
+        uint32_t MaturityCoinStake(const BlockState& block);
 
     }
 }

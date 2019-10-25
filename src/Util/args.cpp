@@ -43,6 +43,7 @@ namespace config
     std::atomic<bool> fMultiuser(false);
     std::atomic<bool> fProcessNotifications(false);
     std::atomic<bool> fInitialized(false);
+    std::atomic<int32_t> nVerbose(0);
 
     std::mutex ARGS_MUTEX;
 
@@ -177,6 +178,7 @@ namespace config
         fLogTimestamps          = GetBoolArg("-logtimestamps", false);
         fMultiuser              = GetBoolArg("-multiuser", false);
         fProcessNotifications   = GetBoolArg("-processnotifications", true);
+        nVerbose                = GetArg("-verbose", 0);
 
 
         /* Parse the allowip entries and add them to a map for easier processing when new connections are made*/

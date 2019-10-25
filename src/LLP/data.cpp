@@ -32,21 +32,24 @@ namespace LLP
 
     /** Default Constructor **/
     template <class ProtocolType>
-    DataThread<ProtocolType>::DataThread(uint32_t id, bool isDDOS,
+    DataThread<ProtocolType>::DataThread(uint32_t nID, bool fIsDDOS,
                                          uint32_t rScore, uint32_t cScore,
                                          uint32_t nTimeout, bool fMeter)
-    : fDDOS(isDDOS)
-    , fMETER(fMeter)
-    , fDestruct(false)
-    , nConnections(0)
-    , ID(id)
-    , REQUESTS(0)
-    , TIMEOUT(nTimeout)
-    , DDOS_rSCORE(rScore)
-    , DDOS_cSCORE(cScore)
-    , CONNECTIONS(memory::atomic_ptr< std::vector<memory::atomic_ptr<ProtocolType>> >(new std::vector<memory::atomic_ptr<ProtocolType>>()))
-    , CONDITION()
-    , DATA_THREAD(std::bind(&DataThread::Thread, this))
+    : SLOT_MUTEX      ( )
+    , fDDOS           (fIsDDOS)
+    , fMETER          (fMeter)
+    , fDestruct       (false)
+    , nConnections    (0)
+    , ID              (nID)
+    , REQUESTS        (0)
+    , TIMEOUT         (nTimeout)
+    , DDOS_rSCORE     (rScore)
+    , DDOS_cSCORE     (cScore)
+    , CONNECTIONS     (memory::atomic_ptr< std::vector<memory::atomic_ptr<ProtocolType>> >(new std::vector<memory::atomic_ptr<ProtocolType>>()))
+    , CONDITION       ( )
+    , DATA_THREAD     (std::bind(&DataThread::Thread, this))
+    , FLUSH_CONDITION ( )
+    , FLUSH_THREAD    (std::bind(&DataThread::Flush, this))
     {
     }
 
@@ -60,6 +63,10 @@ namespace LLP
 
         if(DATA_THREAD.joinable())
             DATA_THREAD.join();
+
+        FLUSH_CONDITION.notify_all();
+        if(FLUSH_THREAD.joinable())
+            FLUSH_THREAD.join();
 
         DisconnectAll();
 
@@ -77,29 +84,34 @@ namespace LLP
             ProtocolType* pnode = new ProtocolType(SOCKET, DDOS, fDDOS);
             pnode->fCONNECTED.store(true);
 
-            /* Find an available slot. */
-            uint32_t nSlot = find_slot();
+            {
+                LOCK(SLOT_MUTEX);
 
-            /* Update the indexes. */
-            pnode->nDataThread = ID;
-            pnode->nDataIndex  = nSlot;
+                /* Find an available slot. */
+                uint32_t nSlot = find_slot();
 
-            /* Find a slot that is empty. */
-            if(nSlot == CONNECTIONS->size())
-                CONNECTIONS->push_back(memory::atomic_ptr<ProtocolType>(pnode));
-            else
-                CONNECTIONS->at(nSlot).store(pnode);
+                /* Update the indexes. */
+                pnode->nDataThread     = ID;
+                pnode->nDataIndex      = nSlot;
+                pnode->FLUSH_CONDITION = &FLUSH_CONDITION;
 
-            /* Fire the connected event. */
-            memory::atomic_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nSlot);
-            CONNECTION->Event(EVENT_CONNECT);
+                /* Find a slot that is empty. */
+                if(nSlot == CONNECTIONS->size())
+                    CONNECTIONS->push_back(memory::atomic_ptr<ProtocolType>(pnode));
+                else
+                    CONNECTIONS->at(nSlot).store(pnode);
 
-            /* Iterate the DDOS cScore (Connection score). */
-            if(DDOS)
-                DDOS -> cSCORE += 1;
+                /* Fire the connected event. */
+                memory::atomic_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nSlot);
+                CONNECTION->Event(EVENT_CONNECT);
 
-            /* Bump the total connections atomic counter. */
-            ++nConnections;
+                /* Iterate the DDOS cScore (Connection score). */
+                if(DDOS)
+                    DDOS -> cSCORE += 1;
+
+                /* Bump the total connections atomic counter. */
+                ++nConnections;
+            }
 
             /* Notify data thread to wake up. */
             CONDITION.notify_all();
@@ -120,13 +132,6 @@ namespace LLP
             /* Create a new pointer on the heap. */
             ProtocolType* pnode = new ProtocolType(nullptr, false); //turn off DDOS for outgoing connections
 
-            /* Find an available slot. */
-            uint32_t nSlot = find_slot();
-
-            /* Update the indexes. */
-            pnode->nDataThread = ID;
-            pnode->nDataIndex  = nSlot;
-
             /* Attempt to make the connection. */
             if(!pnode->Connect(addr))
             {
@@ -134,18 +139,30 @@ namespace LLP
                 return false;
             }
 
-            /* Find a slot that is empty. */
-            if(nSlot == CONNECTIONS->size())
-                CONNECTIONS->push_back(memory::atomic_ptr<ProtocolType>(pnode));
-            else
-                CONNECTIONS->at(nSlot).store(pnode);
+            {
+                LOCK(SLOT_MUTEX);
 
-            /* Fire the connected event. */
-            memory::atomic_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nSlot);
-            CONNECTION->Event(EVENT_CONNECT);
+                /* Find an available slot. */
+                uint32_t nSlot = find_slot();
 
-            /* Bump the total connections atomic counter. */
-            ++nConnections;
+                /* Update the indexes. */
+                pnode->nDataThread     = ID;
+                pnode->nDataIndex      = nSlot;
+                pnode->FLUSH_CONDITION = &FLUSH_CONDITION;
+
+                /* Find a slot that is empty. */
+                if(nSlot == CONNECTIONS->size())
+                    CONNECTIONS->push_back(memory::atomic_ptr<ProtocolType>(pnode));
+                else
+                    CONNECTIONS->at(nSlot).store(pnode);
+
+                /* Fire the connected event. */
+                memory::atomic_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nSlot);
+                CONNECTION->Event(EVENT_CONNECT);
+
+                /* Bump the total connections atomic counter. */
+                ++nConnections;
+            }
 
             /* Notify data thread to wake up. */
             CONDITION.notify_all();
@@ -331,9 +348,6 @@ namespace LLP
                     /* Generic event for Connection. */
                     pConnection->Event(EVENT_GENERIC);
 
-                    /* Flush the write buffer. */
-                    pConnection->Flush();
-
                     /* Work on Reading a Packet. **/
                     pConnection->ReadPacket();
 
@@ -344,7 +358,7 @@ namespace LLP
                         debug::log(4, FUNCTION, "recieved packet (", pConnection->INCOMING.GetBytes().size(), " bytes)");
 
                         /* Debug dump of packet data. */
-                        if(config::GetArg("-verbose", 0) >= 5)
+                        if(config::nVerbose >= 5)
                             PrintHex(pConnection->INCOMING.GetBytes());
 
                         /* Handle Meters and DDOS. */
@@ -376,21 +390,69 @@ namespace LLP
     }
 
 
+    /*  Thread that handles all the Reading / Writing of Data from Sockets.
+     *  Creates a Packet QUEUE on this connection to be processed by an
+     *  LLP Messaging Thread. */
+    template <class ProtocolType>
+    void DataThread<ProtocolType>::Flush()
+    {
+        /* The mutex for the condition. */
+        std::mutex CONDITION_MUTEX;
+
+        /* The main connection handler loop. */
+        while(!fDestruct.load() && !config::fShutdown.load())
+        {
+            /* Keep data threads waiting for work.
+             * Will wait until have one or more connections, DataThread is disposed, or system shutdown
+             * While loop catches potential for spurious wakeups. Also has the effect of skipping the wait() call after connections established.
+             */
+            std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
+            FLUSH_CONDITION.wait(CONDITION_LOCK,
+                [this]{
+
+                    /* Break on shutdown or destructor. */
+                    if(fDestruct.load() || config::fShutdown.load())
+                        return true;
+
+                    /* Check for buffered connection. */
+                    for(uint32_t nIndex = 0; nIndex < CONNECTIONS->size(); ++nIndex)
+                    {
+                        try
+                        {
+                            /* Check for buffered connection. */
+                            if(CONNECTIONS->at(nIndex)->Buffered())
+                                return true;
+                        }
+                        catch(const std::exception& e) { }
+                    }
+
+                    return false;
+                });
+
+            /* Check for close. */
+            if(fDestruct.load() || config::fShutdown.load())
+                return;
+
+            /* Check all connections for data and packets. */
+            for(uint32_t nIndex = 0; nIndex < CONNECTIONS->size(); ++nIndex)
+            {
+                try { CONNECTIONS->at(nIndex)->Flush(); }
+                catch(const std::exception& e) { }
+            }
+        }
+    }
+
+
     /* Tell the data thread an event has occured and notify each connection. */
     template<class ProtocolType>
     void DataThread<ProtocolType>::NotifyEvent()
     {
         /* Loop through each connection. */
         uint32_t nSize = static_cast<uint32_t>(CONNECTIONS->size());
-        for(uint32_t i = 0; i < nSize; ++i)
+        for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
         {
-            ProtocolType* connection = CONNECTIONS->at(i).load();
-
-            if(!connection)
-                continue;
-
-            /* Notify the connection that an event has occurred. */
-            connection->NotifyEvent();
+            try { CONNECTIONS->at(nIndex)->NotifyEvent(); }
+            catch(const std::exception& e) { }
         }
     }
 

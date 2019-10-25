@@ -329,39 +329,43 @@ namespace TAO
                     return debug::error(FUNCTION, "genesis transaction contains invalid contracts.");
             }
 
-            /* Switch based on signature type. */
-            switch(nKeyType)
+            /* Verify the block signature (if not synchronizing) */
+            if(!TAO::Ledger::ChainState::Synchronizing())
             {
-                /* Support for the FALCON signature scheeme. */
-                case SIGNATURE::FALCON:
+                /* Switch based on signature type. */
+                switch(nKeyType)
                 {
-                    /* Create the FL Key object. */
-                    LLC::FLKey key;
+                    /* Support for the FALCON signature scheeme. */
+                    case SIGNATURE::FALCON:
+                    {
+                        /* Create the FL Key object. */
+                        LLC::FLKey key;
 
-                    /* Set the public key and verify. */
-                    key.SetPubKey(vchPubKey);
-                    if(!key.Verify(GetHash().GetBytes(), vchSig))
-                        return debug::error(FUNCTION, "invalid transaction signature");
+                        /* Set the public key and verify. */
+                        key.SetPubKey(vchPubKey);
+                        if(!key.Verify(GetHash().GetBytes(), vchSig))
+                            return debug::error(FUNCTION, "invalid transaction signature");
 
-                    break;
+                        break;
+                    }
+
+                    /* Support for the BRAINPOOL signature scheme. */
+                    case SIGNATURE::BRAINPOOL:
+                    {
+                        /* Create EC Key object. */
+                        LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
+
+                        /* Set the public key and verify. */
+                        key.SetPubKey(vchPubKey);
+                        if(!key.Verify(GetHash().GetBytes(), vchSig))
+                            return debug::error(FUNCTION, "invalid transaction signature");
+
+                        break;
+                    }
+
+                    default:
+                        return debug::error(FUNCTION, "unknown signature type");
                 }
-
-                /* Support for the BRAINPOOL signature scheme. */
-                case SIGNATURE::BRAINPOOL:
-                {
-                    /* Create EC Key object. */
-                    LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
-
-                    /* Set the public key and verify. */
-                    key.SetPubKey(vchPubKey);
-                    if(!key.Verify(GetHash().GetBytes(), vchSig))
-                        return debug::error(FUNCTION, "invalid transaction signature");
-
-                    break;
-                }
-
-                default:
-                    return debug::error(FUNCTION, "unknown signature type");
             }
 
             return true;
@@ -490,7 +494,7 @@ namespace TAO
 
                 /* Enforce the minimum interval between stake blocks. */
                 const uint32_t nInterval = pblock->nHeight - stateLast.nHeight;
-                if(nInterval <= MinStakeInterval())
+                if(nInterval <= MinStakeInterval(*pblock))
                     return debug::error(FUNCTION, "stake block interval ", nInterval, " below minimum interval");
 
                 /* Calculate the coinstake reward */
@@ -534,18 +538,19 @@ namespace TAO
             bnTarget.SetCompact(pblock->nBits);
 
             /* Verbose logging. */
-            debug::log(2, FUNCTION,
-                "stake hash=", pblock->StakeHash().SubString(), ", ",
-                "target=", bnTarget.getuint1024().SubString(), ", ",
-                "type=", (IsTrust() ? "Trust" : "Genesis"), ", ",
-                "trust score=", nTrust, ", ",
-                "prev trust score=", nTrustPrev, ", ",
-                "trust change=", int64_t(nTrust - nTrustPrev), ", ",
-                "block age=", nBlockAge, ", ",
-                "stake=", nStake, ", ",
-                "reward=", nReward, ", ",
-                "add stake=", ((nStakeChange > 0) ? nStakeChange : 0), ", ",
-                "unstake=", ((nStakeChange < 0) ? (0 - nStakeChange) : 0));
+            if(config::nVerbose >= 2)
+                debug::log(2, FUNCTION,
+                    "stake hash=", pblock->StakeHash().SubString(), ", ",
+                    "target=", bnTarget.getuint1024().SubString(), ", ",
+                    "type=", (IsTrust() ? "Trust" : "Genesis"), ", ",
+                    "trust score=", nTrust, ", ",
+                    "prev trust score=", nTrustPrev, ", ",
+                    "trust change=", int64_t(nTrust - nTrustPrev), ", ",
+                    "block age=", nBlockAge, ", ",
+                    "stake=", nStake, ", ",
+                    "reward=", nReward, ", ",
+                    "add stake=", ((nStakeChange > 0) ? nStakeChange : 0), ", ",
+                    "unstake=", ((nStakeChange < 0) ? (0 - nStakeChange) : 0));
 
             return true;
         }
@@ -773,7 +778,7 @@ namespace TAO
                                     return debug::error(FUNCTION, "failed to read confirmations for coinbase");
 
                                 /* Check that the previous TX has reached sig chain maturity */
-                                if(nConfirms + 1 < MaturityCoinBase()) //NOTE: assess this +1
+                                if(nConfirms + 1 < MaturityCoinBase(*pblock)) //NOTE: assess this +1
                                     return debug::error(FUNCTION, "coinbase is immature ", nConfirms);
 
                                 break;

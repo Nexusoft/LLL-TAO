@@ -306,11 +306,11 @@ namespace LLD
 
         /* Switch for coinbase. */
         if(tx.IsCoinBase())
-            return nConfirms >= TAO::Ledger::MaturityCoinBase();
+            return nConfirms >= TAO::Ledger::MaturityCoinBase(*pblock);
 
         /* Switch for coinstake. */
         else if(tx.IsCoinStake())
-            return nConfirms >= TAO::Ledger::MaturityCoinStake();
+            return nConfirms >= TAO::Ledger::MaturityCoinStake(*pblock);
 
         else
             return true; //non-producer transactions have no maturity requirement

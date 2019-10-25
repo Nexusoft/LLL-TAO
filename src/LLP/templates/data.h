@@ -77,6 +77,11 @@ namespace LLP
             message_args(s, std::forward<Tail>(tail)...);
         }
 
+
+        /** Lock access to find slot to ensure no race conditions happend between threads. **/
+        std::mutex SLOT_MUTEX;
+
+
     public:
 
         /* Variables to track Connection / Request Count. */
@@ -98,18 +103,27 @@ namespace LLP
         memory::atomic_ptr< std::vector< memory::atomic_ptr<ProtocolType>> > CONNECTIONS;
 
 
-        /* The condition for thread sleeping. */
+        /** The condition for thread sleeping. **/
         std::condition_variable CONDITION;
 
 
-        /* Data Thread. */
+        /** Data Thread. **/
         std::thread DATA_THREAD;
+
+
+
+        /** The condition for thread sleeping. **/
+        std::condition_variable FLUSH_CONDITION;
+
+
+        /** Data Thread. **/
+        std::thread FLUSH_THREAD;
 
 
         /** Default Constructor
          *
          **/
-        DataThread<ProtocolType>(uint32_t id, bool isDDOS, uint32_t rScore, uint32_t cScore,
+        DataThread<ProtocolType>(uint32_t nID, bool fIsDDOS, uint32_t rScore, uint32_t cScore,
                                  uint32_t nTimeout, bool fMeter = false);
 
 
@@ -155,12 +169,20 @@ namespace LLP
 
         /** Thread
          *
-         *  Thread that handles all the Reading / Writing of Data from Sockets.
+         *  Thread that handles all the Reading of Data from Sockets.
          *  Creates a Packet QUEUE on this connection to be processed by an
          *  LLP Messaging Thread.
          *
          **/
         void Thread();
+
+
+        /** Flush
+         *
+         *  Thread that handles all the Writing of Data from Sockets.
+         *
+         **/
+        void Flush();
 
 
         /** Relay
@@ -182,21 +204,14 @@ namespace LLP
             {
                 try
                 {
-                    /* Get the connection object. */
-                    memory::atomic_ptr<ProtocolType>& pConnection = CONNECTIONS->at(nIndex);
-
-                    /* Skip over inactive connections. */
-                    if(!pConnection)
-                        continue;
-
                     /* Relay if there are active subscriptions. */
-                    const DataStream ssRelay = pConnection->Notifications(message, ssData);
+                    const DataStream ssRelay = CONNECTIONS->at(nIndex)->Notifications(message, ssData);
                     if(ssRelay.size() != 0)
-                        pConnection->WritePacket(pConnection->NewMessage(message, ssRelay));
+                        CONNECTIONS->at(nIndex)->WritePacket(ProtocolType::NewMessage(message, ssRelay));
                 }
-                catch(const std::runtime_error& e)
+                catch(const std::exception& e)
                 {
-                    debug::error(FUNCTION, e.what());
+                    //debug::error(FUNCTION, e.what());
                     //catch the atomic pointer throws
                 }
             }

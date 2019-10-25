@@ -189,7 +189,7 @@ namespace LLP
 
                 if(INCOMING.Complete())
                 {
-                    if(config::GetArg("-verbose", 0) >= 5)
+                    if(config::nVerbose >= 5)
                         PrintHex(INCOMING.GetBytes());
                 }
 
@@ -231,7 +231,7 @@ namespace LLP
 
 
                 /* Handle subscribing to events from other nodes. */
-                if(!fInitialized && fSynchronized && nCurrentSession != 0)
+                if(!fInitialized.load() && fSynchronized.load() && nCurrentSession != 0)
                 {
                     /* Simple log to let us know we are making the subscription requests. */
                     debug::log(1, NODE, "Initializing Subscriptions with REMOTE HOST");
@@ -249,7 +249,7 @@ namespace LLP
                     PushMessage(ACTION::LIST, uint8_t(TYPES::MEMPOOL));
 
                     /* Set node as initialized. */
-                    fInitialized = true;
+                    fInitialized.store(true);
                 }
 
                 break;
@@ -927,7 +927,7 @@ namespace LLP
                                     }
 
                                     /* Debug output. */
-                                    if(config::GetArg("-verbose", 0) >= 3)
+                                    if(config::nVerbose >= 3)
                                         debug::log(3, NODE, "ACTION::LIST: Locator ", hashStart.SubString(), " found");
 
                                     break;
@@ -963,7 +963,7 @@ namespace LLP
                                     /* Check for matching hashes. */
                                     if(state.hashPrevBlock != stateLast.GetHash())
                                     {
-                                        if(config::GetArg("-verbose", 0) >= 3)
+                                        if(config::nVerbose >= 3)
                                             debug::log(3, FUNCTION, "Reading block ", stateLast.hashNextBlock.SubString());
 
                                         /* Read the correct block from next index. */
@@ -1040,7 +1040,7 @@ namespace LLP
                                     /* Check for stop hash. */
                                     if(--nLimits <= 0 || hashStart == hashStop)
                                     {
-                                        if(config::GetArg("-verbose", 0) >= 3)
+                                        if(config::nVerbose >= 3)
                                             debug::log(3, FUNCTION, "Limits ", nLimits, " Reached ", hashStart.SubString(), " == ", hashStop.SubString());
                                         break;
                                     }
@@ -1320,6 +1320,9 @@ namespace LLP
                                 }
                             }
 
+                            /* Debug output. */
+                            debug::log(3, NODE, "ACTION::GET: BLOCK ", hashBlock.SubString());
+
                             break;
                         }
 
@@ -1367,6 +1370,9 @@ namespace LLP
                                 }
 
                             }
+
+                            /* Debug output. */
+                            debug::log(3, NODE, "ACTION::GET: TRANSACTION ", hashTx.SubString());
 
                             break;
                         }
@@ -1860,7 +1866,7 @@ namespace LLP
                             TAO::Ledger::TritiumBlock tritium(block);
 
                             /* Verbose debug output. */
-                            if(config::GetArg("-verbose", 0) >= 3)
+                            if(config::nVerbose >= 3)
                                 debug::log(3, FUNCTION, "received sync block ", tritium.GetHash().SubString(), " height = ", block.nHeight);
 
                             /* Process the block. */
@@ -1872,7 +1878,7 @@ namespace LLP
                             Legacy::LegacyBlock legacy(block);
 
                             /* Verbose debug output. */
-                            if(config::GetArg("-verbose", 0) >= 3)
+                            if(config::nVerbose >= 3)
                                 debug::log(3, FUNCTION, "received sync block ", legacy.GetHash().SubString(), " height = ", block.nHeight);
 
                             /* Process the block. */
@@ -2361,13 +2367,13 @@ namespace LLP
                     uint1024_t hashBlock;
                     ssData >> hashBlock;
 
+                    /* Skip malformed requests. */
+                    if(fLegacy)
+                        continue;
+
                     /* Check subscription. */
                     if(nNotifications & SUBSCRIPTION::BLOCK)
                     {
-                        /* Check for legacy. */
-                        if(fLegacy)
-                            ssRelay << uint8_t(SPECIFIER::LEGACY);
-
                         /* Write block to stream. */
                         ssRelay << uint8_t(TYPES::BLOCK);
                         ssRelay << hashBlock;
@@ -2493,7 +2499,10 @@ namespace LLP
 
                 /* Default catch (relay up to this point) */
                 default:
+                {
+                    debug::error(FUNCTION, "Malformed binary stream");
                     return ssRelay;
+                }
             }
         }
 

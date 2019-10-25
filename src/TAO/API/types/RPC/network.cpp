@@ -34,6 +34,9 @@ ________________________________________________________________________________
 #include <Util/include/args.h>
 #include <Util/include/hex.h>
 #include <Util/include/json.h>
+#include <Util/include/softfloat.h>
+
+#include <TAO/Ledger/types/state.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -281,12 +284,19 @@ namespace TAO
                     " This is to prevent error from Gregorian Figures.");
 
             json::json obj;
-            uint32_t nMinutes = TAO::Ledger::GetChainAge(TAO::Ledger::ChainState::stateBest.load().GetBlockTime());
+
+            /* Read the stateBest using hashBestChain
+             * Cannot use ChainState::stateBest for this because certain fields (like money supply) are not populated
+             */
+            TAO::Ledger::BlockState stateBest;
+            if(!LLD::Ledger->ReadBlock(TAO::Ledger::ChainState::hashBestChain.load(), stateBest))
+                return std::string("Block not found");
+
+            uint32_t nMinutes = TAO::Ledger::GetChainAge(stateBest.GetBlockTime());
+            int64_t nSupply = stateBest.nMoneySupply;
+            int64_t nTarget = TAO::Ledger::CompoundSubsidy(nMinutes);
 
             obj["chainAge"] = (int)nMinutes;
-
-            int64_t nSupply = TAO::Ledger::ChainState::stateBest.load().nMoneySupply;
-            int64_t nTarget = TAO::Ledger::CompoundSubsidy(nMinutes);
 
             obj["moneysupply"] = Legacy::SatoshisToAmount(nSupply);
             obj["targetsupply"] = Legacy::SatoshisToAmount(nTarget);
@@ -309,14 +319,31 @@ namespace TAO
         Default timestamp is the current Unified timestamp. The timestamp is recorded as a UNIX timestamp */
         json::json RPC::GetMoneySupply(const json::json& params, bool fHelp)
         {
-            if(fHelp || params.size() != 0)
+            if(fHelp || params.size() > 1)
                 return std::string(
                     "getmoneysupply <timestamp>"
                     " - Returns the total supply of Nexus produced by miners, holdings, developers, and ambassadors."
                     " Default timestamp is the current Unified timestamp. The timestamp is recorded as a UNIX timestamp");
 
             json::json obj;
-            uint32_t nMinutes = TAO::Ledger::GetChainAge(TAO::Ledger::ChainState::stateBest.load().GetBlockTime());
+
+            uint32_t nMinutes;
+
+            if(params.size() > 0)
+            {
+                const uint32_t nNetworkStart = config::fTestNet.load() ?
+                                               TAO::Ledger::NEXUS_TESTNET_TIMELOCK : TAO::Ledger::NEXUS_NETWORK_TIMELOCK;
+
+                std::string strValue = params[0];
+                uint32_t timestamp = uint32_t(std::stoul(strValue));
+
+                if(timestamp < nNetworkStart)
+                    timestamp = nNetworkStart;
+
+                nMinutes = TAO::Ledger::GetChainAge(timestamp);
+            }
+            else
+                nMinutes = TAO::Ledger::GetChainAge(TAO::Ledger::ChainState::stateBest.load().GetBlockTime());
 
             obj["chainAge"] = (int)nMinutes;
             obj["miners"] = Legacy::SatoshisToAmount(TAO::Ledger::CompoundSubsidy(nMinutes, 0));

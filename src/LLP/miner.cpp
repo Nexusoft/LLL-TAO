@@ -991,7 +991,7 @@ namespace LLP
            pBlock->print();
 
            /* Log block found */
-           if(config::GetArg("-verbose", 0) > 0)
+           if(config::nVerbose > 0)
            {
                std::string strTimestamp(convert::DateTimeStrFormat(runtime::unifiedtimestamp()));
                if(pBlock->nChannel == 1)

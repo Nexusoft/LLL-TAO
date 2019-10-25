@@ -30,59 +30,62 @@ ________________________________________________________________________________
 namespace LLP
 {
 
-    /** Build Base Connection with no parameters **/
+    /* Build Base Connection with no parameters */
     template <class PacketType>
     BaseConnection<PacketType>::BaseConnection()
-    : Socket()
-    , INCOMING()
-    , DDOS(nullptr)
-    , nLatency(std::numeric_limits<uint32_t>::max())
-    , fDDOS(false)
-    , fOUTGOING(false)
-    , fCONNECTED(false)
-    , nDataThread(-1)
-    , nDataIndex(-1)
-    , fEVENT(false)
-    , EVENT_MUTEX()
-    , EVENT_CONDITION()
+    : Socket          ( )
+    , INCOMING        ( )
+    , DDOS            (nullptr)
+    , nLatency        (std::numeric_limits<uint32_t>::max())
+    , fDDOS           (false)
+    , fOUTGOING       (false)
+    , fCONNECTED      (false)
+    , nDataThread     (-1)
+    , nDataIndex      (-1)
+    , FLUSH_CONDITION (nullptr)
+    , fEVENT          (false)
+    , EVENT_MUTEX     ( )
+    , EVENT_CONDITION ( )
     {
         INCOMING.SetNull();
     }
 
-    /** Build Base Connection with all Parameters. **/
+    /* Build Base Connection with all Parameters. */
     template <class PacketType>
     BaseConnection<PacketType>::BaseConnection(const Socket &SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS, bool fOutgoing)
-    : Socket(SOCKET_IN)
-    , INCOMING()
-    , DDOS(DDOS_IN)
-    , nLatency(std::numeric_limits<uint32_t>::max())
-    , fDDOS(isDDOS)
-    , fOUTGOING(fOutgoing)
-    , fCONNECTED(false)
-    , nDataThread(-1)
-    , nDataIndex(-1)
-    , fEVENT(false)
-    , EVENT_MUTEX()
-    , EVENT_CONDITION()
+    : Socket          (SOCKET_IN)
+    , INCOMING        ( )
+    , DDOS            (DDOS_IN)
+    , nLatency        (std::numeric_limits<uint32_t>::max())
+    , fDDOS           (isDDOS)
+    , fOUTGOING       (fOutgoing)
+    , fCONNECTED      (false)
+    , nDataThread     (-1)
+    , nDataIndex      (-1)
+    , FLUSH_CONDITION (nullptr)
+    , fEVENT          (false)
+    , EVENT_MUTEX     ( )
+    , EVENT_CONDITION ( )
     {
     }
 
 
-    /** Build Base Connection with all Parameters. **/
+    /* Build Base Connection with all Parameters. */
     template <class PacketType>
     BaseConnection<PacketType>::BaseConnection(DDOS_Filter* DDOS_IN, bool isDDOS, bool fOutgoing)
-    : Socket()
-    , INCOMING()
-    , DDOS(DDOS_IN)
-    , nLatency(std::numeric_limits<uint32_t>::max())
-    , fDDOS(isDDOS)
-    , fOUTGOING(fOutgoing)
-    , fCONNECTED(false)
-    , nDataThread(-1)
-    , nDataIndex(-1)
-    , fEVENT(false)
-    , EVENT_MUTEX()
-    , EVENT_CONDITION()
+    : Socket          ( )
+    , INCOMING        ( )
+    , DDOS            (DDOS_IN)
+    , nLatency        (std::numeric_limits<uint32_t>::max())
+    , fDDOS           (isDDOS)
+    , fOUTGOING       (fOutgoing)
+    , fCONNECTED      (false)
+    , nDataThread     (-1)
+    , nDataIndex      (-1)
+    , FLUSH_CONDITION (nullptr)
+    , fEVENT          (false)
+    , EVENT_MUTEX     ( )
+    , EVENT_CONDITION ( )
     {
     }
 
@@ -156,11 +159,15 @@ namespace LLP
         debug::log(4, NODE, "sent packet (", vBytes.size(), " bytes)");
 
         /* Debug dump of packet data. */
-        if(config::GetArg("-verbose", 0) >= 5)
+        if(config::nVerbose >= 5)
             PrintHex(vBytes);
 
         /* Write the packet to socket buffer. */
         Write(vBytes, vBytes.size());
+
+        /* Notify condition if available. */
+        if(FLUSH_CONDITION && vBuffer.size() != 0)
+            FLUSH_CONDITION->notify_all();
     }
 
 

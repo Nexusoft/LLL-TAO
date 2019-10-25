@@ -455,6 +455,13 @@ namespace LLP
     }
 
 
+    /* Check that the socket has data that is buffered. */
+    bool Socket::Buffered() const
+    {
+        return vBuffer.size() != 0;
+    }
+
+
     /*  Checks if is in null state. */
     bool Socket::IsNull() const
     {

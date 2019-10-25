@@ -162,7 +162,7 @@ namespace TAO
                 if(!tx.Connect(FLAGS::MINER))
                     continue;
 
-                if(config::GetArg("-verbose", 0) >= 3)
+                if(config::nVerbose >= 3)
                     tx.print();
 
                 /* Add the transaction to the block. */

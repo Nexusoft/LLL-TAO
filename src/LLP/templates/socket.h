@@ -194,6 +194,14 @@ namespace LLP
         bool Timeout(uint32_t nTime) const;
 
 
+        /** Buffered
+         *
+         *  Check that the socket has data that is buffered.
+         *
+         **/
+        bool Buffered() const;
+
+
         /** IsNull
          *
          *  Checks if is in null state.

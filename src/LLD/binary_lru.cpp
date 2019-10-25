@@ -201,8 +201,8 @@ namespace LLD
             }
         }
 
-        /* Set the new index. */
-        nIndex = (key.nSectorFile * key.nSectorStart);
+        /* Update index hashmap through reference: NOTE nSectorFile and nSectorStart are 0-based so we add 1 to it to ensure we always have an index */
+        nIndex = ((key.nSectorFile + 1) * (key.nSectorStart + 1));
 
         /* Cleanup if colliding with another bucket. */
         uint32_t nSlot = slot(nIndex);
@@ -238,8 +238,8 @@ namespace LLD
         {
             /* Get last pointer. */
             BinaryNode* pnode = plast;
-            if(!pnode)
-                return;
+            if(!pnode || pnode->IsNull())
+                break;
 
             /* Set the new links. */
             plast = plast->pprev;

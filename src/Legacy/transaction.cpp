@@ -1081,9 +1081,9 @@ namespace Legacy
                         /* Check the maturity. */
                         uint32_t nMaturity;
                         if(txPrev.IsCoinBase())
-                            nMaturity = TAO::Ledger::MaturityCoinBase();
+                            nMaturity = TAO::Ledger::MaturityCoinBase(state);
                         else
-                            nMaturity = TAO::Ledger::MaturityCoinStake();
+                            nMaturity = TAO::Ledger::MaturityCoinStake(state);
 
                         if((state.nHeight - statePrev.nHeight) < nMaturity)
                             return debug::error(FUNCTION, "tried to spend immature balance ", (state.nHeight - statePrev.nHeight));
@@ -1346,7 +1346,7 @@ namespace Legacy
             return debug::error(FUNCTION, "last state coinstake tx not found");
 
         /* Enforce the minimum trust key interval */
-        if((state.nHeight - stateLast.nHeight) < TAO::Ledger::MinStakeInterval())
+        if((state.nHeight - stateLast.nHeight) < TAO::Ledger::MinStakeInterval(state))
             return debug::error(FUNCTION, "trust key interval below minimum interval ", state.nHeight - stateLast.nHeight);
 
         /* Current key to verify */

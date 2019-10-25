@@ -19,7 +19,7 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
-#include <TAO/Ledger/types/tritium.h>
+#include <TAO/Ledger/types/state.h>
 
 #include <Util/templates/serialize.h>
 
@@ -55,12 +55,16 @@ namespace Legacy
 		std::vector<uint512_t> vMerkleBranch;
 
 
-		/** Index of transaction within containing block
+        /** Index of transaction within containing block
          *
          *  @deprecated - no longer used, maintained to support deserializing from existing wallet.dat files
          *
          **/
-		int32_t nIndex;
+        int32_t nIndex;
+
+
+        /** Block containing this transaction (memory-only) **/
+        mutable TAO::Ledger::BlockState* pBlock;
 
 
 		/* Implement serialization/deserializaiton for MerkleTx, first by serializing/deserializing

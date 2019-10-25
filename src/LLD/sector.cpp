@@ -202,7 +202,7 @@ namespace LLD
             cachePool->Put(cKey, vKey, vData);
 
             /* Verbose Debug Logging. */
-            if(config::GetArg("-verbose", 0) >= 5)
+            if(config::nVerbose >= 5)
                 debug::log(5, FUNCTION, "Current File: ", cKey.nSectorFile,
                     " | Current File Size: ", cKey.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
 
@@ -257,7 +257,7 @@ namespace LLD
                 return debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes read");
 
             /* Verboe output. */
-            if(config::GetArg("-verbose", 0) >= 5)
+            if(config::nVerbose >= 5)
                 debug::log(5, FUNCTION, "Current File: ", cKey.nSectorFile,
                     " | Current File Size: ", cKey.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
         }
@@ -321,7 +321,7 @@ namespace LLD
             nBytesWrote += static_cast<uint32_t>(vData.size());
 
             /* Verbose output. */
-            if(config::GetArg("-verbose", 0) >= 5)
+            if(config::nVerbose >= 5)
                 debug::log(5, FUNCTION, "Current File: ", key.nSectorFile,
                     " | Current File Size: ", key.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
         }
@@ -404,7 +404,7 @@ namespace LLD
             cachePool->Put(key, vKey, vData, false);
 
             /* Verboe output. */
-            if(config::GetArg("-verbose", 0) >= 5)
+            if(config::nVerbose >= 5)
                 debug::log(5, FUNCTION, "Current File: ", key.nSectorFile,
                     " | Current File Size: ", key.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
         }
