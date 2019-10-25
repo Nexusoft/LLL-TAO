@@ -264,7 +264,7 @@ int main(int argc, char** argv)
     TAO::Ledger::GetOffsets(hashOrigin + nNonce, vOffsets);
 
     benchmark.Reset();
-    double nDifficulty2 = TAO::Ledger::GetPrimeDifficulty(hashOrigin + nNonce, vOffsets);
+    double nDifficulty2 = TAO::Ledger::GetPrimeDifficulty(hashOrigin + nNonce, vOffsets, false);
 
     debug::log(0, "Difficulty ", nDifficulty2, " in ", benchmark.ElapsedMilliseconds(), "ms");
 

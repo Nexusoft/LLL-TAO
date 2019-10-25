@@ -212,6 +212,7 @@ ifdef UNIT_TESTS
 		   build/Tests_TAO_Operation_contract.o \
 		   build/Tests_TAO_Operation_debit.o \
            build/Tests_TAO_Operation_credit.o \
+		   build/Tests_TAO_Operation_erase.o \
 		   build/Tests_TAO_Operation_fees.o \
 		   build/Tests_TAO_Operation_migrate.o \
 		   build/Tests_TAO_Operation_names.o \
