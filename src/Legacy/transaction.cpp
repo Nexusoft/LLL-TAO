@@ -54,6 +54,10 @@ namespace Legacy
     , vout      ( )
     , nLockTime (0)
     {
+        /* When tx nTime after v7 activation, it is version 2 */
+        if(TAO::Ledger::VersionActive(nTime, 7) || TAO::Ledger::CurrentVersion() > 7)
+            nVersion = 2;
+
         SetNull();
     }
 
@@ -139,6 +143,10 @@ namespace Legacy
 		vin.clear();
 		vout.clear();
 		nLockTime = 0;
+
+        /* When tx nTime after v7 activation, it is version 2 */
+        if(TAO::Ledger::VersionActive(nTime, 7) || TAO::Ledger::CurrentVersion() > 7)
+            nVersion = 2;
 	}
 
 
@@ -162,8 +170,8 @@ namespace Legacy
         /* Get the hash. */
 	    uint512_t hash = LLC::SK512(ss.begin(), ss.end());
 
-        /* Type of 0xfe designates legacy tx beginning with v7 timelock activation. */
-        if(TAO::Ledger::VersionActive(nTime, 7) || TAO::Ledger::CurrentVersion() > 7)
+        /* Type of 0xfe designates legacy tx beginning with v7 activation (tx version 2). */
+        if(nVersion == 2)
             hash.SetType(TAO::Ledger::LEGACY);
 
         return hash;
@@ -811,6 +819,15 @@ namespace Legacy
 	/* Check the transaction for validity. */
 	bool Transaction::CheckTransaction() const
     {
+        /* Validate tx version 2 not accepted until v7 active for tx nTime, after that it is required */
+        if(TAO::Ledger::VersionActive(nTime, 7) || TAO::Ledger::CurrentVersion() > 7)
+        {
+            if(nVersion != 2)
+                return debug::error(FUNCTION, "invalid transaction version ", nVersion);
+        }
+        else if(nVersion != 1)
+            return debug::error(FUNCTION, "invalid transaction version ", nVersion);
+
         /* Check for empty inputs. */
         if(vin.empty())
             return debug::error(FUNCTION, "vin empty");
