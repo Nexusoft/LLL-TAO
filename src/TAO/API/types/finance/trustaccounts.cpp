@@ -76,8 +76,8 @@ namespace TAO
                     /* Parse so we can access the data */
                     account.Parse();
 
-                    /* Only include accounts with trust */
-                    if(account.get<uint64_t>("trust") == 0)
+                    /* Only include accounts with stake or trust (genesis has stake w/o trust; can unstake to trust w/o stake) */
+                    if(account.get<uint64_t>("stake") == 0 && account.get<uint64_t>("trust") == 0)
                         continue;
 
                     /* Add the account to our active list */
@@ -86,9 +86,9 @@ namespace TAO
 
                 /* Sort the list */
                 if(strSort == "stake" || strSort == "balance" || strSort == "trust")
-                    std::sort(vActive.begin(), vActive.end(), [strSort] 
+                    std::sort(vActive.begin(), vActive.end(), [strSort]
                             (const TAO::Register::Object &a, const TAO::Register::Object &b)
-                    { 
+                    {
                         /* Sort in decending order */
                         return ( a.get<uint64_t>(strSort) > b.get<uint64_t>(strSort) );
                     });
@@ -123,7 +123,7 @@ namespace TAO
                     jsonAccount["modified"] = account.nModified;
                     jsonAccount["balance"] = (double) account.get<uint64_t>("balance") / pow(10, TAO::Ledger::NXS_DIGITS);
                     jsonAccount["stake"] = (double) account.get<uint64_t>("stake") / pow(10, TAO::Ledger::NXS_DIGITS);
-                    
+
                     /* Calculate and add the stake rate */
                     uint64_t nTrust = account.get<uint64_t>("trust");
                     jsonAccount["trust"] = nTrust;
@@ -135,7 +135,7 @@ namespace TAO
                         break;
                 }
 
-                
+
             }
 
 
