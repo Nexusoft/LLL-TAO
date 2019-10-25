@@ -60,7 +60,7 @@ namespace TAO
                 {
                     /* Get the offset. */
                     uint8_t nOffset = vOffsets[n];
-                    
+
                     /* Check for valid offsets. */
                     if(nOffset > 12)
                         return 0.0;
@@ -77,6 +77,10 @@ namespace TAO
                 /* Get fractional difficulty. */
                 uint32_t nFraction = 0;
                 std::copy((uint8_t*)&vOffsets[nSize - 4], (uint8_t*)&vOffsets[nSize - 1], (uint8_t*)&nFraction);
+
+                /* If verifying check the fractional difficulty. */
+                if(fVerify && GetFractionalDifficulty(hashNext + 14) != nFraction)
+                    return 0.0;
 
                 /* Calculate the rarity of cluster from proportion of fermat remainder of last prime + 2. */
                 cv::softdouble nRemainder = cv::softdouble(1000000.0) / cv::softdouble(nFraction);
