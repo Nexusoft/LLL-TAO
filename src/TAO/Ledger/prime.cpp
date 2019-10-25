@@ -56,8 +56,11 @@ namespace TAO
             {
                 /* Loop through offsets pattern. */
                 uint32_t nSize = vOffsets.size();
-                for(const auto& nOffset : vOffsets)
+                for(uint32_t n = 0; n < nSize - 4; ++n)
                 {
+                    /* Get the offset. */
+                    uint8_t nOffset = vOffsets[n];
+                    
                     /* Check for valid offsets. */
                     if(nOffset > 12)
                         return 0.0;
