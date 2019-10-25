@@ -94,8 +94,9 @@ namespace TAO
                 /* Check the memory pool and compare hashes. */
                 if(!TAO::Ledger::mempool.Has(hashGenesis))
                 {
+                    /* Account doesn't exist returns invalid credentials */
                     user.free();
-                    throw APIException(-136, "Account doesn't exist");
+                    throw APIException(-139, "Invalid credentials");
                 }
 
                 /* Get the memory pool tranasction. */
@@ -158,7 +159,7 @@ namespace TAO
                 mapSessions.emplace(nSession, std::move(user));
             }
 
-            /* If not using Multiuser then generate and cache the private key for the "network" key so that we can generate AUTH 
+            /* If not using Multiuser then generate and cache the private key for the "network" key so that we can generate AUTH
                LLP messages to authenticate to peers */
             if(!config::fMultiuser.load())
             {
