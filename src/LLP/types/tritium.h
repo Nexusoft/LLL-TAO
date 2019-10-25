@@ -195,6 +195,12 @@ namespace LLP
         /** The current notifications. **/
         uint16_t nNotifications;
 
+        /** The block height at the start of the last sync session **/
+        uint32_t nSyncStart;
+
+        /** Tracks the time taken to synchronize  **/
+        runtime::timer SYNCTIMER;
+
     public:
 
 

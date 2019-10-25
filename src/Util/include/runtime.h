@@ -106,6 +106,17 @@ namespace runtime
         timer() : fStopped(false) {}
 
 
+        /** Running
+         *
+         *  Returns the current running state of this timer.
+         *
+         **/
+        bool Running()
+        {
+            return !fStopped;
+        }
+
+
         /** Start
          *
          *  Capture the start time with a high resolution clock. Sets stopped to false.

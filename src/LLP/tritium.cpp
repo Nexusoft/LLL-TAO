@@ -72,6 +72,8 @@ namespace LLP
     , fInitialized(false)
     , nSubscriptions(0)
     , nNotifications(0)
+    , nSyncStart(0)
+    , SYNCTIMER()
     , nLastPing(0)
     , nLastSamples(0)
     , mapLatencyTracker()
@@ -98,6 +100,8 @@ namespace LLP
     , fInitialized(false)
     , nSubscriptions(0)
     , nNotifications(0)
+    , nSyncStart(0)
+    , SYNCTIMER()
     , nLastPing(0)
     , nLastSamples(0)
     , mapLatencyTracker()
@@ -124,6 +128,8 @@ namespace LLP
     , fInitialized(false)
     , nSubscriptions(0)
     , nNotifications(0)
+    , nSyncStart(0)
+    , SYNCTIMER()
     , nLastPing(0)
     , nLastSamples(0)
     , mapLatencyTracker()
@@ -319,6 +325,13 @@ namespace LLP
                     }
                 }
 
+                /* Reset session, notifications, subscriptions etc */
+                nCurrentSession = 0;
+                nUnsubscribed = 0;
+                nNotifications = 0;
+                nSyncStart = 0;
+                SYNCTIMER.Stop();
+
 
                 break;
             }
@@ -415,6 +428,12 @@ namespace LLP
                     /* Start sync on startup, or override any legacy syncing currently in process. */
                     if(TAO::Ledger::nSyncSession.load() == 0 || LegacyNode::SessionActive(TAO::Ledger::nSyncSession.load()))
                     {
+                        /* Cache the height at the start of the sync */
+                        nSyncStart = TAO::Ledger::ChainState::stateBest.load().nHeight;
+
+                        /* Make sure the sync timer is stopped.  We don't start this until we receive our first sync block*/
+                        SYNCTIMER.Stop();
+
                         /* Subscribe to this node. */
                         Subscribe(SUBSCRIPTION::LASTINDEX | SUBSCRIPTION::BESTCHAIN);
 
@@ -1557,8 +1576,20 @@ namespace LLP
                                             /* Unsubcribe from last. */
                                             Unsubscribe(SUBSCRIPTION::LASTINDEX);
 
+                                            /* Total blocks synchronized */
+                                            uint32_t nBlocks = TAO::Ledger::ChainState::stateBest.load().nHeight - nSyncStart;
+
+                                            /* Calculate the time to sync*/
+                                            uint32_t nElapsed = SYNCTIMER.Elapsed();
+                                            if(nElapsed == 0)
+                                                nElapsed = 1;
+
+                                            double dRate = nBlocks / nElapsed ;
+
                                             /* Log that sync is complete. */
-                                            debug::log(0, NODE, "ACTION::NOTIFY: Synchonization COMPLETE at ", hashBestChain.SubString());
+                                            debug::log(0, NODE, "ACTION::NOTIFY: Synchronization COMPLETE at ", hashBestChain.SubString());
+                                            debug::log(0, NODE, "ACTION::NOTIFY: Synchronized ", nBlocks, " blocks in ", nElapsed, " seconds [", dRate, " blocks/s]" );
+
                                         }
                                         else
                                         {
@@ -1754,6 +1785,10 @@ namespace LLP
                 /* Check for subscription. */
                 if(!(nSubscriptions & SUBSCRIPTION::BLOCK) && TAO::Ledger::nSyncSession.load() != nCurrentSession)
                     return debug::drop(NODE, "TYPES::BLOCK: unsolicited data");
+
+                /* Star the sync timer if this is the first sync block */
+                if(!SYNCTIMER.Running())
+                    SYNCTIMER.Start();
 
                 /* Get the specifier. */
                 uint8_t nSpecifier = 0;
