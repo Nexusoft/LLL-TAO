@@ -44,9 +44,9 @@ namespace TAO
             TAO::Register::Object trust;
 
             /* Generate the object register values. */
-            trust   << std::string("balance")       << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
-                    << std::string("trust")         << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
-                    << std::string("stake")         << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
+            trust   << std::string("balance")       << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << uint64_t(0)
+                    << std::string("trust")         << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << uint64_t(0)
+                    << std::string("stake")         << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << uint64_t(0)
                     << std::string("token")         << uint8_t(TYPES::UINT256_T) << uint256_t(0);
 
             return trust;
@@ -60,10 +60,10 @@ namespace TAO
             TAO::Register::Object token;
 
             /* Generate the object register values. */
-            token   << std::string("balance")       << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << nSupply
+            token   << std::string("balance")       << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << nSupply
                     << std::string("token")         << uint8_t(TYPES::UINT256_T) << hashIdentifier
-                    << std::string("supply")        << uint8_t(TYPES::UINT64_T) << nSupply
-                    << std::string("decimals")        << uint8_t(TYPES::UINT8_T) << nDecimals;
+                    << std::string("supply")        << uint8_t(TYPES::UINT64_T)  << nSupply
+                    << std::string("decimals")      << uint8_t(TYPES::UINT8_T)   << nDecimals;
 
             return token;
         }
@@ -93,10 +93,10 @@ namespace TAO
                      << std::string("network")   << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << hashNetwork
                      << std::string("sign")      << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << hashSign
                      << std::string("verify")    << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << hashVerify
-                     << std::string("cert")    << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << hashCert
-                     << std::string("app1")    << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << hashApp1
-                     << std::string("app2")    << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << hashApp2
-                     << std::string("app3")    << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << hashApp3;
+                     << std::string("cert")      << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << hashCert
+                     << std::string("app1")      << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << hashApp1
+                     << std::string("app2")      << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << hashApp2
+                     << std::string("app3")      << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << hashApp3;
 
             return crypto;
         }
