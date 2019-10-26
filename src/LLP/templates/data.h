@@ -67,8 +67,16 @@ namespace LLP
         std::condition_variable CONDITION;
 
 
+        /** Flush condition variable. **/
+        std::condition_variable FLUSH_CONDITION;
+
+
         /* Data Thread. */
         std::thread DATA_THREAD;
+
+
+        /* Flush Thread. */
+        std::thread FLUSH_THREAD;
 
 
         /** Default Constructor
@@ -126,6 +134,14 @@ namespace LLP
          *
          **/
         void Thread();
+
+
+        /** Flush
+         *
+         *  Thread to handle flushing write buffers.
+         *
+         **/
+        void Flush();
 
 
         /** Relay

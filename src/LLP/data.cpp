@@ -48,7 +48,9 @@ namespace LLP
     , DDOS_cSCORE(cScore)
     , CONNECTIONS(memory::atomic_ptr< std::vector<memory::atomic_ptr<ProtocolType>> >(new std::vector<memory::atomic_ptr<ProtocolType>>()))
     , CONDITION()
+    , FLUSH_CONDITION()
     , DATA_THREAD(std::bind(&DataThread::Thread, this))
+    , FLUSH_THREAD(std::bind(&DataThread::Flush, this))
     {
     }
 
@@ -60,9 +62,12 @@ namespace LLP
         fDestruct = true;
 
         CONDITION.notify_all();
-
         if(DATA_THREAD.joinable())
             DATA_THREAD.join();
+
+        FLUSH_CONDITION.notify_all();
+        if(FLUSH_THREAD.joinable())
+            FLUSH_THREAD.join();
 
         DisconnectAll();
 
@@ -90,6 +95,7 @@ namespace LLP
                 CONNECTIONS->at(nSlot).store(node);
 
             /* Fire the connected event. */
+            CONNECTIONS->at(nSlot)->FLUSH_CONDITION = &FLUSH_CONDITION;
             CONNECTIONS->at(nSlot)->Event(EVENT_CONNECT);
 
             /* Iterate the DDOS cScore (Connection score). */
@@ -138,6 +144,7 @@ namespace LLP
                 CONNECTIONS->at(nSlot).store(node);
 
             /* Fire the connected event. */
+            CONNECTIONS->at(nSlot)->FLUSH_CONDITION = &FLUSH_CONDITION;
             CONNECTIONS->at(nSlot)->Event(EVENT_CONNECT);
 
             /* Iterate the DDOS cScore (Connection score). */
@@ -246,9 +253,9 @@ namespace LLP
 
             /* Poll the sockets. */
 #ifdef WIN32
-            WSAPoll((pollfd*)&POLLFDS[0], nSize, 10);
+            WSAPoll((pollfd*)&POLLFDS[0], nSize, 100);
 #else
-            poll((pollfd*)&POLLFDS[0], nSize, 10);
+            poll((pollfd*)&POLLFDS[0], nSize, 100);
 #endif
 
 
@@ -321,9 +328,6 @@ namespace LLP
                     /* Generic event for Connection. */
                     connection->Event(EVENT_GENERIC);
 
-                    /* Flush the write buffer. */
-                    connection->Flush();
-
                     /* Work on Reading a Packet. **/
                     connection->ReadPacket();
 
@@ -365,6 +369,59 @@ namespace LLP
                     debug::error(FUNCTION, "Currently running ", nConnections, " connections.");
                     disconnect_remove_event(nIndex, DISCONNECT_ERRORS);
                 }
+            }
+        }
+    }
+
+
+    /*  Thread that handles all the Reading / Writing of Data from Sockets.
+     *  Creates a Packet QUEUE on this connection to be processed by an
+     *  LLP Messaging Thread. */
+    template <class ProtocolType>
+    void DataThread<ProtocolType>::Flush()
+    {
+        /* The mutex for the condition. */
+        std::mutex CONDITION_MUTEX;
+
+        /* The main connection handler loop. */
+        while(!fDestruct.load() && !config::fShutdown.load())
+        {
+            /* Keep data threads waiting for work.
+             * Will wait until have one or more connections, DataThread is disposed, or system shutdown
+             * While loop catches potential for spurious wakeups. Also has the effect of skipping the wait() call after connections established.
+             */
+            std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
+            FLUSH_CONDITION.wait(CONDITION_LOCK,
+                [this]{
+
+                    /* Break on shutdown or destructor. */
+                    if(fDestruct.load() || config::fShutdown.load())
+                        return true;
+
+                    /* Check for buffered connection. */
+                    for(uint32_t nIndex = 0; nIndex < CONNECTIONS->size(); ++nIndex)
+                    {
+                        try
+                        {
+                            /* Check for buffered connection. */
+                            if(CONNECTIONS->at(nIndex)->Buffered())
+                                return true;
+                        }
+                        catch(const std::exception& e) { }
+                    }
+
+                    return false;
+                });
+
+            /* Check for close. */
+            if(fDestruct.load() || config::fShutdown.load())
+                return;
+
+            /* Check all connections for data and packets. */
+            for(uint32_t nIndex = 0; nIndex < CONNECTIONS->size(); ++nIndex)
+            {
+                try { CONNECTIONS->at(nIndex)->Flush(); }
+                catch(const std::exception& e) { }
             }
         }
     }

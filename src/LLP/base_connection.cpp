@@ -40,6 +40,7 @@ namespace LLP
     , fDDOS(false)
     , fOUTGOING(false)
     , fCONNECTED(false)
+    , FLUSH_CONDITION(nullptr)
     {
         INCOMING.SetNull();
     }
@@ -54,6 +55,7 @@ namespace LLP
     , fDDOS(isDDOS)
     , fOUTGOING(fOutgoing)
     , fCONNECTED(false)
+    , FLUSH_CONDITION(nullptr)
     {
     }
 
@@ -68,6 +70,7 @@ namespace LLP
     , fDDOS(isDDOS)
     , fOUTGOING(fOutgoing)
     , fCONNECTED(false)
+    , FLUSH_CONDITION(nullptr)
     {
     }
 
@@ -92,6 +95,7 @@ namespace LLP
         fDDOS = false;
         fOUTGOING = false;
         fCONNECTED = false;
+        FLUSH_CONDITION = nullptr;
     }
 
 
@@ -137,6 +141,10 @@ namespace LLP
 
         /* Write the packet to socket buffer. */
         Write(vBytes, vBytes.size());
+
+        /* Notify condition if available. */
+        if(FLUSH_CONDITION && vBuffer.size() != 0)
+            FLUSH_CONDITION->notify_all();
     }
 
 

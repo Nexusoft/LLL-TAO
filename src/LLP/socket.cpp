@@ -392,8 +392,6 @@ namespace LLP
         if(nSent < 0)
         {
             nError = WSAGetLastError();
-            debug::log(2, FUNCTION, "write failed ",  addr.ToString(), " (", nError, " ", strerror(nError), ")");
-
             return nError;
         }
 

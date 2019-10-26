@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <Util/include/mutex.h>
 #include <vector>
 
+#include <condition_variable>
 
 namespace LLP
 {
@@ -85,6 +86,10 @@ namespace LLP
         std::atomic<bool> fCONNECTED;
 
 
+        /** Condition variable for flush thread. **/
+        std::condition_variable* FLUSH_CONDITION;
+
+
         /** Build Base Connection with no parameters **/
         BaseConnection();
 
@@ -120,6 +125,17 @@ namespace LLP
          *
          **/
         bool PacketComplete() const;
+
+
+        /** Buffered
+         *
+         *  Detect if there is data to write
+         *
+         **/
+        bool Buffered() const
+        {
+            return vBuffer.size() != 0;
+        }
 
 
         /** ResetPacket
