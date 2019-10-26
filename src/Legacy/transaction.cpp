@@ -171,7 +171,7 @@ namespace Legacy
 	    uint512_t hash = LLC::SK512(ss.begin(), ss.end());
 
         /* Type of 0xfe designates legacy tx beginning with v7 activation (tx version 2). */
-        if(nVersion == 2)
+        if((TAO::Ledger::VersionActive(nTime, 7) || TAO::Ledger::CurrentVersion() > 7) && nVersion >= 2)
             hash.SetType(TAO::Ledger::LEGACY);
 
         return hash;
@@ -819,13 +819,10 @@ namespace Legacy
 	/* Check the transaction for validity. */
 	bool Transaction::CheckTransaction() const
     {
-        /* Validate tx version 2 not accepted until v7 active for tx nTime, after that it is required */
-        if(TAO::Ledger::VersionActive(nTime, 7) || TAO::Ledger::CurrentVersion() > 7)
-        {
-            if(nVersion != 2)
-                return debug::error(FUNCTION, "invalid transaction version ", nVersion);
-        }
-        else if(nVersion != 1)
+        /* Validate tx version 2 required when v7+ active and after v6 grace period end. */
+        if(nVersion != 2
+        && (TAO::Ledger::VersionActive(nTime, 7) || TAO::Ledger::CurrentVersion() > 7)
+        && !TAO::Ledger::VersionActive(nTime, 6))
             return debug::error(FUNCTION, "invalid transaction version ", nVersion);
 
         /* Check for empty inputs. */
