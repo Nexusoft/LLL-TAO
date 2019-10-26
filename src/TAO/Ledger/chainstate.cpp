@@ -214,7 +214,7 @@ namespace TAO
             if(stateBest != stateGenesis)
             {
                 /* Go back 10 checkpoints on startup. */
-                for(uint32_t i = 0; i < 10; ++i)
+                for(uint32_t i = 0; i < config::GetArg("-checkpoints", 100); ++i)
                 {
                     /* Search back until fail or different checkpoint. */
                     BlockState state;
