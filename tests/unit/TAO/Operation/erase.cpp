@@ -29,6 +29,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/constants.h>
 
 #include <unit/catch2/catch.hpp>
 
@@ -855,6 +856,8 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
     }
 
 
+    //split dividend payout transaction
+    uint512_t hashSplitTx;
 
     //credit tokens USER 0
     {
@@ -920,9 +923,346 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             //set previous
             hashPrevTx[1] = hash;
         }
+
+        {
+            //set private keys
+            hashPrivKey1[1] = hashPrivKey2[1];
+            hashPrivKey2[1] = LLC::GetRand512();
+
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis1[1];
+            tx.nSequence   = 5;
+            tx.hashPrevTx  = hashPrevTx[1];
+            tx.nTimestamp  = runtime::timestamp();
+            tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.NextHash(hashPrivKey2[1], TAO::Ledger::SIGNATURE::BRAINPOOL);
+
+            //payload
+            tx[0] << uint8_t(OP::DEBIT) << hashNexus[1] << hashAsset << uint64_t(1 * NXS_COIN) << uint64_t(0);
+
+            //generate the prestates and poststates
+            REQUIRE(tx.Build());
+
+            //sign transaction
+            REQUIRE(tx.Sign(hashPrivKey1[1]));
+
+            //cache the hash
+            uint512_t hash = tx.GetHash();
+
+            //verify prestates and poststates
+            REQUIRE(tx.Verify(FLAGS::MEMPOOL));
+
+            //connect in memory
+            REQUIRE(tx.Connect(FLAGS::MEMPOOL));
+
+            //write to disk
+            REQUIRE(LLD::Ledger->WriteTx(hash, tx));
+
+            //verify prestates and postates (disk)
+            REQUIRE(tx.Verify(FLAGS::BLOCK));
+
+            //connect on disk
+            REQUIRE(tx.Connect(FLAGS::BLOCK));
+
+            //index to genesis
+            REQUIRE(LLD::Ledger->IndexBlock(hash, TAO::Ledger::ChainState::Genesis()));
+
+            //check for account
+            Object object;
+            REQUIRE(LLD::Register->ReadState(hashNexus[1], object));
+
+            //check memory vs disk
+            Object memory;
+            REQUIRE(LLD::Register->ReadState(hashNexus[1], memory, FLAGS::MEMPOOL));
+            REQUIRE(memory == object);
+
+            //check values
+            REQUIRE(object.Parse());
+            REQUIRE(object.get<uint64_t>("balance") == 999 * NXS_COIN);
+
+            //set previous
+            hashPrevTx[1] = hash;
+
+            //set split transaction
+            hashSplitTx   = hash;
+        }
     }
 
 
+    {
+        //first split dividend payment
+        {
+            //set private keys
+            hashPrivKey1[0] = hashPrivKey2[0];
+            hashPrivKey2[0] = LLC::GetRand512();
+
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis1[0];
+            tx.nSequence   = 8;
+            tx.hashPrevTx  = hashPrevTx[0];
+            tx.nTimestamp  = runtime::timestamp();
+            tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.NextHash(hashPrivKey2[0], TAO::Ledger::SIGNATURE::BRAINPOOL);
+
+            //payload
+            tx[0] << uint8_t(OP::CREDIT) << hashSplitTx << uint32_t(0) << hashNexus[0] << hashAccount[0] << uint64_t(0.5 * NXS_COIN);
+
+            //generate the prestates and poststates
+            REQUIRE(tx.Build());
+
+            //sign transaction
+            REQUIRE(tx.Sign(hashPrivKey1[0]));
+
+            //cache the hash
+            uint512_t hash = tx.GetHash();
+
+            //verify prestates and poststates
+            REQUIRE(tx.Verify(FLAGS::MEMPOOL));
+
+            //connect in memory
+            REQUIRE(tx.Connect(FLAGS::MEMPOOL));
+
+            //check claimed memory state
+            uint64_t nClaimed = 0;
+
+            //should fail disk but pass memory
+            REQUIRE_FALSE(LLD::Ledger->ReadClaimed(hashSplitTx, 0, nClaimed, FLAGS::BLOCK));
+            REQUIRE(LLD::Ledger->ReadClaimed(hashSplitTx, 0, nClaimed, FLAGS::MEMPOOL));
+
+            //check value
+            REQUIRE(nClaimed == uint64_t(0.5 * NXS_COIN));
+
+            //write to disk
+            REQUIRE(LLD::Ledger->WriteTx(hash, tx));
+
+            //verify prestates and postates (disk)
+            REQUIRE(tx.Verify(FLAGS::BLOCK));
+
+            //connect on disk
+            REQUIRE(tx.Connect(FLAGS::BLOCK));
+
+            //index to genesis
+            REQUIRE(LLD::Ledger->IndexBlock(hash, TAO::Ledger::ChainState::Genesis()));
+
+            //check for account
+            Object object;
+            REQUIRE(LLD::Register->ReadState(hashNexus[0], object));
+
+            //check memory vs disk
+            Object memory;
+            REQUIRE(LLD::Register->ReadState(hashNexus[0], memory, FLAGS::MEMPOOL));
+            REQUIRE(memory == object);
+
+            //check values
+            REQUIRE(object.Parse());
+            REQUIRE(object.get<uint64_t>("balance") == uint64_t(0.5 * NXS_COIN));
+
+            //disk should pass now
+            uint64_t nDiskClaimed = 0;
+            REQUIRE(LLD::Ledger->ReadClaimed(hashSplitTx, 0, nDiskClaimed, FLAGS::BLOCK));
+
+            //check memory claimed
+            uint64_t nMemoryClaimed = 0;
+            REQUIRE(LLD::Ledger->ReadClaimed(hashSplitTx, 0, nMemoryClaimed, FLAGS::MEMPOOL));
+
+            //check memory and disk
+            REQUIRE(nDiskClaimed == nMemoryClaimed);
+
+            //set previous
+            hashPrevTx[0] = hash;
+        }
+    }
+
+
+    //claim other split dividend payment
+    {
+        //first split dividend payment
+        {
+            //set private keys
+            hashPrivKey1[1] = hashPrivKey2[1];
+            hashPrivKey2[1] = LLC::GetRand512();
+
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis1[1];
+            tx.nSequence   = 6;
+            tx.hashPrevTx  = hashPrevTx[1];
+            tx.nTimestamp  = runtime::timestamp();
+            tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.NextHash(hashPrivKey2[1], TAO::Ledger::SIGNATURE::BRAINPOOL);
+
+            //payload
+            tx[0] << uint8_t(OP::CREDIT) << hashSplitTx << uint32_t(0) << hashNexus[1] << hashAccount[1] << uint64_t(0.4 * NXS_COIN);
+
+            //generate the prestates and poststates
+            REQUIRE(tx.Build());
+
+            //sign transaction
+            REQUIRE(tx.Sign(hashPrivKey1[1]));
+
+            //cache the hash
+            uint512_t hash = tx.GetHash();
+
+            //verify prestates and poststates
+            REQUIRE(tx.Verify(FLAGS::MEMPOOL));
+
+            //connect in memory
+            REQUIRE(tx.Connect(FLAGS::MEMPOOL));
+
+            //check claimed memory state
+            uint64_t nClaimed = 0;
+            REQUIRE(LLD::Ledger->ReadClaimed(hashSplitTx, 0, nClaimed, FLAGS::MEMPOOL));
+
+            //check memory value
+            REQUIRE(nClaimed == uint64_t(0.9 * NXS_COIN));
+
+            //check claimed disk state
+            uint64_t nDiskClaimed = 0;
+            REQUIRE(LLD::Ledger->ReadClaimed(hashSplitTx, 0, nDiskClaimed, FLAGS::BLOCK));
+            REQUIRE(nDiskClaimed == uint64_t(0.5 * NXS_COIN));
+
+            //write to disk
+            REQUIRE(LLD::Ledger->WriteTx(hash, tx));
+
+            //verify prestates and postates (disk)
+            REQUIRE(tx.Verify(FLAGS::BLOCK));
+
+            //connect on disk
+            REQUIRE(tx.Connect(FLAGS::BLOCK));
+
+            //index to genesis
+            REQUIRE(LLD::Ledger->IndexBlock(hash, TAO::Ledger::ChainState::Genesis()));
+
+            //check for account
+            Object object;
+            REQUIRE(LLD::Register->ReadState(hashNexus[1], object));
+
+            //check memory vs disk
+            Object memory;
+            REQUIRE(LLD::Register->ReadState(hashNexus[1], memory, FLAGS::MEMPOOL));
+            REQUIRE(memory == object);
+
+            //check values
+            REQUIRE(object.Parse());
+            REQUIRE(object.get<uint64_t>("balance") == uint64_t(999.4 * NXS_COIN));
+
+            //disk should pass now
+            nDiskClaimed = 0;
+            REQUIRE(LLD::Ledger->ReadClaimed(hashSplitTx, 0, nDiskClaimed, FLAGS::BLOCK));
+
+            //check memory claimed
+            uint64_t nMemoryClaimed = 0;
+            REQUIRE(LLD::Ledger->ReadClaimed(hashSplitTx, 0, nMemoryClaimed, FLAGS::MEMPOOL));
+
+            //check memory and disk
+            REQUIRE(nDiskClaimed == nMemoryClaimed);
+
+            //set previous
+            hashPrevTx[1] = hash;
+        }
+
+
+        //reverse to self with ERASE
+        {
+            //set private keys
+            hashPrivKey1[1] = hashPrivKey2[1];
+            hashPrivKey2[1] = LLC::GetRand512();
+
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis1[1];
+            tx.nSequence   = 7;
+            tx.hashPrevTx  = hashPrevTx[1];
+            tx.nTimestamp  = runtime::timestamp();
+            tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.NextHash(hashPrivKey2[1], TAO::Ledger::SIGNATURE::BRAINPOOL);
+
+            //payload
+            tx[0] << uint8_t(OP::CREDIT) << hashSplitTx << uint32_t(0) << hashNexus[1] << hashNexus[1] << uint64_t(0.1 * NXS_COIN);
+
+            //generate the prestates and poststates
+            REQUIRE(tx.Build());
+
+            //sign transaction
+            REQUIRE(tx.Sign(hashPrivKey1[1]));
+
+            //cache the hash
+            uint512_t hash = tx.GetHash();
+
+            //verify prestates and poststates
+            REQUIRE(tx.Verify(FLAGS::MEMPOOL));
+
+            //connect in memory
+            REQUIRE(tx.Connect(FLAGS::MEMPOOL));
+
+
+            {
+                //check claimed memory state
+                uint64_t nClaimed = 0;
+                REQUIRE(LLD::Ledger->ReadClaimed(hashSplitTx, 0, nClaimed, FLAGS::MEMPOOL));
+
+                //check memory value
+                REQUIRE(nClaimed == uint64_t(1 * NXS_COIN));
+
+                //check claimed disk state
+                uint64_t nDiskClaimed = 0;
+                REQUIRE(LLD::Ledger->ReadClaimed(hashSplitTx, 0, nDiskClaimed, FLAGS::BLOCK));
+                REQUIRE(nDiskClaimed == uint64_t(0.9 * NXS_COIN));
+            }
+
+
+
+            {
+                //check for account
+                Object object;
+                REQUIRE(LLD::Register->ReadState(hashNexus[1], object, FLAGS::MEMPOOL));
+
+                //check values
+                REQUIRE(object.Parse());
+                REQUIRE(object.get<uint64_t>("balance") == uint64_t(999.5 * NXS_COIN));
+            }
+
+            //test value erase
+            REQUIRE(tx.Disconnect(FLAGS::ERASE));
+
+            {
+                //check for account
+                Object object;
+                REQUIRE(LLD::Register->ReadState(hashNexus[1], object));
+
+                //check memory vs disk
+                Object memory;
+                REQUIRE(LLD::Register->ReadState(hashNexus[1], memory, FLAGS::MEMPOOL));
+                REQUIRE(memory == object);
+
+                //check values
+                REQUIRE(object.Parse());
+                REQUIRE(object.get<uint64_t>("balance") == uint64_t(999.4 * NXS_COIN));
+            }
+
+
+            {
+                //check claimed memory state
+                uint64_t nClaimed = 0;
+                REQUIRE(LLD::Ledger->ReadClaimed(hashSplitTx, 0, nClaimed, FLAGS::MEMPOOL));
+
+                //check memory value
+                REQUIRE(nClaimed == uint64_t(0.9 * NXS_COIN));
+
+                //check claimed disk state
+                uint64_t nDiskClaimed = 0;
+                REQUIRE(LLD::Ledger->ReadClaimed(hashSplitTx, 0, nDiskClaimed, FLAGS::BLOCK));
+                REQUIRE(nDiskClaimed == uint64_t(0.9 * NXS_COIN));
+            }
+
+        }
+    }
 
 
 
