@@ -344,7 +344,7 @@ int main(int argc, char** argv)
         config::GetBoolArg(std::string("-unified"), false),
         config::GetBoolArg(std::string("-meters"), false),
         true,
-        30000);
+        10000);
 
 
     /* Get the port for the Core API Server. */

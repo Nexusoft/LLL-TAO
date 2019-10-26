@@ -380,10 +380,6 @@ namespace LLP
         /* Loop connections. */
         while(!config::fShutdown.load())
         {
-            /* Sleep in 1 second intervals for easy break on shutdown. */
-            for(int i = 0; i < (nSleepTime / 1000) && !config::fShutdown.load(); ++i)
-                runtime::sleep(1000);
-
             /* Pick a weighted random priority from a sorted list of addresses. */
             if(GetConnectionCount() < nMaxConnections && pAddressManager->StochasticSelect(addr))
             {
@@ -400,11 +396,14 @@ namespace LLP
                 debug::log(3, FUNCTION, ProtocolType::Name(), " Attempting Connection ", addr.ToString());
                 if(AddConnection(addr.ToStringIP(), addr.GetPort()))
                 {
-
                     /* If address is DNS, log message on connection. */
                     std::string dns_name;
                     if(pAddressManager->GetDNSName(addr, dns_name))
                         debug::log(3, FUNCTION, "Connected to DNS Address: ", dns_name);
+
+                    /* Sleep in 1 second intervals for easy break on shutdown. */
+                    for(int i = 0; i < (nSleepTime / 1000) && !config::fShutdown.load(); ++i)
+                        runtime::sleep(1000);
                 }
             }
 

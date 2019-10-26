@@ -275,16 +275,16 @@ namespace LLP
             get_addresses(vAddresses, flags);
         }
 
-        uint64_t s = vAddresses.size();
+        uint64_t nSize = vAddresses.size();
 
-        if(s == 0)
+        if(nSize == 0)
             return false;
 
         /* Select an index with a random weighted bias toward the front of the list. */
         nSelect = ((std::numeric_limits<uint64_t>::max() /
-            std::max((uint64_t)std::pow(nHash, 1.95) + 1, (uint64_t)1)) - 3) % s;
+            std::max((uint64_t)std::pow(nHash, 1.95) + 1, (uint64_t)1)) - 3) % nSize;
 
-        if(nSelect >= s)
+        if(nSelect >= nSize)
           return debug::error(FUNCTION, "index out of bounds");
 
         /* sort info vector and assign the selected address */
