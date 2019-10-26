@@ -328,7 +328,7 @@ namespace TAO
             || (hashFrom == hashAccount && hashProof == hashAccount)) //return to self
             {
                 /* Check the proof as being the caller. */
-                if(hashProof != hashFrom)
+                if (hashProof != hashFrom)
                     return debug::error(FUNCTION, "proof must equal from for credit");
 
                 /* Get the debit amount. */
@@ -347,8 +347,8 @@ namespace TAO
                             return debug::error(FUNCTION, "credit is already claimed");
 
                         /* Check the partial to the debit amount. */
-                        if(nDebit != (nClaimed + nCredit))
-                            return debug::error(FUNCTION, "debit and partial credit value mismatch");
+                        if((nClaimed + nCredit) > nDebit)
+                            return debug::error(FUNCTION, "credit is beyond claimable debit amount");
                     }
                 }
 

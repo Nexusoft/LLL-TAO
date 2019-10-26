@@ -124,9 +124,11 @@ namespace TAO
 
             tx[0] <= uint8_t(TAO::Operation::OP::OR);
 
+            tx[0] <= uint8_t(TAO::Operation::OP::GROUP);
             tx[0] <= uint8_t(TAO::Operation::OP::CALLER::GENESIS);
             tx[0] <= uint8_t(TAO::Operation::OP::EQUALS);
             tx[0] <= uint8_t(TAO::Operation::OP::CONTRACT::GENESIS);
+            tx[0] <= uint8_t(TAO::Operation::OP::UNGROUP);
 
             /* Add the fee */
             AddFee(tx);

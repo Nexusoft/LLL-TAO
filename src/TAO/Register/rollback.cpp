@@ -167,7 +167,7 @@ namespace TAO
                         contract.Seek(nSize);
 
                         /* Erase the register from database. */
-                        if(!LLD::Register->EraseState(hashAddress))
+                        if(!LLD::Register->EraseState(hashAddress, nFlags))
                             return debug::error(FUNCTION, "OP::CREATE: failed to erase post-state");
 
                         break;
@@ -454,7 +454,6 @@ namespace TAO
                                 if(!LLD::Ledger->WriteClaimed(hashTx, nContract, (nClaimed - nAmount), nFlags))
                                     return debug::error(FUNCTION, "OP::CREDIT: failed to rollback claimed amount");
                             }
-
                         }
 
                         break;
