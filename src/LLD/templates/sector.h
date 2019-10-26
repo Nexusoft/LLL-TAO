@@ -533,7 +533,6 @@ namespace LLD
             /* Check that the key is not pending in a transaction for Erase. */
             {
                 LOCK(TRANSACTION_MUTEX);
-
                 if(pTransaction)
                 {
                     /* Serialize the key. */
@@ -543,6 +542,10 @@ namespace LLD
                     /* Write to the file.  */
                     const std::vector<uint8_t>& vBytes = ssJournal.Bytes();
                     STREAM.write((char*)&vBytes[0], vBytes.size());
+
+                    /* Check for erased data. */
+                    if(pTransaction->mapEraseData.count(ssKey.Bytes()))
+                        pTransaction->mapEraseData.erase(ssKey.Bytes());
 
                     /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
                     pTransaction->mapIndex[ssKey.Bytes()] = ssIndex.Bytes();
