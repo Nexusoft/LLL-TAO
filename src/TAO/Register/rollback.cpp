@@ -69,7 +69,7 @@ namespace TAO
                         contract >> nContract;
 
                         /* Erase the contract validation record. */
-                        if(!LLD::Contract->EraseContract(std::make_pair(hashTx, nContract)))
+                        if(!LLD::Contract->EraseContract(std::make_pair(hashTx, nContract)), nFlags)
                             return debug::error(FUNCTION, "failed to erase validation contract");
 
                         /* Condition has no parameters. */
