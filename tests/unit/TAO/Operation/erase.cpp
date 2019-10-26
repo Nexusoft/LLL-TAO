@@ -659,7 +659,6 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             //set previous
             hashPrevTx[1] = hash;
         }
-
     }
 
 

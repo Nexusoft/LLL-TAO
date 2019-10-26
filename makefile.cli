@@ -185,7 +185,6 @@ else
 	CXXFLAGS+= -w
 endif
 
-
 #Source File List
 HEADERS= $(wildcard *.h)
 

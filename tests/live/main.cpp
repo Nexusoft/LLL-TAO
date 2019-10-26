@@ -216,46 +216,18 @@ void Thread2()
     }
 }
 
+uint1024_t hashOrigin = uint1024_t("0x01001a8938c1b4620c106b072a02c8799da027dabfd864e9130d4ee32e8fbf67280d93e21424ee57d2045a0a1e88a4af6a74f2b1eaddede19fb3a7cea2eef8dcfe4c7f0099c9324eb49f7f06eb15e77a121a4919a27d2fc67ba0de6a68a78ad53bd77fd8f6adad237747c08582634526737b544b073464addf3c7df6f67eb162");
+uint64_t nNonce       = 2705923963233114459;
+
+
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
-    std::thread t(Thread);
-    std::thread t1(Thread2);
-
-    nValue = 10;
-
-    runtime::sleep(5000);
-
-    return 0;
-
-
-    LLC::FLKey key = LLC::FLKey();
-    key.MakeNewKey();
-
-
-    uint1024_t hashOrigin = uint1024_t("0x01001a8938c1b4620c106b072a02c8799da027dabfd864e9130d4ee32e8fbf67280d93e21424ee57d2045a0a1e88a4af6a74f2b1eaddede19fb3a7cea2eef8dcfe4c7f0099c9324eb49f7f06eb15e77a121a4919a27d2fc67ba0de6a68a78ad53bd77fd8f6adad237747c08582634526737b544b073464addf3c7df6f67eb162");
-    uint64_t nNonce = 2705923963233114459;
-
-    std::vector<uint8_t> vchSig;
-    std::vector<uint8_t> vData = hashOrigin.GetBytes();
-
-    key.Sign(vData, vchSig);
-
-    runtime::timer benchmark;
-    benchmark.Reset();
-    for(uint32_t i = 0; i < 20000; ++i)
-    {
-        if(!key.Verify(vData, vchSig))
-            return debug::error("FAILED TO VERIFY ", i);
-    }
-
-    debug::log(0, "Completed in ", benchmark.ElapsedMilliseconds(), " ms");
-
-    return 0;
-
 
     std::vector<uint8_t> vOffsets;
 
+    runtime::timer benchmark;
+    benchmark.Start();
 
     double nDifficulty = TAO::Ledger::GetPrimeDifficulty(hashOrigin + nNonce, vOffsets);
 
@@ -264,7 +236,7 @@ int main(int argc, char** argv)
     TAO::Ledger::GetOffsets(hashOrigin + nNonce, vOffsets);
 
     benchmark.Reset();
-    double nDifficulty2 = TAO::Ledger::GetPrimeDifficulty(hashOrigin + nNonce, vOffsets, false);
+    double nDifficulty2 = TAO::Ledger::GetPrimeDifficulty(hashOrigin + nNonce, vOffsets, true);
 
     debug::log(0, "Difficulty ", nDifficulty2, " in ", benchmark.ElapsedMilliseconds(), "ms");
 
