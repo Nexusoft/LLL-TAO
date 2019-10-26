@@ -436,7 +436,7 @@ namespace Legacy
 
 
         /* Check that Block is Descendant of Hardened Checkpoints. */
-        if(!TAO::Ledger::ChainState::Synchronizing() && !TAO::Ledger::IsDescendant(statePrev))
+        if(!TAO::Ledger::IsDescendant(statePrev))
             return debug::error(FUNCTION, "not descendant of last checkpoint");
 
 
