@@ -168,7 +168,7 @@ namespace LLP
         if(addr.ToStringIP() == connectStr)
             return debug::error(NODE, "cannot self-connect");
 
-        debug::log(1, NODE, "Connecting to ", connectStr);
+        debug::log(3, "Connecting to ", connectStr);
 
         // Connect
         if (Attempt(addrConnect))
