@@ -710,10 +710,6 @@ namespace LLP
 
             /* Check locator size. */
             uint32_t nSize = locator.vHave.size();
-            if(nSize > 30)
-                return debug::error(NODE, "locator size ", nSize, " is too large");
-
-            /* Find common ancestor block. */
             for(const auto& have : locator.vHave)
             {
                 /* Check the database for the ancestor block. */
