@@ -175,6 +175,7 @@ OBJS= \
     build/LLC_bignum.o \
 	build/LLC_key.o \
 	build/LLC_random.o \
+	build/LLC_SK.o \
 	build/LLD_global.o \
     build/LLD_filemap.o \
     build/LLD_hashmap.o \
