@@ -700,6 +700,9 @@ namespace LLP
         /* Handle a Request to get a list of Blocks from a Node. */
         else if (message == "getblocks")
         {
+            /* Keep track of limits. */
+            int32_t nLimits = 1000;
+
             /* Get the locator. */
             Legacy::Locator locator;
 
@@ -709,53 +712,90 @@ namespace LLP
             /* De-serialize the values. */
             ssMessage >> locator >> hashStop;
 
-            /* Return if nothing in locator. */
-            if(locator.vHave.size() == 0)
+            /* Check locator size. */
+            uint32_t nSize = locator.vHave.size();
+            if(nSize > 30)
                 return false;
 
-            /* Get the block state from. */
-            std::vector<TAO::Ledger::BlockState> vStates;
+            /* Find common ancestor block. */
+            uint1024_t hashStart;
             for(const auto& have : locator.vHave)
             {
                 /* Check the database for the ancestor block. */
-                if(LLD::legDB->BatchRead(have, "block", vStates, 1000))
+                if(LLD::legDB->HasBlock(have))
+                {
+                    /* Check if locator found genesis. */
+                    if(have != TAO::Ledger::ChainState::Genesis())
+                    {
+                        /* Grab the block that's found. */
+                        TAO::Ledger::BlockState state;
+                        if(!LLD::legDB->ReadBlock(have, state))
+                            return true;
+
+                        /* Check for being in main chain. */
+                        if(!state.IsInMainChain())
+                            continue;
+
+                        hashStart = state.hashPrevBlock;
+                    }
+                    else //on genesis, don't rever to previous block
+                        hashStart = have;
+
                     break;
+                }
             }
 
-            /* If no ancestor blocks were found. */
-            if(vStates.size() == 0)
+            /* Keep track of the last state. */
+            TAO::Ledger::BlockState stateLast;
+            if(!LLD::legDB->ReadBlock(hashStart, stateLast))
                 return true;
 
             /* Set the search from search limit. */
-            debug::log(3, NODE, "getblocks ", vStates[0].nHeight, " to ", hashStop.ToString().substr(0, 20));
+            debug::log(3, NODE, "getblocks ", stateLast.nHeight, " to ", hashStop.ToString().substr(0, 20));
 
             /* Iterate forward the blocks required. */
             std::vector<CInv> vInv;
 
-            /* Loop through found states. */
-            for(const auto& state : vStates)
+            /* Get the final inventory. */
+            std::vector<TAO::Ledger::BlockState> vStates;
+            while(--nLimits >= 0 && LLD::legDB->BatchRead(hashStart, "block", vStates, 1000, true))
             {
-                /* Check if in main chain. */
-                if(!state.IsInMainChain())
-                    continue;
-
-                /* Get the state hash. */
-                hashContinue = state.GetHash();
-
-                /* Check for hash stop. */
-                if(hashContinue == hashStop)
+                /* Loop through found states. */
+                for(auto& state : vStates)
                 {
-                    debug::log(3, NODE, "  getblocks stopping at ", state.nHeight, " to ", hashContinue.ToString().substr(0, 20));
+                    /* Get the state hash. */
+                    hashContinue = state.GetHash();
 
-                    /* Tell about latest block if hash stop is found. */
-                    if(hashStop != TAO::Ledger::ChainState::hashBestChain.load())
-                        vInv.push_back(CInv(TAO::Ledger::ChainState::hashBestChain.load(), MSG_BLOCK));
+                    /* Check if in main chain. */
+                    if(!state.IsInMainChain())
+                        continue;
 
-                    break;
+                    /* Check for matching hashes. */
+                    if(state.hashPrevBlock != stateLast.GetHash())
+                    {
+                        /* Read the correct block from next index. */
+                        if(!LLD::legDB->ReadBlock(stateLast.hashNextBlock, state))
+                           return true;
+                    }
+
+                    /* Cache the block hash. */
+                    stateLast = state;
+
+                    /* Check for hash stop. */
+                    if(--nLimits <= 0 || hashContinue == hashStop)
+                    {
+                        debug::log(3, NODE, "  getblocks stopping at ", state.nHeight, " to ", hashContinue.ToString().substr(0, 20));
+
+                        /* Tell about latest block if hash stop is found. */
+                        if(hashStop != TAO::Ledger::ChainState::hashBestChain.load())
+                            vInv.push_back(CInv(TAO::Ledger::ChainState::hashBestChain.load(), MSG_BLOCK));
+
+                        break;
+                    }
+
+                    /* Push new item to inventory. */
+                    vInv.push_back(CInv(hashContinue, MSG_BLOCK));
                 }
-
-                /* Push new item to inventory. */
-                vInv.push_back(CInv(hashContinue, MSG_BLOCK));
             }
 
             /* Push the inventory. */
