@@ -343,7 +343,7 @@ namespace LLP
     int32_t Socket::Read(std::vector<int8_t> &vData, size_t nBytes)
     {
         LOCK(SOCKET_MUTEX);
-        
+
         int32_t nRead = 0;
 
     #ifdef WIN32

@@ -164,14 +164,17 @@ namespace LLP
             {
                 try
                 {
+                    /* Get atomic pointer to reduce locking around CONNECTIONS scope. */
+                    memory::atomic_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nIndex);
+
                     /* Skip over inactive connections. */
-                    if(!CONNECTIONS->at(nIndex))
+                    if(!CONNECTION)
                         continue;
 
                     /* Push the active connection. */
-                    CONNECTIONS->at(nIndex)->PushMessage(message, data);
+                    CONNECTION->PushMessage(message, data);
                 }
-                catch(const std::runtime_error& e)
+                catch(const std::exception& e)
                 {
                     debug::error(FUNCTION, e.what());
                     //catch the atomic pointer throws
