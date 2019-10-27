@@ -709,7 +709,6 @@ namespace LLP
             ssMessage >> locator;
 
             /* Check locator size. */
-            uint32_t nSize = locator.vHave.size();
             for(const auto& have : locator.vHave)
             {
                 /* Check the database for the ancestor block. */
