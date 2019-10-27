@@ -427,56 +427,10 @@ namespace LLP
             if(fDestruct.load() || config::fShutdown.load())
                 return;
 
-            /* Wrapped mutex lock. */
-            uint32_t nSize = static_cast<uint32_t>(CONNECTIONS->size());
-
-            /* Check the pollfd's size. */
-            if(POLLFDS.size() != nSize)
-                POLLFDS.resize(nSize);
-
-            /* Initialize the revents for all connection pollfd structures.
-             * One connection must be live, so verify that and skip if none
-             */
-            for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
-            {
-                try
-                {
-                    /* Set the proper POLLIN flags. */
-                    POLLFDS.at(nIndex).events = POLLOUT;
-
-                    /* Set to invalid socket if connection is inactive. */
-                    if(!CONNECTIONS->at(nIndex))
-                    {
-                        POLLFDS.at(nIndex).fd = INVALID_SOCKET;
-
-                        continue;
-                    }
-
-                    /* Set the correct file descriptor. */
-                    POLLFDS.at(nIndex).fd = CONNECTIONS->at(nIndex)->fd;
-                }
-                catch(const std::exception& e)
-                {
-                    debug::error(FUNCTION, e.what());
-                }
-            }
-
-            /* Poll the sockets. */
-#ifdef WIN32
-            WSAPoll((pollfd*)&POLLFDS[0], nSize, 10);
-#else
-            poll((pollfd*)&POLLFDS[0], nSize, 10);
-#endif
-
             /* Check all connections for data and packets. */
             for(uint32_t nIndex = 0; nIndex < CONNECTIONS->size(); ++nIndex)
             {
-                try
-                {
-                    /* Check that socket is in writing state. */
-                    if(POLLFDS[nIndex].revents & POLLOUT)
-                        CONNECTIONS->at(nIndex)->Flush();
-                }
+                try { CONNECTIONS->at(nIndex)->Flush(); }
                 catch(const std::exception& e) { }
             }
         }
@@ -496,8 +450,8 @@ namespace LLP
     template <class ProtocolType>
     void DataThread<ProtocolType>::disconnect_remove_event(uint32_t index, uint8_t reason)
     {
-        memory::atomic_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(index);
-        CONNECTION->Event(EVENT_DISCONNECT, reason);
+        ProtocolType* raw = CONNECTIONS->at(index).load();
+        raw->Event(EVENT_DISCONNECT, reason);
 
         remove(index);
     }
