@@ -79,6 +79,10 @@ namespace LLP
         std::thread FLUSH_THREAD;
 
 
+        /* Mutex to protect new slot positions. */
+        std::mutex SLOT_MUTEX;
+
+
         /** Default Constructor
          *
          **/

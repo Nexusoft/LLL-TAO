@@ -116,6 +116,16 @@ namespace LLP
     }
 
 
+    /* Detect if there is data to write */
+    template <class PacketType>
+    bool BaseConnection<PacketType>::Buffered() const
+    {
+        LOCK(DATA_MUTEX);
+
+        return vBuffer.size() != 0;
+    }
+
+
     /*  Used to reset the packet to Null after it has been processed.
      *  This then flags the Connection to read another packet. */
     template <class PacketType>
@@ -143,7 +153,7 @@ namespace LLP
         Write(vBytes, vBytes.size());
 
         /* Notify condition if available. */
-        if(FLUSH_CONDITION && vBuffer.size() != 0)
+        if(FLUSH_CONDITION && Buffered())
             FLUSH_CONDITION->notify_all();
     }
 
@@ -152,7 +162,6 @@ namespace LLP
     template <class PacketType>
     bool BaseConnection<PacketType>::Connect(const BaseAddress &addrConnect)
     {
-
         std::string connectStr = addrConnect.ToStringIP();
 
         /* Check for connect to self */

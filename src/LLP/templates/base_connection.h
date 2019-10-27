@@ -98,6 +98,7 @@ namespace LLP
         BaseConnection(const Socket &SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false, bool fOutgoing = false);
         BaseConnection(DDOS_Filter* DDOS_IN, bool isDDOS = false, bool fOutgoing = false);
 
+
         /* Default destructor */
         virtual ~BaseConnection();
 
@@ -132,10 +133,7 @@ namespace LLP
          *  Detect if there is data to write
          *
          **/
-        bool Buffered() const
-        {
-            return vBuffer.size() != 0;
-        }
+        bool Buffered() const;
 
 
         /** ResetPacket

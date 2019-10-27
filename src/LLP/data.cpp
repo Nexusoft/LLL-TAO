@@ -51,6 +51,7 @@ namespace LLP
     , FLUSH_CONDITION()
     , DATA_THREAD(std::bind(&DataThread::Thread, this))
     , FLUSH_THREAD(std::bind(&DataThread::Flush, this))
+    , SLOT_MUTEX()
     {
     }
 
@@ -81,6 +82,8 @@ namespace LLP
     {
         try
         {
+            LOCK(SLOT_MUTEX);
+
             /* Create a new pointer on the heap. */
             ProtocolType* node = new ProtocolType(SOCKET, DDOS, fDDOS);
             node->fCONNECTED.store(true);
@@ -130,6 +133,8 @@ namespace LLP
 
                 return false;
             }
+
+            LOCK(SLOT_MUTEX);
 
             /* Set the node to outgoing. */
             node->fOUTGOING = true;
@@ -245,7 +250,7 @@ namespace LLP
                     /* Set the correct file descriptor. */
                     POLLFDS.at(nIndex).fd = CONNECTIONS->at(nIndex)->fd;
                 }
-                catch(const std::runtime_error& e)
+                catch(const std::exception& e)
                 {
                     debug::error(FUNCTION, e.what());
                 }
@@ -265,10 +270,10 @@ namespace LLP
                 try
                 {
                     /* Load the atomic pointer raw data. */
-                    ProtocolType* connection = CONNECTIONS->at(nIndex).load();
+                    memory::atomic_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nIndex);
 
                     /* Skip over Inactive Connections. */
-                    if(!connection || !connection->Connected())
+                    if(!CONNECTION || !CONNECTION->Connected())
                         continue;
 
                     /* Disconnect if there was a polling error */
@@ -289,36 +294,36 @@ namespace LLP
 
                     /* Disconnect if pollin signaled with no data (This happens on Linux). */
                     if((POLLFDS.at(nIndex).revents & POLLIN)
-                    && connection->Available() == 0)
+                    && CONNECTION->Available() == 0)
                     {
                         disconnect_remove_event(nIndex, DISCONNECT_POLL_EMPTY);
                         continue;
                     }
 
                     /* Remove Connection if it has Timed out or had any read/write Errors. */
-                    if(connection->Errors())
+                    if(CONNECTION->Errors())
                     {
                         disconnect_remove_event(nIndex, DISCONNECT_ERRORS);
                         continue;
                     }
 
                     /* Remove Connection if it has Timed out or had any Errors. */
-                    if(connection->Timeout(TIMEOUT))
+                    if(CONNECTION->Timeout(TIMEOUT))
                     {
                         disconnect_remove_event(nIndex, DISCONNECT_TIMEOUT);
                         continue;
                     }
 
                     /* Handle any DDOS Filters. */
-                    if(fDDOS && connection->DDOS)
+                    if(fDDOS && CONNECTION->DDOS)
                     {
                         /* Ban a node if it has too many Requests per Second. **/
-                        if(connection->DDOS->rSCORE.Score() > DDOS_rSCORE
-                        || connection->DDOS->cSCORE.Score() > DDOS_cSCORE)
-                            connection->DDOS->Ban();
+                        if(CONNECTION->DDOS->rSCORE.Score() > DDOS_rSCORE
+                        || CONNECTION->DDOS->cSCORE.Score() > DDOS_cSCORE)
+                            CONNECTION->DDOS->Ban();
 
                         /* Remove a connection if it was banned by DDOS Protection. */
-                        if(connection->DDOS->Banned())
+                        if(CONNECTION->DDOS->Banned())
                         {
                             disconnect_remove_event(nIndex, DISCONNECT_DDOS);
                             continue;
@@ -326,42 +331,42 @@ namespace LLP
                     }
 
                     /* Generic event for Connection. */
-                    connection->Event(EVENT_GENERIC);
+                    {
+                        ProtocolType* raw = CONNECTION.load();
+                        raw->Event(EVENT_GENERIC);
+                    }
+
 
                     /* Work on Reading a Packet. **/
-                    connection->ReadPacket();
+                    CONNECTION->ReadPacket();
 
                     /* If a Packet was received successfully, increment request count [and DDOS count if enabled]. */
-                    if(connection->PacketComplete())
+                    if(CONNECTION->PacketComplete())
                     {
                         /* Debug dump of message type. */
-                        debug::log(4, FUNCTION, "Recieved Message (", connection->INCOMING.GetBytes().size(), " bytes)");
+                        if(config::GetArg("-verbose", 0) >= 4)
+                            debug::log(4, FUNCTION, "Recieved Message (", CONNECTION->INCOMING.GetBytes().size(), " bytes)");
 
                         /* Debug dump of packet data. */
                         if(config::GetArg("-verbose", 0) >= 5)
-                            PrintHex(connection->INCOMING.GetBytes());
+                            PrintHex(CONNECTION->INCOMING.GetBytes());
 
                         /* Handle Meters and DDOS. */
                         if(fMETER)
                             ++REQUESTS;
                         if(fDDOS)
-                            connection->DDOS->rSCORE += 1;
+                            CONNECTION->DDOS->rSCORE += 1;
 
                         /* Packet Process return value of False will flag Data Thread to Disconnect. */
-                        if(!connection->ProcessPacket())
+                        ProtocolType* raw = CONNECTION.load();
+                        if(!raw->ProcessPacket())
                         {
                             disconnect_remove_event(nIndex, DISCONNECT_FORCE);
                             continue;
                         }
 
-                        connection->ResetPacket();
+                        CONNECTION->ResetPacket();
                     }
-                }
-                catch(const std::bad_alloc &e)
-                {
-                    debug::error(FUNCTION, "Memory allocation failed ", e.what());
-                    debug::error(FUNCTION, "Currently running ", nConnections, " connections.");
-                    disconnect_remove_event(nIndex, DISCONNECT_ERRORS);
                 }
                 catch(const std::exception& e)
                 {
@@ -382,6 +387,11 @@ namespace LLP
     {
         /* The mutex for the condition. */
         std::mutex CONDITION_MUTEX;
+
+        /* This mirrors CONNECTIONS with pollfd settings for passing to poll methods.
+         * Windows throws SOCKET_ERROR intermittently if pass CONNECTIONS directly.
+         */
+        std::vector<pollfd> POLLFDS;
 
         /* The main connection handler loop. */
         while(!fDestruct.load() && !config::fShutdown.load())
@@ -417,10 +427,56 @@ namespace LLP
             if(fDestruct.load() || config::fShutdown.load())
                 return;
 
+            /* Wrapped mutex lock. */
+            uint32_t nSize = static_cast<uint32_t>(CONNECTIONS->size());
+
+            /* Check the pollfd's size. */
+            if(POLLFDS.size() != nSize)
+                POLLFDS.resize(nSize);
+
+            /* Initialize the revents for all connection pollfd structures.
+             * One connection must be live, so verify that and skip if none
+             */
+            for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
+            {
+                try
+                {
+                    /* Set the proper POLLIN flags. */
+                    POLLFDS.at(nIndex).events = POLLOUT;
+
+                    /* Set to invalid socket if connection is inactive. */
+                    if(!CONNECTIONS->at(nIndex))
+                    {
+                        POLLFDS.at(nIndex).fd = INVALID_SOCKET;
+
+                        continue;
+                    }
+
+                    /* Set the correct file descriptor. */
+                    POLLFDS.at(nIndex).fd = CONNECTIONS->at(nIndex)->fd;
+                }
+                catch(const std::exception& e)
+                {
+                    debug::error(FUNCTION, e.what());
+                }
+            }
+
+            /* Poll the sockets. */
+#ifdef WIN32
+            WSAPoll((pollfd*)&POLLFDS[0], nSize, 10);
+#else
+            poll((pollfd*)&POLLFDS[0], nSize, 10);
+#endif
+
             /* Check all connections for data and packets. */
             for(uint32_t nIndex = 0; nIndex < CONNECTIONS->size(); ++nIndex)
             {
-                try { CONNECTIONS->at(nIndex)->Flush(); }
+                try
+                {
+                    /* Check that socket is in writing state. */
+                    if(POLLFDS[nIndex].revents & POLLOUT)
+                        CONNECTIONS->at(nIndex)->Flush();
+                }
                 catch(const std::exception& e) { }
             }
         }
@@ -440,8 +496,8 @@ namespace LLP
     template <class ProtocolType>
     void DataThread<ProtocolType>::disconnect_remove_event(uint32_t index, uint8_t reason)
     {
-        ProtocolType* connection = CONNECTIONS->at(index).load();
-        connection->Event(EVENT_DISCONNECT, reason);
+        memory::atomic_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(index);
+        CONNECTION->Event(EVENT_DISCONNECT, reason);
 
         remove(index);
     }

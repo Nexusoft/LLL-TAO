@@ -277,18 +277,21 @@ namespace LLP
             {
                 try
                 {
+                    /* Get reference of atomic pointer. */
+                    memory::atomic_ptr<ProtocolType>& CONNECTION = dt->CONNECTIONS->at(nIndex);
+
                     /* Skip over inactive connections. */
-                    if(!dt->CONNECTIONS->at(nIndex))
+                    if(!CONNECTION)
                         continue;
 
                     /* Skip over exclusion address. */
-                    if(dt->CONNECTIONS->at(nIndex)->GetAddress() == addrExclude)
+                    if(CONNECTION->GetAddress() == addrExclude)
                         continue;
 
                     /* Push the active connection. */
-                    if(dt->CONNECTIONS->at(nIndex)->nLatency < nLatency)
+                    if(CONNECTION->nLatency < nLatency)
                     {
-                        nLatency = dt->CONNECTIONS->at(nIndex)->nLatency;
+                        nLatency = CONNECTION->nLatency;
 
                         nRetThread = nThread;
                         nRetIndex  = nIndex;

@@ -30,7 +30,7 @@ namespace LLP
 
     /** The default constructor. **/
     Socket::Socket()
-    : PACKET_MUTEX()
+    : SOCKET_MUTEX()
     , DATA_MUTEX()
     , nLastSend(0)
     , nLastRecv(0)
@@ -49,7 +49,7 @@ namespace LLP
     /** Copy constructor. **/
     Socket::Socket(const Socket& socket)
     : pollfd(socket)
-    , PACKET_MUTEX()
+    , SOCKET_MUTEX()
     , DATA_MUTEX()
     , nLastSend(socket.nLastSend.load())
     , nLastRecv(socket.nLastRecv.load())
@@ -62,7 +62,7 @@ namespace LLP
 
     /** The socket constructor. **/
     Socket::Socket(int32_t nSocketIn, const BaseAddress &addrIn)
-    : PACKET_MUTEX()
+    : SOCKET_MUTEX()
     , DATA_MUTEX()
     , nLastSend(0)
     , nLastRecv(0)
@@ -80,7 +80,7 @@ namespace LLP
 
     /* Constructor for socket */
     Socket::Socket(const BaseAddress &addrConnect)
-    : PACKET_MUTEX()
+    : SOCKET_MUTEX()
     , DATA_MUTEX()
     , nLastSend(0)
     , nLastRecv(0)
@@ -183,6 +183,7 @@ namespace LLP
              * Then we have to use select below to check if connection was made.
              * If it doesn't return that, it means it connected immediately and connection was successful. (very unusual, but possible)
              */
+            LOCK(SOCKET_MUTEX);
             fConnected = (connect(nFile, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR);
         }
         else
@@ -197,6 +198,7 @@ namespace LLP
                 addr = BaseAddress(sockaddr);
             }
 
+            LOCK(SOCKET_MUTEX);
             fConnected = (connect(nFile, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR);
         }
 
@@ -220,6 +222,7 @@ namespace LLP
                 /* select returns the number of descriptors that have successfully established connection and are writeable.
                  * We only pass one descriptor in the fd_set, so this will return 1 if connect attempt succeeded, 0 if it timed out, or SOCKET_ERROR on error
                  */
+                LOCK(SOCKET_MUTEX);
                 int nRet = select(nFile + 1, nullptr, &fdset, nullptr, &timeout);
 
                 /* If the connection attempt timed out with select. */
@@ -284,7 +287,7 @@ namespace LLP
     /* Poll the socket to check for available data */
     int Socket::Available() const
     {
-        LOCK(DATA_MUTEX);
+        LOCK(SOCKET_MUTEX);
 
     #ifdef WIN32
         long unsigned int nAvailable = 0;
@@ -301,7 +304,7 @@ namespace LLP
     /* Clear resources associated with socket and return to invalid state. */
     void Socket::Close()
     {
-        LOCK(DATA_MUTEX);
+        LOCK(SOCKET_MUTEX);
 
         if(fd != INVALID_SOCKET)
             closesocket(fd);
@@ -313,6 +316,8 @@ namespace LLP
     /* Read data from the socket buffer non-blocking */
     int Socket::Read(std::vector<uint8_t> &vData, size_t nBytes)
     {
+        LOCK(SOCKET_MUTEX);
+
         int32_t nRead = 0;
 
     #ifdef WIN32
@@ -337,6 +342,8 @@ namespace LLP
     /* Read data from the socket buffer non-blocking */
     int32_t Socket::Read(std::vector<int8_t> &vData, size_t nBytes)
     {
+        LOCK(SOCKET_MUTEX);
+        
         int32_t nRead = 0;
 
     #ifdef WIN32
@@ -379,7 +386,7 @@ namespace LLP
 
         /* If there were any errors, handle them gracefully. */
         {
-            LOCK(PACKET_MUTEX);
+            LOCK(SOCKET_MUTEX);
 
             #ifdef WIN32
                 nSent = static_cast<int32_t>(send(fd, (char*)&vData[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT));
@@ -432,7 +439,7 @@ namespace LLP
 
         /* If there were any errors, handle them gracefully. */
         {
-            LOCK(PACKET_MUTEX);
+            LOCK(SOCKET_MUTEX);
 
             #ifdef WIN32
                 nSent = static_cast<int32_t>(send(fd, (char*)&vBuffer[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT));
