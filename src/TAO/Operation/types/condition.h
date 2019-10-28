@@ -95,9 +95,21 @@ namespace TAO
             void Reset();
 
 
-            /** Validate
+            /** Verify
              *
-             *  Validates that the contract conditions script is not malformed and can be executed.
+             *  Verifies that the contract conditions script is not malformed and can be executed.
+             *
+             *  @param[in] contract The Contract to validate.
+             *
+             *  @return True if the contract conditions can be executed without error.
+             **/
+            static bool Verify(const Contract& contract);
+
+
+            /** Verify
+             *
+             *  Verifies that the contract conditions script is not malformed and can be executed.  Populates vWarnings with
+             *  warning flags and stream positions, which the caller can use to identify potential problems such as overflows
              *
              *  @param[in] contract The Contract to validate.
              *  @param[out] vWarnings Vector of warning flags and stream positions encountered during evaluation.  These include  
@@ -105,7 +117,7 @@ namespace TAO
              *
              *  @return True if the contract conditions can be executed without error.
              **/
-            static bool Validate(const Contract& contract, std::vector<std::pair<uint16_t, uint64_t>> &vWarnings);
+            static bool Verify(const Contract& contract, std::vector<std::pair<uint16_t, uint64_t>> &vWarnings);
 
 
             /** Execute

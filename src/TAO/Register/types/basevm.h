@@ -165,7 +165,7 @@ namespace TAO
                 value.nBytes = sizeof(data);
 
                 /* Check for memory overflows. */
-                if(value.nEnd >= vRegister.size())
+                if(value.nEnd > vRegister.size())
                     throw BaseVMException("Out of register memory");
 
                 /* Copy data into the registers. */

@@ -251,7 +251,7 @@ int main(int argc, char** argv)
         contract <= uint8_t(OP::NOTEQUALS); //if the proof is not the hashFrom we can assume it is a split dividend payment
         contract <= uint8_t(0xd3)   <= uint8_t(OP::SUBDATA) <= uint16_t(101) <= uint16_t(32);  //hashProof
 
-        if(!TAO::Operation::Condition::Validate(contract, vWarnings))
+        if(!TAO::Operation::Condition::Verify(contract, vWarnings))
             debug::error("Validate Error");
         else
             debug::error("Validate Success");
@@ -265,7 +265,7 @@ int main(int argc, char** argv)
     debug::log(0, "Hash ", hash.Get64());
     testDB->WriteHash(hash, hash);
 
-        if(!TAO::Operation::Condition::Validate(contract, vWarnings))
+        if(!TAO::Operation::Condition::Verify(contract, vWarnings))
             debug::error("Validate Error");
         else
             debug::error("Validate Success");
