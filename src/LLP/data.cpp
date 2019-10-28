@@ -291,11 +291,11 @@ namespace LLP
                     }
 
                     /* Disconnect if there was a polling error */
-                    if(POLLFDS.at(nIndex).revents & POLLERR)
-                    {
-                        disconnect_remove_event(nIndex, DISCONNECT_POLL_ERROR);
-                        continue;
-                    }
+                    // if(POLLFDS.at(nIndex).revents & POLLERR)
+                    // {
+                    //     disconnect_remove_event(nIndex, DISCONNECT_POLL_ERROR);
+                    //     continue;
+                    // }
 
 #ifdef WIN32
                     /* Disconnect if the socket was disconnected by peer (need for Windows) */
