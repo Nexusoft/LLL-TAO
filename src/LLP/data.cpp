@@ -60,7 +60,6 @@ namespace LLP
     {
         fDestruct = true;
         CONDITION.notify_all();
-
         if(DATA_THREAD.joinable())
             DATA_THREAD.join();
 
@@ -80,6 +79,8 @@ namespace LLP
     {
         try
         {
+            LOCK(SLOT_MUTEX);
+
             /* Create a new pointer on the heap. */
             ProtocolType* pnode = new ProtocolType(SOCKET, DDOS, fDDOS);
             pnode->fCONNECTED.store(true);
@@ -259,7 +260,7 @@ namespace LLP
                     /* Set the correct file descriptor. */
                     POLLFDS.at(nIndex).fd = CONNECTIONS->at(nIndex)->fd;
                 }
-                catch(const std::runtime_error& e)
+                catch(const std::exception& e)
                 {
                     debug::error(FUNCTION, e.what());
                 }
@@ -279,16 +280,11 @@ namespace LLP
                 try
                 {
                     /* Load the atomic pointer raw data. */
-                    ProtocolType* pConnection = CONNECTIONS->at(nIndex).load();
-                    if(!pConnection)
-                        continue;
+                    memory::atomic_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nIndex);
 
-                    /* Check if connected. */
-                    if(!pConnection->Connected())
-                    {
-                        disconnect_remove_event(nIndex, DISCONNECT_FORCE);
+                    /* Skip over Inactive Connections. */
+                    if(!CONNECTION || !CONNECTION->Connected())
                         continue;
-                    }
 
                     /* Disconnect if there was a polling error */
                     if(POLLFDS.at(nIndex).revents & POLLERR)
@@ -308,75 +304,80 @@ namespace LLP
 
                     /* Disconnect if pollin signaled with no data (This happens on Linux). */
                     if((POLLFDS.at(nIndex).revents & POLLIN)
-                    && pConnection->Available() == 0)
+                    && CONNECTION->Available() == 0)
                     {
                         disconnect_remove_event(nIndex, DISCONNECT_POLL_EMPTY);
                         continue;
                     }
 
-                    /* Remove connection if it has Timed out or had any read/write Errors. */
-                    if(pConnection->Errors())
+                    /* Remove Connection if it has Timed out or had any read/write Errors. */
+                    if(CONNECTION->Errors())
                     {
                         disconnect_remove_event(nIndex, DISCONNECT_ERRORS);
                         continue;
                     }
 
-                    /* Remove connection if it has Timed out or had any Errors. */
-                    if(pConnection->Timeout(TIMEOUT))
+                    /* Remove Connection if it has Timed out or had any Errors. */
+                    if(CONNECTION->Timeout(TIMEOUT))
                     {
                         disconnect_remove_event(nIndex, DISCONNECT_TIMEOUT);
                         continue;
                     }
 
                     /* Handle any DDOS Filters. */
-                    if(fDDOS && pConnection->DDOS)
+                    if(fDDOS && CONNECTION->DDOS)
                     {
                         /* Ban a node if it has too many Requests per Second. **/
-                        if(pConnection->DDOS->rSCORE.Score() > DDOS_rSCORE
-                        || pConnection->DDOS->cSCORE.Score() > DDOS_cSCORE)
-                            pConnection->DDOS->Ban();
+                        if(CONNECTION->DDOS->rSCORE.Score() > DDOS_rSCORE
+                        || CONNECTION->DDOS->cSCORE.Score() > DDOS_cSCORE)
+                            CONNECTION->DDOS->Ban();
 
                         /* Remove a connection if it was banned by DDOS Protection. */
-                        if(pConnection->DDOS->Banned())
+                        if(CONNECTION->DDOS->Banned())
                         {
-                            debug::log(0, "BANNED: ", pConnection->GetAddress().ToString());
+                            debug::log(0, "BANNED: ", CONNECTION->GetAddress().ToString());
                             disconnect_remove_event(nIndex, DISCONNECT_DDOS);
                             continue;
                         }
                     }
 
                     /* Generic event for Connection. */
-                    pConnection->Event(EVENT_GENERIC);
+                    {
+                        ProtocolType* raw = CONNECTION.load();
+                        raw->Event(EVENT_GENERIC);
+                    }
 
                     /* Work on Reading a Packet. **/
-                    pConnection->ReadPacket();
+                    CONNECTION->ReadPacket();
 
                     /* If a Packet was received successfully, increment request count [and DDOS count if enabled]. */
-                    if(pConnection->PacketComplete())
+                    if(CONNECTION->PacketComplete())
                     {
                         /* Debug dump of message type. */
-                        debug::log(4, FUNCTION, "recieved packet (", pConnection->INCOMING.GetBytes().size(), " bytes)");
+                        if(config::GetArg("-verbose", 0) >= 4)
+                            debug::log(4, FUNCTION, "Recieved Message (", CONNECTION->INCOMING.GetBytes().size(), " bytes)");
 
                         /* Debug dump of packet data. */
-                        if(config::nVerbose >= 5)
-                            PrintHex(pConnection->INCOMING.GetBytes());
+                        if(config::GetArg("-verbose", 0) >= 5)
+                            PrintHex(CONNECTION->INCOMING.GetBytes());
 
                         /* Handle Meters and DDOS. */
                         if(fMETER)
                             ++REQUESTS;
 
-                        /* Handle default rscore. */
-                        if(pConnection->DDOS)
-                            pConnection->DDOS->rSCORE += 1;
+                        /* Increment rScore. */
+                        if(fDDOS && CONNECTION->DDOS)
+                            CONNECTION->DDOS->rSCORE += 1;
 
                         /* Packet Process return value of False will flag Data Thread to Disconnect. */
-                        if(!pConnection->ProcessPacket())
+                        ProtocolType* raw = CONNECTION.load();
+                        if(!raw->ProcessPacket())
                         {
                             disconnect_remove_event(nIndex, DISCONNECT_FORCE);
                             continue;
                         }
 
-                        pConnection->ResetPacket();
+                        CONNECTION->ResetPacket();
                     }
                 }
                 catch(const std::exception& e)
@@ -469,9 +470,8 @@ namespace LLP
     template <class ProtocolType>
     void DataThread<ProtocolType>::disconnect_remove_event(uint32_t nIndex, uint8_t nReason)
     {
-        /* Send off the disconnect event. */
-        memory::atomic_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nIndex);
-        CONNECTION->Event(EVENT_DISCONNECT, nReason);
+        ProtocolType* raw = CONNECTIONS->at(nIndex).load(); //we use raw pointer here because event could contain switch node that will cause deadlocks
+        raw->Event(EVENT_DISCONNECT, nReason);
 
         remove(nIndex);
     }

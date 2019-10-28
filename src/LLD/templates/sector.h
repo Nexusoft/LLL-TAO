@@ -533,7 +533,6 @@ namespace LLD
             /* Check that the key is not pending in a transaction for Erase. */
             {
                 LOCK(TRANSACTION_MUTEX);
-
                 if(pTransaction)
                 {
                     /* Write to journal in memory. */

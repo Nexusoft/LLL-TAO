@@ -195,26 +195,30 @@ namespace TAO
             /* Find the last checkpoint. */
             if(stateBest != stateGenesis)
             {
-                /* Search back until fail or different checkpoint. */
-                BlockState state;
-                if(!LLD::Ledger->ReadBlock(hashCheckpoint.load(), state))
-                    return debug::error(FUNCTION, "no pending checkpoint");
+                /* Go back 10 checkpoints on startup. */
+                for(uint32_t i = 0; i < config::GetArg("-checkpoints", 100); ++i)
+                {
+                    /* Search back until fail or different checkpoint. */
+                    BlockState state;
+                    if(!LLD::Ledger->ReadBlock(hashCheckpoint.load(), state))
+                        return debug::error(FUNCTION, "no pending checkpoint");
 
-                /* Get the previous state. */
-                state = state.Prev();
-                if(!state)
-                    return debug::error(FUNCTION, "failed to find the checkpoint");
+                    /* Get the previous state. */
+                    state = state.Prev();
+                    if(!state)
+                        return debug::error(FUNCTION, "failed to find the checkpoint");
 
-                /* Set the checkpoint. */
-                hashCheckpoint    = state.hashCheckpoint;
+                    /* Set the checkpoint. */
+                    hashCheckpoint    = state.hashCheckpoint;
 
-                /* Get checkpoint state. */
-                BlockState stateCheckpoint;
-                if(!LLD::Ledger->ReadBlock(state.hashCheckpoint, stateCheckpoint))
-                    return debug::error(FUNCTION, "failed to read checkpoint");
+                    /* Get checkpoint state. */
+                    BlockState stateCheckpoint;
+                    if(!LLD::Ledger->ReadBlock(state.hashCheckpoint, stateCheckpoint))
+                        return debug::error(FUNCTION, "failed to read checkpoint");
 
-                /* Set the correct height for the checkpoint. */
-                nCheckpointHeight = stateCheckpoint.nHeight;
+                    /* Set the correct height for the checkpoint. */
+                    nCheckpointHeight = stateCheckpoint.nHeight;
+                }
             }
 
             /* Ensure the block height index is intact */
