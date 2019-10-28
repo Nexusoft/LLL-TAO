@@ -111,6 +111,9 @@ namespace LLP
         /* The last txid on user's signature chain. Used to orphan blocks if another transaction is made while mining. */
         uint512_t nHashLast;
 
+        /* The last height that the notifications processor was run at.  This is used to ensure that events are only processed once
+           across all threads when the height changes */
+        static std::atomic<uint32_t> nLastNotificationsHeight;
 
     public:
 

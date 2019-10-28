@@ -47,6 +47,9 @@ ________________________________________________________________________________
 
 namespace LLP
 {
+    /* The last height that the notifications processor was run at.  This is used to ensure that events are only processed once
+        across all threads when the height changes */
+    std::atomic<uint32_t> Miner::nLastNotificationsHeight(0);
 
     /* Default Constructor */
     Miner::Miner()
@@ -736,17 +739,23 @@ namespace LLP
         nBestHeight = nChainStateHeight;
         debug::log(2, FUNCTION, "Mining best height changed to ", nBestHeight);
 
-        /* Wake up events processor and wait for a signal to guarantee added transactions won't orphan a mined block. */
-        if(TAO::API::users && TAO::API::users->CanProcessNotifications())
+        /* make sure the notifications processor hasn't been run already at this height */
+        if(nLastNotificationsHeight.load() != nBestHeight)
         {
-            TAO::API::users->NotifyEvent();
-            WaitEvent();
-        }
+            nLastNotificationsHeight.store(nBestHeight);
 
-        /* If we detected a block height change, update the cached last hash of the logged in sig chain.  NOTE this is done AFTER
-           the notifications processor has finished, in case it added new transactions to the mempool  */
-        if(TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 7) || TAO::Ledger::CurrentVersion() > 7)
-            LLD::Ledger->ReadLast(TAO::API::users->GetGenesis(0), nHashLast, TAO::Ledger::FLAGS::MEMPOOL);
+            /* Wake up events processor and wait for a signal to guarantee added transactions won't orphan a mined block. */
+            if(TAO::API::users && TAO::API::users->CanProcessNotifications())
+            {
+                TAO::API::users->NotifyEvent();
+                WaitEvent();
+            }
+
+            /* If we detected a block height change, update the cached last hash of the logged in sig chain.  NOTE this is done AFTER
+            the notifications processor has finished, in case it added new transactions to the mempool  */
+            if(TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 7) || TAO::Ledger::CurrentVersion() > 7)
+                LLD::Ledger->ReadLast(TAO::API::users->GetGenesis(0), nHashLast, TAO::Ledger::FLAGS::MEMPOOL);
+        }
 
         return true;
     }
