@@ -96,8 +96,37 @@ namespace TAO
             jsonRet["txtotal"] =TAO::Ledger::mempool.Size() + TAO::Ledger::mempool.SizeLegacy();
 
             /* Number of peer connections*/
-            if(LLP::TRITIUM_SERVER  && LLP::TRITIUM_SERVER->pAddressManager)
-                jsonRet["connections"] = LLP::TRITIUM_SERVER->pAddressManager->Count(LLP::ConnectState::CONNECTED);
+            if(LLP::TRITIUM_SERVER)
+            {
+                /* Use the address manager if it is switched on */
+                if(LLP::TRITIUM_SERVER->pAddressManager)
+                    jsonRet["connections"] = LLP::TRITIUM_SERVER->pAddressManager->Count(LLP::ConnectState::CONNECTED);
+                else
+                {
+                    /* Otherwise count the connected data threads */
+                    uint16_t nConnections = 0;
+
+                    for(uint16_t nThread = 0; nThread < LLP::TRITIUM_SERVER->MAX_THREADS; ++nThread)
+                    {
+                        /* Get the data threads. */
+                        LLP::DataThread<LLP::TritiumNode>* dt = LLP::TRITIUM_SERVER->DATA_THREADS[nThread];
+
+                        uint16_t nSize = static_cast<uint16_t>(dt->CONNECTIONS->size());
+
+                        /* Loop through connections in data thread. */
+                        for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
+                        {
+                            if(!dt->CONNECTIONS->at(nIndex))
+                                continue;
+
+                            if(dt->CONNECTIONS->at(nIndex)->Connected())
+                                nConnections++;
+                        }
+                    }
+
+                    jsonRet["connections"] = nConnections;
+                }
+            }
 
 
             // The EID's of this node if using LISP
@@ -173,7 +202,8 @@ namespace TAO
                             obj["lastseen"] = dt->CONNECTIONS->at(nIndex)->nLastPing.load();
 
                             /* See if the connection is in the address manager */
-                            if(LLP::TRITIUM_SERVER->pAddressManager->Has(dt->CONNECTIONS->at(nIndex)->addr))
+                            if(LLP::TRITIUM_SERVER->pAddressManager != nullptr 
+                            && LLP::TRITIUM_SERVER->pAddressManager->Has(dt->CONNECTIONS->at(nIndex)->addr))
                             {
                                 /* Get the trust address from the address manager */
                                 const LLP::TrustAddress& trustAddress = LLP::TRITIUM_SERVER->pAddressManager->Get(dt->CONNECTIONS->at(nIndex)->addr);
