@@ -67,7 +67,7 @@ namespace TAO
             contract <= uint8_t(OP::CALLER::GENESIS) <= uint8_t(OP::NOTEQUALS) <= uint8_t(OP::TYPES::UINT256_T) <= hashCaller;
             contract <= uint8_t(OP::AND);
             contract <= uint8_t(OP::CONTRACT::TIMESTAMP) <= uint8_t(OP::ADD) <= uint8_t(OP::TYPES::UINT64_T) <= uint64_t(nExpires);
-            contract <= uint8_t(OP::GREATERTHAN) <= uint8_t(OP::CALLER::TIMESTAMP);
+            contract <= uint8_t(OP::GREATERTHAN) <= uint8_t(OP::LEDGER::TIMESTAMP);
             contract <= uint8_t(OP::UNGROUP);
 
             contract <= uint8_t(OP::OR);
@@ -77,7 +77,7 @@ namespace TAO
             contract <= uint8_t(OP::CALLER::GENESIS) <= uint8_t(OP::EQUALS) <= uint8_t(OP::TYPES::UINT256_T) <= hashCaller;
             contract <= uint8_t(OP::AND);
             contract <= uint8_t(OP::CONTRACT::TIMESTAMP) <= uint8_t(OP::ADD) <= uint8_t(OP::TYPES::UINT64_T) <= uint64_t(nExpires);
-            contract <= uint8_t(OP::LESSTHAN) <= uint8_t(OP::CALLER::TIMESTAMP);
+            contract <= uint8_t(OP::LESSTHAN) <= uint8_t(OP::LEDGER::TIMESTAMP);
             contract <= uint8_t(OP::UNGROUP);
 
             /* If the contract is a debit to a tokenized asset then add an additional clause to bypass the expiration if the
@@ -94,7 +94,7 @@ namespace TAO
                 contract <= uint8_t(OP::CALLER::OPERATIONS)   <= uint8_t(OP::SUBDATA) <= uint16_t(101) <= uint16_t(32);  //hashProof
                 contract <= uint8_t(OP::AND);
                 contract <= uint8_t(OP::CONTRACT::TIMESTAMP) <= uint8_t(OP::ADD) <= uint8_t(OP::TYPES::UINT64_T) <= uint64_t(nExpires);
-                contract <= uint8_t(OP::GREATERTHAN) <= uint8_t(OP::CALLER::TIMESTAMP);
+                contract <= uint8_t(OP::GREATERTHAN) <= uint8_t(OP::LEDGER::TIMESTAMP);
                 contract <= uint8_t(OP::UNGROUP);
             }
 
