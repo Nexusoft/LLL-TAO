@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/types/condition.h>
 #include <TAO/Operation/include/enum.h>
 
+#include <TAO/Register/types/exception.h>
 #include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/include/chainstate.h>
@@ -84,9 +85,75 @@ namespace TAO
         }
 
 
+        /* Validates that the contract conditions script is not malformed and can be executed. */
+        bool Condition::Validate(const Contract& contract, std::vector<std::pair<uint16_t, uint64_t>> &vWarnings)
+        {
+            /* Return flag */
+            bool fValid = false;
+
+            try
+            {
+                /* Create a dummy caller contract so that we can use it to execute the conditions.  We don't need to give this 
+                   dummy caller a valid operations stream as we are only checking for malformed conditions and overflows, so instead
+                   we can create the operations stream with 1024 bytes of data set to 0x02 (we use 0x02 so that both ADD and MUL 
+                   conditions based on the caller operations data will result in a overflow) */
+                TAO::Operation::Contract caller;
+
+                /* Create 1024 bytes if data */
+                std::vector<uint8_t> vData(1024);
+
+                /* Fill with 0x02 */
+                std::fill(vData.begin(), vData.end(), 0x02);
+
+                /* Serialize the dta into the caller contract's operations stream */
+                caller << vData;
+
+                /* Create a conditions object for the the two contracts */
+                Condition condition(contract, caller);
+
+                /* Finally try to execute the contract */
+                condition.execute(vWarnings);
+
+                /* If there were any warnings then log them */
+                for(const auto& warning : vWarnings)
+                    debug::log(2, "Condition warning: ", WarningToString(warning.first), " at position ", warning.second);
+
+                /* If we made it through the execute call without throwing an exception then the condition must be valid */
+                fValid = true;
+
+            }
+            catch(const TAO::Register::BaseVMException& e)
+            {
+                /* Set return flag to false as an exception was thrown */
+                fValid = false;
+
+                /* Handle intentionally thrown BaseVMExceptions as we need execution to continue after logging the error */
+                return debug::error("Condition validation failed: ", e.what(), " at position ", contract.Position());
+            }
+
+            return fValid;
+        }
+
+
         /* Execute the validation script. */
         bool Condition::Execute()
         {
+            /* Warnings raised */
+            std::vector<std::pair<uint16_t, uint64_t>> vWarnings;
+
+            /* Execute the conditions.  NOTE: we ignore warnings during runtime execution */
+            return execute(vWarnings);
+        }
+
+        /* Execute the validation script. */
+        bool Condition::execute(std::vector<std::pair<uint16_t, uint64_t>> &vWarnings)
+        {
+            /* Warnings bitmask passed into each evaluate call. */
+            uint16_t nWarnings = WARNINGS::NONE;
+
+            /* Ensure the warnings list is cleared */
+            vWarnings.clear();
+
             /* Loop through the operation validation code. */
             contract.Reset(Contract::CONDITIONS);
             while(!contract.End(Contract::CONDITIONS))
@@ -107,7 +174,7 @@ namespace TAO
 
                         /* Check for overflows. */
                         if(nCost + 128 < nCost)
-                            throw debug::exception("OP::GROUP costs value overflow");
+                            throw TAO::Register::MalformedException("Malformed condition. OP::GROUP costs value overflow");
 
                         /* Reduce the costs to prevent operation exhuastive attacks. */
                         nCost += 128;
@@ -121,7 +188,7 @@ namespace TAO
                     {
                         /* Check that nothing has been evaluated. */
                         if(vEvaluate.empty())
-                            return debug::error(FUNCTION, "malformed conditional statement");
+                            throw TAO::Register::MalformedException("Malformed condition. Missing OP::GROUP");
 
                         /* Check for evalute state. */
                         bool fEvaluate = vEvaluate.top().first;
@@ -158,7 +225,7 @@ namespace TAO
                             }
 
                             default:
-                                return debug::error(FUNCTION, "conditional type is unsupported");
+                                throw TAO::Register::MalformedException("Malformed condition. Conditional type is unsupported");
                         }
 
                         break;
@@ -170,11 +237,11 @@ namespace TAO
                     {
                         /* Check for an operation. */
                         if(vEvaluate.empty())
-                            return debug::error(FUNCTION, "evaluate ungrouping count incomplete");
+                            throw TAO::Register::MalformedException("Malformed condition. OP::AND missing previous OP::UNGROUP");
 
                         /* Check that evaluate is default value. */
                         if(vEvaluate.top().second == OP::OR)
-                            return debug::error(FUNCTION, "cannot evaluate OP::AND with previous OP::OR");
+                            throw TAO::Register::MalformedException("Malformed condition. Cannot evaluate OP::AND with previous OP::OR");
 
                         /* Set the new evaluate state. */
                         vEvaluate.top().second = OP::AND;
@@ -188,11 +255,11 @@ namespace TAO
                     {
                         /* Check for an operation. */
                         if(vEvaluate.empty())
-                            return debug::error(FUNCTION, "evaluate ungrouping count incomplete");
+                            throw TAO::Register::MalformedException("Malformed condition. OP::OR missing previous OP::UNGROUP");
 
                         /* Check that evaluate is default value. */
                         if(vEvaluate.top().second == OP::AND)
-                            return debug::error(FUNCTION, "cannot evaluate OP::OR with previous OP::AND");
+                            throw TAO::Register::MalformedException("Malformed condition. Cannot evaluate OP::OR with previous OP::AND");
 
                         /* Set the new evaluate state. */
                         vEvaluate.top().second = OP::OR;
@@ -209,7 +276,7 @@ namespace TAO
 
                         /* Check that nothing has been evaluated. */
                         if(vEvaluate.empty())
-                            return debug::error(FUNCTION, "malformed conditional statement");
+                            throw TAO::Register::MalformedException("Malformed condition");
 
                         /* Check for evalute state. */
                         switch(vEvaluate.top().second)
@@ -218,7 +285,7 @@ namespace TAO
                             case OP::RESERVED:
                             {
                                 /* Check that statement evaluates. */
-                                vEvaluate.top().first = Evaluate();
+                                vEvaluate.top().first = evaluate(nWarnings);
 
                                 break;
                             }
@@ -227,7 +294,7 @@ namespace TAO
                             case OP::AND:
                             {
                                 /* Check that statement evaluates. */
-                                vEvaluate.top().first = (Evaluate() && vEvaluate.top().first);
+                                vEvaluate.top().first = (evaluate(nWarnings) && vEvaluate.top().first);
 
                                 break;
                             }
@@ -236,14 +303,18 @@ namespace TAO
                             case OP::OR:
                             {
                                 /* Check that statement evaluates. */
-                                vEvaluate.top().first = (Evaluate() || vEvaluate.top().first);
+                                vEvaluate.top().first = (evaluate(nWarnings) || vEvaluate.top().first);
 
                                 break;
                             }
 
                             default:
-                                return debug::error(FUNCTION, "conditional type is unsupported");
+                                throw TAO::Register::MalformedException("Malformed condition. Condition type is unsupported");
                         }
+
+                        /* If any warnings were encountered then add them to the list */
+                        if(nWarnings != WARNINGS::NONE)
+                            vWarnings.push_back(std::make_pair(nWarnings, contract.Position()));
 
                         break;
                     }
@@ -252,23 +323,28 @@ namespace TAO
 
             /* Check the values in groups. */
             if(vEvaluate.size() != 1)
-                return debug::error(FUNCTION, "evaluate groups count incomplete");
+                throw TAO::Register::MalformedException("Malformed condition. Evaluate groups count incomplete");
 
             /* Return final value. */
             return vEvaluate.top().first;
+
+            
         }
 
 
         /* Execute the validation script. */
-        bool Condition::Evaluate()
+        bool Condition::evaluate(uint16_t &nWarnings)
         {
             /* Flag to tell how it evaluated. */
             bool fRet = false;
 
+            /* Reset the warnings flag */
+            nWarnings = WARNINGS::NONE;
+
             /* Grab the first value */
             TAO::Register::Value vLeft;
-            if(!GetValue(vLeft))
-                throw debug::exception(FUNCTION, "failed to get l-value");
+            if(!get_value(vLeft, nWarnings))
+                return false;
 
             /* Grab the next operation. */
             uint8_t OPERATION = 0;
@@ -282,8 +358,8 @@ namespace TAO
                 {
                     /* Grab the second value. */
                     TAO::Register::Value vRight;
-                    if(!GetValue(vRight))
-                        throw debug::exception(FUNCTION, "failed to get r-value");
+                    if(!get_value(vRight, nWarnings))
+                        return false;
 
                     /* Compare both values to one another. */
                     fRet = (compare(vLeft, vRight) == 0);
@@ -301,8 +377,8 @@ namespace TAO
                 {
                     /* Grab the second value. */
                     TAO::Register::Value vRight;
-                    if(!GetValue(vRight))
-                        throw debug::exception(FUNCTION, "failed to get r-value");
+                    if(!get_value(vRight, nWarnings))
+                        return false;
 
                     /* Compare both values to one another. */
                     fRet = (compare(vLeft, vRight) < 0);
@@ -320,8 +396,8 @@ namespace TAO
                 {
                     /* Grab the second value. */
                     TAO::Register::Value vRight;
-                    if(!GetValue(vRight))
-                        throw debug::exception(FUNCTION, "failed to get r-value");
+                    if(!get_value(vRight, nWarnings))
+                        return false;
 
                     /* Compare both values to one another. */
                     fRet = (compare(vLeft, vRight) > 0);
@@ -339,8 +415,8 @@ namespace TAO
                 {
                     /* Grab the second value. */
                     TAO::Register::Value vRight;
-                    if(!GetValue(vRight))
-                        throw debug::exception(FUNCTION, "failed to get r-value");
+                    if(!get_value(vRight, nWarnings))
+                        return false;
 
                     /* Compare both values to one another. */
                     fRet = (compare(vLeft, vRight) <= 0);
@@ -358,8 +434,8 @@ namespace TAO
                 {
                     /* Grab the second value. */
                     TAO::Register::Value vRight;
-                    if(!GetValue(vRight))
-                        throw debug::exception(FUNCTION, "failed to get r-value");
+                    if(!get_value(vRight, nWarnings))
+                        return false;
 
                     /* Compare both values to one another. */
                     fRet = (compare(vLeft, vRight) >= 0);
@@ -377,8 +453,8 @@ namespace TAO
                 {
                     /* Grab the second value. */
                     TAO::Register::Value vRight;
-                    if(!GetValue(vRight))
-                        throw debug::exception(FUNCTION, "failed to get r-value");
+                    if(!get_value(vRight, nWarnings))
+                        return false;
 
                     /* Compare both values to one another. */
                     fRet = (compare(vLeft, vRight) != 0);
@@ -396,8 +472,8 @@ namespace TAO
                 {
                     /* Grab the second value. */
                     TAO::Register::Value vRight;
-                    if(!GetValue(vRight))
-                        throw debug::exception(FUNCTION, "failed to get r-value");
+                    if(!get_value(vRight, nWarnings))
+                        return false;
 
                     /* Compare both values to one another. */
                     fRet = contains(vLeft, vRight);
@@ -411,11 +487,12 @@ namespace TAO
 
                 /* For unknown codes, always fail. */
                 default:
-                    return debug::error(FUNCTION, "malformed conditions");
+                    throw TAO::Register::MalformedException("Malformed conditions");
             }
 
             /* Return final response. */
             return fRet;
+            
         }
 
 
@@ -424,7 +501,7 @@ namespace TAO
          *  Get a value from the register virtual machine.
          *
          **/
-        bool Condition::GetValue(TAO::Register::Value& vRet)
+        bool Condition::get_value(TAO::Register::Value& vRet, uint16_t &nWarnings)
         {
             /* Iterate until end of stream. */
             while(!contract.End(Contract::CONDITIONS))
@@ -442,16 +519,16 @@ namespace TAO
                     {
                         /* Get the add from r-value. */
                         TAO::Register::Value vAdd;
-                        if(!GetValue(vAdd))
-                            throw debug::exception("OP::ADD failed to get r-value");
+                        if(!get_value(vAdd, nWarnings))
+                            return false; //("OP::ADD failed to get r-value");
 
                         /* Check computational bounds. */
                         if(vAdd.size() > 1 || vRet.size() > 1)
-                            throw debug::exception("OP::ADD computation greater than 64-bits");
+                            throw TAO::Register::MalformedException("OP::ADD computation greater than 64-bits");
 
                         /* Check for overflows. */
                         if(at(vRet) + at(vAdd) < at(vRet))
-                            throw debug::exception("OP::ADD 64-bit value overflow");
+                            nWarnings |= WARNINGS::ADD_OVERFLOW; ;
 
                         /* Compute the return value. */
                         at(vRet) += at(vAdd);
@@ -461,7 +538,7 @@ namespace TAO
 
                         /* Check for overflows. */
                         if(nCost + 64 < nCost)
-                            throw debug::exception("OP::ADD costs value overflow");
+                            throw TAO::Register::MalformedException("OP::ADD costs value overflow");
 
                         /* Reduce the costs to prevent operation exhuastive attacks. */
                         nCost += 64;
@@ -475,16 +552,16 @@ namespace TAO
                     {
                         /* Get the sub from r-value. */
                         TAO::Register::Value vSub;
-                        if(!GetValue(vSub))
-                            throw debug::exception("OP::SUB failed to get r-value");
+                        if(!get_value(vSub, nWarnings))
+                            return false; //("OP::SUB failed to get r-value");
 
                         /* Check computational bounds. */
                         if(vSub.size() > 1 || vRet.size() > 1)
-                            throw debug::exception("OP::SUB computation greater than 64-bits");
+                            throw TAO::Register::MalformedException("OP::SUB computation greater than 64-bits");
 
                         /* Check for overflows. */
                         if(at(vRet) - at(vSub) > at(vRet))
-                            throw debug::exception("OP::SUB 64-bit value overflow");
+                            nWarnings |= WARNINGS::SUB_OVERFLOW ;
 
                         /* Compute the return value. */
                         at(vRet) -= at(vSub);
@@ -494,7 +571,7 @@ namespace TAO
 
                         /* Check for overflows. */
                         if(nCost + 64 < nCost)
-                            throw debug::exception("OP::SUB costs value overflow");
+                            throw TAO::Register::MalformedException("OP::SUB costs value overflow");
 
                         /* Reduce the costs to prevent operation exhuastive attacks. */
                         nCost += 64;
@@ -508,15 +585,15 @@ namespace TAO
                     {
                         /* Check computational bounds. */
                         if(vRet.size() > 1)
-                            throw debug::exception("OP::INC computation greater than 64-bits");
+                            throw TAO::Register::MalformedException("OP::INC computation greater than 64-bits");
 
                         /* Compute the return value. */
                         if(++at(vRet) == 0)
-                            throw debug::exception("OP::INC 64-bit value overflow");
+                            nWarnings |= WARNINGS::INC_OVERFLOW;
 
                         /* Check for overflows. */
                         if(nCost + 64 < nCost)
-                            throw debug::exception("OP::INC costs value overflow");
+                            throw TAO::Register::MalformedException("OP::INC costs value overflow");
 
                         /* Reduce the costs to prevent operation exhuastive attacks. */
                         nCost += 64;
@@ -530,15 +607,15 @@ namespace TAO
                     {
                         /* Check computational bounds. */
                         if(vRet.size() > 1)
-                            throw debug::exception("OP::DEC computation greater than 64-bits");
+                            throw TAO::Register::MalformedException("OP::DEC computation greater than 64-bits");
 
                         /* Compute the return value. */
                         if(--at(vRet) == std::numeric_limits<uint64_t>::max())
-                            throw debug::exception("OP::DEC 64-bit value overflow");
+                            nWarnings |= WARNINGS::DEC_OVERFLOW;
 
                         /* Check for overflows. */
                         if(nCost + 64 < nCost)
-                            throw debug::exception("OP::DEC costs value overflow");
+                            throw TAO::Register::MalformedException("OP::DEC costs value overflow");
 
                         /* Reduce the costs to prevent operation exhuastive attacks. */
                         nCost += 64;
@@ -552,26 +629,26 @@ namespace TAO
                     {
                         /* Get the divisor from r-value. */
                         TAO::Register::Value vDiv;
-                        if(!GetValue(vDiv))
-                            throw debug::exception("OP::DIV failed to get r-value");
+                        if(!get_value(vDiv, nWarnings))
+                            return false; //("OP::DIV failed to get r-value");
 
                         /* Check computational bounds. */
                         if(vDiv.size() > 1 || vRet.size() > 1)
-                            throw debug::exception("OP::DIV computation greater than 64-bits");
+                            throw TAO::Register::MalformedException("OP::DIV computation greater than 64-bits");
 
                         /* Check for exceptions. */
                         if(at(vDiv) == 0)
-                            throw debug::exception("OP::DIV cannot divide by zero");
-
-                        /* Compute the return value. */
-                        at(vRet) /= at(vDiv);
+                            nWarnings |= WARNINGS::DIV_BY_ZERO;
+                        else
+                            /* Compute the return value. */
+                            at(vRet) /= at(vDiv);
 
                         /* Deallocate r-value from memory. */
                         deallocate(vDiv);
 
                         /* Check for overflows. */
                         if(nCost + 128 < nCost)
-                            throw debug::exception("OP::DIV costs value overflow");
+                            throw TAO::Register::MalformedException("OP::DIV costs value overflow");
 
                         /* Reduce the costs to prevent operation exhuastive attacks. */
                         nCost += 128;
@@ -585,16 +662,16 @@ namespace TAO
                     {
                         /* Get the multiplier from r-value. */
                         TAO::Register::Value vMul;
-                        if(!GetValue(vMul))
-                            throw debug::exception("OP::MUL failed to get r-value");
+                        if(!get_value(vMul, nWarnings))
+                            return false; //("OP::MUL failed to get r-value");
 
                         /* Check computational bounds. */
                         if(vMul.size() > 1 || vRet.size() > 1)
-                            throw debug::exception("OP::MUL computation greater than 64-bits");
+                            throw TAO::Register::MalformedException("OP::MUL computation greater than 64-bits");
 
                         /* Check for value overflows. */
                         if(at(vMul) != 0 && at(vRet) > std::numeric_limits<uint64_t>::max() / at(vMul))
-                            throw debug::exception("OP::MUL 64-bit value overflow");
+                            nWarnings |= WARNINGS::MUL_OVERFLOW;
 
                         /* Compute the return value. */
                         at(vRet) *= at(vMul);
@@ -604,7 +681,7 @@ namespace TAO
 
                         /* Check for overflows. */
                         if(nCost + 128 < nCost)
-                            throw debug::exception("OP::MUL costs value overflow");
+                            throw TAO::Register::MalformedException("OP::MUL costs value overflow");
 
                         /* Reduce the costs to prevent operation exhuastive attacks. */
                         nCost += 128;
@@ -618,12 +695,12 @@ namespace TAO
                     {
                         /* Get the exponent from r-value. */
                         TAO::Register::Value vExp;
-                        if(!GetValue(vExp))
-                            throw debug::exception("OP::EXP failed to get r-value");
+                        if(!get_value(vExp, nWarnings))
+                            return false; //("OP::EXP failed to get r-value");
 
                         /* Check computational bounds. */
                         if(vExp.size() > 1 || vRet.size() > 1)
-                            throw debug::exception("OP::EXP computation greater than 64-bits");
+                            throw TAO::Register::MalformedException("OP::EXP computation greater than 64-bits");
 
                         /* Catch for a power of 0. */
                         if(at(vExp) == 0)
@@ -635,7 +712,7 @@ namespace TAO
                         {
                             /* Check for value overflows. */
                             if(nBase != 0 && at(vRet) > std::numeric_limits<uint64_t>::max() / nBase)
-                                throw debug::exception("OP::EXP 64-bit value overflow");
+                                nWarnings |= WARNINGS::EXP_OVERFLOW;
 
                             /* Assign the return value. */
                             at(vRet) *= nBase;
@@ -646,7 +723,7 @@ namespace TAO
 
                         /* Check for overflows. */
                         if(nCost + 256 < nCost)
-                            throw debug::exception("OP::EXP costs value overflow");
+                            throw TAO::Register::MalformedException("OP::EXP costs value overflow");
 
                         /* Reduce the costs to prevent operation exhuastive attacks. */
                         nCost += 256;
@@ -660,26 +737,26 @@ namespace TAO
                     {
                         /* Get the modulus from r-value. */
                         TAO::Register::Value vMod;
-                        if(!GetValue(vMod))
-                            throw debug::exception("OP::MOD failed to get r-value");
+                        if(!get_value(vMod, nWarnings))
+                            return false; //("OP::MOD failed to get r-value");
 
                         /* Check computational bounds. */
                         if(vMod.size() > 1 || vRet.size() > 1)
-                            throw debug::exception("OP::MOD computation greater than 64-bits");
+                            throw TAO::Register::MalformedException("OP::MOD computation greater than 64-bits");
 
                         /* Check for exceptions. */
                         if(at(vMod) == 0)
-                            throw debug::exception("OP::MOD cannot divide by zero");
-
-                        /* Compute the return value. */
-                        at(vRet) %= at(vMod);
+                            nWarnings |= WARNINGS::MOD_DIV_ZERO;
+                        else
+                            /* Compute the return value. */
+                            at(vRet) %= at(vMod);
 
                         /* Deallocate r-value from memory. */
                         deallocate(vMod);
 
                         /* Check for overflows. */
                         if(nCost + 128 < nCost)
-                            throw debug::exception("OP::MOD costs value overflow");
+                            throw TAO::Register::MalformedException("OP::MOD costs value overflow");
 
                         /* Reduce the costs to prevent operation exhuastive attacks. */
                         nCost += 128;
@@ -709,7 +786,7 @@ namespace TAO
 
                         /* Check for overflows. */
                         if(nCost + vData.size() < nCost)
-                            throw debug::exception("OP::SUBDATA costs value overflow");
+                            throw TAO::Register::MalformedException("OP::SUBDATA costs value overflow");
 
                         /* Reduce the costs to prevent operation exhuastive attacks. */
                         nCost += vData.size();
@@ -723,8 +800,8 @@ namespace TAO
                     {
                         /* Get the add from r-value. */
                         TAO::Register::Value vCat;
-                        if(!GetValue(vCat))
-                            throw debug::exception("OP::CAT failed to get r-value");
+                        if(!get_value(vCat, nWarnings))
+                            return false; //("OP::CAT failed to get r-value");
 
                         /* Extract the string. */
                         std::vector<uint8_t> vAlloc;
@@ -740,7 +817,7 @@ namespace TAO
 
                         /* Check for overflows. */
                         if(nCost + vCat.size() < nCost)
-                            throw debug::exception("OP::CAT costs value overflow");
+                            throw TAO::Register::MalformedException("OP::CAT costs value overflow");
 
                         /* Adjust the costs. */
                         nCost += vCat.size();
@@ -762,7 +839,7 @@ namespace TAO
 
                         /* Check for overflows. */
                         if(nCost + 1 < nCost)
-                            throw debug::exception("OP::TYPES::UINT8_T costs value overflow");
+                            throw TAO::Register::MalformedException("OP::TYPES::UINT8_T costs value overflow");
 
                         /* Reduce the costs to prevent operation exhuastive attacks. */
                         nCost += 1;
@@ -783,7 +860,7 @@ namespace TAO
 
                         /* Check for overflows. */
                         if(nCost + 2 < nCost)
-                            throw debug::exception("OP::TYPES::UINT16_T costs value overflow");
+                            throw TAO::Register::MalformedException("OP::TYPES::UINT16_T costs value overflow");
 
                         /* Reduce the costs to prevent operation exhuastive attacks. */
                         nCost += 2;
@@ -804,7 +881,7 @@ namespace TAO
 
                         /* Check for overflows. */
                         if(nCost + 4 < nCost)
-                            throw debug::exception("OP::TYPES::UINT32_T costs value overflow");
+                            throw TAO::Register::MalformedException("OP::TYPES::UINT32_T costs value overflow");
 
                         /* Reduce the costs to prevent operation exhuastive attacks. */
                         nCost += 4;
@@ -825,7 +902,7 @@ namespace TAO
 
                         /* Check for overflows. */
                         if(nCost + 8 < nCost)
-                            throw debug::exception("OP::TYPES::UINT64_T costs value overflow");
+                            throw TAO::Register::MalformedException("OP::TYPES::UINT64_T costs value overflow");
 
                         /* Reduce the costs to prevent operation exhuastive attacks. */
                         nCost += 8;
@@ -846,7 +923,7 @@ namespace TAO
 
                         /* Check for overflows. */
                         if(nCost + 32 < nCost)
-                            throw debug::exception("OP::TYPES::UINT256_T costs value overflow");
+                            throw TAO::Register::MalformedException("OP::TYPES::UINT256_T costs value overflow");
 
                         /* Reduce the costs to prevent operation exhuastive attacks. */
                         nCost += 32;
@@ -868,7 +945,7 @@ namespace TAO
 
                         /* Check for overflows. */
                         if(nCost + 64 < nCost)
-                            throw debug::exception("OP::TYPES::UINT512_T costs value overflow");
+                            throw TAO::Register::MalformedException("OP::TYPES::UINT512_T costs value overflow");
 
                         /* Reduce the costs to prevent operation exhuastive attacks. */
                         nCost += 64;
@@ -889,7 +966,7 @@ namespace TAO
 
                         /* Check for overflows. */
                         if(nCost + 128 < nCost)
-                            throw debug::exception("OP::TYPES::UINT1024_T costs value overflow");
+                            throw TAO::Register::MalformedException("OP::TYPES::UINT1024_T costs value overflow");
 
                         /* Reduce the costs to prevent operation exhuastive attacks. */
                         nCost += 128;
@@ -907,7 +984,7 @@ namespace TAO
 
                         /* Check for empty string. */
                         if(str.empty())
-                            throw debug::exception("OP::TYPES::STRING string is empty");
+                            throw TAO::Register::MalformedException("OP::TYPES::STRING string is empty");
 
                         /* Set the register value. */
                         allocate(str, vRet);
@@ -915,7 +992,7 @@ namespace TAO
                         /* Check for overflows. */
                         uint32_t nSize = str.size();
                         if(nCost + nSize < nCost)
-                            throw debug::exception("OP::TYPES::STRING costs value overflow");
+                            throw TAO::Register::MalformedException("OP::TYPES::STRING costs value overflow");
 
                         /* Reduce the costs to prevent operation exhuastive attacks. */
                         nCost += nSize;
@@ -933,7 +1010,7 @@ namespace TAO
 
                         /* Check for empty string. */
                         if(vData.empty())
-                            throw debug::exception("OP::TYPES::BYTES vector is empty");
+                            throw TAO::Register::MalformedException("OP::TYPES::BYTES vector is empty");
 
                         /* Set the register value. */
                         allocate(vData, vRet);
@@ -941,7 +1018,7 @@ namespace TAO
                         /* Check for overflows. */
                         uint32_t nSize = vData.size();
                         if(nCost + nSize < nCost)
-                            throw debug::exception("OP::TYPES::BYTES costs value overflow");
+                            throw TAO::Register::MalformedException("OP::TYPES::BYTES costs value overflow");
 
                         /* Reduce the costs to prevent operation exhuastive attacks. */
                         nCost += nSize;
@@ -961,7 +1038,7 @@ namespace TAO
 
                         /* Check for overflows. */
                         if(nCost + 32 < nCost)
-                            throw debug::exception("OP::GLOBAL::UNIFIED costs value overflow");
+                            throw TAO::Register::MalformedException("OP::GLOBAL::UNIFIED costs value overflow");
 
                         /* Reduce the costs to prevent operation exhuastive attacks. */
                         nCost += 32;
@@ -988,11 +1065,11 @@ namespace TAO
 
                                 /* Read the register states. */
                                 if(!LLD::Register->ReadState(hashRegister, state))
-                                    return false;
+                                    throw TAO::Register::MalformedException("OP::REGISTER::MODIFIED register not found");
 
                                 /* Check for overflows. */
                                 if(nCost + 5004 < nCost)
-                                    throw debug::exception("OP::REGISTER::MODIFIED costs value overflow");
+                                    throw TAO::Register::MalformedException("OP::REGISTER::MODIFIED costs value overflow");
 
                                 /* Reduce the costs to prevent operation exhuastive attacks. */
                                 nCost += 5004;
@@ -1017,7 +1094,7 @@ namespace TAO
 
                                 /* Check for overflows. */
                                 if(nCost + 8 < nCost)
-                                    throw debug::exception("OP::CALLER::PRESTATE::MODIFIED costs value overflow");
+                                    throw TAO::Register::MalformedException("OP::CALLER::PRESTATE::MODIFIED costs value overflow");
 
                                 /* Reduce the costs to prevent operation exhuastive attacks. */
                                 nCost += 8;
@@ -1051,11 +1128,11 @@ namespace TAO
 
                                 /* Read the register states. */
                                 if(!LLD::Register->ReadState(hashRegister, state))
-                                    return false;
+                                    throw TAO::Register::MalformedException("OP::REGISTER::CREATED register not found");
 
                                 /* Check for overflows. */
                                 if(nCost + 5004 < nCost)
-                                    throw debug::exception("OP::REGISTER::CREATED costs value overflow");
+                                    throw TAO::Register::MalformedException("OP::REGISTER::CREATED costs value overflow");
 
                                 /* Reduce the costs to prevent operation exhuastive attacks. */
                                 nCost += 5004;
@@ -1080,7 +1157,7 @@ namespace TAO
 
                                 /* Check for overflows. */
                                 if(nCost + 8 < nCost)
-                                    throw debug::exception("OP::CALLER::PRESTATE::CREATED costs value overflow");
+                                    throw TAO::Register::MalformedException("OP::CALLER::PRESTATE::CREATED costs value overflow");
 
                                 /* Reduce the costs to prevent operation exhuastive attacks. */
                                 nCost += 8;
@@ -1114,11 +1191,11 @@ namespace TAO
 
                                 /* Read the register states. */
                                 if(!LLD::Register->ReadState(hashRegister, state))
-                                    return false;
+                                    throw TAO::Register::MalformedException("OP::REGISTER::OWNER register not found");
 
                                 /* Check for overflows. */
                                 if(nCost + 4128 < nCost)
-                                    throw debug::exception("OP::REGISTER::OWNER costs value overflow");
+                                    throw TAO::Register::MalformedException("OP::REGISTER::OWNER costs value overflow");
 
                                 /* Reduce the costs to prevent operation exhuastive attacks. */
                                 nCost += 4128;
@@ -1143,7 +1220,7 @@ namespace TAO
 
                                 /* Check for overflows. */
                                 if(nCost + 32 < nCost)
-                                    throw debug::exception("OP::CALLER::PRESTATE::OWNER costs value overflow");
+                                    throw TAO::Register::MalformedException("OP::CALLER::PRESTATE::OWNER costs value overflow");
 
                                 /* Reduce the costs to prevent operation exhuastive attacks. */
                                 nCost += 32;
@@ -1177,11 +1254,11 @@ namespace TAO
 
                                 /* Read the register states. */
                                 if(!LLD::Register->ReadState(hashRegister, state))
-                                    return false;
+                                    throw TAO::Register::MalformedException("OP::REGISTER::TYPE register not found");
 
                                 /* Check for overflows. */
                                 if(nCost + 4097 < nCost)
-                                    throw debug::exception("OP::REGISTER::TYPE costs value overflow");
+                                    throw TAO::Register::MalformedException("OP::REGISTER::TYPE costs value overflow");
 
                                 /* Reduce the costs to prevent operation exhuastive attacks. */
                                 nCost += 4097;
@@ -1206,7 +1283,7 @@ namespace TAO
 
                                 /* Check for overflows. */
                                 if(nCost + 1 < nCost)
-                                    throw debug::exception("OP::CALLER::PRESTATE::TYPE costs value overflow");
+                                    throw TAO::Register::MalformedException("OP::CALLER::PRESTATE::TYPE costs value overflow");
 
                                 /* Reduce the costs to prevent operation exhuastive attacks. */
                                 nCost += 1;
@@ -1240,12 +1317,12 @@ namespace TAO
 
                                 /* Read the register states. */
                                 if(!LLD::Register->ReadState(hashRegister, state))
-                                    return false;
+                                    throw TAO::Register::MalformedException("OP::REGISTER::STATE register not found");
 
                                 /* Check for overflows. */
                                 uint32_t nSize = 4096 + state.GetState().size();
                                 if(nCost + nSize < nCost)
-                                    throw debug::exception("OP::REGISTER::STATE costs value overflow");
+                                    throw TAO::Register::MalformedException("OP::REGISTER::STATE costs value overflow");
 
                                 /* Reduce the costs to prevent operation exhuastive attacks. */
                                 nCost += nSize;
@@ -1271,7 +1348,7 @@ namespace TAO
                                 /* Check for overflows. */
                                 uint32_t nSize = state.GetState().size();
                                 if(nCost + nSize < nCost)
-                                    throw debug::exception("OP::CALLER::PRESTATE::STATE costs value overflow");
+                                    throw TAO::Register::MalformedException("OP::CALLER::PRESTATE::STATE costs value overflow");
 
                                 /* Reduce the costs to prevent operation exhuastive attacks. */
                                 nCost += nCost;
@@ -1305,11 +1382,11 @@ namespace TAO
 
                                 /* Read the register states. */
                                 if(!LLD::Register->ReadState(hashRegister, object))
-                                    return false;
+                                    throw TAO::Register::MalformedException("OP::REGISTER::VALUE register not found");
 
                                 /* Check for overflows. */
                                 if(nCost + 4096 < nCost)
-                                    throw debug::exception("OP::REGISTER::VALUE costs value overflow");
+                                    throw TAO::Register::MalformedException("OP::REGISTER::VALUE costs value overflow");
 
                                 /* Reduce the costs to prevent operation exhuastive attacks. */
                                 nCost += 4096;
@@ -1342,16 +1419,16 @@ namespace TAO
 
                         /* Check for object register type. */
                         if(object.nType != TAO::Register::REGISTER::OBJECT)
-                            return false;
+                            throw TAO::Register::MalformedException("OP::REGISTER::VALUE register is not an object");
 
                         /* Parse the object register. */
                         if(!object.Parse())
-                            return false;
+                            throw TAO::Register::MalformedException("OP::REGISTER::VALUE could not parse object");
 
                         /* Get the supported type enumeration. */
                         uint8_t nType;
                         if(!object.Type(strValue, nType))
-                            return false;
+                            throw TAO::Register::MalformedException("OP::REGISTER::VALUE could not get field type");
 
                         /* Switch supported types. */
                         switch(nType)
@@ -1362,14 +1439,14 @@ namespace TAO
                                 /* Read the value. */
                                 uint8_t nValue;
                                 if(!object.Read(strValue, nValue))
-                                    return false;
+                                    throw TAO::Register::MalformedException("OP::REGISTER::VALUE::UINT8_T could not read value");
 
                                 /* Allocate the value. */
                                 allocate(nValue, vRet);
 
                                 /* Check for overflows. */
                                 if(nCost + 1 < nCost)
-                                    throw debug::exception("OP::REGISTER::VALUE::UINT8_T costs value overflow");
+                                    throw TAO::Register::MalformedException("OP::REGISTER::VALUE::UINT8_T costs value overflow");
 
                                 /* Reduce the costs to prevent operation exhuastive attacks. */
                                 nCost += 1;
@@ -1384,14 +1461,14 @@ namespace TAO
                                 /* Read the value. */
                                 uint16_t nValue;
                                 if(!object.Read(strValue, nValue))
-                                    return false;
+                                    throw TAO::Register::MalformedException("OP::REGISTER::VALUE::UINT16_T could not read value");
 
                                 /* Allocate the value. */
                                 allocate(nValue, vRet);
 
                                 /* Check for overflows. */
                                 if(nCost + 2 < nCost)
-                                    throw debug::exception("OP::REGISTER::VALUE::UINT16_T costs value overflow");
+                                    throw TAO::Register::MalformedException("OP::REGISTER::VALUE::UINT16_T costs value overflow");
 
                                 /* Reduce the costs to prevent operation exhuastive attacks. */
                                 nCost += 2;
@@ -1406,14 +1483,14 @@ namespace TAO
                                 /* Read the value. */
                                 uint32_t nValue;
                                 if(!object.Read(strValue, nValue))
-                                    return false;
+                                    throw TAO::Register::MalformedException("OP::REGISTER::VALUE::UINT32_T could not read value");
 
                                 /* Allocate the value. */
                                 allocate(nValue, vRet);
 
                                 /* Check for overflows. */
                                 if(nCost + 4 < nCost)
-                                    throw debug::exception("OP::REGISTER::VALUE::UINT32_T costs value overflow");
+                                    throw TAO::Register::MalformedException("OP::REGISTER::VALUE::UINT32_T costs value overflow");
 
                                 /* Reduce the costs to prevent operation exhuastive attacks. */
                                 nCost += 4;
@@ -1428,14 +1505,14 @@ namespace TAO
                                 /* Read the value. */
                                 uint64_t nValue;
                                 if(!object.Read(strValue, nValue))
-                                    return false;
+                                    throw TAO::Register::MalformedException("OP::REGISTER::VALUE::UINT64_T could not read value");
 
                                 /* Allocate the value. */
                                 allocate(nValue, vRet);
 
                                 /* Check for overflows. */
                                 if(nCost + 8 < nCost)
-                                    throw debug::exception("OP::REGISTER::VALUE::UINT64_T costs value overflow");
+                                    throw TAO::Register::MalformedException("OP::REGISTER::VALUE::UINT64_T costs value overflow");
 
                                 /* Reduce the costs to prevent operation exhuastive attacks. */
                                 nCost += 8;
@@ -1450,14 +1527,14 @@ namespace TAO
                                 /* Read the value. */
                                 uint256_t nValue;
                                 if(!object.Read(strValue, nValue))
-                                    return false;
+                                    throw TAO::Register::MalformedException("OP::REGISTER::VALUE::UINT256_T could not read value");
 
                                 /* Allocate the value. */
                                 allocate(nValue, vRet);
 
                                 /* Check for overflows. */
                                 if(nCost + 32 < nCost)
-                                    throw debug::exception("OP::REGISTER::VALUE::UINT256_T costs value overflow");
+                                    throw TAO::Register::MalformedException("OP::REGISTER::VALUE::UINT256_T costs value overflow");
 
                                 /* Reduce the costs to prevent operation exhuastive attacks. */
                                 nCost += 32;
@@ -1472,14 +1549,14 @@ namespace TAO
                                 /* Read the value. */
                                 uint512_t nValue;
                                 if(!object.Read(strValue, nValue))
-                                    return false;
+                                    throw TAO::Register::MalformedException("OP::REGISTER::VALUE::UINT512_T could not read value");
 
                                 /* Allocate the value. */
                                 allocate(nValue, vRet);
 
                                 /* Check for overflows. */
                                 if(nCost + 64 < nCost)
-                                    throw debug::exception("OP::REGISTER::VALUE::UINT512_T costs value overflow");
+                                    throw TAO::Register::MalformedException("OP::REGISTER::VALUE::UINT512_T costs value overflow");
 
                                 /* Reduce the costs to prevent operation exhuastive attacks. */
                                 nCost += 64;
@@ -1494,14 +1571,14 @@ namespace TAO
                                 /* Read the value. */
                                 uint1024_t nValue;
                                 if(!object.Read(strValue, nValue))
-                                    return false;
+                                    throw TAO::Register::MalformedException("OP::REGISTER::VALUE::UINT1024_T could not read value");
 
                                 /* Allocate the value. */
                                 allocate(nValue, vRet);
 
                                 /* Check for overflows. */
                                 if(nCost + 128 < nCost)
-                                    throw debug::exception("OP::REGISTER::VALUE::UINT1024_T costs value overflow");
+                                    throw TAO::Register::MalformedException("OP::REGISTER::VALUE::UINT1024_T costs value overflow");
 
                                 /* Reduce the costs to prevent operation exhuastive attacks. */
                                 nCost += 128;
@@ -1516,7 +1593,7 @@ namespace TAO
                                 /* Read the value. */
                                 std::string strData;
                                 if(!object.Read(strValue, strData))
-                                    return false;
+                                    throw TAO::Register::MalformedException("OP::REGISTER::VALUE::STRING could not read value");
 
                                 /* Allocate the value. */
                                 allocate(strData, vRet);
@@ -1524,7 +1601,7 @@ namespace TAO
                                 /* Check for overflows. */
                                 uint32_t nSize = strData.size();
                                 if(nCost + nSize < nCost)
-                                    throw debug::exception("OP::REGISTER::VALUE::STRING costs value overflow");
+                                    throw TAO::Register::MalformedException("OP::REGISTER::VALUE::STRING costs value overflow");
 
                                 /* Reduce the costs to prevent operation exhuastive attacks. */
                                 nCost += nSize;
@@ -1539,7 +1616,7 @@ namespace TAO
                                 /* Read the value. */
                                 std::vector<uint8_t> vData;
                                 if(!object.Read(strValue, vData))
-                                    return false;
+                                    throw TAO::Register::MalformedException("OP::REGISTER::VALUE::BYTES could not read value");
 
                                 /* Allocate the value. */
                                 allocate(vData, vRet);
@@ -1547,7 +1624,7 @@ namespace TAO
                                 /* Check for overflows. */
                                 uint32_t nSize = vData.size();
                                 if(nCost + nSize < nCost)
-                                    throw debug::exception("OP::REGISTER::VALUE::BYTES costs value overflow");
+                                    throw TAO::Register::MalformedException("OP::REGISTER::VALUE::BYTES costs value overflow");
 
                                 /* Reduce the costs to prevent operation exhuastive attacks. */
                                 nCost += nSize;
@@ -1556,7 +1633,7 @@ namespace TAO
                             }
 
                             default:
-                                return false;
+                                throw TAO::Register::MalformedException("OP::REGISTER::VALUE unsupported type");
                         }
 
                         break;
@@ -1571,7 +1648,7 @@ namespace TAO
 
                         /* Check for overflows. */
                         if(nCost + 32 < nCost)
-                            throw debug::exception("OP::CALLER::GENESIS costs value overflow");
+                            throw TAO::Register::MalformedException("OP::CALLER::GENESIS costs value overflow");
 
                         /* Reduce the costs to prevent operation exhuastive attacks. */
                         nCost += 32;
@@ -1588,7 +1665,7 @@ namespace TAO
 
                         /* Check for overflows. */
                         if(nCost + 8 < nCost)
-                            throw debug::exception("OP::CALLER::TIMESTAMP costs value overflow");
+                            throw TAO::Register::MalformedException("OP::CALLER::TIMESTAMP costs value overflow");
 
                         /* Reduce the costs to prevent operation exhuastive attacks. */
                         nCost += 8;
@@ -1605,7 +1682,7 @@ namespace TAO
 
                         /* Check for overflows. */
                         if(nCost + 32 < nCost)
-                            throw debug::exception("OP::CONTRACT::GENESIS costs value overflow");
+                            throw TAO::Register::MalformedException("OP::CONTRACT::GENESIS costs value overflow");
 
                         /* Reduce the costs to prevent operation exhuastive attacks. */
                         nCost += 32;
@@ -1622,7 +1699,7 @@ namespace TAO
 
                         /* Check for overflows. */
                         if(nCost + 8 < nCost)
-                            throw debug::exception("OP::CONTRACT::TIMESTAMP costs value overflow");
+                            throw TAO::Register::MalformedException("OP::CONTRACT::TIMESTAMP costs value overflow");
 
                         /* Reduce the costs to prevent operation exhuastive attacks. */
                         nCost += 8;
@@ -1639,7 +1716,7 @@ namespace TAO
 
                         /* Check for empty operations. */
                         if(vBytes.empty())
-                            throw debug::exception("OP::CONTRACT::OPERATIONS contract has empty operations");
+                            throw TAO::Register::MalformedException("OP::CONTRACT::OPERATIONS contract has empty operations");
 
                         /* Check for condition or validate. */
                         uint8_t nOffset = 0;
@@ -1666,7 +1743,7 @@ namespace TAO
 
                         /* Check that offset is within memory range. */
                         if(vBytes.size() <= nOffset)
-                            throw debug::exception("OP::CONTRACT::OPERATIONS offset is not within size");
+                            throw TAO::Register::MalformedException("OP::CONTRACT::OPERATIONS offset is not within size");
 
                         /* Allocate to the registers. */
                         allocate(vBytes, vRet, nOffset);
@@ -1674,7 +1751,7 @@ namespace TAO
                         /* Check for overflows. */
                         uint32_t nSize = vBytes.size();
                         if(nCost + nSize < nCost)
-                            throw debug::exception("OP::CONTRACT::OPERATIONS costs value overflow");
+                            throw TAO::Register::MalformedException("OP::CONTRACT::OPERATIONS costs value overflow");
 
                         /* Reduce the costs to prevent operation exhuastive attacks. */
                         nCost += nCost;
@@ -1691,7 +1768,7 @@ namespace TAO
 
                         /* Check for empty operations. */
                         if(vBytes.empty())
-                            throw debug::exception("OP::CALLER::OPERATIONS caller has empty operations");
+                            throw TAO::Register::MalformedException("OP::CALLER::OPERATIONS caller has empty operations");
 
                         /* Check for condition or validate. */
                         uint8_t nOffset = 0;
@@ -1718,7 +1795,7 @@ namespace TAO
 
                         /* Check that offset is within memory range. */
                         if(vBytes.size() <= nOffset)
-                            throw debug::exception("OP::CALLER::OPERATIONS offset is not within size");
+                            throw TAO::Register::MalformedException("OP::CALLER::OPERATIONS offset is not within size");
 
                         /* Allocate to the registers. */
                         allocate(vBytes, vRet, nOffset);
@@ -1726,7 +1803,7 @@ namespace TAO
                         /* Check for overflows. */
                         uint32_t nSize = vBytes.size();
                         if(nCost + nSize < nCost)
-                            throw debug::exception("OP::CALLER::OPERATIONS costs value overflow");
+                            throw TAO::Register::MalformedException("OP::CALLER::OPERATIONS costs value overflow");
 
                         /* Reduce the costs to prevent operation exhuastive attacks. */
                         nCost += nCost;
@@ -1743,7 +1820,7 @@ namespace TAO
 
                         /* Check for overflows. */
                         if(nCost + 4 < nCost)
-                            throw debug::exception("OP::LEDGER::HEIGHT costs value overflow");
+                            throw TAO::Register::MalformedException("OP::LEDGER::HEIGHT costs value overflow");
 
                         /* Reduce the costs to prevent operation exhuastive attacks. */
                         nCost += 4;
@@ -1760,7 +1837,7 @@ namespace TAO
 
                         /* Check for overflows. */
                         if(nCost + 8 < nCost)
-                            throw debug::exception("OP::LEDGER::SUPPLY costs value overflow");
+                            throw TAO::Register::MalformedException("OP::LEDGER::SUPPLY costs value overflow");
 
                         /* Reduce the costs to prevent operation exhuastive attacks. */
                         nCost += 8;
@@ -1777,7 +1854,7 @@ namespace TAO
 
                         /* Check for overflows. */
                         if(nCost + 8 < nCost)
-                            throw debug::exception("OP::LEDGER::TIMESTAMP costs value overflow");
+                            throw TAO::Register::MalformedException("OP::LEDGER::TIMESTAMP costs value overflow");
 
                         /* Reduce the costs to prevent operation exhuastive attacks. */
                         nCost += 8;
@@ -1791,7 +1868,7 @@ namespace TAO
                     {
                         /* Check for hash input availability. */
                         if(vRet.null())
-                            throw debug::exception("OP::CRYPTO::SK256: can't hash with no input");
+                            throw TAO::Register::MalformedException("OP::CRYPTO::SK256: can't hash with no input");
 
                         /* Compute the return hash. */
                         uint256_t hash = LLC::SK256((uint8_t*)begin(vRet), (uint8_t*)end(vRet));
@@ -1804,7 +1881,7 @@ namespace TAO
 
                         /* Check for overflows. */
                         if(nCost + 2048 < nCost)
-                            throw debug::exception("OP::CRYPTO::SK256 costs value overflow");
+                            throw TAO::Register::MalformedException("OP::CRYPTO::SK256 costs value overflow");
 
                         /* Reduce the costs to prevent operation exhuastive attacks. */
                         nCost += 2048;
@@ -1818,7 +1895,7 @@ namespace TAO
                     {
                         /* Check for hash input availability. */
                         if(vRet.null())
-                            throw debug::exception("OP::CRYPTO::SK512: can't hash with no input");
+                            throw TAO::Register::MalformedException("OP::CRYPTO::SK512: can't hash with no input");
 
                         /* Compute the return hash. */
                         uint512_t hash = LLC::SK512((uint8_t*)begin(vRet), (uint8_t*)end(vRet));
@@ -1831,7 +1908,7 @@ namespace TAO
 
                         /* Check for overflows. */
                         if(nCost + 2048 < nCost)
-                            throw debug::exception("OP::CRYPTO::SK512 costs value overflow");
+                            throw TAO::Register::MalformedException("OP::CRYPTO::SK512 costs value overflow");
 
                         /* Reduce the costs to prevent operation exhuastive attacks. */
                         nCost += 2048;
@@ -1839,18 +1916,75 @@ namespace TAO
                         break;
                     }
 
-
-                    default:
+                    case OP::GROUP:
+                    case OP::UNGROUP:
+                    case OP::RESERVED:
+                    case OP::AND:
+                    case OP::OR:
+                    case OP::EQUALS:
+                    case OP::GREATERTHAN:
+                    case OP::GREATEREQUALS:
+                    case OP::LESSTHAN:
+                    case OP::LESSEQUALS:
+                    case OP::NOTEQUALS:
+                    case OP::CONTAINS:
                     {
                         /* If no applicable instruction found, rewind and return. */
+                        
                         contract.Rewind(1, Contract::CONDITIONS);
 
                         return true;
+                    }
+
+                    default:
+                    {
+                        /* Unknown case so the condition must be malformed */
+                        throw TAO::Register::MalformedException("Malformed conditions");
+                        break;
                     }
                 }
             }
 
             return true;
+
+        }
+
+        /* Converts a warning flag to a string */
+        std::string Condition::WarningToString(uint16_t nWarning)
+        {
+            switch(nWarning)
+            {
+                case WARNINGS::NONE :
+                    return "";
+                
+                case WARNINGS::ADD_OVERFLOW :
+                    return "OP::ADD 64-bit value overflow";
+
+                case WARNINGS::SUB_OVERFLOW :
+                    return "OP::SUB 64-bit value overflow";
+
+                case WARNINGS::INC_OVERFLOW :
+                    return "OP::INC 64-bit value overflow";
+
+                case WARNINGS::DEC_OVERFLOW :
+                    return "OP::DEC 64-bit value overflow";
+
+                case WARNINGS::MUL_OVERFLOW :
+                    return "OP::MUL 64-bit value overflow";
+                
+                case WARNINGS::EXP_OVERFLOW :
+                    return "OP::EXP 64-bit value overflow";
+
+                case WARNINGS::DIV_BY_ZERO :
+                    return "OP::DIV cannot divide by zero";
+                
+                case WARNINGS::MOD_DIV_ZERO :
+                    return "OP::MOD cannot divide by zero";
+                
+                default :
+                    return "Unknown warning";
+
+            }
         }
     }
 }

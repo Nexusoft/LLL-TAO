@@ -29,7 +29,6 @@ namespace TAO
 
     namespace Operation
     {
-
         /** Validate
          *
          *  An object to handle the executing of validation scripts.
@@ -37,8 +36,6 @@ namespace TAO
          **/
         class Condition : public TAO::Register::BaseVM
         {
-
-
             /** Reference of the contract being execute. **/
             const Contract& contract;
 
@@ -49,6 +46,10 @@ namespace TAO
 
             /** Build the stack for nested grouping. **/
             std::stack<std::pair<bool, uint8_t>> vEvaluate;
+
+
+            /** List of warning flags and stream positions encountered during evaluation **/
+            std::vector<std::pair<uint16_t, uint8_t>> vWarnings;
 
 
         public:
@@ -88,34 +89,80 @@ namespace TAO
 
             /** Reset
              *
-             *  Reset the validation script for re-executing.
+             *  Reset the conditions script for re-executing.
              *
              **/
             void Reset();
 
 
+            /** Validate
+             *
+             *  Validates that the contract conditions script is not malformed and can be executed.
+             *
+             *  @param[in] contract The Contract to validate.
+             *  @param[out] vWarnings Vector of warning flags and stream positions encountered during evaluation.  These include  
+             *  things such as overflows, which do not impede execution but may not be what the contract builder intended.
+             *
+             *  @return True if the contract conditions can be executed without error.
+             **/
+            static bool Validate(const Contract& contract, std::vector<std::pair<uint16_t, uint64_t>> &vWarnings);
+
+
             /** Execute
              *
              *  Execute the validation script.
-             *
+             
+             *  @return True if the conditions evaluated to true.
              **/
             bool Execute();
 
 
-            /** Evaluate
+            /** WarningToString
+            *
+            *  Converts a warning flag to a string
+            *
+            *  @param[in] nWarning The warning to get the text for
+            *
+            *  @return The warning string
+            *
+            **/
+            static std::string WarningToString(uint16_t nWarning);
+
+        private:
+
+            /** Execute
              *
-             *  Evaluate the validation script.
+             *  Execute the validation script.
+             * 
+             *  @param[out] vWarnings Vector of warning flags and stream positions encountered during evaluation.  These include  
+             *  things such as overflows, which do not impede execution but may not be what the contract builder intended.
              *
+             *  @return True if the conditions evaluated to true.
              **/
-            bool Evaluate();
+            bool execute(std::vector<std::pair<uint16_t, uint64_t>> &vWarnings);
+
+            /** evaluate
+             *
+             *  Evaluates a group within the conditions script.  
+             *  
+             *  @param[in] vWarnings Bitmask of warning codes encountered during evaluation 
+             * 
+             *  @return True if the group of conditions at the current position evaluate to true .
+             **/
+            bool evaluate(uint16_t &nWarnings);
 
 
-            /** GetValue
+            /** get_value
              *
              *  Get a value from the register virtual machine.
              *
+             *  @param[in] vWarnings Bitmask of warning codes encountered whilst retrieving the value
+             * 
+             *  @return True if the value at the current position was retrieved.
              **/
-            bool GetValue(TAO::Register::Value& vRet);
+            bool get_value(TAO::Register::Value& vRet, uint16_t &nWarnings);
+
+
         };
     }
 }

@@ -299,6 +299,18 @@ namespace TAO
             void Rewind(const uint32_t nPos, const uint8_t nFlags = CONDITIONS) const;
 
 
+            /** Position
+             *
+             *  Returns the current position of the required stream  
+             *
+             *  @param[in] nFlags The flags to determine which streams to check.
+             *
+             *  @return tthe current position of the required stream 
+             *
+             **/
+            uint64_t Position(const uint8_t nFlags = CONDITIONS) const;
+
+
             /** Operator Overload <<
              *
              *  Serializes data into ssOperation

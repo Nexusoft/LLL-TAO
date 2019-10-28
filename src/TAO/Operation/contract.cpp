@@ -577,5 +577,24 @@ namespace TAO
             if(nFlags & REGISTERS)
                 ssRegister.seek(int32_t(-1 * nPos));
         }
+
+        /* Returns the current position of the required stream */
+        uint64_t Contract::Position(const uint8_t nFlags) const
+        {
+            /* We don't use masks here, because it needs to be exclusive to the stream. */
+            switch(nFlags)
+            {
+                case OPERATIONS:
+                    return ssOperation.pos();
+
+                case CONDITIONS:
+                    return ssCondition.pos();
+
+                case REGISTERS:
+                    return ssRegister.pos();
+            }
+
+            return 0;
+        }
     }
 }
