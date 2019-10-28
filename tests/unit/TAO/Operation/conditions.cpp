@@ -499,7 +499,7 @@ TEST_CASE( "Conditions Tests", "[operation]" )
     {
         Condition script = Condition(contract, caller);
         REQUIRE(script.Execute());
-        REQUIRE(script.available() == 1024);
+        REQUIRE(script.available() == 2048);
     }
 
 
