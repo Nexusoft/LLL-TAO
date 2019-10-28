@@ -1042,26 +1042,6 @@ namespace TAO
                     }
 
 
-                    /* Get a unified timestamp and push to return value. */
-                    case OP::GLOBAL::UNIFIED:
-                    {
-                        /* Get the current unified timestamp. */
-                        uint64_t n = runtime::unifiedtimestamp();
-
-                        /* Set the register value. */
-                        allocate(n, vRet);
-
-                        /* Check for overflows. */
-                        if(nCost + 32 < nCost)
-                            throw TAO::Register::MalformedException("OP::GLOBAL::UNIFIED costs value overflow");
-
-                        /* Reduce the costs to prevent operation exhuastive attacks. */
-                        nCost += 32;
-
-                        break;
-                    }
-
-
                     /* Get a register's timestamp and push to the return value. */
                     case OP::CALLER::PRESTATE::MODIFIED:
                     case OP::REGISTER::MODIFIED:

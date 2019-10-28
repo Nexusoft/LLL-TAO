@@ -211,17 +211,6 @@ namespace TAO
                 };
             }
 
-
-            /* Global state values. */
-            namespace GLOBAL
-            {
-                enum
-                {
-                    UNIFIED       = 0xf0
-
-                    //reserved to 0xf9
-                };
-            }
         }
 
 

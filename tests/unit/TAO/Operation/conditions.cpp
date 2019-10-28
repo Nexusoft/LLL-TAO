@@ -627,7 +627,7 @@ TEST_CASE( "Conditions Tests", "[operation]" )
     }
 
     contract.Clear();
-    contract <= (uint8_t)OP::TYPES::UINT256_T <= hash <= (uint8_t)OP::REGISTER::MODIFIED <= (uint8_t) OP::ADD <= (uint8_t) OP::TYPES::UINT32_T <= 3u <= (uint8_t)OP::GREATERTHAN <= (uint8_t) OP::GLOBAL::UNIFIED;
+    contract <= (uint8_t)OP::TYPES::UINT256_T <= hash <= (uint8_t)OP::REGISTER::MODIFIED <= (uint8_t) OP::ADD <= (uint8_t) OP::TYPES::UINT32_T <= 3u <= (uint8_t)OP::GREATERTHAN <= (uint8_t) OP::LEDGER::TIMESTAMP;
     {
         Condition script = Condition(contract, caller);
         REQUIRE(script.Execute());
