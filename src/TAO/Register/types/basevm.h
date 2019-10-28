@@ -46,7 +46,7 @@ namespace TAO
         public:
 
             /** Default constructor. **/
-            BaseVM(const uint32_t nSize = 64);
+            BaseVM(const uint32_t nSize = 256);
 
 
             /** Copy constructor. **/
