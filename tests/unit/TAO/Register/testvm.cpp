@@ -29,7 +29,7 @@ TEST_CASE( "Base VM allocation tests", "[register]")
         uint8_t data = 55;
 
         registers.allocate(data, value);
-        REQUIRE(registers.available() == 504);
+        REQUIRE(registers.available() == 2040); // 2048 register size minus 8 bytes
 
         uint8_t data2;
         registers.deallocate(data2, value);
@@ -46,7 +46,7 @@ TEST_CASE( "Base VM allocation tests", "[register]")
         uint16_t data = 55555;
 
         registers.allocate(data, value);
-        REQUIRE(registers.available() == 504);
+        REQUIRE(registers.available() == 2040); // 2048 register size minus 8 bytes
 
         uint16_t data2;
         registers.deallocate(data2, value);
@@ -62,7 +62,7 @@ TEST_CASE( "Base VM allocation tests", "[register]")
         uint32_t data = 823847328;
 
         registers.allocate(data, value);
-        REQUIRE(registers.available() == 504);
+        REQUIRE(registers.available() == 2040); // 2048 register size minus 8 bytes
 
         uint32_t data2;
         registers.deallocate(data2, value);
@@ -78,7 +78,7 @@ TEST_CASE( "Base VM allocation tests", "[register]")
         uint64_t data = 82323847387847328;
 
         registers.allocate(data, value);
-        REQUIRE(registers.available() == 504);
+        REQUIRE(registers.available() == 2040); // 2048 register size minus 8 bytes
 
         uint64_t data2;
         registers.deallocate(data2, value);
@@ -94,7 +94,7 @@ TEST_CASE( "Base VM allocation tests", "[register]")
         uint256_t data = LLC::GetRand256();
 
         registers.allocate(data, value);
-        REQUIRE(registers.available() == 480);
+        REQUIRE(registers.available() == 2016);
 
         uint256_t data2;
         registers.deallocate(data2, value);
@@ -110,7 +110,7 @@ TEST_CASE( "Base VM allocation tests", "[register]")
         uint512_t data = LLC::GetRand512();
 
         registers.allocate(data, value);
-        REQUIRE(registers.available() == 448);
+        REQUIRE(registers.available() == 1984);
 
         uint512_t data2;
         registers.deallocate(data2, value);
@@ -126,7 +126,7 @@ TEST_CASE( "Base VM allocation tests", "[register]")
         uint1024_t data = LLC::GetRand1024();
 
         registers.allocate(data, value);
-        REQUIRE(registers.available() == 384);
+        REQUIRE(registers.available() == 1920);
 
         uint1024_t data2;
         registers.deallocate(data2, value);
@@ -143,7 +143,7 @@ TEST_CASE( "Base VM allocation tests", "[register]")
         RAND_bytes((uint8_t*)&data[0], data.size());
 
         registers.allocate(data, value);
-        REQUIRE(registers.available() == 456);
+        REQUIRE(registers.available() == 1992);
 
         std::vector<uint8_t> data2;
         registers.deallocate(data2, value);
@@ -162,7 +162,7 @@ TEST_CASE( "Base VM allocation tests", "[register]")
         RAND_bytes((uint8_t*)&data[0], data.size());
 
         registers.allocate(data, value);
-        REQUIRE(registers.available() == 440);
+        REQUIRE(registers.available() == 1976);
 
         std::vector<uint8_t> data2;
         registers.deallocate(data2, value);
@@ -180,7 +180,7 @@ TEST_CASE( "Base VM allocation tests", "[register]")
         std::string data = "this is a random string";
 
         registers.allocate(data, value);
-        REQUIRE(registers.available() == 488);
+        REQUIRE(registers.available() == 2024);
 
         std::string data2;
         registers.deallocate(data2, value);
@@ -199,7 +199,7 @@ TEST_CASE( "Base VM allocation tests", "[register]")
         std::string data = "this is a random string";
 
         registers.allocate(data, value);
-        REQUIRE(registers.available() == 488);
+        REQUIRE(registers.available() == 2024);
 
         TAO::Register::Value value2;
         std::string data2 = "random";

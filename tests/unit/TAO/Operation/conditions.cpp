@@ -40,6 +40,8 @@ TEST_CASE( "Conditions Tests", "[operation]" )
     TAO::Register::Address hashTo   = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
     uint64_t  nAmount  = 500;
 
+    std::vector<std::pair<uint16_t, uint64_t>> vWarnings;
+
     TAO::Ledger::Transaction tx;
     tx.nTimestamp  = 989798;
     tx.hashGenesis = LLC::GetRand256();
@@ -105,56 +107,86 @@ TEST_CASE( "Conditions Tests", "[operation]" )
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(0) <= (uint8_t) OP::SUB <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(100) <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= 222u;
     {
+        REQUIRE(Condition::Verify(contract, vWarnings));
+        REQUIRE(vWarnings.size() > 0);
+        REQUIRE(Condition::WarningToString(vWarnings[0].first).find("OP::SUB 64-bit value overflow") != std::string::npos);
+
         Condition script = Condition(contract, caller);
-        REQUIRE_THROWS_WITH(script.Execute(), "OP::SUB 64-bit value overflow");
+        REQUIRE_FALSE(script.Execute());
+        
     }
 
 
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(555) <= (uint8_t) OP::SUB <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(std::numeric_limits<uint64_t>::max()) <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= 222u;
     {
+        REQUIRE(Condition::Verify(contract, vWarnings));
+        REQUIRE(vWarnings.size() > 0);
+        REQUIRE(Condition::WarningToString(vWarnings[0].first).find("OP::SUB 64-bit value overflow") != std::string::npos);
+        
         Condition script = Condition(contract, caller);
-        REQUIRE_THROWS_WITH(script.Execute(), "OP::SUB 64-bit value overflow");
+        REQUIRE_FALSE(script.Execute());
     }
 
 
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT64_T <= std::numeric_limits<uint64_t>::max() <= (uint8_t) OP::ADD <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(100) <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= 222u;
     {
+        REQUIRE(Condition::Verify(contract, vWarnings));
+        REQUIRE(vWarnings.size() > 0);
+        REQUIRE(Condition::WarningToString(vWarnings[0].first).find("OP::ADD 64-bit value overflow") != std::string::npos);
+        
         Condition script = Condition(contract, caller);
-        REQUIRE_THROWS_WITH(script.Execute(), "OP::ADD 64-bit value overflow");
+        REQUIRE_FALSE(script.Execute());
     }
 
 
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT64_T <= std::numeric_limits<uint64_t>::max() <= (uint8_t) OP::DIV <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(0) <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= 222u;
     {
+        REQUIRE(Condition::Verify(contract, vWarnings));
+        REQUIRE(vWarnings.size() > 0);
+        REQUIRE(Condition::WarningToString(vWarnings[0].first).find("OP::DIV cannot divide by zero") != std::string::npos);
+        
         Condition script = Condition(contract, caller);
-        REQUIRE_THROWS_WITH(script.Execute(), "OP::DIV cannot divide by zero");
+        REQUIRE_FALSE(script.Execute());
+  
     }
 
 
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT64_T <= std::numeric_limits<uint64_t>::max() <= (uint8_t) OP::MOD <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(0) <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= 222u;
     {
+        REQUIRE(Condition::Verify(contract, vWarnings));
+        REQUIRE(vWarnings.size() > 0);
+        REQUIRE(Condition::WarningToString(vWarnings[0].first).find("OP::MOD cannot divide by zero") != std::string::npos);
+        
         Condition script = Condition(contract, caller);
-        REQUIRE_THROWS_WITH(script.Execute(), "OP::MOD cannot divide by zero");
+        REQUIRE_FALSE(script.Execute());
     }
 
 
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(std::numeric_limits<uint64_t>::max()) <= (uint8_t) OP::INC <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= uint32_t(222);
     {
+        REQUIRE(Condition::Verify(contract, vWarnings));
+        REQUIRE(vWarnings.size() > 0);
+        REQUIRE(Condition::WarningToString(vWarnings[0].first).find("OP::INC 64-bit value overflow") != std::string::npos);
+        
         Condition script = Condition(contract, caller);
-        REQUIRE_THROWS_WITH(script.Execute(), "OP::INC 64-bit value overflow");
+        REQUIRE_FALSE(script.Execute());
     }
 
 
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(0) <= (uint8_t) OP::DEC <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= uint32_t(222);
     {
+        REQUIRE(Condition::Verify(contract, vWarnings));
+        REQUIRE(vWarnings.size() > 0);
+        REQUIRE(Condition::WarningToString(vWarnings[0].first).find("OP::DEC 64-bit value overflow") != std::string::npos);
+        
         Condition script = Condition(contract, caller);
-        REQUIRE_THROWS_WITH(script.Execute(), "OP::DEC 64-bit value overflow");
+        REQUIRE_FALSE(script.Execute());
     }
 
 
@@ -162,22 +194,32 @@ TEST_CASE( "Conditions Tests", "[operation]" )
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(555) <= (uint8_t) OP::EXP <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(9999) <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= 222u;
     {
+        REQUIRE(Condition::Verify(contract, vWarnings));
+        REQUIRE(vWarnings.size() > 0);
+        REQUIRE(Condition::WarningToString(vWarnings[0].first).find("OP::EXP 64-bit value overflow") != std::string::npos);
+        
         Condition script = Condition(contract, caller);
-        REQUIRE_THROWS_WITH(script.Execute(), "OP::EXP 64-bit value overflow");
+        REQUIRE_FALSE(script.Execute());
     }
 
 
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(555323423434433443) <= (uint8_t) OP::MUL <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(2387438283734234423) <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= 222u;
     {
+        REQUIRE(Condition::Verify(contract, vWarnings));
+        REQUIRE(vWarnings.size() > 0);
+        REQUIRE(Condition::WarningToString(vWarnings[0].first).find("OP::MUL 64-bit value overflow") != std::string::npos);
+        
         Condition script = Condition(contract, caller);
-        REQUIRE_THROWS_WITH(script.Execute(), "OP::MUL 64-bit value overflow");
+        REQUIRE_FALSE(script.Execute());
     }
 
 
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT256_T <= uint64_t(555323423434433443);
     {
+        REQUIRE_THROWS(Condition::Verify(contract, vWarnings));
+        
         Condition script = Condition(contract, caller);
         REQUIRE_THROWS(script.Execute());
     }
@@ -186,6 +228,10 @@ TEST_CASE( "Conditions Tests", "[operation]" )
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::STRING <= std::string("") <= uint8_t(OP::EQUALS) <= uint8_t(OP::TYPES::STRING) <= std::string("");
     {
+        REQUIRE_FALSE(Condition::Verify(contract, vWarnings));
+        std::string strError = debug::GetLastError();
+        REQUIRE(strError.find("OP::TYPES::STRING string is empty") != std::string::npos);
+        
         Condition script = Condition(contract, caller);
         REQUIRE_THROWS_WITH(script.Execute(), "OP::TYPES::STRING string is empty");
     }
@@ -194,62 +240,71 @@ TEST_CASE( "Conditions Tests", "[operation]" )
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::BYTES <= std::vector<uint8_t>() <= uint8_t(OP::EQUALS) <= uint8_t(OP::TYPES::BYTES) <= std::vector<uint8_t>();
     {
-        Condition script = Condition(contract, caller);
-        REQUIRE_THROWS_WITH(script.Execute(), "OP::TYPES::BYTES vector is empty");
+        REQUIRE_FALSE(Condition::Verify(contract, vWarnings));
+        std::string strError = debug::GetLastError();
+        REQUIRE(strError.find("OP::TYPES::BYTES vector is empty") != std::string::npos);
+        
+        Condition script = Condition(contract, caller);;
     }
 
 
     contract.Clear();
     contract <= (uint8_t)OP::REGISTER::MODIFIED;
     {
+        REQUIRE_FALSE(Condition::Verify(contract, vWarnings));
+        std::string strError = debug::GetLastError();
+        REQUIRE(strError.find("Missing register value") != std::string::npos);
+        
         Condition script = Condition(contract, caller);
-        REQUIRE_THROWS(script.Execute(), "OP::TYPES::BYTES vector is empty");
+        REQUIRE_THROWS_WITH(script.Execute(), "Missing register value");
     }
 
 
     contract.Clear();
     contract <= (uint8_t)OP::CALLER::OPERATIONS;
     {
+        REQUIRE_FALSE(Condition::Verify(contract, vWarnings));
+        std::string strError = debug::GetLastError();
+        REQUIRE(strError.find("Malformed conditions") != std::string::npos);
+        
+
         //temp to test exceptions with no operations
         Contract temp;
 
         Condition script = Condition(contract, temp);
-        REQUIRE_THROWS(script.Execute());
+        REQUIRE_THROWS_WITH(script.Execute(), "OP::CALLER::OPERATIONS caller has empty operations");
     }
 
 
     contract.Clear();
     contract <= (uint8_t)OP::CALLER::OPERATIONS;
     {
-        //temp to test exceptions with no operations
-        Contract temp;
+        REQUIRE_FALSE(Condition::Verify(contract, vWarnings));
+        std::string strError = debug::GetLastError();
+        REQUIRE(strError.find("Malformed conditions") != std::string::npos);
 
-        Condition script = Condition(contract, temp);
-        REQUIRE_THROWS(script.Execute());
-    }
-
-
-    contract.Clear();
-    contract <= (uint8_t)OP::CALLER::OPERATIONS;
-    {
         //temp to test exceptions with no operations
         Contract temp;
         temp << uint8_t(OP::VALIDATE);
 
         Condition script = Condition(contract, temp);
-        REQUIRE_THROWS_WITH(script.Execute(), "OP::CALLER::OPERATIONS offset is not within size");
+        REQUIRE_THROWS_WITH(script.Execute(), "OP::CALLER::OPERATIONS offset is not within size") ;
     }
 
 
     contract.Clear();
     contract <= (uint8_t)OP::CALLER::OPERATIONS;
     {
+        REQUIRE_FALSE(Condition::Verify(contract, vWarnings));
+        std::string strError = debug::GetLastError();
+        REQUIRE(strError.find("Malformed conditions") != std::string::npos);
+
         //temp to test exceptions with no operations
         Contract temp;
         temp << uint8_t(OP::CONDITION);
 
         Condition script = Condition(contract, temp);
-        REQUIRE_THROWS_WITH(script.Execute(), "OP::CALLER::OPERATIONS offset is not within size");
+        REQUIRE_THROWS_WITH(script.Execute(), "OP::CALLER::OPERATIONS offset is not within size") ;
     }
 
 
@@ -444,7 +499,7 @@ TEST_CASE( "Conditions Tests", "[operation]" )
     {
         Condition script = Condition(contract, caller);
         REQUIRE(script.Execute());
-        REQUIRE(script.available() == 512);
+        REQUIRE(script.available() == 2048);
     }
 
 
@@ -572,7 +627,7 @@ TEST_CASE( "Conditions Tests", "[operation]" )
     }
 
     contract.Clear();
-    contract <= (uint8_t)OP::TYPES::UINT256_T <= hash <= (uint8_t)OP::REGISTER::MODIFIED <= (uint8_t) OP::ADD <= (uint8_t) OP::TYPES::UINT32_T <= 3u <= (uint8_t)OP::GREATERTHAN <= (uint8_t) OP::GLOBAL::UNIFIED;
+    contract <= (uint8_t)OP::TYPES::UINT256_T <= hash <= (uint8_t)OP::REGISTER::MODIFIED <= (uint8_t) OP::ADD <= (uint8_t) OP::TYPES::UINT32_T <= 3u <= (uint8_t)OP::GREATERTHAN <= (uint8_t) OP::LEDGER::TIMESTAMP;
     {
         Condition script = Condition(contract, caller);
         REQUIRE(script.Execute());
@@ -789,7 +844,7 @@ TEST_CASE( "Conditions Tests", "[operation]" )
 
     {
         Condition script = Condition(contract, caller);
-        REQUIRE_FALSE(script.Execute());
+        REQUIRE_THROWS_WITH(script.Execute(), "Malformed condition. Cannot evaluate OP::AND with previous OP::OR");
     }
 
 
@@ -918,11 +973,7 @@ TEST_CASE( "Conditions Tests", "[operation]" )
 
     {
         Condition script = Condition(contract, caller);
-        REQUIRE_FALSE(script.Execute());
-
-        //check for error
-        std::string error = debug::GetLastError();
-        REQUIRE(error.find("evaluate groups count incomplete") != std::string::npos);
+        REQUIRE_THROWS_WITH(script.Execute(), "Malformed condition. Evaluate groups count incomplete");
     }
 
 
@@ -985,11 +1036,7 @@ TEST_CASE( "Conditions Tests", "[operation]" )
 
     {
         Condition script = Condition(contract, caller);
-        REQUIRE_FALSE(script.Execute());
-
-        //check for error
-        std::string error = debug::GetLastError();
-        REQUIRE(error.find("cannot evaluate OP::OR with previous OP::AND") != std::string::npos);
+        REQUIRE_THROWS_WITH(script.Execute(), "Malformed condition. Cannot evaluate OP::OR with previous OP::AND");
     }
 
 

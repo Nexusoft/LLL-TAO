@@ -132,7 +132,7 @@ int main(int argc, char** argv)
         true,
         config::GetBoolArg(std::string("-meters"), false),
         true,
-        30000);
+        10000);
 
     /* Get the port for the Core API Server. */
     nPort = static_cast<uint16_t>(config::GetArg(std::string("-rpcport"), config::fTestNet.load() ? TESTNET_RPC_PORT : MAINNET_RPC_PORT));

@@ -55,8 +55,12 @@ namespace TAO
             if(!vOffsets.empty())
             {
                 /* Loop through offsets pattern. */
-                for(const auto& nOffset : vOffsets)
+                uint32_t nSize = vOffsets.size();
+                for(uint32_t n = 0; n < nSize - 4; ++n)
                 {
+                    /* Get the offset. */
+                    uint8_t nOffset = vOffsets[n];
+
                     /* Check for valid offsets. */
                     if(nOffset > 12)
                         return 0.0;
@@ -67,10 +71,23 @@ namespace TAO
                     /* Check prime at offset. */
                     if(!fVerify || PrimeCheck(hashNext))
                         ++nClusterSize;
+
                 }
 
-                /* If offsets all passed, get composite offset. */
-                hashNext += 14;
+                /* Get fractional difficulty. */
+                uint32_t nFraction = 0;
+                std::copy((uint8_t*)&vOffsets[nSize - 4], (uint8_t*)&vOffsets[nSize - 1], (uint8_t*)&nFraction);
+
+                /* If verifying check the fractional difficulty. */
+                if(fVerify && GetFractionalDifficulty(hashNext + 14) != nFraction)
+                    return 0.0;
+
+                /* Calculate the rarity of cluster from proportion of fermat remainder of last prime + 2. */
+                cv::softdouble nRemainder = cv::softdouble(1000000.0) / cv::softdouble(nFraction);
+                if(nRemainder > cv::softdouble(1.0) || nRemainder < cv::softdouble(0.0))
+                    nRemainder = cv::softdouble(0.0);
+
+                return double(nClusterSize + nRemainder);
             }
             else
             {
@@ -87,14 +104,16 @@ namespace TAO
                         ++nClusterSize;
                     }
                 }
+
+                /* Calculate the rarity of cluster from proportion of fermat remainder of last prime + 2. */
+                cv::softdouble nRemainder = cv::softdouble(1000000.0) / cv::softdouble(GetFractionalDifficulty(hashNext));
+                if(nRemainder > cv::softdouble(1.0) || nRemainder < cv::softdouble(0.0))
+                    nRemainder = cv::softdouble(0.0);
+
+                return double(nClusterSize + nRemainder);
             }
 
-            /* Calculate the rarity of cluster from proportion of fermat remainder of last prime + 2. */
-            cv::softdouble nRemainder = cv::softdouble(1000000.0) / cv::softdouble(GetFractionalDifficulty(hashNext));
-            if(nRemainder > cv::softdouble(1.0) || nRemainder < cv::softdouble(0.0))
-                nRemainder = cv::softdouble(0.0);
-
-            return double(nClusterSize + nRemainder);
+            return 0.0;
         }
 
 
@@ -123,6 +142,10 @@ namespace TAO
                     nOffset = 0;
                 }
             }
+
+            /* Get fractional difficulty. */
+            uint32_t nFraction = GetFractionalDifficulty(hashLast + nOffset);
+            vOffsets.insert(vOffsets.end(), (uint8_t*)&nFraction, (uint8_t*)&nFraction + 4);
         }
 
 

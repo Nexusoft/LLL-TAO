@@ -26,6 +26,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/cost.h>
 #include <TAO/Operation/include/execute.h>
 #include <TAO/Operation/include/enum.h>
+#include <TAO/Operation/types/condition.h>
 
 #include <TAO/Register/include/rollback.h>
 #include <TAO/Register/include/verify.h>
@@ -39,6 +40,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/include/stake.h>
 #include <TAO/Ledger/include/stake_change.h>
+#include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/mempool.h>
 
@@ -246,6 +248,10 @@ namespace TAO
                 /* Check for empty contracts. */
                 if(contract.Empty(TAO::Operation::Contract::OPERATIONS))
                     return debug::error(FUNCTION, "contract is empty");
+
+                if(contract.Primitive() == TAO::Operation::OP::LEGACY
+                && (TAO::Ledger::VersionActive(nTimestamp, 6) || TAO::Ledger::CurrentVersion() < 6))
+                    return debug::error(FUNCTION, "no send-to-legacy until version 6 grace period ends");
 
                 if(contract.Primitive() != TAO::Operation::OP::FEE)
                     ++nContracts;
@@ -789,6 +795,10 @@ namespace TAO
 
                 /* Bind the contract to this transaction. */
                 contract.Bind(this);
+
+                /* Verify the conditions */
+                if(!TAO::Operation::Condition::Verify(contract))
+                    return false;
 
                 /* Execute the contracts to final state. */
                 if(!TAO::Operation::Execute(contract, nFlags, nCost))

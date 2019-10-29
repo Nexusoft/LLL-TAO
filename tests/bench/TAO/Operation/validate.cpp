@@ -284,31 +284,6 @@ TEST_CASE( "Validation Script Benchmarks", "[operation]")
     }
 
 
-    {
-        //Operation Contract
-        Contract contract = Contract();
-        contract <= uint8_t(OP::GLOBAL::UNIFIED) <= uint8_t(OP::EQUALS) <= uint8_t(OP::GLOBAL::UNIFIED);
-
-        //Total Operations
-        uint32_t nOps = 3;
-
-        //Benchmark of 1 million executions
-        runtime::timer bench;
-        bench.Reset();
-        {
-            Condition script = Condition(contract, caller);
-            for(int i = 0; i < 1000000; i++)
-            {
-                REQUIRE(script.Execute());
-                script.Reset();
-            }
-        }
-
-        //time output
-        uint64_t nTime = bench.ElapsedMicroseconds();
-        debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "UNIFIED::", ANSI_COLOR_RESET, "Processed ", nOps * 1000000.0 / nTime, " million ops / second");
-    }
-
 
     debug::log(0, "===== End Validation Script Benchmarks =====\n");
 

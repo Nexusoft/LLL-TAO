@@ -881,61 +881,87 @@ namespace LLP
         /* Handle a Request to get a list of Blocks from a Node. */
         else if(message == "getblocks")
         {
-            /* Get the locator. */
+            /* Iterate forward the blocks required. */
+            int32_t nLimits = 1001;
+            std::vector<CInv> vInv;
+
+            /* Deserialize locator. */
             TAO::Ledger::Locator locator;
             ssMessage >> locator;
 
-            /* Get the stopping hash. */
-            uint1024_t hashStop;
-            ssMessage >> hashStop;
-
-            /* Return if nothing in locator. */
-            if(locator.vHave.size() == 0)
-                return false;
-
-            /* Get the block state from. */
-            std::vector<TAO::Ledger::BlockState> vStates;
+            /* Check locator size. */
             for(const auto& have : locator.vHave)
             {
                 /* Check the database for the ancestor block. */
-                if(LLD::Ledger->BatchRead(have, "block", vStates, 1000))
-                    break;
-            }
-
-            /* If no ancestor blocks were found. */
-            if(vStates.size() == 0)
-                return true;
-
-            /* Set the search from search limit. */
-            debug::log(2, "getblocks ", vStates[0].nHeight, " to ", hashStop.SubString());
-
-            /* Iterate forward the blocks required. */
-            std::vector<CInv> vInv;
-
-            /* Loop through found states. */
-            for(const auto& state : vStates)
-            {
-                /* Check if in main chain. */
-                if(!state.IsInMainChain())
-                    continue;
-
-                /* Get the state hash. */
-                hashContinue = state.GetHash();
-
-                /* Check for hash stop. */
-                if(hashContinue == hashStop)
+                if(LLD::Ledger->HasBlock(have))
                 {
-                    debug::log(3, "  getblocks stopping at ", state.nHeight, " to ", hashContinue.SubString());
+                    /* Check if locator found genesis. */
+                    if(have != TAO::Ledger::ChainState::Genesis())
+                    {
+                        /* Grab the block that's found. */
+                        TAO::Ledger::BlockState state;
+                        if(!LLD::Ledger->ReadBlock(have, state))
+                            return debug::error(NODE, "failed to read locator block");
 
-                    /* Tell about latest block if hash stop is found. */
-                    if(hashStop != TAO::Ledger::ChainState::hashBestChain.load())
-                        vInv.push_back(CInv(TAO::Ledger::ChainState::hashBestChain.load(), LLP::MSG_BLOCK_LEGACY));
+                        /* Check for being in main chain. */
+                        if(!state.IsInMainChain())
+                            continue;
+
+                        hashContinue = state.GetHash();
+                    }
+                    else //on genesis, don't rever to previous block
+                        hashContinue = have;
 
                     break;
                 }
+            }
 
-                /* Push new item to inventory. */
-                vInv.push_back(CInv(hashContinue, LLP::MSG_BLOCK_LEGACY));
+            /* Get the ending hash. */
+            uint1024_t hashStop;
+            ssMessage >> hashStop;
+
+            /* Keep track of the last state. */
+            TAO::Ledger::BlockState stateLast;
+            if(!LLD::Ledger->ReadBlock(hashContinue, stateLast))
+                return debug::error(NODE, "failed to read starting block");
+
+            /* Do a sequential read to obtain the list. */
+            std::vector<TAO::Ledger::BlockState> vStates;
+            while(--nLimits >= 0 && LLD::Ledger->BatchRead(hashContinue, "block", vStates, 1000, true))
+            {
+                /* Loop through all available states. */
+                for(auto& state : vStates)
+                {
+                    /* Update start every iteration. */
+                    hashContinue = state.GetHash();
+
+                    /* Skip if not in main chain. */
+                    if(!state.IsInMainChain())
+                        continue;
+
+                    /* Check for matching hashes. */
+                    if(state.hashPrevBlock != stateLast.GetHash())
+                    {
+                        /* Read the correct block from next index. */
+                        if(!LLD::Ledger->ReadBlock(stateLast.hashNextBlock, state))
+                        {
+                            nLimits = 0;
+                            break;
+                        }
+                    }
+
+                    /* Cache the block hash. */
+                    stateLast = state;
+                    if(hashContinue == hashStop)
+                        nLimits = 0; //reset limits to break out of loops
+
+                    /* Check for stop hash. */
+                    if(--nLimits <= 0)
+                        break;
+
+                    /* Push new item to inventory. */
+                    vInv.push_back(CInv(hashContinue, LLP::MSG_BLOCK_LEGACY));
+                }
             }
 
             /* Push the inventory. */

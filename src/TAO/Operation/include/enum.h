@@ -211,17 +211,6 @@ namespace TAO
                 };
             }
 
-
-            /* Global state values. */
-            namespace GLOBAL
-            {
-                enum
-                {
-                    UNIFIED       = 0xf0
-
-                    //reserved to 0xf9
-                };
-            }
         }
 
 
@@ -237,6 +226,26 @@ namespace TAO
                 FORCE = 0xfb
 
                 //TODO: possibly sanitize transfer to USER or ASSET
+            };
+        }
+
+        /* Warnings namespace */
+        namespace WARNINGS
+        {
+            enum
+            {
+                /* No warning */
+                NONE   = 0x00,
+
+                /* conditions warnings */
+                ADD_OVERFLOW    = (1 << 1),
+                SUB_OVERFLOW    = (1 << 2),
+                INC_OVERFLOW    = (1 << 3),
+                DEC_OVERFLOW    = (1 << 4),
+                MUL_OVERFLOW    = (1 << 5),
+                EXP_OVERFLOW    = (1 << 6),
+                DIV_BY_ZERO     = (1 << 7),
+                MOD_DIV_ZERO    = (1 << 8),
             };
         }
     }

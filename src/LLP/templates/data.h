@@ -111,7 +111,6 @@ namespace LLP
         std::thread DATA_THREAD;
 
 
-
         /** The condition for thread sleeping. **/
         std::condition_variable FLUSH_CONDITION;
 
@@ -179,7 +178,7 @@ namespace LLP
 
         /** Flush
          *
-         *  Thread that handles all the Writing of Data from Sockets.
+         *  Thread to handle flushing write buffers.
          *
          **/
         void Flush();
@@ -204,10 +203,13 @@ namespace LLP
             {
                 try
                 {
+                    /* Get atomic pointer to reduce locking around CONNECTIONS scope. */
+                    memory::atomic_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nIndex);
+
                     /* Relay if there are active subscriptions. */
-                    const DataStream ssRelay = CONNECTIONS->at(nIndex)->Notifications(message, ssData);
+                    const DataStream ssRelay = CONNECTION->Notifications(message, ssData);
                     if(ssRelay.size() != 0)
-                        CONNECTIONS->at(nIndex)->WritePacket(ProtocolType::NewMessage(message, ssRelay));
+                        CONNECTION->WritePacket(ProtocolType::NewMessage(message, ssRelay));
                 }
                 catch(const std::exception& e)
                 {
@@ -257,7 +259,7 @@ namespace LLP
          *  @param[in] The index of the connection to remove.
          *
          **/
-        void remove(int32_t index);
+        void remove(uint32_t nIndex);
 
 
         /** find_slot
@@ -266,7 +268,7 @@ namespace LLP
          *  has been flagged Disconnected
          *
          **/
-        int32_t find_slot();
+        uint32_t find_slot();
 
     };
 }

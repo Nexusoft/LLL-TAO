@@ -481,10 +481,10 @@ namespace LLC
 
 		/* Copy the data into a vector of bytes so we can cache the hashed value */
 		std::vector<uint8_t> data(pbegin, pend);
-		
+
 		/* Check the cache for this data */
 		if(!cache1024.Has(data))
-		{				
+		{
 			Skein1024_Ctxt_t ctx;
 			Skein1024_Init(&ctx, 1024);
 			Skein1024_Update(&ctx, (pbegin == pend ? pblank : (uint8_t*)&pbegin[0]), (pend - pbegin) * sizeof(pbegin[0]));

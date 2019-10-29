@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #define NEXUS_TAO_REGISTER_INCLUDE_BASEVM_H
 
 #include <TAO/Register/types/value.h>
+#include <TAO/Register/types/exception.h>
 
 #include <Util/include/debug.h>
 
@@ -25,7 +26,6 @@ namespace TAO
 
     namespace Register
     {
-
         /** BaseVM
          *
          *  A virtual machine that manages processing memory in 64-bit registers.
@@ -46,7 +46,7 @@ namespace TAO
         public:
 
             /** Default constructor. **/
-            BaseVM(const uint32_t nSize = 64);
+            BaseVM(const uint32_t nSize = 256);
 
 
             /** Copy constructor. **/
@@ -165,8 +165,8 @@ namespace TAO
                 value.nBytes = sizeof(data);
 
                 /* Check for memory overflows. */
-                if(value.nEnd >= vRegister.size())
-                    throw std::runtime_error(debug::safe_printstr(FUNCTION, " out of register memory"));
+                if(value.nEnd > vRegister.size())
+                    throw BaseVMException("Out of register memory");
 
                 /* Copy data into the registers. */
                 std::copy((uint8_t*)&data, (uint8_t*)&data + value.nBytes, (uint8_t*)begin(value));
@@ -254,17 +254,21 @@ namespace TAO
             template<typename Data>
             void deallocate(Data& data, const Value& value)
             {
+                /* Check that there is something in the register to deallocate */
+                if(nPointer == 0 || value.nEnd == 0)
+                    throw BaseVMException("Missing register value");
+
                 /* Check for that this is last object (TODO: handle defragmenting). */
                 if(value.nEnd != nPointer)
-                    throw std::runtime_error(debug::safe_printstr(FUNCTION, " cannot deallocate when not last"));
+                    throw BaseVMException("Cannot deallocate when not last");
 
                 /* Check for memory overflows. */
                 if((int32_t)(nPointer - value.size()) < 0)
-                    throw std::runtime_error(debug::safe_printstr(FUNCTION, " invalid memory address ", nPointer - value.size()));
+                    throw BaseVMException("Invalid memory address ", nPointer - value.size());
 
                 /* Check for value size overflows. */
                 if(end(value) - begin(value) != sizeof(data))
-                    throw std::runtime_error(debug::safe_printstr(FUNCTION, " deallocate size mismatch ", end(value) - begin(value), " to ", sizeof(data)));
+                    throw BaseVMException("Deallocate size mismatch ", end(value) - begin(value), " to ", sizeof(data));
 
                 /* Copy data from the registers. */
                 std::copy((uint8_t*)begin(value), (uint8_t*)end(value), (uint8_t*)&data);
