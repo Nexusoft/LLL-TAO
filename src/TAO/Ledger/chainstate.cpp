@@ -96,9 +96,11 @@ namespace TAO
                     /* If local testnet with connections then rely on LLP flag  */
                     || (fLocalTestnet && fHasConnections && !LLP::TritiumNode::fSynchronized.load() )
 
-                    /* If local testnet with no connections then assume sync'd if the last block was more than 30s ago,
-                       which gives us a 30s window to connect to a local peer */
-                    || (fLocalTestnet && !fHasConnections && runtime::unifiedtimestamp() - nLastTime < 30)
+                    /* If local testnet with no connections then assume sync'd if the last block was more than 30s ago 
+                       and block age is more than 20 mins, which gives us a 30s window to connect to a local peer */
+                    || (fLocalTestnet && !fHasConnections 
+                        && runtime::unifiedtimestamp() - nLastTime < 30
+                        && stateBest.load().GetBlockTime() < runtime::unifiedtimestamp() - 20 * 60)
                 );
 
                 return fSynchronizing;
