@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/constants.h>
 
 #include <TAO/Ledger/include/timelocks.h>
@@ -26,57 +27,18 @@ namespace TAO
     /* Ledger Layer namespace. */
     namespace Ledger
     {
-        /* Retrieve the number of blocks (confirmations) required for coinbase maturity for the current network version. */
-        uint32_t MaturityCoinBase()
-        {
-            if(config::fTestNet)
-                return TESTNET_MATURITY_BLOCKS;
-
-            int32_t nCurrent = CurrentVersion();
-
-            /* Apply legacy maturity for all versions prior to version 7 */
-            if(nCurrent < 7)
-                return NEXUS_MATURITY_LEGACY;
-
-            /* Legacy maturity until version 7 is active */
-            if(nCurrent == 7 && !VersionActive(runtime::unifiedtimestamp(), 7))
-                return NEXUS_MATURITY_LEGACY;
-
-            return NEXUS_MATURITY_COINBASE;
-        }
-
-
         /* Retrieve the number of blocks (confirmations) required for coinbase maturity for a given block. */
         uint32_t MaturityCoinBase(const BlockState& block)
         {
             if(config::fTestNet)
                 return TESTNET_MATURITY_BLOCKS;
 
-            /* Apply legacy interval for all versions prior to version 7 */
-            if(block.nVersion < 7)
+            /* Apply legacy interval for all versions prior to version 7.  If the caller is not able to provide a block to base
+               this calculation off, then we will use the stateBest instead */
+            if((!block.IsNull() ? block.nVersion : TAO::Ledger::ChainState::stateBest.load().nVersion) < 7 )
                 return NEXUS_MATURITY_LEGACY;
 
             return NEXUS_MATURITY_COINBASE;
-        }
-
-
-        /* Retrieve the number of blocks (confirmations) required for coinstake maturity for the current network version. */
-        uint32_t MaturityCoinStake()
-        {
-            if(config::fTestNet)
-                return TESTNET_MATURITY_BLOCKS;
-
-            int32_t nCurrent = CurrentVersion();
-
-            /* Apply legacy maturity for all versions prior to version 7 */
-            if(nCurrent < 7)
-                return NEXUS_MATURITY_LEGACY;
-
-            /* Legacy maturity until version 7 is active */
-            if(nCurrent == 7 && !VersionActive(runtime::unifiedtimestamp(), 7))
-                return NEXUS_MATURITY_LEGACY;
-
-            return NEXUS_MATURITY_COINSTAKE;
         }
 
 
@@ -86,8 +48,9 @@ namespace TAO
             if(config::fTestNet)
                 return TESTNET_MATURITY_BLOCKS;
 
-            /* Apply legacy interval for all versions prior to version 7 */
-            if(block.nVersion < 7)
+            /* Apply legacy interval for all versions prior to version 7.  If the caller is not able to provide a block to base
+               this calculation off, then we will use the stateBest instead */
+            if((!block.IsNull() ? block.nVersion : TAO::Ledger::ChainState::stateBest.load().nVersion) < 7 )
                 return NEXUS_MATURITY_LEGACY;
 
             return NEXUS_MATURITY_COINSTAKE;
