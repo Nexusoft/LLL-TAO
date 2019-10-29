@@ -303,7 +303,7 @@ int main(int argc, char** argv)
 
 
         /* If wallet is not encrypted, it is unlocked by default. Start stake minter now. It will run until stopped by system shutdown. */
-        if(config::GetBoolArg(std::string("-beta")) && !Legacy::Wallet::GetInstance().IsCrypted())
+        if(!Legacy::Wallet::GetInstance().IsCrypted())
             Legacy::LegacyMinter::GetInstance().Start();
 
 
