@@ -39,6 +39,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/include/stake.h>
 #include <TAO/Ledger/include/stake_change.h>
+#include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/mempool.h>
 
@@ -246,6 +247,10 @@ namespace TAO
                 /* Check for empty contracts. */
                 if(contract.Empty(TAO::Operation::Contract::OPERATIONS))
                     return debug::error(FUNCTION, "contract is empty");
+
+                if(contract.Primitive() == TAO::Operation::OP::LEGACY
+                && (TAO::Ledger::VersionActive(nTimestamp, 6) || TAO::Ledger::CurrentVersion() < 6))
+                    return debug::error(FUNCTION, "no send-to-legacy until version 6 grace period ends");
 
                 if(contract.Primitive() != TAO::Operation::OP::FEE)
                     ++nContracts;

@@ -904,10 +904,9 @@ namespace Legacy
             if(inputs.count(prevout.hash))
                 continue;
 
-            /* Check for Tritium version transactions.
-             * Becomes ACTIVE 2 hours after v7 timelock activation.
-             */
-            if(TAO::Ledger::VersionActive((nTime - 7200), 7) || TAO::Ledger::CurrentVersion() > 7)
+            /* Cannot spend Tritium send-to-Legacy inputs until after v6 grace period ends */
+            if((TAO::Ledger::VersionActive(nTime, 7) || TAO::Ledger::CurrentVersion() > 7)
+            && !TAO::Ledger::VersionActive(nTime, 6))
             {
                 /* Get the type of transaction. */
                 if(prevout.hash.GetType() == TAO::Ledger::TRITIUM)
@@ -1127,14 +1126,12 @@ namespace Legacy
                     break;
                 }
 
-                /* Handle for tritium transaction. */
+                /* Handle spend of Tritium transaction input (Tritium send-to-Legacy). */
                 case TAO::Ledger::TRITIUM:
                 {
-                    /* Check for Tritium version transactions.
-                     * Becomes ACTIVE 2 hours after v7 activation timelock
-                     */
-                    if(!(TAO::Ledger::VersionActive((nTime - 7200), 7) || TAO::Ledger::CurrentVersion() > 7))
-                        return debug::error(FUNCTION, "tritium transactions not available until version 7");
+                    /* Check Tritium spend activation. Becomes active with v7 after v6 grace period ends. */
+                    if(TAO::Ledger::VersionActive(nTime, 6) || TAO::Ledger::CurrentVersion() < 6)
+                        return debug::error(FUNCTION, "legacy spends of tritium inputs not available until version 7");
 
                     /* Get the previous transaction. */
                     TAO::Ledger::Transaction txPrev;
