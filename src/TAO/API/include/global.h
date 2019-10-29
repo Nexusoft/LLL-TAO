@@ -27,22 +27,24 @@ ________________________________________________________________________________
 #include <TAO/API/types/finance.h>
 #include <TAO/API/types/names.h>
 #include <TAO/API/types/objects.h>
+#include <TAO/API/types/hybrid.h>
 
 namespace TAO
 {
     namespace API
     {
-        extern Assets*   assets;
-        extern Ledger*   ledger;
-        extern Register* reg;
-        extern RPC* RPCCommands;
-        extern Supply* supply;
-        extern System* system;
-        extern Tokens* tokens;
-        extern Users* users;
-        extern Finance* finance;
-        extern Names* names;
-        extern DEX*      dex;
+        extern Assets*      assets;
+        extern Ledger*      ledger;
+        extern Register*    reg;
+        extern RPC*         RPCCommands;
+        extern Supply*      supply;
+        extern System*      system;
+        extern Tokens*      tokens;
+        extern Users*       users;
+        extern Finance*     finance;
+        extern Names*       names;
+        extern DEX*         dex;
+        extern Hybrid*      hybrid;
 
 
         /** Initialize

@@ -31,6 +31,7 @@ namespace TAO
         Finance*    finance;
         Names*      names;
         DEX*        dex;
+        Hybrid*     hybrid;
 
 
         /*  Instantiate global instances of the API. */
@@ -50,6 +51,7 @@ namespace TAO
             finance     = new Finance();
             names       = new Names();
             dex         = new DEX();
+            hybrid      = new Hybrid();
         }
 
 
@@ -90,6 +92,9 @@ namespace TAO
 
             if(dex)
                 delete dex;
+
+            if(hybrid)
+                delete hybrid;
         }
     }
 }

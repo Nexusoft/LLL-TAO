@@ -348,6 +348,8 @@ Error Codes
 | -211 | Recipient object has not been tokenized |
 | -212 | Invalid token |
 | -213 | Cannot create transactions whilst synchronizing |
+| -214 | Missing nonce |
+| -215 | Invalid nonce |
 
 
 

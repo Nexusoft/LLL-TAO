@@ -219,6 +219,8 @@ namespace LLP
                 ret = { {"result", TAO::API::names->Execute(METHOD, params) } };
             else if(strAPI == "dex")
                 ret = { {"result", TAO::API::dex->Execute(METHOD, params) } };
+            else if(strAPI == "hybrid")
+                ret = { {"result", TAO::API::hybrid->Execute(METHOD, params) } };
             else
                 throw TAO::API::APIException(-4, debug::safe_printstr("API not found: ", strAPI));
         }
