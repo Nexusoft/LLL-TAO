@@ -217,6 +217,10 @@ namespace TAO
                     if(!LLD::Ledger->ReadBlock(hashCheckpoint.load(), state))
                         return debug::error(FUNCTION, "no pending checkpoint");
 
+                    /* Check we haven't reached the genesis */
+                    if(state == stateGenesis)
+                        break;
+                        
                     /* Get the previous state. */
                     state = state.Prev();
                     if(!state)
