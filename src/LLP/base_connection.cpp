@@ -103,15 +103,17 @@ namespace LLP
     template <class PacketType>
     void BaseConnection<PacketType>::SetNull()
     {
-        fd = -1;
-        nError = 0;
+        fd              = -1;
+        nError          = 0;
+        DDOS            = nullptr;
+        FLUSH_CONDITION = nullptr;
+        fDDOS           = false;
+        fOUTGOING       = false;
+        fCONNECTED      = false;
+        nDataThread     = -1;
+        nDataIndex      = -1;
+
         INCOMING.SetNull();
-        DDOS  = nullptr;
-        fDDOS = false;
-        fOUTGOING = false;
-        fCONNECTED = false;
-        nDataThread = -1;
-        nDataIndex  = -1;
     }
 
 
@@ -136,6 +138,16 @@ namespace LLP
     bool BaseConnection<PacketType>::PacketComplete() const
     {
         return INCOMING.Complete();
+    }
+
+
+    /* Detect if there is data to write */
+    template <class PacketType>
+    bool BaseConnection<PacketType>::Buffered() const
+    {
+        LOCK(DATA_MUTEX);
+
+        return vBuffer.size() != 0;
     }
 
 
@@ -166,7 +178,7 @@ namespace LLP
         Write(vBytes, vBytes.size());
 
         /* Notify condition if available. */
-        if(FLUSH_CONDITION && vBuffer.size() != 0)
+        if(FLUSH_CONDITION && Buffered())
             FLUSH_CONDITION->notify_all();
     }
 

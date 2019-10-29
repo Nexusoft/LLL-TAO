@@ -185,6 +185,9 @@ public:
     }
 };
 
+#include <TAO/Operation/include/enum.h>
+#include <TAO/Operation/include/execute.h>
+#include <TAO/Operation/types/condition.h>
 
 #include <Util/include/softfloat.h>
 #include <TAO/Ledger/include/prime.h>
@@ -216,12 +219,13 @@ void Thread2()
     }
 }
 
+uint1024_t hashOrigin = uint1024_t("0x01001a8938c1b4620c106b072a02c8799da027dabfd864e9130d4ee32e8fbf67280d93e21424ee57d2045a0a1e88a4af6a74f2b1eaddede19fb3a7cea2eef8dcfe4c7f0099c9324eb49f7f06eb15e77a121a4919a27d2fc67ba0de6a68a78ad53bd77fd8f6adad237747c08582634526737b544b073464addf3c7df6f67eb162");
+uint64_t nNonce       = 2705923963233114459;
+
+
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
-    uint1024_t hashOrigin = uint1024_t("0x01001a8938c1b4620c106b072a02c8799da027dabfd864e9130d4ee32e8fbf67280d93e21424ee57d2045a0a1e88a4af6a74f2b1eaddede19fb3a7cea2eef8dcfe4c7f0099c9324eb49f7f06eb15e77a121a4919a27d2fc67ba0de6a68a78ad53bd77fd8f6adad237747c08582634526737b544b073464addf3c7df6f67eb162");
-    uint64_t nNonce = 2705923963233114459;
-
 
     std::vector<uint8_t> vOffsets;
 
@@ -244,28 +248,44 @@ int main(int argc, char** argv)
 
     TestDB* testDB = new TestDB();
 
-    uint1024_t hash = LLC::GetRand();
+        contract <= uint8_t(OP::CONTRACT::OPERATIONS) <= uint8_t(OP::SUBDATA) <= uint16_t(1) <= uint16_t(32); //hashFrom
+        contract <= uint8_t(OP::NOTEQUALS); //if the proof is not the hashFrom we can assume it is a split dividend payment
+        contract <= uint8_t(0xd3)   <= uint8_t(OP::SUBDATA) <= uint16_t(101) <= uint16_t(32);  //hashProof
 
+        if(!TAO::Operation::Condition::Verify(contract, vWarnings))
+            debug::error("Validate Error");
+        else
+            debug::error("Validate Success");
+    }
 
+    {
+        TAO::Operation::Contract contract;
+        contract << uint8_t(OP::TRANSFER) << hashAsset << hashGenesis << uint8_t(TAO::Operation::TRANSFER::CLAIM);
 
     debug::log(0, "Write Hash");
     debug::log(0, "Hash ", hash.Get64());
     testDB->WriteHash(hash, hash);
 
-    debug::log(0, "Index Hash");
-    if(!testDB->IndexHash(hash))
-        return debug::error("failed to index");
+        if(!TAO::Operation::Condition::Verify(contract, vWarnings))
+            debug::error("Validate Error");
+        else
+            debug::error("Validate Success");
+    }
 
     //testDB->TxnBegin();
 
-    debug::log(0, "Read Hash");
-    uint1024_t hashTest;
-    testDB->ReadHash(hash, hashTest);
+        contract <= uint8_t(OP::AND);
 
-    debug::log(0, "Hash ", hashTest.Get64());
+        contract <= (uint8_t)OP::TYPES::UINT64_T <= std::numeric_limits<uint64_t>::max() <= (uint8_t) OP::ADD <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(100) <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= 222u;
 
-    uint1024_t hashTest3 = hash + 1;
-    testDB->WriteHash2(hash, hashTest3);
+        contract <= uint8_t(OP::OR);
+
+        /* 5 + 5 = 10 */
+        contract <= uint8_t(OP::GROUP);
+        contract <= uint8_t(OP::TYPES::UINT64_T) <= uint64_t(5) <= uint8_t(OP::ADD) <= uint8_t(OP::TYPES::UINT64_T) <= uint64_t(5);
+        contract <= uint8_t(OP::NOTEQUALS);
+        contract <= uint8_t(OP::TYPES::UINT64_T) <= uint64_t(5);
+        contract <= uint8_t(OP::UNGROUP);
 
     //testDB->TxnCheckpoint();
     //testDB->TxnCommit();
@@ -287,23 +307,27 @@ int main(int argc, char** argv)
         uint1024_t hashTest4;
         testDB->ReadHash(hash, hashTest4);
 
-        debug::log(0, "Hash New ", hashTest4.Get64());
-    }
+        /* Create 1024 bytes if data */
+        std::vector<uint8_t> vData(1024);
 
     {
         debug::log(0, "Read Hash");
         uint1024_t hashTest4;
         testDB->ReadHash2(hash, hashTest4);
 
-        debug::log(0, "Hash New ", hashTest4.Get64());
+        Condition condition(contract, caller);
+        if(!condition.Execute())
+            debug::error("Execute Error");
+        else
+            debug::error("Execute Success");
     }
 
-    return 0;
-
-    for(int t = 0; t < 1; ++t)
     {
-        uint1024_t last = 0;
-        testDB->ReadLast(last);
+        TAO::Operation::Contract contract;
+        contract << uint8_t(OP::TRANSFER) << hashAsset << hashGenesis << uint8_t(TAO::Operation::TRANSFER::CLAIM);
+
+        contract <= uint8_t(OP::CONTRACT::TIMESTAMP) <= uint8_t(OP::ADD) <= uint8_t(OP::TYPES::UINT64_T) <= uint64_t(5);
+        contract <= uint8_t(OP::GREATERTHAN) <= uint8_t(OP::CALLER::TIMESTAMP);
 
         debug::log(0, "Last is ", last.Get64());
 
@@ -339,7 +363,6 @@ int main(int argc, char** argv)
 
     }
 
-    delete testDB;
 
 
 

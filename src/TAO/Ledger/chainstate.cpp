@@ -96,9 +96,11 @@ namespace TAO
                     /* If local testnet with connections then rely on LLP flag  */
                     || (fLocalTestnet && fHasConnections && !LLP::TritiumNode::fSynchronized.load() )
 
-                    /* If local testnet with no connections then assume sync'd if the last block was more than 30s ago,
-                       which gives us a 30s window to connect to a local peer */
-                    || (fLocalTestnet && !fHasConnections && runtime::unifiedtimestamp() - nLastTime < 30)
+                    /* If local testnet with no connections then assume sync'd if the last block was more than 30s ago 
+                       and block age is more than 20 mins, which gives us a 30s window to connect to a local peer */
+                    || (fLocalTestnet && !fHasConnections 
+                        && runtime::unifiedtimestamp() - nLastTime < 30
+                        && stateBest.load().GetBlockTime() < runtime::unifiedtimestamp() - 20 * 60)
                 );
 
                 return fSynchronizing;
@@ -115,6 +117,7 @@ namespace TAO
 
             /* On unit tests, always keep Synchronizing off. */
             #else
+            _unused(fSynchronizing); //suppress compiler warnings
             return false;
             #endif
         }
@@ -206,26 +209,30 @@ namespace TAO
             /* Find the last checkpoint. */
             if(stateBest != stateGenesis)
             {
-                /* Search back until fail or different checkpoint. */
-                BlockState state;
-                if(!LLD::Ledger->ReadBlock(hashCheckpoint.load(), state))
-                    return debug::error(FUNCTION, "no pending checkpoint");
+                /* Go back 10 checkpoints on startup. */
+                for(uint32_t i = 0; i < config::GetArg("-checkpoints", 100); ++i)
+                {
+                    /* Search back until fail or different checkpoint. */
+                    BlockState state;
+                    if(!LLD::Ledger->ReadBlock(hashCheckpoint.load(), state))
+                        return debug::error(FUNCTION, "no pending checkpoint");
 
-                /* Get the previous state. */
-                state = state.Prev();
-                if(!state)
-                    return debug::error(FUNCTION, "failed to find the checkpoint");
+                    /* Get the previous state. */
+                    state = state.Prev();
+                    if(!state)
+                        return debug::error(FUNCTION, "failed to find the checkpoint");
 
-                /* Set the checkpoint. */
-                hashCheckpoint    = state.hashCheckpoint;
+                    /* Set the checkpoint. */
+                    hashCheckpoint    = state.hashCheckpoint;
 
-                /* Get checkpoint state. */
-                BlockState stateCheckpoint;
-                if(!LLD::Ledger->ReadBlock(state.hashCheckpoint, stateCheckpoint))
-                    return debug::error(FUNCTION, "failed to read checkpoint");
+                    /* Get checkpoint state. */
+                    BlockState stateCheckpoint;
+                    if(!LLD::Ledger->ReadBlock(state.hashCheckpoint, stateCheckpoint))
+                        return debug::error(FUNCTION, "failed to read checkpoint");
 
-                /* Set the correct height for the checkpoint. */
-                nCheckpointHeight = stateCheckpoint.nHeight;
+                    /* Set the correct height for the checkpoint. */
+                    nCheckpointHeight = stateCheckpoint.nHeight;
+                }
             }
 
             /* Ensure the block height index is intact */

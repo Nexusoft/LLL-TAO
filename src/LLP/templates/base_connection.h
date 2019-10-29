@@ -23,6 +23,7 @@ ________________________________________________________________________________
 #include <vector>
 #include <condition_variable>
 
+#include <condition_variable>
 
 namespace LLP
 {
@@ -188,6 +189,14 @@ namespace LLP
          *
          **/
         bool PacketComplete() const;
+
+
+        /** Buffered
+         *
+         *  Detect if there is data to write
+         *
+         **/
+        bool Buffered() const;
 
 
         /** ResetPacket

@@ -588,6 +588,7 @@ namespace TAO
 
                 /* Main coinbase genesis. */
                 Legacy::Transaction genesis;
+                genesis.nVersion = 1;
                 genesis.nTime = 1409456199;
                 genesis.vin.resize(1);
                 genesis.vout.resize(1);

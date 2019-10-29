@@ -26,6 +26,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/cost.h>
 #include <TAO/Operation/include/execute.h>
 #include <TAO/Operation/include/enum.h>
+#include <TAO/Operation/types/condition.h>
 
 #include <TAO/Register/include/rollback.h>
 #include <TAO/Register/include/verify.h>
@@ -794,6 +795,10 @@ namespace TAO
 
                 /* Bind the contract to this transaction. */
                 contract.Bind(this);
+
+                /* Verify the conditions */
+                if(!TAO::Operation::Condition::Verify(contract))
+                    return false;
 
                 /* Execute the contracts to final state. */
                 if(!TAO::Operation::Execute(contract, nFlags, nCost))
