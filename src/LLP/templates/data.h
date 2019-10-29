@@ -259,7 +259,7 @@ namespace LLP
          *  @param[in] The index of the connection to remove.
          *
          **/
-        void remove(int32_t index);
+        void remove(uint32_t nIndex);
 
 
         /** find_slot
@@ -268,7 +268,7 @@ namespace LLP
          *  has been flagged Disconnected
          *
          **/
-        int32_t find_slot();
+        uint32_t find_slot();
 
     };
 }

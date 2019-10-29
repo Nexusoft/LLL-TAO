@@ -79,8 +79,6 @@ namespace LLP
     {
         try
         {
-            LOCK(SLOT_MUTEX);
-
             /* Create a new pointer on the heap. */
             ProtocolType* pnode = new ProtocolType(SOCKET, DDOS, fDDOS);
             pnode->fCONNECTED.store(true);
@@ -479,11 +477,12 @@ namespace LLP
 
     /* Removes given connection from current Data Thread. This happens on timeout/error, graceful close, or disconnect command. */
     template <class ProtocolType>
-    void DataThread<ProtocolType>::remove(int nIndex)
+    void DataThread<ProtocolType>::remove(uint32_t nIndex)
     {
+        LOCK(SLOT_MUTEX);
+
         /* Free the memory. */
         CONNECTIONS->at(nIndex).free();
-
         --nConnections;
 
         CONDITION.notify_all();
@@ -492,14 +491,14 @@ namespace LLP
 
     /* Returns the index of a component of the CONNECTIONS vector that has been flagged Disconnected */
     template <class ProtocolType>
-    int DataThread<ProtocolType>::find_slot()
+    uint32_t DataThread<ProtocolType>::find_slot()
     {
         /* Loop through each connection. */
         uint32_t nSize = static_cast<uint32_t>(CONNECTIONS->size());
-        for(int index = 0; index < nSize; ++index)
+        for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
         {
-            if(!CONNECTIONS->at(index))
-                return index;
+            if(!CONNECTIONS->at(nIndex))
+                return nIndex;
         }
 
         return nSize;
