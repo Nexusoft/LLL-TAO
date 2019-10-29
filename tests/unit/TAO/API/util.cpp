@@ -61,7 +61,6 @@ json::json APICall(const std::string& strMethod, const json::json& jsonParams)
     /* Read the response packet. */
     while(!apiNode.INCOMING.Complete() && !config::fShutdown.load())
     {
-
         /* Catch if the connection was closed. */
         if(!apiNode.Connected())
             throw "Connection Terminated";
@@ -71,7 +70,7 @@ json::json APICall(const std::string& strMethod, const json::json& jsonParams)
             throw "Socket Error";
 
         /* Catch if the connection timed out. */
-        if(apiNode.Timeout(120))
+        if(apiNode.Timeout(15))
             throw "Socket Timeout";
 
         /* Read the response packet. */

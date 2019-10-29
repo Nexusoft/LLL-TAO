@@ -425,7 +425,7 @@ namespace TAO
 
                     /* Fail if types are unknown. */
                     default:
-                        return debug::error(FUNCTION, "invalid types ", uint32_t(nType));
+                        return debug::error(FUNCTION, "malformed object register (unexpected type ", uint32_t(nType), ")");
                 }
             }
 

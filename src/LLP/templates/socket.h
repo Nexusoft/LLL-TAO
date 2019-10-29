@@ -35,14 +35,14 @@ namespace LLP
      **/
     class Socket : public pollfd
     {
-
     private:
 
         /** Mutex for thread synchronization. **/
-        mutable std::mutex PACKET_MUTEX;
-        mutable std::mutex DATA_MUTEX;
+        mutable std::mutex SOCKET_MUTEX;
 
     protected:
+
+        mutable std::mutex DATA_MUTEX;
 
         /** Keep track of last time data was sent. **/
         std::atomic<uint64_t> nLastSend;

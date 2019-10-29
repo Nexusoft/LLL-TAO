@@ -69,7 +69,7 @@ namespace TAO
                         contract >> nContract;
 
                         /* Erase the contract validation record. */
-                        if(!LLD::Contract->EraseContract(std::make_pair(hashTx, nContract)))
+                        if(!LLD::Contract->EraseContract(std::make_pair(hashTx, nContract)), nFlags)
                             return debug::error(FUNCTION, "failed to erase validation contract");
 
                         /* Condition has no parameters. */
@@ -167,7 +167,7 @@ namespace TAO
                         contract.Seek(nSize);
 
                         /* Erase the register from database. */
-                        if(!LLD::Register->EraseState(hashAddress))
+                        if(!LLD::Register->EraseState(hashAddress, nFlags))
                             return debug::error(FUNCTION, "OP::CREATE: failed to erase post-state");
 
                         break;
@@ -454,7 +454,6 @@ namespace TAO
                                 if(!LLD::Ledger->WriteClaimed(hashTx, nContract, (nClaimed - nAmount), nFlags))
                                     return debug::error(FUNCTION, "OP::CREDIT: failed to rollback claimed amount");
                             }
-
                         }
 
                         break;

@@ -208,7 +208,7 @@ TEST_CASE( "Write Primitive Tests", "[operation]")
             REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
         }
 
-        { 
+        {
             //create the mock transaction object
             TAO::Ledger::Transaction tx;
             tx.nTimestamp  = 989798;
