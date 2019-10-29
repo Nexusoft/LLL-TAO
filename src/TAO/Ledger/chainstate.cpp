@@ -104,6 +104,7 @@ namespace TAO
 
             /* On unit tests, always keep Synchronizing off. */
             #else
+            _unused(fSynchronizing); //suppress compiler warnings
             return false;
             #endif
         }

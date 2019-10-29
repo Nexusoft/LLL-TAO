@@ -88,6 +88,14 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
         0
     };
 
+
+    uint256_t hash256   = TAO::Register::Address(TAO::Register::Address::OBJECT);
+    uint512_t hash512   = LLC::GetRand512();
+    uint1024_t hash1024 = LLC::GetRand1024();
+
+    std::vector<uint8_t> vBytes(15);
+    RAND_bytes((uint8_t*)&vBytes[0], vBytes.size());
+
     //USER A
     {
         {
@@ -225,13 +233,6 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
             tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
             tx.NextHash(hashPrivKey2[0], TAO::Ledger::SIGNATURE::BRAINPOOL);
-
-            uint256_t hash256   = TAO::Register::Address(TAO::Register::Address::OBJECT);
-            uint512_t hash512   = LLC::GetRand512();
-            uint1024_t hash1024 = LLC::GetRand1024();
-
-            std::vector<uint8_t> vBytes(15);
-            RAND_bytes((uint8_t*)&vBytes[0], vBytes.size());
 
             //create object
             Object asset;
@@ -1359,13 +1360,6 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
         tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
         tx.NextHash(hashPrivKey2[0], TAO::Ledger::SIGNATURE::BRAINPOOL);
 
-        uint256_t hash256   = TAO::Register::Address(TAO::Register::Address::OBJECT);
-        uint512_t hash512   = LLC::GetRand512();
-        uint1024_t hash1024 = LLC::GetRand1024();
-
-        std::vector<uint8_t> vBytes(15);
-        RAND_bytes((uint8_t*)&vBytes[0], vBytes.size());
-
         //create object
         Object asset;
         asset << std::string("uint8_t")    << uint8_t(TYPES::UINT8_T)    << uint8_t(55)
@@ -1409,6 +1403,85 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
 
         //check that evicted from memory
         REQUIRE_FALSE(LLD::Register->ReadState(hashAsset2, memory, FLAGS::MEMPOOL));
+    }
+
+    //create the asset now with no ERASE
+    {
+        //create the transaction object
+        TAO::Ledger::Transaction tx;
+        tx.hashGenesis = hashGenesis1[0];
+        tx.nSequence   = 9;
+        tx.hashPrevTx  = hashPrevTx[0];
+        tx.nTimestamp  = runtime::timestamp();
+        tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
+        tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
+        tx.NextHash(hashPrivKey2[0], TAO::Ledger::SIGNATURE::BRAINPOOL);
+
+        //create object
+        Object asset;
+        asset << std::string("uint8_t")     << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT8_T)    << uint8_t(55)
+               << std::string("uint16_t")   << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT16_T)   << uint16_t(9383)
+               << std::string("uint32_t")   << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT32_T)   << uint32_t(82384293823)
+               << std::string("uint64_t")   << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT64_T)   << uint64_t(239482349023843984)
+               << std::string("uint256_t")  << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T)  << hash256
+               << std::string("uint512_t")  << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT512_T)  << hash512
+               << std::string("uint1024_t") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT1024_T) << hash1024
+               << std::string("string")     << uint8_t(TYPES::STRING)     << std::string("this is a string to test long forms")
+               << std::string("bytes")      << uint8_t(TYPES::BYTES)      << vBytes;
+
+        //payload
+        tx[0] << uint8_t(OP::CREATE) << hashAsset2 << uint8_t(REGISTER::OBJECT) << asset.GetState();
+
+        //generate the prestates and poststates
+        REQUIRE(tx.Build());
+
+        //sign transaction
+        REQUIRE(tx.Sign(hashPrivKey1[0]));
+
+        //cache the hash
+        uint512_t hash = tx.GetHash();
+
+        //verify prestates and poststates
+        REQUIRE(tx.Verify(FLAGS::MEMPOOL));
+
+        //connect in memory
+        REQUIRE(tx.Connect(FLAGS::MEMPOOL));
+
+        //check for account
+        Object object;
+        REQUIRE_FALSE(LLD::Register->ReadState(hashAsset2, object));
+
+        //write to disk
+        REQUIRE(LLD::Ledger->WriteTx(hash, tx));
+
+        //verify prestates and postates (disk)
+        REQUIRE(tx.Verify(FLAGS::BLOCK));
+
+        //connect on disk
+        REQUIRE(tx.Connect(FLAGS::BLOCK));
+
+        //index to genesis
+        REQUIRE(LLD::Ledger->IndexBlock(hash, TAO::Ledger::ChainState::Genesis()));
+
+        //check for account
+        REQUIRE(LLD::Register->ReadState(hashAsset2, object));
+
+        //check memory vs disk
+        Object memory;
+        REQUIRE(LLD::Register->ReadState(hashAsset2, memory, FLAGS::MEMPOOL));
+        REQUIRE(memory == object);
+
+        //check parsed values
+        REQUIRE(object.Parse());
+        REQUIRE(object.get<uint8_t>("uint8_t")            == uint8_t(55));
+        REQUIRE(object.get<uint16_t>("uint16_t")          == uint16_t(9383));
+        REQUIRE(object.get<uint32_t>("uint32_t")          == uint32_t(82384293823));
+        REQUIRE(object.get<uint64_t>("uint64_t")          == uint64_t(239482349023843984));
+        REQUIRE(object.get<uint256_t>("uint256_t")        == hash256);
+        REQUIRE(object.get<uint512_t>("uint512_t")        == hash512);
+        REQUIRE(object.get<uint1024_t>("uint1024_t")      == hash1024);
+        REQUIRE(object.get<std::string>("string")         == std::string("this is a string to test long forms"));
+        REQUIRE(object.get<std::vector<uint8_t>>("bytes") == vBytes);
 
         //set previous
         hashPrevTx[0] = hash;
@@ -1423,34 +1496,24 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
         //create the transaction object
         TAO::Ledger::Transaction tx;
         tx.hashGenesis = hashGenesis1[0];
-        tx.nSequence   = 9;
+        tx.nSequence   = 10;
         tx.hashPrevTx  = hashPrevTx[0];
         tx.nTimestamp  = runtime::timestamp();
         tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
         tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
         tx.NextHash(hashPrivKey2[0], TAO::Ledger::SIGNATURE::BRAINPOOL);
 
-        uint256_t hash256   = TAO::Register::Address(TAO::Register::Address::OBJECT);
-        uint512_t hash512   = LLC::GetRand512();
-        uint1024_t hash1024 = LLC::GetRand1024();
-
-        std::vector<uint8_t> vBytes(15);
-        RAND_bytes((uint8_t*)&vBytes[0], vBytes.size());
-
-        //create object
-        Object asset;
-        asset << std::string("uint8_t")    << uint8_t(TYPES::UINT8_T)    << uint8_t(55)
-               << std::string("uint16_t")   << uint8_t(TYPES::UINT16_T)   << uint16_t(9383)
-               << std::string("uint32_t")   << uint8_t(TYPES::UINT32_T)   << uint32_t(82384293823)
-               << std::string("uint64_t")   << uint8_t(TYPES::UINT64_T)   << uint64_t(239482349023843984)
-               << std::string("uint256_t")  << uint8_t(TYPES::UINT256_T)  << hash256
-               << std::string("uint512_t")  << uint8_t(TYPES::UINT512_T)  << hash512
-               << std::string("uint1024_t") << uint8_t(TYPES::UINT1024_T) << hash1024
-               << std::string("string")     << uint8_t(TYPES::STRING)     << std::string("this is a string to test long forms")
-               << std::string("bytes")      << uint8_t(TYPES::BYTES)      << vBytes;
-
         //payload
-        tx[0] << uint8_t(OP::CREATE) << hashAsset2 << uint8_t(REGISTER::OBJECT) << asset.GetState();
+        TAO::Operation::Stream stream;
+        stream << std::string("uint8_t")    << uint8_t(OP::TYPES::UINT8_T)    << uint8_t(22)
+               << std::string("uint16_t")   << uint8_t(OP::TYPES::UINT16_T)   << uint16_t(55)
+               << std::string("uint32_t")   << uint8_t(OP::TYPES::UINT32_T)   << uint32_t(88)
+               << std::string("uint64_t")   << uint8_t(OP::TYPES::UINT64_T)   << uint64_t(123123)
+               << std::string("uint256_t")  << uint8_t(OP::TYPES::UINT256_T)  << uint256_t(hash256 + 1)
+               << std::string("uint512_t")  << uint8_t(OP::TYPES::UINT512_T)  << uint512_t(hash512 + 1)
+               << std::string("uint1024_t") << uint8_t(OP::TYPES::UINT1024_T) << uint1024_t(hash1024 + 1);
+
+        tx[0] << uint8_t(OP::WRITE) << hashAsset2 << stream.Bytes();
 
         //generate the prestates and poststates
         REQUIRE(tx.Build());
@@ -1467,31 +1530,30 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
         //connect in memory
         REQUIRE(tx.Connect(FLAGS::MEMPOOL));
 
-        //check for account
-        Object object;
-        REQUIRE_FALSE(LLD::Register->ReadState(hashAsset2, object));
-
-        //check memory vs disk
-        Object memory;
-        REQUIRE(LLD::Register->ReadState(hashAsset2, memory, FLAGS::MEMPOOL));
-
         //test value erase
         REQUIRE(tx.Disconnect(FLAGS::ERASE));
 
-        //check that evicted from memory
-        REQUIRE_FALSE(LLD::Register->ReadState(hashAsset2, memory, FLAGS::MEMPOOL));
+        //check for account
+        Object object;
+        REQUIRE(LLD::Register->ReadState(hashAsset, object));
 
-        //set previous
-        hashPrevTx[0] = hash;
+        //check memory vs disk
+        Object memory;
+        REQUIRE(LLD::Register->ReadState(hashAsset, memory, FLAGS::MEMPOOL));
+        REQUIRE(memory == object);
+
+        //check parsed values
+        REQUIRE(object.Parse());
+        REQUIRE(object.get<uint8_t>("uint8_t")            == uint8_t(55));
+        REQUIRE(object.get<uint16_t>("uint16_t")          == uint16_t(9383));
+        REQUIRE(object.get<uint32_t>("uint32_t")          == uint32_t(82384293823));
+        REQUIRE(object.get<uint64_t>("uint64_t")          == uint64_t(239482349023843984));
+        REQUIRE(object.get<uint256_t>("uint256_t")        == hash256);
+        REQUIRE(object.get<uint512_t>("uint512_t")        == hash512);
+        REQUIRE(object.get<uint1024_t>("uint1024_t")      == hash1024);
+        REQUIRE(object.get<std::string>("string")         == std::string("this is a string to test long forms"));
+        REQUIRE(object.get<std::vector<uint8_t>>("bytes") == vBytes);
     }
-
-
-
-
-    //NOW THAT WE ARE ALL SETUP, LET'S SETUP FOR A SPLIT DIVIDEND PAYMENT
-
-
-
 
 
 
