@@ -393,7 +393,7 @@ namespace LLP
         while(!config::fShutdown.load())
         {
             /* Sleep between connection attempts. */
-            runtime::sleep(1000);
+            runtime::sleep(5000);
 
             /* Pick a weighted random priority from a sorted list of addresses. */
             if(GetConnectionCount() < nMaxConnections && pAddressManager->StochasticSelect(addr))
