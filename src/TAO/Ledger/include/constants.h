@@ -217,15 +217,6 @@ namespace TAO
         const uint64_t TX_FEE = 0.01 * NXS_COIN;
 
 
-        /** MaturityCoinbase
-         *
-         *  Retrieve the number of blocks (confirmations) required for coinbase maturity for the current network version.
-         *
-         *  @return current maturity setting for coinbase producer, based on current testnet or mainnet
-         *
-         **/
-        uint32_t MaturityCoinBase();
-
 
         /** MaturityCoinbase
          *
@@ -238,15 +229,6 @@ namespace TAO
          **/
         uint32_t MaturityCoinBase(const BlockState& block);
 
-
-        /** MaturityCoinstake
-         *
-         *  Retrieve the number of blocks (confirmations) required for coinstake maturity for the current network version.
-         *
-         *  @return current maturity setting for coinstake producer, based on current testnet or mainnet
-         *
-         **/
-        uint32_t MaturityCoinStake();
 
 
         /** MaturityCoinstake
