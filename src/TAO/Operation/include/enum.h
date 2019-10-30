@@ -52,10 +52,6 @@ namespace TAO
 
                 FEE        = 0x17, //to pay fees to network
 
-                //internal funding
-                AMBASSADOR = 0x20,
-                DEVELOPER  = 0x21,
-
                 //consensus operations
                 ACK        = 0x30, //a vote to credit trust towards a proposal
                 NACK       = 0x31, //a vote to withdrawl trust from a proposal

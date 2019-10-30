@@ -25,6 +25,7 @@ ________________________________________________________________________________
 #include <LLP/types/tritium.h>
 
 #include <TAO/Ledger/include/ambassador.h>
+#include <TAO/Ledger/include/developer.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/difficulty.h>
@@ -475,6 +476,34 @@ namespace TAO
                                 /* Loop through the embassy sigchains. */
                                 for(auto it =  (config::fTestNet.load() ? AMBASSADOR_TESTNET.begin() : AMBASSADOR.begin());
                                          it != (config::fTestNet.load() ? AMBASSADOR_TESTNET.end()   : AMBASSADOR.end()); ++it)
+                                {
+                                    /* Make sure to push to end. */
+                                    uint32_t nContract = block.producer.Size();
+
+                                    /* Create coinbase transaction. */
+                                    block.producer[nContract] << uint8_t(TAO::Operation::OP::COINBASE);
+                                    block.producer[nContract] << it->first;
+
+                                    /* The total to be credited. */
+                                    uint64_t nCredit = (nBalance * it->second.second) / 1000;
+                                    block.producer[nContract] << nCredit;
+                                    block.producer[nContract] << uint64_t(0);
+                                }
+                            }
+                        }
+
+
+                        /* Check for interval. */
+                        if(statePrev.nChannelHeight %
+                            (config::fTestNet.load() ? DEVELOPER_PAYOUT_THRESHOLD_TESTNET : DEVELOPER_PAYOUT_THRESHOLD) == 0)
+                        {
+                            /* Get the total in reserves. */
+                            int64_t nBalance = statePrev.nReleasedReserve[2] - (3 * NXS_COIN); //leave 3 coins in the reserve
+                            if(nBalance > 0)
+                            {
+                                /* Loop through the embassy sigchains. */
+                                for(auto it =  (config::fTestNet.load() ? DEVELOPER_TESTNET.begin() : DEVELOPER.begin());
+                                         it != (config::fTestNet.load() ? DEVELOPER_TESTNET.end()   : DEVELOPER.end()); ++it)
                                 {
                                     /* Make sure to push to end. */
                                     uint32_t nContract = block.producer.Size();

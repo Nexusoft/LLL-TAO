@@ -35,6 +35,7 @@ ________________________________________________________________________________
 #include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/include/ambassador.h>
+#include <TAO/Ledger/include/developer.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/enum.h>
@@ -657,27 +658,57 @@ namespace TAO
             /* Check for first. */
             if(IsFirst())
             {
-                /* Check for ambassador sigchains. */
-                if(!config::fTestNet.load() && AMBASSADOR.find(hashGenesis) != AMBASSADOR.end())
+                /* Check for ambassador / developer sigchains. */
+                if(!config::fTestNet.load())
                 {
-                    /* Debug logging. */
-                    debug::log(1, FUNCTION, "Processing AMBASSADOR sigchain ", hashGenesis.SubString());
+                    /* Check for ambassador. */
+                    if(AMBASSADOR.find(hashGenesis) != AMBASSADOR.end())
+                    {
+                        /* Debug logging. */
+                        debug::log(1, FUNCTION, "Processing AMBASSADOR sigchain ", hashGenesis.SubString());
 
-                    /* Check that the hashes match. */
-                    if(AMBASSADOR.at(hashGenesis).first != PrevHash())
-                        return debug::error(FUNCTION, "AMBASSADOR sigchain using invalid credentials");
+                        /* Check that the hashes match. */
+                        if(AMBASSADOR.at(hashGenesis).first != PrevHash())
+                            return debug::error(FUNCTION, "AMBASSADOR sigchain using invalid credentials");
+                    }
+
+                    /* Check for developer. */
+                    if(DEVELOPER.find(hashGenesis) != DEVELOPER.end())
+                    {
+                        /* Debug logging. */
+                        debug::log(1, FUNCTION, "Processing DEVELOPER sigchain ", hashGenesis.SubString());
+
+                        /* Check that the hashes match. */
+                        if(DEVELOPER.at(hashGenesis).first != PrevHash())
+                            return debug::error(FUNCTION, "DEVELOPER sigchain using invalid credentials");
+                    }
                 }
 
 
-                /* Check for ambassador sigchains. */
-                if(config::fTestNet.load() && AMBASSADOR_TESTNET.find(hashGenesis) != AMBASSADOR_TESTNET.end())
+                /* Check for ambassador / developer sigchains. */
+                if(config::fTestNet.load())
                 {
-                    /* Debug logging. */
-                    debug::log(1, FUNCTION, "Processing TESTNET AMBASSADOR sigchain ", hashGenesis.SubString());
+                    /* Check for ambassador. */
+                    if(AMBASSADOR_TESTNET.find(hashGenesis) != AMBASSADOR_TESTNET.end())
+                    {
+                        /* Debug logging. */
+                        debug::log(1, FUNCTION, "Processing TESTNET AMBASSADOR sigchain ", hashGenesis.SubString());
 
-                    /* Check that the hashes match. */
-                    if(AMBASSADOR_TESTNET.at(hashGenesis).first != PrevHash())
-                        return debug::error(FUNCTION, "TESTNET AMBASSADOR sigchain using invalid credentials");
+                        /* Check that the hashes match. */
+                        if(AMBASSADOR_TESTNET.at(hashGenesis).first != PrevHash())
+                            return debug::error(FUNCTION, "TESTNET AMBASSADOR sigchain using invalid credentials");
+                    }
+
+                    /* Check for developer. */
+                    if(DEVELOPER_TESTNET.find(hashGenesis) != DEVELOPER_TESTNET.end())
+                    {
+                        /* Debug logging. */
+                        debug::log(1, FUNCTION, "Processing TESTNET DEVELOPER sigchain ", hashGenesis.SubString());
+
+                        /* Check that the hashes match. */
+                        if(DEVELOPER_TESTNET.at(hashGenesis).first != PrevHash())
+                            return debug::error(FUNCTION, "TESTNET DEVELOPER sigchain using invalid credentials");
+                    }
                 }
 
                 /* Write specific transaction flags. */
