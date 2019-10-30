@@ -812,14 +812,14 @@ namespace Legacy
         debug::log(0, FUNCTION, "Stake Minter Started");
         pLegacyMinter->nSleepTime = 5000;
         bool fLocalTestnet = config::fTestNet.load() && !config::GetBoolArg("-dns", true);
-        uint32_t nConnections = LLP::LEGACY_SERVER->GetConnectionCount() + LLP::TRITIUM_SERVER->GetConnectionCount();
+        uint32_t nConnections = (LLP::LEGACY_SERVER ? LLP::LEGACY_SERVER->GetConnectionCount() : 0) + LLP::TRITIUM_SERVER->GetConnectionCount();
 
         /* If the system is still syncing/connecting on startup, wait to run minter */
         while((TAO::Ledger::ChainState::Synchronizing() || (nConnections == 0 && !fLocalTestnet))
                 && !LegacyMinter::fStopMinter.load() && !config::fShutdown.load())
         {
             runtime::sleep(pLegacyMinter->nSleepTime);
-            nConnections = LLP::LEGACY_SERVER->GetConnectionCount() + LLP::TRITIUM_SERVER->GetConnectionCount();
+            nConnections = (LLP::LEGACY_SERVER ? LLP::LEGACY_SERVER->GetConnectionCount() : 0) + LLP::TRITIUM_SERVER->GetConnectionCount();
         }
 
         /* Check stop/shutdown status after wait ends */

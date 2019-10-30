@@ -63,10 +63,6 @@ namespace Legacy
         int32_t nIndex;
 
 
-        /** Block containing this transaction (memory-only) **/
-        mutable TAO::Ledger::BlockState* pBlock;
-
-
 		/* Implement serialization/deserializaiton for MerkleTx, first by serializing/deserializing
 		 * base class data then processing local data
 		 */

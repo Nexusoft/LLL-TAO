@@ -387,12 +387,21 @@ namespace LLP
                 }
 
                 /* Get the current connected legacy node. */
-                memory::atomic_ptr<LegacyNode>& pnode = LegacyNode::GetNode(nCurrentSession);
+                LegacyNode* pnode = LegacyNode::GetNode(nCurrentSession).load();
                 try //we want to catch exceptions thrown by atomic_ptr in the case there was a free on another thread
                 {
-                    /* if connected, send a drop message. */
                     if(pnode != nullptr)
-                        pnode->Disconnect();
+                    {
+                        /* Ban the IP in the legacy server so that it is not attempted again */
+                        if(LEGACY_SERVER->pAddressManager)
+                            LEGACY_SERVER->pAddressManager->Ban(pnode->GetAddress());
+
+                        /* if connected, send a drop message. */
+                        if(pnode->Connected())
+                            pnode->Disconnect();
+
+                        debug::drop(NODE, "Dropped legacy connection in favor of tritium connection");
+                    }
                 }
                 catch(const std::exception& e) {}
 
@@ -989,7 +998,10 @@ namespace LLP
 
                                         /* Read the correct block from next index. */
                                         if(!LLD::Ledger->ReadBlock(stateLast.hashNextBlock, state))
-                                           return debug::drop(NODE, "failed to read current block");
+                                        {
+                                            nLimits = 0;
+                                            break;
+                                        }
                                     }
 
                                     /* Cache the block hash. */

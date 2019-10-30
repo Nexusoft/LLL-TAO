@@ -591,7 +591,10 @@ namespace Legacy
 
         /** BalanceByAccount
          *
-         *  Get the available addresses that have a balance associated with a wallet.
+         *  Get the balance for an account associated with a wallet.
+         *
+         *  Passing the wildcard "*"" will return all balance. Passing "default" includes all addresses without an assigned
+         *  account. Passing an empty string is treated the same as "default"
          *
          *  @param[in] strAccount The account to get balance for
          *  @param[out] nBalance The total account balance
@@ -1004,11 +1007,13 @@ namespace Legacy
          *
          *  @param[in] nMinDepth Minimum depth required before prior transaction output selected as input to this transaction
          *
+         *  @param[in] fAdjust If true, reduce nValue by the fee amount, otherwise fee is in addition to nValue
+         *
          *  @return empty string if successful, otherwise contains a displayable error message
          *
          **/
         std::string SendToNexusAddress(const Script& scriptPubKey, const int64_t nValue, WalletTx& wtxNew,
-                                       const bool fAskFee = false, const uint32_t nMinDepth = 1);
+                                       const bool fAskFee = false, const uint32_t nMinDepth = 1, const bool fAdjust = false);
 
 
         /** CreateTransaction

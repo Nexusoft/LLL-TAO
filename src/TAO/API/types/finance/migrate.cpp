@@ -331,7 +331,7 @@ namespace TAO
                 strException = "Could not get addresses for Legacy wallet";
             }
 
-            /* Amount is current trust address balance less fee to send */
+            /* Migrate amount is current trust address balance */
             int64_t nAmount = 0;
 
             if(nException == 0)
@@ -353,8 +353,6 @@ namespace TAO
                 }
             }
 
-            nAmount -= Legacy::TRANSACTION_FEE;
-
             if(nException == 0 && nAmount < Legacy::MIN_TXOUT_AMOUNT)
             {
                 nException = -68;
@@ -364,7 +362,7 @@ namespace TAO
             /* Lock the signature chain. */
             LOCK(users->CREATE_MUTEX);
 
-            /* Get trust account. Any trust account that has completed Genesis will be indexed. */
+            /* Get trust account. Any trust account that has completed Genesis will be indexed and not available for migrate. */
             TAO::Register::Address hashAddress;
             if(nException == 0)
             {
@@ -388,12 +386,12 @@ namespace TAO
             /* The script to contain the recipient */
             Legacy::Script scriptPubKey;
 
-            //Migration transaction sends from legacy trust key address to trust account register address
+            /* Migration transaction sends from legacy trust key address to trust account register address */
             if(nException == 0)
             {
                 scriptPubKey.SetRegisterAddress(hashAddress);
 
-                strException = wallet.SendToNexusAddress(scriptPubKey, nAmount, wtx);
+                strException = wallet.SendToNexusAddress(scriptPubKey, nAmount, wtx, false, 1, true);
             }
 
             /* If used walletpassphrase to temporarily unlock wallet, re-lock the wallet
