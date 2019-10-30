@@ -750,8 +750,8 @@ namespace Legacy
 
 
 
-    /* Get the available addresses that have a balance associated with a wallet. */
-    bool Wallet::BalanceByAccount(std::string strAccount, int64_t& nBalance, int32_t nMinDepth)
+    /* Get the balance for an account associated with a wallet. */
+    bool Wallet::BalanceByAccount(std::string strAccount, int64_t& nBalance, const int32_t nMinDepth)
     {
         {
             RLOCK(cs_wallet);
@@ -1771,7 +1771,7 @@ namespace Legacy
 
     /* Generate a transaction to send balance to a given Nexus address. */
     std::string Wallet::SendToNexusAddress(const Script& scriptPubKey, const int64_t nValue, WalletTx& wtxNew,
-                                            const bool fAskFee, const uint32_t nMinDepth)
+                                            const bool fAskFee, const uint32_t nMinDepth, const bool fAdjust)
     {
         /* Validate amount */
         if(nValue <= 0)
@@ -1779,14 +1779,6 @@ namespace Legacy
 
         if(nValue < MIN_TXOUT_AMOUNT)
             return debug::safe_printstr("Send amount less than minimum of ", FormatMoney(MIN_TXOUT_AMOUNT), " NXS");
-
-        /* Validate balance supports value + fees */
-        if (nValue + TRANSACTION_FEE > GetBalance())
-            return std::string("Insufficient funds");
-
-        /* Place the script and amount into sending vector */
-        std::vector< std::pair<Script, int64_t> > vecSend;
-        vecSend.push_back(make_pair(scriptPubKey, nValue));
 
         if(IsLocked())
         {
@@ -1804,33 +1796,61 @@ namespace Legacy
             return strError;
         }
 
-        int64_t nFeeRequired;
+        int64_t nFeeRequired = TRANSACTION_FEE;
+        int64_t nAmountSent = nValue;
+        std::vector< std::pair<Script, int64_t> > vecSend;
+        uint32_t nAttempts = 0;
 
-        /* Key will be reserved by CreateTransaction for any change transaction, kept/returned on commit */
+        /* Key used by CreateTransaction for any change transaction and returned if not used, kept upon CommitTransaction */
         ReserveKey changeKey(*this);
 
-        if(!CreateTransaction(vecSend, wtxNew, changeKey, nFeeRequired, nMinDepth))
+        /* Will attempt up to 2 times, if need to adjust send amount for extra fee */
+        while(true)
         {
-            /* Transaction creation failed */
-            std::string strError;
-            if(nValue + nFeeRequired > GetBalance())
+            ++nAttempts;
+
+            /* When applicable, adjust amount sent by the required fee */
+            if(fAdjust)
+                nAmountSent = nValue - nFeeRequired;
+
+            /* Validate balance supports value + fees */
+            if(nAmountSent + nFeeRequired > GetBalance())
+                return std::string("Insufficient funds");
+
+            /* Place the script and output amount into sending vector */
+            vecSend.clear();
+            vecSend.push_back(make_pair(scriptPubKey, nAmountSent));
+
+            if(!CreateTransaction(vecSend, wtxNew, changeKey, nFeeRequired, nMinDepth))
             {
-                /* Failure resulted because required fee caused transaction amount to exceed available balance.
-                 * Really should not get this because of initial check at start of function. Could only happen
-                 * if it calculates an additional fee such that nFeeRequired > MIN_TX_FEE
-                 */
-                strError = debug::safe_printstr(
-                    "This transaction requires a transaction fee of at least ", FormatMoney(nFeeRequired), " because of its amount, complexity, or use of recently received funds  ");
-            }
-            else
-            {
-                /* Other transaction creation failure */
-                strError = std::string("Transaction creation failed");
+                /* If failed after a fee increase, try again with reduced amount sent */
+                if(nAttempts < 2 && fAdjust && nFeeRequired > TRANSACTION_FEE)
+                    continue;
+
+                /* Transaction creation failed */
+                std::string strError;
+                if(nAmountSent + nFeeRequired > GetBalance())
+                {
+                    /* Failure resulted because required fee caused transaction amount to exceed available balance.
+                     * Really should not get this because of initial check at start of function. Could only happen
+                     * if it calculates an additional fee such that nFeeRequired > MIN_TX_FEE
+                     */
+                    strError = debug::safe_printstr(
+                        "This transaction requires a transaction fee of at least ", FormatMoney(nFeeRequired), " because of its amount, complexity, or use of recently received funds  ");
+                }
+                else
+                {
+                    /* Other transaction creation failure */
+                    strError = std::string("Transaction creation failed");
+                }
+
+                changeKey.ReturnKey();
+                debug::log(0, FUNCTION, strError);
+
+                return strError;
             }
 
-            debug::log(0, FUNCTION, strError);
-
-            return strError;
+            break;
         }
 
         /* In Tritium, with QT interface removed, we no longer display the fee confirmation here.
@@ -1845,7 +1865,7 @@ namespace Legacy
 
     /* Create and populate a new transaction. */
     bool Wallet::CreateTransaction(const std::vector<std::pair<Script, int64_t> >& vecSend, WalletTx& wtxNew, ReserveKey& changeKey,
-                                    int64_t& nFeeRet, const uint32_t nMinDepth)
+                                   int64_t& nFeeRet, const uint32_t nMinDepth)
     {
         int64_t nValue = 0;
 
@@ -1899,13 +1919,13 @@ namespace Legacy
 
                 if(wtxNew.fromAddress.IsValid())
                 {
-                    /* No value for strFromAccount, so use default for SelectCoins */
+                    /* Transaction sent from a specific address, so select only from that address */
                     fSelectCoinsSuccessful = SelectCoins(nTotalValue, wtxNew.nTime, mapSelectedCoins, nValueIn,
                                                          "*", wtxNew.fromAddress, nMinDepth);
                 }
                 else if(wtxNew.strFromAccount == "")
                 {
-                    /* No value for strFromAccount, so use default for SelectCoins */
+                    /* No value for strFromAccount, so use wildcard for SelectCoins */
                     fSelectCoinsSuccessful = SelectCoins(nTotalValue, wtxNew.nTime, mapSelectedCoins, nValueIn,
                                                          "*", NexusAddress(), nMinDepth);
                 }
@@ -1971,11 +1991,6 @@ namespace Legacy
                     auto position = wtxNew.vout.begin() + LLC::GetRandInt(wtxNew.vout.size());
                     wtxNew.vout.insert(position, TxOut(nChange, scriptChange));
                 }
-                else
-                {
-                    /* No change for this transaction */
-                    changeKey.ReturnKey();
-                }
 
                 /* Fill vin with selected inputs */
                 for(const auto& coin : mapSelectedCoins)
@@ -1999,11 +2014,18 @@ namespace Legacy
                 int64_t nMinFee = wtxNew.GetMinFee(1, false, Legacy::GMF_SEND);
 
                 /* Check that enough fee is included */
-                if(nFeeRet < std::max(nPayFee, nMinFee))
+                int64_t nFeeRequired = std::max(nPayFee, nMinFee);
+                if(nFeeRet < nFeeRequired)
                 {
                     /* More fee required, so increase fee and repeat loop */
-                    nFeeRet = std::max(nPayFee, nMinFee);
+                    nFeeRet = nFeeRequired;
                     continue;
+                }
+
+                if(nChange == 0)
+                {
+                    /* No change for this transaction (only return key for no change after possible iteration for increased fee) */
+                    changeKey.ReturnKey();
                 }
 
                 /* Fill vtxPrev by copying vtxPrev from previous transactions */
