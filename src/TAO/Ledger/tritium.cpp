@@ -204,6 +204,9 @@ namespace TAO
                             producer = tx; //handle for the producer transaction
                         else
                         {
+                            /* Get the transaction hash */
+                            uint512_t hash = tx.GetHash();
+
                             /* Accept into memory pool. */
                             if(!LLD::Ledger->HasTx(tx.GetHash()))
                                 mempool.AddUnchecked(tx);
@@ -224,12 +227,15 @@ namespace TAO
                         Legacy::Transaction tx;
                         ssData >> tx;
 
+                        /* Get the transaction hash */
+                        uint512_t hash = tx.GetHash();
+
                         /* Accept into memory pool. */
-                        if(!LLD::Legacy->HasTx(tx.GetHash()))
+                        if(!LLD::Legacy->HasTx(hash))
                             mempool.AddUnchecked(tx);
 
                         /* Add transaction to binary data. */
-                        vtx.push_back(std::make_pair(block.vtx[n].first, tx.GetHash()));
+                        vtx.push_back(std::make_pair(block.vtx[n].first, hash));
 
                         break;
                     }
