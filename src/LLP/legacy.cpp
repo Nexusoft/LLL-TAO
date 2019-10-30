@@ -37,6 +37,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/locator.h>
+#include <TAO/Ledger/include/timelocks.h>
 
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/process.h>
@@ -438,6 +439,11 @@ namespace LLP
         custom messaging system, and how to interpret it from raw packets. **/
     bool LegacyNode::ProcessPacket()
     {
+        /* Check the timelock to see if we are still allowed legacy connections, which is up to 1 hour after v7 activates */
+        if((TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 7) || TAO::Ledger::CurrentVersion() > 7)
+        && !TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 6))
+            return false;
+        
 
         DataStream ssMessage(INCOMING.DATA, SER_NETWORK, MIN_PROTO_VERSION);
 

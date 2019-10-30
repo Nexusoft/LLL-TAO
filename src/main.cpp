@@ -27,6 +27,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/types/tritium_minter.h>
+#include <TAO/Ledger/include/timelocks.h>
 
 #include <Util/include/convert.h>
 #include <Util/include/filesystem.h>
@@ -227,7 +228,8 @@ int main(int argc, char** argv)
 
 
         /* Initialize the Legacy Server. */
-        LLP::LEGACY_SERVER = LLP::CreateTAOServer<LLP::LegacyNode>(nPort);
+        if(TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 6))
+            LLP::LEGACY_SERVER = LLP::CreateTAOServer<LLP::LegacyNode>(nPort);
 
 
         /* Initialize API Pointers. */
@@ -288,7 +290,9 @@ int main(int argc, char** argv)
 
 
         /* Handle Manual Connections from Command Line, if there are any. */
-        LLP::MakeConnections<LLP::LegacyNode>(LLP::LEGACY_SERVER);
+        if(LLP::LEGACY_SERVER)
+            LLP::MakeConnections<LLP::LegacyNode>(LLP::LEGACY_SERVER);
+        
         LLP::MakeConnections<LLP::TritiumNode>(LLP::TRITIUM_SERVER);
 
 
