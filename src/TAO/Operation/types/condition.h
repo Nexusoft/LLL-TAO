@@ -83,14 +83,6 @@ namespace TAO
             Condition(const Contract& contractIn, const Contract& callerIn, const int64_t nCostIn = 0);
 
 
-            /** Reset
-             *
-             *  Reset the validation script for re-executing.
-             *
-             **/
-            void Reset();
-
-
             /** Execute
              *
              *  Execute the validation script.

@@ -1993,6 +1993,83 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
     }
 
 
+    {
+        //set private keys
+        hashPrivKey1[0] = hashPrivKey2[0];
+        hashPrivKey2[0] = LLC::GetRand512();
+
+        //create the transaction object
+        TAO::Ledger::Transaction tx;
+        tx.hashGenesis = hashGenesis1[0];
+        tx.nSequence   = 12;
+        tx.hashPrevTx  = hashPrevTx[0];
+        tx.nTimestamp  = runtime::timestamp();
+        tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
+        tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
+        tx.NextHash(hashPrivKey2[0], TAO::Ledger::SIGNATURE::BRAINPOOL);
+
+        //payload
+        tx[0] << uint8_t(OP::VALIDATE) << hashValidate << uint32_t(0) << uint8_t(OP::DEBIT) << hashAccount[0] << hashAccount[1] << uint64_t(100) << uint64_t(0);
+
+        //generate the prestates and poststates
+        REQUIRE(tx.Build());
+
+        //sign transaction
+        REQUIRE(tx.Sign(hashPrivKey1[0]));
+
+        //cache the hash
+        uint512_t hash = tx.GetHash();
+
+        //verify prestates and poststates
+        REQUIRE(tx.Verify(FLAGS::MEMPOOL));
+
+        //connect in memory
+        REQUIRE(tx.Connect(FLAGS::MEMPOOL));
+
+        //read contract database
+        REQUIRE(LLD::Contract->HasContract(std::make_pair(hashValidate, 0), FLAGS::MEMPOOL));
+
+        uint256_t hashCaller;
+        REQUIRE(LLD::Contract->ReadContract(std::make_pair(hashValidate, 0), hashCaller, FLAGS::MEMPOOL));
+
+        //check values
+        REQUIRE(hashCaller == hashGenesis1[0]);
+
+        //check memory vs disk
+        Object temp;
+        REQUIRE(LLD::Register->ReadState(hashAccount[0], temp, FLAGS::MEMPOOL));
+
+        //check values
+        REQUIRE(temp.Parse());
+        REQUIRE(temp.get<uint64_t>("balance") == 400);
+
+        //test value erase
+        REQUIRE(tx.Disconnect(FLAGS::ERASE));
+
+        //check for account
+        Object object;
+        REQUIRE(LLD::Register->ReadState(hashAccount[0], object));
+
+        //check memory vs disk
+        Object memory;
+        REQUIRE(LLD::Register->ReadState(hashAccount[0], memory, FLAGS::MEMPOOL));
+        REQUIRE(memory == object);
+
+        //check values
+        REQUIRE(object.Parse());
+        REQUIRE(object.get<uint64_t>("balance") == 500);
+
+        //read contract database
+        REQUIRE_FALSE(LLD::Contract->HasContract(std::make_pair(hashValidate, 0), FLAGS::MEMPOOL));
+
+    }
+
+
+
+
+
+
+
 
 
 
