@@ -172,6 +172,11 @@ int main(int argc, char** argv)
         /* Initialize LLD. */
         LLD::Initialize();
 
+        /* Load the Wallet Database. NOTE this needs to be done before ChainState::Initialize as that can disconnect blocks causing
+           the wallet to be accessed if they contain any legacy stake transactions */
+        bool fFirstRun;
+        if (!Legacy::Wallet::InitializeWallet(config::GetArg(std::string("-wallet"), Legacy::WalletDB::DEFAULT_WALLET_DB)))
+            return debug::error("Failed initializing wallet");
 
         /* Initialize ChainState. */
         TAO::Ledger::ChainState::Initialize();
@@ -180,11 +185,6 @@ int main(int argc, char** argv)
         /* Initialize the scripts for legacy mode. */
         Legacy::InitializeScripts();
 
-
-        /* Load the Wallet Database. */
-        bool fFirstRun;
-        if (!Legacy::Wallet::InitializeWallet(config::GetArg(std::string("-wallet"), Legacy::WalletDB::DEFAULT_WALLET_DB)))
-            return debug::error("Failed initializing wallet");
 
 
         /* Check the wallet loading for errors. */
