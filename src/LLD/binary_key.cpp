@@ -285,11 +285,8 @@ namespace LLD
 
                 /* Relink in memory. */
                 plast = plast->pprev;
-
                 if(plast && plast->pnext)
                     plast->pnext = nullptr;
-                else
-                    printf("plast is null\n");
 
                 /* Reduce the current cache size. */
                 if(pnode)

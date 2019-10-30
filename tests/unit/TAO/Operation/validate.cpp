@@ -30,7 +30,7 @@ ________________________________________________________________________________
 
 #include <unit/catch2/catch.hpp>
 
-TEST_CASE( "Validate Primitive Tests", "[operation]" )
+TEST_CASE( "Validate Primitive Tests", "[validate]" )
 {
     using namespace TAO::Register;
     using namespace TAO::Operation;
@@ -701,7 +701,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
 
             //check for error
             std::string error = debug::GetLastError();
-            REQUIRE(error.find("OP::REGISTER::VALUE could not get field type") != std::string::npos);
+            REQUIRE(error.find("failed to get l-value") != std::string::npos);
         }
 
 

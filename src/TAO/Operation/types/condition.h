@@ -104,7 +104,7 @@ namespace TAO
              *  Get a value from the register virtual machine.
              *
              **/
-bool GetValue(TAO::Register::Value& vRet);
+             bool GetValue(TAO::Register::Value& vRet);
 
 
         };

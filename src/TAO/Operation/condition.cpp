@@ -1598,6 +1598,58 @@ namespace TAO
 
 
                     /* Get the operations of the transaction caller. */
+                    case OP::CONTRACT::OPERATIONS:
+                    {
+                        /* Get the bytes from caller. */
+                        const std::vector<uint8_t>& vBytes = contract.Operations();
+
+                        /* Check for empty operations. */
+                        if(vBytes.empty())
+                            throw debug::exception("OP::CONTRACT::OPERATIONS contract has empty operations");
+
+                        /* Check for condition or validate. */
+                        uint8_t nOffset = 0;
+                        switch(vBytes.at(0))
+                        {
+                            /* Check for condition at start. */
+                            case OP::CONDITION:
+                            {
+                                /* Condition has offset of one. */
+                                nOffset = 1;
+
+                                break;
+                            }
+
+                            /* Check for validate at start. */
+                            case OP::VALIDATE:
+                            {
+                                /* Validate has offset of 69. */
+                                nOffset = 69;
+
+                                break;
+                            }
+                        }
+
+                        /* Check that offset is within memory range. */
+                        if(vBytes.size() <= nOffset)
+                            throw debug::exception("OP::CONTRACT::OPERATIONS offset is not within size");
+
+                        /* Allocate to the registers. */
+                        allocate(vBytes, vRet, nOffset);
+
+                        /* Check for overflows. */
+                        uint32_t nSize = vBytes.size();
+                        if(nCost + nSize < nCost)
+                            throw debug::exception("OP::CONTRACT::OPERATIONS costs value overflow");
+
+                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        nCost += nCost;
+
+                        break;
+                    }
+
+
+                    /* Get the operations of the transaction caller. */
                     case OP::CALLER::OPERATIONS:
                     {
                         /* Get the bytes from caller. */
