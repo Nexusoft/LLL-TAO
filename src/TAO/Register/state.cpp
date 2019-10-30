@@ -164,20 +164,6 @@ namespace TAO
         }
 
 
-        /* Default Constructor */
-        State::State(const uint64_t hashChecksumIn)
-        : vchState     ( )
-        , nVersion     (1)
-        , nType        (0)
-        , hashOwner    (uint256_t(0))
-        , nCreated     (runtime::unifiedtimestamp())
-        , nModified    (runtime::unifiedtimestamp())
-        , hashChecksum (hashChecksumIn)
-        , nReadPos     (0)
-        {
-        }
-
-
         /* Operator overload to check for equivilence. */
         bool State::operator==(const State& state) const
         {

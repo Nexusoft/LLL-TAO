@@ -459,21 +459,7 @@ namespace TAO
 
                 /* Check for last hash consistency. */
                 if(hashLast != hashLastClaimed)
-                {
-                    Transaction tx1;
-                    if(!LLD::Ledger->ReadTx(hashLast, tx1))
-                        return debug::error(FUNCTION, "failed to read ", tx1.GetHash().SubString());
-
-                    Transaction tx2;
-                    if(!LLD::Ledger->ReadTx(hashLastClaimed, tx2))
-                        return debug::error(FUNCTION, "failed to read ", tx2.GetHash().SubString());
-
-                    tx1.print();
-                    tx2.print();
-
-                    return debug::error(FUNCTION, "claimed last stake ", hashLastClaimed.SubString(),
-                                                  " does not match actual last stake ", hashLast.SubString());
-                }
+                    return debug::error(FUNCTION, "list stake ", hashLastClaimed.SubString(), " mismatch ", hashLast.SubString());
 
                 /* Get pre-state trust account values */
                 nTrustPrev = account.get<uint64_t>("trust");
@@ -795,10 +781,6 @@ namespace TAO
 
                 /* Bind the contract to this transaction. */
                 contract.Bind(this);
-
-                /* Verify the conditions */
-                if(!TAO::Operation::Condition::Verify(contract))
-                    return false;
 
                 /* Execute the contracts to final state. */
                 if(!TAO::Operation::Execute(contract, nFlags, nCost))

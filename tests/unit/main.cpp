@@ -38,6 +38,7 @@ TEST_CASE("Arguments Tests", "[args]")
     /* To simplify the API testing we will always use multiuser mode */
     config::fMultiuser = true;
     config::mapArgs["-private"] = "1";
+    config::mapArgs["-verbose"] = "3";
 
     REQUIRE(config::fTestNet.load() == true);
     REQUIRE(config::GetArg("-testnet", 0) == 92349234);

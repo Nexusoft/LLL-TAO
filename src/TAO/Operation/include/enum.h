@@ -246,6 +246,10 @@ namespace TAO
                 EXP_OVERFLOW    = (1 << 6),
                 DIV_BY_ZERO     = (1 << 7),
                 MOD_DIV_ZERO    = (1 << 8),
+                COST_OVERFLOW   = (1 << 9),
+
+                /* allocation failures. */
+                BAD_ALLOC       = (1 << 10),
             };
         }
     }
