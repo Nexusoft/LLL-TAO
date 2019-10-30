@@ -108,7 +108,7 @@ namespace LLD
 
 
     /* Writes a caller that fulfilled a conditional agreement.*/
-    bool ContractDB::EraseContract(const std::pair<uint512_t, uint32_t>& pair)
+    bool ContractDB::EraseContract(const std::pair<uint512_t, uint32_t>& pair, const uint8_t nFlags)
     {
         /* Check for memory transaction. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)

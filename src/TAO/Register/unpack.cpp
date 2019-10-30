@@ -189,8 +189,6 @@ namespace TAO
                 switch(OPERATION)
                 {
                     case TAO::Operation::OP::COINBASE:
-                    case TAO::Operation::OP::AMBASSADOR:
-                    case TAO::Operation::OP::DEVELOPER:
                     {
                         /* Seek to coinbase/coinstake. */
                         contract.Seek(32);

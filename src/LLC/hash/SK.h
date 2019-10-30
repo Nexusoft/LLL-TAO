@@ -361,7 +361,7 @@ namespace LLC
      **/
 	template<typename T1, typename T2>
 	inline uint512_t SK512(const T1 p1begin, const T1 p1end,
-						const T2 p2begin, const T2 p2end)
+						   const T2 p2begin, const T2 p2end)
 	{
 		uint512_t skein;
 		Skein_512_Ctxt_t ctx;
@@ -387,8 +387,8 @@ namespace LLC
      **/
 	template<typename T1, typename T2, typename T3>
 	inline uint512_t SK512(const T1 p1begin, const T1 p1end,
-						const T2 p2begin, const T2 p2end,
-						const T3 p3begin, const T3 p3end)
+						   const T2 p2begin, const T2 p2end,
+						   const T3 p3begin, const T3 p3end)
 	{
 		uint512_t skein;
 		Skein_512_Ctxt_t ctx;
@@ -427,42 +427,6 @@ namespace LLC
 		Keccak_HashInitialize(&ctx_keccak, 1024, 576, 576, 0x06);
 		Keccak_HashUpdate(&ctx_keccak, (uint8_t *)&skein, 576);
 		Keccak_HashFinal(&ctx_keccak, (uint8_t *)&keccak);
-
-		return keccak;
-	}
-
-
-    /** SK1024
-     *
-     *  1024-bit hashing template used to build Sig-Chains.
-     *
-     **/
-    inline uint1024_t SK1024(const std::vector<uint8_t>& vch)
-	{
-		uint1024_t skein;
-		uint1024_t keccak;
-
-		/* Check the cache for this data */
-		if(!cache1024.Has(vch))
-		{
-			Skein1024_Ctxt_t ctx;
-			Skein1024_Init(&ctx, 1024);
-			Skein1024_Update(&ctx, (uint8_t *)&vch[0], vch.size());
-			Skein1024_Final(&ctx, (uint8_t *)&skein);
-
-			Keccak_HashInstance ctx_keccak;
-			Keccak_HashInitialize(&ctx_keccak, 576, 1024, 1024, 0x05);
-			Keccak_HashUpdate(&ctx_keccak, (uint8_t *)&skein, 1024);
-			Keccak_HashFinal(&ctx_keccak, (uint8_t *)&keccak);
-
-			/* Cache the hashed value */
-			cache1024.Put(vch, keccak);
-		}
-		else
-		{
-			/* Retrieve the cached value */
-			cache1024.Get(vch, keccak);
-		}
 
 		return keccak;
 	}

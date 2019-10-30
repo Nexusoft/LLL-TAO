@@ -29,6 +29,7 @@ ________________________________________________________________________________
 #include <TAO/Register/include/verify.h>
 
 #include <TAO/Ledger/include/ambassador.h>
+#include <TAO/Ledger/include/developer.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/checkpoints.h>
 #include <TAO/Ledger/include/constants.h>
@@ -401,13 +402,17 @@ namespace TAO
                 else
                 {
                     /* Get the coinbase from the memory pool. */
-                    Transaction tx;
-                    if(!LLD::Ledger->ReadTx(vtx.back().second, tx, FLAGS::MEMPOOL))
+                    Transaction disk;
+                    if(!LLD::Ledger->ReadTx(vtx.back().second, disk, FLAGS::MEMPOOL))
                         return debug::error(FUNCTION, "cannot get ledger coinbase tx");
 
-                    /* Check for coinbase. */
+                    /* Get a const reference of transaction. */
+                    const Transaction& tx = disk;
                     if(!tx.IsCoinBase())
                         return debug::error(FUNCTION, "last tx must be producer");
+
+                    /* Get starting index. */
+                    uint32_t nSize = tx.Size();
 
                     /* Check for interval. */
                     bool fAmbassador = false;
@@ -418,50 +423,122 @@ namespace TAO
                         int64_t nBalance = stateLast.nReleasedReserve[1] - (33 * NXS_COIN); //leave 33 coins in the reserve
                         if(nBalance > 0)
                         {
-                            /* Loop through the embassy sigchains. */
-                            uint32_t nContract = tx.Size() - (config::fTestNet ? AMBASSADOR_TESTNET.size() : AMBASSADOR.size());
-                            for(auto it =  (config::fTestNet.load() ? AMBASSADOR_TESTNET.begin() : AMBASSADOR.begin());
-                                     it != (config::fTestNet.load() ? AMBASSADOR_TESTNET.end()   : AMBASSADOR.end()); ++it)
-                            {
-
-                                /* Seek to Genesis */
-                                tx[nContract].Seek(1, Operation::Contract::OPERATIONS, STREAM::BEGIN);
-
-                                /* Get the genesis.. */
-                                Genesis genesis;
-                                tx[nContract] >> genesis;
-                                if(!genesis.IsValid())
-                                    return debug::error(FUNCTION, "invalid ambassador genesis-id ", genesis.SubString());
-
-                                /* Check for match. */
-                                if(genesis != it->first)
-                                    return debug::error(FUNCTION, "ambassador genesis mismatch ", genesis.SubString());
-
-                                /* The total to be credited. */
-                                uint64_t nCredit = (nBalance * it->second.second) / 1000;
-
-                                /* Check the value */
-                                uint64_t nValue = 0;
-                                tx[nContract] >> nValue;
-                                if(nValue != nCredit)
-                                    return debug::error(FUNCTION, "invalid ambassador rewards=", nValue, " expected=", nCredit);
-
-                                /* Iterate contract. */
-                                ++nContract;
-
-                                debug::log(2, "AMBASSADOR GENESIS ", genesis.ToString());
-
-                                /* Update coinbase rewards. */
-                                nCoinbaseRewards[1] += nValue;
-                            }
-
-                            /* Set that ambassador is active for this block. */
+                            /* Set ambassador as active. */
                             fAmbassador = true;
+
+                            /* Reduce size. */
+                            nSize -= (config::fTestNet ? AMBASSADOR_TESTNET.size() : AMBASSADOR.size());
                         }
                     }
 
-                    /* Loop through the contracts. */
-                    uint32_t nSize = tx.Size() - (fAmbassador ? (config::fTestNet ? AMBASSADOR_TESTNET.size() : AMBASSADOR.size()) : 0);
+                    /* Check for interval. */
+                    bool fDeveloper = false;
+                    if(stateLast.nChannelHeight %
+                        (config::fTestNet.load() ? DEVELOPER_PAYOUT_THRESHOLD_TESTNET : DEVELOPER_PAYOUT_THRESHOLD) == 0)
+                    {
+                        /* Get the total in reserves. */
+                        int64_t nBalance = stateLast.nReleasedReserve[2] - (3 * NXS_COIN); //leave 3 coins in the reserve
+                        if(nBalance > 0)
+                        {
+                            /* Set developer as active. */
+                            fDeveloper = true;
+
+                            /* Reduce size. */
+                            nSize -= (config::fTestNet ? DEVELOPER_TESTNET.size() : DEVELOPER.size());
+                        }
+                    }
+
+                    /* Get starting contract. */
+                    uint32_t nContract = nSize;
+
+                    /* Check for ambassador rewards. */
+                    if(fAmbassador)
+                    {
+                        /* Get the total in reserves. */
+                        int64_t nBalance = stateLast.nReleasedReserve[1] - (33 * NXS_COIN); //leave 33 coins in the reserve
+
+                        /* Loop through all ambassador sigchains. */
+                        for(auto it =  (config::fTestNet.load() ? AMBASSADOR_TESTNET.begin() : AMBASSADOR.begin());
+                                 it != (config::fTestNet.load() ? AMBASSADOR_TESTNET.end()   : AMBASSADOR.end()); ++it)
+                        {
+                            /* Seek to Genesis */
+                            tx[nContract].Seek(1, Operation::Contract::OPERATIONS, STREAM::BEGIN);
+
+                            /* Get the genesis.. */
+                            Genesis genesis;
+                            tx[nContract] >> genesis;
+                            if(!genesis.IsValid())
+                                return debug::error(FUNCTION, "invalid ambassador genesis-id ", genesis.SubString());
+
+                            /* Check for match. */
+                            if(genesis != it->first)
+                                return debug::error(FUNCTION, "ambassador genesis mismatch ", genesis.SubString());
+
+                            /* The total to be credited. */
+                            uint64_t nCredit = (nBalance * it->second.second) / 1000;
+
+                            /* Check the value */
+                            uint64_t nValue = 0;
+                            tx[nContract] >> nValue;
+                            if(nValue != nCredit)
+                                return debug::error(FUNCTION, "invalid ambassador rewards=", nValue, " expected=", nCredit);
+
+                            /* Iterate contract. */
+                            ++nContract;
+
+                            /* Update coinbase rewards. */
+                            nCoinbaseRewards[1] += nValue;
+
+                            /* Log the genesis. */
+                            debug::log(2, "AMBASSADOR GENESIS ", genesis.ToString());
+                        }
+                    }
+
+                    /* Check for developer rewards. */
+                    if(fDeveloper)
+                    {
+                        /* Get the total in reserves. */
+                        int64_t nBalance = stateLast.nReleasedReserve[2] - (3 * NXS_COIN); //leave 3 coins in the reserve
+
+                        /* Loop through the embassy sigchains. */
+                        for(auto it =  (config::fTestNet.load() ? DEVELOPER_TESTNET.begin() : DEVELOPER.begin());
+                                 it != (config::fTestNet.load() ? DEVELOPER_TESTNET.end()   : DEVELOPER.end()); ++it)
+                        {
+                            /* Seek to Genesis */
+                            tx[nContract].Seek(1, Operation::Contract::OPERATIONS, STREAM::BEGIN);
+
+                            /* Get the genesis.. */
+                            Genesis genesis;
+                            tx[nContract] >> genesis;
+                            if(!genesis.IsValid())
+                                return debug::error(FUNCTION, "invalid developer genesis-id ", genesis.SubString());
+
+                            /* Check for match. */
+                            if(genesis != it->first)
+                                return debug::error(FUNCTION, "developer genesis mismatch ", genesis.SubString());
+
+                            /* The total to be credited. */
+                            uint64_t nCredit = (nBalance * it->second.second) / 1000;
+
+                            /* Check the value */
+                            uint64_t nValue = 0;
+                            tx[nContract] >> nValue;
+                            if(nValue != nCredit)
+                                return debug::error(FUNCTION, "invalid developer rewards=", nValue, " expected=", nCredit);
+
+                            /* Iterate contract. */
+                            ++nContract;
+
+                            /* Update coinbase rewards. */
+                            nCoinbaseRewards[2] += nValue;
+
+                            /* Log the genesis. */
+                            debug::log(2, "DEVELOPER GENESIS ", genesis.ToString());
+                        }
+                    }
+
+
+                    /* Check coinbase rewards to expected rewards. */
                     for(uint32_t n = 0; n < nSize; ++n)
                     {
                         /* Seek to Genesis */

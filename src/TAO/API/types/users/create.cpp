@@ -71,8 +71,8 @@ namespace TAO
             SecureString strPassword = params["password"].get<std::string>().c_str();
 
             /* Check username length */
-            if(strUsername.length() < 3)
-                throw APIException(-191, "Username must be a minimum of 3 characters");
+            if(strUsername.length() < 2)
+                throw APIException(-191, "Username must be a minimum of 2 characters");
 
             /* Check password length */
             if(strPassword.length() < 8)
@@ -151,7 +151,7 @@ namespace TAO
             hashRegister = TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
 
             /* The key type to use for the crypto keys */
-            uint8_t nKeyType = config::GetBoolArg("-brainpool") ? TAO::Ledger::SIGNATURE::BRAINPOOL : TAO::Ledger::SIGNATURE::FALCON;
+            uint8_t nKeyType = config::GetBoolArg("-falcon") ? TAO::Ledger::SIGNATURE::FALCON : TAO::Ledger::SIGNATURE::BRAINPOOL;
 
             /* Create the crypto object. */
             TAO::Register::Object crypto = TAO::Register::CreateCrypto(

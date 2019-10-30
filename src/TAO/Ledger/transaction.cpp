@@ -35,6 +35,7 @@ ________________________________________________________________________________
 #include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/include/ambassador.h>
+#include <TAO/Ledger/include/developer.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/enum.h>
@@ -459,21 +460,7 @@ namespace TAO
 
                 /* Check for last hash consistency. */
                 if(hashLast != hashLastClaimed)
-                {
-                    Transaction tx1;
-                    if(!LLD::Ledger->ReadTx(hashLast, tx1))
-                        return debug::error(FUNCTION, "failed to read ", tx1.GetHash().SubString());
-
-                    Transaction tx2;
-                    if(!LLD::Ledger->ReadTx(hashLastClaimed, tx2))
-                        return debug::error(FUNCTION, "failed to read ", tx2.GetHash().SubString());
-
-                    tx1.print();
-                    tx2.print();
-
-                    return debug::error(FUNCTION, "claimed last stake ", hashLastClaimed.SubString(),
-                                                  " does not match actual last stake ", hashLast.SubString());
-                }
+                    return debug::error(FUNCTION, "list stake ", hashLastClaimed.SubString(), " mismatch ", hashLast.SubString());
 
                 /* Get pre-state trust account values */
                 nTrustPrev = account.get<uint64_t>("trust");
@@ -671,27 +658,57 @@ namespace TAO
             /* Check for first. */
             if(IsFirst())
             {
-                /* Check for ambassador sigchains. */
-                if(!config::fTestNet.load() && AMBASSADOR.find(hashGenesis) != AMBASSADOR.end())
+                /* Check for ambassador / developer sigchains. */
+                if(!config::fTestNet.load())
                 {
-                    /* Debug logging. */
-                    //debug::log(1, FUNCTION, "Processing AMBASSADOR sigchain ", hashGenesis.SubString());
+                    /* Check for ambassador. */
+                    if(AMBASSADOR.find(hashGenesis) != AMBASSADOR.end())
+                    {
+                        /* Debug logging. */
+                        debug::log(1, FUNCTION, "Processing AMBASSADOR sigchain ", hashGenesis.SubString());
 
-                    /* Check that the hashes match. */
-                    if(AMBASSADOR.at(hashGenesis).first != PrevHash())
-                        return debug::error(FUNCTION, "AMBASSADOR sigchain using invalid credentials");
+                        /* Check that the hashes match. */
+                        if(AMBASSADOR.at(hashGenesis).first != PrevHash())
+                            return debug::error(FUNCTION, "AMBASSADOR sigchain using invalid credentials");
+                    }
+
+                    /* Check for developer. */
+                    if(DEVELOPER.find(hashGenesis) != DEVELOPER.end())
+                    {
+                        /* Debug logging. */
+                        debug::log(1, FUNCTION, "Processing DEVELOPER sigchain ", hashGenesis.SubString());
+
+                        /* Check that the hashes match. */
+                        if(DEVELOPER.at(hashGenesis).first != PrevHash())
+                            return debug::error(FUNCTION, "DEVELOPER sigchain using invalid credentials");
+                    }
                 }
 
 
-                /* Check for ambassador sigchains. */
-                if(config::fTestNet.load() && AMBASSADOR_TESTNET.find(hashGenesis) != AMBASSADOR_TESTNET.end())
+                /* Check for ambassador / developer sigchains. */
+                if(config::fTestNet.load())
                 {
-                    /* Debug logging. */
-                    //debug::log(1, FUNCTION, "Processing TESTNET AMBASSADOR sigchain ", hashGenesis.SubString());
+                    /* Check for ambassador. */
+                    if(AMBASSADOR_TESTNET.find(hashGenesis) != AMBASSADOR_TESTNET.end())
+                    {
+                        /* Debug logging. */
+                        debug::log(1, FUNCTION, "Processing TESTNET AMBASSADOR sigchain ", hashGenesis.SubString());
 
-                    /* Check that the hashes match. */
-                    if(AMBASSADOR_TESTNET.at(hashGenesis).first != PrevHash())
-                        return debug::error(FUNCTION, "TESTNET AMBASSADOR sigchain using invalid credentials");
+                        /* Check that the hashes match. */
+                        if(AMBASSADOR_TESTNET.at(hashGenesis).first != PrevHash())
+                            return debug::error(FUNCTION, "TESTNET AMBASSADOR sigchain using invalid credentials");
+                    }
+
+                    /* Check for developer. */
+                    if(DEVELOPER_TESTNET.find(hashGenesis) != DEVELOPER_TESTNET.end())
+                    {
+                        /* Debug logging. */
+                        debug::log(1, FUNCTION, "Processing TESTNET DEVELOPER sigchain ", hashGenesis.SubString());
+
+                        /* Check that the hashes match. */
+                        if(DEVELOPER_TESTNET.at(hashGenesis).first != PrevHash())
+                            return debug::error(FUNCTION, "TESTNET DEVELOPER sigchain using invalid credentials");
+                    }
                 }
 
                 /* Write specific transaction flags. */
@@ -795,10 +812,6 @@ namespace TAO
 
                 /* Bind the contract to this transaction. */
                 contract.Bind(this);
-
-                /* Verify the conditions */
-                if(!TAO::Operation::Condition::Verify(contract))
-                    return false;
 
                 /* Execute the contracts to final state. */
                 if(!TAO::Operation::Execute(contract, nFlags, nCost))

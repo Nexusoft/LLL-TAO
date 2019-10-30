@@ -25,6 +25,7 @@ ________________________________________________________________________________
 #include <LLP/types/tritium.h>
 
 #include <TAO/Ledger/include/ambassador.h>
+#include <TAO/Ledger/include/developer.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/difficulty.h>
@@ -70,14 +71,14 @@ namespace TAO
             uint512_t hashLast = 0;
 
             /* Set default signature types. */
-            tx.nNextType = SIGNATURE::FALCON;
-            tx.nKeyType  = SIGNATURE::FALCON;
+            tx.nKeyType  = SIGNATURE::BRAINPOOL;
+            tx.nNextType = SIGNATURE::BRAINPOOL;
 
             /* Check for configuration options. */
-            if(config::GetBoolArg("-brainpool"))
+            if(config::GetBoolArg("-falcon"))
             {
-                tx.nKeyType  = SIGNATURE::BRAINPOOL;
-                tx.nNextType = SIGNATURE::BRAINPOOL;
+                tx.nNextType = SIGNATURE::FALCON;
+                tx.nKeyType  = SIGNATURE::FALCON;
             }
 
             /* Check mempool for other transactions. */
@@ -131,7 +132,6 @@ namespace TAO
             debug::log(3, "BEGIN-------------------------------------");
 
             /* Loop through the list of transactions. */
-            uint256_t hashGenesis = 0;
             for(const auto& hash : vMempool)
             {
                 /* Check the Size limits of the Current Block. */
@@ -162,14 +162,12 @@ namespace TAO
                 if(!tx.Connect(FLAGS::MINER))
                     continue;
 
+                /* Dump sequence on verbose 3 levels. */
                 if(config::nVerbose >= 3)
                     tx.print();
 
                 /* Add the transaction to the block. */
                 block.vtx.push_back(std::make_pair(TRANSACTION::TRITIUM, hash));
-
-                /* Set the last genesis used. */
-                hashGenesis = tx.hashGenesis;
             }
 
             debug::log(3, "END-------------------------------------");
@@ -438,7 +436,7 @@ namespace TAO
                         std::map<std::string, uint64_t> mapOutputs = pCoinbaseRecipients->Outputs();
                         uint32_t nTx = 1;
 
-                        for(const auto&entry : mapOutputs)
+                        for(const auto& entry : mapOutputs)
                         {
                             /* Build the recipient address from a hex string. */
                             uint256_t hashGenesis = uint256_t(entry.first);
@@ -473,11 +471,43 @@ namespace TAO
                         {
                             /* Get the total in reserves. */
                             int64_t nBalance = statePrev.nReleasedReserve[1] - (33 * NXS_COIN); //leave 33 coins in the reserve
+
+                            debug::log(0, "CREATE ", nBalance);
                             if(nBalance > 0)
                             {
                                 /* Loop through the embassy sigchains. */
                                 for(auto it =  (config::fTestNet.load() ? AMBASSADOR_TESTNET.begin() : AMBASSADOR.begin());
                                          it != (config::fTestNet.load() ? AMBASSADOR_TESTNET.end()   : AMBASSADOR.end()); ++it)
+                                {
+                                    /* Make sure to push to end. */
+                                    uint32_t nContract = block.producer.Size();
+
+                                    /* Create coinbase transaction. */
+                                    block.producer[nContract] << uint8_t(TAO::Operation::OP::COINBASE);
+                                    block.producer[nContract] << it->first;
+
+                                    /* The total to be credited. */
+                                    uint64_t nCredit = (nBalance * it->second.second) / 1000;
+                                    block.producer[nContract] << nCredit;
+                                    block.producer[nContract] << uint64_t(0);
+
+                                    debug::log(0, "CONTRACT! ", it->first.ToString());
+                                }
+                            }
+                        }
+
+
+                        /* Check for interval. */
+                        if(statePrev.nChannelHeight %
+                            (config::fTestNet.load() ? DEVELOPER_PAYOUT_THRESHOLD_TESTNET : DEVELOPER_PAYOUT_THRESHOLD) == 0)
+                        {
+                            /* Get the total in reserves. */
+                            int64_t nBalance = statePrev.nReleasedReserve[2] - (3 * NXS_COIN); //leave 3 coins in the reserve
+                            if(nBalance > 0)
+                            {
+                                /* Loop through the embassy sigchains. */
+                                for(auto it =  (config::fTestNet.load() ? DEVELOPER_TESTNET.begin() : DEVELOPER.begin());
+                                         it != (config::fTestNet.load() ? DEVELOPER_TESTNET.end()   : DEVELOPER.end()); ++it)
                                 {
                                     /* Make sure to push to end. */
                                     uint32_t nContract = block.producer.Size();

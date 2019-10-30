@@ -23,6 +23,7 @@ ________________________________________________________________________________
 #include <TAO/Register/include/create.h>
 #include <TAO/Register/include/reserved.h>
 #include <TAO/Register/include/verify.h>
+#include <TAO/Register/include/constants.h>
 #include <TAO/Register/types/address.h>
 
 #include <TAO/Ledger/types/mempool.h>
@@ -284,6 +285,18 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             Object memory;
             REQUIRE(LLD::Register->ReadState(hashAsset, memory, FLAGS::MEMPOOL));
             REQUIRE(memory == object);
+
+            //check parsed values
+            REQUIRE(object.Parse());
+            REQUIRE(object.get<uint8_t>("uint8_t")            == uint8_t(55));
+            REQUIRE(object.get<uint16_t>("uint16_t")          == uint16_t(9383));
+            REQUIRE(object.get<uint32_t>("uint32_t")          == uint32_t(82384293823));
+            REQUIRE(object.get<uint64_t>("uint64_t")          == uint64_t(239482349023843984));
+            REQUIRE(object.get<uint256_t>("uint256_t")        == hash256);
+            REQUIRE(object.get<uint512_t>("uint512_t")        == hash512);
+            REQUIRE(object.get<uint1024_t>("uint1024_t")      == hash1024);
+            REQUIRE(object.get<std::string>("string")         == std::string("this is a string to test long forms"));
+            REQUIRE(object.get<std::vector<uint8_t>>("bytes") == vBytes);
 
             //set previous
             hashPrevTx[0] = hash;
@@ -1291,6 +1304,9 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             //connect on disk
             REQUIRE(tx.Connect(FLAGS::BLOCK));
 
+            //write to disk
+            REQUIRE(LLD::Ledger->WriteTx(hash, tx));
+
             //index to genesis
             REQUIRE(LLD::Ledger->IndexBlock(hash, TAO::Ledger::ChainState::Genesis()));
 
@@ -1530,6 +1546,22 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
         //connect in memory
         REQUIRE(tx.Connect(FLAGS::MEMPOOL));
 
+        //check memory state before erase
+        Object current;
+        REQUIRE(LLD::Register->ReadState(hashAsset2, current, FLAGS::MEMPOOL));
+
+        //check parsed values
+        REQUIRE(current.Parse());
+        REQUIRE(current.get<uint8_t>("uint8_t")            == uint8_t(22));
+        REQUIRE(current.get<uint16_t>("uint16_t")          == uint16_t(55));
+        REQUIRE(current.get<uint32_t>("uint32_t")          == uint32_t(88));
+        REQUIRE(current.get<uint64_t>("uint64_t")          == uint64_t(123123));
+        REQUIRE(current.get<uint256_t>("uint256_t")        == hash256 + 1);
+        REQUIRE(current.get<uint512_t>("uint512_t")        == hash512 + 1);
+        REQUIRE(current.get<uint1024_t>("uint1024_t")      == hash1024 + 1);
+        REQUIRE(current.get<std::string>("string")         == std::string("this is a string to test long forms"));
+        REQUIRE(current.get<std::vector<uint8_t>>("bytes") == vBytes);
+
         //test value erase
         REQUIRE(tx.Disconnect(FLAGS::ERASE));
 
@@ -1554,6 +1586,492 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
         REQUIRE(object.get<std::string>("string")         == std::string("this is a string to test long forms"));
         REQUIRE(object.get<std::vector<uint8_t>>("bytes") == vBytes);
     }
+
+
+    //tests for append object register
+    uint256_t hashAppend = TAO::Register::Address(TAO::Register::Address::APPEND);
+    {
+        //create the transaction object
+        TAO::Ledger::Transaction tx;
+        tx.hashGenesis = hashGenesis1[0];
+        tx.nSequence   = 10;
+        tx.hashPrevTx  = hashPrevTx[0];
+        tx.nTimestamp  = runtime::timestamp();
+        tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
+        tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
+        tx.NextHash(hashPrivKey2[0], TAO::Ledger::SIGNATURE::BRAINPOOL);
+
+        //payload
+        tx[0] << uint8_t(OP::CREATE) << hashAppend << uint8_t(REGISTER::APPEND) << vBytes;
+
+        //generate the prestates and poststates
+        REQUIRE(tx.Build());
+
+        //sign transaction
+        REQUIRE(tx.Sign(hashPrivKey1[0]));
+
+        //cache the hash
+        uint512_t hash = tx.GetHash();
+
+        //verify prestates and poststates
+        REQUIRE(tx.Verify(FLAGS::MEMPOOL));
+
+        //connect in memory
+        REQUIRE(tx.Connect(FLAGS::MEMPOOL));
+
+        //check for account
+        State object;
+        REQUIRE_FALSE(LLD::Register->ReadState(hashAppend, object));
+
+        //write to disk
+        REQUIRE(LLD::Ledger->WriteTx(hash, tx));
+
+        //verify prestates and postates (disk)
+        REQUIRE(tx.Verify(FLAGS::BLOCK));
+
+        //connect on disk
+        REQUIRE(tx.Connect(FLAGS::BLOCK));
+
+        //index to genesis
+        REQUIRE(LLD::Ledger->IndexBlock(hash, TAO::Ledger::ChainState::Genesis()));
+
+        //check for account
+        REQUIRE(LLD::Register->ReadState(hashAppend, object));
+
+        //check memory vs disk
+        State memory;
+        REQUIRE(LLD::Register->ReadState(hashAppend, memory, FLAGS::MEMPOOL));
+        REQUIRE(memory == object);
+
+        //check state is correct
+        REQUIRE(object.GetState() == vBytes);
+
+        //set previous
+        hashPrevTx[0] = hash;
+    }
+
+
+    {
+        //set private keys
+        hashPrivKey1[0] = hashPrivKey2[0];
+        hashPrivKey2[0] = LLC::GetRand512();
+
+        //create the transaction object
+        TAO::Ledger::Transaction tx;
+        tx.hashGenesis = hashGenesis1[0];
+        tx.nSequence   = 11;
+        tx.hashPrevTx  = hashPrevTx[0];
+        tx.nTimestamp  = runtime::timestamp();
+        tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
+        tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
+        tx.NextHash(hashPrivKey2[0], TAO::Ledger::SIGNATURE::BRAINPOOL);
+
+        //payload
+        tx[0] << uint8_t(OP::APPEND) << hashAppend << vBytes;
+
+        //generate the prestates and poststates
+        REQUIRE(tx.Build());
+
+        //sign transaction
+        REQUIRE(tx.Sign(hashPrivKey1[0]));
+
+        //cache the hash
+        uint512_t hash = tx.GetHash();
+
+        //verify prestates and poststates
+        REQUIRE(tx.Verify(FLAGS::MEMPOOL));
+
+        //connect in memory
+        REQUIRE(tx.Connect(FLAGS::MEMPOOL));
+
+        //check for account
+        State state;
+        REQUIRE(LLD::Register->ReadState(hashAppend, state, FLAGS::MEMPOOL));
+
+        //check append memory is correct
+        std::vector<uint8_t> vCompare(vBytes);
+        vCompare.insert(vCompare.end(), vBytes.begin(), vBytes.end());
+        REQUIRE(state.GetState() == vCompare);
+
+        //test value erase
+        REQUIRE(tx.Disconnect(FLAGS::ERASE));
+
+        //check for account
+        State object;
+        REQUIRE(LLD::Register->ReadState(hashAppend, object));
+
+        //check memory vs disk
+        State memory;
+        REQUIRE(LLD::Register->ReadState(hashAppend, memory, FLAGS::MEMPOOL));
+        REQUIRE(memory == object);
+
+        //check state is correct
+        REQUIRE(object.GetState() == vBytes);
+    }
+
+
+
+    {
+        //create the transaction object
+        TAO::Ledger::Transaction tx;
+        tx.hashGenesis = hashGenesis1[0];
+        tx.nSequence   = 11;
+        tx.hashPrevTx  = hashPrevTx[0];
+        tx.nTimestamp  = runtime::timestamp();
+        tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
+        tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
+        tx.NextHash(hashPrivKey2[0], TAO::Ledger::SIGNATURE::BRAINPOOL);
+
+        //payload
+        tx[0] << uint8_t(OP::TRANSFER) << hashAppend << hashGenesis1[1] << uint8_t(TRANSFER::CLAIM);
+
+        //generate the prestates and poststates
+        REQUIRE(tx.Build());
+
+        //sign transaction
+        REQUIRE(tx.Sign(hashPrivKey1[0]));
+
+        //cache the hash
+        uint512_t hash = tx.GetHash();
+
+        //verify prestates and poststates
+        REQUIRE(tx.Verify(FLAGS::MEMPOOL));
+
+        //connect in memory
+        REQUIRE(tx.Connect(FLAGS::MEMPOOL));
+
+        //check for account
+        State state;
+        REQUIRE(LLD::Register->ReadState(hashAppend, state, FLAGS::MEMPOOL));
+
+        //check append memory is correct
+        REQUIRE(state.GetState() == vBytes);
+
+        //check owner is system
+        REQUIRE(state.hashOwner == 0);
+
+        //test value erase
+        REQUIRE(tx.Disconnect(FLAGS::ERASE));
+
+        //check for account
+        State object;
+        REQUIRE(LLD::Register->ReadState(hashAppend, object));
+
+        //check memory vs disk
+        State memory;
+        REQUIRE(LLD::Register->ReadState(hashAppend, memory, FLAGS::MEMPOOL));
+        REQUIRE(memory == object);
+
+        //check state is correct
+        REQUIRE(object.GetState() == vBytes);
+        REQUIRE(object.hashOwner == hashGenesis1[0]);
+    }
+
+
+    {
+        //create the transaction object
+        TAO::Ledger::Transaction tx;
+        tx.hashGenesis = hashGenesis1[0];
+        tx.nSequence   = 11;
+        tx.hashPrevTx  = hashPrevTx[0];
+        tx.nTimestamp  = runtime::timestamp();
+        tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
+        tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
+        tx.NextHash(hashPrivKey2[0], TAO::Ledger::SIGNATURE::BRAINPOOL);
+
+        //payload
+        tx[0] << uint8_t(OP::TRANSFER) << hashAppend << hashGenesis1[1] << uint8_t(TRANSFER::CLAIM);
+
+        //generate the prestates and poststates
+        REQUIRE(tx.Build());
+
+        //sign transaction
+        REQUIRE(tx.Sign(hashPrivKey1[0]));
+
+        //cache the hash
+        uint512_t hash = tx.GetHash();
+
+        //verify prestates and poststates
+        REQUIRE(tx.Verify(FLAGS::MEMPOOL));
+
+        //connect in memory
+        REQUIRE(tx.Connect(FLAGS::MEMPOOL));
+
+        //check for account
+        State state;
+        REQUIRE(LLD::Register->ReadState(hashAppend, state, FLAGS::MEMPOOL));
+
+        //check append memory is correct
+        REQUIRE(state.GetState() == vBytes);
+
+        //check owner is system
+        REQUIRE(state.hashOwner == 0);
+
+        //write to disk
+        REQUIRE(LLD::Ledger->WriteTx(hash, tx));
+
+        //verify prestates and postates (disk)
+        REQUIRE(tx.Verify(FLAGS::BLOCK));
+
+        //connect on disk
+        REQUIRE(tx.Connect(FLAGS::BLOCK));
+
+        //index to genesis
+        REQUIRE(LLD::Ledger->IndexBlock(hash, TAO::Ledger::ChainState::Genesis()));
+
+        //check for account
+        State object;
+        REQUIRE(LLD::Register->ReadState(hashAppend, object));
+
+        //check memory vs disk
+        State memory;
+        REQUIRE(LLD::Register->ReadState(hashAppend, memory, FLAGS::MEMPOOL));
+        REQUIRE(memory == object);
+
+        //check state is correct
+        REQUIRE(object.GetState() == vBytes);
+        REQUIRE(object.hashOwner  == 0);
+
+        //set previous
+        hashPrevTx[0] = hash;
+    }
+
+
+
+
+    {
+        //set private keys
+        hashPrivKey1[1] = hashPrivKey2[1];
+        hashPrivKey2[1] = LLC::GetRand512();
+
+        //create the transaction object
+        TAO::Ledger::Transaction tx;
+        tx.hashGenesis = hashGenesis1[1];
+        tx.nSequence   = 8;
+        tx.hashPrevTx  = hashPrevTx[1];
+        tx.nTimestamp  = runtime::timestamp();
+        tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
+        tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
+        tx.NextHash(hashPrivKey2[1], TAO::Ledger::SIGNATURE::BRAINPOOL);
+
+        //payload
+        tx[0] << uint8_t(OP::CLAIM) << hashPrevTx[0] << uint32_t(0) << hashAppend;
+
+        //generate the prestates and poststates
+        REQUIRE(tx.Build());
+
+        //sign transaction
+        REQUIRE(tx.Sign(hashPrivKey1[1]));
+
+        //cache the hash
+        uint512_t hash = tx.GetHash();
+
+        //verify prestates and poststates
+        REQUIRE(tx.Verify(FLAGS::MEMPOOL));
+
+        //connect in memory
+        REQUIRE(tx.Connect(FLAGS::MEMPOOL));
+
+        //check for account
+        State state;
+        REQUIRE(LLD::Register->ReadState(hashAppend, state, FLAGS::MEMPOOL));
+
+        //check append memory is correct
+        REQUIRE(state.GetState() == vBytes);
+
+        //check owner is system
+        REQUIRE(state.hashOwner == hashGenesis1[1]);
+
+        //test value erase
+        REQUIRE(tx.Disconnect(FLAGS::ERASE));
+
+        //check for account
+        Object object;
+        REQUIRE(LLD::Register->ReadState(hashAppend, object));
+
+        //check memory vs disk
+        Object memory;
+        REQUIRE(LLD::Register->ReadState(hashAppend, memory, FLAGS::MEMPOOL));
+        REQUIRE(memory == object);
+
+        //check owner is system
+        REQUIRE(object.hashOwner == 0);
+    }
+
+
+
+
+
+    //------------------------------------ TEST A DEX TRANSACTION WITH FLAGS::ERASE
+
+    uint512_t hashValidate = 0;
+    {
+        //create the transaction object
+        TAO::Ledger::Transaction tx;
+        tx.hashGenesis = hashGenesis1[1];
+        tx.nSequence   = 8;
+        tx.hashPrevTx  = hashPrevTx[1];
+        tx.nTimestamp  = runtime::timestamp();
+        tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
+        tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
+        tx.NextHash(hashPrivKey2[1], TAO::Ledger::SIGNATURE::BRAINPOOL);
+
+        //payload
+        tx[0] << uint8_t(OP::CONDITION) << uint8_t(OP::DEBIT) << hashNexus[1] << TAO::Register::WILDCARD_ADDRESS << uint64_t(5 * NXS_COIN) << uint64_t(0);
+
+        //build condition requirement
+        TAO::Operation::Stream compare;
+        compare << uint8_t(OP::DEBIT) << uint256_t(0) << hashAccount[1] << uint64_t(100) << uint64_t(0);
+
+        //conditions
+        tx[0] <= uint8_t(OP::GROUP);
+        tx[0] <= uint8_t(OP::CALLER::OPERATIONS) <= uint8_t(OP::CONTAINS) <= uint8_t(OP::TYPES::BYTES) <= compare.Bytes();
+        tx[0] <= uint8_t(OP::AND);
+        tx[0] <= uint8_t(OP::CALLER::PRESTATE::VALUE) <= std::string("token");
+        tx[0] <= uint8_t(OP::EQUALS) <= uint8_t(OP::TYPES::UINT256_T) <= hashToken;
+        tx[0] <= uint8_t(OP::UNGROUP);
+
+        tx[0] <= uint8_t(OP::OR);
+
+        tx[0] <= uint8_t(OP::GROUP);
+        tx[0] <= uint8_t(OP::CALLER::GENESIS) <= uint8_t(OP::EQUALS) <= uint8_t(OP::CONTRACT::GENESIS);
+        tx[0] <= uint8_t(OP::UNGROUP);
+
+        //generate the prestates and poststates
+        REQUIRE(tx.Build());
+
+        //sign transaction
+        REQUIRE(tx.Sign(hashPrivKey1[1]));
+
+        //cache the hash
+        uint512_t hash = tx.GetHash();
+
+        //verify prestates and poststates
+        REQUIRE(tx.Verify(FLAGS::MEMPOOL));
+
+        //connect in memory
+        REQUIRE(tx.Connect(FLAGS::MEMPOOL));
+
+        //check for account
+        Object state;
+        REQUIRE(LLD::Register->ReadState(hashNexus[1], state, FLAGS::MEMPOOL));
+
+        //check the nexus account balance
+        REQUIRE(state.Parse());
+        REQUIRE(state.get<uint64_t>("balance") == NXS_COIN * 994.5);
+
+        //write to disk
+        REQUIRE(LLD::Ledger->WriteTx(hash, tx));
+
+        //verify prestates and postates (disk)
+        REQUIRE(tx.Verify(FLAGS::BLOCK));
+
+        //connect on disk
+        REQUIRE(tx.Connect(FLAGS::BLOCK));
+
+        //index to genesis
+        REQUIRE(LLD::Ledger->IndexBlock(hash, TAO::Ledger::ChainState::Genesis()));
+
+        //check for account
+        Object object;
+        REQUIRE(LLD::Register->ReadState(hashNexus[1], object));
+
+        //check memory vs disk
+        Object memory;
+        REQUIRE(LLD::Register->ReadState(hashNexus[1], memory, FLAGS::MEMPOOL));
+        REQUIRE(memory == object);
+
+        //check values
+        REQUIRE(object.Parse());
+        REQUIRE(object.get<uint64_t>("balance") == 994.5 * NXS_COIN);
+
+        //set previous
+        hashPrevTx[1] = hash;
+
+        //set validate
+        hashValidate  = hash;
+    }
+
+
+    {
+        //set private keys
+        hashPrivKey1[0] = hashPrivKey2[0];
+        hashPrivKey2[0] = LLC::GetRand512();
+
+        //create the transaction object
+        TAO::Ledger::Transaction tx;
+        tx.hashGenesis = hashGenesis1[0];
+        tx.nSequence   = 12;
+        tx.hashPrevTx  = hashPrevTx[0];
+        tx.nTimestamp  = runtime::timestamp();
+        tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
+        tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
+        tx.NextHash(hashPrivKey2[0], TAO::Ledger::SIGNATURE::BRAINPOOL);
+
+        //payload
+        tx[0] << uint8_t(OP::VALIDATE) << hashValidate << uint32_t(0) << uint8_t(OP::DEBIT) << hashAccount[0] << hashAccount[1] << uint64_t(100) << uint64_t(0);
+
+        //generate the prestates and poststates
+        REQUIRE(tx.Build());
+
+        //sign transaction
+        REQUIRE(tx.Sign(hashPrivKey1[0]));
+
+        //cache the hash
+        uint512_t hash = tx.GetHash();
+
+        //verify prestates and poststates
+        REQUIRE(tx.Verify(FLAGS::MEMPOOL));
+
+        //connect in memory
+        REQUIRE(tx.Connect(FLAGS::MEMPOOL));
+
+        //read contract database
+        REQUIRE(LLD::Contract->HasContract(std::make_pair(hashValidate, 0), FLAGS::MEMPOOL));
+
+        uint256_t hashCaller;
+        REQUIRE(LLD::Contract->ReadContract(std::make_pair(hashValidate, 0), hashCaller, FLAGS::MEMPOOL));
+
+        //check values
+        REQUIRE(hashCaller == hashGenesis1[0]);
+
+        //check memory vs disk
+        Object temp;
+        REQUIRE(LLD::Register->ReadState(hashAccount[0], temp, FLAGS::MEMPOOL));
+
+        //check values
+        REQUIRE(temp.Parse());
+        REQUIRE(temp.get<uint64_t>("balance") == 400);
+
+        //test value erase
+        REQUIRE(tx.Disconnect(FLAGS::ERASE));
+
+        //check for account
+        Object object;
+        REQUIRE(LLD::Register->ReadState(hashAccount[0], object));
+
+        //check memory vs disk
+        Object memory;
+        REQUIRE(LLD::Register->ReadState(hashAccount[0], memory, FLAGS::MEMPOOL));
+        REQUIRE(memory == object);
+
+        //check values
+        REQUIRE(object.Parse());
+        REQUIRE(object.get<uint64_t>("balance") == 500);
+
+        //read contract database
+        REQUIRE_FALSE(LLD::Contract->HasContract(std::make_pair(hashValidate, 0), FLAGS::MEMPOOL));
+
+    }
+
+
+
+
+
+
+
+
+
 
 
 

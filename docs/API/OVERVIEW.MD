@@ -14,14 +14,14 @@ By default the API server runs on port 8080. This can be changed by setting `api
 
 ## `Security`
 The Nexus API uses the `HTTP Basic` authentication scheme.  This requires the caller to set an `Authorization` HTTP header with the value `Basic <credentials>` with the `<credendtials>` portion set to `apiuser:apipassword` and `base64` encoded. On the API server side the authentication is configured by adding `apiuser=<username>` and `apipassword=<password>` to the nexus.conf.   
-**NOTE**:  If you wish to disable authentication entirely, you can do so by setting `apiauth=0` in your nexus.conf 
+**NOTE**:  If you wish to disable authentication entirely, you can do so by setting `apiauth=0` in your nexus.conf
 
 
 The authentication mechanism is complemented by the implementation of `SSL` encryption (`HTTPS`).  By default the API server is started with SSL disabled.  To enable it, please add `apissl=1` to your nexus.conf   
 
 
 ## `Multi-user Sessions`
-The Nexus API can be configured to run in multiuser mode, allowing multiple signature chains to be logged in and use the API simultaneously.  This feature can be enabled by setting `multiuser=1` in your nexus.conf (default off).  When multiuser is enabled, the initial login response will include a session ID value.  This session ID must be then be included in all subsequent API calls to endpoints that require a user to be logged in. 
+The Nexus API can be configured to run in multiuser mode, allowing multiple signature chains to be logged in and use the API simultaneously.  This feature can be enabled by setting `multiuser=1` in your nexus.conf (default off).  When multiuser is enabled, the initial login response will include a session ID value.  This session ID must be then be included in all subsequent API calls to endpoints that require a user to be logged in.
 
 ## `Endpoint`
 
@@ -325,7 +325,7 @@ Error Codes
 | -188 | Trust account already has genesis |
 | -189 | Trust account already has stake |
 | -190 | Trust account already has trust |
-| -191 | Username must be a minimum of 3 characters |
+| -191 | Username must be a minimum of 2 characters |
 | -192 | Password must be a minimum of 8 characters |
 | -193 | Pin must be a minimum of 4 characters |
 | -194 | Account already unlocked for notifications |
@@ -348,6 +348,3 @@ Error Codes
 | -211 | Recipient object has not been tokenized |
 | -212 | Invalid token |
 | -213 | Cannot create transactions whilst synchronizing |
-
-
-

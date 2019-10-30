@@ -69,7 +69,7 @@ namespace TAO
                         contract >> nContract;
 
                         /* Erase the contract validation record. */
-                        if(!LLD::Contract->EraseContract(std::make_pair(hashTx, nContract)), nFlags)
+                        if(!LLD::Contract->EraseContract(std::make_pair(hashTx, nContract), nFlags))
                             return debug::error(FUNCTION, "failed to erase validation contract");
 
                         /* Condition has no parameters. */
@@ -394,8 +394,6 @@ namespace TAO
                         /* Get the transfer amount. */
                         uint64_t  nAmount = 0;
                         contract >> nAmount;
-
-                        debug::log(0, FUNCTION, "OP::CREDIT: Erasing Proof ", hashProof.SubString(), " txid ", hashTx.SubString(), " contract ", nContract);
 
                         /* Write the claimed proof. */
                         if(!LLD::Ledger->EraseProof(hashProof, hashTx, nContract, nFlags))

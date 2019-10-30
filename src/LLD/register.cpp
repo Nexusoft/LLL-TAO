@@ -250,11 +250,7 @@ namespace LLD
 
             /* Break on erase.  */
             if(nFlags == TAO::Ledger::FLAGS::ERASE)
-            {
-                printf("MEMORY ERASE!\n");
-
                 return true;
-            }
         }
 
         return Erase(std::make_pair(std::string("state"), hashRegister));

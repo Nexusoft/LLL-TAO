@@ -127,10 +127,6 @@ namespace TAO
             State(const std::vector<uint8_t>& vchData, const uint8_t nTypeIn, const uint256_t& hashOwnerIn);
 
 
-            /** Default Constructor **/
-            State(const uint64_t hashChecksumIn);
-
-
             /** Operator overload to check for equivilence. **/
             bool operator==(const State& state) const;
 
