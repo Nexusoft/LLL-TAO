@@ -998,7 +998,10 @@ namespace LLP
 
                                         /* Read the correct block from next index. */
                                         if(!LLD::Ledger->ReadBlock(stateLast.hashNextBlock, state))
-                                           return debug::drop(NODE, "failed to read current block");
+                                        {
+                                            nLimits = 0;
+                                            break;
+                                        }
                                     }
 
                                     /* Cache the block hash. */
