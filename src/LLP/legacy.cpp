@@ -400,7 +400,7 @@ namespace LLP
             }
 
             /* Detect if the fast sync node was disconnected. */
-            if(nCurrentSession == TAO::Ledger::nSyncSession.load())
+            if(nCurrentSession != 0 && nCurrentSession == TAO::Ledger::nSyncSession.load())
             {
                 debug::log(0, NODE, "Sync Node Disconnected ", strReason);
 
