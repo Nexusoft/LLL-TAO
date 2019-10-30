@@ -151,7 +151,7 @@ namespace TAO
             hashRegister = TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
 
             /* The key type to use for the crypto keys */
-            uint8_t nKeyType = config::GetBoolArg("-brainpool") ? TAO::Ledger::SIGNATURE::BRAINPOOL : TAO::Ledger::SIGNATURE::FALCON;
+            uint8_t nKeyType = config::GetBoolArg("-falcon") ? TAO::Ledger::SIGNATURE::FALCON : TAO::Ledger::SIGNATURE::BRAINPOOL;
 
             /* Create the crypto object. */
             TAO::Register::Object crypto = TAO::Register::CreateCrypto(

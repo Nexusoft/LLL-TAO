@@ -70,14 +70,14 @@ namespace TAO
             uint512_t hashLast = 0;
 
             /* Set default signature types. */
-            tx.nNextType = SIGNATURE::FALCON;
-            tx.nKeyType  = SIGNATURE::FALCON;
+            tx.nKeyType  = SIGNATURE::BRAINPOOL;
+            tx.nNextType = SIGNATURE::BRAINPOOL;
 
             /* Check for configuration options. */
-            if(config::GetBoolArg("-brainpool"))
+            if(config::GetBoolArg("-falcon"))
             {
-                tx.nKeyType  = SIGNATURE::BRAINPOOL;
-                tx.nNextType = SIGNATURE::BRAINPOOL;
+                tx.nNextType = SIGNATURE::FALCON;
+                tx.nKeyType  = SIGNATURE::FALCON;
             }
 
             /* Check mempool for other transactions. */
