@@ -32,7 +32,7 @@ namespace TAO
             {
                 uint256_t("a1bc1623d785130bd7bd725d523bd2bb755518646c3831ea7cd5f86883845901"),
                 {
-                    uint256_t("7e3ed73d122e4b8dd1106c0f9450dea92ef73890bdc682a1f3aa2b795b4e0356"), //password authentication
+                    uint256_t("de468f6b7d6f498544f6b1843941f7f223817a61e0b2c5a4df6b78973b29570c"), //password authentication
                     550 //55%
                 }
             },
@@ -41,7 +41,7 @@ namespace TAO
             {
                 uint256_t("a1d216ee832d63a7ab18569d7d0bdc4fd383390af5b99d9de3477ad19081a490"),
                 {
-                    uint256_t("c46a417832621961fdc03f8de585893e1105271393bafe985caae979575e010a"), //password authentication
+                    uint256_t("c52225d0131f5946536425df7ed4181064267053846294a77ceffce8feb2ec8e"), //password authentication
                     225 //22.5%
                 }
             },
@@ -50,7 +50,7 @@ namespace TAO
             {
                 uint256_t("a1206f9c4feb88239d60381f62af789febc6e71371cf6700838feb90e76987a3"),
                 {
-                    uint256_t("f41b60324fa210ed48c8e58eefbccb67e1dea521e6ce3417f75be179378874fb"), //password authentication
+                    uint256_t("6694a7cffc46dedd67c4d9ef814a930ef16da6e0b3185394fb8f8ee4d44fa4e4"), //password authentication
                     225 //22.5%
                 }
             }
@@ -67,7 +67,7 @@ namespace TAO
             {
                 uint256_t("a2cfad9f505f8166203df2685ee7cb8582be9ae017dcafa4ca4530cd5b4f1dca"),
                 {
-                    uint256_t("5422b97efbfd5b5ea11440cd04de48b86ec6838a408a171199f87a63b0f573d5"), //password authentication
+                    uint256_t("6fcf29db16223b1aaddbbf0ad9f09758f12b2db85b5f1dbff4d0de1dac540fcc"), //password authentication
                     1000 //100%
                 }
             }

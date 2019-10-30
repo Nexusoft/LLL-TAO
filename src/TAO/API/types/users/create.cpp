@@ -71,8 +71,8 @@ namespace TAO
             SecureString strPassword = params["password"].get<std::string>().c_str();
 
             /* Check username length */
-            if(strUsername.length() < 3)
-                throw APIException(-191, "Username must be a minimum of 3 characters");
+            if(strUsername.length() < 2)
+                throw APIException(-191, "Username must be a minimum of 2 characters");
 
             /* Check password length */
             if(strPassword.length() < 8)

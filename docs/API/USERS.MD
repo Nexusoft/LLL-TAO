@@ -29,9 +29,9 @@ The following methods are currently supported by this API
 [`list/namespaces`](#listnamespaces)  
 [`list/notifications`](#listnotifications)  
 [`list/tokens`](#listtokens)  
-[`list/transactions`](#listtransactions) 
+[`list/transactions`](#listtransactions)
 
- 
+
 
 
 -----------------------------------
@@ -42,8 +42,8 @@ The following methods are currently supported by this API
 # `create/user`
 
 This will create a new user account (signature chain) for use on the network. The user account is secured by a combination of username, password, and PIN.
-  
-**NOTE** : username must be a minimum of 3 characters   
+
+**NOTE** : username must be a minimum of 2 characters   
 **NOTE** : password must be a minimum of 8 characters   
 **NOTE** : pin must be a minimum of 4 characters    
 
@@ -193,7 +193,7 @@ The `pin` field is mandatory for unlock. The mining/staking/transactions/notific
 
 `mining` : This boolean value determines whether the logged in users signature chain can be used for mining.
 
-`notifications` : This boolean value determines whether the logged in users signature chain can be used for processing notifications. 
+`notifications` : This boolean value determines whether the logged in users signature chain can be used for processing notifications.
 
 `staking` : This boolean value determines whether the logged in users signature chain can be used for staking.
 
@@ -233,7 +233,7 @@ The `pin` field is mandatory for unlock. The mining/staking/transactions/notific
 
 This will lock your signature chain, making it unavailable for use unless it is either unlocked or the PIN is passed in to all API requests. Only available in single-user API mode (multiuser=0).
 
-The mining/staking/transactions/notifications parameters are optional and, if supplied, allow the signature chain to be locked for either mining, staking, creating transactions, or processing notifications. This allows, for example, a signature chain to be continually unlocked for mining, but only temporarily unlocked for sending a transaction. 
+The mining/staking/transactions/notifications parameters are optional and, if supplied, allow the signature chain to be locked for either mining, staking, creating transactions, or processing notifications. This allows, for example, a signature chain to be continually unlocked for mining, but only temporarily unlocked for sending a transaction.
 
 **NOTE** : This method can be called multiple times to lock the options not previously locked.
 
@@ -287,7 +287,7 @@ The mining/staking/transactions/notifications parameters are optional and, if su
 # `get/status`
 
 Only available in single-user API mode (multiuser=0), this method will return status information for the currently logged in user
-   
+
 
 ### Endpoint:
 
@@ -580,7 +580,7 @@ This will list off all of the names owned by the signature chain.  For privacy r
 
 `modified` : The UNIX timestamp when the Name was last modified.
 
-`name` : The name identifying the object register. 
+`name` : The name identifying the object register.
 
 `address` : The register address of the Name.  
 
@@ -635,7 +635,7 @@ This will list off all of the namespaces owned by the signature chain.
 
 `modified` : The UNIX timestamp when the namespace was last modified.
 
-`name` : The name identifying the namespace. 
+`name` : The name identifying the namespace.
 
 `address` : The register address of the namespace.  
 
