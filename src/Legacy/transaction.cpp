@@ -1325,6 +1325,8 @@ namespace Legacy
         uint32_t nSequence;
         uint32_t nTrustScore;
 
+        const uint32_t nMaxTrustScore = config::fTestNet.load() ? TAO::Ledger::TRUST_SCORE_MAX_TESTNET : TAO::Ledger::TRUST_SCORE_MAX;
+
         /* Extract values from coinstake vin. */
         if(!ExtractTrust(hashLastBlock, nSequence, nTrustScore))
             return debug::error(FUNCTION, "failed to extract values from script");
@@ -1443,8 +1445,8 @@ namespace Legacy
         }
 
         /* Cap trust score at max. */
-        if(nScore > TAO::Ledger::TRUST_SCORE_MAX)
-            nScore = TAO::Ledger::TRUST_SCORE_MAX;
+        if(nScore > nMaxTrustScore)
+            nScore = nMaxTrustScore;
 
         /* Check that published score in this block is equivilent to calculated score. */
         if(nTrustScore != nScore)
