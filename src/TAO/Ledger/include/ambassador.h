@@ -64,7 +64,6 @@ namespace TAO
         /** Ambassador Sigchain for Testnet **/
         const std::map<uint256_t, std::pair<uint256_t, uint32_t>> AMBASSADOR_TESTNET =
         {
-            /* United States. */
             {
                 uint256_t("a2cfad9f505f8166203df2685ee7cb8582be9ae017dcafa4ca4530cd5b4f1dca"),
                 {

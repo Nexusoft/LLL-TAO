@@ -395,8 +395,6 @@ namespace TAO
                         uint64_t  nAmount = 0;
                         contract >> nAmount;
 
-                        debug::log(0, FUNCTION, "OP::CREDIT: Erasing Proof ", hashProof.SubString(), " txid ", hashTx.SubString(), " contract ", nContract);
-
                         /* Write the claimed proof. */
                         if(!LLD::Ledger->EraseProof(hashProof, hashTx, nContract, nFlags))
                             return debug::error(FUNCTION, "OP::CREDIT: failed to erase credit proof");

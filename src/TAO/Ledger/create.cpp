@@ -162,6 +162,7 @@ namespace TAO
                 if(!tx.Connect(FLAGS::MINER))
                     continue;
 
+                /* Dump sequence on verbose 3 levels. */
                 if(config::nVerbose >= 3)
                     tx.print();
 
