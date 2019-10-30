@@ -436,7 +436,7 @@ namespace TAO
                         std::map<std::string, uint64_t> mapOutputs = pCoinbaseRecipients->Outputs();
                         uint32_t nTx = 1;
 
-                        for(const auto&entry : mapOutputs)
+                        for(const auto& entry : mapOutputs)
                         {
                             /* Build the recipient address from a hex string. */
                             uint256_t hashGenesis = uint256_t(entry.first);
@@ -471,6 +471,8 @@ namespace TAO
                         {
                             /* Get the total in reserves. */
                             int64_t nBalance = statePrev.nReleasedReserve[1] - (33 * NXS_COIN); //leave 33 coins in the reserve
+
+                            debug::log(0, "CREATE ", nBalance);
                             if(nBalance > 0)
                             {
                                 /* Loop through the embassy sigchains. */
@@ -488,6 +490,8 @@ namespace TAO
                                     uint64_t nCredit = (nBalance * it->second.second) / 1000;
                                     block.producer[nContract] << nCredit;
                                     block.producer[nContract] << uint64_t(0);
+
+                                    debug::log(0, "CONTRACT! ", it->first.ToString());
                                 }
                             }
                         }
