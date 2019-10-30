@@ -109,6 +109,9 @@ namespace debug
     /*  Log startup information. */
     void LogStartup(int argc, char** argv)
     {
+        log(0, "");
+        log(0, "");
+        log(0, "---------------------------------------------------");
         log(0, "Startup time ", convert::DateTimeStrFormat(runtime::timestamp()));
         log(0, version::CLIENT_VERSION_BUILD_STRING);
 
@@ -153,7 +156,8 @@ namespace debug
                     || argItem.first.compare(0, 12, "-apipassword") == 0
                     || argItem.first.compare(0, 9, "-username") == 0
                     || argItem.first.compare(0, 9, "-password") == 0
-                    || argItem.first.compare(0, 4, "-pin") == 0)
+                    || argItem.first.compare(0, 4, "-pin") == 0
+                    || argItem.first.compare(0, 9, "-generate") == 0)
                         confFileParams += "=XXXXXXXX";
                     else if(!argItem.second[i].empty())
                         confFileParams += "=" + argItem.second[i];
@@ -188,6 +192,9 @@ namespace debug
 
             else if(std::string(argv[i]).compare(0, 4, "-pin") == 0)
                 cmdLineParms += "-pin=XXXXXXXX ";
+
+            else if(std::string(argv[i]).compare(0, 9, "-generate") == 0)
+                cmdLineParms += "-generate=XXXXXXXX ";
 
             else
                 cmdLineParms += std::string(argv[i]) + " ";
