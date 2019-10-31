@@ -96,8 +96,8 @@ namespace LLP
 
             LISTEN_THREAD_V4 = std::thread(std::bind(&Server::ListeningThread, this, true));  //IPv4 Listener
 
-            /* Initialize the UPnP thread. */
-            if(config::GetBoolArg(std::string("-upnp"), true))
+            /* Initialize the UPnP thread if remote connections are allowed. */
+            if(fRemote && config::GetBoolArg(std::string("-upnp"), true))
                 UPNP_THREAD = std::thread(std::bind(&Server::UPnP, this));
                 
         }
