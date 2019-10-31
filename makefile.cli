@@ -85,6 +85,17 @@ ifndef BDB_INCLUDE_PATH
 		BDB_INCLUDE_PATH= /usr/include
 	endif
 endif
+ifndef MINIUPNPC_LIB_PATH
+	ifeq ($(detected_OS),Windows)
+		MINIUPNPC_LIB_PATH= "C:\deps\lib"
+	endif
+	ifeq ($(detected_OS),OSX)
+		MINIUPNPC_LIB_PATH= /usr/local/opt/miniupnpc/lib
+	endif
+	ifeq ($(detected_OS),Linux)
+		MINIUPNPC_LIB_PATH= /usr/local/opt/miniupnpc/lib
+	endif
+endif
 
 #Oracle DB Support Config
 ifndef ORACLE
@@ -92,6 +103,27 @@ ifndef ORACLE
 endif
 ifneq (${ORACLE}, 1)
 	DEFS+= -DUSE_LLD
+endif
+
+# UPNP is OFF by default unless explicitly defined
+USE_UPNP:=0
+
+ifdef USE_UPNP
+	override USE_UPNP = 1
+endif
+ifeq (${USE_UPNP}, 1)
+	INCLUDEPATHS+= -I$(MINIUPNPC_INCLUDE_PATH)
+	LIBPATHS+= -L$(MINIUPNPC_LIB_PATH)
+	ifneq ($(detected_OS),OSX)
+		LIBS+= -lminiupnpc
+	endif
+	ifeq ($(detected_OS),OSX)
+		LIBS+= $(MINIUPNPC_LIB_PATH)/libminiupnpc.a
+	endif
+	ifeq ($(detected_OS),Windows)
+		LIBS+= -l iphlpapi
+	endif
+	DEFS+= -DMINIUPNP_STATICLIB -DUSE_UPNP=1
 endif
 
 #Configure Build Environment
