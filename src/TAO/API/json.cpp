@@ -201,7 +201,7 @@ namespace TAO
                         json::json input;
                         bool fFound = false;
 
-                        if((TAO::Ledger::VersionActive(tx.nTime, 7) || TAO::Ledger::CurrentVersion() > 7)
+                        if((TAO::Ledger::VersionActive(tx.nTime, 7) || TAO::Ledger::CurrentVersion() > 7) && tx.nVersion >= 2
                             && txin.prevout.hash.GetType() == TAO::Ledger::TRITIUM)
                         {
                             /* Previous output likely a Tritium send-to-legacy contract. Check for that first. It is possible for

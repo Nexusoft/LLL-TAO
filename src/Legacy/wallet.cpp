@@ -1142,7 +1142,9 @@ namespace Legacy
                 wtx.hashBlock = state.GetHash();
             }
 
-            /* AddToWallet preforms merge (update) for transactions already in wallet */
+            /* AddToWallet preforms merge (update) for transactions already in wallet.
+             * For OP::LEGACY tritium transactions, add the source tritium transaction hash (from txIn), not the wtx hash.
+             */
             return AddToWallet(wtx, hash);
         }
 

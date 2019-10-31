@@ -434,7 +434,7 @@ namespace Legacy
                      * Thus, we skip all checks if the best block is not version 7, or the tx hash is not yet in
                      * either the ledger db or the legacy db.
                      */
-                    if((TAO::Ledger::VersionActive(wtx.nTime, 7) || TAO::Ledger::CurrentVersion() > 7)
+                    if((TAO::Ledger::VersionActive(wtx.nTime, 7) || TAO::Ledger::CurrentVersion() > 7) && wtx.nVersion >= 2
                         && hash.GetType() == TAO::Ledger::TRITIUM)
                     {
                         TAO::Ledger::Transaction tx;
@@ -447,7 +447,9 @@ namespace Legacy
                         /* Read the transaction from ledger db. */
                         else if(LLD::Ledger->ReadTx(hash, tx))
                         {
-                            /* Convert the disk transaction into WalletTx. */
+                            /* Convert the disk transaction into WalletTx. Wallet db stores OP::LEGACY wtx using tritium hash,
+                             * but calling wtx.GetHash() will return legacy hash, so have to convert first to do a valid check.
+                             */
                             Transaction ltx(tx);
                             WalletTx wtx2(&wallet, ltx);
 
