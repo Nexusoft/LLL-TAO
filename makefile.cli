@@ -106,7 +106,6 @@ ifneq (${ORACLE}, 1)
 endif
 
 # UPNP is OFF by default unless explicitly defined
-USE_UPNP:=0
 
 ifdef USE_UPNP
 	override USE_UPNP = 1
