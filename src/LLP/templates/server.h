@@ -57,6 +57,7 @@ namespace LLP
         std::thread          LISTEN_THREAD_V4;
         std::thread          LISTEN_THREAD_V6;
         std::thread          METER_THREAD;
+        std::thread          UPNP_THREAD;
 
         uint16_t PORT;
 
@@ -293,6 +294,14 @@ namespace LLP
          *
          **/
         void ClearRequests();
+
+
+        /** UPnP
+         *
+         * UPnP Thread. If UPnP is enabled then this thread will set up the required port forwarding.
+         *
+         **/
+        void UPnP();
 
     };
 
