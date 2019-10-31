@@ -144,7 +144,7 @@ namespace TAO
                 cv::softdouble nProportions = cv::softdouble(nOverlap) / cv::softdouble(nBlockTarget);
 
                 /* Get the Mod from the Maximum Increase Equation with Decimal portion multiplied by Proportions. */
-                cv::softdouble nMod = cv::softdouble(1.0) + (nProportions * cv::softdouble(state.nVersion >= 7 ? 0.0222 : 0.075));
+                cv::softdouble nMod = cv::softdouble(1.0) + (nProportions * cv::softdouble(state.nVersion >= 7 ? 0.0333 : 0.075));
                 nLowerBound = uint64_t(cv::softdouble(nBlockTarget) * nMod * (state.nVersion >= 7 ? 1000000 : 1));
             }
 
@@ -264,7 +264,7 @@ namespace TAO
                     cv::softdouble nProportions = cv::softdouble(nOverlap) / cv::softdouble(nBlockTarget);
 
                     /* Get the Mod from the Maximum Increase Equation with Decimal portion multiplied by Proportions. */
-                    nMod = cv::softdouble(cv::softdouble(1.0) + (nProportions * (cv::softdouble(state.nVersion >= 7 ? 0.0222 : 0.125) / ((nDifficulty - 1) * cv::softdouble(10.0)))));
+                    nMod = cv::softdouble(cv::softdouble(1.0) + (nProportions * (cv::softdouble(state.nVersion >= 7 ? 0.0333 : 0.125) / ((nDifficulty - 1) * cv::softdouble(10.0)))));
                 }
             }
 
@@ -402,7 +402,7 @@ namespace TAO
                     cv::softdouble nProportions = cv::softdouble(nOverlap) / cv::softdouble(nBlockTarget);
 
                     /* Get the Mod from the Maximum Increase Equation with Decimal portion multiplied by Proportions. */
-                    cv::softdouble nMod = cv::softdouble(1.0) + (nProportions * cv::softdouble(state.nVersion >= 7 ? 0.0222 : 0.075));
+                    cv::softdouble nMod = cv::softdouble(1.0) + (nProportions * cv::softdouble(state.nVersion >= 7 ? 0.0333 : 0.075));
                     nLowerBound = uint64_t(cv::softdouble(nBlockTarget) * nMod * (state.nVersion >= 7 ? 1000000 : 1));
                 }
 
