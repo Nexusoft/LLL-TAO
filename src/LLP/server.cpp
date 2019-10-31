@@ -782,6 +782,12 @@ namespace LLP
         struct IGDdatas data;
         int nResult;
 
+        if(devlist == 0)
+        {
+            debug::error(FUNCTION, "No UPnP devices found");
+            return;
+        }
+
         nResult = UPNP_GetValidIGD(devlist, &urls, &data, lanaddr, sizeof(lanaddr));
         if (nResult == 1)
         {
