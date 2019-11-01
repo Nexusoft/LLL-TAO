@@ -34,12 +34,12 @@ ________________________________________________________________________________
 #include <functional>
 #include <numeric>
 
-//#ifdef USE_UPNP
+#ifdef USE_UPNP
 #include <miniupnpc/miniwget.h>
 #include <miniupnpc/miniupnpc.h>
 #include <miniupnpc/upnpcommands.h>
 #include <miniupnpc/upnperrors.h>
-//#endif
+#endif
 
 
 namespace LLP
