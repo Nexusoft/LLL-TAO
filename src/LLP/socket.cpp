@@ -422,6 +422,7 @@ namespace LLP
         /* If there were any errors, handle them gracefully. */
         {
             LOCK(SOCKET_MUTEX);
+            LOCK2(DATA_MUTEX);
 
             #ifdef WIN32
                 nSent = static_cast<int32_t>(send(fd, (char*)&vBuffer[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT));
