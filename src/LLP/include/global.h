@@ -32,7 +32,7 @@ namespace LLP
     extern Server<TimeNode>*     TIME_SERVER;
     extern Server<APINode>*      API_SERVER;
     extern Server<RPCNode>*      RPC_SERVER;
-    extern Server<Miner>*        MINING_SERVER;
+    extern std::atomic<Server<Miner>*>        MINING_SERVER;
 
 
     /** Current session identifier. **/

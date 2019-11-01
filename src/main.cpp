@@ -298,7 +298,7 @@ int main(int argc, char** argv)
 
         /* Set up Mining Server */
         if(config::GetBoolArg(std::string("-mining")))
-              LLP::MINING_SERVER  = LLP::CreateMiningServer();
+              LLP::MINING_SERVER.store(LLP::CreateMiningServer());
 
 
         /* Elapsed Milliseconds from timer. */

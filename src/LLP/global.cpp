@@ -24,7 +24,7 @@ namespace LLP
     Server<TimeNode>   * TIME_SERVER;
     Server<APINode>*     API_SERVER;
     Server<RPCNode>*     RPC_SERVER;
-    Server<Miner>*       MINING_SERVER;
+    std::atomic<Server<Miner>*>        MINING_SERVER;
 
 
     /* Current session identifier. */

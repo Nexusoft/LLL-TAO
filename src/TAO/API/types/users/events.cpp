@@ -182,7 +182,7 @@ namespace TAO
                 /* If mining is enabled, notify miner LLP that events processor is finished processing transactions so mined blocks
                    can include these transactions and not orphan a mined block. */
                 if(LLP::MINING_SERVER)
-                    LLP::MINING_SERVER->NotifyEvent();
+                    LLP::MINING_SERVER.load()->NotifyEvent();
 
                 /* Wait for the events processing thread to be woken up (such as a login) */
                 std::unique_lock<std::mutex> lock(EVENTS_MUTEX);
