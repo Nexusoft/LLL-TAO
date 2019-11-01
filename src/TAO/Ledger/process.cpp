@@ -114,7 +114,7 @@ namespace TAO
                 debug::log(0, FUNCTION,
                     "Processed 1000 blocks in ", nElapsed, " ms [", std::setw(2),
                     TAO::Ledger::ChainState::PercentSynchronized(), " %]",
-                    " height=", TAO::Ledger::ChainState::nBestHeight.load(),
+                    " height=", block.nHeight,
                     " trust=", TAO::Ledger::ChainState::nBestChainTrust.load(),
                     " [", 1000000 / nElapsed, " blocks/s]");
 
