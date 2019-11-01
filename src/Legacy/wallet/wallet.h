@@ -719,7 +719,8 @@ namespace Legacy
         /** AddToWalletIfInvolvingMe
          *
          *  Checks whether a transaction has inputs or outputs belonging to this wallet, and adds
-         *  it to the wallet when it does.
+         *  it to the wallet when it does. This version takes a tritium transaction. Any OP::LEGACY contracts that
+         *  send to an address in this wallet will be added.
          *
          *  pblock is optional, but should be provided if the transaction is known to be in a block.
          *  If fUpdate is true, existing transactions will be updated.

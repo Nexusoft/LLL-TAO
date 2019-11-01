@@ -132,6 +132,10 @@ namespace Legacy
             if(tx[n].Legacy(txout))
                 vout.push_back(txout);
         }
+
+        /* When tx nTime after v7 activation, legacy tx is version 2 */
+        if(TAO::Ledger::VersionActive(nTime, 7) || TAO::Ledger::CurrentVersion() > 7)
+            nVersion = 2;
     }
 
 
