@@ -278,7 +278,7 @@ namespace LLP
                 try
                 {
                     /* Load the atomic pointer raw data. */
-                    memory::atomic_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nIndex);
+                    ProtocolType* CONNECTION = CONNECTIONS->at(nIndex).load();
 
                     /* Skip over Inactive Connections. */
                     if(!CONNECTION || !CONNECTION->Connected())
@@ -341,8 +341,7 @@ namespace LLP
 
                     /* Generic event for Connection. */
                     {
-                        ProtocolType* raw = CONNECTION.load();
-                        raw->Event(EVENT_GENERIC);
+                        CONNECTION->Event(EVENT_GENERIC);
                     }
 
                     /* Work on Reading a Packet. **/
@@ -368,8 +367,7 @@ namespace LLP
                             CONNECTION->DDOS->rSCORE += 1;
 
                         /* Packet Process return value of False will flag Data Thread to Disconnect. */
-                        ProtocolType* raw = CONNECTION.load();
-                        if(!raw->ProcessPacket())
+                        if(!CONNECTION->ProcessPacket())
                         {
                             disconnect_remove_event(nIndex, DISCONNECT_FORCE);
                             continue;
