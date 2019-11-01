@@ -869,8 +869,8 @@ namespace LLP
             /* Handle for list command. */
             case ACTION::LIST:
             {
-                /* Set the limits. */
-                int32_t nLimits = 1001;
+                /* Set the limits. 3000 seems to be the optimal amount to overcome higher-latency connections during sync */
+                int32_t nLimits = 3001;
 
                 /* Loop through the binary stream. */
                 while(!ssPacket.End() && nLimits != 0)
@@ -976,9 +976,10 @@ namespace LLP
                             if(!LLD::Ledger->ReadBlock(hashStart, stateLast))
                                 return debug::drop(NODE, "failed to read starting block");
 
-                            /* Do a sequential read to obtain the list. */
+                            /* Do a sequential read to obtain the list. 
+                               3000 seems to be the optimal amount to overcome higher-latency connections during sync */
                             std::vector<TAO::Ledger::BlockState> vStates;
-                            while(--nLimits >= 0 && LLD::Ledger->BatchRead(hashStart, "block", vStates, 1000, true))
+                            while(--nLimits >= 0 && LLD::Ledger->BatchRead(hashStart, "block", vStates, 3000, true))
                             {
                                 /* Loop through all available states. */
                                 for(auto& state : vStates)
@@ -1267,8 +1268,8 @@ namespace LLP
             /* Handle for get command. */
             case ACTION::GET:
             {
-                /* Loop through the binary stream. */
-                int32_t nLimits = 1000;
+                /* Loop through the binary stream. 3000 seems to be the optimal amount to overcome higher-latency connections during sync */
+                int32_t nLimits = 3000;
                 while(!ssPacket.End() && --nLimits > 0)
                 {
                     /* Get the next type in stream. */
@@ -1426,8 +1427,9 @@ namespace LLP
                 /* Create response data stream. */
                 DataStream ssResponse(SER_NETWORK, PROTOCOL_VERSION);
 
-                /* Loop through the binary stream. */
-                int32_t nLimits = 1000;
+                /* Loop through the binary stream. 
+                   3000 seems to be the optimal amount to overcome higher-latency connections during sync */
+                int32_t nLimits = 3000;
                 while(!ssPacket.End() && --nLimits > 0)
                 {
                     /* Get the next type in stream. */
