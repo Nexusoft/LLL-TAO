@@ -53,7 +53,7 @@ ________________________________________________________________________________
 namespace filesystem
 {
     /* Mutex to lock FILESYSTEM and prevent race conditions. */
-    std::mutex FILESYSTEM_MUTEX;
+    std::recursive_mutex FILESYSTEM_MUTEX;
 
     /* Removes a directory from the specified path. */
     bool remove_directories(const std::string& path)
@@ -61,18 +61,77 @@ namespace filesystem
         if(!exists(path))
             return false;
 
-        LOCK(FILESYSTEM_MUTEX);
+        RLOCK(FILESYSTEM_MUTEX);
 
-        #ifdef WIN32
-        if(_rmdir(debug::safe_printstr("rm -rf ", path).c_str()) != -1) //TODO: @scottsimon36 test this for windoze
-            return true;
-        #elif defined(MAC_OSX)
+    #ifdef WIN32
+        /* Windows cannot do -rf type directory removal, have to delete all directory content manually first */
+        std::string strFiles(path);
+        strFiles.append("\\*");
+
+        WIN32_FIND_DATA fileData;
+        HANDLE hFind;
+        bool fHasFile = true;
+
+        hFind = FindFirstFile(strFiles.c_str(), &fileData);
+        if(hFind == INVALID_HANDLE_VALUE)
+        {
+            if(GetLastError() == ERROR_FILE_NOT_FOUND)
+                fHasFile = false;
+            else
+                return debug::error(FUNCTION, "Unable to remove directory: ", path, "\nReason: Invalid file handle");
+        }
+
+        while(fHasFile)
+        {
+            std::string fileName(fileData.cFileName);
+
+            /* Don't process . or .. in the Windows file listing */
+            if(!(fileName == "." || fileName == ".."))
+            {
+                if(fileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+                {
+                /* If content includes another directory, recursively remove both it and its contents */
+                    if(!remove_directories(path + "\\" + fileName))
+                        return false;
+                }
+                else
+                {
+                    std::string filePath(path + "\\" + fileName);
+
+                    if(!DeleteFile(filePath.c_str()))
+                        return debug::error(FUNCTION, "Unable to remove directory: ", path,
+                                                      "\nReason: Unable to delete file", fileData.cFileName);
+                }
+            }
+
+            if(!FindNextFile(hFind, &fileData))
+            {
+                if(GetLastError() == ERROR_NO_MORE_FILES)
+                    fHasFile = false;
+                else
+                    return debug::error(FUNCTION, "Unable to remove directory: ", path, "\nReason: Error reading next file");
+            }
+        }
+
+        FindClose(hFind);
+
+        debug::log(2, FUNCTION, "Removing directory ", path);
+        if(!RemoveDirectory(path.c_str()))
+            return debug::error(FUNCTION, "Unable to remove directory: ", path);
+
+        return true;
+
+    #elif defined(MAC_OSX)
+        debug::log(2, FUNCTION, "Removing directory ", path);
         if(system(debug::safe_printstr("sudo rm -rf '", path, "'").c_str()) == 0) //OSX requires sudo and special chars for path
             return true;
-        #else
+
+    #else
+        debug::log(2, FUNCTION, "Removing directory ", path);
         if(system(debug::safe_printstr("rm -rf '", path, "'").c_str()) == 0)
             return true;
-        #endif
+
+    #endif
 
         return false;
     }
@@ -84,7 +143,7 @@ namespace filesystem
         if(!exists(path))
             return false;
 
-        LOCK(FILESYSTEM_MUTEX);
+        RLOCK(FILESYSTEM_MUTEX);
 
         if(std::remove(path.c_str()) != 0)
             return false;
@@ -99,7 +158,7 @@ namespace filesystem
         if(!exists(pathOld))
             return false;
 
-        LOCK(FILESYSTEM_MUTEX);
+        RLOCK(FILESYSTEM_MUTEX);
 
         if(std::rename(pathOld.c_str(), pathNew.c_str()) != 0)
             return false;
@@ -111,7 +170,7 @@ namespace filesystem
     /* Determines if the file or folder from the specified path exists. */
     bool exists(const std::string &path)
     {
-        LOCK(FILESYSTEM_MUTEX);
+        RLOCK(FILESYSTEM_MUTEX);
 
         struct stat statbuf;
 
@@ -132,7 +191,7 @@ namespace filesystem
             if(exists(pathDest))
                 filesystem::remove(pathDest);
 
-            LOCK(FILESYSTEM_MUTEX);
+            RLOCK(FILESYSTEM_MUTEX);
 
             /* Get the input stream of source file. */
             std::ifstream sourceFile(pathSource, std::ios::binary);
@@ -172,7 +231,7 @@ namespace filesystem
     /* Determines if the specified path is a folder. */
     bool is_directory(const std::string &path)
     {
-        LOCK(FILESYSTEM_MUTEX);
+        RLOCK(FILESYSTEM_MUTEX);
 
         struct stat statbuf;
 
@@ -224,11 +283,11 @@ namespace filesystem
         if(exists(path)) //if the directory exists, don't attempt to create it
             return true;
 
-        LOCK(FILESYSTEM_MUTEX);
+        RLOCK(FILESYSTEM_MUTEX);
 
         /* Set directory with read/write/search permissions for owner/group/other */
     #ifdef WIN32
-        int status = mkdir(path.c_str());
+        int status = _mkdir(path.c_str());
     #else
         mode_t m = S_IRWXU | S_IRWXG | S_IRWXO;
         int status = mkdir(path.c_str(), m);
@@ -251,7 +310,7 @@ namespace filesystem
 
         std::string fullPath;
 
-        LOCK(FILESYSTEM_MUTEX);
+        RLOCK(FILESYSTEM_MUTEX);
 
     #ifdef WIN32
 
@@ -295,7 +354,7 @@ namespace filesystem
     /* Returns the full pathname of the PID file */
     std::string GetPidFile()
     {
-        LOCK(FILESYSTEM_MUTEX);
+        RLOCK(FILESYSTEM_MUTEX);
 
         std::string pathPidFile(config::GetArg("-pid", "Nexus.pid"));
         return config::GetDataDir() + "/" +pathPidFile;
@@ -305,7 +364,7 @@ namespace filesystem
     /* Creates a PID file on disk for the provided PID */
     void CreatePidFile(const std::string &path, pid_t pid)
     {
-        LOCK(FILESYSTEM_MUTEX);
+        RLOCK(FILESYSTEM_MUTEX);
 
         FILE* file = fopen(path.c_str(), "w");
         if(file)
