@@ -752,7 +752,7 @@ namespace LLP
     {
 #ifndef USE_UPNP
         return;
-#endif
+#else
 
         if(!config::GetBoolArg("-upnp", true))
             return;
@@ -852,6 +852,7 @@ namespace LLP
         }
 
        debug::log(0, "UPnP closed.");
+#endif
     }
 
 
