@@ -93,10 +93,12 @@ namespace TAO
 
                 /* Set the missing block. */
                 block.hashMissing = block.GetHash();
+
+                return;
             }
 
             /* Check if valid in the chain. */
-            if(!block.Accept())
+            else if(!block.Accept())
             {
                 /* Set the status. */
                 nStatus |= PROCESS::REJECTED;
@@ -149,7 +151,7 @@ namespace TAO
                 }
 
                 /* Accept each orphan. */
-                if(!mapOrphans.at(hash)->Accept())
+                else if(!mapOrphans.at(hash)->Accept())
                     return;
 
                 /* Erase orphans from map. */

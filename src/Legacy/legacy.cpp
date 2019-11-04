@@ -260,7 +260,7 @@ namespace Legacy
     {
         /* Read ledger DB for duplicate block. */
         if(LLD::Ledger->HasBlock(GetHash()))
-            return true;//debug::error(FUNCTION, "already have block ", GetHash().SubString(), " height ", nHeight);
+            return false;//debug::error(FUNCTION, "already have block ", GetHash().SubString(), " height ", nHeight);
 
         /* Check the Size limits of the Current Block. */
         if(::GetSerializeSize(*this, SER_NETWORK, LLP::PROTOCOL_VERSION) > TAO::Ledger::MAX_BLOCK_SIZE)
