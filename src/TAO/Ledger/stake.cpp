@@ -39,11 +39,6 @@ namespace TAO
     namespace Ledger
     {
 
-        /* Constants for use in staking calculations (move to TAO/Ledger/include/constants.h ?) */
-        const double LOG3 = log(3);
-        const double LOG10 = log(10);
-
-
         /* Retrieve the setting for maximum block age (time since last stake before trust decay begins. */
         uint64_t MaxBlockAge()
         {
@@ -142,72 +137,71 @@ namespace TAO
 
 
         /* Calculate the proof of stake block weight for a given block age. */
-        double BlockWeight(const uint64_t nBlockAge)
+        cv::softdouble BlockWeight(const uint64_t nBlockAge)
         {
-
             /* Block Weight reaches maximum of 10.0 when Block Age equals the max block age */
-            double nBlockRatio = (double)nBlockAge / (double)MaxBlockAge();
+            cv::softdouble nBlockRatio = cv::softdouble(nBlockAge) / cv::softdouble(MaxBlockAge());
 
-            return std::min(10.0, (9.0 * log((2.0 * nBlockRatio) + 1.0) / LOG3) + 1.0);
+            return std::min(cv::softdouble(10.0), (cv::softdouble(9.0) * cv::log((cv::softdouble(2.0) * nBlockRatio) + cv::softdouble(1.0)) / cv::log(cv::softdouble(3))) + cv::softdouble(1.0));
         }
 
 
         /* Calculate the equivalent proof of stake trust weight for staking Genesis with a given coin age. */
-        double GenesisWeight(const uint64_t nCoinAge)
+        cv::softdouble GenesisWeight(const uint64_t nCoinAge)
         {
             /* Trust Weight For Genesis is based on Coin Age. Genesis trust weight is less than normal trust weight,
              * reaching a maximum of 10.0 after average Coin Age reaches trust weight base.
              */
-            double nWeightRatio = (double)nCoinAge / (double)TrustWeightBase();
+            cv::softdouble nWeightRatio = cv::softdouble(nCoinAge) / cv::softdouble(TrustWeightBase());
 
-            return std::min(10.0, (9.0 * log((2.0 * nWeightRatio) + 1.0) / LOG3) + 1.0);
+            return std::min(cv::softdouble(10.0), (cv::softdouble(9.0) * cv::log((cv::softdouble(2.0) * nWeightRatio) + cv::softdouble(1.0)) / cv::log(cv::softdouble(3))) + cv::softdouble(1.0));
         }
 
 
         /* Calculate the proof of stake trust weight for a given trust score. */
-        double TrustWeight(const uint64_t nTrust)
+        cv::softdouble TrustWeight(const uint64_t nTrust)
         {
             /* Trust Weight base is time for 50% score. Weight continues to grow with Trust Score until it reaches max of 90.0
              * This formula will reach 45.0 (50%) after accumulating 84 days worth of Trust Score (Mainnet base),
              * while requiring close to a year to reach maximum.
              */
-            double nWeightRatio = (double)nTrust / (double)TrustWeightBase();
+            cv::softdouble nWeightRatio = cv::softdouble(nTrust) / cv::softdouble(TrustWeightBase());
 
-            return std::min(90.0, (44.0 * log((2.0 * nWeightRatio) + 1.0) / LOG3) + 1.0);
+            return std::min(cv::softdouble(90.0), (cv::softdouble(44.0) * cv::log((cv::softdouble(2.0) * nWeightRatio) + cv::softdouble(1.0)) / cv::log(cv::softdouble(3))) + cv::softdouble(1.0));
         }
 
 
         /* Calculate the current threshold value for Proof of Stake. */
-        double GetCurrentThreshold(const uint64_t nBlockTime, const uint64_t nNonce)
+        cv::softdouble GetCurrentThreshold(const uint64_t nBlockTime, const uint64_t nNonce)
         {
-            return (nBlockTime * 100.0) / nNonce;
+            return (cv::softdouble(nBlockTime) * cv::softdouble(100.0)) / cv::softdouble(nNonce);
         }
 
 
         /* Calculate the minimum Required Energy Efficiency Threshold. */
-        double GetRequiredThreshold(double nTrustWeight, double nBlockWeight, const uint64_t nStake)
+        cv::softdouble GetRequiredThreshold(cv::softdouble nTrustWeight, cv::softdouble nBlockWeight, const uint64_t nStake)
         {
             /*  Staking weights (trust and block) reduce the required threshold by reducing the numerator of this calculation.
              *  Weight from staking balance reduces the required threshold by increasing the denominator.
              */
-            return ((108.0 - nTrustWeight - nBlockWeight) * TAO::Ledger::MAX_STAKE_WEIGHT) / nStake;
+            return ((cv::softdouble(108.0) - cv::softdouble(nTrustWeight) - cv::softdouble(nBlockWeight)) * cv::softdouble(TAO::Ledger::MAX_STAKE_WEIGHT)) / cv::softdouble(nStake);
         }
 
 
         /* Calculate the stake rate corresponding to a given trust score. */
-        double StakeRate(const uint64_t nTrust, const bool fGenesis)
+        cv::softdouble StakeRate(const uint64_t nTrust, const bool fGenesis)
         {
             /* Stake rate fixed at 0.005 (0.5%) when staking Genesis */
             if(fGenesis)
-                return 0.005;
+                return cv::softdouble(0.005);
 
             /* No trust score cap in Tritium staking, but use testnet max for testnet stake rate (so it grows faster) */
             static const uint32_t nRateBase = config::fTestNet ? TRUST_SCORE_MAX_TESTNET : ONE_YEAR;
 
             /* Stake rate starts at 0.005 (0.5%) and grows to 0.03 (3%) when trust score reaches or exceeds one year */
-            double nTrustRatio = (double)nTrust / (double)nRateBase;
+            cv::softdouble nTrustRatio = cv::softdouble(nTrust) / cv::softdouble(nRateBase);
 
-            return std::min(0.03, (0.025 * log((9.0 * nTrustRatio) + 1.0) / LOG10) + 0.005);
+            return std::min(cv::softdouble(0.03), (cv::softdouble(0.025) * cv::log((cv::softdouble(9.0) * nTrustRatio) + cv::softdouble(1.0)) / cv::log(cv::softdouble(10))) + cv::softdouble(0.005));
         }
 
 

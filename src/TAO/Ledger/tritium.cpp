@@ -708,8 +708,8 @@ namespace TAO
                 return debug::error(FUNCTION, "stake producer account is not a trust account");
 
             /* Calculate weights */
-            double nTrustWeight = 0.0;
-            double nBlockWeight = 0.0;
+            cv::softdouble nTrustWeight = cv::softdouble(0.0);
+            cv::softdouble nBlockWeight = cv::softdouble(0.0);
 
             /* Keep track of stake change. */
             int64_t nStakeChange = 0;
@@ -785,8 +785,8 @@ namespace TAO
 
             /* Calculate the energy efficiency thresholds. */
             uint64_t nBlockTime = GetBlockTime() - producer.nTimestamp;
-            double nThreshold = GetCurrentThreshold(nBlockTime, nNonce);
-            double nRequired  = GetRequiredThreshold(nTrustWeight, nBlockWeight, nStakeApplied);
+            cv::softdouble nThreshold = GetCurrentThreshold(nBlockTime, nNonce);
+            cv::softdouble nRequired  = GetRequiredThreshold(nTrustWeight, nBlockWeight, nStakeApplied);
 
             /* Check that the threshold was not violated. */
             if(nThreshold < nRequired)

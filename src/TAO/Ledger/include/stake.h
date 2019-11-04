@@ -23,6 +23,8 @@ ________________________________________________________________________________
 
 #include <TAO/Register/types/object.h>
 
+#include <Util/include/softfloat.h>
+
 /**
  *  The functions defined here provide a single source for settings and calculations related to Nexus Proof of Stake.
  *
@@ -113,7 +115,7 @@ namespace TAO
          *  @return value for block weight
          *
          **/
-        double BlockWeight(const uint64_t nBlockAge);
+        cv::softdouble BlockWeight(const uint64_t nBlockAge);
 
 
         /** GenesisWeight
@@ -125,7 +127,7 @@ namespace TAO
          *  @return value for trust weight
          *
          **/
-        double GenesisWeight(const uint64_t nCoinAge);
+        cv::softdouble GenesisWeight(const uint64_t nCoinAge);
 
 
         /** TrustWeight
@@ -137,7 +139,7 @@ namespace TAO
          *  @return value for trust weight
          *
          **/
-        double TrustWeight(const uint64_t nTrust);
+        cv::softdouble TrustWeight(const uint64_t nTrust);
 
 
         /** GetCurrentThreshold
@@ -151,7 +153,7 @@ namespace TAO
          *  @return value for current threshold
          *
          **/
-        double GetCurrentThreshold(const uint64_t nBlockTime, const uint64_t nNonce);
+        cv::softdouble GetCurrentThreshold(const uint64_t nBlockTime, const uint64_t nNonce);
 
 
         /** GetRequiredThreshold
@@ -166,7 +168,7 @@ namespace TAO
          *  @return value for minimum required threshold
          *
          **/
-        double GetRequiredThreshold(const double nTrustWeight, const double nBlockWeight, const uint64_t nStake);
+        cv::softdouble GetRequiredThreshold(const cv::softdouble nTrustWeight, const cv::softdouble nBlockWeight, const uint64_t nStake);
 
 
         /** StakeRate
@@ -181,7 +183,7 @@ namespace TAO
          *  @return value for stake rate
          *
          **/
-        double StakeRate(const uint64_t nTrust, const bool fGenesis = false);
+        cv::softdouble StakeRate(const uint64_t nTrust, const bool fGenesis = false);
 
 
         /** GetCoinstakeReward

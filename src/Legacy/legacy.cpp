@@ -581,9 +581,6 @@ namespace Legacy
     /* Check the proof of stake calculations. */
     bool LegacyBlock::CheckStake() const
     {
-        /* Make static const for reducing repeated computation. */
-        static const cv::softdouble LOG3 = cv::log(cv::softdouble(3));
-
         /* Use appropriate settings for Testnet or Mainnet */
         static const uint32_t nTrustWeightBase = config::fTestNet ? TAO::Ledger::TRUST_WEIGHT_BASE_TESTNET : TAO::Ledger::TRUST_WEIGHT_BASE;
         static const uint32_t nMaxBlockAge = config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN;
@@ -613,12 +610,11 @@ namespace Legacy
 
             /* Trust Weight Continues to grow the longer you have staked and higher your interest rate */
             cv::softdouble nTrustWeightRatio = cv::softdouble(nTrustScore) / cv::softdouble(nTrustWeightBase);
-            nTrustWeight = std::min(cv::softdouble(90.0), (cv::softdouble(44.0) * cv::log((cv::softdouble(2.0) * nTrustWeightRatio) + cv::softdouble(1.0)) / LOG3) + cv::softdouble(1.0));
+            nTrustWeight = std::min(cv::softdouble(90.0), (cv::softdouble(44.0) * cv::log((cv::softdouble(2.0) * nTrustWeightRatio) + cv::softdouble(1.0)) / cv::log(cv::softdouble(3))) + cv::softdouble(1.0));
 
             /* Block Weight Reaches Maximum At Trust Key Expiration. */
             cv::softdouble nBlockAgeRatio = cv::softdouble(nBlockAge) / cv::softdouble(nMaxBlockAge);
-            nBlockWeight = std::min(cv::softdouble(10.0), (cv::softdouble(9.0) * cv::log((cv::softdouble(2.0) * nBlockAgeRatio) + cv::softdouble(1.0)) / LOG3) + cv::softdouble(1.0));
-
+            nBlockWeight = std::min(cv::softdouble(10.0), (cv::softdouble(9.0) * cv::log((cv::softdouble(2.0) * nBlockAgeRatio) + cv::softdouble(1.0)) / cv::log(cv::softdouble(3))) + cv::softdouble(1.0));
         }
 
         /* Weight for Genesis transactions are based on your coin age. */
@@ -639,7 +635,7 @@ namespace Legacy
 
             /* Trust Weight For Genesis Transaction Reaches Maximum at 90 day Limit. */
             cv::softdouble nGenesisTrustRatio = cv::softdouble(nCoinAge) / cv::softdouble(nTrustWeightBase);
-            nTrustWeight = std::min(cv::softdouble(10.0), (cv::softdouble(9.0) * cv::log((cv::softdouble(2.0) * nGenesisTrustRatio) + cv::softdouble(1.0)) / LOG3) + cv::softdouble(1.0));
+            nTrustWeight = std::min(cv::softdouble(10.0), (cv::softdouble(9.0) * cv::log((cv::softdouble(2.0) * nGenesisTrustRatio) + cv::softdouble(1.0)) / cv::log(cv::softdouble(3))) + cv::softdouble(1.0));
 
             /* Block Weight remains zero while staking for Genesis */
             nBlockWeight = cv::softdouble(0.0);

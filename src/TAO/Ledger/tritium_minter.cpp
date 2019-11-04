@@ -456,14 +456,13 @@ namespace TAO
             static uint32_t nCounter = 0; //Prevents log spam during wait period
 
             /* Use local variables for calculations, then set instance variables at the end */
-            double nTrustWeightCurrent = 0.0;
-            double nBlockWeightCurrent = 0.0;
+            cv::softdouble nTrustWeightCurrent = cv::softdouble(0.0);
+            cv::softdouble nBlockWeightCurrent = cv::softdouble(0.0);
 
             if(!fGenesis)
             {
                 /* Weight for Trust transactions combines trust weight and block weight. */
                 nTrustWeightCurrent = TrustWeight(nTrust);
-
                 nBlockWeightCurrent = BlockWeight(nBlockAge);
             }
             else
@@ -511,12 +510,12 @@ namespace TAO
                 nTrustWeightCurrent = GenesisWeight(nAge);
 
                 /* Block Weight remains zero while staking for Genesis */
-                nBlockWeightCurrent = 0.0;
+                nBlockWeightCurrent = cv::softdouble(0.0);
             }
 
             /* Update minter settings */
-            nBlockWeight.store(nBlockWeightCurrent);
-            nTrustWeight.store(nTrustWeightCurrent);
+            nBlockWeight.store(double(nBlockWeightCurrent));
+            nTrustWeight.store(double(nTrustWeightCurrent));
 
             return true;
         }
@@ -598,7 +597,7 @@ namespace TAO
             /* Calculate the minimum Required Energy Efficiency Threshold.
              * Minter can only mine Proof of Stake when current threshold exceeds this value.
              */
-            double nRequired = GetRequiredThreshold(nTrustWeight.load(), nBlockWeight.load(), nStake);
+            cv::softdouble nRequired = GetRequiredThreshold(cv::softdouble(nTrustWeight.load()), cv::softdouble(nBlockWeight.load()), nStake);
 
             /* Calculate the target value based on difficulty. */
             LLC::CBigNum bnTarget;
@@ -639,7 +638,7 @@ namespace TAO
                  * Block time increases the value while nonce decreases it.
                  * nNonce = 1 at start of new block.
                  */
-                double nThreshold = GetCurrentThreshold(nBlockTime, block.nNonce);
+                cv::softdouble nThreshold = GetCurrentThreshold(nBlockTime, block.nNonce);
 
                 /* If threshhold not larger than required, wait and keep trying the same nonce value until threshold increases */
                 if(nThreshold < nRequired)
