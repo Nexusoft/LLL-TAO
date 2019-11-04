@@ -81,7 +81,7 @@ namespace TAO
                 LLP::TRITIUM_SERVER->DisconnectAll();
 
                 uint16_t nPort = static_cast<uint16_t>(config::GetArg(
-                    "-port", config::fTestNet.load() ? TRITIUM_TESTNET_PORT : TRITIUM_MAINNET_PORT));
+                    "-serverport", config::fTestNet.load() ? TRITIUM_TESTNET_PORT : TRITIUM_MAINNET_PORT));
 
                 for(const auto& node : config::mapMultiArgs["-connect"])
                     LLP::TRITIUM_SERVER->AddConnection(node, nPort);
