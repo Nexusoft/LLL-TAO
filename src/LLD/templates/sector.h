@@ -350,12 +350,19 @@ namespace LLD
                 if(!stream)
                     break;
 
-                /* Get the Binary Size. */
+                /* Check filesize. */
+                stream.seekg(0, std::ios::end);
+                uint64_t nFileSize = stream.tellg();
                 uint64_t nBufferSize = 1024 * 1024; //1 MB read buffer
+                stream.seekg(0, std::ios::beg); //reset seek position
 
                 /* Loop until stream encounters exceptions. */
                 while(stream)
                 {
+                    /* Check that we aren't seeking past end of file. */
+                    if(nStart >= nFileSize)
+                        break;
+
                     /* Read into serialize stream. */
                     DataStream ssData(SER_LLD, DATABASE_VERSION);
                     ssData.resize(nBufferSize);
