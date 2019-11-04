@@ -209,7 +209,7 @@ namespace TAO
         uint64_t GetCoinstakeReward(const uint64_t nStake, const uint64_t nStakeTime, const uint64_t nTrust, const bool fGenesis)
         {
 
-            double nStakeRate = StakeRate(nTrust, fGenesis);
+            cv::softdouble nStakeRate = StakeRate(nTrust, fGenesis);
 
             /* Reward rate for time period is annual rate * (time period / annual time) or nStakeRate * (nStakeTime / ONE_YEAR)
              * Then, overall nStakeReward = nStake * reward rate
