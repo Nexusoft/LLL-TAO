@@ -409,7 +409,8 @@ namespace LLP
                     }
 
                     /* Read another batch. */
-                    if(!pDatabase->BatchRead(std::make_pair(std::string("addr"), hashLast), "addr", vAddr, 1000))
+                    if(vAddr.size() < 1000
+                    || !pDatabase->BatchRead(std::make_pair(std::string("addr"), hashLast), "addr", vAddr, 1000))
                         break;
                 }
             }
