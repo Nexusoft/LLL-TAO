@@ -1003,6 +1003,9 @@ namespace LLP
                                             nLimits = 0;
                                             break;
                                         }
+
+                                        /* Update hashStart. */
+                                        hashStart = state.GetHash();
                                     }
 
                                     /* Cache the block hash. */
