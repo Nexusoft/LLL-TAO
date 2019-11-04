@@ -708,6 +708,9 @@ namespace LLP
             Legacy::Locator locator;
             ssMessage >> locator;
 
+            /* The hash of the next block to read */
+            uint1024_t hashBlock = 0;
+
             /* Check locator size. */
             for(const auto& have : locator.vHave)
             {
@@ -726,10 +729,14 @@ namespace LLP
                         if(!state.IsInMainChain())
                             continue;
 
-                        hashContinue = state.GetHash();
+                        hashBlock = state.GetHash();
+
+                        /* We have found a common ancestor so break out */
+                        break;
+
                     }
                     else //on genesis, don't rever to previous block
-                        hashContinue = have;
+                        hashBlock = have;
 
                     break;
                 }
@@ -741,37 +748,43 @@ namespace LLP
 
             /* Keep track of the last state. */
             TAO::Ledger::BlockState stateLast;
-            if(!LLD::legDB->ReadBlock(hashContinue, stateLast))
+            if(!LLD::legDB->ReadBlock(hashBlock, stateLast))
                 return debug::error(NODE, "failed to read starting block");
 
             /* Do a sequential read to obtain the list. */
             std::vector<TAO::Ledger::BlockState> vStates;
-            while(--nLimits >= 0 && LLD::legDB->BatchRead(hashContinue, "block", vStates, 1000, true))
+            while(--nLimits >= 0 && LLD::legDB->BatchRead(hashBlock, "block", vStates, 1000, true))
             {
                 /* Loop through all available states. */
                 for(auto& state : vStates)
                 {
                     /* Update start every iteration. */
-                    hashContinue = state.GetHash();
+                    hashBlock = state.GetHash();
 
                     /* Skip if not in main chain. */
                     if(!state.IsInMainChain())
                         continue;
 
-                    /* Check for matching hashes. */
+                    /* Check for matching hashes. If this doesn't match then we don't have a sequential batch so need to get the
+                       correct next block via sequential read */
                     if(state.hashPrevBlock != stateLast.GetHash())
                     {
                         /* Read the correct block from next index. */
                         if(!LLD::legDB->ReadBlock(stateLast.hashNextBlock, state))
                         {
+                            /* If we fail to read it, set the limits to 0 so that we don't process any more in this batch */
                             nLimits = 0;
+
                             break;
                         }
+
+                        /* Update the hash from  the correct block */
+                        hashBlock = state.GetHash();
                     }
 
                     /* Cache the block hash. */
                     stateLast = state;
-                    if(hashContinue == hashStop)
+                    if(hashBlock == hashStop)
                         nLimits = 0; //reset limits to break out of loops
 
                     /* Check for stop hash. */
@@ -779,9 +792,12 @@ namespace LLP
                         break;
 
                     /* Push new item to inventory. */
-                    vInv.push_back(CInv(hashContinue, MSG_BLOCK));
+                    vInv.push_back(CInv(hashBlock, LLP::MSG_BLOCK));
                 }
             }
+
+            /* Update the hashContinue with the last block sent so that the getdata handler can know when to send the next batch*/
+            hashContinue = hashBlock;
 
             /* Push the inventory. */
             if(vInv.size() > 0)
