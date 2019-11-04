@@ -292,7 +292,7 @@ int main(int argc, char** argv)
         /* Handle Manual Connections from Command Line, if there are any. */
         if(LLP::LEGACY_SERVER)
             LLP::MakeConnections<LLP::LegacyNode>(LLP::LEGACY_SERVER);
-        
+
         LLP::MakeConnections<LLP::TritiumNode>(LLP::TRITIUM_SERVER);
 
 
@@ -342,11 +342,10 @@ int main(int argc, char** argv)
         }
 
 
-        /* Stop stake minter if it is running (before server shutdown). */
-        if(config::GetBoolArg(std::string("-beta")))
-            Legacy::LegacyMinter::GetInstance().Stop();
-        else
-            TAO::Ledger::TritiumMinter::GetInstance().Stop();
+        /* Stop stake minter if running. Minter ignores request if not running, so safe to just call both */
+        Legacy::LegacyMinter::GetInstance().Stop();
+
+        TAO::Ledger::TritiumMinter::GetInstance().Stop();
 
 
         /* Wait for the private condition. */
