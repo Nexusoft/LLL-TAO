@@ -38,16 +38,16 @@ bool CheckPermissions(const std::string &strAddress, uint16_t nPort)
     if(config::fTestNet.load())
     {
         /* Testnet ports open only for testnet */
-        if(nPort == static_cast<uint16_t>(config::GetArg(std::string("-port"), (TRITIUM_TESTNET_PORT + (config::GetArg("-testnet", 0) - 1))))
-            || nPort == static_cast<uint16_t>(config::GetArg(std::string("-legacyport"), (LEGACY_TESTNET_PORT + (config::GetArg("-testnet", 0) - 1))))
+        if(nPort == static_cast<uint16_t>(config::GetArg(std::string("-serverport"), (TRITIUM_TESTNET_PORT + (config::GetArg("-testnet", 0) - 1))))
+            || nPort == static_cast<uint16_t>(config::GetArg(std::string("-port"), (LEGACY_TESTNET_PORT + (config::GetArg("-testnet", 0) - 1))))
             || nPort == static_cast<uint16_t>(TESTNET_CORE_LLP_PORT))
             fOpen = true;
     }
     else
     {
         /* Mainnet ports open only for mainnet */
-        if(nPort == static_cast<uint16_t>(config::GetArg(std::string("-port"), TRITIUM_MAINNET_PORT))
-            || nPort == static_cast<uint16_t>(config::GetArg(std::string("-legacyport"), LEGACY_MAINNET_PORT))
+        if(nPort == static_cast<uint16_t>(config::GetArg(std::string("-serverport"), TRITIUM_MAINNET_PORT))
+            || nPort == static_cast<uint16_t>(config::GetArg(std::string("-port"), LEGACY_MAINNET_PORT))
             || nPort == static_cast<uint16_t>(MAINNET_CORE_LLP_PORT))
             fOpen = true;
     }

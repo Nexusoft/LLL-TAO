@@ -67,7 +67,7 @@ namespace TAO
                 LLP::LEGACY_SERVER->DisconnectAll();
 
                 uint16_t nPort = static_cast<uint16_t>(config::GetArg(
-                    "-legacyport", config::fTestNet.load() ? LEGACY_TESTNET_PORT : LEGACY_MAINNET_PORT));
+                    "-port", config::fTestNet.load() ? LEGACY_TESTNET_PORT : LEGACY_MAINNET_PORT));
 
                 for(const auto& node : config::mapMultiArgs["-connect"])
                     LLP::LEGACY_SERVER->AddConnection(node, nPort);
@@ -81,7 +81,7 @@ namespace TAO
                 LLP::TRITIUM_SERVER->DisconnectAll();
 
                 uint16_t nPort = static_cast<uint16_t>(config::GetArg(
-                    "-port", config::fTestNet.load() ? TRITIUM_TESTNET_PORT : TRITIUM_MAINNET_PORT));
+                    "-serverport", config::fTestNet.load() ? TRITIUM_TESTNET_PORT : TRITIUM_MAINNET_PORT));
 
                 for(const auto& node : config::mapMultiArgs["-connect"])
                     LLP::TRITIUM_SERVER->AddConnection(node, nPort);

@@ -216,7 +216,7 @@ int main(int argc, char** argv)
 
 
         /* Get the port for Tritium Server. */
-        nPort = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet.load() ? (TRITIUM_TESTNET_PORT + (config::GetArg("-testnet", 0) - 1)) : TRITIUM_MAINNET_PORT));
+        nPort = static_cast<uint16_t>(config::GetArg(std::string("-serverport"), config::fTestNet.load() ? (TRITIUM_TESTNET_PORT + (config::GetArg("-testnet", 0) - 1)) : TRITIUM_MAINNET_PORT));
 
 
         /* Initialize the Tritium Server. */
@@ -224,7 +224,7 @@ int main(int argc, char** argv)
 
 
         /* Get the port for Legacy Server. */
-        nPort = static_cast<uint16_t>(config::GetArg(std::string("-legacyport"), config::fTestNet.load() ? (LEGACY_TESTNET_PORT + (config::GetArg("-testnet", 0) - 1)) : LEGACY_MAINNET_PORT));
+        nPort = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet.load() ? (LEGACY_TESTNET_PORT + (config::GetArg("-testnet", 0) - 1)) : LEGACY_MAINNET_PORT));
 
 
         /* Initialize the Legacy Server. */
