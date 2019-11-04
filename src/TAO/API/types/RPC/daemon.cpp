@@ -67,7 +67,7 @@ namespace TAO
                 LLP::LEGACY_SERVER->DisconnectAll();
 
                 uint16_t nPort = static_cast<uint16_t>(config::GetArg(
-                    "-port", config::fTestNet.load() ? LEGACY_TESTNET_PORT : LEGACY_MAINNET_PORT));
+                    "-legacyport", config::fTestNet.load() ? LEGACY_TESTNET_PORT : LEGACY_MAINNET_PORT));
 
                 for(const auto& node : config::mapMultiArgs["-connect"])
                     LLP::LEGACY_SERVER->AddConnection(node, nPort);

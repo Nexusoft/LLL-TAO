@@ -133,7 +133,7 @@ namespace LLP
      **/
     inline uint16_t GetDefaultLegacyPort(const bool fTestnet = config::fTestNet.load())
     {
-        return static_cast<uint16_t>(config::GetArg(std::string("-port"), fTestnet ? (LEGACY_TESTNET_PORT + (config::GetArg("-testnet", 0) - 1)) : LEGACY_MAINNET_PORT));
+        return static_cast<uint16_t>(config::GetArg(std::string("-legacyport"), fTestnet ? (LEGACY_TESTNET_PORT + (config::GetArg("-testnet", 0) - 1)) : LEGACY_MAINNET_PORT));
     }
 
 }

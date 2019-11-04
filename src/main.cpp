@@ -224,7 +224,7 @@ int main(int argc, char** argv)
 
 
         /* Get the port for Legacy Server. */
-        nPort = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet.load() ? (LEGACY_TESTNET_PORT + (config::GetArg("-testnet", 0) - 1)) : LEGACY_MAINNET_PORT));
+        nPort = static_cast<uint16_t>(config::GetArg(std::string("-legacyport"), config::fTestNet.load() ? (LEGACY_TESTNET_PORT + (config::GetArg("-testnet", 0) - 1)) : LEGACY_MAINNET_PORT));
 
 
         /* Initialize the Legacy Server. */
