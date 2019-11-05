@@ -47,6 +47,9 @@ namespace TAO
             /* Check for orphan. */
             if(!LLD::Ledger->HasBlock(block.hashPrevBlock))
             {
+                /* Set the status message. */
+                nStatus |= PROCESS::ORPHAN;
+
                 /* Skip if already in orphan queue. */
                 if(!mapOrphans.count(block.hashPrevBlock))
                 {
@@ -71,9 +74,6 @@ namespace TAO
                 }
                 else
                     nStatus |= PROCESS::DUPLICATE;
-
-                /* Set the status message. */
-                nStatus |= PROCESS::ORPHAN;
 
                 return;
             }

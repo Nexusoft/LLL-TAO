@@ -976,7 +976,7 @@ namespace LLP
                             if(!LLD::Ledger->ReadBlock(hashStart, stateLast))
                                 return debug::drop(NODE, "failed to read starting block");
 
-                            /* Do a sequential read to obtain the list. 
+                            /* Do a sequential read to obtain the list.
                                3000 seems to be the optimal amount to overcome higher-latency connections during sync */
                             std::vector<TAO::Ledger::BlockState> vStates;
                             while(--nLimits >= 0 && LLD::Ledger->BatchRead(hashStart, "block", vStates, 3000, true))
@@ -1430,7 +1430,7 @@ namespace LLP
                 /* Create response data stream. */
                 DataStream ssResponse(SER_NETWORK, PROTOCOL_VERSION);
 
-                /* Loop through the binary stream. 
+                /* Loop through the binary stream.
                    3000 seems to be the optimal amount to overcome higher-latency connections during sync */
                 int32_t nLimits = 3000;
                 while(!ssPacket.End() && --nLimits > 0)
