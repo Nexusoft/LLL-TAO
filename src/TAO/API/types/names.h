@@ -267,12 +267,14 @@ namespace TAO
              *  @param[in] params The json request params
              *  @param[in] strObjectName The name parameter to use in the register hash
              *  @param[out] hashRegister The register address of the Name object, if found
-             *
+             *  @param[in] fThrow Flag indicating it should throw an exception if not found
+             * 
              *  @return The Name object .
              **/
             static TAO::Register::Object GetName(const json::json& params,
                                                  const std::string& strObjectName,
-                                                 TAO::Register::Address& hashRegister);
+                                                 TAO::Register::Address& hashRegister,
+                                                 const bool fThrow = true);
 
 
             /** GetName
@@ -297,10 +299,13 @@ namespace TAO
              *
              *  @param[in] params The json request params
              *  @param[in] strName The name parameter to use in the register hash
+             *  @param[in] fThrow Flag indicating it should throw an exception if not found
              *
              *  @return The 256 bit hash of the object name.
              **/
-            static TAO::Register::Address ResolveAddress(const json::json& params, const std::string& strName);
+            static TAO::Register::Address ResolveAddress(const json::json& params, 
+                                                         const std::string& strName, 
+                                                         const bool fThrow = true);
 
 
             /** ResolveName

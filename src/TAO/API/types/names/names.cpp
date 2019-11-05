@@ -172,7 +172,8 @@ namespace TAO
         }
 
         /* Retrieves a Name object by name. */
-        TAO::Register::Object Names::GetName(const json::json& params, const std::string& strObjectName, TAO::Register::Address& hashNameObject)
+        TAO::Register::Object Names::GetName(const json::json& params, const std::string& strObjectName, 
+                                             TAO::Register::Address& hashNameObject, const bool fThrow)
         {
             /* Declare the name object to return */
             TAO::Register::Object nameObject;
@@ -254,11 +255,12 @@ namespace TAO
             }
 
             /* If it wasn't resolved then error */
-            if(!fFound)
+            if(!fFound && fThrow)
                 throw APIException(-101, debug::safe_printstr("Unknown name: ", strObjectName));
-                
-            /* Get the address of the Name object to return */
-            hashNameObject = TAO::Register::Address(strName, hashNamespace, TAO::Register::Address::NAME);
+            
+            if(fFound)
+                /* Get the address of the Name object to return */
+                hashNameObject = TAO::Register::Address(strName, hashNamespace, TAO::Register::Address::NAME);
 
             return nameObject;
         }
@@ -316,7 +318,7 @@ namespace TAO
 
 
         /* Resolves a register address from a name by looking up the Name object. */
-        TAO::Register::Address Names::ResolveAddress(const json::json& params, const std::string& strName)
+        TAO::Register::Address Names::ResolveAddress(const json::json& params, const std::string& strName, const bool fThrow)
         {
             /* Declare the return register address hash */
             TAO::Register::Address hashRegister ;
@@ -325,7 +327,7 @@ namespace TAO
             TAO::Register::Address hashNameObject;
 
             /* Get the Name object by name */
-            TAO::Register::Object name = Names::GetName(params, strName, hashNameObject);
+            TAO::Register::Object name = Names::GetName(params, strName, hashNameObject, fThrow);
 
             if(!name.IsNull())
                 /* Get the address that this name register is pointing to */

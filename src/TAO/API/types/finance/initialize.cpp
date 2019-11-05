@@ -33,7 +33,8 @@ namespace TAO
             mapFunctions["get/stakeinfo"]   = Function(std::bind(&Finance::Info, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/accounts"]   = Function(std::bind(&Finance::List, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/account/transactions"]  = Function(std::bind(&Finance::ListTransactions, this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["migrate/stake"]       = Function(std::bind(&Finance::Migrate, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["migrate/stake"]       = Function(std::bind(&Finance::MigrateStake, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["migrate/accounts"]    = Function(std::bind(&Finance::MigrateAccounts, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["set/stake"]       = Function(std::bind(&Finance::Stake, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/trustaccounts"] = Function(std::bind(&Finance::TrustAccounts, this, std::placeholders::_1, std::placeholders::_2));
         }

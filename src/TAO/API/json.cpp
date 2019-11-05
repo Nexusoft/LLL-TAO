@@ -1029,6 +1029,10 @@ namespace TAO
                         TAO::Register::Address hashToken = object.get<uint256_t>("token");
                         ret["token"] = hashToken.ToString();
 
+                        /* If the register has extra data included then output that in the JSON */
+                        if(object.CheckName("data"))
+                            ret["data"] = object.get<std::string>("data");
+
                         /* Handle digit conversion. */
                         uint8_t nDecimals = GetDecimals(object);
 

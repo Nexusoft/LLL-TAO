@@ -74,6 +74,10 @@ namespace TAO
             /* Create an account object register. */
             TAO::Register::Object account = TAO::Register::CreateAccount(hashIdentifier);
 
+            /* If the user has supplied the data parameter than add this to the account register */
+            if(params.find("data") != params.end())
+                account << std::string("data") << uint8_t(TAO::Register::TYPES::STRING) << params["data"].get<std::string>();
+
             /* Submit the payload object. */
             tx[0] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << account.GetState();
 

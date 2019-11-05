@@ -183,7 +183,7 @@ namespace TAO
             json::json ListTransactions(const json::json& params, bool fHelp);
 
 
-            /** Migrate
+            /** MigrateStake
              *
              *  Migrate a trust key from a Legacy wallet to the trust accout for a signature chain.
              *
@@ -193,7 +193,20 @@ namespace TAO
              *  @return The return object in JSON.
              *
              **/
-            json::json Migrate(const json::json& params, bool fHelp);
+            json::json MigrateStake(const json::json& params, bool fHelp);
+
+
+            /** MigrateAccounts
+             *
+             *  Migrate all Legacy wallet accounts to corresponding accounts in the signature chain.
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json MigrateAccounts(const json::json& params, bool fHelp);
 
 
             /** Stake
