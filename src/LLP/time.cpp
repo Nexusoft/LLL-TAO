@@ -109,13 +109,17 @@ namespace LLP
         /* On Connect Event, Assign the Proper Daemon Handle. */
         if(EVENT == EVENT_CONNECT)
         {
-            /* Reset the Timer and request another sample. */
-            Packet REQUEST;
-            REQUEST.HEADER = GET_OFFSET;
-            REQUEST.LENGTH = 4;
-            REQUEST.DATA = convert::uint2bytes(static_cast<uint32_t>(runtime::timestamp()));
+            /* Only send time seed when outgoing connection. */
+            if(fOUTGOING)
+            {
+                /* Reset the Timer and request another sample. */
+                Packet REQUEST;
+                REQUEST.HEADER = GET_OFFSET;
+                REQUEST.LENGTH = 4;
+                REQUEST.DATA = convert::uint2bytes(static_cast<uint32_t>(runtime::timestamp()));
 
-            WritePacket(REQUEST);
+                WritePacket(REQUEST);
+            }
         }
 
         /* On Disconnect Event, Reduce the Connection Count for Daemon */
