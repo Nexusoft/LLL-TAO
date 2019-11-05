@@ -534,8 +534,6 @@ namespace Legacy
 
         /* Process the block state. */
         TAO::Ledger::BlockState state(*this);
-        if(state.GetHash() != GetHash())
-            return debug::error(FUNCTION, "Hash mismatch expected ", GetHash().ToString(), " actual ", state.GetHash().ToString());
 
         /* Start the database transaction. */
         LLD::TxnBegin();
