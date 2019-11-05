@@ -21,7 +21,7 @@ namespace LLD
 {
     /** The Database Constructor.  **/
     ContractDB::ContractDB(const uint8_t nFlagsIn, const uint32_t nBucketsIn, const uint32_t nCacheIn)
-    : SectorDatabase("contracts"
+    : SectorDatabase(std::string("_CONTRACT")
     , nFlagsIn
     , nBucketsIn
     , nCacheIn)

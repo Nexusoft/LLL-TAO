@@ -20,7 +20,7 @@ namespace LLD
 
     /** The Database Constructor. To determine file location and the Bytes per Record. **/
     RegisterDB::RegisterDB(const uint8_t nFlagsIn, const uint32_t nBucketsIn, const uint32_t nCacheIn)
-    : SectorDatabase("registers"
+    : SectorDatabase(std::string("_REGISTER")
     , nFlagsIn
     , nBucketsIn
     , nCacheIn)

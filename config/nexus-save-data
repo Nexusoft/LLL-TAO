@@ -15,13 +15,13 @@ fi
 # debug.log could be enourmous, don't copy it. If you want it comment out line
 # below.
 #
-rm -f /root/.TAO/debug.log
+rm -f /root/.Nexus/debug.log
 
 #
 # Do the copy.
 #
-echo -n "Copying /root/.TAO -> $DEST ... "
-cp -r /root/.TAO/* $DEST
+echo -n "Copying /root/.Nexus -> $DEST ... "
+cp -r /root/.Nexus/* $DEST
 echo "done"
 
 

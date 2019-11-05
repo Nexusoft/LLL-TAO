@@ -20,7 +20,7 @@ namespace LLD
 
     /** The Database Constructor. To determine file location and the Bytes per Record. **/
     LocalDB::LocalDB(const uint8_t nFlagsIn, const uint32_t nBucketsIn, const uint32_t nCacheIn)
-    : SectorDatabase(std::string("local")
+    : SectorDatabase(std::string("_LOCAL")
     , nFlagsIn
     , nBucketsIn
     , nCacheIn)

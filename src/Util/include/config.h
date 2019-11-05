@@ -86,7 +86,7 @@ namespace config
      *  @return The system complete path to the default data directory.
      *
      **/
-    std::string GetDefaultDataDir(std::string strName = "TAO");
+    std::string GetDefaultDataDir(std::string strName = "Nexus");
 
 
     /** GetConfigFile

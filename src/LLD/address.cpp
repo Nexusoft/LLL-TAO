@@ -18,7 +18,7 @@ namespace LLD
 
     /** The Database Constructor. To determine file location and the Bytes per Record. **/
     AddressDB::AddressDB(const uint16_t nPort, const uint8_t nFlagsIn, const uint32_t nBucketsIn, const uint32_t nCacheIn)
-    : SectorDatabase(std::string("addr/") + std::to_string(nPort)
+    : SectorDatabase(std::string("_ADDR/") + std::to_string(nPort)
     , nFlagsIn
     , nBucketsIn
     , nCacheIn)

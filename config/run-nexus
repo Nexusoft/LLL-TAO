@@ -2,7 +2,7 @@
 #
 # run-nexus
 #
-# Launch Nexus Daemon. Check to see if nexus data directory /root/.TAO needs
+# Launch Nexus Daemon. Check to see if nexus data directory /root/.Nexus needs
 # to be created and point to the host OS file system.
 #
 
@@ -14,31 +14,31 @@ DATA_DIR="/hostOS$HOSTOS_HOME/.Nexus_Core_Data_BETA"
 #
 # If no HOSTOS_HOME env variable, then create the directory and run locally
 # out of it. That is, no connection to host OS file system. User must move
-# nexus.conif into /root/.TAO.
+# nexus.conif into /root/.Nexus.
 #
 if [ -z "$HOSTOS_HOME" ]; then
-    mkdir /root/.TAO
+    mkdir /root/.Nexus
 fi
 
 #
 # If this is first innvocation of the nexus daemon after container creation,
-# then setup /root/.TAO directory. Point to host OS file system. If that
+# then setup /root/.Nexus directory. Point to host OS file system. If that
 # directory does not exist, create it and copy a default nexus.conf to it.
 #
 cd /nexus
-if [ ! -d "/root/.TAO" ]; then
+if [ ! -d "/root/.Nexus" ]; then
     if [ ! -d $DATA_DIR ]; then
         echo -n "Create nexus data directory $DATA_DIR ... "
         mkdir $DATA_DIR
         cp /nexus/nexus.conf.default $DATA_DIR/nexus.conf
         echo "done"
     fi
-    echo -n "Symlink nexus data directory /root/.TAO -> $DATA_DIR ... "
-    ln -sf $DATA_DIR /root/.TAO
+    echo -n "Symlink nexus data directory /root/.Nexus -> $DATA_DIR ... "
+    ln -sf $DATA_DIR /root/.Nexus
     echo "done"
 fi
 
 #
-# Startup daemon. Check /root/.TAO/nexus.conf for daemon parameterization.
+# Startup daemon. Check /root/.Nexus/nexus.conf for daemon parameterization.
 #
 ./nexus &

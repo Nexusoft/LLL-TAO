@@ -443,7 +443,7 @@ namespace LLP
         if((TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 7) || TAO::Ledger::CurrentVersion() > 7)
         && !TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 6))
             return false;
-        
+
 
         DataStream ssMessage(INCOMING.DATA, SER_NETWORK, MIN_PROTO_VERSION);
 
@@ -577,6 +577,13 @@ namespace LLP
                 /* Reset the fails and orphans. */
                 nConsecutiveFails   = 0;
                 nConsecutiveOrphans = 0;
+
+                /* Check for sync node. */
+                if(nCurrentSession == TAO::Ledger::nSyncSession.load())
+                {
+                    /* Update last time received. */
+                    nLastTimeReceived = runtime::timestamp();
+                }
             }
 
             /* Check for failure status messages. */
