@@ -330,7 +330,7 @@ namespace LLP
             /* Unreliabilitiy re-requesting (max time since getblocks) */
             if(TAO::Ledger::ChainState::Synchronizing()
             && nCurrentSession == TAO::Ledger::nSyncSession.load()
-            && nLastTimeReceived.load() + 45 < nTimestamp)
+            && nLastTimeReceived.load() + 30 < nTimestamp)
             {
                 debug::log(0, NODE, "Sync Node Timeout");
 

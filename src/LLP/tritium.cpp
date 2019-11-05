@@ -61,6 +61,10 @@ namespace LLP
     std::atomic<bool> TritiumNode::fSynchronized(false);
 
 
+    /* Last block that was processed. */
+    std::atomic<uint64_t> TritiumNode::nLastTimeReceived(0);
+
+
     /* The local relay inventory cache. */
     static LLD::KeyLRU cacheInventory = LLD::KeyLRU(1024 * 1024);
 
@@ -258,6 +262,21 @@ namespace LLP
                     fInitialized.store(true);
                 }
 
+
+                /* Unreliabilitiy re-requesting (max time since getblocks) */
+                if(TAO::Ledger::ChainState::Synchronizing()
+                && nCurrentSession == TAO::Ledger::nSyncSession.load()
+                && nLastTimeReceived.load() + 30 < runtime::timestamp())
+                {
+                    debug::log(0, NODE, "Sync Node Timeout");
+
+                    /* Switch to a new node. */
+                    SwitchNode();
+
+                    /* Reset the event timeouts. */
+                    nLastTimeReceived.store(runtime::timestamp());
+                }
+
                 break;
             }
 
@@ -439,6 +458,9 @@ namespace LLP
                     {
                         /* Set the sync session-id. */
                         TAO::Ledger::nSyncSession.store(nCurrentSession);
+
+                        /* Reset last time received. */
+                        nLastTimeReceived.store(runtime::timestamp());
 
                         debug::log(0, NODE, "New sync address set");
 
@@ -1586,7 +1608,7 @@ namespace LLP
                                     if(nCurrentSession == TAO::Ledger::nSyncSession.load())
                                     {
                                         /* Check for complete synchronization. */
-                                        if(hashLast == hashLastIndex || (hashLast == TAO::Ledger::ChainState::hashBestChain.load() && hashLast == hashBestChain))
+                                        if(hashLast == TAO::Ledger::ChainState::hashBestChain.load() && hashLast == hashBestChain)
                                         {
                                             /* Set state to synchronized. */
                                             fSynchronized.store(true);
@@ -1912,7 +1934,6 @@ namespace LLP
                         ssPacket >> block;
 
                         /* Check version switch. */
-                        uint8_t nStatus = 0;
                         if(block.nVersion >= 7)
                         {
                             /* Build a tritium block from sync block. */
@@ -1951,6 +1972,11 @@ namespace LLP
                 {
                     /* Reset the fails and orphans. */
                     nConsecutiveOrphans = 0;
+                    nConsecutiveFails   = 0;
+
+                    /* Reset last time received. */
+                    if(nCurrentSession == TAO::Ledger::nSyncSession.load())
+                        nLastTimeReceived.store(runtime::timestamp());
                 }
 
                 /* Check for failure status messages. */
@@ -1977,6 +2003,18 @@ namespace LLP
 
                     /* Disconnect from a node with large orphan chain. */
                     return debug::drop(NODE, "node reached orphan limit");
+                }
+
+
+                /* Check for failure limit on node. */
+                if(nConsecutiveFails >= 1000)
+                {
+                    /* Switch to another available node. */
+                    if(TAO::Ledger::ChainState::Synchronizing() && TAO::Ledger::nSyncSession.load() == nCurrentSession)
+                        SwitchNode();
+
+                    /* Drop pesky nodes. */
+                    return debug::drop(NODE, "node reached failure limit");
                 }
 
                 break;
@@ -2059,17 +2097,6 @@ namespace LLP
                     /* Default catch all. */
                     default:
                         return debug::drop(NODE, "invalid type specifier for transaction");
-                }
-
-                /* Check for failure limit on node. */
-                if(nConsecutiveFails >= 1000)
-                {
-                    /* Switch to another available node. */
-                    if(TAO::Ledger::ChainState::Synchronizing() && TAO::Ledger::nSyncSession.load() == nCurrentSession)
-                        SwitchNode();
-
-                    /* Drop pesky nodes. */
-                    return debug::drop(NODE, "node reached failure limit");
                 }
 
                 break;
@@ -2612,6 +2639,9 @@ namespace LLP
 
                 /* Set the sync session-id. */
                 TAO::Ledger::nSyncSession.store(pnode->nCurrentSession);
+
+                /* Reset last time received. */
+                nLastTimeReceived.store(runtime::timestamp());
             }
             catch(const std::exception& e)
             {

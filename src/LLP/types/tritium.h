@@ -216,6 +216,10 @@ namespace LLP
         static std::atomic<bool> fSynchronized;
 
 
+        /** The last time a block was accepted. **/
+        static std::atomic<uint64_t> nLastTimeReceived;
+
+
         /** Default Constructor **/
         TritiumNode();
 
