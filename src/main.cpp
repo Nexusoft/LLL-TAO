@@ -152,7 +152,7 @@ int main(int argc, char** argv)
 
         /* The DDOS moving average timespan (default: 60 seconds). */
         static_cast<uint32_t>(config::GetArg(std::string("-rpctimespan"), 60)),
-        config::GetBoolArg("-listen", true),
+        true,
 
         /* Flag to determine if server should allow remote connections. */
         config::GetBoolArg(std::string("-rpcremote"), false),
