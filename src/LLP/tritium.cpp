@@ -1825,7 +1825,6 @@ namespace LLP
                         ssPacket >> block;
 
                         /* Process the block. */
-                        uint8_t nStatus = 0;
                         TAO::Ledger::Process(block, nStatus);
 
                         /* Check for duplicate and ask for previous block. */
