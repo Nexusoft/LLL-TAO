@@ -1747,11 +1747,20 @@ namespace TAO
                 json::json outputs;
                 for(const auto& out : txLegacy.vout)
                 {
+                   
                     Legacy::NexusAddress address;
-                    if(!Legacy::ExtractAddress(out.scriptPubKey, address))
+                    TAO::Register::Address hashRegister;
+                    std::string strAddress;
+
+                    /* Get the Nexus address from the txout public key */
+                    if(ExtractAddress(out.scriptPubKey, address))
+                        strAddress = address.ToString();
+                    else if(ExtractRegister(out.scriptPubKey, hashRegister))
+                        strAddress = hashRegister.ToString();
+                    else
                         throw APIException(-5, "failed to extract output address");
 
-                    outputs.push_back(debug::safe_printstr(address.ToString(), ":", std::fixed, Legacy::SatoshisToAmount(out.nValue)));
+                    outputs.push_back(debug::safe_printstr(strAddress, ":", std::fixed, Legacy::SatoshisToAmount(out.nValue)));
                 }
 
                 /* Get the inputs. */
@@ -1767,19 +1776,53 @@ namespace TAO
                         /* Skip inputs that are already found. */
                         Legacy::OutPoint prevout = txLegacy.vin[i].prevout;
 
-                        /* Read the previous transaction. */
+
+                        /* Read the previous transaction. This could be a legacy or tritium transaction*/
                         Legacy::Transaction txPrev;
-                        if(!LLD::Legacy->ReadTx(prevout.hash, txPrev))
+                        Ledger::Transaction txPrevTritium;
+                        if(LLD::Legacy->ReadTx(prevout.hash, txPrev))
+                        { 
+
+                            /* Extract the address. */
+                            Legacy::NexusAddress address;
+                            if(!Legacy::ExtractAddress(txPrev.vout[prevout.n].scriptPubKey, address))
+                                throw APIException(-5, "failed to extract input address");
+                   
+
+                            /* Add inputs to json. */
+                            inputs.push_back(debug::safe_printstr(address.ToString(), ":", std::fixed, Legacy::SatoshisToAmount(txPrev.vout[prevout.n].nValue)));
+                        }
+                        else if(LLD::Ledger->ReadTx(prevout.hash, txPrevTritium))
+                        { 
+
+                            /* Iterate through contracts to fill the outputs with all OP::LEGACY contracts */
+                            uint32_t nContracts = txPrevTritium.Size();
+                            for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
+                            {
+                                /* Check that the contract is an op legacy */
+                                if(TAO::Register::Unpack(txPrevTritium[nContract], TAO::Operation::OP::LEGACY ))
+                                {
+                                    /* The register address of the account that made the OP::LEGACY */
+                                    TAO::Register::Address hashRegister;
+
+                                    /* Unpack the register address */
+                                    TAO::Register::Unpack(txPrevTritium[nContract], hashRegister);
+
+                                    /* Get the amount */
+                                    uint64_t nAmount;
+                                    TAO::Register::Unpack(txPrevTritium[nContract], nAmount);
+
+                                    /* Add inputs to json. */
+                                    inputs.push_back(debug::safe_printstr(hashRegister.ToString(), ":", std::fixed, Legacy::SatoshisToAmount(nAmount)));
+
+                                    /* We found our op legacy so break */
+                                    break;
+                                }
+                            }
+                        }
+                        else
                             throw APIException(-5, debug::safe_printstr("tx ", prevout.hash.SubString(), " not found"));
-
-                        /* Extract the address. */
-                        Legacy::NexusAddress address;
-                        if(!Legacy::ExtractAddress(txPrev.vout[prevout.n].scriptPubKey, address))
-                            throw APIException(-5, "failed to extract input address");
-
-                        /* Add inputs to json. */
-                        inputs.push_back(debug::safe_printstr(address.ToString(), ":", std::fixed,
-                        Legacy::SatoshisToAmount(txPrev.vout[prevout.n].nValue)));
+                        
                     }
 
                     /* Add to return value. */
