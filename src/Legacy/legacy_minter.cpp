@@ -131,7 +131,7 @@ namespace Legacy
      */
     bool LegacyMinter::IsWaitPeriod() const
     {
-        return LegacyMinter::fIsStarted.load();
+        return LegacyMinter::fWait.load();
     }
 
 
