@@ -374,14 +374,14 @@ namespace Legacy
         /* Create the block to work on */
         block = LegacyBlock();
 
-        /* Retrieve the current setting for minimum stake interval */
-        const uint32_t nMinimumInterval = TAO::Ledger::MinStakeInterval(block);
-
         ReserveKey dummyReserveKey(pStakingWallet); //Reserve key not used by CreateBlock for nChannel=0
         Coinbase dummyCoinbase; // Coinbase not used for staking
 
         if(!CreateBlock(dummyReserveKey, dummyCoinbase, 0, 0, block))
             return debug::error(FUNCTION, "Unable to create candidate block");
+
+        /* Retrieve the current setting for minimum stake interval (must be after CreateBlock which sets version) */
+        const uint32_t nMinimumInterval = TAO::Ledger::MinStakeInterval(block);
 
         if(!trustKey.IsNull())
         {
