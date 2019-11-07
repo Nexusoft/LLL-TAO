@@ -546,7 +546,8 @@ namespace LLD
                     pTransaction->ssJournal << std::string("index") << vKey << vIndex;
 
                     /* Check for erased data. */
-                    pTransaction->setErasedData.erase(vKey);
+                    if(pTransaction->setErasedData.count(vKey))
+                        pTransaction->setErasedData.erase(vKey);
 
                     /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
                     pTransaction->mapIndex[vKey] = vIndex;

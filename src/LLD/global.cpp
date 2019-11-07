@@ -28,9 +28,15 @@ namespace LLD
     LegacyDB*     Legacy;
 
 
+    /* Global transaction mutex. */
+    std::mutex GLOBAL_MUTEX;
+
+
     /*  Initialize the global LLD instances. */
     void Initialize()
     {
+        LOCK(GLOBAL_MUTEX);
+
         debug::log(0, FUNCTION, "Initializing LLD");
 
         /* Create the contract database instance. */
@@ -69,6 +75,8 @@ namespace LLD
     /*  Shutdown and cleanup the global LLD instances. */
     void Shutdown()
     {
+        LOCK(GLOBAL_MUTEX);
+
         debug::log(0, FUNCTION, "Shutting down LLD");
 
         /* Cleanup the contract database. */
@@ -200,6 +208,8 @@ namespace LLD
     /* Global handler for all LLD instances. */
     void TxnBegin(const uint8_t nFlags)
     {
+        LOCK(GLOBAL_MUTEX);
+
         /* Start the contract DB transaction. */
         if(Contract)
             Contract->MemoryBegin(nFlags);
@@ -245,6 +255,8 @@ namespace LLD
     /* Global handler for all LLD instances. */
     void TxnAbort(const uint8_t nFlags)
     {
+        LOCK(GLOBAL_MUTEX);
+
         /* Abort the contract DB transaction. */
         if(Contract)
             Contract->MemoryRelease(nFlags);
@@ -290,6 +302,8 @@ namespace LLD
     /* Global handler for all LLD instances. */
     void TxnCommit(const uint8_t nFlags)
     {
+        LOCK(GLOBAL_MUTEX);
+
         /* Commit the contract DB transaction. */
         if(Contract)
             Contract->MemoryCommit();

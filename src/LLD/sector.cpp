@@ -693,13 +693,7 @@ namespace LLD
         {
             /* Erase sector data first. */
             if(!pSectorKeys->Erase(item))
-            {
-                /* Cleanup the transaction object. */
-                delete pTransaction;
-                pTransaction = nullptr;
-
                 return debug::error(FUNCTION, "failed to erase from keychain");
-            }
         }
 
 
@@ -708,13 +702,7 @@ namespace LLD
         {
             /* Write new sector data. */
             if(!Force(item.first, item.second))
-            {
-                /* Cleanup the transaction object. */
-                delete pTransaction;
-                pTransaction = nullptr;
-
                 return debug::error(FUNCTION, "failed to commit sector data");
-            }
         }
 
 
@@ -724,13 +712,7 @@ namespace LLD
             /* Write new keychain entries. */
             SectorKey cKey(STATE::READY, item, 0, 0, 0);
             if(!pSectorKeys->Put(cKey))
-            {
-                /* Cleanup the transaction object. */
-                delete pTransaction;
-                pTransaction = nullptr;
-
                 return debug::error(FUNCTION, "failed to commit to keychain");
-            }
         }
 
         /* Commit the index data. */
@@ -745,15 +727,7 @@ namespace LLD
             {
                 /* Get indexing entries. */
                 if(!pSectorKeys->Get(item.second, cKey))
-                {
-                    /* Cleanup the transaction object. */
-                    delete pTransaction;
-                    pTransaction = nullptr;
-
-                    PrintHex(item.second.begin(), item.second.end());
-
-                    return debug::error(FUNCTION, "failed to read indexing entry ");
-                }
+                    return debug::error(FUNCTION, "failed to read indexing entry");
 
                 mapIndex[item.second] = cKey;
             }
@@ -761,13 +735,7 @@ namespace LLD
             /* Write the new sector key. */
             cKey.SetKey(item.first);
             if(!pSectorKeys->Put(cKey))
-            {
-                /* Cleanup the transaction object. */
-                delete pTransaction;
-                pTransaction = nullptr;
-
                 return debug::error(FUNCTION, "failed to write indexing entry");
-            }
         }
 
         return true;
