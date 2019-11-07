@@ -400,17 +400,11 @@ namespace LLP
     /* Flushes data out of the overflow buffer */
     int Socket::Flush()
     {
+        LOCK(DATA_MUTEX);
+
         int32_t nSent = 0;
         uint32_t nBytes = 0;
-        uint32_t nSize = 0;
-
-        {
-            LOCK(DATA_MUTEX);
-
-            /* Create a thread-safe copy of the file descriptor */
-            nSize = static_cast<uint32_t>(vBuffer.size());
-        }
-
+        uint32_t nSize = static_cast<uint32_t>(vBuffer.size());
 
         /* Don't flush if buffer doesn't have any data. */
         if(nSize == 0)
@@ -422,7 +416,6 @@ namespace LLP
         /* If there were any errors, handle them gracefully. */
         {
             LOCK(SOCKET_MUTEX);
-            LOCK2(DATA_MUTEX);
 
             #ifdef WIN32
                 nSent = static_cast<int32_t>(send(fd, (char*)&vBuffer[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT));
@@ -441,10 +434,7 @@ namespace LLP
 
         /* If not all data was sent non-blocking, recurse until it is complete. */
         else if(nSent > 0)
-        {
-            LOCK(DATA_MUTEX);
             vBuffer.erase(vBuffer.begin(), vBuffer.begin() + nSent);
-        }
 
         nLastSend = runtime::timestamp();
 
@@ -463,6 +453,8 @@ namespace LLP
     /* Check that the socket has data that is buffered. */
     bool Socket::Buffered() const
     {
+        LOCK(DATA_MUTEX);
+
         return vBuffer.size() != 0;
     }
 
