@@ -690,20 +690,47 @@ namespace LLD
 
         /* Erase data set to be removed. */
         for(const auto& item : pTransaction->setErasedData)
+        {
+            /* Erase sector data first. */
             if(!pSectorKeys->Erase(item))
+            {
+                /* Cleanup the transaction object. */
+                delete pTransaction;
+                pTransaction = nullptr;
+
                 return debug::error(FUNCTION, "failed to erase from keychain");
+            }
+        }
+
 
         /* Commit the sector data. */
         for(const auto& item : pTransaction->mapTransactions)
+        {
+            /* Write new sector data. */
             if(!Force(item.first, item.second))
+            {
+                /* Cleanup the transaction object. */
+                delete pTransaction;
+                pTransaction = nullptr;
+
                 return debug::error(FUNCTION, "failed to commit sector data");
+            }
+        }
+
 
         /* Commit keychain entries. */
         for(const auto& item : pTransaction->setKeychain)
         {
+            /* Write new keychain entries. */
             SectorKey cKey(STATE::READY, item, 0, 0, 0);
             if(!pSectorKeys->Put(cKey))
+            {
+                /* Cleanup the transaction object. */
+                delete pTransaction;
+                pTransaction = nullptr;
+
                 return debug::error(FUNCTION, "failed to commit to keychain");
+            }
         }
 
         /* Commit the index data. */
@@ -716,8 +743,15 @@ namespace LLD
                 cKey = mapIndex[item.second];
             else
             {
+                /* Get indexing entries. */
                 if(!pSectorKeys->Get(item.second, cKey))
+                {
+                    /* Cleanup the transaction object. */
+                    delete pTransaction;
+                    pTransaction = nullptr;
+
                     return debug::error(FUNCTION, "failed to read indexing entry");
+                }
 
                 mapIndex[item.second] = cKey;
             }
@@ -725,12 +759,14 @@ namespace LLD
             /* Write the new sector key. */
             cKey.SetKey(item.first);
             if(!pSectorKeys->Put(cKey))
-                return debug::error(FUNCTION, "failed to write indexing entry");
-        }
+            {
+                /* Cleanup the transaction object. */
+                delete pTransaction;
+                pTransaction = nullptr;
 
-        /* Cleanup the transaction object. */
-        delete pTransaction;
-        pTransaction = nullptr;
+                return debug::error(FUNCTION, "failed to write indexing entry");
+            }
+        }
 
         return true;
     }
