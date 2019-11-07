@@ -154,29 +154,41 @@ namespace LLD
         {
             debug::log(0, FUNCTION, "all transactions are complete, recovering...");
 
+            /* Ensure successful commit. */
+            bool fSuccess = true;
+
             /* Commit contract DB transaction. */
-            if(Contract)
-                Contract->TxnCommit();
+            if(Contract && !Contract->TxnCommit())
+                fSuccess = false;
 
             /* Commit register DB transaction. */
-            if(Register)
-                Register->TxnCommit();
+            if(Register && !Register->TxnCommit())
+                fSuccess = false;
 
             /* Commit ledger DB transaction. */
-            if(Ledger)
-                Ledger->TxnCommit();
+            if(Ledger && !Ledger->TxnCommit())
+                fSuccess = false;
 
             /* Commit the local DB transaction. */
-            if(Local)
-                Local->TxnCommit();
+            if(Local && !Local->TxnCommit())
+                fSuccess = false;
 
             /* Commit the trust DB transaction. */
-            if(Trust)
-                Trust->TxnCommit();
+            if(Trust && !Trust->TxnCommit())
+                fSuccess = false;
 
             /* Commit the legacy DB transaction. */
-            if(Legacy)
-                Legacy->TxnCommit();
+            if(Legacy && !Legacy->TxnCommit())
+                fSuccess = false;
+
+            /* Check for failures. */
+            if(!fSuccess)
+            {
+                debug::error(FUNCTION, "Failed to Recover. Retrying....");
+
+                /* Attempt to recover database again. */
+                TxnRecovery();
+            }
         }
 
         /* Abort all the transactions. */
@@ -318,29 +330,41 @@ namespace LLD
             Legacy->TxnCheckpoint();
 
 
+        /* Ensure transaction succeeded. */
+        bool fSuccess = true;
+
         /* Commit contract DB transaction. */
-        if(Contract)
-            Contract->TxnCommit();
+        if(Contract && !Contract->TxnCommit())
+            fSuccess = false;
 
         /* Commit register DB transaction. */
-        if(Register)
-            Register->TxnCommit();
+        if(Register && !Register->TxnCommit())
+            fSuccess = false;
 
-        /* Commit legacy DB transaction. */
-        if(Ledger)
-            Ledger->TxnCommit();
+        /* Commit ledger DB transaction. */
+        if(Ledger && !Ledger->TxnCommit())
+            fSuccess = false;
 
         /* Commit the local DB transaction. */
-        if(Local)
-            Local->TxnCommit();
+        if(Local && !Local->TxnCommit())
+            fSuccess = false;
 
         /* Commit the trust DB transaction. */
-        if(Trust)
-            Trust->TxnCommit();
+        if(Trust && !Trust->TxnCommit())
+            fSuccess = false;
 
         /* Commit the legacy DB transaction. */
-        if(Legacy)
-            Legacy->TxnCommit();
+        if(Legacy && !Legacy->TxnCommit())
+            fSuccess = false;
+
+        /* Check for failures. */
+        if(!fSuccess)
+        {
+            debug::error(FUNCTION, "Failed to Commit. Recovering Database....");
+
+            /* Attempt to recover database. */
+            TxnRecovery();
+        }
 
 
         /* Abort the contract DB transaction. */
