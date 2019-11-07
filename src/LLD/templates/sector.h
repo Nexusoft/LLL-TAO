@@ -353,7 +353,7 @@ namespace LLD
                 /* Check filesize. */
                 stream.seekg(0, std::ios::end);
                 uint64_t nFileSize = stream.tellg();
-                uint64_t nBufferSize = 1024 * 1024; //1 MB read buffer
+                uint64_t nBufferSize = (nLimit == -1) ? nFileSize : (1024 * 1024); //1 MB read buffer
                 stream.seekg(0, std::ios::beg); //reset seek position
 
                 /* Loop until stream encounters exceptions. */
@@ -397,7 +397,7 @@ namespace LLD
                             ssData >> strThis;
 
                             /* Check the type. */
-                            if(strType == strThis && strThis != "NONE")
+                            if(strType == strThis)
                             {
                                 /* Get the value. */
                                 Type value;
