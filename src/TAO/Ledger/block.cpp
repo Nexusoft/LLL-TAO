@@ -191,14 +191,14 @@ namespace TAO
         /*  Check a block for consistency. */
         bool Block::Check() const
         {
-            return true; /* No implementation in base class. */
+            return false; /* No implementation in base class. */
         }
 
 
         /*  Accept a block with chain state parameters. */
         bool Block::Accept() const
         {
-            return true; /* No implementation in base class. */
+            return false; /* No implementation in base class. */
         }
 
 

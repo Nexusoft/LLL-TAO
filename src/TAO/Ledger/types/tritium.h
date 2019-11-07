@@ -212,7 +212,7 @@ namespace TAO
              *  @return Returns a 1024-bit signature hash.
              *
              **/
-            uint1024_t SignatureHash() const override;
+            virtual uint1024_t SignatureHash() const override;
 
 
             /** StakeHash
