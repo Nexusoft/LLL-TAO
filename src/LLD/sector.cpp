@@ -750,7 +750,9 @@ namespace LLD
                     delete pTransaction;
                     pTransaction = nullptr;
 
-                    return debug::error(FUNCTION, "failed to read indexing entry");
+                    PrintHex(item.second.begin(), item.second.end());
+
+                    return debug::error(FUNCTION, "failed to read indexing entry ");
                 }
 
                 mapIndex[item.second] = cKey;

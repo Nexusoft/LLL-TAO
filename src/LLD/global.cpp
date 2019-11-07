@@ -185,6 +185,7 @@ namespace LLD
             if(!fSuccess)
             {
                 debug::error(FUNCTION, "Failed to Recover. Retrying....");
+                runtime::sleep(1000);
 
                 /* Attempt to recover database again. */
                 TxnRecovery();
@@ -361,6 +362,7 @@ namespace LLD
         if(!fSuccess)
         {
             debug::error(FUNCTION, "Failed to Commit. Recovering Database....");
+            runtime::sleep(1000);
 
             /* Attempt to recover database. */
             TxnRecovery();

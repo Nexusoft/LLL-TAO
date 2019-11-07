@@ -456,11 +456,11 @@ namespace LLP
                     /* Start sync on startup, or override any legacy syncing currently in process. */
                     if(TAO::Ledger::nSyncSession.load() == 0 || LegacyNode::SessionActive(TAO::Ledger::nSyncSession.load()))
                     {
-                        /* Set the sync session-id. */
-                        TAO::Ledger::nSyncSession.store(nCurrentSession);
-
                         /* Reset last time received. */
                         nLastTimeReceived.store(runtime::timestamp());
+
+                        /* Set the sync session-id. */
+                        TAO::Ledger::nSyncSession.store(nCurrentSession);
 
                         debug::log(0, NODE, "New sync address set");
 
