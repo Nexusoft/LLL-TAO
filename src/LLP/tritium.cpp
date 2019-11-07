@@ -62,7 +62,7 @@ namespace LLP
 
 
     /* Last block that was processed. */
-    std::atomic<uint64_t> TritiumNode::nLastTimeReceived(0);
+    std::atomic<uint64_t> TritiumNode::nLastTimeReceived(runtime::timestamp());
 
 
     /* The local relay inventory cache. */
