@@ -87,7 +87,7 @@ namespace TAO
             {
                 /* Retrieve all raw trust database keys from keychain */
                 std::vector<Legacy::TrustKey> vKeys;
-                if(LLD::Trust->BatchRead("trust", vKeys, -1))
+                if(LLD::Trust->BatchRead("NONE", vKeys, -1))
                 {
                     /* Cutoff time for v4 trust keys. Anything prior to v4 end plus the original one timespan grace period.
                      * This addresses an issue that some v4 keys produced one v5 block during grace period, but then incorrectly
