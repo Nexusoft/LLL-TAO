@@ -35,8 +35,6 @@ namespace LLD
     /*  Initialize the global LLD instances. */
     void Initialize()
     {
-        LOCK(GLOBAL_MUTEX);
-
         debug::log(0, FUNCTION, "Initializing LLD");
 
         /* Create the contract database instance. */
@@ -75,8 +73,6 @@ namespace LLD
     /*  Shutdown and cleanup the global LLD instances. */
     void Shutdown()
     {
-        LOCK(GLOBAL_MUTEX);
-
         debug::log(0, FUNCTION, "Shutting down LLD");
 
         /* Cleanup the contract database. */
