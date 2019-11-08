@@ -274,14 +274,15 @@ namespace TAO
              *  For debugging Purposes seeing block state data dump
              *
              **/
-            virtual std::string ToString() const ;
+            virtual std::string ToString() const;
+
 
             /** print
              *
              *  Dump to the log file the raw block data
              *
              **/
-            void print() const;
+            virtual void print() const;
 
 
             /** VerifyWork

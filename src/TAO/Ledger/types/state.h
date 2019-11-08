@@ -295,7 +295,7 @@ namespace TAO
              *  @return the string with output data.
              *
              **/
-            std::string ToString(uint8_t nState = debug::flags::header) const;
+            virtual std::string ToString(uint8_t nState = debug::flags::header) const;
 
 
             /** print

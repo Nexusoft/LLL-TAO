@@ -113,6 +113,16 @@ namespace TAO
             /** Copy Constructor. **/
             SyncBlock(const BlockState& state);
 
+
+            /** SignatureHash
+             *
+             *  Get the Signature Hash of the block. Used to verify work claims.
+             *
+             *  @return Returns a 1024-bit signature hash.
+             *
+             **/
+            virtual uint1024_t SignatureHash() const override;
+
         };
     }
 }

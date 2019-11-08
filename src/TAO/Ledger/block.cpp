@@ -191,14 +191,14 @@ namespace TAO
         /*  Check a block for consistency. */
         bool Block::Check() const
         {
-            return false; /* No implementation in base class. */
+            return debug::error(FUNCTION, "Can't check base block"); /* No implementation in base class. */
         }
 
 
         /*  Accept a block with chain state parameters. */
         bool Block::Accept() const
         {
-            return false; /* No implementation in base class. */
+            return debug::error(FUNCTION, "Can't accept base block");; /* No implementation in base class. */
         }
 
 
@@ -219,7 +219,7 @@ namespace TAO
         /* Check the nullptr state of the block. */
         bool Block::IsNull() const
         {
-            return (nBits == 0);
+            return (hashPrevBlock == 0 && hashMerkleRoot == 0 && nChannel == 0 && nBits == 0 && nNonce == 0);
         }
 
 
@@ -245,7 +245,7 @@ namespace TAO
         /* Get the Signarture Hash of the block. Used to verify work claims. */
         uint1024_t Block::SignatureHash() const
         {
-            return 0; //base block signature hash is unused since it relies on nTime
+            return debug::error(FUNCTION, "Can't get signature hash from base block"); //base block signature hash is unused since it relies on nTime
         }
 
 

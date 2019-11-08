@@ -153,11 +153,21 @@ namespace Legacy
     {
     }
 
+
+    /** Copy Constructor. **/
+    LegacyBlock::LegacyBlock(const TAO::Ledger::Block& block)
+    : Block (block)
+    , nTime (runtime::unifiedtimestamp())
+    , vtx   ( )
+    {
+    }
+
+
     /* Copy Constructor. */
     LegacyBlock::LegacyBlock(const TAO::Ledger::BlockState& state)
-    : Block(state)
-    , nTime(state.nTime)
-    , vtx()
+    : Block (state)
+    , nTime (state.nTime)
+    , vtx   ( )
     {
         /* Push back all the transactions from the state object. */
         for(const auto& item : state.vtx)
@@ -177,9 +187,9 @@ namespace Legacy
 
     /* Copy Constructor. */
     LegacyBlock::LegacyBlock(const TAO::Ledger::SyncBlock& block)
-    : Block(block)
-    , nTime(block.nTime)
-    , vtx()
+    : Block (block)
+    , nTime (block.nTime)
+    , vtx   ( )
     {
         /* Check for version conversions. */
         if(block.nVersion >= 7)

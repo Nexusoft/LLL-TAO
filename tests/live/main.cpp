@@ -253,6 +253,18 @@ namespace TAO
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
+    TAO::Ledger::Block block;
+    debug::log(0, "Hash ", block.GetHash().ToString());
+
+    TAO::Ledger::TritiumBlock tritium(block);
+    debug::log(0, "Hash ", tritium.GetHash().ToString());
+
+    Legacy::LegacyBlock legacy(block);
+    debug::log(0, "Hash ", legacy.GetHash().ToString());
+
+
+    return 0;
+
     for(uint64_t i = 0; i < 1000000; ++i)
     {
         double dWeight = TAO::Ledger::StakeRate(i, false);

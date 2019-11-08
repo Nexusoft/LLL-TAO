@@ -102,7 +102,14 @@ namespace Legacy
         *  @return A pointer to a copy of this LegacyBlock.
         *
         **/
-        virtual LegacyBlock* Clone() const override {return new LegacyBlock(*this);};
+        virtual LegacyBlock* Clone() const
+        {
+            return new LegacyBlock(*this);
+        };
+
+
+        /** Copy Constructor. **/
+        LegacyBlock(const TAO::Ledger::Block& block);
 
 
         /** Copy Constructor. **/
@@ -118,7 +125,7 @@ namespace Legacy
          *  Set the block to Null state.
          *
          **/
-        void SetNull() override;
+        virtual void SetNull();
 
 
         /** UpdateTime
@@ -144,7 +151,7 @@ namespace Legacy
          *  Check a legacy block for consistency.
          *
          **/
-        bool Check() const override;
+        virtual bool Check() const override;
 
 
         /** Accept
@@ -152,7 +159,7 @@ namespace Legacy
          *  Accept a legacy block with chain state parameters.
          *
          **/
-        bool Accept() const override;
+        virtual bool Accept() const override;
 
 
         /** Verify Stake
@@ -194,7 +201,7 @@ namespace Legacy
          *  @return Returns a 1024-bit signature hash.
          *
          **/
-        uint1024_t SignatureHash() const;
+        virtual uint1024_t SignatureHash() const override;
 
 
         /** Stake Hash
@@ -212,7 +219,7 @@ namespace Legacy
          *  For debugging Purposes seeing block state data dump
          *
          **/
-        std::string ToString() const override;
+        virtual std::string ToString() const;
 
 
     };

@@ -150,7 +150,7 @@ namespace TAO
              *  Set the block to Null state.
              *
              **/
-            void SetNull() override;
+            virtual void SetNull() override;
 
 
             /** UpdateTime
@@ -176,7 +176,7 @@ namespace TAO
              *  Check a tritium block for consistency.
              *
              **/
-            bool Check() const override;
+            virtual bool Check() const override;
 
 
             /** Accept
@@ -184,7 +184,7 @@ namespace TAO
              *  Accept a tritium block with chain state parameters.
              *
              **/
-            bool Accept() const override;
+            virtual bool Accept() const override;
 
 
             /** CheckStake
@@ -202,7 +202,7 @@ namespace TAO
              *  @return True if work is valid, false otherwise.
              *
              **/
-            bool VerifyWork() const override;
+            virtual bool VerifyWork() const override;
 
 
             /** SignatureHash
@@ -230,7 +230,7 @@ namespace TAO
              *  For debugging Purposes seeing block state data dump
              *
              **/
-            std::string ToString() const override;
+            virtual std::string ToString() const;
 
 
         };
