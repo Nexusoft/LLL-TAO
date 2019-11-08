@@ -583,7 +583,7 @@ namespace TAO
                 {
                     /* Make sure we have enough room in the current TX for this account and name. If not then submit this transaction
                        and create a new one.  NOTE we add a maximum of 99 to leave room for the fee  */
-                    if(nContracts +(fCreateName ? 1 : 2) > 99)
+                    if(nContracts +(fCreateName ? 1 : 2) >= 99)
                     {
                         /* Add the fee */
                         AddFee(tx);
@@ -598,11 +598,13 @@ namespace TAO
 
                         /* Execute the operations layer. */
                         if(!TAO::Ledger::mempool.Accept(tx))
-                            throw APIException(-32, "Failed to accept");
+                            throw APIException(-32, "Failed to accept");                               
 
                         /* Create the next transaction and reset the counter */
+                        tx = TAO::Ledger::Transaction();
                         if(!Users::CreateTransaction(user, strPIN, tx))
                             throw APIException(-17, "Failed to create transaction");
+                        
                         
                         nContracts = 0;
                     }
