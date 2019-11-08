@@ -460,7 +460,7 @@ namespace TAO
 
             /* Check to see if the caller has specified NOT to create a name (we do by default) */
             bool fCreateName = params.find("createname") == params.end() 
-                    || (params["createname"].get<std::string>() != "1" && params["createname"].get<std::string>() != "true"); 
+                    || (params["createname"].get<std::string>() != "0" && params["createname"].get<std::string>() != "false"); 
 
             /* Save the current lock state of wallet */
             bool fLocked = wallet.IsLocked();
