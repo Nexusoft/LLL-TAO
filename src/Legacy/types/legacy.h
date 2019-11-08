@@ -102,7 +102,7 @@ namespace Legacy
         *  @return A pointer to a copy of this LegacyBlock.
         *
         **/
-        virtual LegacyBlock* Clone() const
+        virtual LegacyBlock* Clone() const override
         {
             return new LegacyBlock(*this);
         };
