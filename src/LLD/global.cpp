@@ -188,11 +188,8 @@ namespace LLD
             /* Check for failures. */
             if(!fSuccess)
             {
-                debug::error(FUNCTION, "Failed to Recover. Retrying....");
-                runtime::sleep(1000);
-
-                /* Attempt to recover database again. */
-                TxnRecovery();
+                config::fShutdown.store(true);
+                return;
             }
         }
 
@@ -371,13 +368,9 @@ namespace LLD
         /* Check for failures. */
         if(!fSuccess)
         {
-            debug::error(FUNCTION, "Failed to Commit. Recovering Database....");
-            runtime::sleep(1000);
-
-            /* Attempt to recover database. */
-            TxnRecovery();
+            config::fShutdown.store(true);
+            return;
         }
-
 
         /* Abort the contract DB transaction. */
         if(Contract)
