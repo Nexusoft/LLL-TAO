@@ -201,6 +201,9 @@ namespace LLP
     template <class ProtocolType>
     void DataThread<ProtocolType>::Thread()
     {
+        /* Cache sleep time if applicable. */
+        uint32_t nSleep = config::GetArg("-llpsleep", 0);
+
         /* The mutex for the condition. */
         std::mutex CONDITION_MUTEX;
 
@@ -212,6 +215,10 @@ namespace LLP
         /* The main connection handler loop. */
         while(!fDestruct.load() && !config::fShutdown.load())
         {
+            /* Check for data thread sleep (helps with cpu usage). */
+            if(nSleep > 0)
+                runtime::sleep(nSleep);
+
             /* Keep data threads waiting for work.
              * Will wait until have one or more connections, DataThread is disposed, or system shutdown
              * While loop catches potential for spurious wakeups. Also has the effect of skipping the wait() call after connections established.
