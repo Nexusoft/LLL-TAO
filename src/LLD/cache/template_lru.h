@@ -180,7 +180,18 @@ namespace LLD
         {
             LOCK(MUTEX);
 
-            return cache.find(Key) != cache.end();
+            /* Check if the Record Exists. */
+            if(cache.find(Key) == cache.end())
+                return false;
+
+            /* Get the data. */
+            TemplateNode<KeyType, DataType> *pthis = cache.at(Key);
+
+            /* Check for correct key. */
+            if(pthis->Key != Key)
+                return debug::error(FUNCTION, "Key Mismatch");
+
+            return true;
         }
 
 
@@ -194,7 +205,7 @@ namespace LLD
          *  @return True if object was found, false if none found by index.
          *
          **/
-        bool Get(const KeyType& Key, DataType& Data)
+        bool Get(const KeyType& Key, DataType &Data)
         {
             LOCK(MUTEX);
 
