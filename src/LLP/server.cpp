@@ -288,7 +288,7 @@ namespace LLP
                         continue;
 
                     /* Push the active connection. */
-                    if(CONNECTION->nLatency < nLatency)
+                    if(CONNECTION->nLatency < nLatency && CONNECTION->fOUTGOING)
                     {
                         nLatency = CONNECTION->nLatency;
 
