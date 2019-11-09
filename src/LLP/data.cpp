@@ -244,7 +244,7 @@ namespace LLP
                 try
                 {
                     /* Set the proper POLLIN flags. */
-                    POLLFDS.at(nIndex).events  = POLLIN;// | POLLRDHUP;
+                    POLLFDS.at(nIndex).events = POLLIN;// | POLLRDHUP;
                     POLLFDS.at(nIndex).revents = 0; //reset return events
 
                     /* Set to invalid socket if connection is inactive. */
@@ -295,6 +295,14 @@ namespace LLP
                     if(POLLFDS.at(nIndex).revents & POLLHUP)
                     {
                         disconnect_remove_event(nIndex, DISCONNECT_PEER);
+                        continue;
+                    }
+
+                    /* Disconnect if pollin signaled with no data (This happens on Linux). */
+                    if((POLLFDS.at(nIndex).revents & POLLIN)
+                    && CONNECTION->Available() == 0)
+                    {
+                        disconnect_remove_event(nIndex, DISCONNECT_POLL_EMPTY);
                         continue;
                     }
 
