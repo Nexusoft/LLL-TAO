@@ -450,7 +450,7 @@ namespace LLC
 		std::vector<uint8_t> data(pbegin, pend);
 
 		/* Check the cache for this data */
-		if(!cache1024.Has(data))
+		if(!cache1024.Get(data, keccak))
 		{
 			Skein1024_Ctxt_t ctx;
 			Skein1024_Init(&ctx, 1024);
@@ -462,20 +462,12 @@ namespace LLC
 			Keccak_HashUpdate(&ctx_keccak, (uint8_t *)&skein, 1024);
 			Keccak_HashFinal(&ctx_keccak, (uint8_t *)&keccak);
 
-			if(keccak == 0)
-				return debug::error(FUNCTION, "SK-1024 hash has a result of 0::", HexStr(data.begin(), data.end()));
-
 			/* Cache the hashed value */
 			cache1024.Put(data, keccak);
 		}
-		else
-		{
-			/* Retrieve the cached value */
-			cache1024.Get(data, keccak);
 
-			if(keccak == 0)
-				return debug::error(FUNCTION, "CACHE POOL: SK-1024 hash has a result of 0::", HexStr(data.begin(), data.end()));
-		}
+		if(keccak == 0)
+			return debug::error(FUNCTION, "SK-1024 hash has a result of 0::", HexStr(data.begin(), data.end()));
 
 		return keccak;
 	}
