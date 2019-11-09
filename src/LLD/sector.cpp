@@ -609,8 +609,7 @@ namespace LLD
 
             /* Debug output. */
             debug::log(0,
-                ANSI_COLOR_FUNCTION, strName, ANSI_COLOR_RESET,
-                " LLD Running ",
+                ANSI_COLOR_FUNCTION, strName, " LLD : ", ANSI_COLOR_RESET,
                 "Writing", WPS, " Kb/s | ",
                 "Reading", RPS, " Kb/s | ",
                 "Records ", nRecordsFlushed.load());

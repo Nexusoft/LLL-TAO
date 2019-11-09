@@ -706,8 +706,7 @@ namespace LLP
 
             /* Meter output. */
             debug::log(0,
-                ANSI_COLOR_FUNCTION, Name(), ANSI_COLOR_RESET,
-                " LLP Running at ",
+                ANSI_COLOR_FUNCTION, Name(), " LLP : ", ANSI_COLOR_RESET,
                 RPS, " Incoming | ",
                 PPS, " Outgoing | ",
                 RPS + PPS, " Total | ",
