@@ -30,6 +30,16 @@ ________________________________________________________________________________
 namespace LLP
 {
 
+    /* Total incoming packets. */
+    template <class PacketType>
+    std::atomic<uint64_t> BaseConnection<PacketType>::REQUESTS;
+
+
+    /* Total outgoing packets. */
+    template <class PacketType>
+    std::atomic<uint64_t> BaseConnection<PacketType>::PACKETS;
+
+
     /* Build Base Connection with no parameters */
     template <class PacketType>
     BaseConnection<PacketType>::BaseConnection()
@@ -180,6 +190,9 @@ namespace LLP
         /* Notify condition if available. */
         if(FLUSH_CONDITION && Buffered())
             FLUSH_CONDITION->notify_all();
+
+        /* Update packet count. */
+        ++PACKETS;
     }
 
 

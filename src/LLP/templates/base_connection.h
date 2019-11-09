@@ -104,6 +104,14 @@ namespace LLP
         std::condition_variable* FLUSH_CONDITION;
 
 
+        /** Total incoming packets. **/
+        static std::atomic<uint64_t> REQUESTS;
+
+
+        /** Total outgoing packets. **/
+        static std::atomic<uint64_t> PACKETS;
+
+
     private:
 
         /** Flag to determine if event occurred. **/

@@ -41,7 +41,6 @@ namespace LLP
     , fDestruct       (false)
     , nConnections    (0)
     , ID              (nID)
-    , REQUESTS        (0)
     , TIMEOUT         (nTimeout)
     , DDOS_rSCORE     (rScore)
     , DDOS_cSCORE     (cScore)
@@ -285,11 +284,11 @@ namespace LLP
                         continue;
 
                     /* Disconnect if there was a polling error */
-                    // if(POLLFDS.at(nIndex).revents & POLLERR)
-                    // {
-                    //     disconnect_remove_event(nIndex, DISCONNECT_POLL_ERROR);
-                    //     continue;
-                    // }
+                    if(POLLFDS.at(nIndex).revents & POLLERR)
+                    {
+                         disconnect_remove_event(nIndex, DISCONNECT_POLL_ERROR);
+                         continue;
+                    }
 
 #ifdef WIN32
                     /* Disconnect if the socket was disconnected by peer (need for Windows) */
@@ -340,9 +339,7 @@ namespace LLP
                     }
 
                     /* Generic event for Connection. */
-                    {
-                        CONNECTION->Event(EVENT_GENERIC);
-                    }
+                    CONNECTION->Event(EVENT_GENERIC);
 
                     /* Work on Reading a Packet. **/
                     CONNECTION->ReadPacket();
@@ -360,7 +357,7 @@ namespace LLP
 
                         /* Handle Meters and DDOS. */
                         if(fMETER)
-                            ++REQUESTS;
+                            ++ProtocolType::REQUESTS;
 
                         /* Increment rScore. */
                         if(fDDOS && CONNECTION->DDOS)

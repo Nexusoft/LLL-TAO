@@ -59,14 +59,14 @@ namespace LLP
     Server<ProtocolType>::Server(uint16_t nPort, uint16_t nMaxThreads, uint32_t nTimeout, bool fDDOS_,
                          uint32_t cScore, uint32_t rScore, uint32_t nTimespan, bool fListen, bool fRemote,
                          bool fMeter, bool fManager, uint32_t nSleepTimeIn)
-    : fDDOS(fDDOS_)
-    , PORT(nPort)
-    , MAX_THREADS(nMaxThreads)
-    , DDOS_TIMESPAN(nTimespan)
-    , DATA_THREADS()
-    , pAddressManager(nullptr)
-    , nSleepTime(nSleepTimeIn)
-    , hListenSocket(-1, -1)
+    : fDDOS           (fDDOS_)
+    , PORT            (nPort)
+    , MAX_THREADS     (nMaxThreads)
+    , DDOS_TIMESPAN   (nTimespan)
+    , DATA_THREADS    ( )
+    , pAddressManager (nullptr)
+    , nSleepTime      (nSleepTimeIn)
+    , hListenSocket   (-1, -1)
     {
         for(uint16_t nIndex = 0; nIndex < MAX_THREADS; ++nIndex)
         {
@@ -94,12 +94,12 @@ namespace LLP
                 return;
             }
 
-            LISTEN_THREAD_V4 = std::thread(std::bind(&Server::ListeningThread, this, true));  //IPv4 Listener
+            LISTEN_THREAD = std::thread(std::bind(&Server::ListeningThread, this, true));  //IPv4 Listener
 
             /* Initialize the UPnP thread if remote connections are allowed. */
             if(fRemote && config::GetBoolArg(std::string("-upnp"), true))
                 UPNP_THREAD = std::thread(std::bind(&Server::UPnP, this));
-                
+
         }
 
         /* Initialize the meter. */
@@ -112,9 +112,6 @@ namespace LLP
     template <class ProtocolType>
     Server<ProtocolType>::~Server()
     {
-        /* Set all flags back to false. */
-        fDDOS.store(false);
-
         /* Wait for address manager. */
         if(pAddressManager)
         {
@@ -131,17 +128,14 @@ namespace LLP
             UPNP_THREAD.join();
 
         /* Wait for listeners. */
-        if(LISTEN_THREAD_V4.joinable())
-            LISTEN_THREAD_V4.join();
-
-        if(LISTEN_THREAD_V6.joinable())
-            LISTEN_THREAD_V6.join();
+        if(LISTEN_THREAD.joinable())
+            LISTEN_THREAD.join();
 
         /* Delete the data threads. */
-        for(uint16_t index = 0; index < MAX_THREADS; ++index)
+        for(uint16_t nIndex = 0; nIndex < MAX_THREADS; ++nIndex)
         {
-            delete DATA_THREADS[index];
-            DATA_THREADS[index] = nullptr;
+            delete DATA_THREADS[nIndex];
+            DATA_THREADS[nIndex] = nullptr;
         }
 
         /* Delete the DDOS entries. */
@@ -368,8 +362,8 @@ namespace LLP
     template <class ProtocolType>
     void Server<ProtocolType>::DisconnectAll()
     {
-        for(uint16_t index = 0; index < MAX_THREADS; ++index)
-            DATA_THREADS[index]->DisconnectAll();
+        for(uint16_t nIndex = 0; nIndex < MAX_THREADS; ++nIndex)
+            DATA_THREADS[nIndex]->DisconnectAll();
     }
 
 
@@ -449,22 +443,21 @@ namespace LLP
     template <class ProtocolType>
     int32_t Server<ProtocolType>::FindThread()
     {
-        int32_t nIndex = -1;
+        int32_t nThread = -1;
         uint32_t nConnections = std::numeric_limits<uint32_t>::max();
 
-        for(uint16_t index = 0; index < MAX_THREADS; ++index)
+        for(uint16_t nIndex = 0; nIndex < MAX_THREADS; ++nIndex)
         {
-            DataThread<ProtocolType> *dt = DATA_THREADS[index];
-
-            /* Limit data threads to 32 connections per thread. */
+            /* Find least loaded thread */
+            DataThread<ProtocolType> *dt = DATA_THREADS[nIndex];
             if(dt->nConnections < nConnections)
             {
-                nIndex = index;
+                nThread = nIndex;
                 nConnections = dt->nConnections;
             }
         }
 
-        return nIndex;
+        return nThread;
     }
 
 
@@ -684,64 +677,46 @@ namespace LLP
     template <class ProtocolType>
     void Server<ProtocolType>::Meter()
     {
-       if(!config::GetBoolArg("-meters", false))
-           return;
+        /* Exit if not enabled. */
+        if(!config::GetBoolArg("-meters", false))
+            return;
 
-       runtime::timer TIMER;
-       TIMER.Start();
+        /* Keep track of elapsed time. */
+        runtime::timer TIMER;
+        TIMER.Start();
 
-       while(!config::fShutdown.load())
-       {
-           runtime::sleep(100);
-           if(TIMER.Elapsed() < 10)
-               continue;
-
-           uint32_t nGlobalConnections = 0;
-           for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
-           {
-               DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
-
-               nGlobalConnections += dt->nConnections;
-           }
-
-
-           uint32_t RPS = TotalRequests() / TIMER.Elapsed();
-           debug::log(0, FUNCTION, "LLP Running at ", RPS, " requests/s with ", nGlobalConnections, " connections.");
-
-           TIMER.Reset();
-           ClearRequests();
-       }
-
-       debug::log(0, FUNCTION, "Meter closed..");
-    }
-
-
-    /*  Used for Meter. Adds up the total amount of requests from each
-     *  Data Thread. */
-    template <class ProtocolType>
-    uint32_t Server<ProtocolType>::TotalRequests()
-    {
-       uint32_t nTotalRequests = 0;
-       for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
-       {
-           DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
-
-           nTotalRequests += dt->REQUESTS;
-       }
-
-       return nTotalRequests;
-    }
-
-
-    /*  Used for Meter. Resets the REQUESTS variable to 0 in each Data Thread. */
-    template <class ProtocolType>
-    void Server<ProtocolType>::ClearRequests()
-    {
-        for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
+        /* Loop until shutdown. */
+        while(!config::fShutdown.load())
         {
-            DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
+            runtime::sleep(100);
+            if(TIMER.Elapsed() < 30)
+                continue;
 
-            dt->REQUESTS = 0;
+            /* Get total connection count. */
+            uint32_t nGlobalConnections = 0;
+            for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
+            {
+                DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
+                nGlobalConnections += dt->nConnections;
+            }
+
+            /* Total incoming and outgoing packets. */
+            uint32_t RPS = ProtocolType::REQUESTS / TIMER.Elapsed();
+            uint32_t PPS = ProtocolType::PACKETS / TIMER.Elapsed();
+
+            /* Meter output. */
+            debug::log(0, FUNCTION,
+                Name(), " LLP Running at ",
+                RPS, " Incoming | ",
+                PPS, " Outgoing | ",
+                RPS + PPS, " Total | ",
+                nGlobalConnections, " Connections."
+            );
+
+            /* Reset meter info. */
+            TIMER.Reset();
+            ProtocolType::REQUESTS.store(0);
+            ProtocolType::PACKETS.store(0);
         }
     }
 
@@ -807,11 +782,11 @@ namespace LLP
                 debug::error(FUNCTION, "AddPortMapping(", port, ", ", port, ", ", lanaddr, ") failed with code ", nResult, " (", strupnperror(nResult), ")");
             else
                 debug::log(1, "UPnP Port Mapping successful.");
-            
+
             runtime::timer TIMER;
             TIMER.Start();
-            
-            while(!config::fShutdown.load()) 
+
+            while(!config::fShutdown.load())
             {
                 if (TIMER.Elapsed() >= 600) // Refresh every 10 minutes
                 {
@@ -840,14 +815,14 @@ namespace LLP
             debug::log(1, "UPNP_DeletePortMapping() returned : ", nResult);
             freeUPNPDevlist(devlist); devlist = 0;
             FreeUPNPUrls(&urls);
-        } 
-        else 
+        }
+        else
         {
             debug::error(FUNCTION, "No valid UPnP IGDs found.");
             freeUPNPDevlist(devlist); devlist = 0;
             if (nResult != 0)
                 FreeUPNPUrls(&urls);
-            
+
             return;
         }
 

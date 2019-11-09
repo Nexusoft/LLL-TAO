@@ -93,7 +93,6 @@ namespace LLP
         std::atomic<uint32_t> nConnections;
 
         uint32_t ID;
-        uint32_t REQUESTS;
         uint32_t TIMEOUT;
         uint32_t DDOS_rSCORE;
         uint32_t DDOS_cSCORE;

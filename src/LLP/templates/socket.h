@@ -59,7 +59,9 @@ namespace LLP
         /** Oversize buffer for large packets. **/
         std::vector<uint8_t> vBuffer;
 
+
     public:
+
 
         /** The address of this connection. */
         BaseAddress addr;

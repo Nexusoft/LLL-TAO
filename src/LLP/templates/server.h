@@ -49,40 +49,57 @@ namespace LLP
     {
     private:
 
-        /* The DDOS variables. */
+        /** The DDOS variables. **/
         std::map<BaseAddress, DDOS_Filter *> DDOS_MAP;
+
+
+        /** DDOS flag for off or on. **/
         std::atomic<bool> fDDOS;
 
-        /* Basic Socket Handle Variables. */
-        std::thread          LISTEN_THREAD_V4;
-        std::thread          LISTEN_THREAD_V6;
+
+        /** Listener Thread for accepting incoming connections. **/
+        std::thread          LISTEN_THREAD;
+
+
+        /** Meter Thread for tracking incoming and outgoing packet counts. **/
         std::thread          METER_THREAD;
+
+
+        /** Port mapping thread for opening port in router. **/
         std::thread          UPNP_THREAD;
 
+
+        /** Server's listenting port. **/
         uint16_t PORT;
+
 
     public:
 
+        /** Maximum number of data threads for this server. **/
         uint16_t MAX_THREADS;
+
+
+        /** The moving average timespan for DDOS throttling. **/
         uint32_t DDOS_TIMESPAN;
 
-        /* The data type to keep track of current running threads. */
+
+        /** The data type to keep track of current running threads. **/
         std::vector<DataThread<ProtocolType> *> DATA_THREADS;
 
 
-        /* Connection Manager. */
+        /** Connection Manager thread. **/
         std::thread MANAGER_THREAD;
 
 
-        /* Address manager */
+        /** Address for handling outgoing connections **/
         AddressManager *pAddressManager;
 
 
-        /* The sleep time of address manager. */
+        /** The sleep time of address manager. */
         uint32_t nSleepTime;
 
 
-        /* The listener socket instance. */
+        /** The listener socket instance. **/
         std::pair<int32_t, int32_t> hListenSocket;
 
 
@@ -271,34 +288,15 @@ namespace LLP
 
         /** Meter
          *
-         * LLP Meter Thread. Tracks the Requests / Second.
+         *  LLP Meter Thread. Tracks the Requests / Second.
          *
          **/
         void Meter();
 
 
-        /** TotalRequests
-         *
-         *  Used for Meter. Adds up the total amount of requests from each
-         *  Data Thread.
-         *
-         *  @return Returns the total number of requests.
-         *
-         **/
-        uint32_t TotalRequests();
-
-
-        /** ClearRequests
-         *
-         *  Used for Meter. Resets the REQUESTS variable to 0 in each Data Thread.
-         *
-         **/
-        void ClearRequests();
-
-
         /** UPnP
          *
-         * UPnP Thread. If UPnP is enabled then this thread will set up the required port forwarding.
+         *  UPnP Thread. If UPnP is enabled then this thread will set up the required port forwarding.
          *
          **/
         void UPnP();
