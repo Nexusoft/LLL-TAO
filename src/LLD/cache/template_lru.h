@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <LLD/hash/xxh3.h>
 
 #include <Util/include/mutex.h>
+#include <Util/include/debug.h>
 
 #include <cstdint>
 #include <vector>
@@ -203,6 +204,12 @@ namespace LLD
 
             /* Get the data. */
             TemplateNode<KeyType, DataType> *pthis = cache[Key];
+
+            /* Check for correct key. */
+            if(pthis->Key != Key)
+                return debug::error(FUNCTION, "Key Mismatch");
+
+            /* Set the data. */
             Data = pthis->Data;
 
             /* Move to front of double linked list. */
