@@ -705,8 +705,9 @@ namespace LLP
             uint32_t PPS = ProtocolType::PACKETS / TIMER.Elapsed();
 
             /* Meter output. */
-            debug::log(0, FUNCTION,
-                Name(), " LLP Running at ",
+            debug::log(0,
+                ANSI_COLOR_FUNCTION, Name(), ANSI_COLOR_RESET,
+                " LLP Running at ",
                 RPS, " Incoming | ",
                 PPS, " Outgoing | ",
                 RPS + PPS, " Total | ",

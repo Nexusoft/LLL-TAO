@@ -599,18 +599,26 @@ namespace LLD
 
         while(!fDestruct.load())
         {
-            nBytesWrote     = 0;
-            nBytesRead      = 0;
-            nRecordsFlushed = 0;
+            runtime::sleep(100);
+            if(TIMER.Elapsed() < 30)
+                continue;
 
-            runtime::sleep(10000);
-
+            /* Write and Read data rates. */
             double WPS = nBytesWrote.load() / (TIMER.Elapsed() * 1024.0);
             double RPS = nBytesRead.load() / (TIMER.Elapsed() * 1024.0);
 
-            debug::log(0, FUNCTION, strName, " LLD WPS = ", WPS, " Kb/s | RPS = ", RPS, " Kb/s | Records ", nRecordsFlushed.load());
+            /* Debug output. */
+            debug::log(0,
+                ANSI_COLOR_FUNCTION, strName, ANSI_COLOR_RESET,
+                " LLD Running ",
+                "Writing", WPS, " Kb/s | ",
+                "Reading", RPS, " Kb/s | ",
+                "Records ", nRecordsFlushed.load());
 
             TIMER.Reset();
+            nBytesWrote.store(0);
+            nBytesRead.store(0);
+            nRecordsFlushed.store(0);
         }
     }
 
