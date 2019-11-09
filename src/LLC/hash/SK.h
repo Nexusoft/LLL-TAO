@@ -21,6 +21,9 @@ ________________________________________________________________________________
 
 #include <LLD/cache/template_lru.h>
 
+#include <Util/include/debug.h>
+#include <Util/include/hex.h>
+
 /** Namespace LLC (Lower Level Crypto) **/
 namespace LLC
 {
@@ -459,6 +462,9 @@ namespace LLC
 			Keccak_HashUpdate(&ctx_keccak, (uint8_t *)&skein, 1024);
 			Keccak_HashFinal(&ctx_keccak, (uint8_t *)&keccak);
 
+			if(keccak == 0)
+				return debug::error(FUNCTION, "SK-1024 hash has a result of 0::", HexStr(data.begin(), data.end()));
+
 			/* Cache the hashed value */
 			cache1024.Put(data, keccak);
 		}
@@ -466,6 +472,9 @@ namespace LLC
 		{
 			/* Retrieve the cached value */
 			cache1024.Get(data, keccak);
+
+			if(keccak == 0)
+				return debug::error(FUNCTION, "CACHE POOL: SK-1024 hash has a result of 0::", HexStr(data.begin(), data.end()));
 		}
 
 		return keccak;
