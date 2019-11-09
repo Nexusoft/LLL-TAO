@@ -325,10 +325,7 @@ namespace LLP
 
                 /* Handle if sync node is disconnected. */
                 if(nCurrentSession == TAO::Ledger::nSyncSession.load())
-                {
-                    //TODO: find another node
-                    TAO::Ledger::nSyncSession.store(0);
-                }
+                    SwitchNode();
 
 
                 {
@@ -1608,7 +1605,8 @@ namespace LLP
                                     if(nCurrentSession == TAO::Ledger::nSyncSession.load())
                                     {
                                         /* Check for complete synchronization. */
-                                        if(hashLast == TAO::Ledger::ChainState::hashBestChain.load() && hashLast == hashBestChain)
+                                        if(hashLast == TAO::Ledger::ChainState::hashBestChain.load()
+                                        && hashLast == hashBestChain)
                                         {
                                             /* Set state to synchronized. */
                                             fSynchronized.store(true);
@@ -1670,7 +1668,9 @@ namespace LLP
                             ssPacket >> hashBestChain;
 
                             /* Check if is sync node. */
-                            if(TAO::Ledger::nSyncSession.load() != 0 && nCurrentSession == TAO::Ledger::nSyncSession.load() && LLD::Ledger->HasBlock(hashBestChain))
+                            if(TAO::Ledger::nSyncSession.load() != 0
+                            && nCurrentSession == TAO::Ledger::nSyncSession.load()
+                            && LLD::Ledger->HasBlock(hashBestChain))
                             {
                                 /* Set state to synchronized. */
                                 fSynchronized.store(true);

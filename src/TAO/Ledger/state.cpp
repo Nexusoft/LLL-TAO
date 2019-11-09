@@ -921,12 +921,18 @@ namespace TAO
                         LLP::TRITIUM_SERVER->Relay
                         (
                             LLP::ACTION::NOTIFY,
+
+                            /* Relay BLOCK notification. */
                             uint8_t(LLP::TYPES::BLOCK),
-                            hash,
+                            ChainState::hashBestChain.load(),
+
+                            /* Relay BESTCHAIN notification. */
                             uint8_t(LLP::TYPES::BESTCHAIN),
-                            hash,
+                            ChainState::hashBestChain.load(),
+
+                            /* Relay BESTHEIGHT notification. */
                             uint8_t(LLP::TYPES::BESTHEIGHT),
-                            nHeight
+                            ChainState::nBestHeight.load()
                         );
                     }
                 }
