@@ -591,7 +591,7 @@ namespace LLD
     template<class KeychainType, class CacheType>
     void SectorDatabase<KeychainType, CacheType>::Meter()
     {
-        if(!config::GetBoolArg("-meters", false))
+        if(!config::GetBoolArg("-lldmeters", false))
             return;
 
         runtime::timer TIMER;
@@ -608,9 +608,7 @@ namespace LLD
             double WPS = nBytesWrote.load() / (TIMER.Elapsed() * 1024.0);
             double RPS = nBytesRead.load() / (TIMER.Elapsed() * 1024.0);
 
-            debug::log(0, FUNCTION, ">>>>> LLD Writing at ", WPS, " Kb/s");
-            debug::log(0, FUNCTION, ">>>>> LLD Reading at ", RPS, " Kb/s");
-            debug::log(0, FUNCTION, ">>>>> LLD Flushed ", nRecordsFlushed.load(), " Records");
+            debug::log(0, FUNCTION, strName, " LLD WPS = ", WPS, " Kb/s | RPS = ", RPS, " Kb/s | Records ", nRecordsFlushed.load());
 
             TIMER.Reset();
         }
