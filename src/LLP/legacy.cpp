@@ -752,6 +752,7 @@ namespace LLP
 
             /* Fast sync mode. */
             if(nCurrentSession == TAO::Ledger::nSyncSession.load()
+            && !TritiumNode::SessionActive(nCurrentSession)
             && TAO::Ledger::ChainState::Synchronizing()
             && vInv.back().GetType() == MSG_BLOCK_LEGACY
             && vInv.size() > 100) //an assumption that a getblocks batch will be at least 100 blocks or more.
