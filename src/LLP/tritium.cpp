@@ -2635,7 +2635,7 @@ namespace LLP
                 pcurrent->Unsubscribe(SUBSCRIPTION::LASTINDEX | SUBSCRIPTION::BESTCHAIN);
 
                 /* Set the sync session-id. */
-                TAO::Ledger::nSyncSession.store(0);
+                TAO::Ledger::nSyncSession.store(pnode->nCurrentSession);
 
                 /* Subscribe to this node. */
                 pnode->Subscribe(SUBSCRIPTION::LASTINDEX | SUBSCRIPTION::BESTCHAIN);
@@ -2646,9 +2646,6 @@ namespace LLP
                     TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
                     uint1024_t(0)
                 );
-
-                /* Set the sync session-id. */
-                TAO::Ledger::nSyncSession.store(pnode->nCurrentSession);
 
                 /* Reset last time received. */
                 nLastTimeReceived.store(runtime::timestamp());

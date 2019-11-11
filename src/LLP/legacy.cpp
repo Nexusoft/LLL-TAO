@@ -522,7 +522,7 @@ namespace LLP
 
                 /* Push a getblocks request. */
                 PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
-                debug::log(0, NODE, "New sync address set");
+                debug::log(0, NODE, "Legacy sync address set");
             }
 
             PushMessage("getaddr");
