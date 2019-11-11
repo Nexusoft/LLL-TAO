@@ -67,7 +67,7 @@ namespace LLP
         if(FLUSH_THREAD.joinable())
             FLUSH_THREAD.join();
 
-        DisconnectAll();
+        //DisconnectAll();
 
         CONNECTIONS.free();
     }
