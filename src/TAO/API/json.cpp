@@ -246,8 +246,7 @@ namespace TAO
                                 else
                                     throw APIException(-8, "Unable to Extract Input Address");
 
-                                input["amount"] = (double) tx.vout[txin.prevout.n].nValue / TAO::Ledger::NXS_COIN;
-
+                                input["amount"] = (double) txPrev.vout[txin.prevout.n].nValue / TAO::Ledger::NXS_COIN;
                                 inputs.push_back(input);
                             }
                         }
