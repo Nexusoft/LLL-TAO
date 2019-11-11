@@ -478,7 +478,7 @@ namespace LLP
                         SYNCTIMER.Stop();
 
                         /* Subscribe to this node. */
-                        Subscribe(SUBSCRIPTION::LASTINDEX | SUBSCRIPTION::BESTCHAIN);
+                        Subscribe(SUBSCRIPTION::LASTINDEX | SUBSCRIPTION::BESTCHAIN | SUBSCRIPTION::BESTHEIGHT);
 
                         /* Ask for list of blocks if this is current sync node. */
                         PushMessage(ACTION::LIST,
@@ -2606,6 +2606,22 @@ namespace LLP
         LOCK(SESSIONS_MUTEX);
 
         return mapSessions.count(nSession);
+    }
+
+
+    /* Get a node by connected session. */
+    memory::atomic_ptr<TritiumNode>& TritiumNode::GetNode(const uint64_t nSession)
+    {
+        LOCK(SESSIONS_MUTEX);
+
+        /* Check for connected session. */
+        static memory::atomic_ptr<TritiumNode> pNULL;
+        if(!mapSessions.count(nSession))
+            return pNULL;
+
+        /* Get a reference of session. */
+        const std::pair<uint32_t, uint32_t>& pair = mapSessions[nSession];
+        return TRITIUM_SERVER->GetConnection(pair.first, pair.second);
     }
 
 

@@ -24,6 +24,8 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/tritium.h>
 
+#include <Util/include/memory.h>
+
 namespace LLP
 {
 
@@ -195,13 +197,15 @@ namespace LLP
         /** The current notifications. **/
         uint16_t nNotifications;
 
+
+    public:
+
         /** The block height at the start of the last sync session **/
         uint32_t nSyncStart;
 
+
         /** Tracks the time taken to synchronize  **/
         runtime::timer SYNCTIMER;
-
-    public:
 
 
         /** Name
@@ -397,6 +401,18 @@ namespace LLP
          *
          **/
         static bool SessionActive(const uint64_t nSession);
+
+
+        /** GetNode
+         *
+         *  Get a node by connected session.
+         *
+         *  @param[in] nSession The session to receive
+         *
+         *  @return a pointer to connected node.
+         *
+         **/
+        static memory::atomic_ptr<TritiumNode>& GetNode(const uint64_t nSession);
 
 
         /** NewMessage

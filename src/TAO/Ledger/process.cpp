@@ -13,6 +13,8 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <LLP/types/tritium.h>
+
 #include <TAO/Ledger/include/process.h>
 #include <TAO/Ledger/include/chainstate.h>
 
@@ -112,13 +114,43 @@ namespace TAO
             /* Special meter for synchronizing. */
             if(block.nHeight % 1000 == 0 && TAO::Ledger::ChainState::Synchronizing())
             {
+                /* Grab the current sync node. */
+                uint32_t nHours = 0, nMinutes = 0, nSeconds = 0;
+                if(LLP::TritiumNode::SessionActive(nSyncSession.load()))
+                {
+                    /* Get the current connected legacy node. */
+                    memory::atomic_ptr<LLP::TritiumNode>& pnode = LLP::TritiumNode::GetNode(nSyncSession.load());
+                    try //we want to catch exceptions thrown by atomic_ptr in the case there was a free on another thread
+                    {
+                        if(pnode != nullptr)
+                        {
+                            /* Get the total height left to go. */
+                            uint32_t nRemaining = (pnode->nCurrentHeight - ChainState::nBestHeight.load());
+                            uint32_t nTotalBlocks = (ChainState::nBestHeight.load() - pnode->nSyncStart);
+
+                            /* Calculate blocks per second. */
+                            uint32_t nRate = nTotalBlocks / (pnode->SYNCTIMER.Elapsed() + 1);
+                            uint32_t nRemainingTime = (nRemaining / (nRate + 1));
+
+                            debug::log(0, "Remaining Time ", nRemainingTime, " Rate ", nRate, " Blocks ", nRemaining);
+
+                            /* Get the remaining time. */
+                            nHours   = nRemainingTime / 3600;
+                            nMinutes = (nRemainingTime - (nHours * 3600)) / 60;
+                            nSeconds = (nRemainingTime - (nHours * 3600)) % 60;
+                        }
+                    }
+                    catch(const std::exception& e) {}
+                }
+
                 uint64_t nElapsed = runtime::timestamp(true) - nSynchronizationTimer;
                 debug::log(0, FUNCTION,
                     "Processed 1000 blocks in ", nElapsed, " ms [", std::setw(2),
                     TAO::Ledger::ChainState::PercentSynchronized(), " %]",
                     " height=", block.nHeight,
                     " trust=", TAO::Ledger::ChainState::nBestChainTrust.load(),
-                    " [", 1000000 / nElapsed, " blocks/s]");
+                    " [", nHours, ":", nMinutes, ":", nSeconds, " remaining]",
+                    "[", 1000000 / nElapsed, " blocks/s]");
 
                 nSynchronizationTimer = runtime::timestamp(true);
             }
