@@ -383,7 +383,6 @@ namespace LLD
                     return debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes written");
 
                 pstream->flush();
-
             }
 
             /* Get current size */
@@ -395,6 +394,10 @@ namespace LLD
 
             /* Increment the current filesize */
             nCurrentFileSize += static_cast<uint32_t>(nSize);
+
+            /* Records flushed indicator. */
+            ++nRecordsFlushed;
+            nBytesWrote += static_cast<uint32_t>(nSize);
 
             /* Assign the Key to Keychain. */
             if(!pSectorKeys->Put(key))
@@ -565,9 +568,6 @@ namespace LLD
 
                 /* Set no longer reserved in cache pool. */
                 cachePool->Reserve(vObj.first, false);
-
-                /* Iterate bytes written for meter. */
-                nBytesWrote += static_cast<uint32_t>(vObj.first.size() + vObj.second.size());
             }
 
             /* Notify the condition. */
@@ -610,8 +610,8 @@ namespace LLD
             /* Debug output. */
             debug::log(0,
                 ANSI_COLOR_FUNCTION, strName, " LLD : ", ANSI_COLOR_RESET,
-                "Writing", WPS, " Kb/s | ",
-                "Reading", RPS, " Kb/s | ",
+                "Writing ", WPS, " Kb/s | ",
+                "Reading ", RPS, " Kb/s | ",
                 "Records ", nRecordsFlushed.load());
 
             TIMER.Reset();

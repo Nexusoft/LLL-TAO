@@ -377,6 +377,9 @@ namespace LLD
                         stream.read((char*)ssData.data(), nBufferSize);
                         if(!stream)
                             ssData.resize(stream.gcount());
+
+                        /* Iterate if meters are enabled. */
+                        nBytesRead += static_cast<uint32_t>(nBufferSize);
                     }
 
                     /* Read records. */
