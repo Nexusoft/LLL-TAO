@@ -300,6 +300,10 @@ namespace LLP
         uint64_t nUnsubscribed;
 
 
+        /** Remaining time for sync meter. **/
+        static std::atomic<uint64_t> nRemainingTime;
+
+
         /** Event
          *
          *  Virtual Functions to Determine Behavior of Message LLP.

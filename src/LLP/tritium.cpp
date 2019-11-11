@@ -65,6 +65,10 @@ namespace LLP
     std::atomic<uint64_t> TritiumNode::nLastTimeReceived(0);
 
 
+    /* Remaining time left to finish syncing. */
+    std::atomic<uint64_t> TritiumNode::nRemainingTime(0);
+
+
     /* The local relay inventory cache. */
     static LLD::KeyLRU cacheInventory = LLD::KeyLRU(1024 * 1024);
 

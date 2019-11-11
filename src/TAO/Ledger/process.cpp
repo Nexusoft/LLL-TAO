@@ -122,7 +122,8 @@ namespace TAO
                     memory::atomic_ptr<LLP::TritiumNode>& pnode = LLP::TritiumNode::GetNode(nSyncSession.load());
                     try //we want to catch exceptions thrown by atomic_ptr in the case there was a free on another thread
                     {
-                        if(pnode != nullptr)
+                        /* Check for potential overflow if current height is not set. */
+                        if(pnode->nCurrentHeight > ChainState::nBestHeight.load())
                         {
                             /* Get the total height left to go. */
                             uint32_t nRemaining = (pnode->nCurrentHeight - ChainState::nBestHeight.load());
@@ -130,14 +131,12 @@ namespace TAO
 
                             /* Calculate blocks per second. */
                             uint32_t nRate = nTotalBlocks / (pnode->SYNCTIMER.Elapsed() + 1);
-                            uint32_t nRemainingTime = (nRemaining / (nRate + 1));
-
-                            debug::log(0, "Remaining Time ", nRemainingTime, " Rate ", nRate, " Blocks ", nRemaining);
+                            LLP::TritiumNode::nRemainingTime.store(nRemaining / (nRate + 1));
 
                             /* Get the remaining time. */
-                            nHours   = nRemainingTime / 3600;
-                            nMinutes = (nRemainingTime - (nHours * 3600)) / 60;
-                            nSeconds = (nRemainingTime - (nHours * 3600)) % 60;
+                            nHours   = LLP::TritiumNode::nRemainingTime.load() / 3600;
+                            nMinutes = (LLP::TritiumNode::nRemainingTime.load() - (nHours * 3600)) / 60;
+                            nSeconds = (LLP::TritiumNode::nRemainingTime.load() - (nHours * 3600)) % 60;
                         }
                     }
                     catch(const std::exception& e) {}
@@ -149,8 +148,10 @@ namespace TAO
                     TAO::Ledger::ChainState::PercentSynchronized(), " %]",
                     " height=", block.nHeight,
                     " trust=", TAO::Ledger::ChainState::nBestChainTrust.load(),
-                    " [", nHours, ":", nMinutes, ":", nSeconds, " remaining]",
-                    "[", 1000000 / nElapsed, " blocks/s]");
+                    " [", 1000000 / nElapsed, " blocks/s]",
+                    "[", std::setw(2), std::setfill('0'), nHours, ":",
+                          std::setw(2), std::setfill('0'), nMinutes, ":",
+                          std::setw(2), std::setfill('0'), nSeconds, " remaining]");
 
                 nSynchronizationTimer = runtime::timestamp(true);
             }
