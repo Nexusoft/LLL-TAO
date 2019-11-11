@@ -326,7 +326,12 @@ namespace LLP
 
                 /* Handle if sync node is disconnected. */
                 if(nCurrentSession == TAO::Ledger::nSyncSession.load())
+                {
+                    /* Debug output for node disconnect. */
+                    debug::log(0, NODE, "Sync Node Disconnected (", strReason, ") at timestamp ", runtime::unifiedtimestamp());
+
                     SwitchNode();
+                }
 
 
                 {
