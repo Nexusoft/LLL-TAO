@@ -177,7 +177,7 @@ namespace LLP
          *  @return Returns the count of active connections
          *
          **/
-        uint32_t GetConnectionCount();
+        uint32_t GetConnectionCount(const uint8_t nFlags = FLAGS::ALL);
 
 
         /** Get Connection

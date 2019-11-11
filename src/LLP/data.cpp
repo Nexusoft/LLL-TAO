@@ -39,7 +39,8 @@ namespace LLP
     , fDDOS           (fIsDDOS)
     , fMETER          (fMeter)
     , fDestruct       (false)
-    , nConnections    (0)
+    , nIncoming       (0)
+    , nOutbound       (0)
     , ID              (nID)
     , TIMEOUT         (nTimeout)
     , DDOS_rSCORE     (rScore)
@@ -107,8 +108,11 @@ namespace LLP
                 if(DDOS)
                     DDOS -> cSCORE += 1;
 
-                /* Bump the total connections atomic counter. */
-                ++nConnections;
+                /* Check for inbound socket. */
+                if(CONNECTION->Incoming())
+                    ++nIncoming;
+                else
+                    ++nOutbound;
             }
 
             /* Notify data thread to wake up. */
@@ -158,8 +162,11 @@ namespace LLP
                 memory::atomic_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nSlot);
                 CONNECTION->Event(EVENT_CONNECT);
 
-                /* Bump the total connections atomic counter. */
-                ++nConnections;
+                /* Check for inbound socket. */
+                if(CONNECTION->Incoming())
+                    ++nIncoming;
+                else
+                    ++nOutbound;
             }
 
             /* Notify data thread to wake up. */
@@ -224,7 +231,13 @@ namespace LLP
              * While loop catches potential for spurious wakeups. Also has the effect of skipping the wait() call after connections established.
              */
             std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
-            CONDITION.wait(CONDITION_LOCK, [this]{ return fDestruct.load() || config::fShutdown.load() || nConnections.load() > 0; });
+            CONDITION.wait(CONDITION_LOCK, [this]
+                                                {
+                                                    return fDestruct.load()
+                                                    || config::fShutdown.load()
+                                                    || nIncoming.load() > 0
+                                                    || nOutbound.load() > 0;
+                                                });
 
             /* Check for close. */
             if(fDestruct.load() || config::fShutdown.load())
@@ -232,12 +245,6 @@ namespace LLP
 
             /* Wrapped mutex lock. */
             uint32_t nSize = static_cast<uint32_t>(CONNECTIONS->size());
-
-            /* We should have connections, as predicate of releasing condition wait.
-             * This is a precaution, checking after getting MUTEX lock
-             */
-            if(nConnections.load() == 0)
-                continue;
 
             /* Check the pollfd's size. */
             if(POLLFDS.size() != nSize)
@@ -273,10 +280,17 @@ namespace LLP
 
             /* Poll the sockets. */
 #ifdef WIN32
-            WSAPoll((pollfd*)&POLLFDS[0], nSize, 100);
+            int32_t nPoll = WSAPoll((pollfd*)&POLLFDS[0], nSize, 100);
 #else
-            poll((pollfd*)&POLLFDS[0], nSize, 100);
+            int32_t nPoll = poll((pollfd*)&POLLFDS[0], nSize, 100);
 #endif
+
+            /* Check poll for available sockets. */
+            if(nPoll < 0)
+            {
+                runtime::sleep(1);
+                continue;
+            }
 
 
             /* Check all connections for data and packets. */
@@ -382,7 +396,6 @@ namespace LLP
                 catch(const std::exception& e)
                 {
                     debug::error(FUNCTION, "Data Connection: ", e.what());
-                    debug::error(FUNCTION, "Currently running ", nConnections, " connections.");
                     disconnect_remove_event(nIndex, DISCONNECT_ERRORS);
                 }
             }
@@ -459,9 +472,18 @@ namespace LLP
 
     /* Get the number of active connection pointers from data threads. */
     template <class ProtocolType>
-    uint32_t DataThread<ProtocolType>::GetConnectionCount()
+    uint32_t DataThread<ProtocolType>::GetConnectionCount(const uint8_t nFlags)
     {
-        return nConnections.load();
+        /* Check for incoming connections. */
+        uint32_t nConnections = 0;
+        if(nFlags & FLAGS::INCOMING)
+            nConnections += nIncoming.load();
+
+        /* Check for outgoing connections. */
+        if(nFlags & FLAGS::OUTBOUND)
+            nConnections += nOutbound.load();
+
+        return nConnections;
     }
 
 
@@ -482,10 +504,14 @@ namespace LLP
     {
         LOCK(SLOT_MUTEX);
 
+        /* Check for inbound socket. */
+        if(CONNECTIONS->at(nIndex)->Incoming())
+            --nIncoming;
+        else
+            --nOutbound;
+
         /* Free the memory. */
         CONNECTIONS->at(nIndex).free();
-        --nConnections;
-
         CONDITION.notify_all();
     }
 

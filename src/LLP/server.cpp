@@ -175,10 +175,10 @@ namespace LLP
     }
 
 
-   /*  Add a node address to the internal address manager */
-   template <class ProtocolType>
-   void Server<ProtocolType>::AddNode(std::string strAddress, uint16_t nPort, bool fLookup)
-   {
+    /*  Add a node address to the internal address manager */
+    template <class ProtocolType>
+    void Server<ProtocolType>::AddNode(std::string strAddress, uint16_t nPort, bool fLookup)
+    {
        /* Assemble the address from input parameters. */
        BaseAddress addr(strAddress, nPort, fLookup);
 
@@ -189,13 +189,13 @@ namespace LLP
        /* Add the address to the address manager if it exists. */
        if(pAddressManager)
           pAddressManager->AddAddress(addr, ConnectState::NEW);
-   }
+    }
 
 
-   /*  Public Wraper to Add a Connection Manually. */
-   template <class ProtocolType>
-   bool Server<ProtocolType>::AddConnection(std::string strAddress, uint16_t nPort, bool fLookup)
-   {
+    /*  Public Wraper to Add a Connection Manually. */
+    template <class ProtocolType>
+    bool Server<ProtocolType>::AddConnection(std::string strAddress, uint16_t nPort, bool fLookup)
+    {
        /* Initialize DDOS Protection for Incoming IP Address. */
        BaseAddress addrConnect(strAddress, nPort, fLookup);
 
@@ -244,20 +244,18 @@ namespace LLP
           pAddressManager->AddAddress(addrConnect, ConnectState::CONNECTED);
 
        return true;
-   }
+    }
 
 
-   /*  Get the number of active connection pointers from data threads. */
+    /*  Get the number of active connection pointers from data threads. */
     template <class ProtocolType>
-    uint32_t Server<ProtocolType>::GetConnectionCount()
+    uint32_t Server<ProtocolType>::GetConnectionCount(const uint8_t nFlags)
     {
-        uint32_t nConnectionCount = 0;
-        uint16_t nThread = 0;
+        uint32_t nConnections = 0;
+        for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
+            nConnections += DATA_THREADS[nThread]->GetConnectionCount(nFlags);
 
-        for(; nThread < MAX_THREADS; ++nThread)
-            nConnectionCount += DATA_THREADS[nThread]->GetConnectionCount();
-
-        return nConnectionCount;
+        return nConnections;
     }
 
 
@@ -398,7 +396,8 @@ namespace LLP
         pAddressManager->SetPort(PORT);
 
         /* Get the max connections. Default is 16 if maxconnections isn't specified. */
-        uint32_t nMaxConnections = static_cast<uint32_t>(config::GetArg(std::string("-maxconnections"), 16));
+        uint32_t nMaxOutbound    = static_cast<uint32_t>(config::GetArg(std::string("-maxoutbound"), 16));
+        uint32_t nMaxConnections = static_cast<uint32_t>(config::GetArg(std::string("-maxconnections"), 100));
 
         /* Loop connections. */
         while(!config::fShutdown.load())
@@ -407,7 +406,9 @@ namespace LLP
             runtime::sleep(5000);
 
             /* Pick a weighted random priority from a sorted list of addresses. */
-            if(GetConnectionCount() < nMaxConnections && pAddressManager->StochasticSelect(addr))
+            if(GetConnectionCount(FLAGS::OUTBOUND) < nMaxOutbound
+            && GetConnectionCount(FLAGS::ALL) < nMaxConnections
+            && pAddressManager->StochasticSelect(addr))
             {
                 /* Check for invalid address */
                 if(!addr.IsValid())
@@ -450,10 +451,10 @@ namespace LLP
         {
             /* Find least loaded thread */
             DataThread<ProtocolType> *dt = DATA_THREADS[nIndex];
-            if(dt->nConnections < nConnections)
+            if((dt->nIncoming.load() + dt->nOutbound.load()) < nConnections)
             {
                 nThread = nIndex;
-                nConnections = dt->nConnections;
+                nConnections = (dt->nIncoming.load() + dt->nOutbound.load());
             }
         }
 
@@ -476,6 +477,10 @@ namespace LLP
         fds[0].events = POLLIN;
         fds[0].fd     = (fIPv4 ? hListenSocket.first : hListenSocket.second);
 
+        /* Get the max connections. Default is 16 if maxconnections isn't specified. */
+        uint32_t nMaxIncoming    = static_cast<uint32_t>(config::GetArg(std::string("-maxincoming"), 84));
+        uint32_t nMaxConnections = static_cast<uint32_t>(config::GetArg(std::string("-maxconnections"), 100));
+
         /* Main listener loop. */
         while(!config::fShutdown.load())
         {
@@ -492,10 +497,17 @@ namespace LLP
 
 				/* Continue on poll error or no data to read */
                 if(nPoll < 0)
+                {
+                    runtime::sleep(1); //prevent threads from running too fast.
                     continue;
+                }
 
+                /* Check for incoming connections. */
                 if(!(fds[0].revents & POLLIN))
+                {
+                    runtime::sleep(1); //prevent threads from running too fast.
                     continue;
+                }
 
                 if(fIPv4)
                 {
@@ -514,6 +526,7 @@ namespace LLP
                         addr = BaseAddress(sockaddr);
                 }
 
+
                 if(hSocket == INVALID_SOCKET)
                 {
                     if(WSAGetLastError() != WSAEWOULDBLOCK)
@@ -521,6 +534,16 @@ namespace LLP
                 }
                 else
                 {
+                    /* Check for max connections. */
+                    if(GetConnectionCount(FLAGS::INCOMING) >= nMaxIncoming
+                    || GetConnectionCount(FLAGS::ALL) >= nMaxConnections)
+                    {
+                        closesocket(hSocket);
+                        runtime::sleep(500);
+
+                        continue;
+                    }
+
                     /* Create new DDOS Filter if Needed. */
                     if(!DDOS_MAP.count(addr))
                         DDOS_MAP[addr] = new DDOS_Filter(DDOS_TIMESPAN);
@@ -697,7 +720,7 @@ namespace LLP
             for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
             {
                 DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
-                nGlobalConnections += dt->nConnections;
+                nGlobalConnections += (dt->nIncoming.load() + dt->nOutbound);
             }
 
             /* Total incoming and outgoing packets. */

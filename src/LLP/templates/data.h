@@ -37,6 +37,18 @@ namespace LLP
     class BaseAddress;
 
 
+    /* Flags for connection count. */
+    namespace FLAGS
+    {
+        enum
+        {
+            INCOMING = (1 << 1),
+            OUTBOUND = (1 << 2),
+            ALL      = (INCOMING | OUTBOUND),
+        };
+    }
+
+
     /** DataThread
      *
      *  Base Template Thread Class for Server base. Used for Core LLP Packet Functionality.
@@ -90,7 +102,8 @@ namespace LLP
 
         /* Destructor flag. */
         std::atomic<bool> fDestruct;
-        std::atomic<uint32_t> nConnections;
+        std::atomic<uint32_t> nIncoming;
+        std::atomic<uint32_t> nOutbound;
 
         uint32_t ID;
         uint32_t TIMEOUT;
@@ -224,7 +237,7 @@ namespace LLP
          *  Returns the number of active connections.
          *
          **/
-        uint32_t GetConnectionCount();
+        uint32_t GetConnectionCount(const uint8_t nFlags = FLAGS::ALL);
 
 
         /** NotifyEvent

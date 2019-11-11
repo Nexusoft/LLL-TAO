@@ -2423,7 +2423,7 @@ namespace LLP
         while(!ssData.End())
         {
             /* Get the first notify type. */
-            uint8_t nType;
+            uint8_t nType = 0;
             ssData >> nType;
 
             /* Skip over legacy. */
