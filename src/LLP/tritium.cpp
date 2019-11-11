@@ -2658,7 +2658,7 @@ namespace LLP
                 TAO::Ledger::nSyncSession.store(pnode->nCurrentSession);
 
                 /* Subscribe to this node. */
-                pnode->Subscribe(SUBSCRIPTION::LASTINDEX | SUBSCRIPTION::BESTCHAIN);
+                pnode->Subscribe(SUBSCRIPTION::LASTINDEX | SUBSCRIPTION::BESTCHAIN | SUBSCRIPTION::BESTHEIGHT);
                 pnode->PushMessage(ACTION::LIST,
                     uint8_t(SPECIFIER::SYNC),
                     uint8_t(TYPES::BLOCK),
