@@ -544,6 +544,11 @@ else
 	CXX= g++
 endif
 
+
+#Handle for no ansi
+DEFS += -DNO_ANSI
+
+
 #Configure OS Specific Build Environment
 LIBS+= -l kernel32 \
 	-l user32 \
@@ -758,6 +763,12 @@ ifndef VERBOSE
 else
 	CXX= llvm-g++
 endif
+
+#Handle for no ansi
+ifdef NO_ANSI
+    DEFS+= -DNO_ANSI
+endif
+
 
 #Configure OS Specific Build Environment
 DEFS+= -DMAC_OSX \
@@ -1157,6 +1168,11 @@ ifndef VERBOSE
 CXX= @echo Compiling $< && g++
 else
 CXX= g++
+endif
+
+#Handle for no ansi
+ifdef NO_ANSI
+    DEFS+= -DNO_ANSI
 endif
 
 #Configure OS Specific Build Environment

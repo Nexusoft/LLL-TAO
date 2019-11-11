@@ -27,6 +27,26 @@ ________________________________________________________________________________
 #include <Util/include/runtime.h>
 #include <Util/include/mutex.h>
 
+//if you don't want to see ANSI colors in the logs, build with NO_ANSI=1
+#ifdef NO_ANSI
+#define ANSI_COLOR_RED     ""
+#define ANSI_COLOR_GREEN   ""
+#define ANSI_COLOR_YELLOW  ""
+#define ANSI_COLOR_BLUE    ""
+#define ANSI_COLOR_MAGENTA ""
+#define ANSI_COLOR_CYAN    ""
+#define ANSI_COLOR_RESET   ""
+
+#define ANSI_COLOR_BRIGHT_RED     ""
+#define ANSI_COLOR_BRIGHT_GREEN   ""
+#define ANSI_COLOR_BRIGHT_YELLOW  ""
+#define ANSI_COLOR_BRIGHT_BLUE    ""
+#define ANSI_COLOR_BRIGHT_MAGENTA ""
+#define ANSI_COLOR_BRIGHT_CYAN    ""
+#define ANSI_COLOR_BRIGHT_WHITE   ""
+
+#define ANSI_COLOR_FUNCTION ""
+#else
 #define ANSI_COLOR_RED     "\x1b[31m"
 #define ANSI_COLOR_GREEN   "\x1b[32m"
 #define ANSI_COLOR_YELLOW  "\x1b[33m"
@@ -44,6 +64,7 @@ ________________________________________________________________________________
 #define ANSI_COLOR_BRIGHT_WHITE   "\u001b[37;1m"
 
 #define ANSI_COLOR_FUNCTION "\u001b[1m"
+#endif
 
 #define VALUE(data) data
 
