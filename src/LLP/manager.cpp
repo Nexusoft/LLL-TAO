@@ -415,7 +415,7 @@ namespace LLP
                 }
             }
 
-            debug::log(0, FUNCTION, "Loaded ", mapTrustAddress.size(), " Addresses");
+            debug::log(0, FUNCTION, "Loaded ", mapTrustAddress.size(), " Addresses for port ", nPort);
         }
 
         /* Check if the DNS needs update. */
