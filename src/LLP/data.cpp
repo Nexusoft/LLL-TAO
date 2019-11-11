@@ -480,7 +480,7 @@ namespace LLP
             nConnections += nIncoming.load();
 
         /* Check for outgoing connections. */
-        if(nFlags & FLAGS::OUTBOUND)
+        if(nFlags & FLAGS::OUTGOING)
             nConnections += nOutbound.load();
 
         return nConnections;

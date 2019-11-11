@@ -43,8 +43,8 @@ namespace LLP
         enum
         {
             INCOMING = (1 << 1),
-            OUTBOUND = (1 << 2),
-            ALL      = (INCOMING | OUTBOUND),
+            OUTGOING = (1 << 2),
+            ALL      = (INCOMING | OUTGOING),
         };
     }
 
