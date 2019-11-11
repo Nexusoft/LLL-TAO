@@ -727,6 +727,10 @@ namespace LLP
             uint32_t RPS = ProtocolType::REQUESTS / TIMER.Elapsed();
             uint32_t PPS = ProtocolType::PACKETS / TIMER.Elapsed();
 
+            /* Omit meter when zero values detected. */
+            if((RPS == 0 && PPS == 0) || nGlobalConnections == 0)
+                continue;
+
             /* Meter output. */
             debug::log(0,
                 ANSI_COLOR_FUNCTION, Name(), " LLP : ", ANSI_COLOR_RESET,

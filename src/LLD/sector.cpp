@@ -607,6 +607,10 @@ namespace LLD
             double WPS = nBytesWrote.load() / (TIMER.Elapsed() * 1024.0);
             double RPS = nBytesRead.load() / (TIMER.Elapsed() * 1024.0);
 
+            /* Check for zero values. */
+            if(WPS == 0 && RPS == 0 && nRecordsFlushed.load() == 0)
+                continue;
+
             /* Debug output. */
             debug::log(0,
                 ANSI_COLOR_FUNCTION, strName, " LLD : ", ANSI_COLOR_RESET,
