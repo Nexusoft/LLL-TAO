@@ -500,7 +500,10 @@ namespace TAO
                     break;
                 case TAO::Register::OBJECTS::TRUST :
                     strObjectType = "TRUST";
-
+                    break;
+                case TAO::Register::OBJECTS::CRYPTO :
+                    strObjectType = "CRYPTO";
+                    break;
             }
 
             return strObjectType;

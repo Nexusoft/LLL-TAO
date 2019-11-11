@@ -47,6 +47,7 @@ namespace TAO
             mapFunctions["get/info"] = Function(std::bind(&System::GetInfo,    this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/peers"] = Function(std::bind(&System::ListPeers,    this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/lisp-eids"] = Function(std::bind(&System::LispEIDs, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["validate/address"] = Function(std::bind(&System::Validate,    this, std::placeholders::_1, std::placeholders::_2));
         }
 
 
