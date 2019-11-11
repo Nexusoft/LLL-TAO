@@ -99,6 +99,19 @@ namespace TAO
             json::json LispEIDs(const json::json& params, bool fHelp);
 
 
+            /** Validate
+             *
+             *  Validates a register / legacy address
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json Validate(const json::json& params, bool fHelp);
+
+
 
         };
     }

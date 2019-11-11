@@ -11,6 +11,7 @@ The following methods are currently supported by this API
 [`get/info`](#getinfo)   
 [`list/peers`](#listpeers)   
 [`list/lisp-eids`](#listlisp-eids)   
+[`validate/address`](#validateaddress)   
 
 -----------------------------------
 ***
@@ -220,4 +221,43 @@ NONE
 `rloc` : The IP address associated with the device. 
 
 
-***
+****
+
+# `validate/address`
+
+Validates a register / legacy address .
+
+
+### Endpoint:
+
+`/system/validate/address`
+
+
+### Parameters:
+
+`address` : The base58 encoded register or legacy address to check.
+
+
+### Return value JSON object:
+```    
+{
+    "address": "8BuhE1y5oard3cEWqCSYK35bC6LdPRvcPR8N7GXYNatTw6De8eK",
+    "is_valid": true,
+    "type": "OBJECT",
+    "object_type": "ACCOUNT"
+}   
+```
+
+### Return values:
+
+`address` : The address that was validated.
+
+`is_valid` : Boolean flag indicating if the address is valid or not.  For legacy addresses this indicates that the address if simply formatted correctly.  For register addresses this flag checks that a register exists in the blockchain at the specified address.
+
+`type` : For register addresses, the type of register at the address.  Values can be `APPEND`, `LEGACY`, `OBJECT`, `RAW`, `READONLY`, `RESERVED`, `SYSTEM`, or `UNKNOWN`.
+
+`object_type` : If the `type` is `OBJECT` this field contains the standard object type of the object register.  Values can be `ACCOUNT`, `CRYPTO`, `NAME`, `NAMESPACE`, `REGISTER`, `TOKEN`, `TRUST`, or `UNKNOWN`.
+
+`is_mine` : If the `type` is `LEGACY` this boolean flag indicates if the private key for the address is held in the local wallet. 
+
+****
