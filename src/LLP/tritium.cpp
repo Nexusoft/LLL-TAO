@@ -320,7 +320,8 @@ namespace LLP
                 debug::log(1, NODE, fOUTGOING ? "Outgoing" : "Incoming",
                     " Disconnected (", strReason, ") at timestamp ", runtime::unifiedtimestamp());
 
-                if(TRITIUM_SERVER && TRITIUM_SERVER->pAddressManager)
+                /* Update address status. */
+                if(TRITIUM_SERVER->pAddressManager)
                     TRITIUM_SERVER->pAddressManager->AddAddress(GetAddress(), ConnectState::DROPPED);
 
                 /* Handle if sync node is disconnected. */
@@ -442,6 +443,10 @@ namespace LLP
                         uint8_t(TYPES::ADDRESS),
                         BaseAddress(GetAddress())
                     );
+
+                    /* Add to address manager. */
+                    if(TRITIUM_SERVER->pAddressManager)
+                        TRITIUM_SERVER->pAddressManager->AddAddress(GetAddress());
                 }
 
                 /* Send Auth immediately after version and before any other messages*/
