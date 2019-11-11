@@ -8,6 +8,7 @@ The System API provides public access to information about this node.  This incl
 
 The following methods are currently supported by this API
 
+[`stop`](#stop)   
 [`get/info`](#getinfo)   
 [`list/peers`](#listpeers)   
 [`list/lisp-eids`](#listlisp-eids)   
@@ -15,6 +16,26 @@ The following methods are currently supported by this API
 
 -----------------------------------
 ***
+
+# `stop`
+
+Initiate node shutdown sequence.
+
+
+### Endpoint:
+
+`/system/stop`
+
+
+### Parameters:
+````
+NONE
+````
+
+### Return value JSON object:
+```
+Nexus server stopping
+```
 
 # `get/info`
 
@@ -218,7 +239,7 @@ NONE
 
 `rloc-name` : Hostname associated with the device
 
-`rloc` : The IP address associated with the device. 
+`rloc` : The IP address associated with the device.
 
 
 ****
@@ -258,6 +279,6 @@ Validates a register / legacy address .
 
 `object_type` : If the `type` is `OBJECT` this field contains the standard object type of the object register.  Values can be `ACCOUNT`, `CRYPTO`, `NAME`, `NAMESPACE`, `REGISTER`, `TOKEN`, `TRUST`, or `UNKNOWN`.
 
-`is_mine` : If the `type` is `LEGACY` this boolean flag indicates if the private key for the address is held in the local wallet. 
+`is_mine` : If the `type` is `LEGACY` this boolean flag indicates if the private key for the address is held in the local wallet.
 
 ****

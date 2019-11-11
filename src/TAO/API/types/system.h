@@ -60,6 +60,19 @@ namespace TAO
             }
 
 
+            /** Stop
+             *
+             *  Stops the node and exits.
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json Stop(const json::json& params, bool fHelp);
+
+
             /** GetInfo
              *
              *  Reurns a summary of node and ledger information for the currently running node

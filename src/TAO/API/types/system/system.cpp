@@ -31,6 +31,7 @@ ________________________________________________________________________________
 #include <Util/include/json.h>
 #include <Util/include/config.h>
 #include <Util/include/version.h>
+#include <Util/include/signals.h>
 
 
 /* Global TAO namespace. */
@@ -45,9 +46,22 @@ namespace TAO
         void System::Initialize()
         {
             mapFunctions["get/info"] = Function(std::bind(&System::GetInfo,    this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["stop"]     = Function(std::bind(&System::Stop,    this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/peers"] = Function(std::bind(&System::ListPeers,    this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/lisp-eids"] = Function(std::bind(&System::LispEIDs, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["validate/address"] = Function(std::bind(&System::Validate,    this, std::placeholders::_1, std::placeholders::_2));
+        }
+
+
+        /* stop"
+        *  Stop Nexus server */
+        json::json System::Stop(const json::json& params, bool fHelp)
+        {
+            if(fHelp || params.size() != 0)
+                return std::string("stop - Stop Nexus server.");
+            // Shutdown will take long enough that the response should get back
+            Shutdown();
+            return std::string("Nexus server stopping");
         }
 
 
@@ -73,7 +87,7 @@ namespace TAO
             /* The hostname of this machine */
             char hostname[128];
             gethostname(hostname, sizeof(hostname));
-            jsonRet["hostname"] = std::string(hostname); 
+            jsonRet["hostname"] = std::string(hostname);
 
             /* If this node is running on the testnet then this shows the testnet number*/
             jsonRet["testnet"] = config::GetArg("-testnet", 0);
@@ -92,11 +106,11 @@ namespace TAO
 
             /* The percentage complete when synchronizing */
                 jsonRet["synccomplete"] = (int)TAO::Ledger::ChainState::PercentSynchronized();
-            
+
             /* Number of transactions in the node's mempool*/
             jsonRet["txtotal"] =TAO::Ledger::mempool.Size() + TAO::Ledger::mempool.SizeLegacy();
 
-            
+
             /* Number of peer connections*/
             uint16_t nConnections = 0;
 
@@ -191,12 +205,12 @@ namespace TAO
                                 obj["lastseen"] = connection->nLastPing.load();
 
                                 /* See if the connection is in the address manager */
-                                if(LLP::LEGACY_SERVER->pAddressManager != nullptr 
+                                if(LLP::LEGACY_SERVER->pAddressManager != nullptr
                                 && LLP::LEGACY_SERVER->pAddressManager->Has(connection->addr))
                                 {
                                     /* Get the trust address from the address manager */
                                     const LLP::TrustAddress& trustAddress = LLP::LEGACY_SERVER->pAddressManager->Get(connection->addr);
-                                    
+
                                     /* The number of connections successfully established with this peer since this node started */
                                     obj["connects"] = trustAddress.nConnected;
 
@@ -205,7 +219,7 @@ namespace TAO
 
                                     /* The number of failed connection attempts to this peer since this node started */
                                     obj["fails"]    = trustAddress.nFailed;
-                                    
+
                                     /* The score value assigned to this peer based on latency and other connection statistics.   */
                                     obj["score"]    = trustAddress.Score();
                                 }
@@ -220,7 +234,7 @@ namespace TAO
                     }
                 }
             }
-            
+
             /* Iterate the connections to the tritium server */
             for(uint16_t nThread = 0; nThread < LLP::TRITIUM_SERVER->MAX_THREADS; ++nThread)
             {
@@ -275,12 +289,12 @@ namespace TAO
                             obj["lastseen"] = connection->nLastPing.load();
 
                             /* See if the connection is in the address manager */
-                            if(LLP::TRITIUM_SERVER->pAddressManager != nullptr 
+                            if(LLP::TRITIUM_SERVER->pAddressManager != nullptr
                             && LLP::TRITIUM_SERVER->pAddressManager->Has(connection->addr))
                             {
                                 /* Get the trust address from the address manager */
                                 const LLP::TrustAddress& trustAddress = LLP::TRITIUM_SERVER->pAddressManager->Get(connection->addr);
-                                
+
                                 /* The number of connections successfully established with this peer since this node started */
                                 obj["connects"] = trustAddress.nConnected;
 
@@ -289,7 +303,7 @@ namespace TAO
 
                                 /* The number of failed connection attempts to this peer since this node started */
                                 obj["fails"]    = trustAddress.nFailed;
-                                
+
                                 /* The score value assigned to this peer based on latency and other connection statistics.   */
                                 obj["score"]    = trustAddress.Score();
                             }
