@@ -160,14 +160,11 @@ namespace TAO
         , nTime    (state.nTime)
         , producer ( )
         , ssSystem (state.ssSystem)
-        , vtx      (state.vtx)
+        , vtx      (state.vtx.begin(), state.vtx.end() - 1)
         {
             /* Read the producer transaction from disk. */
             if(!LLD::Ledger->ReadTx(state.vtx.back().second, producer))
                 throw debug::exception(FUNCTION, "failed to read producer");
-
-            /* Erase the producer. */
-            vtx.erase(vtx.end());
         }
 
 
