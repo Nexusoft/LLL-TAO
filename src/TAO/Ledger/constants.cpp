@@ -55,6 +55,5 @@ namespace TAO
 
             return NEXUS_MATURITY_COINSTAKE;
         }
-
     }
 }
