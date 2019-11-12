@@ -102,9 +102,6 @@ namespace LLP
         /* The current channel mining for. */
         std::atomic<uint32_t> nChannel;
 
-        /* Used as an ID iterator for generating unique hashes from same block transactions. */
-        uint32_t nBlockIterator;
-
         /* the mining key for block rewards to send */
         Legacy::ReserveKey *pMiningKey;
 
@@ -114,6 +111,9 @@ namespace LLP
         /* The last height that the notifications processor was run at.  This is used to ensure that events are only processed once
            across all threads when the height changes */
         static std::atomic<uint32_t> nLastNotificationsHeight;
+
+        /** Used as an ID iterator for generating unique hashes from same block transactions. **/
+        static std::atomic<uint32_t> nBlockIterator;
 
     public:
 
@@ -191,7 +191,7 @@ namespace LLP
         /** check_round
          *
          *  For Tritium, this checks the mempool to make sure that there are no new transactions that would be orphaned by the
-         *  the current round block. 
+         *  the current round block.
          *
          *  @return Returns false if the current round is no longer valid.
          *

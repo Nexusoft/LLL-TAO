@@ -1253,6 +1253,7 @@ namespace TAO
         {
             debug::log(0, ToString());
         }
+        
 
         /* Short form of the debug output. */
         std::string Transaction::ToStringShort() const

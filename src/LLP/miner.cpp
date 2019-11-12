@@ -51,6 +51,10 @@ namespace LLP
         across all threads when the height changes */
     std::atomic<uint32_t> Miner::nLastNotificationsHeight(0);
 
+
+    /* The block iterator to act as extra nonce. */
+    std::atomic<uint32_t> Miner::nBlockIterator(0);
+
     /* Default Constructor */
     Miner::Miner()
     : Connection()
@@ -59,7 +63,6 @@ namespace LLP
     , nBestHeight(0)
     , nSubscribed(0)
     , nChannel(0)
-    , nBlockIterator(0)
     , pMiningKey(nullptr)
     , nHashLast(0)
     {
@@ -76,7 +79,6 @@ namespace LLP
     , nBestHeight(0)
     , nSubscribed(0)
     , nChannel(0)
-    , nBlockIterator(0)
     , pMiningKey(nullptr)
     , nHashLast(0)
     {
@@ -93,7 +95,6 @@ namespace LLP
     , nBestHeight(0)
     , nSubscribed(0)
     , nChannel(0)
-    , nBlockIterator(0)
     , pMiningKey(nullptr)
     , nHashLast(0)
     {
@@ -301,8 +302,8 @@ namespace LLP
         bool fLocalTestnet = config::fTestNet.load() && !config::GetBoolArg("-dns", true);
 
         /* Total number of peer connections */
-        uint16_t nConnections = (LEGACY_SERVER ? LEGACY_SERVER->GetConnectionCount() : 0) 
-                                + (TRITIUM_SERVER ? TRITIUM_SERVER->GetConnectionCount() : 0); 
+        uint16_t nConnections = (LEGACY_SERVER ? LEGACY_SERVER->GetConnectionCount() : 0)
+                                + (TRITIUM_SERVER ? TRITIUM_SERVER->GetConnectionCount() : 0);
 
         if(!fLocalTestnet && nConnections == 0)
             return debug::error(FUNCTION, "No network connections.");
