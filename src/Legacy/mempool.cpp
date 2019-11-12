@@ -80,10 +80,6 @@ namespace TAO
             if((uint64_t) tx.nLockTime > std::numeric_limits<int32_t>::max())
                 return debug::error(FUNCTION, "tx ", hashTx.SubString(), " not accepting nLockTime beyond 2038 yet");
 
-            /* Rather not work on nonstandard transactions (unless -testnet) */
-            if(!config::fTestNet.load() && !tx.IsStandard())
-                return debug::error(FUNCTION, "tx ", hashTx.SubString(), " nonstandard transaction type");
-
             /* Check previous inputs. */
             for(auto vin : tx.vin)
                 if(mapInputs.count(vin.prevout) && mapInputs[vin.prevout] != tx.GetHash())
