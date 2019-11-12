@@ -59,7 +59,7 @@ namespace TAO
         *  chain if it doesn't exist and configured with autocreate=1. */
         void Users::auto_login()
         {
-            /* Flag indicating that the auto login has successfully run.  Once it has run successfully once it will not run again 
+            /* Flag indicating that the auto login has successfully run.  Once it has run successfully once it will not run again
                for the lifespan of the application, to avoid auto-logging you back in if you intentionally log out. */
             static bool fAutoLoggedIn = false;
 
@@ -197,7 +197,7 @@ namespace TAO
                     /* Auto-login feature if configured and not already logged in. */
                     if(!config::fMultiuser.load() && !LoggedIn() && config::GetBoolArg("-autologin"))
                         auto_login();
-                    
+
                     /* Ensure that the user is logged, in, wallet unlocked, and unlocked for notifications. */
                     if(!LoggedIn() || Locked() || !CanProcessNotifications() || TAO::Ledger::ChainState::Synchronizing())
                         continue;
@@ -276,7 +276,7 @@ namespace TAO
                     TAO::Ledger::Transaction txout;
                     if(!TAO::Ledger::CreateTransaction(user, strPIN, txout))
                         throw APIException(-17, "Failed to create transaction");
- 
+
 
                     /* Temporary map for pre-states to be passed into the sanitization Build() for each contract. */
                     std::map<uint256_t, TAO::Register::State> mapStates;
@@ -391,7 +391,7 @@ namespace TAO
                                     /* Sanitize the contract to make sure it builds and executes before we add it to the transaction */
                                     if(!sanitize_contract(credit, mapStates))
                                         continue;
-                                    
+
                                     /* Add the contract to the transaction */
                                     txout[nOut] = credit;
 
@@ -499,17 +499,17 @@ namespace TAO
                                     /* If the Name contract operation was created then add it to the transaction */
                                     if(!nameContract.Empty())
                                     {
-                                        /* If we need to add a name contract, ensure we don't breach the max contracts/per transaction, 
+                                        /* If we need to add a name contract, ensure we don't breach the max contracts/per transaction,
                                         leaving room for the claim contract and fee contract */
                                         if(txout.Size() == TAO::Ledger::MAX_TRANSACTION_CONTRACTS -2 )
                                             break;
-                                            
+
                                         txout[nOut] = nameContract;
 
                                         /* Increment the contract ID. */
                                         ++nOut;
                                     }
-                                }                                
+                                }
 
                                 /* Add the CLAIM operation */
                                 TAO::Operation::Contract claim;
@@ -526,11 +526,11 @@ namespace TAO
 
                                 /* Add the contract to the transaction */
                                 txout[nOut] = claim;
-                                
+
                                 /* Increment the contract ID. */
                                 ++nOut;
 
-                                
+
 
                                 /* Log debug message. */
                                 debug::log(0, FUNCTION, "Matching TRANSFER with CLAIM");
@@ -703,7 +703,7 @@ namespace TAO
                                 /* if we passed these checks then insert the credit contract into the tx */
                                 TAO::Operation::Contract credit;
                                 credit << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract) << hashAccount <<  TAO::Register::WILDCARD_ADDRESS << nAmount;
-                                
+
                                 /* Bind the contract to the tx so that the genesis and timestamp are bound prior to sanitizing */
                                 credit.Bind(&txout);
 
@@ -713,7 +713,7 @@ namespace TAO
 
                                 /* Add the contract to the transaction */
                                 txout[nOut] = credit;
-                                
+
                                 /* Increment the contract ID. */
                                 ++nOut;
 
@@ -774,7 +774,7 @@ namespace TAO
                         if(!TAO::Ledger::mempool.Accept(txout))
                             throw APIException(-32, "Failed to accept");
                     }
-                    
+
                 }
                 catch(const std::exception& e)
                 {
@@ -807,7 +807,7 @@ namespace TAO
             {
                 /* Start a ACID transaction (to be disposed). */
                 LLD::TxnBegin(TAO::Ledger::FLAGS::MEMPOOL);
-            
+
                 fSanitized = TAO::Register::Build(contract, mapStates, TAO::Ledger::FLAGS::MEMPOOL)
                              && TAO::Operation::Execute(contract, TAO::Ledger::FLAGS::MEMPOOL);
 
@@ -818,7 +818,7 @@ namespace TAO
             catch(const std::exception& e)
             {
                 /* Abort the mempool ACID transaction */
-                LLD::TxnAbort(TAO::Ledger::FLAGS::MEMPOOL); 
+                LLD::TxnAbort(TAO::Ledger::FLAGS::MEMPOOL);
 
                 /* Log the error and attempt to continue processing */
                 debug::error(FUNCTION, e.what());
