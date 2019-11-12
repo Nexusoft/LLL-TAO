@@ -88,7 +88,7 @@ namespace TAO
                         uint256_t hashGenesis = user->Genesis();
 
                         /* See if the sig chain exists */
-                        if(!LLD::Ledger->HasGenesis(hashGenesis) || TAO::Ledger::mempool.Has(hashGenesis))
+                        if(!LLD::Ledger->HasGenesis(hashGenesis) && !TAO::Ledger::mempool.Has(hashGenesis))
                         {
                             /* If it doesn't exist then create it if configured to do so */
                             if(config::GetBoolArg("-autocreate"))
