@@ -207,7 +207,7 @@ namespace TAO
              *  @return true if trust score is correct.
              *
              **/
-            bool CheckTrust(const BlockState* pblock = nullptr) const;
+            bool CheckTrust(const BlockState* pblock) const;
 
 
             /** Cost
