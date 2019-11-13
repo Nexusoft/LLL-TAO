@@ -34,7 +34,7 @@ ________________________________________________________________________________
 namespace Legacy
 {
 
-    /* Find the last trust block of given key. */
+    /* Find the last legacy trust block of given key. */
     bool GetLastTrust(const TrustKey& trustKey, TAO::Ledger::BlockState& state)
     {
         /* Loop through all previous blocks looking for most recent trust block. */
@@ -46,6 +46,10 @@ namespace Legacy
             if(!GetLastState(state, 0))
                 return debug::error(FUNCTION, "couldn't find previous block");
 
+            /* Skip any blocks that are Tritium or higher as we are searching for the last legacy stake block */
+            if(state.nVersion >= 7)
+                continue;
+
             /* Check for genesis. */
             if(state.GetHash() == trustKey.hashGenesisBlock)
                 return true;
@@ -53,10 +57,6 @@ namespace Legacy
             /* If search block isn't a proof of stake, return an error. */
             if(!state.IsProofOfStake())
                 return debug::error(FUNCTION, "block is not proof of stake");
-
-            /* Skip any Tritium proof of stake blocks */
-            if(state.vtx[0].first != TAO::Ledger::TRANSACTION::LEGACY)
-                continue;
 
             /* Get the previous coinstake transaction. */
             Legacy::Transaction tx;
