@@ -253,19 +253,11 @@ namespace TAO
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
-    for(uint64_t i = 0; i < 1000000; ++i)
+    //for(uint64_t i = 1291538; i < 1291539; ++i)
     {
-        double dWeight = TAO::Ledger::StakeRate(i, false);
-        cv::softdouble dWeight2 = TAO::Ledger::Test::StakeRate(i, false);
+        cv::softdouble dWeight = TAO::Ledger::StakeRate(1291538, false);
 
-        if(cv::softdouble(dWeight) != dWeight2)
-        {
-            debug::log(0, "Failed at ", i);
-            debug::log(0, std::fixed, dWeight);
-            debug::log(0, std::fixed, double(dWeight2));
-
-            //runtime::sleep(1000);
-        }
+        debug::log(0, "Stake Rate ", double(dWeight));
 
     }
 

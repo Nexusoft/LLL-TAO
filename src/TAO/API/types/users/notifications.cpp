@@ -290,7 +290,8 @@ namespace TAO
                 uint512_t hashLast, std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> &vContracts)
         {
             /* Counter of consecutive claimed coinbases.  If this reaches 10 then assume there are none older to process */
-            uint8_t nConsecutive = 0;
+            uint32_t nConsecutive = 0;
+
             /* Reverse iterate until genesis (newest to oldest). */
             while(hashLast != 0)
             {
@@ -347,7 +348,7 @@ namespace TAO
                 /* Check to see if we have reached 10 consecutive claims.  If so then we can assume that all previous coinbases
                     are also claimed and therefore break out early.  This avoids us having to scan the entire sig chain each time
                     which can be very expensive if you have many transactions (such as miners/stakers) */
-                if(nConsecutive == 10)
+                if(nConsecutive == config::GetArg("-coinbasedepth", 101))
                     break;
 
                 /* Set the next last. */
@@ -451,7 +452,7 @@ namespace TAO
                         /* If the NXS amount cannot be divided by the percentage of tokens that they own then the nPartial amount
                            will be zero.  In which case we can ignore this notification as there is nothing to credit. */
                         if(nPartial == 0)
-                            continue; 
+                            continue;
 
                         /* The account/token the debit came from  */
                         TAO::Register::Address hashFrom;
@@ -571,7 +572,7 @@ namespace TAO
                         /* Ensure this wasn't a forced transfer (which requires no Claim) */
                         if(nType == TAO::Operation::TRANSFER::FORCE)
                             continue;
-                        
+
                         /* Check that the sender has not claimed it back (voided) */
                         TAO::Register::State state;
                         if(!LLD::Register->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
@@ -679,7 +680,7 @@ namespace TAO
 
                 /* Get contract JSON data. */
                 json::json obj = ContractToJSON(hashCaller, refContract, std::get<1>(contract), 1);
-                
+
                 obj["txid"]      = refContract.Hash().ToString();
                 obj["time"]      = refContract.Timestamp();
 
@@ -758,7 +759,7 @@ namespace TAO
                 /* Add to return object. */
                 ret.push_back(obj);
 
-                
+
             }
 
             /* Get the outstanding legacy transactions not yet credited. */
