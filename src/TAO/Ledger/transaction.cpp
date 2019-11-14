@@ -482,7 +482,10 @@ namespace TAO
                 /* Check for previous version 7 and current version 8. */
                 if(pblock->nVersion == 8 && stateLast.nVersion == 7)
                 {
-                    //check consistency
+                    /* Check trust consistency if version switch. */
+                    uint64_t nTrustRet = 0;
+                    if(!CheckConsistency(hashLast, nTrustRet))
+                        nTrust = GetTrustScore(nTrustRet, nBlockAge, nStake, nStakeChange, pblock->nVersion);
                 }
                 else //when not consistency check, operate like normal
                     nTrust = GetTrustScore(nTrustPrev, nBlockAge, nStake, nStakeChange, pblock->nVersion);
