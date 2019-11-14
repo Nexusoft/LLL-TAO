@@ -22,11 +22,11 @@ namespace version
 
 
     /* Minor version Y (x.Y.z | x > 0). */
-    const uint32_t CLIENT_MINOR = 0;
+    const uint32_t CLIENT_MINOR = 1;
 
 
     /* Patch version Z (x.y.Z | x > 0). */
-    const uint32_t CLIENT_PATCH = 6;
+    const uint32_t CLIENT_PATCH = 0;
 
 
     /* The version of the actual wallet client. */
@@ -66,5 +66,5 @@ namespace version
         const std::string BUILD_ARCH = "[x86]";
     #endif
 
-    const std::string CLIENT_VERSION_BUILD_STRING(CLIENT_VERSION_STRING + "-pre1 " + CLIENT_NAME  + " " + CLIENT_INTERFACE + " " + CLIENT_DATABASE + BUILD_ARCH);
+    const std::string CLIENT_VERSION_BUILD_STRING(CLIENT_VERSION_STRING + "-pre " + CLIENT_NAME  + " " + CLIENT_INTERFACE + " " + CLIENT_DATABASE + BUILD_ARCH);
 }
