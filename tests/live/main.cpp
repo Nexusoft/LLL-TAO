@@ -253,6 +253,21 @@ namespace TAO
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
+    LLD::Initialize();
+
+    uint512_t hashTx = uint512_t("0x010dcbcbc5fb5b25e2d37c4ed27f7a44c3d6cac276fc4b9ba4444553a9a7e64e449c9c6b60a091082882485879e3eb3d27c0abde91dc7634476a98c5712266bf");
+
+    TAO::Ledger::Transaction tx;
+    if(!LLD::Ledger->ReadTx(hashTx, tx))
+        return debug::error("failed to read tx");
+    TAO::Ledger::BlockState block;
+    if(!LLD::Ledger->ReadBlock(hashTx, block))
+        return debug::error("failed to read block");
+
+    bool fCheck = tx.CheckTrust(&block);
+    debug::log(0, "Checked: ", fCheck ? "PASSED" : "FAILED");
+
+
     //for(uint64_t i = 1291538; i < 1291539; ++i)
     {
         cv::softdouble dWeight = TAO::Ledger::StakeRate(1291538, false);

@@ -76,7 +76,7 @@ namespace TAO
 
         /* Calculate new trust score from parameters. */
         uint64_t GetTrustScore(const uint64_t nScorePrev, const uint64_t nBlockAge,
-                               const uint64_t nStake, const int64_t nStakeChange)
+                               const uint64_t nStake, const int64_t nStakeChange, const uint32_t nVersion)
         {
             /* Note that trust score can be affected by both trust decay and unstake penalty simultaneously.
              * Trust decay should always be applied first, as it is a linear decay from the previous trust score.
@@ -129,7 +129,15 @@ namespace TAO
                 if(nUnstake < nStake)
                     nStakeNew = nStake - nUnstake;
 
-                nScore = (nStakeNew * nScore) / nStake;
+                /* Check for version 8. */
+                if(nVersion > 7)
+                {
+                    /* Build new score with 128-bit arithmatic to prevent overflows. */
+                    uint128_t nScoreNew = (nStakeNew * uint128_t(nScore)) / nStake;
+                    nScore = nScoreNew.Get64();
+                }
+                else //old way using 64-bits
+                    nScore = (nStakeNew * nScore) / nStake;
             }
 
             return nScore;

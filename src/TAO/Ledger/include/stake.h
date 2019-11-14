@@ -98,12 +98,13 @@ namespace TAO
          *  @param[in] nBlockAge - current block age (time since last stake block for trust account)
          *  @param[in] nStake - current stake amount
          *  @param[in] nStakeChange - amount added to or removed from stake, unstake penalty applied if this is a negative amount
+         *  @param[in] nVersion The version for checking trust score by.
          *
          *  @return new value for trust score
          *
          **/
         uint64_t GetTrustScore(const uint64_t nScorePrev, const uint64_t nBlockAge,
-                               const uint64_t nStake, const int64_t nStakeChange);
+                               const uint64_t nStake, const int64_t nStakeChange, const uint32_t nVersion);
 
 
         /** BlockWeight
