@@ -348,15 +348,15 @@ namespace TAO
 
                 /* Build offset list. */
                 std::string strOffsets = "";
-                for(uint32_t i = 0; i < vOffsets.size(); ++i)
+                for(uint32_t i = 0; i < vOffsets.size() - 4; ++i)
                 {
                     strOffsets += debug::safe_printstr("+ ", uint32_t(vOffsets[i]));
-                    if(i < vOffsets.size() - 1)
+                    if(i < vOffsets.size() - 5)
                         strOffsets += ", ";
                 }
 
                 /* Output offset list. */
-                debug::log(2, "  prime:  ", GetDifficulty(nPrimeBits, 1), " [", strOffsets, "]");
+                debug::log(2, "  prime:  ", GetDifficulty(nPrimeBits, 1), " [+ 0, ", strOffsets, "]");
                 debug::log(2, "  target: ", GetDifficulty(nBits, 1));
 
                 return true;
