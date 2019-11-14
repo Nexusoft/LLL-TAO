@@ -17,13 +17,19 @@ ifeq (${STATIC}, 1)
 	endif
 endif
 
-#Configure for 32/64 Bit
+#Configure for 32/64 Bit and ARM
 ifndef 32BIT
 	override 32BIT= 0
+	
 endif
 ifeq (${32BIT}, 1)
 	BUILD_ARCH=x86
 	CXXFLAGS+= -m32
+	
+else ifeq (${ARM64}, 1)
+        BUILD_ARCH=aarch64
+        CXXFLAGS+= -march=native -mtune=native
+
 else
 	BUILD_ARCH=x64
 	CXXFLAGS+= -m64
