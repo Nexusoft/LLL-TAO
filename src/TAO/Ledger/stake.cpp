@@ -236,6 +236,127 @@ namespace TAO
         }
 
 
+        /* Check the overall consistency of trust score calculations. */
+        bool CheckConsistency(const uint512_t& hashLastTrust, uint64_t& nTrustRet)
+        {
+            /* Start searching from last stake block. */
+            uint512_t hashLast = hashLastTrust;
+            std::vector<int64_t> vChanges;
+
+            /* Keep persistent version for calculating consistent score. */
+            uint64_t nTrustPrev = 0;
+
+            /* Loop until end of trust transactions. */
+            bool fConsistent = true;
+            while(true)
+            {
+                /* Read current transaction. */
+                Transaction tx;
+                if(!LLD::Ledger->ReadTx(hashLast, tx))
+                    break;
+
+                /* Check for coinstake. */
+                if(tx.IsCoinStake())
+                {
+                    /* Read the current block. */
+                    TAO::Ledger::BlockState block;
+                    if(!LLD::Ledger->ReadBlock(hashLast, block))
+                        break;
+
+                    /* Reset the coinstake contract streams. */
+                    tx[0].Reset();
+
+                    /* Get the trust object register. */
+                    TAO::Register::Object account;
+
+                    /* Deserialize from the stream. */
+                    uint8_t nState = 0;
+                    tx[0] >>= nState;
+                    tx[0] >>= account;
+
+                    /* Parse the object. */
+                    if(!account.Parse())
+                        return debug::error(FUNCTION, "failed to parse object register from pre-state");
+
+                    /* Validate that it is a trust account. */
+                    if(account.Standard() != TAO::Register::OBJECTS::TRUST)
+                        return debug::error(FUNCTION, "stake producer account is not a trust account");
+
+                    /* Values for trust calculations. */
+                    uint64_t nBlockAge    = 0;
+                    uint64_t nStake       = 0;
+                    int64_t  nStakeChange = 0;
+
+                    /* Check for trust calculations. */
+                    if(tx.IsTrust())
+                    {
+                        /* Extract values from producer operation */
+                        tx[0].Seek(1, TAO::Operation::Contract::OPERATIONS);
+
+                        /* Get last trust hash. */
+                        uint512_t hashLastTrust = 0;
+                        tx[0] >> hashLastTrust;
+
+                        /* Get claimed trust score. */
+                        uint64_t nClaimedTrust = 0;
+                        tx[0] >> nClaimedTrust;
+                        tx[0] >> nStakeChange;
+
+                        /* Get previous block. Block time used for block age/coin age calculation */
+                        TAO::Ledger::BlockState statePrev;
+                        if(!LLD::Ledger->ReadBlock(block.hashPrevBlock, statePrev))
+                            return debug::error(FUNCTION, "prev block not in database");
+
+                        /* Get the last stake block. */
+                        TAO::Ledger::BlockState stateLast;
+                        if(!LLD::Ledger->ReadBlock(hashLastTrust, stateLast))
+                            return debug::error(FUNCTION, "last block not in database");
+
+                        /* Calculate Block Age (time from last stake block until previous block) */
+                        nBlockAge = statePrev.GetBlockTime() - stateLast.GetBlockTime();
+
+                        /* Get pre-state trust account values */
+                        nTrustPrev = account.get<uint64_t>("trust");
+                        nStake     = account.get<uint64_t>("stake");
+
+                        /* Check both values against eachother. */
+                        uint64_t nTrust = GetTrustScore(nTrustPrev, nBlockAge, nStake, nStakeChange, 7);
+                        uint64_t nCheck = GetTrustScore(nTrustPrev, nBlockAge, nStake, nStakeChange, 8);
+
+                        /* Validate the trust score calculation */
+                        if(nTrust != nCheck)
+                        {
+                            /* Set return value. */
+                            fConsistent = false;
+
+                            /* Push the stake change to value. */
+                            vChanges.push_back(nCheck - nTrustPrev);
+                            debug::log(0, FUNCTION, "Inconsistent ", nTrust, " value ", nCheck, " for user ", hashGenesis.SubString(), "... FIXED");
+                        }
+                        else
+                            vChanges.push_back(nTrust - nTrustPrev);
+
+                        /* Iterate backwards by last trust block. */
+                        hashLast = hashLastTrust;
+                    }
+                    else
+                        break;
+                }
+            }
+
+            /* Break early if all checks passed. */
+            if(fConsistent)
+                return true;
+
+            /* Reverse entries. */
+            nTrustRet = nTrustPrev;
+            for(auto it = vChanges.rbegin(); it != vChanges.rend(); ++it)
+                nTrustRet += (*it);
+
+            return false;
+        }
+
+
         /** Retrieves the most recent stake transaction for a user account. */
         bool FindLastStake(const uint256_t& hashGenesis, Transaction& tx)
         {

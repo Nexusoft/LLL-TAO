@@ -248,8 +248,6 @@ namespace TAO
 }
 
 
-
-
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
@@ -260,20 +258,11 @@ int main(int argc, char** argv)
     TAO::Ledger::Transaction tx;
     if(!LLD::Ledger->ReadTx(hashTx, tx))
         return debug::error("failed to read tx");
-    TAO::Ledger::BlockState block;
-    if(!LLD::Ledger->ReadBlock(hashTx, block))
-        return debug::error("failed to read block");
 
-    bool fCheck = tx.CheckTrust(&block);
-    debug::log(0, "Checked: ", fCheck ? "PASSED" : "FAILED");
-
-
-    //for(uint64_t i = 1291538; i < 1291539; ++i)
+    uint64_t nTrust = 0;
+    if(!TAO::Ledger::CheckConsistency(hashTx, nTrust))
     {
-        cv::softdouble dWeight = TAO::Ledger::StakeRate(1291538, false);
-
-        debug::log(0, "Stake Rate ", double(dWeight));
-
+        debug::log(0, "Trust VALUE ", nTrust);
     }
 
     return 0;

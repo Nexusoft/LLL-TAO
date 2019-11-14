@@ -459,8 +459,8 @@ namespace TAO
                     return debug::error(FUNCTION, "last stake not in database");
 
                 /* Check for last hash consistency. */
-                //if(hashLast != hashLastClaimed)
-                //    return debug::error(FUNCTION, "list stake ", hashLastClaimed.SubString(), " mismatch ", hashLast.SubString());
+                if(hashLast != hashLastClaimed)
+                    return debug::error(FUNCTION, "list stake ", hashLastClaimed.SubString(), " mismatch ", hashLast.SubString());
 
                 /* Get pre-state trust account values */
                 nTrustPrev = account.get<uint64_t>("trust");
@@ -478,7 +478,14 @@ namespace TAO
 
                 /* Calculate Block Age (time from last stake block until previous block) */
                 nBlockAge = statePrev.GetBlockTime() - stateLast.GetBlockTime();
-                nTrust = GetTrustScore(nTrustPrev, nBlockAge, nStake, nStakeChange, pblock->nVersion);
+
+                /* Check for previous version 7 and current version 8. */
+                if(pblock->nVersion == 8 && stateLast.nVersion == 7)
+                {
+                    //check consistency
+                }
+                else //when not consistency check, operate like normal
+                    nTrust = GetTrustScore(nTrustPrev, nBlockAge, nStake, nStakeChange, pblock->nVersion);
 
                 /* Validate the trust score calculation */
                 if(nClaimedTrust != nTrust)

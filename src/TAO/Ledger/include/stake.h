@@ -203,6 +203,19 @@ namespace TAO
                                     const uint64_t nTrust, const bool fGenesis = false);
 
 
+        /** CheckConsistency
+         *
+         *  Checks a sigchain's trust for inconsistencies.
+         *
+         *  @param[in] hashLastTrust The last trust block to search by.
+         *  @param[in] nTrustRet The trust score returned by reference.
+         *
+         *  @return True if the consistency checks passed.
+         *
+         **/
+        bool CheckConsistency(const uint512_t& hashLastTrust, uint64_t& nTrustRet);
+
+
         /** FindLastStake
          *
          *  Find the last stake transaction for a user signature chain.
