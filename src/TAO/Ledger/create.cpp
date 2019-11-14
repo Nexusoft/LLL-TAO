@@ -174,10 +174,10 @@ namespace TAO
                 }
 
                 /* Check that the hashlast is on disk. If it is not, then the sig chain genesis must also be in this block.  If for
-                   any reason the genesis transaction should be in this block but failed one of the above rules, then we could end 
-                   up with a subsequent transaction also in this block for which the genesis is not going to exist.  In which case 
+                   any reason the genesis transaction should be in this block but failed one of the above rules, then we could end
+                   up with a subsequent transaction also in this block for which the genesis is not going to exist.  In which case
                    we need to omit this transaction also. The simplest solution for this is to skip any transactions that are not
-                   the first in the sequence if the hash last is not currently on disk. If a sig chain transcation and subsequent 
+                   the first in the sequence if the hash last is not currently on disk. If a sig chain transcation and subsequent
                    transaction genuinely should be in the same block, then ths will just result in the subsequent transaction being
                    left out of this block and included in the next.*/
                 uint512_t hashLast = 0;
@@ -496,8 +496,6 @@ namespace TAO
                         {
                             /* Get the total in reserves. */
                             int64_t nBalance = statePrev.nReleasedReserve[1] - (33 * NXS_COIN); //leave 33 coins in the reserve
-
-                            debug::log(0, "CREATE ", nBalance);
                             if(nBalance > 0)
                             {
                                 /* Loop through the embassy sigchains. */
@@ -515,8 +513,6 @@ namespace TAO
                                     uint64_t nCredit = (nBalance * it->second.second) / 1000;
                                     block.producer[nContract] << nCredit;
                                     block.producer[nContract] << uint64_t(0);
-
-                                    debug::log(0, "CONTRACT! ", it->first.ToString());
                                 }
                             }
                         }

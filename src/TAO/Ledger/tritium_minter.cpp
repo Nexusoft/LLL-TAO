@@ -347,8 +347,8 @@ namespace TAO
             if(!fGenesis)
             {
                 /* Staking Trust for existing trust account */
-                uint64_t nTrustPrev = account.get<uint64_t>("trust");
-                uint64_t nStake = account.get<uint64_t>("stake");
+                uint64_t nTrustPrev  = account.get<uint64_t>("trust");
+                uint64_t nStake      = account.get<uint64_t>("stake");
                 int64_t nStakeChange = 0;
 
                 /* Get the previous stake tx for the trust account. */
@@ -356,22 +356,23 @@ namespace TAO
                 if(!FindLastStake(user->Genesis(), hashLast))
                     return debug::error(FUNCTION, "Failed to get last stake for trust account");
 
+                /* Find a stake change request. */
                 if(!FindStakeChange(user->Genesis(), hashLast))
                     return debug::error(FUNCTION, "Unable to process stake change request");
 
+                /* Adjust the stake change from database. */
                 if(fStakeChange)
                     nStakeChange = stakeChange.nAmount;
 
+                /* Check for available stake. */
                 if(nStake == 0 && nStakeChange == 0)
                 {
                     /* Trust account has no stake balance. Increase sleep time to wait for balance. */
                     nSleepTime = 5000;
 
                     /* Update log every 60 iterations (5 minutes) */
-                    if((nCounter % 60) == 0)
+                    if((++nCounter % 60) == 0)
                         debug::log(0, FUNCTION, "Stake Minter: Trust account has no stake.");
-
-                    ++nCounter;
 
                     return false;
                 }
@@ -389,8 +390,16 @@ namespace TAO
                 /* Calculate time since last stake block (block age = age of previous stake block at time of current stateBest). */
                 nBlockAge = statePrev.GetBlockTime() - stateLast.GetBlockTime();
 
-                /* Calculate the new trust score */
-                nTrust = GetTrustScore(nTrustPrev, nBlockAge, nStake, nStakeChange, block.nVersion);
+                /* Check for previous version 7 and current version 8. */
+                if(block.nVersion == 8 && stateLast.nVersion == 7)
+                {
+                    /* Check trust consistency if version switch. */
+                    uint64_t nTrustRet = 0;
+                    if(!CheckConsistency(hashLast, nTrustRet))
+                        nTrust = GetTrustScore(nTrustRet, nBlockAge, nStake, nStakeChange, block.nVersion);
+                }
+                else //when not consistency check, operate like normal
+                    nTrust = GetTrustScore(nTrustPrev, nBlockAge, nStake, nStakeChange, block.nVersion);
 
                 /* Initialize block producer for Trust operation with hashLastTrust, new trust score.
                  * The coinstake reward will be added based on time when block is found.
