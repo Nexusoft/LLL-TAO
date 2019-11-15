@@ -64,6 +64,11 @@ namespace TAO
             if(mapLegacy.count(hashTx))
                 return false;
 
+            debug::log(3, "ACCEPT --------------------------------------");
+            if(config::nVerbose >= 3)
+                tx.print();
+            debug::log(3, "END ACCEPT -----------------------------------");
+
             /* Check transaction for errors. */
             if(!tx.CheckTransaction())
                 return debug::error(FUNCTION, "tx ", hashTx.SubString(), " failed");
