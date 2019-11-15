@@ -154,7 +154,7 @@ namespace TAO
                 /* Check for failed dependants. */
                 if(setDependents.count(tx.hashPrevTx))
                 {
-                    setDependents.insert(tx.GetHash());
+                    setDependents.insert(hash);
 
                     debug::log(2, FUNCTION, "Skipping transaction ", hash.SubString(), " - INVALID dependent");
                     continue;
@@ -163,7 +163,7 @@ namespace TAO
                 /* Check for timestamp violations. */
                 if(tx.nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
                 {
-                    setDependents.insert(tx.GetHash());
+                    setDependents.insert(hash);
 
                     debug::log(2, FUNCTION, "Skipping transaction ", hash.SubString(), " - timesamp too far in future");
                     continue;
@@ -172,7 +172,7 @@ namespace TAO
                 /* Check the pre-states and post-states. */
                 if(!tx.Verify(FLAGS::MINER))
                 {
-                    setDependents.insert(tx.GetHash());
+                    setDependents.insert(hash);
 
                     debug::log(2, FUNCTION, "Skipping transaction ", hash.SubString(), " - failed to verify");
                     continue;
@@ -181,7 +181,7 @@ namespace TAO
                 /* Check to see if this transaction connects. */
                 if(!tx.Connect(FLAGS::MINER))
                 {
-                    setDependents.insert(tx.GetHash());
+                    setDependents.insert(hash);
 
                     debug::log(2, FUNCTION, "Skipping transaction ", hash.SubString(), " - failed to connect");
                     continue;
@@ -197,7 +197,7 @@ namespace TAO
                 uint512_t hashLast = 0;
                 if(!tx.IsFirst() && !LLD::Ledger->ReadLast(tx.hashGenesis, hashLast) )
                 {
-                    setDependents.insert(tx.GetHash());
+                    setDependents.insert(hash);
 
                     debug::log(2, FUNCTION, "Skipping transaction ", hash.SubString(), " - genesis not on disk");
                     continue;
