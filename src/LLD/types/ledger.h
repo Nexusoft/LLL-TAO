@@ -150,7 +150,7 @@ namespace LLD
          *  @return The contract object that was read.
          *
          **/
-        TAO::Operation::Contract ReadContract(const uint512_t& hashTx,
+        const TAO::Operation::Contract ReadContract(const uint512_t& hashTx,
                                               const uint32_t nContract, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
@@ -164,7 +164,7 @@ namespace LLD
          *  @return The transaction read from disk.
          *
          **/
-        TAO::Ledger::Transaction ReadTx(const uint512_t& hashTx, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
+        const TAO::Ledger::Transaction ReadTx(const uint512_t& hashTx, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
         /** WriteTx

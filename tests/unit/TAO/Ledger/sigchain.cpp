@@ -41,7 +41,7 @@ TEST_CASE( "Signature Chain Generation", "[ledger]")
 }
 
 
-TEST_CASE( "Signature Chain Genesis Transaction checks", "[ledger]")
+TEST_CASE( "Signature Chain Genesis Transaction checks", "[sigchain]")
 {
     using namespace TAO::Register;
     using namespace TAO::Operation;

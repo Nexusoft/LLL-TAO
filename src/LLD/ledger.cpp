@@ -88,7 +88,7 @@ namespace LLD
 
 
     /* Reads a contract from the ledger DB. */
-    TAO::Operation::Contract LedgerDB::ReadContract(const uint512_t& hashTx, const uint32_t nContract, const uint8_t nFlags)
+    const TAO::Operation::Contract LedgerDB::ReadContract(const uint512_t& hashTx, const uint32_t nContract, const uint8_t nFlags)
     {
         /* Check for Tritium transaction. */
         if(hashTx.GetType() == TAO::Ledger::TRITIUM)
@@ -137,8 +137,9 @@ namespace LLD
             throw debug::exception(FUNCTION, "invalid txid type");
     }
 
+
     /*  Reads a transaction from the ledger DB. */
-    TAO::Ledger::Transaction LedgerDB::ReadTx(const uint512_t& hashTx, const uint8_t nFlags)
+    const TAO::Ledger::Transaction LedgerDB::ReadTx(const uint512_t& hashTx, const uint8_t nFlags)
     {
         /* Special check for memory pool. */
         TAO::Ledger::Transaction tx;
