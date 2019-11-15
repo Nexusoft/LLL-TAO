@@ -104,12 +104,9 @@ namespace TAO
                 throw debug::exception(FUNCTION, "cannot bind to a nullptr");
 
             /* Don't bind a again if already bound as calling GetHash is expensive */
-            if(!hashTx)
-            {
-                hashCaller = tx->hashGenesis;
-                nTimestamp = tx->nTimestamp;
-                hashTx     = tx->GetHash();
-            }
+            hashCaller = tx->hashGenesis;
+            nTimestamp = tx->nTimestamp;
+            hashTx     = tx->GetHash();
         }
 
         /* Get the primitive operation. */
