@@ -132,6 +132,7 @@ namespace TAO
             debug::log(3, "BEGIN-------------------------------------");
 
             /* Loop through the list of transactions. */
+            std::set<uint512_t> setDependents;
             for(const auto& hash : vMempool)
             {
                 /* Check the Size limits of the Current Block. */
@@ -149,12 +150,21 @@ namespace TAO
                     debug::log(2, FUNCTION, "Skipping transaction ", hash.SubString(), " - tx is coinbase/coinstake");
                     continue;
                 }
-                //TODO: if any of these fail and it is our producer, we need to fail the entire block, or
-                //work on a prune option. Bad transctions should not be in here
+
+                /* Check for failed dependants. */
+                if(setDependents.count(tx.hashPrevTx))
+                {
+                    setDependents.insert(tx.GetHash());
+
+                    debug::log(2, FUNCTION, "Skipping transaction ", hash.SubString(), " - INVALID dependant");
+                    continue;
+                }
 
                 /* Check for timestamp violations. */
                 if(tx.nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
                 {
+                    setDependents.insert(tx.GetHash());
+
                     debug::log(2, FUNCTION, "Skipping transaction ", hash.SubString(), " - timesamp too far in future");
                     continue;
                 }
@@ -162,6 +172,8 @@ namespace TAO
                 /* Check the pre-states and post-states. */
                 if(!tx.Verify(FLAGS::MINER))
                 {
+                    setDependents.insert(tx.GetHash());
+
                     debug::log(2, FUNCTION, "Skipping transaction ", hash.SubString(), " - failed to verify");
                     continue;
                 }
@@ -169,20 +181,24 @@ namespace TAO
                 /* Check to see if this transaction connects. */
                 if(!tx.Connect(FLAGS::MINER))
                 {
+                    setDependents.insert(tx.GetHash());
+
                     debug::log(2, FUNCTION, "Skipping transaction ", hash.SubString(), " - failed to connect");
                     continue;
                 }
 
                 /* Check that the hashlast is on disk. If it is not, then the sig chain genesis must also be in this block.  If for
-                   any reason the genesis transaction should be in this block but failed one of the above rules, then we could end 
-                   up with a subsequent transaction also in this block for which the genesis is not going to exist.  In which case 
+                   any reason the genesis transaction should be in this block but failed one of the above rules, then we could end
+                   up with a subsequent transaction also in this block for which the genesis is not going to exist.  In which case
                    we need to omit this transaction also. The simplest solution for this is to skip any transactions that are not
-                   the first in the sequence if the hash last is not currently on disk. If a sig chain transcation and subsequent 
+                   the first in the sequence if the hash last is not currently on disk. If a sig chain transcation and subsequent
                    transaction genuinely should be in the same block, then ths will just result in the subsequent transaction being
                    left out of this block and included in the next.*/
                 uint512_t hashLast = 0;
                 if(!tx.IsFirst() && !LLD::Ledger->ReadLast(tx.hashGenesis, hashLast) )
                 {
+                    setDependents.insert(tx.GetHash());
+
                     debug::log(2, FUNCTION, "Skipping transaction ", hash.SubString(), " - genesis not on disk");
                     continue;
                 }
