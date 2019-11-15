@@ -97,19 +97,19 @@ namespace TAO
 
 
         /* Bind the contract to a transaction. */
-        void Contract::Bind(const TAO::Ledger::Transaction* tx) const
+        void Contract::Bind(const TAO::Ledger::Transaction* tx, bool fBindTxid) const
         {
             /* Check for nullptr bind. */
             if(tx == nullptr)
                 throw debug::exception(FUNCTION, "cannot bind to a nullptr");
 
-            /* Don't bind a again if already bound as calling GetHash is expensive */
-            if(!hashTx)
-            {
-                hashCaller = tx->hashGenesis;
-                nTimestamp = tx->nTimestamp;
-                hashTx     = tx->GetHash();
-            }
+            /* These values won't change after build, so safe to call anytime. */
+            hashCaller = tx->hashGenesis;
+            nTimestamp = tx->nTimestamp;
+
+            /* We don't want to bind when building transaction. */
+            if(fBindTxid && hashTx == 0)
+                hashTx = tx->GetHash(); //contract won't bind again here
         }
 
         /* Get the primitive operation. */

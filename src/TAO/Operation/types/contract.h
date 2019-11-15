@@ -123,7 +123,7 @@ namespace TAO
              *  @param[in] tx The transaction to bind the contract to.
              *
              **/
-            void Bind(const TAO::Ledger::Transaction* tx) const;
+            void Bind(const TAO::Ledger::Transaction* tx, bool fBindTxid = true) const;
 
 
             /** Primitive
@@ -301,11 +301,11 @@ namespace TAO
 
             /** Position
              *
-             *  Returns the current position of the required stream  
+             *  Returns the current position of the required stream
              *
              *  @param[in] nFlags The flags to determine which streams to check.
              *
-             *  @return tthe current position of the required stream 
+             *  @return tthe current position of the required stream
              *
              **/
             uint64_t Position(const uint8_t nFlags = CONDITIONS) const;

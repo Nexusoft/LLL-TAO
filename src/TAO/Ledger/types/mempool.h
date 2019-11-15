@@ -121,7 +121,7 @@ namespace TAO
              *  @return true if added.
              *
              **/
-            bool Accept(TAO::Ledger::Transaction& tx, LLP::TritiumNode* pnode = nullptr);
+            bool Accept(const TAO::Ledger::Transaction& tx, LLP::TritiumNode* pnode = nullptr);
 
 
             /** Accept

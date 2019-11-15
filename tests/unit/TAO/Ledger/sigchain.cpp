@@ -145,7 +145,7 @@ TEST_CASE( "Signature Chain Genesis Transaction checks", "[ledger]")
         //payload
         tx[0] << uint8_t(OP::CREATE) << TAO::Register::Address("trust1", hashGenesis, TAO::Register::Address::TRUST) << uint8_t(REGISTER::OBJECT) << trust.GetState();
         tx[1] << uint8_t(OP::CREATE) << TAO::Register::Address("trust2", hashGenesis, TAO::Register::Address::TRUST) << uint8_t(REGISTER::OBJECT) << trust.GetState();
-        
+
         //generate the prestates and poststates
         REQUIRE(tx.Build());
 
@@ -174,13 +174,13 @@ TEST_CASE( "Signature Chain Genesis Transaction checks", "[ledger]")
         tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
         tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
 
-        //create account object 
+        //create account object
         Object account = TAO::Register::CreateAccount(0);
 
         //payload
         tx[0] << uint8_t(OP::CREATE) << TAO::Register::Address(TAO::Register::Address::ACCOUNT)<< uint8_t(REGISTER::OBJECT) << account.GetState();
         tx[1] << uint8_t(OP::CREATE) << TAO::Register::Address(TAO::Register::Address::ACCOUNT) << uint8_t(REGISTER::OBJECT) << account.GetState();
-        
+
         //generate the prestates and poststates
         REQUIRE(tx.Build());
 
@@ -209,13 +209,13 @@ TEST_CASE( "Signature Chain Genesis Transaction checks", "[ledger]")
         tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
         tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
 
-        //create crypto object 
+        //create crypto object
         Object crypto = TAO::Register::CreateCrypto(0,0,0,0,0,0,0,0,0);
 
         //payload
         tx[0] << uint8_t(OP::CREATE) << TAO::Register::Address(std::string("crypto1"), hashGenesis, TAO::Register::Address::CRYPTO) << uint8_t(REGISTER::OBJECT) << crypto.GetState();
         tx[1] << uint8_t(OP::CREATE) << TAO::Register::Address(std::string("crypto2"), hashGenesis, TAO::Register::Address::CRYPTO) << uint8_t(REGISTER::OBJECT) << crypto.GetState();
-        
+
         //generate the prestates and poststates
         REQUIRE(tx.Build());
 
@@ -245,19 +245,19 @@ TEST_CASE( "Signature Chain Genesis Transaction checks", "[ledger]")
         tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
 
 
-        /* create account object */ 
+        /* create account object */
         Object account = TAO::Register::CreateAccount(0);
-        
+
         /* Create trust object */
         Object trust = TAO::Register::CreateTrust();
-        
+
         /* Create Crypto */
         Object crypto = TAO::Register::CreateCrypto(0,0,0,0,0,0,0,0,0);
 
         //create name object pointing to account address
         Object name = TAO::Register::CreateName(TAO::Register::NAMESPACE::GLOBAL, "global name", TAO::Register::Address(TAO::Register::Address::ACCOUNT));
         TAO::Register::Address hashGlobalNamespace = TAO::Register::Address(TAO::Register::NAMESPACE::GLOBAL, TAO::Register::Address::NAMESPACE);
-        
+
         Object name2 = TAO::Register::CreateName("", "test2", TAO::Register::Address(TAO::Register::Address::ACCOUNT));
 
         //payload
@@ -266,7 +266,7 @@ TEST_CASE( "Signature Chain Genesis Transaction checks", "[ledger]")
         tx[2] << uint8_t(OP::CREATE) << TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO) << uint8_t(REGISTER::OBJECT) << crypto.GetState();
         tx[3] << uint8_t(OP::CREATE) << TAO::Register::Address("global name", hashGlobalNamespace, TAO::Register::Address::NAME) << uint8_t(REGISTER::OBJECT) << name.GetState();
         tx[4] << uint8_t(OP::CREATE) << TAO::Register::Address("test2", hashGenesis, TAO::Register::Address::NAME) << uint8_t(REGISTER::OBJECT) << name2.GetState();
-        
+
 
 
         //generate the prestates and poststates
@@ -287,7 +287,7 @@ TEST_CASE( "Signature Chain Genesis Transaction checks", "[ledger]")
     /* Success case - 1 account, 1 trust, 1 crypto 2 names */
     {
         uint256_t hashGenesis   = TAO::Ledger::SignatureChain::Genesis(std::string("testuser" +std::to_string(LLC::GetRand())).c_str());
-        
+
         //create the transaction object
         TAO::Ledger::Transaction tx;
         tx.hashGenesis = hashGenesis;
@@ -298,12 +298,12 @@ TEST_CASE( "Signature Chain Genesis Transaction checks", "[ledger]")
         tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
 
 
-        /* create account object */ 
+        /* create account object */
         Object account = TAO::Register::CreateAccount(0);
-        
+
         /* Create trust object */
         Object trust = TAO::Register::CreateTrust();
-        
+
         /* Create Crypto */
         Object crypto = TAO::Register::CreateCrypto(0,0,0,0,0,0,0,0,0);
 
@@ -317,7 +317,55 @@ TEST_CASE( "Signature Chain Genesis Transaction checks", "[ledger]")
         tx[2] << uint8_t(OP::CREATE) << TAO::Register::Address("crypto", hashGenesis, TAO::Register::Address::CRYPTO) << uint8_t(REGISTER::OBJECT) << crypto.GetState();
         tx[3] << uint8_t(OP::CREATE) << TAO::Register::Address("test", hashGenesis, TAO::Register::Address::NAME) << uint8_t(REGISTER::OBJECT) << name.GetState();
         tx[4] << uint8_t(OP::CREATE) << TAO::Register::Address("test2", hashGenesis, TAO::Register::Address::NAME) << uint8_t(REGISTER::OBJECT) << name2.GetState();
-        
+
+
+
+        //generate the prestates and poststates
+        REQUIRE(tx.Build());
+
+        //sign
+        tx.Sign(hashPrivKey1);
+
+        //commit to disk
+        REQUIRE(TAO::Ledger::mempool.Accept(tx));
+
+    }
+
+
+    /* Success case - 1 account, 1 trust, 1 crypto 2 names */
+    {
+        uint256_t hashGenesis   = TAO::Ledger::SignatureChain::Genesis(std::string("recovery").c_str());
+
+        //create the transaction object
+        TAO::Ledger::Transaction tx;
+        tx.hashGenesis = hashGenesis;
+        tx.nSequence   = 0;
+        tx.nTimestamp  = runtime::timestamp();
+        tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
+        tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
+        tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
+
+
+        /* create account object */
+        Object account = TAO::Register::CreateAccount(0);
+
+        /* Create trust object */
+        Object trust = TAO::Register::CreateTrust();
+
+        /* Create Crypto */
+        Object crypto = TAO::Register::CreateCrypto(0,0,0,0,0,0,0,0,0);
+
+        //create name object pointing to account address
+        Object name = TAO::Register::CreateName("", "test", TAO::Register::Address(TAO::Register::Address::ACCOUNT));
+        Object name2 = TAO::Register::CreateName("", "test2", TAO::Register::Address(TAO::Register::Address::ACCOUNT));
+
+        //payload
+        tx[0] << uint8_t(OP::CREATE) << TAO::Register::Address(TAO::Register::Address::ACCOUNT) << uint8_t(REGISTER::OBJECT) << account.GetState();
+        tx[1] << uint8_t(OP::CREATE) << TAO::Register::Address("trust", hashGenesis, TAO::Register::Address::TRUST) << uint8_t(REGISTER::OBJECT) << trust.GetState();
+        tx[2] << uint8_t(OP::CREATE) << TAO::Register::Address("crypto", hashGenesis, TAO::Register::Address::CRYPTO) << uint8_t(REGISTER::OBJECT) << crypto.GetState();
+        tx[3] << uint8_t(OP::CREATE) << TAO::Register::Address("test", hashGenesis, TAO::Register::Address::NAME) << uint8_t(REGISTER::OBJECT) << name.GetState();
+        tx[4] << uint8_t(OP::CREATE) << TAO::Register::Address("test2", hashGenesis, TAO::Register::Address::NAME) << uint8_t(REGISTER::OBJECT) << name2.GetState();
+
 
 
         //generate the prestates and poststates

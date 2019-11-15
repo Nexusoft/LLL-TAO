@@ -239,7 +239,7 @@ namespace TAO
              *  @return true if transaction is valid.
              *
              **/
-            bool Connect(const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK, const BlockState* pblock = nullptr);
+            bool Connect(const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK, const BlockState* pblock = nullptr) const;
 
 
             /** Disconnect

@@ -196,7 +196,7 @@ namespace TAO
                 vContracts.resize(n + 1);
 
             /* Bind this transaction. */
-            vContracts[n].Bind(this);
+            vContracts[n].Bind(this, false); //don't get txid yet, because the non-const version of this subscript will modify object
 
             return vContracts[n];
         }
@@ -584,7 +584,7 @@ namespace TAO
             for(auto& contract : vContracts)
             {
                 /* Bind the contract to this transaction. */
-                contract.Bind(this);
+                contract.Bind(this, false);  //don't bind txid yet, because it depends on the costs added for its final state
 
                 /* Calculate the total cost to execute. */
                 TAO::Operation::Cost(contract, nRet);
@@ -612,7 +612,7 @@ namespace TAO
             for(auto& contract : vContracts)
             {
                 /* Bind the contract to this transaction. */
-                contract.Bind(this);
+                contract.Bind(this, false); //don't bind txid yet, because it depends on build for its final state
 
                 /* Calculate the pre-states and post-states. */
                 if(!TAO::Register::Build(contract, mapStates, FLAGS::MEMPOOL))
@@ -650,7 +650,7 @@ namespace TAO
 
 
         /* Connect a transaction object to the main chain. */
-        bool Transaction::Connect(const uint8_t nFlags, const BlockState* pblock)
+        bool Transaction::Connect(const uint8_t nFlags, const BlockState* pblock) const
         {
             /* Get the transaction's hash. */
             uint512_t hash = GetHash();

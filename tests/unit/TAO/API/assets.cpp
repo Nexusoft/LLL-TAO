@@ -1011,7 +1011,6 @@ TEST_CASE( "Test Assets API - claim asset", "[assets/claim/asset]")
 
             //verify the prestates and poststates
             REQUIRE(tx.Verify());
-
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
 
             //commit to disk
@@ -1040,7 +1039,6 @@ TEST_CASE( "Test Assets API - claim asset", "[assets/claim/asset]")
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
 
-
             hashTransfer = tx.GetHash();
         }
 
@@ -1057,7 +1055,6 @@ TEST_CASE( "Test Assets API - claim asset", "[assets/claim/asset]")
 
         /* Check all of the fields */
         REQUIRE(result.find("txid") != result.end());
-
 
     }
 
