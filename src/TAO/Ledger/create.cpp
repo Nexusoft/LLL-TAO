@@ -156,7 +156,7 @@ namespace TAO
                 {
                     setDependents.insert(tx.GetHash());
 
-                    debug::log(2, FUNCTION, "Skipping transaction ", hash.SubString(), " - INVALID dependant");
+                    debug::log(2, FUNCTION, "Skipping transaction ", hash.SubString(), " - INVALID dependent");
                     continue;
                 }
 
