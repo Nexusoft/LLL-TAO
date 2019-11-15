@@ -154,6 +154,19 @@ namespace LLD
                                               const uint32_t nContract, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
+        /** ReadTx
+         *
+         *  Reads a transaction from the ledger DB.
+         *
+         *  @param[in] hashTx The txid of transaction to read.
+         *  @param[in] nFlags The flags to determine memory pool or disk
+         *
+         *  @return The transaction read from disk.
+         *
+         **/
+        TAO::Ledger::Transaction ReadTx(const uint512_t& hashTx, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
+
+
         /** WriteTx
          *
          *  Writes a transaction to the ledger DB.

@@ -137,6 +137,25 @@ namespace LLD
             throw debug::exception(FUNCTION, "invalid txid type");
     }
 
+    /*  Reads a transaction from the ledger DB. */
+    TAO::Ledger::Transaction LedgerDB::ReadTx(const uint512_t& hashTx, const uint8_t nFlags)
+    {
+        /* Special check for memory pool. */
+        TAO::Ledger::Transaction tx;
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::MINER)
+        {
+            /* Get the transaction. */
+            if(TAO::Ledger::mempool.Get(hashTx, tx))
+                return tx;
+        }
+
+        /* Check for failed read. */
+        if(!Read(hashTx, tx))
+            throw debug::exception(FUNCTION, "failed to read tx");
+
+        return tx;
+    }
+
 
     /* Writes a transaction to the ledger DB. */
     bool LedgerDB::WriteTx(const uint512_t& hashTx, const TAO::Ledger::Transaction& tx)

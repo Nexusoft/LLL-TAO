@@ -359,20 +359,25 @@ namespace TAO
              *
              *  Generates the StakeHash for this block from a uint256_t hashGenesis
              *
+             *  @param[in] hashGenesis The hash of the user-id used to lock user search space
+             *
              *  @return 1024-bit stake hash
              *
              **/
-            uint1024_t StakeHash(bool fIsGenesis, const uint256_t &hashGenesis) const;
+            uint1024_t StakeHash(const uint256_t& hashGenesis) const;
 
 
             /** StakeHash
              *
              *  Generates the StakeHash for this block from a uint576_t trust key
              *
+             *  @param[in] fGenesis Flag to determine if this is a genesis stake hash
+             *  @param[in] hashTrustKey The hash of current trust key getting stake
+             *
              *  @return 1024-bit stake hash
              *
              **/
-            uint1024_t StakeHash(bool fIsGenesis, const uint576_t &trustKey) const;
+            uint1024_t StakeHash(bool fGenesis, const uint576_t& hashTrustKey) const;
         };
     }
 }

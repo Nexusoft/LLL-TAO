@@ -841,7 +841,7 @@ namespace TAO
         /* Prove that you staked a number of seconds based on weight */
         uint1024_t TritiumBlock::StakeHash() const
         {
-            return Block::StakeHash(producer.IsGenesis(), producer.hashGenesis);
+            return Block::StakeHash(producer.hashGenesis);
         }
     }
 }

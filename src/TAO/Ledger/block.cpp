@@ -460,7 +460,7 @@ namespace TAO
 
 
         /* Generates the StakeHash for this block from a uint256_t hashGenesis*/
-        uint1024_t Block::StakeHash(bool fIsGenesis, const uint256_t& hashGenesis) const
+        uint1024_t Block::StakeHash(const uint256_t& hashGenesis) const
         {
             /* Create a data stream to get the hash. */
             DataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
@@ -474,14 +474,14 @@ namespace TAO
 
 
         /* Generates the StakeHash for this block from a uint256_t hashGenesis*/
-        uint1024_t Block::StakeHash(bool fIsGenesis, const uint576_t &trustKey) const
+        uint1024_t Block::StakeHash(bool fGenesis, const uint576_t& hashTrustKey) const
         {
             /* Create a data stream to get the hash. */
             DataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
             ss.reserve(256);
 
             /* Trust Key is part of stake hash if not genesis. */
-            if(nHeight > 2392970 && fIsGenesis)
+            if(nHeight > 2392970 && fGenesis)
             {
                 /* Genesis must hash a prvout of 0. */
                 uint512_t hashPrevout = 0;
@@ -493,7 +493,7 @@ namespace TAO
             }
 
             /* Serialize the data to hash into a stream. */
-            ss << nVersion << hashPrevBlock << nChannel << nHeight << nBits << trustKey << nNonce;
+            ss << nVersion << hashPrevBlock << nChannel << nHeight << nBits << hashTrustKey << nNonce;
 
             return LLC::SK1024(ss.begin(), ss.end());
         }
