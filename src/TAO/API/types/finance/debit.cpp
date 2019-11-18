@@ -57,10 +57,6 @@ namespace TAO
             /* Get the session to be used for this API call */
             uint256_t nSession = users->GetSession(params);
 
-            /* Check for credit parameter. */
-            if(params.find("amount") == params.end())
-                throw APIException(-46, "Missing amount");
-
             /* Get the account. */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
             if(!user)
@@ -73,44 +69,6 @@ namespace TAO
             TAO::Ledger::Transaction tx;
             if(!Users::CreateTransaction(user, strPIN, tx))
                 throw APIException(-17, "Failed to create transaction");
-
-            /* The register address of the recipient acccount. */
-            TAO::Register::Address hashTo;
-
-            /* legacy recipient address if this is a sig chain to UTXO transaction */
-            Legacy::NexusAddress legacyAddress;
-
-            /* Flag to indicate this is a sig chain to UTXO transaction */
-            bool fLegacy = false;
-
-            /* If name_to is provided then use this to deduce the register address,
-             * otherwise try to find the raw hex encoded address. */
-            if(params.find("name_to") != params.end())
-                hashTo = Names::ResolveAddress(params, params["name_to"].get<std::string>());
-            else if(params.find("address_to") != params.end())
-            {
-                std::string strAddressTo = params["address_to"].get<std::string>();
-
-                /* Decode the base58 register address */
-                if(IsRegisterAddress(strAddressTo))
-                    hashTo.SetBase58(strAddressTo);
-
-                /* Check that it is valid */
-                if(!hashTo.IsValid())
-                    throw APIException(-165, "Invalid address_to");
-
-                /* Check to see if it is a legacy address */
-                if(hashTo.IsLegacy())
-                {
-                    legacyAddress.SetString(strAddressTo);
-                    fLegacy = true;
-                }
-
-                if( hashTo == 0 && !legacyAddress.IsValid())
-                    throw APIException(-165, "Invalid address_to");
-            }
-            else
-                throw APIException(-64, "Missing recipient account name_to / address_to");
 
             /* The account to debit from. */
             TAO::Register::Address hashFrom;
@@ -148,85 +106,170 @@ namespace TAO
             uint8_t nDecimals = TAO::Ledger::NXS_DIGITS;
             uint64_t nCurrentBalance = object.get<uint64_t>("balance");
 
-            /* Get the amount to debit. */
-            uint64_t nAmount = std::stod(params["amount"].get<std::string>()) * pow(10, nDecimals);
+            /* vector of recipient addresses and amounts */
+            std::vector<json::json> vRecipients;
 
-            /* Check the amount is not too small once converted by the token Decimals */
-            if(nAmount == 0)
-                throw APIException(-68, "Amount too small");
-
-            /* Check they have the required funds */
-            if(nAmount > nCurrentBalance)
-                throw APIException(-69, "Insufficient funds");
-
-            /* The optional payment reference */
-            uint64_t nReference = 0;
-            if(params.find("reference") != params.end())
+            /* Check for the existence of recipients array */
+            if( params.find("recipients") != params.end())
             {
-                /* The reference as a string */
-                std::string strReference = params["reference"].get<std::string>();
+                if(!params["recipients"].is_array())
+                    throw APIException(-216, "recipients field must be an array.");
 
-                /* Check that the reference contains only numeric characters before attempting to convert it */
-                if(!IsAllDigit(strReference) || !IsUINT64(strReference))
-                    throw APIException(-167, "Invalid reference");
+                /* Get the recipients json array */
+                json::json jsonRecipients = params["recipients"];
+                    
 
-                /* Convert the reference to uint64 */
-                nReference = stoull(strReference);
-            }
+                /* Check that there are recipient objects in the array */
+                if(jsonRecipients.size() == 0)
+                    throw APIException(-217, "recipients array is empty");
 
-            /* Build the transaction payload object. */
-            if(fLegacy)
-            {
-                /* legacy payload */
-                Legacy::Script script;
-                script.SetNexusAddress(legacyAddress);
-
-                tx[0] << (uint8_t)OP::LEGACY << hashFrom << nAmount << script;
+                /* Add them to to the vector for processing */
+                for(const auto& jsonRecipient : jsonRecipients)
+                    vRecipients.push_back(jsonRecipient);
             }
             else
             {
-                /* flag indicating if the contract is a debit to a tokenized asset  */
-                bool fTokenizedDebit = false;
+                /* Sending to only one recipient */
+                vRecipients.push_back(params);
 
-                /* Get the recipent account object. */
-                TAO::Register::Object recipient;
-                if(!LLD::Register->ReadState(hashTo, recipient, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-209, "Recipient is not a valid account");
+            }
 
-                /* Parse the object register. */
-                if(!recipient.Parse())
-                    throw APIException(-14, "Object failed to parse");
+            /* Check that there are not too many recipients to fit into one transaction */
+            if(vRecipients.size() > 99)
+                throw APIException(-215, "Max number of recipients (99) exceeded");
 
-                /* Check recipient account type */
-                switch(recipient.Base())
+            /* Flag that there is at least one legacy recipient */
+            bool fHasLegacy = false;
+
+            /* Current contract ID */
+            uint8_t nContract = 0;
+
+            /* Process the recipients */
+            for(const auto& jsonRecipient : vRecipients)
+            {
+                /* Double check that there are not too many recipients to fit into one transaction */
+                if(nContract >= 99)
+                    throw APIException(-215, "Max number of recipients (99) exceeded");
+
+                /* Check for amount parameter. */
+                if(jsonRecipient.find("amount") == jsonRecipient.end())
+                    throw APIException(-46, "Missing amount");
+
+                /* Get the amount to debit. */
+                uint64_t nAmount = std::stod(jsonRecipient["amount"].get<std::string>()) * pow(10, nDecimals);
+
+                /* Check the amount is not too small once converted by the token Decimals */
+                if(nAmount == 0)
+                    throw APIException(-68, "Amount too small");
+
+                /* Check they have the required funds */
+                if(nAmount > nCurrentBalance)
+                    throw APIException(-69, "Insufficient funds");
+
+                /* The register address of the recipient acccount. */
+                TAO::Register::Address hashTo;
+
+                /* Check to see whether caller has provided name_to or address_to */
+                if(jsonRecipient.find("name_to") != jsonRecipient.end())
+                    hashTo = Names::ResolveAddress(params, jsonRecipient["name_to"].get<std::string>());
+                else if(jsonRecipient.find("address_to") != jsonRecipient.end())
                 {
-                    case TAO::Register::OBJECTS::ACCOUNT:
-                    {
-                        if(recipient.get<uint256_t>("token") != object.get<uint256_t>("token"))
-                            throw APIException(-209, "Recipient account is for a different token.");
-                        
-                        break;
-                    }
-                    case TAO::Register::OBJECTS::NONSTANDARD :
-                    {
-                        fTokenizedDebit = true;
+                    std::string strAddressTo = jsonRecipient["address_to"].get<std::string>();
 
-                        /* For payments to objects, they must be owned by a token */
-                        if(recipient.hashOwner.GetType() != TAO::Register::Address::TOKEN)
-                            throw APIException(-211, "Recipient object has not been tokenized.");
+                    /* Decode the base58 register address */
+                    if(IsRegisterAddress(strAddressTo))
+                        hashTo.SetBase58(strAddressTo);
 
-                        break;
-                    }
-                    default :
-                        throw APIException(-209, "Recipient is not a valid account.");
+                    /* Check that it is valid */
+                    if(!hashTo.IsValid())
+                        throw APIException(-165, "Invalid address_to");
                 }
-
-                /* Build the OP:DEBIT */
-                tx[0] << (uint8_t)OP::DEBIT << hashFrom << hashTo << nAmount << nReference;
+                else
+                    throw APIException(-64, "Missing recipient account name_to / address_to");
             
-                /* Add expiration condition unless sending to self */
-                if(recipient.hashOwner != object.hashOwner)
-                    AddExpires( params, user->Genesis(), tx[0], fTokenizedDebit);
+
+
+                /* Build the transaction payload object. */
+                if(hashTo.IsLegacy())
+                {
+                    /* legacy payload */
+                    Legacy::Script script;
+                    script.SetNexusAddress(Legacy::NexusAddress(hashTo));
+
+                    tx[nContract] << (uint8_t)OP::LEGACY << hashFrom << nAmount << script;
+
+                    /* Set the legacy flag */
+                    fHasLegacy = true;
+
+                    /* Increment the contract ID */
+                    nContract++;
+                }
+                else
+                {
+                    /* flag indicating if the contract is a debit to a tokenized asset  */
+                    bool fTokenizedDebit = false;
+
+                    /* Get the recipent account object. */
+                    TAO::Register::Object recipient;
+                    if(!LLD::Register->ReadState(hashTo, recipient, TAO::Ledger::FLAGS::MEMPOOL))
+                        throw APIException(-209, "Recipient is not a valid account");
+
+                    /* Parse the object register. */
+                    if(!recipient.Parse())
+                        throw APIException(-14, "Object failed to parse");
+
+                    /* Check recipient account type */
+                    switch(recipient.Base())
+                    {
+                        case TAO::Register::OBJECTS::ACCOUNT:
+                        {
+                            if(recipient.get<uint256_t>("token") != object.get<uint256_t>("token"))
+                                throw APIException(-209, "Recipient account is for a different token.");
+                            
+                            break;
+                        }
+                        case TAO::Register::OBJECTS::NONSTANDARD :
+                        {
+                            fTokenizedDebit = true;
+
+                            /* For payments to objects, they must be owned by a token */
+                            if(recipient.hashOwner.GetType() != TAO::Register::Address::TOKEN)
+                                throw APIException(-211, "Recipient object has not been tokenized.");
+
+                            break;
+                        }
+                        default :
+                            throw APIException(-209, "Recipient is not a valid account.");
+                    }
+
+                    /* The optional payment reference */
+                    uint64_t nReference = 0;
+                    if(jsonRecipient.find("reference") != jsonRecipient.end())
+                    {
+                        /* The reference as a string */
+                        std::string strReference = jsonRecipient["reference"].get<std::string>();
+
+                        /* Check that the reference contains only numeric characters before attempting to convert it */
+                        if(!IsAllDigit(strReference) || !IsUINT64(strReference))
+                            throw APIException(-167, "Invalid reference");
+
+                        /* Convert the reference to uint64 */
+                        nReference = stoull(strReference);
+                    }
+
+                    /* Build the OP:DEBIT */
+                    tx[nContract] << (uint8_t)OP::DEBIT << hashFrom << hashTo << nAmount << nReference;
+                
+                    /* Add expiration condition unless sending to self */
+                    if(recipient.hashOwner != object.hashOwner)
+                        AddExpires( jsonRecipient, user->Genesis(), tx[nContract], fTokenizedDebit);
+
+                    /* Increment the contract ID */
+                    nContract++;
+
+                    /* Reduce the current balance by the amount for this recipient */
+                    nCurrentBalance -= nAmount;
+                }
             }
 
             /* Add the fee, taking it from the sending account */
@@ -244,8 +287,8 @@ namespace TAO
             if(!TAO::Ledger::mempool.Accept(tx))
                 throw APIException(-32, "Failed to accept");
 
-            /* If this is a legacy transaction then we need to make sure it shows in the legacy wallet */
-            if(fLegacy)
+            /* If this has a legacy transaction then we need to make sure it shows in the legacy wallet */
+            if(fHasLegacy)
             {
                 TAO::Ledger::BlockState notUsed;
                 Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, notUsed, true);

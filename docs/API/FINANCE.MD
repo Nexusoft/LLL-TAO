@@ -90,6 +90,10 @@ This example creates an account called "main".
 
 Deduct an amount of NXS from an account and send it to another account or legacy UTXO address. The API supports an alternative endpoint that can include the account name in the URL.  For example `/finance/debit/account/savings` will resolve to `finance/debit/account?name=savings`.
 
+Any fee that is applicable fo this transaction is deducted from the sending account, NOT the default account.
+
+The method supports the ability to send to multiple recipients in one transaction by suppling a `recipients` array instead of the single `name_to`/`address_to`/`amount`. The method allows up to 99 recipients to be supplied.  
+
 
 ### Endpoint:
 
@@ -114,7 +118,9 @@ Deduct an amount of NXS from an account and send it to another account or legacy
 
 `reference` : This optional field allows callers to provide a reference, which the recipient can then use to relate the transaction to an order number, invoice number etc.  The reference is be a `64-bit unsigned integer` in the range of 0 to 18446744073709551615
 
-`expires` : This optional field allows callers to specify an expiration for the debit transaction. The expires value is the `number of seconds` from the transaction creation time after which the transaction can no longer be credited by the recipient.  Conversely, when you apply an expiration to a transaction, you are unable to void the transaction until after the expiration time.  If omitted, a default expiration of 1 day (86400 seconds) is applied    
+`expires` : This optional field allows callers to specify an expiration for the debit transaction. The expires value is the `number of seconds` from the transaction creation time after which the transaction can no longer be credited by the recipient.  Conversely, when you apply an expiration to a transaction, you are unable to void the transaction until after the expiration time.  If omitted, a default expiration of 1 day (86400 seconds) is applied
+
+`recipients` : This optional array can be provided as an alternative to the single `name_to`/`address_to`, `amount`, `reference`, and `expires` fields.  Each object in the array can have `name_to`/`address_to`, `amount`, `reference`, and `expires` fields, as described above.
 
 
 ### Example:
@@ -128,6 +134,34 @@ The following example shows the json payload for a debit of 10.5 NXS from an acc
     "name": "main",
     "amount": 10.5,
     "name_to": "bob:savings"
+}
+```
+
+### Example Multiple Recipients:
+
+The following example shows the json payload for a debit from an account called "default" made to 3 separate recipients, each receiving 5 NXS, and each with a different reference  
+
+```
+{
+    "pin": "1234",
+    "name": "default"
+    "recipients" :
+    [
+        {
+            "name_to": "bob:savings",
+            "amount": 5,
+            "reference: 1234
+        },
+        {
+            "address_to": "8CHjS5Qe7Mghgrqb6NeEaVxjexbdp9p2QVdRTt8W4rzbWhu3fL8",
+            "amount": 5,
+            "reference: 5678
+        },
+        {
+            "address_to": "4kYv4Xft6wufMVi191nQDNprgkK6kzy6gqWRpmfMxyx9KMfEV1u",
+            "amount": 5
+        }
+    ]
 }
 ```
 

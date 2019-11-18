@@ -349,3 +349,6 @@ Error Codes
 | -212 | Invalid token |
 | -213 | Cannot create transactions whilst synchronizing |
 | -214 | Insufficient funds to pay fee |
+| -215 | Max number of recipients (99) exceeded |
+| -216 | recipients field must be an array |
+| -217 | recipients array is empty |
