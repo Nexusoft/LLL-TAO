@@ -324,11 +324,19 @@ namespace TAO
                                 break;
 
                             default:
-                                return debug::error(FUNCTION, "genesis transaction contains invalid contracts.");
+                            {
+                                /* Contract is strict for genesis when not in private mode. */
+                                if(!config::GetBoolArg("-private"))
+                                    return debug::error(FUNCTION, "genesis transaction contains invalid contracts.");
+
+                                break;
+                            }
+
                         }
                     }
-                    else
+                    else if(!config::GetBoolArg("-private"))
                         return debug::error(FUNCTION, "genesis transaction contains invalid contracts.");
+
                 }
             }
 
