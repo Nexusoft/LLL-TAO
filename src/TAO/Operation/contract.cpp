@@ -103,13 +103,10 @@ namespace TAO
             if(tx == nullptr)
                 throw debug::exception(FUNCTION, "cannot bind to a nullptr");
 
-            /* These values won't change after build, so safe to call anytime. */
+            /* Don't bind a again if already bound as calling GetHash is expensive */
             hashCaller = tx->hashGenesis;
             nTimestamp = tx->nTimestamp;
-
-            /* We don't want to bind when building transaction. */
-            if(fBindTxid && hashTx == 0)
-                hashTx = tx->GetHash(); //contract won't bind again here
+            hashTx     = tx->GetHash();
         }
 
         /* Get the primitive operation. */

@@ -116,43 +116,43 @@ namespace LLD
         std::string strType = "NONE";
         switch(hashRegister.GetType())
         {
-            case TAO::Register::Address::ACCOUNT :
+            case TAO::Register::Address::ACCOUNT:
                 strType = "account";
                 break;
 
-            case TAO::Register::Address::APPEND :
+            case TAO::Register::Address::APPEND:
                 strType = "append";
                 break;
 
-            case TAO::Register::Address::CRYPTO :
+            case TAO::Register::Address::CRYPTO:
                 strType = "crypto";
                 break;
 
-            case TAO::Register::Address::NAME :
+            case TAO::Register::Address::NAME:
                 strType = "name";
                 break;
 
-            case TAO::Register::Address::NAMESPACE :
+            case TAO::Register::Address::NAMESPACE:
                 strType = "namespace";
                 break;
 
-            case TAO::Register::Address::OBJECT :
+            case TAO::Register::Address::OBJECT:
                 strType = "object";
                 break;
 
-            case TAO::Register::Address::RAW :
+            case TAO::Register::Address::RAW:
                 strType = "raw";
                 break;
 
-            case TAO::Register::Address::READONLY :
+            case TAO::Register::Address::READONLY:
                 strType = "readonly";
                 break;
 
-            case TAO::Register::Address::TOKEN :
+            case TAO::Register::Address::TOKEN:
                 strType = "token";
                 break;
 
-            case TAO::Register::Address::TRUST :
+            case TAO::Register::Address::TRUST:
                 strType = "trust";
                 break;
 
@@ -422,11 +422,7 @@ namespace LLD
 
         /* Set the pre-commit memory mode. */
         if(pMemory)
-        {
             delete pMemory;
-
-            debug::log(0, FUNCTION, "RegisterDB::Releasing MEMORY ACID Transaction");
-        }
 
         pMemory = nullptr;
     }

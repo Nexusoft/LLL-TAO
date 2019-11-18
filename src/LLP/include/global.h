@@ -16,7 +16,6 @@ ________________________________________________________________________________
 #define NEXUS_LLP_INCLUDE_GLOBAL_H
 
 #include <LLP/include/port.h>
-#include <LLP/types/legacy.h>
 #include <LLP/types/tritium.h>
 #include <LLP/types/time.h>
 #include <LLP/templates/server.h>
@@ -27,7 +26,6 @@ ________________________________________________________________________________
 
 namespace LLP
 {
-    extern Server<LegacyNode>*   LEGACY_SERVER;
     extern Server<TritiumNode>*  TRITIUM_SERVER;
     extern Server<TimeNode>*     TIME_SERVER;
     extern Server<APINode>*      API_SERVER;

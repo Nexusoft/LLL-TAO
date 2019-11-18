@@ -20,7 +20,6 @@ namespace LLP
 {
     /* Declare the Global LLP Instances. */
     Server<TritiumNode>* TRITIUM_SERVER;
-    Server<LegacyNode> * LEGACY_SERVER;
     Server<TimeNode>   * TIME_SERVER;
     Server<APINode>*     API_SERVER;
     Server<RPCNode>*     RPC_SERVER;
@@ -50,9 +49,6 @@ namespace LLP
 
         /* Shutdown the tritium server and its subsystems. */
         Shutdown<TritiumNode>(TRITIUM_SERVER);
-
-        /* Shutdown the legacy server and its subsystems. */
-        Shutdown<LegacyNode>(LEGACY_SERVER);
 
         /* Shutdown the core API server and its subsystems. */
         Shutdown<APINode>(API_SERVER);

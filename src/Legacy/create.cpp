@@ -25,7 +25,6 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <LLP/include/version.h>
-#include <LLP/types/legacy.h>
 
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/constants.h>

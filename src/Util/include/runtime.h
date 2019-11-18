@@ -218,9 +218,12 @@ namespace runtime
      *  Runs a command to the commandline.
      *
      **/
-    inline int command(std::string strCommand)
+    inline int command(const std::string& strCommand)
     {
-        return ::system(strCommand.c_str());
+        try { return std::system(strCommand.c_str()); }
+        catch(const std::exception& e){ }
+
+        return 0;
     }
 }
 

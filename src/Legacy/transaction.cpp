@@ -796,7 +796,7 @@ namespace Legacy
 	std::string Transaction::ToString() const
     {
         std::string str;
-        str += IsCoinBase() ? "Coinbase" : (IsGenesis() ? "Genesis" : (IsTrust() ? "Trust" : "Transaction"));
+        str += IsCoinBase() ? "Coinbase" : (IsGenesis() ? "Genesis" : (IsTrust() ? "Trust" : "Legacy"));
         str += debug::safe_printstr(
             "(hash=", GetHash().SubString(10),
             ", nTime=", nTime,
@@ -1210,18 +1210,18 @@ namespace Legacy
 
         /* UTXO to Sig Chain support - If we are connected with a block then check the outputs to see if any of them
            are to a register address.  If they are then write an event for the account holder */
-        if(nFlags == FLAGS::BLOCK)
+        for(const auto txout : vout )
         {
-            for(const auto txout : vout )
+            uint256_t hashTo;
+            if(ExtractRegister(txout.scriptPubKey, hashTo))
             {
-                uint256_t hashTo;
-                if( ExtractRegister( txout.scriptPubKey, hashTo))
-                {
-                    /* Read the owner of register. */
-                    TAO::Register::State state;
-                    if(!LLD::Register->ReadState(hashTo, state, nFlags))
-                        return debug::error(FUNCTION, "failed to read register to");
+                /* Read the owner of register. (check this for MEMPOOL, too) */
+                TAO::Register::State state;
+                if(!LLD::Register->ReadState(hashTo, state, nFlags))
+                    return debug::error(FUNCTION, "failed to read register to");
 
+                if(nFlags == FLAGS::BLOCK)
+                {
                     /* Commit an event for receiving sigchain in the legay DB. */
                     if(!LLD::Legacy->WriteEvent(state.hashOwner, GetHash()))
                         return debug::error(FUNCTION, "failed to write event for account ", state.hashOwner.SubString());

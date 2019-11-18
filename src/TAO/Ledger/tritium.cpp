@@ -350,7 +350,7 @@ namespace TAO
             if(IsProofOfStake())
             {
                 /* Check the producer transaction. */
-                if(!(producer.IsCoinStake()))
+                if(!producer.IsCoinStake())
                     return debug::error(FUNCTION, "producer transaction has to be trust/genesis for proof of stake");
 
                 /* Check for nonce of zero values. */
@@ -431,9 +431,7 @@ namespace TAO
                     Legacy::Transaction tx;
                     if(!LLD::Legacy->ReadTx(vtx[i].second, tx, FLAGS::MEMPOOL))
                     {
-                        /* Push missing transaction to memory. */
                         vMissing.push_back(vtx[i]);
-
                         continue;
                     }
 
@@ -442,7 +440,7 @@ namespace TAO
                         return debug::error(FUNCTION, "more than one coinbase / coinstake");
 
                     /* Check the transaction timestamp. */
-                    if(GetBlockTime() < (uint64_t) tx.nTime)
+                    if(GetBlockTime() < uint64_t(tx.nTime))
                         return debug::error(FUNCTION, "block timestamp earlier than transaction timestamp");
 
                     /* Check the transaction for validity. */
@@ -461,14 +459,12 @@ namespace TAO
                     TAO::Ledger::Transaction tx;
                     if(!LLD::Ledger->ReadTx(vtx[i].second, tx, fConflicted, FLAGS::MEMPOOL))
                     {
-                        /* Push missing transaction to memory. */
                         vMissing.push_back(vtx[i]);
-
                         continue;
                     }
 
                     /* Check for coinbase / coinstake. */
-                    if(tx.IsCoinBase() || tx.IsCoinStake())
+                    if(tx.IsCoinBase() || tx.IsCoinStake() || tx.IsPrivate())
                         return debug::error(FUNCTION, "more than one coinbase / coinstake");
 
                     /* Check the sequencing. */
@@ -477,10 +473,6 @@ namespace TAO
 
                     /* Set the last hash for given genesis. */
                     mapLast[tx.hashGenesis] = tx.GetHash();
-
-                    /* Check the transaction for validity. */
-                    //if(!tx.Check()) //NOTE: this is pre-processing stuff
-                    //    return debug::error(FUNCTION, "contains an invalid transaction");
                 }
                 else
                     return debug::error(FUNCTION, "unknown transaction type");
@@ -588,9 +580,10 @@ namespace TAO
                 return debug::error(FUNCTION, "block's timestamp too early");
 
             /* Check that Block is Descendant of Hardened Checkpoints. */
-            //if(!ChainState::Synchronizing() && !IsDescendant(statePrev))
-            //    return debug::error(FUNCTION, "not descendant of last checkpoint");
+            if(!ChainState::Synchronizing() && !IsDescendant(statePrev))
+                return debug::error(FUNCTION, "not descendant of last checkpoint");
 
+            /* Check for private mode. */
             if(IsPrivate())
             {
                 /* Check producer for correct genesis. */
@@ -599,6 +592,10 @@ namespace TAO
                     uint256_t("0xa1a74c14508bd09e104eff93d86cbbdc5c9556ae68546895d964d8374a0e9a41")))
                     return debug::error(FUNCTION, "invalid genesis generated");
             }
+
+            /* Check for proof of stake. */
+            if(IsProofOfStake() && !CheckStake())
+                return debug::error(FUNCTION, "invalid proof of stake");
 
             /* Check that producer isn't before previous block time. */
             if(producer.nTimestamp <= statePrev.GetBlockTime())
@@ -781,7 +778,7 @@ namespace TAO
                 return debug::error(FUNCTION, "cannot stake if stake balance is zero");
 
             /* Calculate the energy efficiency thresholds. */
-            uint64_t nBlockTime = GetBlockTime() - producer.nTimestamp;
+            uint64_t nBlockTime       = GetBlockTime() - producer.nTimestamp;
             cv::softdouble nThreshold = GetCurrentThreshold(nBlockTime, nNonce);
             cv::softdouble nRequired  = GetRequiredThreshold(nTrustWeight, nBlockWeight, nStakeApplied);
 

@@ -17,7 +17,6 @@ ________________________________________________________________________________
 
 #include <LLP/packets/packet.h>
 #include <LLP/packets/http.h>
-#include <LLP/packets/legacy.h>
 #include <LLP/packets/tritium.h>
 
 #include <Util/include/debug.h>
@@ -264,7 +263,6 @@ namespace LLP
 
     /* Explicity instantiate all template instances needed for compiler. */
     template class BaseConnection<Packet>;
-    template class BaseConnection<LegacyPacket>;
     template class BaseConnection<TritiumPacket>;
     template class BaseConnection<HTTPPacket>;
 

@@ -35,16 +35,19 @@ namespace TAO
                            const uint256_t& hashFrom, const uint256_t& hashTo, const uint8_t nFlags)
         {
             /* Only commit events on new block. */
-            if((nFlags == TAO::Ledger::FLAGS::BLOCK) && hashTo != TAO::Register::WILDCARD_ADDRESS)
+            if(hashTo != TAO::Register::WILDCARD_ADDRESS)
             {
                 /* Read the owner of register. */
                 TAO::Register::State state;
                 if(!LLD::Register->ReadState(hashTo, state, nFlags))
                     return debug::error(FUNCTION, "failed to read register to");
 
-                /* Commit an event for other sigchain. */
-                if(!LLD::Ledger->WriteEvent(state.hashOwner, hashTx))
-                    return debug::error(FUNCTION, "failed to write event for account ", state.hashOwner.SubString());
+                if(nFlags == TAO::Ledger::FLAGS::BLOCK)
+                {
+                    /* Commit an event for other sigchain. */
+                    if(!LLD::Ledger->WriteEvent(state.hashOwner, hashTx))
+                        return debug::error(FUNCTION, "failed to write event for account ", state.hashOwner.SubString());
+                }
             }
 
             /* Attempt to write to disk. */

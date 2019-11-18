@@ -132,10 +132,11 @@ namespace TAO
             debug::log(3, "BEGIN-------------------------------------");
 
             /* Loop through the list of transactions. */
+            std::set<uint512_t> setDependents;
             for(const auto& hash : vMempool)
             {
                 /* Check the Size limits of the Current Block. */
-                if(::GetSerializeSize(block, SER_NETWORK, LLP::PROTOCOL_VERSION) + 200 >= MAX_BLOCK_SIZE)
+                if(::GetSerializeSize(block, SER_NETWORK, LLP::PROTOCOL_VERSION) + 256 >= MAX_BLOCK_SIZE)
                     break;
 
                 /* Get the transaction from the memory pool. */
@@ -149,12 +150,21 @@ namespace TAO
                     debug::log(2, FUNCTION, "Skipping transaction ", hash.SubString(), " - tx is coinbase/coinstake");
                     continue;
                 }
-                //TODO: if any of these fail and it is our producer, we need to fail the entire block, or
-                //work on a prune option. Bad transctions should not be in here
+
+                /* Check for failed dependants. */
+                if(setDependents.count(tx.hashPrevTx))
+                {
+                    setDependents.insert(hash);
+
+                    debug::log(2, FUNCTION, "Skipping transaction ", hash.SubString(), " - INVALID dependent");
+                    continue;
+                }
 
                 /* Check for timestamp violations. */
                 if(tx.nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
                 {
+                    setDependents.insert(hash);
+
                     debug::log(2, FUNCTION, "Skipping transaction ", hash.SubString(), " - timesamp too far in future");
                     continue;
                 }
@@ -162,6 +172,8 @@ namespace TAO
                 /* Check the pre-states and post-states. */
                 if(!tx.Verify(FLAGS::MINER))
                 {
+                    setDependents.insert(hash);
+
                     debug::log(2, FUNCTION, "Skipping transaction ", hash.SubString(), " - failed to verify");
                     continue;
                 }
@@ -169,6 +181,8 @@ namespace TAO
                 /* Check to see if this transaction connects. */
                 if(!tx.Connect(FLAGS::MINER))
                 {
+                    setDependents.insert(hash);
+
                     debug::log(2, FUNCTION, "Skipping transaction ", hash.SubString(), " - failed to connect");
                     continue;
                 }
@@ -183,6 +197,8 @@ namespace TAO
                 uint512_t hashLast = 0;
                 if(!tx.IsFirst() && !LLD::Ledger->ReadLast(tx.hashGenesis, hashLast) )
                 {
+                    setDependents.insert(hash);
+
                     debug::log(2, FUNCTION, "Skipping transaction ", hash.SubString(), " - genesis not on disk");
                     continue;
                 }
@@ -205,27 +221,68 @@ namespace TAO
 
             /* Retrieve list of transaction hashes from mempool. Limit list to a sane size that would typically more than fill a
              * legacy block, rather than pulling entire pool if it is very large. */
-            TAO::Ledger::mempool.List(vMempool, 1000, true);
+            TAO::Ledger::mempool.List(vMempool, 100, true);
 
             /* Loop through the list of transactions. */
+            TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::stateBest.load();
             for(const auto& hash : vMempool)
             {
                 /* Check the Size limits of the Current Block. */
-                if(::GetSerializeSize(block, SER_NETWORK, LLP::PROTOCOL_VERSION) + 200 >= MAX_BLOCK_SIZE)
+                if(::GetSerializeSize(block, SER_NETWORK, LLP::PROTOCOL_VERSION) + 256 >= MAX_BLOCK_SIZE)
                     break;
 
                 /* Get the transaction from the memory pool. */
                 Legacy::Transaction tx;
                 if(!mempool.Get(hash, tx))
+                {
+                    debug::error(FUNCTION, "Unable to read transaction from mempool ", hash.SubString(10));
                     continue;
+                }
 
                 /* Don't add transactions that are coinbase or coinstake. */
                 if(tx.IsCoinBase() || tx.IsCoinStake())
+                {
+                    debug::log(2, FUNCTION, "Mempool transaction is Coinbase/Coinstake ", hash.SubString(10));
                     continue;
+                }
+
+                /* Check transaction for finality. */
+                if(!tx.IsFinal())
+                {
+                    debug::log(2, FUNCTION, "Mempool transaction is not Final ", hash.SubString(10));
+                    continue;
+                }
 
                 /* Check for timestamp violations. */
                 if(tx.nTime > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
                     continue;
+
+                /* Retrieve tx inputs */
+                std::map<uint512_t, std::pair<uint8_t, DataStream> > mapInputs;
+                if(!tx.FetchInputs(mapInputs))
+                {
+                    debug::log(2, FUNCTION, "Failed to get transaction inputs ", hash.SubString(10));
+                    continue;
+                }
+
+                /* Check tx fee meetes minimum fee requirement */
+                int64_t nTxFees = tx.GetValueIn(mapInputs) - tx.GetValueOut();
+                if(nTxFees <  tx.GetMinFee(1000, false))
+                {
+                    debug::log(2, FUNCTION, "Not enough fees ", hash.SubString(10));
+                    continue;
+                }
+
+                /* Check that transction can be connected. */
+                if(!tx.Connect(mapInputs, stateBest))
+                {
+                    debug::log(2, FUNCTION, "Failed to connect inputs ", hash.SubString(10));
+                    continue;
+                }
+
+                /* Dump sequence on verbose 3 levels. */
+                if(config::nVerbose >= 3)
+                    tx.print();
 
                 /* Add the transaction to the block. */
                 block.vtx.push_back(std::make_pair(TRANSACTION::LEGACY, hash));

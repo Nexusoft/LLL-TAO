@@ -17,7 +17,6 @@ ________________________________________________________________________________
 #include <LLP/templates/events.h>
 #include <LLP/templates/ddos.h>
 #include <LLP/types/tritium.h>
-#include <LLP/types/legacy.h>
 
 
 #include <TAO/API/include/global.h>
@@ -302,8 +301,7 @@ namespace LLP
         bool fLocalTestnet = config::fTestNet.load() && !config::GetBoolArg("-dns", true);
 
         /* Total number of peer connections */
-        uint16_t nConnections = (LEGACY_SERVER ? LEGACY_SERVER->GetConnectionCount() : 0)
-                                + (TRITIUM_SERVER ? TRITIUM_SERVER->GetConnectionCount() : 0);
+        uint16_t nConnections = (TRITIUM_SERVER ? TRITIUM_SERVER->GetConnectionCount() : 0);
 
         if(!fLocalTestnet && nConnections == 0)
             return debug::error(FUNCTION, "No network connections.");

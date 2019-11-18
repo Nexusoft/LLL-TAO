@@ -321,7 +321,7 @@ namespace debug
     {
         return debug::safe_printstr(
             ANSI_COLOR_FUNCTION, ProtocolType::Name(), " Node",
-            ANSI_COLOR_RESET, " : ", "\u001b[1m", pnode->GetAddress().ToStringIP(), ANSI_COLOR_RESET, " ");
+            ANSI_COLOR_RESET, " : ", ANSI_COLOR_FUNCTION, pnode->GetAddress().ToStringIP(), ANSI_COLOR_RESET, " ");
     }
 
 

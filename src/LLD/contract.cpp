@@ -272,11 +272,7 @@ namespace LLD
 
         /* Set the pre-commit memory mode. */
         if(pMemory)
-        {
             delete pMemory;
-
-            debug::log(0, FUNCTION, "ContractDB::Releasing MEMORY ACID Transaction");
-        }
 
         pMemory = nullptr;
     }

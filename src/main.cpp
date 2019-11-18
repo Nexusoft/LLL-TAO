@@ -35,7 +35,6 @@ ________________________________________________________________________________
 #include <Util/include/daemon.h>
 
 #include <Legacy/include/ambassador.h>
-#include <Legacy/types/legacy_minter.h>
 #include <Legacy/wallet/wallet.h>
 
 #ifndef WIN32
@@ -186,7 +185,6 @@ int main(int argc, char** argv)
         Legacy::InitializeScripts();
 
 
-
         /* Check the wallet loading for errors. */
         uint32_t nLoadWalletRet = Legacy::Wallet::GetInstance().LoadWallet(fFirstRun);
         if (nLoadWalletRet != Legacy::DB_LOAD_OK)
@@ -221,15 +219,6 @@ int main(int argc, char** argv)
 
         /* Initialize the Tritium Server. */
         LLP::TRITIUM_SERVER = LLP::CreateTAOServer<LLP::TritiumNode>(nPort);
-
-
-        /* Get the port for Legacy Server. */
-        nPort = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet.load() ? (LEGACY_TESTNET_PORT + (config::GetArg("-testnet", 0) - 1)) : LEGACY_MAINNET_PORT));
-
-
-        /* Initialize the Legacy Server. */
-        if(TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 6))
-            LLP::LEGACY_SERVER = LLP::CreateTAOServer<LLP::LegacyNode>(nPort);
 
 
         /* Initialize API Pointers. */
@@ -289,10 +278,7 @@ int main(int argc, char** argv)
         }
 
 
-        /* Handle Manual Connections from Command Line, if there are any. */
-        if(LLP::LEGACY_SERVER)
-            LLP::MakeConnections<LLP::LegacyNode>(LLP::LEGACY_SERVER);
-
+        /* Hnalde manual connections for tritium server. */
         LLP::MakeConnections<LLP::TritiumNode>(LLP::TRITIUM_SERVER);
 
 
@@ -304,11 +290,6 @@ int main(int argc, char** argv)
         /* Elapsed Milliseconds from timer. */
         nElapsed = timer.ElapsedMilliseconds();
         timer.Stop();
-
-
-        /* If wallet is not encrypted, it is unlocked by default. Start stake minter now. It will run until stopped by system shutdown. */
-        if(!Legacy::Wallet::GetInstance().IsCrypted())
-            Legacy::LegacyMinter::GetInstance().Start();
 
 
         /* Startup performance metric. */
@@ -343,8 +324,6 @@ int main(int argc, char** argv)
 
 
         /* Stop stake minter if running. Minter ignores request if not running, so safe to just call both */
-        Legacy::LegacyMinter::GetInstance().Stop();
-
         TAO::Ledger::TritiumMinter::GetInstance().Stop();
 
 

@@ -17,7 +17,6 @@ ________________________________________________________________________________
 #include <LLP/include/network.h>
 
 #include <LLP/types/tritium.h>
-#include <LLP/types/legacy.h>
 #include <LLP/types/time.h>
 #include <LLP/types/apinode.h>
 #include <LLP/types/rpcnode.h>
@@ -862,7 +861,6 @@ namespace LLP
 
     /* Explicity instantiate all template instances needed for compiler. */
     template class Server<TritiumNode>;
-    template class Server<LegacyNode>;
     template class Server<TimeNode>;
     template class Server<APINode>;
     template class Server<RPCNode>;

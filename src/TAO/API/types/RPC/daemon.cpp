@@ -61,21 +61,6 @@ namespace TAO
             // read in any config file changes
             config::ReadConfigFile(config::mapArgs, config::mapMultiArgs);
 
-            //disconnect all nodes currently active
-            if(LLP::LEGACY_SERVER)
-            {
-                LLP::LEGACY_SERVER->DisconnectAll();
-
-                uint16_t nPort = static_cast<uint16_t>(config::GetArg(
-                    "-port", config::fTestNet.load() ? LEGACY_TESTNET_PORT : LEGACY_MAINNET_PORT));
-
-                for(const auto& node : config::mapMultiArgs["-connect"])
-                    LLP::LEGACY_SERVER->AddConnection(node, nPort);
-
-                for(const auto& node : config::mapMultiArgs["-addnode"])
-                    LLP::LEGACY_SERVER->AddNode(node, nPort);
-            }
-
             if(LLP::TRITIUM_SERVER)
             {
                 LLP::TRITIUM_SERVER->DisconnectAll();
