@@ -298,7 +298,7 @@ Error Codes
 | -161 | Name contains invalid characters |
 | -162 | Namespace can only contain lowercase letters, numbers, periods (.) |
 | -163 | Could not retrieve default NXS account to debit fees |
-| -164 | Account 'default' is not a NXS account |
+| -164 | Fee account is not a NXS account |
 | -165 | Invalid address_to |
 | -166 | Account is a NXS account.  Please use the finance API for accessing NXS accounts. |
 | -167 | Invalid reference |
@@ -348,3 +348,4 @@ Error Codes
 | -211 | Recipient object has not been tokenized |
 | -212 | Invalid token |
 | -213 | Cannot create transactions whilst synchronizing |
+| -214 | Insufficient funds to pay fee |

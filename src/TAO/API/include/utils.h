@@ -99,15 +99,16 @@ namespace TAO
         /** AddFee
          *
          *  Calculates the required fee for the transaction and adds the OP::FEE contract to the transaction if necessary.
-         *  The method will lookup the "default" NXS account and use this account to pay the fees.  An exception will be thrown
-         *  If there are insufficient funds to pay the fee.
+         *  If a specified fee account is not specified, the method will lookup the "default" NXS account and use this account 
+         *  to pay the fees.  An exception will be thrownIf there are insufficient funds to pay the fee. .
          *
          *  @param[in] tx The transaction to add the fee to
+         *  @param[in] hashFeeAccount Optional address of account to debit the fee from
          *
          *  @return true if the fee was successfully added, otherwise false
          *
          **/
-        bool AddFee(TAO::Ledger::Transaction& tx);
+        bool AddFee(TAO::Ledger::Transaction& tx, const TAO::Register::Address& hashFeeAccount = TAO::Register::Address());
 
 
         /** RegisterType

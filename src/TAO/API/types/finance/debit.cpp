@@ -229,8 +229,8 @@ namespace TAO
                     AddExpires( params, user->Genesis(), tx[0], fTokenizedDebit);
             }
 
-            /* Add the fee */
-            AddFee(tx);
+            /* Add the fee, taking it from the sending account */
+            AddFee(tx, hashFrom);
 
             /* Execute the operations layer. */
             if(!tx.Build())
