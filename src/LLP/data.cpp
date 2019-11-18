@@ -18,7 +18,6 @@ ________________________________________________________________________________
 #include <LLP/templates/socket.h>
 
 #include <LLP/types/tritium.h>
-#include <LLP/types/legacy.h>
 #include <LLP/types/time.h>
 #include <LLP/types/apinode.h>
 #include <LLP/types/rpcnode.h>
@@ -534,7 +533,6 @@ namespace LLP
 
     /* Explicity instantiate all template instances needed for compiler. */
     template class DataThread<TritiumNode>;
-    template class DataThread<LegacyNode>;
     template class DataThread<TimeNode>;
     template class DataThread<APINode>;
     template class DataThread<RPCNode>;

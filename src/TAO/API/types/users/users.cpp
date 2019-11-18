@@ -334,7 +334,7 @@ namespace TAO
                 if(txLast.IsCoinBase() || txLast.IsCoinStake())
                 {
                     /* Get number of confirmations of previous TX */
-                    uint32_t nConfirms;
+                    uint32_t nConfirms = 0;
                     LLD::Ledger->ReadConfirmations(hashLast, nConfirms);
 
                     /* Check to see if it is mature */
@@ -354,7 +354,7 @@ namespace TAO
             /* No need to check connections or maturity in private mode as there is no PoS/Pow */
             if(!config::GetBoolArg("-private"))
             {
-                /* If not on local-only testnet then we need to ensure we are connected to the network and 
+                /* If not on local-only testnet then we need to ensure we are connected to the network and
                 synchronized before allowing any sig chain transactions to be created */
                 bool fLocalTestnet = config::fTestNet.load() && !config::GetBoolArg("-dns", true);
 

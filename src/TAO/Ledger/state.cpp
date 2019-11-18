@@ -586,10 +586,10 @@ namespace TAO
                     /* Update the mint values. */
                     nMint += nCoinbaseRewards[nType];
                 }
-
-                /* Log the accumulated fee reserves. */
-                debug::log(2, "Fee Reserves | ", std::fixed, nFeeReserve / double(TAO::Ledger::NXS_COIN));
             }
+
+            /* Log the accumulated fee reserves. */
+            debug::log(2, "Fee Reserves | ", std::fixed, nFeeReserve / double(TAO::Ledger::NXS_COIN));
 
             /* Add the Pending Checkpoint into the Blockchain. */
             if(IsNewTimespan(statePrev))
@@ -773,9 +773,8 @@ namespace TAO
                         LLD::Ledger->EraseBlock(state.GetHash());
                         //LLD::Ledger->EraseIndex(state.nHeight);
                     }
-
-                    /* Insert into resurrect queue. */
-                    vResurrect.insert(vResurrect.end(), state.vtx.rbegin(), state.vtx.rend());
+                    else //don't resurrect on forkblocks
+                        vResurrect.insert(vResurrect.end(), state.vtx.rbegin(), state.vtx.rend());
                 }
 
                 /* Keep track of mempool transactions to delete. */
@@ -798,8 +797,6 @@ namespace TAO
                     /* Insert into delete queue. */
                     vDelete.insert(vDelete.end(), state->vtx.begin(), state->vtx.end());
                 }
-
-                debug::log(3, "RESURRECT ------------------------------");
 
                 /* Reverse the transction to connect to connect in ascending height. */
                 for(auto proof = vResurrect.rbegin(); proof != vResurrect.rend(); ++proof)
@@ -824,42 +821,26 @@ namespace TAO
                     }
                     else if(proof->first == TRANSACTION::LEGACY)
                     {
-
-                    }
-                }
-
-                debug::log(3, "END RESURRECT ------------------------------");
-
-
-                debug::log(3, "DELETE ------------------------------");
-
-                /* Delete from mempool. */
-                for(const auto& proof : vDelete)
-                {
-                    /* Check for tritium transctions. */
-                    if(proof.first == TRANSACTION::TRITIUM)
-                    {
                         /* Make sure the transaction is on disk. */
-                        TAO::Ledger::Transaction tx;
-                        if(!LLD::Ledger->ReadTx(proof.second, tx))
+                        Legacy::Transaction tx;
+                        if(!LLD::Legacy->ReadTx(proof->second, tx))
                             return debug::error(FUNCTION, "transaction not on disk");
 
                         /* Check for producer transaction. */
                         if(tx.IsCoinBase() || tx.IsCoinStake())
                             continue;
 
+                        /* Add back into memory pool. */
+                        mempool.Accept(tx);
+
                         if(config::nVerbose >= 3)
                             tx.print();
                     }
-                    else if(proof.first == TRANSACTION::LEGACY)
-                    {
-
-                    }
-
-                    mempool.Remove(proof.second);
                 }
 
-                debug::log(3, "END DELETE ------------------------------");
+                /* Delete from mempool. */
+                for(const auto& proof : vDelete)
+                    mempool.Remove(proof.second);
 
 
                 /* Debug output about the best chain. */
@@ -898,21 +879,10 @@ namespace TAO
                     if(!strCmd.empty())
                     {
                         ReplaceAll(strCmd, "%s", ChainState::hashBestChain.load().GetHex());
-                        std::thread t(runtime::command, strCmd);
+                        int32_t nRet = std::system(strCmd.c_str());
+
+                        debug::log(0, FUNCTION, "Block Notify Executed with code ", nRet);
                     }
-
-                    /* Create the inventory object. */
-                    bool fLegacy = TAO::Ledger::ChainState::stateBest.load().vtx[0].first == TAO::Ledger::TRANSACTION::LEGACY;
-
-                    /* Relay the block that was just found. */
-                    std::vector<LLP::CInv> vInv =
-                    {
-                        LLP::CInv(ChainState::hashBestChain.load(), fLegacy ? LLP::MSG_BLOCK_LEGACY : LLP::MSG_BLOCK_TRITIUM)
-                    };
-
-                    /* Relay the new block to all connected nodes. */
-                    if(LLP::LEGACY_SERVER && nVersion < 7)
-                        LLP::LEGACY_SERVER->Relay("inv", vInv);
 
                     /* If using Tritium server then we need to include the blocks transactions in the inventory before the block. */
                     if(LLP::TRITIUM_SERVER)

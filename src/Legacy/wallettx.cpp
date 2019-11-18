@@ -713,10 +713,6 @@ namespace Legacy
                 uint512_t hash = tx.GetHash();
                 if (!LLD::Ledger->HasIndex(hash))
                 {
-                    std::vector<LLP::CInv> vInv = { LLP::CInv(hash, LLP::MSG_TX_LEGACY) };
-                    if(LLP::LEGACY_SERVER)
-                        LLP::LEGACY_SERVER->Relay("inv", vInv);
-
                     /* Relay the transaction. */
                     if(LLP::TRITIUM_SERVER)
                     {
@@ -743,10 +739,6 @@ namespace Legacy
             if (!LLD::Ledger->HasIndex(hash))
             {
                 debug::log(0, FUNCTION, "Relaying wtx ", hash.SubString(10));
-
-                std::vector<LLP::CInv> vInv = { LLP::CInv(hash, LLP::MSG_TX_LEGACY) };
-                if(LLP::LEGACY_SERVER)
-                    LLP::LEGACY_SERVER->Relay("inv", vInv);
 
                 /* Relay the transaction. */
                 if(LLP::TRITIUM_SERVER)

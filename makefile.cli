@@ -20,12 +20,12 @@ endif
 #Configure for 32/64 Bit and ARM
 ifndef 32BIT
 	override 32BIT= 0
-	
+
 endif
 ifeq (${32BIT}, 1)
 	BUILD_ARCH=x86
 	CXXFLAGS+= -m32
-	
+
 else ifeq (${ARM64}, 1)
         BUILD_ARCH=aarch64
         CXXFLAGS+= -march=native -mtune=native
@@ -342,7 +342,6 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLP_global.o \
 		build/LLP_hosts.o \
 		build/LLP_inv.o \
-		build/LLP_legacy.o \
 		build/LLP_legacy_address.o \
 		build/LLP_lisp.o \
 		build/LLP_manager.o \
@@ -520,7 +519,6 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Legacy_keypoolentry.o \
 		build/Legacy_keystore.o \
 		build/Legacy_legacy.o \
-		build/Legacy_legacy_minter.o \
 		build/Legacy_masterkey.o \
 		build/Legacy_mempool.o \
 		build/Legacy_merkle.o \

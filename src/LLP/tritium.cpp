@@ -412,25 +412,6 @@ namespace LLP
                     mapSessions[nCurrentSession] = std::make_pair(nDataThread, nDataIndex);
                 }
 
-                /* Get the current connected legacy node. */
-                LegacyNode* pnode = LegacyNode::GetNode(nCurrentSession).load();
-                try //we want to catch exceptions thrown by atomic_ptr in the case there was a free on another thread
-                {
-                    if(pnode != nullptr)
-                    {
-                        /* Ban the IP in the legacy server so that it is not attempted again */
-                        if(LEGACY_SERVER->pAddressManager)
-                            LEGACY_SERVER->pAddressManager->Ban(pnode->GetAddress());
-
-                        /* if connected, send a drop message. */
-                        if(pnode->Connected())
-                            pnode->Disconnect();
-
-                        debug::drop(NODE, "Dropped legacy connection in favor of tritium connection");
-                    }
-                }
-                catch(const std::exception& e) {}
-
 
                 /* Check versions. */
                 if(nProtocolVersion < MIN_PROTO_VERSION)
@@ -465,7 +446,7 @@ namespace LLP
                 if(!fSynchronized.load())
                 {
                     /* Start sync on startup, or override any legacy syncing currently in process. */
-                    if(TAO::Ledger::nSyncSession.load() == 0 || LegacyNode::SessionActive(TAO::Ledger::nSyncSession.load()))
+                    if(TAO::Ledger::nSyncSession.load() == 0)
                     {
                         /* Set the sync session-id. */
                         TAO::Ledger::nSyncSession.store(nCurrentSession);
@@ -1422,7 +1403,7 @@ namespace LLP
                                 if(LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
                                 {
                                     /* Check if producer is being asked for, and send block instead. */
-                                    if(tx.IsCoinBase() || tx.IsCoinStake())
+                                    if(tx.IsCoinBase() || tx.IsCoinStake() || tx.IsPrivate())
                                     {
                                         /* Read block state from disk. */
                                         TAO::Ledger::BlockState state;

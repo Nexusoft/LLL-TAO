@@ -240,61 +240,57 @@ namespace TAO
             if(vContracts.size() > MAX_TRANSACTION_CONTRACTS)
                 return debug::error(FUNCTION, "transaction contract limit exceeded", vContracts.size());
 
+            /* Check producer for coinstake transaction */
+            if(IsCoinStake() || IsPrivate())
+            {
+                /* Check for single contract. */
+                if(vContracts.size() != 1)
+                    return debug::error(FUNCTION, "coinstake cannot exceed one contract");
+
+                /* Check for conditions. */
+                if(!vContracts[0].Empty(TAO::Operation::Contract::CONDITIONS))
+                    return debug::error(FUNCTION, "coinstake cannot contain conditions");
+            }
+
             /* Count of non-fee contracts in the transaction */
+            uint8_t nNames     = 0;
+            uint8_t nTrust     = 0;
+            uint8_t nAccounts  = 0;
+            uint8_t nCrypto    = 0;
             uint8_t nContracts = 0;
 
-            /* Run through all the contracts. */
+            /* Check coinbase. */
+            bool fCoinBase = IsCoinBase();
             for(const auto& contract : vContracts)
             {
+                /* Check for coinbase. */
+                if(fCoinBase)
+                {
+                    /* Check for foreign operations. */
+                    if(contract.Primitive() != TAO::Operation::OP::COINBASE)
+                        return debug::error(FUNCTION, "coinbase cannot include foreign ops");
+
+                    /* Check for extra conditions. */
+                    if(!contract.Empty(TAO::Operation::Contract::CONDITIONS))
+                        return debug::error(FUNCTION, "coinbase cannot include conditions");
+                }
+
                 /* Check for empty contracts. */
                 if(contract.Empty(TAO::Operation::Contract::OPERATIONS))
                     return debug::error(FUNCTION, "contract is empty");
 
-                if(contract.Primitive() == TAO::Operation::OP::LEGACY
-                && (TAO::Ledger::VersionActive(nTimestamp, 6) || TAO::Ledger::CurrentVersion() < 6))
-                    return debug::error(FUNCTION, "no send-to-legacy until version 6 grace period ends");
-
+                /* Skip over fees as counting against total contracts. */
                 if(contract.Primitive() != TAO::Operation::OP::FEE)
                     ++nContracts;
-            }
 
-            /* Check contains contracts. */
-            if(nContracts == 0)
-                return debug::error(FUNCTION, "transaction is empty");
-
-            /* If genesis then check that the only contracts are those for the default registers.
-               NOTE: we do not make this limitation in private mode */
-            if(IsFirst() && !config::GetBoolArg("-private"))
-            {
-                //skip proof of work for unit tests
-                #ifndef UNIT_TESTS
-
-                /* Check the difficulty of the hash. */
-                if(ProofHash() > FIRST_REQUIRED_WORK)
-                    return debug::error(FUNCTION, "first transaction not enough work");
-
-                #endif
-
-                /* Number of Name contracts */
-                uint8_t nNames = 0;
-
-                /* Number of Trust contracts */
-                uint8_t nTrust = 0;
-
-                /* Number of Account contracts */
-                uint8_t nAccounts = 0;
-
-                /* Number of Crypto contracts */
-                uint8_t nCrypto = 0;
-
-                /* Run through all the contracts. */
-                for(const auto& contract : vContracts)
+                /* For the first transaction. */
+                if(IsFirst())
                 {
                     /* Reset the contract operation stream */
                     contract.Reset();
 
                     /* Get the Operation */
-                    uint8_t nOP;
+                    uint8_t nOP = 0;
                     contract >> nOP;
 
                     /* Check that the operation is a CREATE as these are the only OP's allowed in the genesis transaction */
@@ -305,31 +301,53 @@ namespace TAO
 
                         /* Deserialize the register address from the contract */
                         contract >> address;
-
-                        /* Check the type of each register and increment the relative counter. */
                         switch(address.GetType())
                         {
+                            /* Tally total accounts created. */
                             case TAO::Register::Address::ACCOUNT:
                                 ++nAccounts;
                                 break;
+
+                            /* Tally total trust accounts. */
                             case TAO::Register::Address::TRUST:
                                 ++nTrust;
                                 break;
+
+                            /* Tally total name objects. */
                             case TAO::Register::Address::NAME:
                                 ++nNames;
                                 break;
+
+                            /* Tally total crypto objects. */
                             case TAO::Register::Address::CRYPTO:
                                 ++nCrypto;
                                 break;
+
                             default:
                                 return debug::error(FUNCTION, "genesis transaction contains invalid contracts.");
                         }
                     }
                     else
-                    {
                         return debug::error(FUNCTION, "genesis transaction contains invalid contracts.");
-                    }
                 }
+            }
+
+            /* Check contains contracts. */
+            if(nContracts == 0)
+                return debug::error(FUNCTION, "transaction is empty");
+
+            /* If genesis then check that the only contracts are those for the default registers.
+             * We do not make this limitation in private mode */
+            if(IsFirst() && !config::GetBoolArg("-private"))
+            {
+                //skip proof of work for unit tests
+                #ifndef UNIT_TESTS
+
+                /* Check the difficulty of the hash. */
+                if(ProofHash() > FIRST_REQUIRED_WORK)
+                    return debug::error(FUNCTION, "first transaction not enough work");
+
+                #endif
 
                 /* Check that the there are not more than the allowable default contracts */
                 if(vContracts.size() > 5 || nNames > 2 || nTrust > 1 || nAccounts > 1 || nCrypto > 1)
@@ -401,7 +419,7 @@ namespace TAO
 
 
         /* Check the trust score that is claimed is correct. */
-        bool Transaction::CheckTrust(const BlockState* pblock) const
+        bool Transaction::CheckTrust(BlockState* pblock) const
         {
             /* Check for proof of stake. */
             if(!IsCoinStake())
@@ -498,6 +516,9 @@ namespace TAO
                 if(nClaimedReward != nReward)
                     return debug::error(FUNCTION, "claimed stake reward ", nClaimedReward,
                                                   " does not match calculated reward ", nReward);
+
+                /* Update mint values. */
+                pblock->nMint += nReward;
             }
 
             else if(IsGenesis())
@@ -521,6 +542,9 @@ namespace TAO
                 /* Validate the coinstake reward calculation */
                 if(nClaimedReward != nReward)
                     return debug::error(FUNCTION, "claimed hashGenesis reward ", nClaimedReward, " does not match calculated reward ", nReward);
+
+                /* Update mint values. */
+                pblock->nMint += nReward;
             }
 
             else
@@ -917,19 +941,12 @@ namespace TAO
             /* Check all contracts. */
             for(const auto& contract : vContracts)
             {
-                /* Check for empty first contract. */
-                if(contract.Empty())
-                    return false;
-
-                /* Check for conditions. */
-                if(!contract.Empty(TAO::Operation::Contract::CONDITIONS))
-                    return false;
-
-                if(contract.Primitive() != TAO::Operation::OP::COINBASE)
-                    return false;
+                /* Check for occurance of coinbase operation. */
+                if(contract.Primitive() == TAO::Operation::OP::COINBASE)
+                    return true;
             }
 
-            return true;
+            return false;
         }
 
 
@@ -943,57 +960,45 @@ namespace TAO
         /* Determines if the transaction is for a private block. */
         bool Transaction::IsPrivate() const
         {
-            /* Check for single contract. */
-            if(vContracts.size() != 1)
-                return false;
+            /* Check all contracts. */
+            for(const auto& contract : vContracts)
+            {
+                /* Check for occurance of authorize operation. */
+                if(contract.Primitive() == TAO::Operation::OP::AUTHORIZE)
+                    return true;
+            }
 
-            /* Check for empty first contract. */
-            if(vContracts[0].Empty())
-                return false;
-
-            /* Check for conditions. */
-            if(!vContracts[0].Empty(TAO::Operation::Contract::CONDITIONS))
-                return false;
-
-            return (vContracts[0].Primitive() == TAO::Operation::OP::AUTHORIZE);
+            return false;
         }
 
 
         /* Determines if the transaction is a coinstake transaction. */
         bool Transaction::IsTrust() const
         {
-            /* Check for single contract. */
-            if(vContracts.size() != 1)
-                return false;
+            /* Check all contracts. */
+            for(const auto& contract : vContracts)
+            {
+                /* Check for occurance of trust operation. */
+                if(contract.Primitive() == TAO::Operation::OP::TRUST)
+                    return true;
+            }
 
-            /* Check for empty first contract. */
-            if(vContracts[0].Empty())
-                return false;
-
-            /* Check for conditions. */
-            if(!vContracts[0].Empty(TAO::Operation::Contract::CONDITIONS))
-                return false;
-
-            return (vContracts[0].Primitive() == TAO::Operation::OP::TRUST);
+            return false;
         }
 
 
         /* Determines if the transaction is a genesis transaction */
         bool Transaction::IsGenesis() const
         {
-            /* Check for single contract. */
-            if(vContracts.size() != 1)
-                return false;
+            /* Check all contracts. */
+            for(const auto& contract : vContracts)
+            {
+                /* Check for occurance of genesis operation. */
+                if(contract.Primitive() == TAO::Operation::OP::GENESIS)
+                    return true;
+            }
 
-            /* Check for empty first contract. */
-            if(vContracts[0].Empty())
-                return false;
-
-            /* Check for conditions. */
-            if(!vContracts[0].Empty(TAO::Operation::Contract::CONDITIONS))
-                return false;
-
-            return (vContracts[0].Primitive() == TAO::Operation::OP::GENESIS);
+            return false;
         }
 
 

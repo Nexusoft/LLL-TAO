@@ -203,10 +203,6 @@ namespace TAO
         uint32_t RPC::GetTotalConnectionCount()
         {
             uint32_t nConnections = 0;
-
-            if(LLP::LEGACY_SERVER)
-                nConnections += LLP::LEGACY_SERVER->GetConnectionCount();
-
             if(LLP::TRITIUM_SERVER)
                 nConnections += LLP::TRITIUM_SERVER->GetConnectionCount();
 
