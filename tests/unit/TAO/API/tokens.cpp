@@ -154,6 +154,7 @@ TEST_CASE( "Test Tokens API - debit token", "[tokens/debit/token]")
         params.clear();
         params["pin"] = PIN;
         params["session"] = SESSION1;
+        params["name"] = strToken;
 
         /* Invoke the API */
         ret = APICall("tokens/debit/token", params);
@@ -762,6 +763,7 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens/debit/account]")
         params.clear();
         params["pin"] = PIN;
         params["session"] = SESSION1;
+        params["address"] = hashAccount.ToString();
 
         /* Invoke the API */
         ret = APICall("tokens/debit/account", params);
@@ -824,61 +826,6 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens/debit/account]")
         REQUIRE(ret["error"]["code"].get<int32_t>() == -122);
     }
 
-    /* Test fail with missing name_to / address_to */
-    {
-        /* Build the parameters to pass to the API */
-        params.clear();
-        params["pin"] = PIN;
-        params["session"] = SESSION1;
-        params["address"] = hashAccount.ToString();
-        params["amount"] = "100";
-
-        /* Invoke the API */
-        ret = APICall("tokens/debit/account", params);
-
-        /* Check response is an error and validate error code */
-        REQUIRE(ret.find("error") != ret.end());
-        REQUIRE(ret["error"]["code"].get<int32_t>() == -64);
-    }
-
-    /* Test fail with invalid name_to */
-    {
-        /* Build the parameters to pass to the API */
-        params.clear();
-        params["pin"] = PIN;
-        params["session"] = SESSION1;
-        params["address"] = hashAccount.ToString();
-        params["amount"] = "100";
-        params["name_to"] = "random";
-
-        /* Invoke the API */
-        ret = APICall("tokens/debit/account", params);
-
-        /* Check response is an error and validate error code */
-        REQUIRE(ret.find("error") != ret.end());
-        REQUIRE(ret["error"]["code"].get<int32_t>() == -101);
-    }
-
-    /* Test fail with insufficient funds */
-    {
-        /* Build the parameters to pass to the API */
-        params.clear();
-        params["pin"] = PIN;
-        params["session"] = SESSION1;
-        params["address"] = hashAccount.ToString();
-        params["amount"] = "100";
-        params["address_to"] = hashToken.ToString();
-
-        /* Invoke the API */
-        ret = APICall("tokens/debit/account", params);
-
-        /* Check response is an error and validate error code */
-        REQUIRE(ret.find("error") != ret.end());
-        REQUIRE(ret["error"]["code"].get<int32_t>() == -69);
-    }
-
-
-
     /* Debit the token and credit the account so that we have some funds to debit */
     {
         TAO::Ledger::Transaction tx;
@@ -933,6 +880,209 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens/debit/account]")
 
     }
 
+    /* Test fail with missing name_to / address_to */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"] = PIN;
+        params["session"] = SESSION1;
+        params["address"] = hashAccount.ToString();
+        params["amount"] = "10";
+
+        /* Invoke the API */
+        ret = APICall("tokens/debit/account", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -64);
+    }
+
+    /* Test fail with invalid name_to */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"] = PIN;
+        params["session"] = SESSION1;
+        params["address"] = hashAccount.ToString();
+        params["amount"] = "10";
+        params["name_to"] = "random";
+
+        /* Invoke the API */
+        ret = APICall("tokens/debit/account", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -101);
+    }
+
+    /* Test fail with insufficient funds */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"] = PIN;
+        params["session"] = SESSION1;
+        params["address"] = hashAccount.ToString();
+        params["amount"] = "10000000";
+        params["address_to"] = hashToken.ToString();
+
+        /* Invoke the API */
+        ret = APICall("tokens/debit/account", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -69);
+    }
+
+    /* Test fail multiple recipients with invalid JSON */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"] = PIN;
+        params["session"] = SESSION1;
+        params["address"] = hashAccount.ToString();
+        params["recipients"] = "";
+
+        /* Invoke the API */
+        ret = APICall("tokens/debit/account", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -216);
+    }
+
+    /* Test fail multiple recipients with empty recipients */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"] = PIN;
+        params["session"] = SESSION1;
+        params["address"] = hashAccount.ToString();
+        params["recipients"] = json::json::array();
+
+        /* Invoke the API */
+        ret = APICall("tokens/debit/account", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -217);
+    }
+
+    /* Test fail multiple recipients with too many recipients */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"] = PIN;
+        params["session"] = SESSION1;
+        params["address"] = hashAccount.ToString();
+
+        /* create json array with 100 recipients */
+        json::json jsonRecipients = json::json::array();
+
+        for(int i=0; i<100; i++)
+        {
+            json::json jsonRecipient;
+            jsonRecipient["amount"] = "1";
+            jsonRecipient["name_to"] = strToken;
+            jsonRecipients.push_back(jsonRecipient);
+        }
+
+        params["recipients"] = jsonRecipients;
+
+        /* Invoke the API */
+        ret = APICall("tokens/debit/account", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -215);
+    }
+
+    /* Test fail multiple recipients with missing amount */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"] = PIN;
+        params["session"] = SESSION1;
+        params["address"] = hashAccount.ToString();
+
+        /* create json array with 10 recipients */
+        json::json jsonRecipients = json::json::array();
+
+        for(int i=0; i<10; i++)
+        {
+            json::json jsonRecipient;
+            jsonRecipient["name_to"] = strToken;
+            jsonRecipients.push_back(jsonRecipient);
+        }
+
+        params["recipients"] = jsonRecipients;
+
+        /* Invoke the API */
+        ret = APICall("tokens/debit/account", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -46);
+    }
+
+    /* Test fail multiple recipients with missing name_to / address_to */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"] = PIN;
+        params["session"] = SESSION1;
+        params["address"] = hashAccount.ToString();
+
+        /* create json array with 10 recipients */
+        json::json jsonRecipients = json::json::array();
+
+        for(int i=0; i<10; i++)
+        {
+            json::json jsonRecipient;
+            jsonRecipient["amount"] = "1";
+            jsonRecipients.push_back(jsonRecipient);
+        }
+
+        params["recipients"] = jsonRecipients;
+
+        /* Invoke the API */
+        ret = APICall("tokens/debit/account", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -64);
+    }
+
+    /* Test fail multiple recipients with insufficient funds */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"] = PIN;
+        params["session"] = SESSION1;
+        params["address"] = hashAccount.ToString();
+
+        /* create json array with 50 recipients */
+        json::json jsonRecipients = json::json::array();
+
+        for(int i=0; i<50; i++)
+        {
+            json::json jsonRecipient;
+            jsonRecipient["amount"] = "20000";
+            jsonRecipient["address_to"] = hashToken.ToString();
+            jsonRecipients.push_back(jsonRecipient);
+        }
+
+        params["recipients"] = jsonRecipients;
+
+        /* Invoke the API */
+        ret = APICall("tokens/debit/account", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -69);
+    }
+
+/****************** SUCCESS CASES *****************/
+
     /* Test success case by name_to */
     {
         /* Build the parameters to pass to the API */
@@ -967,7 +1117,36 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens/debit/account]")
         result = ret["result"];
         REQUIRE(result.find("txid") != result.end());
 
-     }
+    }
+
+    /* Test success case with multiple recipients */ 
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"] = PIN;
+        params["session"] = SESSION1;
+        params["address"] = hashAccount.ToString();
+
+        /* create json array with 50 recipients */
+        json::json jsonRecipients = json::json::array();
+
+        for(int i=0; i<50; i++)
+        {
+            json::json jsonRecipient;
+            jsonRecipient["amount"] = (double)(i+1)/10.0; // vary the amount in each contract 
+            jsonRecipient["address_to"] = hashToken.ToString();
+            jsonRecipients.push_back(jsonRecipient);
+        }
+
+        params["recipients"] = jsonRecipients;
+
+        /* Invoke the API */
+        ret = APICall("tokens/debit/account", params);
+
+        REQUIRE(ret.find("result") != ret.end());
+        result = ret["result"];
+        REQUIRE(result.find("txid") != result.end());
+    }
 }
 
 TEST_CASE( "Test Tokens API - credit account", "[tokens/credit/account]")

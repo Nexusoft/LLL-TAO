@@ -50,10 +50,6 @@ namespace TAO
             /* Get the session to be used for this API call */
             uint256_t nSession = users->GetSession(params);
 
-            /* Check for credit parameter. */
-            if(params.find("amount") == params.end())
-                throw APIException(-46, "Missing amount.");
-
             /* Get the account. */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
             if(!user)
@@ -67,19 +63,8 @@ namespace TAO
             if(!Users::CreateTransaction(user, strPIN, tx))
                 throw APIException(-17, "Failed to create transaction");
 
-            /* Submit the transaction payload. */
-            TAO::Register::Address hashTo;
 
-            /* If name_to is provided then use this to deduce the register address,
-             * otherwise try to find the raw hex encoded address. */
-            if(params.find("name_to") != params.end())
-                hashTo = Names::ResolveAddress(params, params["name_to"].get<std::string>());
-            else if(params.find("address_to") != params.end())
-                hashTo.SetBase58(params["address_to"].get<std::string>());
-            else
-                throw APIException(-64, "Missing recipient account name_to / address_to");
-
-            /* Get the transaction id. */
+            /* The sending account or token. */
             TAO::Register::Address hashFrom;
 
             /* If name is provided then use this to deduce the register address,
@@ -127,45 +112,117 @@ namespace TAO
             }
 
 
-            /* Get the recipent token / account object. */
-            TAO::Register::Object recipient;
-            if(!LLD::Register->ReadState(hashTo, recipient, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-209, "Recipient is not a valid account");
+            /* vector of recipient addresses and amounts */
+            std::vector<json::json> vRecipients;
 
-            /* Parse the object register. */
-            if(!recipient.Parse())
-                throw APIException(-14, "Object failed to parse");
-
-            /* Check recipient account type */
-            nStandard = recipient.Base();
-            if(nStandard != TAO::Register::OBJECTS::ACCOUNT
-            || (recipient.get<uint256_t>("token") != object.get<uint256_t>("token")))
+            /* Check for the existence of recipients array */
+            if( params.find("recipients") != params.end())
             {
-                throw APIException(-209, "Recipient is not a valid account.");
+                if(!params["recipients"].is_array())
+                    throw APIException(-216, "recipients field must be an array.");
+
+                /* Get the recipients json array */
+                json::json jsonRecipients = params["recipients"];                    
+
+                /* Check that there are recipient objects in the array */
+                if(jsonRecipients.size() == 0)
+                    throw APIException(-217, "recipients array is empty");
+
+                /* Add them to to the vector for processing */
+                for(const auto& jsonRecipient : jsonRecipients)
+                    vRecipients.push_back(jsonRecipient);
+            }
+            else
+            {
+                /* Sending to only one recipient */
+                vRecipients.push_back(params);
             }
 
-            /* Get the amount to debit. */
-            uint64_t nAmount = std::stod(params["amount"].get<std::string>()) * pow(10, nDecimals);
+            /* Check that there are not too many recipients to fit into one transaction */
+            if(vRecipients.size() > 99)
+                throw APIException(-215, "Max number of recipients (99) exceeded");
 
-            /* Check the amount is not too small once converted by the token Decimals */
-            if(nAmount == 0)
-                throw APIException(-68, "Amount too small");
+            /* Current contract ID */
+            uint8_t nContract = 0;
 
-            /* Check they have the required funds */
-            if(nAmount > nCurrentBalance)
-                throw APIException(-69, "Insufficient funds");
+            /* Process the recipients */
+            for(const auto& jsonRecipient : vRecipients)
+            {
+                /* Double check that there are not too many recipients to fit into one transaction */
+                if(nContract >= 99)
+                    throw APIException(-215, "Max number of recipients (99) exceeded");
 
-            /* The optional payment reference */
-            uint64_t nReference = 0;
-            if(params.find("reference") != params.end())
-                nReference = stoull(params["reference"].get<std::string>());
+                /* Check for amount parameter. */
+                if(jsonRecipient.find("amount") == jsonRecipient.end())
+                    throw APIException(-46, "Missing amount");
 
-            /* Submit the payload object. */
-            tx[0] << (uint8_t)TAO::Operation::OP::DEBIT << hashFrom << hashTo << nAmount << nReference;
+                /* Get the amount to debit. */
+                uint64_t nAmount = std::stod(jsonRecipient["amount"].get<std::string>()) * pow(10, nDecimals);
 
-            /* Add expiration condition unless sending to self */
-            if(recipient.hashOwner != object.hashOwner)
-                AddExpires( params, user->Genesis(), tx[0], false);
+                /* Check the amount is not too small once converted by the token Decimals */
+                if(nAmount == 0)
+                    throw APIException(-68, "Amount too small");
+
+                /* Check they have the required funds */
+                if(nAmount > nCurrentBalance)
+                    throw APIException(-69, "Insufficient funds");
+
+                /* The register address of the recipient acccount. */
+                TAO::Register::Address hashTo;
+
+                /* Check to see whether caller has provided name_to or address_to */
+                if(jsonRecipient.find("name_to") != jsonRecipient.end())
+                    hashTo = Names::ResolveAddress(params, jsonRecipient["name_to"].get<std::string>());
+                else if(jsonRecipient.find("address_to") != jsonRecipient.end())
+                {
+                    std::string strAddressTo = jsonRecipient["address_to"].get<std::string>();
+
+                    /* Decode the base58 register address */
+                    if(IsRegisterAddress(strAddressTo))
+                        hashTo.SetBase58(strAddressTo);
+
+                    /* Check that it is valid */
+                    if(!hashTo.IsValid())
+                        throw APIException(-165, "Invalid address_to");
+                }
+                else
+                    throw APIException(-64, "Missing recipient account name_to / address_to");
+
+                /* Get the recipent token / account object. */
+                TAO::Register::Object recipient;
+                if(!LLD::Register->ReadState(hashTo, recipient, TAO::Ledger::FLAGS::MEMPOOL))
+                    throw APIException(-209, "Recipient is not a valid account");
+
+                /* Parse the object register. */
+                if(!recipient.Parse())
+                    throw APIException(-14, "Object failed to parse");
+
+                /* Check recipient account type */
+                nStandard = recipient.Base();
+                if(nStandard != TAO::Register::OBJECTS::ACCOUNT
+                || (recipient.get<uint256_t>("token") != object.get<uint256_t>("token")))
+                {
+                    throw APIException(-209, "Recipient is not a valid account.");
+                }
+
+                /* The optional payment reference */
+                uint64_t nReference = 0;
+                if(jsonRecipient.find("reference") != jsonRecipient.end())
+                    nReference = stoull(jsonRecipient["reference"].get<std::string>());
+
+                /* Submit the payload object. */
+                tx[nContract] << (uint8_t)TAO::Operation::OP::DEBIT << hashFrom << hashTo << nAmount << nReference;
+
+                /* Add expiration condition unless sending to self */
+                if(recipient.hashOwner != object.hashOwner)
+                    AddExpires( jsonRecipient, user->Genesis(), tx[nContract], false);
+
+                /* Increment the contract ID */
+                nContract++;
+
+                /* Reduce the current balance by the amount for this recipient */
+                nCurrentBalance -= nAmount;
+            }
 
             /* Add the fee */
             AddFee(tx);

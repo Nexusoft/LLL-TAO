@@ -131,7 +131,6 @@ namespace TAO
             {
                 /* Sending to only one recipient */
                 vRecipients.push_back(params);
-
             }
 
             /* Check that there are not too many recipients to fit into one transaction */

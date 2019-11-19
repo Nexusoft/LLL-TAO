@@ -92,7 +92,7 @@ Deduct an amount of NXS from an account and send it to another account or legacy
 
 Any fee that is applicable fo this transaction is deducted from the sending account, NOT the default account.
 
-The method supports the ability to send to multiple recipients in one transaction by suppling a `recipients` array instead of the single `name_to`/`address_to`/`amount`. The method allows up to 99 recipients to be supplied.  
+The method supports the ability to send to multiple recipients in one transaction by supplying a `recipients` array instead of the single `name_to`/`address_to`/`amount`. The method allows up to 99 recipients to be supplied.  
 
 
 ### Endpoint:
@@ -120,7 +120,7 @@ The method supports the ability to send to multiple recipients in one transactio
 
 `expires` : This optional field allows callers to specify an expiration for the debit transaction. The expires value is the `number of seconds` from the transaction creation time after which the transaction can no longer be credited by the recipient.  Conversely, when you apply an expiration to a transaction, you are unable to void the transaction until after the expiration time.  If omitted, a default expiration of 1 day (86400 seconds) is applied
 
-`recipients` : This optional array can be provided as an alternative to the single `name_to`/`address_to`, `amount`, `reference`, and `expires` fields.  Each object in the array can have `name_to`/`address_to`, `amount`, `reference`, and `expires` fields, as described above.
+`recipients` : This optional array can be provided as an alternative to the single `name_to`/`address_to`, `amount`, `reference`, and `expires` fields.  Each object in the array can have `name_to`/`address_to`, `amount`, `reference`, and `expires` fields, as described above. Up to 99 recipients can be included in the array.
 
 
 ### Example:
@@ -150,12 +150,12 @@ The following example shows the json payload for a debit from an account called 
         {
             "name_to": "bob:savings",
             "amount": 5,
-            "reference: 1234
+            "reference": 1234
         },
         {
             "address_to": "8CHjS5Qe7Mghgrqb6NeEaVxjexbdp9p2QVdRTt8W4rzbWhu3fL8",
             "amount": 5,
-            "reference: 5678
+            "reference": 5678
         },
         {
             "address_to": "4kYv4Xft6wufMVi191nQDNprgkK6kzy6gqWRpmfMxyx9KMfEV1u",

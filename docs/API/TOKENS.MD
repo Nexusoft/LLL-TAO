@@ -85,7 +85,9 @@ Create a new token object register. The API supports an alternative endpoint tha
 # `debit/token`
 
 Deduct a token amount from a token's initial supply and send it to a token account. The API supports an alternative endpoint that can include the token name in the URI.  For example `/tokens/debit/token/mytoken` will resolve to `tokens/debit/token?name=mytoken`.   
+Any fee that is applicable fo this transaction is deducted from the `default` account.
 
+The method supports the ability to send to multiple recipients in one transaction by supplying a `recipients` array instead of the single `name_to`/`address_to`/`amount`. The method allows up to 99 recipients to be supplied.  
 
 ### Endpoint:
 
@@ -112,6 +114,8 @@ Deduct a token amount from a token's initial supply and send it to a token accou
 
 `expires` : This optional field allows callers to specify an expiration for the debit transaction. The expires value is the `number of seconds` from the transaction creation time after which the transaction can no longer be credited by the recipient.  Conversely, when you apply an expiration to a transaction, you are unable to void the transaction until after the expiration time.  If omitted, a default expiration of 1 day (86400 seconds) is applied 
 
+`recipients` : This optional array can be provided as an alternative to the single `name_to`/`address_to`, `amount`, `reference`, and `expires` fields.  Each object in the array can have `name_to`/`address_to`, `amount`, `reference`, and `expires` fields, as described above.  Up to 99 recipients can be included in the array.
+
 ### Example:
 
 The following example shows the json payload for a debit of 10.5 ABC tokens (that itself was created by the sig chain logged into session "5e9d8aa625a1838f60f30e12058089169e32c968389f365428f7b0c878bb47f8") being sent to a token account identified by the name "jack:savings".  In the name_to field, "jack" refers to the username of the account holder and "savings" is their token account.  If jack is concerned about privacy he could have provided the register address of his token account instead
@@ -123,6 +127,34 @@ The following example shows the json payload for a debit of 10.5 ABC tokens (tha
     "name": "bob:ABC",
     "amount": 10.5,
     "name_to": "jack:savings"
+}
+```
+
+### Example Multiple Recipients:
+
+The following example shows the json payload for a debit from a token called "ABC" made to 3 separate recipients, each receiving 5 ABC tokens, and each with a different reference  
+
+```
+{
+    "pin": "1234",
+    "name": "ABC"
+    "recipients" :
+    [
+        {
+            "name_to": "bob:abc",
+            "amount": 5,
+            "reference": 1234
+        },
+        {
+            "address_to": "8CHjS5Qe7Mghgrqb6NeEaVxjexbdp9p2QVdRTt8W4rzbWhu3fL8",
+            "amount": 5,
+            "reference": 5678
+        },
+        {
+            "address_to": "8CM4SYrd6ohcBB8tfqyZG3MCtDStMUXN37gwC2RtkNSUayM2FSN",
+            "amount": 5
+        }
+    ]
 }
 ```
 
@@ -451,6 +483,9 @@ This example creates a token account called "savings" for a token identified by 
 
 Deduct a token amount from a token account and send it to another token account. The API supports an alternative endpoint that can include the account name in the URI.  For example `/tokens/debit/account/savings` will resolve to `tokens/debit/account?name=savings`.   
 
+Any fee that is applicable fo this transaction is deducted from the `default` account.
+
+The method supports the ability to send to multiple recipients in one transaction by supplying a `recipients` array instead of the single `name_to`/`address_to`/`amount`. The method allows up to 99 recipients to be supplied.  
 
 ### Endpoint:
 
@@ -477,6 +512,8 @@ Deduct a token amount from a token account and send it to another token account.
 
 `expires` : This optional field allows callers to specify an expiration for the debit transaction. The expires value is the `number of seconds` from the transaction creation time after which the transaction can no longer be credited by the recipient.  Conversely, when you apply an expiration to a transaction, you are unable to void the transaction until after the expiration time.  If omitted, a default expiration of 1 day (86400 seconds) is applied 
 
+`recipients` : This optional array can be provided as an alternative to the single `name_to`/`address_to`, `amount`, `reference`, and `expires` fields.  Each object in the array can have `name_to`/`address_to`, `amount`, `reference`, and `expires` fields, as described above.  Up to 99 recipients can be included in the array.
+
 ### Example:
 
 The following example shows the json payload for a debit of 10.5 tokens from an account called "main" (that itself was created by the sig chain logged into session "5e9d8aa625a1838f60f30e12058089169e32c968389f365428f7b0c878bb47f8") being sent to a token account identified by the name "bob:savings".  In the name_to field, "bob" refers to the username of the account holder and "savings" is their token account.  If Bob is concerned about privacy he could have provided the register address of his token account instead
@@ -488,6 +525,34 @@ The following example shows the json payload for a debit of 10.5 tokens from an 
     "name": "main",
     "amount": 10.5,
     "name_to": "bob:savings"
+}
+```
+
+### Example Multiple Recipients:
+
+The following example shows the json payload for a debit from an account called "main" made to 3 separate recipients, each receiving 5 tokens, and each with a different reference  
+
+```
+{
+    "pin": "1234",
+    "name": "main"
+    "recipients" :
+    [
+        {
+            "name_to": "bob:abc",
+            "amount": 5,
+            "reference": 1234
+        },
+        {
+            "address_to": "8CHjS5Qe7Mghgrqb6NeEaVxjexbdp9p2QVdRTt8W4rzbWhu3fL8",
+            "amount": 5,
+            "reference": 5678
+        },
+        {
+            "address_to": "8CM4SYrd6ohcBB8tfqyZG3MCtDStMUXN37gwC2RtkNSUayM2FSN",
+            "amount": 5
+        }
+    ]
 }
 ```
 
