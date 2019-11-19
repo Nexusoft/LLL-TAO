@@ -72,6 +72,11 @@ namespace TAO
             if(params.find("verbose") != params.end())
                 strVerbose = params["verbose"].get<std::string>();
 
+            /* Get verbose levels. */
+            std::string strOrder = "desc";
+            if(params.find("order") != params.end())
+                strOrder = params["order"].get<std::string>();
+
             uint32_t nVerbose = 1;
             if(strVerbose == "default")
                 nVerbose = 1;
@@ -85,13 +90,11 @@ namespace TAO
             if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-144, "No transactions found");
 
-            /* Loop until genesis. */
-            uint32_t nTotal = 0;
+            /* Loop until genesis, storing all tx into a vector (these will be in descending order). */
+            std::vector<TAO::Ledger::Transaction> vtx;
+
             while(hashLast != 0)
             {
-                /* Get the current page. */
-                uint32_t nCurrentPage = nTotal / nLimit;
-
                 /* Get the transaction from disk. */
                 TAO::Ledger::Transaction tx;
                 if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
@@ -99,6 +102,21 @@ namespace TAO
 
                 /* Set the next last. */
                 hashLast = !tx.IsFirst() ? tx.hashPrevTx : 0;
+
+                vtx.push_back(tx);
+            }
+
+            /* Transactions sorted in descending order. Reverse the order if ascending requested. */
+            if(strOrder == "asc")
+                std::reverse(vtx.begin(), vtx.end());
+
+            uint32_t nTotal = 0;
+
+            for(auto tx : vtx)
+            {
+                /* Get the current page. */
+                uint32_t nCurrentPage = nTotal / nLimit;
+
                 ++nTotal;
 
                 /* Check the paged data. */

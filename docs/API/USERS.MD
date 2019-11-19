@@ -821,6 +821,8 @@ This will list off all of the transactions for the requested signature chain gen
 
 `limit` : The number of transactions to return for the current page. The default is 100.
 
+`order` : The transaction order, based on signature chain sequence. 'asc' for oldest first, 'desc' for most recent first. The default is 'desc'.
+
 `verbose` : Optional, determines how much transaction data to include in the response. Supported values are :
  - `default` : hash
  - `summary` : type, version, sequence, timestamp, operation, and confirmations.
