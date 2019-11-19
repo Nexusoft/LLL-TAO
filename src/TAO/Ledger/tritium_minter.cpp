@@ -141,8 +141,27 @@ namespace TAO
                 /* Wait for minter thread to stop */
                 TritiumMinter::tritiumMinterThread.join();
 
+                /* Reset internals */
+                hashLastBlock = 0;
+                nSleepTime = 1000;
+                fWait.store(false);
+                nTrustWeight.store(0.0);
+                nBlockWeight.store(0.0);
+                nStakeRate.store(0.0);
+
+                account = TAO::Register::Object();
+                stateLast = BlockState();
+                fStakeChange = false;
+                stakeChange = StakeChange();
+                block = TritiumBlock();
+                fGenesis = false;
+                nTrust = 0;
+                nBlockAge = 0;
+
+                /* Update minter status */
                 TritiumMinter::fStarted.store(false);
                 TritiumMinter::fStop.store(false);
+
                 return true;
             }
 
@@ -443,7 +462,6 @@ namespace TAO
             /* Reset sleep time on successful completion */
             if(nSleepTime == 5000)
             {
-                /* Reset sleep time after coin age meets requirement. */
                 nSleepTime = 1000;
                 nCounter = 0;
             }
@@ -531,28 +549,32 @@ namespace TAO
         {
             static uint32_t nCounter = 0; //Prevents log spam during wait period
 
-            /* Check the block interval.
+            /* Check the block interval for trust transactions.
              * This is checked here before minting and after setting up the block/calculating weights so that all staking metrics
              * continue to be updated during the interval wait. This way, anyone who retrieves and display metrics will see them
              * change appropriately. For example, they will see block weight reset after minting a block.
              */
-            const uint32_t nInterval = block.nHeight - stateLast.nHeight;
-            const uint32_t nMinInterval = MinStakeInterval(block);
-
-            if(nInterval <= nMinInterval)
+            if(!fGenesis)
             {
-                /* Below minimum interval for generating stake blocks. Increase sleep time until can continue normally. */
-                nSleepTime = 5000; //5 second wait is reset below (can't sleep too long or will hang until wakes up on shutdown)
+                const uint32_t nInterval = block.nHeight - stateLast.nHeight;
+                const uint32_t nMinInterval = MinStakeInterval(block);
 
-                /* Update log every 60 iterations (5 minutes) */
-                if((nCounter % 60) == 0)
-                    debug::log(0, FUNCTION, "Stake Minter: Too soon after mining last stake block. ",
-                               (nMinInterval - nInterval + 1), " blocks remaining until staking available.");
+                if(nInterval <= nMinInterval)
+                {
+                    /* Below minimum interval for generating stake blocks. Increase sleep time until can continue normally. */
+                    nSleepTime = 5000; //5 second wait is reset below (can't sleep too long or will hang until wakes up on shutdown)
 
-                ++nCounter;
+                    /* Update log every 60 iterations (5 minutes) */
+                    if((nCounter % 60) == 0)
+                        debug::log(0, FUNCTION, "Stake Minter: Too soon after mining last stake block. ",
+                                   (nMinInterval - nInterval + 1), " blocks remaining until staking available.");
 
-                return;
+                    ++nCounter;
+
+                    return;
+                }
             }
+
             /* Genesis blocks do not include mempool transactions.  Therefore if there are already any transactions in the mempool
                for this sig chain the genesis block will fail to be accepted because the producer.hashPrevTx would not be on disk.
                Therefore if this is a genesis block, skip until there are no mempool transactions for this sig chain. */
