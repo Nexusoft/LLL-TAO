@@ -121,7 +121,7 @@ namespace TAO
             }
 
             /* Create the transaction. */
-            if(!TAO::Ledger::CreateTransaction(user, strPin, tx))
+            if(!Users::CreateTransaction(user, strPin, tx))
             {
                 user.free();
                 throw APIException(-17, "Failed to create transaction");
@@ -137,10 +137,10 @@ namespace TAO
             tx[1] << uint8_t(TAO::Operation::OP::CREATE)      << hashRegister
                   << uint8_t(TAO::Register::REGISTER::OBJECT) << TAO::Register::CreateTrust().GetState();
 
-            /* Generate a random hash for this objects register address */
+            /* Generate a random hash for the default account register address */
             hashRegister = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
 
-            /* Add a Name record for the trust account */
+            /* Add a Name record for the default account */
             tx[2] = Names::CreateName(user->Genesis(), "default", "", hashRegister);
 
             /* Add the default account register operation to the transaction */
