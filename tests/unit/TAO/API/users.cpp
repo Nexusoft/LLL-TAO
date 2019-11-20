@@ -15,6 +15,11 @@ ________________________________________________________________________________
 
 #include <LLC/include/random.h>
 
+#include <LLD/include/global.h>
+
+#include <TAO/Ledger/types/mempool.h>
+#include <TAO/Operation/include/execute.h>
+
 #include <unit/catch2/catch.hpp>
 
 TEST_CASE( "Test Users API", "[API/users]")
@@ -115,6 +120,28 @@ TEST_CASE( "Test Users API", "[API/users]")
         REQUIRE(result.find("sequence") != result.end());
         REQUIRE(result.find("timestamp") != result.end());
         REQUIRE(result.find("version") != result.end());
+
+        /* Write sig chain genesis transaction to disk */
+        uint256_t hashGenesis( result["genesis"].get<std::string>());
+        uint512_t txid( result["hash"].get<std::string>());
+
+        REQUIRE(LLD::Ledger->WriteGenesis(hashGenesis, txid));
+
+        TAO::Ledger::Transaction tx;
+        REQUIRE(TAO::Ledger::mempool.Get(txid, tx));
+
+        REQUIRE(LLD::Ledger->WriteTx(txid, tx));
+        REQUIRE(LLD::Ledger->WriteLast(hashGenesis, txid));
+
+        REQUIRE(tx.Verify());
+        
+        for(uint32_t nContract = 0; nContract < tx.Size(); nContract++)
+        {
+            REQUIRE(TAO::Operation::Execute(tx[nContract], TAO::Ledger::FLAGS::BLOCK));
+        }
+
+        REQUIRE(TAO::Ledger::mempool.Remove(tx.GetHash()));
+
     }
 
     /* Test failing if user already exists */
@@ -222,6 +249,85 @@ TEST_CASE( "Test Users API", "[API/users]")
     }
 
 
+    /* Test password change fail, invalid password*/
+    {
+
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["session"] = strSession;
+        params["password"] = "XXXXXXXX";//PASSWORD;
+        params["pin"] = PIN;
+        params["new_password"] = PASSWORD + "1";
+        params["new_pin"] = PIN + "1";
+
+        /* Invoke the API */
+        ret = APICall("users/update/user", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -139);
+    }
+
+
+    /* Test password change fail, invalid pin */
+    {
+
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["session"] = strSession;
+        params["password"] = PASSWORD;
+        params["pin"] = 999999;//PIN;
+        params["new_password"] = PASSWORD + "1";
+        params["new_pin"] = PIN + "1";
+
+        /* Invoke the API */
+        ret = APICall("users/update/user", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -139);
+    }
+
+    /* Test password change fail, missing new credentials */
+    {
+
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["session"] = strSession;
+        params["password"] = PASSWORD;
+        params["pin"] = PIN;
+
+        /* Invoke the API */
+        ret = APICall("users/update/user", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -218);
+    }
+
+
+    /* Test password change success */
+    {
+
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["session"] = strSession;
+        params["password"] = PASSWORD;
+        params["pin"] = PIN;
+        params["new_password"] = PASSWORD + "1";
+        params["new_pin"] = PIN + "1";
+
+        /* Invoke the API */
+        ret = APICall("users/update/user", params);
+
+        /* Check that the result is as we expect it to be */
+        REQUIRE(ret.find("result") != ret.end());
+        result = ret["result"];
+        REQUIRE(result.find("txid") != result.end());
+
+    }
+
+
     /* Test logout success */
     {
         /* Build the parameters to pass to the API */
@@ -237,6 +343,53 @@ TEST_CASE( "Test Users API", "[API/users]")
 
         REQUIRE(result.find("success") != result.end());
         REQUIRE(result["success"].get<bool>() == true);
+
+    }
+
+    /* Test login success with changed credentials*/
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["username"] = strUsername;
+        params["password"] = PASSWORD + "1";
+        params["pin"] = PIN + "1";
+
+        /* Invoke the API */
+        ret = APICall("users/login/user", params);
+
+        /* Check that the result is as we expect it to be */
+        REQUIRE(ret.find("result") != ret.end());
+        result = ret["result"];
+
+        REQUIRE(result.find("genesis") != result.end());
+
+        if(config::fMultiuser.load())
+        {
+            REQUIRE(result.find("session") != result.end());
+
+            /* Grab the session ID for future calls */
+            strSession = result["session"].get<std::string>();
+        }
+    }
+
+    /* Test password change back to original credentials success */
+    {
+
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["session"] = strSession;
+        params["password"] = PASSWORD + "1";
+        params["pin"] = PIN + "1";
+        params["new_password"] = PASSWORD;
+        params["new_pin"] = PIN;
+
+        /* Invoke the API */
+        ret = APICall("users/update/user", params);
+
+        /* Check that the result is as we expect it to be */
+        REQUIRE(ret.find("result") != ret.end());
+        result = ret["result"];
+        REQUIRE(result.find("txid") != result.end());
 
     }
 

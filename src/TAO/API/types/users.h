@@ -669,7 +669,7 @@ namespace TAO
             *  @param[in] contract The contract to sanitize 
             *  @param[in] mapStates map of register states used by Build()
             * 
-            *  @return Return value description.
+            *  @return True if the contract was sanitized without errors.
             *
             **/
             bool sanitize_contract(TAO::Operation::Contract& contract, std::map<uint256_t, TAO::Register::State> &mapStates );
@@ -683,6 +683,21 @@ namespace TAO
             *
             **/
             void auto_login();
+
+
+            /** update_crypto_keys
+            *
+            *  Generates new keys in the Crypto object register for a signature chain, using the specified pin, and adds the update
+            *  contract to the transaction.
+            *
+            *  @param[in] user The signature chain to update
+            *  @param[in] strPin The secret value to use to generate the new private keys.
+            *  @param[out] tx The transaction reference to add the update contract to 
+            *
+            *  @return void.
+            *
+            **/
+            void update_crypto_keys(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPin, TAO::Ledger::Transaction& tx );
 
 
         };

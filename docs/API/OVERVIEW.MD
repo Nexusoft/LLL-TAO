@@ -352,3 +352,5 @@ Error Codes
 | -215 | Max number of recipients (99) exceeded |
 | -216 | recipients field must be an array |
 | -217 | recipients array is empty |
+| -218 | User password / pin not changed |
+| -219 | Could not retrieve Crypto object |

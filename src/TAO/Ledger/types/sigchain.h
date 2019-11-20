@@ -137,6 +137,20 @@ namespace TAO
 
             /** Generate
              *
+             *  This function is responsible for generating the private key in the sigchain with a specific password and pin.
+             *  This version should be used when changing the password and/or pin
+             *
+             *  @param[in] nKeyID The key number in the keychian
+             *  @param[in] strPassword The password to use
+             *  @param[in] strSecret The secret phrase to use
+             *
+             *  @return The 512 bit hash of this key in the series.
+             **/
+            uint512_t Generate(const uint32_t nKeyID, const SecureString& strPassword, const SecureString& strSecret) const;
+
+
+            /** Generate
+             *
              *  This function is responsible for genearting the private key in the sigchain of a specific account.
              *  The sigchain is a series of keys seeded from a secret phrase and a PIN number.
              *

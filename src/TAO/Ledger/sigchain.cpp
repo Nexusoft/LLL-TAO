@@ -258,6 +258,84 @@ namespace TAO
         }
 
 
+        /* This function is responsible for generating the private key in the sigchain with a specific password and pin.
+        *  This version should be used when changing the password and/or pin */
+        uint512_t SignatureChain::Generate(const uint32_t nKeyID, const SecureString& strPassword, const SecureString& strSecret) const
+        {
+            /* Generate the Secret Phrase */
+            std::vector<uint8_t> vUsername(strUsername.begin(), strUsername.end());
+            vUsername.insert(vUsername.end(), (uint8_t*)&nKeyID, (uint8_t*)&nKeyID + sizeof(nKeyID));
+
+            /* Set to minimum salt limits. */
+            if(vUsername.size() < 8)
+                vUsername.resize(8);
+
+            /* Generate the Secret Phrase */
+            std::vector<uint8_t> vPassword(strPassword.begin(), strPassword.end());
+            vPassword.insert(vPassword.end(), (uint8_t*)&nKeyID, (uint8_t*)&nKeyID + sizeof(nKeyID));
+
+            /* Generate the secret data. */
+            std::vector<uint8_t> vSecret(strSecret.begin(), strSecret.end());
+            vSecret.insert(vSecret.end(), (uint8_t*)&nKeyID, (uint8_t*)&nKeyID + sizeof(nKeyID));
+
+            // low-level API
+            std::vector<uint8_t> hash(64);
+
+            /* Create the hash context. */
+            argon2_context context =
+            {
+                /* Hash Return Value. */
+                &hash[0],
+                64,
+
+                /* Password input data. */
+                &vPassword[0],
+                static_cast<uint32_t>(vPassword.size()),
+
+                /* Username and key ID as the salt. */
+                &vUsername[0],
+                static_cast<uint32_t>(vUsername.size()),
+
+                /* The secret phrase as secret data. */
+                &vSecret[0],
+                static_cast<uint32_t>(vSecret.size()),
+
+                /* Optional associated data */
+                NULL, 0,
+
+                /* Computational Cost. */
+                std::max(1u, uint32_t(config::GetArg("-argon2", 12))),
+
+                /* Memory Cost (64 MB). */
+                uint32_t(1 << std::max(4u, uint32_t(config::GetArg("-argon2_memory", 16)))),
+
+                /* The number of threads and lanes */
+                1, 1,
+
+                /* Algorithm Version */
+                ARGON2_VERSION_13,
+
+                /* Custom memory allocation / deallocation functions. */
+                NULL, NULL,
+
+                /* By default only internal memory is cleared (pwd is not wiped) */
+                ARGON2_DEFAULT_FLAGS
+            };
+
+            /* Run the argon2 computation. */
+            int nRet = argon2id_ctx(&context);
+            if(nRet != ARGON2_OK)
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, "Argon2 failed with code ", nRet));
+
+
+            /* Set the bytes for the key. */
+            uint512_t hashKey;
+            hashKey.SetBytes(hash);
+
+            return hashKey;
+        }
+
+
         /*
          *  This function is responsible for genearting the private key in the keychain of a specific account.
          *  The keychain is a series of keys seeded from a secret phrase and a PIN number.
