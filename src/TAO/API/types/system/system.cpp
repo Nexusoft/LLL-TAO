@@ -45,10 +45,11 @@ namespace TAO
         /* Standard initialization function. */
         void System::Initialize()
         {
-            mapFunctions["get/info"] = Function(std::bind(&System::GetInfo,    this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["stop"]     = Function(std::bind(&System::Stop,    this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["list/peers"] = Function(std::bind(&System::ListPeers,    this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["list/lisp-eids"] = Function(std::bind(&System::LispEIDs, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["get/info"]         = Function(std::bind(&System::GetInfo,    this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["get/trustinfo"]    = Function(std::bind(&System::GetTrustInfo,    this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["stop"]             = Function(std::bind(&System::Stop,    this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["list/peers"]       = Function(std::bind(&System::ListPeers,    this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["list/lisp-eids"]   = Function(std::bind(&System::LispEIDs, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["validate/address"] = Function(std::bind(&System::Validate,    this, std::placeholders::_1, std::placeholders::_2));
         }
 
@@ -59,6 +60,7 @@ namespace TAO
         {
             if(fHelp || params.size() != 0)
                 return std::string("stop - Stop Nexus server.");
+                
             // Shutdown will take long enough that the response should get back
             Shutdown();
             return std::string("Nexus server stopping");

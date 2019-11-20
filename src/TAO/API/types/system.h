@@ -126,6 +126,18 @@ namespace TAO
 
 
 
+            /** GetTrustInfo
+             *
+             *  Returns information about current trust and staking metrics
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json GetTrustInfo(const json::json& params, bool fHelp);
+
         };
     }
 }
