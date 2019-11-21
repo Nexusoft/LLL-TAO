@@ -117,7 +117,7 @@ namespace TAO
 
                 /* Get the recipients json array */
                 json::json jsonRecipients = params["recipients"];
-                    
+
 
                 /* Check that there are recipient objects in the array */
                 if(jsonRecipients.size() == 0)
@@ -167,13 +167,14 @@ namespace TAO
 
                 /* The register address of the recipient acccount. */
                 TAO::Register::Address hashTo;
+                std::string strAddressTo;
 
                 /* Check to see whether caller has provided name_to or address_to */
                 if(jsonRecipient.find("name_to") != jsonRecipient.end())
                     hashTo = Names::ResolveAddress(params, jsonRecipient["name_to"].get<std::string>());
                 else if(jsonRecipient.find("address_to") != jsonRecipient.end())
                 {
-                    std::string strAddressTo = jsonRecipient["address_to"].get<std::string>();
+                    strAddressTo = jsonRecipient["address_to"].get<std::string>();
 
                     /* Decode the base58 register address */
                     if(IsRegisterAddress(strAddressTo))
@@ -185,15 +186,18 @@ namespace TAO
                 }
                 else
                     throw APIException(-64, "Missing recipient account name_to / address_to");
-            
+
 
 
                 /* Build the transaction payload object. */
                 if(hashTo.IsLegacy())
                 {
+                    Legacy::NexusAddress legacyAddress;
+                    legacyAddress.SetString(strAddressTo);
+
                     /* legacy payload */
                     Legacy::Script script;
-                    script.SetNexusAddress(Legacy::NexusAddress(hashTo));
+                    script.SetNexusAddress(legacyAddress);
 
                     tx[nContract] << (uint8_t)OP::LEGACY << hashFrom << nAmount << script;
 
@@ -224,7 +228,7 @@ namespace TAO
                         {
                             if(recipient.get<uint256_t>("token") != object.get<uint256_t>("token"))
                                 throw APIException(-209, "Recipient account is for a different token.");
-                            
+
                             break;
                         }
                         case TAO::Register::OBJECTS::NONSTANDARD :
@@ -258,7 +262,7 @@ namespace TAO
 
                     /* Build the OP:DEBIT */
                     tx[nContract] << (uint8_t)OP::DEBIT << hashFrom << hashTo << nAmount << nReference;
-                
+
                     /* Add expiration condition unless sending to self */
                     if(recipient.hashOwner != object.hashOwner)
                         AddExpires( jsonRecipient, user->Genesis(), tx[nContract], fTokenizedDebit);
