@@ -56,7 +56,8 @@ namespace TAO
     namespace API
     {
         /* Automatically logs in the sig chain using the credentials configured in the config file.  Will also create the sig
-        *  chain if it doesn't exist and configured with autocreate=1. */
+        *  chain if it doesn't exist and configured with autocreate=1.
+        *  When autocreate=1 this will log in the user while sig chain create is still in the mempool */
         void Users::auto_login()
         {
             /* Flag indicating that the auto login has successfully run.  Once it has run successfully once it will not run again
@@ -93,12 +94,26 @@ namespace TAO
                             /* If it doesn't exist then create it if configured to do so */
                             if(config::GetBoolArg("-autocreate"))
                             {
+                                bool fLocalTestnet = config::fTestNet.load() && !config::GetBoolArg("-dns", true);
+
+                                /* Can only create user if synced and (if not local) have connections.
+                                 * Return without create/login if cannot create, yet. It will have to try again.
+                                 */
+                                if(TAO::Ledger::ChainState::Synchronizing()
+                                || (LLP::TRITIUM_SERVER->GetConnectionCount() == 0 && !fLocalTestnet))
+                                {
+                                    user.free();
+                                    return;
+                                }
+
                                 /* The genesis transaction  */
                                 TAO::Ledger::Transaction tx;
 
                                 /* Create the sig chain genesis transaction */
                                 create_sig_chain(strUsername, strPassword, strPin, tx);
 
+                                /* Display that login was successful. */
+                                debug::log(0, "Auto-Create Successful");
                             }
                             else
                                 throw APIException(-203, "Autologin user not found");
