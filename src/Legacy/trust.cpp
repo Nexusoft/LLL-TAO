@@ -15,7 +15,9 @@ ________________________________________________________________________________
 
 #include <Legacy/include/enum.h>
 #include <Legacy/include/evaluate.h>
+#include <Legacy/wallet/wallet.h>
 
+#include <Legacy/types/address.h>
 #include <Legacy/types/transaction.h>
 #include <Legacy/types/trustkey.h>
 #include <Legacy/types/txin.h>
@@ -151,6 +153,31 @@ namespace Legacy
                     vchTrustKey = vSolutions[0]; //Save this as the pub key for the trust key
 
                 else if(vchTrustKey != vSolutions[0])
+                    return false; // Inputs not all from same address
+            }
+            else if(whichType == Legacy::TX_PUBKEYHASH)
+            {
+                /* pub key hash output cannot extract the pub key, have to get it from wallet key store.
+                 * For this case, legacy wallet must be on same machine as migrate and unlocked or it won't work
+                 */
+                NexusAddress address;
+                std::vector<uint8_t> vchPubKey;
+                Legacy::Wallet& wallet = Legacy::Wallet::GetInstance();
+
+                address.SetHash256(uint256_t(vSolutions[0]));
+
+                /* Wallet must be unlocked */
+                if(wallet.IsLocked())
+                    return false;
+
+                /* Wallet must contain the trust key and able to retrieve it successfully */
+                if(!wallet.GetPubKey(address, vchPubKey))
+                    return false;
+
+                if(nInput == 0)
+                    vchTrustKey = vchPubKey; //Save this as the pub key for the trust key
+
+                else if(vchTrustKey != vchPubKey)
                     return false; // Inputs not all from same address
             }
             else
