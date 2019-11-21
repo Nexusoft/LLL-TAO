@@ -354,3 +354,5 @@ Error Codes
 | -217 | recipients array is empty |
 | -218 | User password / pin not changed |
 | -219 | Could not retrieve Crypto object |
+| -220 | Missing recovery.  Please include the previous recovery seed when setting a new one |
+| -221 | Recovery seed must be a minimum of 40 characters |

@@ -393,4 +393,100 @@ TEST_CASE( "Test Users API", "[API/users]")
 
     }
 
+
+    /* Test recovery set fail, recovery too short*/
+    {
+
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["session"] = strSession;
+        params["password"] = PASSWORD;
+        params["pin"] = PIN;
+        params["new_recovery"] = "this recovery is too short";
+
+        /* Invoke the API */
+        ret = APICall("users/update/user", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -221);
+    }
+
+    /* Test recovery set fail, invalid password*/
+    {
+
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["session"] = strSession;
+        params["password"] = "XXXXXXXX";//PASSWORD;
+        params["pin"] = PIN;
+        params["new_recovery"] = "this is the recovery seed that i want to use";
+
+        /* Invoke the API */
+        ret = APICall("users/update/user", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -139);
+    }
+
+    /* Test recovery set success */
+    {
+
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["session"] = strSession;
+        params["password"] = PASSWORD;
+        params["pin"] = PIN;
+        params["new_recovery"] = "this is the recovery seed that i want to use";
+
+        /* Invoke the API */
+        ret = APICall("users/update/user", params);
+
+        /* Check that the result is as we expect it to be */
+        REQUIRE(ret.find("result") != ret.end());
+        result = ret["result"];
+        REQUIRE(result.find("txid") != result.end());
+    }
+
+    /* Test recovery set fail, missing previous recovery seed */
+    {
+
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["session"] = strSession;
+        params["password"] = PASSWORD;
+        params["pin"] = PIN;
+        params["new_recovery"] = "this is the NEW recovery seed that i want to use";
+        //params["recovery"] = "this is the recovery seed that i want to use";
+
+        /* Invoke the API */
+        ret = APICall("users/update/user", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -220);
+    }
+
+    /* Test recovery set success, NOTE the previous recovery must be provided in order to sign the transaction */
+    {
+
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["session"] = strSession;
+        params["password"] = PASSWORD;
+        params["pin"] = PIN;
+        params["recovery"] = "this is the recovery seed that i want to use";
+        params["new_recovery"] = "this is the NEW recovery seed that i want to use";
+
+        /* Invoke the API */
+        ret = APICall("users/update/user", params);
+
+        /* Check that the result is as we expect it to be */
+        REQUIRE(ret.find("result") != ret.end());
+        result = ret["result"];
+        REQUIRE(result.find("txid") != result.end());
+    }
+
+
 }

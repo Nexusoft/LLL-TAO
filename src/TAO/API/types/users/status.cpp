@@ -54,6 +54,9 @@ namespace TAO
 
             /* sig chain transaction count */
             uint32_t nTransactions = 0;
+
+            /* flag indicating recovery has been set */
+            bool fRecovery = false;
             
             /* Read the last transaction for the sig chain */
             uint512_t hashLast = 0;
@@ -67,7 +70,12 @@ namespace TAO
                 /* Number of transactions is the last sequence number + 1 (since the sequence is 0 based) */
                 nTransactions = tx.nSequence + 1;
 
+                /* Set recovery flag if recovery hash has been set on the last transaction in the chain */
+                fRecovery = tx.hashRecovery != 0;
             }
+
+            /* populate fecovery flag */
+            ret["recovery"] = fRecovery;
 
             /* populate the transaction count */
             ret["transactions"] = nTransactions;

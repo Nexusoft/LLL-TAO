@@ -151,7 +151,7 @@ namespace TAO
 
             /** Generate
              *
-             *  This function is responsible for genearting the private key in the sigchain of a specific account.
+             *  This function is responsible for generating the private key in the sigchain of a specific account.
              *  The sigchain is a series of keys seeded from a secret phrase and a PIN number.
              *
              *  @param[in] strType The type of signing key used.
@@ -161,6 +161,19 @@ namespace TAO
              *  @return The 512 bit hash of this key in the series.
              **/
             uint512_t Generate(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret) const;
+
+
+            /** Generate
+             *
+             *  This function is responsible for generating a private key from a seed phrase.  By comparison to the other Generate
+             *  functions, this version using far stronger argon2 hashing since the only data input into the hashing function is 
+             *  the seed phrase itself.
+             *
+             *  @param[in] strSecret The secret seed phrase to use
+             *
+             *  @return The 512 bit hash of the generated public key.
+             **/
+            uint512_t Generate(const SecureString& strSecret) const;
 
 
             /** KeyHash
@@ -175,6 +188,18 @@ namespace TAO
              *  @return The 256 bit hash of this key in the series.
              **/
             uint256_t KeyHash(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret, const uint8_t nType) const;
+
+
+            /** RecoveryHash
+             *
+             *  This function generates a hash of a public key generated from a recovery seed phrase.
+             *
+             *  @param[in] strRecovery The recovery seed phrase to use
+             *  @param[in] nType The key type to use.
+             *
+             *  @return The 256 bit hash of the generated public key 
+             **/
+            uint256_t RecoveryHash(const SecureString& strRecovery, const uint8_t nType) const;
 
 
             /** UserName
@@ -209,6 +234,7 @@ namespace TAO
             **/
             bool Sign(const std::string& strType, const std::vector<uint8_t>& vchData, const uint512_t& hashSecret,
                                       std::vector<uint8_t>& vchPubKey, std::vector<uint8_t>& vchSig) const;
+
         };
     }
 }

@@ -54,7 +54,7 @@ namespace TAO
                 throw APIException(-129, "Missing PIN");
 
             /* Extract the existing password */
-            SecureString strPassword = params["password"].get<std::string>().c_str();
+            SecureString strPassword = SecureString(params["password"].get<std::string>().c_str());
 
             /* Existing pin parameter. */
             SecureString strPin = SecureString(params["pin"].get<std::string>().c_str());
@@ -65,25 +65,43 @@ namespace TAO
             /* New pin parameter. Default to old pin if only changing pin*/
             SecureString strNewPin = strPin;
 
+            /* New recovery seed to set. */
+            SecureString strNewRecovery = "";
+
             /* Check for new password parameter. */
             if(params.find("new_password") != params.end())
-                strNewPassword = params["new_password"].get<std::string>().c_str();
+            {
+                strNewPassword = SecureString(params["new_password"].get<std::string>().c_str());
 
-            /* Check password length */
-            if(strNewPassword.length() < 8)
-                throw APIException(-192, "Password must be a minimum of 8 characters");
+                /* Check password length */
+                if(strNewPassword.length() < 8)
+                    throw APIException(-192, "Password must be a minimum of 8 characters");
+            }
 
             /* Check for new pin parameter. */
             if(params.find("new_pin") != params.end())
+            {
                 strNewPin = SecureString(params["new_pin"].get<std::string>().c_str());
 
-            /* Check pin length */
-            if(strNewPin.length() < 4)
-                throw APIException(-193, "Pin must be a minimum of 4 characters");
+                /* Check pin length */
+                if(strNewPin.length() < 4)
+                    throw APIException(-193, "Pin must be a minimum of 4 characters");
+            }
+
+            /* Check for recovery seed parameter. */
+            if(params.find("new_recovery") != params.end())
+            {
+                strNewRecovery = params["new_recovery"].get<std::string>().c_str();
+
+                /* Check recovery seed length */
+                if(strNewRecovery.length() < 40)
+                    throw APIException(-221, "Recovery seed must be a minimum of 40 characters");
+            }
 
             /* Check something is being changed */
-            if(strNewPassword == strPassword && strNewPin == strPin)
+            if(strNewRecovery.empty() && strNewPassword == strPassword && strNewPin == strPin)
                 throw APIException(-218, "User password / pin not changed");
+            
 
             /* Validate the existing credentials again */
             /* Get the genesis ID. */
@@ -117,6 +135,25 @@ namespace TAO
                     throw APIException(-138, "No previous transaction found");
             }
 
+            /* Flag indicating that the recovery seed should be used to sign the transaction */
+            bool fRecovery = false;
+
+            /* If a new recovery has been passed in AND a previous recovery had been set, then the caller must also supply the
+               previous recovery seed.  This is required as we need to sign the new transaction using the previous recovery seed. */
+            SecureString strRecovery = "";
+            if(!strNewRecovery.empty() && txPrev.hashRecovery != 0 )
+            {
+                /* Check that the caller has supplied the previous recovery seed */
+                if(params.find("recovery") == params.end())
+                    throw APIException(-220, "Missing recovery.  Please include the previous recovery seed when setting a new one");
+
+                /* Get the previous recovery seed from the params */
+                strRecovery = SecureString(params["recovery"].get<std::string>().c_str());
+
+                fRecovery = true;
+            }
+            
+
             /* Lock the signature chain in case another process attempts to create a transaction . */
             LOCK(CREATE_MUTEX);
 
@@ -138,6 +175,10 @@ namespace TAO
             /* Now set the new credentials */
             tx.NextHash(userUpdated->Generate(tx.nSequence + 1, strNewPassword, strNewPin), txPrev.nNextType);
 
+            /* Set the recovery hash */
+            if(!strNewRecovery.empty())
+                tx.hashRecovery = userUpdated->RecoveryHash(strNewRecovery, txPrev.nNextType );
+
             /* Update the Crypto keys with the new pin */
             update_crypto_keys(userUpdated, strNewPin, tx);
 
@@ -148,30 +189,85 @@ namespace TAO
                 throw APIException(-30, "Operations failed to execute");
             }
 
-            /* Sign the transaction with the old pin. */
-            if(!tx.Sign(GetKey(tx.nSequence, strPin, nSession)))
+            /* The private key to sign with.  This will either be a key based on the previous pin, OR if the recovery is being changed
+               it will be the previous hashRecovery */
+            uint512_t hashSecret = 0;            
+
+            /* If the recovery seed should be used */
+            if(fRecovery)
+            {
+                /* Generate the recovery private key from the recovery seed  */
+                hashSecret = userUpdated->Generate(strRecovery);
+
+                /* When signing with the recovery seed we need to set the transaction key type to be the same type that was used 
+                   to generate the current recovery hash.  To obtain this we iterate back through the sig chain until we find where
+                   the hashRecovery was first set, and use the nKeyType from that transaction */
+                
+                /* The key type to set */
+                uint8_t nKeyType = 0;
+
+                /* The recovery hash to search for */
+                uint256_t hashRecovery = txPrev.hashRecovery;
+
+                /* Iterate backwards until we reach the transaction where the hashRecovery differs */
+                while(txPrev.hashRecovery == hashRecovery)
+                {
+                    nKeyType = txPrev.nKeyType;
+
+                    if(!LLD::Ledger->ReadTx(txPrev.hashPrevTx, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
+                        throw APIException(-138, "No previous transaction found");  
+                }
+
+                /* Set the key type */
+                tx.nKeyType = nKeyType;
+            }
+            else
+            {
+                /* If we are not using the recovery seed then generate the private key based on the pin / last sequence */
+                hashSecret = GetKey(tx.nSequence, strPin, nSession);
+            }
+
+            /* Sign the transaction . */
+            if(!tx.Sign(hashSecret))
             {
                 userUpdated.free();
                 throw APIException(-31, "Ledger failed to sign transaction");
             }
-
             
+
+            /* Execute the operations layer. */
+            if(!TAO::Ledger::mempool.Accept(tx))
+            {
+                userUpdated.free();
+                throw APIException(-32, "Failed to accept");
+            }
+
             {
                 LOCK(MUTEX);
 
                 /* Free the existing sigchain. */
                 user.free();
 
-                /* Update the sig chain in session. */
-                mapSessions[nSession] = std::move(userUpdated);
+                /* Update the sig chain in session with the new password. */
+                mapSessions[nSession] = new TAO::Ledger::SignatureChain(userUpdated->UserName(), strNewPassword);
+                
+                /* Update the cached pin in memory with the new pin */
+                if(!pActivePIN.IsNull() && !pActivePIN->PIN().empty())
+                {
+                    /* Get the existing unlocked actions so that we can maintain them */
+                    uint8_t nUnlockedActions = pActivePIN->UnlockedActions();
 
-                if(!pActivePIN.IsNull())
+                    /* delete the existing PinUnlock */
                     pActivePIN.free();
+
+                    /* Create a new pin unlock with the new pin and existing unlocked actions */
+                    pActivePIN = new TAO::Ledger::PinUnlock(strNewPin, nUnlockedActions);
+                }
+
+                /* free the temp sig chain we used for updating */
+                userUpdated.free();
             }
 
-            /* Execute the operations layer. */
-            if(!TAO::Ledger::mempool.Accept(tx))
-                throw APIException(-32, "Failed to accept");
 
             /* Add the transaction ID to the response */
             jsonRet["txid"]  = tx.GetHash().ToString();
@@ -219,15 +315,6 @@ namespace TAO
 
             if(crypto.get<uint256_t>("cert") != 0)
                 ssOperationStream << std::string("cert") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T) << user->KeyHash("cert", 0, strPin, tx.nKeyType);
-
-            if(crypto.get<uint256_t>("app1") != 0)
-                ssOperationStream << std::string("app1") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T) << user->KeyHash("app1", 0, strPin, tx.nKeyType);
-
-            if(crypto.get<uint256_t>("app2") != 0)
-                ssOperationStream << std::string("app2") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T) << user->KeyHash("app2", 0, strPin, tx.nKeyType);
-
-            if(crypto.get<uint256_t>("app3") != 0)
-                ssOperationStream << std::string("app3") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T) << user->KeyHash("app3", 0, strPin, tx.nKeyType);
 
             /* Add the crypto update contract. */
             tx[tx.Size()] << uint8_t(TAO::Operation::OP::WRITE) << hashCrypto << ssOperationStream.Bytes();
