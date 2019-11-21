@@ -91,6 +91,8 @@ namespace TAO
             TAO::Ledger::Transaction txPrev;
             if(!LLD::Ledger->HasGenesis(hashGenesis))
             {
+                /* If user genesis not in ledger, this will throw an exception. Just a matter of which one. */
+
                 /* Check the memory pool and compare hashes. */
                 if(!TAO::Ledger::mempool.Has(hashGenesis))
                 {
@@ -99,20 +101,36 @@ namespace TAO
                     throw APIException(-139, "Invalid credentials");
                 }
 
-                /* Get the memory pool tranasction. */
-                if(!TAO::Ledger::mempool.Get(hashGenesis, txPrev))
+                if(!config::fTestNet.load())
+                {
+                    /* After credentials verified, disallow login while in mempool and unconfirmed */
+                    user.free();
+                    throw APIException(-222, "User create pending confirmation");
+                }
+
+                /* Testnet allows mempool login. Get the memory pool tranasction. */
+                else if(!TAO::Ledger::mempool.Get(hashGenesis, txPrev))
+                {
+                    user.free();
                     throw APIException(-137, "Couldn't get transaction");
+                }
             }
             else
             {
                 /* Get the last transaction. */
                 uint512_t hashLast;
                 if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
+                {
+                    user.free();
                     throw APIException(-138, "No previous transaction found");
+                }
 
                 /* Get previous transaction */
                 if(!LLD::Ledger->ReadTx(hashLast, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
+                {
+                    user.free();
                     throw APIException(-138, "No previous transaction found");
+                }
             }
 
             /* Genesis Transaction. */
@@ -121,7 +139,10 @@ namespace TAO
 
             /* Check for consistency. */
             if(txPrev.hashNext != tx.hashNext)
+            {
+                user.free();
                 throw APIException(-139, "Invalid credentials");
+            }
 
             /* Check the sessions. */
             {
@@ -144,7 +165,10 @@ namespace TAO
 
             /* If not using multiuser then check to see whether another user is already logged in */
             if(!config::fMultiuser.load() && mapSessions.count(0) && mapSessions[0]->Genesis() != hashGenesis)
+            {
+                user.free();
                 throw APIException(-140, "Already logged in with a different username.");
+            }
 
             /* For sessionless API use the active sig chain which is stored in session 0 */
             uint256_t nSession = config::fMultiuser.load() ? LLC::GetRand256() : 0;
