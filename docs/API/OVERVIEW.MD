@@ -356,3 +356,4 @@ Error Codes
 | -219 | Could not retrieve Crypto object |
 | -220 | Missing recovery.  Please include the previous recovery seed when setting a new one |
 | -221 | Recovery seed must be a minimum of 40 characters |
+| -222 | User create pending confirmation |

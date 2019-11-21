@@ -561,14 +561,14 @@ This will retrieve account values and staking metrics for the trust account belo
 `stakeweight` : The current stake weight (trust weight and block weight combined) as a percent of maximum.
 
 `change` : Indicates whether or not there is a pending request to change stake. The remaining fields only appear when this one is true.   
-{    
-&nbsp;&nbsp;&nbsp;`amount` : Amount of stake change. Positive will be added to stake (moved from balance) and negative will unstake (move to balance).
 
-&nbsp;&nbsp;&nbsp;`requested` : Timestamp when the stake change request was created.
+`amount` : Amount of stake change. Positive will be added to stake (moved from balance) and negative will unstake (move to balance).
 
-&nbsp;&nbsp;&nbsp;`expires`: Timestamp when the stake change request expires, if assigned. Zero indicates does not expire. 
+`requested` : Timestamp when the stake change request was created.
 
-} 
+`expires`: Timestamp when the stake change request expires, if assigned. Zero indicates does not expire. 
+
+ 
 
 ***
 
