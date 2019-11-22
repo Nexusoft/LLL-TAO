@@ -21,18 +21,18 @@ namespace TAO
         /* Standard initialization function. */
         void Users::Initialize()
         {
-            mapFunctions["create/recovery"]          = Function(std::bind(&Users::Recovery,      this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["create/user"]              = Function(std::bind(&Users::Create,        this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["login/user"]               = Function(std::bind(&Users::Login,         this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["logout/user"]              = Function(std::bind(&Users::Logout,        this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["lock/user"]                = Function(std::bind(&Users::Lock,          this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["unlock/user"]              = Function(std::bind(&Users::Unlock,        this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["update/user"]              = Function(std::bind(&Users::Update,        this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["get/status"]              = Function(std::bind(&Users::Status,        this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["recover/user"]             = Function(std::bind(&Users::Recover,       this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["get/status"]               = Function(std::bind(&Users::Status,        this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/transactions"]        = Function(std::bind(&Users::Transactions,  this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/notifications"]       = Function(std::bind(&Users::Notifications, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/assets"]              = Function(std::bind(&Users::Assets,        this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["list/items"]              = Function(std::bind(&Users::Items,          this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["list/items"]               = Function(std::bind(&Users::Items,         this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/tokens"]              = Function(std::bind(&Users::Tokens,        this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/accounts"]            = Function(std::bind(&Users::Accounts,      this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/names"]               = Function(std::bind(&Users::Names,         this, std::placeholders::_1, std::placeholders::_2));

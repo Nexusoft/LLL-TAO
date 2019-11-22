@@ -372,9 +372,9 @@ namespace TAO
             json::json Update(const json::json& params, bool fHelp);
 
 
-            /** Recovery
+            /** Recover
              *
-             *  Create a user recovery passphrase.
+             *  Recover a sig chain and set new credentials by supplying the recovery seed.
              *
              *  @param[in] params The parameters from the API call.
              *  @param[in] fHelp Trigger for help data.
@@ -382,7 +382,7 @@ namespace TAO
              *  @return The return object in JSON.
              *
              **/
-            json::json Recovery(const json::json& params, bool fHelp);
+            json::json Recover(const json::json& params, bool fHelp);
 
 
             /** GetTransactions

@@ -22,6 +22,13 @@ ________________________________________________________________________________
 
 #include <unit/catch2/catch.hpp>
 
+/* Dont use the global USERNAME / SESSION for these tests as we can't be sure that it hasn't already been created by 
+    one of the other API tests, due to the unknown order that the tests are run in */
+std::string strUsername = "USER" +std::to_string(LLC::GetRand());
+std::string strSession = "";
+std::string strRecovery = "this is the recovery seed that i want to use";
+
+
 TEST_CASE( "Test Users API", "[API/users]")
 {
     /* Declare variables shared across test cases */
@@ -29,11 +36,6 @@ TEST_CASE( "Test Users API", "[API/users]")
     json::json ret;
     json::json result;
     json::json error;
-
-    /* Dont use the global USERNAME / SESSION for these tests as we can't be sure that it hasn't already been created by 
-       one of the other API tests, due to the unknown order that the tests are run in */
-    std::string strUsername = "USER" +std::to_string(LLC::GetRand());
-    std::string strSession = "";
     
     /* Enure that we use low argon2 requirements for unit test to speed up the use of the sig chain */
     config::SoftSetArg("-argon2", "0");
@@ -420,7 +422,7 @@ TEST_CASE( "Test Users API", "[API/users]")
         params["session"] = strSession;
         params["password"] = "XXXXXXXX";//PASSWORD;
         params["pin"] = PIN;
-        params["new_recovery"] = "this is the recovery seed that i want to use";
+        params["new_recovery"] = strRecovery;
 
         /* Invoke the API */
         ret = APICall("users/update/user", params);
@@ -438,7 +440,7 @@ TEST_CASE( "Test Users API", "[API/users]")
         params["session"] = strSession;
         params["password"] = PASSWORD;
         params["pin"] = PIN;
-        params["new_recovery"] = "this is the recovery seed that i want to use";
+        params["new_recovery"] = strRecovery;
 
         /* Invoke the API */
         ret = APICall("users/update/user", params);
@@ -458,7 +460,6 @@ TEST_CASE( "Test Users API", "[API/users]")
         params["password"] = PASSWORD;
         params["pin"] = PIN;
         params["new_recovery"] = "this is the NEW recovery seed that i want to use";
-        //params["recovery"] = "this is the recovery seed that i want to use";
 
         /* Invoke the API */
         ret = APICall("users/update/user", params);
@@ -476,7 +477,7 @@ TEST_CASE( "Test Users API", "[API/users]")
         params["session"] = strSession;
         params["password"] = PASSWORD;
         params["pin"] = PIN;
-        params["recovery"] = "this is the recovery seed that i want to use";
+        params["recovery"] = strRecovery;
         params["new_recovery"] = "this is the NEW recovery seed that i want to use";
 
         /* Invoke the API */
@@ -486,7 +487,221 @@ TEST_CASE( "Test Users API", "[API/users]")
         REQUIRE(ret.find("result") != ret.end());
         result = ret["result"];
         REQUIRE(result.find("txid") != result.end());
+
+        strRecovery = "this is the NEW recovery seed that i want to use";
     }
 
+}
+
+TEST_CASE( "Test Users API Recovery User", "[API/users/recover/user]")
+{
+    /* Declare variables shared across test cases */
+    json::json params;
+    json::json ret;
+    json::json result;
+    json::json error;
+    
+    /* Enure that we use low argon2 requirements for unit test to speed up the use of the sig chain */
+    config::SoftSetArg("-argon2", "0");
+    config::SoftSetArg("-argon2_memory", "0");
+
+    /* Ensure User1 is logged out before we start testing.  This is only an issue when not in multiuser mode */
+    if(!config::fMultiuser.load())
+        LogoutUser(GENESIS1, SESSION1);
+
+
+    /* Test recovery fail with missing recovery seed */
+    {
+
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["username"] = strUsername;
+        params["password"] = "newpassword";
+        params["pin"] = "newpin";
+        //params["recovery"] = strRecovery;
+
+        /* Invoke the API */
+        ret = APICall("users/recover/user", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -220);
+    }
+
+    /* Test recovery fail with missing username */
+    {
+
+        /* Build the parameters to pass to the API */
+        params.clear();
+        //params["username"] = strUsername;
+        params["password"] = "newpassword";
+        params["pin"] = "newpin";
+        params["recovery"] = strRecovery;
+
+        /* Invoke the API */
+        ret = APICall("users/recover/user", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -127);
+    }
+
+    /* Test recovery fail with missing password */
+    {
+
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["username"] = strUsername;
+        //params["password"] = "newpassword";
+        params["pin"] = "newpin";
+        params["recovery"] = strRecovery;
+
+        /* Invoke the API */
+        ret = APICall("users/recover/user", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -128);
+    }
+
+    /* Test recovery fail with missing pin */
+    {
+
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["username"] = strUsername;
+        params["password"] = "newpassword";
+        //params["pin"] = "newpin";
+        params["recovery"] = strRecovery;
+
+        /* Invoke the API */
+        ret = APICall("users/recover/user", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -129);
+    }
+
+    /* Test recovery fail with invalid username */
+    {
+
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["username"] = "invalidusername";
+        params["password"] = "newpassword";
+        params["pin"] = "newpin";
+        params["recovery"] = strRecovery;
+
+        /* Invoke the API */
+        ret = APICall("users/recover/user", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -139);
+    }
+
+    /* Test recovery fail with password too short */
+    {
+
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["username"] = strUsername;
+        params["password"] = "short";
+        params["pin"] = "newpin";
+        params["recovery"] = strRecovery;
+
+        /* Invoke the API */
+        ret = APICall("users/recover/user", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -192);
+    }
+
+    /* Test recovery fail with pin too short */
+    {
+
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["username"] = strUsername;
+        params["password"] = "newpassword";
+        params["pin"] = "pin";
+        params["recovery"] = strRecovery;
+
+        /* Invoke the API */
+        ret = APICall("users/recover/user", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -193);
+    }
+
+    /* Test recovery fail with invalid recovery seed */
+    {
+
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["username"] = strUsername;
+        params["password"] = "newpassword";
+        params["pin"] = "newpin";
+        params["recovery"] = "not a recovery seed";
+
+        /* Invoke the API */
+        ret = APICall("users/recover/user", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -139);
+    }
+
+    /* Test recovery success setting new password and pin */
+    {
+
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["username"] = strUsername;
+        params["password"] = "newpassword";
+        params["pin"] = "newpin";
+        params["recovery"] = strRecovery;
+
+        /* Invoke the API */
+        ret = APICall("users/recover/user", params);
+
+        /* Check that the result is as we expect it to be */
+        REQUIRE(ret.find("result") != ret.end());
+        result = ret["result"];
+        REQUIRE(result.find("genesis") != result.end());
+        REQUIRE(result.find("nexthash") != result.end());
+        REQUIRE(result.find("prevhash") != result.end());
+        REQUIRE(result.find("pubkey") != result.end());
+        REQUIRE(result.find("signature") != result.end());
+        REQUIRE(result.find("txid") != result.end());
+    }
+
+    /* Test login with new credentials */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["username"] = strUsername;
+        params["password"] = "newpassword";
+        params["pin"] = "newpin";
+
+        /* Invoke the API */
+        ret = APICall("users/login/user", params);
+
+        /* Check that the result is as we expect it to be */
+        REQUIRE(ret.find("result") != ret.end());
+        result = ret["result"];
+
+        REQUIRE(result.find("genesis") != result.end());
+
+        if(config::fMultiuser.load())
+        {
+            REQUIRE(result.find("session") != result.end());
+
+            /* Grab the session ID for future calls */
+            strSession = result["session"].get<std::string>();
+        }
+    }
 
 }

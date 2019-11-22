@@ -145,7 +145,7 @@ namespace TAO
             {
                 /* Check that the caller has supplied the previous recovery seed */
                 if(params.find("recovery") == params.end())
-                    throw APIException(-220, "Missing recovery.  Please include the previous recovery seed when setting a new one");
+                    throw APIException(-220, "Missing recovery seed. ");
 
                 /* Get the previous recovery seed from the params */
                 strRecovery = SecureString(params["recovery"].get<std::string>().c_str());

@@ -90,6 +90,7 @@ namespace TAO
                 tx.hashGenesis = txPrev.hashGenesis;
                 tx.hashPrevTx  = txPrev.GetHash();
                 tx.nKeyType    = txPrev.nNextType;
+                tx.hashRecovery = txPrev.hashRecovery;
                 tx.nTimestamp  = std::max(runtime::unifiedtimestamp(), txPrev.nTimestamp);
             }
 
@@ -105,6 +106,7 @@ namespace TAO
                 tx.hashGenesis = txPrev.hashGenesis;
                 tx.hashPrevTx  = hashLast;
                 tx.nKeyType    = txPrev.nNextType;
+                tx.hashRecovery = txPrev.hashRecovery;
                 tx.nTimestamp  = std::max(runtime::unifiedtimestamp(), txPrev.nTimestamp);
             }
 
