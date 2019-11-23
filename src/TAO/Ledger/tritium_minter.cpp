@@ -145,6 +145,7 @@ namespace TAO
                 hashLastBlock = 0;
                 nSleepTime = 1000;
                 fWait.store(false);
+                nWaitTime.store(0);
                 nTrustWeight.store(0.0);
                 nBlockWeight.store(0.0);
                 nStakeRate.store(0.0);
