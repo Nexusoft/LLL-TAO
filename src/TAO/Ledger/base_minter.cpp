@@ -72,5 +72,16 @@ namespace TAO
             return fWait.load();
         }
 
+
+        /* When IsWaitPeriod() is true, this method returns the remaining wait time before staking is active. */
+        uint64_t StakeMinter::GetWaitTime() const
+        {
+
+            if(!fWait.load())
+                return 0;
+
+            return nWaitTime.load();
+        }
+
     } // End Ledger namespace
 } // End TAO namespace

@@ -85,12 +85,12 @@ namespace TAO
 
             ret["trust"] = nTrustScore;
 
-            if(LLD::Register->HasTrust(user->Genesis()))
-                ret["new"] = false;
-            else
-                ret["new"] = true;
+            TAO::Ledger::StakeMinter& stakeMinter = TAO::Ledger::TritiumMinter::GetInstance();
 
-            TAO::Ledger::TritiumMinter& stakeMinter = TAO::Ledger::TritiumMinter::GetInstance();
+            /* Indexed trust account has genesis */
+            bool fTrustIndexed = LLD::Register->HasTrust(user->Genesis());
+
+            ret["new"] = (bool)(!fTrustIndexed);
 
             /* Return whether stake minter is started and actively running. */
             ret["staking"] = (bool)(stakeMinter.IsStarted() && trust.hashOwner == user->Genesis());
@@ -100,6 +100,14 @@ namespace TAO
              */
             if(stakeMinter.IsStarted() && trust.hashOwner == user->Genesis())
             {
+                /* The trust account is on hold when it does not have genesis, and is waiting to reach minimum age to stake */
+                bool fOnHold = (!fTrustIndexed && stakeMinter.IsWaitPeriod());
+
+                /* When trust account is on hold pending minimum age, also return the time remaining in hold period. */
+                ret["onhold"] = (bool)(fOnHold);
+                if(fOnHold)
+                    ret["holdtime"] = (uint64_t)stakeMinter.GetWaitTime();
+
                 /* If stake minter is running, get current stake rate it is using. */
                 ret["stakerate"] = stakeMinter.GetStakeRatePercent();
 

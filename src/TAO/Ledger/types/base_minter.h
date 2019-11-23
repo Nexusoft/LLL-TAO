@@ -127,6 +127,16 @@ namespace TAO
         bool IsWaitPeriod() const;
 
 
+        /** GetWaitTime
+          *
+          * When IsWaitPeriod() is true, this method returns the remaining wait time before staking is active.
+          *
+          * @return number of seconds remaining for minimum age to stake
+          *
+          */
+        uint64_t GetWaitTime() const;
+
+
         /** Start
           *
           * Starts the stake minter.
@@ -168,6 +178,10 @@ namespace TAO
         std::atomic<bool> fWait;
 
 
+        /** When fWait is true, this field will store the remaining wait time before staking is active **/
+        std::atomic<uint64_t> nWaitTime;
+
+
         /** The current internal trust weight value **/
         std::atomic<double> nTrustWeight;
 
@@ -185,6 +199,7 @@ namespace TAO
         : hashLastBlock(0)
         , nSleepTime(1000)
         , fWait(false)
+        , nWaitTime(0)
         , nTrustWeight(0.0)
         , nBlockWeight(0.0)
         , nStakeRate(0.0)

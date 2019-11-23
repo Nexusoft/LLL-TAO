@@ -503,18 +503,15 @@ namespace TAO
                 {
                     /* Record that stake minter is in wait period */
                     fWait.store(true);
+                    nWaitTime.store(MinCoinAge() - nAge);
 
                     /* Increase sleep time to wait for coin age (can't sleep too long or will hang until wakes up on shutdown) */
                     nSleepTime = 5000;
 
                     /* Update log every 60 iterations (5 minutes) */
                     if((nCounter % 60) == 0)
-                    {
-                        const uint64_t nRemainingWaitTime = (MinCoinAge() - nAge) / 60; //minutes
-
                         debug::log(0, FUNCTION, "Stake Minter: Stake balance is immature. ",
-                            nRemainingWaitTime, " minutes remaining until staking available.");
-                    }
+                            (nWaitTime.load() / 60), " minutes remaining until staking available.");
 
                     ++nCounter;
 
@@ -524,6 +521,7 @@ namespace TAO
                 {
                     /* Reset wait period setting */
                     fWait.store(false);
+                    nWaitTime.store(0);
 
                     /* Reset sleep time after coin age meets requirement. */
                     nSleepTime = 1000;
