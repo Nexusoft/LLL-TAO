@@ -26,6 +26,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/enum.h>
+#include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/types/state.h>
 
 #include <Util/include/debug.h>
@@ -127,6 +128,13 @@ namespace Legacy
     {
         std::vector<uint8_t> vchTrustKey;
 
+        /* Support for PUBKEYHASH enabled for tx created after v8 activation */
+        bool fHashSupport = false;
+        const uint32_t nCurrent = TAO::Ledger::CurrentVersion();
+
+        if(nCurrent > 8 || (nCurrent == 8 && !TAO::Ledger::VersionActive(tx.nTime, 8)))
+            fHashSupport = true;
+
         /* Check that all inputs are from the same key and extract the pub key for it.
          * Typical migration transaction will have one input, but it is feasible to have multiple.
          * If more than one, they all must be from the same key.
@@ -155,7 +163,7 @@ namespace Legacy
                 else if(vchTrustKey != vSolutions[0])
                     return false; // Inputs not all from same address
             }
-            else if(whichType == Legacy::TX_PUBKEYHASH)
+            else if(whichType == Legacy::TX_PUBKEYHASH && fHashSupport)
             {
                 /* pub key hash output cannot extract the pub key, have to get it from wallet key store.
                  * For this case, legacy wallet must be on same machine as migrate and unlocked or it won't work
