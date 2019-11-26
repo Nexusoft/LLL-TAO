@@ -37,7 +37,8 @@ namespace LLP
         DISCONNECT_POLL_EMPTY = 10,
         DISCONNECT_DDOS       = 11,
         DISCONNECT_FORCE      = 12,
-        DISCONNECT_PEER       = 13
+        DISCONNECT_PEER       = 13,
+        DISCONNECT_BUFFER     = 14
     };
 
 }

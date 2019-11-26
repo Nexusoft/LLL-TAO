@@ -150,16 +150,6 @@ namespace LLP
     }
 
 
-    /* Detect if there is data to write */
-    template <class PacketType>
-    bool BaseConnection<PacketType>::Buffered() const
-    {
-        LOCK(DATA_MUTEX);
-
-        return vBuffer.size() != 0;
-    }
-
-
     /*  Used to reset the packet to Null after it has been processed.
      *  This then flags the Connection to read another packet. */
     template <class PacketType>

@@ -390,8 +390,8 @@ namespace LLP
             LOCK(DATA_MUTEX);
             vBuffer.insert(vBuffer.end(), vData.begin() + nSent, vData.end());
         }
-
-        nLastSend = runtime::timestamp();
+        else //don't update last sent unless all the data was written to the buffer
+            nLastSend = runtime::timestamp();
 
         return nSent;
     }
@@ -435,29 +435,40 @@ namespace LLP
 
         /* If not all data was sent non-blocking, recurse until it is complete. */
         else if(nSent > 0)
+        {
+            /* Erase from current buffer. */
             vBuffer.erase(vBuffer.begin(), vBuffer.begin() + nSent);
 
-        /* Update socket timers. */
-        nLastSend = runtime::timestamp();
+            /* Update socket timers. */
+            nLastSend = runtime::timestamp();
+        }
 
         return nSent;
     }
 
 
     /*  Determines if nTime seconds have elapsed since last Read / Write. */
-    bool Socket::Timeout(uint32_t nTime) const
+    bool Socket::Timeout(const uint32_t nTime, const uint8_t nFlags) const
     {
-        return (runtime::timestamp() > (uint64_t)(nLastSend + nTime) &&
-                runtime::timestamp() > (uint64_t)(nLastRecv + nTime));
+        /* Check for write flags. */
+        bool fRet = true;
+        if(nFlags & WRITE)
+            fRet = (fRet && runtime::timestamp() > (uint64_t)(nLastSend + nTime));
+
+        /* Check for read flags. */
+        if(nFlags & READ)
+            fRet = (fRet && runtime::timestamp() > (uint64_t)(nLastRecv + nTime));
+
+        return fRet;
     }
 
 
     /* Check that the socket has data that is buffered. */
-    bool Socket::Buffered() const
+    uint64_t Socket::Buffered() const
     {
         LOCK(DATA_MUTEX);
 
-        return vBuffer.size() != 0;
+        return vBuffer.size();
     }
 
 

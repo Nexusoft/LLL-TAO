@@ -340,6 +340,13 @@ namespace LLP
                         continue;
                     }
 
+                    /* Check that write buffers aren't overflowed. */
+                    if(CONNECTION->Buffered() > MAX_SEND_BUFFER)
+                    {
+                        disconnect_remove_event(nIndex, DISCONNECT_BUFFER);
+                        continue;
+                    }
+
                     /* Handle any DDOS Filters. */
                     if(fDDOS && CONNECTION->DDOS)
                     {
@@ -448,7 +455,18 @@ namespace LLP
             /* Check all connections for data and packets. */
             for(uint32_t nIndex = 0; nIndex < CONNECTIONS->size(); ++nIndex)
             {
-                try { CONNECTIONS->at(nIndex)->Flush(); }
+                try
+                {
+                    /* Check for buffered connection. */
+                    if(CONNECTIONS->at(nIndex)->Buffered())
+                    {
+                        /* Attempt to flush to the socket. */
+                        CONNECTIONS->at(nIndex)->Flush();
+                        if(CONNECTIONS->at(nIndex)->Timeout(10, Socket::WRITE))
+                            disconnect_remove_event(nIndex, DISCONNECT_BUFFER);
+                    }
+
+                }
                 catch(const std::exception& e) { }
             }
         }

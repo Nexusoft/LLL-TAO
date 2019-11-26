@@ -63,6 +63,15 @@ namespace LLP
     public:
 
 
+        /** Timeout flags. **/
+        enum
+        {
+            READ  = (1 << 1),
+            WRITE = (1 << 2),
+            ALL   = (READ | WRITE)
+        };
+
+
         /** The address of this connection. */
         BaseAddress addr;
 
@@ -191,9 +200,10 @@ namespace LLP
         *  Determines if nTime seconds have elapsed since last Read / Write.
         *
         *  @param[in] nTime The time in seconds.
+        *  @param[in] nFlags Flags to determine if checking reading or writing timeouts.
         *
         **/
-        bool Timeout(uint32_t nTime) const;
+        bool Timeout(const uint32_t nTime, const uint8_t nFlags = ALL) const;
 
 
         /** Buffered
@@ -201,7 +211,7 @@ namespace LLP
          *  Check that the socket has data that is buffered.
          *
          **/
-        bool Buffered() const;
+        uint64_t Buffered() const;
 
 
         /** IsNull
