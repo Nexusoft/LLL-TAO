@@ -1095,10 +1095,6 @@ namespace LLP
                                     /* Check for stop hash. */
                                     if(--nLimits <= 0 || hashStart == hashStop || Buffered() > MAX_SEND_BUFFER) //1MB limit
                                     {
-                                        /* Spcial debug information when send buffer has reached capacity. */
-                                        if(Buffered() > MAX_SEND_BUFFER)
-                                            debug::log(0, FUNCTION, "Send buffer limit reached [", Buffered(), " bytes]");
-
                                         /* Regular debug for normal limits */
                                         if(config::nVerbose >= 3)
                                             debug::log(3, FUNCTION, "Limits ", nLimits, " Reached ", hashStart.SubString(), " == ", hashStop.SubString());

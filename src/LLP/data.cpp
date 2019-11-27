@@ -341,7 +341,7 @@ namespace LLP
                     }
 
                     /* Check that write buffers aren't overflowed. */
-                    if(CONNECTION->Buffered() > MAX_SEND_BUFFER)
+                    if(CONNECTION->Buffered() > (MAX_SEND_BUFFER * 10))
                     {
                         disconnect_remove_event(nIndex, DISCONNECT_BUFFER);
                         continue;
