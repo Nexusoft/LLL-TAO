@@ -318,6 +318,15 @@ namespace LLP
                         continue;
                     }
 
+                    /* Disconnect if pollin signaled with no data (This happens on Linux). */
+                    if((POLLFDS.at(nIndex).revents & POLLIN)
+                    && CONNECTION->Available() == 0
+                    && CONNECTION->Timeout(5, Socket::READ))
+                    {
+                        disconnect_remove_event(nIndex, DISCONNECT_POLL_EMPTY);
+                        continue;
+                    }
+
                     /* Remove Connection if it has Timed out or had any read/write Errors. */
                     if(CONNECTION->Errors())
                     {
@@ -454,7 +463,7 @@ namespace LLP
                     {
                         /* Attempt to flush to the socket. */
                         CONNECTIONS->at(nIndex)->Flush();
-                        if(CONNECTIONS->at(nIndex)->Timeout(10, Socket::WRITE))
+                        if(CONNECTIONS->at(nIndex)->Timeout(5, Socket::WRITE))
                             disconnect_remove_event(nIndex, DISCONNECT_BUFFER);
                     }
 
