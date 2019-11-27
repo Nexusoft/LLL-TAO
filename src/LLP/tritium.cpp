@@ -315,6 +315,10 @@ namespace LLP
                         strReason = "Force";
                         break;
 
+                    case DISCONNECT_PEER:
+                        strReason = "Peer Hangup";
+                        break;
+
                     case DISCONNECT_BUFFER:
                         strReason = "Flood Control";
                         break;

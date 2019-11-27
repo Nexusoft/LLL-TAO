@@ -257,7 +257,7 @@ namespace LLP
                 try
                 {
                     /* Set the proper POLLIN flags. */
-                    POLLFDS.at(nIndex).events = POLLIN;// | POLLRDHUP;
+                    POLLFDS.at(nIndex).events  = POLLIN;// | POLLRDHUP;
                     POLLFDS.at(nIndex).revents = 0; //reset return events
 
                     /* Set to invalid socket if connection is inactive. */
