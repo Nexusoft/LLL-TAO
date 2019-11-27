@@ -311,14 +311,12 @@ namespace LLP
                          continue;
                     }
 
-#ifdef WIN32
                     /* Disconnect if the socket was disconnected by peer (need for Windows) */
                     if(POLLFDS.at(nIndex).revents & POLLHUP)
                     {
                         disconnect_remove_event(nIndex, DISCONNECT_PEER);
                         continue;
                     }
-#endif
 
                     /* Remove Connection if it has Timed out or had any read/write Errors. */
                     if(CONNECTION->Errors())
@@ -337,7 +335,7 @@ namespace LLP
                     /* Disconnect if pollin signaled with no data (This happens on Linux). */
                     if((POLLFDS.at(nIndex).revents & POLLIN)
                     && CONNECTION->Available() == 0
-                    && CONNECTION->Timeout(1, Socket::READ))
+                    && CONNECTION->Timeout(5, Socket::READ))
                     {
                         disconnect_remove_event(nIndex, DISCONNECT_POLL_EMPTY);
                         continue;
@@ -345,7 +343,7 @@ namespace LLP
 
                     /* Disconnect if buffer is full and remote host isn't reading at all. */
                     if(CONNECTION->Buffered() > MAX_SEND_BUFFER
-                    && CONNECTION->Timeout(1, Socket::WRITE))
+                    && CONNECTION->Timeout(5, Socket::WRITE))
                     {
                         disconnect_remove_event(nIndex, DISCONNECT_BUFFER);
                         continue;
@@ -466,12 +464,7 @@ namespace LLP
             /* Check all connections for data and packets. */
             for(uint32_t nIndex = 0; nIndex < CONNECTIONS->size(); ++nIndex)
             {
-                try
-                {
-                    /* Check for buffered connection. */
-                    if(CONNECTIONS->at(nIndex)->Buffered())
-                        CONNECTIONS->at(nIndex)->Flush();
-                }
+                try { CONNECTIONS->at(nIndex)->Flush(); }
                 catch(const std::exception& e) { }
             }
         }
