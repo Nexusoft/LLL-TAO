@@ -311,12 +311,14 @@ namespace LLP
                          continue;
                     }
 
+#ifdef WIN32
                     /* Disconnect if the socket was disconnected by peer (need for Windows) */
                     if(POLLFDS.at(nIndex).revents & POLLHUP)
                     {
                         disconnect_remove_event(nIndex, DISCONNECT_PEER);
                         continue;
                     }
+#endif
 
                     /* Remove Connection if it has Timed out or had any read/write Errors. */
                     if(CONNECTION->Errors())
