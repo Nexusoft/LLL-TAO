@@ -318,14 +318,6 @@ namespace LLP
                         continue;
                     }
 
-                    /* Disconnect if pollin signaled with no data (This happens on Linux). */
-                    if((POLLFDS.at(nIndex).revents & POLLIN)
-                    && CONNECTION->Available() == 0)
-                    {
-                        disconnect_remove_event(nIndex, DISCONNECT_POLL_EMPTY);
-                        continue;
-                    }
-
                     /* Remove Connection if it has Timed out or had any read/write Errors. */
                     if(CONNECTION->Errors())
                     {
