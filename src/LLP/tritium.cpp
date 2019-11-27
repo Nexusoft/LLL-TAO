@@ -2056,7 +2056,8 @@ namespace LLP
                             );
 
                             /* Reset consecutive failures. */
-                            nConsecutiveFails = 0;
+                            nConsecutiveFails   = 0;
+                            nConsecutiveOrphans = 0;
                         }
                         else
                             ++nConsecutiveFails;
@@ -2083,13 +2084,11 @@ namespace LLP
                             );
 
                             /* Reset consecutive failures. */
-                            nConsecutiveFails = 0;
+                            nConsecutiveFails   = 0;
+                            nConsecutiveOrphans = 0;
                         }
                         else
-                        {
                             ++nConsecutiveFails;
-                            cacheInventory.Ban(tx.GetHash());
-                        }
 
 
                         break;
@@ -2099,6 +2098,14 @@ namespace LLP
                     default:
                         return debug::drop(NODE, "invalid type specifier for transaction");
                 }
+
+                /* Check for failure limit on node. */
+                if(nConsecutiveFails >= 500)
+                    return debug::drop(NODE, "TX::node reached failure limit");
+
+                /* Check for orphan limit on node. */
+                if(nConsecutiveOrphans >= 500)
+                    return debug::drop(NODE, "TX::node reached ORPHAN limit");
 
                 break;
             }
