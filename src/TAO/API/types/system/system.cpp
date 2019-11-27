@@ -46,7 +46,7 @@ namespace TAO
         void System::Initialize()
         {
             mapFunctions["get/info"]         = Function(std::bind(&System::GetInfo,    this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["get/trustinfo"]    = Function(std::bind(&System::GetTrustInfo,    this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["get/metrics"]    = Function(std::bind(&System::Metrics,    this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["stop"]             = Function(std::bind(&System::Stop,    this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/peers"]       = Function(std::bind(&System::ListPeers,    this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/lisp-eids"]   = Function(std::bind(&System::LispEIDs, this, std::placeholders::_1, std::placeholders::_2));

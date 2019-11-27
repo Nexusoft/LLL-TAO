@@ -10,6 +10,7 @@ The following methods are currently supported by this API
 
 [`stop`](#stop)   
 [`get/info`](#getinfo)   
+[`get/metrics`](#getmetrics)   
 [`list/peers`](#listpeers)   
 [`list/lisp-eids`](#listlisp-eids)   
 [`validate/address`](#validateaddress)   
@@ -36,6 +37,9 @@ NONE
 ```
 Nexus server stopping
 ```
+
+****
+
 
 # `get/info`
 
@@ -104,6 +108,145 @@ NONE
 `connections` : Number of peer connections.
 
 `eids` : Array of LISP Endpoint Idendifiers (EID's) for this node.  Not included unless this node is using LISP.
+
+
+****
+
+
+# `get/metrics`
+
+Returns metrics and statistics for the ledger, registers, etc
+
+
+### Endpoint:
+
+`/system/get/metrics`
+
+
+### Parameters:
+````
+NONE
+````
+
+### Return value JSON object:
+```
+{
+    "registers": {
+        "total": 54732,
+        "account": 14190,
+        "append": 0,
+        "crypto": 13375,
+        "name": 26847,
+        "name_global": 2,
+        "name_namespaced": 1,
+        "namespace": 5,
+        "object": 3,
+        "object_tokenized": 1,
+        "raw": 0,
+        "readonly": 0,
+        "token": 32
+    },
+    "sig_chains": 13375,
+    "trust": {
+        "total": 280,
+        "stake": 21939510.0,
+        "trust": 3004859583
+    },
+    "supply": {
+        "total": 65177607.726929,
+        "target": 64175336.948024,
+        "inflationrate": 1.5617694063947738,
+        "minute": 6.97545,
+        "hour": 418.519742,
+        "day": 10040.397562,
+        "week": 70104.681744,
+        "month": 277954.775646
+    },
+    "reserves": {
+        "ambassador": 671.554894,
+        "developer": 510.261963,
+        "fee": 10946.79,
+        "hash": 156.374712,
+        "prime": 100.545744
+    }
+}
+
+
+```
+
+### Return values:
+
+`registers` : Statistics on the register database.   
+{    
+&nbsp;&nbsp;&nbsp;`total` : Total number of registers in the register database.
+
+&nbsp;&nbsp;&nbsp;`account` : Number of account registers.  This includes both NXS and other token accounts.
+
+&nbsp;&nbsp;&nbsp;`append` : Number of append registers.
+
+&nbsp;&nbsp;&nbsp;`crypto` : Number of crypto registers.
+
+&nbsp;&nbsp;&nbsp;`name` : Total number of name registers, including user local, global, and namespaced.
+
+&nbsp;&nbsp;&nbsp;`name_global` : Number of names that have been created in the global namespace.
+
+&nbsp;&nbsp;&nbsp;`name_namespaced` : Number of names that have been created in a namespace.
+
+&nbsp;&nbsp;&nbsp;`object` : Number of non-standard object registers.  These include assets, items, and any other derived object register 
+
+&nbsp;&nbsp;&nbsp;`object_tokenized` : Number of object registers that have been tokenized (where the object owner is a token rather than a signature chain).
+
+&nbsp;&nbsp;&nbsp;`raw` : Number of raw registers.
+
+&nbsp;&nbsp;&nbsp;`readonly` : Number of read only registers.
+
+&nbsp;&nbsp;&nbsp;`token` : Number of token registers.   
+}
+
+`sig_chains` : Total number of signature chains in the ledger.
+
+`trust` : Statistics on active trust accounts.   
+{    
+&nbsp;&nbsp;&nbsp;`total` : Total number trust accounts that are active (have a non-zero stake balance).
+
+&nbsp;&nbsp;&nbsp;`stake` : Total amount of NXS currently being staked network-wide).
+
+&nbsp;&nbsp;&nbsp;`total` : Total trust score of all trust accounts being staked.   
+}
+
+`supply` : Metrics on NXS supply rates.   
+{    
+&nbsp;&nbsp;&nbsp;`total` : Total amount of NXS in existence.
+
+&nbsp;&nbsp;&nbsp;`target` : The target supply rate for this point in time.
+
+&nbsp;&nbsp;&nbsp;`inflationrate` : The current inflation rate percentage based on the last year of data.
+
+&nbsp;&nbsp;&nbsp;`minute` : The increase in supply rate within the last minute.
+
+&nbsp;&nbsp;&nbsp;`hour` : The increase in supply rate within the last hour.
+
+&nbsp;&nbsp;&nbsp;`day` : The increase in supply rate within the last day.
+
+&nbsp;&nbsp;&nbsp;`week` : The increase in supply rate within the last week.
+
+&nbsp;&nbsp;&nbsp;`month` : The increase in supply rate within the last 30 days.   
+}
+
+`reserves` : Information on the amount of NXS currently in the various reserves.   
+{    
+&nbsp;&nbsp;&nbsp;`ambassador` : Amount of NXS in the ambassador reserves, waiting to be paid to the ambassador sig chains.
+
+&nbsp;&nbsp;&nbsp;`developer` : Amount of NXS in the developer reserves, waiting to be paid to the developer sig chains.
+
+&nbsp;&nbsp;&nbsp;`fee` : Amount of NXS in the fee reserves.
+
+&nbsp;&nbsp;&nbsp;`hash` : Amount of NXS in the hash channel reserves.
+
+&nbsp;&nbsp;&nbsp;`ambassador` : Amount of NXS in the prime channel reserves.   
+}
+
+
 
 
 ***

@@ -126,9 +126,9 @@ namespace TAO
 
 
 
-            /** GetTrustInfo
+            /** Metrics
              *
-             *  Returns information about current trust and staking metrics
+             *  Returns local database and other metrics 
              *
              *  @param[in] params The parameters from the API call.
              *  @param[in] fHelp Trigger for help data.
@@ -136,7 +136,22 @@ namespace TAO
              *  @return The return object in JSON.
              *
              **/
-            json::json GetTrustInfo(const json::json& params, bool fHelp);
+            json::json Metrics(const json::json& params, bool fHelp);
+
+
+
+        private:
+
+            /** count_registers
+            *
+            *  Returns the count of registers of the given type in the register DB
+            *
+            *  @param[in] strType the register type to count
+            *
+            *  @return number of unique registers in the register DB of the specified type.
+            *
+            **/
+            uint64_t count_registers(const std::string& strType);
 
         };
     }
