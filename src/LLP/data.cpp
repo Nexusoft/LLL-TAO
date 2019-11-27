@@ -318,15 +318,6 @@ namespace LLP
                         continue;
                     }
 
-                    /* Disconnect if pollin signaled with no data (This happens on Linux). */
-                    if((POLLFDS.at(nIndex).revents & POLLIN)
-                    && CONNECTION->Available() == 0
-                    && CONNECTION->Timeout(5, Socket::READ))
-                    {
-                        disconnect_remove_event(nIndex, DISCONNECT_POLL_EMPTY);
-                        continue;
-                    }
-
                     /* Remove Connection if it has Timed out or had any read/write Errors. */
                     if(CONNECTION->Errors())
                     {
@@ -338,6 +329,23 @@ namespace LLP
                     if(CONNECTION->Timeout(TIMEOUT))
                     {
                         disconnect_remove_event(nIndex, DISCONNECT_TIMEOUT);
+                        continue;
+                    }
+
+                    /* Disconnect if pollin signaled with no data (This happens on Linux). */
+                    if((POLLFDS.at(nIndex).revents & POLLIN)
+                    && CONNECTION->Available() == 0
+                    && CONNECTION->Timeout(1, Socket::READ))
+                    {
+                        disconnect_remove_event(nIndex, DISCONNECT_POLL_EMPTY);
+                        continue;
+                    }
+
+                    /* Disconnect if buffer is full and remote host isn't reading at all. */
+                    if(CONNECTION->Buffered()
+                    && CONNECTION->Timeout(1, Socket::WRITE))
+                    {
+                        disconnect_remove_event(nIndex, DISCONNECT_BUFFER);
                         continue;
                     }
 
@@ -460,13 +468,7 @@ namespace LLP
                 {
                     /* Check for buffered connection. */
                     if(CONNECTIONS->at(nIndex)->Buffered())
-                    {
-                        /* Attempt to flush to the socket. */
                         CONNECTIONS->at(nIndex)->Flush();
-                        if(CONNECTIONS->at(nIndex)->Timeout(5, Socket::WRITE))
-                            disconnect_remove_event(nIndex, DISCONNECT_BUFFER);
-                    }
-
                 }
                 catch(const std::exception& e) { }
             }
