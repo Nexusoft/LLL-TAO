@@ -359,7 +359,6 @@ namespace LLP
             /* Check overflow buffer. */
             if(vBuffer.size() > 0)
             {
-                nLastSend = runtime::timestamp();
                 vBuffer.insert(vBuffer.end(), vData.begin(), vData.end());
 
                 return static_cast<int32_t>(nBytes);
