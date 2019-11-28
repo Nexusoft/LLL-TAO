@@ -334,23 +334,22 @@ namespace LLP
 
                     /* Disconnect if pollin signaled with no data (This happens on Linux). */
                     if((POLLFDS.at(nIndex).revents & POLLIN)
-                    && CONNECTION->Available() == 0
-                    && CONNECTION->Timeout(5, Socket::READ))
+                    && CONNECTION->Timeout(1, Socket::READ))
                     {
                         disconnect_remove_event(nIndex, DISCONNECT_POLL_EMPTY);
                         continue;
                     }
 
                     /* Disconnect if buffer is full and remote host isn't reading at all. */
-                    if(CONNECTION->Buffered() > MAX_SEND_BUFFER
-                    && CONNECTION->Timeout(5, Socket::WRITE))
+                    if(CONNECTION->Buffered()
+                    && CONNECTION->Timeout(1, Socket::WRITE))
                     {
-                        disconnect_remove_event(nIndex, DISCONNECT_BUFFER);
+                        disconnect_remove_event(nIndex, DISCONNECT_TIMEOUT_WRITE);
                         continue;
                     }
 
                     /* Check that write buffers aren't overflowed. */
-                    if(CONNECTION->Buffered() > (MAX_SEND_BUFFER * 10))
+                    if(CONNECTION->Buffered() > (MAX_SEND_BUFFER * 2))
                     {
                         disconnect_remove_event(nIndex, DISCONNECT_BUFFER);
                         continue;

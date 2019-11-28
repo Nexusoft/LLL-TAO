@@ -323,6 +323,10 @@ namespace LLP
                         strReason = "Flood Control";
                         break;
 
+                    case DISCONNECT_TIMEOUT_WRITE:
+                        strReason = "Flood Control Timeout";
+                        break;
+
                     default:
                         strReason = "Unknown";
                         break;

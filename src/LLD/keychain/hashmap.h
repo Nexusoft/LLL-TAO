@@ -130,7 +130,7 @@ namespace LLD
          *  Calculates a bucket to be used for the hashmap allocation.
          *
          *  @param[in] vKey The key object to calculate with.
-         *Hashmap
+         *
          *  @return The bucket assigned to the key.
          *
          **/
