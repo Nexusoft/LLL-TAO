@@ -27,6 +27,10 @@ ________________________________________________________________________________
 namespace LLP
 {
 
+    /** Max send buffer size. **/
+    const uint64_t MAX_SEND_BUFFER = 1024 * 1024; //1MB max send buffer
+
+
     /** Socket
      *
      *  Base Template class to handle outgoing / incoming LLP data for both

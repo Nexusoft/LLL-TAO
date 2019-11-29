@@ -167,7 +167,8 @@ namespace LLP
         std::vector<uint8_t> vBytes = PACKET.GetBytes();
 
         /* Stop sending packets if send buffer is full. */
-        if(Buffered() + vBytes.size() + 512 < MAX_SEND_BUFFER)
+        if(Buffered() + vBytes.size() + 1024 < MAX_SEND_BUFFER //reserve 1Kb of buffer for critical messages
+        || (fBufferFull.load() && Buffered() + vBytes.size() < MAX_SEND_BUFFER)) //catch for critical messages (< 1 Kb)
         {
             /* Debug dump of message type. */
             debug::log(4, NODE, "sent packet (", vBytes.size(), " bytes)");

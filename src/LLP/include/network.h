@@ -77,10 +77,6 @@ typedef u_int SOCKET;
 #endif // ifdef WIN32
 
 
-/** Max send buffer size. **/
-const uint64_t MAX_SEND_BUFFER = 1024 * 1024; //1MB max send buffer
-
-
 namespace LLP
 {
     /** NetworkInitialize
