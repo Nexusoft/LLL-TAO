@@ -1005,7 +1005,7 @@ namespace LLP
                             /* Do a sequential read to obtain the list.
                                3000 seems to be the optimal amount to overcome higher-latency connections during sync */
                             std::vector<TAO::Ledger::BlockState> vStates;
-                            while(!BufferFull() && --nLimits >= 0 && LLD::Ledger->BatchRead(hashStart, "block", vStates, 3000, true))
+                            while(--nLimits >= 0 && LLD::Ledger->BatchRead(hashStart, "block", vStates, 3000, true))
                             {
                                 /* Loop through all available states. */
                                 for(auto& state : vStates)
@@ -1114,7 +1114,7 @@ namespace LLP
 
                             /* Check for last subscription. */
                             if(nNotifications & SUBSCRIPTION::LASTINDEX)
-                                PushMessage(ACTION::NOTIFY, uint8_t(TYPES::LASTINDEX), uint8_t(TYPES::BLOCK), hashStart);
+                                PushMessage(ACTION::NOTIFY, uint8_t(TYPES::LASTINDEX), uint8_t(TYPES::BLOCK), stateLast.GetHash());
 
                             break;
                         }
