@@ -28,7 +28,7 @@ namespace LLP
 {
 
     /** Max send buffer size. **/
-    const uint64_t MAX_SEND_BUFFER = 1024 * 1024; //1MB max send buffer
+    const uint64_t MAX_SEND_BUFFER = 3 * 1024 * 1024; //3MB max send buffer
 
 
     /** Socket
@@ -39,14 +39,16 @@ namespace LLP
      **/
     class Socket : public pollfd
     {
-    private:
 
         /** Mutex for thread synchronization. **/
         mutable std::mutex SOCKET_MUTEX;
 
+
     protected:
 
+        /** Mutex to protect buffered data. **/
         mutable std::mutex DATA_MUTEX;
+
 
         /** Keep track of last time data was sent. **/
         std::atomic<uint64_t> nLastSend;

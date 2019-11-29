@@ -408,7 +408,7 @@ namespace LLP
     {
         LOCK(DATA_MUTEX);
 
-        int32_t nSent = 0;
+        int32_t nSent   = 0;
         uint32_t nBytes = 0;
         uint32_t nSize  = static_cast<uint32_t>(vBuffer.size());
 
