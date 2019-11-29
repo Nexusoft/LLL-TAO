@@ -1121,7 +1121,7 @@ namespace LLP
 
                             /* Check for last subscription. */
                             if(nNotifications & SUBSCRIPTION::LASTINDEX)
-                                PushMessage(ACTION::NOTIFY, uint8_t(TYPES::LASTINDEX), uint8_t(TYPES::BLOCK), stateLast.hashPrevBlock);
+                                PushMessage(ACTION::NOTIFY, uint8_t(TYPES::LASTINDEX), uint8_t(TYPES::BLOCK), fBufferFull.load() ? stateLast.hashPrevBlock : hashStart);
 
                             break;
                         }
@@ -1621,9 +1621,8 @@ namespace LLP
                                     if(nCurrentSession == TAO::Ledger::nSyncSession.load())
                                     {
                                         /* Check for complete synchronization. */
-                                        if((hashLast == TAO::Ledger::ChainState::hashBestChain.load()
+                                        if(hashLast == TAO::Ledger::ChainState::hashBestChain.load()
                                         && hashLast == hashBestChain)
-                                        || hashLast == hashLastIndex)
                                         {
                                             /* Set state to synchronized. */
                                             fSynchronized.store(true);
