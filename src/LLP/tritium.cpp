@@ -2437,6 +2437,9 @@ namespace LLP
     /* Checks if a node is subscribed to receive a notification. */
     const DataStream TritiumNode::Notifications(const uint16_t nMsg, const DataStream& ssData) const
     {
+        /* Reset the datastream read position. */
+        ssData.Reset();
+
         /* Only filter relays when message is notify. */
         if(nMsg != ACTION::NOTIFY)
             return ssData;
@@ -2512,6 +2515,13 @@ namespace LLP
                     uint32_t nHeight;
                     ssData >> nHeight;
 
+                    /* Check for legacy. */
+                    if(fLegacy)
+                    {
+                        debug::error(FUNCTION, "BESTHEIGHT cannot have legacy specifier");
+                        continue;
+                    }
+
                     /* Check subscription. */
                     if(nNotifications & SUBSCRIPTION::BESTHEIGHT)
                     {
@@ -2530,6 +2540,13 @@ namespace LLP
                     /* Get the index. */
                     uint1024_t hashCheck;
                     ssData >> hashCheck;
+
+                    /* Check for legacy. */
+                    if(fLegacy)
+                    {
+                        debug::error(FUNCTION, "CHECKPOINT cannot have legacy specifier");
+                        continue;
+                    }
 
                     /* Check subscription. */
                     if(nNotifications & SUBSCRIPTION::CHECKPOINT)
@@ -2550,6 +2567,13 @@ namespace LLP
                     uint1024_t hashBest;
                     ssData >> hashBest;
 
+                    /* Check for legacy. */
+                    if(fLegacy)
+                    {
+                        debug::error(FUNCTION, "BESTCHAIN cannot have legacy specifier");
+                        continue;
+                    }
+
                     /* Check subscription. */
                     if(nNotifications & SUBSCRIPTION::BESTCHAIN)
                     {
@@ -2568,6 +2592,13 @@ namespace LLP
                     /* Get the index. */
                     BaseAddress addr;
                     ssData >> addr;
+
+                    /* Check for legacy. */
+                    if(fLegacy)
+                    {
+                        debug::error(FUNCTION, "ADDRESS cannot have legacy specifier");
+                        continue;
+                    }
 
                     /* Check subscription. */
                     if(nNotifications & SUBSCRIPTION::ADDRESS)
