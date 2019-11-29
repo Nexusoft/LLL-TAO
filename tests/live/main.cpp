@@ -59,6 +59,11 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/stake.h>
 
+#include <LLP/types/tritium.h>
+
+#include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/types/locator.h>
+
 class TestDB : public LLD::SectorDatabase<LLD::BinaryHashMap, LLD::BinaryLRU>
 {
 public:
@@ -125,10 +130,32 @@ _name.shard.file
 */
 
 
+
+
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
     config::mapArgs["-datadir"] = "/public/tests";
+
+    LLP::TritiumNode node;
+    node.Connect(LLP::BaseAddress("127.0.0.1", 9888));
+
+    node.PushMessage(LLP::ACTION::VERSION, LLP::PROTOCOL_VERSION, uint64_t(3838238), std::string("Test Client"));
+
+    node.Subscribe(LLP::SUBSCRIPTION::LASTINDEX | LLP::SUBSCRIPTION::BESTCHAIN | LLP::SUBSCRIPTION::BESTHEIGHT);
+
+    /* Ask for list of blocks if this is current sync node. */
+    node.PushMessage(LLP::ACTION::LIST,
+        uint8_t(LLP::SPECIFIER::SYNC),
+        uint8_t(LLP::TYPES::BLOCK),
+        uint8_t(LLP::TYPES::UINT1024_T),
+        TAO::Ledger::ChainState::Genesis(),
+        uint1024_t(0)
+    );
+
+    runtime::sleep(10000);
+
+    return 0;
 
     TestDB* db = new TestDB();
 

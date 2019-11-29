@@ -342,7 +342,7 @@ namespace LLP
 
                     /* Disconnect if buffer is full and remote host isn't reading at all. */
                     if(CONNECTION->Buffered()
-                    && CONNECTION->Timeout(5000, Socket::WRITE))
+                    && CONNECTION->Timeout(15000, Socket::WRITE))
                     {
                         disconnect_remove_event(nIndex, DISCONNECT_TIMEOUT_WRITE);
                         continue;
@@ -463,7 +463,12 @@ namespace LLP
             /* Check all connections for data and packets. */
             for(uint32_t nIndex = 0; nIndex < CONNECTIONS->size(); ++nIndex)
             {
-                try { CONNECTIONS->at(nIndex)->Flush(); }
+                try
+                {
+                    /* Attempt to flush data when buffer is available. */
+                    if(CONNECTIONS->at(nIndex)->Buffered() && CONNECTIONS->at(nIndex)->Flush() < 0)
+                        runtime::sleep(CONNECTIONS->at(nIndex)->nConsecutiveErrors.load() / 100); //we want to sleep when we have periodic failures
+                }
                 catch(const std::exception& e) { }
             }
         }

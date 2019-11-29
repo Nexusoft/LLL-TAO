@@ -73,6 +73,10 @@ namespace LLP
     public:
 
 
+        /** Flag to detect consecutive errors. **/
+        std::atomic<uint32_t> nConsecutiveErrors;
+
+
         /** Timeout flags. **/
         enum
         {
