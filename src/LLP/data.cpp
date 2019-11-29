@@ -326,7 +326,7 @@ namespace LLP
                     }
 
                     /* Remove Connection if it has Timed out or had any Errors. */
-                    if(CONNECTION->Timeout(TIMEOUT))
+                    if(CONNECTION->Timeout(TIMEOUT * 1000))
                     {
                         disconnect_remove_event(nIndex, DISCONNECT_TIMEOUT);
                         continue;
@@ -334,7 +334,8 @@ namespace LLP
 
                     /* Disconnect if pollin signaled with no data (This happens on Linux). */
                     if((POLLFDS.at(nIndex).revents & POLLIN)
-                    && CONNECTION->Available() == 0)
+                    && CONNECTION->Available() == 0
+                    && CONNECTION->Timeout(500, Socket::READ))
                     {
                         disconnect_remove_event(nIndex, DISCONNECT_POLL_EMPTY);
                         continue;
@@ -342,7 +343,7 @@ namespace LLP
 
                     /* Disconnect if buffer is full and remote host isn't reading at all. */
                     if(CONNECTION->Buffered()
-                    && CONNECTION->Timeout(3, Socket::WRITE))
+                    && CONNECTION->Timeout(3000, Socket::WRITE))
                     {
                         disconnect_remove_event(nIndex, DISCONNECT_TIMEOUT_WRITE);
                         continue;

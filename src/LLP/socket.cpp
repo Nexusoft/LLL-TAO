@@ -125,8 +125,8 @@ namespace LLP
     void Socket::Reset()
     {
         /* Atomic data types, no need for lock */
-        nLastRecv = runtime::timestamp();
-        nLastSend = runtime::timestamp();
+        nLastRecv = runtime::timestamp(true);
+        nLastSend = runtime::timestamp(true);
     }
 
 
@@ -323,7 +323,7 @@ namespace LLP
             return nError;
         }
         else if(nRead > 0)
-            nLastRecv = runtime::timestamp();
+            nLastRecv = runtime::timestamp(true);
 
         return nRead;
     }
@@ -349,7 +349,7 @@ namespace LLP
             return nError;
         }
         else if(nRead > 0)
-            nLastRecv = runtime::timestamp();
+            nLastRecv = runtime::timestamp(true);
 
         return nRead;
     }
@@ -397,7 +397,7 @@ namespace LLP
             vBuffer.insert(vBuffer.end(), vData.begin() + nSent, vData.end());
         }
         else //don't update last sent unless all the data was written to the buffer
-            nLastSend = runtime::timestamp();
+            nLastSend = runtime::timestamp(true);
 
         return nSent;
     }
@@ -446,7 +446,7 @@ namespace LLP
             vBuffer.erase(vBuffer.begin(), vBuffer.begin() + nSent);
 
             /* Update socket timers. */
-            nLastSend = runtime::timestamp();
+            nLastSend = runtime::timestamp(true);
 
             /* Reset that buffers are full. */
             fBufferFull.store(false);
@@ -462,11 +462,11 @@ namespace LLP
         /* Check for write flags. */
         bool fRet = true;
         if(nFlags & WRITE)
-            fRet = (fRet && runtime::timestamp() > (uint64_t)(nLastSend + nTime));
+            fRet = (fRet && runtime::timestamp(true) > uint64_t(nLastSend + nTime));
 
         /* Check for read flags. */
         if(nFlags & READ)
-            fRet = (fRet && runtime::timestamp() > (uint64_t)(nLastRecv + nTime));
+            fRet = (fRet && runtime::timestamp(true) > uint64_t(nLastRecv + nTime));
 
         return fRet;
     }
