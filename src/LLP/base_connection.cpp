@@ -166,22 +166,28 @@ namespace LLP
         /* Get the bytes of the packet. */
         std::vector<uint8_t> vBytes = PACKET.GetBytes();
 
-        /* Debug dump of message type. */
-        debug::log(4, NODE, "sent packet (", vBytes.size(), " bytes)");
+        /* Stop sending packets if send buffer is full. */
+        if(Buffered() + vBytes.size() < MAX_SEND_BUFFER)
+        {
+            /* Debug dump of message type. */
+            debug::log(4, NODE, "sent packet (", vBytes.size(), " bytes)");
 
-        /* Debug dump of packet data. */
-        if(config::nVerbose >= 5)
-            PrintHex(vBytes);
+            /* Debug dump of packet data. */
+            if(config::nVerbose >= 5)
+                PrintHex(vBytes);
 
-        /* Write the packet to socket buffer. */
-        Write(vBytes, vBytes.size());
+            /* Write the packet to socket buffer. */
+            Write(vBytes, vBytes.size());
+
+            /* Update packet count. */
+            ++PACKETS;
+        }
+        else //set buffer to full
+            fBufferFull.store(true);
 
         /* Notify condition if available. */
         if(FLUSH_CONDITION && Buffered())
             FLUSH_CONDITION->notify_all();
-
-        /* Update packet count. */
-        ++PACKETS;
     }
 
 

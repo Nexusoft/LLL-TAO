@@ -30,13 +30,15 @@ namespace LLP
 
     /** The default constructor. **/
     Socket::Socket()
-    : SOCKET_MUTEX()
-    , DATA_MUTEX()
-    , nLastSend(0)
-    , nLastRecv(0)
-    , nError(0)
-    , vBuffer()
-    , addr()
+    : pollfd       ( )
+    , SOCKET_MUTEX ( )
+    , DATA_MUTEX   ( )
+    , nLastSend    (0)
+    , nLastRecv    (0)
+    , nError       (0)
+    , vBuffer      ( )
+    , fBufferFull  (false)
+    , addr         ( )
     {
         fd = INVALID_SOCKET;
         events = POLLIN;
@@ -48,27 +50,30 @@ namespace LLP
 
     /** Copy constructor. **/
     Socket::Socket(const Socket& socket)
-    : pollfd(socket)
-    , SOCKET_MUTEX()
-    , DATA_MUTEX()
-    , nLastSend(socket.nLastSend.load())
-    , nLastRecv(socket.nLastRecv.load())
-    , nError(socket.nError.load())
-    , vBuffer(socket.vBuffer)
-    , addr(socket.addr)
+    : pollfd       (socket)
+    , SOCKET_MUTEX ( )
+    , DATA_MUTEX   ( )
+    , nLastSend    (socket.nLastSend.load())
+    , nLastRecv    (socket.nLastRecv.load())
+    , nError       (socket.nError.load())
+    , vBuffer      (socket.vBuffer)
+    , fBufferFull  (socket.fBufferFull.load())
+    , addr         (socket.addr)
     {
     }
 
 
     /** The socket constructor. **/
     Socket::Socket(int32_t nSocketIn, const BaseAddress &addrIn)
-    : SOCKET_MUTEX()
-    , DATA_MUTEX()
-    , nLastSend(0)
-    , nLastRecv(0)
-    , nError(0)
-    , vBuffer()
-    , addr(addrIn)
+    : pollfd       ( )
+    , SOCKET_MUTEX ( )
+    , DATA_MUTEX   ( )
+    , nLastSend    (0)
+    , nLastRecv    (0)
+    , nError       (0)
+    , vBuffer      ( )
+    , fBufferFull  (false)
+    , addr         (addrIn)
     {
         fd = nSocketIn;
         events = POLLIN;
@@ -80,13 +85,15 @@ namespace LLP
 
     /* Constructor for socket */
     Socket::Socket(const BaseAddress &addrConnect)
-    : SOCKET_MUTEX()
-    , DATA_MUTEX()
-    , nLastSend(0)
-    , nLastRecv(0)
-    , nError(0)
-    , vBuffer()
-    , addr()
+    : pollfd       ( )
+    , SOCKET_MUTEX ( )
+    , DATA_MUTEX   ( )
+    , nLastSend    (0)
+    , nLastRecv    (0)
+    , nError       (0)
+    , vBuffer      ( )
+    , fBufferFull  (false)
+    , addr         ( )
     {
         fd = INVALID_SOCKET;
         events = POLLIN;
@@ -440,6 +447,9 @@ namespace LLP
 
             /* Update socket timers. */
             nLastSend = runtime::timestamp();
+
+            /* Reset that buffers are full. */
+            fBufferFull.store(false);
         }
 
         return nSent;
@@ -468,6 +478,13 @@ namespace LLP
         LOCK(DATA_MUTEX);
 
         return vBuffer.size();
+    }
+
+
+    /* Check whether buffer is available for writing. */
+    bool Socket::BufferFull() const
+    {
+        return fBufferFull.load();
     }
 
 

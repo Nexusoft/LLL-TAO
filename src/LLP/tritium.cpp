@@ -1005,7 +1005,7 @@ namespace LLP
                             /* Do a sequential read to obtain the list.
                                3000 seems to be the optimal amount to overcome higher-latency connections during sync */
                             std::vector<TAO::Ledger::BlockState> vStates;
-                            while(--nLimits >= 0 && LLD::Ledger->BatchRead(hashStart, "block", vStates, 3000, true))
+                            while(!BufferFull() && --nLimits >= 0 && LLD::Ledger->BatchRead(hashStart, "block", vStates, 3000, true))
                             {
                                 /* Loop through all available states. */
                                 for(auto& state : vStates)
@@ -1101,7 +1101,7 @@ namespace LLP
                                     }
 
                                     /* Check for stop hash. */
-                                    if(--nLimits <= 0 || hashStart == hashStop || Buffered() > MAX_SEND_BUFFER) //1MB limit
+                                    if(--nLimits <= 0 || hashStart == hashStop || BufferFull()) //1MB limit
                                     {
                                         /* Regular debug for normal limits */
                                         if(config::nVerbose >= 3)
@@ -1162,12 +1162,12 @@ namespace LLP
                                         PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::LEGACY), tx);
 
                                         /* Check for stop hash. */
-                                        if(--nLimits == 0 || hashStart == hashStop || Buffered() > MAX_SEND_BUFFER)
+                                        if(--nLimits == 0 || hashStart == hashStop || BufferFull())
                                             break;
                                     }
 
                                     /* Check for stop or limits. */
-                                    if(nLimits == 0 || hashStart == hashStop || Buffered() > MAX_SEND_BUFFER)
+                                    if(nLimits == 0 || hashStart == hashStop || BufferFull())
                                         break;
                                 }
                             }
@@ -1195,12 +1195,12 @@ namespace LLP
                                         PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::TRITIUM), tx);
 
                                         /* Check for stop hash. */
-                                        if(--nLimits == 0 || hashStart == hashStop || Buffered() > MAX_SEND_BUFFER)
+                                        if(--nLimits == 0 || hashStart == hashStop || BufferFull())
                                             break;
                                     }
 
                                     /* Check for stop or limits. */
-                                    if(nLimits == 0 || hashStart == hashStop || Buffered() > MAX_SEND_BUFFER)
+                                    if(nLimits == 0 || hashStart == hashStop || BufferFull())
                                         break;
                                 }
                             }
