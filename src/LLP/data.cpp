@@ -342,7 +342,7 @@ namespace LLP
 
                     /* Disconnect if buffer is full and remote host isn't reading at all. */
                     if(CONNECTION->Buffered()
-                    && CONNECTION->Timeout(1, Socket::WRITE))
+                    && CONNECTION->Timeout(3, Socket::WRITE))
                     {
                         disconnect_remove_event(nIndex, DISCONNECT_TIMEOUT_WRITE);
                         continue;
