@@ -1621,8 +1621,9 @@ namespace LLP
                                     if(nCurrentSession == TAO::Ledger::nSyncSession.load())
                                     {
                                         /* Check for complete synchronization. */
-                                        if(hashLast == TAO::Ledger::ChainState::hashBestChain.load()
+                                        if((hashLast == TAO::Ledger::ChainState::hashBestChain.load()
                                         && hashLast == hashBestChain)
+                                        || hashLast == hashLastIndex)
                                         {
                                             /* Set state to synchronized. */
                                             fSynchronized.store(true);
@@ -2470,10 +2471,6 @@ namespace LLP
                     uint1024_t hashBlock;
                     ssData >> hashBlock;
 
-                    /* Skip malformed requests. */
-                    if(fLegacy)
-                        continue;
-
                     /* Check subscription. */
                     if(nNotifications & SUBSCRIPTION::BLOCK)
                     {
@@ -2516,10 +2513,6 @@ namespace LLP
                     uint32_t nHeight;
                     ssData >> nHeight;
 
-                    /* Skip malformed requests. */
-                    if(fLegacy)
-                        continue;
-
                     /* Check subscription. */
                     if(nNotifications & SUBSCRIPTION::BESTHEIGHT)
                     {
@@ -2538,10 +2531,6 @@ namespace LLP
                     /* Get the index. */
                     uint1024_t hashCheck;
                     ssData >> hashCheck;
-
-                    /* Skip malformed requests. */
-                    if(fLegacy)
-                        continue;
 
                     /* Check subscription. */
                     if(nNotifications & SUBSCRIPTION::CHECKPOINT)
@@ -2562,10 +2551,6 @@ namespace LLP
                     uint1024_t hashBest;
                     ssData >> hashBest;
 
-                    /* Skip malformed requests. */
-                    if(fLegacy)
-                        continue;
-
                     /* Check subscription. */
                     if(nNotifications & SUBSCRIPTION::BESTCHAIN)
                     {
@@ -2584,10 +2569,6 @@ namespace LLP
                     /* Get the index. */
                     BaseAddress addr;
                     ssData >> addr;
-
-                    /* Skip malformed requests. */
-                    if(fLegacy)
-                        continue;
 
                     /* Check subscription. */
                     if(nNotifications & SUBSCRIPTION::ADDRESS)

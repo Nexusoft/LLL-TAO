@@ -138,7 +138,7 @@ int main(int argc, char** argv)
     config::mapArgs["-datadir"] = "/public/tests";
 
     LLP::TritiumNode node;
-    node.Connect(LLP::BaseAddress("127.0.0.1", 9888));
+    node.Connect(LLP::BaseAddress("69.195.156.210", 9888));
 
     node.PushMessage(LLP::ACTION::VERSION, LLP::PROTOCOL_VERSION, uint64_t(3838238), std::string("Test Client"));
 
