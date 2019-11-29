@@ -458,7 +458,7 @@ namespace LLP
                 if(!fSynchronized.load())
                 {
                     /* Start sync on startup, or override any legacy syncing currently in process. */
-                    if(TAO::Ledger::nSyncSession.load() == 0)
+                    if(TAO::Ledger::nSyncSession.load() == 0 && !Incoming())
                     {
                         /* Set the sync session-id. */
                         TAO::Ledger::nSyncSession.store(nCurrentSession);
@@ -1005,7 +1005,7 @@ namespace LLP
                             /* Do a sequential read to obtain the list.
                                3000 seems to be the optimal amount to overcome higher-latency connections during sync */
                             std::vector<TAO::Ledger::BlockState> vStates;
-                            while(--nLimits >= 0 && LLD::Ledger->BatchRead(hashStart, "block", vStates, 3000, true))
+                            while(!fBufferFull.load() && --nLimits >= 0 && hashStart != hashStop && LLD::Ledger->BatchRead(hashStart, "block", vStates, 3000, true))
                             {
                                 /* Loop through all available states. */
                                 for(auto& state : vStates)
@@ -1101,11 +1101,17 @@ namespace LLP
                                     }
 
                                     /* Check for stop hash. */
-                                    if(--nLimits <= 0 || hashStart == hashStop || BufferFull()) //1MB limit
+                                    if(--nLimits <= 0 || hashStart == hashStop || fBufferFull.load()) //1MB limit
                                     {
                                         /* Regular debug for normal limits */
                                         if(config::nVerbose >= 3)
+                                        {
+                                            /* Special message for full write buffers. */
+                                            if(fBufferFull.load())
+                                                debug::log(3, FUNCTION, "Buffer is FULL ", Buffered(), " bytes");
+
                                             debug::log(3, FUNCTION, "Limits ", nLimits, " Reached ", hashStart.SubString(), " == ", hashStop.SubString());
+                                        }
 
                                         break;
                                     }
@@ -1114,7 +1120,7 @@ namespace LLP
 
                             /* Check for last subscription. */
                             if(nNotifications & SUBSCRIPTION::LASTINDEX)
-                                PushMessage(ACTION::NOTIFY, uint8_t(TYPES::LASTINDEX), uint8_t(TYPES::BLOCK), stateLast.GetHash());
+                                PushMessage(ACTION::NOTIFY, uint8_t(TYPES::LASTINDEX), uint8_t(TYPES::BLOCK), stateLast.hashPrevBlock);
 
                             break;
                         }
@@ -1162,12 +1168,12 @@ namespace LLP
                                         PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::LEGACY), tx);
 
                                         /* Check for stop hash. */
-                                        if(--nLimits == 0 || hashStart == hashStop || BufferFull())
+                                        if(--nLimits == 0 || hashStart == hashStop || fBufferFull.load())
                                             break;
                                     }
 
                                     /* Check for stop or limits. */
-                                    if(nLimits == 0 || hashStart == hashStop || BufferFull())
+                                    if(nLimits == 0 || hashStart == hashStop || fBufferFull.load())
                                         break;
                                 }
                             }
@@ -1195,12 +1201,12 @@ namespace LLP
                                         PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::TRITIUM), tx);
 
                                         /* Check for stop hash. */
-                                        if(--nLimits == 0 || hashStart == hashStop || BufferFull())
+                                        if(--nLimits == 0 || hashStart == hashStop || fBufferFull.load())
                                             break;
                                     }
 
                                     /* Check for stop or limits. */
-                                    if(nLimits == 0 || hashStart == hashStop || BufferFull())
+                                    if(nLimits == 0 || hashStart == hashStop || fBufferFull.load())
                                         break;
                                 }
                             }

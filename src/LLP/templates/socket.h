@@ -218,14 +218,6 @@ namespace LLP
         uint64_t Buffered() const;
 
 
-        /** BufferFull
-         *
-         *  Check whether buffer is available for writing.
-         *
-         **/
-        bool BufferFull() const;
-
-
         /** IsNull
          *
          *  Checks if is in null state.

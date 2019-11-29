@@ -481,13 +481,6 @@ namespace LLP
     }
 
 
-    /* Check whether buffer is available for writing. */
-    bool Socket::BufferFull() const
-    {
-        return fBufferFull.load();
-    }
-
-
     /*  Checks if is in null state. */
     bool Socket::IsNull() const
     {
