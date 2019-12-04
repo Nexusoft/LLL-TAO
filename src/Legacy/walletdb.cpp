@@ -438,6 +438,9 @@ namespace Legacy
                 /* Check transactions for consistency. */
                 if(config::GetBoolArg("-walletcheck", true))
                 {
+                    /* Flag to track if transaction switched to tritium. */
+                    bool fTritium = false;
+
                     /* Check for tritium hash type, but fall through to legacy if this fails. */
                     if(hash.GetType() == TAO::Ledger::TRITIUM)
                     {
@@ -460,11 +463,14 @@ namespace Legacy
 
                                 continue;
                             }
+
+                            /* Set tritium flag. */
+                            fTritium = true;
                         }
                     }
 
                     /* Check wtx hash against stored hash for corruption. */
-                    if(LLD::Legacy->HasTx(hash) && wtx.GetHash() != hash)
+                    if(!fTritium && LLD::Legacy->HasTx(hash) && wtx.GetHash() != hash)
                     {
                         /* Add mismatched transaction to list of transactions to remove from database */
                         debug::error(FUNCTION, "Error in ", strWalletFile, ", Legacy hash mismatch, resolving");
