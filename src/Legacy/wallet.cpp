@@ -1261,7 +1261,24 @@ namespace Legacy
                 {
                     /* Add to the wallet */
                     if(AddToWalletIfInvolvingMe(tx, state, fUpdate, true, true))
+                    {
+                        /* Get txid. */
+                        uint512_t hash = tx.GetHash();
+
+                        /* Update spent flags. */
+                        WalletTx& wtx = mapWallet[hash];
+                        for(uint32_t n = 0; n < wtx.vout.size(); ++n)
+                        {
+                            /* Update spent pointers. */
+                            if(LLD::Legacy->IsSpent(hash, n))
+                            {
+                                wtx.MarkSpent(n);
+                                wtx.WriteToDisk(hash);
+                            }
+                        }
+
                         ++nTransactionCount;
+                    }
 
                     /* Update the scanned count for meters. */
                     ++nScannedCount;
@@ -1297,7 +1314,6 @@ namespace Legacy
         {
             /* If started from a Legacy block, read the first Tritium tx to set hashLast */
             std::vector<TAO::Ledger::Transaction> vtx;
-
             if(LLD::Ledger->BatchRead("tx", vtx, 1))
                 hashLast = vtx[0].GetHash();
         }
@@ -1332,8 +1348,25 @@ namespace Legacy
                 for(const auto& tx : vtx)
                 {
                     /* Add to the wallet */
-                    if (AddToWalletIfInvolvingMe(tx, state, fUpdate, true, true))
+                    if(AddToWalletIfInvolvingMe(tx, state, fUpdate, true, true))
+                    {
+                        /* Get txid. */
+                        uint512_t hash = tx.GetHash();
+
+                        /* Update spent flags. */
+                        WalletTx& wtx = mapWallet[hash];
+                        for(uint32_t n = 0; n < wtx.vout.size(); ++n)
+                        {
+                            /* Update spent pointers. */
+                            if(LLD::Legacy->IsSpent(hash, n))
+                            {
+                                wtx.MarkSpent(n);
+                                wtx.WriteToDisk(hash);
+                            }
+                        }
+
                         ++nTransactionCount;
+                    }
 
                     /* Update the scanned count for meters. */
                     ++nScannedCount;
@@ -1451,7 +1484,6 @@ namespace Legacy
             {
                 /* Check the txin to see if prevout hash maps to a transaction in this wallet */
                 TransactionMap::iterator mi = mapWallet.find(txin.prevout.hash);
-
                 if(mi != mapWallet.end())
                 {
                     /* When there is a match to the prevout hash, get the previous wallet transaction */

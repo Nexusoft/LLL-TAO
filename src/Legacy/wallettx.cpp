@@ -368,7 +368,7 @@ namespace Legacy
          * we can still consider it confirmed if all supporting transactions are confirmed.*/
         std::map<uint512_t, const MerkleTx*> mapPrev;
         for(const auto& prevTx : vtxPrev)
-            mapPrev[prevTx.GetHash()] = &prevTx;
+            mapPrev[prevTx.first] = &prevTx.second;
 
         /* Work queue to process all inputs recursively. */
         std::vector<const MerkleTx*> vWorkQueue;
@@ -655,8 +655,8 @@ namespace Legacy
                          * This saves them so we can get MerkleTx from mapWalletPrev if it isn't in mapWallet
                          * and need to process deeper because tx depth is less than copy depth (unlikely, see below)
                          */
-                        for(const MerkleTx& txWalletPrev : prevTx.vtxPrev)
-                            mapWalletPrev[txWalletPrev.GetHash()] = &txWalletPrev;
+                        for(const auto& txWalletPrev : prevTx.vtxPrev)
+                            mapWalletPrev[txWalletPrev.first] = &txWalletPrev.second;
 
                     }
                     else if(mapWalletPrev.count(prevoutTxHash))
@@ -678,7 +678,7 @@ namespace Legacy
                     }
 
                     uint32_t nDepth = prevMerkleTx.GetDepthInMainChain();
-                    vtxPrev.push_back(prevMerkleTx);
+                    vtxPrev.push_back(std::make_pair(prevoutTxHash, prevMerkleTx));
 
                     if(nDepth < COPY_DEPTH)
                     {
@@ -703,8 +703,11 @@ namespace Legacy
     /* Send this transaction to the network if not in our database, yet. */
     bool WalletTx::RelayWalletTransaction() const
     {
-        for(const MerkleTx& tx : vtxPrev)
+        for(const auto& wtx : vtxPrev)
         {
+            /* Grab reference of previous tx. */
+            const MerkleTx& tx = wtx.second;
+
             /* Also relay any tx in vtxPrev that we don't have in our database, yet */
             /* NOTE we skip any that have no vin, as these are the pseudo legacy transactions that are created
                to support the sig chain to UTXO transactions (OP::LEGACY) */

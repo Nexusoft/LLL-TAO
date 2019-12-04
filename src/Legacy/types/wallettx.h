@@ -81,7 +81,7 @@ namespace Legacy
 
     public:
         /** Previous transactions that contain outputs spent by inputs to this transaction **/
-        std::vector<MerkleTx> vtxPrev;
+        std::vector<std::pair<uint512_t, MerkleTx>> vtxPrev;
 
 
         /** Used by serialization to store/retrieve vfSpent and other settings.
