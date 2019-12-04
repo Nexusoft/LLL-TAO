@@ -467,7 +467,7 @@ namespace LLP
                 {
                     /* Attempt to flush data when buffer is available. */
                     if(CONNECTIONS->at(nIndex)->Buffered() && CONNECTIONS->at(nIndex)->Flush() < 0)
-                        runtime::sleep(CONNECTIONS->at(nIndex)->nConsecutiveErrors.load() / 100); //we want to sleep when we have periodic failures
+                        runtime::sleep(std::min(5u, CONNECTIONS->at(nIndex)->nConsecutiveErrors.load() / 1000)); //we want to sleep when we have periodic failures
                 }
                 catch(const std::exception& e) { }
             }

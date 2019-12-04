@@ -436,7 +436,6 @@ namespace LLP
             #endif
         }
 
-
         /* Handle errors on flush. */
         if(nSent < 0)
         {
