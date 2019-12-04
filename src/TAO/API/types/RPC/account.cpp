@@ -557,10 +557,10 @@ namespace TAO
 
 
         template<typename key, typename value>
-        bool Find(std::map<key, value> map, value search)
+        bool Find(const std::map<key, value>& map, const value& search)
         {
-            for(typename std::map<key, value>::iterator it = map.begin(); it != map.end(); ++it)
-                if(it->second == search)
+            for(const auto& it : map)
+                if(it.second == search)
                     return true;
 
             return false;
@@ -1744,10 +1744,9 @@ namespace TAO
                 ret["amount"] = Legacy::SatoshisToAmount(txLegacy.GetValueOut());
 
                 /* Get the outputs. */
-                json::json outputs;
+                json::json vOutputs;
                 for(const auto& out : txLegacy.vout)
                 {
-                   
                     Legacy::NexusAddress address;
                     TAO::Register::Address hashRegister;
                     std::string strAddress;
@@ -1760,7 +1759,7 @@ namespace TAO
                     else
                         throw APIException(-5, "failed to extract output address");
 
-                    outputs.push_back(debug::safe_printstr(strAddress, ":", std::fixed, Legacy::SatoshisToAmount(out.nValue)));
+                    vOutputs.push_back(debug::safe_printstr(strAddress, ":", std::fixed, Legacy::SatoshisToAmount(out.nValue)));
                 }
 
                 /* Get the inputs. */
@@ -1770,37 +1769,34 @@ namespace TAO
                     uint32_t nSize = static_cast<uint32_t>(txLegacy.vin.size());
 
                     /* Read all of the inputs. */
-                    json::json inputs;
+                    json::json vInputs;
                     for (uint32_t i = (uint32_t)txLegacy.IsCoinStake(); i < nSize; ++i)
                     {
                         /* Skip inputs that are already found. */
                         Legacy::OutPoint prevout = txLegacy.vin[i].prevout;
 
-
                         /* Read the previous transaction. This could be a legacy or tritium transaction*/
                         Legacy::Transaction txPrev;
                         Ledger::Transaction txPrevTritium;
                         if(LLD::Legacy->ReadTx(prevout.hash, txPrev))
-                        { 
-
+                        {
                             /* Extract the address. */
                             Legacy::NexusAddress address;
                             if(!Legacy::ExtractAddress(txPrev.vout[prevout.n].scriptPubKey, address))
                                 throw APIException(-5, "failed to extract input address");
-                   
 
                             /* Add inputs to json. */
-                            inputs.push_back(debug::safe_printstr(address.ToString(), ":", std::fixed, Legacy::SatoshisToAmount(txPrev.vout[prevout.n].nValue)));
+                            vInputs.push_back(debug::safe_printstr(address.ToString(), ":", std::fixed, Legacy::SatoshisToAmount(txPrev.vout[prevout.n].nValue)));
                         }
                         else if(LLD::Ledger->ReadTx(prevout.hash, txPrevTritium))
-                        { 
+                        {
 
                             /* Iterate through contracts to fill the outputs with all OP::LEGACY contracts */
                             uint32_t nContracts = txPrevTritium.Size();
                             for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
                             {
                                 /* Check that the contract is an op legacy */
-                                if(TAO::Register::Unpack(txPrevTritium[nContract], TAO::Operation::OP::LEGACY ))
+                                if(TAO::Register::Unpack(txPrevTritium[nContract], TAO::Operation::OP::LEGACY))
                                 {
                                     /* The register address of the account that made the OP::LEGACY */
                                     TAO::Register::Address hashRegister;
@@ -1809,11 +1805,11 @@ namespace TAO
                                     TAO::Register::Unpack(txPrevTritium[nContract], hashRegister);
 
                                     /* Get the amount */
-                                    uint64_t nAmount;
+                                    uint64_t nAmount = 0;
                                     TAO::Register::Unpack(txPrevTritium[nContract], nAmount);
 
                                     /* Add inputs to json. */
-                                    inputs.push_back(debug::safe_printstr(hashRegister.ToString(), ":", std::fixed, Legacy::SatoshisToAmount(nAmount)));
+                                    vInputs.push_back(debug::safe_printstr(hashRegister.ToString(), ":", std::fixed, Legacy::SatoshisToAmount(nAmount)));
 
                                     /* We found our op legacy so break */
                                     break;
@@ -1822,15 +1818,15 @@ namespace TAO
                         }
                         else
                             throw APIException(-5, debug::safe_printstr("tx ", prevout.hash.SubString(), " not found"));
-                        
+
                     }
 
                     /* Add to return value. */
-                    ret["inputs"] = inputs;
+                    ret["inputs"] = vInputs;
                 }
 
                 /* Add to return value. */
-                ret["outputs"] = outputs;
+                ret["outputs"] = vOutputs;
 
             }
             else if(LLD::Ledger->ReadTx(hash, txTritium, TAO::Ledger::FLAGS::MEMPOOL))
@@ -1838,8 +1834,8 @@ namespace TAO
                 /* Sun of OP::LEGACY contracts for this transaction  */
                 uint64_t nTotal = 0;
 
-                /* Get the outputs. */
-                json::json outputs;
+                /* Get the vOutputs. */
+                json::json vOutputs;
 
                 /* Iterate through contracts to fill the outputs with all OP::LEGACY contracts */
                 uint32_t nContracts = txTritium.Size();
@@ -1859,41 +1855,36 @@ namespace TAO
 
                         /* Get the output script from the op legacy */
                         Legacy::Script script;
-                        TAO::Register::Unpack(txTritium[nContract], script );
+                        TAO::Register::Unpack(txTritium[nContract], script);
 
                         /* Get the recipient address from the script*/
-                        Legacy::NexusAddress address(script);
+                        Legacy::NexusAddress address;
+                        Legacy::ExtractAddress(script, address);
 
                         /* Add this address/amout to the outputs */
-                        outputs.push_back(debug::safe_printstr(address.ToString(), ":", std::fixed, Legacy::SatoshisToAmount(nAmount)));
+                        vOutputs.push_back(debug::safe_printstr(address.ToString(), ":", std::fixed, Legacy::SatoshisToAmount(nAmount)));
                     }
 
                     /* If we found any op legacy contracts then add the rest of the data */
-                    if(outputs.size() > 0)
+                    if(vOutputs.size() > 0)
                     {
                         ret["type"]   = txTritium.TypeString();
                         ret["time"]   = txTritium.nTimestamp;
                         ret["amount"] = Legacy::SatoshisToAmount(nTotal);
 
                         /* Add to return value. */
-                        ret["outputs"] = outputs;
+                        ret["outputs"] = vOutputs;
                     }
                     else
                     {
                         throw APIException(-1, "This is a Tritium transaction.  Please use the Tritium API to retrieve data for this transaction" );
                     }
-
-
                 }
-
             }
             else
             {
                 throw APIException(-5, "No information available about transaction" );
             }
-
-
-
 
             return ret;
         }

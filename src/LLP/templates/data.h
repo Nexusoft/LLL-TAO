@@ -218,6 +218,9 @@ namespace LLP
                     /* Get atomic pointer to reduce locking around CONNECTIONS scope. */
                     memory::atomic_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nIndex);
 
+                    /* Reset stream read position. */
+                    ssData.Reset();
+
                     /* Relay if there are active subscriptions. */
                     const DataStream ssRelay = CONNECTION->Notifications(message, ssData);
                     if(ssRelay.size() != 0)

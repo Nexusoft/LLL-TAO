@@ -105,8 +105,8 @@ namespace TAO
             else if(LLD::Legacy->ReadTx(hash, txLegacy, TAO::Ledger::FLAGS::MEMPOOL))
             {
                 if(strFormat == "JSON")
-                    ret = TAO::API::TransactionToJSON (txLegacy, blockState, nVerbose);
-                 else
+                    ret = TAO::API::TransactionToJSON(txLegacy, blockState, nVerbose);
+                else
                 {
                     DataStream ssTx(SER_NETWORK, LLP::PROTOCOL_VERSION);
                     ssTx << (uint8_t)LLP::MSG_TX_LEGACY << txLegacy;
