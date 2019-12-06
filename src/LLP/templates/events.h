@@ -31,13 +31,15 @@ namespace LLP
         EVENT_COMMAND        = 6, /* For Message Pushing to Server Processors */
 
         /* Disonnect reason flags */
-        DISCONNECT_TIMEOUT    = 7,
-        DISCONNECT_ERRORS     = 8,
-        DISCONNECT_POLL_ERROR = 9,
-        DISCONNECT_POLL_EMPTY = 10,
-        DISCONNECT_DDOS       = 11,
-        DISCONNECT_FORCE      = 12,
-        DISCONNECT_PEER       = 13
+        DISCONNECT_TIMEOUT       = 7,
+        DISCONNECT_ERRORS        = 8,
+        DISCONNECT_POLL_ERROR    = 9,
+        DISCONNECT_POLL_EMPTY    = 10,
+        DISCONNECT_DDOS          = 11,
+        DISCONNECT_FORCE         = 12,
+        DISCONNECT_PEER          = 13,
+        DISCONNECT_BUFFER        = 14,
+        DISCONNECT_TIMEOUT_WRITE = 15,
     };
 
 }

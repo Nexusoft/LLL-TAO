@@ -27,6 +27,10 @@ ________________________________________________________________________________
 namespace LLP
 {
 
+    /** Max send buffer size. **/
+    const uint64_t MAX_SEND_BUFFER = 3 * 1024 * 1024; //3MB max send buffer
+
+
     /** Socket
      *
      *  Base Template class to handle outgoing / incoming LLP data for both
@@ -35,14 +39,16 @@ namespace LLP
      **/
     class Socket : public pollfd
     {
-    private:
 
         /** Mutex for thread synchronization. **/
         mutable std::mutex SOCKET_MUTEX;
 
+
     protected:
 
+        /** Mutex to protect buffered data. **/
         mutable std::mutex DATA_MUTEX;
+
 
         /** Keep track of last time data was sent. **/
         std::atomic<uint64_t> nLastSend;
@@ -60,7 +66,24 @@ namespace LLP
         std::vector<uint8_t> vBuffer;
 
 
+        /** Flag to catch if buffer write failed. **/
+        std::atomic<bool> fBufferFull;
+
+
     public:
+
+
+        /** Flag to detect consecutive errors. **/
+        std::atomic<uint32_t> nConsecutiveErrors;
+
+
+        /** Timeout flags. **/
+        enum
+        {
+            READ  = (1 << 1),
+            WRITE = (1 << 2),
+            ALL   = (READ | WRITE)
+        };
 
 
         /** The address of this connection. */
@@ -191,17 +214,18 @@ namespace LLP
         *  Determines if nTime seconds have elapsed since last Read / Write.
         *
         *  @param[in] nTime The time in seconds.
+        *  @param[in] nFlags Flags to determine if checking reading or writing timeouts.
         *
         **/
-        bool Timeout(uint32_t nTime) const;
+        bool Timeout(const uint32_t nTime, const uint8_t nFlags = ALL) const;
 
 
         /** Buffered
          *
-         *  Check that the socket has data that is buffered.
+         *  Get the amount of data buffered.
          *
          **/
-        bool Buffered() const;
+        uint64_t Buffered() const;
 
 
         /** IsNull

@@ -257,7 +257,7 @@ namespace LLP
                 try
                 {
                     /* Set the proper POLLIN flags. */
-                    POLLFDS.at(nIndex).events = POLLIN;// | POLLRDHUP;
+                    POLLFDS.at(nIndex).events  = POLLIN;// | POLLRDHUP;
                     POLLFDS.at(nIndex).revents = 0; //reset return events
 
                     /* Set to invalid socket if connection is inactive. */
@@ -318,14 +318,6 @@ namespace LLP
                         continue;
                     }
 
-                    /* Disconnect if pollin signaled with no data (This happens on Linux). */
-                    if((POLLFDS.at(nIndex).revents & POLLIN)
-                    && CONNECTION->Available() == 0)
-                    {
-                        disconnect_remove_event(nIndex, DISCONNECT_POLL_EMPTY);
-                        continue;
-                    }
-
                     /* Remove Connection if it has Timed out or had any read/write Errors. */
                     if(CONNECTION->Errors())
                     {
@@ -334,9 +326,32 @@ namespace LLP
                     }
 
                     /* Remove Connection if it has Timed out or had any Errors. */
-                    if(CONNECTION->Timeout(TIMEOUT))
+                    if(CONNECTION->Timeout(TIMEOUT * 1000))
                     {
                         disconnect_remove_event(nIndex, DISCONNECT_TIMEOUT);
+                        continue;
+                    }
+
+                    /* Disconnect if pollin signaled with no data (This happens on Linux). */
+                    if((POLLFDS.at(nIndex).revents & POLLIN)
+                    && CONNECTION->Available() == 0)
+                    {
+                        disconnect_remove_event(nIndex, DISCONNECT_POLL_EMPTY);
+                        continue;
+                    }
+
+                    /* Disconnect if buffer is full and remote host isn't reading at all. */
+                    if(CONNECTION->Buffered()
+                    && CONNECTION->Timeout(15000, Socket::WRITE))
+                    {
+                        disconnect_remove_event(nIndex, DISCONNECT_TIMEOUT_WRITE);
+                        continue;
+                    }
+
+                    /* Check that write buffers aren't overflowed. */
+                    if(CONNECTION->Buffered() > MAX_SEND_BUFFER)
+                    {
+                        disconnect_remove_event(nIndex, DISCONNECT_BUFFER);
                         continue;
                     }
 
@@ -448,7 +463,12 @@ namespace LLP
             /* Check all connections for data and packets. */
             for(uint32_t nIndex = 0; nIndex < CONNECTIONS->size(); ++nIndex)
             {
-                try { CONNECTIONS->at(nIndex)->Flush(); }
+                try
+                {
+                    /* Attempt to flush data when buffer is available. */
+                    if(CONNECTIONS->at(nIndex)->Buffered() && CONNECTIONS->at(nIndex)->Flush() < 0)
+                        runtime::sleep(std::min(5u, CONNECTIONS->at(nIndex)->nConsecutiveErrors.load() / 1000)); //we want to sleep when we have periodic failures
+                }
                 catch(const std::exception& e) { }
             }
         }

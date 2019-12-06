@@ -270,6 +270,7 @@ namespace LLP
                 /* Unreliabilitiy re-requesting (max time since getblocks) */
                 if(TAO::Ledger::ChainState::Synchronizing()
                 && nCurrentSession == TAO::Ledger::nSyncSession.load()
+                && nCurrentSession != 0
                 && nLastTimeReceived.load() + 30 < runtime::timestamp())
                 {
                     debug::log(0, NODE, "Sync Node Timeout");
@@ -313,6 +314,18 @@ namespace LLP
 
                     case DISCONNECT_FORCE:
                         strReason = "Force";
+                        break;
+
+                    case DISCONNECT_PEER:
+                        strReason = "Peer Hangup";
+                        break;
+
+                    case DISCONNECT_BUFFER:
+                        strReason = "Flood Control";
+                        break;
+
+                    case DISCONNECT_TIMEOUT_WRITE:
+                        strReason = "Flood Control Timeout";
                         break;
 
                     default:
@@ -446,7 +459,7 @@ namespace LLP
                 if(!fSynchronized.load())
                 {
                     /* Start sync on startup, or override any legacy syncing currently in process. */
-                    if(TAO::Ledger::nSyncSession.load() == 0)
+                    if(TAO::Ledger::nSyncSession.load() == 0 && !Incoming())
                     {
                         /* Set the sync session-id. */
                         TAO::Ledger::nSyncSession.store(nCurrentSession);
@@ -993,7 +1006,7 @@ namespace LLP
                             /* Do a sequential read to obtain the list.
                                3000 seems to be the optimal amount to overcome higher-latency connections during sync */
                             std::vector<TAO::Ledger::BlockState> vStates;
-                            while(--nLimits >= 0 && LLD::Ledger->BatchRead(hashStart, "block", vStates, 3000, true))
+                            while(!fBufferFull.load() && --nLimits >= 0 && hashStart != hashStop && LLD::Ledger->BatchRead(hashStart, "block", vStates, 3000, true))
                             {
                                 /* Loop through all available states. */
                                 for(auto& state : vStates)
@@ -1089,10 +1102,18 @@ namespace LLP
                                     }
 
                                     /* Check for stop hash. */
-                                    if(--nLimits <= 0 || hashStart == hashStop)
+                                    if(--nLimits <= 0 || hashStart == hashStop || fBufferFull.load()) //1MB limit
                                     {
+                                        /* Regular debug for normal limits */
                                         if(config::nVerbose >= 3)
+                                        {
+                                            /* Special message for full write buffers. */
+                                            if(fBufferFull.load())
+                                                debug::log(3, FUNCTION, "Buffer is FULL ", Buffered(), " bytes");
+
                                             debug::log(3, FUNCTION, "Limits ", nLimits, " Reached ", hashStart.SubString(), " == ", hashStop.SubString());
+                                        }
+
                                         break;
                                     }
                                 }
@@ -1100,7 +1121,7 @@ namespace LLP
 
                             /* Check for last subscription. */
                             if(nNotifications & SUBSCRIPTION::LASTINDEX)
-                                PushMessage(ACTION::NOTIFY, uint8_t(TYPES::LASTINDEX), uint8_t(TYPES::BLOCK), hashStart);
+                                PushMessage(ACTION::NOTIFY, uint8_t(TYPES::LASTINDEX), uint8_t(TYPES::BLOCK), fBufferFull.load() ? stateLast.hashPrevBlock : hashStart);
 
                             break;
                         }
@@ -1148,12 +1169,12 @@ namespace LLP
                                         PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::LEGACY), tx);
 
                                         /* Check for stop hash. */
-                                        if(--nLimits == 0 || hashStart == hashStop)
+                                        if(--nLimits == 0 || hashStart == hashStop || fBufferFull.load())
                                             break;
                                     }
 
                                     /* Check for stop or limits. */
-                                    if(nLimits == 0 || hashStart == hashStop)
+                                    if(nLimits == 0 || hashStart == hashStop || fBufferFull.load())
                                         break;
                                 }
                             }
@@ -1181,12 +1202,12 @@ namespace LLP
                                         PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::TRITIUM), tx);
 
                                         /* Check for stop hash. */
-                                        if(--nLimits == 0 || hashStart == hashStop)
+                                        if(--nLimits == 0 || hashStart == hashStop || fBufferFull.load())
                                             break;
                                     }
 
                                     /* Check for stop or limits. */
-                                    if(nLimits == 0 || hashStart == hashStop)
+                                    if(nLimits == 0 || hashStart == hashStop || fBufferFull.load())
                                         break;
                                 }
                             }
@@ -2050,7 +2071,8 @@ namespace LLP
                             );
 
                             /* Reset consecutive failures. */
-                            nConsecutiveFails = 0;
+                            nConsecutiveFails   = 0;
+                            nConsecutiveOrphans = 0;
                         }
                         else
                             ++nConsecutiveFails;
@@ -2077,13 +2099,11 @@ namespace LLP
                             );
 
                             /* Reset consecutive failures. */
-                            nConsecutiveFails = 0;
+                            nConsecutiveFails   = 0;
+                            nConsecutiveOrphans = 0;
                         }
                         else
-                        {
                             ++nConsecutiveFails;
-                            cacheInventory.Ban(tx.GetHash());
-                        }
 
 
                         break;
@@ -2093,6 +2113,14 @@ namespace LLP
                     default:
                         return debug::drop(NODE, "invalid type specifier for transaction");
                 }
+
+                /* Check for failure limit on node. */
+                if(nConsecutiveFails >= 500)
+                    return debug::drop(NODE, "TX::node reached failure limit");
+
+                /* Check for orphan limit on node. */
+                if(nConsecutiveOrphans >= 500)
+                    return debug::drop(NODE, "TX::node reached ORPHAN limit");
 
                 break;
             }
@@ -2409,6 +2437,9 @@ namespace LLP
     /* Checks if a node is subscribed to receive a notification. */
     const DataStream TritiumNode::Notifications(const uint16_t nMsg, const DataStream& ssData) const
     {
+        /* Reset the datastream read position. */
+        ssData.Reset();
+
         /* Only filter relays when message is notify. */
         if(nMsg != ACTION::NOTIFY)
             return ssData;
@@ -2441,10 +2472,6 @@ namespace LLP
                     /* Get the index. */
                     uint1024_t hashBlock;
                     ssData >> hashBlock;
-
-                    /* Skip malformed requests. */
-                    if(fLegacy)
-                        continue;
 
                     /* Check subscription. */
                     if(nNotifications & SUBSCRIPTION::BLOCK)
@@ -2488,9 +2515,12 @@ namespace LLP
                     uint32_t nHeight;
                     ssData >> nHeight;
 
-                    /* Skip malformed requests. */
+                    /* Check for legacy. */
                     if(fLegacy)
+                    {
+                        debug::error(FUNCTION, "BESTHEIGHT cannot have legacy specifier");
                         continue;
+                    }
 
                     /* Check subscription. */
                     if(nNotifications & SUBSCRIPTION::BESTHEIGHT)
@@ -2511,9 +2541,12 @@ namespace LLP
                     uint1024_t hashCheck;
                     ssData >> hashCheck;
 
-                    /* Skip malformed requests. */
+                    /* Check for legacy. */
                     if(fLegacy)
+                    {
+                        debug::error(FUNCTION, "CHECKPOINT cannot have legacy specifier");
                         continue;
+                    }
 
                     /* Check subscription. */
                     if(nNotifications & SUBSCRIPTION::CHECKPOINT)
@@ -2534,9 +2567,12 @@ namespace LLP
                     uint1024_t hashBest;
                     ssData >> hashBest;
 
-                    /* Skip malformed requests. */
+                    /* Check for legacy. */
                     if(fLegacy)
+                    {
+                        debug::error(FUNCTION, "BESTCHAIN cannot have legacy specifier");
                         continue;
+                    }
 
                     /* Check subscription. */
                     if(nNotifications & SUBSCRIPTION::BESTCHAIN)
@@ -2557,9 +2593,12 @@ namespace LLP
                     BaseAddress addr;
                     ssData >> addr;
 
-                    /* Skip malformed requests. */
+                    /* Check for legacy. */
                     if(fLegacy)
+                    {
+                        debug::error(FUNCTION, "ADDRESS cannot have legacy specifier");
                         continue;
+                    }
 
                     /* Check subscription. */
                     if(nNotifications & SUBSCRIPTION::ADDRESS)

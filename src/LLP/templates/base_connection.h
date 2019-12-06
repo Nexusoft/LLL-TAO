@@ -199,14 +199,6 @@ namespace LLP
         bool PacketComplete() const;
 
 
-        /** Buffered
-         *
-         *  Detect if there is data to write
-         *
-         **/
-        bool Buffered() const;
-
-
         /** ResetPacket
          *
          *  Used to reset the packet to Null after it has been processed.

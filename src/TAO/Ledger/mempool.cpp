@@ -129,6 +129,10 @@ namespace TAO
                     /* Push to orphan queue. */
                     mapOrphans[tx.hashPrevTx] = tx;
 
+                    /* Increment consecutive orphans. */
+                    if(pnode)
+                        ++pnode->nConsecutiveOrphans;
+
                     /* Ask for the missing transaction. */
                     if(pnode)
                         pnode->PushMessage(LLP::ACTION::GET, uint8_t(LLP::TYPES::TRANSACTION), tx.hashPrevTx);

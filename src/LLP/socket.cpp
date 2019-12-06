@@ -30,13 +30,16 @@ namespace LLP
 
     /** The default constructor. **/
     Socket::Socket()
-    : SOCKET_MUTEX()
-    , DATA_MUTEX()
-    , nLastSend(0)
-    , nLastRecv(0)
-    , nError(0)
-    , vBuffer()
-    , addr()
+    : pollfd             ( )
+    , SOCKET_MUTEX       ( )
+    , DATA_MUTEX         ( )
+    , nLastSend          (0)
+    , nLastRecv          (0)
+    , nError             (0)
+    , vBuffer            ( )
+    , fBufferFull        (false)
+    , nConsecutiveErrors (0)
+    , addr               ( )
     {
         fd = INVALID_SOCKET;
         events = POLLIN;
@@ -48,27 +51,32 @@ namespace LLP
 
     /** Copy constructor. **/
     Socket::Socket(const Socket& socket)
-    : pollfd(socket)
-    , SOCKET_MUTEX()
-    , DATA_MUTEX()
-    , nLastSend(socket.nLastSend.load())
-    , nLastRecv(socket.nLastRecv.load())
-    , nError(socket.nError.load())
-    , vBuffer(socket.vBuffer)
-    , addr(socket.addr)
+    : pollfd             (socket)
+    , SOCKET_MUTEX       ( )
+    , DATA_MUTEX         ( )
+    , nLastSend          (socket.nLastSend.load())
+    , nLastRecv          (socket.nLastRecv.load())
+    , nError             (socket.nError.load())
+    , vBuffer            (socket.vBuffer)
+    , fBufferFull        (socket.fBufferFull.load())
+    , nConsecutiveErrors (socket.nConsecutiveErrors.load())
+    , addr               (socket.addr)
     {
     }
 
 
     /** The socket constructor. **/
     Socket::Socket(int32_t nSocketIn, const BaseAddress &addrIn)
-    : SOCKET_MUTEX()
-    , DATA_MUTEX()
-    , nLastSend(0)
-    , nLastRecv(0)
-    , nError(0)
-    , vBuffer()
-    , addr(addrIn)
+    : pollfd             ( )
+    , SOCKET_MUTEX       ( )
+    , DATA_MUTEX         ( )
+    , nLastSend          (0)
+    , nLastRecv          (0)
+    , nError             (0)
+    , vBuffer            ( )
+    , fBufferFull        (false)
+    , nConsecutiveErrors (0)
+    , addr               (addrIn)
     {
         fd = nSocketIn;
         events = POLLIN;
@@ -80,13 +88,16 @@ namespace LLP
 
     /* Constructor for socket */
     Socket::Socket(const BaseAddress &addrConnect)
-    : SOCKET_MUTEX()
-    , DATA_MUTEX()
-    , nLastSend(0)
-    , nLastRecv(0)
-    , nError(0)
-    , vBuffer()
-    , addr()
+    : pollfd             ( )
+    , SOCKET_MUTEX       ( )
+    , DATA_MUTEX         ( )
+    , nLastSend          (0)
+    , nLastRecv          (0)
+    , nError             (0)
+    , vBuffer            ( )
+    , fBufferFull        (false)
+    , nConsecutiveErrors (0)
+    , addr               ( )
     {
         fd = INVALID_SOCKET;
         events = POLLIN;
@@ -118,8 +129,11 @@ namespace LLP
     void Socket::Reset()
     {
         /* Atomic data types, no need for lock */
-        nLastRecv = runtime::timestamp();
-        nLastSend = runtime::timestamp();
+        nLastRecv = runtime::timestamp(true);
+        nLastSend = runtime::timestamp(true);
+
+        /* Reset errors. */
+        nConsecutiveErrors = 0;
     }
 
 
@@ -316,7 +330,7 @@ namespace LLP
             return nError;
         }
         else if(nRead > 0)
-            nLastRecv = runtime::timestamp();
+            nLastRecv = runtime::timestamp(true);
 
         return nRead;
     }
@@ -342,7 +356,7 @@ namespace LLP
             return nError;
         }
         else if(nRead > 0)
-            nLastRecv = runtime::timestamp();
+            nLastRecv = runtime::timestamp(true);
 
         return nRead;
     }
@@ -359,7 +373,6 @@ namespace LLP
             /* Check overflow buffer. */
             if(vBuffer.size() > 0)
             {
-                nLastSend = runtime::timestamp();
                 vBuffer.insert(vBuffer.end(), vData.begin(), vData.end());
 
                 return static_cast<int32_t>(nBytes);
@@ -378,11 +391,9 @@ namespace LLP
         }
 
 
+        /* Handle for error state. */
         if(nSent < 0)
-        {
             nError = WSAGetLastError();
-            return nError;
-        }
 
         /* If not all data was sent non-blocking, recurse until it is complete. */
         else if(nSent != vData.size())
@@ -390,8 +401,8 @@ namespace LLP
             LOCK(DATA_MUTEX);
             vBuffer.insert(vBuffer.end(), vData.begin() + nSent, vData.end());
         }
-
-        nLastSend = runtime::timestamp();
+        else //don't update last sent unless all the data was written to the buffer
+            nLastSend = runtime::timestamp(true);
 
         return nSent;
     }
@@ -402,7 +413,7 @@ namespace LLP
     {
         LOCK(DATA_MUTEX);
 
-        int32_t nSent = 0;
+        int32_t nSent   = 0;
         uint32_t nBytes = 0;
         uint32_t nSize  = static_cast<uint32_t>(vBuffer.size());
 
@@ -425,39 +436,53 @@ namespace LLP
             #endif
         }
 
-
         /* Handle errors on flush. */
         if(nSent < 0)
         {
             nError = WSAGetLastError();
-            return nError;
+            ++nConsecutiveErrors;
         }
 
         /* If not all data was sent non-blocking, recurse until it is complete. */
         else if(nSent > 0)
+        {
+            /* Erase from current buffer. */
             vBuffer.erase(vBuffer.begin(), vBuffer.begin() + nSent);
 
-        /* Update socket timers. */
-        nLastSend = runtime::timestamp();
+            /* Update socket timers. */
+            nLastSend          = runtime::timestamp(true);
+            nConsecutiveErrors = 0;
+
+            /* Reset that buffers are full. */
+            fBufferFull.store(false);
+        }
 
         return nSent;
     }
 
 
     /*  Determines if nTime seconds have elapsed since last Read / Write. */
-    bool Socket::Timeout(uint32_t nTime) const
+    bool Socket::Timeout(const uint32_t nTime, const uint8_t nFlags) const
     {
-        return (runtime::timestamp() > (uint64_t)(nLastSend + nTime) &&
-                runtime::timestamp() > (uint64_t)(nLastRecv + nTime));
+        /* Check for write flags. */
+        bool fRet = true;
+        if(nFlags & WRITE)
+            fRet = (fRet && (runtime::timestamp(true) > uint64_t(nLastSend + nTime)));
+
+        /* Check for read flags. */
+        if(nFlags & READ)
+            fRet = (fRet && (runtime::timestamp(true) > uint64_t(nLastRecv + nTime)));
+
+        return fRet;
     }
 
 
     /* Check that the socket has data that is buffered. */
-    bool Socket::Buffered() const
+    uint64_t Socket::Buffered() const
     {
         LOCK(DATA_MUTEX);
 
-        return vBuffer.size() != 0;
+        return vBuffer.size();
     }
 
 
@@ -488,7 +513,7 @@ namespace LLP
     int Socket::error_code() const
     {
         /* Check for errors from reads or writes. */
-        if(nError == WSAEWOULDBLOCK ||
+        if (nError == WSAEWOULDBLOCK ||
             nError == WSAEMSGSIZE ||
             nError == WSAEINTR ||
             nError == WSAEINPROGRESS)
