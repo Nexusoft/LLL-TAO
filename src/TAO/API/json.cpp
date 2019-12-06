@@ -208,7 +208,6 @@ namespace TAO
                              * an older legacy tx to collide with the tritium hash type, so if not found still must check legacy.
                              */
                             TAO::Ledger::Transaction txPrev;
-
                             if(LLD::Ledger->ReadTx(txin.prevout.hash, txPrev))
                             {
                                 fFound = true;
@@ -219,7 +218,6 @@ namespace TAO
                                 const uint256_t hashCaller = txPrev[txin.prevout.n].Caller();
 
                                 input = ContractToJSON(hashCaller, txPrev[txin.prevout.n], txin.prevout.n, nVerbosity);
-
                                 inputs.push_back(input);
                             }
                         }

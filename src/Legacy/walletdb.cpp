@@ -331,10 +331,6 @@ namespace Legacy
         /* Reset default key into wallet to clear any current value. (done now so it stays empty if none loaded) */
         wallet.vchDefaultKey.clear();
 
-        /* Debug output for walletcheck. */
-        if(config::GetBoolArg("-walletcheck", true))
-            debug::log(0, FUNCTION, "Checking transactions for consistency");
-
         /* Read and validate minversion required by database file */
         uint32_t nMinVersion = 0;
         if(ReadMinVersion(nMinVersion))
@@ -347,6 +343,23 @@ namespace Legacy
 
             wallet.LoadMinVersion(nMinVersion);
         }
+
+        /* Upgrade wallet transactions. */
+        bool fUpgrade = (nMinVersion != FEATURE_BASE);
+        if(fUpgrade) //this is forcing upgrade with FEATURE_BASE
+        {
+            /* Upgrade the versions. */
+            nMinVersion = FEATURE_BASE;
+            WriteMinVersion(nMinVersion);
+            wallet.LoadMinVersion(nMinVersion);
+
+            debug::log(0, FUNCTION, "Upgrading Minimum Database Version to ", nMinVersion);
+        }
+
+
+        /* Debug output for walletcheck. */
+        else if(config::GetBoolArg("-walletcheck", true))
+            debug::log(0, FUNCTION, "Checking transactions for consistency");
 
         /* Get cursor */
         auto pcursor = db.GetCursor();
@@ -407,45 +420,33 @@ namespace Legacy
                 /* Wallet transaction */
                 uint512_t hash;
                 ssKey >> hash;
+
+                /* Upgrade wallet. */
+                if(fUpgrade || config::GetBoolArg("-walletclean", false))
+                {
+                    vRemove.push_back(hash);
+                    continue;
+                }
+
+                /* If no upgrade deserialize tx's like normal. */
                 WalletTx& wtx = wallet.mapWallet[hash];
                 ssValue >> wtx;
 
                 /* flag to indicate we are ok to bind */
                 bool fBind = true;
 
-                if(config::GetBoolArg("-walletclean", false))
+                /* Check transactions for consistency. */
+                if(config::GetBoolArg("-walletcheck", true))
                 {
-                    /* Add all transactions to remove list if -walletclean argument is set */
-                    vRemove.push_back(hash);
+                    /* Flag to track if transaction switched to tritium. */
+                    bool fTritium = false;
 
-                    fBind = false;
-                }
-                else if(config::GetBoolArg("-walletcheck", true))
-                {
-                    /* Flag indicating to check the hash.  This is always true, except in the case where this is a tritium
-                       transaction that we have successfully read from the ledger DB */
-                    bool fCheckHash = true;
-
-                    /* When the wtx is version 7, and a Tritium hash type, we need to verify its hash against the Tritium tx hash.
-                     * Have to account for the possiblity of a collision between old Legacy hash and Tritium hash type.
-                     * Therefore, we only check Tritium hash if we have the Tritium tx in the ledger db.
-                     *
-                     * Doing this introduces the possibility of not finding the Tritium tx if the chain is not synced.
-                     * Thus, we skip all checks if the best block is not version 7, or the tx hash is not yet in
-                     * either the ledger db or the legacy db.
-                     */
-                    if((TAO::Ledger::VersionActive(wtx.nTime, 7) || TAO::Ledger::CurrentVersion() > 7) && wtx.nVersion >= 2
-                        && hash.GetType() == TAO::Ledger::TRITIUM)
+                    /* Check for tritium hash type, but fall through to legacy if this fails. */
+                    if(hash.GetType() == TAO::Ledger::TRITIUM)
                     {
-                        TAO::Ledger::Transaction tx;
-                        Legacy::Transaction txLegacy;
-
-                        /* If the best block is not version 7, skip hash checks */
-                        if(TAO::Ledger::ChainState::stateBest.load().nVersion < 7)
-                            fCheckHash = false;
-
                         /* Read the transaction from ledger db. */
-                        else if(LLD::Ledger->ReadTx(hash, tx))
+                        TAO::Ledger::Transaction tx;
+                        if(LLD::Ledger->ReadTx(hash, tx))
                         {
                             /* Convert the disk transaction into WalletTx. Wallet db stores OP::LEGACY wtx using tritium hash,
                              * but calling wtx.GetHash() will return legacy hash, so have to convert first to do a valid check.
@@ -453,38 +454,33 @@ namespace Legacy
                             Transaction ltx(tx);
                             WalletTx wtx2(&wallet, ltx);
 
+                            /* Check converted hash from tritium disk tx to current wallet cache. */
                             if(wtx.GetHash() != wtx2.GetHash())
                             {
                                 /* Add mismatched transaction to list of transactions to remove from database */
                                 debug::error(FUNCTION, "Error in ", strWalletFile, ", Tritium hash mismatch, resolving");
                                 vRemove.push_back(hash);
 
-                                fBind = false;
+                                continue;
                             }
 
-                            fCheckHash = false;
+                            /* Set tritium flag. */
+                            fTritium = true;
                         }
-
-                        /* If Tritium tx not in ledger db, check legacy db. Skip hash checks if not there.
-                         * If it is there, this is the collision case. Fall through to legacy check below.
-                         */
-                        else if(!LLD::Legacy->ReadTx(hash, txLegacy))
-                            fCheckHash = false;
                     }
 
-                    if(fCheckHash && wtx.GetHash() != hash)
+                    /* Check wtx hash against stored hash for corruption. */
+                    if(!fTritium && LLD::Legacy->HasTx(hash) && wtx.GetHash() != hash)
                     {
-                        debug::error(FUNCTION, "Error in ", strWalletFile, ", Legacy hash mismatch, resolving");
-debug::log(0, FUNCTION, "Legacy check");
-debug::log(0, FUNCTION, "wtx ", wtx.GetHash().SubString());
-debug::log(0, FUNCTION, "hash ", hash.SubString());
-
                         /* Add mismatched transaction to list of transactions to remove from database */
+                        debug::error(FUNCTION, "Error in ", strWalletFile, ", Legacy hash mismatch, resolving");
                         vRemove.push_back(hash);
-                        fBind = false;
+
+                        continue;
                     }
                 }
 
+                /* Bind to wallet if valid. */
                 if(fBind)
                     wtx.BindWallet(wallet);
             }

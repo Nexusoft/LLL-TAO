@@ -2413,9 +2413,6 @@ namespace LLP
         if(nMsg != ACTION::NOTIFY)
             return ssData;
 
-        /* Reset the data read position. */
-        ssData.Reset();
-
         /* Build a response data stream. */
         DataStream ssRelay(SER_NETWORK, MIN_PROTO_VERSION);
         while(!ssData.End())

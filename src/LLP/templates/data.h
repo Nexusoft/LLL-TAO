@@ -215,6 +215,9 @@ namespace LLP
             {
                 try
                 {
+                    /* Reset stream read position. */
+                    ssData.Reset();
+
                     /* Get atomic pointer to reduce locking around CONNECTIONS scope. */
                     memory::atomic_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nIndex);
 

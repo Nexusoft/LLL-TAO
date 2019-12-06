@@ -71,8 +71,8 @@ namespace Legacy
     /** (client) version numbers for particular wallet features.  **/
     enum WalletFeature
     {
-        FEATURE_BASE = 10000,
-        FEATURE_LATEST = 10000
+        FEATURE_BASE = 10001,
+        FEATURE_LATEST = 10001
     };
 
 
