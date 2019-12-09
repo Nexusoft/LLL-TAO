@@ -537,11 +537,38 @@ namespace Legacy
             nFee = nDebit - nValueOut;
         }
 
+        /* Check input addresses. */
+        std::vector<Legacy::Script> vInputs;
+        if(!IsCoinBase() && nTime > TAO::Ledger::WALLET_ACCOUNTING_TIMELOCK)
+        {
+            /* Run through inputs. */
+            for (uint32_t i = (uint32_t)IsCoinStake(); i < vin.size(); ++i)
+            {
+                /* Skip inputs that are already found. */
+                const Legacy::OutPoint& prevout = vin[i].prevout;
+
+                /* Read the previous transaction. This could be a legacy or tritium transaction*/
+                Legacy::Transaction txPrev;
+                if(LLD::Legacy->ReadTx(prevout.hash, txPrev))
+                    vInputs.push_back(txPrev.vout[prevout.n].scriptPubKey);
+            }
+        }
+
         /* Sent/received. */
         for(const TxOut& txout : vout)
         {
-            NexusAddress address;
-            std::vector<uint8_t> vchPubKey;
+            /* Only check new rules after the time-lock. */
+            if(nTime > TAO::Ledger::WALLET_ACCOUNTING_TIMELOCK && pWallet->IsMine(txout))
+            {
+                /* Special check for change output if not in avatar mode. */
+                Legacy::NexusAddress address;
+                if(Legacy::ExtractAddress(txout.scriptPubKey, address) && !pWallet->GetAddressBook().GetAddressBookMap().count(address))
+                    continue;
+
+                /* Check if the input was used for change. */
+                if(std::find(vInputs.begin(), vInputs.end(), txout.scriptPubKey) != vInputs.end())
+                    continue;
+            }
 
             /* For tx from us, txouts represent the sent value, add to the sent list */
             if(nDebit > 0)

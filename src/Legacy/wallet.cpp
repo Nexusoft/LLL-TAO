@@ -1986,12 +1986,15 @@ namespace Legacy
                         if(!ExtractAddress(scriptChange, address) || !address.IsValid())
                             return false;
 
-                        /* Assign address book name for change key, or use "default" if blank or we received it with wildcard set */
-                        if(wtxNew.strFromAccount == "" || wtxNew.strFromAccount == "*")
-                            addressBook.SetAddressBookName(address, "default");
-                        else
-                            addressBook.SetAddressBookName(address, wtxNew.strFromAccount);
-
+                        /* Old accounting adds the change transaction back to default or send from account. */
+                        if(wtxNew.nTime <= TAO::Ledger::WALLET_ACCOUNTING_TIMELOCK)
+                        {
+                            /* Assign address book name for change key, or use "default" if blank or we received it with wildcard set */
+                            if(wtxNew.strFromAccount == "" || wtxNew.strFromAccount == "*")
+                                addressBook.SetAddressBookName(address, "default");
+                            else
+                                addressBook.SetAddressBookName(address, wtxNew.strFromAccount);
+                        }
                     }
                     else
                     {

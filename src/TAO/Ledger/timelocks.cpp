@@ -81,6 +81,10 @@ namespace TAO
         };
 
 
+        /* Changes how wallet accounting functions. */
+        const uint32_t WALLET_ACCOUNTING_TIMELOCK = 1575917343; //--- Wallet accounting upgrade (4.0.9)
+
+
         /* Helper function to determine if the network timelock has been met. */
         bool NetworkActive(const uint64_t nTimestamp)
         {

@@ -1411,7 +1411,8 @@ namespace TAO
              */
             std::map<Legacy::Script, int64_t> mapExclude;
 
-            if (wtx.IsFromMe())
+            /* Only add EXCLUSIONS with prior algorithm before accounting timelock. */
+            if (wtx.IsFromMe() && wtx.nTime < TAO::Ledger::WALLET_ACCOUNTING_TIMELOCK)
             {
                 for(auto r : listReceived)
                 {
