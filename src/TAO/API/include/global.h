@@ -27,6 +27,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/finance.h>
 #include <TAO/API/types/names.h>
 #include <TAO/API/types/objects.h>
+#include <TAO/API/types/voting.h>
 
 namespace TAO
 {
@@ -43,6 +44,7 @@ namespace TAO
         extern Finance* finance;
         extern Names* names;
         extern DEX*      dex;
+        extern Voting*   voting;
 
 
         /** Initialize
