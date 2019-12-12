@@ -487,6 +487,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Ledger_retarget.o \
 		build/Ledger_sigchain.o \
 		build/Ledger_stake.o \
+		build/Ledger_stake_change.o \
 		build/Ledger_state.o \
 		build/Ledger_supply.o \
 		build/Ledger_syncblock.o \
