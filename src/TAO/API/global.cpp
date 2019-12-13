@@ -31,6 +31,7 @@ namespace TAO
         Finance*    finance;
         Names*      names;
         DEX*        dex;
+        Voting*     voting;
 
 
         /*  Instantiate global instances of the API. */
@@ -50,6 +51,7 @@ namespace TAO
             finance     = new Finance();
             names       = new Names();
             dex         = new DEX();
+            voting      = new Voting();
         }
 
 
@@ -90,6 +92,9 @@ namespace TAO
 
             if(dex)
                 delete dex;
+
+            if(voting)
+                delete voting;
         }
     }
 }

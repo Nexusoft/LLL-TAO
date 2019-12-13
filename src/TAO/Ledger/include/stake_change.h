@@ -15,9 +15,9 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEDGER_INCLUDE_STAKE_CHANGE_H
 #define NEXUS_TAO_LEDGER_INCLUDE_STAKE_CHANGE_H
 
-#include <Util/include/runtime.h>
+#include <LLC/types/uint1024.h>
 #include <Util/templates/serialize.h>
-
+#include <vector>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -37,6 +37,10 @@ namespace TAO
         class StakeChange
         {
         public:
+
+            /** Stake change request version **/
+            int32_t nVersion;
+
 
             /** Genesis hash of user requesting the change **/
             uint256_t hashGenesis;
@@ -68,9 +72,18 @@ namespace TAO
             uint512_t hashTx;
 
 
+            /* The public key to verify the owner signature */
+            std::vector<uint8_t> vchPubKey;
+
+
+            /* The owner signature of the GetHash value verifying the validity of this change request */
+            std::vector<uint8_t> vchSig;
+
+
             //Object serialization for storage
             IMPLEMENT_SERIALIZE
             (
+                READWRITE(nVersion);
                 READWRITE(hashGenesis);
                 READWRITE(nAmount);
                 READWRITE(hashLast);
@@ -78,24 +91,29 @@ namespace TAO
                 READWRITE(nExpires);
                 READWRITE(fProcessed);
                 READWRITE(hashTx);
+                READWRITE(vchPubKey);
+                READWRITE(vchSig);
             )
 
 
-            /** Default Constructor
-             *
-             *  Initializes data
-             *
-             **/
-            StakeChange()
-            : hashGenesis(0)
-            , nAmount(0)
-            , hashLast(0)
-            , nTime(runtime::unifiedtimestamp())
-            , nExpires(0)
-            , fProcessed(false)
-            , hashTx(0)
-            {
-            }
+            /** Default Constructor. **/
+            StakeChange();
+
+
+            /** Copy constructor. **/
+            StakeChange(const StakeChange& stakeChange);
+
+
+            /* Move constructor. */
+            StakeChange(StakeChange&& stakeChange) noexcept;
+
+
+            /** Copy assignment. **/
+            StakeChange& operator=(const StakeChange& stakeChange);
+
+
+            /** Move assignment. **/
+            StakeChange& operator=(StakeChange&& stakeChange) noexcept;
 
 
             /** SetNull
@@ -103,16 +121,17 @@ namespace TAO
              *  Resets all data in this stake change request
              *
              **/
-            void SetNull()
-            {
-                hashGenesis = 0;
-                nAmount = 0;
-                hashLast = 0;
-                nTime = runtime::unifiedtimestamp();
-                nExpires = 0;
-                fProcessed = false;
-                hashTx = 0;
-            }
+            void SetNull();
+
+
+            /** GetHash
+             *
+             *  Get the hash for the stake change request. Used to verify owner made request.
+             *
+             *  @param[out] Hash of stake change data
+             *
+             **/
+            uint256_t GetHash() const;
 
         };
     }

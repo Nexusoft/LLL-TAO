@@ -124,7 +124,7 @@ namespace TAO
 
             // The EID's of this node if using LISP
             std::map<std::string, LLP::EID> mapEIDs = LLP::GetEIDs();
-            if(mapEIDs.size() > 0)
+             if(mapEIDs.size() > 0)
             {
                 json::json jsonEIDs = json::json::array();
                 for(const auto& eid :mapEIDs)

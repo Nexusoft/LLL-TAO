@@ -436,6 +436,9 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_users_unlock.o \
 		build/API_types_users_update.o \
 		build/API_types_users_users.o \
+		build/API_types_voting_count.o \
+		build/API_types_voting_initialize.o \
+		build/API_types_voting_list.o \
 		build/API_utils.o \
 		build/API_json.o \
         build/API_global.o \
@@ -484,6 +487,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Ledger_retarget.o \
 		build/Ledger_sigchain.o \
 		build/Ledger_stake.o \
+		build/Ledger_stake_change.o \
 		build/Ledger_state.o \
 		build/Ledger_supply.o \
 		build/Ledger_syncblock.o \
@@ -670,6 +674,9 @@ build/API_types_tokens_%.o: ./src/TAO/API/types/tokens/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_types_users_%.o: ./src/TAO/API/types/users/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/API_types_voting_%.o: ./src/TAO/API/types/voting/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_types_system_%.o: ./src/TAO/API/types/system/%.cpp $(HEADERS)
@@ -972,6 +979,13 @@ build/API_types_tokens_%.o: src/TAO/API/types/tokens/%.cpp $(HEADERS)
 	rm -f $(@:%.o=%.d)
 
 build/API_types_users_%.o: src/TAO/API/types/users/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/API_types_voting_%.o: src/TAO/API/types/voting/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -1386,6 +1400,13 @@ build/API_types_tokens_%.o: src/TAO/API/types/tokens/%.cpp
 	rm -f $(@:%.o=%.d)
 
 build/API_types_users_%.o: src/TAO/API/types/users/%.cpp
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/API_types_voting_%.o: src/TAO/API/types/voting/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \

@@ -25,6 +25,8 @@ ________________________________________________________________________________
 
 #include <TAO/Register/types/object.h>
 
+#include <util/include/memory.h>
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -197,8 +199,27 @@ namespace TAO
                 /* set/stake amount is new stake value, request stores the amount of change */
                 request.nAmount = nAmount - nStakePrev;
 
+                /* Retrieve the private "auth" key for use in signing */
+                uint512_t hashSecret = user->Generate("auth", 0, strPin);
+
+                /* User will sign the change request hash to verify the request */
+                DataStream ssRequest(SER_LLD, LLD::DATABASE_VERSION);
+                ssRequest << request.GetHash();
+
+                /* The public key for the "auth" key*/
+                std::vector<uint8_t> vchPubKey;
+
+                /* The stake change request signature */
+                std::vector<uint8_t> vchSig;
+
+                /* Generate the public key and signature */
+                user->Sign("auth", ssRequest.Bytes(), hashSecret, vchPubKey, vchSig);
+
+                request.vchPubKey = vchPubKey;
+                request.vchSig = vchSig;
+
                 if(!LLD::Local->WriteStakeChange(hashGenesis, request))
-                        throw APIException(-208, "Failed to save stake change request");
+                    throw APIException(-208, "Failed to save stake change request");
             }
 
             /* Build a JSON response object. */

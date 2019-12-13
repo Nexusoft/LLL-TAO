@@ -148,8 +148,8 @@ namespace TAO
                     return 0;
                 }
 
-                /* Catch if the connection timed out. */
-                if(apiNode.Timeout(120))
+                /* Catch if the connection timed out (120s). */
+                if(apiNode.Timeout(120000))
                 {
                     debug::log(0, "Socket Timeout");
                     return 0;
