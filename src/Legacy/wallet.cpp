@@ -61,8 +61,12 @@ namespace Legacy
     std::atomic<bool> Wallet::fWalletInitialized(false);
 
 
-    /** Transaction fee to be used. **/
+    /* Transaction fee to be used. */
     uint64_t TRANSACTION_FEE = MIN_TX_FEE;
+
+
+    /* Changes the way wallet accounts for change transactions. */
+    uint32_t WALLET_ACCOUNTING_TIMELOCK = 0;
 
 
     /** Constructor **/
@@ -1071,7 +1075,7 @@ namespace Legacy
             }
 
             /* AddToWallet preforms merge (update) for transactions already in wallet */
-            return AddToWallet(wtx);
+            return AddToWallet(wtx, hash);
         }
 
         /* Check for spent flags if this transaction was not ours. */
@@ -1895,10 +1899,25 @@ namespace Legacy
         /* Calculate total send amount */
         for(const auto& s : vecSend)
         {
+            /* Check for minimum values. */
             if(s.second < MIN_TXOUT_AMOUNT)
                 return false;
 
             nValue += s.second;
+
+            /* Name the change address in the address book using from account  */
+            NexusAddress address;
+            if(!ExtractAddress(s.first, address) || !address.IsValid())
+                continue;
+
+            /* Check for accounts that don't exist to self. */
+            if(HaveKey(address) && !addressBook.GetAddressBookMap().count(address))
+            {
+                /* Update address book entry. */
+                addressBook.SetAddressBookName(address, "default");
+
+                debug::log(0, FUNCTION, "Updated ", address.ToString(), " for send to self");
+            }
         }
 
         {
@@ -1986,12 +2005,15 @@ namespace Legacy
                         if(!ExtractAddress(scriptChange, address) || !address.IsValid())
                             return false;
 
-                        /* Assign address book name for change key, or use "default" if blank or we received it with wildcard set */
-                        if(wtxNew.strFromAccount == "" || wtxNew.strFromAccount == "*")
-                            addressBook.SetAddressBookName(address, "default");
-                        else
-                            addressBook.SetAddressBookName(address, wtxNew.strFromAccount);
-
+                        /* Old accounting adds the change transaction back to default or send from account. */
+                        if(wtxNew.nTime <= WALLET_ACCOUNTING_TIMELOCK)
+                        {
+                            /* Assign address book name for change key, or use "default" if blank or we received it with wildcard set */
+                            if(wtxNew.strFromAccount == "" || wtxNew.strFromAccount == "*")
+                                addressBook.SetAddressBookName(address, "default");
+                            else
+                                addressBook.SetAddressBookName(address, wtxNew.strFromAccount);
+                        }
                     }
                     else
                     {

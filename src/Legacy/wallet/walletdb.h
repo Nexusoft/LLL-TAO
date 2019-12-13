@@ -195,6 +195,30 @@ namespace Legacy
         bool WriteMinVersion(const uint32_t nVersion);
 
 
+        /** ReadUpdateTime
+         *
+         *  Reads the update time for utxo account name changing
+         *
+         *  @param[out] nTime Time to read.
+         *
+         *  @return true if accounts have been updated.
+         *
+         **/
+        bool ReadUpdateTime(uint32_t &nTime);
+
+
+        /** WriteUpdateTime
+         *
+         *  Writes the updated time for utxo account name changing
+         *
+         *  @param[in] nTime Unix timestamp to write.
+         *
+         *  @return true if database entry successfully written
+         *
+         **/
+        bool WriteUpdateTime(const uint32_t nTime);
+
+
         /** ReadAccount
          *
          *  Reads the wallet account data associated with an account (Nexus address).

@@ -87,13 +87,11 @@ namespace TAO
             std::vector<unsigned char> newKey;
             if(!wallet.GetKeyPool().GetKeyFromPool(newKey, false))
                 throw APIException(-12, "Error: Keypool ran out, please call keypoolrefill first");
+                
             Legacy::NexusAddress address(newKey);
-
             wallet.GetAddressBook().SetAddressBookName(address, strAccount);
 
             return address.ToString();
-            json::json ret;
-            return ret;
         }
 
 
@@ -1402,6 +1400,9 @@ namespace TAO
                 ret.push_back(entry);
             }
 
+            /* Check the time-lock of new account logic. */
+            bool fExclusions = (wtx.nTime < Legacy::WALLET_ACCOUNTING_TIMELOCK);
+
             /* Transactions sent from wallet will likely include a change output.
              *
              * This output will show up as both sent and received. Sent because it is part of the output of the Send transaction,
@@ -1411,7 +1412,8 @@ namespace TAO
              */
             std::map<Legacy::Script, int64_t> mapExclude;
 
-            if (wtx.IsFromMe())
+            /* Only add EXCLUSIONS with prior algorithm before accounting timelock. */
+            if (wtx.IsFromMe() && fExclusions)
             {
                 for(auto r : listReceived)
                 {
@@ -1432,7 +1434,7 @@ namespace TAO
                     TAO::Register::Address hashRegister;
                     Legacy::ExtractRegister(s.first, hashRegister);
 
-                    if(mapExclude.count(s.first))
+                    if(fExclusions && mapExclude.count(s.first))
                         continue;
 
                     if(config::GetBoolArg("-legacy") && strSentAccount == "default")
@@ -1461,7 +1463,7 @@ namespace TAO
                     TAO::Register::Address hashRegister;
                     Legacy::ExtractRegister(r.first, hashRegister);
 
-                    if(mapExclude.count(r.first))
+                    if(fExclusions && mapExclude.count(r.first))
                         continue;
 
                     std::string account;

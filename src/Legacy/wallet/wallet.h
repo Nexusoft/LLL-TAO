@@ -83,6 +83,14 @@ namespace Legacy
     using TransactionMap = std::map<uint512_t, WalletTx>;
 
 
+    /** Wallet accounting time=lock.
+     *
+     *  Changes the way wallet accounts for change transactions.
+     *
+     **/
+    extern uint32_t WALLET_ACCOUNTING_TIMELOCK;
+
+
     /** @class Wallet
      *
      *  A Wallet is an extension of a keystore, which also maintains a set of transactions and balances,

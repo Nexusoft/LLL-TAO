@@ -111,6 +111,20 @@ namespace Legacy
     }
 
 
+    /* Reads the update time for utxo account name changing */
+    bool WalletDB::ReadUpdateTime(uint32_t &nTime)
+    {
+        return BerkeleyDB::GetInstance().Read(std::string("updated"), nTime);
+    }
+
+
+    /* Writes the updated time for utxo account name changing */
+    bool WalletDB::WriteUpdateTime(const uint32_t nTime)
+    {
+        return BerkeleyDB::GetInstance().Write(std::string("updated"), nTime);
+    }
+
+
     /* Reads the wallet account data associated with an account (Nexus address). */
     bool WalletDB::ReadAccount(const std::string& strAccount, Account& account)
     {
@@ -343,6 +357,21 @@ namespace Legacy
 
             wallet.LoadMinVersion(nMinVersion);
         }
+
+        /* Handle accounting timelock. */
+        if(!ReadUpdateTime(WALLET_ACCOUNTING_TIMELOCK))
+        {
+            /* Set the accounting time-lock. */
+            WALLET_ACCOUNTING_TIMELOCK = (runtime::timestamp() - 299);
+            WriteUpdateTime(WALLET_ACCOUNTING_TIMELOCK);
+
+            debug::log(0, FUNCTION, "Time-Lock set for accounting upgrade at ", WALLET_ACCOUNTING_TIMELOCK);
+        }
+        else
+        {
+            debug::log(0, FUNCTION, "Wallet accounting set at ", WALLET_ACCOUNTING_TIMELOCK);
+        }
+
 
         /* Upgrade wallet transactions. */
         bool fUpgrade = (nMinVersion != FEATURE_BASE);
