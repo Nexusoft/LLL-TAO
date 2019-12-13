@@ -506,11 +506,11 @@ namespace TAO
                 nBlockAge = statePrev.GetBlockTime() - stateLast.GetBlockTime();
 
                 /* Check for previous version 7 and current version 8. */
-                uint64_t nTrustRet = 0;
-                if(pblock->nVersion == 8 && stateLast.nVersion == 7 && !CheckConsistency(hashLast, nTrustRet))
-                    nTrust = GetTrustScore(nTrustRet, nBlockAge, nStake, nStakeChange, pblock->nVersion);
-                else //when consistency is correct, calculate like normal
-                    nTrust = GetTrustScore(nTrustPrev, nBlockAge, nStake, nStakeChange, pblock->nVersion);
+                //uint64_t nTrustRet = 0;
+                //if(pblock->nVersion == 8 && stateLast.nVersion == 7 && !CheckConsistency(hashLast, nTrustRet))
+                //    nTrust = GetTrustScore(nTrustRet, nBlockAge, nStake, nStakeChange, pblock->nVersion);
+                //else //when consistency is correct, calculate like normal
+                nTrust = GetTrustScore(nTrustPrev, nBlockAge, nStake, nStakeChange, pblock->nVersion);
 
                 /* Validate the trust score calculation */
                 if(nClaimedTrust != nTrust)
