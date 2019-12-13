@@ -81,14 +81,6 @@ namespace TAO
         extern const uint32_t CHANNEL_NETWORK_TIMELOCK[];
 
 
-        /** Wallet accounting time=lock.
-         *
-         *  Changes the way wallet accounts for change transactions.
-         *
-         **/
-        extern const uint32_t WALLET_ACCOUNTING_TIMELOCK;
-
-
         /** NetworkActive
          *
          *  Helper function to determine if the network timelock has been met.

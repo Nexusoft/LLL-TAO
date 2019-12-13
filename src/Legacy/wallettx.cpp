@@ -539,7 +539,7 @@ namespace Legacy
 
         /* Check input addresses. */
         std::vector<Legacy::Script> vInputs;
-        if(!IsCoinBase() && nTime > TAO::Ledger::WALLET_ACCOUNTING_TIMELOCK)
+        if(!IsCoinBase() && nTime > WALLET_ACCOUNTING_TIMELOCK)
         {
             /* Run through inputs. */
             for (uint32_t i = (uint32_t)IsCoinStake(); i < vin.size(); ++i)
@@ -558,7 +558,7 @@ namespace Legacy
         for(const TxOut& txout : vout)
         {
             /* Only check new rules after the time-lock. */
-            if(nTime > TAO::Ledger::WALLET_ACCOUNTING_TIMELOCK && pWallet->IsMine(txout))
+            if(nTime > WALLET_ACCOUNTING_TIMELOCK && pWallet->IsMine(txout))
             {
                 /* Special check for change output if not in avatar mode. */
                 Legacy::NexusAddress address;
