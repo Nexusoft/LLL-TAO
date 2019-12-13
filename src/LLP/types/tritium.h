@@ -200,20 +200,24 @@ namespace LLP
 
     public:
 
-        /** The block height at the start of the last sync session **/
-        uint32_t nSyncStart;
-
-
-        /** Tracks the time taken to synchronize  **/
-        runtime::timer SYNCTIMER;
-
-
         /** Name
          *
          *  Returns a string for the name of this type of Node.
          *
          **/
         static std::string Name() { return "Tritium"; }
+
+
+        /** The block height at the start of the last sync session **/
+        static std::atomic<uint32_t> nSyncStart;
+
+
+        /** Mutex for sync timing. **/
+        static std::mutex TIMER_MUTEX;
+
+
+        /** Tracks the time taken to synchronize  **/
+        static runtime::timer SYNCTIMER;
 
 
         /** Keeps track of if this node is fully synchronized. **/

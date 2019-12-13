@@ -56,6 +56,14 @@ namespace LLP
     /* Declaration of sessions sets. (private). */
     std::map<uint64_t, std::pair<uint32_t, uint32_t>> TritiumNode::mapSessions;
 
+    /* Declaration of block height at the start sync. */
+    std::atomic<uint32_t> TritiumNode::nSyncStart(0);
+
+    /* Declaration of sync timer mutex. */
+    std::mutex TritiumNode::TIMER_MUTEX;
+
+    /* Declaration of timer to track sync time */
+    runtime::timer TritiumNode::SYNCTIMER;
 
     /* If node is completely sychronized. */
     std::atomic<bool> TritiumNode::fSynchronized(false);
@@ -80,8 +88,6 @@ namespace LLP
     , fInitialized(false)
     , nSubscriptions(0)
     , nNotifications(0)
-    , nSyncStart(0)
-    , SYNCTIMER()
     , nLastPing(0)
     , nLastSamples(0)
     , mapLatencyTracker()
@@ -108,8 +114,6 @@ namespace LLP
     , fInitialized(false)
     , nSubscriptions(0)
     , nNotifications(0)
-    , nSyncStart(0)
-    , SYNCTIMER()
     , nLastPing(0)
     , nLastSamples(0)
     , mapLatencyTracker()
@@ -136,8 +140,6 @@ namespace LLP
     , fInitialized(false)
     , nSubscriptions(0)
     , nNotifications(0)
-    , nSyncStart(0)
-    , SYNCTIMER()
     , nLastPing(0)
     , nLastSamples(0)
     , mapLatencyTracker()
@@ -368,9 +370,6 @@ namespace LLP
                 nCurrentSession = 0;
                 nUnsubscribed = 0;
                 nNotifications = 0;
-                nSyncStart = 0;
-                SYNCTIMER.Stop();
-
 
                 break;
             }
@@ -470,10 +469,13 @@ namespace LLP
                         debug::log(0, NODE, "New sync address set");
 
                         /* Cache the height at the start of the sync */
-                        nSyncStart = TAO::Ledger::ChainState::stateBest.load().nHeight;
+                        nSyncStart.store(TAO::Ledger::ChainState::stateBest.load().nHeight);
 
                         /* Make sure the sync timer is stopped.  We don't start this until we receive our first sync block*/
-                        SYNCTIMER.Stop();
+                        {
+                            LOCK(TIMER_MUTEX);
+                            SYNCTIMER.Stop();
+                        }
 
                         /* Subscribe to this node. */
                         Subscribe(SUBSCRIPTION::LASTINDEX | SUBSCRIPTION::BESTCHAIN | SUBSCRIPTION::BESTHEIGHT);
@@ -1632,10 +1634,16 @@ namespace LLP
                                             Unsubscribe(SUBSCRIPTION::LASTINDEX);
 
                                             /* Total blocks synchronized */
-                                            uint32_t nBlocks = TAO::Ledger::ChainState::stateBest.load().nHeight - nSyncStart;
+                                            uint32_t nBlocks = TAO::Ledger::ChainState::stateBest.load().nHeight - nSyncStart.load();
 
                                             /* Calculate the time to sync*/
-                                            uint32_t nElapsed = SYNCTIMER.Elapsed();
+                                            uint32_t nElapsed;
+
+                                            {
+                                                LOCK(TIMER_MUTEX);
+                                                nElapsed = SYNCTIMER.Elapsed();
+                                            }
+
                                             if(nElapsed == 0)
                                                 nElapsed = 1;
 
@@ -1844,8 +1852,12 @@ namespace LLP
                     return debug::drop(NODE, "TYPES::BLOCK: unsolicited data");
 
                 /* Star the sync timer if this is the first sync block */
-                if(!SYNCTIMER.Running())
-                    SYNCTIMER.Start();
+                {
+                    LOCK(TIMER_MUTEX);
+
+                    if(!SYNCTIMER.Running())
+                        SYNCTIMER.Start();
+                }
 
                 /* Get the specifier. */
                 uint8_t nSpecifier = 0;

@@ -127,10 +127,16 @@ namespace TAO
                         {
                             /* Get the total height left to go. */
                             uint32_t nRemaining = (pnode->nCurrentHeight - ChainState::nBestHeight.load());
-                            uint32_t nTotalBlocks = (ChainState::nBestHeight.load() - pnode->nSyncStart);
+                            uint32_t nTotalBlocks = (ChainState::nBestHeight.load() - LLP::TritiumNode::nSyncStart.load());
 
                             /* Calculate blocks per second. */
-                            uint32_t nRate = nTotalBlocks / (pnode->SYNCTIMER.Elapsed() + 1);
+                            uint32_t nRate;
+
+                            {
+                                LOCK(LLP::TritiumNode::TIMER_MUTEX);
+                                nRate = nTotalBlocks / (LLP::TritiumNode::SYNCTIMER.Elapsed() + 1);
+                            }
+
                             LLP::TritiumNode::nRemainingTime.store(nRemaining / (nRate + 1));
 
                             /* Get the remaining time. */
