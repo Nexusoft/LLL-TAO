@@ -2449,9 +2449,6 @@ namespace LLP
     /* Checks if a node is subscribed to receive a notification. */
     const DataStream TritiumNode::Notifications(const uint16_t nMsg, const DataStream& ssData) const
     {
-        /* Reset the datastream read position. */
-        ssData.Reset();
-
         /* Only filter relays when message is notify. */
         if(nMsg != ACTION::NOTIFY)
             return ssData;
