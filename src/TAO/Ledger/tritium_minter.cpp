@@ -373,10 +373,6 @@ namespace TAO
                         return debug::error(FUNCTION, "Stake Minter: Invalid public key on stake change request...removing");
                     }
 
-                    /* Build a byte stream from change request hash to verify the signature */
-                    DataStream ssCheck(SER_LLD, LLD::DATABASE_VERSION);
-                    ssCheck << request.GetHash();
-
                     /* Switch based on signature type. */
                     switch(hashPublic.GetType())
                     {
@@ -388,7 +384,7 @@ namespace TAO
 
                             /* Set the public key and verify. */
                             key.SetPubKey(request.vchPubKey);
-                            if(!key.Verify(ssCheck.Bytes(), request.vchSig))
+                            if(!key.Verify(request.GetHash().GetBytes(), request.vchSig))
                             {
                                 LLD::Local->EraseStakeChange(hashGenesis);
                                 return debug::error(FUNCTION, "Stake Minter: Invalid signature on stake change request...removing");
@@ -405,7 +401,7 @@ namespace TAO
 
                             /* Set the public key and verify. */
                             key.SetPubKey(request.vchPubKey);
-                            if(!key.Verify(ssCheck.Bytes(), request.vchSig))
+                            if(!key.Verify(request.GetHash().GetBytes(), request.vchSig))
                             {
                                 LLD::Local->EraseStakeChange(hashGenesis);
                                 return debug::error(FUNCTION, "Stake Minter: Invalid signature on stake change request...removing");

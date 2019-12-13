@@ -28,16 +28,16 @@ namespace TAO
 
         /* Default Constructor. */
         StakeChange::StakeChange()
-        : nVersion(1)
-        , hashGenesis(0)
-        , nAmount(0)
-        , hashLast(0)
-        , nTime(runtime::unifiedtimestamp())
-        , nExpires(0)
-        , fProcessed(false)
-        , hashTx(0)
-        , vchPubKey()
-        , vchSig()
+        : nVersion    (1)
+        , hashGenesis (0)
+        , nAmount     (0)
+        , hashLast    (0)
+        , nTime       (runtime::unifiedtimestamp())
+        , nExpires    (0)
+        , fProcessed  (false)
+        , hashTx      (0)
+        , vchPubKey   ( )
+        , vchSig      ( )
         {
         }
 
@@ -138,6 +138,5 @@ namespace TAO
 
             return hash;
         }
-
     }
 }

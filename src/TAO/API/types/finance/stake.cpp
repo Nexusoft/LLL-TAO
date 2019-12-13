@@ -25,7 +25,7 @@ ________________________________________________________________________________
 
 #include <TAO/Register/types/object.h>
 
-#include <util/include/memory.h>
+#include <Util/include/memory.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -201,11 +201,7 @@ namespace TAO
 
                 /* Retrieve the private "auth" key for use in signing */
                 uint512_t hashSecret = user->Generate("auth", 0, strPin);
-
-                /* User will sign the change request hash to verify the request */
-                DataStream ssRequest(SER_LLD, LLD::DATABASE_VERSION);
-                ssRequest << request.GetHash();
-
+                
                 /* The public key for the "auth" key*/
                 std::vector<uint8_t> vchPubKey;
 
@@ -213,7 +209,7 @@ namespace TAO
                 std::vector<uint8_t> vchSig;
 
                 /* Generate the public key and signature */
-                user->Sign("auth", ssRequest.Bytes(), hashSecret, vchPubKey, vchSig);
+                user->Sign("auth", request.GetHash().GetBytes(), hashSecret, vchPubKey, vchSig);
 
                 request.vchPubKey = vchPubKey;
                 request.vchSig = vchSig;
