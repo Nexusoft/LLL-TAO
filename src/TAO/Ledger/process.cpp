@@ -131,7 +131,6 @@ namespace TAO
 
                             /* Calculate blocks per second. */
                             uint32_t nRate = nTotalBlocks / (LLP::TritiumNode::SYNCTIMER.Elapsed() + 1);
-
                             LLP::TritiumNode::nRemainingTime.store(nRemaining / (nRate + 1));
 
                             /* Get the remaining time. */
