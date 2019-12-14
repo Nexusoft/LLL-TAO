@@ -326,7 +326,7 @@ namespace LLP
                     }
 
                     /* Remove Connection if it has Timed out or had any Errors. */
-                    if(CONNECTION->Timeout(TIMEOUT * 1000))
+                    if(CONNECTION->Timeout(TIMEOUT * 1000, Socket::READ))
                     {
                         disconnect_remove_event(nIndex, DISCONNECT_TIMEOUT);
                         continue;
