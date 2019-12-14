@@ -212,10 +212,6 @@ namespace LLP
         static std::atomic<uint32_t> nSyncStart;
 
 
-        /** Mutex for sync timing. **/
-        static std::mutex TIMER_MUTEX;
-
-
         /** Tracks the time taken to synchronize  **/
         static runtime::timer SYNCTIMER;
 

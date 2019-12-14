@@ -130,17 +130,12 @@ namespace TAO
                             uint32_t nTotalBlocks = (ChainState::nBestHeight.load() - LLP::TritiumNode::nSyncStart.load());
 
                             /* Calculate blocks per second. */
-                            uint32_t nRate;
-
-                            {
-                                LOCK(LLP::TritiumNode::TIMER_MUTEX);
-                                nRate = nTotalBlocks / (LLP::TritiumNode::SYNCTIMER.Elapsed() + 1);
-                            }
+                            uint32_t nRate = nTotalBlocks / (LLP::TritiumNode::SYNCTIMER.Elapsed() + 1);
 
                             LLP::TritiumNode::nRemainingTime.store(nRemaining / (nRate + 1));
 
                             /* Get the remaining time. */
-                            nHours   = LLP::TritiumNode::nRemainingTime.load() / 3600;
+                            nHours   =  LLP::TritiumNode::nRemainingTime.load() / 3600;
                             nMinutes = (LLP::TritiumNode::nRemainingTime.load() - (nHours * 3600)) / 60;
                             nSeconds = (LLP::TritiumNode::nRemainingTime.load() - (nHours * 3600)) % 60;
                         }

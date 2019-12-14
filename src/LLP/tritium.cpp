@@ -56,14 +56,14 @@ namespace LLP
     /* Declaration of sessions sets. (private). */
     std::map<uint64_t, std::pair<uint32_t, uint32_t>> TritiumNode::mapSessions;
 
+
     /* Declaration of block height at the start sync. */
     std::atomic<uint32_t> TritiumNode::nSyncStart(0);
 
-    /* Declaration of sync timer mutex. */
-    std::mutex TritiumNode::TIMER_MUTEX;
 
     /* Declaration of timer to track sync time */
     runtime::timer TritiumNode::SYNCTIMER;
+
 
     /* If node is completely sychronized. */
     std::atomic<bool> TritiumNode::fSynchronized(false);
@@ -472,10 +472,7 @@ namespace LLP
                         nSyncStart.store(TAO::Ledger::ChainState::stateBest.load().nHeight);
 
                         /* Make sure the sync timer is stopped.  We don't start this until we receive our first sync block*/
-                        {
-                            LOCK(TIMER_MUTEX);
-                            SYNCTIMER.Stop();
-                        }
+                        SYNCTIMER.Stop();
 
                         /* Subscribe to this node. */
                         Subscribe(SUBSCRIPTION::LASTINDEX | SUBSCRIPTION::BESTCHAIN | SUBSCRIPTION::BESTHEIGHT);
@@ -1637,13 +1634,7 @@ namespace LLP
                                             uint32_t nBlocks = TAO::Ledger::ChainState::stateBest.load().nHeight - nSyncStart.load();
 
                                             /* Calculate the time to sync*/
-                                            uint32_t nElapsed;
-
-                                            {
-                                                LOCK(TIMER_MUTEX);
-                                                nElapsed = SYNCTIMER.Elapsed();
-                                            }
-
+                                            uint32_t nElapsed = SYNCTIMER.Elapsed();
                                             if(nElapsed == 0)
                                                 nElapsed = 1;
 
@@ -1852,12 +1843,8 @@ namespace LLP
                     return debug::drop(NODE, "TYPES::BLOCK: unsolicited data");
 
                 /* Star the sync timer if this is the first sync block */
-                {
-                    LOCK(TIMER_MUTEX);
-
-                    if(!SYNCTIMER.Running())
-                        SYNCTIMER.Start();
-                }
+                if(!SYNCTIMER.Running())
+                    SYNCTIMER.Start();
 
                 /* Get the specifier. */
                 uint8_t nSpecifier = 0;
