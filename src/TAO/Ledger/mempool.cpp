@@ -198,6 +198,7 @@ namespace TAO
 
             /* Debug output. */
             debug::log(3, FUNCTION, "tx ", hashTx.SubString(), " ACCEPTED in ", std::dec, time.ElapsedMilliseconds(), " ms");
+            time.Reset();
 
             /* Relay the transaction. */
             if(LLP::TRITIUM_SERVER)
@@ -210,8 +211,13 @@ namespace TAO
                 );
             }
 
+            debug::log(3, FUNCTION, "tx ", hashTx.SubString(), " Relayed in ", std::dec, time.ElapsedMilliseconds(), " ms");
+
             /* Process orphan queue. */
+            time.Reset();
             ProcessOrphans(hashTx);
+
+            debug::log(3, FUNCTION, "tx ", hashTx.SubString(), " Processed Orphans in ", std::dec, time.ElapsedMilliseconds(), " ms");
 
             /* Notify private to produce block if valid. */
             if(config::GetBoolArg("-private"))
@@ -242,11 +248,9 @@ namespace TAO
                 /* Accept the transaction into memory pool. */
                 if(!Accept(tx))
                 {
-                    hashTx = hashThis;
-
                     debug::log(0, FUNCTION, "ORPHAN tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
 
-                    continue;
+                    break;
                 }
 
                 /* Erase the transaction. */
