@@ -164,11 +164,12 @@ namespace LLP
     void BaseConnection<PacketType>::WritePacket(const PacketType& PACKET)
     {
         /* Get the bytes of the packet. */
-        std::vector<uint8_t> vBytes = PACKET.GetBytes();
+        const std::vector<uint8_t> vBytes = PACKET.GetBytes();
 
         /* Stop sending packets if send buffer is full. */
-        if(Buffered() + vBytes.size() + 1024 < config::GetArg("-maxsendbuffer", MAX_SEND_BUFFER) //reserve 1Kb of buffer for critical messages
-        || (fBufferFull.load() && Buffered() + vBytes.size() < config::GetArg("-maxsendbuffer", MAX_SEND_BUFFER))) //catch for critical messages (< 1 Kb)
+        uint64_t nMaxSendBuffer = config::GetArg("-maxsendbuffer", MAX_SEND_BUFFER);
+        if(Buffered() + vBytes.size() + 1024 < nMaxSendBuffer //reserve 1Kb of buffer for critical messages
+        || (fBufferFull.load() && Buffered() + vBytes.size() < nMaxSendBuffer)) //catch for critical messages (< 1 Kb)
         {
             /* Debug dump of message type. */
             debug::log(4, NODE, "sent packet (", vBytes.size(), " bytes)");

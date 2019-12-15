@@ -219,12 +219,17 @@ namespace LLP
                     ssData.Reset();
 
                     /* Get atomic pointer to reduce locking around CONNECTIONS scope. */
+                    debug::log(3, FUNCTION, "CREATE::Host ", nIndex, " Thread ", ID);
                     memory::atomic_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nIndex);
 
                     /* Relay if there are active subscriptions. */
+                    debug::log(3, FUNCTION, "NOTIFY::Host ", nIndex, " Thread ", ID);
                     const DataStream ssRelay = CONNECTION->Notifications(message, ssData);
                     if(ssRelay.size() != 0)
+                    {
+                        debug::log(3, FUNCTION, "RELAY::Host ", nIndex, " Thread ", ID);
                         CONNECTION->WritePacket(ProtocolType::NewMessage(message, ssRelay));
+                    }
                 }
                 catch(const std::exception& e)
                 {
