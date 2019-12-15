@@ -719,7 +719,7 @@ namespace LLP
             for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
             {
                 DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
-                nGlobalConnections += (dt->nIncoming.load() + dt->nOutbound);
+                nGlobalConnections += (dt->nIncoming.load() + dt->nOutbound.load());
             }
 
             /* Total incoming and outgoing packets. */

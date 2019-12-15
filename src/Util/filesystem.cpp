@@ -52,16 +52,11 @@ ________________________________________________________________________________
 
 namespace filesystem
 {
-    /* Mutex to lock FILESYSTEM and prevent race conditions. */
-    std::recursive_mutex FILESYSTEM_MUTEX;
-
     /* Removes a directory from the specified path. */
     bool remove_directories(const std::string& path)
     {
         if(!exists(path))
             return false;
-
-        RLOCK(FILESYSTEM_MUTEX);
 
     #ifdef WIN32
         /* Windows cannot do -rf type directory removal, have to delete all directory content manually first */
@@ -143,8 +138,6 @@ namespace filesystem
         if(!exists(path))
             return false;
 
-        RLOCK(FILESYSTEM_MUTEX);
-
         if(std::remove(path.c_str()) != 0)
             return false;
 
@@ -158,8 +151,6 @@ namespace filesystem
         if(!exists(pathOld))
             return false;
 
-        RLOCK(FILESYSTEM_MUTEX);
-
         if(std::rename(pathOld.c_str(), pathNew.c_str()) != 0)
             return false;
 
@@ -170,8 +161,6 @@ namespace filesystem
     /* Determines if the file or folder from the specified path exists. */
     bool exists(const std::string &path)
     {
-        RLOCK(FILESYSTEM_MUTEX);
-
         struct stat statbuf;
 
         return stat(path.c_str(), &statbuf) == 0;
@@ -190,8 +179,6 @@ namespace filesystem
             /* If destination file exists, remove it (ie, we overwrite the file) */
             if(exists(pathDest))
                 filesystem::remove(pathDest);
-
-            RLOCK(FILESYSTEM_MUTEX);
 
             /* Get the input stream of source file. */
             std::ifstream sourceFile(pathSource, std::ios::binary);
@@ -231,8 +218,6 @@ namespace filesystem
     /* Determines if the specified path is a folder. */
     bool is_directory(const std::string &path)
     {
-        RLOCK(FILESYSTEM_MUTEX);
-
         struct stat statbuf;
 
         if(stat(path.c_str(), &statbuf) != 0)
@@ -283,8 +268,6 @@ namespace filesystem
         if(exists(path)) //if the directory exists, don't attempt to create it
             return true;
 
-        RLOCK(FILESYSTEM_MUTEX);
-
         /* Set directory with read/write/search permissions for owner/group/other */
     #ifdef WIN32
         int status = _mkdir(path.c_str());
@@ -309,8 +292,6 @@ namespace filesystem
         char buffer[MAX_PATH] = {0};
 
         std::string fullPath;
-
-        RLOCK(FILESYSTEM_MUTEX);
 
     #ifdef WIN32
 
@@ -354,8 +335,6 @@ namespace filesystem
     /* Returns the full pathname of the PID file */
     std::string GetPidFile()
     {
-        RLOCK(FILESYSTEM_MUTEX);
-
         std::string pathPidFile(config::GetArg("-pid", "Nexus.pid"));
         return config::GetDataDir() + "/" +pathPidFile;
     }
@@ -364,8 +343,6 @@ namespace filesystem
     /* Creates a PID file on disk for the provided PID */
     void CreatePidFile(const std::string &path, pid_t pid)
     {
-        RLOCK(FILESYSTEM_MUTEX);
-
         FILE* file = fopen(path.c_str(), "w");
         if(file)
         {

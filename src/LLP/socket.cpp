@@ -494,8 +494,6 @@ namespace LLP
     /*  Checks if is in null state. */
     bool Socket::IsNull() const
     {
-        LOCK(DATA_MUTEX);
-
         return fd == -1;
     }
 
