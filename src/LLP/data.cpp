@@ -494,7 +494,7 @@ namespace LLP
                     if(ssRelay.size() != 0)
                     {
                         /* Build the sender packet. */
-                        typename ProtocolType::Packet PACKET;
+                        typename ProtocolType::Packet PACKET = qRelay.first;
                         PACKET.SetData(ssRelay);
 
                         /* Write packet to socket. */
