@@ -438,14 +438,6 @@ namespace LLP
                         SESSION_ID,
                         version::CLIENT_VERSION_BUILD_STRING);
 
-                    /* Relay to subscribed nodes a new connection was seen. */
-                    TRITIUM_SERVER->Relay
-                    (
-                        ACTION::NOTIFY,
-                        uint8_t(TYPES::ADDRESS),
-                        BaseAddress(GetAddress())
-                    );
-
                     /* Add to address manager. */
                     if(TRITIUM_SERVER->pAddressManager)
                         TRITIUM_SERVER->pAddressManager->AddAddress(GetAddress());
@@ -487,6 +479,14 @@ namespace LLP
                         );
                     }
                 }
+
+                /* Relay to subscribed nodes a new connection was seen. */
+                TRITIUM_SERVER->Relay
+                (
+                    ACTION::NOTIFY,
+                    uint8_t(TYPES::ADDRESS),
+                    BaseAddress(GetAddress())
+                );
 
                 /* Subscribe to address notifications only. */
                 Subscribe(SUBSCRIPTION::ADDRESS);
