@@ -489,7 +489,7 @@ namespace LLP
                 }
 
                 /* Subscribe to address notifications only. */
-                Subscribe(SUBSCRIPTION::ADDRESS);
+                //Subscribe(SUBSCRIPTION::ADDRESS);
 
                 break;
             }
@@ -549,6 +549,9 @@ namespace LLP
                     DataStream ssCheck(SER_NETWORK, PROTOCOL_VERSION);
                     ssCheck << hashGenesis << nTimestamp << nNonce;
 
+                    /* Get a hash of the data. */
+                    uint256_t hashCheck = LLC::SK256(ssCheck.begin(), ssCheck.end());
+
                     /* Get the signature. */
                     std::vector<uint8_t> vchSig;
                     ssPacket >> vchSig;
@@ -564,7 +567,7 @@ namespace LLP
 
                             /* Set the public key and verify. */
                             key.SetPubKey(vchPubKey);
-                            if(!key.Verify(ssCheck.Bytes(), vchSig))
+                            if(!key.Verify(hashCheck.GetBytes(), vchSig))
                                 return debug::drop(NODE, "ACTION::AUTH: invalid transaction signature");
 
                             break;
@@ -578,7 +581,7 @@ namespace LLP
 
                             /* Set the public key and verify. */
                             key.SetPubKey(vchPubKey);
-                            if(!key.Verify(ssCheck.Bytes(), vchSig))
+                            if(!key.Verify(hashCheck.GetBytes(), vchSig))
                                 return debug::drop(NODE, "ACTION::AUTH: invalid transaction signature");
 
                             break;
@@ -590,8 +593,8 @@ namespace LLP
 
                     /* Get the crypto register. */
                     TAO::Register::Object trust;
-                    TAO::Register::Address hashTrust = TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
-                    if(!LLD::Register->ReadState(hashTrust, trust, TAO::Ledger::FLAGS::MEMPOOL))
+                    if(!LLD::Register->ReadState(TAO::Register::Address(std::string("trust"),
+                        hashGenesis, TAO::Register::Address::TRUST), trust, TAO::Ledger::FLAGS::MEMPOOL))
                         return debug::drop(NODE, "ACTION::AUTH: authorization failed, missing trust register");
 
                     /* Parse the object. */
@@ -602,7 +605,7 @@ namespace LLP
                     nTrust = trust.get<uint64_t>("trust");
 
                     /* Set to authorized node if passed all cryptographic checks. */
-                    fAuthorized = INCOMING.MESSAGE == ACTION::AUTH;
+                    fAuthorized = true;
                 }
 
                 break;
