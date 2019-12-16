@@ -83,10 +83,6 @@ namespace TAO
         {
             RLOCK(MUTEX);
 
-            /* Check for version 7 activation timestamp. */
-            if(!(TAO::Ledger::VersionActive((tx.nTimestamp), 7) || TAO::Ledger::CurrentVersion() > 7))
-                return debug::error(FUNCTION, "tritium transaction not accepted until tritium time-lock");
-
             /* Get the transaction hash. */
             uint512_t hashTx = tx.GetHash();
 
@@ -95,7 +91,7 @@ namespace TAO
                 return true;
 
             /* Check for transaction in orphans. */
-            if(mapOrphans.count(tx.hashPrevTx) || mapLedger.count(hashTx))
+            if(mapOrphans.count(tx.hashPrevTx))
                 return true;
 
             debug::log(3, "ACCEPT --------------------------------------");
