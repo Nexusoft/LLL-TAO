@@ -489,7 +489,7 @@ namespace LLP
                 }
 
                 /* Subscribe to address notifications only. */
-                //Subscribe(SUBSCRIPTION::ADDRESS);
+                Subscribe(SUBSCRIPTION::ADDRESS);
 
                 break;
             }
