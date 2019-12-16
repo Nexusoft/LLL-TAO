@@ -94,6 +94,10 @@ namespace TAO
             if(LLD::Ledger->HasTx(hashTx, FLAGS::MEMPOOL))
                 return true;
 
+            /* Check for transaction in orphans. */
+            if(mapOrphans.count(tx.hashPrevTx))
+                return true;
+
             debug::log(3, "ACCEPT --------------------------------------");
             if(config::nVerbose >= 3)
                 tx.print();

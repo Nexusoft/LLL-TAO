@@ -135,42 +135,34 @@ _name.shard.file
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
-    //config::mapArgs["-datadir"] = "/public/tests";
-
-
-    LLD::Initialize();
-
-
-    uint512_t hashTx = uint512_t("01c865d663baaf56e585ddb9f6466bd6e03a12b9136f2232042f252bcb50b1e491ee519da469c5755c6226b54fe0fb7ceb8ffec312e0011a0f27a01cad735483");
-
-    TAO::Ledger::Transaction tx;
-    if(!LLD::Ledger->ReadTx(hashTx, tx))
-        return debug::error("failed to read tx ", hashTx.ToString());
-
-    tx.print();
-
-    for(uint32_t n = 0; n < tx.Size(); ++n)
-    {
-        debug::log(0, "Condition ", n, " ", tx[n].Empty(TAO::Operation::Contract::CONDITIONS) ? "FALSE" : "TRUE");
-    }
-
-    return 0;
+    config::mapArgs["-datadir"] = "/public/tests";
 
     LLP::TritiumNode node;
-    node.Connect(LLP::BaseAddress("69.195.156.210", 9888));
+    node.Connect(LLP::BaseAddress("104.192.170.154", 9888));
 
     node.PushMessage(LLP::ACTION::VERSION, LLP::PROTOCOL_VERSION, uint64_t(3838238), std::string("Test Client"));
 
     node.Subscribe(LLP::SUBSCRIPTION::LASTINDEX | LLP::SUBSCRIPTION::BESTCHAIN | LLP::SUBSCRIPTION::BESTHEIGHT);
 
     /* Ask for list of blocks if this is current sync node. */
-    node.PushMessage(LLP::ACTION::LIST,
-        uint8_t(LLP::SPECIFIER::SYNC),
-        uint8_t(LLP::TYPES::BLOCK),
-        uint8_t(LLP::TYPES::UINT1024_T),
-        TAO::Ledger::ChainState::Genesis(),
-        uint1024_t(0)
-    );
+    for(int i = 0; i < 36000; ++i)
+    {
+        debug::log(0, "Sending List");
+        node.PushMessage(LLP::ACTION::LIST,
+            uint8_t(LLP::SPECIFIER::SYNC),
+            uint8_t(LLP::TYPES::BLOCK),
+            uint8_t(LLP::TYPES::UINT1024_T),
+            TAO::Ledger::ChainState::Genesis(),
+            uint1024_t(0)
+        );
+
+        node.ReadPacket();
+        if(node.PacketComplete())
+            node.ResetPacket();
+
+        runtime::sleep(100);
+    }
+
 
     runtime::sleep(10000);
 
