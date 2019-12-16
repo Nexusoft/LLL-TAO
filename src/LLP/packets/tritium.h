@@ -44,7 +44,7 @@ namespace LLP
     class TritiumPacket
     {
     public:
-        
+
         /* Message enumeration. */
         uint16_t       MESSAGE;
 
@@ -208,10 +208,8 @@ namespace LLP
          **/
         void SetData(const DataStream& ssData)
         {
-            std::vector<uint8_t> vData(ssData.begin(), ssData.end());
-
-            LENGTH = static_cast<uint32_t>(vData.size());
-            DATA   = vData;
+            LENGTH = static_cast<uint32_t>(ssData.size());
+            DATA   = ssData.Bytes();
         }
 
 

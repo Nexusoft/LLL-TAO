@@ -367,12 +367,10 @@ namespace LLP
          *
          *  Checks if a node is subscribed to receive a notification.
          *
-         *  @param[in] nMsg The message to check for
-         *
          *  @return a data stream with relevant relay information
          *
          **/
-        const DataStream Notifications(const uint16_t nMsg, const DataStream& ssData) const;
+        const DataStream Notifications(const DataStream& ssData) const override;
 
 
         /** Auth
@@ -434,6 +432,23 @@ namespace LLP
             TritiumPacket RESPONSE(nMsg);
             RESPONSE.SetData(ssData);
 
+            return RESPONSE;
+        }
+
+
+        /** NewMessage
+         *
+         *  Creates a new message with a commands and data.
+         *
+         *  @param[in] nMsg The message type.
+         *  @param[in] ssData A datastream object with data to write.
+         *
+         *  @return Returns a filled out tritium packet.
+         *
+         **/
+        static TritiumPacket NewMessage(const uint16_t nMsg)
+        {
+            TritiumPacket RESPONSE(nMsg);
             return RESPONSE;
         }
 

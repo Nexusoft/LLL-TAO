@@ -87,30 +87,39 @@ namespace LLP
         /* Externally set coinbase to be set on mined blocks */
         Legacy::Coinbase CoinbaseTx;
 
+
         /** Mutex for thread safe data access **/
         std::mutex MUTEX;
+
 
         /** The map to hold the list of blocks that are being mined. */
         std::map<uint512_t, TAO::Ledger::Block *> mapBlocks;
 
+
         /** The current best block. **/
         std::atomic<uint32_t> nBestHeight;
+
 
         /* Subscribe to display how many blocks connection subscribed to */
         std::atomic<uint32_t> nSubscribed;
 
+
         /* The current channel mining for. */
         std::atomic<uint32_t> nChannel;
+
 
         /* the mining key for block rewards to send */
         Legacy::ReserveKey *pMiningKey;
 
+
         /* The last txid on user's signature chain. Used to orphan blocks if another transaction is made while mining. */
         uint512_t nHashLast;
+
 
         /* The last height that the notifications processor was run at.  This is used to ensure that events are only processed once
            across all threads when the height changes */
         static std::atomic<uint32_t> nLastNotificationsHeight;
+
 
         /** Used as an ID iterator for generating unique hashes from same block transactions. **/
         static std::atomic<uint32_t> nBlockIterator;

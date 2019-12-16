@@ -194,6 +194,19 @@ namespace LLP
         }
 
 
+        /** SetData
+         *
+         *  Set the Packet Data.
+         *
+         *  @param[in] ssData The datastream with the data to set.
+         *
+         **/
+        void SetData(const DataStream& ssData)
+        {
+            strContent = std::string(ssData.begin(), ssData.end());
+        }
+
+
         /** SetStatus
          *
          *  Set the response status on a HTTP Reply.

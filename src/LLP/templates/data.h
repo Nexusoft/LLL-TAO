@@ -27,6 +27,7 @@ ________________________________________________________________________________
 #include <vector>
 #include <thread>
 #include <cstdint>
+#include <queue>
 #include <condition_variable>
 
 namespace LLP
@@ -113,6 +114,10 @@ namespace LLP
 
         /* Vector to store Connections. */
         memory::atomic_ptr< std::vector< memory::atomic_ptr<ProtocolType>> > CONNECTIONS;
+
+
+        /** Queu to process outbound relay messages. **/
+        memory::atomic_ptr< std::queue<std::pair<typename ProtocolType::Packet, DataStream>> > RELAY;
 
 
         /** The condition for thread sleeping. **/
@@ -207,36 +212,11 @@ namespace LLP
             DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
             message_args(ssData, std::forward<Args>(args)...);
 
-            /* Get the size of the vector. */
-            uint16_t nSize = static_cast<uint16_t>(CONNECTIONS->size());
+            /* Push the relay message to outbound queue. */
+            RELAY->push(std::make_pair(ProtocolType::NewMessage(message), ssData));
 
-            /* Loop through connections in data thread. */
-            for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
-            {
-                try
-                {
-                    /* Reset stream read position. */
-                    ssData.Reset();
-
-                    /* Get atomic pointer to reduce locking around CONNECTIONS scope. */
-                    debug::log(3, FUNCTION, "CREATE::Host ", nIndex, " Thread ", ID);
-                    memory::atomic_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nIndex);
-
-                    /* Relay if there are active subscriptions. */
-                    debug::log(3, FUNCTION, "NOTIFY::Host ", nIndex, " Thread ", ID);
-                    const DataStream ssRelay = CONNECTION->Notifications(message, ssData);
-                    if(ssRelay.size() != 0)
-                    {
-                        debug::log(3, FUNCTION, "RELAY::Host ", nIndex, " Thread ", ID);
-                        CONNECTION->WritePacket(ProtocolType::NewMessage(message, ssRelay));
-                    }
-                }
-                catch(const std::exception& e)
-                {
-                    //debug::error(FUNCTION, e.what());
-                    //catch the atomic pointer throws
-                }
-            }
+            /* Wake up the flush thread. */
+            FLUSH_CONDITION.notify_all();
         }
 
 

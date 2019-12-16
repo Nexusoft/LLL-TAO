@@ -153,13 +153,20 @@ namespace LLP
         static std::string Name() { return "Base"; }
 
 
+        /** Type
+         *
+         *  Get's the packet type from class.
+         *
+         */
+        typedef PacketType Packet;
+
+
         /** Notifications
          *
          *  Filter out relay requests with notifications node is subscribed to.
          *
          **/
-        template<typename MessageType>
-        const DataStream Notifications(const MessageType& message, const DataStream& ssData) const
+        virtual const DataStream Notifications(const DataStream& ssData) const
         {
             return ssData; //copy over relay like normal for all items to be relayed
         }

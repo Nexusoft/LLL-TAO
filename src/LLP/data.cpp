@@ -45,6 +45,7 @@ namespace LLP
     , DDOS_rSCORE     (rScore)
     , DDOS_cSCORE     (cScore)
     , CONNECTIONS     (memory::atomic_ptr< std::vector<memory::atomic_ptr<ProtocolType>> >(new std::vector<memory::atomic_ptr<ProtocolType>>()))
+    , RELAY           (memory::atomic_ptr< std::queue<std::pair<typename ProtocolType::Packet, DataStream>> >(new std::queue<std::pair<typename ProtocolType::Packet, DataStream>>()))
     , CONDITION       ( )
     , DATA_THREAD     (std::bind(&DataThread::Thread, this))
     , FLUSH_CONDITION ( )
@@ -66,9 +67,8 @@ namespace LLP
         if(FLUSH_THREAD.joinable())
             FLUSH_THREAD.join();
 
-        //DisconnectAll();
-
         CONNECTIONS.free();
+        RELAY.free();
     }
 
 
@@ -441,6 +441,10 @@ namespace LLP
                     if(fDestruct.load() || config::fShutdown.load())
                         return true;
 
+                    /* Check for data in the queue. */
+                    if(!RELAY->empty())
+                        return true;
+
                     /* Check for buffered connection. */
                     for(uint32_t nIndex = 0; nIndex < CONNECTIONS->size(); ++nIndex)
                     {
@@ -460,14 +464,46 @@ namespace LLP
             if(fDestruct.load() || config::fShutdown.load())
                 return;
 
+            /* Create generic packet. */
+            std::pair<typename ProtocolType::Packet, DataStream> qRelay =
+                std::make_pair(typename ProtocolType::Packet(), DataStream(SER_NETWORK, MIN_PROTO_VERSION));
+
+            /* Grab data from queue. */
+            if(!RELAY->empty())
+            {
+                /* Make a copy of the relay data. */
+                qRelay = RELAY->front();
+
+                /* Drop element from queue. */
+                RELAY->pop();
+            }
+
             /* Check all connections for data and packets. */
             for(uint32_t nIndex = 0; nIndex < CONNECTIONS->size(); ++nIndex)
             {
                 try
                 {
+                    /* Reset stream read position. */
+                    qRelay.second.Reset();
+
+                    /* Get atomic pointer to reduce locking around CONNECTIONS scope. */
+                    memory::atomic_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nIndex);
+
+                    /* Relay if there are active subscriptions. */
+                    const DataStream ssRelay = CONNECTION->Notifications(qRelay.second);
+                    if(ssRelay.size() != 0)
+                    {
+                        /* Build the sender packet. */
+                        typename ProtocolType::Packet PACKET;
+                        PACKET.SetData(ssRelay);
+
+                        /* Write packet to socket. */
+                        CONNECTION->WritePacket(PACKET);
+                    }
+
                     /* Attempt to flush data when buffer is available. */
-                    if(CONNECTIONS->at(nIndex)->Buffered() && CONNECTIONS->at(nIndex)->Flush() < 0)
-                        runtime::sleep(std::min(5u, CONNECTIONS->at(nIndex)->nConsecutiveErrors.load() / 1000)); //we want to sleep when we have periodic failures
+                    if(CONNECTION->Buffered() && CONNECTION->Flush() < 0)
+                        runtime::sleep(std::min(5u, CONNECTION->nConsecutiveErrors.load() / 1000)); //we want to sleep when we have periodic failures
                 }
                 catch(const std::exception& e) { }
             }

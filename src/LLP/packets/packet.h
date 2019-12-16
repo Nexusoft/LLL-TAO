@@ -143,6 +143,20 @@ namespace LLP
         }
 
 
+        /** SetData
+         *
+         *  Set the Packet Data.
+         *
+         *  @param[in] ssData The datastream with the data to set.
+         *
+         **/
+        void SetData(const DataStream& ssData)
+        {
+            LENGTH = static_cast<uint32_t>(ssData.size());
+            DATA   = ssData.Bytes();
+        }
+
+
         /** SetLength
          *
          *  Sets the size of the packet from the byte vector.
