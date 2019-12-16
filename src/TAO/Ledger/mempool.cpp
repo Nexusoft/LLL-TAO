@@ -393,6 +393,10 @@ namespace TAO
             if(mapConflicts.count(hashTx))
                 mapConflicts.erase(hashTx);
 
+            /* Erase from legacy conflicted memory. */
+            if(mapLegacyConflicts.count(hashTx))
+                mapLegacyConflicts.erase(hashTx);
+
             /* Find the transaction in pool. */
             if(mapLedger.count(hashTx))
             {
