@@ -126,7 +126,7 @@ namespace LLP
 
 
         /** Constructor **/
-        TritiumPacket(uint16_t nMessage)
+        TritiumPacket(const message_t nMessage)
         {
             SetNull();
 
@@ -141,17 +141,6 @@ namespace LLP
             READWRITE(FLAGS);
             READWRITE(LENGTH);
         )
-
-
-        /** GetMessage
-         *
-         *  Get the packet's message.
-         *
-         **/
-        message_t GetMessage() const
-        {
-            return MESSAGE;
-        }
 
 
         /** SetNull

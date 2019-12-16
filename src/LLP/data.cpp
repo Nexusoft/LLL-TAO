@@ -45,7 +45,7 @@ namespace LLP
     , DDOS_rSCORE     (rScore)
     , DDOS_cSCORE     (cScore)
     , CONNECTIONS     (memory::atomic_ptr< std::vector<memory::atomic_ptr<ProtocolType>> >(new std::vector<memory::atomic_ptr<ProtocolType>>()))
-    , RELAY           (memory::atomic_ptr< std::queue<std::pair<typename ProtocolType::Packet, DataStream>> >(new std::queue<std::pair<typename ProtocolType::Packet, DataStream>>()))
+    , RELAY           (memory::atomic_ptr< std::queue<std::pair<typename ProtocolType::message_t, DataStream>> >(new std::queue<std::pair<typename ProtocolType::message_t, DataStream>>()))
     , CONDITION       ( )
     , DATA_THREAD     (std::bind(&DataThread::Thread, this))
     , FLUSH_CONDITION ( )
@@ -465,8 +465,8 @@ namespace LLP
                 return;
 
             /* Create generic packet. */
-            std::pair<typename ProtocolType::Packet, DataStream> qRelay =
-                std::make_pair(typename ProtocolType::Packet(), DataStream(SER_NETWORK, MIN_PROTO_VERSION));
+            std::pair<typename ProtocolType::message_t, DataStream> qRelay =
+                std::make_pair(typename ProtocolType::message_t(), DataStream(SER_NETWORK, MIN_PROTO_VERSION));
 
             /* Grab data from queue. */
             if(!RELAY->empty())
@@ -491,11 +491,11 @@ namespace LLP
                     memory::atomic_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nIndex);
 
                     /* Relay if there are active subscriptions. */
-                    const DataStream ssRelay = CONNECTION->Notifications(qRelay.first.GetMessage(), qRelay.second);
+                    const DataStream ssRelay = CONNECTION->Notifications(qRelay.first, qRelay.second);
                     if(ssRelay.size() != 0)
                     {
                         /* Build the sender packet. */
-                        typename ProtocolType::Packet PACKET = qRelay.first;
+                        typename ProtocolType::packet_t PACKET = typename ProtocolType::packet_t(qRelay.first);
                         PACKET.SetData(ssRelay);
 
                         /* Write packet to socket. */

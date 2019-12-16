@@ -117,7 +117,7 @@ namespace LLP
 
 
         /** Queu to process outbound relay messages. **/
-        memory::atomic_ptr< std::queue<std::pair<typename ProtocolType::Packet, DataStream>> > RELAY;
+        memory::atomic_ptr< std::queue<std::pair<typename ProtocolType::message_t, DataStream>> > RELAY;
 
 
         /** The condition for thread sleeping. **/
@@ -213,7 +213,7 @@ namespace LLP
             message_args(ssData, std::forward<Args>(args)...);
 
             /* Push the relay message to outbound queue. */
-            RELAY->push(std::make_pair(ProtocolType::NewMessage(message), ssData));
+            RELAY->push(std::make_pair(message, ssData));
 
             /* Wake up the flush thread. */
             FLUSH_CONDITION.notify_all();

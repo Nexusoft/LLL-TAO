@@ -42,7 +42,12 @@ namespace LLP
     {
     public:
 
-        typedef PacketType Packet;
+        /** The packet message type. **/
+        typedef typename PacketType::message_t message_t;
+
+
+        /** The template packet type. */
+        typedef PacketType packet_t;
 
     protected:
 
@@ -229,6 +234,22 @@ namespace LLP
          *
          **/
         virtual void ReadPacket() = 0;
+
+
+        /** NewMessage
+         *
+         *  Creates a new message with a commands and data.
+         *
+         *  @param[in] nMsg The message type.
+         *
+         *  @return Returns a filled out tritium packet.
+         *
+         **/
+        static PacketType NewMessage(const message_t msg)
+        {
+            PacketType RESPONSE(msg);
+            return RESPONSE;
+        }
 
 
         /** Connect

@@ -436,23 +436,6 @@ namespace LLP
         }
 
 
-        /** NewMessage
-         *
-         *  Creates a new message with a commands and data.
-         *
-         *  @param[in] nMsg The message type.
-         *  @param[in] ssData A datastream object with data to write.
-         *
-         *  @return Returns a filled out tritium packet.
-         *
-         **/
-        static TritiumPacket NewMessage(const uint16_t nMsg)
-        {
-            TritiumPacket RESPONSE(nMsg);
-            return RESPONSE;
-        }
-
-
         /** PushMessage
          *
          *  Adds a tritium packet to the queue to write to the socket.

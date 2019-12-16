@@ -154,14 +154,16 @@ namespace LLP
         }
 
 
-        /** GetMessage
-         *
-         *  Get the packet's message.
-         *
-         **/
-        message_t GetMessage() const
+        /** Constructor **/
+        HTTPPacket(const message_t strMessage)
+        : strType        ("GET")
+        , strRequest     (strMessage)
+        , strVersion     ("HTTP/1.1")
+        , mapHeaders     ( )
+        , nContentLength (0)
+        , strContent     ("")
+        , fHeader        (false)
         {
-            return strRequest;
         }
 
 

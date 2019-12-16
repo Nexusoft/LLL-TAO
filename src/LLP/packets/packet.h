@@ -106,14 +106,12 @@ namespace LLP
         }
 
 
-        /** GetMessage
-         *
-         *  Get the packet's message.
-         *
-         **/
-        message_t GetMessage() const
+        /** Constructor **/
+        Packet(const message_t nMessage)
         {
-            return HEADER;
+            SetNull();
+
+            HEADER = nMessage;
         }
 
 
