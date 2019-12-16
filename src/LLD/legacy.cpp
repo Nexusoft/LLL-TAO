@@ -42,10 +42,25 @@ namespace LLD
 
 
     /* Reads a transaction from the legacy DB. */
+    bool LegacyDB::ReadTx(const uint512_t& hashTx, Legacy::Transaction& tx, bool &fConflicted, const uint8_t nFlags)
+    {
+        /* Special check for memory pool. */
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::MINER)
+        {
+            /* Get the transaction. */
+            if(TAO::Ledger::mempool.Get(hashTx, tx, fConflicted))
+                return true;
+        }
+
+        return Read(std::make_pair(std::string("tx"), hashTx), tx);
+    }
+
+
+    /* Reads a transaction from the legacy DB. */
     bool LegacyDB::ReadTx(const uint512_t& hashTx, Legacy::Transaction& tx, const uint8_t nFlags)
     {
         /* Special check for memory pool. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::MINER)
         {
             /* Get the transaction. */
             if(TAO::Ledger::mempool.Get(hashTx, tx))

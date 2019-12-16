@@ -634,7 +634,7 @@ namespace TAO
 
                     /* Check if in memory pool. */
                     Legacy::Transaction tx;
-                    if(!LLD::Legacy->ReadTx(hash, tx, FLAGS::MEMPOOL)) //TODO: handle pre-processing conflicts for legacy tx
+                    if(!LLD::Legacy->ReadTx(hash, tx, state.fConflicted, FLAGS::MEMPOOL)) //TODO: handle pre-processing conflicts for legacy tx
                         return debug::error(FUNCTION, "transaction is not in memory pool");
 
                     /* Write to disk. */

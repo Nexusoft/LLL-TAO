@@ -66,6 +66,21 @@ namespace LLD
          *
          *  @param[in] hashTx The txid of transaction to read.
          *  @param[in] tx The transaction object to read.
+         *  @param[out] fConflicted Flag to determine if transaction came through conflicted memory.
+         *  @param[in] nFlags The flags to check from
+         *
+         *  @return True if the transaction was successfully read, false otherwise.
+         *
+         **/
+        bool ReadTx(const uint512_t& hashTx, Legacy::Transaction& tx, bool &fConflicted, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
+
+
+        /** ReadTx
+         *
+         *  Reads a transaction from the legacy DB.
+         *
+         *  @param[in] hashTx The txid of transaction to read.
+         *  @param[in] tx The transaction object to read.
          *  @param[in] nFlags The flags to check from
          *
          *  @return True if the transaction was successfully read, false otherwise.

@@ -86,11 +86,18 @@ namespace TAO
                 return debug::error(FUNCTION, "tx ", hashTx.SubString(), " not accepting nLockTime beyond 2038 yet");
 
             /* Check previous inputs. */
-            for(auto vin : tx.vin)
-                if(mapInputs.count(vin.prevout) && mapInputs[vin.prevout] != tx.GetHash())
-                    return debug::error(FUNCTION,
-                        "inputs ", mapInputs[vin.prevout].SubString(10),
-                        " already spent ", hashTx.SubString(10));
+            for(const auto& vin : tx.vin)
+            {
+                /* Check if input is already claimed. */
+                if(mapInputs.count(vin.prevout))
+                {
+                    /* Add to conflicts map. */
+                    debug::error(FUNCTION, "LEGACY CONFLICT: INPUTS CLAIMED ", vin.prevout.hash.SubString(), ", ", vin.prevout.n);
+                    mapLegacyConflicts[hashTx] = tx;
+
+                    return true;
+                }
+            }
 
             /* Check the inputs for spends. */
             std::map<uint512_t, std::pair<uint8_t, DataStream> > inputs;
@@ -170,6 +177,35 @@ namespace TAO
         bool Mempool::IsSpent(const uint512_t& hash, const uint32_t n)
         {
             return mapInputs.count(Legacy::OutPoint(hash, n));
+        }
+
+        /* Gets a legacy transaction from mempool */
+        bool Mempool::Get(const uint512_t& hashTx, Legacy::Transaction &tx, bool &fConflicted) const
+        {
+            RLOCK(MUTEX);
+
+            /* Check in conflict memory. */
+            if(mapLegacyConflicts.count(hashTx))
+            {
+                /* Get from conflicts map. */
+                tx = mapLegacyConflicts.at(hashTx);
+                fConflicted = true;
+
+                debug::log(0, FUNCTION, "CONFLICTED TRANSACTION: ", hashTx.SubString());
+
+                return true;
+            }
+
+            /* Check the memory map. */
+            if(mapLegacy.count(hashTx))
+            {
+                /* Get the transaction from memory. */
+                tx = mapLegacy.at(hashTx);
+
+                return true;
+            }
+
+            return false;
         }
 
         /* Gets a legacy transaction from mempool */

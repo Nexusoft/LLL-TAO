@@ -60,7 +60,7 @@ namespace TAO
         {
             if(fHelp || params.size() != 0)
                 return std::string("stop - Stop Nexus server.");
-                
+
             // Shutdown will take long enough that the response should get back
             Shutdown();
             return std::string("Nexus server stopping");
@@ -103,14 +103,14 @@ namespace TAO
             /* The current block height of this node */
             jsonRet["blocks"] = (int)TAO::Ledger::ChainState::nBestHeight.load();
 
-            /* Flag indicating whether this node is currently syncrhonizing*/
+            /* Flag indicating whether this node is currently syncrhonizing */
             jsonRet["synchronizing"] = (bool)TAO::Ledger::ChainState::Synchronizing();
 
             /* The percentage complete when synchronizing */
             jsonRet["synccomplete"] = (int)TAO::Ledger::ChainState::PercentSynchronized();
 
             /* Number of transactions in the node's mempool*/
-            jsonRet["txtotal"] =TAO::Ledger::mempool.Size() + TAO::Ledger::mempool.SizeLegacy();
+            jsonRet["txtotal"] = TAO::Ledger::mempool.Size();
 
             /* Number of peer connections*/
             uint16_t nConnections = 0;

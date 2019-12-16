@@ -58,6 +58,10 @@ namespace TAO
             std::map<uint512_t, Legacy::Transaction> mapLegacy;
 
 
+            /** The transactions in conflicted legacy memory pool. */
+            std::map<uint512_t, Legacy::Transaction> mapLegacyConflicts;
+
+
             /** The transactions in the ledger memory pool. **/
             std::map<uint512_t, TAO::Ledger::Transaction> mapLedger;
 
@@ -216,6 +220,21 @@ namespace TAO
              *
              **/
             bool Get(const uint256_t& hashGenesis, TAO::Ledger::Transaction &tx) const;
+
+
+            /** Get
+             *
+             *  Gets a legacy transaction from mempool
+             *
+             *  @param[in] hashTx Hash of legacy transaction to get.
+             *
+             *  @param[out] tx The retrieved legacy transaction
+             *  @param[out] fConflicted Flag to determine if transaction is conflicted
+             *
+             *  @return true if pool contained legacy transaction.
+             *
+             **/
+            bool Get(const uint512_t& hashTx, Legacy::Transaction &tx, bool &fConflicted) const;
 
 
             /** Get
