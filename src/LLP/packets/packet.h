@@ -34,8 +34,19 @@ namespace LLP
     class Packet
     {
     public:
+        /* Message typedef. */
+        typedef uint8_t message_t;
+
+
+        /** The packet message. **/
         uint8_t                 HEADER;
+
+
+        /** The length of the packet data. **/
         uint32_t                LENGTH;
+
+
+        /** The packet payload. **/
         std::vector<uint8_t>    DATA;
 
 
@@ -92,6 +103,17 @@ namespace LLP
         ~Packet()
         {
             std::vector<uint8_t>().swap(DATA);
+        }
+
+
+        /** GetMessage
+         *
+         *  Get the packet's message.
+         *
+         **/
+        message_t GetMessage() const
+        {
+            return HEADER;
         }
 
 

@@ -33,6 +33,38 @@ namespace LLP
     {
     public:
 
+        /** Message typedef. **/
+        typedef std::string message_t;
+
+
+        /* HTTP Request Type. */
+        std::string strType;
+
+
+        /* HTTP Request URL. */
+        std::string strRequest;
+
+
+        /* HTTP Request Version. */
+        std::string strVersion; //HTTP version
+
+
+        /* HTTP Status Headers. */
+        std::map<std::string, std::string> mapHeaders;
+
+
+        /* The content length. */
+        uint32_t nContentLength;
+
+
+        /* HTTP Body or Post content. */
+        std::string strContent;
+
+
+        /* Flag for knowing when reading HTML. */
+        bool fHeader;
+
+
         /** Default Constructor **/
         HTTPPacket()
         : strType        ("")
@@ -122,32 +154,15 @@ namespace LLP
         }
 
 
-        /* HTTP Request Type. */
-        std::string strType;
-
-
-        /* HTTP Request URL. */
-        std::string strRequest;
-
-
-        /* HTTP Request Version. */
-        std::string strVersion; //HTTP version
-
-
-        /* HTTP Status Headers. */
-        std::map<std::string, std::string> mapHeaders;
-
-
-        /* The content length. */
-        uint32_t nContentLength;
-
-
-        /* HTTP Body or Post content. */
-        std::string strContent;
-
-
-        /* Flag for knowing when reading HTML. */
-        bool fHeader;
+        /** GetMessage
+         *
+         *  Get the packet's message.
+         *
+         **/
+        message_t GetMessage() const
+        {
+            return strRequest;
+        }
 
 
         /** SetNull

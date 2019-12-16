@@ -479,7 +479,8 @@ namespace LLP
             }
 
             /* Check all connections for data and packets. */
-            for(uint32_t nIndex = 0; nIndex < CONNECTIONS->size(); ++nIndex)
+            uint32_t nSize = CONNECTIONS->size();
+            for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
             {
                 try
                 {
@@ -490,7 +491,7 @@ namespace LLP
                     memory::atomic_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nIndex);
 
                     /* Relay if there are active subscriptions. */
-                    const DataStream ssRelay = CONNECTION->Notifications(qRelay.second);
+                    const DataStream ssRelay = CONNECTION->Notifications(qRelay.first.GetMessage(), qRelay.second);
                     if(ssRelay.size() != 0)
                     {
                         /* Build the sender packet. */

@@ -81,7 +81,7 @@ namespace TAO
             {
                 /* Check whether it is valid before relaying it to all peers */
                 if(ssMessage.size() > 0)
-                    LLP::TRITIUM_SERVER->Relay(LLP::ACTION::DEAUTH, ssMessage.Bytes());
+                    LLP::TRITIUM_SERVER->Relay(uint8_t(LLP::ACTION::DEAUTH), ssMessage.Bytes());
 
                 /* Free up the Auth private key */
                 pAuthKey.free();

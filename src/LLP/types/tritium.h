@@ -370,7 +370,7 @@ namespace LLP
          *  @return a data stream with relevant relay information
          *
          **/
-        const DataStream Notifications(const DataStream& ssData) const override;
+        const DataStream Notifications(const uint16_t nMsg, const DataStream& ssData) const;
 
 
         /** Auth

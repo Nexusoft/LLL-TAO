@@ -44,15 +44,21 @@ namespace LLP
     class TritiumPacket
     {
     public:
+        /* Message typedef. */
+        typedef uint16_t message_t;
+
 
         /* Message enumeration. */
         uint16_t       MESSAGE;
 
+
         /* Flags to determine packet information. */
         uint16_t       FLAGS;
 
+
         /* Size of the packet. */
         uint32_t	   LENGTH;
+
 
         /* Binary data of the packet. */
         std::vector<uint8_t> DATA;
@@ -135,6 +141,17 @@ namespace LLP
             READWRITE(FLAGS);
             READWRITE(LENGTH);
         )
+
+
+        /** GetMessage
+         *
+         *  Get the packet's message.
+         *
+         **/
+        message_t GetMessage() const
+        {
+            return MESSAGE;
+        }
 
 
         /** SetNull
