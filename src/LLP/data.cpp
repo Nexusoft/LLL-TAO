@@ -464,7 +464,7 @@ namespace LLP
             if(fDestruct.load() || config::fShutdown.load())
                 return;
 
-            /* Create generic packet. */
+            /* Pair to store the relay from the queue. */
             std::pair<typename ProtocolType::message_t, DataStream> qRelay =
                 std::make_pair(typename ProtocolType::message_t(), DataStream(SER_NETWORK, MIN_PROTO_VERSION));
 
@@ -473,8 +473,6 @@ namespace LLP
             {
                 /* Make a copy of the relay data. */
                 qRelay = RELAY->front();
-
-                /* Drop element from queue. */
                 RELAY->pop();
             }
 

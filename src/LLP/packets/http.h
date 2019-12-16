@@ -34,7 +34,7 @@ namespace LLP
     public:
 
         /** Message typedef. **/
-        typedef std::string message_t;
+        typedef uint32_t message_t;
 
 
         /* HTTP Request Type. */
@@ -151,19 +151,6 @@ namespace LLP
         , fHeader        (false)
         {
             SetStatus(nStatus);
-        }
-
-
-        /** Constructor **/
-        HTTPPacket(const message_t strMessage)
-        : strType        ("GET")
-        , strRequest     (strMessage)
-        , strVersion     ("HTTP/1.1")
-        , mapHeaders     ( )
-        , nContentLength (0)
-        , strContent     ("")
-        , fHeader        (false)
-        {
         }
 
 
