@@ -95,7 +95,7 @@ namespace TAO
                 return true;
 
             /* Check for transaction in orphans. */
-            if(mapOrphans.count(tx.hashPrevTx))
+            if(mapOrphans.count(tx.hashPrevTx) || mapLedger.count(hashTx))
                 return true;
 
             debug::log(3, "ACCEPT --------------------------------------");
