@@ -429,7 +429,7 @@ namespace TAO
                 {
                     /* Check the memory pool. */
                     Legacy::Transaction tx;
-                    if(!LLD::Legacy->ReadTx(vtx[i].second, tx, FLAGS::MEMPOOL))
+                    if(!LLD::Legacy->ReadTx(vtx[i].second, tx, fConflicted, FLAGS::MEMPOOL))
                     {
                         vMissing.push_back(vtx[i]);
                         continue;
