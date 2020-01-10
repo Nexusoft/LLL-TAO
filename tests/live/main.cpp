@@ -166,52 +166,80 @@ int main(int argc, char** argv)
 
     config::mapArgs["-datadir"] = "/public/tests";
 
-    LLP::TritiumNode node;
-    node.Connect(LLP::BaseAddress("104.192.170.154", 9888));
-
-    node.PushMessage(LLP::ACTION::VERSION, LLP::PROTOCOL_VERSION, uint64_t(3838238), std::string("Test Client"));
-
-    node.Subscribe(LLP::SUBSCRIPTION::LASTINDEX | LLP::SUBSCRIPTION::BESTCHAIN | LLP::SUBSCRIPTION::BESTHEIGHT);
-
-    /* Ask for list of blocks if this is current sync node. */
-    for(int i = 0; i < 36000; ++i)
-    {
-        debug::log(0, "Sending List");
-        node.PushMessage(LLP::ACTION::LIST,
-            uint8_t(LLP::SPECIFIER::SYNC),
-            uint8_t(LLP::TYPES::BLOCK),
-            uint8_t(LLP::TYPES::UINT1024_T),
-            TAO::Ledger::ChainState::Genesis(),
-            uint1024_t(0)
-        );
-
-        node.ReadPacket();
-        if(node.PacketComplete())
-            node.ResetPacket();
-
-        runtime::sleep(100);
-    }
-
-
-    runtime::sleep(10000);
-
-    return 0;
-
-    TestDB* db = new TestDB();
+    //TestDB* db = new TestDB();
 
     uint1024_t hashLast = 0;
-    db->ReadLast(hashLast);
+    //db->ReadLast(hashLast);
+
+    std::fstream stream1(config::GetDataDir() + "/test1.txt", std::ios::in | std::ios::out | std::ios::binary);
+    std::fstream stream2(config::GetDataDir() + "/test2.txt", std::ios::in | std::ios::out | std::ios::binary);
+    std::fstream stream3(config::GetDataDir() + "/test3.txt", std::ios::in | std::ios::out | std::ios::binary);
+    std::fstream stream4(config::GetDataDir() + "/test4.txt", std::ios::in | std::ios::out | std::ios::binary);
+    std::fstream stream5(config::GetDataDir() + "/test5.txt", std::ios::in | std::ios::out | std::ios::binary);
+
+    std::vector<uint8_t> vBlank(1024, 0); //1 kb
+
+    stream1.write((char*)&vBlank[0], vBlank.size());
+    stream2.write((char*)&vBlank[0], vBlank.size());
+    stream3.write((char*)&vBlank[0], vBlank.size());
+    stream4.write((char*)&vBlank[0], vBlank.size());
+    stream5.write((char*)&vBlank[0], vBlank.size());
 
     runtime::timer timer;
     timer.Start();
-    for(uint1024_t n = hashLast; n < hashLast + 100000; ++n)
+    for(uint64_t n = 0; n < 100000; ++n)
     {
-        db->WriteKey(n, n);
+        stream1.seekp(0, std::ios::beg);
+        stream1.write((char*)&vBlank[0], vBlank.size());
+
+        stream1.seekp(8, std::ios::beg);
+        stream1.write((char*)&vBlank[0], vBlank.size());
+
+        stream1.seekp(16, std::ios::beg);
+        stream1.write((char*)&vBlank[0], vBlank.size());
+
+        stream1.seekp(32, std::ios::beg);
+        stream1.write((char*)&vBlank[0], vBlank.size());
+
+        stream1.seekp(64, std::ios::beg);
+        stream1.write((char*)&vBlank[0], vBlank.size());
+        stream1.flush();
+
+        //db->WriteKey(n, n);
     }
 
     debug::log(0, "Wrote 100k records in ", timer.ElapsedMicroseconds(), " micro-seconds");
 
-    db->WriteLast(hashLast + 100000);
+
+    timer.Reset();
+    for(uint64_t n = 0; n < 100000; ++n)
+    {
+        stream1.seekp(0, std::ios::beg);
+        stream1.write((char*)&vBlank[0], vBlank.size());
+        stream1.flush();
+
+        stream2.seekp(8, std::ios::beg);
+        stream2.write((char*)&vBlank[0], vBlank.size());
+        stream2.flush();
+
+        stream3.seekp(16, std::ios::beg);
+        stream3.write((char*)&vBlank[0], vBlank.size());
+        stream3.flush();
+
+        stream4.seekp(32, std::ios::beg);
+        stream4.write((char*)&vBlank[0], vBlank.size());
+        stream4.flush();
+
+        stream5.seekp(64, std::ios::beg);
+        stream5.write((char*)&vBlank[0], vBlank.size());
+        stream5.flush();
+        //db->WriteKey(n, n);
+    }
+    timer.Stop();
+
+    debug::log(0, "Wrote 100k records in ", timer.ElapsedMicroseconds(), " micro-seconds");
+
+    //db->WriteLast(hashLast + 100000);
 
     return 0;
 }

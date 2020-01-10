@@ -58,7 +58,8 @@ namespace LLP
     Server<ProtocolType>::Server(uint16_t nPort, uint16_t nMaxThreads, uint32_t nTimeout, bool fDDOS_,
                          uint32_t cScore, uint32_t rScore, uint32_t nTimespan, bool fListen, bool fRemote,
                          bool fMeter, bool fManager, uint32_t nSleepTimeIn)
-    : fDDOS           (fDDOS_)
+    : DDOS_MAP        ( )
+    , fDDOS           (fDDOS_)
     , PORT            (nPort)
     , MAX_THREADS     (nMaxThreads)
     , DDOS_TIMESPAN   (nTimespan)

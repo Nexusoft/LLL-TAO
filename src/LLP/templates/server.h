@@ -48,6 +48,7 @@ namespace LLP
     class Server
     {
     private:
+        
 
         /** The DDOS variables. **/
         std::map<BaseAddress, DDOS_Filter *> DDOS_MAP;
