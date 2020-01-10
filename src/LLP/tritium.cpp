@@ -2161,6 +2161,26 @@ namespace LLP
                         break;
                     }
 
+
+                    /* Handle for a tritium transaction. */
+                    case SPECIFIER::HEADER:
+                    {
+                        /* Set the stream type for headers. */
+                        ssPacket.SetType(uint8_t(SER_NETWORK | SER_BLOCKHEADERONLY));
+
+                        /* Get the block from the stream. */
+                        TAO::Ledger::BlockState block;
+                        ssPacket >> block;
+
+                        /* Set the stream type back to network. */
+                        ssPacket.SetType(uint8_t(SER_NETWORK));
+
+                        /* Log received. */
+                        debug::log(3, FUNCTION, "received block header ", block.GetHash().SubString(), " height = ", block.nHeight);
+
+                        break;
+                    }
+
                     /* Default catch all. */
                     default:
                         return debug::drop(NODE, "invalid type specifier for block");

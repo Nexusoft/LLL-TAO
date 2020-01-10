@@ -93,6 +93,7 @@ namespace LLP
             TRITIUM      = 0x41, //specify for tritium data types
             SYNC         = 0x42,  //specify a sync block type
             TRANSACTIONS = 0x43, //specify to send memory transactions first
+            HEADER       = 0x44, //specify for blocks to be sent and received as header-only
         };
     }
 
