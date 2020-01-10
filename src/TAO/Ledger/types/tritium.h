@@ -84,14 +84,20 @@ namespace TAO
                 READWRITE(nHeight);
                 READWRITE(nBits);
                 READWRITE(nNonce);
-
                 READWRITE(nTime);
-                READWRITE(vchBlockSig);
 
-                READWRITE(producer);
-                READWRITE(ssSystem);
+                /* Serialize the rest of the types if header isn't defined. */
+                if(!(nSerType & SER_BLOCKHEADERONLY))
+                {
+                    READWRITE(vchBlockSig);
+                    READWRITE(producer);
+                    READWRITE(ssSystem);
+                }
+
                 READWRITE(vOffsets);
-                READWRITE(vtx);
+
+                if(!(nSerType & SER_BLOCKHEADERONLY))
+                    READWRITE(vtx);
             )
 
 
