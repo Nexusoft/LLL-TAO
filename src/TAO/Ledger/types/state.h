@@ -135,10 +135,18 @@ namespace TAO
                 READWRITE(nReleasedReserve[2]);
                 READWRITE(hashCheckpoint);
 
-                READWRITE(vchBlockSig);
-                READWRITE(ssSystem);
+                if(!(nSerType & SER_BLOCKHEADERONLY))
+                {
+                    READWRITE(vchBlockSig);
+                    READWRITE(ssSystem);
+                }
+
                 READWRITE(vOffsets);
-                READWRITE(vtx);
+
+                if(!(nSerType & SER_BLOCKHEADERONLY))
+                {
+                    READWRITE(vtx);
+                }
             )
 
 
