@@ -84,6 +84,7 @@ namespace TAO
             /** MEMORY ONLY: list of missing transactions if processing failed. **/
             mutable std::vector<std::pair<uint8_t, uint512_t> > vMissing;
 
+
             /** MEMORY ONLY: list of hashes used in computing merkle root. **/
             mutable std::vector<uint512_t> vMerkleTree;
 

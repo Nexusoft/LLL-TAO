@@ -52,6 +52,7 @@ namespace TAO
         , vOffsets       ( )
         , vchBlockSig    ( )
         , vMissing       ( )
+        , vMerkleTree    ( )
         , hashMissing    (0)
         , fConflicted    (false)
         {
@@ -71,6 +72,7 @@ namespace TAO
         , vOffsets       (block.vOffsets)
         , vchBlockSig    (block.vchBlockSig)
         , vMissing       (block.vMissing)
+        , vMerkleTree    (block.vMerkleTree)
         , hashMissing    (block.hashMissing)
         , fConflicted    (block.fConflicted)
         {
@@ -89,6 +91,7 @@ namespace TAO
         , vOffsets       (std::move(block.vOffsets))
         , vchBlockSig    (std::move(block.vchBlockSig))
         , vMissing       (std::move(block.vMissing))
+        , vMerkleTree    (std::move(block.vMerkleTree))
         , hashMissing    (std::move(block.hashMissing))
         , fConflicted    (std::move(block.fConflicted))
         {
@@ -109,6 +112,7 @@ namespace TAO
             vOffsets       = block.vOffsets;
             vchBlockSig    = block.vchBlockSig;
             vMissing       = block.vMissing;
+            vMerkleTree    = block.vMerkleTree;
             hashMissing    = block.hashMissing;
             fConflicted    = block.fConflicted;
 
@@ -130,6 +134,7 @@ namespace TAO
             vOffsets       = std::move(block.vOffsets);
             vchBlockSig    = std::move(block.vchBlockSig);
             vMissing       = std::move(block.vMissing);
+            vMerkleTree    = std::move(block.vMerkleTree);
             hashMissing    = std::move(block.hashMissing);
 
             fConflicted    = std::move(block.fConflicted);
@@ -156,6 +161,7 @@ namespace TAO
         , vOffsets       ( )
         , vchBlockSig    ( )
         , vMissing       ( )
+        , vMerkleTree    ( )
         , hashMissing    (0)
         , fConflicted    (false)
         {
