@@ -2881,6 +2881,13 @@ namespace LLP
                     uint512_t hashTx = 0;
                     ssData >> hashTx;
 
+                    /* Check for legacy. */
+                    if(fLegacy)
+                    {
+                        debug::error(FUNCTION, "SIGCHAIN cannot have legacy specifier");
+                        continue;
+                    }
+
                     /* Check subscription. */
                     if(nNotifications & SUBSCRIPTION::SIGCHAIN)
                     {
