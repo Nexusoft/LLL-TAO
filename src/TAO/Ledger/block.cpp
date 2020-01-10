@@ -282,26 +282,81 @@ namespace TAO
 
 
         /* Generate the Merkle Tree from uint512_t hashes. */
-        uint512_t Block::BuildMerkleTree(std::vector<uint512_t> vMerkleTree) const
+        uint512_t Block::BuildMerkleTree(const std::vector<uint512_t>& vtx) const
         {
+            /* Build the in memory cache of merkle tree. */
+            vMerkleTree.clear();
+            for(const auto& hash : vtx)
+                vMerkleTree.push_back(hash);
+
+            /* Compute the merkle root. */
             uint32_t i = 0;
             uint32_t j = 0;
-            uint32_t nSize = static_cast<uint32_t>(vMerkleTree.size());
-
-            for(; nSize > 1; nSize = (nSize + 1) >> 1)
+            for(uint32_t nSize = static_cast<uint32_t>(vtx.size()); nSize > 1; nSize = (nSize + 1) >> 1)
             {
                 for(i = 0; i < nSize; i += 2)
                 {
                     /* get the references to the left and right leaves in the merkle tree */
-                    uint512_t &left_tx  = vMerkleTree[j+i];
-                    uint512_t &right_tx = vMerkleTree[j + std::min(i+1, nSize-1)];
+                    const uint512_t& left_tx  = vMerkleTree[j + i];
+                    const uint512_t& right_tx = vMerkleTree[j + std::min(i + 1, nSize - 1)];
 
                     vMerkleTree.push_back(LLC::SK512(BEGIN(left_tx),  END(left_tx),
                                                      BEGIN(right_tx), END(right_tx)));
                 }
+
                 j += nSize;
             }
+
             return (vMerkleTree.empty() ? 0 : vMerkleTree.back());
+        }
+
+
+        /* Get the merkle branch of a transaction at given index. */
+        std::vector<uint512_t> Block::GetMerkleBranch(const std::vector<uint512_t>& vtx, uint32_t nIndex) const
+        {
+            /* Build merkle tree if it's not already built. */
+            if (vMerkleTree.empty())
+                BuildMerkleTree(vtx);
+
+            /* Merkle branch to return. */
+            std::vector<uint512_t> vMerkleBranch;
+
+            /* Loop through the transactions to generate merkle path. */
+            uint32_t j = 0;
+            for (uint32_t nSize = vtx.size(); nSize > 1; nSize = (nSize + 1) / 2)
+            {
+                /* Grab the next instance from cached memory. */
+                uint32_t i = std::min(nIndex^1, nSize - 1);
+                vMerkleBranch.push_back(vMerkleTree[j + i]);
+
+                nIndex >>= 1;
+                j += nSize;
+            }
+
+            return vMerkleBranch;
+        }
+
+
+        /* Check the merkle branch of a transaction at given index. */
+        uint512_t Block::CheckMerkleBranch(const uint512_t& hash, const std::vector<uint512_t>& vMerkleBranch, uint32_t nIndex)
+        {
+            /* Check for valid range. */
+            if (nIndex > vMerkleBranch.size())
+                return 0;
+
+            /* Generate merkle root. */
+            uint512_t hashMerkleRet = hash;
+            for(const auto& hashLeaf : vMerkleBranch)
+            {
+                if (nIndex & 1)
+                    hashMerkleRet = LLC::SK512(BEGIN(hashLeaf), END(hashLeaf), BEGIN(hashMerkleRet), END(hashMerkleRet));
+                else
+                    hashMerkleRet = LLC::SK512(BEGIN(hashMerkleRet), END(hashMerkleRet), BEGIN(hashLeaf), END(hashLeaf));
+
+                nIndex >>= 1;
+            }
+
+            return hashMerkleRet;
         }
 
 

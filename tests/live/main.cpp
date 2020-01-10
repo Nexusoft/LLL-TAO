@@ -135,7 +135,44 @@ _name.shard.file
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
-    config::mapArgs["-datadir"] = "/public/tests";
+    /* Initialize LLD. */
+    LLD::Initialize();
+
+
+    uint1024_t hashBlock = uint1024_t("0xc326d8c68ebcf84d9e8889dcf0a57a34bf0721410c7011dddeda4e1ca0d05839df3ad825e45c62f8161e2c3b530abd3e09f72348d5d84d4d30902fe3504e39b7c52d9cd3ebecd5d45755a432f78c8559fa55d8b2e36022b7a2a82e37277b29f7e58120d795de6285b04109f077cf7b9f079e4ef00a39da0cde1e47de8480ae3a");
+
+    TAO::Ledger::BlockState state;
+    if(!LLD::Ledger->ReadBlock(hashBlock, state))
+        return debug::error("failed to read block");
+
+    debug::log(0, "Merkle: ", state.hashMerkleRoot.ToString());
+
+    std::vector<uint512_t> vHashes;
+    for(const auto& tx : state.vtx)
+    {
+        vHashes.push_back(tx.second);
+    }
+
+    uint512_t hashTx = state.vtx[3].second;
+
+    std::vector<uint512_t> vBranch = state.GetMerkleBranch(vHashes, 3);
+
+    for(const auto& hash : vBranch)
+    {
+        debug::log(0, "Branch: ", hash.SubString());
+    }
+
+    uint512_t hashMerkleCheck = TAO::Ledger::BlockState::CheckMerkleBranch(hashTx, vBranch, 3);
+
+    if(hashMerkleCheck != state.hashMerkleRoot)
+        return debug::error("MERKLE BRANCH BAD!!!");
+
+    debug::log(0, "Branch: ", hashMerkleCheck.ToString());
+
+
+    return 0;
+
+    //config::mapArgs["-datadir"] = "/public/tests";
 
     //TestDB* db = new TestDB();
 
