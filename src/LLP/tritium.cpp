@@ -1691,13 +1691,35 @@ namespace LLP
 
                         /* Standard type for a block. */
                         case TYPES::TRANSACTION:
+                        case TYPES::SIGCHAIN:
                         {
-                            /* Check for subscription. */
-                            if(!(nSubscriptions & SUBSCRIPTION::TRANSACTION))
-                                return debug::drop(NODE, "TRANSACTION: unsolicited notification");
+                            /* Check for active subscriptions. */
+                            if(nType == TYPES::TRANSACTION && !(nSubscriptions & SUBSCRIPTION::TRANSACTION))
+                                return debug::drop(NODE, "ACTION::NOTIFY::TRANSACTION: unsolicited notification");
+
+                            /* Sigchain specific validation and de-serialization. */
+                            if(nType == TYPES::SIGCHAIN)
+                            {
+                                /* Check for available protocol version. */
+                                if(nProtocolVersion < MIN_TRITIUM_VERSION)
+                                    return true;
+
+                                /* Check for subscription. */
+                                if(!(nSubscriptions & SUBSCRIPTION::SIGCHAIN))
+                                    return debug::drop(NODE, "ACTION::NOTIFY::SIGCHAIN: unsolicited notification");
+
+                                /* Get the sigchain genesis. */
+                                uint256_t hashSigchain = 0;
+                                ssPacket >> hashSigchain;
+
+                                /* Check for expected genesis. */
+                                uint256_t hashLogin = TAO::API::users->GetGenesis(0);
+                                if(hashSigchain != hashLogin)
+                                    return debug::drop(NODE, "ACTION::NOTIFY::SIGCHAIN: unexpected genesis-id ", hashLogin.SubString());
+                            }
 
                             /* Get the index of transaction. */
-                            uint512_t hashTx;
+                            uint512_t hashTx = 0;
                             ssPacket >> hashTx;
 
                             /* Check for legacy. */
@@ -1707,7 +1729,7 @@ namespace LLP
                                 if(!cacheInventory.Has(hashTx) && !LLD::Legacy->HasTx(hashTx, TAO::Ledger::FLAGS::MEMPOOL))
                                 {
                                     /* Debug output. */
-                                    debug::log(3, NODE, "ACTION::NOTIFY: LEGACY TRANSACTION ", hashTx.SubString()); //TODO: fix chatty relays
+                                    debug::log(3, NODE, "ACTION::NOTIFY: LEGACY TRANSACTION ", hashTx.SubString());
 
                                     ssResponse << uint8_t(SPECIFIER::LEGACY) << uint8_t(TYPES::TRANSACTION) << hashTx;
                                 }
@@ -1899,42 +1921,6 @@ namespace LLP
 
                             /* Debug output. */
                             debug::log(0, NODE, "ACTION::NOTIFY: ADDRESS ", addr.ToStringIP());
-
-                            break;
-                        }
-
-
-                        /* Standard type for sigchain. */
-                        case TYPES::SIGCHAIN:
-                        {
-                            /* Check for available protocol version. */
-                            if(nProtocolVersion < MIN_TRITIUM_VERSION)
-                                return true;
-
-                            /* Check for subscription. */
-                            if(!(nSubscriptions & SUBSCRIPTION::SIGCHAIN))
-                                return debug::drop(NODE, "ACTION::NOTIFY::SIGCHAIN: unsolicited notification");
-
-                            /* Get the sigchain genesis. */
-                            uint256_t hashSigchain = 0;
-                            ssPacket >> hashSigchain;
-
-                            /* Check for expected genesis. */
-                            if(hashSigchain != hashGenesis)
-                                return debug::drop(NODE, "ACTION::NOTIFY::SIGCHAIN: unexpected genesis-id");
-
-                            /* Get the notification txid. */
-                            uint512_t hashTx = 0;
-                            ssPacket >> hashTx;
-
-                            /* Check ledger database. */
-                            if(!cacheInventory.Has(hashTx) && !LLD::Ledger->HasTx(hashTx, TAO::Ledger::FLAGS::MEMPOOL))
-                            {
-                                /* Debug output. */
-                                debug::log(3, NODE, "ACTION::NOTIFY: SIGCHAIN ", hashTx.SubString());
-
-                                ssResponse << uint8_t(TYPES::TRANSACTION) << hashTx;
-                            }
 
                             break;
                         }
@@ -2643,7 +2629,7 @@ namespace LLP
         WritePacket(NewMessage((fSubscribe ? ACTION::SUBSCRIBE : ACTION::UNSUBSCRIBE), ssMessage));
     }
 
-    /*  Builds an Auth message for this node.*/
+    /* Builds an Auth message for this node.*/
     DataStream TritiumNode::GetAuth(bool fAuth)
     {
         /* Build auth message. */
@@ -2653,13 +2639,13 @@ namespace LLP
         if(TAO::API::users->LoggedIn() && !TAO::API::users->GetAuthKey().IsNull())
         {
             /* The genesis of the currently logged in user */
-            uint256_t hashGenesis = TAO::API::users->GetGenesis(0);
+            uint256_t hashSigchain = TAO::API::users->GetGenesis(0);
 
             /* The current timestamp */
             uint64_t nTimestamp = runtime::unifiedtimestamp();
 
             /* Add the basic auth data to the message */
-            ssMessage << hashGenesis <<  nTimestamp << SESSION_ID;
+            ssMessage << hashSigchain <<  nTimestamp << SESSION_ID;
 
             /* The public key for the "network" key*/
             std::vector<uint8_t> vchPubKey;

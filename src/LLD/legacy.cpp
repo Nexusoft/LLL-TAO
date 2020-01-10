@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <LLD/types/legacy.h>
+#include <LLP/include/global.h>
 
 #include <TAO/Ledger/types/mempool.h>
 
@@ -139,6 +140,16 @@ namespace LLD
         /* Write the new sequence number iterated by one. */
         if(!WriteSequence(hashAddress, nSequence + 1))
             return false;
+
+        /* Relay sigchain event to subscribed nodes. */
+        LLP::TRITIUM_SERVER->Relay
+        (
+            LLP::ACTION::NOTIFY,
+            uint8_t(LLP::SPECIFIER::LEGACY),
+            uint8_t(LLP::TYPES::SIGCHAIN),
+            hashAddress,
+            hashTx
+        );
 
         return Index(std::make_pair(hashAddress, nSequence), std::make_pair(std::string("tx"), hashTx));
     }
