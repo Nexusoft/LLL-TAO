@@ -89,7 +89,7 @@ namespace TAO
 
             /* Check for transaction on disk. */
             if(LLD::Ledger->HasTx(hashTx, FLAGS::MEMPOOL))
-                return true;
+                return false; //NOTE: this was true, but changed to false to prevent relay loops in tritium LLP
 
             /* Check for transaction in orphans. */
             if(mapOrphans.count(tx.hashPrevTx))

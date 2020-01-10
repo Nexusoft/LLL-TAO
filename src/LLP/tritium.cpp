@@ -443,9 +443,6 @@ namespace LLP
                         TRITIUM_SERVER->pAddressManager->AddAddress(GetAddress());
                 }
 
-                /* Send Auth immediately after version and before any other messages*/
-                //Auth(true);
-
                 /* If not synchronized and making an outbound connection, start the sync */
                 if(!fSynchronized.load())
                 {
@@ -499,7 +496,9 @@ namespace LLP
             case ACTION::AUTH:
             case ACTION::DEAUTH:
             {
-                return true; //disable AUTH for testnet
+                /* Disable AUTH for older protocol versions. */
+                if(nProtocolVersion < MIN_TRITIUM_VERSION)
+                    return true;
 
                 /* Disable AUTH messages when synchronizing. */
                 if(TAO::Ledger::ChainState::Synchronizing())
@@ -515,8 +514,11 @@ namespace LLP
                 if(hashGenesis == 0)
                     return debug::drop(NODE, "ACTION::AUTH: cannot authorize with reserved genesis");
 
+                /* Derive the object register address. */
+                TAO::Register::Address hashCrypto =
+                    TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
+
                 /* Get the crypto register. */
-                TAO::Register::Address hashCrypto = TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
                 TAO::Register::Object crypto;
                 if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::MEMPOOL))
                     return debug::drop(NODE, "ACTION::AUTH: authorization failed, missing crypto register");
@@ -651,7 +653,7 @@ namespace LLP
                                 nNotifications |= SUBSCRIPTION::BLOCK;
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "ACTION::SUBSCRIBE: BLOCK ", std::bitset<16>(nNotifications));
+                                debug::log(3, NODE, "ACTION::SUBSCRIBE: BLOCK: ", std::bitset<16>(nNotifications));
                             }
                             else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
                             {
@@ -659,7 +661,7 @@ namespace LLP
                                 nNotifications &= ~SUBSCRIPTION::BLOCK;
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE: BLOCK ", std::bitset<16>(nNotifications));
+                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE::BLOCK: ", std::bitset<16>(nNotifications));
                             }
                             else
                             {
@@ -667,7 +669,7 @@ namespace LLP
                                 nSubscriptions &= ~SUBSCRIPTION::BLOCK;
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED: BLOCK ", std::bitset<16>(nSubscriptions));
+                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED::BLOCK: ", std::bitset<16>(nSubscriptions));
                             }
 
                             break;
@@ -683,7 +685,7 @@ namespace LLP
                                 nNotifications |= SUBSCRIPTION::TRANSACTION;
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "ACTION::SUBSCRIBE: TRANSACTION ", std::bitset<16>(nNotifications));
+                                debug::log(3, NODE, "ACTION::SUBSCRIBE::TRANSACTION: ", std::bitset<16>(nNotifications));
                             }
                             else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
                             {
@@ -691,7 +693,7 @@ namespace LLP
                                 nNotifications &= ~SUBSCRIPTION::TRANSACTION;
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE: TRANSACTION ", std::bitset<16>(nNotifications));
+                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE::TRANSACTION: ", std::bitset<16>(nNotifications));
                             }
                             else
                             {
@@ -699,7 +701,7 @@ namespace LLP
                                 nSubscriptions &= ~SUBSCRIPTION::TRANSACTION;
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED: TRANSACTION ", std::bitset<16>(nSubscriptions));
+                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED::TRANSACTION: ", std::bitset<16>(nSubscriptions));
                             }
 
                             break;
@@ -719,7 +721,7 @@ namespace LLP
                                     uint8_t(TYPES::BESTHEIGHT), TAO::Ledger::ChainState::nBestHeight.load());
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "ACTION::SUBSCRIBE: BESTHEIGHT ", std::bitset<16>(nNotifications));
+                                debug::log(3, NODE, "ACTION::SUBSCRIBE::BESTHEIGHT: ", std::bitset<16>(nNotifications));
                             }
                             else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
                             {
@@ -727,7 +729,7 @@ namespace LLP
                                 nNotifications &= ~SUBSCRIPTION::BESTHEIGHT;
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE: BESTHEIGHT ", std::bitset<16>(nNotifications));
+                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE::BESTHEIGHT: ", std::bitset<16>(nNotifications));
                             }
                             else
                             {
@@ -735,7 +737,7 @@ namespace LLP
                                 nSubscriptions &= ~SUBSCRIPTION::BESTHEIGHT;
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED: BESTHEIGHT ", std::bitset<16>(nSubscriptions));
+                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED::BESTHEIGHT: ", std::bitset<16>(nSubscriptions));
                             }
 
                             break;
@@ -755,7 +757,7 @@ namespace LLP
                                     uint8_t(TYPES::CHECKPOINT), TAO::Ledger::ChainState::hashCheckpoint.load());
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "ACTION::SUBSCRIBE: CHECKPOINT ", std::bitset<16>(nNotifications));
+                                debug::log(3, NODE, "ACTION::SUBSCRIBE::CHECKPOINT: ", std::bitset<16>(nNotifications));
                             }
                             else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
                             {
@@ -763,7 +765,7 @@ namespace LLP
                                 nNotifications &= ~SUBSCRIPTION::CHECKPOINT;
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE: CHECKPOINT ", std::bitset<16>(nNotifications));
+                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE::CHECKPOINT: ", std::bitset<16>(nNotifications));
                             }
                             else
                             {
@@ -771,7 +773,7 @@ namespace LLP
                                 nSubscriptions &= ~SUBSCRIPTION::CHECKPOINT;
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED: CHECKPOINT ", std::bitset<16>(nSubscriptions));
+                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED::CHECKPOINT: ", std::bitset<16>(nSubscriptions));
                             }
 
                             break;
@@ -787,7 +789,7 @@ namespace LLP
                                 nNotifications |= SUBSCRIPTION::ADDRESS;
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "ACTION::SUBSCRIBE: ADDRESS ", std::bitset<16>(nNotifications));
+                                debug::log(3, NODE, "ACTION::SUBSCRIBE::ADDRESS: ", std::bitset<16>(nNotifications));
                             }
                             else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
                             {
@@ -795,7 +797,7 @@ namespace LLP
                                 nNotifications &= ~SUBSCRIPTION::ADDRESS;
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE: ADDRESS ", std::bitset<16>(nNotifications));
+                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE::ADDRESS: ", std::bitset<16>(nNotifications));
                             }
                             else
                             {
@@ -803,7 +805,7 @@ namespace LLP
                                 nSubscriptions &= ~SUBSCRIPTION::ADDRESS;
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED: ADDRESS ", std::bitset<16>(nSubscriptions));
+                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED::ADDRESS: ", std::bitset<16>(nSubscriptions));
                             }
 
                             break;
@@ -819,7 +821,7 @@ namespace LLP
                                 nNotifications |= SUBSCRIPTION::LASTINDEX;
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "ACTION::SUBSCRIBE: LAST ", std::bitset<16>(nNotifications));
+                                debug::log(3, NODE, "ACTION::SUBSCRIBE::LAST: ", std::bitset<16>(nNotifications));
                             }
                             else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
                             {
@@ -827,7 +829,7 @@ namespace LLP
                                 nNotifications &= ~SUBSCRIPTION::LASTINDEX;
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE: LAST ", std::bitset<16>(nNotifications));
+                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE::LAST: ", std::bitset<16>(nNotifications));
                             }
                             else
                             {
@@ -835,7 +837,7 @@ namespace LLP
                                 nSubscriptions &= ~SUBSCRIPTION::LASTINDEX;
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED: LASTINDEX ", std::bitset<16>(nSubscriptions));
+                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED::LASTINDEX: ", std::bitset<16>(nSubscriptions));
                             }
 
                             break;
@@ -855,7 +857,7 @@ namespace LLP
                                     uint8_t(TYPES::BESTCHAIN), TAO::Ledger::ChainState::hashBestChain.load());
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "ACTION::SUBSCRIBE: BESTCHAIN ", std::bitset<16>(nNotifications));
+                                debug::log(3, NODE, "ACTION::SUBSCRIBE::BESTCHAIN: ", std::bitset<16>(nNotifications));
                             }
                             else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
                             {
@@ -863,7 +865,7 @@ namespace LLP
                                 nNotifications &= ~SUBSCRIPTION::BESTCHAIN;
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE: BESTCHAIN" , std::bitset<16>(nNotifications));
+                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE::BESTCHAIN: " , std::bitset<16>(nNotifications));
                             }
                             else
                             {
@@ -871,7 +873,48 @@ namespace LLP
                                 nSubscriptions &= ~SUBSCRIPTION::BESTCHAIN;
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED: BESTCHAIN ", std::bitset<16>(nSubscriptions));
+                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED::BESTCHAIN: ", std::bitset<16>(nSubscriptions));
+                            }
+
+                            break;
+                        }
+
+
+                        /* Subscribe to getting transactions. */
+                        case TYPES::SIGCHAIN:
+                        {
+                            /* Check for available protocol version. */
+                            if(nProtocolVersion < MIN_TRITIUM_VERSION)
+                                return true;
+
+                            /* Check that node is logged in. */
+                            if(!fAuthorized || hashGenesis == 0)
+                                return debug::drop(NODE, "ACTION::SUBSCRIBE::SIGCHAIN: Access Denied");
+
+                            /* Subscribe. */
+                            if(INCOMING.MESSAGE == ACTION::SUBSCRIBE)
+                            {
+                                /* Set the best chain flag. */
+                                nNotifications |= SUBSCRIPTION::SIGCHAIN;
+
+                                /* Debug output. */
+                                debug::log(3, NODE, "ACTION::SUBSCRIBE::SIGCHAIN: ", std::bitset<16>(nNotifications));
+                            }
+                            else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
+                            {
+                                /* Unset the bestchain flag. */
+                                nNotifications &= ~SUBSCRIPTION::SIGCHAIN;
+
+                                /* Debug output. */
+                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE::SIGCHAIN: " , std::bitset<16>(nNotifications));
+                            }
+                            else
+                            {
+                                /* Unset the bestchain flag. */
+                                nSubscriptions &= ~SUBSCRIPTION::SIGCHAIN;
+
+                                /* Debug output. */
+                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED::SIGCHAIN: ", std::bitset<16>(nSubscriptions));
                             }
 
                             break;
@@ -1295,6 +1338,56 @@ namespace LLP
                             break;
                         }
 
+
+                        /* Standard type for a block. */
+                        case TYPES::SIGCHAIN:
+                        {
+                            /* Check for available protocol version. */
+                            if(nProtocolVersion < MIN_TRITIUM_VERSION)
+                                return true;
+
+                            /* Get the sigchain-id. */
+                            uint256_t hashSigchain;
+                            ssPacket >> hashSigchain;
+
+                            /* Get the index of block. */
+                            uint512_t hashStart;
+                            ssPacket >> hashStart;
+
+                            /* Get the ending hash. */
+                            uint512_t hashStop;
+                            ssPacket >> hashStop;
+
+                            /* Check for empty hash start. */
+                            if(hashStart == 0 && !LLD::Ledger->ReadGenesis(hashSigchain, hashStart))
+                                break;
+
+                            /* Check for empty hash stop. */
+                            if(hashStop == 0 && !LLD::Ledger->ReadLast(hashSigchain, hashStop, TAO::Ledger::FLAGS::MEMPOOL))
+                                break;
+
+                            /* Read sigchain entries. */
+                            std::vector<TAO::Ledger::Transaction> vtx;
+                            while(!config::fShutdown.load() && hashStop != hashStart)
+                            {
+                                /* Read from disk. */
+                                TAO::Ledger::Transaction tx;
+                                if(!LLD::Ledger->ReadTx(hashStop, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                                    break;
+
+                                /* Insert into container. */
+                                vtx.push_back(tx);
+                                hashStop = tx.hashPrevTx;
+                            }
+
+                            /* Reverse container to message forward. */
+                            std::reverse(vtx.begin(), vtx.end());
+                            for(const auto& tx : vtx)
+                                PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::TRITIUM), tx);
+
+                            break;
+                        }
+
                         /* Catch malformed notify binary streams. */
                         default:
                             return debug::drop(NODE, "ACTION::LIST malformed binary stream");
@@ -1400,7 +1493,7 @@ namespace LLP
                             break;
                         }
 
-                        /* Standard type for a block. */
+                        /* Standard type for a transaction. */
                         case TYPES::TRANSACTION:
                         {
                             /* Check for valid specifier. */
@@ -1447,6 +1540,72 @@ namespace LLP
 
                             /* Debug output. */
                             debug::log(3, NODE, "ACTION::GET: TRANSACTION ", hashTx.SubString());
+
+                            break;
+                        }
+
+
+                        /* Standard type for status. */
+                        case TYPES::STATUS:
+                        {
+                            /* Check for available protocol version. */
+                            if(nProtocolVersion < MIN_TRITIUM_VERSION)
+                                return true;
+
+                            /* Check the status sub-type. */
+                            uint8_t nType = 0;
+                            ssPacket >> nType;
+
+                            /* Switch based on type. */
+                            switch(nType)
+                            {
+                                /* Transaction status check. */
+                                case TYPES::TRANSACTION:
+                                {
+                                    /* Get the txid for status. */
+                                    uint512_t hashTx = 0;
+                                    ssPacket >> hashTx;
+
+                                    /* Check tx status. */
+                                    if(LLD::Ledger->HasIndex(hashTx))
+                                        PushMessage(RESPONSE::CONFIRMED);
+                                    else //no index in LLD means tx is unconfirmed
+                                        PushMessage(RESPONSE::UNCONFIRMED);
+
+                                    break;
+                                }
+
+                                /* Block status check. */
+                                case TYPES::BLOCK:
+                                {
+                                    /* Get the block hash for status. */
+                                    uint1024_t hashBlock = 0;
+                                    ssPacket >> hashBlock;
+
+                                    /* Read Block from Disk. */
+                                    TAO::Ledger::BlockState state;
+                                    if(!LLD::Ledger->ReadBlock(hashBlock, state))
+                                        break;
+
+                                    /* Check status. */
+                                    if(state.IsInMainChain())
+                                        PushMessage(RESPONSE::CONFIRMED);
+                                    else //no forward index and block is orphaned
+                                        PushMessage(RESPONSE::UNCONFIRMED);
+
+                                    /* Bump DDOS scores. */
+                                    if(DDOS)
+                                        DDOS->rSCORE += 20;
+
+                                    break;
+                                }
+
+                                /* Catch malformed streams. */
+                                default:
+                                    return debug::drop(NODE, "ACTION::GET invalid status type");
+                            }
+
+
 
                             break;
                         }
@@ -1725,6 +1884,42 @@ namespace LLP
 
                             /* Debug output. */
                             debug::log(0, NODE, "ACTION::NOTIFY: ADDRESS ", addr.ToString());
+
+                            break;
+                        }
+
+
+                        /* Standard type for sigchain. */
+                        case TYPES::SIGCHAIN:
+                        {
+                            /* Check for available protocol version. */
+                            if(nProtocolVersion < MIN_TRITIUM_VERSION)
+                                return true;
+
+                            /* Check for subscription. */
+                            if(!(nSubscriptions & SUBSCRIPTION::SIGCHAIN))
+                                return debug::drop(NODE, "ACTION::NOTIFY::SIGCHAIN: unsolicited notification");
+
+                            /* Get the sigchain genesis. */
+                            uint256_t hashSigchain = 0;
+                            ssPacket >> hashSigchain;
+
+                            /* Check for expected genesis. */
+                            if(hashSigchain != hashGenesis)
+                                return debug::drop(NODE, "ACTION::NOTIFY::SIGCHAIN: unexpected genesis-id");
+
+                            /* Get the notification txid. */
+                            uint512_t hashTx = 0;
+                            ssPacket >> hashTx;
+
+                            /* Check ledger database. */
+                            if(!cacheInventory.Has(hashTx) && !LLD::Ledger->HasTx(hashTx, TAO::Ledger::FLAGS::MEMPOOL))
+                            {
+                                /* Debug output. */
+                                debug::log(3, NODE, "ACTION::NOTIFY: SIGCHAIN ", hashTx.SubString());
+
+                                ssResponse << uint8_t(TYPES::TRANSACTION) << hashTx;
+                            }
 
                             break;
                         }
@@ -2100,6 +2295,15 @@ namespace LLP
                                 tx.GetHash()
                             );
 
+                            /* Relay any sigchain notifications. */
+                            TRITIUM_SERVER->Relay
+                            (
+                                ACTION::NOTIFY,
+                                uint8_t(TYPES::SIGCHAIN),
+                                tx.hashGenesis,
+                                tx.GetHash()
+                            );
+
                             /* Reset consecutive failures. */
                             nConsecutiveFails   = 0;
                             nConsecutiveOrphans = 0;
@@ -2380,6 +2584,29 @@ namespace LLP
             }
         }
 
+
+        /* Check for sigchain. */
+        if(nFlags & SUBSCRIPTION::SIGCHAIN)
+        {
+            /* Build the message. */
+            ssMessage << uint8_t(TYPES::SIGCHAIN);
+
+            /* Check for subscription. */
+            if(fSubscribe)
+            {
+                /* Set the flag. */
+                nSubscriptions |=  SUBSCRIPTION::SIGCHAIN;
+
+                /* Debug output. */
+                debug::log(3, NODE, "SUBSCRIBING TO SIGCHAIN ", std::bitset<16>(nSubscriptions));
+            }
+            else
+            {
+                /* Debug output. */
+                debug::log(3, NODE, "UNSUBSCRIBING FROM SIGCHAIN ", std::bitset<16>(nSubscriptions));
+            }
+        }
+
         /* Write the subscription packet. */
         WritePacket(NewMessage((fSubscribe ? ACTION::SUBSCRIBE : ACTION::UNSUBSCRIBE), ssMessage));
     }
@@ -2605,6 +2832,34 @@ namespace LLP
                         /* Write transaction to stream. */
                         ssRelay << uint8_t(TYPES::ADDRESS);
                         ssRelay << addr;
+                    }
+
+                    break;
+                }
+
+
+                /* Check for sigchain subscription. */
+                case TYPES::SIGCHAIN:
+                {
+                    /* Get the index. */
+                    uint256_t hashSigchain = 0;
+                    ssData >> hashSigchain;
+
+                    /* Get the txid. */
+                    uint512_t hashTx = 0;
+                    ssData >> hashTx;
+
+                    /* Check subscription. */
+                    if(nNotifications & SUBSCRIPTION::SIGCHAIN)
+                    {
+                        /* Check for matching sigchain-id. */
+                        if(hashSigchain != hashGenesis)
+                            break;
+
+                        /* Write transaction to stream. */
+                        ssRelay << uint8_t(TYPES::SIGCHAIN);
+                        ssRelay << hashSigchain;
+                        ssRelay << hashTx;
                     }
 
                     break;
