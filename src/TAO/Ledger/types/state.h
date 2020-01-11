@@ -117,36 +117,35 @@ namespace TAO
                 READWRITE(nNonce);
                 READWRITE(nTime);
 
-                READWRITE(nChainTrust);
+                //NOTE: we have to maintain backwards compatible serialization ordering
+                if(!(nSerType & SER_BLOCKHEADERONLY))
+                    READWRITE(nChainTrust);
+
                 READWRITE(nMoneySupply);
-                READWRITE(nMint);
-                READWRITE(nChannelHeight);
-
-                /* Tritium Block States. */
-                READWRITE(nFees);
-                READWRITE(nChannelWeight[0]);
-                READWRITE(nChannelWeight[1]);
-                READWRITE(nChannelWeight[2]);
-                READWRITE(nFeeReserve);
-
-                /* Reserves. */
-                READWRITE(nReleasedReserve[0]);
-                READWRITE(nReleasedReserve[1]);
-                READWRITE(nReleasedReserve[2]);
-                READWRITE(hashCheckpoint);
 
                 if(!(nSerType & SER_BLOCKHEADERONLY))
                 {
+                    READWRITE(nMint);
+                    READWRITE(nChannelHeight);
+                    READWRITE(nFees);
+                    READWRITE(nChannelWeight[0]);
+                    READWRITE(nChannelWeight[1]);
+                    READWRITE(nChannelWeight[2]);
+                    READWRITE(nFeeReserve);
+
+                    /* Reserves. */
+                    READWRITE(nReleasedReserve[0]);
+                    READWRITE(nReleasedReserve[1]);
+                    READWRITE(nReleasedReserve[2]);
+                    READWRITE(hashCheckpoint);
                     READWRITE(vchBlockSig);
-                    READWRITE(ssSystem);
                 }
 
+                READWRITE(ssSystem);
                 READWRITE(vOffsets);
 
                 if(!(nSerType & SER_BLOCKHEADERONLY))
-                {
                     READWRITE(vtx);
-                }
             )
 
 
@@ -192,6 +191,19 @@ namespace TAO
 
             /** Not operator overloading. **/
             bool operator!(void) const;
+
+
+            /** Clone
+             *
+             *  Allows polymorphic copying of blocks
+             *  Overridden to return an instance of the BlockState class.
+             *  Return-type covariance allows us to return the more derived type whilst
+             *  still overriding the virtual base-class method
+             *
+             *  @return A pointer to a copy of this BlockState.
+             *
+             **/
+            virtual BlockState* Clone() const override;
 
 
             /** GetBlockTime

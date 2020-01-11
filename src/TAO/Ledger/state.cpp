@@ -307,6 +307,14 @@ namespace TAO
         }
 
 
+        /*  Allows polymorphic copying of blocks
+         *  Overridden to return an instance of the TritiumBlock class. */
+        BlockState* BlockState::Clone() const
+        {
+            return new BlockState(*this);
+        }
+
+
         /* Return the Block's current UNIX timestamp. */
         uint64_t BlockState::GetBlockTime() const
         {

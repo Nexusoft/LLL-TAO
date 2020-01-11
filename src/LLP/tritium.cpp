@@ -2199,20 +2199,20 @@ namespace LLP
                     case SPECIFIER::HEADER:
                     {
                         /* Set the stream type for headers. */
-                        ssPacket.SetType(uint8_t(SER_NETWORK | SER_BLOCKHEADERONLY));
+                        ssPacket.SetType(uint32_t(SER_NETWORK | SER_BLOCKHEADERONLY));
 
                         /* Get the block from the stream. */
-                        TAO::Ledger::BlockState block;
-                        ssPacket >> block;
+                        TAO::Ledger::BlockState state;
+                        ssPacket >> state;
 
                         /* Set the stream type back to network. */
-                        ssPacket.SetType(uint8_t(SER_NETWORK));
+                        ssPacket.SetType(uint32_t(SER_NETWORK));
 
-                        /* Write to disk. */
-
+                        /* Process the block. */
+                        TAO::Ledger::Process(state, nStatus);
 
                         /* Log received. */
-                        debug::log(3, FUNCTION, "received block header ", block.GetHash().SubString(), " height = ", block.nHeight);
+                        debug::log(3, FUNCTION, "received block header ", state.GetHash().SubString(), " height = ", state.nHeight);
 
                         break;
                     }

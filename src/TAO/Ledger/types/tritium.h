@@ -91,9 +91,9 @@ namespace TAO
                 {
                     READWRITE(vchBlockSig);
                     READWRITE(producer);
-                    READWRITE(ssSystem);
                 }
 
+                READWRITE(ssSystem);
                 READWRITE(vOffsets);
 
                 if(!(nSerType & SER_BLOCKHEADERONLY))
