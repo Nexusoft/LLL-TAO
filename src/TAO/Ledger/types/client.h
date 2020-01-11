@@ -12,17 +12,12 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_TAO_LEDGER_TYPES_STATE_H
-#define NEXUS_TAO_LEDGER_TYPES_STATE_H
+#ifndef NEXUS_TAO_LEDGER_TYPES_CLIENT_H
+#define NEXUS_TAO_LEDGER_TYPES_CLIENT_H
 
 #include <TAO/Register/types/stream.h>
 
 #include <TAO/Ledger/types/block.h>
-
-namespace Legacy
-{
-    class LegacyBlock;
-}
 
 /* Global TAO namespace. */
 namespace TAO
@@ -31,12 +26,9 @@ namespace TAO
     /* Ledger Layer namespace. */
     namespace Ledger
     {
-        class ClientBlock;
-        class TritiumBlock;
-        class SyncBlock;
-        class Transaction;
+        class BlockState;
 
-        /** BlockState
+        /** ClientBlock
          *
          *  This class is responsible for storing state variables
          *  that are chain specific for a specified block. These
@@ -44,7 +36,7 @@ namespace TAO
          *  in the chain with all previous states before it.
          *
          **/
-        class BlockState : public Block
+        class ClientBlock : public Block
         {
             /* Tell compiler we are overloading this virtual method. */
             using Block::ToString;
@@ -60,30 +52,11 @@ namespace TAO
              *  The critical system level pre-states and post-states.
              *
              **/
-            TAO::Register::Stream ssSystem;
-
-
-            /** The transaction history.
-             *  uint8_t = TransactionType (per enum)
-             *  uint512_t = Tx hash
-             **/
-            std::vector<std::pair<uint8_t, uint512_t> > vtx;
-
-
-            /** The Trust of the Chain to this Block. */
-            uint64_t nChainTrust;
+            TAO::Register::Stream  ssSystem;
 
 
             /** The Total NXS released to date */
             uint64_t nMoneySupply;
-
-
-            /** The Total NXS mint. **/
-            int32_t nMint;
-
-
-            /** The Total Fees in block. **/
-            uint64_t nFees;
 
 
             /** The height of this channel. */
@@ -98,16 +71,8 @@ namespace TAO
             int64_t nReleasedReserve[3];
 
 
-            /** The reserves that are released. */
-            uint64_t nFeeReserve;
-
-
             /** Used to Iterate forward in the chain */
             uint1024_t hashNextBlock;
-
-
-            /** Used to store the checkpoint. **/
-            uint1024_t hashCheckpoint;
 
 
             /* Serialization Macros */
@@ -123,85 +88,103 @@ namespace TAO
                 READWRITE(nNonce);
                 READWRITE(nTime);
 
-                READWRITE(nChainTrust);
                 READWRITE(nMoneySupply);
-                READWRITE(nMint);
                 READWRITE(nChannelHeight);
-                READWRITE(nFees);
                 READWRITE(nChannelWeight[0]);
                 READWRITE(nChannelWeight[1]);
                 READWRITE(nChannelWeight[2]);
-                READWRITE(nFeeReserve);
                 READWRITE(nReleasedReserve[0]);
                 READWRITE(nReleasedReserve[1]);
                 READWRITE(nReleasedReserve[2]);
-                READWRITE(hashCheckpoint);
-                READWRITE(vchBlockSig);
 
                 READWRITE(ssSystem);
                 READWRITE(vOffsets);
-                READWRITE(vtx);
             )
 
 
             /** Default Constructor. **/
-            BlockState();
+            ClientBlock();
 
 
             /** Copy constructor. **/
-            BlockState(const BlockState& block);
+            ClientBlock(const ClientBlock& block);
 
 
             /** Move constructor. **/
-            BlockState(BlockState&& block) noexcept;
+            ClientBlock(ClientBlock&& block) noexcept;
 
 
             /** Copy assignment. **/
-            BlockState& operator=(const BlockState& block);
+            ClientBlock& operator=(const ClientBlock& block);
 
 
             /** Move assignment. **/
-            BlockState& operator=(BlockState&& block) noexcept;
+            ClientBlock& operator=(ClientBlock&& block) noexcept;
 
 
-            /** Copy constructor. **/
-            BlockState(const ClientBlock& block);
+            /** Copy Constructor from state. **/
+            ClientBlock(const BlockState& block);
 
 
-            /** Move constructor. **/
-            BlockState(ClientBlock&& block) noexcept;
+            /** Move Constructor from state. **/
+            ClientBlock(BlockState&& block);
 
 
-            /** Copy assignment. **/
-            BlockState& operator=(const ClientBlock& block);
+            /** Copy assignment from state. **/
+            ClientBlock& operator=(const BlockState& block);
 
 
-            /** Move assignment. **/
-            BlockState& operator=(ClientBlock&& block) noexcept;
+            /** Move assignment from state. **/
+            ClientBlock& operator=(BlockState&& block) noexcept;
 
 
             /** Default Destructor **/
-            virtual ~BlockState();
-
-
-            /** Default Constructor. **/
-            BlockState(const TritiumBlock& block);
-
-
-            /** Default Constructor. **/
-            BlockState(const Legacy::LegacyBlock& block);
+            virtual ~ClientBlock();
 
 
             /** Equivilence checking **/
-            bool operator==(const BlockState& state) const;
+            bool operator==(const ClientBlock& block) const;
 
 
             /** Equivilence checking **/
-            bool operator!=(const BlockState& state) const;
+            bool operator!=(const ClientBlock& block) const;
 
 
             /** Not operator overloading. **/
             bool operator!(void) const;
+
+
+            /** Clone
+             *
+             *  Allows polymorphic copying of blocks
+             *  Overridden to return an instance of the BlockState class.
+             *  Return-type covariance allows us to return the more derived type whilst
+             *  still overriding the virtual base-class method
+             *
+             *  @return A pointer to a copy of this BlockState.
+             *
+             **/
+            virtual ClientBlock* Clone() const override;
+
+
+            /** Prev
+             *
+             *  Get the previous client block in chain.
+             *
+             *  @return The previous client block.
+             *
+             **/
+            ClientBlock Prev() const;
+
+
+            /** Next
+             *
+             *  Get the next client block in chain.
+             *
+             *  @return The next client block.
+             *
+             **/
+            ClientBlock Next() const;
 
 
             /** GetBlockTime
@@ -214,34 +197,30 @@ namespace TAO
             uint64_t GetBlockTime() const;
 
 
-            /** Prev
+            /** Check
              *
-             *  Get the previous block state in chain.
-             *
-             *  @return The previous block state.
+             *  Check a client block for consistency.
              *
              **/
-            BlockState Prev() const;
+            bool Check() const override;
 
 
-            /** Next
+            /** Accept
              *
-             *  Get the next block state in chain.
-             *
-             *  @return The next block state.
+             *  Accept a client block with chain state parameters.
              *
              **/
-            BlockState Next() const;
+            bool Accept() const override;
 
 
             /** Index
              *
-             *  Index a block state into chain.
+             *  Index a client block into chain.
              *
              *  @return true if accepted.
              *
              **/
-            bool Index();
+            bool Index() const;
 
 
             /** Set Best
@@ -251,47 +230,28 @@ namespace TAO
              *  @return true if accepted.
              *
              **/
-            bool SetBest();
+            bool SetBest() const;
 
 
             /** Connect
              *
-             *  Connect a block state into chain.
+             *  Connect a client block into chain.
              *
              *  @return true if connected.
              *
              **/
-            bool Connect();
+            bool Connect() const;
 
 
             /** Disconnect
              *
-             *  Remove a block state from the chain.
+             *  Remove a client block from the chain.
              *
              *  @return true if disconnected.
              *
              **/
-            bool Disconnect();
+            bool Disconnect() const;
 
-
-            /** Trust
-             *
-             *  Get the trust of this block.
-             *
-             *  @return the current trust in the chain.
-             *
-             **/
-            uint64_t Trust() const;
-
-
-            /** Weight
-             *
-             *  Get the weight of this block.
-             *
-             *  @return the current weight for this block.
-             *
-             **/
-            uint64_t Weight() const;
 
 
             /** IsInMainChain
@@ -306,7 +266,7 @@ namespace TAO
 
             /** ToString
              *
-             *  For debugging Purposes seeing block state data dump.
+             *  For debugging Purposes seeing client block data dump.
              *
              *  @param[in] nState The states to output.
              *
@@ -335,30 +295,20 @@ namespace TAO
              **/
             uint1024_t SignatureHash() const;
 
-
-            /** StakeHash
-             *
-             *  Prove that you staked a number of seconds based on weight.
-             *
-             *  @return 1024-bit stake hash.
-             *
-             **/
-            uint1024_t StakeHash() const;
-
         };
 
 
         /** GetLastState
          *
-         *  Gets a block state by channel from hash.
+         *  Gets a client block by channel from hash.
          *
          *  @param[in] state The block to search from.
          *  @param[in] nChannel The channel to search for.
          *
-         *  @return The block state found.
+         *  @return The client block found.
          *
          **/
-        bool GetLastState(BlockState& state, uint32_t nChannel);
+        bool GetLastState(ClientBlock& state, const uint32_t nChannel);
     }
 }
 

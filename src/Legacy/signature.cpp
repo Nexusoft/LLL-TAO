@@ -21,6 +21,8 @@ ________________________________________________________________________________
 #include <Legacy/types/transaction.h>
 #include <Legacy/types/script.h>
 
+#include <TAO/Ledger/include/enum.h>
+
 #include <Util/templates/datastream.h>
 #include <Util/include/base58.h>
 

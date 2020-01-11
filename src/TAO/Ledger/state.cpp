@@ -39,9 +39,11 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/stake_change.h>
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/include/timelocks.h>
+#include <TAO/Ledger/include/retarget.h>
 
 #include <TAO/Ledger/types/genesis.h>
 #include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/types/client.h>
 
 #include <Util/include/string.h>
 
@@ -229,6 +231,118 @@ namespace TAO
         }
 
 
+        /* Copy constructor. */
+        BlockState::BlockState(const ClientBlock& block)
+        : Block            (block)
+        , nTime            (block.nTime)
+        , ssSystem         (block.ssSystem)
+        , vtx              ( )
+        , nChainTrust      (0)
+        , nMoneySupply     (block.nMoneySupply)
+        , nMint            (0)
+        , nFees            (0)
+        , nChannelHeight   (block.nChannelHeight)
+        , nChannelWeight   {block.nChannelWeight[0]
+                           ,block.nChannelWeight[1]
+                           ,block.nChannelWeight[2]}
+        , nReleasedReserve {block.nReleasedReserve[0]
+                           ,block.nReleasedReserve[1]
+                           ,block.nReleasedReserve[2]}
+        , nFeeReserve      (0)
+        , hashNextBlock    (block.hashNextBlock)
+        , hashCheckpoint   (0)
+        {
+        }
+
+
+        /* Move constructor. */
+        BlockState::BlockState(ClientBlock&& block) noexcept
+        : Block            (std::move(block))
+        , nTime            (std::move(block.nTime))
+        , ssSystem         (std::move(block.ssSystem))
+        , vtx              ( )
+        , nChainTrust      (0)
+        , nMoneySupply     (std::move(block.nMoneySupply))
+        , nMint            (0)
+        , nFees            (0)
+        , nChannelHeight   (std::move(block.nChannelHeight))
+        , nChannelWeight   {std::move(block.nChannelWeight[0])
+                           ,std::move(block.nChannelWeight[1])
+                           ,std::move(block.nChannelWeight[2])}
+        , nReleasedReserve {std::move(block.nReleasedReserve[0])
+                           ,std::move(block.nReleasedReserve[1])
+                           ,std::move(block.nReleasedReserve[2])}
+        , nFeeReserve      (0)
+        , hashNextBlock    (std::move(block.hashNextBlock))
+        , hashCheckpoint   (0)
+        {
+        }
+
+
+        /* Copy assignment. */
+        BlockState& BlockState::operator=(const ClientBlock& block)
+        {
+            nVersion            = block.nVersion;
+            hashPrevBlock       = block.hashPrevBlock;
+            hashMerkleRoot      = block.hashMerkleRoot;
+            nChannel            = block.nChannel;
+            nHeight             = block.nHeight;
+            nBits               = block.nBits;
+            nNonce              = block.nNonce;
+            vOffsets            = block.vOffsets;
+            vchBlockSig         = block.vchBlockSig;
+            vMissing            = block.vMissing;
+            hashMissing         = block.hashMissing;
+            fConflicted         = block.fConflicted;
+
+            nTime               = block.nTime;
+            ssSystem            = block.ssSystem;
+            nMoneySupply        = block.nMoneySupply;
+            nChannelHeight      = block.nChannelHeight;
+            nChannelWeight[0]   = block.nChannelWeight[0];
+            nChannelWeight[1]   = block.nChannelWeight[1];
+            nChannelWeight[2]   = block.nChannelWeight[2];
+            nReleasedReserve[0] = block.nReleasedReserve[0];
+            nReleasedReserve[1] = block.nReleasedReserve[1];
+            nReleasedReserve[2] = block.nReleasedReserve[2];
+            hashNextBlock       = block.hashNextBlock;
+
+            return *this;
+        }
+
+
+        /* Move assignment. */
+        BlockState& BlockState::operator=(ClientBlock&& block) noexcept
+        {
+            nVersion            = std::move(block.nVersion);
+            hashPrevBlock       = std::move(block.hashPrevBlock);
+            hashMerkleRoot      = std::move(block.hashMerkleRoot);
+            nChannel            = std::move(block.nChannel);
+            nHeight             = std::move(block.nHeight);
+            nBits               = std::move(block.nBits);
+            nNonce              = std::move(block.nNonce);
+            vOffsets            = std::move(block.vOffsets);
+            vchBlockSig         = std::move(block.vchBlockSig);
+            vMissing            = std::move(block.vMissing);
+            hashMissing         = std::move(block.hashMissing);
+            fConflicted         = std::move(block.fConflicted);
+
+            nTime               = std::move(block.nTime);
+            ssSystem            = std::move(block.ssSystem);
+            nMoneySupply        = std::move(block.nMoneySupply);
+            nChannelHeight      = std::move(block.nChannelHeight);
+            nChannelWeight[0]   = std::move(block.nChannelWeight[0]);
+            nChannelWeight[1]   = std::move(block.nChannelWeight[1]);
+            nChannelWeight[2]   = std::move(block.nChannelWeight[2]);
+            nReleasedReserve[0] = std::move(block.nReleasedReserve[0]);
+            nReleasedReserve[1] = std::move(block.nReleasedReserve[1]);
+            nReleasedReserve[2] = std::move(block.nReleasedReserve[2]);
+            hashNextBlock       = std::move(block.hashNextBlock);
+
+            return *this;
+        }
+
+
         /** Default Destructor **/
         BlockState::~BlockState()
         {
@@ -304,14 +418,6 @@ namespace TAO
         bool BlockState::operator!(void) const
         {
             return IsNull();
-        }
-
-
-        /*  Allows polymorphic copying of blocks
-         *  Overridden to return an instance of the TritiumBlock class. */
-        BlockState* BlockState::Clone() const
-        {
-            return new BlockState(*this);
         }
 
 

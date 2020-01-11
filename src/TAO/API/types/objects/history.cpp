@@ -20,6 +20,8 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/write.h>
 #include <TAO/Operation/include/append.h>
 
+#include <TAO/Ledger/types/transaction.h>
+
 #include <LLD/include/global.h>
 
 /* Global TAO namespace. */
@@ -366,7 +368,7 @@ namespace TAO
                             /* Generate return object. */
                             json::json obj;
                             obj["type"] = "TRANSFER";
-                            
+
 
                             /* Get the flag. */
                             uint8_t nState = 0;
