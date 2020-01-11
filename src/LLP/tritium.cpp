@@ -1369,7 +1369,7 @@ namespace LLP
                                 break;
 
                             /* Read sigchain entries. */
-                            std::vector<TAO::Ledger::Transaction> vtx;
+                            std::vector<TAO::Ledger::MerkleTx> vtx;
                             while(!config::fShutdown.load() && hashStop != hashStart)
                             {
                                 /* Read from disk. */
@@ -1377,15 +1377,26 @@ namespace LLP
                                 if(!LLD::Ledger->ReadTx(hashStop, tx, TAO::Ledger::FLAGS::MEMPOOL))
                                     break;
 
+                                /* Build a markle transaction. */
+                                TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
+
+                                /* Get the confirming block. */
+                                TAO::Ledger::BlockState state;
+                                if(LLD::Ledger->ReadBlock(hashStop, state))
+                                {
+                                    merkle.hashBlock = state.GetHash();
+                                    merkle.BuildMerkleBranch(state);
+                                }
+
                                 /* Insert into container. */
-                                vtx.push_back(tx);
+                                vtx.push_back(merkle);
                                 hashStop = tx.hashPrevTx;
                             }
 
                             /* Reverse container to message forward. */
                             std::reverse(vtx.begin(), vtx.end());
                             for(const auto& tx : vtx)
-                                PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::TRITIUM), tx);
+                                PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::TRITIUM), tx);
 
                             break;
                         }

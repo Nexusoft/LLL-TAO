@@ -63,6 +63,14 @@ namespace TAO
             MerkleTx(MerkleTx&& tx) noexcept;
 
 
+            /** Copy constructor. **/
+            MerkleTx(const Transaction& tx);
+
+
+            /** Move constructor. **/
+            MerkleTx(Transaction&& tx) noexcept;
+
+
             /** Copy assignment. **/
             MerkleTx& operator=(const MerkleTx& tx);
 
@@ -120,6 +128,19 @@ namespace TAO
              *
              **/
             bool Check(const uint512_t& hashMerkleRoot) const;
+
+
+
+            /** BuildMerkleBranch
+             *
+             *  Builds a merkle branch from block state.
+             *
+             *  @param[in] state The block state to build branch from.
+             *
+             *  @return true if build was a success.
+             *
+             **/
+            bool BuildMerkleBranch(const BlockState& state);
 
         };
 

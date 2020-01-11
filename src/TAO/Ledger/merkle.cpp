@@ -52,6 +52,26 @@ namespace TAO
         }
 
 
+        /* Copy constructor. */
+        MerkleTx::MerkleTx(const Transaction& tx)
+        : Transaction   (tx)
+        , hashBlock     (0)
+        , vMerkleBranch ( )
+        , nIndex        (0)
+        {
+        }
+
+
+        /* Move constructor. */
+        MerkleTx::MerkleTx(Transaction&& tx) noexcept
+        : Transaction   (std::move(tx))
+        , hashBlock     (0)
+        , vMerkleBranch ( )
+        , nIndex        (0)
+        {
+        }
+
+
         /* Copy assignment. */
         MerkleTx& MerkleTx::operator=(const MerkleTx& tx)
         {
@@ -114,6 +134,31 @@ namespace TAO
 
             return hashMerkleRoot == hashMerkleCheck;
         }
-    }
 
+
+        /* Builds a merkle branch from block state. */
+        bool MerkleTx::BuildMerkleBranch(const BlockState& state)
+        {
+            /* Cache this txid. */
+            uint512_t hash = GetHash();
+
+            /* Find the index of this transaction. */
+            for(nIndex = 0; nIndex < state.vtx.size(); ++nIndex)
+                if(state.vtx[nIndex].second == hash)
+                    break;
+
+            /* Check for valid index. */
+            if(nIndex == state.vtx.size())
+                return debug::error(FUNCTION, "transaction not found");
+
+            /* Build merkle branch. */
+            vMerkleBranch = state.GetMerkleBranch(state.vtx, nIndex);
+
+            /* NOTE: extra expensive check for testing, consider removing in production */
+            if(state.hashMerkleRoot != Block::CheckMerkleBranch(hash, vMerkleBranch, nIndex))
+                return debug::error(FUNCTION, "merkle root mismatch");
+
+            return true;
+        }
+    }
 }

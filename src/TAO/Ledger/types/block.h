@@ -273,6 +273,18 @@ namespace TAO
             uint512_t BuildMerkleTree(const std::vector<uint512_t>& vtx) const;
 
 
+            /** BuildMerkleTree
+             *
+             *  Build the merkle tree from the transaction list.
+             *
+             *  @param[in] vtx The list of hashes to build merkle tree with.
+             *
+             *  @return The 512-bit merkle root
+             *
+             **/
+            uint512_t BuildMerkleTree(const std::vector<std::pair<uint8_t, uint512_t> >& vtx) const;
+
+
             /** GetMerkleBranch
              *
              *  Get the merkle branch of a transaction at given index.
@@ -284,6 +296,20 @@ namespace TAO
              *
              **/
             std::vector<uint512_t> GetMerkleBranch(const std::vector<uint512_t>& vtx, uint32_t nIndex) const;
+
+
+            /** GetMerkleBranch
+             *
+             *  Get the merkle branch of a transaction at given index.
+             *
+             *  @param[in] vtx The list of hashes to build merkle tree with.
+             *  @param[in] nIndex The transaction index in vtx
+             *
+             *  @return The list of hashes for this merkle branch
+             *
+             **/
+            std::vector<uint512_t> GetMerkleBranch(const std::vector<std::pair<uint8_t, uint512_t> >& vtx, uint32_t nIndex) const;
+
 
 
             /** CheckMerkleBranch
