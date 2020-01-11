@@ -79,6 +79,7 @@ namespace LLP
             MEMPOOL      = 0x37,
             SIGCHAIN     = 0x38,
             STATUS       = 0x39,
+            MERKLE       = 0x40,
         };
     }
 

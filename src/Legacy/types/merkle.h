@@ -99,6 +99,7 @@ namespace Legacy
 		/** Move assignment. **/
 		MerkleTx& operator=(MerkleTx&& tx) noexcept;
 
+
 		/** Destructor **/
 		virtual ~MerkleTx();
 
@@ -155,6 +156,18 @@ namespace Legacy
          *
          **/
 		uint32_t GetBlocksToMaturity() const;
+
+
+		/** Check
+		 *
+		 *  Checks if this transaction has a valid merkle path.
+		 *
+		 *  @param[in] hashMerkleRoot The merkle root to check to.
+		 *
+		 *  @return True if merkle path is valid.
+		 *
+		 **/
+		bool Check(const uint512_t& hashMerkleRoot) const;
 
 	};
 }
