@@ -250,7 +250,6 @@ namespace TAO
 
             /* If we have a pin already, check we are allowed to use it for the requested action */
             bool fNeedPin = pActivePIN.IsNull() || pActivePIN->PIN().empty() || !(pActivePIN->UnlockedActions() & nUnlockAction);
-
             if(fNeedPin)
             {
                 /* If we need a pin then check it is in the params */

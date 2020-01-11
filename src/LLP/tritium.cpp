@@ -33,6 +33,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/syncblock.h>
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/merkle.h>
+#include <TAO/Ledger/types/client.h>
 
 #include <Legacy/wallet/wallet.h>
 
@@ -2196,23 +2197,17 @@ namespace LLP
 
 
                     /* Handle for a tritium transaction. */
-                    case SPECIFIER::HEADER:
+                    case SPECIFIER::CLIENT:
                     {
-                        /* Set the stream type for headers. */
-                        ssPacket.SetType(uint32_t(SER_NETWORK | SER_BLOCKHEADERONLY));
-
                         /* Get the block from the stream. */
-                        TAO::Ledger::BlockState state;
-                        ssPacket >> state;
-
-                        /* Set the stream type back to network. */
-                        ssPacket.SetType(uint32_t(SER_NETWORK));
+                        TAO::Ledger::ClientBlock block;
+                        ssPacket >> block;
 
                         /* Process the block. */
-                        TAO::Ledger::Process(state, nStatus);
+                        TAO::Ledger::Process(block, nStatus);
 
                         /* Log received. */
-                        debug::log(3, FUNCTION, "received block header ", state.GetHash().SubString(), " height = ", state.nHeight);
+                        debug::log(3, FUNCTION, "received client block ", block.GetHash().SubString(), " height = ", block.nHeight);
 
                         break;
                     }
