@@ -32,6 +32,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/locator.h>
 #include <TAO/Ledger/types/syncblock.h>
 #include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/types/merkle.h>
 
 #include <Legacy/wallet/wallet.h>
 
@@ -1568,9 +1569,9 @@ namespace LLP
 
                                     /* Check tx status. */
                                     if(LLD::Ledger->HasIndex(hashTx))
-                                        PushMessage(RESPONSE::CONFIRMED);
+                                        PushMessage(RESPONSE::CONFIRMED, hashTx);
                                     else //no index in LLD means tx is unconfirmed
-                                        PushMessage(RESPONSE::UNCONFIRMED);
+                                        PushMessage(RESPONSE::UNCONFIRMED, hashTx);
 
                                     break;
                                 }
@@ -1589,9 +1590,9 @@ namespace LLP
 
                                     /* Check status. */
                                     if(state.IsInMainChain())
-                                        PushMessage(RESPONSE::CONFIRMED);
+                                        PushMessage(RESPONSE::CONFIRMED, hashBlock);
                                     else //no forward index and block is orphaned
-                                        PushMessage(RESPONSE::UNCONFIRMED);
+                                        PushMessage(RESPONSE::UNCONFIRMED, hashBlock);
 
                                     /* Bump DDOS scores. */
                                     if(DDOS)
@@ -2175,6 +2176,9 @@ namespace LLP
                         /* Set the stream type back to network. */
                         ssPacket.SetType(uint8_t(SER_NETWORK));
 
+                        /* Write to disk. */
+
+
                         /* Log received. */
                         debug::log(3, FUNCTION, "received block header ", block.GetHash().SubString(), " height = ", block.nHeight);
 
@@ -2336,6 +2340,67 @@ namespace LLP
 
                 break;
             }
+
+
+            /* Handle incoming merkle transaction. */
+            case TYPES::MERKLE:
+            {
+                /* Check for subscription. */
+                if(!(nSubscriptions & SUBSCRIPTION::SIGCHAIN))
+                    return debug::drop(NODE, "TYPES::MERKLE: unsolicited data");
+
+                /* Get the specifier. */
+                uint8_t nSpecifier = 0;
+                ssPacket >> nSpecifier;
+
+                /* Switch based on type. */
+                switch(nSpecifier)
+                {
+                    /* Handle for a legacy transaction. */
+                    case SPECIFIER::LEGACY:
+                    {
+                        /* Get the transction from the stream. */
+                        Legacy::MerkleTx tx;
+                        ssPacket >> tx;
+
+                        //process merkle tx in -client mode
+
+                        break;
+                    }
+
+                    /* Handle for a tritium transaction. */
+                    case SPECIFIER::TRITIUM:
+                    {
+                        /* Get the transction from the stream. */
+                        TAO::Ledger::MerkleTx tx;
+                        ssPacket >> tx;
+
+                        //process merkle tx in -client mode
+
+                        break;
+                    }
+
+                    /* Default catch all. */
+                    default:
+                        return debug::drop(NODE, "invalid type specifier for TYPES::MERKLE");
+                }
+
+                break;
+            }
+
+
+            /* Handle responses for data objects. */
+            case RESPONSE::CONFIRMED:
+            {
+                /* Check for subscription. */
+                if(!(nSubscriptions & SUBSCRIPTION::SIGCHAIN))
+                    return debug::drop(NODE, "RESPONSE::CONFIRMED: unsolicited data");
+
+                //request merkleTx
+
+                break;
+            }
+
 
             default:
                 return debug::drop(NODE, "invalid protocol message ", INCOMING.MESSAGE);

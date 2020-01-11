@@ -130,7 +130,7 @@ namespace Legacy
         uint32_t nMaturity;
         uint32_t nDepth = GetDepthInMainChain();
 
-        
+
         TAO::Ledger::BlockState state;
 
         /* If this transaction has been included in a block then find the block so we can base the maturity calculation on it */
@@ -152,5 +152,15 @@ namespace Legacy
             return 0;
         else
             return nMaturity - nDepth;
+    }
+    
+
+    /* Checks if this transaction has a valid merkle path.*/
+    bool MerkleTx::Check(const uint512_t& hashMerkleRoot) const
+    {
+        /* Generate merkle root from merkle branch. */
+        uint512_t hashMerkleCheck = TAO::Ledger::BlockState::CheckMerkleBranch(GetHash(), vMerkleBranch, 3);
+
+        return hashMerkleRoot == hashMerkleCheck;
     }
 }

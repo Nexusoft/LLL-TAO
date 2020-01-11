@@ -482,6 +482,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Ledger_genesis.o \
 		build/Ledger_locator.o \
 		build/Ledger_mempool.o \
+		build/Ledger_merkle.o \
 		build/Ledger_prime.o \
 		build/Ledger_process.o \
 		build/Ledger_retarget.o \

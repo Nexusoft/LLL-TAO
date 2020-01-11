@@ -41,6 +41,8 @@ namespace TAO
          **/
         class Transaction
         {
+        protected:
+            
             /** For disk indexing on contract. **/
             std::vector<TAO::Operation::Contract> vContracts;
 
