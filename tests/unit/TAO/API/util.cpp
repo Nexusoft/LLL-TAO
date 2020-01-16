@@ -70,7 +70,7 @@ json::json APICall(const std::string& strMethod, const json::json& jsonParams)
             throw "Socket Error";
 
         /* Catch if the connection timed out. */
-        if(apiNode.Timeout(30))
+        if(apiNode.Timeout(30000))
             throw "Socket Timeout";
 
         /* Read the response packet. */
