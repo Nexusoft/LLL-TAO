@@ -438,6 +438,12 @@ This will list off all of the assets owned by a signature chain.
 
 `username` : The username identifying the signature chain (optional if genesis is supplied).
 
+`template_address` : Address of a template object register to use to filter the list.  This optional field will filter the list of assets to only those matching the format of the template object.  Callers can use template_address or template_name.
+
+`template_name` : Name of a template object register to use to filter the list.  This optional field will filter the list of assets to only those matching the format of the template object. Callers can use template_address or template_name.
+
+`cast` : Optional boolean field to indicate that the assets in the response should only include those fields that are also found in the template object.  Ignored unless `template_name` or `template_address` is also included.     
+
 `page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) results.  The default value is 0 if not supplied.
 
 `limit` : The number of results to return for the current page.  Default is 100

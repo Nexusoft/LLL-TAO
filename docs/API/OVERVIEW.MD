@@ -358,3 +358,5 @@ Error Codes
 | -221 | Recovery seed must be a minimum of 40 characters |
 | -222 | User create pending confirmation |
 | -223 | Recovery seed not set on this signature chain |
+| -224 | Template not found |
+| -225 | Asset does not match template |

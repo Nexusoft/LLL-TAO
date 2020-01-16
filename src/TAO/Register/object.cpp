@@ -571,6 +571,24 @@ namespace TAO
         }
 
 
+        /* Get the mutable flag for the field. */
+        bool Object::Mutable(const std::string& strName, bool &fMutable) const
+        {
+            /* Check the map for empty. */
+            if(mapData.empty())
+                return debug::error(FUNCTION, "object is not parsed");
+
+            /* Check that the name exists in the object. */
+            if(!mapData.count(strName))
+                return false;
+
+            /* Return the mutable flag */
+            fMutable = mapData[strName].second;
+
+            return true;
+        }
+
+
         /* Write into the object register a value of type bytes. */
         bool Object::Write(const std::string& strName, const std::string& strValue)
         {

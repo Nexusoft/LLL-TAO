@@ -156,6 +156,12 @@ Additionally the API supports passing a field name in the URL after the asset na
 
 `address` : The register address of the asset. This is optional if the name is provided.
 
+`template_address` : Address of a template object register to use to validate the asset against.  This optional field will validate that the asset being returned matching the format of the template object.  Callers can use template_address or template_name.
+
+`template_name` : Name of a template object register to use to validate the asset against.  This optional field will validate that the asset being returned matching the format of the template object.  Callers can use template_address or template_name.
+
+`cast` : Optional boolean field to indicate that the asset in the response should only include those fields that are also found in the template object.  Ignored unless `template_name` or `template_address` is also included.   
+
 `fieldname`: This optional field can be used to filter the response to return only a single field from the asset.
 
 

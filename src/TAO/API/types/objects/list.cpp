@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/objects.h>
 #include <TAO/API/include/global.h>
+#include <TAO/API/include/object_utils.h>
 #include <TAO/API/include/utils.h>
 #include <TAO/API/include/json.h>
 
@@ -70,6 +71,33 @@ namespace TAO
             if(params.find("limit") != params.end())
                 nLimit = std::stoul(params["limit"].get<std::string>());
 
+            /* Check to see if the caller has requested to filter by template */
+            TAO::Register::Address hashTemplate;
+            TAO::Register::Object filterTemplate;
+            if(params.find("template_name") != params.end())
+            /* If template name is provided then use this to deduce the register address */
+                hashTemplate = Names::ResolveAddress(params, params["template_name"].get<std::string>());
+            /* Otherwise try to find the raw hex encoded address. */
+            else if(params.find("template_address") != params.end())
+                hashTemplate.SetBase58(params["template_address"].get<std::string>());
+
+            /* Check to see if the caller has requested to cast the response to the filter template type */
+            bool fCast = false;
+            if(params.find("cast") != params.end() && 
+                (params["cast"].get<std::string>() == "true" || params["cast"].get<std::string>() == "1"))
+                fCast = true;
+
+            if(hashTemplate.IsObject())
+            {
+                /* Read the template object from the database */
+                if( !LLD::Register->ReadState(hashTemplate, filterTemplate, TAO::Ledger::FLAGS::MEMPOOL))
+                    throw APIException(-224, "Template not found");
+                
+                /* Parse the schema so that we can access the fields */
+                if(!filterTemplate.Parse())
+                    throw APIException(-36, "Failed to parse object register");
+            }
+
             /* Get the list of registers owned by this sig chain */
             std::vector<TAO::Register::Address> vAddresses;
             ListRegisters(hashGenesis, vAddresses);
@@ -108,6 +136,22 @@ namespace TAO
                     /* Only included requested object types. */
                     if((object.Standard() & nObjectType) == 0)
                         continue;
+
+                    /* Check if the caller has requested to filter by template */
+                    if(hashTemplate.IsObject() && !filterTemplate.IsNull())
+                    {
+                        /* Exclude this register if it IS the template */
+                        if(hashTemplate == state.first)
+                            continue;
+
+                        /* Check that it matches the filter*/
+                        if(!Matches(object, filterTemplate))
+                            continue;
+
+                        /* If the caller has requested to cast the asset to the requested template then cast it */
+                        if(fCast)
+                            object = Cast(object, filterTemplate);
+                    }
                 }
 
                 /* Get the current page. */

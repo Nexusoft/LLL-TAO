@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/assets.h>
 #include <TAO/API/types/names.h>
 #include <TAO/API/include/json.h>
+#include <TAO/API/include/object_utils.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -48,6 +49,33 @@ namespace TAO
             else
                 throw APIException(-33, "Missing name / address");
 
+            /* Check to see if the caller has requested to validate against a template */
+            TAO::Register::Address hashTemplate;
+            TAO::Register::Object filterTemplate;
+            if(params.find("template_name") != params.end())
+            /* If template name is provided then use this to deduce the register address */
+                hashTemplate = Names::ResolveAddress(params, params["template_name"].get<std::string>());
+            /* Otherwise try to find the raw hex encoded address. */
+            else if(params.find("template_address") != params.end())
+                hashTemplate.SetBase58(params["template_address"].get<std::string>());
+
+            /* Check to see if the caller has requested to cast the response to the template type */
+            bool fCast = false;
+            if(params.find("cast") != params.end() && 
+                (params["cast"].get<std::string>() == "true" || params["cast"].get<std::string>() == "1"))
+                fCast = true;
+
+            if(hashTemplate.IsObject())
+            {
+                /* Read the template object from the database */
+                if( !LLD::Register->ReadState(hashTemplate, filterTemplate, TAO::Ledger::FLAGS::MEMPOOL))
+                    throw APIException(-224, "Template not found");
+                
+                /* Parse the schema so that we can access the fields */
+                if(!filterTemplate.Parse())
+                    throw APIException(-36, "Failed to parse object register");
+            }
+
 
             /* Check to see whether the caller has requested a specific data field to return */
             std::string strDataField = "";
@@ -77,6 +105,18 @@ namespace TAO
                 /* Only include non standard object registers (assets) */
                 if(object.Standard() != TAO::Register::OBJECTS::NONSTANDARD)
                     throw APIException(-35, "Specified name/address is not an asset.");
+
+                /* Check if the caller has requested to validate against a template */
+                if(hashTemplate.IsObject() && !filterTemplate.IsNull())
+                {
+                    /* Check that it matches the template*/
+                    if(!Matches(object, filterTemplate))
+                        throw APIException(-225, "Asset does not match template");
+
+                    /* If the caller has requested to cast the asset to the requested template then cast it */
+                    if(fCast)
+                        object = Cast(object, filterTemplate);
+                }
             }
 
             /* Populate the response JSON */

@@ -177,6 +177,19 @@ namespace TAO
             uint64_t Size(const std::string& strName) const;
 
 
+            /** Mutable
+             *
+             *  Get the mutable flag for the field.
+             *
+             *  @param[in] strName The name of the field to get the mutable flag for
+             *  @param[out] fMutable The mutable flag to set.
+             *
+             *  @return True if the field exist in the Object and the mutable state was obtained.
+             *
+             **/
+            bool Mutable(const std::string& strName, bool &fMutable) const;
+
+
             /** Read
              *
              *  Read a value form the object register.
