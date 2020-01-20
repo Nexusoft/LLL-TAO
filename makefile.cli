@@ -376,6 +376,9 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_finance_migrate.o \
 		build/API_types_finance_trustaccounts.o \
 		build/API_types_finance_stake.o \
+		build/API_types_invoices_create.o \
+		build/API_types_invoices_get.o \
+		build/API_types_invoices_initialize.o \
 		build/API_types_ledger_block.o \
 		build/API_types_ledger_initialize.o \
 		build/API_types_ledger_state.o \
@@ -655,6 +658,9 @@ build/API_types_dex_%.o: ./src/TAO/API/types/dex/%.cpp $(HEADERS)
 build/API_types_finance_%.o: ./src/TAO/API/types/finance/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
+build/API_types_invoices_%.o: ./src/TAO/API/types/invoices/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
 build/API_types_ledger_%.o: ./src/TAO/API/types/ledger/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
@@ -930,6 +936,13 @@ build/API_types_dex_%.o: src/TAO/API/types/dex/%.cpp $(HEADERS)
 	rm -f $(@:%.o=%.d)
 
 build/API_types_finance_%.o: src/TAO/API/types/finance/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/API_types_invoices_%.o: src/TAO/API/types/invoices/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -1356,6 +1369,14 @@ build/API_types_finance_%.o: src/TAO/API/types/finance/%.cpp
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
+
+build/API_types_invoices_%.o: src/TAO/API/types/invoices/%.cpp
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
 
 build/API_types_ledger_%.o: src/TAO/API/types/ledger/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<

@@ -358,3 +358,22 @@ Error Codes
 | -221 | Recovery seed must be a minimum of 40 characters |
 | -222 | User create pending confirmation |
 | -223 | Recovery seed not set on this signature chain |
+| -224 | Missing description |
+| -225 | Missing number |
+| -226 | Missing reference |
+| -227 | Missing payment account name / address |
+| -228 | Missing sender detail |
+| -229 | Missing recipient |
+| -230 | Recipient user does not exist | 
+| -231 | Missing recipient detail |
+| -232 | Missing items |
+| -233 | Invoice must include at least one item |
+| -234 | Missing item description |
+| -235 | Missing item amount |
+| -236 | Invalid item amount |
+| -237 | Item amount must be greater than 0 |
+| -238 | Missing item number of units |
+| -239 | Invalid item number of units |
+| -240 | Item units must be greater than 0 |
+| -241 | Invoice not found |
+

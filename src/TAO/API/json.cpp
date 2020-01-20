@@ -983,7 +983,8 @@ namespace TAO
 
             /* Now build the response based on the register type */
             if(object.nType == TAO::Register::REGISTER::APPEND
-            || object.nType == TAO::Register::REGISTER::RAW)
+            || object.nType == TAO::Register::REGISTER::RAW
+            || object.nType == TAO::Register::REGISTER::READONLY)
             {
                 /* Raw state assets only have one data member containing the raw hex-encoded data*/
 
