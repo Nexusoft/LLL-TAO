@@ -1298,5 +1298,21 @@ namespace TAO
 
             return ret;
         }
+
+        /* If the caller has requested a fieldname to filter on then this filters the response JSON to only include that field */
+        void FilterResponse(const json::json& params, json::json& response)
+        {
+            if(params.find("fieldname") != params.end())
+            {
+                /* First get the fieldname from the response */
+                std::string strFieldname =  params["fieldname"].get<std::string>();
+
+                /* Iterate through the response keys */
+                for(auto it = response.begin(); it != response.end(); ++it)
+                    /* If this key is not the one that was requested then erase it */
+                    if(it.key() != strFieldname)
+                        response.erase(it);
+            }
+        }
     }
 }
