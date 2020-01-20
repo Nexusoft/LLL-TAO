@@ -1394,9 +1394,8 @@ namespace LLP
                             }
 
                             /* Reverse container to message forward. */
-                            std::reverse(vtx.begin(), vtx.end());
-                            for(const auto& tx : vtx)
-                                PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::TRITIUM), tx);
+                            for(auto tx = vtx.rbegin(); tx != vtx.rend(); ++tx)
+                                PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::TRITIUM), (*tx));
 
                             break;
                         }
