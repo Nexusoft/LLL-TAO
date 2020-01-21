@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/names.h>
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/json.h>
+#include <TAO/API/include/user_types.h>
 
 #include <LLD/include/global.h>
 
@@ -56,7 +57,15 @@ namespace TAO
 
             /* Ensure that it is an invoice register */
             if(state.nType != TAO::Register::REGISTER::READONLY)
-                throw APIException(-241, "Invoice not found");
+                throw APIException(-242, "Data at this address is not an invoice");
+
+            /* Deserialize the leading byte of the state data to check the data type */
+            uint8_t type;
+            state >> type;
+
+            /* Check that the state is an invoice */
+            if(type != USER_TYPES::INVOICE)
+                throw APIException(-242, "Data at this address is not an invoice");
 
             /* Build the response JSON. */
             /* Look up the object name based on the Name records in the caller's sig chain */

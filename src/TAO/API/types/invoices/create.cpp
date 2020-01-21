@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/include/global.h>
+#include <TAO/API/include/user_types.h>
 #include <TAO/API/include/utils.h>
 
 #include <TAO/Operation/include/enum.h>
@@ -220,6 +221,9 @@ namespace TAO
 
             /* DataStream to help us serialize the data. */
             DataStream ssData(SER_REGISTER, 1);
+
+            /* First add the leading byte to identify the state data */
+            ssData << (uint8_t) USER_TYPES::INVOICE;
 
             /* Then the raw data */
             ssData << invoice.dump();

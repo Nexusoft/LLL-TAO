@@ -376,4 +376,5 @@ Error Codes
 | -239 | Invalid item number of units |
 | -240 | Item units must be greater than 0 |
 | -241 | Invoice not found |
+| -242 | Data at this address is not an invoice |
 
