@@ -47,23 +47,8 @@ namespace TAO
             /* The JSON representation of the invoice that we store in the register */
             json::json invoice;
 
-            /* The invoice description */
-            std::string strDescription;
-
-            /* The invoice number.  NOTE even though this is referred to as a number, in practice it is an alphanumeric string */
-            std::string strNumber;
-
-            /* The invoice reference */
-            std::string strReference;
-
-            /* Sender details, which can include phone number, office address, email address */
-            std::string strSenderDetail;
-
             /* The genesis hash of the recipient */
             uint256_t hashRecipient = 0;
-
-            /* Recipient details, which can include phone number, office address, email address */
-            std::string strRecipientDetail;
 
             /* The account to invoice must be paid to */
             TAO::Register::Address hashAccount ;
@@ -78,24 +63,6 @@ namespace TAO
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
             if(!user)
                 throw APIException(-10, "Invalid session ID");
-
-            /* Check for description parameter. */
-            if(params.find("description") != params.end())
-                strDescription = params["description"].get<std::string>();
-            else
-                throw APIException(-224, "Missing description");
-
-            /* Check for number parameter. */
-            if(params.find("number") != params.end())
-                strNumber = params["number"].get<std::string>();
-            else
-                throw APIException(-225, "Missing number");
-            
-            /* Check for reference parameter . */
-            if(params.find("reference") != params.end())
-                strReference = params["reference"].get<std::string>();
-            else
-                throw APIException(-226, "Missing reference");
 
             /* Check whether the caller has provided the account name parameter. */
             if(params.find("account_name") != params.end())
@@ -126,12 +93,7 @@ namespace TAO
             if(account.get<uint256_t>("token") != 0)
                 throw APIException(-59, "Account to credit is not a NXS account.");
 
-            /* Check for sender detail parameter. */
-            if(params.find("sender_detail") != params.end())
-                strSenderDetail = params["sender_detail"].get<std::string>();
-            else
-                throw APIException(-228, "Missing sender detail");
-
+            
             /* Check for recipient parameter. */
             if(params.find("recipient") != params.end())
                 hashRecipient.SetHex(params["recipient"].get<std::string>());
@@ -144,23 +106,33 @@ namespace TAO
             if(!LLD::Ledger->HasGenesis(hashRecipient))
                 throw APIException(-230, "Recipient user does not exist");
 
-            /* Check for recipient detail parameter. */
-            if(params.find("recipient_detail") != params.end())
-                strRecipientDetail = params["recipient_detail"].get<std::string>();
-            else
-                throw APIException(-231, "Missing recipient detail");
 
-
-            /* Add the invoice details to the invoice JSON */
-            invoice["description"] = strDescription;
-            invoice["number"] = strNumber;
-            invoice["reference"] = strReference;
+            /* Add the mandatroy invoice fields to the invoice JSON */
             invoice["account"] = hashAccount.ToString();
-            invoice["sender_detail"] = strSenderDetail;
             invoice["recipient"] = hashRecipient.ToString();
-            invoice["recipient_detail"] = strRecipientDetail;
-            invoice["items"] = json::json::array();
 
+            /* Add all other non-mandatory fields that the caller has provided */
+            for(auto it = params.begin(); it != params.end(); ++it)
+            {
+                /* Skip any incoming parameters that are keywords used by this API method*/
+                    if(it.key() == "pin"
+                    || it.key() == "PIN"
+                    || it.key() == "session"
+                    || it.key() == "name"
+                    || it.key() == "account"
+                    || it.key() == "account_name"
+                    || it.key() == "recipient"
+                    || it.key() == "recipient_name"
+                    || it.key() == "items")
+                    {
+                        continue;
+                    }
+
+                    /* add the field to the invoice */
+                    invoice[it.key()] = it.value();
+            }
+
+            
             /* Parse the invoice items details */
             if(params.find("items") == params.end() || !params["items"].is_array())
                 throw APIException(-232, "Missing items");
@@ -170,26 +142,22 @@ namespace TAO
             if(items.empty())
                 throw APIException(-233, "Invoice must include at least one item");
 
-            /* Iterate the items */
+            /* Iterate the items to validate them*/
             for(auto it = items.begin(); it != items.end(); ++it)
             {
-                /* Check that the required fields have been provided*/
-                if(it->find("description") == it->end())
-                    throw APIException(-234, "Missing item description.");
-
-                if(it->find("amount") == it->end())
-                    throw APIException(-235, "Missing item amount.");
+                /* check that mandatory fields have been provided */
+                if(it->find("unit_price") == it->end())
+                    throw APIException(-235, "Missing item unit price.");
 
                 if(it->find("units") == it->end())
                     throw APIException(-238, "Missing item number of units.");
 
                 /* Parse the values out of the definition json*/
-                std::string strItemDescription =  (*it)["description"].get<std::string>();
-                std::string strAmount =  (*it)["amount"].get<std::string>();
+                std::string strUnitPrice =  (*it)["unit_price"].get<std::string>();
                 std::string strUnits =  (*it)["units"].get<std::string>();
 
-                /* The item amount */
-                double dAmount = 0;
+                /* The item Unit Price */
+                double dUnitPrice = 0;
 
                 /* The item number of units */
                 uint64_t nUnits = 0;
@@ -197,19 +165,19 @@ namespace TAO
                 /* Attempt to convert the supplied value to a double, catching argument/range exceptions */
                 try
                 {
-                    dAmount = std::stod(strAmount) ;
+                    dUnitPrice = std::stod(strUnitPrice) ;
                 }
                 catch(const std::invalid_argument& e)
                 {
-                    throw APIException(-236, "Invalid item amount.");
+                    throw APIException(-236, "Invalid item unit price.");
                 }
                 catch(const std::out_of_range& e)
                 {
-                    throw APIException(-236, "Invalid item amount.");
+                    throw APIException(-236, "Invalid item unit price.");
                 }
 
-                if(dAmount == 0)
-                    throw APIException(-237, "Item amount must be greater than 0.");
+                if(dUnitPrice == 0)
+                    throw APIException(-237, "Item unit price must be greater than 0.");
 
                 /* Attempt to convert the supplied value to a 64-bit unsigned integer, catching argument/range exceptions */
                 try
@@ -228,16 +196,14 @@ namespace TAO
                 if(nUnits == 0)
                     throw APIException(-240, "Item units must be greater than 0.");
 
-                /* Add this item to the invoice JSON */
-                json::json item;
-                item["description"] = strItemDescription;
-                item["amount"] = dAmount;
-                item["units"] = nUnits;
-
-                invoice["items"].push_back(item);
+                /* Once we have validated the mandatory fields, add this item to the invoice JSON */
+                invoice["items"].push_back(*it);
             }
-            
 
+            /* Once validated, add the items to the invoice */
+            invoice["items"] = items;
+
+            
             /* Lock the signature chain. */
             LOCK(users->CREATE_MUTEX);
 

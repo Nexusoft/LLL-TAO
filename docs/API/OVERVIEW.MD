@@ -369,9 +369,9 @@ Error Codes
 | -232 | Missing items |
 | -233 | Invoice must include at least one item |
 | -234 | Missing item description |
-| -235 | Missing item amount |
-| -236 | Invalid item amount |
-| -237 | Item amount must be greater than 0 |
+| -235 | Missing item unit price |
+| -236 | Invalid item unit price |
+| -237 | Item unit price must be greater than 0 |
 | -238 | Missing item number of units |
 | -239 | Invalid item number of units |
 | -240 | Item units must be greater than 0 |
