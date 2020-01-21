@@ -958,6 +958,10 @@ namespace LLP
             /* Handle for list command. */
             case ACTION::LIST:
             {
+                /* Check for client mode since this method should never be called except by a client. */
+                if(config::GetBoolArg("-client"))
+                    return debug::drop(NODE, "ACTION::LIST: disabled in -client mode");
+
                 /* Set the limits. 3000 seems to be the optimal amount to overcome higher-latency connections during sync */
                 int32_t nLimits = 3001;
 
@@ -969,13 +973,15 @@ namespace LLP
                     ssPacket >> nType;
 
                     /* Check for legacy or transactions specifiers. */
-                    bool fLegacy = false, fTransactions = false, fSyncBlock = false;
-                    if(nType == SPECIFIER::LEGACY || nType == SPECIFIER::TRANSACTIONS || nType == SPECIFIER::SYNC)
+                    bool fLegacy = false, fTransactions = false, fSyncBlock = false, fClientBlock = false;
+                    if(nType == SPECIFIER::LEGACY || nType == SPECIFIER::TRANSACTIONS
+                    || nType == SPECIFIER::SYNC   || nType == SPECIFIER::CLIENT)
                     {
                         /* Set specifiers. */
                         fLegacy       = (nType == SPECIFIER::LEGACY);
                         fTransactions = (nType == SPECIFIER::TRANSACTIONS);
                         fSyncBlock    = (nType == SPECIFIER::SYNC);
+                        fClientBlock  = (nType == SPECIFIER::CLIENT);
 
                         /* Go to next type in stream. */
                         ssPacket >> nType;
@@ -1108,6 +1114,16 @@ namespace LLP
 
                                         /* Push message in response. */
                                         PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::SYNC), block);
+                                    }
+
+                                    /* Handle for a client block header. */
+                                    else if(fClientBlock)
+                                    {
+                                        /* Build the client block from state. */
+                                        TAO::Ledger::ClientBlock block(state);
+
+                                        /* Push message in response. */
+                                        PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::CLIENT), block);
                                     }
                                     else
                                     {
