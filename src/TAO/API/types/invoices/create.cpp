@@ -23,6 +23,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/execute.h>
 
 #include <TAO/Register/include/verify.h>
+#include <TAO/Register/include/constants.h>
 #include <TAO/Register/include/enum.h>
 
 #include <TAO/Ledger/include/constants.h>
@@ -227,6 +228,10 @@ namespace TAO
 
             /* Then the raw data */
             ssData << invoice.dump();
+
+            /* Check the data size */
+            if(ssData.size() > TAO::Register::MAX_REGISTER_SIZE)
+                throw APIException(-242, "Data exceeds max register size");
 
             /* Submit the payload object. */
             tx[0] << (uint8_t)TAO::Operation::OP::CREATE << hashRegister << (uint8_t)TAO::Register::REGISTER::READONLY << ssData.Bytes();
