@@ -121,6 +121,7 @@ namespace TAO
                             /* Check the register type */
                             if(nRegisterType != TAO::Register::REGISTER::APPEND
                             && nRegisterType != TAO::Register::REGISTER::RAW
+                            && nRegisterType != TAO::Register::REGISTER::READONLY
                             && nRegisterType != TAO::Register::REGISTER::OBJECT)
                             {
                                 throw APIException(-109, "Specified name/address is not of type " + strType);

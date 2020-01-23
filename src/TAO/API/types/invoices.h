@@ -15,6 +15,9 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/base.h>
 
+#include <TAO/Register/types/address.h>
+#include <TAO/Register/types/state.h>
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -153,7 +156,25 @@ namespace TAO
              *  @return The return object in JSON.
              *
              **/
-            //json::json History(const json::json& params, bool fHelp);
+            json::json History(const json::json& params, bool fHelp);
+
+
+        private:
+
+            /** get_status
+            *
+            *  Returns a status for the invoice (draft/outstanding/paid/cancelled)
+            *
+            *  @param[in] state The state register containing the invoice data
+            *  @param[in] hashInvoice The register address of the invoice state register
+            *  @param[in] hashRecipient The genesis hash of the invoice recipient]
+            *
+            *  @return string containing the invoice status (draft/outstanding/paid/cancelled)
+            *
+            **/
+            std::string get_status(const TAO::Register::State& state, const TAO::Register::Address& hashInvoice, 
+                                   const uint256_t& hashRecipient);
+        
         };
     }
 }

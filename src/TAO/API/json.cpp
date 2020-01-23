@@ -996,6 +996,10 @@ namespace TAO
                 /* If this is an append register we need to grab the data from the end of the stream which will be the most recent data */
                 while(!object.end())
                 {
+                    /* Deserialize the leading byte of the state data to check the data type */
+                    uint8_t type;
+                    object >> type;
+
                     /* If the data type is string. */
                     std::string data;
                     object >> data;

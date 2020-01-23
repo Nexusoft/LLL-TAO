@@ -27,7 +27,7 @@ namespace TAO
         /* Gets the history of an item. */
         json::json Invoices::History(const json::json& params, bool fHelp)
         {
-            return Objects::History(params, TAO::Register::OBJECTS::NONSTANDARD, std::string("Item"));
+            return Objects::History(params, TAO::Register::OBJECTS::NONSTANDARD, std::string("Invoice"));
         }
     }
 }

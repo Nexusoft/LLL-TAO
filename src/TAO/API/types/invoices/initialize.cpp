@@ -96,7 +96,7 @@ namespace TAO
             //mapFunctions["send/invoice"]            = Function(std::bind(&Invoices::Send,   this, std::placeholders::_1, std::placeholders::_2));
             //mapFunctions["pay/invoice"]             = Function(std::bind(&Invoices::Pay,      this, std::placeholders::_1, std::placeholders::_2));
             //mapFunctions["cancel/invoice"]          = Function(std::bind(&Invoices::Cancel, this, std::placeholders::_1, std::placeholders::_2));
-            //mapFunctions["list/invoice/history"]    = Function(std::bind(&Invoices::History,    this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["list/invoice/history"]    = Function(std::bind(&Invoices::History,    this, std::placeholders::_1, std::placeholders::_2));
         }
     }
 }

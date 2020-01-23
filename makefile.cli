@@ -378,6 +378,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_finance_stake.o \
 		build/API_types_invoices_create.o \
 		build/API_types_invoices_get.o \
+		build/API_types_invoices_history.o \
 		build/API_types_invoices_initialize.o \
 		build/API_types_ledger_block.o \
 		build/API_types_ledger_initialize.o \

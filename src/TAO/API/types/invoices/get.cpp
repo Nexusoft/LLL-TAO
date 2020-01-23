@@ -17,6 +17,8 @@ ________________________________________________________________________________
 #include <TAO/API/include/json.h>
 #include <TAO/API/include/user_types.h>
 
+#include <TAO/Operation/include/enum.h>
+
 #include <LLD/include/global.h>
 
 
@@ -92,13 +94,149 @@ namespace TAO
             for(auto it = invoice.begin(); it != invoice.end(); ++it)
                 ret[it.key()] = it.value();
 
+            /* Get the recipient genesis hash from the invoice data so that we can use it to calculate the status*/
+            uint256_t hashRecipient;
+            hashRecipient.SetHex(invoice["recipient"].get<std::string>());
+
             /* Add status */
-            ret["status"] = "TODO draft/outstanding/paid/cancelled";
+            ret["status"] = get_status(state, hashRegister, hashRecipient);
 
             /* If the caller has requested to filter on a fieldname then filter out the json response to only include that field */
             FilterResponse(params, ret);
 
             return ret;
+        }
+
+
+        /* Returns a status for the invoice (draft/outstanding/paid/cancelled) */ 
+        std::string Invoices::get_status(const TAO::Register::State& state, const TAO::Register::Address& hashInvoice, 
+                               const uint256_t& hashRecipient)
+        {
+            /* The return value string */
+            std::string strStatus;
+
+            /* flag to indicate a transfer transaction has occurred */
+            bool fTransfer = false;
+
+            /* flag to indicate a claim transaction has occurred */
+            bool fClaim = false;
+
+            /* Genesis hash of the invoice creator, as determined from the OP::CREATE transaction */
+            uint256_t hashCreator = 0;
+
+
+            /* Read the last hash of owner. */
+            uint512_t hashLast = 0;
+            if(!LLD::Ledger->ReadLast(state.hashOwner, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
+                throw APIException(-107, "No history found");
+
+            /* Iterate through sigchain for register updates. */
+            while(hashLast != 0)
+            {
+                /* Get the transaction from disk. */
+                TAO::Ledger::Transaction tx;
+                if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                    throw APIException(-108, "Failed to read transaction");
+
+                /* Set the next last. */
+                hashLast = !tx.IsFirst() ? tx.hashPrevTx : 0;
+
+                /* Check through all the contracts. */
+                for(int32_t nContract = tx.Size() - 1; nContract >= 0; --nContract)
+                {
+                    /* Get the contract. */
+                    const TAO::Operation::Contract& contract = tx[nContract];
+
+                    /* Reset the operation stream position in case it was loaded from mempool and therefore still in previous state */
+                    contract.Reset();
+
+                    /* Get the operation byte. */
+                    uint8_t OPERATION = 0;
+                    contract >> OPERATION;
+
+                    /* Check for key operations. */
+                    switch(OPERATION)
+                    {
+                        case TAO::Operation::OP::CREATE:
+                        {
+                            /* Get the Address of the Register. */
+                            TAO::Register::Address hashAddress;
+                            contract >> hashAddress;
+
+                            /* Check for same address. */
+                            if(hashAddress != hashInvoice)
+                                break;
+                            
+                            /* Set the address of the hashCreator */
+                            hashCreator = contract.Caller();
+
+                            break;
+
+                        }
+                        case TAO::Operation::OP::CLAIM:
+                        {
+                            /* Extract the transaction from contract. */
+                            uint512_t hashTx = 0;
+                            contract >> hashTx;
+
+                            /* Extract the contract-id. */
+                            uint32_t nContract = 0;
+                            contract >> nContract;
+
+                            /* Extract the address from the contract. */
+                            TAO::Register::Address hashAddress;
+                            contract >> hashAddress;
+
+                            /* Check for same address. */
+                            if(hashAddress != hashInvoice)
+                                break;
+
+                            /* Set claim flag */
+                            fClaim = true;
+
+                            break;
+                        }
+
+                        case TAO::Operation::OP::TRANSFER:
+                        {
+                            /* Extract the address from the contract. */
+                            TAO::Register::Address hashAddress;
+                            contract >> hashAddress;
+
+                            /* Check for same address. */
+                            if(hashAddress != hashInvoice)
+                                break;
+
+                            /* Read the register transfer recipient. */
+                            uint256_t hashTransfer;
+                            contract >> hashTransfer;
+
+                            /* Check to see if the transfer recipient is the invoice recipient */
+                            if(hashTransfer == hashRecipient)
+                                fTransfer = true;
+
+                            break;
+                        }
+                    }
+                }
+
+                /* If we have found the CREATE transaction then  we can break out of processing as we have enough info */
+                if(hashCreator != 0)
+                    break;
+
+            }
+
+            /* Calculate the status */
+            if(!fTransfer)
+                strStatus = "DRAFT"; // never transferred so must be a draft
+            else if(fClaim && state.hashOwner == hashRecipient)
+                strStatus = "PAID"; // owned by invoice recipient so must have been paid
+            else if(fClaim && state.hashOwner != 0)
+                strStatus = "CANCELLED"; // owned by someone other than the recipient so must be cancelled
+            else
+                strStatus = "OUTSTANDING"; // no current owner so has been transferred but not claimed (outstanding)
+
+            return strStatus;
         }
     }
 }
