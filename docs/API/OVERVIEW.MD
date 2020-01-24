@@ -378,4 +378,5 @@ Error Codes
 | -241 | Invoice not found |
 | -242 | Data at this address is not an invoice |
 | -242 | Data exceeds max register size |
+| -243 | Data at this address is not a supply item |
 

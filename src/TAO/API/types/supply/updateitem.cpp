@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/include/global.h>
+#include <TAO/API/include/user_types.h>
 #include <TAO/API/include/utils.h>
 
 #include <TAO/Operation/include/enum.h>
@@ -81,7 +82,6 @@ namespace TAO
 
                 /* If name is provided then use this to deduce the register address */
                 hashRegister = Names::ResolveAddress(params, params["name"].get<std::string>());
-
             }
 
             /* Otherwise try to find the raw hex encoded address. */
@@ -103,6 +103,9 @@ namespace TAO
 
             /* Declare the register stream for the update. */
             DataStream ssData(SER_REGISTER, 1);
+
+            /* First add the leading 2 bytes to identify the state data */
+            ssData << (uint16_t) USER_TYPES::SUPPLY;
 
             /* Add in the new data */
             ssData << params["data"].get<std::string>();
