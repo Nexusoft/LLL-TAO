@@ -62,7 +62,7 @@ namespace TAO
                 throw APIException(-242, "Data at this address is not an invoice");
 
             /* Deserialize the leading byte of the state data to check the data type */
-            uint8_t type;
+            uint16_t type;
             state >> type;
 
             /* Check that the state is an invoice */

@@ -997,7 +997,7 @@ namespace TAO
                 while(!object.end())
                 {
                     /* Deserialize the leading byte of the state data to check the data type */
-                    uint8_t type;
+                    uint16_t type;
                     object >> type;
 
                     /* If the data type is string. */

@@ -223,8 +223,8 @@ namespace TAO
             /* DataStream to help us serialize the data. */
             DataStream ssData(SER_REGISTER, 1);
 
-            /* First add the leading byte to identify the state data */
-            ssData << (uint8_t) USER_TYPES::INVOICE;
+            /* First add the leading 2 bytes to identify the state data */
+            ssData << (uint16_t) USER_TYPES::INVOICE;
 
             /* Then the raw data */
             ssData << invoice.dump();
