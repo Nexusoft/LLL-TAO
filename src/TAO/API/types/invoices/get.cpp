@@ -70,36 +70,7 @@ namespace TAO
                 throw APIException(-242, "Data at this address is not an invoice");
 
             /* Build the response JSON. */
-            /* Look up the object name based on the Name records in the caller's sig chain */
-            std::string strName = Names::ResolveName(users->GetCallersGenesis(params), hashRegister);
-
-            /* Add the name to the response if one is found. */
-            if(!strName.empty())
-                ret["name"] = strName;
-
-            /* Add standard register details */
-            ret["address"]    = hashRegister.ToString();
-            ret["created"]    = state.nCreated;
-            ret["modified"]   = state.nModified;
-            ret["owner"]      = TAO::Register::Address(state.hashOwner).ToString();
-
-            /* Deserialize the invoice data */
-            std::string strJSON;
-            state >> strJSON;
-
-            /* parse the serialized invoice JSON so that we can easily add the fields to the response */
-            json::json invoice = json::json::parse(strJSON);
-
-            /* Add each of the invoice fields to the response */
-            for(auto it = invoice.begin(); it != invoice.end(); ++it)
-                ret[it.key()] = it.value();
-
-            /* Get the recipient genesis hash from the invoice data so that we can use it to calculate the status*/
-            uint256_t hashRecipient;
-            hashRecipient.SetHex(invoice["recipient"].get<std::string>());
-
-            /* Add status */
-            ret["status"] = get_status(state, hashRegister, hashRecipient);
+            ret = InvoiceToJSON(params, state, hashRegister);
 
             /* If the caller has requested to filter on a fieldname then filter out the json response to only include that field */
             FilterResponse(params, ret);
@@ -237,6 +208,50 @@ namespace TAO
                 strStatus = "OUTSTANDING"; // no current owner so has been transferred but not claimed (outstanding)
 
             return strStatus;
+        }
+
+        /* Returns the JSON representation of this invoice */
+        json::json Invoices::InvoiceToJSON(const json::json& params, const TAO::Register::State& state, 
+                                             const TAO::Register::Address& hashInvoice)
+        {
+            /* The JSON to return */
+            json::json ret;
+
+            /* Build the response JSON. */
+            /* Look up the object name based on the Name records in the caller's sig chain */
+            std::string strName = Names::ResolveName(users->GetCallersGenesis(params), hashInvoice);
+
+            /* Add the name to the response if one is found. */
+            if(!strName.empty())
+                ret["name"] = strName;
+
+            /* Add standard register details */
+            ret["address"]    = hashInvoice.ToString();
+            ret["created"]    = state.nCreated;
+            ret["modified"]   = state.nModified;
+            ret["owner"]      = TAO::Register::Address(state.hashOwner).ToString();
+
+            /* Deserialize the invoice data */
+            std::string strJSON;
+            state >> strJSON;
+
+            /* parse the serialized invoice JSON so that we can easily add the fields to the response */
+            json::json invoice = json::json::parse(strJSON);
+
+            /* Add each of the invoice fields to the response */
+            for(auto it = invoice.begin(); it != invoice.end(); ++it)
+                ret[it.key()] = it.value();
+
+            /* Get the recipient genesis hash from the invoice data so that we can use it to calculate the status*/
+            uint256_t hashRecipient;
+            hashRecipient.SetHex(invoice["recipient"].get<std::string>());
+
+            /* Add status */
+            ret["status"] = get_status(state, hashInvoice, hashRecipient);
+
+            /* return the JSON */
+            return ret;
+            
         }
     }
 }

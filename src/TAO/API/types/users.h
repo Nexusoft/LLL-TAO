@@ -502,6 +502,19 @@ namespace TAO
             json::json Status(const json::json& params, bool fHelp);
 
 
+            /** Invoices
+             *
+             *  Get a list of invoices owned by a signature chain
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json Invoices(const json::json& params, bool fHelp);
+
+
             /** EventsThread
              *
              *  Background thread to handle/suppress sigchain notifications.

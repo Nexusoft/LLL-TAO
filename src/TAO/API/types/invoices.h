@@ -159,6 +159,21 @@ namespace TAO
             json::json History(const json::json& params, bool fHelp);
 
 
+            /** InvoiceToJSON
+            *
+            *  Returns the JSON representation of this invoice
+            *
+            *  @param[in] params The parameters from the API call.
+            *  @param[in] state The state register containing the invoice data
+            *  @param[in] hashInvoice The register address of the invoice state register
+            *
+            *  @return the invoice JSON
+            *
+            **/
+            static json::json InvoiceToJSON(const json::json& params, const TAO::Register::State& state, 
+                                       const TAO::Register::Address& hashInvoice);
+
+
         private:
 
             /** get_status
@@ -167,13 +182,16 @@ namespace TAO
             *
             *  @param[in] state The state register containing the invoice data
             *  @param[in] hashInvoice The register address of the invoice state register
-            *  @param[in] hashRecipient The genesis hash of the invoice recipient]
+            *  @param[in] hashRecipient The genesis hash of the invoice recipient
             *
             *  @return string containing the invoice status (draft/outstanding/paid/cancelled)
             *
             **/
-            std::string get_status(const TAO::Register::State& state, const TAO::Register::Address& hashInvoice, 
+            static std::string get_status(const TAO::Register::State& state, const TAO::Register::Address& hashInvoice, 
                                    const uint256_t& hashRecipient);
+
+
+            
         
         };
     }
