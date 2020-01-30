@@ -308,6 +308,19 @@ namespace TAO
                                 if(newOwner.hashOwner == hashGenesis)
                                     break;
                             }
+                            else
+                            {
+                                /* Retrieve the object so we can see whether it has been claimed or not */
+                                TAO::Register::Object object;
+                                if(!LLD::Register->ReadState(hashAddress, object))
+                                    throw APIException(-104, "Object not found");
+
+                                /* If we are transferring to someone else but it has not yet been claimed then we ignore the
+                                   transfer and still show it as ours */
+                                if(object.hashOwner == 0)
+                                    break;
+                            }
+                            
 
                             /* If we find a TRANSFER then we can know for certain that we no longer own it */
                             if(vTransferred.find(hashAddress)    == vTransferred.end())
