@@ -277,6 +277,16 @@ namespace TAO
             const std::vector<uint8_t>& Operations() const;
 
 
+            /** Conditions
+             *
+             *  Get the raw conditions bytes from the contract.
+             *
+             *  @return raw byte const reference
+             *
+             **/
+            const std::vector<uint8_t>& Conditions() const;
+
+
             /** Seek
              *
              *  Seek the internal operation stream read pointers.

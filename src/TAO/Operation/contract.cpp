@@ -546,6 +546,13 @@ namespace TAO
         }
 
 
+        /* Get the raw conditions bytes from the contract.*/
+        const std::vector<uint8_t>& Contract::Conditions() const
+        {
+            return ssCondition.Bytes();
+        }
+
+
         /* Seek the internal operation stream read pointers.*/
         void Contract::Seek(const uint32_t nPos, const uint8_t nFlags, const uint8_t nType) const
         {

@@ -72,11 +72,21 @@ namespace TAO
             std::vector<TAO::Register::Address> vAddresses;
             ListRegisters(hashGenesis, vAddresses);
 
+            /* Get any registers that have been transferred to this user but not yet paid (claimed) */
+            std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> vUnclaimed;
+            Users::get_unclaimed(hashGenesis, vUnclaimed);
+
+            /* Add the unclaimed register addresses to the list */
+            for(const auto& unclaimed : vUnclaimed)
+                vAddresses.push_back(std::get<2>(unclaimed));
+
+            /* For efficiency we can remove any addresses that are not read only registers */
+            vAddresses.erase(std::remove_if(vAddresses.begin(), vAddresses.end(), 
+                                            [](const TAO::Register::Address& address){return !address.IsReadonly();} ));
 
             /* Read all the registers to that they are sorted by creation time */
             std::vector<std::pair<TAO::Register::Address, TAO::Register::State>> vRegisters;
             GetRegisters(vAddresses, vRegisters);
-
 
             /* Add the register data to the response */
             uint32_t nTotal = 0;

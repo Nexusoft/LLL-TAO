@@ -79,135 +79,46 @@ namespace TAO
         }
 
 
-        /* Returns a status for the invoice (draft/outstanding/paid/cancelled) */ 
-        std::string Invoices::get_status(const TAO::Register::State& state, const TAO::Register::Address& hashInvoice, 
-                               const uint256_t& hashRecipient)
+        /* Returns a status for the invoice (outstanding/paid/cancelled) */ 
+        std::string Invoices::get_status(const TAO::Register::State& state, const uint256_t& hashRecipient)
         {
             /* The return value string */
             std::string strStatus;
 
-            /* flag to indicate a transfer transaction has occurred */
-            bool fTransfer = false;
-
-            /* flag to indicate a claim transaction has occurred */
-            bool fClaim = false;
-
-            /* Genesis hash of the invoice creator, as determined from the OP::CREATE transaction */
-            uint256_t hashCreator = 0;
-
-
-            /* Read the last hash of owner. */
-            uint512_t hashLast = 0;
-            if(!LLD::Ledger->ReadLast(state.hashOwner, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-107, "No history found");
-
-            /* Iterate through sigchain for register updates. */
-            while(hashLast != 0)
-            {
-                /* Get the transaction from disk. */
-                TAO::Ledger::Transaction tx;
-                if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-108, "Failed to read transaction");
-
-                /* Set the next last. */
-                hashLast = !tx.IsFirst() ? tx.hashPrevTx : 0;
-
-                /* Check through all the contracts. */
-                for(int32_t nContract = tx.Size() - 1; nContract >= 0; --nContract)
-                {
-                    /* Get the contract. */
-                    const TAO::Operation::Contract& contract = tx[nContract];
-
-                    /* Reset the operation stream position in case it was loaded from mempool and therefore still in previous state */
-                    contract.Reset();
-
-                    /* Get the operation byte. */
-                    uint8_t OPERATION = 0;
-                    contract >> OPERATION;
-
-                    /* Check for key operations. */
-                    switch(OPERATION)
-                    {
-                        case TAO::Operation::OP::CREATE:
-                        {
-                            /* Get the Address of the Register. */
-                            TAO::Register::Address hashAddress;
-                            contract >> hashAddress;
-
-                            /* Check for same address. */
-                            if(hashAddress != hashInvoice)
-                                break;
-                            
-                            /* Set the address of the hashCreator */
-                            hashCreator = contract.Caller();
-
-                            break;
-
-                        }
-                        case TAO::Operation::OP::CLAIM:
-                        {
-                            /* Extract the transaction from contract. */
-                            uint512_t hashTx = 0;
-                            contract >> hashTx;
-
-                            /* Extract the contract-id. */
-                            uint32_t nContract = 0;
-                            contract >> nContract;
-
-                            /* Extract the address from the contract. */
-                            TAO::Register::Address hashAddress;
-                            contract >> hashAddress;
-
-                            /* Check for same address. */
-                            if(hashAddress != hashInvoice)
-                                break;
-
-                            /* Set claim flag */
-                            fClaim = true;
-
-                            break;
-                        }
-
-                        case TAO::Operation::OP::TRANSFER:
-                        {
-                            /* Extract the address from the contract. */
-                            TAO::Register::Address hashAddress;
-                            contract >> hashAddress;
-
-                            /* Check for same address. */
-                            if(hashAddress != hashInvoice)
-                                break;
-
-                            /* Read the register transfer recipient. */
-                            uint256_t hashTransfer;
-                            contract >> hashTransfer;
-
-                            /* Check to see if the transfer recipient is the invoice recipient */
-                            if(hashTransfer == hashRecipient)
-                                fTransfer = true;
-
-                            break;
-                        }
-                    }
-                }
-
-                /* If we have found the CREATE transaction then  we can break out of processing as we have enough info */
-                if(hashCreator != 0)
-                    break;
-
-            }
-
-            /* Calculate the status */
-            if(!fTransfer)
-                strStatus = "DRAFT"; // never transferred so must be a draft
-            else if(fClaim && state.hashOwner == hashRecipient)
-                strStatus = "PAID"; // owned by invoice recipient so must have been paid
-            else if(fClaim && state.hashOwner != 0)
-                strStatus = "CANCELLED"; // owned by someone other than the recipient so must be cancelled
+            /* If the Invoice currently has no owner then we know it is outstanding */
+            if(state.hashOwner == 0)
+                strStatus = "OUSTANDING";
+            else if(state.hashOwner == hashRecipient)
+                strStatus == "PAID";
             else
-                strStatus = "OUTSTANDING"; // no current owner so has been transferred but not claimed (outstanding)
+                strStatus == "CANCELLED";
 
             return strStatus;
+        }
+
+        /* Looks up the transaction ID and Contract ID for the transfer transaction that needs to be paid */
+        bool Invoices::get_tx(const uint256_t& hashRecipient, const TAO::Register::Address& hashInvoice, 
+                              uint512_t& txid, uint32_t& contractID)
+        {
+            /* Get all registers that have been transferred to the recipient but not yet paid (claimed) */
+            std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> vUnclaimed;
+            Users::get_unclaimed(hashRecipient, vUnclaimed);
+
+            /* search the vector of unclaimed to see if this invoice is in there */
+            const auto& itt = std::find_if(vUnclaimed.begin(), vUnclaimed.end(), 
+                                            [&](const std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>& unclaimed) { return std::get<2>(unclaimed) == hashInvoice; });
+            
+            /* If found set the txid from the contract */
+            if( itt != vUnclaimed.end())
+            {
+                txid = std::get<0>(*itt).Hash();
+                contractID = std::get<1>(*itt);
+
+                return true;
+            }
+
+            /* If we haven't found the transation then return false */
+            return false;
         }
 
         /* Returns the JSON representation of this invoice */
@@ -247,8 +158,21 @@ namespace TAO
             hashRecipient.SetHex(invoice["recipient"].get<std::string>());
 
             /* Add status */
-            ret["status"] = get_status(state, hashInvoice, hashRecipient);
+            ret["status"] = get_status(state, hashRecipient);
 
+            /* Add the payment txid and contract, if it is unclaimed (unpaid) */
+            if(state.hashOwner == 0)
+            {
+                uint512_t txid = 0;
+                uint32_t contract = 0;
+
+                if(get_tx(hashRecipient, hashInvoice, txid, contract))
+                {
+                    ret["txid"] = txid.ToString();
+                    ret["contract"] = contract;
+                }
+                
+            }
             /* return the JSON */
             return ret;
             

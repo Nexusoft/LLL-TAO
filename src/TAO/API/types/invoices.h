@@ -165,7 +165,7 @@ namespace TAO
             *
             *  @param[in] params The parameters from the API call.
             *  @param[in] state The state register containing the invoice data
-            *  @param[in] hashInvoice The register address of the invoice state register
+            *  @param[in] hashInvoice The register address of the invoice state register 
             *
             *  @return the invoice JSON
             *
@@ -181,14 +181,28 @@ namespace TAO
             *  Returns a status for the invoice (draft/outstanding/paid/cancelled)
             *
             *  @param[in] state The state register containing the invoice data
-            *  @param[in] hashInvoice The register address of the invoice state register
             *  @param[in] hashRecipient The genesis hash of the invoice recipient
             *
             *  @return string containing the invoice status (draft/outstanding/paid/cancelled)
             *
             **/
-            static std::string get_status(const TAO::Register::State& state, const TAO::Register::Address& hashInvoice, 
-                                   const uint256_t& hashRecipient);
+            static std::string get_status(const TAO::Register::State& state, const uint256_t& hashRecipient);
+
+
+            /** get_tx
+            *
+            *  Looks up the transaction ID and Contract ID for the transfer transaction that needs to be paid
+            *
+            *  @param[in] hashRecipient The genesis hash of the invoice recipient
+            *  @param[in] hashInvoice The register address of the invoice state register
+            *  @param[out] txid The transaction ID containing the conditional transfer
+            *  @param[out] contract The contract ID within the transaction of the conditional transfer
+            *
+            *  @return boolean, True if the transaction info was found
+            *
+            **/
+            static bool get_tx(const uint256_t& hashRecipient, const TAO::Register::Address& hashInvoice, 
+                               uint512_t& txid, uint32_t& contract);
 
 
             

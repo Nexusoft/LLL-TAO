@@ -55,6 +55,9 @@ namespace TAO
             /* The account to invoice must be paid to */
             TAO::Register::Address hashAccount ;
 
+            /* The invoice total */
+            uint64_t nTotal = 0;
+
             /* Get the PIN to be used for this API call */
             SecureString strPIN = users->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
 
@@ -108,6 +111,9 @@ namespace TAO
             if(!LLD::Ledger->HasGenesis(hashRecipient))
                 throw APIException(-230, "Recipient user does not exist");
 
+            /* Check that the recipient isn't the sender */
+            if(hashRecipient == user->Genesis())
+                throw APIException(-244, "Cannot send invoice to self");
 
             /* Add the mandatroy invoice fields to the invoice JSON */
             invoice["account"] = hashAccount.ToString();
@@ -124,7 +130,7 @@ namespace TAO
                     || it.key() == "account"
                     || it.key() == "account_name"
                     || it.key() == "recipient"
-                    || it.key() == "recipient_name"
+                    || it.key() == "recipient_username"
                     || it.key() == "items")
                     {
                         continue;
@@ -198,6 +204,13 @@ namespace TAO
                 if(nUnits == 0)
                     throw APIException(-240, "Item units must be greater than 0.");
 
+
+                /* Work out the item total */
+                uint64_t nItemTotal = (dUnitPrice * pow(10, TAO::Ledger::NXS_DIGITS)) * nUnits;
+
+                /* add this to the invoice total */
+                nTotal += nItemTotal;
+
                 /* Once we have validated the mandatory fields, add this item to the invoice JSON */
                 invoice["items"].push_back(*it);
             }
@@ -233,12 +246,41 @@ namespace TAO
             if(ssData.size() > TAO::Register::MAX_REGISTER_SIZE)
                 throw APIException(-242, "Data exceeds max register size");
 
-            /* Submit the payload object. */
-            tx[0] << (uint8_t)TAO::Operation::OP::CREATE << hashRegister << (uint8_t)TAO::Register::REGISTER::READONLY << ssData.Bytes();
+            /* The contract ID being worked on */
+            uint32_t nContract = 0;
+
+            /* Add the invoice creation contract. */
+            tx[nContract++] << (uint8_t)TAO::Operation::OP::CREATE << hashRegister << (uint8_t)TAO::Register::REGISTER::READONLY << ssData.Bytes();
 
             /* Check for name parameter. If one is supplied then we need to create a Name Object register for it. */
             if(params.find("name") != params.end())
-                tx[1] = Names::CreateName(user->Genesis(), params["name"].get<std::string>(), "", hashRegister);
+                tx[nContract++] = Names::CreateName(user->Genesis(), params["name"].get<std::string>(), "", hashRegister);
+
+            /* Add the transfer contract */
+            tx[nContract] << uint8_t(TAO::Operation::OP::CONDITION) << (uint8_t)TAO::Operation::OP::TRANSFER << hashRegister << hashRecipient << uint8_t(TAO::Operation::TRANSFER::CLAIM);
+            
+            /* Add the payment conditions.  The condition is essentially that the claim must include a conditional debit for the
+               invoice total being made to the payment account */
+            TAO::Operation::Stream compare;
+            compare << uint8_t(TAO::Operation::OP::DEBIT) << uint256_t(0) << hashAccount << nTotal << uint64_t(0);
+
+            /* Conditions. */
+            tx[nContract] <= uint8_t(TAO::Operation::OP::GROUP);
+            tx[nContract] <= uint8_t(TAO::Operation::OP::CALLER::OPERATIONS) <= uint8_t(TAO::Operation::OP::CONTAINS);
+            tx[nContract] <= uint8_t(TAO::Operation::OP::TYPES::BYTES) <= compare.Bytes();
+            tx[nContract] <= uint8_t(TAO::Operation::OP::AND);
+            tx[nContract] <= uint8_t(TAO::Operation::OP::CALLER::PRESTATE::VALUE) <= std::string("token");
+            tx[nContract] <= uint8_t(TAO::Operation::OP::EQUALS);
+            tx[nContract] <= uint8_t(TAO::Operation::OP::TYPES::UINT256_T) <= uint256_t(0); // ensure the token is NXS (0)
+            tx[nContract] <= uint8_t(TAO::Operation::OP::UNGROUP);
+
+            tx[nContract] <= uint8_t(TAO::Operation::OP::OR);
+
+            tx[nContract] <= uint8_t(TAO::Operation::OP::GROUP);
+            tx[nContract] <= uint8_t(TAO::Operation::OP::CALLER::GENESIS);
+            tx[nContract] <= uint8_t(TAO::Operation::OP::EQUALS);
+            tx[nContract] <= uint8_t(TAO::Operation::OP::CONTRACT::GENESIS);
+            tx[nContract] <= uint8_t(TAO::Operation::OP::UNGROUP);
 
             /* Add the fee */
             AddFee(tx);

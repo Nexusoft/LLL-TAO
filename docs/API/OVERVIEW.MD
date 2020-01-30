@@ -379,4 +379,5 @@ Error Codes
 | -242 | Data at this address is not an invoice |
 | -242 | Data exceeds max register size |
 | -243 | Data at this address is not a supply item |
+| -244 | Cannot send invoice to self |
 
