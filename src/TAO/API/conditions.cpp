@@ -153,7 +153,7 @@ namespace TAO
             return fHasCondition;
         }
 
-        
+
         /* Checks the params for the existence of the "expires" field.  If supplied, a condition will be added to this contract
         *  for the expiration */
         bool AddExpires(const json::json& params, const uint256_t& hashCaller, TAO::Operation::Contract& contract, bool fTokenizedDebit)
@@ -231,8 +231,6 @@ namespace TAO
         *  if the pattern for an expiration condition exists somewhere in the conditions */
         bool HasExpires(const TAO::Operation::Contract& contract)
         {
-            bool fHasExpires = false;
-
             /* Create a contract with a dummy expiration condition that we can use for comparison */
             TAO::Operation::Contract expiration;
             AddExpires( json::json(), 0, expiration, false);

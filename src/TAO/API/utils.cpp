@@ -1271,6 +1271,10 @@ namespace TAO
             uint8_t nType = 0;
             contract >> nType;
 
+            /* Check for conditional OP */
+            if(nType == TAO::Operation::OP::CONDITION)
+                contract >> nType;
+
             /* Ensure that it is a debit or transfer */
             if(nType != TAO::Operation::OP::DEBIT && nType != TAO::Operation::OP::TRANSFER)
                 return false;
