@@ -107,19 +107,6 @@ namespace TAO
             json::json Get(const json::json& params, bool fHelp);
 
 
-            /** Send
-             *
-             *  Sends an invoice to the recipient
-             *
-             *  @param[in] params The parameters from the API call.
-             *  @param[in] fHelp Trigger for help data.
-             *
-             *  @return The return object in JSON.
-             *
-             **/
-            //json::json Send(const json::json& params, bool fHelp);
-
-
             /** Pay
              *
              *  Pay an invoice and take ownership of it
@@ -143,7 +130,7 @@ namespace TAO
              *  @return The return object in JSON.
              *
              **/
-            //json::json Cancel(const json::json& params, bool fHelp);
+            json::json Cancel(const json::json& params, bool fHelp);
 
 
             /** History

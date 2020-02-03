@@ -380,4 +380,9 @@ Error Codes
 | -242 | Data exceeds max register size |
 | -243 | Data at this address is not a supply item |
 | -244 | Cannot send invoice to self |
+| -245 | Cannot cancel an invoice that has already been paid |
+| -246 | Cannot cancel an invoice that has already been cancelled |
+| -247 | Could not find invoice transfer transaction |
+| -248 | Cannot pay an invoice that has already been paid |
+| -249 | Cannot pay an invoice that has already been cancelled |
 
