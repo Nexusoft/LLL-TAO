@@ -245,161 +245,137 @@ namespace TAO
         }
 
 
-        /* Execute the validation script. */
+        /* Evaluate the condition. */
         bool Condition::Evaluate()
         {
             /* Flag to tell how it evaluated. */
             bool fRet = false;
 
-            /* Grab the first value */
+            /* Flags to indicate if left and right values were obtained correctly */
+            bool fLeft = false;
+            bool fRight = false;
+
+            /* The left and right values for the evaluation */
             TAO::Register::Value vLeft;
-            if(!GetValue(vLeft))
-                throw debug::exception(FUNCTION, "failed to get l-value");
+            TAO::Register::Value vRight;
+
+            /* Grab the first value */
+            fLeft = GetValue(vLeft);
+
+            /* Ensure there is more conditions stream data */
+            if(contract.End(Contract::CONDITIONS))
+                return debug::error(FUNCTION, "malformed conditions");
 
             /* Grab the next operation. */
             uint8_t OPERATION = 0;
             contract >= OPERATION;
 
-            /* Switch by operation code. */
+            /* Validate the op code */
             switch(OPERATION)
             {
-                /* Handle for the == operator. */
                 case OP::EQUALS:
-                {
-                    /* Grab the second value. */
-                    TAO::Register::Value vRight;
-                    if(!GetValue(vRight))
-                        throw debug::exception(FUNCTION, "failed to get r-value");
-
-                    /* Compare both values to one another. */
-                    fRet = (compare(vLeft, vRight) == 0);
-
-                    /* Deallocate the values from the VM. */
-                    deallocate(vRight);
-                    deallocate(vLeft);
-
-                    break;
-                }
-
-
-                /* Handle for < operator. */
                 case OP::LESSTHAN:
-                {
-                    /* Grab the second value. */
-                    TAO::Register::Value vRight;
-                    if(!GetValue(vRight))
-                        throw debug::exception(FUNCTION, "failed to get r-value");
-
-                    /* Compare both values to one another. */
-                    fRet = (compare(vLeft, vRight) < 0);
-
-                    /* Deallocate the values from the VM. */
-                    deallocate(vRight);
-                    deallocate(vLeft);
-
-                    break;
-                }
-
-
-                /* Handle for the > operator. */
                 case OP::GREATERTHAN:
-                {
-                    /* Grab the second value. */
-                    TAO::Register::Value vRight;
-                    if(!GetValue(vRight))
-                        throw debug::exception(FUNCTION, "failed to get r-value");
-
-                    /* Compare both values to one another. */
-                    fRet = (compare(vLeft, vRight) > 0);
-
-                    /* Deallocate the values from the VM. */
-                    deallocate(vRight);
-                    deallocate(vLeft);
-
-                    break;
-                }
-
-
-                /* Handle for <= operator. */
                 case OP::LESSEQUALS:
-                {
-                    /* Grab the second value. */
-                    TAO::Register::Value vRight;
-                    if(!GetValue(vRight))
-                        throw debug::exception(FUNCTION, "failed to get r-value");
-
-                    /* Compare both values to one another. */
-                    fRet = (compare(vLeft, vRight) <= 0);
-
-                    /* Deallocate the values from the VM. */
-                    deallocate(vRight);
-                    deallocate(vLeft);
-
-                    break;
-                }
-
-
-                /* Handle for the >= operator. */
                 case OP::GREATEREQUALS:
-                {
-                    /* Grab the second value. */
-                    TAO::Register::Value vRight;
-                    if(!GetValue(vRight))
-                        throw debug::exception(FUNCTION, "failed to get r-value");
-
-                    /* Compare both values to one another. */
-                    fRet = (compare(vLeft, vRight) >= 0);
-
-                    /* Deallocate the values from the VM. */
-                    deallocate(vRight);
-                    deallocate(vLeft);
-
-                    break;
-                }
-
-
-                /* Handle for the != operator. */
                 case OP::NOTEQUALS:
-                {
-                    /* Grab the second value. */
-                    TAO::Register::Value vRight;
-                    if(!GetValue(vRight))
-                        throw debug::exception(FUNCTION, "failed to get r-value");
-
-                    /* Compare both values to one another. */
-                    fRet = (compare(vLeft, vRight) != 0);
-
-                    /* Deallocate the values from the VM. */
-                    deallocate(vRight);
-                    deallocate(vLeft);
-
-                    break;
-                }
-
-
-                /* Handle to check if a sequence of bytes is inside another. */
                 case OP::CONTAINS:
                 {
                     /* Grab the second value. */
-                    TAO::Register::Value vRight;
-                    if(!GetValue(vRight))
-                        throw debug::exception(FUNCTION, "failed to get r-value");
-
-                    /* Compare both values to one another. */
-                    fRet = contains(vLeft, vRight);
-
-                    /* Deallocate the values from the VM. */
-                    deallocate(vRight);
-                    deallocate(vLeft);
-
+                    fRight = GetValue(vRight);
+                    
                     break;
                 }
-
                 /* For unknown codes, always fail. */
                 default:
                     return debug::error(FUNCTION, "malformed conditions");
             }
 
+            /* If we successfully obtained both left and right values along with the op code then perform the operation */
+            if(fLeft && fRight)
+            {
+                /* Switch by operation code. */
+                switch(OPERATION)
+                {
+                    /* Handle for the == operator. */
+                    case OP::EQUALS:
+                    {
+                        /* Compare both values to one another. */
+                        fRet = (compare(vLeft, vRight) == 0);
+
+                        break;
+                    }
+
+                    /* Handle for < operator. */
+                    case OP::LESSTHAN:
+                    {
+                        /* Compare both values to one another. */
+                        fRet = (compare(vLeft, vRight) < 0);
+
+                        break;
+                    }
+
+                    /* Handle for the > operator. */
+                    case OP::GREATERTHAN:
+                    {
+                        /* Compare both values to one another. */
+                        fRet = (compare(vLeft, vRight) > 0);
+
+                        break;
+                    }
+
+                    /* Handle for <= operator. */
+                    case OP::LESSEQUALS:
+                    {
+                        /* Compare both values to one another. */
+                        fRet = (compare(vLeft, vRight) <= 0);
+
+                        break;
+                    }
+
+                    /* Handle for the >= operator. */
+                    case OP::GREATEREQUALS:
+                    {
+                        /* Compare both values to one another. */
+                        fRet = (compare(vLeft, vRight) >= 0);
+
+                        break;
+                    }
+
+                    /* Handle for the != operator. */
+                    case OP::NOTEQUALS:
+                    {
+                        /* Compare both values to one another. */
+                        fRet = (compare(vLeft, vRight) != 0);
+
+                        break;
+                    }
+
+                    /* Handle to check if a sequence of bytes is inside another. */
+                    case OP::CONTAINS:
+                    {
+                        /* Compare both values to one another. */
+                        fRet = contains(vLeft, vRight);
+
+                        break;
+                    } 
+                }
+            }
+            else
+            {
+                /* If we didn't obtain both values then it must evaluate to false */
+                fRet = false;
+            }
+
+            /* Deallocate the values that we obtained and pushed to the stack */
+            if(fRight)
+                deallocate(vRight);
+
+            if(fLeft)
+                deallocate(vLeft);
+            
+            
+            
             /* Return final response. */
             return fRet;
         }
@@ -429,7 +405,7 @@ namespace TAO
                         /* Get the add from r-value. */
                         TAO::Register::Value vAdd;
                         if(!GetValue(vAdd))
-                            throw debug::exception("OP::ADD failed to get r-value");
+                            return debug::error("OP::ADD failed to get r-value");
 
                         /* Check computational bounds. */
                         if(vAdd.size() > 1 || vRet.size() > 1)
@@ -462,7 +438,7 @@ namespace TAO
                         /* Get the sub from r-value. */
                         TAO::Register::Value vSub;
                         if(!GetValue(vSub))
-                            throw debug::exception("OP::SUB failed to get r-value");
+                            return debug::error("OP::SUB failed to get r-value");
 
                         /* Check computational bounds. */
                         if(vSub.size() > 1 || vRet.size() > 1)
@@ -539,7 +515,7 @@ namespace TAO
                         /* Get the divisor from r-value. */
                         TAO::Register::Value vDiv;
                         if(!GetValue(vDiv))
-                            throw debug::exception("OP::DIV failed to get r-value");
+                            return debug::error("OP::DIV failed to get r-value");
 
                         /* Check computational bounds. */
                         if(vDiv.size() > 1 || vRet.size() > 1)
@@ -572,7 +548,7 @@ namespace TAO
                         /* Get the multiplier from r-value. */
                         TAO::Register::Value vMul;
                         if(!GetValue(vMul))
-                            throw debug::exception("OP::MUL failed to get r-value");
+                            return debug::error("OP::MUL failed to get r-value");
 
                         /* Check computational bounds. */
                         if(vMul.size() > 1 || vRet.size() > 1)
@@ -605,7 +581,7 @@ namespace TAO
                         /* Get the exponent from r-value. */
                         TAO::Register::Value vExp;
                         if(!GetValue(vExp))
-                            throw debug::exception("OP::EXP failed to get r-value");
+                            return debug::error("OP::EXP failed to get r-value");
 
                         /* Check computational bounds. */
                         if(vExp.size() > 1 || vRet.size() > 1)
@@ -647,7 +623,7 @@ namespace TAO
                         /* Get the modulus from r-value. */
                         TAO::Register::Value vMod;
                         if(!GetValue(vMod))
-                            throw debug::exception("OP::MOD failed to get r-value");
+                            return debug::error("OP::MOD failed to get r-value");
 
                         /* Check computational bounds. */
                         if(vMod.size() > 1 || vRet.size() > 1)
@@ -710,7 +686,7 @@ namespace TAO
                         /* Get the add from r-value. */
                         TAO::Register::Value vCat;
                         if(!GetValue(vCat))
-                            throw debug::exception("OP::CAT failed to get r-value");
+                            return debug::error("OP::CAT failed to get r-value");
 
                         /* Extract the string. */
                         std::vector<uint8_t> vAlloc;
@@ -1632,7 +1608,7 @@ namespace TAO
 
                         /* Check that offset is within memory range. */
                         if(vBytes.size() <= nOffset)
-                            throw debug::exception("OP::CONTRACT::OPERATIONS offset is not within size");
+                            return debug::error("OP::CONTRACT::OPERATIONS offset is not within size");
 
                         /* Allocate to the registers. */
                         allocate(vBytes, vRet, nOffset);
@@ -1657,7 +1633,7 @@ namespace TAO
 
                         /* Check for empty operations. */
                         if(vBytes.empty())
-                            throw debug::exception("OP::CALLER::OPERATIONS caller has empty operations");
+                            return debug::error("OP::CALLER::OPERATIONS caller has empty operations");
 
                         /* Check for condition or validate. */
                         uint8_t nOffset = 0;
@@ -1684,7 +1660,7 @@ namespace TAO
 
                         /* Check that offset is within memory range. */
                         if(vBytes.size() <= nOffset)
-                            throw debug::exception("OP::CALLER::OPERATIONS offset is not within size");
+                            return debug::error("OP::CALLER::OPERATIONS offset is not within size");
 
                         /* Allocate to the registers. */
                         allocate(vBytes, vRet, nOffset);

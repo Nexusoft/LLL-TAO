@@ -30,6 +30,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/names.h>
 #include <TAO/API/include/global.h>
+#include <TAO/API/include/user_types.h>
 
 #include <Util/include/convert.h>
 #include <Util/include/base64.h>
@@ -549,6 +550,9 @@ TEST_CASE( "Test Assets API - claim item", "[supply/claim/item]")
             tx.nTimestamp  = runtime::timestamp();
 
             DataStream ssData(SER_REGISTER, 1);
+
+            /* First add the leading 2 bytes to identify the state data */
+            ssData << (uint16_t) TAO::API::USER_TYPES::SUPPLY;
 
             /* Then the raw data */
             ssData << std::string("itemdata");

@@ -312,7 +312,7 @@ namespace TAO
                             {
                                 /* Retrieve the object so we can see whether it has been claimed or not */
                                 TAO::Register::Object object;
-                                if(!LLD::Register->ReadState(hashAddress, object))
+                                if(!LLD::Register->ReadState(hashAddress, object, TAO::Ledger::FLAGS::MEMPOOL))
                                     throw APIException(-104, "Object not found");
 
                                 /* If we are transferring to someone else but it has not yet been claimed then we ignore the

@@ -214,7 +214,7 @@ TEST_CASE( "Conditions Tests", "[condition]" )
         Contract temp;
 
         Condition script = Condition(contract, temp);
-        REQUIRE_THROWS(script.Execute());
+        REQUIRE_FALSE(script.Execute());
     }
 
 
@@ -225,19 +225,19 @@ TEST_CASE( "Conditions Tests", "[condition]" )
         Contract temp;
 
         Condition script = Condition(contract, temp);
-        REQUIRE_THROWS(script.Execute());
+        REQUIRE_FALSE(script.Execute());
     }
 
 
     contract.Clear();
     contract <= (uint8_t)OP::CALLER::OPERATIONS;
     {
-        //temp to test exceptions with no operations
+        //temp to test exceptions with no operations which should result in evaluating to false 
         Contract temp;
         temp << uint8_t(OP::VALIDATE);
 
         Condition script = Condition(contract, temp);
-        REQUIRE_THROWS_WITH(script.Execute(), "OP::CALLER::OPERATIONS offset is not within size");
+        REQUIRE_FALSE(script.Execute());
     }
 
 
@@ -249,7 +249,7 @@ TEST_CASE( "Conditions Tests", "[condition]" )
         temp << uint8_t(OP::CONDITION);
 
         Condition script = Condition(contract, temp);
-        REQUIRE_THROWS_WITH(script.Execute(), "OP::CALLER::OPERATIONS offset is not within size");
+        REQUIRE_FALSE(script.Execute());
     }
 
 
@@ -261,7 +261,7 @@ TEST_CASE( "Conditions Tests", "[condition]" )
         temp << uint8_t(OP::VALIDATE) << uint512_t(0) << uint32_t(0);
 
         Condition script = Condition(contract, temp);
-        REQUIRE_THROWS_WITH(script.Execute(), "OP::CALLER::OPERATIONS offset is not within size");
+        REQUIRE_FALSE(script.Execute());
     }
 
 
