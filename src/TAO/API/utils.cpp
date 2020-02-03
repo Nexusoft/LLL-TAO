@@ -410,7 +410,13 @@ namespace TAO
          *  to pay the fees.  An exception will be thrownIf there are insufficient funds to pay the fee. */
         bool AddFee(TAO::Ledger::Transaction& tx, const TAO::Register::Address& hashFeeAccount)
         {
+            /* First we need to ensure that the transaction is built so that the contracts have their pre states */
+            tx.Build();
+
+            /* Obtain the transaction cost */
             uint64_t nCost = tx.Cost();
+
+            /* If a fee needs to be applied then add it */
             if(nCost > 0)
             {
                 /* The register adddress of the account to deduct fees from */
