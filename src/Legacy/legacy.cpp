@@ -279,7 +279,7 @@ namespace Legacy
             return debug::error(FUNCTION, "block timestamp too far in the future");
 
         /* Check the Current Version Block Time-Lock. */
-        if(!TAO::Ledger::VersionActive(GetBlockTime(), nVersion))
+        if(!TAO::Ledger::BlockVersionActive(GetBlockTime(), nVersion))
             return debug::error(FUNCTION, "block created with invalid version");
 
         /* Check the Network Launch Time-Lock. */

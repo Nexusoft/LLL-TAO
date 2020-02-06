@@ -128,6 +128,16 @@ namespace TAO
          *
          **/
         void ThreadGenerator();
+
+
+        /** UpdateProducerTimestamp
+         *
+         *  Updates the producer timestamp, making sure it is not earlier than the previous block.
+         *
+         *  @param[out] block The block to have its producer timestamp updated.
+         *
+         **/
+        void UpdateProducerTimestamp(TAO::Ledger::TritiumBlock& block);
     }
 }
 

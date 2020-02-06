@@ -213,7 +213,7 @@ namespace TAO
         bool Transaction::Check() const
         {
             /* Check transaction version */
-            if(nVersion != 1)
+            if(!TransactionVersionActive(nTimestamp, nVersion))
                 return debug::error(FUNCTION, "invalid transaction version");
 
             /* Check for genesis valid numbers. */

@@ -60,8 +60,8 @@ namespace Legacy
 
         /* Modulate the Block Versions if they correspond to their proper time stamp */
         /* Normally, if condition is true and block version is current version unless an activation is pending */
-        uint32_t nCurrent = TAO::Ledger::CurrentVersion();
-        if(TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 7) || nCurrent > 7)
+        uint32_t nCurrent = TAO::Ledger::CurrentBlockVersion();
+        if(TAO::Ledger::BlockVersionActive(runtime::unifiedtimestamp(), 7) || nCurrent > 7)
         {
             /* If after v7 activation, can no longer create legacy blocks */
             return debug::error(FUNCTION, "Cannot create Legacy block in Tritium.");
@@ -70,7 +70,7 @@ namespace Legacy
             newBlock.nVersion = 6; // Maximum legacy block version is 6
 
         /* The rest of this is not really needed any longer, but kept for clarity of legacy code */
-        else if(TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), nCurrent)) // Block Version Activation Switch
+        else if(TAO::Ledger::BlockVersionActive(runtime::unifiedtimestamp(), nCurrent)) // Block Version Activation Switch
             newBlock.nVersion = nCurrent;
 
         else
@@ -358,9 +358,9 @@ namespace Legacy
 
             /* Timestamp limit. If before v7 activation, keep legacy tx compatible with legacy setting. */
             uint64_t nMaxDrift = MAX_UNIFIED_DRIFT;
-            uint32_t nCurrent = TAO::Ledger::CurrentVersion();
+            uint32_t nCurrent = TAO::Ledger::CurrentBlockVersion();
 
-            if(nCurrent < 7 || (nCurrent == 7 && !TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 7)))
+            if(nCurrent < 7 || (nCurrent == 7 && !TAO::Ledger::BlockVersionActive(runtime::unifiedtimestamp(), 7)))
                 nMaxDrift = MAX_UNIFIED_DRIFT_LEGACY;
 
             if(tx.nTime > runtime::unifiedtimestamp() + nMaxDrift)

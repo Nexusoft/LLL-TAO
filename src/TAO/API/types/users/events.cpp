@@ -70,7 +70,7 @@ namespace TAO
                 if(!fAutoLoggedIn && config::GetBoolArg("-autologin") && !config::fMultiuser.load() && !LoggedIn())
                 {
                     /* First check that Tritium sig chains are active */
-                    if(TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 7) || TAO::Ledger::CurrentVersion() > 7)
+                    if(TAO::Ledger::BlockVersionActive(runtime::unifiedtimestamp(), 7) || TAO::Ledger::CurrentBlockVersion() > 7)
                     {
                         /* Keep a the credentials in secure allocated strings. */
                         SecureString strUsername = config::GetArg("-username", "").c_str();
