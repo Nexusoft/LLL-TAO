@@ -241,6 +241,7 @@ ifdef UNIT_TESTS
 		   build/Tests_TAO_Ledger_mempool.o \
            build/Tests_TAO_Ledger_transaction.o \
 		   build/Tests_TAO_Ledger_sigchain.o \
+		   build/Tests_TAO_Ledger_stake.o \
 		   build/Tests_TAO_Register_objects.o \
 		   build/Tests_TAO_Register_rollback.o \
 		   build/Tests_TAO_Register_testvm.o \

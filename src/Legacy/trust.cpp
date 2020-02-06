@@ -130,9 +130,9 @@ namespace Legacy
 
         /* Support for PUBKEYHASH enabled for tx created after v8 activation */
         bool fHashSupport = false;
-        const uint32_t nCurrent = TAO::Ledger::CurrentVersion();
+        const uint32_t nCurrent = TAO::Ledger::CurrentBlockVersion();
 
-        if(nCurrent > 8 || (nCurrent == 8 && !TAO::Ledger::VersionActive(tx.nTime, 8)))
+        if(nCurrent > 8 || (nCurrent == 8 && !TAO::Ledger::BlockVersionActive(tx.nTime, 8)))
             fHashSupport = true;
 
         /* Check that all inputs are from the same key and extract the pub key for it.

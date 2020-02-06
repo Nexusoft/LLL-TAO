@@ -169,7 +169,7 @@ namespace TAO
              * This addresses an issue that some v4 keys produced one v5 block during grace period, but then incorrectly "expired"
              * and were replaced with a new v5 key.
              */
-            uint64_t nCutoff = TAO::Ledger::EndTimelock(4) + (uint64_t)(config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET
+            uint64_t nCutoff = TAO::Ledger::EndBlockTimelock(4) + (uint64_t)(config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET
                                                                                          : TAO::Ledger::TRUST_KEY_TIMESPAN);
 
             /* Trust keys are considered active if have stake blocks within timespan x 10 = 30 days mainnet */

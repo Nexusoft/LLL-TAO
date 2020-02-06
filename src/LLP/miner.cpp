@@ -249,7 +249,7 @@ namespace LLP
             {
                 /* If version 7 or above then cache then cache the last transaction ID of the sig chain so that we can detect if
                    new transactions enter the mempool for this sig chain. */
-                if(TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 7) || TAO::Ledger::CurrentVersion() > 7)
+                if(TAO::Ledger::BlockVersionActive(runtime::unifiedtimestamp(), 7) || TAO::Ledger::CurrentBlockVersion() > 7)
                     LLD::Ledger->ReadLast(TAO::API::users->GetGenesis(0), nHashLast, TAO::Ledger::FLAGS::MEMPOOL);
 
                 /* Debug output. */
@@ -315,7 +315,7 @@ namespace LLP
             return debug::error(FUNCTION, "Cannot mine while wallet is locked.");
 
         /* Obtain timelock and timestamp. */
-        uint64_t nTimeLock = TAO::Ledger::CurrentTimelock();
+        uint64_t nTimeLock = TAO::Ledger::CurrentBlockTimelock();
         uint64_t nTimeStamp = runtime::unifiedtimestamp();
 
         /* Print a message explaining how many minutes until timelock activation. */
@@ -324,7 +324,7 @@ namespace LLP
             uint64_t nSeconds =  nTimeLock - nTimeStamp;
 
             if(nSeconds % 60 == 0)
-                debug::log(0, FUNCTION, "Timelock ", TAO::Ledger::CurrentVersion(), " activation in ", nSeconds / 60, " minutes. ");
+                debug::log(0, FUNCTION, "Timelock ", TAO::Ledger::CurrentBlockVersion(), " activation in ", nSeconds / 60, " minutes. ");
         }
 
         /* Evaluate the packet header to determine what to do. */
@@ -415,7 +415,7 @@ namespace LLP
                      std::string strAddress = convert::bytes2string(vAddress);
 
                      /* Validate the address. Disconnect immediately if an invalid address is provided. */
-                     if(TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 7) || TAO::Ledger::CurrentVersion() > 7)
+                     if(TAO::Ledger::BlockVersionActive(runtime::unifiedtimestamp(), 7) || TAO::Ledger::CurrentBlockVersion() > 7)
                      {
                          uint256_t hashGenesis(strAddress);
 
@@ -680,7 +680,7 @@ namespace LLP
     bool Miner::check_round()
     {
         /* Only need to check the round for version 7 and above */
-        if(TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 7) || TAO::Ledger::CurrentVersion() > 7)
+        if(TAO::Ledger::BlockVersionActive(runtime::unifiedtimestamp(), 7) || TAO::Ledger::CurrentBlockVersion() > 7)
         {
             /* Get the hash genesis. */
             uint256_t hashGenesis = TAO::API::users->GetGenesis(0);
@@ -757,7 +757,7 @@ namespace LLP
 
             /* If we detected a block height change, update the cached last hash of the logged in sig chain.  NOTE this is done AFTER
             the notifications processor has finished, in case it added new transactions to the mempool  */
-            if(TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 7) || TAO::Ledger::CurrentVersion() > 7)
+            if(TAO::Ledger::BlockVersionActive(runtime::unifiedtimestamp(), 7) || TAO::Ledger::CurrentBlockVersion() > 7)
                 LLD::Ledger->ReadLast(TAO::API::users->GetGenesis(0), nHashLast, TAO::Ledger::FLAGS::MEMPOOL);
         }
 
@@ -809,7 +809,7 @@ namespace LLP
 
 
        /* Create Tritium blocks if version 7 or above active. */
-       if(TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 7) || TAO::Ledger::CurrentVersion() > 7)
+       if(TAO::Ledger::BlockVersionActive(runtime::unifiedtimestamp(), 7) || TAO::Ledger::CurrentBlockVersion() > 7)
        {
            /* Attempt to unlock the account. */
            if(TAO::API::users->Locked())
@@ -1047,7 +1047,7 @@ namespace LLP
    bool Miner::is_locked()
    {
        /* Check if mining should use tritium or legacy for wallet locked check. */
-       if(TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 7) || TAO::Ledger::CurrentVersion() > 7)
+       if(TAO::Ledger::BlockVersionActive(runtime::unifiedtimestamp(), 7) || TAO::Ledger::CurrentBlockVersion() > 7)
             return TAO::API::users->Locked();
 
        return Legacy::Wallet::GetInstance().IsLocked();

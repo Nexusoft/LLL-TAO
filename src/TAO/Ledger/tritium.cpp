@@ -327,7 +327,7 @@ namespace TAO
                 return debug::error(FUNCTION, "block timestamp too far in the future");
 
             /* Check the Current Version Block Time-Lock. */
-            if(!VersionActive(GetBlockTime(), nVersion))
+            if(!BlockVersionActive(GetBlockTime(), nVersion))
                 return debug::error(FUNCTION, "block created with invalid version");
 
             /* Check the Network Launch Time-Lock. */

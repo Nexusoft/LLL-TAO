@@ -70,7 +70,7 @@ namespace TAO
                 if(!fAutoLoggedIn && config::GetBoolArg("-autologin") && !config::fMultiuser.load() && !LoggedIn())
                 {
                     /* First check that Tritium sig chains are active */
-                    if(TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 7) || TAO::Ledger::CurrentVersion() > 7)
+                    if(TAO::Ledger::BlockVersionActive(runtime::unifiedtimestamp(), 7) || TAO::Ledger::CurrentBlockVersion() > 7)
                     {
                         /* Keep a the credentials in secure allocated strings. */
                         SecureString strUsername = config::GetArg("-username", "").c_str();
@@ -94,7 +94,9 @@ namespace TAO
                             /* If it doesn't exist then create it if configured to do so */
                             if(config::GetBoolArg("-autocreate"))
                             {
-                                bool fLocalTestnet = config::fTestNet.load() && !config::GetBoolArg("-dns", true);
+                                /* Testnet is considered local if no dns is being used or if using a private network */
+                                bool fLocalTestnet = config::fTestNet.load() 
+                                    && (!config::GetBoolArg("-dns", true) || config::GetBoolArg("-private"));
 
                                 /* Can only create user if synced and (if not local) have connections.
                                  * Return without create/login if cannot create, yet. It will have to try again.
@@ -217,8 +219,11 @@ namespace TAO
                     if(!LoggedIn() || Locked() || !CanProcessNotifications() || TAO::Ledger::ChainState::Synchronizing())
                         continue;
 
+                    /* Testnet is considered local if no dns is being used or if using a private network */
+                    bool fLocalTestnet = config::fTestNet.load() 
+                        && (!config::GetBoolArg("-dns", true) || config::GetBoolArg("-private"));
+
                     /* Make sure the mining server has a connection. (skip check if running local testnet) */
-                    bool fLocalTestnet = config::fTestNet.load() && !config::GetBoolArg("-dns", true);
                     if(!fLocalTestnet && LLP::TRITIUM_SERVER && LLP::TRITIUM_SERVER->GetConnectionCount() == 0)
                         continue;
 

@@ -213,7 +213,7 @@ namespace TAO
         bool Transaction::Check() const
         {
             /* Check transaction version */
-            if(nVersion != 1)
+            if(!TransactionVersionActive(nTimestamp, nVersion))
                 return debug::error(FUNCTION, "invalid transaction version");
 
             /* Check for genesis valid numbers. */
@@ -486,7 +486,7 @@ namespace TAO
 
                 /* Check for last hash consistency. */
                 if(hashLast != hashLastClaimed)
-                    return debug::error(FUNCTION, "list stake ", hashLastClaimed.SubString(), " mismatch ", hashLast.SubString());
+                    return debug::error(FUNCTION, "last stake ", hashLastClaimed.SubString(), " mismatch ", hashLast.SubString());
 
                 /* Get pre-state trust account values */
                 nTrustPrev = account.get<uint64_t>("trust");
@@ -506,11 +506,11 @@ namespace TAO
                 nBlockAge = statePrev.GetBlockTime() - stateLast.GetBlockTime();
 
                 /* Check for previous version 7 and current version 8. */
-                //uint64_t nTrustRet = 0;
-                //if(pblock->nVersion == 8 && stateLast.nVersion == 7 && !CheckConsistency(hashLast, nTrustRet))
-                //    nTrust = GetTrustScore(nTrustRet, nBlockAge, nStake, nStakeChange, pblock->nVersion);
-                //else //when consistency is correct, calculate like normal
-                nTrust = GetTrustScore(nTrustPrev, nBlockAge, nStake, nStakeChange, pblock->nVersion);
+                uint64_t nTrustRet = 0;
+                if(pblock->nVersion == 8 && stateLast.nVersion == 7 && !CheckConsistency(hashLast, nTrustRet))
+                    nTrust = GetTrustScore(nTrustRet, nBlockAge, nStake, nStakeChange, pblock->nVersion);
+                else //when consistency is correct, calculate like normal
+                    nTrust = GetTrustScore(nTrustPrev, nBlockAge, nStake, nStakeChange, pblock->nVersion);
 
                 /* Validate the trust score calculation */
                 if(nClaimedTrust != nTrust)
