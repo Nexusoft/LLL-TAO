@@ -71,6 +71,10 @@ namespace TAO
             mutable uint512_t hashTx;
 
 
+            /** MEMORY ONLY: the calling transaction version. **/
+            mutable uint32_t nVersion;
+
+
         public:
 
             /** Enumeration to handle setting aspects of the contract. */
@@ -164,6 +168,16 @@ namespace TAO
              *
              **/
             const uint512_t& Hash() const;
+
+
+            /** Version
+             *
+             *  Get the version of calling tx
+             *
+             *  @return Returns the version of calling tx
+             *
+             **/
+            const uint32_t& Version() const;
 
 
             /** Value
