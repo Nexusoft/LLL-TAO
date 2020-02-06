@@ -34,6 +34,7 @@ namespace TAO
         , hashCaller  (0)
         , nTimestamp  (0)
         , hashTx      (0)
+        , nVersion    (0)
         {
         }
 
@@ -46,6 +47,7 @@ namespace TAO
         , hashCaller  (contract.hashCaller)
         , nTimestamp  (contract.nTimestamp)
         , hashTx      (contract.hashTx)
+        , nVersion    (contract.nVersion)
         {
         }
 
@@ -58,6 +60,7 @@ namespace TAO
         , hashCaller  (std::move(contract.hashCaller))
         , nTimestamp  (std::move(contract.nTimestamp))
         , hashTx      (std::move(contract.hashTx))
+        , nVersion    (std::move(contract.nVersion))
         {
         }
 
@@ -71,6 +74,7 @@ namespace TAO
             hashCaller  = contract.hashCaller;
             nTimestamp  = contract.nTimestamp;
             hashTx      = contract.hashTx;
+            nVersion    = contract.nVersion;
 
             return *this;
         }
@@ -85,6 +89,7 @@ namespace TAO
             hashCaller  = std::move(contract.hashCaller);
             nTimestamp  = std::move(contract.nTimestamp);
             hashTx      = std::move(contract.hashTx);
+            nVersion    = std::move(contract.nVersion);
 
             return *this;
         }
@@ -107,6 +112,7 @@ namespace TAO
             hashCaller = tx->hashGenesis;
             nTimestamp = tx->nTimestamp;
             hashTx     = tx->GetHash();
+            nVersion   = tx->nVersion;
         }
 
         /* Get the primitive operation. */
@@ -160,6 +166,13 @@ namespace TAO
         const uint512_t& Contract::Hash() const
         {
             return hashTx;
+        }
+
+
+        /* Get the version of calling tx */
+        const uint32_t& Contract::Version() const
+        {
+            return nVersion;
         }
 
 
