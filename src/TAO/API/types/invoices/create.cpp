@@ -55,8 +55,8 @@ namespace TAO
             /* The account to invoice must be paid to */
             TAO::Register::Address hashAccount ;
 
-            /* The invoice total */
-            uint64_t nTotal = 0;
+            /* The invoice total in fractional tokens */
+            double dTotal = 0;
 
             /* Get the PIN to be used for this API call */
             SecureString strPIN = users->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
@@ -94,10 +94,11 @@ namespace TAO
             if(account.Standard() != TAO::Register::OBJECTS::ACCOUNT )
                 throw APIException(-65, "Object is not an account");
 
-            /* Check the account is a NXS account */
-            if(account.get<uint256_t>("token") != 0)
-                throw APIException(-59, "Account to credit is not a NXS account.");
+            /* The token that this invoice should be transacted in */
+            TAO::Register::Address hashToken = account.get<uint256_t>("token");
 
+            /* The decimals for this token type */
+            uint8_t nDecimals = GetDecimals(account);
             
             /* Check for recipient parameter. */
             if(params.find("recipient") != params.end())
@@ -131,6 +132,8 @@ namespace TAO
                     || it.key() == "account_name"
                     || it.key() == "recipient"
                     || it.key() == "recipient_username"
+                    || it.key() == "amount"
+                    || it.key() == "token"
                     || it.key() == "items")
                     {
                         continue;
@@ -154,18 +157,18 @@ namespace TAO
             for(auto it = items.begin(); it != items.end(); ++it)
             {
                 /* check that mandatory fields have been provided */
-                if(it->find("unit_price") == it->end())
-                    throw APIException(-235, "Missing item unit price.");
+                if(it->find("unit_amount") == it->end())
+                    throw APIException(-235, "Missing item unit amount.");
 
                 if(it->find("units") == it->end())
                     throw APIException(-238, "Missing item number of units.");
 
                 /* Parse the values out of the definition json*/
-                std::string strUnitPrice =  (*it)["unit_price"].get<std::string>();
+                std::string strUnitAmount =  (*it)["unit_amount"].get<std::string>();
                 std::string strUnits =  (*it)["units"].get<std::string>();
 
-                /* The item Unit Price */
-                double dUnitPrice = 0;
+                /* The item Unit Amount */
+                double dUnitAmount = 0;
 
                 /* The item number of units */
                 uint64_t nUnits = 0;
@@ -173,19 +176,19 @@ namespace TAO
                 /* Attempt to convert the supplied value to a double, catching argument/range exceptions */
                 try
                 {
-                    dUnitPrice = std::stod(strUnitPrice) ;
+                    dUnitAmount = std::stod(strUnitAmount) ;
                 }
                 catch(const std::invalid_argument& e)
                 {
-                    throw APIException(-236, "Invalid item unit price.");
+                    throw APIException(-236, "Invalid item unit amount.");
                 }
                 catch(const std::out_of_range& e)
                 {
-                    throw APIException(-236, "Invalid item unit price.");
+                    throw APIException(-236, "Invalid item unit amount.");
                 }
 
-                if(dUnitPrice == 0)
-                    throw APIException(-237, "Item unit price must be greater than 0.");
+                if(dUnitAmount == 0)
+                    throw APIException(-237, "Item unit amount must be greater than 0.");
 
                 /* Attempt to convert the supplied value to a 64-bit unsigned integer, catching argument/range exceptions */
                 try
@@ -204,21 +207,27 @@ namespace TAO
                 if(nUnits == 0)
                     throw APIException(-240, "Item units must be greater than 0.");
 
-
-                /* Work out the item total */
-                uint64_t nItemTotal = (dUnitPrice * pow(10, TAO::Ledger::NXS_DIGITS)) * nUnits;
+                /* work out the total for this item */
+                double dItemTotal = dUnitAmount * nUnits;
 
                 /* add this to the invoice total */
-                nTotal += nItemTotal;
+                dTotal += dItemTotal;
 
                 /* Once we have validated the mandatory fields, add this item to the invoice JSON */
                 invoice["items"].push_back(*it);
             }
 
+            /* Add the invoice amount and token */
+            invoice["amount"] = dTotal;
+            invoice["token"] = hashToken.ToString();
+
             /* Once validated, add the items to the invoice */
             invoice["items"] = items;
 
-            
+            /* Calculate the amount to pay in token units */
+            uint64_t nTotal = dTotal * pow(10, nDecimals);
+        
+        
             /* Lock the signature chain. */
             LOCK(users->CREATE_MUTEX);
 
@@ -271,7 +280,7 @@ namespace TAO
             tx[nContract] <= uint8_t(TAO::Operation::OP::AND);
             tx[nContract] <= uint8_t(TAO::Operation::OP::CALLER::PRESTATE::VALUE) <= std::string("token");
             tx[nContract] <= uint8_t(TAO::Operation::OP::EQUALS);
-            tx[nContract] <= uint8_t(TAO::Operation::OP::TYPES::UINT256_T) <= uint256_t(0); // ensure the token is NXS (0)
+            tx[nContract] <= uint8_t(TAO::Operation::OP::TYPES::UINT256_T) <= hashToken; // ensure the token paid matches the invoice
             tx[nContract] <= uint8_t(TAO::Operation::OP::UNGROUP);
 
             tx[nContract] <= uint8_t(TAO::Operation::OP::OR);
