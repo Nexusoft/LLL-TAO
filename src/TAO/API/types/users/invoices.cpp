@@ -82,7 +82,8 @@ namespace TAO
 
             /* For efficiency we can remove any addresses that are not read only registers */
             vAddresses.erase(std::remove_if(vAddresses.begin(), vAddresses.end(), 
-                                            [](const TAO::Register::Address& address){return !address.IsReadonly();} ));
+                                            [](const TAO::Register::Address& address){return !address.IsReadonly();}), 
+                                            vAddresses.end());
 
             /* Read all the registers to that they are sorted by creation time */
             std::vector<std::pair<TAO::Register::Address, TAO::Register::State>> vRegisters;
