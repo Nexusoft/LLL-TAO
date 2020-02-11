@@ -133,8 +133,23 @@ namespace TAO
                     contract >> nOP;
 
                     /* Check for conditional OP */
-                    if(nOP == TAO::Operation::OP::CONDITION)
-                        contract >> nOP;
+                    switch(nOP)
+                    {
+                        case TAO::Operation::OP::VALIDATE:
+                        {
+                            /* Seek through validate. */
+                            contract.Seek(68);
+                            contract >> nOP;
+
+                            break;
+                        }
+
+                        case TAO::Operation::OP::CONDITION:
+                        {
+                            /* Get new operation. */
+                            contract >> nOP;
+                        }
+                    }
 
                     /* Check for that the debit is meant for us. */
                     switch(nOP)
@@ -322,8 +337,23 @@ namespace TAO
                     contract >> nOP;
 
                     /* Check for conditional OP */
-                    if(nOP == TAO::Operation::OP::CONDITION)
-                        contract >> nOP;
+                    switch(nOP)
+                    {
+                        case TAO::Operation::OP::VALIDATE:
+                        {
+                            /* Seek through validate. */
+                            contract.Seek(68);
+                            contract >> nOP;
+
+                            break;
+                        }
+
+                        case TAO::Operation::OP::CONDITION:
+                        {
+                            /* Get new operation. */
+                            contract >> nOP;
+                        }
+                    }
 
                     /* Check for that the debit is meant for us. */
                     switch(nOP)
@@ -621,15 +651,31 @@ namespace TAO
                     contract.Reset();
 
                     /* The operation */
-                    uint8_t nOp;
-                    contract >> nOp;
+                    uint8_t nOP;
+                    contract >> nOP;
 
                     /* Check for conditional OP */
-                    if(nOp == TAO::Operation::OP::CONDITION)
-                        contract >> nOp;
+                    /* Check for conditional OP */
+                    switch(nOP)
+                    {
+                        case TAO::Operation::OP::VALIDATE:
+                        {
+                            /* Seek through validate. */
+                            contract.Seek(68);
+                            contract >> nOP;
+
+                            break;
+                        }
+
+                        case TAO::Operation::OP::CONDITION:
+                        {
+                            /* Get new operation. */
+                            contract >> nOP;
+                        }
+                    }
 
                     /* Check for that the debit is meant for us. */
-                    if(nOp == TAO::Operation::OP::DEBIT)
+                    if(nOP == TAO::Operation::OP::DEBIT)
                     {
                         /* Get the source address which is the proof for the debit */
                         contract >> hashProof;
@@ -662,7 +708,7 @@ namespace TAO
                         voidContract.Clear();
                         voidContract << uint8_t(TAO::Operation::OP::CREDIT) << hashLast << uint32_t(nContract) << hashProof <<  hashProof << nAmount;
                     }
-                    else if(nOp == TAO::Operation::OP::TRANSFER)
+                    else if(nOP == TAO::Operation::OP::TRANSFER)
                     {
                         /* The register address being transferred */
                         TAO::Register::Address hashRegister;
