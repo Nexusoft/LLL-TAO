@@ -248,6 +248,184 @@ namespace TAO
         /* Evaluate the condition. */
         bool Condition::Evaluate()
         {
+            /* Call the correct version of the evaluate function based on the transaction version.  This process allows us to change
+               the conditions processing logic based on the activation of new transaction versions, without resulting in forks.
+               NOTE: the version switch is based on the caller contract, as that is the contract created in the new transaction. */
+            switch(caller.Version())
+            {
+            case 1:
+                return EvaluateV1();
+            case 2:
+                return EvaluateV2();
+            default:
+                return debug::error(FUNCTION, "Unknown transaction version");
+            }
+        }
+
+
+        /* Evaluate the conditions for version 1 transactions. */
+        bool Condition::EvaluateV1()
+        {
+            /* Flag to tell how it evaluated. */
+            bool fRet = false;
+
+            /* Grab the first value */
+            TAO::Register::Value vLeft;
+            if(!GetValue(vLeft))
+                throw debug::exception(FUNCTION, "failed to get l-value");
+
+            /* Grab the next operation. */
+            uint8_t OPERATION = 0;
+            contract >= OPERATION;
+
+            /* Switch by operation code. */
+            switch(OPERATION)
+            {
+                /* Handle for the == operator. */
+                case OP::EQUALS:
+                {
+                    /* Grab the second value. */
+                    TAO::Register::Value vRight;
+                    if(!GetValue(vRight))
+                        throw debug::exception(FUNCTION, "failed to get r-value");
+
+                    /* Compare both values to one another. */
+                    fRet = (compare(vLeft, vRight) == 0);
+
+                    /* Deallocate the values from the VM. */
+                    deallocate(vRight);
+                    deallocate(vLeft);
+
+                    break;
+                }
+
+
+                /* Handle for < operator. */
+                case OP::LESSTHAN:
+                {
+                    /* Grab the second value. */
+                    TAO::Register::Value vRight;
+                    if(!GetValue(vRight))
+                        throw debug::exception(FUNCTION, "failed to get r-value");
+
+                    /* Compare both values to one another. */
+                    fRet = (compare(vLeft, vRight) < 0);
+
+                    /* Deallocate the values from the VM. */
+                    deallocate(vRight);
+                    deallocate(vLeft);
+
+                    break;
+                }
+
+
+                /* Handle for the > operator. */
+                case OP::GREATERTHAN:
+                {
+                    /* Grab the second value. */
+                    TAO::Register::Value vRight;
+                    if(!GetValue(vRight))
+                        throw debug::exception(FUNCTION, "failed to get r-value");
+
+                    /* Compare both values to one another. */
+                    fRet = (compare(vLeft, vRight) > 0);
+
+                    /* Deallocate the values from the VM. */
+                    deallocate(vRight);
+                    deallocate(vLeft);
+
+                    break;
+                }
+
+
+                /* Handle for <= operator. */
+                case OP::LESSEQUALS:
+                {
+                    /* Grab the second value. */
+                    TAO::Register::Value vRight;
+                    if(!GetValue(vRight))
+                        throw debug::exception(FUNCTION, "failed to get r-value");
+
+                    /* Compare both values to one another. */
+                    fRet = (compare(vLeft, vRight) <= 0);
+
+                    /* Deallocate the values from the VM. */
+                    deallocate(vRight);
+                    deallocate(vLeft);
+
+                    break;
+                }
+
+
+                /* Handle for the >= operator. */
+                case OP::GREATEREQUALS:
+                {
+                    /* Grab the second value. */
+                    TAO::Register::Value vRight;
+                    if(!GetValue(vRight))
+                        throw debug::exception(FUNCTION, "failed to get r-value");
+
+                    /* Compare both values to one another. */
+                    fRet = (compare(vLeft, vRight) >= 0);
+
+                    /* Deallocate the values from the VM. */
+                    deallocate(vRight);
+                    deallocate(vLeft);
+
+                    break;
+                }
+
+
+                /* Handle for the != operator. */
+                case OP::NOTEQUALS:
+                {
+                    /* Grab the second value. */
+                    TAO::Register::Value vRight;
+                    if(!GetValue(vRight))
+                        throw debug::exception(FUNCTION, "failed to get r-value");
+
+                    /* Compare both values to one another. */
+                    fRet = (compare(vLeft, vRight) != 0);
+
+                    /* Deallocate the values from the VM. */
+                    deallocate(vRight);
+                    deallocate(vLeft);
+
+                    break;
+                }
+
+
+                /* Handle to check if a sequence of bytes is inside another. */
+                case OP::CONTAINS:
+                {
+                    /* Grab the second value. */
+                    TAO::Register::Value vRight;
+                    if(!GetValue(vRight))
+                        throw debug::exception(FUNCTION, "failed to get r-value");
+
+                    /* Compare both values to one another. */
+                    fRet = contains(vLeft, vRight);
+
+                    /* Deallocate the values from the VM. */
+                    deallocate(vRight);
+                    deallocate(vLeft);
+
+                    break;
+                }
+
+                /* For unknown codes, always fail. */
+                default:
+                    return debug::error(FUNCTION, "malformed conditions");
+            }
+
+            /* Return final response. */
+            return fRet;
+        }
+
+
+        /* Evaluate the conditions for version 2 transactions. */
+        bool Condition::EvaluateV2()
+        {
             /* Flag to tell how it evaluated. */
             bool fRet = false;
 
