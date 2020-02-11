@@ -369,9 +369,9 @@ Error Codes
 | -232 | Missing items |
 | -233 | Invoice must include at least one item |
 | -234 | Missing item description |
-| -235 | Missing item unit price |
-| -236 | Invalid item unit price |
-| -237 | Item unit price must be greater than 0 |
+| -235 | Missing item unit amount |
+| -236 | Invalid item unit amount |
+| -237 | Item unit amount must be greater than 0 |
 | -238 | Missing item number of units |
 | -239 | Invalid item number of units |
 | -240 | Item units must be greater than 0 |
@@ -385,4 +385,7 @@ Error Codes
 | -247 | Could not find invoice transfer transaction |
 | -248 | Cannot pay an invoice that has already been paid |
 | -249 | Cannot pay an invoice that has already been cancelled |
+| -250 | Invoice is not yours to pay |
+| -251 | Missing name from or address from |
+| -252 | Account to debit is not for the required token |
 

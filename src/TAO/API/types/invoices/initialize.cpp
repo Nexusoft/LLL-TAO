@@ -74,11 +74,8 @@ namespace TAO
                 }
 
                 
-                /* Edge case for pay/invoice/txid */
-                if(strMethodRewritten == "pay/invoice")
-                    jsonParams["txid"] = strNameOrAddress;
                 /* Determine whether the name/address is a valid register address and set the name or address parameter accordingly */
-                else if(IsRegisterAddress(strNameOrAddress))
+                if(IsRegisterAddress(strNameOrAddress))
                     jsonParams["address"] = strNameOrAddress;
                 else
                     jsonParams["name"] = strNameOrAddress;
@@ -93,9 +90,9 @@ namespace TAO
         {
             mapFunctions["create/invoice"]          = Function(std::bind(&Invoices::Create, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["get/invoice"]             = Function(std::bind(&Invoices::Get,    this, std::placeholders::_1, std::placeholders::_2));
-            //mapFunctions["pay/invoice"]             = Function(std::bind(&Invoices::Pay,      this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["pay/invoice"]             = Function(std::bind(&Invoices::Pay,    this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["cancel/invoice"]          = Function(std::bind(&Invoices::Cancel, this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["list/invoice/history"]    = Function(std::bind(&Invoices::History,    this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["list/invoice/history"]    = Function(std::bind(&Invoices::History,this, std::placeholders::_1, std::placeholders::_2));
         }
     }
 }

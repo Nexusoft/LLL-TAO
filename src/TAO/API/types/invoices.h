@@ -117,7 +117,7 @@ namespace TAO
              *  @return The return object in JSON.
              *
              **/
-            //json::json Pay(const json::json& params, bool fHelp);
+            json::json Pay(const json::json& params, bool fHelp);
 
 
             /** Cancel

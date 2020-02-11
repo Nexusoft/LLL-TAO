@@ -347,6 +347,25 @@ namespace TAO
                 uint8_t OPERATION = 0;
                 contract >> OPERATION;
 
+                /* Check for conditional OP */
+                switch(OPERATION)
+                {
+                    case TAO::Operation::OP::VALIDATE:
+                    {
+                        /* Seek through validate. */
+                        contract.Seek(68);
+                        contract >> OPERATION;
+
+                        break;
+                    }
+
+                    case TAO::Operation::OP::CONDITION:
+                    {
+                        /* Get new operation. */
+                        contract >> OPERATION;
+                    }
+                }
+
                 /* Check the current opcode. */
                 switch(OPERATION)
                 {
