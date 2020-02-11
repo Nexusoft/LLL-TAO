@@ -84,14 +84,14 @@ namespace TAO
         {
             /* The return value string */
             std::string strStatus;
-
+    
             /* If the Invoice currently has no owner then we know it is outstanding */
             if(state.hashOwner == 0)
                 strStatus = "OUSTANDING";
             else if(state.hashOwner == hashRecipient)
-                strStatus == "PAID";
+                strStatus = "PAID";
             else
-                strStatus == "CANCELLED";
+                strStatus = "CANCELLED";
 
             return strStatus;
         }
