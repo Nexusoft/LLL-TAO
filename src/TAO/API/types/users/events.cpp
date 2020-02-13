@@ -240,9 +240,6 @@ namespace TAO
                     if(!user)
                         throw APIException(-10, "Invalid session ID");
 
-                    /* Lock the signature chain. */
-                    LOCK(users->CREATE_MUTEX);
-
                     /* Set the hash genesis for this user. */
                     uint256_t hashGenesis = user->Genesis();
 
@@ -273,6 +270,9 @@ namespace TAO
                     /* Check if there is anything to process */
                     if(vContracts.size() == 0 && vLegacyTx.size() == 0 && vExpired.size() == 0)
                         continue;
+
+                    /* Lock the signature chain. */
+                    LOCK(users->CREATE_MUTEX);
 
                     /* Ensure that the signature is mature.  Note we only check this after we know there is something to process */
                     uint32_t nBlocksToMaturity = users->BlocksToMaturity(hashGenesis);
