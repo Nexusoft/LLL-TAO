@@ -550,10 +550,18 @@ namespace TAO
             /* Transaction to check */
             TAO::Ledger::Transaction tx;
 
-            /* Iterate through all events */
+            /* Counter of consecutive processed events. */
+            uint32_t nConsecutive = 0;
+
+            /* Read back all the events. */
             uint32_t nSequence = 0;
             while(LLD::Ledger->ReadEvent(hashGenesis, nSequence, tx))
             {
+                /* Check to see if we have 100 (or the user configured amount) consecutive processed events.  If we do then we 
+                   assume all prior events are also processed.  This saves us having to scan the entire chain of events */
+                if(nConsecutive >= config::GetArg("-eventsdepth", 100))
+                    break;
+
                 /* Loop through transaction contracts. */
                 uint32_t nContracts = tx.Size();
                 for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
@@ -577,10 +585,6 @@ namespace TAO
                         /* Get the recipient account */
                         TAO::Register::Address hashTo;
                         tx[nContract] >> hashTo;
-
-                        /* Check the account filter */
-                        if(hashAccount != 0 && hashAccount != hashTo)
-                            continue;
 
                         /* Retrieve the account. */
                         TAO::Register::Object account;
@@ -606,8 +610,18 @@ namespace TAO
                         if(account.hashOwner != hashGenesis)
                             continue;
 
-                        /* Check to see if we have already credited this debit. */
+                        /* Check to see if we have already credited this debit. NOTE we do this before checking whether the account 
+                           for this event matches the account we are getting the pending balance for, as we are making the 
+                           assumption that if the last X number of events have been processed then there are no others pending 
+                           for any account*/
                         if(LLD::Ledger->HasProof(hashProof, tx.GetHash(), nContract, TAO::Ledger::FLAGS::MEMPOOL))
+                        {
+                            nConsecutive++;
+                            continue;
+                        }
+
+                        /* Check the account filter */
+                        if(hashAccount != 0 && hashAccount != hashTo)
                             continue;
 
                     }
@@ -625,7 +639,10 @@ namespace TAO
 
                         /* Check to see if we have already credited this coinbase. */
                         if(LLD::Ledger->HasProof(hashProof, tx.GetHash(), nContract, TAO::Ledger::FLAGS::MEMPOOL))
+                        {
+                            nConsecutive++;
                             continue;
+                        }
                     }
                     else
                         continue;
@@ -636,6 +653,9 @@ namespace TAO
 
                     /* Add it onto our pending amount */
                     nPending += nAmount;
+
+                    /* Reset the consecutive counter since this has not been processed */
+                    nConsecutive = 0;
                 }
 
                 /* Iterate the sequence id forward. */
@@ -1139,6 +1159,10 @@ namespace TAO
 
                 /* Get the token*/
                 TAO::Register::Address hashToken = object.get<uint256_t>("token") ;
+
+                /* NXS can't be used to tokenize an asset so if this is a NXS account we can skip it */
+                if(hashToken == 0)
+                    continue;
 
                 /* Get all objects owned by this token */
                 std::vector<TAO::Register::Address> vTokenizedObjects;
