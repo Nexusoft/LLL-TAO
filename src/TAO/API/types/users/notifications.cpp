@@ -68,7 +68,13 @@ namespace TAO
 
             }
 
-            //TODO: sort transactions by timestamp here.
+            /* Sort transactions by timestamp from oldest to newest. */
+            std::sort(vContracts.begin(), vContracts.end(), 
+                [](const std::tuple<TAO::Operation::Contract, uint32_t, uint256_t> &a,  
+                const std::tuple<TAO::Operation::Contract, uint32_t, uint256_t> &b)
+                { 
+                    return ( std::get<0>(a).Timestamp() < std::get<0>(b).Timestamp() );
+                });
 
             return true;
         }
@@ -95,7 +101,13 @@ namespace TAO
         {
             get_events(hashGenesis, vContracts);
 
-            //TODO: sort transactions by timestamp here.
+            /* Sort transactions by timestamp from oldest to newest. */
+            std::sort(vContracts.begin(), vContracts.end(), 
+                [](const std::pair<std::shared_ptr<Legacy::Transaction>, uint32_t> &a,  
+                const std::pair<std::shared_ptr<Legacy::Transaction>, uint32_t> &b)
+                { 
+                    return ( std::get<0>(a)->nTime < std::get<0>(b)->nTime );
+                });
 
             return true;
         }
@@ -114,8 +126,16 @@ namespace TAO
             /* Counter of consecutive processed events. */
             uint32_t nConsecutive = 0;
 
-            /* Read back all the events. */
+            /* The event sequence number */
             uint32_t nSequence = 0;
+
+            /* Get the last event */
+            LLD::Ledger->ReadSequence(hashGenesis, nSequence);
+
+            /* Decrement the current sequence number to get the last event sequence number */
+            --nSequence;
+
+            /* Look back through all events to find those that are not yet processed. */
             while(LLD::Ledger->ReadEvent(hashGenesis, nSequence, tx))
             {
                 /* Check to see if we have 100 (or the user configured amount) consecutive processed events.  If we do then we 
@@ -267,8 +287,8 @@ namespace TAO
                     nConsecutive = 0;
                 }
 
-                /* Iterate the sequence id forward. */
-                ++nSequence;
+                /* Iterate the sequence id backwards. */
+                --nSequence;
             }
 
             return true;
@@ -284,7 +304,16 @@ namespace TAO
             /* Counter of consecutive processed events. */
             uint32_t nConsecutive = 0;
 
+            /* The event sequence number */
             uint32_t nSequence = 0;
+
+            /* Get the last event */
+            LLD::Legacy->ReadSequence(hashGenesis, nSequence);
+
+            /* Decrement the current sequence number to get the last event sequence number */
+            --nSequence;
+
+            /* Look back through all events to find those that are not yet processed. */
             while(LLD::Legacy->ReadEvent(hashGenesis, nSequence, tx))
             {
                 /* Check to see if we have 100 (or the user configured amount) consecutive processed events.  If we do then we 
@@ -328,8 +357,8 @@ namespace TAO
                     nConsecutive = 0;
                 }
 
-                /* Iterate the sequence id forward. */
-                ++nSequence;
+                /* Iterate the sequence id backwards. */
+                --nSequence;
             }
 
             return true;
