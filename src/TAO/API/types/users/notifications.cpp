@@ -110,10 +110,18 @@ namespace TAO
             /* Keep track of unique proofs. */
             std::set<std::tuple<uint256_t, uint512_t, uint32_t>> setUnique;
 
+            /* Counter of consecutive processed events. */
+            uint32_t nConsecutive = 0;
+
             /* Read back all the events. */
             uint32_t nSequence = 0;
             while(LLD::Ledger->ReadEvent(hashGenesis, nSequence, tx))
             {
+                /* Check to see if we have 100 (or the user configured amount) consecutive processed events.  If we do then we 
+                   assume all prior events are also processed.  This saves us having to scan the entire chain of events */
+                if(nConsecutive >= config::GetArg("-eventsdepth", 100))
+                    break;
+                    
                 /* Loop through transaction contracts. */
                 uint32_t nContracts = tx.Size();
                 for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
@@ -189,7 +197,10 @@ namespace TAO
 
                             /* Make sure we haven't already claimed it */
                             if(LLD::Ledger->HasProof(hashRegister, tx.GetHash(), nContract, TAO::Ledger::FLAGS::MEMPOOL))
+                            {
+                                nConsecutive++;
                                 continue;
+                            }
 
                             break;
                         }
@@ -215,7 +226,10 @@ namespace TAO
                     /* Check to see if we have already credited this debit. */
                     uint512_t hashTx = tx.GetHash();
                     if(LLD::Ledger->HasProof(hashProof, hashTx, nContract, TAO::Ledger::FLAGS::MEMPOOL))
+                    {
+                        nConsecutive++;
                         continue;
+                    }
 
                     /* Check that this is a unique proof. */
                     if(setUnique.count(std::make_tuple(hashProof, hashTx, nContract)))
@@ -228,6 +242,9 @@ namespace TAO
                     /* Add the coinbase transaction and skip rest of contracts. */
                     vContracts.push_back(std::make_tuple(contract, nContract, 0));
                     setUnique.insert(std::make_tuple(hashProof, hashTx, nContract));
+
+                    /* Reset the consecutive counter since this has not been processed */
+                    nConsecutive = 0;
                 }
 
                 /* Iterate the sequence id forward. */
@@ -244,9 +261,17 @@ namespace TAO
             /* Get notifications for personal genesis indexes. */
             Legacy::Transaction tx;
 
+            /* Counter of consecutive processed events. */
+            uint32_t nConsecutive = 0;
+
             uint32_t nSequence = 0;
             while(LLD::Legacy->ReadEvent(hashGenesis, nSequence, tx))
             {
+                /* Check to see if we have 100 (or the user configured amount) consecutive processed events.  If we do then we 
+                   assume all prior events are also processed.  This saves us having to scan the entire chain of events */
+                if(nConsecutive >= config::GetArg("-eventsdepth", 100))
+                    break;
+
                 /* Make a shared pointer to the transaction so that we can keep it alive until the caller
                    is done processing the contracts */
                 std::shared_ptr<Legacy::Transaction> ptx(new Legacy::Transaction(tx));
@@ -271,10 +296,16 @@ namespace TAO
 
                     /* Check if proofs are spent. NOTE the proof is the wildcard address since this is a legacy transaction*/
                     if(LLD::Ledger->HasProof(TAO::Register::WILDCARD_ADDRESS, ptx->GetHash(), nContract, TAO::Ledger::FLAGS::MEMPOOL))
+                    {
+                        nConsecutive++;
                         continue;
+                    }
 
                     /* Add the coinbase transaction and skip rest of contracts. */
                     vContracts.push_back(std::make_pair(ptx, nContract));
+
+                    /* Reset the consecutive counter since this has not been processed */
+                    nConsecutive = 0;
                 }
 
                 /* Iterate the sequence id forward. */
@@ -413,6 +444,7 @@ namespace TAO
 
                 /* The last modified time the balance of this token account changed */
                 uint64_t nModified = object.nModified;
+                
 
                 /* Loop through all events for the token (split payments). */
                 TAO::Ledger::Transaction tx;
@@ -422,10 +454,10 @@ namespace TAO
                     /* Iterate sequence forward. */
                     ++nSequence;
 
-                    /* Firstly we can ignore any transactions that occurred before our token account was last modified, as only
+                    /* We can break out if an event occurred before our token account was last modified, as only
                        the balance at the time of the transaction can be used as proof */
                     if(tx.nTimestamp < nModified)
-                        continue;
+                        break;
 
                     /* Loop through transaction contracts. */
                     uint32_t nContracts = tx.Size();
