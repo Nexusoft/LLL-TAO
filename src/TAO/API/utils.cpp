@@ -534,8 +534,16 @@ namespace TAO
             /* Counter of consecutive processed events. */
             uint32_t nConsecutive = 0;
 
-            /* Read back all the events. */
+            /* The event sequence number */
             uint32_t nSequence = 0;
+
+            /* Get the last event */
+            LLD::Ledger->ReadSequence(hashGenesis, nSequence);
+
+            /* Decrement the current sequence number to get the last event sequence number */
+            --nSequence;
+
+            /* Look back through all events to find those that are not yet processed. */
             while(LLD::Ledger->ReadEvent(hashGenesis, nSequence, tx))
             {
                 /* Check to see if we have 100 (or the user configured amount) consecutive processed events.  If we do then we 
@@ -639,8 +647,8 @@ namespace TAO
                     nConsecutive = 0;
                 }
 
-                /* Iterate the sequence id forward. */
-                ++nSequence;
+                /* Iterate the sequence id backwards. */
+                --nSequence;
             }
 
             /* Next we need to include mature coinbase transactions.  We can skip this if a token as been specified as coinbase
