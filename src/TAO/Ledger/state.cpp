@@ -427,7 +427,7 @@ namespace TAO
                             fAmbassador = true;
 
                             /* Reduce size. */
-                            nSize -= (config::fTestNet ? AMBASSADOR_TESTNET.size() : AMBASSADOR.size());
+                            nSize -= Ambassador(nVersion).size();
                         }
                     }
 
@@ -444,7 +444,7 @@ namespace TAO
                             fDeveloper = true;
 
                             /* Reduce size. */
-                            nSize -= (config::fTestNet ? DEVELOPER_TESTNET.size() : DEVELOPER.size());
+                            nSize -= Developer(nVersion).size();
                         }
                     }
 
@@ -458,8 +458,7 @@ namespace TAO
                         int64_t nBalance = stateLast.nReleasedReserve[1] - (33 * NXS_COIN); //leave 33 coins in the reserve
 
                         /* Loop through all ambassador sigchains. */
-                        for(auto it =  (config::fTestNet.load() ? AMBASSADOR_TESTNET.begin() : AMBASSADOR.begin());
-                                 it != (config::fTestNet.load() ? AMBASSADOR_TESTNET.end()   : AMBASSADOR.end()); ++it)
+                        for(auto it = Ambassador(nVersion).begin(); it != Ambassador(nVersion).end(); ++it)
                         {
                             /* Seek to Genesis */
                             tx[nContract].Seek(1, Operation::Contract::OPERATIONS, STREAM::BEGIN);
@@ -490,7 +489,7 @@ namespace TAO
                             nCoinbaseRewards[1] += nValue;
 
                             /* Log the genesis. */
-                            debug::log(2, "AMBASSADOR GENESIS ", genesis.ToString());
+                            debug::log(2, "V7_AMBASSADOR GENESIS ", genesis.ToString());
                         }
                     }
 
@@ -501,8 +500,7 @@ namespace TAO
                         int64_t nBalance = stateLast.nReleasedReserve[2] - (3 * NXS_COIN); //leave 3 coins in the reserve
 
                         /* Loop through the embassy sigchains. */
-                        for(auto it =  (config::fTestNet.load() ? DEVELOPER_TESTNET.begin() : DEVELOPER.begin());
-                                 it != (config::fTestNet.load() ? DEVELOPER_TESTNET.end()   : DEVELOPER.end()); ++it)
+                        for(auto it = Developer(nVersion).begin(); it != Developer(nVersion).end(); ++it)
                         {
                             /* Seek to Genesis */
                             tx[nContract].Seek(1, Operation::Contract::OPERATIONS, STREAM::BEGIN);

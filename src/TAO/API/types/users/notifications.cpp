@@ -373,7 +373,7 @@ namespace TAO
                 for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
                 {
                     /* Reference to contract to check */
-                    TAO::Operation::Contract& contract = tx[nContract];
+                    const TAO::Operation::Contract& contract = tx[nContract];
 
                     /* Check for coinbase opcode */
                     if(TAO::Register::Unpack(contract, Operation::OP::COINBASE))

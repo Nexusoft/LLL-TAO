@@ -130,11 +130,40 @@ _name.shard.file
 */
 
 
+const uint256_t hashSeed = 55;
 
 
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
+    for(int i = 0; i < 10; ++i)
+    {
+        uint64_t nTimestamp = runtime::timestamp();
+        uint32_t nInterval  = nTimestamp / 2;
+
+        DataStream ssData(SER_LLD, LLD::DATABASE_VERSION);
+        ssData << hashSeed << nInterval;
+
+        std::vector<uint8_t> vResult = LLC::SK256(ssData.begin(), ssData.end()).GetBytes();
+
+        //run HMAC generator
+        uint32_t nOffset   =  vResult[31] & 0xf ;
+        uint32_t nBinary =
+             (vResult[nOffset + 0] & 0x7f) << 24
+           | (vResult[nOffset + 1] & 0xff) << 16
+           | (vResult[nOffset + 2] & 0xff) <<  8
+           | (vResult[nOffset + 3] & 0xff) ;
+
+        uint32_t nCode = nBinary % 1000000;
+
+        debug::log(0, "Code is ", nCode);
+
+        runtime::sleep(1000);
+    }
+
+
+    return 0;
+
     config::mapArgs["-datadir"] = "/public/tests";
 
     LLP::TritiumNode node;

@@ -110,10 +110,10 @@ namespace TAO
                 tx.nTimestamp  = std::max(runtime::unifiedtimestamp(), txPrev.nTimestamp);
             }
 
-            /* Set the transaction version based on the timestamp. The transaction version is current version 
+            /* Set the transaction version based on the timestamp. The transaction version is current version
                unless an activation is pending */
             uint32_t nCurrent = CurrentTransactionVersion();
-            if(TransactionVersionActive(tx.nTimestamp, nCurrent)) 
+            if(TransactionVersionActive(tx.nTimestamp, nCurrent))
                 tx.nVersion = nCurrent;
             else
                 tx.nVersion = nCurrent - 1;
@@ -561,8 +561,7 @@ namespace TAO
                             if(nBalance > 0)
                             {
                                 /* Loop through the embassy sigchains. */
-                                for(auto it =  (config::fTestNet.load() ? AMBASSADOR_TESTNET.begin() : AMBASSADOR.begin());
-                                         it != (config::fTestNet.load() ? AMBASSADOR_TESTNET.end()   : AMBASSADOR.end()); ++it)
+                                for(auto it = Ambassador(block.nVersion).begin(); it != Ambassador(block.nVersion).end(); ++it)
                                 {
                                     /* Make sure to push to end. */
                                     uint32_t nContract = block.producer.Size();
@@ -589,8 +588,7 @@ namespace TAO
                             if(nBalance > 0)
                             {
                                 /* Loop through the embassy sigchains. */
-                                for(auto it =  (config::fTestNet.load() ? DEVELOPER_TESTNET.begin() : DEVELOPER.begin());
-                                         it != (config::fTestNet.load() ? DEVELOPER_TESTNET.end()   : DEVELOPER.end()); ++it)
+                                for(auto it = Developer(block.nVersion).begin(); it != Developer(block.nVersion).end(); ++it)
                                 {
                                     /* Make sure to push to end. */
                                     uint32_t nContract = block.producer.Size();
@@ -886,10 +884,10 @@ namespace TAO
             else
                 block.producer.nTimestamp = std::max(block.producer.nTimestamp, runtime::unifiedtimestamp());
 
-            /* Since we have updated the producer transaction timestamp, we now also need to set the transaction version again as 
+            /* Since we have updated the producer transaction timestamp, we now also need to set the transaction version again as
                the version is based on the transaction time. Transaction version is current version unless an activation is pending */
             uint32_t nCurrent = CurrentTransactionVersion();
-            if(TransactionVersionActive(block.producer.nTimestamp, nCurrent)) 
+            if(TransactionVersionActive(block.producer.nTimestamp, nCurrent))
                 block.producer.nVersion = nCurrent;
             else
                 block.producer.nVersion = nCurrent - 1;

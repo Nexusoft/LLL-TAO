@@ -696,57 +696,27 @@ namespace TAO
             /* Check for first. */
             if(IsFirst())
             {
-                /* Check for ambassador / developer sigchains. */
-                if(!config::fTestNet.load())
+                /* Check for ambassador. */
+                uint32_t nSwitchVersion = (pblock ? pblock->nVersion : ChainState::stateBest.load().nVersion);
+                if(Ambassador(nSwitchVersion).find(hashGenesis) != Ambassador(nSwitchVersion).end())
                 {
-                    /* Check for ambassador. */
-                    if(AMBASSADOR.find(hashGenesis) != AMBASSADOR.end())
-                    {
-                        /* Debug logging. */
-                        debug::log(1, FUNCTION, "Processing AMBASSADOR sigchain ", hashGenesis.SubString());
+                    /* Debug logging. */
+                    debug::log(1, FUNCTION, "Processing AMBASSADOR sigchain ", hashGenesis.SubString());
 
-                        /* Check that the hashes match. */
-                        if(AMBASSADOR.at(hashGenesis).first != PrevHash())
-                            return debug::error(FUNCTION, "AMBASSADOR sigchain using invalid credentials");
-                    }
-
-                    /* Check for developer. */
-                    if(DEVELOPER.find(hashGenesis) != DEVELOPER.end())
-                    {
-                        /* Debug logging. */
-                        debug::log(1, FUNCTION, "Processing DEVELOPER sigchain ", hashGenesis.SubString());
-
-                        /* Check that the hashes match. */
-                        if(DEVELOPER.at(hashGenesis).first != PrevHash())
-                            return debug::error(FUNCTION, "DEVELOPER sigchain using invalid credentials");
-                    }
+                    /* Check that the hashes match. */
+                    if(Ambassador(nSwitchVersion).at(hashGenesis).first != PrevHash())
+                        return debug::error(FUNCTION, "AMBASSADOR sigchain using invalid credentials");
                 }
 
-
-                /* Check for ambassador / developer sigchains. */
-                if(config::fTestNet.load())
+                /* Check for developer. */
+                if(Developer(nSwitchVersion).find(hashGenesis) != Developer(nSwitchVersion).end())
                 {
-                    /* Check for ambassador. */
-                    if(AMBASSADOR_TESTNET.find(hashGenesis) != AMBASSADOR_TESTNET.end())
-                    {
-                        /* Debug logging. */
-                        debug::log(1, FUNCTION, "Processing TESTNET AMBASSADOR sigchain ", hashGenesis.SubString());
+                    /* Debug logging. */
+                    debug::log(1, FUNCTION, "Processing DEVELOPER sigchain ", hashGenesis.SubString());
 
-                        /* Check that the hashes match. */
-                        if(AMBASSADOR_TESTNET.at(hashGenesis).first != PrevHash())
-                            return debug::error(FUNCTION, "TESTNET AMBASSADOR sigchain using invalid credentials");
-                    }
-
-                    /* Check for developer. */
-                    if(DEVELOPER_TESTNET.find(hashGenesis) != DEVELOPER_TESTNET.end())
-                    {
-                        /* Debug logging. */
-                        debug::log(1, FUNCTION, "Processing TESTNET DEVELOPER sigchain ", hashGenesis.SubString());
-
-                        /* Check that the hashes match. */
-                        if(DEVELOPER_TESTNET.at(hashGenesis).first != PrevHash())
-                            return debug::error(FUNCTION, "TESTNET DEVELOPER sigchain using invalid credentials");
-                    }
+                    /* Check that the hashes match. */
+                    if(DEVELOPER.at(hashGenesis).first != PrevHash())
+                        return debug::error(FUNCTION, "DEVELOPER sigchain using invalid credentials");
                 }
 
                 /* Write specific transaction flags. */
@@ -839,7 +809,7 @@ namespace TAO
                                     return debug::error(FUNCTION, "failed to read confirmations for coinbase");
 
                                 /* Check that the previous TX has reached sig chain maturity */
-                                if(nConfirms + 1 < MaturityCoinBase((pblock ? *pblock : TAO::Ledger::ChainState::stateBest.load())))
+                                if(nConfirms + 1 < MaturityCoinBase((pblock ? *pblock : ChainState::stateBest.load())))
                                     return debug::error(FUNCTION, "coinbase is immature ", nConfirms);
 
                                 break;
