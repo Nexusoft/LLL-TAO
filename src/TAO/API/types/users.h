@@ -502,6 +502,19 @@ namespace TAO
             json::json Status(const json::json& params, bool fHelp);
 
 
+            /** Invoices
+             *
+             *  Get a list of invoices owned by a signature chain
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json Invoices(const json::json& params, bool fHelp);
+
+
             /** EventsThread
              *
              *  Background thread to handle/suppress sigchain notifications.
@@ -594,6 +607,18 @@ namespace TAO
                 uint512_t hashLast, std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> &vContracts);
 
 
+            /** get_unclaimed
+             *
+             *  Get any unclaimed transfer transactions.
+             *
+             *  @param[in] hashGenesis The genesis hash for the sig chain owner.
+             *  @param[out] vContracts Vector of unclaimed transfer contracts.
+             *
+             **/
+            static bool get_unclaimed(const uint256_t& hashGenesis,
+                std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> &vContracts);
+
+                
             /** BlocksToMaturity
             *
             *  Determines whether the signature chain has reached desired maturity after the last coinbase/coinstake transaction

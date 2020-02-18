@@ -308,6 +308,19 @@ namespace TAO
                                 if(newOwner.hashOwner == hashGenesis)
                                     break;
                             }
+                            else
+                            {
+                                /* Retrieve the object so we can see whether it has been claimed or not */
+                                TAO::Register::Object object;
+                                if(!LLD::Register->ReadState(hashAddress, object, TAO::Ledger::FLAGS::MEMPOOL))
+                                    throw APIException(-104, "Object not found");
+
+                                /* If we are transferring to someone else but it has not yet been claimed then we ignore the
+                                   transfer and still show it as ours */
+                                if(object.hashOwner == 0)
+                                    break;
+                            }
+                            
 
                             /* If we find a TRANSFER then we can know for certain that we no longer own it */
                             if(vTransferred.find(hashAddress)    == vTransferred.end())
@@ -397,7 +410,13 @@ namespace TAO
          *  to pay the fees.  An exception will be thrownIf there are insufficient funds to pay the fee. */
         bool AddFee(TAO::Ledger::Transaction& tx, const TAO::Register::Address& hashFeeAccount)
         {
+            /* First we need to ensure that the transaction is built so that the contracts have their pre states */
+            tx.Build();
+
+            /* Obtain the transaction cost */
             uint64_t nCost = tx.Cost();
+
+            /* If a fee needs to be applied then add it */
             if(nCost > 0)
             {
                 /* The register adddress of the account to deduct fees from */
@@ -1289,6 +1308,10 @@ namespace TAO
             /* Get the operation byte. */
             uint8_t nType = 0;
             contract >> nType;
+
+            /* Check for conditional OP */
+            if(nType == TAO::Operation::OP::CONDITION)
+                contract >> nType;
 
             /* Ensure that it is a debit or transfer */
             if(nType != TAO::Operation::OP::DEBIT && nType != TAO::Operation::OP::TRANSFER)

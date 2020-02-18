@@ -347,6 +347,25 @@ namespace TAO
                 uint8_t OPERATION = 0;
                 contract >> OPERATION;
 
+                /* Check for conditional OP */
+                switch(OPERATION)
+                {
+                    case TAO::Operation::OP::VALIDATE:
+                    {
+                        /* Seek through validate. */
+                        contract.Seek(68);
+                        contract >> OPERATION;
+
+                        break;
+                    }
+
+                    case TAO::Operation::OP::CONDITION:
+                    {
+                        /* Get new operation. */
+                        contract >> OPERATION;
+                    }
+                }
+
                 /* Check the current opcode. */
                 switch(OPERATION)
                 {
@@ -983,7 +1002,8 @@ namespace TAO
 
             /* Now build the response based on the register type */
             if(object.nType == TAO::Register::REGISTER::APPEND
-            || object.nType == TAO::Register::REGISTER::RAW)
+            || object.nType == TAO::Register::REGISTER::RAW
+            || object.nType == TAO::Register::REGISTER::READONLY)
             {
                 /* Raw state assets only have one data member containing the raw hex-encoded data*/
 
@@ -995,6 +1015,10 @@ namespace TAO
                 /* If this is an append register we need to grab the data from the end of the stream which will be the most recent data */
                 while(!object.end())
                 {
+                    /* Deserialize the leading byte of the state data to check the data type */
+                    uint16_t type;
+                    object >> type;
+
                     /* If the data type is string. */
                     std::string data;
                     object >> data;
@@ -1297,6 +1321,22 @@ namespace TAO
             }
 
             return ret;
+        }
+
+        /* If the caller has requested a fieldname to filter on then this filters the response JSON to only include that field */
+        void FilterResponse(const json::json& params, json::json& response)
+        {
+            if(params.find("fieldname") != params.end())
+            {
+                /* First get the fieldname from the response */
+                std::string strFieldname =  params["fieldname"].get<std::string>();
+
+                /* Iterate through the response keys */
+                for(auto it = response.begin(); it != response.end(); ++it)
+                    /* If this key is not the one that was requested then erase it */
+                    if(it.key() != strFieldname)
+                        response.erase(it);
+            }
         }
     }
 }

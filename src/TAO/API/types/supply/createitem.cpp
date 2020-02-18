@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/include/global.h>
+#include <TAO/API/include/user_types.h>
 #include <TAO/API/include/utils.h>
 
 #include <TAO/Operation/include/enum.h>
@@ -77,6 +78,9 @@ namespace TAO
 
             /* Test the payload feature. */
             DataStream ssData(SER_REGISTER, 1);
+
+            /* First add the leading 2 bytes to identify the state data */
+            ssData << (uint16_t) USER_TYPES::SUPPLY;
 
             /* Then the raw data */
             ssData << params["data"].get<std::string>();

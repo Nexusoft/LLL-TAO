@@ -324,6 +324,25 @@ namespace TAO
                         uint8_t OPERATION;
                         refContract >> OPERATION;
 
+                        /* Check for conditional OP */
+                        switch(OPERATION)
+                        {
+                            case TAO::Operation::OP::VALIDATE:
+                            {
+                                /* Seek through validate. */
+                                refContract.Seek(68);
+                                refContract >> OPERATION;
+
+                                break;
+                            }
+
+                            case TAO::Operation::OP::CONDITION:
+                            {
+                                /* Get new operation. */
+                                refContract >> OPERATION;
+                            }
+                        }
+
                         /* Check the opcodes for debit, coinbase or transfers. */
                         switch (OPERATION)
                         {

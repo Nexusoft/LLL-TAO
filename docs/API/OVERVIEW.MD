@@ -358,3 +358,34 @@ Error Codes
 | -221 | Recovery seed must be a minimum of 40 characters |
 | -222 | User create pending confirmation |
 | -223 | Recovery seed not set on this signature chain |
+| -224 | Missing description |
+| -225 | Missing number |
+| -226 | Missing reference |
+| -227 | Missing payment account name / address |
+| -228 | Missing sender detail |
+| -229 | Missing recipient |
+| -230 | Recipient user does not exist | 
+| -231 | Missing recipient detail |
+| -232 | Missing items |
+| -233 | Invoice must include at least one item |
+| -234 | Missing item description |
+| -235 | Missing item unit amount |
+| -236 | Invalid item unit amount |
+| -237 | Item unit amount must be greater than 0 |
+| -238 | Missing item number of units |
+| -239 | Invalid item number of units |
+| -240 | Item units must be greater than 0 |
+| -241 | Invoice not found |
+| -242 | Data at this address is not an invoice |
+| -242 | Data exceeds max register size |
+| -243 | Data at this address is not a supply item |
+| -244 | Cannot send invoice to self |
+| -245 | Cannot cancel an invoice that has already been paid |
+| -246 | Cannot cancel an invoice that has already been cancelled |
+| -247 | Could not find invoice transfer transaction |
+| -248 | Cannot pay an invoice that has already been paid |
+| -249 | Cannot pay an invoice that has already been cancelled |
+| -250 | Invoice is not yours to pay |
+| -251 | Missing name from or address from |
+| -252 | Account to debit is not for the required token |
+

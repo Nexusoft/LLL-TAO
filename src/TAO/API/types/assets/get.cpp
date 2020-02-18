@@ -89,19 +89,8 @@ namespace TAO
             /* Copy the asset data in to the response after the type/checksum */
             ret.insert(data.begin(), data.end());
 
-
             /* If the caller has requested to filter on a fieldname then filter out the json response to only include that field */
-            if(params.find("fieldname") != params.end())
-            {
-                /* First get the fieldname from the response */
-                std::string strFieldname =  params["fieldname"].get<std::string>();
-
-                /* Iterate through the response keys */
-                for(auto it = ret.begin(); it != ret.end(); ++it)
-                    /* If this key is not the one that was requested then erase it */
-                    if(it.key() != strFieldname)
-                        ret.erase(it);
-            }
+            FilterResponse(params, ret);
 
             return ret;
         }

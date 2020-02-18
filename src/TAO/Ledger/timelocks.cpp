@@ -32,11 +32,11 @@ namespace TAO
 
 
         /* The network current transaction version. */
-        const uint32_t NETWORK_TRANSACTION_CURRENT_VERSION = 1;
+        const uint32_t NETWORK_TRANSACTION_CURRENT_VERSION = 2;
 
 
         /* The testnet current transaction version. */
-        const uint32_t TESTNET_TRANSACTION_CURRENT_VERSION = 1;
+        const uint32_t TESTNET_TRANSACTION_CURRENT_VERSION = 2;
 
 
          /* Activated test network at timestamp. */
@@ -77,7 +77,7 @@ namespace TAO
         const uint32_t TESTNET_TRANSACTION_VERSION_TIMELOCK[]   =
         {
             1572325200,        //--- Transaction Version 1 Testnet Activation:  10/28/2019 22:00:00 GMT - 7
-            1586062800         //--- Transaction Version 2 Testnet Activation:  04/04/2020 22:00:00 GMT - 7
+            1581390000         //--- Transaction Version 2 Testnet Activation:  02/10/2020 20:00:00 GMT - 7
         };
 
 

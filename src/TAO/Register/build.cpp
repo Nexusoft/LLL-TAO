@@ -50,6 +50,9 @@ namespace TAO
             /* Reset the contract streams. */
             contract.Reset(TAO::Operation::Contract::ALL);
 
+            /* Clear the register stream in case this contract has already been built previously */
+            contract.Clear(TAO::Operation::Contract::REGISTERS);
+
             /* Make sure no exceptions are thrown. */
             try
             {

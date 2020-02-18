@@ -120,5 +120,18 @@ namespace TAO
                                 const TAO::Register::Address& hashRegister,
                                 bool fLookupName = true);
 
+
+        /** FilterResponse
+        *
+        *  If the caller has requested a fieldname to filter on then this filters the response JSON to only include that field 
+        *
+        *  @param[in] params The parameters passed into the request
+        *  @param[in] response The reponse JSON to be filtered
+        *
+        *  @return The filtered response
+        *
+        **/
+        void FilterResponse(const json::json& params, json::json& response);
+
     }
 }
