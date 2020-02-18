@@ -132,3 +132,12 @@ The System API provides public access to information about this node.  This incl
 The System API can be found in the following repo path:
 
 [LLL-TAO/docs/API/SYSTEM.MD](API/SYSTEM.MD)
+
+
+## Invoices API
+
+The Invoices API provides users and application developers the ability to issue and pay invoices on the Nexus blockchain. This API is a demonstration of how registers can be used to store arbitrary user data, and conditional contracts can be used to implement use-case rules. Invoices can be created and then sent to a recipient signature chain to be paid. The API supports invoices issued in NXS or any other token on the Nexus blockchain.   
+
+The Invoices API can be found in the following repo path:
+
+[LLL-TAO/docs/API/INVOICES.MD](API/INVOICS.MD)
