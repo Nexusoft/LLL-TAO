@@ -20,7 +20,6 @@ ________________________________________________________________________________
 
 namespace LLP
 {
-    extern std::map<std::string, int32_t> MAP_TIME_DATA;
 
     class TimeNode : public Connection
     {
@@ -49,7 +48,16 @@ namespace LLP
         /** Store the samples in a majority object. */
         CMajority<int32_t> nSamples;
 
+
+        /** Keep track of our sent requests for time data. This gives us protection against unsolicted TIME_DATA messages. **/
+        std::atomic<int32_t> nRequests;
+
     public:
+
+
+        /** Thread to handle the time adjustment algorithms. **/
+        static std::thread TIME_ADJUSTMENT;
+
 
         /** Name
          *
@@ -64,11 +72,11 @@ namespace LLP
 
 
         /** Constructor **/
-        TimeNode(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false);
+        TimeNode(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool fDDOSIn = false);
 
 
         /** Constructor **/
-        TimeNode(DDOS_Filter* DDOS_IN, bool isDDOS = false);
+        TimeNode(DDOS_Filter* DDOS_IN, bool fDDOSIn = false);
 
 
         /* Virtual destructor. */
@@ -94,6 +102,30 @@ namespace LLP
          *
          **/
         bool ProcessPacket();
+
+
+        /** GetSample
+         *
+         *  Get a time sample from the time server.
+         *
+         **/
+        void GetSample();
+
+
+        /** GetOffset
+         *
+         *  Get the current time offset from the unified majority.
+         *
+         **/
+        static int32_t GetOffset();
+
+
+        /** AdjustmentThread
+         *
+         *  This thread is responsible for unified time offset adjustments. This will be deleted on post v8 updates.
+         *
+         **/
+        static void AdjustmentThread();
     };
 }
 

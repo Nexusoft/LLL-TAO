@@ -30,11 +30,9 @@ ________________________________________________________________________________
 template <typename CType>
 class CMajority
 {
-private:
+public:
     std::map<CType, int> mapList;
     uint32_t nSamples;
-
-public:
 
 
     /**	CMajority
@@ -42,7 +40,10 @@ public:
      *  Default constructor
      *
      **/
-    CMajority() : nSamples(0) {}
+    CMajority()
+    : nSamples (0)
+    {
+    }
 
 
     /**	Add

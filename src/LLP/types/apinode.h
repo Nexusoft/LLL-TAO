@@ -51,11 +51,11 @@ namespace LLP
 
 
         /** Constructor **/
-        APINode(const LLP::Socket &SOCKET_IN, LLP::DDOS_Filter* DDOS_IN, bool isDDOS = false);
+        APINode(const LLP::Socket &SOCKET_IN, LLP::DDOS_Filter* DDOS_IN, bool fDDOSIn = false);
 
 
         /** Constructor **/
-        APINode(LLP::DDOS_Filter* DDOS_IN, bool isDDOS = false);
+        APINode(LLP::DDOS_Filter* DDOS_IN, bool fDDOSIn = false);
 
 
         /** Default Destructor **/

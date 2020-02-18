@@ -143,11 +143,11 @@ namespace LLP
 
 
         /** Build Base Connection with all Parameters. **/
-        BaseConnection(const Socket &SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false, bool fOutgoing = false);
+        BaseConnection(const Socket &SOCKET_IN, DDOS_Filter* DDOS_IN, bool fDDOSIn = false, bool fOutgoing = false);
 
 
         /** Build Base Connection with all Parameters. **/
-        BaseConnection(DDOS_Filter* DDOS_IN, bool isDDOS = false, bool fOutgoing = false);
+        BaseConnection(DDOS_Filter* DDOS_IN, bool fDDOSIn = false, bool fOutgoing = false);
 
 
         /* Default destructor */

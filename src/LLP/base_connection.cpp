@@ -61,12 +61,12 @@ namespace LLP
 
     /* Build Base Connection with all Parameters. */
     template <class PacketType>
-    BaseConnection<PacketType>::BaseConnection(const Socket &SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS, bool fOutgoing)
+    BaseConnection<PacketType>::BaseConnection(const Socket &SOCKET_IN, DDOS_Filter* DDOS_IN, bool fDDOSIn, bool fOutgoing)
     : Socket          (SOCKET_IN)
     , INCOMING        ( )
     , DDOS            (DDOS_IN)
     , nLatency        (std::numeric_limits<uint32_t>::max())
-    , fDDOS           (isDDOS)
+    , fDDOS           (fDDOSIn)
     , fOUTGOING       (fOutgoing)
     , fCONNECTED      (false)
     , nDataThread     (-1)
@@ -81,12 +81,12 @@ namespace LLP
 
     /* Build Base Connection with all Parameters. */
     template <class PacketType>
-    BaseConnection<PacketType>::BaseConnection(DDOS_Filter* DDOS_IN, bool isDDOS, bool fOutgoing)
+    BaseConnection<PacketType>::BaseConnection(DDOS_Filter* DDOS_IN, bool fDDOSIn, bool fOutgoing)
     : Socket          ( )
     , INCOMING        ( )
     , DDOS            (DDOS_IN)
     , nLatency        (std::numeric_limits<uint32_t>::max())
-    , fDDOS           (isDDOS)
+    , fDDOS           (fDDOSIn)
     , fOUTGOING       (fOutgoing)
     , fCONNECTED      (false)
     , nDataThread     (-1)

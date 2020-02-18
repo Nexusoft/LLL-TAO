@@ -70,8 +70,8 @@ namespace LLP
 
 
     /* Constructor */
-    Miner::Miner(const Socket& SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS)
-    : Connection(SOCKET_IN, DDOS_IN, isDDOS)
+    Miner::Miner(const Socket& SOCKET_IN, DDOS_Filter* DDOS_IN, bool fDDOSIn)
+    : Connection(SOCKET_IN, DDOS_IN, fDDOSIn)
     , CoinbaseTx()
     , MUTEX()
     , mapBlocks()
@@ -86,8 +86,8 @@ namespace LLP
 
 
     /* Constructor */
-    Miner::Miner(DDOS_Filter* DDOS_IN, bool isDDOS)
-    : Connection(DDOS_IN, isDDOS)
+    Miner::Miner(DDOS_Filter* DDOS_IN, bool fDDOSIn)
+    : Connection(DDOS_IN, fDDOSIn)
     , CoinbaseTx()
     , MUTEX()
     , mapBlocks()

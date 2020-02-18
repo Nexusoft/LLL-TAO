@@ -134,6 +134,9 @@ int main(int argc, char** argv)
         true,
         10000);
 
+    /* Start up the time adjustment thread. */
+    LLP::TimeNode::TIME_ADJUSTMENT = std::thread(LLP::TimeNode::AdjustmentThread);
+
     /* Get the port for the Core API Server. */
     nPort = static_cast<uint16_t>(config::GetArg(std::string("-rpcport"), config::fTestNet.load() ? TESTNET_RPC_PORT : MAINNET_RPC_PORT));
 

@@ -229,11 +229,11 @@ namespace LLP
 
 
         /** Constructor **/
-        TritiumNode(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false);
+        TritiumNode(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool fDDOSIn = false);
 
 
         /** Constructor **/
-        TritiumNode(DDOS_Filter* DDOS_IN, bool isDDOS = false);
+        TritiumNode(DDOS_Filter* DDOS_IN, bool fDDOSIn = false);
 
 
         /** Default Destructor **/

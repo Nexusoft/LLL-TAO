@@ -108,8 +108,8 @@ namespace LLP
 
 
     /** Constructor **/
-    TritiumNode::TritiumNode(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS)
-    : BaseConnection<TritiumPacket>(SOCKET_IN, DDOS_IN, isDDOS)
+    TritiumNode::TritiumNode(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool fDDOSIn)
+    : BaseConnection<TritiumPacket>(SOCKET_IN, DDOS_IN, fDDOSIn)
     , fAuthorized(false)
     , fInitialized(false)
     , nSubscriptions(0)
@@ -134,8 +134,8 @@ namespace LLP
 
 
     /** Constructor **/
-    TritiumNode::TritiumNode(DDOS_Filter* DDOS_IN, bool isDDOS)
-    : BaseConnection<TritiumPacket>(DDOS_IN, isDDOS)
+    TritiumNode::TritiumNode(DDOS_Filter* DDOS_IN, bool fDDOSIn)
+    : BaseConnection<TritiumPacket>(DDOS_IN, fDDOSIn)
     , fAuthorized(false)
     , fInitialized(false)
     , nSubscriptions(0)

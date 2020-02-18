@@ -323,7 +323,11 @@ namespace TAO
                 return debug::error(FUNCTION, "channel out of range");
 
             /* Check that the time was within range. */
-            if(GetBlockTime() > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT * 60)
+            if(nVersion <= 8 && GetBlockTime() > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT * 60)
+                return debug::error(FUNCTION, "block timestamp too far in the future");
+
+            /* Check that the time was within range. */
+            if(nVersion >= 8 && GetBlockTime() > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
                 return debug::error(FUNCTION, "block timestamp too far in the future");
 
             /* Check the Current Version Block Time-Lock. */

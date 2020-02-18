@@ -31,11 +31,11 @@ namespace LLP
 
     /** Default Constructor **/
     template <class ProtocolType>
-    DataThread<ProtocolType>::DataThread(uint32_t nID, bool fIsDDOS,
+    DataThread<ProtocolType>::DataThread(uint32_t nID, bool ffDDOSIn,
                                          uint32_t rScore, uint32_t cScore,
                                          uint32_t nTimeout, bool fMeter)
     : SLOT_MUTEX      ( )
-    , fDDOS           (fIsDDOS)
+    , fDDOS           (ffDDOSIn)
     , fMETER          (fMeter)
     , fDestruct       (false)
     , nIncoming       (0)

@@ -47,15 +47,15 @@ namespace LLP
 
 
     /** Constructor **/
-    RPCNode::RPCNode(LLP::Socket SOCKET_IN, LLP::DDOS_Filter* DDOS_IN, bool isDDOS)
-    : HTTPNode(SOCKET_IN, DDOS_IN, isDDOS)
+    RPCNode::RPCNode(LLP::Socket SOCKET_IN, LLP::DDOS_Filter* DDOS_IN, bool fDDOSIn)
+    : HTTPNode(SOCKET_IN, DDOS_IN, fDDOSIn)
     {
     }
 
 
     /** Constructor **/
-    RPCNode::RPCNode(LLP::DDOS_Filter* DDOS_IN, bool isDDOS)
-    : HTTPNode(DDOS_IN, isDDOS)
+    RPCNode::RPCNode(LLP::DDOS_Filter* DDOS_IN, bool fDDOSIn)
+    : HTTPNode(DDOS_IN, fDDOSIn)
     {
     }
 
