@@ -303,14 +303,6 @@ namespace TAO
         /* Populate block header data for a new block. */
         void AddBlockData(const TAO::Ledger::BlockState& stateBest, const uint32_t nChannel, TAO::Ledger::TritiumBlock& block)
         {
-            /* Modulate the Block Versions if they correspond to their proper time stamp */
-            /* Normally, if condition is true and block version is current version unless an activation is pending */
-            uint32_t nCurrent = CurrentBlockVersion();
-            if(BlockVersionActive(runtime::unifiedtimestamp(), nCurrent)) // --> New Block Version Activation Switch
-                block.nVersion = nCurrent;
-            else
-                block.nVersion = nCurrent - 1;
-
             /* Calculate the merkle root (stake minter must handle channel 0 after completing coinstake producer setup) */
             if(nChannel != 0)
             {
@@ -341,6 +333,7 @@ namespace TAO
             const uint32_t nChannel, TAO::Ledger::TritiumBlock& block, const uint64_t nExtraNonce,
             Legacy::Coinbase *pCoinbaseRecipients)
         {
+
             /* Lock this user's sigchain. */
             LOCK(TAO::API::users->CREATE_MUTEX);
 
@@ -350,6 +343,14 @@ namespace TAO
 
             /* Set the block to null. */
             block.SetNull();
+
+            /* Modulate the Block Versions if they correspond to their proper time stamp */
+            /* Normally, if condition is true and block version is current version unless an activation is pending */
+            uint32_t nCurrent = CurrentBlockVersion();
+            if(BlockVersionActive(runtime::unifiedtimestamp(), nCurrent)) // --> New Block Version Activation Switch
+                block.nVersion = nCurrent;
+            else
+                block.nVersion = nCurrent - 1;
 
             /* Handle if the block is cached. */
             if(ChainState::stateBest.load().GetHash() == blockCache[nChannel].load().hashPrevBlock)
