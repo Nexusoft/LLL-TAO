@@ -423,9 +423,9 @@ namespace LLP
                 if(AddConnection(addr.ToStringIP(), addr.GetPort()))
                 {
                     /* If address is DNS, log message on connection. */
-                    std::string dns_name;
-                    if(pAddressManager->GetDNSName(addr, dns_name))
-                        debug::log(3, FUNCTION, "Connected to DNS Address: ", dns_name);
+                    std::string strDNS;
+                    if(pAddressManager->GetDNSName(addr, strDNS))
+                        debug::log(3, FUNCTION, "Connected to DNS Address: ", strDNS);
 
                     /* Sleep in 1 second intervals for easy break on shutdown. */
                     for(int i = 0; i < (nSleepTime / 1000) && !config::fShutdown.load(); ++i)
