@@ -247,9 +247,12 @@ namespace LLP
     const uint32_t TIME_ADJUSTMENT_VALUE = 299;
     void TimeNode::AdjustmentThread()
     {
+        /* Switch for different time adjustment intervals. */
+        static const uint32_t TIME_ADJUSTMENT_SPAN = (config::fTestNet ? 60 : 600);
+
         /* Check for the current adjustment period. */
         uint32_t nCurrentAdjustment = (TAO::Ledger::BlockVersionActive(runtime::unifiedtimestamp(), 8) ?
-            ((runtime::unifiedtimestamp() - TAO::Ledger::CurrentBlockTimelock()) / 600) : 0);
+            ((runtime::unifiedtimestamp() - TAO::Ledger::CurrentBlockTimelock()) / TIME_ADJUSTMENT_SPAN) : 0);
 
         /* Check for valid adjustments. */
         if(nCurrentAdjustment >= TIME_ADJUSTMENT_VALUE)
@@ -270,7 +273,7 @@ namespace LLP
                 continue;
 
             /* Grab the current time-lock. */
-            uint32_t nElapsed   = (runtime::unifiedtimestamp() - TAO::Ledger::CurrentBlockTimelock()) / 600;
+            uint32_t nElapsed   = (runtime::unifiedtimestamp() - TAO::Ledger::CurrentBlockTimelock()) / TIME_ADJUSTMENT_SPAN;
             if(nElapsed > nCurrentAdjustment)
             {
                 /* This should adjust by one second at a time, but we must be prepared to handle things if this assumption fails. */

@@ -489,7 +489,7 @@ namespace TAO
                             nCoinbaseRewards[1] += nValue;
 
                             /* Log the genesis. */
-                            debug::log(2, "V7_AMBASSADOR GENESIS ", genesis.ToString());
+                            debug::log(2, "AMBASSADOR GENESIS ", genesis.ToString());
                         }
                     }
 
