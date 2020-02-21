@@ -36,7 +36,7 @@ namespace TAO
 
 
         /* The testnet current transaction version. */
-        const uint32_t TESTNET_TRANSACTION_CURRENT_VERSION = 1;
+        const uint32_t TESTNET_TRANSACTION_CURRENT_VERSION = 2;
 
 
          /* Activated test network at timestamp. */
