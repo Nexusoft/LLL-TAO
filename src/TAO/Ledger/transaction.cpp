@@ -214,7 +214,7 @@ namespace TAO
         {
             /* Check transaction version */
             if(!TransactionVersionActive(nTimestamp, nVersion))
-                return debug::error(FUNCTION, "invalid transaction version");
+                return debug::error(FUNCTION, "invalid transaction version ", nVersion);
 
             /* Check for genesis valid numbers. */
             if(hashGenesis == 0)
