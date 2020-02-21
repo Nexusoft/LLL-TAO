@@ -338,6 +338,9 @@ int main(int argc, char** argv)
         }
     }
 
+    /* Wait for time activation thread to close. */
+    LLP::TimeNode::TIME_ADJUSTMENT.join();
+
 
     /* Shutdown metrics. */
     timer.Reset();
