@@ -165,12 +165,12 @@ namespace TAO
 
             /** get_status
             *
-            *  Returns a status for the invoice (draft/outstanding/paid/cancelled)
+            *  Returns a status for the invoice (outstanding/paid/cancelled)
             *
             *  @param[in] state The state register containing the invoice data
             *  @param[in] hashRecipient The genesis hash of the invoice recipient
             *
-            *  @return string containing the invoice status (draft/outstanding/paid/cancelled)
+            *  @return string containing the invoice status (outstanding/paid/cancelled)
             *
             **/
             static std::string get_status(const TAO::Register::State& state, const uint256_t& hashRecipient);

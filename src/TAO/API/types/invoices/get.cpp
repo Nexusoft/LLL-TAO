@@ -19,6 +19,8 @@ ________________________________________________________________________________
 
 #include <TAO/Operation/include/enum.h>
 
+#include <TAO/Ledger/include/timelocks.h>
+
 #include <LLD/include/global.h>
 
 
@@ -32,6 +34,11 @@ namespace TAO
         /* Get's the description of an item. */
         json::json Invoices::Get(const json::json& params, bool fHelp)
         {
+            /* First ensure that transaction version 2 active, as the conditions required for invoices were not enabled until v2 */
+            const uint32_t nCurrent = TAO::Ledger::CurrentTransactionVersion();
+            if(nCurrent < 2 || (nCurrent == 2 && !TAO::Ledger::TransactionVersionActive(runtime::unifiedtimestamp(), 2)))
+                throw APIException(-254, "Invoices API not yet active.");
+
             json::json ret;
 
             /* Get the Register ID. */
@@ -87,7 +94,7 @@ namespace TAO
     
             /* If the Invoice currently has no owner then we know it is outstanding */
             if(state.hashOwner == 0)
-                strStatus = "OUSTANDING";
+                strStatus = "OUTSTANDING";
             else if(state.hashOwner == hashRecipient)
                 strStatus = "PAID";
             else

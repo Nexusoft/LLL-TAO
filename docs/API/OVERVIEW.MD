@@ -388,4 +388,5 @@ Error Codes
 | -250 | Invoice is not yours to pay |
 | -251 | Missing name from or address from |
 | -252 | Account to debit is not for the required token |
+| -254 | Invoices API not yet active |
 

@@ -168,7 +168,7 @@ Retrieves information about an invoice. The API supports an alternative endpoint
     "amount": 8.8,
     "token": "0",
     "status": "PAID"
-    }
+}
 ```
 
 
@@ -199,7 +199,7 @@ Retrieves information about an invoice. The API supports an alternative endpoint
 
 `token` : The register address of the token that this invoice should be paid in.  Set to 0 for NXS transactions
 
-`status` : The current status of this invoice.  Values can be `OUSTANDING` (the invoice has been issued but not paid), `PAID` (the invoice has been paid by the recipient), or `CANCELLED` (the invoice was cancelled by the issuer before payment).
+`status` : The current status of this invoice.  Values can be `OUTSTANDING` (the invoice has been issued but not paid), `PAID` (the invoice has been paid by the recipient), or `CANCELLED` (the invoice was cancelled by the issuer before payment).
 
 ***
 
