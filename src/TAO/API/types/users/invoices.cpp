@@ -63,10 +63,15 @@ namespace TAO
             if(params.find("page") != params.end())
                 nPage = std::stoul(params["page"].get<std::string>());
 
-            /* Check for username parameter. */
+            /* Check for limit parameter. */
             uint32_t nLimit = 100;
             if(params.find("limit") != params.end())
                 nLimit = std::stoul(params["limit"].get<std::string>());
+
+            /* Check for status parameter. */
+            std::string strStatus = "";
+            if(params.find("status") != params.end())
+                strStatus = params["status"].get<std::string>();
 
             /* Get the list of registers owned by this sig chain */
             std::vector<TAO::Register::Address> vAddresses;
@@ -93,6 +98,9 @@ namespace TAO
             uint32_t nTotal = 0;
             for(const auto& state : vRegisters)
             {
+                /* The invoice JSON data */
+                json::json invoice;
+
                 /* Only include read only register type */
                 if(state.second.nType != TAO::Register::REGISTER::READONLY)
                     continue;
@@ -103,6 +111,18 @@ namespace TAO
 
                 if(type != TAO::API::USER_TYPES::INVOICE)
                     continue;
+
+                
+                /* check status filter */
+                if(!strStatus.empty())
+                {
+                    /* deserialize the invoice data */
+                    invoice = Invoices::InvoiceToJSON(params, state.second, state.first);
+
+                    /* Get the invoice status and skip if it doesn't match the filter */
+                    if( invoice["status"].get<std::string>() != strStatus )
+                        continue;
+                }
 
                 /* Get the current page. */
                 uint32_t nCurrentPage = (nTotal / nLimit) ;
@@ -120,11 +140,12 @@ namespace TAO
                 if(nTotal - (nPage * nLimit) > nLimit)
                     break;
 
-                /* Populate the response JSON */
-                json::json json = Invoices::InvoiceToJSON(params, state.second, state.first);
+                /* deserialize the invoice data if we haven't already */
+                if(invoice.empty())
+                    invoice = Invoices::InvoiceToJSON(params, state.second, state.first);
             
-                /* Add this objects json to the response */
-                ret.push_back(json);
+                /* Add the invoice json to the response */
+                ret.push_back(invoice);
 
             }
 
