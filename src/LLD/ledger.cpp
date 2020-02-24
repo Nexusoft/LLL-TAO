@@ -23,7 +23,9 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/types/state.h>
+#include <TAO/Ledger/types/merkle.h>
 #include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/types/client.h>
 
 #include <tuple>
 
@@ -142,6 +144,16 @@ namespace LLD
     /*  Reads a transaction from the ledger DB. */
     const TAO::Ledger::Transaction LedgerDB::ReadTx(const uint512_t& hashTx, const uint8_t nFlags)
     {
+        /* Check for client mode. */
+        if(config::GetBoolArg("-client"))
+        {
+            TAO::Ledger::MerkleTx mTX;
+            if(!Client->ReadTx(hashTx, mTX, nFlags))
+                throw debug::exception(FUNCTION, "failed to read -client tx");
+
+            return mTX;
+        }
+
         /* Special check for memory pool. */
         TAO::Ledger::Transaction tx;
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::MINER)
@@ -169,6 +181,19 @@ namespace LLD
     /* Reads a transaction from the ledger DB. */
     bool LedgerDB::ReadTx(const uint512_t& hashTx, TAO::Ledger::Transaction &tx, const uint8_t nFlags)
     {
+        /* Check for client mode. */
+        if(config::GetBoolArg("-client"))
+        {
+            /* Get the merkle transaction from disk. */
+            TAO::Ledger::MerkleTx mTX;
+            if(!Client->ReadTx(hashTx, mTX, nFlags))
+                return false;
+
+            /* Set the return value. */
+            tx = mTX;
+            return true;
+        }
+
         /* Special check for memory pool. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::MINER)
         {
@@ -482,6 +507,8 @@ namespace LLD
     /* Reads a block state from disk from a tx index. */
     bool LedgerDB::ReadBlock(const uint512_t& hashTx, TAO::Ledger::BlockState &state)
     {
+        //TODO: add -client switch for indexed blocks
+
         return Read(std::make_pair(std::string("index"), hashTx), state);
     }
 
@@ -489,6 +516,8 @@ namespace LLD
     /* Reads a block state from disk from a tx index. */
     bool LedgerDB::ReadBlock(const uint32_t& nBlockHeight, TAO::Ledger::BlockState &state)
     {
+        //TODO: add -client switch for indexed blocks
+
         return Read(std::make_pair(std::string("height"), nBlockHeight), state);
     }
 
@@ -784,6 +813,19 @@ namespace LLD
     /* Reads a block state object from disk. */
     bool LedgerDB::ReadBlock(const uint1024_t& hashBlock, TAO::Ledger::BlockState &state)
     {
+        /* Check for client mode. */
+        if(config::GetBoolArg("-client"))
+        {
+            /* Get the merkle transaction from disk. */
+            TAO::Ledger::ClientBlock block;
+            if(!Client->ReadBlock(hashBlock, block))
+                return false;
+
+            /* Set the return value. */
+            state = block;
+            return true;
+        }
+
         return Read(hashBlock, state);
     }
 
@@ -791,6 +833,19 @@ namespace LLD
     /* Reads a block state object from disk for an atomic object. */
     bool LedgerDB::ReadBlock(const uint1024_t& hashBlock, memory::atomic<TAO::Ledger::BlockState> &atomicState)
     {
+        /* Check for client mode. */
+        if(config::GetBoolArg("-client"))
+        {
+            /* Get the merkle transaction from disk. */
+            TAO::Ledger::ClientBlock block;
+            if(!Client->ReadBlock(hashBlock, block))
+                return false;
+
+            /* Set the return value. */
+            atomicState.store(block);
+            return true;
+        }
+
         TAO::Ledger::BlockState state;
         if(!Read(hashBlock, state))
             return false;
