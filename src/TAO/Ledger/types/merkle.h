@@ -79,6 +79,14 @@ namespace TAO
             MerkleTx& operator=(MerkleTx&& tx) noexcept;
 
 
+            /** Copy assignment. **/
+            MerkleTx& operator=(const Transaction& tx);
+
+
+            /** Move assignment. **/
+            MerkleTx& operator=(Transaction&& tx) noexcept;
+
+
             /** Default Destructor **/
             virtual ~MerkleTx();
 

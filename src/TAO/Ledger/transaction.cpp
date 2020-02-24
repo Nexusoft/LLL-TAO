@@ -42,7 +42,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/stake.h>
 #include <TAO/Ledger/include/stake_change.h>
 #include <TAO/Ledger/include/timelocks.h>
-#include <TAO/Ledger/types/transaction.h>
+#include <TAO/Ledger/types/merkle.h>
 #include <TAO/Ledger/types/mempool.h>
 
 #include <Util/include/debug.h>
@@ -110,6 +110,42 @@ namespace TAO
         }
 
 
+        /* Copy constructor. */
+        Transaction::Transaction(const MerkleTx& tx)
+        : vContracts   (tx.vContracts)
+        , nVersion     (tx.nVersion)
+        , nSequence    (tx.nSequence)
+        , nTimestamp   (tx.nTimestamp)
+        , hashNext     (tx.hashNext)
+        , hashRecovery (tx.hashRecovery)
+        , hashGenesis  (tx.hashGenesis)
+        , hashPrevTx   (tx.hashPrevTx)
+        , nKeyType     (tx.nKeyType)
+        , nNextType    (tx.nNextType)
+        , vchPubKey    (tx.vchPubKey)
+        , vchSig       (tx.vchSig)
+        {
+        }
+
+
+        /* Move constructor. */
+        Transaction::Transaction(MerkleTx&& tx) noexcept
+        : vContracts   (std::move(tx.vContracts))
+        , nVersion     (std::move(tx.nVersion))
+        , nSequence    (std::move(tx.nSequence))
+        , nTimestamp   (std::move(tx.nTimestamp))
+        , hashNext     (std::move(tx.hashNext))
+        , hashRecovery (std::move(tx.hashRecovery))
+        , hashGenesis  (std::move(tx.hashGenesis))
+        , hashPrevTx   (std::move(tx.hashPrevTx))
+        , nKeyType     (std::move(tx.nKeyType))
+        , nNextType    (std::move(tx.nNextType))
+        , vchPubKey    (std::move(tx.vchPubKey))
+        , vchSig       (std::move(tx.vchSig))
+        {
+        }
+
+
         /* Copy assignment. */
         Transaction& Transaction::operator=(const Transaction& tx)
         {
@@ -132,6 +168,46 @@ namespace TAO
 
         /* Move assignment. */
         Transaction& Transaction::operator=(Transaction&& tx) noexcept
+        {
+            vContracts   = std::move(tx.vContracts);
+            nVersion     = std::move(tx.nVersion);
+            nSequence    = std::move(tx.nSequence);
+            nTimestamp   = std::move(tx.nTimestamp);
+            hashNext     = std::move(tx.hashNext);
+            hashRecovery = std::move(tx.hashRecovery);
+            hashGenesis  = std::move(tx.hashGenesis);
+            hashPrevTx   = std::move(tx.hashPrevTx);
+            nKeyType     = std::move(tx.nKeyType);
+            nNextType    = std::move(tx.nNextType);
+            vchPubKey    = std::move(tx.vchPubKey);
+            vchSig       = std::move(tx.vchSig);
+
+            return *this;
+        }
+
+
+        /* Copy assignment. */
+        Transaction& Transaction::operator=(const MerkleTx& tx)
+        {
+            vContracts   = tx.vContracts;
+            nVersion     = tx.nVersion;
+            nSequence    = tx.nSequence;
+            nTimestamp   = tx.nTimestamp;
+            hashNext     = tx.hashNext;
+            hashRecovery = tx.hashRecovery;
+            hashGenesis  = tx.hashGenesis;
+            hashPrevTx   = tx.hashPrevTx;
+            nKeyType     = tx.nKeyType;
+            nNextType    = tx.nNextType;
+            vchPubKey    = tx.vchPubKey;
+            vchSig       = tx.vchSig;
+
+            return *this;
+        }
+
+
+        /* Move assignment. */
+        Transaction& Transaction::operator=(MerkleTx&& tx) noexcept
         {
             vContracts   = std::move(tx.vContracts);
             nVersion     = std::move(tx.nVersion);

@@ -377,7 +377,7 @@ namespace TAO
         {
             /* Check for client mode since this method should never be called except by a client. */
             if(!config::GetBoolArg("-client"))
-                return debug::error(FUNCTION, "cannot process block state if not in -client mode");
+                return debug::error(FUNCTION, "cannot process client block if not in -client mode");
 
             /* Read ledger DB for duplicate block. */
             if(LLD::Client->HasBlock(GetHash()))
@@ -392,7 +392,7 @@ namespace TAO
                 return debug::error(FUNCTION, "channel out of range");
 
             /* Check that the time was within range. */
-            if(GetBlockTime() > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT * 60)
+            if(GetBlockTime() > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
                 return debug::error(FUNCTION, "block timestamp too far in the future");
 
             /* Check the Current Version Block Time-Lock. */
