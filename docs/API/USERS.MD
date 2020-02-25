@@ -450,8 +450,9 @@ This will list off all of the assets owned by a signature chain.
     {
         "name": "myasset1",
         "address": "88dFaTWNYpoGuXtgkWrbQVfsJJ3Sfth5AP9yWqioxCLhHmTu6xo",
-        "timestamp": "1553227256"
-        "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1"
+        "created": "1553227256",
+        "modified": "1553227256",
+        "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1",
         "serial_number": "123456",
         "description": "This is the description of my asset",
         "shelf_location": "A9S2"
@@ -459,8 +460,9 @@ This will list off all of the assets owned by a signature chain.
     {
         "name": "myasset2",
         "address": "8B7SMKmECgYU1ydBQbzp5FCSe4AnkU2EwLE59D7eQDBpixmLZ2c",
-        "timestamp": "1553227128"
-        "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1"
+        "created": "1553227128",
+        "modified": "1553227128",
+        "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1",
         "serial_number": "78901234",
         "description": "This is the description of another asset",
         "shelf_location": "A3S6"
@@ -477,9 +479,9 @@ This will list off all of the assets owned by a signature chain.
 
 `address` : The register address of the asset.
 
-`ownership` : Only included for tokenized assets, this is the percentage of the asset owned by the caller, based on the number of tokens owned
+`owner` : The genesis hash of the signature chain that owns this asset.
 
-`timestamp` : The Unix timestamp of when the asset was last updated.
+`ownership` : Only included for tokenized assets, this is the percentage of the asset owned by the caller, based on the number of tokens owned
 
 `<fieldname>=<value>` : The key-value pair for each piece of data stored in the asset.
 
