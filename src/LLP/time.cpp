@@ -11,6 +11,9 @@
 ____________________________________________________________________________________________*/
 
 #include <LLP/types/time.h>
+#include <LLP/include/trust_address.h>
+#include <LLP/include/global.h>
+#include <LLP/include/manager.h>
 #include <LLP/templates/events.h>
 #include <LLP/templates/ddos.h>
 
@@ -129,8 +132,12 @@ namespace LLP
 
         /* On Disconnect Event, Reduce the Connection Count for Daemon */
         if(EVENT == EVENT_DISCONNECT)
-            return;
+        {
+            if(TIME_SERVER->pAddressManager)
+                TIME_SERVER->pAddressManager->AddAddress(GetAddress(), ConnectState::DROPPED);
 
+            return;
+        }
     }
 
 

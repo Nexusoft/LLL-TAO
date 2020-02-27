@@ -277,8 +277,9 @@ namespace LLP
 
 
         /* Put unconnected address info scores into a vector and sort them. */
-        uint8_t nFlags = ConnectState::NEW    |
-                        ConnectState::FAILED | ConnectState::DROPPED;
+        uint8_t nFlags = ConnectState::NEW     |
+                         ConnectState::FAILED  |
+                         ConnectState::DROPPED ;
 
         /* Critical section: Get address info for the selected nFlags. */
         {
@@ -550,7 +551,6 @@ namespace LLP
     void AddressManager::update_state(TrustAddress *pAddr, uint8_t nState)
     {
         uint64_t nTimestamp = runtime::unifiedtimestamp(true);
-
         switch(nState)
         {
           /* New State */

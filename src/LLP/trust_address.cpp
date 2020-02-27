@@ -18,8 +18,8 @@ namespace
     /* constant variables to tweak score */
     const double nConnectedWeight = 100.0;
     const double nSessionWeight   = 80.0;
-    const double nDroppedWeight = 2.0;
-    const double nFailedWeight = 5.0;
+    const double nDroppedWeight = 5.0;
+    const double nFailedWeight = 20.0;
     const double nFailsWeight = 10.0;
     const double nLatencyWeight = 10.0;
 
@@ -50,7 +50,7 @@ namespace LLP
 
 
     /*  Copy constructor */
-    TrustAddress::TrustAddress(const TrustAddress &other)
+    TrustAddress::TrustAddress(const TrustAddress& other)
     : BaseAddress()
     , nSession(other.nSession)
     , nLastSeen(other.nLastSeen)
@@ -71,7 +71,7 @@ namespace LLP
 
 
     /*  Copy constructors */
-    TrustAddress::TrustAddress(const BaseAddress &other)
+    TrustAddress::TrustAddress(const BaseAddress& other)
     : BaseAddress(other)
     , nSession(0)
     , nLastSeen(0)
@@ -94,7 +94,7 @@ namespace LLP
 
 
     /* Copy assignment operator */
-    TrustAddress &TrustAddress::operator=(const TrustAddress &other)
+    TrustAddress& TrustAddress::operator=(const TrustAddress& other)
     {
         for(uint8_t i = 0; i < 16; ++i)
             this->ip[i] = other.ip[i];
@@ -117,7 +117,7 @@ namespace LLP
 
 
     /* Copy assignment operator */
-    TrustAddress &TrustAddress::operator=(const BaseAddress &other)
+    TrustAddress& TrustAddress::operator=(const BaseAddress& other)
     {
         this->SetPort(other.GetPort());
         this->SetIP(other);
@@ -146,12 +146,12 @@ namespace LLP
 
         /* Add up the good stats. */
         double dGood = (::nConnectedWeight * std::min(nConnected, ::nMaxConnected)) +
+                       (::nDroppedWeight * std::min(nDropped, ::nMaxDropped)) +
                        (::nLatencyWeight * dLatencyScore) +
                        (::nSessionWeight * nSession);
 
         /* Add up the bad stats. */
-        double dBad = (::nDroppedWeight * std::min(nDropped, ::nMaxDropped)) +
-                      (::nFailedWeight  * std::min(nFailed,  ::nMaxFailed))  +
+        double dBad = (::nFailedWeight  * std::min(nFailed,  ::nMaxFailed))  +
                       (::nFailsWeight   * std::min(nFails,   ::nMaxFails));
 
         /* Subtract the bad stats from the dGood stats. */
@@ -175,7 +175,7 @@ namespace LLP
     }
 
     /* Comparison less than operator used for sorting */
-    bool operator<(const TrustAddress &info1, const TrustAddress &info2)
+    bool operator<(const TrustAddress& info1, const TrustAddress& info2)
     {
         const double s1 = info1.Score();
         const double s2 = info2.Score();
