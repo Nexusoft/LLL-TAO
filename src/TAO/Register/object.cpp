@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/include/constants.h>
+#include <TAO/Ledger/include/timelocks.h>
 
 
 /* Global TAO namespace. */
@@ -237,7 +238,16 @@ namespace TAO
 
                 /* non standard object cost is dependant on the data size. */
                 case TAO::Register::OBJECTS::NONSTANDARD:
-                    return std::max(TAO::Ledger::MIN_DATA_FEE, vchState.size() * TAO::Ledger::DATA_FEE);
+                {
+                    /* The fee changed with transaction version 2 so need to apply version-dependent fee. NOTE we can use the 
+                       nCreated time to determine the transaction version, as this is set to the transaction time when it is 
+                       first created.  */
+                    const uint32_t nCurrent = TAO::Ledger::CurrentTransactionVersion();
+                    if(nCurrent < 2 || (nCurrent == 2 && !TAO::Ledger::TransactionVersionActive(nCreated, 2)))    
+                        return std::max(TAO::Ledger::MIN_DATA_FEE, vchState.size() * TAO::Ledger::DATA_FEE_V1);
+                    else
+                        return std::max(TAO::Ledger::MIN_DATA_FEE, vchState.size() * TAO::Ledger::DATA_FEE);
+                }
 
                 default:
                     return TAO::Ledger::MIN_DATA_FEE;

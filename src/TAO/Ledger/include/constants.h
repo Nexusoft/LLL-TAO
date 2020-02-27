@@ -210,7 +210,8 @@ namespace TAO
 
 
         /* The cost per byte to create registers */
-        const uint64_t DATA_FEE = 0.01 * NXS_COIN;
+        const uint64_t DATA_FEE_V1 = 0.01 * NXS_COIN;
+        const uint64_t DATA_FEE = 0.001 * NXS_COIN;
 
 
         /* The cost per contract when creating transactions faster than the fee-free threshold */
