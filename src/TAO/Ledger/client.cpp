@@ -84,7 +84,7 @@ namespace TAO
         }
 
 
-        /** Default Constructor. **/
+        /* Default Constructor. */
         ClientBlock::ClientBlock()
         : Block            ( )
         , nTime            (runtime::unifiedtimestamp())
@@ -304,21 +304,21 @@ namespace TAO
         }
 
 
-        /** Equivilence checking **/
+        /* Equivilence checking */
         bool ClientBlock::operator==(const ClientBlock& block) const
         {
             return GetHash() == block.GetHash();
         }
 
 
-        /** Equivilence checking **/
+        /* Equivilence checking */
         bool ClientBlock::operator!=(const ClientBlock& block) const
         {
             return GetHash() != block.GetHash();
         }
 
 
-        /** Not operator overloading. **/
+        /* Not operator overloading. */
         bool ClientBlock::operator!(void) const
         {
             return IsNull();
@@ -455,7 +455,7 @@ namespace TAO
             if(clientPrev.nHeight + 1 != nHeight)
                 return debug::error(FUNCTION, "incorrect block height.");
 
-            /* Check that the nBits match the current Difficulty. **/
+            /* Check that the nBits match the current Difficulty. */
             if(nBits != GetNextTargetRequired(clientPrev, GetChannel()))
                 return debug::error(FUNCTION, "incorrect proof-of-work/proof-of-stake");
 
@@ -645,7 +645,7 @@ namespace TAO
         }
 
 
-        /** Connect a block state into chain. **/
+        /* Connect a block state into chain. */
         bool ClientBlock::Connect() const
         {
             /* Update the previous state's next pointer. */
@@ -665,7 +665,7 @@ namespace TAO
         }
 
 
-        /** Disconnect a block state from the chain. **/
+        /* Disconnect a block state from the chain. */
         bool ClientBlock::Disconnect() const
         {
             /* Update the previous state's next pointer. */
