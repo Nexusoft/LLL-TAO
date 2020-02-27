@@ -651,6 +651,10 @@ namespace LLP
                             /* Subscribe. */
                             if(INCOMING.MESSAGE == ACTION::SUBSCRIBE)
                             {
+                                /* Check for client mode since this method should never be called except by a client. */
+                                if(config::GetBoolArg("-client"))
+                                    return debug::drop(NODE, "ACTION::SUBSCRIBE::BLOCK disabled in -client mode");
+
                                 /* Set the block flag. */
                                 nNotifications |= SUBSCRIPTION::BLOCK;
 
@@ -659,6 +663,10 @@ namespace LLP
                             }
                             else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
                             {
+                                /* Check for client mode since this method should never be called except by a client. */
+                                if(config::GetBoolArg("-client"))
+                                    return debug::drop(NODE, "ACTION::UNSUBSCRIBE::BLOCK disabled in -client mode");
+
                                 /* Unset the block flag. */
                                 nNotifications &= ~SUBSCRIPTION::BLOCK;
 
@@ -751,6 +759,10 @@ namespace LLP
                             /* Subscribe. */
                             if(INCOMING.MESSAGE == ACTION::SUBSCRIBE)
                             {
+                                /* Check for client mode since this method should never be called except by a client. */
+                                if(config::GetBoolArg("-client"))
+                                    return debug::drop(NODE, "ACTION::SUBSCRIBE::CHECKPOINT disabled in -client mode");
+
                                 /* Set the checkpoints flag. */
                                 nNotifications |= SUBSCRIPTION::CHECKPOINT;
 
@@ -763,6 +775,10 @@ namespace LLP
                             }
                             else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
                             {
+                                /* Check for client mode since this method should never be called except by a client. */
+                                if(config::GetBoolArg("-client"))
+                                    return debug::drop(NODE, "ACTION::UNSUBSCRIBE::CHECKPOINT disabled in -client mode");
+
                                 /* Unset the checkpoints flag. */
                                 nNotifications &= ~SUBSCRIPTION::CHECKPOINT;
 
@@ -819,6 +835,10 @@ namespace LLP
                             /* Subscribe. */
                             if(INCOMING.MESSAGE == ACTION::SUBSCRIBE)
                             {
+                                /* Check for client mode since this method should never be called except by a client. */
+                                if(config::GetBoolArg("-client"))
+                                    return debug::drop(NODE, "ACTION::SUBSCRIBE::LASTINDEX disabled in -client mode");
+
                                 /* Set the last flag. */
                                 nNotifications |= SUBSCRIPTION::LASTINDEX;
 
@@ -827,6 +847,10 @@ namespace LLP
                             }
                             else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
                             {
+                                /* Check for client mode since this method should never be called except by a client. */
+                                if(config::GetBoolArg("-client"))
+                                    return debug::drop(NODE, "ACTION::UNSUBSCRIBE::LASTINDEX disabled in -client mode");
+
                                 /* Unset the last flag. */
                                 nNotifications &= ~SUBSCRIPTION::LASTINDEX;
 
@@ -896,6 +920,10 @@ namespace LLP
                             /* Subscribe. */
                             if(INCOMING.MESSAGE == ACTION::SUBSCRIBE)
                             {
+                                /* Check for client mode since this method should never be called except by a client. */
+                                if(config::GetBoolArg("-client"))
+                                    return debug::drop(NODE, "ACTION::SUBSCRIBE::SIGCHAIN disabled in -client mode");
+
                                 /* Set the best chain flag. */
                                 nNotifications |= SUBSCRIPTION::SIGCHAIN;
 
@@ -904,6 +932,10 @@ namespace LLP
                             }
                             else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
                             {
+                                /* Check for client mode since this method should never be called except by a client. */
+                                if(config::GetBoolArg("-client"))
+                                    return debug::drop(NODE, "ACTION::UNSUBSCRIBE::SIGCHAIN disabled in -client mode");
+
                                 /* Unset the bestchain flag. */
                                 nNotifications &= ~SUBSCRIPTION::SIGCHAIN;
 
@@ -1438,12 +1470,13 @@ namespace LLP
                     ssPacket >> nType;
 
                     /* Check for legacy or transactions specifiers. */
-                    bool fLegacy = false, fTransactions = false;
-                    if(nType == SPECIFIER::LEGACY || nType == SPECIFIER::TRANSACTIONS)
+                    bool fLegacy = false, fTransactions = false, fClient = false;
+                    if(nType == SPECIFIER::LEGACY || nType == SPECIFIER::TRANSACTIONS || nType == SPECIFIER::CLIENT)
                     {
                         /* Set specifiers. */
                         fLegacy       = (nType == SPECIFIER::LEGACY);
                         fTransactions = (nType == SPECIFIER::TRANSACTIONS);
+                        fClient       = (nType == SPECIFIER::CLIENT);
 
                         /* Go to next type in stream. */
                         ssPacket >> nType;
@@ -1455,6 +1488,14 @@ namespace LLP
                         /* Standard type for a block. */
                         case TYPES::BLOCK:
                         {
+                            /* Check for valid specifier. */
+                            if(fLegacy)
+                                return debug::drop(NODE, "TYPES::TRANSACTION: invalid specifier for TYPES::TRANSACTION");
+
+                            /* Check for client mode since this method should never be called except by a client. */
+                            if(config::GetBoolArg("-client"))
+                                return debug::drop(NODE, "ACTION::GET::BLOCK disabled in -client mode");
+
                             /* Get the index of block. */
                             uint1024_t hashBlock;
                             ssPacket >> hashBlock;
@@ -1466,6 +1507,10 @@ namespace LLP
                                 /* Push legacy blocks for less than version 7. */
                                 if(state.nVersion < 7)
                                 {
+                                    /* Check for bad client requests. */
+                                    if(fClient)
+                                        return debug::drop(NODE, "ACTION::GET: CLIENT specifier disabled for legacy blocks");
+
                                     /* Build legacy block from state. */
                                     Legacy::LegacyBlock block(state);
 
@@ -1474,6 +1519,21 @@ namespace LLP
                                 }
                                 else
                                 {
+                                    /* Handle for client blocks. */
+                                    if(fClient)
+                                    {
+                                        /* Build the client block and send off. */
+                                        TAO::Ledger::ClientBlock block(state);
+
+                                        /* Push the new client block. */
+                                        PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::CLIENT), block);
+
+                                        /* Debug output. */
+                                        debug::log(3, NODE, "ACTION::GET: CLIENT::BLOCK ", hashBlock.SubString());
+
+                                        break;
+                                    }
+
                                     /* Build tritium block from state. */
                                     TAO::Ledger::TritiumBlock block(state);
 
@@ -1525,8 +1585,8 @@ namespace LLP
                         case TYPES::TRANSACTION:
                         {
                             /* Check for valid specifier. */
-                            if(fTransactions)
-                                return debug::drop(NODE, "ACTION::GET: cannot use SPECIFIER::TRANSACTIONS for TYPES::TRANSACTION");
+                            if(fTransactions || fClient)
+                                return debug::drop(NODE, "TYPES::TRANSACTION: invalid specifier for TYPES::TRANSACTION");
 
                             /* Get the index of transaction. */
                             uint512_t hashTx;
@@ -1535,6 +1595,10 @@ namespace LLP
                             /* Check for legacy. */
                             if(fLegacy)
                             {
+                                /* Check for client mode since this method should never be called except by a client. */
+                                if(config::GetBoolArg("-client"))
+                                    return debug::drop(NODE, "ACTION::GET::LEGACY::TRANSACTION disabled in -client mode");
+
                                 /* Check legacy database. */
                                 Legacy::Transaction tx;
                                 if(LLD::Legacy->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
@@ -1576,6 +1640,14 @@ namespace LLP
                         /* Standard type for status. */
                         case TYPES::STATUS:
                         {
+                            /* Be strict on the allowed specifiers. */
+                            if(fLegacy || fTransactions || fClient)
+                                return debug::drop(NODE, "TYPES::STATUS: invalid specifier for TYPES::TRANSACTION");
+
+                            /* Check for client mode since this method should never be called except by a client. */
+                            if(config::GetBoolArg("-client"))
+                                return debug::drop(NODE, "TYPES::STATUS: disabled in -client mode");
+
                             /* Check for available protocol version. */
                             if(nProtocolVersion < MIN_TRITIUM_VERSION)
                                 return true;
@@ -1691,6 +1763,10 @@ namespace LLP
                             /* Get the index of block. */
                             uint1024_t hashBlock;
                             ssPacket >> hashBlock;
+
+                            /* Check for client mode since this method should never be called except by a client. */
+                            if(config::GetBoolArg("-client"))
+                                ssResponse << uint8_t(SPECIFIER::CLIENT);
 
                             /* Check the database for the block. */
                             if(!LLD::Ledger->HasBlock(hashBlock))
@@ -2069,6 +2145,10 @@ namespace LLP
                     /* Handle for a legacy transaction. */
                     case SPECIFIER::LEGACY:
                     {
+                        /* Check for client mode since this method should never be called except by a client. */
+                        if(config::GetBoolArg("-client"))
+                            return debug::drop(NODE, "TYPES::BLOCK::LEGACY: disabled in -client mode");
+
                         /* Get the block from the stream. */
                         Legacy::LegacyBlock block;
                         ssPacket >> block;
@@ -2097,6 +2177,10 @@ namespace LLP
                     /* Handle for a tritium transaction. */
                     case SPECIFIER::TRITIUM:
                     {
+                        /* Check for client mode since this method should never be called except by a client. */
+                        if(config::GetBoolArg("-client"))
+                            return debug::drop(NODE, "TYPES::BLOCK::TRITIUM: disabled in -client mode");
+
                         /* Get the block from the stream. */
                         TAO::Ledger::TritiumBlock block;
                         ssPacket >> block;
@@ -2124,7 +2208,7 @@ namespace LLP
                                 debug::log(0, FUNCTION, "requesting missing tx ", tx.second.SubString());
                             }
 
-                            /* Ask for the block again last TODO: this can be cached for further optimization. */
+                            /* Ask for the block again last TODO: this block should be cached for further optimization. */
                             ssResponse << uint8_t(TYPES::BLOCK) << block.hashMissing;
 
                             /* Push the packet response. */
@@ -2152,6 +2236,10 @@ namespace LLP
                     /* Handle for a tritium transaction. */
                     case SPECIFIER::SYNC:
                     {
+                        /* Check for client mode since this method should never be called except by a client. */
+                        if(config::GetBoolArg("-client"))
+                            return debug::drop(NODE, "TYPES::BLOCK::SYNC: disabled in -client mode");
+
                         /* Check if this is an unsolicited sync block. */
                         //if(nCurrentSession != TAO::Ledger::nSyncSession)
                         //    return debug::drop(FUNCTION, "unsolicted sync block");
