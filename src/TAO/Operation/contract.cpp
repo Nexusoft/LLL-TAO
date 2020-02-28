@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/types/contract.h>
 
 #include <TAO/Ledger/types/transaction.h>
+#include <TAO/Ledger/include/timelocks.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -34,7 +35,7 @@ namespace TAO
         , hashCaller  (0)
         , nTimestamp  (0)
         , hashTx      (0)
-        , nVersion    (0)
+        , nVersion    (TAO::Ledger::CurrentTransactionVersion())
         {
         }
 

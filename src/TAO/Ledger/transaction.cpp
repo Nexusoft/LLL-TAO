@@ -59,7 +59,7 @@ namespace TAO
         /* Default Constructor. */
         Transaction::Transaction()
         : vContracts   ( )
-        , nVersion     (1)
+        , nVersion     (TAO::Ledger::CurrentTransactionVersion())
         , nSequence    (0)
         , nTimestamp   (runtime::unifiedtimestamp())
         , hashNext     (0)
