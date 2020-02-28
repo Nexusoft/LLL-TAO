@@ -696,28 +696,33 @@ namespace TAO
             /* Check for first. */
             if(IsFirst())
             {
-                /* Check for ambassador. */
-                uint32_t nSwitchVersion = (pblock ? pblock->nVersion : ChainState::stateBest.load().nVersion);
-                if(Ambassador(nSwitchVersion).find(hashGenesis) != Ambassador(nSwitchVersion).end())
+                
+                /* Check ambassador sigchains based on all versions, not the smaller subset of versions. */
+                for(uint32_t nSwitchVersion = 7; nSwitchVersion <= CurrentBlockVersion(); ++nSwitchVersion)
                 {
-                    /* Debug logging. */
-                    debug::log(1, FUNCTION, "Processing AMBASSADOR sigchain ", hashGenesis.SubString());
+                    /* Check for ambassador. */
+                    if(Ambassador(nSwitchVersion).find(hashGenesis) != Ambassador(nSwitchVersion).end())
+                    {
+                        /* Debug logging. */
+                        debug::log(1, FUNCTION, "Processing AMBASSADOR sigchain ", hashGenesis.SubString());
 
-                    /* Check that the hashes match. */
-                    if(Ambassador(nSwitchVersion).at(hashGenesis).first != PrevHash())
-                        return debug::error(FUNCTION, "AMBASSADOR sigchain using invalid credentials");
+                        /* Check that the hashes match. */
+                        if(Ambassador(nSwitchVersion).at(hashGenesis).first != PrevHash())
+                            return debug::error(FUNCTION, "AMBASSADOR sigchain using invalid credentials");
+                    }
+
+                    /* Check for developer. */
+                    if(Developer(nSwitchVersion).find(hashGenesis) != Developer(nSwitchVersion).end())
+                    {
+                        /* Debug logging. */
+                        debug::log(1, FUNCTION, "Processing DEVELOPER sigchain ", hashGenesis.SubString());
+
+                        /* Check that the hashes match. */
+                        if(DEVELOPER.at(hashGenesis).first != PrevHash())
+                            return debug::error(FUNCTION, "DEVELOPER sigchain using invalid credentials");
+                    }
                 }
 
-                /* Check for developer. */
-                if(Developer(nSwitchVersion).find(hashGenesis) != Developer(nSwitchVersion).end())
-                {
-                    /* Debug logging. */
-                    debug::log(1, FUNCTION, "Processing DEVELOPER sigchain ", hashGenesis.SubString());
-
-                    /* Check that the hashes match. */
-                    if(DEVELOPER.at(hashGenesis).first != PrevHash())
-                        return debug::error(FUNCTION, "DEVELOPER sigchain using invalid credentials");
-                }
 
                 /* Write specific transaction flags. */
                 if(nFlags == TAO::Ledger::FLAGS::BLOCK)
