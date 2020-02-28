@@ -57,6 +57,9 @@ namespace TAO
         {
             enum
             {
+                /** A system genesis is pre-pended with byte 0x00. SYSTEM genesis cannot be made by any users, only the system. **/
+                SYSTEM      = 0x00,
+
                 /** A mainnet genesis has to be pre-pended with byte 0xa1 **/
                 MAINNET     = 0xa1,
 
