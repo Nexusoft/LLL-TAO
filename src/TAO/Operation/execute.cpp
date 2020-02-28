@@ -337,6 +337,7 @@ namespace TAO
                         /* Register custody in SYSTEM ownership until claimed, unless the ForceTransfer flag has been set */
                         uint256_t hashNewOwner = (nType == TRANSFER::FORCE ? hashTransfer : 0);
 
+
                         /* Deserialize the pre-state byte from the contract. */
                         uint8_t nState = 0;
                         contract >>= nState;

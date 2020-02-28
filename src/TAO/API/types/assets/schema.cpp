@@ -60,11 +60,6 @@ namespace TAO
                 throw APIException(-34, "Asset not found");
 
             /* Only include non-standard object types */
-            if(object.nType != TAO::Register::REGISTER::OBJECT)
-            {
-                throw APIException(-35, "Specified name/address is not an asset.");
-            }
-
             if(object.nType == TAO::Register::REGISTER::OBJECT)
             {
                 /* parse object so that the data fields can be accessed */
@@ -75,6 +70,8 @@ namespace TAO
                 if(object.Standard() != TAO::Register::OBJECTS::NONSTANDARD)
                     throw APIException(-35, "Specified name/address is not an asset.");
             }
+            else
+                throw APIException(-35, "Specified name/address is not an asset.");
 
             /* Populate the response JSON */
             /* Get List of field names in this asset object */

@@ -69,10 +69,10 @@ namespace TAO
             }
 
             /* Sort transactions by timestamp from oldest to newest. */
-            std::sort(vContracts.begin(), vContracts.end(), 
-                [](const std::tuple<TAO::Operation::Contract, uint32_t, uint256_t> &a,  
-                const std::tuple<TAO::Operation::Contract, uint32_t, uint256_t> &b)
-                { 
+            std::sort(vContracts.begin(), vContracts.end(),
+                [](const std::tuple<TAO::Operation::Contract, uint32_t, uint256_t> &a,
+                   const std::tuple<TAO::Operation::Contract, uint32_t, uint256_t> &b)
+                {
                     return ( std::get<0>(a).Timestamp() < std::get<0>(b).Timestamp() );
                 });
 
@@ -102,10 +102,10 @@ namespace TAO
             get_events(hashGenesis, vContracts);
 
             /* Sort transactions by timestamp from oldest to newest. */
-            std::sort(vContracts.begin(), vContracts.end(), 
-                [](const std::pair<std::shared_ptr<Legacy::Transaction>, uint32_t> &a,  
+            std::sort(vContracts.begin(), vContracts.end(),
+                [](const std::pair<std::shared_ptr<Legacy::Transaction>, uint32_t> &a,
                 const std::pair<std::shared_ptr<Legacy::Transaction>, uint32_t> &b)
-                { 
+                {
                     return ( std::get<0>(a)->nTime < std::get<0>(b)->nTime );
                 });
 
@@ -138,11 +138,11 @@ namespace TAO
             /* Look back through all events to find those that are not yet processed. */
             while(LLD::Ledger->ReadEvent(hashGenesis, nSequence, tx))
             {
-                /* Check to see if we have 100 (or the user configured amount) consecutive processed events.  If we do then we 
+                /* Check to see if we have 100 (or the user configured amount) consecutive processed events.  If we do then we
                    assume all prior events are also processed.  This saves us having to scan the entire chain of events */
                 if(nConsecutive >= config::GetArg("-eventsdepth", 100))
                     break;
-                    
+
                 /* Loop through transaction contracts. */
                 uint32_t nContracts = tx.Size();
                 for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
@@ -316,7 +316,7 @@ namespace TAO
             /* Look back through all events to find those that are not yet processed. */
             while(LLD::Legacy->ReadEvent(hashGenesis, nSequence, tx))
             {
-                /* Check to see if we have 100 (or the user configured amount) consecutive processed events.  If we do then we 
+                /* Check to see if we have 100 (or the user configured amount) consecutive processed events.  If we do then we
                    assume all prior events are also processed.  This saves us having to scan the entire chain of events */
                 if(nConsecutive >= config::GetArg("-eventsdepth", 100))
                     break;
@@ -452,7 +452,7 @@ namespace TAO
                             /* Make sure we haven't already claimed it */
                             if(LLD::Ledger->HasProof(hashRegister, tx.GetHash(), nContract, TAO::Ledger::FLAGS::MEMPOOL))
                                 continue;
-                            
+
                             /* Add the contract and register address to the list */
                             vContracts.push_back(std::make_tuple(contract, nContract, hashRegister));
 
@@ -601,7 +601,7 @@ namespace TAO
 
                 /* The last modified time the balance of this token account changed */
                 uint64_t nModified = object.nModified;
-                
+
 
                 /* Loop through all events for the token (split payments). */
                 TAO::Ledger::Transaction tx;
