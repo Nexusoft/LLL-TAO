@@ -56,7 +56,7 @@ namespace TAO
             1536562800,        //--- Block Version 5 Testnet Activation:  09/10/2018 00:00:00 GMT - 7
             1537167600,        //--- Block Version 6 Testnet Activation:  09/17/2018 00:00:00 GMT - 7
             1572325200,        //--- Block Version 7 Testnet Activation:  10/28/2019 22:00:00 GMT - 7
-            1582920671         //--- Block Version 8 Testnet Activation:  02/28/2020 13:11:11 GMT - 7
+            1582922640         //--- Block Version 8 Testnet Activation:  02/28/2020 13:44:11 GMT - 7
         };
 
 
@@ -77,7 +77,7 @@ namespace TAO
         const uint32_t TESTNET_TRANSACTION_VERSION_TIMELOCK[]   =
         {
             1572325200,        //--- Transaction Version 1 Testnet Activation:  10/28/2019 22:00:00 GMT - 7
-            1582920671         //--- Transaction Version 2 Testnet Activation:  02/28/2020 13:11:11 GMT - 7
+            1582922640         //--- Transaction Version 2 Testnet Activation:  02/28/2020 13:44:11 GMT - 7
         };
 
 
