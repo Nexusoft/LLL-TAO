@@ -300,7 +300,7 @@ namespace LLP
                 debug::log(0, ANSI_COLOR_BRIGHT_CYAN, MAP_TIME_DATA.size(),
                     " Offsets | ", UNIFIED_AVERAGE_OFFSET.load(),
                     " Majority | ", runtime::unifiedtimestamp(),
-                    " ADJUSTMENT OF +", nAdjustment, " Seconds", ANSI_COLOR_RESET);
+                    " ADJUSTMENT OF +", nAdjustment, " Seconds (", nCurrentAdjustment, "/", TIME_ADJUSTMENT_VALUE, ")", ANSI_COLOR_RESET);
             }
 
             /* Check that the adjustment is complete. */
