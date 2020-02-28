@@ -311,7 +311,7 @@ namespace TAO
                             object.get<uint64_t>("stake"));
 
                         /* Check the account balance. */
-                        if(object.get<uint64_t>("trust") != (config::GetBoolArg("-trustboost") ? TAO::Ledger::TRUST_SCORE_MAX_TESTNET : 0))
+                        if(object.get<uint64_t>("trust") != (config::GetBoolArg("-trustboost") ? TAO::Ledger::ONE_YEAR : 0))
                             return debug::error(FUNCTION, "trust account can't be created with non-zero trust ",
                             object.get<uint64_t>("trust"));
 
