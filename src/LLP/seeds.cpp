@@ -105,6 +105,7 @@ namespace LLP
     {
         "node1.nexusoft.io",
         "node2.nexusoft.io",
+        "node4.nexusoft.io",
         "lisptest1.mercuryminer.com",
         "lisptest2.mercuryminer.com",
         "lisptest3.mercuryminer.com",
