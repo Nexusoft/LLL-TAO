@@ -461,7 +461,7 @@ namespace TAO
                 {
                     /* Grab the second value. */
                     fRight = GetValue(vRight);
-                    
+
                     break;
                 }
                 /* For unknown codes, always fail. */
@@ -536,14 +536,13 @@ namespace TAO
                         fRet = contains(vLeft, vRight);
 
                         break;
-                    } 
+                    }
                 }
             }
+
+            /* If we didn't obtain both values then it must evaluate to false */
             else
-            {
-                /* If we didn't obtain both values then it must evaluate to false */
                 fRet = false;
-            }
 
             /* Deallocate the values that we obtained and pushed to the stack */
             if(fRight)
@@ -551,9 +550,8 @@ namespace TAO
 
             if(fLeft)
                 deallocate(vLeft);
-            
-            
-            
+
+
             /* Return final response. */
             return fRet;
         }
