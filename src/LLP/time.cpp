@@ -26,6 +26,11 @@ std::atomic<int32_t> UNIFIED_AVERAGE_OFFSET;
 
 namespace LLP
 {
+
+    /** Mutex to lock time data adjustments. **/
+    std::mutex TIME_MUTEX;
+
+
     /** Map to keep track of current node's time data samples from other nodes. **/
     std::map<std::string, int32_t> MAP_TIME_DATA;
 
@@ -188,8 +193,12 @@ namespace LLP
             /* Close the Connection Gracefully if Received all Packets. */
             if(nSamples.Samples() >= 5)
             {
-                /* Add new time data by IP to the time data map. */
-                MAP_TIME_DATA[GetAddress().ToStringIP()] = nSamples.Majority();
+                {
+                    LOCK(TIME_MUTEX);
+
+                    /* Add new time data by IP to the time data map. */
+                    MAP_TIME_DATA[GetAddress().ToStringIP()] = nSamples.Majority();
+                }
 
                 /* Set the Unified Average to the Majority Seed. */
                 UNIFIED_AVERAGE_OFFSET.store(TimeNode::GetOffset());
@@ -239,11 +248,15 @@ namespace LLP
         /* Majority Object to check for consensus on time samples. */
         CMajority<int32_t> UNIFIED_MAJORITY;
 
-        /* Iterate the Time Data map to find the majority time seed. */
-        for(auto it = MAP_TIME_DATA.begin(); it != MAP_TIME_DATA.end(); ++it)
         {
-            /* Update the Unified Majority. */
-            UNIFIED_MAJORITY.Add(it->second);
+            LOCK(TIME_MUTEX);
+
+            /* Iterate the Time Data map to find the majority time seed. */
+            for(auto it = MAP_TIME_DATA.begin(); it != MAP_TIME_DATA.end(); ++it)
+            {
+                /* Update the Unified Majority. */
+                UNIFIED_MAJORITY.Add(it->second);
+            }
         }
 
         return UNIFIED_MAJORITY.Majority();
@@ -286,9 +299,13 @@ namespace LLP
                 /* This should adjust by one second at a time, but we must be prepared to handle things if this assumption fails. */
                 uint32_t nAdjustment = (std::min(TIME_ADJUSTMENT_VALUE, nElapsed) - nCurrentAdjustment);
 
-                /* Iterate the Time Data map to find the majority time seed. */
-                for(auto it = MAP_TIME_DATA.begin(); it != MAP_TIME_DATA.end(); ++it)
-                    it->second += nAdjustment;
+                {
+                    LOCK(TIME_MUTEX);
+
+                    /* Iterate the Time Data map to find the majority time seed. */
+                    for(auto it = MAP_TIME_DATA.begin(); it != MAP_TIME_DATA.end(); ++it)
+                        it->second += nAdjustment;
+                }
 
                 /* Recalculate the unified offset. */
                 UNIFIED_AVERAGE_OFFSET.store(TimeNode::GetOffset());
