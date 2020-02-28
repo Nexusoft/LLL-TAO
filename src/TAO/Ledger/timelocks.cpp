@@ -56,7 +56,7 @@ namespace TAO
             1536562800,        //--- Block Version 5 Testnet Activation:  09/10/2018 00:00:00 GMT - 7
             1537167600,        //--- Block Version 6 Testnet Activation:  09/17/2018 00:00:00 GMT - 7
             1572325200,        //--- Block Version 7 Testnet Activation:  10/28/2019 22:00:00 GMT - 7
-            1582250400         //--- Block Version 8 Testnet Activation:  04/04/2020 22:00:00 GMT - 7
+            1582250400         //--- Block Version 8 Testnet Activation:  02/10/2020 19:00:00 GMT - 7
         };
 
 
@@ -69,7 +69,7 @@ namespace TAO
             1536977460,        //--- Block Version 5 Activation:          09/14/2018 19:11:00 GMT - 7
             1538791860,        //--- Block Version 6 Activation:          10/05/2018 19:11:00 GMT - 7
             1573539371,        //--- Block Version 7 Activation:          11/11/2019 23:11:11 GMT - 6
-            1586062800         //--- Block Version 8 Activation:          04/04/2020 22:00:00 GMT - 7
+            1583950260         //--- Block Version 8 Activation:          11/03/2020 11:11:00 GMT - 7
         };
 
 
@@ -77,7 +77,7 @@ namespace TAO
         const uint32_t TESTNET_TRANSACTION_VERSION_TIMELOCK[]   =
         {
             1572325200,        //--- Transaction Version 1 Testnet Activation:  10/28/2019 22:00:00 GMT - 7
-            1582250400         //--- Transaction Version 2 Testnet Activation:  02/10/2020 20:00:00 GMT - 7
+            1582250400         //--- Transaction Version 2 Testnet Activation:  02/10/2020 19:00:00 GMT - 7
         };
 
 
@@ -85,7 +85,7 @@ namespace TAO
         const uint32_t NETWORK_TRANSACTION_VERSION_TIMELOCK[]   =
         {
             1573539371,        //--- Transaction Version 1 Activation:      11/11/2019 23:11:11 GMT - 6
-            1586062800         //--- Transaction Version 2 Activation:      04/04/2020 22:00:00 GMT - 7
+            1583950260         //--- Transaction Version 2 Activation:      11/03/2020 11:11:00 GMT - 7
         };
 
 
