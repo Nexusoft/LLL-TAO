@@ -67,6 +67,11 @@ namespace TAO
             if(state.IsNull() && !LLD::Register->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-106, "Invalid name / address");
 
+            /* Make adjustment to history check and detect if the register is owned by system. */
+            uint256_t hashOwner = state.hashOwner;
+            if(hashOwner.GetType() == TAO::Ledger::GENESIS::SYSTEM)
+                hashOwner.SetType(config::fTestNet.load() ? TAO::Ledger::GENESIS::TESTNET : TAO::Ledger::GENESIS::MAINNET);
+
             /* Read the last hash of owner. */
             uint512_t hashLast = 0;
             if(!LLD::Ledger->ReadLast(state.hashOwner, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
@@ -386,7 +391,7 @@ namespace TAO
                             /* Generate return object. */
                             json::json obj;
                             obj["type"] = "TRANSFER";
-                            
+
 
                             /* Get the flag. */
                             uint8_t nState = 0;

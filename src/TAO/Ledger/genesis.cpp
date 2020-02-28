@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/Ledger/types/genesis.h>
+#include <TAO/Ledger/include/enum.h>
 
 #include <Util/include/args.h>
 
@@ -35,7 +36,7 @@ namespace TAO
         : uint256_t(value)
         {
             if(fSet)
-                SetType(config::fTestNet.load() ? 0xa2 : 0xa1);
+                SetType(config::fTestNet.load() ? GENESIS::TESTNET : GENESIS::MAINNET);
         }
 
 
@@ -69,7 +70,7 @@ namespace TAO
         /* Check if genesis has a valid indicator byte.*/
         bool Genesis::IsValid() const
         {
-            return GetType() == (config::fTestNet.load() ? 0xa2 : 0xa1);
+            return GetType() == TAO::Ledger::GenesisType();
         }
     }
 }

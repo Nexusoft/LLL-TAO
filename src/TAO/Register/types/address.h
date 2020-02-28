@@ -35,29 +35,30 @@ namespace TAO
             /** Different bytes that are prepended to addresses. */
             enum
             {
-                /* These are here to prevent you from making the mistake of using these two 'genesis' enum values. */
-                RESERVED  = 0xa1,
-                RESERVED2 = 0xa2,
+                /* These are here to prevent you from making the mistake of using these three 'genesis' enum values. */
+                RESERVED0      = 0x00, //this is system reserved value
+                RESERVED1      = 0xa1, //this is mainnet reserved value
+                RESERVED2      = 0xa2, //this is testnet reserved value
 
                 /* To identify legacy addresses */
-                LEGACY = 0x2a,
+                LEGACY         = 0x2a,
                 LEGACY_TESTNET = 0x6f,
 
-                /* Standard register type bytes.
-                   NOTE: These MUST be between 0xd1 and 0xed for the base58 encoded string to start with 8
-                */
-                READONLY  = 0xd1,
-                APPEND    = 0xd2,
-                RAW       = 0xd3,
-                OBJECT    = 0xd4,
-                CRYPTO    = 0xd5,
-                ACCOUNT   = 0xd6,
-                TOKEN     = 0xd7,
-                TRUST     = 0xd8,
-                NAME      = 0xd9,
-                NAMESPACE = 0xda,
+                /*  Standard register type bytes.
+                 *  These MUST be between 0xd1 and 0xed for the base58 encoded string to start with 8
+                 */
+                READONLY       = 0xd1,
+                APPEND         = 0xd2,
+                RAW            = 0xd3,
+                OBJECT         = 0xd4,
+                CRYPTO         = 0xd5,
+                ACCOUNT        = 0xd6,
+                TOKEN          = 0xd7,
+                TRUST          = 0xd8,
+                NAME           = 0xd9,
+                NAMESPACE      = 0xda,
 
-                WILDCARD  = 0xff
+                WILDCARD       = 0xff
             };
 
 

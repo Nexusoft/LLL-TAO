@@ -233,7 +233,7 @@ namespace TAO
                 return debug::error(FUNCTION, "transaction with empty signature");
 
             /* Check the genesis first byte. */
-            if(hashGenesis.GetType() != (config::fTestNet.load() ? 0xa2 : 0xa1))
+            if(hashGenesis.GetType() != GenesisType())
                 return debug::error(FUNCTION, "genesis using incorrect leading byte");
 
             /* Check for max contracts. */

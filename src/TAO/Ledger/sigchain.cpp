@@ -143,7 +143,7 @@ namespace TAO
             /* Set the bytes for the key. */
             uint256_t hashKey;
             hashKey.SetBytes(vHash);
-            hashKey.SetType(config::fTestNet.load() ? 0xa2 : 0xa1);
+            hashKey.SetType(TAO::Ledger::GenesisType());
 
             return hashKey;
         }
@@ -419,7 +419,7 @@ namespace TAO
 
 
         /* This function is responsible for generating a private key from a seed phrase.  By comparison to the other Generate
-         *  functions, this version using far stronger argon2 hashing since the only data input into the hashing function is 
+         *  functions, this version using far stronger argon2 hashing since the only data input into the hashing function is
          *  the seed phrase itself. */
         uint512_t SignatureChain::Generate(const SecureString& strSecret) const
         {
@@ -428,7 +428,7 @@ namespace TAO
 
             // low-level API
             std::vector<uint8_t> vHash(32);
-            std::vector<uint8_t> vSalt(16); 
+            std::vector<uint8_t> vSalt(16);
 
             /* Create the hash context. */
             argon2_context context =
@@ -478,7 +478,7 @@ namespace TAO
             /* Set the bytes for the key. */
             uint256_t hashKey;
             hashKey.SetBytes(vHash);
-            hashKey.SetType(config::fTestNet.load() ? 0xa2 : 0xa1);
+            hashKey.SetType(TAO::Ledger::GenesisType());
 
             return hashKey;
         }
@@ -549,7 +549,7 @@ namespace TAO
             /* Timer to track how long it takes to generate the recovery hash private key from the seed. */
             runtime::timer timer;
             timer.Reset();
-            
+
             /* Get the private key. */
             uint512_t hashSecret = Generate(strRecovery);
 
