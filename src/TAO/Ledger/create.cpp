@@ -652,6 +652,14 @@ namespace TAO
             /* Set the block to null. */
             block.SetNull();
 
+            /* Modulate the Block Versions if they correspond to their proper time stamp */
+            /* Normally, if condition is true and block version is current version unless an activation is pending */
+            uint32_t nCurrent = CurrentBlockVersion();
+            if(BlockVersionActive(runtime::unifiedtimestamp(), nCurrent)) // --> New Block Version Activation Switch
+                block.nVersion = nCurrent;
+            else
+                block.nVersion = nCurrent - 1;
+
             /* Cache the best chain before processing. */
             const TAO::Ledger::BlockState stateBest = ChainState::stateBest.load();
 
