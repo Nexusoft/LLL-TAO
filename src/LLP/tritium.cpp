@@ -1915,6 +1915,17 @@ namespace LLP
                                 debug::log(0, FUNCTION, "requesting missing tx ", tx.second.SubString());
                             }
 
+                            /* Check for repeated missing loops. */
+                            if(DDOS)
+                            {
+                                /* Iterate a failure for missing transactions. */
+                                nConsecutiveFails += block.vMissing.size();
+
+                                /* Bump DDOS score. */
+                                DDOS->rSCORE += 100;
+                            }
+
+
                             /* Ask for the block again last TODO: this can be cached for further optimization. */
                             ssResponse << uint8_t(TYPES::BLOCK) << block.hashMissing;
 
