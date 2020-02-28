@@ -1389,7 +1389,7 @@ namespace LLP
                         }
 
 
-                        /* Standard type for a block. */
+                        /* Standard type for a sigchain listing. */
                         case TYPES::SIGCHAIN:
                         {
                             /* Check for available protocol version. */
@@ -1427,14 +1427,7 @@ namespace LLP
 
                                 /* Build a markle transaction. */
                                 TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
-
-                                /* Get the confirming block. */
-                                TAO::Ledger::BlockState state;
-                                if(LLD::Ledger->ReadBlock(hashStop, state))
-                                {
-                                    merkle.hashBlock = state.GetHash();
-                                    merkle.BuildMerkleBranch(state);
-                                }
+                                merkle.BuildMerkleBranch(hashStop);
 
                                 /* Insert into container. */
                                 vtx.push_back(merkle);
@@ -1490,7 +1483,7 @@ namespace LLP
                         {
                             /* Check for valid specifier. */
                             if(fLegacy)
-                                return debug::drop(NODE, "TYPES::TRANSACTION: invalid specifier for TYPES::TRANSACTION");
+                                return debug::drop(NODE, "ACTION::GET: invalid specifier for TYPES::BLOCK");
 
                             /* Check for client mode since this method should never be called except by a client. */
                             if(config::GetBoolArg("-client"))
@@ -1586,7 +1579,7 @@ namespace LLP
                         {
                             /* Check for valid specifier. */
                             if(fTransactions || fClient)
-                                return debug::drop(NODE, "TYPES::TRANSACTION: invalid specifier for TYPES::TRANSACTION");
+                                return debug::drop(NODE, "ACTION::GET::TRANSACTION: invalid specifier for TYPES::TRANSACTION");
 
                             /* Get the index of transaction. */
                             uint512_t hashTx;
@@ -1621,8 +1614,6 @@ namespace LLP
                                             TAO::Ledger::TritiumBlock block(state);
                                             PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::TRITIUM), block);
                                         }
-
-
                                     }
                                     else
                                         PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::TRITIUM), tx);
@@ -1632,6 +1623,39 @@ namespace LLP
 
                             /* Debug output. */
                             debug::log(3, NODE, "ACTION::GET: TRANSACTION ", hashTx.SubString());
+
+                            break;
+                        }
+
+
+                        /* Standard type for a merkle transaction. */
+                        case TYPES::MERKLE:
+                        {
+                            /* Check for valid specifier. */
+                            if(fTransactions || fClient)
+                                return debug::drop(NODE, "ACTION::GET::MERKLE: invalid specifier for TYPES::MERKLE");
+
+                            /* Get the index of transaction. */
+                            uint512_t hashTx;
+                            ssPacket >> hashTx;
+
+                            /* Check for legacy. */
+                            if(fLegacy)
+                                return debug::drop(NODE, "ACTION::GET::MERKLE: legacy specifier disabled for TYPES::MERKLE");
+
+                            /* Check ledger database. */
+                            TAO::Ledger::Transaction tx;
+                            if(LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                            {
+                                /* Build a markle transaction. */
+                                TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
+                                merkle.BuildMerkleBranch(); //build the branch for merkle tree
+
+                                PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::TRITIUM), merkle);
+                            }
+
+                            /* Debug output. */
+                            debug::log(3, NODE, "ACTION::GET: MERKLE TRANSACTION ", hashTx.SubString());
 
                             break;
                         }
@@ -1810,6 +1834,21 @@ namespace LLP
                             /* Get the index of transaction. */
                             uint512_t hashTx = 0;
                             ssPacket >> hashTx;
+
+                            /* Handle for -client mode which deals with merkle transactions. */
+                            if(config::GetBoolArg("-client"))
+                            {
+                                /* Check ledger database. */
+                                if(!cacheInventory.Has(hashTx) && !LLD::Client->HasTx(hashTx, TAO::Ledger::FLAGS::MEMPOOL))
+                                {
+                                    /* Debug output. */
+                                    debug::log(3, NODE, "ACTION::NOTIFY: MERKLE TRANSACTION ", hashTx.SubString());
+
+                                    ssResponse << uint8_t(TYPES::MERKLE) << hashTx;
+                                }
+
+                                break;
+                            }
 
                             /* Check for legacy. */
                             if(fLegacy)

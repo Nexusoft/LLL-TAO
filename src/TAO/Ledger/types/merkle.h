@@ -150,6 +150,28 @@ namespace TAO
              **/
             bool BuildMerkleBranch(const BlockState& state);
 
+
+            /** BuildMerkleBranch
+             *
+             *  Builds a merkle branch from block hash.
+             *
+             *  @param[in] hashConfirmed The block's hash to build merkle branch from.
+             *
+             *  @return true if build was a success.
+             *
+             **/
+            bool BuildMerkleBranch(const uint1024_t& hashConfirmed);
+
+
+            /** BuildMerkleBranch
+             *
+             *  Builds a merkle branch without any block data.
+             *
+             *  @return true if build was a success.
+             *
+             **/
+            bool BuildMerkleBranch();
+
         };
 
     }

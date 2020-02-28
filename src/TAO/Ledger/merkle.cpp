@@ -11,6 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
+#include <LLD/include/global.h>
+
 #include <TAO/Ledger/types/merkle.h>
 #include <TAO/Ledger/types/state.h>
 
@@ -199,6 +201,39 @@ namespace TAO
                 return debug::error(FUNCTION, "merkle root mismatch");
 
             return true;
+        }
+
+
+        /* Builds a merkle branch from block state. */
+        bool MerkleTx::BuildMerkleBranch(const uint1024_t& hashConfirmed)
+        {
+            /* Get the confirming block. */
+            TAO::Ledger::BlockState state;
+            if(!LLD::Ledger->ReadBlock(hashConfirmed, state))
+                return debug::error(FUNCTION, "no valid block to generate merkle path");
+
+            /* Set his block's hash. */
+            hashBlock     = hashConfirmed;
+
+            return BuildMerkleBranch(state);;
+        }
+
+
+        /* Builds a merkle branch without any block data. */
+        bool MerkleTx::BuildMerkleBranch()
+        {
+            /* Cache this txid. */
+            uint512_t hash = GetHash();
+
+            /* Get the confirming block. */
+            TAO::Ledger::BlockState state;
+            if(!LLD::Ledger->ReadBlock(hash, state))
+                return debug::error(FUNCTION, "no valid block to generate merkle path");
+
+            /* Set his block's hash. */
+            hashBlock = state.GetHash();
+
+            return BuildMerkleBranch(state);
         }
     }
 }
