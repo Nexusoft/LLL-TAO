@@ -311,7 +311,7 @@ namespace TAO
                             object.get<uint64_t>("stake"));
 
                         /* Check the account balance. */
-                        if(object.get<uint64_t>("trust") != 0)
+                        if(object.get<uint64_t>("trust") != (config::GetBoolArg("-trustboost") ? TAO::Ledger::TRUST_SCORE_MAX_TESTNET : 0))
                             return debug::error(FUNCTION, "trust account can't be created with non-zero trust ",
                             object.get<uint64_t>("trust"));
 
@@ -377,13 +377,13 @@ namespace TAO
                         std::string strNamespace = object.get<std::string>("namespace");
 
                         /* Check namespace for case/allowed characters */
-                        if (!std::all_of(strNamespace.cbegin(), strNamespace.cend(), 
+                        if (!std::all_of(strNamespace.cbegin(), strNamespace.cend(),
                             [](char c)
-                            { 
+                            {
                                 /* Check for lower case or numeric or allowed characters */
-                                return std::islower(c) || std::isdigit(c) || c == '.'; 
+                                return std::islower(c) || std::isdigit(c) || c == '.';
                             }
-                            )) 
+                            ))
                         {
                             return debug::error(FUNCTION, "namespace can only contain lowercase letters, numbers, periods (.): ", strNamespace);
                         }

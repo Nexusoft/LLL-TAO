@@ -464,6 +464,7 @@ namespace TAO
 
                     break;
                 }
+
                 /* For unknown codes, always fail. */
                 default:
                     return debug::error(FUNCTION, "malformed conditions");

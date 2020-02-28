@@ -15,6 +15,8 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/enum.h>
 
+#include <TAO/Ledger/include/constants.h>
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -45,7 +47,10 @@ namespace TAO
 
             /* Generate the object register values. */
             trust   << std::string("balance")       << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << uint64_t(0)
-                    << std::string("trust")         << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << uint64_t(0)
+
+                    << std::string("trust")         << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T)
+                    << uint64_t((config::GetBoolArg("-trustboost") ? TAO::Ledger::TRUST_SCORE_MAX_TESTNET : 0))
+
                     << std::string("stake")         << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << uint64_t(0)
                     << std::string("token")         << uint8_t(TYPES::UINT256_T) << uint256_t(0);
 
