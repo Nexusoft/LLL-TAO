@@ -343,7 +343,7 @@ namespace TAO
                         else if(contract.Version() > 1) //this allows us to iterate history while getting properties of transfer to system
                         {
                             /* Set the new owner to transfer recipient. */
-                            hashNewOwner = hashTransfer;
+                            hashNewOwner = contract.Caller();
                             hashNewOwner.SetType(Ledger::GENESIS::SYSTEM); //this byte (0x00) means there is no valid owner during transfer
                         }
 

@@ -70,11 +70,11 @@ namespace TAO
             /* Make adjustment to history check and detect if the register is owned by system. */
             uint256_t hashOwner = state.hashOwner;
             if(hashOwner.GetType() == TAO::Ledger::GENESIS::SYSTEM)
-                hashOwner.SetType(config::fTestNet.load() ? TAO::Ledger::GENESIS::TESTNET : TAO::Ledger::GENESIS::MAINNET);
+                hashOwner.SetType(TAO::Ledger::GenesisType());
 
             /* Read the last hash of owner. */
             uint512_t hashLast = 0;
-            if(!LLD::Ledger->ReadLast(state.hashOwner, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
+            if(!LLD::Ledger->ReadLast(hashOwner, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-107, "No history found");
 
             /* Iterate through sigchain for register updates. */
