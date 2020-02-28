@@ -232,7 +232,7 @@ namespace TAO
                                 continue;
 
                             /* Make sure the register claim is in SYSTEM pending from a transfer.  */
-                            if(state.hashOwner != 0)
+                            if(state.hashOwner.GetType() != TAO::Ledger::GENESIS::SYSTEM)
                                 continue;
 
                             /* Make sure we haven't already claimed it */
