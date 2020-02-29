@@ -36,9 +36,9 @@ namespace TAO
             enum
             {
                 /* These are here to prevent you from making the mistake of using these three 'genesis' enum values. */
-                RESERVED0      = 0x00, //this is system reserved value
-                RESERVED1      = 0xa1, //this is mainnet reserved value
-                RESERVED2      = 0xa2, //this is testnet reserved value
+                RESERVED        = 0x00, //this is system reserved value
+                GENESIS1        = 0xa1, //this is mainnet reserved value
+                GENESIS2        = 0xa2, //this is testnet reserved value
 
                 /* To identify legacy addresses */
                 LEGACY         = 0x2a,
