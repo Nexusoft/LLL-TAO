@@ -143,6 +143,14 @@ namespace TAO
                 if(nConsecutive >= config::GetArg("-eventsdepth", 100))
                     break;
 
+                /* Check that the transaction is mature */
+                if(!LLD::Ledger->ReadMature(tx.GetHash()))
+                {
+                    /* If not, decrement the sequence id and continue to the next event. */
+                    --nSequence;
+                    continue;
+                }
+
                 /* Loop through transaction contracts. */
                 uint32_t nContracts = tx.Size();
                 for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
