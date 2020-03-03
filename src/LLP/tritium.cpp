@@ -449,8 +449,11 @@ namespace LLP
                 /* If not synchronized and making an outbound connection, start the sync */
                 if(!fSynchronized.load())
                 {
+                    /* See if this is a local testnet, in which case we will allow a sync on incoming or outgoing */
+                    bool fLocalTestnet = config::fTestNet.load() && !config::GetBoolArg("-dns", true);
+
                     /* Start sync on startup, or override any legacy syncing currently in process. */
-                    if(TAO::Ledger::nSyncSession.load() == 0 && !Incoming())
+                    if(TAO::Ledger::nSyncSession.load() == 0 && (!Incoming() || fLocalTestnet))
                     {
                         /* Set the sync session-id. */
                         TAO::Ledger::nSyncSession.store(nCurrentSession);
