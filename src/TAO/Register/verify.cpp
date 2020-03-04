@@ -602,9 +602,13 @@ namespace TAO
                     }
 
 
-                    /* Credit tokens to an account you own. */
+                    /* Migrate legacy trust key. */
                     case TAO::Operation::OP::MIGRATE:
                     {
+                        /* Check transaction version. */
+                        if(contract.Version() > 1)
+                            return debug::error(FUNCTION, "OP::MIGRATE: invalid transaction version");
+
                         /* Seek to address. */
                         contract.Seek(64);
 
