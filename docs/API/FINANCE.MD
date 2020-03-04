@@ -598,7 +598,7 @@ To remove a stake change request, you can either set an expiration time, or set 
 
 `session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) owns the trust account. For single-user API mode the session should not be supplied.
 
-`amount` : The amount of NXS to add to stake.
+`amount` : The new amount of NXS to stake. 
 
 `expires` : Optional field to assign the number of seconds until the stake change request expires. A value of zero indicates it does not expire. Default is zero if not passed. 
 
