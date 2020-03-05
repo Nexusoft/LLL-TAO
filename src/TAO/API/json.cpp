@@ -190,14 +190,16 @@ namespace TAO
                 ret["confirmations"] = block.IsNull() ? 0 : TAO::Ledger::ChainState::nBestHeight.load() - block.nHeight + 1;
 
                 /* Don't add inputs for coinbase or coinstake transactions */
-                if(!tx.IsCoinBase() && !tx.IsCoinStake())
+                if(!tx.IsCoinBase())
                 {
                     /* Declare the inputs JSON array */
                     json::json inputs = json::json::array();
 
                     /* Iterate through each input */
-                    for(const Legacy::TxIn& txin : tx.vin)
+                    for (uint32_t i = (uint32_t)tx.IsCoinStake(); i < tx.vin.size(); ++i)
                     {
+                        const Legacy::TxIn& txin = tx.vin[i];
+                        
                         json::json input;
                         bool fFound = false;
 
