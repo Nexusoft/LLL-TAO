@@ -275,6 +275,8 @@ namespace TAO
                     else if(Legacy::ExtractRegister(txout.scriptPubKey, hashRegister))
                         output["address"] = hashRegister.ToString();
 
+                    else if(block.nHeight == 112283) // Special case for malformed block 112283 with bad output address
+                        output["address"] = "";
                     else
                         throw APIException(-8, "Unable to Extract Output Address");
 
