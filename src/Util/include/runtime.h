@@ -21,20 +21,16 @@ ________________________________________________________________________________
 #include <locale>
 #include <atomic>
 
+#include <TAO/Ledger/include/timelocks.h>
+
 #define ARRAYLEN(array)     (sizeof(array)/sizeof((array)[0]))
 
 /** The location of the unified time seed. To enable a Unified Time System push data to this variable. **/
 extern std::atomic<int32_t> UNIFIED_AVERAGE_OFFSET;
 
-/** The maximum time in the future clock can be. **/
-const uint32_t MAX_UNIFIED_DRIFT = 10;
-
-const uint32_t MAX_UNIFIED_DRIFT_LEGACY = 10;
-
 
 namespace runtime
 {
-
 
     /** timestamp
      *
@@ -64,6 +60,24 @@ namespace runtime
     inline uint64_t unifiedtimestamp(bool fMilliseconds = false)
     {
         return fMilliseconds ? timestamp(true) + (UNIFIED_AVERAGE_OFFSET.load() * 1000) : timestamp() + UNIFIED_AVERAGE_OFFSET.load();
+    }
+
+
+    /** max drift
+     *
+     *  The maximum time clocks can differ from one another.
+     *
+     *  @param[in] nVersion The version to check switch for.
+     *
+     **/
+    inline uint32_t maxdrift()
+    {
+        /* Check if before version 8 time-lock. */
+        if(unifiedtimestamp() < TAO::Ledger::StartBlockTimelock(8))
+            return 10;
+
+        //max drift post v8 is 1 second.
+        return 1;
     }
 
 

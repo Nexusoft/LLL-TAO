@@ -323,11 +323,11 @@ namespace TAO
                 return debug::error(FUNCTION, "channel out of range");
 
             /* Check that the time was within range. */
-            if(nVersion <= 8 && GetBlockTime() > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT * 60)
+            if(nVersion <= 8 && GetBlockTime() > runtime::unifiedtimestamp() + runtime::maxdrift() * 60)
                 return debug::error(FUNCTION, "block timestamp too far in the future");
 
             /* Check that the time was within range. */
-            if(nVersion >= 8 && GetBlockTime() > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
+            if(nVersion >= 8 && GetBlockTime() > runtime::unifiedtimestamp() + runtime::maxdrift())
                 return debug::error(FUNCTION, "block timestamp too far in the future");
 
             /* Check the Current Version Block Time-Lock. */
@@ -362,7 +362,7 @@ namespace TAO
                     return debug::error(FUNCTION, "proof of stake can't have Nonce value of zero");
 
                 /* Check the trust time is before Unified timestamp. */
-                if(producer.nTimestamp > (runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT))
+                if(producer.nTimestamp > (runtime::unifiedtimestamp() + runtime::maxdrift()))
                     return debug::error(FUNCTION, "trust timestamp too far in the future");
 
                 /* Make Sure Trust Transaction Time is Before Block. */

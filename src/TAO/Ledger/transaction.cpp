@@ -225,7 +225,7 @@ namespace TAO
                 return debug::error(FUNCTION, "nextHash cannot be zero");
 
             /* Check the timestamp. */
-            if(nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
+            if(nTimestamp > runtime::unifiedtimestamp() + runtime::maxdrift())
                 return debug::error(FUNCTION, "transaction timestamp too far in the future ", nTimestamp);
 
             /* Check for empty signatures. */
@@ -696,7 +696,7 @@ namespace TAO
             /* Check for first. */
             if(IsFirst())
             {
-                
+
                 /* Check ambassador sigchains based on all versions, not the smaller subset of versions. */
                 for(uint32_t nSwitchVersion = 7; nSwitchVersion <= CurrentBlockVersion(); ++nSwitchVersion)
                 {

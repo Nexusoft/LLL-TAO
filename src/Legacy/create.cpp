@@ -357,13 +357,7 @@ namespace Legacy
             }
 
             /* Timestamp limit. If before v7 activation, keep legacy tx compatible with legacy setting. */
-            uint64_t nMaxDrift = MAX_UNIFIED_DRIFT;
-            uint32_t nCurrent = TAO::Ledger::CurrentBlockVersion();
-
-            if(nCurrent < 7 || (nCurrent == 7 && !TAO::Ledger::BlockVersionActive(runtime::unifiedtimestamp(), 7)))
-                nMaxDrift = MAX_UNIFIED_DRIFT_LEGACY;
-
-            if(tx.nTime > runtime::unifiedtimestamp() + nMaxDrift)
+            if(tx.nTime > runtime::unifiedtimestamp() + runtime::maxdrift())
             {
                 debug::log(2, FUNCTION, "Transaction time too far in future ", tx.GetHash().SubString(10));
                 continue;

@@ -171,7 +171,7 @@ namespace TAO
                 }
 
                 /* Check for timestamp violations. */
-                if(tx.nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
+                if(tx.nTimestamp > runtime::unifiedtimestamp() + runtime::maxdrift())
                 {
                     setDependents.insert(hash);
 
@@ -264,7 +264,7 @@ namespace TAO
                 }
 
                 /* Check for timestamp violations. */
-                if(tx.nTime > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
+                if(tx.nTime > runtime::unifiedtimestamp() + runtime::maxdrift())
                     continue;
 
                 /* Retrieve tx inputs */

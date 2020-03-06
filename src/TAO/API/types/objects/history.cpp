@@ -297,8 +297,8 @@ namespace TAO
 
                             /* Get the JSON data for this object.  NOTE that we pass false for fLookupName if the requested type
                                is a name of namesace object, as those are the edge case that do not have a Name object themselves */
-                            bool fLookupName = nType != TAO::Register::OBJECTS::NAME && nType != TAO::Register::OBJECTS::NAMESPACE;
-                            json::json data  =TAO::API::ObjectToJSON(params, state, hashRegister, fLookupName);
+                            bool fLookupName = (nType != TAO::Register::OBJECTS::NAME && nType != TAO::Register::OBJECTS::NAMESPACE);
+                            json::json data  = TAO::API::ObjectToJSON(params, state, hashRegister, fLookupName);
 
                             /* Copy the name data in to the response after the type */
                             obj.insert(data.begin(), data.end());
