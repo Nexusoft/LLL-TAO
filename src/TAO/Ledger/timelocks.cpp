@@ -24,7 +24,7 @@ namespace TAO
     {
 
         /* The network current block version. */
-        const uint32_t NETWORK_BLOCK_CURRENT_VERSION = 7;
+        const uint32_t NETWORK_BLOCK_CURRENT_VERSION = 8;
 
 
         /* The testnet current block version. */
@@ -32,7 +32,7 @@ namespace TAO
 
 
         /* The network current transaction version. */
-        const uint32_t NETWORK_TRANSACTION_CURRENT_VERSION = 1;
+        const uint32_t NETWORK_TRANSACTION_CURRENT_VERSION = 2;
 
 
         /* The testnet current transaction version. */
@@ -69,7 +69,7 @@ namespace TAO
             1536977460,        //--- Block Version 5 Activation:          09/14/2018 19:11:00 GMT - 7
             1538791860,        //--- Block Version 6 Activation:          10/05/2018 19:11:00 GMT - 7
             1573539371,        //--- Block Version 7 Activation:          11/11/2019 23:11:11 GMT - 6
-            1583950260         //--- Block Version 8 Activation:          03/11/2020 11:11:00 GMT - 7
+            1584676140         //--- Block Version 8 Activation:          03/20/2020 03:49:00 GMT (03/19/2020 20:49:00 GMT -7)
         };
 
 
@@ -85,7 +85,7 @@ namespace TAO
         const uint32_t NETWORK_TRANSACTION_VERSION_TIMELOCK[]   =
         {
             1573539371,        //--- Transaction Version 1 Activation:      11/11/2019 23:11:11 GMT - 6
-            1583950260         //--- Transaction Version 2 Activation:      03/11/2020 11:11:00 GMT - 7
+            1584676140         //--- Transaction Version 2 Activation:      03/20/2020 03:49:00 GMT (03/19/2020 20:49:00 GMT -7)
         };
 
 
