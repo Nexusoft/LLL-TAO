@@ -62,6 +62,10 @@ namespace TAO
             std::map<uint512_t, Legacy::Transaction> mapLegacyConflicts;
 
 
+            /** Temporary holding area for orphan legacy transctions. **/
+            std::map<uint512_t, Legacy::Transaction> mapLegacyOrphans;
+
+
             /** The transactions in the ledger memory pool. **/
             std::map<uint512_t, TAO::Ledger::Transaction> mapLedger;
 

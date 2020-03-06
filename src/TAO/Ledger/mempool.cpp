@@ -45,6 +45,7 @@ namespace TAO
         : MUTEX              ( )
         , mapLegacy          ( )
         , mapLegacyConflicts ( )
+        , mapLegacyOrphans   ( )
         , mapLedger          ( )
         , mapConflicts       ( )
         , mapOrphans         ( )

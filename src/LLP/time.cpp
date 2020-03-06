@@ -275,7 +275,7 @@ namespace LLP
             ((runtime::unifiedtimestamp() - TAO::Ledger::CurrentBlockTimelock()) / TIME_ADJUSTMENT_SPAN) : 0);
 
         /* Check for valid adjustments. */
-        if(nCurrentAdjustment >= TIME_ADJUSTMENT_VALUE)
+        if(nCurrentAdjustment > TIME_ADJUSTMENT_VALUE)
         {
             debug::log(0, "Time Adjustment Complete... Exiting...");
             return;
