@@ -13,6 +13,8 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
+#include <LLD/include/global.h>
+
 #include <LLP/include/global.h>
 #include <LLP/types/tritium.h>
 
@@ -53,7 +55,7 @@ namespace TAO
         }
 
 
-        bool Mempool::Accept(const Legacy::Transaction& tx)
+        bool Mempool::Accept(const Legacy::Transaction& tx, LLP::TritiumNode* pnode)
         {
             /* Get the transaction hash. */
             uint512_t hashTx = tx.GetHash();
@@ -61,7 +63,7 @@ namespace TAO
             RLOCK(MUTEX);
 
             /* Check if we already have this tx. */
-            if(mapLegacy.count(hashTx))
+            if(LLD::Legacy->HasTx(hashTx, FLAGS::MEMPOOL))
                 return false;
 
             debug::log(3, "ACCEPT --------------------------------------");
@@ -95,7 +97,53 @@ namespace TAO
                     debug::error(FUNCTION, "LEGACY CONFLICT: INPUTS CLAIMED ", vin.prevout.hash.SubString(), ", ", vin.prevout.n);
                     mapLegacyConflicts[hashTx] = tx;
 
-                    return true;
+                    return false;
+                }
+
+                /* Check for available inputs. */
+                bool fExists = false;
+                switch(vin.prevout.hash.GetType())
+                {
+                    /* Case for tritium transactions. */
+                    case TAO::Ledger::TRITIUM:
+                    {
+                        fExists = LLD::Ledger->HasTx(vin.prevout.hash);
+
+                        /* Ask for orphan if it wasn't found. */
+                        if(!fExists && pnode)
+                            pnode->PushMessage(LLP::ACTION::GET, uint8_t(LLP::TYPES::TRANSACTION), vin.prevout.hash);
+
+                        break;
+                    }
+
+                    /* Case for legacy transactions. */
+                    case TAO::Ledger::LEGACY:
+                    {
+                        fExists = LLD::Legacy->HasTx(vin.prevout.hash);
+
+                        /* Ask for orphan if it wasn't found. */
+                        if(!fExists && pnode)
+                            pnode->PushMessage(LLP::ACTION::GET, uint8_t(LLP::SPECIFIER::LEGACY), uint8_t(LLP::TYPES::TRANSACTION), vin.prevout.hash);
+
+                        break;
+                    }
+                }
+
+                /* Check for orphan now. */
+                if(!fExists)
+                {
+                    /* Debug output. */
+                    debug::log(0, FUNCTION, "tx ", hashTx.SubString(), " prev ", vin.prevout.hash.SubString(),
+                        " ORPHAN");
+
+                    /* Push to orphan queue. */
+                    mapLegacyOrphans[vin.prevout.hash] = tx;
+
+                    /* Increment consecutive orphans. */
+                    if(pnode)
+                        ++pnode->nConsecutiveOrphans;
+
+                    return false;
                 }
             }
 
@@ -154,22 +202,48 @@ namespace TAO
             /* Add to the legacy map. */
             mapLegacy[hashTx] = tx;
 
-            /* Relay the transaction. */
-            if(LLP::TRITIUM_SERVER)
-            {
-                LLP::TRITIUM_SERVER->Relay
-                (
-                    LLP::ACTION::NOTIFY,
-                    uint8_t(LLP::SPECIFIER::LEGACY),
-                    uint8_t(LLP::TYPES::TRANSACTION),
-                    hashTx
-                );
-            }
-
             /* Log outputs. */
             debug::log(2, FUNCTION, "tx ", hashTx.SubString(), " ACCEPTED");
 
+            /* Process the orphan queue. */
+            ProcessLegacyOrphans(hashTx, pnode);
+
             return true;
+        }
+
+
+        /* Process orphan transactions if triggered in queue. */
+        void Mempool::ProcessLegacyOrphans(const uint512_t& hash, LLP::TritiumNode* pnode)
+        {
+            RLOCK(MUTEX);
+
+            /* Check orphan queue. */
+            uint512_t hashTx = hash;
+            while(mapLegacyOrphans.count(hashTx))
+            {
+                /* Get the transaction from map. */
+                Legacy::Transaction& tx = mapLegacyOrphans[hashTx];
+
+                /* Get the previous hash. */
+                uint512_t hashThis = tx.GetHash();
+
+                /* Debug output. */
+                debug::log(0, FUNCTION, "PROCESSING LEGACY ORPHAN tx ", hashThis.SubString());
+
+                /* Accept the transaction into memory pool. */
+                if(!Accept(tx, pnode))
+                {
+                    debug::log(0, FUNCTION, "ORPHAN tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
+
+                    break;
+                }
+
+                /* Erase the transaction. */
+                mapOrphans.erase(hashTx);
+
+                /* Set the hashTx. */
+                hashTx = hashThis;
+            }
         }
 
 

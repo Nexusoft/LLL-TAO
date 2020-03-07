@@ -2075,7 +2075,7 @@ namespace LLP
                         ssPacket >> tx;
 
                         /* Accept into memory pool. */
-                        if(TAO::Ledger::mempool.Accept(tx))
+                        if(TAO::Ledger::mempool.Accept(tx, this))
                         {
                             /* Relay the transaction notification. */
                             TRITIUM_SERVER->Relay

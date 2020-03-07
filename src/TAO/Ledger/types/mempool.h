@@ -141,7 +141,7 @@ namespace TAO
              *  @return true if added.
              *
              **/
-            bool Accept(const Legacy::Transaction& tx);
+            bool Accept(const Legacy::Transaction& tx, LLP::TritiumNode* pnode = nullptr);
 
 
             /** ProcessOrphans
@@ -154,6 +154,19 @@ namespace TAO
              *
              **/
             void ProcessOrphans(const uint512_t& hash);
+
+
+            /** ProcessLegacyOrphans
+             *
+             *  Process legacy orphan transactions if triggered in queue.
+             *
+             *  @param[in] hash The hash of spent output
+             *  @param[in] pnode The node that orphans are being processed from.
+             *
+             *  @return true if spent.
+             *
+             **/
+            void ProcessLegacyOrphans(const uint512_t& hash, LLP::TritiumNode* pnode = nullptr);
 
 
             /** IsSpent
