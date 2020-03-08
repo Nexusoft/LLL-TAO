@@ -227,6 +227,84 @@ namespace runtime
     };
 
 
+    /** Stopwatch class
+     *
+     *  Keeps track of total time with starts and stops in between.
+     *
+     **/
+    class stopwatch
+    {
+        /** The total time elapsed. **/
+        uint64_t nElapsed;
+
+        /** The time when last started. **/
+        std::chrono::high_resolution_clock::time_point tStart;
+
+        /** Flag to determine when started. **/
+        bool fStarted;
+
+    public:
+
+        /** Default Constructor. **/
+        stopwatch()
+        : nElapsed (0)
+        , tStart   ( )
+        , fStarted (false)
+        {
+        }
+
+
+        void start()
+        {
+            tStart = std::chrono::high_resolution_clock::now();
+            fStarted = true;
+        }
+
+
+        void stop()
+        {
+            /* Can't stop twice. */
+            if(!fStarted)
+                return;
+
+            /* Grab the current elapsed time. */
+            uint64_t nTime =
+                std::chrono::duration_cast<std::chrono::microseconds>
+                (
+                    std::chrono::high_resolution_clock::now() - tStart
+                ).count();
+
+            /* Add this to elapsed state. */
+            nElapsed += nTime;
+            fStarted  = false;
+        }
+
+
+        void reset()
+        {
+            nElapsed = 0;
+            fStarted = false;
+        }
+
+
+        uint64_t ElapsedMicroseconds()
+        {
+            return nElapsed;
+        }
+
+
+        uint64_t ElapsedSeconds() const
+        {
+            return nElapsed / 1000000;
+        }
+
+        uint64_t ElapsedMilliseconds() const
+        {
+            return nElapsed / 1000;
+        }
+    };
+
+
     /** Command
      *
      *  Runs a command to the commandline.

@@ -678,11 +678,16 @@ namespace TAO
 
 
         static uint32_t nTotalContracts = 0;
+        static runtime::stopwatch timerContracts;
+
+        static uint32_t nTotalInputs = 0;
+        static runtime::stopwatch timerInputs;
+
         bool BlockState::SetBest()
         {
-            /* Runtime calculations. */
-            runtime::timer timer;
-            timer.Start();
+            /* Reset timers for meters. */
+            timerContracts.reset();
+            timerInputs.reset();
 
             /* Get the hash. */
             uint1024_t hash = GetHash();
@@ -843,7 +848,8 @@ namespace TAO
 
                 /* Debug output about the best chain. */
                 uint64_t nElapsed = (GetBlockTime() - ChainState::stateBest.load().GetBlockTime());
-                uint64_t nTimer   = timer.ElapsedMilliseconds();
+                uint64_t nContractTime = timerContracts.ElapsedMicroseconds();
+                uint64_t nInputsTime   = timerInputs.ElapsedMicroseconds();
 
                 if(config::nVerbose >= TAO::Ledger::ChainState::Synchronizing() ? 1 : 0)
                     debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION,
@@ -851,10 +857,10 @@ namespace TAO
                         " height=", nHeight,
                         " trust=", nChainTrust,
                         " tx=", vtx.size(),
-                        " [", (nElapsed == 0 ? 0 : double(nTotalContracts / nElapsed)), " contracts/s]"
-                        " [verified in ", nTimer, " ms]",
-                        " [processing ", (nTotalContracts * 1000.0) / (nTimer + 1), " contracts/s]",
-                        " [", ::GetSerializeSize(*this, SER_LLD, nVersion), " bytes]");
+                        " [", (nElapsed == 0 ? 0 : double(nTotalContracts / nElapsed)), " tx/s]"
+                        " [processed at ", (nTotalContracts * 1000000.0) / (nContractTime + 1), " contract/s",
+                        " | ", (nTotalInputs * 1000000.0) / (nInputsTime + 1), " script/s]",
+                        " [", std::setw(3), (::GetSerializeSize(*this, SER_LLD, nVersion) / 1024.0), " kb]");
 
                 /* Set the best chain variables. */
                 ChainState::stateBest          = *this;
@@ -868,6 +874,7 @@ namespace TAO
 
                 /* Reset contract meters. */
                 nTotalContracts = 0;
+                nTotalInputs    = 0;
 
                 /* Broadcast the block to nodes if not synchronizing. */
                 if(!ChainState::Synchronizing())
@@ -926,6 +933,8 @@ namespace TAO
                 /* Only work on tritium transactions for now. */
                 if(proof.first == TRANSACTION::TRITIUM)
                 {
+                    timerContracts.start();
+
                     /* Get the transaction hash. */
                     const uint512_t& hash = proof.second;
 
@@ -1000,9 +1009,12 @@ namespace TAO
 
                     /* Keep track of total contracts processed. */
                     nTotalContracts += tx.Size();
+                    timerContracts.stop();
                 }
                 else if(proof.first == TRANSACTION::LEGACY)
                 {
+                    timerInputs.start();
+
                     /* Get the transaction hash. */
                     const uint512_t& hash = proof.second;
 
@@ -1027,6 +1039,9 @@ namespace TAO
                     /* Add legacy transactions to the wallet where appropriate */
                     Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, *this, true);
 
+                    /* Keep track of total inputs proceessed. */
+                    nTotalInputs += tx.vin.size();
+                    timerInputs.stop();
                 }
                 else
                     return debug::error(FUNCTION, "using an unknown transaction type");
