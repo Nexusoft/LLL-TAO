@@ -700,6 +700,10 @@ namespace TAO
                 /* Check ambassador sigchains based on all versions, not the smaller subset of versions. */
                 for(uint32_t nSwitchVersion = 7; nSwitchVersion <= CurrentBlockVersion(); ++nSwitchVersion)
                 {
+                    /* Check switch time-lock for version 8. */
+                    if(runtime::unifiedtimestamp() < StartBlockTimelock(nSwitchVersion))
+                        continue;
+
                     /* Check for ambassador. */
                     if(Ambassador(nSwitchVersion).find(hashGenesis) != Ambassador(nSwitchVersion).end())
                     {
