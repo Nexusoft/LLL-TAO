@@ -54,10 +54,6 @@ namespace Legacy
     , vout      ( )
     , nLockTime (0)
     {
-        /* When tx nTime after v7 activation, it is version 2 */
-        if(TAO::Ledger::BlockVersionActive(nTime, 7) || TAO::Ledger::CurrentBlockVersion() > 7)
-            nVersion = 2;
-
         SetNull();
     }
 
@@ -134,7 +130,7 @@ namespace Legacy
         }
 
         /* When tx nTime after v7 activation, legacy tx is version 2 */
-        if(TAO::Ledger::BlockVersionActive(nTime, 7) || TAO::Ledger::CurrentBlockVersion() > 7)
+        if(nTime >= TAO::Ledger::StartBlockTimelock(7))
             nVersion = 2;
     }
 
@@ -147,10 +143,6 @@ namespace Legacy
 		vin.clear();
 		vout.clear();
 		nLockTime = 0;
-
-        /* When tx nTime after v7 activation, it is version 2 */
-        if(TAO::Ledger::BlockVersionActive(nTime, 7) || TAO::Ledger::CurrentBlockVersion() > 7)
-            nVersion = 2;
 	}
 
 
@@ -175,7 +167,7 @@ namespace Legacy
 	    uint512_t hash = LLC::SK512(ss.begin(), ss.end());
 
         /* Type of 0xfe designates legacy tx beginning with v7 activation (tx version 2). */
-        if((TAO::Ledger::BlockVersionActive(nTime, 7) || TAO::Ledger::CurrentBlockVersion() > 7) && nVersion >= 2)
+        if(nVersion >= 2)
             hash.SetType(TAO::Ledger::LEGACY);
 
         return hash;
@@ -824,9 +816,11 @@ namespace Legacy
 	bool Transaction::CheckTransaction() const
     {
         /* Validate tx version 2 required when v7+ active and after v6 grace period end. */
-        if(nVersion != 2
-        && (TAO::Ledger::BlockVersionActive(nTime, 7) || TAO::Ledger::CurrentBlockVersion() > 7)
-        && !TAO::Ledger::BlockVersionActive(nTime, 6))
+        if(nTime < TAO::Ledger::StartBlockTimelock(7) && nVersion == 2)
+            return debug::error(FUNCTION, "invalid transaction version ", nVersion);
+
+        /* Validate tx version 2 required when v7+ active and after v6 grace period end. */
+        if(nTime >= TAO::Ledger::StartBlockTimelock(7) && nVersion != 2)
             return debug::error(FUNCTION, "invalid transaction version ", nVersion);
 
         /* Check for empty inputs. */
@@ -909,8 +903,7 @@ namespace Legacy
                 continue;
 
             /* Cannot spend Tritium send-to-Legacy inputs until after v6 grace period ends */
-            if((TAO::Ledger::BlockVersionActive(nTime, 7) || TAO::Ledger::CurrentBlockVersion() > 7)
-            && !TAO::Ledger::BlockVersionActive(nTime, 6))
+            if(nTime >= TAO::Ledger::StartBlockTimelock(7))
             {
                 /* Get the type of transaction. */
                 if(prevout.hash.GetType() == TAO::Ledger::TRITIUM)
@@ -1134,7 +1127,7 @@ namespace Legacy
                 case TAO::Ledger::TRITIUM:
                 {
                     /* Check Tritium spend activation. Becomes active with v7 after v6 grace period ends. */
-                    if(TAO::Ledger::BlockVersionActive(nTime, 6) || TAO::Ledger::CurrentBlockVersion() < 6)
+                    if(nTime < TAO::Ledger::StartBlockTimelock(7))
                         return debug::error(FUNCTION, "legacy spends of tritium inputs not available until version 7");
 
                     /* Get the previous transaction. */

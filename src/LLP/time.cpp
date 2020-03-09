@@ -288,8 +288,7 @@ namespace LLP
             runtime::sleep(1000);
 
             /* Check current unified timestamp. */
-            uint64_t nTimestamp = runtime::unifiedtimestamp();
-            if(!TAO::Ledger::BlockVersionActive(nTimestamp, 8) || TAO::Ledger::CurrentBlockVersion() != 8)
+            if(runtime::unifiedtimestamp() < TAO::Ledger::StartBlockTimelock(8))
                 continue;
 
             /* Grab the current time-lock. */

@@ -61,20 +61,10 @@ namespace Legacy
         /* Modulate the Block Versions if they correspond to their proper time stamp */
         /* Normally, if condition is true and block version is current version unless an activation is pending */
         uint32_t nCurrent = TAO::Ledger::CurrentBlockVersion();
-        if(TAO::Ledger::BlockVersionActive(runtime::unifiedtimestamp(), 7) || nCurrent > 7)
-        {
-            /* If after v7 activation, can no longer create legacy blocks */
+        if(runtime::unifiedtimestamp() >= TAO::Ledger::StartBlockTimelock(7))
             return debug::error(FUNCTION, "Cannot create Legacy block in Tritium.");
-        }
         else if(nCurrent >= 6)
             newBlock.nVersion = 6; // Maximum legacy block version is 6
-
-        /* The rest of this is not really needed any longer, but kept for clarity of legacy code */
-        else if(TAO::Ledger::BlockVersionActive(runtime::unifiedtimestamp(), nCurrent)) // Block Version Activation Switch
-            newBlock.nVersion = nCurrent;
-
-        else
-            newBlock.nVersion = nCurrent - 1;
 
         /* Coinbase / Coinstake Transaction. **/
         Transaction txNew;

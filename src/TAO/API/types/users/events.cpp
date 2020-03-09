@@ -70,7 +70,7 @@ namespace TAO
                 if(!fAutoLoggedIn && config::GetBoolArg("-autologin") && !config::fMultiuser.load() && !LoggedIn())
                 {
                     /* First check that Tritium sig chains are active */
-                    if(TAO::Ledger::BlockVersionActive(runtime::unifiedtimestamp(), 7) || TAO::Ledger::CurrentBlockVersion() > 7)
+                    if(runtime::unifiedtimestamp() >= TAO::Ledger::StartBlockTimelock(7))
                     {
                         /* Keep a the credentials in secure allocated strings. */
                         SecureString strUsername = config::GetArg("-username", "").c_str();
@@ -95,7 +95,7 @@ namespace TAO
                             if(config::GetBoolArg("-autocreate"))
                             {
                                 /* Testnet is considered local if no dns is being used or if using a private network */
-                                bool fLocalTestnet = config::fTestNet.load() 
+                                bool fLocalTestnet = config::fTestNet.load()
                                     && (!config::GetBoolArg("-dns", true) || config::GetBoolArg("-private"));
 
                                 /* Can only create user if synced and (if not local) have connections.
@@ -220,7 +220,7 @@ namespace TAO
                         continue;
 
                     /* Testnet is considered local if no dns is being used or if using a private network */
-                    bool fLocalTestnet = config::fTestNet.load() 
+                    bool fLocalTestnet = config::fTestNet.load()
                         && (!config::GetBoolArg("-dns", true) || config::GetBoolArg("-private"));
 
                     /* Make sure the mining server has a connection. (skip check if running local testnet) */

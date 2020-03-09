@@ -131,9 +131,11 @@ namespace Legacy
         /* Support for PUBKEYHASH enabled for tx created after v8 activation */
         bool fHashSupport = false;
         const uint32_t nCurrent = TAO::Ledger::CurrentBlockVersion();
-
         if(nCurrent > 8 || (nCurrent == 8 && !TAO::Ledger::BlockVersionActive(tx.nTime, 8)))
             fHashSupport = true;
+
+        //TODO: this above makes no sense, why are we activating legacy features on version 8?
+        //@scottsimon
 
         /* Check that all inputs are from the same key and extract the pub key for it.
          * Typical migration transaction will have one input, but it is feasible to have multiple.

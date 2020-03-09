@@ -199,12 +199,11 @@ namespace TAO
                     for (uint32_t i = (uint32_t)tx.IsCoinStake(); i < tx.vin.size(); ++i)
                     {
                         const Legacy::TxIn& txin = tx.vin[i];
-                        
+
                         json::json input;
                         bool fFound = false;
 
-                        if((TAO::Ledger::BlockVersionActive(tx.nTime, 7) || TAO::Ledger::CurrentBlockVersion() > 7) && tx.nVersion >= 2
-                            && txin.prevout.hash.GetType() == TAO::Ledger::TRITIUM)
+                        if(tx.nVersion >= 2 && txin.prevout.hash.GetType() == TAO::Ledger::TRITIUM)
                         {
                             /* Previous output likely a Tritium send-to-legacy contract. Check for that first. It is possible for
                              * an older legacy tx to collide with the tritium hash type, so if not found still must check legacy.
