@@ -816,11 +816,11 @@ namespace Legacy
 	bool Transaction::CheckTransaction() const
     {
         /* Validate tx version 2 required when v7+ active and after v6 grace period end. */
-        if(nTime < TAO::Ledger::StartBlockTimelock(7) && nVersion == 2)
+        if(nTime < (TAO::Ledger::StartBlockTimelock(7) + 3600) && nVersion == 2)
             return debug::error(FUNCTION, "invalid transaction version ", nVersion);
 
         /* Validate tx version 2 required when v7+ active and after v6 grace period end. */
-        if(nTime >= TAO::Ledger::StartBlockTimelock(7) && nVersion != 2)
+        if(nTime >= (TAO::Ledger::StartBlockTimelock(7) + 3600) && nVersion != 2)
             return debug::error(FUNCTION, "invalid transaction version ", nVersion);
 
         /* Check for empty inputs. */
