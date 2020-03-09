@@ -248,7 +248,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
         REQUIRE(LLD::Register->ReadState(hashRegister, state));
 
         //check owner
-        REQUIRE(state.hashOwner == 0);
+        REQUIRE(state.hashOwner.GetType() == 0);
 
         //rollback the transaction
         REQUIRE(Rollback(tx[0]));
@@ -406,7 +406,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
             REQUIRE(LLD::Register->ReadState(hashRegister, state));
 
             //check owner
-            REQUIRE(state.hashOwner == 0);
+            REQUIRE(state.hashOwner.GetType() == 0);
 
         }
 
@@ -452,7 +452,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
                 REQUIRE(LLD::Register->ReadState(hashRegister, state));
 
                 //check owner
-                REQUIRE(state.hashOwner == 0);
+                REQUIRE(state.hashOwner.GetType() == 0);
 
                 //check for the proof
                 REQUIRE_FALSE(LLD::Ledger->HasProof(hashRegister, hashTx, 0));
@@ -527,7 +527,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
                 REQUIRE(LLD::Register->ReadState(hashRegister, state));
 
                 //check owner
-                REQUIRE(state.hashOwner == 0);
+                REQUIRE(state.hashOwner.GetType() == 0);
 
                 //check for the proof
                 REQUIRE_FALSE(LLD::Ledger->HasProof(hashRegister, hashTx, 0));

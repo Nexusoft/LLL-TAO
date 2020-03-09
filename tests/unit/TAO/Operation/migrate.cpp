@@ -446,9 +446,6 @@ TEST_CASE( "Migrate Operation Test - Genesis coinstake", "[operation]")
         uint32_t nCurrent = TAO::Ledger::CurrentTransactionVersion();
         if(nCurrent > 2 || (nCurrent == 2 && TAO::Ledger::TransactionVersionActive(runtime::timestamp(), nCurrent)))
         {
-            //migrate should fail verification if not tx version 1
-            REQUIRE_FALSE(tx.Verify());
-
             //any attempt to execute should fail also
             REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
 
@@ -1420,9 +1417,6 @@ TEST_CASE( "Migrate Operation Test - Trust coinstake", "[operation]")
         uint32_t nCurrent = TAO::Ledger::CurrentTransactionVersion();
         if(nCurrent > 2 || (nCurrent == 2 && TAO::Ledger::TransactionVersionActive(runtime::timestamp(), nCurrent)))
         {
-            //migrate should fail verification if not tx version 1
-            REQUIRE_FALSE(tx.Verify());
-
             //any attempt to execute should fail also
             REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
 
