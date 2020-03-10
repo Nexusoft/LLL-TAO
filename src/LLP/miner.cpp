@@ -247,10 +247,9 @@ namespace LLP
             /* On Connect Event, Assign the Proper Daemon Handle. */
             case EVENT_CONNECT:
             {
-                /* If version 7 or above then cache then cache the last transaction ID of the sig chain so that we can detect if
+                /* Cache the last transaction ID of the sig chain so that we can detect if
                    new transactions enter the mempool for this sig chain. */
-                if(runtime::unifiedtimestamp() >= TAO::Ledger::StartBlockTimelock(7))
-                    LLD::Ledger->ReadLast(TAO::API::users->GetGenesis(0), nHashLast, TAO::Ledger::FLAGS::MEMPOOL);
+                LLD::Ledger->ReadLast(TAO::API::users->GetGenesis(0), nHashLast, TAO::Ledger::FLAGS::MEMPOOL);
 
                 /* Debug output. */
                 debug::log(2, FUNCTION, "New Connection from ", GetAddress().ToStringIP());
@@ -405,38 +404,22 @@ namespace LLP
                                              PACKET.DATA.begin() + nIterator + 1 + nLength + 8));
 
                     /* Check value for coinbase output. */
-                     if(nValue == 0 || nValue > nMaxValue)
-                     {
-                         respond(COINBASE_FAIL);
-                         return debug::error(FUNCTION, "Invalid coinbase recipient reward.");
-                     }
+                    if(nValue == 0 || nValue > nMaxValue)
+                    {
+                        respond(COINBASE_FAIL);
+                        return debug::error(FUNCTION, "Invalid coinbase recipient reward.");
+                    }
 
-                     /* Get the string address. */
-                     std::string strAddress = convert::bytes2string(vAddress);
+                    /* Get the string address. */
+                    std::string strAddress = convert::bytes2string(vAddress);
 
-                     /* Validate the address. Disconnect immediately if an invalid address is provided. */
-                     if(runtime::unifiedtimestamp() >= TAO::Ledger::StartBlockTimelock(7))
-                     {
-                         uint256_t hashGenesis(strAddress);
-
-                         if(!LLD::Ledger->HasGenesis(hashGenesis))
-                         {
-                             respond(COINBASE_FAIL);
-                             return debug::error(FUNCTION, "Invalid Tritium Address in Coinbase Tx: ", strAddress);
-                         }
-                     }
-                     else
-                     {
-                         Legacy::NexusAddress address;
-                         address.SetPubKey(vAddress);
-
-                         if(!address.IsValid())
-                         {
-                             respond(COINBASE_FAIL);
-                             return debug::error(FUNCTION, "Invalid Legacy Address in Coinbase Tx: ", strAddress);
-                         }
-                     }
-
+                    /* Validate the address. Disconnect immediately if an invalid address is provided. */
+                    uint256_t hashGenesis(strAddress);
+                    if(!LLD::Ledger->HasGenesis(hashGenesis))
+                    {
+                        respond(COINBASE_FAIL);
+                        return debug::error(FUNCTION, "Invalid Tritium Address in Coinbase Tx: ", strAddress);
+                    }
 
                     /* Add the transaction as an output. */
                     vOutputs[strAddress] = nValue;
@@ -679,34 +662,29 @@ namespace LLP
     /* For Tritium, this checks the mempool to make sure that there are no new transactions that would be orphaned */
     bool Miner::check_round()
     {
-        /* Only need to check the round for version 7 and above */
-        if(runtime::unifiedtimestamp() >= TAO::Ledger::StartBlockTimelock(7))
+        /* Get the hash genesis. */
+        uint256_t hashGenesis = TAO::API::users->GetGenesis(0);
+
+        /* Read hashLast from hashGenesis' sigchain and also check mempool. */
+        uint512_t hashLast;
+
+        /* Check to see whether there are any new transactions in the mempool for the sig chain */
+        if(TAO::Ledger::mempool.Has(hashGenesis))
         {
-            /* Get the hash genesis. */
-            uint256_t hashGenesis = TAO::API::users->GetGenesis(0);
+            /* Get the last hash of the last transaction created by the sig chain */
+            LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL);
 
-            /* Read hashLast from hashGenesis' sigchain and also check mempool. */
-            uint512_t hashLast;
-
-            /* Check to see whether there are any new transactions in the mempool for the sig chain */
-            if(TAO::Ledger::mempool.Has(hashGenesis))
+            /* Update nHashLast if it changed. */
+            if(nHashLast != hashLast)
             {
-                /* Get the last hash of the last transaction created by the sig chain */
-                LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL);
+                nHashLast = hashLast;
 
-                /* Update nHashLast if it changed. */
-                if(nHashLast != hashLast)
-                {
-                    nHashLast = hashLast;
+                clear_map();
 
-                    clear_map();
+                debug::log(2, FUNCTION, "Block producer will orphan new sig chain transactions, resetting blocks");
 
-                    debug::log(2, FUNCTION, "Block producer will orphan new sig chain transactions, resetting blocks");
-
-                    return false;
-                }
+                return false;
             }
-
         }
 
         return true;
@@ -755,10 +733,9 @@ namespace LLP
                 WaitEvent();
             }
 
-            /* If we detected a block height change, update the cached last hash of the logged in sig chain.  NOTE this is done AFTER
-            the notifications processor has finished, in case it added new transactions to the mempool  */
-            if(runtime::unifiedtimestamp() >= TAO::Ledger::StartBlockTimelock(7))
-                LLD::Ledger->ReadLast(TAO::API::users->GetGenesis(0), nHashLast, TAO::Ledger::FLAGS::MEMPOOL);
+            /* If we detected a block height change, update the cached last hash of the logged in sig chain.
+             * This is done AFTER the notifications processor has finished, in case it added new transactions to the mempool  */
+            LLD::Ledger->ReadLast(TAO::API::users->GetGenesis(0), nHashLast, TAO::Ledger::FLAGS::MEMPOOL);
         }
 
         return true;
@@ -807,65 +784,44 @@ namespace LLP
        /* If the primemod flag is set, take the hash proof down to 1017-bit to maximize prime ratio as much as possible. */
        uint32_t nBitMask = config::GetBoolArg(std::string("-primemod"), false) ? 0xFE000000 : 0x80000000;
 
-
-       /* Create Tritium blocks if version 7 or above active. */
-       if(runtime::unifiedtimestamp() >= TAO::Ledger::StartBlockTimelock(7))
+       /* Attempt to unlock the account. */
+       if(TAO::API::users->Locked())
        {
-           /* Attempt to unlock the account. */
-           if(TAO::API::users->Locked())
-           {
-               debug::error(FUNCTION, "No unlocked account available");
-               return nullptr;
-           }
-
-           /* Get the sigchain and the PIN. */
-           SecureString PIN = TAO::API::users->GetActivePin();
-
-           /* Attempt to get the sigchain. */
-           memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pSigChain = TAO::API::users->GetAccount(0);
-           if(!pSigChain)
-           {
-               debug::error(FUNCTION, "Couldn't get the unlocked sigchain");
-               return nullptr;
-           }
-
-           /* Check that the account is unlocked for mining */
-           if(!TAO::API::users->CanMine())
-           {
-               debug::error(FUNCTION, "Account has not been unlocked for mining");
-               return nullptr;
-           }
-
-           /* Allocate memory for the new block. */
-           TAO::Ledger::TritiumBlock *pBlock = new TAO::Ledger::TritiumBlock();
-
-           /* Create a new block and loop for prime channel if minimum bit target length isn't met */
-           while(TAO::Ledger::CreateBlock(pSigChain, PIN, nChannel.load(), *pBlock, ++nBlockIterator, &CoinbaseTx))
-           {
-               /* Break out of loop when block is ready for prime mod. */
-               if(is_prime_mod(nBitMask, pBlock))
-                   break;
-           }
-
-           /* Output debug info and return the newly created block. */
-           debug::log(2, FUNCTION, "Created new Tritium Block ", pBlock->ProofHash().SubString(), " nVersion=", pBlock->nVersion);
-           return pBlock;
-
+           debug::error(FUNCTION, "No unlocked account available");
+           return nullptr;
        }
 
-       /* Create Legacy blocks if version 7 not active. */
-       Legacy::LegacyBlock *pBlock = new Legacy::LegacyBlock();
+       /* Get the sigchain and the PIN. */
+       SecureString PIN = TAO::API::users->GetActivePin();
+
+       /* Attempt to get the sigchain. */
+       memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pSigChain = TAO::API::users->GetAccount(0);
+       if(!pSigChain)
+       {
+           debug::error(FUNCTION, "Couldn't get the unlocked sigchain");
+           return nullptr;
+       }
+
+       /* Check that the account is unlocked for mining */
+       if(!TAO::API::users->CanMine())
+       {
+           debug::error(FUNCTION, "Account has not been unlocked for mining");
+           return nullptr;
+       }
+
+       /* Allocate memory for the new block. */
+       TAO::Ledger::TritiumBlock *pBlock = new TAO::Ledger::TritiumBlock();
 
        /* Create a new block and loop for prime channel if minimum bit target length isn't met */
-       while(Legacy::CreateBlock(*pMiningKey, CoinbaseTx, nChannel.load(), ++nBlockIterator, *pBlock))
+       while(TAO::Ledger::CreateBlock(pSigChain, PIN, nChannel.load(), *pBlock, ++nBlockIterator, &CoinbaseTx))
        {
            /* Break out of loop when block is ready for prime mod. */
            if(is_prime_mod(nBitMask, pBlock))
-                break;
+               break;
        }
 
        /* Output debug info and return the newly created block. */
-       debug::log(2, FUNCTION, "Created new Legacy Block ", pBlock->ProofHash().SubString(), " nVersion=", pBlock->nVersion);
+       debug::log(2, FUNCTION, "Created new Tritium Block ", pBlock->ProofHash().SubString(), " nVersion=", pBlock->nVersion);
        return pBlock;
    }
 
@@ -1044,14 +1000,10 @@ namespace LLP
 
 
     /*  Determines if the mining wallet is unlocked. */
-   bool Miner::is_locked()
-   {
-       /* Check if mining should use tritium or legacy for wallet locked check. */
-       if(runtime::unifiedtimestamp() >= TAO::Ledger::StartBlockTimelock(7))
-            return TAO::API::users->Locked();
-
-       return Legacy::Wallet::GetInstance().IsLocked();
-   }
+    bool Miner::is_locked()
+    {
+        return TAO::API::users->Locked();
+    }
 
 
    /*  Helper function used for prime channel modification rule in loop.

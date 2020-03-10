@@ -56,8 +56,17 @@ namespace Legacy
     /** Maximum size of numeric values. **/
     const size_t nMaxNumSize = 4;
 
+
     /** string used to sign Nexus messages **/
     const std::string strMessageMagic = "Nexus Signed Message:\n";
+
+
+    /** Old legacy outdated threshold, currently a placeholder. **/
+    const int64_t LOCKTIME_THRESHOLD = 500000000;
+
+
+    /** The network current transaction version. **/
+    const uint32_t TRANSACTION_CURRENT_VERSION = 2;
 
 }
 

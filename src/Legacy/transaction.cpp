@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <Legacy/types/transaction.h>
 
 #include <Legacy/include/evaluate.h>
+#include <Legacy/include/constants.h>
 #include <Legacy/include/money.h>
 #include <Legacy/include/signature.h>
 #include <Legacy/include/trust.h>
@@ -42,23 +43,14 @@ ________________________________________________________________________________
 namespace Legacy
 {
 
-    /* Old legacy outdated threshold, currently a placeholder. */
-    const int64_t LOCKTIME_THRESHOLD = 500000000;
-
-
     /* Default Constructor. */
     Transaction::Transaction()
-    : nVersion  (1)
-    , nTime     (0)
+    : nVersion  (TRANSACTION_CURRENT_VERSION)
+    , nTime     (runtime::unifiedtimestamp())
     , vin       ( )
     , vout      ( )
     , nLockTime (0)
     {
-        SetNull();
-
-        /* When tx nTime after v7 activation, legacy tx is version 2 */
-        if(nTime >= TAO::Ledger::StartBlockTimelock(7))
-            nVersion = 2;
     }
 
 
@@ -118,7 +110,7 @@ namespace Legacy
 
     /* Copy Constructor (From Tritium). */
     Transaction::Transaction(const TAO::Ledger::Transaction& tx)
-    : nVersion  (tx.nVersion)
+    : nVersion  (TRANSACTION_CURRENT_VERSION) //we want to lock to current legacy tx version
     , nTime     (tx.nTimestamp)
     , vin       ( )
     , vout      ( )
@@ -132,10 +124,6 @@ namespace Legacy
             if(tx[n].Legacy(txout))
                 vout.push_back(txout);
         }
-
-        /* When tx nTime after v7 activation, legacy tx is version 2 */
-        if(nTime >= TAO::Ledger::StartBlockTimelock(7))
-            nVersion = 2;
     }
 
 
@@ -820,11 +808,11 @@ namespace Legacy
 	bool Transaction::CheckTransaction() const
     {
         /* Validate tx version 2 required when v7+ active and after v6 grace period end. */
-        if(nTime < TAO::Ledger::StartBlockTimelock(7) && nVersion >= 2)
+        if(nTime < TAO::Ledger::StartBlockTimelock(7) && nVersion != (TRANSACTION_CURRENT_VERSION - 1))
             return debug::error(FUNCTION, "invalid transaction version ", nVersion);
 
         /* Validate tx version 2 required when v7+ active and after v6 grace period end. */
-        if(nTime >= (TAO::Ledger::StartBlockTimelock(7) + 3600) && nVersion < 2)
+        if(nTime >= (TAO::Ledger::StartBlockTimelock(7) + 3600) && nVersion != TRANSACTION_CURRENT_VERSION)
             return debug::error(FUNCTION, "invalid transaction version ", nVersion);
 
         /* Check for empty inputs. */
