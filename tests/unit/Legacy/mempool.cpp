@@ -367,10 +367,6 @@ TEST_CASE( "Legacy mempool and memory sequencing tests", "[legacy]")
         }
 
 
-        //check balance (this is a false balance)
-        REQUIRE(Legacy::Wallet::GetInstance().GetBalance() == uint64_t(20 * TAO::Ledger::NXS_COIN));
-
-
         //create the orphan
         Legacy::WalletTx wtx;
         {
@@ -385,7 +381,7 @@ TEST_CASE( "Legacy mempool and memory sequencing tests", "[legacy]")
 
             //create sending vectorsss
             std::vector< std::pair<Legacy::Script, int64_t> > vecSend;
-            vecSend.push_back(make_pair(scriptPubKey, 19 * TAO::Ledger::NXS_COIN));
+            vecSend.push_back(make_pair(scriptPubKey, 9 * TAO::Ledger::NXS_COIN));
 
             //for change
             Legacy::ReserveKey changeKey(Legacy::Wallet::GetInstance());
@@ -400,8 +396,6 @@ TEST_CASE( "Legacy mempool and memory sequencing tests", "[legacy]")
 
             //accept to mempool
             REQUIRE_FALSE(TAO::Ledger::mempool.Accept(wtx));
-
-            wtx.print();
         }
 
 
