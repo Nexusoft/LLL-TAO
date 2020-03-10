@@ -1033,7 +1033,7 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to fetch the inputs");
 
                     /* Connect the inputs. */
-                    if(!tx.Connect(inputs, *this, Legacy::FLAGS::BLOCK))
+                    if(!tx.Connect(inputs, *this, FLAGS::BLOCK))
                         return debug::error(FUNCTION, "failed to connect inputs");
 
                     /* Add legacy transactions to the wallet where appropriate */

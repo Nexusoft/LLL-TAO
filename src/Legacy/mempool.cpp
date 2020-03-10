@@ -196,7 +196,7 @@ namespace TAO
 
             /* See if inputs can be connected. */
             TAO::Ledger::BlockState state = ChainState::stateBest.load();
-            if(!tx.Connect(inputs, state, Legacy::FLAGS::MEMPOOL))
+            if(!tx.Connect(inputs, state, TAO::Ledger::FLAGS::MEMPOOL))
                 return debug::error(FUNCTION, "tx ", hashTx.SubString(), " failed to connect inputs");
 
             /* Set the inputs to be claimed. */

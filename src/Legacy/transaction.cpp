@@ -905,10 +905,6 @@ namespace Legacy
                     if(LLD::Ledger->ReadTx(prevout.hash, txPrev))
                     {   //we can't rely soley on the type byte, so we must revert to legacy if not found in ledger.}
 
-                        /* Check for existing indexes. */
-                        if(!LLD::Ledger->HasIndex(prevout.hash))
-                            return debug::error(FUNCTION, "tx ", prevout.hash.SubString(), " not connected");
-
                         /* Check that it is valid. */
                         if(prevout.n >= txPrev.Size())
                             return debug::error(FUNCTION, "prevout ", prevout.n, " is out of range ", txPrev.Size());
@@ -930,10 +926,6 @@ namespace Legacy
             Transaction txPrev;
             if(!LLD::Legacy->ReadTx(prevout.hash, txPrev))
                 return debug::error(FUNCTION, "tx ", prevout.hash.SubString(), " not found");
-
-            /* Check for existing indexes. */
-            if(!LLD::Ledger->HasIndex(prevout.hash))
-                return debug::error(FUNCTION, "tx ", prevout.hash.SubString(), " not connected");
 
             /* Check that it is valid. */
             if(prevout.n >= txPrev.vout.size())
@@ -966,7 +958,7 @@ namespace Legacy
             if(fIsCoinBase)
             {
                 /* Calculate the mint when on a block. */
-                if(nFlags == FLAGS::BLOCK)
+                if(nFlags == TAO::Ledger::FLAGS::BLOCK)
                     state.nMint = GetValueOut();
 
                 return true;
@@ -1068,6 +1060,14 @@ namespace Legacy
                     inputs.at(prevout.hash).second.SetPos(0);
                     inputs.at(prevout.hash).second >> txPrev;
 
+                    /* Check indexes for miner and block. */
+                    if(nFlags == TAO::Ledger::FLAGS::BLOCK || nFlags == TAO::Ledger::FLAGS::MINER)
+                    {
+                        /* Check that dependant transaction is indexed. */
+                        if(!LLD::Ledger->HasIndex(prevout.hash))
+                            return debug::error(FUNCTION, "Legacy tx ", prevout.hash.SubString(), " not connected");
+                    }
+
                     /* Check the inputs range. */
                     if(prevout.n >= txPrev.vout.size())
                         return debug::error(FUNCTION, "prevout is out of range");
@@ -1109,7 +1109,7 @@ namespace Legacy
                         return debug::error(FUNCTION, "signature is invalid");
 
                     /* Commit to disk if flagged. */
-                    if((nFlags == FLAGS::BLOCK) && !LLD::Legacy->WriteSpend(prevout.hash, prevout.n))
+                    if((nFlags == TAO::Ledger::FLAGS::BLOCK) && !LLD::Legacy->WriteSpend(prevout.hash, prevout.n))
                         return debug::error(FUNCTION, "failed to write spend");
 
                     break;
@@ -1126,6 +1126,14 @@ namespace Legacy
                     TAO::Ledger::Transaction txPrev;
                     inputs.at(prevout.hash).second.SetPos(0);
                     inputs.at(prevout.hash).second >> txPrev;
+
+                    /* Check indexes for miner and block. */
+                    if(nFlags == TAO::Ledger::FLAGS::BLOCK || nFlags == TAO::Ledger::FLAGS::MINER)
+                    {
+                        /* Check that dependant transaction is indexed. */
+                        if(!LLD::Ledger->HasIndex(prevout.hash))
+                            return debug::error(FUNCTION, "Tritium tx ", prevout.hash.SubString(), " not connected");
+                    }
 
                     /* Check the inputs range. */
                     if(prevout.n >= txPrev.Size())
@@ -1162,7 +1170,7 @@ namespace Legacy
                     }
 
                     /* Commit to disk if flagged. */
-                    if((nFlags == FLAGS::BLOCK) && !LLD::Legacy->WriteSpend(prevout.hash, prevout.n))
+                    if((nFlags == TAO::Ledger::FLAGS::BLOCK) && !LLD::Legacy->WriteSpend(prevout.hash, prevout.n))
                         return debug::error(FUNCTION, "failed to write spend");
 
                     break;
@@ -1190,7 +1198,7 @@ namespace Legacy
             return debug::error(FUNCTION, GetHash().SubString(), " value in ", nValueIn, " < value out ", GetValueOut());
 
         /* Calculate the mint if connected with a block. */
-        if(nFlags == FLAGS::BLOCK)
+        if(nFlags == TAO::Ledger::FLAGS::BLOCK)
             state.nMint += (int32_t)(GetValueOut() - nValueIn);
 
         /* UTXO to Sig Chain support - If we are connected with a block then check the outputs to see if any of them
@@ -1200,13 +1208,14 @@ namespace Legacy
             uint256_t hashTo;
             if(ExtractRegister(txout.scriptPubKey, hashTo))
             {
-                /* Read the owner of register. (check this for MEMPOOL, too) */
-                TAO::Register::State state;
-                if(!LLD::Register->ReadState(hashTo, state, nFlags))
-                    return debug::error(FUNCTION, "failed to read register to");
-
-                if(nFlags == FLAGS::BLOCK)
+                /* Write event for FLAGS::BLOCK only. */
+                if(nFlags == TAO::Ledger::FLAGS::BLOCK)
                 {
+                    /* Read the owner of register. (check this for MEMPOOL, too) */
+                    TAO::Register::State state;
+                    if(!LLD::Register->ReadState(hashTo, state, nFlags))
+                        return debug::error(FUNCTION, "failed to read register to");
+
                     /* Commit an event for receiving sigchain in the legay DB. */
                     if(!LLD::Legacy->WriteEvent(state.hashOwner, GetHash()))
                         return debug::error(FUNCTION, "failed to write event for account ", state.hashOwner.SubString());

@@ -793,13 +793,13 @@ namespace TAO
                 /* Check for dependants. */
                 if(contract.Dependant(hashPrev, nContract))
                 {
-                    /* Check that the previous transaction is indexed. */
-                    if(!LLD::Ledger->HasIndex(hashPrev))
-                        return debug::error(FUNCTION, hashPrev.SubString(), " not indexed");
-
                     /* Check for confirmations when on a block. */
                     if(nFlags == FLAGS::BLOCK || nFlags == FLAGS::MINER)
                     {
+                        /* Check that the previous transaction is indexed. */
+                        if(!LLD::Ledger->HasIndex(hashPrev))
+                            return debug::error(FUNCTION, hashPrev.SubString(), " not indexed");
+
                         /* Read previous transaction from disk. */
                         const TAO::Operation::Contract dependant = LLD::Ledger->ReadContract(hashPrev, nContract, nFlags);
                         switch(dependant.Primitive())
