@@ -753,7 +753,7 @@ namespace TAO
 
                         /* Check the state is prestate. */
                         if(nState != STATES::PRESTATE)
-                            return debug::error(FUNCTION, "OP::DEBIT: register state not in pre-state");
+                            return debug::error(FUNCTION, "OP::LEGACY: register state not in pre-state");
 
                         /* Verify the register's prestate. */
                         State prestate;
@@ -766,15 +766,15 @@ namespace TAO
 
                         /* Read the register from database. */
                         else if(!LLD::Register->ReadState(hashAddress, object, nFlags))
-                            return debug::error(FUNCTION, "OP::DEBIT: failed to read pre-state");
+                            return debug::error(FUNCTION, "OP::LEGACY: failed to read pre-state");
 
                         /* Check that the checksums match. */
                         if(prestate != object)
-                            return debug::error(FUNCTION, "OP::DEBIT: pre-state verification failed");
+                            return debug::error(FUNCTION, "OP::LEGACY: pre-state verification failed");
 
                         /* Check contract account */
                         if(contract.Caller() != prestate.hashOwner)
-                            return debug::error(FUNCTION, "OP::DEBIT: not authorized ", contract.Caller().SubString());
+                            return debug::error(FUNCTION, "OP::LEGACY: not authorized ", contract.Caller().SubString());
 
                         /* Calculate the new operation. */
                         if(!TAO::Operation::Legacy::Execute(object, nAmount, contract.Timestamp()))

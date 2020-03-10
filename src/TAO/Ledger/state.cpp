@@ -678,16 +678,16 @@ namespace TAO
 
 
         static uint32_t nTotalContracts = 0;
-        static runtime::stopwatch timerContracts;
+        static runtime::stopwatch swContract;
 
         static uint32_t nTotalInputs = 0;
-        static runtime::stopwatch timerInputs;
+        static runtime::stopwatch swScript;
 
         bool BlockState::SetBest()
         {
             /* Reset timers for meters. */
-            timerContracts.reset();
-            timerInputs.reset();
+            swContract.reset();
+            swScript.reset();
 
             /* Get the hash. */
             uint1024_t hash = GetHash();
@@ -848,8 +848,8 @@ namespace TAO
 
                 /* Debug output about the best chain. */
                 uint64_t nElapsed = (GetBlockTime() - ChainState::stateBest.load().GetBlockTime());
-                uint64_t nContractTime = timerContracts.ElapsedMicroseconds();
-                uint64_t nInputsTime   = timerInputs.ElapsedMicroseconds();
+                uint64_t nContractTime = swContract.ElapsedMicroseconds();
+                uint64_t nInputsTime   = swScript.ElapsedMicroseconds();
 
                 if(config::nVerbose >= TAO::Ledger::ChainState::Synchronizing() ? 1 : 0)
                     debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION,
@@ -933,7 +933,8 @@ namespace TAO
                 /* Only work on tritium transactions for now. */
                 if(proof.first == TRANSACTION::TRITIUM)
                 {
-                    timerContracts.start();
+                    /* Start the contracts stopwatch. */
+                    swContract.start();
 
                     /* Get the transaction hash. */
                     const uint512_t& hash = proof.second;
@@ -977,10 +978,6 @@ namespace TAO
                     /* Accumulate the fees. */
                     nFees += tx.Fees();
 
-                    /* Write the last to disk. */
-                    if(!LLD::Ledger->WriteLast(tx.hashGenesis, hash))
-                        return debug::error(FUNCTION, "failed to write last hash");
-
                     /* If tx is coinstake, also write the last stake. */
                     if(tx.IsCoinStake())
                     {
@@ -1000,20 +997,23 @@ namespace TAO
                         if(LLD::Local->ReadStakeChange(tx.hashGenesis, request)
                         && !request.fProcessed && request.hashTx == tx.GetHash())
                         {
+                            /* Mark as processed. */
                             request.fProcessed = true;
 
+                            /* Erase if we can't update it. */
                             if(!LLD::Local->WriteStakeChange(tx.hashGenesis, request))
-                                LLD::Local->EraseStakeChange(tx.hashGenesis); //if cannot update, erase the reqeust
+                                LLD::Local->EraseStakeChange(tx.hashGenesis);
                         }
                     }
 
                     /* Keep track of total contracts processed. */
                     nTotalContracts += tx.Size();
-                    timerContracts.stop();
+                    swContract.stop();
                 }
                 else if(proof.first == TRANSACTION::LEGACY)
                 {
-                    timerInputs.start();
+                    /* Start the script stopwatch. */
+                    swScript.start();
 
                     /* Get the transaction hash. */
                     const uint512_t& hash = proof.second;
@@ -1041,7 +1041,7 @@ namespace TAO
 
                     /* Keep track of total inputs proceessed. */
                     nTotalInputs += tx.vin.size();
-                    timerInputs.stop();
+                    swScript.stop();
                 }
                 else
                     return debug::error(FUNCTION, "using an unknown transaction type");

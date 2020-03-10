@@ -64,7 +64,7 @@ namespace TAO
 
             /* Check if we already have this tx. */
             if(LLD::Legacy->HasTx(hashTx, FLAGS::MEMPOOL))
-                return false;
+                return debug::error(FUNCTION, "already have tx ", hashTx.SubString());
 
             debug::log(3, "ACCEPT --------------------------------------");
             if(config::nVerbose >= 3)
@@ -88,6 +88,7 @@ namespace TAO
                 return debug::error(FUNCTION, "tx ", hashTx.SubString(), " not accepting nLockTime beyond 2038 yet");
 
             /* Check previous inputs. */
+            uint32_t nTotal = 0;
             for(const auto& vin : tx.vin)
             {
                 /* Check if input is already claimed. */
@@ -133,18 +134,22 @@ namespace TAO
                 if(!fExists)
                 {
                     /* Debug output. */
-                    debug::log(0, FUNCTION, "tx ", hashTx.SubString(), " prev ", vin.prevout.hash.SubString(),
+                    debug::log(0, FUNCTION, "tx ", hashTx.SubString(), " input ", vin.prevout.hash.SubString(),
                         " ORPHAN");
 
-                    /* Push to orphan queue. */
-                    mapLegacyOrphans[vin.prevout.hash] = tx;
-
-                    /* Increment consecutive orphans. */
-                    if(pnode)
-                        ++pnode->nConsecutiveOrphans;
-
-                    return false;
+                    /* Set orphan flag. */
+                    ++nTotal;
                 }
+            }
+
+            /* We want to process all orphaned inputs before returning. */
+            if(nTotal > 0)
+            {
+                /* Increment consecutive orphans. */
+                if(pnode)
+                    ++pnode->nConsecutiveOrphans;
+
+                return debug::error(FUNCTION, "tx ", hashTx.SubString(), " missing ", nTotal, " inputs");
             }
 
             /* Check the inputs for spends. */
@@ -205,45 +210,7 @@ namespace TAO
             /* Log outputs. */
             debug::log(2, FUNCTION, "tx ", hashTx.SubString(), " ACCEPTED");
 
-            /* Process the orphan queue. */
-            ProcessLegacyOrphans(hashTx, pnode);
-
             return true;
-        }
-
-
-        /* Process orphan transactions if triggered in queue. */
-        void Mempool::ProcessLegacyOrphans(const uint512_t& hash, LLP::TritiumNode* pnode)
-        {
-            RLOCK(MUTEX);
-
-            /* Check orphan queue. */
-            uint512_t hashTx = hash;
-            while(mapLegacyOrphans.count(hashTx))
-            {
-                /* Get the transaction from map. */
-                Legacy::Transaction& tx = mapLegacyOrphans[hashTx];
-
-                /* Get the previous hash. */
-                uint512_t hashThis = tx.GetHash();
-
-                /* Debug output. */
-                debug::log(0, FUNCTION, "PROCESSING LEGACY ORPHAN tx ", hashThis.SubString());
-
-                /* Accept the transaction into memory pool. */
-                if(!Accept(tx, pnode))
-                {
-                    debug::log(0, FUNCTION, "ORPHAN tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
-
-                    break;
-                }
-
-                /* Erase the transaction. */
-                mapOrphans.erase(hashTx);
-
-                /* Set the hashTx. */
-                hashTx = hashThis;
-            }
         }
 
 

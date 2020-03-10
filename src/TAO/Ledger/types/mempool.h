@@ -62,10 +62,6 @@ namespace TAO
             std::map<uint512_t, Legacy::Transaction> mapLegacyConflicts;
 
 
-            /** Temporary holding area for orphan legacy transctions. **/
-            std::map<uint512_t, Legacy::Transaction> mapLegacyOrphans;
-
-
             /** The transactions in the ledger memory pool. **/
             std::map<uint512_t, TAO::Ledger::Transaction> mapLedger;
 
@@ -154,19 +150,6 @@ namespace TAO
              *
              **/
             void ProcessOrphans(const uint512_t& hash);
-
-
-            /** ProcessLegacyOrphans
-             *
-             *  Process legacy orphan transactions if triggered in queue.
-             *
-             *  @param[in] hash The hash of spent output
-             *  @param[in] pnode The node that orphans are being processed from.
-             *
-             *  @return true if spent.
-             *
-             **/
-            void ProcessLegacyOrphans(const uint512_t& hash, LLP::TritiumNode* pnode = nullptr);
 
 
             /** IsSpent

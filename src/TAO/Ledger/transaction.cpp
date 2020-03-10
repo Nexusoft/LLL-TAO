@@ -685,7 +685,7 @@ namespace TAO
         bool Transaction::Connect(const uint8_t nFlags, const BlockState* pblock) const
         {
             /* Get the transaction's hash. */
-            uint512_t hash = GetHash();
+            const uint512_t hash = GetHash();
 
             /* flag indicating that transaction fees should apply, depending on the time since the last transaction */
             bool fApplyTxFee = false;
@@ -696,7 +696,6 @@ namespace TAO
             /* Check for first. */
             if(IsFirst())
             {
-
                 /* Check ambassador sigchains based on all versions, not the smaller subset of versions. */
                 for(uint32_t nSwitchVersion = 7; nSwitchVersion <= CurrentBlockVersion(); ++nSwitchVersion)
                 {
@@ -782,10 +781,6 @@ namespace TAO
                 /* Check the previous genesis. */
                 if(txPrev.hashGenesis != hashGenesis)
                     return debug::error(FUNCTION, "genesis hash broken chain");
-
-                /* Check previous transaction from disk hash. */
-                if(txPrev.GetHash() != hashPrevTx) //NOTE: this is being extra paranoid. Consider removing.
-                    return debug::error(FUNCTION, "prev transaction prevhash mismatch");
             }
 
             /* Keep for dependants. */
@@ -861,6 +856,10 @@ namespace TAO
                 if(nCost > nFees)
                     return debug::error(FUNCTION, "not enough fees supplied ", nFees);
             }
+
+            /* Write the last to disk. */
+            if(nFlags == FLAGS::BLOCK && !LLD::Ledger->WriteLast(hashGenesis, hash))
+                return debug::error(FUNCTION, "failed to write last hash");
 
             return true;
         }

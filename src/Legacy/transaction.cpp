@@ -55,6 +55,10 @@ namespace Legacy
     , nLockTime (0)
     {
         SetNull();
+
+        /* When tx nTime after v7 activation, legacy tx is version 2 */
+        if(nTime >= TAO::Ledger::StartBlockTimelock(7))
+            nVersion = 2;
     }
 
 
@@ -937,7 +941,7 @@ namespace Legacy
             /* Read the previous transaction. */
             Transaction txPrev;
             if(!LLD::Legacy->ReadTx(prevout.hash, txPrev))
-                return debug::error(FUNCTION, "legacy tx ", prevout.hash.SubString(), " not found");
+                return debug::error(FUNCTION, "tx ", prevout.hash.SubString(), " not found");
 
             /* Check for existing indexes. */
             if(!LLD::Ledger->HasIndex(prevout.hash))
