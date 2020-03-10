@@ -108,7 +108,7 @@ namespace TAO
                     /* Case for tritium transactions. */
                     case TAO::Ledger::TRITIUM:
                     {
-                        fExists = LLD::Ledger->HasTx(vin.prevout.hash);
+                        fExists = LLD::Ledger->HasTx(vin.prevout.hash, FLAGS::MEMPOOL);
 
                         /* Ask for orphan if it wasn't found. */
                         if(!fExists && pnode)
@@ -120,7 +120,7 @@ namespace TAO
                     /* Case for legacy transactions. */
                     case TAO::Ledger::LEGACY:
                     {
-                        fExists = LLD::Legacy->HasTx(vin.prevout.hash);
+                        fExists = LLD::Legacy->HasTx(vin.prevout.hash, FLAGS::MEMPOOL);
 
                         /* Ask for orphan if it wasn't found. */
                         if(!fExists && pnode)

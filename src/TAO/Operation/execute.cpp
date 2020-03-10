@@ -109,7 +109,7 @@ namespace TAO
                         contract >> nContract;
 
                         /* Verify the operation rules. */
-                        const Contract condition = LLD::Ledger->ReadContract(hashTx, nContract);
+                        const Contract condition = LLD::Ledger->ReadContract(hashTx, nContract, nFlags);
                         if(!Validate::Verify(contract, condition, nCost))
                             return false;
 
@@ -407,7 +407,7 @@ namespace TAO
                         contract >> hashAddress;
 
                         /* Verify the operation rules. */
-                        const Contract transfer = LLD::Ledger->ReadContract(hashTx, nContract);
+                        const Contract transfer = LLD::Ledger->ReadContract(hashTx, nContract, nFlags);
                         if(!Claim::Verify(contract, transfer))
                             return false;
 
@@ -717,7 +717,7 @@ namespace TAO
                         contract >> nContract;
 
                         /* Verify the operation rules. */
-                        const Contract debit = LLD::Ledger->ReadContract(hashTx, nContract);
+                        const Contract debit = LLD::Ledger->ReadContract(hashTx, nContract, nFlags);
                         if(!Credit::Verify(contract, debit, nFlags))
                             return false;
 
@@ -817,7 +817,7 @@ namespace TAO
                         contract >> hashTx;
 
                         /* Retrieve a debit for the Legacy tx output. Migrate tx will only have one output (index 0) */
-                        Contract debit = LLD::Ledger->ReadContract(hashTx, 0);
+                        Contract debit = LLD::Ledger->ReadContract(hashTx, 0, nFlags);
 
                         /* Add migrate data from Legacy tx to debit (base ReadContract returns generic Legacy send to register) */
                         if(!::Legacy::BuildMigrateDebit(debit, hashTx))
