@@ -64,7 +64,7 @@ namespace TAO
 
             /* Check if we already have this tx. */
             if(LLD::Legacy->HasTx(hashTx, FLAGS::MEMPOOL))
-                return debug::error(FUNCTION, "already have tx ", hashTx.SubString());
+                return false;
 
             debug::log(3, "ACCEPT --------------------------------------");
             if(config::nVerbose >= 3)
