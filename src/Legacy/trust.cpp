@@ -128,15 +128,6 @@ namespace Legacy
     {
         std::vector<uint8_t> vchTrustKey;
 
-        /* Support for PUBKEYHASH enabled for tx created after v8 activation */
-        bool fHashSupport = false;
-        const uint32_t nCurrent = TAO::Ledger::CurrentBlockVersion();
-        if(nCurrent > 8 || (nCurrent == 8 && !TAO::Ledger::BlockVersionActive(tx.nTime, 8)))
-            fHashSupport = true;
-
-        //TODO: this above makes no sense, why are we activating legacy features on version 8?
-        //@scottsimon
-
         /* Check that all inputs are from the same key and extract the pub key for it.
          * Typical migration transaction will have one input, but it is feasible to have multiple.
          * If more than one, they all must be from the same key.
@@ -163,31 +154,6 @@ namespace Legacy
                     vchTrustKey = vSolutions[0]; //Save this as the pub key for the trust key
 
                 else if(vchTrustKey != vSolutions[0])
-                    return false; // Inputs not all from same address
-            }
-            else if(whichType == Legacy::TX_PUBKEYHASH && fHashSupport)
-            {
-                /* pub key hash output cannot extract the pub key, have to get it from wallet key store.
-                 * For this case, legacy wallet must be on same machine as migrate and unlocked or it won't work
-                 */
-                NexusAddress address;
-                std::vector<uint8_t> vchPubKey;
-                Legacy::Wallet& wallet = Legacy::Wallet::GetInstance();
-
-                address.SetHash256(uint256_t(vSolutions[0]));
-
-                /* Wallet must be unlocked */
-                if(wallet.IsLocked())
-                    return false;
-
-                /* Wallet must contain the trust key and able to retrieve it successfully */
-                if(!wallet.GetPubKey(address, vchPubKey))
-                    return false;
-
-                if(nInput == 0)
-                    vchTrustKey = vchPubKey; //Save this as the pub key for the trust key
-
-                else if(vchTrustKey != vchPubKey)
                     return false; // Inputs not all from same address
             }
             else
