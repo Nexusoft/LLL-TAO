@@ -94,7 +94,13 @@ namespace TAO
 
             /* Check for transaction in orphans. */
             if(mapOrphans.count(tx.hashPrevTx))
+            {
+                /* Increment consecutive orphans. */
+                if(pnode)
+                    ++pnode->nConsecutiveOrphans;
+
                 return debug::error(FUNCTION, "already have ORPHAN ", hashTx.SubString());
+            }
 
             debug::log(3, "ACCEPT --------------------------------------");
             if(config::nVerbose >= 3)
@@ -201,17 +207,6 @@ namespace TAO
 
             /* Debug output. */
             debug::log(3, FUNCTION, "tx ", hashTx.SubString(), " ACCEPTED in ", std::dec, time.ElapsedMilliseconds(), " ms");
-
-            /* Relay the transaction. */
-            if(LLP::TRITIUM_SERVER)
-            {
-                LLP::TRITIUM_SERVER->Relay
-                (
-                    LLP::ACTION::NOTIFY,
-                    uint8_t(LLP::TYPES::TRANSACTION),
-                    hashTx
-                );
-            }
 
             /* Process orphan queue. */
             ProcessOrphans(hashTx);

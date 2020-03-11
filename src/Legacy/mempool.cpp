@@ -139,14 +139,14 @@ namespace TAO
                         fExists = true;
 
                         /* Debug output. */
-                        debug::log(0, FUNCTION, "ORPHANED ", vin.prevout.hash.SubString(), " already have");
+                        debug::log(2, FUNCTION, "ORPHANED ", vin.prevout.hash.SubString(), " already have");
                     }
 
                     /* If there are missing inputs, request them and return. */
                     if(!fExists)
                     {
                         /* Debug output. */
-                        debug::log(0, FUNCTION, "tx ", hashTx.SubString(), " input ", vin.prevout.hash.SubString(),
+                        debug::log(2, FUNCTION, "tx ", hashTx.SubString(), " input ", vin.prevout.hash.SubString(),
                             " ORPHAN");
 
                         /* Set orphan flag. */
@@ -157,7 +157,7 @@ namespace TAO
                         ssResponse << uint8_t(LLP::SPECIFIER::LEGACY) << uint8_t(LLP::TYPES::TRANSACTION) << vin.prevout.hash;
 
                         /* Debug output. */
-                        debug::log(0, FUNCTION, "Requesting missing tx ", vin.prevout.hash.SubString());
+                        debug::log(2, FUNCTION, "Requesting missing tx ", vin.prevout.hash.SubString());
                     }
                 }
 

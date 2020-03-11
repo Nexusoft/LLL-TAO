@@ -2146,11 +2146,11 @@ namespace LLP
                 }
 
                 /* Check for failure limit on node. */
-                if(nConsecutiveFails >= 500)
+                if(nConsecutiveFails >= 1000)
                     return debug::drop(NODE, "TX::node reached failure limit");
 
                 /* Check for orphan limit on node. */
-                if(nConsecutiveOrphans >= 500)
+                if(nConsecutiveOrphans >= 1000)
                     return debug::drop(NODE, "TX::node reached ORPHAN limit");
 
                 break;
