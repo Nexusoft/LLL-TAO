@@ -50,6 +50,7 @@ namespace TAO
         , mapOrphans         ( )
         , mapClaimed         ( )
         , mapInputs          ( )
+        , setOrphansByIndex  ( )
         {
         }
 
@@ -93,7 +94,7 @@ namespace TAO
 
             /* Check for transaction in orphans. */
             if(mapOrphans.count(tx.hashPrevTx))
-                return debug::error(FUNCTION, "already have ORPHAN ", tx.hashPrevTx.SubString());
+                return debug::error(FUNCTION, "already have ORPHAN ", hashTx.SubString());
 
             debug::log(3, "ACCEPT --------------------------------------");
             if(config::nVerbose >= 3)
@@ -129,6 +130,7 @@ namespace TAO
 
                     /* Push to orphan queue. */
                     mapOrphans[tx.hashPrevTx] = tx;
+                    setOrphansByIndex.insert(hashTx);
 
                     /* Increment consecutive orphans. */
                     if(pnode)
@@ -235,7 +237,7 @@ namespace TAO
                 TAO::Ledger::Transaction& tx = mapOrphans[hashTx];
 
                 /* Get the previous hash. */
-                uint512_t hashThis = tx.GetHash();
+                const uint512_t hashThis = tx.GetHash();
 
                 /* Debug output. */
                 debug::log(0, FUNCTION, "PROCESSING ORPHAN tx ", hashThis.SubString());
@@ -250,6 +252,7 @@ namespace TAO
 
                 /* Erase the transaction. */
                 mapOrphans.erase(hashTx);
+                setOrphansByIndex.erase(hashThis);
 
                 /* Set the hashTx. */
                 hashTx = hashThis;
@@ -397,6 +400,9 @@ namespace TAO
             if(mapLegacyConflicts.count(hashTx))
                 mapLegacyConflicts.erase(hashTx);
 
+            /* Erase from orphans memory. */
+            if(setOrphansByIndex.count(hashTx))
+                setOrphansByIndex.erase(hashTx);
 
             /* Find the transaction in pool. */
             if(mapLedger.count(hashTx))

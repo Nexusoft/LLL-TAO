@@ -131,7 +131,16 @@ namespace TAO
 
                     /* Catch all for if tritium wasn't found. */
                     if(!fExists && LLD::Legacy->HasTx(vin.prevout.hash, FLAGS::MEMPOOL))
-                        fExists  = true;
+                        fExists = true;
+
+                    /* Check for any orphaned inputs. */
+                    if(!fExists && setOrphansByIndex.count(vin.prevout.hash))
+                    {
+                        fExists = true;
+
+                        /* Debug output. */
+                        debug::log(0, FUNCTION, "ORPHANED ", vin.prevout.hash.SubString(), " already have");
+                    }
 
                     /* If there are missing inputs, request them and return. */
                     if(!fExists)

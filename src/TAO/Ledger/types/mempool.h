@@ -81,6 +81,10 @@ namespace TAO
             /** Record of legacy inputs in the mempool. **/
             std::map<Legacy::OutPoint, uint512_t> mapInputs;
 
+
+            /** Set to keep track of duplicate orphans by index. **/
+            std::set<uint512_t> setOrphansByIndex;
+
         public:
 
             /** Default Constructor. **/
