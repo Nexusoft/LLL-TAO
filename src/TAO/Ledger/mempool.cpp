@@ -89,7 +89,7 @@ namespace TAO
 
             /* Check for transaction on disk. */
             if(LLD::Ledger->HasTx(hashTx, FLAGS::MEMPOOL))
-                return false;
+                return debug::error(FUNCTION, "already have transaction");
 
             /* Check for transaction in orphans. */
             if(mapOrphans.count(tx.hashPrevTx))
@@ -151,7 +151,7 @@ namespace TAO
                     /* Process orphan queue. */
                     ProcessOrphans(hashTx);
 
-                    return true;
+                    return false;
                 }
 
                 /* Get the last hash. */
@@ -169,7 +169,7 @@ namespace TAO
                     /* Process orphan queue. */
                     ProcessOrphans(hashTx);
 
-                    return true;
+                    return false;
                 }
             }
 
@@ -397,6 +397,7 @@ namespace TAO
             if(mapLegacyConflicts.count(hashTx))
                 mapLegacyConflicts.erase(hashTx);
 
+
             /* Find the transaction in pool. */
             if(mapLedger.count(hashTx))
             {
@@ -405,6 +406,7 @@ namespace TAO
 
                 /* Erase from the memory map. */
                 mapClaimed.erase(tx.hashPrevTx);
+                mapOrphans.erase(tx.hashPrevTx);
                 mapLedger.erase(hashTx);
 
                 return true;

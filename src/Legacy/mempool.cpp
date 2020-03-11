@@ -88,7 +88,6 @@ namespace TAO
                 return debug::error(FUNCTION, "tx ", hashTx.SubString(), " not accepting nLockTime beyond 2038 yet");
 
             /* Check previous inputs. */
-            uint32_t nTotal = 0;
             for(const auto& vin : tx.vin)
             {
                 /* Check if input is already claimed. */
@@ -100,56 +99,6 @@ namespace TAO
 
                     return false;
                 }
-
-                /* Check for available inputs. */
-                bool fExists = false;
-                switch(vin.prevout.hash.GetType())
-                {
-                    /* Case for tritium transactions. */
-                    case TAO::Ledger::TRITIUM:
-                    {
-                        fExists = LLD::Ledger->HasTx(vin.prevout.hash, FLAGS::MEMPOOL);
-
-                        /* Ask for orphan if it wasn't found. */
-                        if(!fExists && pnode)
-                            pnode->PushMessage(LLP::ACTION::GET, uint8_t(LLP::TYPES::TRANSACTION), vin.prevout.hash);
-
-                        break;
-                    }
-
-                    /* Case for legacy transactions. */
-                    case TAO::Ledger::LEGACY:
-                    {
-                        fExists = LLD::Legacy->HasTx(vin.prevout.hash, FLAGS::MEMPOOL);
-
-                        /* Ask for orphan if it wasn't found. */
-                        if(!fExists && pnode)
-                            pnode->PushMessage(LLP::ACTION::GET, uint8_t(LLP::SPECIFIER::LEGACY), uint8_t(LLP::TYPES::TRANSACTION), vin.prevout.hash);
-
-                        break;
-                    }
-                }
-
-                /* Check for orphan now. */
-                if(!fExists)
-                {
-                    /* Debug output. */
-                    debug::log(0, FUNCTION, "tx ", hashTx.SubString(), " input ", vin.prevout.hash.SubString(),
-                        " ORPHAN");
-
-                    /* Set orphan flag. */
-                    ++nTotal;
-                }
-            }
-
-            /* We want to process all orphaned inputs before returning. */
-            if(nTotal > 0)
-            {
-                /* Increment consecutive orphans. */
-                if(pnode)
-                    ++pnode->nConsecutiveOrphans;
-
-                return debug::error(FUNCTION, "tx ", hashTx.SubString(), " missing ", nTotal, " inputs");
             }
 
             /* Check the inputs for spends. */
@@ -157,7 +106,73 @@ namespace TAO
 
             /* Fetch the inputs. */
             if(!tx.FetchInputs(inputs))
-                return debug::error(FUNCTION, "tx ", hashTx.SubString(), " failed to fetch the inputs");
+            {
+                /* Create response data stream. */
+                DataStream ssResponse(SER_NETWORK, LLP::PROTOCOL_VERSION);
+
+                /* Check previous inputs. */
+                uint32_t nTotal = 0;
+                for(const auto& vin : tx.vin)
+                {
+                    /* Check for available inputs. */
+                    bool fExists  = false;
+
+                    /* Handle for finding inputs (fetch inputs style). */
+                    if(tx.nTime >= TAO::Ledger::StartBlockTimelock(7))
+                    {
+                        /* Get the type of transaction. */
+                        if(vin.prevout.hash.GetType() == TAO::Ledger::TRITIUM)
+                        {
+                            /* Ask for orphan if it wasn't found. */
+                            if(LLD::Ledger->HasTx(vin.prevout.hash, FLAGS::MEMPOOL))
+                                fExists  = true;
+                        }
+                    }
+
+                    /* Catch all for if tritium wasn't found. */
+                    if(!fExists && LLD::Legacy->HasTx(vin.prevout.hash, FLAGS::MEMPOOL))
+                        fExists  = true;
+
+                    /* If there are missing inputs, request them and return. */
+                    if(!fExists)
+                    {
+                        /* Debug output. */
+                        debug::log(0, FUNCTION, "tx ", hashTx.SubString(), " input ", vin.prevout.hash.SubString(),
+                            " ORPHAN");
+
+                        /* Set orphan flag. */
+                        ++nTotal;
+
+                        /* Push to stream: NOTE: we need to ask for both types here since we don't have any good way to determine with */
+                        ssResponse << uint8_t(LLP::TYPES::TRANSACTION) << vin.prevout.hash; // 100% certainty what input tx type is
+                        ssResponse << uint8_t(LLP::SPECIFIER::LEGACY) << uint8_t(LLP::TYPES::TRANSACTION) << vin.prevout.hash;
+
+                        /* Debug output. */
+                        debug::log(0, FUNCTION, "Requesting missing tx ", vin.prevout.hash.SubString());
+                    }
+                }
+
+                /* We want to process all orphaned inputs before returning. */
+                if(nTotal > 0)
+                {
+                    /* Increment consecutive orphans. */
+                    if(pnode)
+                    {
+                        /* Push to stream. */
+                        ssResponse << uint8_t(LLP::SPECIFIER::LEGACY) << uint8_t(LLP::TYPES::TRANSACTION) << hashTx;
+
+                        /* Push the packet response. */
+                        pnode->WritePacket(LLP::TritiumNode::NewMessage(LLP::ACTION::GET, ssResponse));
+
+                        /* Update consecutive orphans. */
+                        ++pnode->nConsecutiveOrphans;
+                    }
+
+                    return debug::error(FUNCTION, "tx ", hashTx.SubString(), " missing ", nTotal, " inputs");
+                }
+
+                return debug::error(FUNCTION, "failed to fetch inputs");
+            }
 
             /* Check for standard inputs. */
             if(!tx.AreInputsStandard(inputs))

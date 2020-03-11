@@ -46,6 +46,11 @@ ________________________________________________________________________________
 #include <iomanip>
 #include <bitset>
 
+/* We use this to setup the node to start syncing from orphans with no transactions sent with blocks.
+ * This helps with stress testing and debugging the missing transaction algorithms
+ */
+//#define DEBUG_MISSING
+
 namespace LLP
 {
 
@@ -445,6 +450,10 @@ namespace LLP
 
                 /* Send Auth immediately after version and before any other messages*/
                 //Auth(true);
+
+                #ifdef DEBUG_MISSING
+                fSynchronized.store(true);
+                #endif
 
                 /* If not synchronized and making an outbound connection, start the sync */
                 if(!fSynchronized.load())
@@ -1877,7 +1886,9 @@ namespace LLP
                         {
                             /* Ask for list of blocks. */
                             PushMessage(ACTION::LIST,
+                                #ifndef DEBUG_MISSING
                                 uint8_t(SPECIFIER::TRANSACTIONS),
+                                #endif
                                 uint8_t(TYPES::BLOCK),
                                 uint8_t(TYPES::LOCATOR),
                                 TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
@@ -1925,7 +1936,7 @@ namespace LLP
                                 nConsecutiveFails += block.vMissing.size();
 
                                 /* Bump DDOS score. */
-                                DDOS->rSCORE += 100;
+                                DDOS->rSCORE += (block.vMissing.size() * 10);
                             }
 
 
@@ -1933,17 +1944,21 @@ namespace LLP
                             ssResponse << uint8_t(TYPES::BLOCK) << block.hashMissing;
 
                             /* Push the packet response. */
-                            WritePacket(NewMessage(ACTION::GET, ssResponse));
+                            if(ssResponse.size() != 0)
+                                WritePacket(NewMessage(ACTION::GET, ssResponse));
                         }
 
                         /* Check for duplicate and ask for previous block. */
                         if(!(nStatus & TAO::Ledger::PROCESS::DUPLICATE)
                         && !(nStatus & TAO::Ledger::PROCESS::IGNORED)
+                        && !(nStatus & TAO::Ledger::PROCESS::INCOMPLETE)
                         &&  (nStatus & TAO::Ledger::PROCESS::ORPHAN))
                         {
                             /* Ask for list of blocks. */
                             PushMessage(ACTION::LIST,
+                                #ifndef DEBUG_MISSING
                                 uint8_t(SPECIFIER::TRANSACTIONS),
+                                #endif
                                 uint8_t(TYPES::BLOCK),
                                 uint8_t(TYPES::LOCATOR),
                                 TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),

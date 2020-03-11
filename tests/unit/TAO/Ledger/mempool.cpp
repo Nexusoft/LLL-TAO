@@ -1657,7 +1657,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[mempool]")
             tx.Sign(hashPrivKey1);
 
             //commit to disk
-            REQUIRE(TAO::Ledger::mempool.Accept(tx));
+            REQUIRE_FALSE(TAO::Ledger::mempool.Accept(tx));
 
             //set previous
             hashPrevTx = tx.GetHash();

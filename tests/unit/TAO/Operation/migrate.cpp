@@ -167,7 +167,7 @@ TEST_CASE( "Migrate Operation Test - Genesis coinstake", "[operation]")
         state.vtx.push_back(std::make_pair(uint8_t(TAO::Ledger::TRANSACTION::LEGACY), tx.GetHash()));
 
         //connect tx
-        REQUIRE(tx.Connect(inputs, state, Legacy::FLAGS::BLOCK));
+        REQUIRE(tx.Connect(inputs, state, TAO::Ledger::FLAGS::BLOCK));
 
         //write and index block
         REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
@@ -269,7 +269,7 @@ TEST_CASE( "Migrate Operation Test - Genesis coinstake", "[operation]")
         REQUIRE(LLD::Legacy->WriteTx(tx.GetHash(), tx));
 
         //connect tx
-        REQUIRE(tx.Connect(inputs, state, Legacy::FLAGS::BLOCK));
+        REQUIRE(tx.Connect(inputs, state, TAO::Ledger::FLAGS::BLOCK));
 
         //write and index block
         REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
@@ -347,7 +347,7 @@ TEST_CASE( "Migrate Operation Test - Genesis coinstake", "[operation]")
         REQUIRE(LLD::Legacy->WriteTx(wtx.GetHash(), wtx));
 
         //connect tx
-        REQUIRE(wtx.Connect(inputs, state, Legacy::FLAGS::BLOCK));
+        REQUIRE(wtx.Connect(inputs, state, TAO::Ledger::FLAGS::BLOCK));
 
         //write and index block
         REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
@@ -613,7 +613,7 @@ TEST_CASE( "Migrate Operation Test - Genesis coinstake", "[operation]")
             state.vtx.push_back(std::make_pair(uint8_t(TAO::Ledger::TRANSACTION::LEGACY), tx.GetHash()));
 
             //connect tx
-            REQUIRE(tx.Connect(inputs, state, Legacy::FLAGS::BLOCK));
+            REQUIRE(tx.Connect(inputs, state, TAO::Ledger::FLAGS::BLOCK));
 
             //write and index block
             REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
@@ -712,7 +712,7 @@ TEST_CASE( "Migrate Operation Test - Genesis coinstake", "[operation]")
             REQUIRE(LLD::Legacy->WriteTx(tx.GetHash(), tx));
 
             //connect tx
-            REQUIRE(tx.Connect(inputs, state, Legacy::FLAGS::BLOCK));
+            REQUIRE(tx.Connect(inputs, state, TAO::Ledger::FLAGS::BLOCK));
 
             //write and index block
             REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
@@ -786,7 +786,7 @@ TEST_CASE( "Migrate Operation Test - Genesis coinstake", "[operation]")
             REQUIRE(LLD::Legacy->WriteTx(wtx.GetHash(), wtx));
 
             //connect tx
-            REQUIRE(wtx.Connect(inputs, state, Legacy::FLAGS::BLOCK));
+            REQUIRE(wtx.Connect(inputs, state, TAO::Ledger::FLAGS::BLOCK));
 
             //write and index block
             REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
@@ -1014,7 +1014,7 @@ TEST_CASE( "Migrate Operation Test - Trust coinstake", "[operation]")
         state.vtx.push_back(std::make_pair(uint8_t(TAO::Ledger::TRANSACTION::LEGACY), tx.GetHash()));
 
         //connect tx
-        REQUIRE(tx.Connect(inputs, state, Legacy::FLAGS::BLOCK));
+        REQUIRE(tx.Connect(inputs, state, TAO::Ledger::FLAGS::BLOCK));
 
         //write and index block
         REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
@@ -1118,7 +1118,7 @@ TEST_CASE( "Migrate Operation Test - Trust coinstake", "[operation]")
         REQUIRE(LLD::Legacy->WriteTx(tx.GetHash(), tx));
 
         //connect tx
-        REQUIRE(tx.Connect(inputs, state, Legacy::FLAGS::BLOCK));
+        REQUIRE(tx.Connect(inputs, state, TAO::Ledger::FLAGS::BLOCK));
 
         //write and index block
         REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
@@ -1261,7 +1261,7 @@ TEST_CASE( "Migrate Operation Test - Trust coinstake", "[operation]")
         REQUIRE(LLD::Legacy->WriteTx(tx.GetHash(), tx));
 
         //connect tx
-        REQUIRE(tx.Connect(inputs, state, Legacy::FLAGS::BLOCK));
+        REQUIRE(tx.Connect(inputs, state, TAO::Ledger::FLAGS::BLOCK));
 
         //write and index block
         REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
@@ -1332,7 +1332,7 @@ TEST_CASE( "Migrate Operation Test - Trust coinstake", "[operation]")
         REQUIRE(LLD::Legacy->WriteTx(wtx.GetHash(), wtx));
 
         //connect tx
-        REQUIRE(wtx.Connect(inputs, state, Legacy::FLAGS::BLOCK));
+        REQUIRE(wtx.Connect(inputs, state, TAO::Ledger::FLAGS::BLOCK));
 
         //write and index block
         REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
@@ -1605,7 +1605,7 @@ TEST_CASE( "Migrate Operation Test - Invalid OP::MIGRATE tests", "[operation]")
             state.vtx.push_back(std::make_pair(uint8_t(TAO::Ledger::TRANSACTION::LEGACY), tx.GetHash()));
 
             //connect tx
-            REQUIRE(tx.Connect(inputs, state, Legacy::FLAGS::BLOCK));
+            REQUIRE(tx.Connect(inputs, state, TAO::Ledger::FLAGS::BLOCK));
 
             //write and index block
             REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
@@ -1710,7 +1710,7 @@ TEST_CASE( "Migrate Operation Test - Invalid OP::MIGRATE tests", "[operation]")
             REQUIRE(LLD::Legacy->WriteTx(tx.GetHash(), tx));
 
             //connect tx
-            REQUIRE(tx.Connect(inputs, state, Legacy::FLAGS::BLOCK));
+            REQUIRE(tx.Connect(inputs, state, TAO::Ledger::FLAGS::BLOCK));
 
             //write and index block
             REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
@@ -1853,7 +1853,7 @@ TEST_CASE( "Migrate Operation Test - Invalid OP::MIGRATE tests", "[operation]")
             REQUIRE(LLD::Legacy->WriteTx(tx.GetHash(), tx));
 
             //connect tx
-            REQUIRE(tx.Connect(inputs, state, Legacy::FLAGS::BLOCK));
+            REQUIRE(tx.Connect(inputs, state, TAO::Ledger::FLAGS::BLOCK));
 
             //write and index block
             REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
@@ -1924,7 +1924,7 @@ TEST_CASE( "Migrate Operation Test - Invalid OP::MIGRATE tests", "[operation]")
             REQUIRE(LLD::Legacy->WriteTx(wtx.GetHash(), wtx));
 
             //connect tx
-            REQUIRE(wtx.Connect(inputs, state, Legacy::FLAGS::BLOCK));
+            REQUIRE(wtx.Connect(inputs, state, TAO::Ledger::FLAGS::BLOCK));
 
             //write and index block
             REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
