@@ -168,7 +168,7 @@ namespace TAO
                 bnNew = bnProofOfWorkLimit[0];
 
             /* Handle for regression testing blocks. */
-            if(config::GetBoolArg("-regtest"))
+            if(config::fTestNet.load() && config::GetBoolArg("-regtest"))
                 bnNew = bnProofOfWorkLimit[0];
 
             /* Debug output. */
@@ -307,7 +307,7 @@ namespace TAO
                 nBits = bnProofOfWorkLimit[1].getuint32();
 
             /* Handle for regression testing blocks. */
-            if(config::GetBoolArg("-regtest"))
+            if(config::fTestNet.load() && config::GetBoolArg("-regtest"))
                 nBits = bnProofOfWorkLimit[1].getuint32();
 
             /* Debug output. */
@@ -447,7 +447,7 @@ namespace TAO
                 bnNew = bnProofOfWorkLimit[2];
 
             /* Handle for regression testing blocks. */
-            if(config::GetBoolArg("-regtest"))
+            if(config::fTestNet.load() && config::GetBoolArg("-regtest"))
                 bnNew = bnProofOfWorkLimit[2];
 
             /* Debug output. */
