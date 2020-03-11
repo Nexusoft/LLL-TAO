@@ -89,11 +89,11 @@ namespace TAO
 
             /* Check for transaction on disk. */
             if(LLD::Ledger->HasTx(hashTx, FLAGS::MEMPOOL))
-                return debug::error(FUNCTION, "already have transaction");
+                return false;
 
             /* Check for transaction in orphans. */
             if(mapOrphans.count(tx.hashPrevTx))
-                return false;
+                return debug::error(FUNCTION, "already have ORPHAN ", tx.hashPrevTx.SubString());
 
             debug::log(3, "ACCEPT --------------------------------------");
             if(config::nVerbose >= 3)
