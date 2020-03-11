@@ -958,7 +958,15 @@ TEST_CASE( "Mempool and memory sequencing tests", "[mempool]")
             //accept all transactions in random ordering
             for(auto& tx : vTX)
             {
-                REQUIRE(TAO::Ledger::mempool.Accept(tx));
+                //all tx's with no prev and not the first should fail because they will all be ORPHAN
+                if(!TAO::Ledger::mempool.Has(tx.hashPrevTx) && tx.nSequence != 0)
+                {
+                    REQUIRE_FALSE(TAO::Ledger::mempool.Accept(tx));
+                }
+                else //the first one (will trigger orphan processing), and any other non-ORPHAN should always pass
+                {
+                    REQUIRE(TAO::Ledger::mempool.Accept(tx));
+                }
             }
 
             //check mempool list sequencing

@@ -146,7 +146,7 @@ namespace TAO
                     if(pnode)
                         pnode->PushMessage(LLP::ACTION::GET, uint8_t(LLP::TYPES::TRANSACTION), tx.hashPrevTx);
 
-                    return true;
+                    return false;
                 }
 
                 /* Check for conflicts. */
