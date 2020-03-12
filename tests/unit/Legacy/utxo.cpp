@@ -67,7 +67,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
         REQUIRE(LLD::Legacy->WriteTx(tx.GetHash(), tx));
 
         //conect tx
-        REQUIRE(tx.Connect(inputs, TAO::Ledger::ChainState::stateGenesis, Legacy::FLAGS::BLOCK));
+        REQUIRE(tx.Connect(inputs, TAO::Ledger::ChainState::stateGenesis, TAO::Ledger::FLAGS::BLOCK));
 
         REQUIRE(LLD::Ledger->IndexBlock(tx.GetHash(), TAO::Ledger::ChainState::stateGenesis.GetHash()));
 
@@ -346,7 +346,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             REQUIRE(LLD::Legacy->WriteTx(wtx.GetHash(), wtx));
 
             //conect tx
-            REQUIRE(wtx.Connect(inputs, state, Legacy::FLAGS::BLOCK));
+            REQUIRE(wtx.Connect(inputs, state, TAO::Ledger::FLAGS::BLOCK));
 
             REQUIRE(LLD::Ledger->IndexBlock(wtx.GetHash(), state.GetHash()));
 
@@ -399,7 +399,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             REQUIRE(LLD::Legacy->WriteTx(wtx.GetHash(), wtx));
 
             //conect tx
-            REQUIRE(wtx.Connect(inputs, state, Legacy::FLAGS::BLOCK));
+            REQUIRE(wtx.Connect(inputs, state, TAO::Ledger::FLAGS::BLOCK));
 
             //index to block
             REQUIRE(LLD::Ledger->IndexBlock(wtx.GetHash(), state.GetHash()));
@@ -449,7 +449,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             REQUIRE(LLD::Legacy->WriteTx(wtx.GetHash(), wtx));
 
             //conect tx
-            REQUIRE(wtx.Connect(inputs, state, Legacy::FLAGS::BLOCK));
+            REQUIRE(wtx.Connect(inputs, state, TAO::Ledger::FLAGS::BLOCK));
 
             //index to block
             REQUIRE(LLD::Ledger->IndexBlock(wtx.GetHash(), state.GetHash()));
@@ -511,7 +511,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             REQUIRE(wtx.FetchInputs(inputs));
 
             //conect tx
-            REQUIRE_FALSE(wtx.Connect(inputs, state, Legacy::FLAGS::BLOCK));
+            REQUIRE_FALSE(wtx.Connect(inputs, state, TAO::Ledger::FLAGS::BLOCK));
 
             //check wallet balance
             REQUIRE(Legacy::Wallet::GetInstance().GetBalance() == 1850000);

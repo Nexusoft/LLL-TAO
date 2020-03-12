@@ -49,7 +49,7 @@ namespace TAO
             trust   << std::string("balance")       << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << uint64_t(0)
 
                     << std::string("trust")         << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T)
-                    << uint64_t((config::GetBoolArg("-trustboost") ? TAO::Ledger::ONE_YEAR : 0))
+                    << uint64_t(((config::fTestNet.load() && config::GetBoolArg("-trustboost")) ? TAO::Ledger::ONE_YEAR : 0))
 
                     << std::string("stake")         << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << uint64_t(0)
                     << std::string("token")         << uint8_t(TYPES::UINT256_T) << uint256_t(0);

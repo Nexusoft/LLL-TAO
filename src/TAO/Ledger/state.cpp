@@ -324,7 +324,7 @@ namespace TAO
 
             /* Read the previous block from ledger. */
             if(!LLD::Ledger->ReadBlock(hashPrevBlock, state))
-                throw debug::exception(FUNCTION, "failed to read previous block state ", hashPrevBlock.SubString());
+                throw debug::exception(FUNCTION, "failed to read previous block state ", hashPrevBlock.SubString(), " at height ", nHeight);
 
             return state;
         }
@@ -776,8 +776,9 @@ namespace TAO
                         LLD::Ledger->EraseBlock(state.GetHash());
                         //LLD::Ledger->EraseIndex(state.nHeight);
                     }
-                    else //don't resurrect on forkblocks
-                        vResurrect.insert(vResurrect.end(), state.vtx.rbegin(), state.vtx.rend());
+
+                    /* Resurrect transactions that were disconnected. */
+                    vResurrect.insert(vResurrect.end(), state.vtx.rbegin(), state.vtx.rend());
                 }
 
                 /* Keep track of mempool transactions to delete. */
@@ -807,43 +808,64 @@ namespace TAO
                     /* Check for tritium transctions. */
                     if(proof->first == TRANSACTION::TRITIUM)
                     {
-                        /* Make sure the transaction is on disk. */
-                        TAO::Ledger::Transaction tx;
-                        if(!LLD::Ledger->ReadTx(proof->second, tx))
-                            return debug::error(FUNCTION, "transaction not on disk");
+                        /* Special case for deleting blocks, delete tx as well. */
+                        if(vConnect.empty())
+                        {
+                            /* Make sure the transaction is not on disk. */
+                            if(!LLD::Ledger->EraseTx(proof->second))
+                                return debug::error(FUNCTION, "transaction not on disk");
+                        }
+                        else
+                        {
+                            /* Make sure the transaction is on disk. */
+                            TAO::Ledger::Transaction tx;
+                            if(!LLD::Ledger->ReadTx(proof->second, tx))
+                                return debug::error(FUNCTION, "transaction not on disk");
 
-                        /* Check for producer transaction. */
-                        if(tx.IsCoinBase() || tx.IsCoinStake())
-                            continue;
+                            /* Check for producer transaction. */
+                            if(tx.IsCoinBase() || tx.IsCoinStake())
+                                continue;
 
-                        /* Add back into memory pool. */
-                        mempool.Accept(tx);
+                            /* Add back into memory pool. */
+                            mempool.Accept(tx);
 
-                        if(config::nVerbose >= 3)
-                            tx.print();
+                            if(config::nVerbose >= 3)
+                                tx.print();
+                        }
                     }
                     else if(proof->first == TRANSACTION::LEGACY)
                     {
-                        /* Make sure the transaction is on disk. */
-                        Legacy::Transaction tx;
-                        if(!LLD::Legacy->ReadTx(proof->second, tx))
-                            return debug::error(FUNCTION, "transaction not on disk");
+                        /* Special case for deleting blocks, delete tx as well. */
+                        if(vConnect.empty())
+                        {
+                            /* Make sure the transaction is not on disk. */
+                            if(!LLD::Legacy->EraseTx(proof->second))
+                                return debug::error(FUNCTION, "transaction not on disk");
+                        }
+                        else
+                        {
+                            /* Make sure the transaction is on disk. */
+                            Legacy::Transaction tx;
+                            if(!LLD::Legacy->ReadTx(proof->second, tx))
+                                return debug::error(FUNCTION, "transaction not on disk");
 
-                        /* Check for producer transaction. */
-                        if(tx.IsCoinBase() || tx.IsCoinStake())
-                            continue;
+                            /* Check for producer transaction. */
+                            if(tx.IsCoinBase() || tx.IsCoinStake())
+                                continue;
 
-                        /* Add back into memory pool. */
-                        mempool.Accept(tx);
+                            /* Add back into memory pool. */
+                            mempool.Accept(tx);
 
-                        if(config::nVerbose >= 3)
-                            tx.print();
+                            if(config::nVerbose >= 3)
+                                tx.print();
+                        }
                     }
                 }
 
                 /* Delete from mempool. */
                 for(const auto& proof : vDelete)
                     mempool.Remove(proof.second);
+
 
 
                 /* Debug output about the best chain. */
@@ -1033,7 +1055,7 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to fetch the inputs");
 
                     /* Connect the inputs. */
-                    if(!tx.Connect(inputs, *this, Legacy::FLAGS::BLOCK))
+                    if(!tx.Connect(inputs, *this, FLAGS::BLOCK))
                         return debug::error(FUNCTION, "failed to connect inputs");
 
                     /* Add legacy transactions to the wallet where appropriate */

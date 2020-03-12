@@ -284,7 +284,7 @@ namespace TAO
                 }
 
                 /* Check that transction can be connected. */
-                if(!tx.Connect(mapInputs, stateBest))
+                if(!tx.Connect(mapInputs, stateBest, FLAGS::MINER))
                 {
                     debug::log(2, FUNCTION, "Failed to connect inputs ", hash.SubString(10));
                     continue;

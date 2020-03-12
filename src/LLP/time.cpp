@@ -320,7 +320,7 @@ namespace LLP
             }
 
             /* Check that the adjustment is complete. */
-            if(nCurrentAdjustment >= TIME_ADJUSTMENT_VALUE)
+            if(nCurrentAdjustment > TIME_ADJUSTMENT_VALUE)
             {
                 debug::log(0, "Time Adjustment Complete... Exiting...");
                 return;

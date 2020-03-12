@@ -253,7 +253,8 @@ namespace TAO
                     return debug::error(FUNCTION, "Cannot create Genesis with already existing stake");
 
                 /* Check that there is no trust. */
-                if(reg.get<uint64_t>("trust") != (config::GetBoolArg("-trustboost") ? TAO::Ledger::ONE_YEAR : 0))
+                if(reg.get<uint64_t>("trust") !=
+                ((config::fTestNet.load() && config::GetBoolArg("-trustboost")) ? TAO::Ledger::ONE_YEAR : 0))
                     return debug::error(FUNCTION, "Cannot create Genesis with already existing trust");
 
                 /* Found valid trust account register. Save for minter use. */
