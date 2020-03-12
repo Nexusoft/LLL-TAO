@@ -1387,6 +1387,155 @@ namespace TAO
         }
 
 
+        /* Get the number of transactions in the sig chain relating to the register. */
+        uint32_t GetTxCount(const uint256_t& hashGenesis, const TAO::Register::Object& object, const TAO::Register::Address& hashRegister)
+        {
+            /* return value. */
+            uint32_t nCount = 0;;
+
+            /* Flag indicating that the register is a trust account, as we need to process trust-related transactions differently */
+            bool fTrust = false;
+
+           
+            /* We need to check if this register is a trust account as stake/genesis/trust/stake/unstake
+               transactions don't include the account register address like all other transactions do */
+            if(object.Standard() == TAO::Register::OBJECTS::TRUST)
+                fTrust = true;
+
+            /* Get the last transaction. */
+            uint512_t hashLast = 0;
+            if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
+                throw APIException(-144, "No transactions found");
+
+            /* Loop until genesis. */
+            while(hashLast != 0)
+            {
+                /* Get the transaction from disk. */
+                TAO::Ledger::Transaction tx;
+                if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                    throw APIException(-108, "Failed to read transaction");
+
+                /* Flag indicating this transaction is trust related */
+                bool fTrustRelated = false;
+
+                /* The contracts to include that relate to the supplied register */
+                std::vector<std::pair<TAO::Operation::Contract, uint32_t>> vContracts;
+
+                /* Check all contracts in the transaction to see if any of them relates to the requested object register. */
+                uint32_t nContracts = tx.Size();
+                for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
+                {
+                    /* reset trust related flag */
+                    fTrustRelated = false;
+
+                    /* The register address that this contract relates to, if any  */
+                    TAO::Register::Address hashAddress;
+
+                    /* Retrieve the contract from the transaction for easier processing */
+                    const TAO::Operation::Contract& contract = tx[nContract];
+
+                    /* Start the stream at the beginning. */
+                    contract.Reset();
+
+                    /* Get the contract operation. */
+                    uint8_t OPERATION = 0;
+                    contract >> OPERATION;
+
+                    /* Check for conditional OP */
+                    switch(OPERATION)
+                    {
+                        case TAO::Operation::OP::VALIDATE:
+                        {
+                            /* Seek through validate. */
+                            contract.Seek(68);
+                            contract >> OPERATION;
+
+                            break;
+                        }
+
+                        case TAO::Operation::OP::CONDITION:
+                        {
+                            /* Get new operation. */
+                            contract >> OPERATION;
+                        }
+                    }
+
+                    /* Check the current opcode. */
+                    switch(OPERATION)
+                    {
+                        case TAO::Operation::OP::WRITE:
+                        case TAO::Operation::OP::APPEND:
+                        case TAO::Operation::OP::CREATE:
+                        case TAO::Operation::OP::TRANSFER:
+                        case TAO::Operation::OP::DEBIT:
+                        case TAO::Operation::OP::FEE:
+                        case TAO::Operation::OP::LEGACY:
+                        {
+                            /* Get the Address of the Register. */
+                            contract >> hashAddress;
+                            break;
+                        }
+
+                        case TAO::Operation::OP::CLAIM:
+                        {
+                            /* Extract the transaction from contract. */
+                            uint512_t hashTx = 0;
+                            contract >> hashTx;
+
+                            /* Extract the contract-id. */
+                            uint32_t nContract = 0;
+                            contract >> nContract;
+
+                            /* Extract the address from the contract. */
+                            contract >> hashAddress;
+                            break;
+                        }
+
+                        case TAO::Operation::OP::CREDIT:
+                        {
+                            /* Extract the transaction from contract. */
+                            uint512_t hashTx = 0;
+                            contract >> hashTx;
+
+                            /* Extract the contract-id. */
+                            uint32_t nID = 0;
+                            contract >> nID;
+
+                            /* Get the receiving account address. */
+                            contract >> hashAddress;
+                            break;
+                        }
+
+                        case TAO::Operation::OP::TRUST:
+                        case TAO::Operation::OP::GENESIS:
+                        case TAO::Operation::OP::MIGRATE:
+                        {
+                            fTrustRelated = true;
+                            break;
+                        }
+                    }
+
+                    /* If the register from the contract is the same as the requested register OR if the register is a trust account
+                       and the contract is a trust related operation, then include this tx in the count*/
+                    if((hashAddress == hashRegister) || (fTrust && fTrustRelated))
+                    {
+                        /* increment the tx count */
+                        ++nCount;
+
+                        /* break out of processing this transaction as we don't need to look at any more contracts in it */
+                        break;
+                    }
+                }
+
+                /* Set the next last. */
+                hashLast = !tx.IsFirst() ? tx.hashPrevTx : 0;
+                
+            }
+
+            return nCount;
+        }
+
+
 
 
     } // End API namespace

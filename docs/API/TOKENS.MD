@@ -241,6 +241,8 @@ Additionally the API supports passing a field name in the URL after the token na
 
 `address` : The register address of the token to retrieve. This is optional if the name is provided.
 
+`count` : Optional boolean field that determines whether the response includes the transaction `count` field.  This defaults to false, as including the transaction count can slow the response time of the method considerably.   
+
 `fieldname`: This optional field can be used to filter the response to return only a single field from the token.
 
 ### Return value JSON object:
@@ -283,6 +285,8 @@ Additionally the API supports passing a field name in the URL after the token na
 `currentsupply` : The current amount of tokens that have been distributed to token accounts.
 
 `decimals` : The maximum number of decimal places that can be applied to token amounts.  For example decimals=2 will allow a token amount to be given to 2 decimal places.
+
+`count` : Only returned if the caller requested `count` : true.  This is the number of transactions made to/from the token.
 
 ****
 
@@ -644,6 +648,8 @@ Additionally the API supports passing a field name in the URL after the account 
 
 `address` : The register address of the token account to retrieve. This is optional if the name is provided.
 
+`count` : Optional boolean field that determines whether the response includes the transaction `count` field.  This defaults to false, as including the transaction count can slow the response time of the method considerably.   
+
 `fieldname`: This optional field can be used to filter the response to return only a single field from the token account.
 
 ### Return value JSON object:
@@ -683,6 +689,8 @@ Additionally the API supports passing a field name in the URL after the account 
 `pending` : This is the sum of all confirmed debit transactions that have been made to this account, that have not yet been credited.  To move coins from pending into the available balance you must create a corresponding credit transaction.  NOTE: if configured to run, the events processor does this for you.
 
 `unconfirmed` : This is the sum of all unconfirmed debit transactions that have been made to this account PLUS the sum of all unconfirmed credits that you have for confirmed debit transactions.  When someone makes a debit to your account it will immediately appear in the unconfirmed balance until that transaction is included in a block, at which point it moves into `pending`.  When you (or the events processor) creates the corresponding credit transaction for that debit, the amount will move from `pending` back into `unconfirmed` until the credit transaction is included in a block, at which point the amount moves to `balance`.  
+
+`count` : Only returned if the caller requested `count` : true.  This is the number of transactions made to/from the account.
 
 ****
 

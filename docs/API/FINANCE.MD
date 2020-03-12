@@ -254,6 +254,8 @@ Additionally the API supports passing a field name in the URL after the account 
 
 `address` : The register address of the NXS account to retrieve. This is optional if the name is provided.
 
+`count` : Optional boolean field that determines whether the response includes the transaction `count` field.  This defaults to false, as including the transaction count can slow the response time of the method considerably.   
+
 `fieldname`: This optional field can be used to filter the response to return only a single field from the account.
 
 
@@ -300,6 +302,8 @@ Additionally the API supports passing a field name in the URL after the account 
 
 `stake` : Only returned for the trust account, this is the amount of NXS currently staked in the trust account.
 
+`count` : Only returned if the caller requested `count` : true.  This is the number of transactions made to/from the account.
+
 
 ***
 
@@ -317,6 +321,7 @@ This will list off all of the NXS accounts belonging to the currently logged in 
 
 `session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) owns the account. For single-user API mode the session should not be supplied.
 
+`count` : Optional boolean field that determines whether the response includes the transaction `count` field.  This defaults to false, as including the transaction count can slow the response time of the method considerably.   
 
 ### Return value JSON object:
 ```
@@ -371,6 +376,7 @@ This will list off all of the NXS accounts belonging to the currently logged in 
 
 `stake` : Only returned for the trust account, this is the amount of NXS currently staked in the trust account.
 
+`count` : Only returned if the caller requested `count` : true.  This is the number of transactions made to/from the account.
 
 ****
 

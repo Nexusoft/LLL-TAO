@@ -511,6 +511,8 @@ This will list off all of the token accounts belonging to a particular signature
 
 `limit` : The number of results to return for the current page.  Default is 100
 
+`count` : Optional boolean field that determines whether the response includes the transaction `count` field.  This defaults to false, as including the transaction count can slow the response time of the method considerably.   
+
 
 
 ### Return value JSON object:
@@ -559,6 +561,8 @@ This will list off all of the token accounts belonging to a particular signature
 `pending` : This is the sum of all confirmed debit transactions that have been made to this account, that have not yet been credited.  To move coins from pending into the available balance you must create a corresponding credit transaction.  NOTE: if configured to run, the events processor does this for you.
 
 `unconfirmed` : This is the sum of all unconfirmed debit transactions that have been made to this account PLUS the sum of all unconfirmed credits that you have for confirmed debit transactions.  When someone makes a debit to your account it will immediately appear in the unconfirmed balance until that transaction is included in a block, at which point it moves into `pending`.  When you (or the events processor) creates the corresponding credit transaction for that debit, the amount will move from `pending` back into `unconfirmed` until the credit transaction is included in a block, at which point the amount moves to `balance`.  
+
+`count` : Only returned if the caller requested `count` : true.  This is the number of transactions made to/from the account.
 
 
 ****
@@ -928,6 +932,8 @@ This will list off all of the tokens that were created by a particular signature
 
 `limit` : The number of results to return for the current page.  Default is 100
 
+`count` : Optional boolean field that determines whether the response includes the transaction `count` field.  This defaults to false, as including the transaction count can slow the response time of the method considerably.   
+
 
 
 ### Return value JSON object:
@@ -963,13 +969,19 @@ This will list off all of the tokens that were created by a particular signature
 
 `address` : The register address for the account
 
-`balance` : The current balance of the token account.
+`balance` : The available balance of this token.  Initially the balance of the token is equal to the max supply, until the tokens have been distributed to accounts. This is the last confirmed balance less any new debits that you have made since the last block.
+
+`pending` : This is the sum of all confirmed debit transactions that have been made to this token, that have not yet been credited.  To move tokens from pending into the available balance you must create a corresponding credit transaction.  NOTE: if configured to run, the events processor does this for you.
+
+`unconfirmed` : This is the sum of all unconfirmed debit transactions that have been made to this token PLUS the sum of all unconfirmed credits that you have for confirmed debit transactions.  When someone makes a debit to the token it will immediately appear in the unconfirmed balance until that transaction is included in a block, at which point it moves into `pending`.  When you (or the events processor) creates the corresponding credit transaction for that debit, the amount will move from `pending` back into `unconfirmed` until the credit transaction is included in a block, at which point the amount moves to `balance`.  
 
 `maxsupply` : The maximum available supply for this token.
 
 `currentsupply` : The current number of tokens that have been distributed from this token register.
 
 `decimals` : The maximum number of decimal places that can be applied to token amounts.  For example decimals=2 will allow a token amount to be given to 2 decimal places.
+
+`count` : Only returned if the caller requested `count` : true.  This is the number of transactions made to/from the token.
 
 
 ****

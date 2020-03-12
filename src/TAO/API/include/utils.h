@@ -259,5 +259,18 @@ namespace TAO
         bool VoidContract(const TAO::Operation::Contract& contract, const uint32_t nContract, TAO::Operation::Contract &voidContract);
 
 
+         /** GetTxCount
+        *
+        *  Get the number of transactions in the sig chain relating to the register
+        *
+        *  @param[in] hashGenesis The genesis hash of the sig chain to search
+        *  @param[in] object  The object register to get the tx count for
+        *  @param[in] hashRegister The address of the register to get the tx count for
+        * 
+        *  @return The number of transactions in the sig chain relating to the register
+        *
+        **/
+        uint32_t GetTxCount(const uint256_t& hashGenesis, const TAO::Register::Object& object, const TAO::Register::Address& hashRegister);
+
     }
 }
