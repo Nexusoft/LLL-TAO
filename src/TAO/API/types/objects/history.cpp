@@ -67,8 +67,22 @@ namespace TAO
             if(state.IsNull() && !LLD::Register->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-106, "Invalid name / address");
 
+            /* The owner genesis hash, used to search for the object history */
+            TAO::Register::Address hashOwner = state.hashOwner;
+
+            /* If the object is tokenized then we need to use the token owner sig chain to search for history */
+            if(hashOwner.GetType() == TAO::Register::Address::TOKEN)
+            {
+                /* The token that owns the object */
+                TAO::Register::Object token;
+                if(!LLD::Register->ReadState(hashOwner, token, TAO::Ledger::FLAGS::MEMPOOL))
+                    throw APIException(-125, "Token not found");
+                
+                /* Update the hashOwner to be the owner of the token */
+                hashOwner = token.hashOwner;
+            }
+
             /* Make adjustment to history check and detect if the register is owned by system. */
-            uint256_t hashOwner = state.hashOwner;
             if(hashOwner.GetType() == TAO::Ledger::GENESIS::SYSTEM)
                 hashOwner.SetType(TAO::Ledger::GenesisType());
 
