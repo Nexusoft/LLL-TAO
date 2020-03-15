@@ -231,6 +231,19 @@ namespace TAO
             /* Add to the legacy map. */
             mapLegacy[hashTx] = tx;
 
+            /* Relay tx if creating ourselves. */
+            if(!pnode)
+            {
+                /* Relay the transaction notification. */
+                LLP::TRITIUM_SERVER->Relay
+                (
+                    LLP::ACTION::NOTIFY,
+                    uint8_t(LLP::SPECIFIER::LEGACY),
+                    uint8_t(LLP::TYPES::TRANSACTION),
+                    hashTx
+                );
+            }
+
             /* Log outputs. */
             debug::log(2, FUNCTION, "tx ", hashTx.SubString(), " ACCEPTED");
 

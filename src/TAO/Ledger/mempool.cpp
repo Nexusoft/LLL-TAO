@@ -211,6 +211,18 @@ namespace TAO
             /* Process orphan queue. */
             ProcessOrphans(hashTx);
 
+            /* Relay tx if creating ourselves. */
+            if(!pnode)
+            {
+                /* Relay the transaction notification. */
+                LLP::TRITIUM_SERVER->Relay
+                (
+                    LLP::ACTION::NOTIFY,
+                    uint8_t(LLP::TYPES::TRANSACTION),
+                    hashTx
+                );
+            }
+
             /* Notify private to produce block if valid. */
             if(config::GetBoolArg("-private"))
                 PRIVATE_CONDITION.notify_all();
