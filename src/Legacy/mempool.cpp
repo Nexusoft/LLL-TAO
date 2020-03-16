@@ -232,7 +232,7 @@ namespace TAO
             mapLegacy[hashTx] = tx;
 
             /* Relay tx if creating ourselves. */
-            if(!pnode)
+            if(!pnode && LLP::TRITIUM_SERVER)
             {
                 /* Relay the transaction notification. */
                 LLP::TRITIUM_SERVER->Relay

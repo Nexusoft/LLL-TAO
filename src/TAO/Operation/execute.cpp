@@ -407,7 +407,7 @@ namespace TAO
                         contract >> hashAddress;
 
                         /* Verify the operation rules. */
-                        const Contract transfer = LLD::Ledger->ReadContract(hashTx, nContract);
+                        const Contract transfer = LLD::Ledger->ReadContract(hashTx, nContract, nFlags);
                         if(!Claim::Verify(contract, transfer))
                             return false;
 
@@ -717,7 +717,7 @@ namespace TAO
                         contract >> nContract;
 
                         /* Verify the operation rules. */
-                        const Contract debit = LLD::Ledger->ReadContract(hashTx, nContract);
+                        const Contract debit = LLD::Ledger->ReadContract(hashTx, nContract, nFlags);
                         if(!Credit::Verify(contract, debit, nFlags))
                             return false;
 

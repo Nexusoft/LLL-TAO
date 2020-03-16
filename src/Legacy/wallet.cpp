@@ -1433,7 +1433,7 @@ namespace Legacy
             return;
 
         /* Set a random time until resend is processed */
-        snNextTime = runtime::unifiedtimestamp() + LLC::GetRand(5 * 30);
+        snNextTime = runtime::unifiedtimestamp() + LLC::GetRand(5 * 60); //5 minutes
 
         /* On first iteration, just return. All it does is set snNextTime */
         if(fFirst)
