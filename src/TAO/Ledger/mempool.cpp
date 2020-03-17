@@ -171,12 +171,12 @@ namespace TAO
 
             /* Connect transaction in memory. */
             LLD::TxnBegin(FLAGS::MEMPOOL);
-            if(!tx.Connect(FLAGS::MEMPOOL))
+            //if(!tx.Connect(FLAGS::MEMPOOL))
             {
                 /* Abort memory commits on failures. */
-                LLD::TxnAbort(FLAGS::MEMPOOL);
+                //LLD::TxnAbort(FLAGS::MEMPOOL);
 
-                return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
+                //return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
             }
 
             /* Commit new memory into database states. */
