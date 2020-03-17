@@ -840,19 +840,19 @@ namespace TAO
             try
             {
                 /* Start a ACID transaction (to be disposed). */
-                LLD::TxnBegin(TAO::Ledger::FLAGS::MINER);
+                LLD::TxnBegin(TAO::Ledger::FLAGS::MEMPOOL);
 
                 fSanitized = TAO::Register::Build(contract, mapStates, TAO::Ledger::FLAGS::MEMPOOL)
                              && TAO::Operation::Execute(contract, TAO::Ledger::FLAGS::MEMPOOL);
 
                 /* Abort the mempool ACID transaction once the contract is sanitized */
-                LLD::TxnAbort(TAO::Ledger::FLAGS::MINER);
+                LLD::TxnAbort(TAO::Ledger::FLAGS::MEMPOOL);
 
             }
             catch(const std::exception& e)
             {
                 /* Abort the mempool ACID transaction */
-                LLD::TxnAbort(TAO::Ledger::FLAGS::MINER);
+                LLD::TxnAbort(TAO::Ledger::FLAGS::MEMPOOL);
 
                 /* Log the error and attempt to continue processing */
                 debug::error(FUNCTION, e.what());
