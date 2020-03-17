@@ -110,9 +110,12 @@ namespace Legacy
 		 **/
 		friend bool operator==(const TxIn& a, const TxIn& b)
 		{
-			return (a.prevout   == b.prevout &&
-					a.scriptSig == b.scriptSig &&
-					a.nSequence == b.nSequence);
+			return
+			(
+				a.prevout   == b.prevout   &&
+				a.scriptSig == b.scriptSig &&
+				a.nSequence == b.nSequence
+			);
 		}
 
 

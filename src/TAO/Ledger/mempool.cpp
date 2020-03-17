@@ -165,18 +165,18 @@ namespace TAO
                 }
             }
 
-            /* Begin an ACID transction for internal memory commits. */
-            //if(!tx.Verify(FLAGS::MEMPOOL))
-            //    return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
+            /* Verify the register's pre-states and post-states. */
+            if(!tx.Verify(FLAGS::MEMPOOL))
+                return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
 
-            /* Connect transaction in memory. */
+            /* Begin an ACID transction for internal memory commits. */
             LLD::TxnBegin(FLAGS::MEMPOOL);
-            //if(!tx.Connect(FLAGS::MEMPOOL))
+            if(!tx.Connect(FLAGS::MEMPOOL))
             {
                 /* Abort memory commits on failures. */
-                //LLD::TxnAbort(FLAGS::MEMPOOL);
+                LLD::TxnAbort(FLAGS::MEMPOOL);
 
-                //return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
+                return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
             }
 
             /* Commit new memory into database states. */

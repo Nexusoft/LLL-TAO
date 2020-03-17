@@ -517,12 +517,15 @@ namespace TAO
                         /* Check that the checksums match. */
                         if(prestate != object)
                         {
-                            Object object2(prestate);
+                            Object object1 = Object(object);
+                            object1.Parse();
 
-                            object.Parse();
+                            Object object2 = Object(prestate);
                             object2.Parse();
 
-                            debug::log(0, "OP::DEBIT DB=", object.get<uint64_t>("balance"), "PRE=", object2.get<uint64_t>("balance"));
+                            debug::log(0, FUNCTION, "Balance (dsk): ", object1.get<uint64_t>("balance"));
+                            debug::log(0, FUNCTION, "Balance (pre): ", object2.get<uint64_t>("balance"));
+
                             return debug::error(FUNCTION, "OP::DEBIT: pre-state verification failed");
                         }
 

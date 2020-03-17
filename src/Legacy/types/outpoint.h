@@ -125,7 +125,11 @@ namespace Legacy
 		 **/
 		friend bool operator==(const OutPoint& a, const OutPoint& b)
 		{
-			return (a.hash == b.hash && a.n == b.n);
+			return
+			(
+				a.hash == b.hash &&
+				a.n == b.n
+			);
 		}
 
 

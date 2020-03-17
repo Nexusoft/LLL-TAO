@@ -126,8 +126,11 @@ namespace Legacy
 		 **/
 		friend bool operator==(const TxOut& a, const TxOut& b)
 		{
-			return (a.nValue       == b.nValue &&
-					a.scriptPubKey == b.scriptPubKey);
+			return
+			(
+				a.nValue       == b.nValue &&
+				a.scriptPubKey == b.scriptPubKey
+			);
 		}
 
 

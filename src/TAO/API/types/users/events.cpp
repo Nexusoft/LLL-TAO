@@ -631,7 +631,7 @@ namespace TAO
                                 Legacy::TrustKey trustKey;
 
                                 /* This loop will only have one iteration. If it breaks out before end, fMigration stays false */
-                                while(1)
+                                while(true)
                                 {
                                     /* Trust account output must be only output for the transaction */
                                     if(nContract != 0 || contract.first->vout.size() > 1)

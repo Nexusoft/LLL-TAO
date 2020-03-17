@@ -167,14 +167,30 @@ namespace TAO
         /* Operator overload to check for equivilence. */
         bool State::operator==(const State& state) const
         {
-            return GetHash() == state.GetHash();
+            return
+            {
+                vchState  == state.vchState  &&
+                nVersion  == state.nVersion  &&
+                nType     == state.nType     &&
+                hashOwner == state.hashOwner &&
+                nCreated  == state.nCreated  &&
+                nModified == state.nModified
+            };
         }
 
 
         /* Operator overload to check for non-equivilence. */
         bool State::operator!=(const State& state) const
         {
-            return GetHash() != state.GetHash();
+            return
+            {
+                vchState  != state.vchState  ||
+                nVersion  != state.nVersion  ||
+                nType     != state.nType     ||
+                hashOwner != state.hashOwner ||
+                nCreated  != state.nCreated  ||
+                nModified != state.nModified
+            };
         }
 
 
