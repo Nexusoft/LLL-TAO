@@ -472,9 +472,6 @@ namespace memory
      **/
     class encrypted
     {
-        /* We want to serialize calls to these functions. */
-        std::mutex MUTEX;
-
     public:
 
         /** Special method for encrypting specific member variables of class. **/
@@ -497,8 +494,6 @@ namespace memory
         template<class TypeName>
         void encrypt(const TypeName& data)
         {
-            LOCK(MUTEX);
-
             static bool fKeySet = false;
             static std::vector<uint8_t> vKey(16);
             static std::vector<uint8_t> vIV(16);
@@ -529,8 +524,6 @@ namespace memory
         template<class TypeName>
         void encrypt(const std::vector<TypeName>& data)
         {
-            LOCK(MUTEX);
-
             static bool fKeySet = false;
             static std::vector<uint8_t> vKey(16);
             static std::vector<uint8_t> vIV(16);
@@ -560,8 +553,6 @@ namespace memory
          **/
         void encrypt(const std::string& data)
         {
-            LOCK(MUTEX);
-
             static bool fKeySet = false;
             static std::vector<uint8_t> vKey(16);
             static std::vector<uint8_t> vIV(16);
@@ -592,8 +583,6 @@ namespace memory
          **/
         void encrypt(const SecureString& data)
         {
-            LOCK(MUTEX);
-            
             static bool fKeySet = false;
             static std::vector<uint8_t> vKey(16);
             static std::vector<uint8_t> vIV(16);
