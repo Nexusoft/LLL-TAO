@@ -485,6 +485,8 @@ namespace LLP
     /* Check that the socket has data that is buffered. */
     uint64_t Socket::Buffered() const
     {
+        LOCK(DATA_MUTEX);
+
         return vBuffer.size();
     }
 

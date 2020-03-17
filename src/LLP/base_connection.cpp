@@ -165,17 +165,11 @@ namespace LLP
     {
         /* Get the bytes of the packet. */
         const std::vector<uint8_t> vBytes = PACKET.GetBytes();
-        bool fBuffered = false;
-
-        {
-            LOCK(DATA_MUTEX);
-            fBuffered = Buffered();
-        }
 
         /* Stop sending packets if send buffer is full. */
         uint64_t nMaxSendBuffer = config::GetArg("-maxsendbuffer", MAX_SEND_BUFFER);
-        if(fBuffered + vBytes.size() + 1024 < nMaxSendBuffer //reserve 1Kb of buffer for critical messages
-        || (fBufferFull.load() && fBuffered + vBytes.size() < nMaxSendBuffer)) //catch for critical messages (< 1 Kb)
+        if(Buffered() + vBytes.size() + 1024 < nMaxSendBuffer //reserve 1Kb of buffer for critical messages
+        || (fBufferFull.load() && Buffered() + vBytes.size() < nMaxSendBuffer)) //catch for critical messages (< 1 Kb)
         {
             /* Debug dump of message type. */
             debug::log(4, NODE, "sent packet (", vBytes.size(), " bytes)");
@@ -194,7 +188,7 @@ namespace LLP
             fBufferFull.store(true);
 
         /* Notify condition if available. */
-        if(FLUSH_CONDITION && fBuffered)
+        if(FLUSH_CONDITION && Buffered())
             FLUSH_CONDITION->notify_all();
     }
 

@@ -667,7 +667,7 @@ namespace memory
             if(nRefs == 0)
             {
                 data->Encrypt();
-                
+
             }
 
             /* Unlock the mutex. */
@@ -920,7 +920,7 @@ namespace memory
 
     /** encrypted_type
      *
-     *  Simple template class to allow primitive types to be used with encrypted_ptr  
+     *  Simple template class to allow primitive types to be used with encrypted_ptr
      *  without needing to inherit from memory::encrypted or provide their own Encrypt() implementation
      *
      **/
