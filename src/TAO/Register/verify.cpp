@@ -516,7 +516,16 @@ namespace TAO
 
                         /* Check that the checksums match. */
                         if(prestate != object)
+                        {
+                            Object object2(prestate);
+
+                            object.Parse();
+                            object2.Parse();
+
+                            debug::log(0, "OP::DEBIT DB=", object.get<uint64_t>("balance"), "PRE=", object2.get<uint64_t>("balance"));
                             return debug::error(FUNCTION, "OP::DEBIT: pre-state verification failed");
+                        }
+
 
                         /* Check contract account */
                         if(contract.Caller() != prestate.hashOwner)
