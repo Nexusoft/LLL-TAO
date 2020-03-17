@@ -166,8 +166,8 @@ namespace TAO
             }
 
             /* Begin an ACID transction for internal memory commits. */
-            if(!tx.Verify(FLAGS::MEMPOOL))
-                return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
+            //if(!tx.Verify(FLAGS::MEMPOOL))
+            //    return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
 
             /* Connect transaction in memory. */
             LLD::TxnBegin(FLAGS::MEMPOOL);
