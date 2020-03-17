@@ -26,7 +26,7 @@ namespace version
 
 
     /* Patch version Z (x.y.Z | x > 0). */
-    const uint32_t CLIENT_PATCH = 1;
+    const uint32_t CLIENT_PATCH = 2;
 
     /* The version of the actual wallet client. */
     const uint32_t CLIENT_VERSION = 10000 * CLIENT_MAJOR + 100 * CLIENT_MINOR + CLIENT_PATCH;

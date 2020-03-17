@@ -92,16 +92,6 @@ namespace TAO
             if(LLD::Ledger->HasTx(hashTx, FLAGS::MEMPOOL))
                 return false;
 
-            /* Check for transaction in orphans. */
-            if(mapOrphans.count(tx.hashPrevTx))
-            {
-                /* Increment consecutive orphans. */
-                if(pnode)
-                    ++pnode->nConsecutiveOrphans;
-
-                return debug::error(FUNCTION, "already have ORPHAN ", hashTx.SubString());
-            }
-
             debug::log(3, "ACCEPT --------------------------------------");
             if(config::nVerbose >= 3)
                 tx.print();
@@ -156,9 +146,6 @@ namespace TAO
                     debug::error(FUNCTION, "CONFLICT: prev tx ", (mapClaimed.count(tx.hashPrevTx) ? "CLAIMED " : "CONFLICTED "), tx.hashPrevTx.SubString());
                     mapConflicts[hashTx] = tx;
 
-                    /* Process orphan queue. */
-                    ProcessOrphans(hashTx);
-
                     return false;
                 }
 
@@ -173,9 +160,6 @@ namespace TAO
                     /* Add to conflicts map. */
                     debug::error(FUNCTION, "CONFLICT: hash last mismatch ", tx.hashPrevTx.SubString());
                     mapConflicts[hashTx] = tx;
-
-                    /* Process orphan queue. */
-                    ProcessOrphans(hashTx);
 
                     return false;
                 }
@@ -210,6 +194,18 @@ namespace TAO
 
             /* Process orphan queue. */
             ProcessOrphans(hashTx);
+
+            /* Relay tx if creating ourselves. */
+            if(!pnode && LLP::TRITIUM_SERVER)
+            {
+                /* Relay the transaction notification. */
+                LLP::TRITIUM_SERVER->Relay
+                (
+                    LLP::ACTION::NOTIFY,
+                    uint8_t(LLP::TYPES::TRANSACTION),
+                    hashTx
+                );
+            }
 
             /* Notify private to produce block if valid. */
             if(config::GetBoolArg("-private"))
