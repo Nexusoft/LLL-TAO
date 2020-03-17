@@ -459,7 +459,7 @@ namespace TAO
                                 ++nOut;
 
                                 /* Log debug message. */
-                                debug::log(0, FUNCTION, "Matching DEBIT with CREDIT");
+                                debug::log(2, FUNCTION, "Matching DEBIT with CREDIT");
 
                                 break;
                             }
@@ -502,7 +502,7 @@ namespace TAO
                                 ++nOut;
 
                                 /* Log debug message. */
-                                debug::log(0, FUNCTION, "Matching COINBASE with CREDIT");
+                                debug::log(2, FUNCTION, "Matching COINBASE with CREDIT");
 
                                 break;
                             }
@@ -567,7 +567,7 @@ namespace TAO
 
 
                                 /* Log debug message. */
-                                debug::log(0, FUNCTION, "Matching TRANSFER with CLAIM");
+                                debug::log(2, FUNCTION, "Matching TRANSFER with CLAIM");
 
                                 break;
                             }
@@ -712,7 +712,7 @@ namespace TAO
                                     ++nOut;
 
                                     /* Log debug message. */
-                                    debug::log(0, FUNCTION, "Matching LEGACY SEND with trust key MIGRATE",
+                                    debug::log(2, FUNCTION, "Matching LEGACY SEND with trust key MIGRATE",
                                         "\n    Migrated amount: ", std::fixed, (nAmount / (double)TAO::Ledger::NXS_COIN),
                                         "\n    Migrated trust: ", nScore,
                                         "\n    To trust account: ", hashAccount.ToString(),
@@ -752,7 +752,7 @@ namespace TAO
                                 ++nOut;
 
                                 /* Log debug message. */
-                                debug::log(0, FUNCTION, "Matching LEGACY SEND with CREDIT");
+                                debug::log(2, FUNCTION, "Matching LEGACY SEND with CREDIT");
                             }
                             else
                                 continue;
