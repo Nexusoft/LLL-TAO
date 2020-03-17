@@ -83,6 +83,8 @@ namespace TAO
         /* Accepts a transaction with validation rules. */
         bool Mempool::Accept(const TAO::Ledger::Transaction& tx, LLP::TritiumNode* pnode)
         {
+            RLOCK(MUTEX);
+
             /* Get the transaction hash. */
             uint512_t hashTx = tx.GetHash();
 
@@ -122,14 +124,9 @@ namespace TAO
                         tx.nSequence, " prev ", tx.hashPrevTx.SubString(),
                         " ORPHAN in ", std::dec, time.ElapsedMilliseconds(), " ms");
 
-
-                    {
-                        RLOCK(MUTEX);
-
-                        /* Push to orphan queue. */
-                        mapOrphans[tx.hashPrevTx] = tx;
-                        setOrphansByIndex.insert(hashTx);
-                    }
+                    /* Push to orphan queue. */
+                    mapOrphans[tx.hashPrevTx] = tx;
+                    setOrphansByIndex.insert(hashTx);
 
                     /* Increment consecutive orphans. */
                     if(pnode)
@@ -142,22 +139,15 @@ namespace TAO
                     return false;
                 }
 
-
+                /* Check for conflicts. */
+                if(mapClaimed.count(tx.hashPrevTx) || mapConflicts.count(tx.hashPrevTx))
                 {
-                    RLOCK(MUTEX);
+                    /* Add to conflicts map. */
+                    debug::error(FUNCTION, "CONFLICT: prev tx ", (mapClaimed.count(tx.hashPrevTx) ? "CLAIMED " : "CONFLICTED "), tx.hashPrevTx.SubString());
+                    mapConflicts[hashTx] = tx;
 
-                    /* Check for conflicts. */
-                    if(mapClaimed.count(tx.hashPrevTx) || mapConflicts.count(tx.hashPrevTx))
-                    {
-                        /* Add to conflicts map. */
-                        debug::error(FUNCTION, "CONFLICT: prev tx ", (mapClaimed.count(tx.hashPrevTx) ? "CLAIMED " : "CONFLICTED "), tx.hashPrevTx.SubString());
-                        mapConflicts[hashTx] = tx;
-
-                        return false;
-                    }
+                    return false;
                 }
-
-
 
                 /* Get the last hash. */
                 uint512_t hashLast = 0;
@@ -167,8 +157,6 @@ namespace TAO
                 /* Check for conflicts. */
                 if(tx.hashPrevTx != hashLast)
                 {
-                    RLOCK(MUTEX);
-
                     /* Add to conflicts map. */
                     debug::error(FUNCTION, "CONFLICT: hash last mismatch ", tx.hashPrevTx.SubString());
                     mapConflicts[hashTx] = tx;
@@ -182,29 +170,24 @@ namespace TAO
                 return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
 
             /* Begin an ACID transction for internal memory commits. */
+            LLD::TxnBegin(FLAGS::MEMPOOL);
+            if(!tx.Connect(FLAGS::MEMPOOL))
             {
-                RLOCK(MUTEX);
+                /* Abort memory commits on failures. */
+                LLD::TxnAbort(FLAGS::MEMPOOL);
 
-                LLD::TxnBegin(FLAGS::MEMPOOL);
-                if(!tx.Connect(FLAGS::MEMPOOL))
-                {
-                    /* Abort memory commits on failures. */
-                    LLD::TxnAbort(FLAGS::MEMPOOL);
-
-                    return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
-                }
-
-                /* Commit new memory into database states. */
-                LLD::TxnCommit(FLAGS::MEMPOOL);
-
-                /* Set the internal memory. */
-                mapLedger[hashTx] = tx;
-
-                /* Update map claimed if not first tx. */
-                if(!tx.IsFirst())
-                    mapClaimed[tx.hashPrevTx] = hashTx;
+                return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
             }
 
+            /* Commit new memory into database states. */
+            LLD::TxnCommit(FLAGS::MEMPOOL);
+
+            /* Set the internal memory. */
+            mapLedger[hashTx] = tx;
+
+            /* Update map claimed if not first tx. */
+            if(!tx.IsFirst())
+                mapClaimed[tx.hashPrevTx] = hashTx;
 
             /* Debug output. */
             debug::log(3, FUNCTION, "tx ", hashTx.SubString(), " ACCEPTED in ", std::dec, time.ElapsedMilliseconds(), " ms");
