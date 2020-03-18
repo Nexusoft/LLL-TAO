@@ -21,5 +21,6 @@ ________________________________________________________________________________
 #define LOCK(mut) std::unique_lock<std::mutex> lk(mut)
 #define LOCK2(mut) std::unique_lock<std::mutex> lk2(mut)
 #define RLOCK(mut) std::lock_guard<std::recursive_mutex> lk(mut)
+#define RLOCK2(mut) std::lock_guard<std::recursive_mutex> lk2(mut)
 
 #endif

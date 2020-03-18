@@ -287,6 +287,9 @@ namespace TAO
                     uint64_t nAmount = 0;
                     uint32_t nOut = 0;
 
+
+                    RLOCK2(TAO::Ledger::mempool.MUTEX);
+
                     /* Create the transaction output. */
                     TAO::Ledger::Transaction txout;
                     if(!TAO::Ledger::CreateTransaction(user, strPIN, txout))
