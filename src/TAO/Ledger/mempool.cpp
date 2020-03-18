@@ -90,6 +90,8 @@ namespace TAO
             if(LLD::Ledger->HasTx(hashTx, FLAGS::MEMPOOL))
                 return false;
 
+            RLOCK(MUTEX);
+
             debug::log(3, "ACCEPT --------------------------------------");
             if(config::nVerbose >= 3)
                 tx.print();
