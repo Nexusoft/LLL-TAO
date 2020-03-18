@@ -303,7 +303,7 @@ namespace TAO
                     for(const auto& contract : vContracts)
                     {
                         /* Ensure we don't breach the max contracts/per transaction, leaving room for the fee contract */
-                        if(txout.Size() == TAO::Ledger::MaxContracts() -1)
+                        if(txout.Size() >= TAO::Ledger::MaxContracts() - 2)
                             break;
 
                         /* Get a reference to the contract */
