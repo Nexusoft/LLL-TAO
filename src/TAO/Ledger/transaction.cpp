@@ -633,23 +633,29 @@ namespace TAO
         /* Build the transaction contracts. */
         bool Transaction::Build()
         {
-            /* Create a temporary map for pre-states. */
-            std::map<uint256_t, TAO::Register::State> mapStates;
-
             /* Check for max contracts. */
             if(vContracts.size() > MAX_TRANSACTION_CONTRACTS)
                 return debug::error(FUNCTION, "exceeded MAX_TRANSACTION_CONTRACTS");
 
-            /* Run through all the contracts. */
-            for(auto& contract : vContracts)
             {
-                /* Bind the contract to this transaction. */
-                contract.Bind(this, false); //don't bind txid yet, because it depends on build for its final state
+                RLOCK(mempool.MUTEX);
 
-                /* Calculate the pre-states and post-states. */
-                if(!TAO::Register::Build(contract, mapStates, FLAGS::MEMPOOL))
-                    return false;
+                /* Create a temporary map for pre-states. */
+                std::map<uint256_t, TAO::Register::State> mapStates;
+
+                /* Run through all the contracts. */
+                for(auto& contract : vContracts)
+                {
+                    /* Bind the contract to this transaction. */
+                    contract.Bind(this, false); //don't bind txid yet, because it depends on build for its final state
+
+                    /* Calculate the pre-states and post-states. */
+                    if(!TAO::Register::Build(contract, mapStates, FLAGS::MEMPOOL))
+                        return false;
+                }
             }
+
+
 
 
             //skip proof of work for unit tests
