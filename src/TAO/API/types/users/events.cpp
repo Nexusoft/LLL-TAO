@@ -303,7 +303,7 @@ namespace TAO
                     for(const auto& contract : vContracts)
                     {
                         /* Ensure we don't breach the max contracts/per transaction, leaving room for the fee contract */
-                        if(txout.Size() >= TAO::Ledger::MaxContracts() - 2)
+                        if(txout.Size() >= TAO::Ledger::MAX_TRANSACTION_CONTRACTS -1)
                             break;
 
                         /* Get a reference to the contract */
@@ -538,7 +538,7 @@ namespace TAO
                                     {
                                         /* If we need to add a name contract, ensure we don't breach the max contracts/per transaction,
                                         leaving room for the claim contract and fee contract */
-                                        if(txout.Size() == TAO::Ledger::MaxContracts() -2 )
+                                        if(txout.Size() == TAO::Ledger::MAX_TRANSACTION_CONTRACTS -2 )
                                             break;
 
                                         txout[nOut] = nameContract;
@@ -584,7 +584,7 @@ namespace TAO
                     for(const auto& contract : vLegacyTx)
                     {
                         /* Ensure we don't breach the max contracts/per transaction, leaving room for the fee contract */
-                        if(txout.Size() == TAO::Ledger::MaxContracts() -1)
+                        if(txout.Size() == TAO::Ledger::MAX_TRANSACTION_CONTRACTS -1)
                             break;
 
                         /* Set the transaction hash. */
@@ -767,7 +767,7 @@ namespace TAO
                     for(const auto& contract : vExpired)
                     {
                         /* Ensure we don't breach the max contracts/per transaction, leaving room for the fee contract */
-                        if(txout.Size() == TAO::Ledger::MaxContracts() -1)
+                        if(txout.Size() == TAO::Ledger::MAX_TRANSACTION_CONTRACTS -1)
                             break;
 
                         /* Get a reference to the contract */
