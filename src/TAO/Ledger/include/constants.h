@@ -243,6 +243,16 @@ namespace TAO
          **/
         uint32_t MaturityCoinStake(const BlockState& block);
 
+
+        /** MaxContracts
+         *
+         *  Get the maximum number of contracts allowed per tx.
+         *
+         *  @return Max allowed contracts.
+         *
+         **/
+        uint32_t MaxContracts();
+
     }
 }
 

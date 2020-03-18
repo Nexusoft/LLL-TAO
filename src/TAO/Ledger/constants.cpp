@@ -55,5 +55,14 @@ namespace TAO
 
             return NEXUS_MATURITY_COINSTAKE;
         }
+
+        /* Get the maximum number of contracts allowed per tx. */
+        uint32_t MaxContracts()
+        {
+            if(config::GetBoolArg("-private"))
+                return 1000;
+
+            return MaxContracts();
+        }
     }
 }

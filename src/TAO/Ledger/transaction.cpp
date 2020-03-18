@@ -188,7 +188,7 @@ namespace TAO
         TAO::Operation::Contract& Transaction::operator[](const uint32_t n)
         {
             /* Check for contract bounds. */
-            if(n >= MAX_TRANSACTION_CONTRACTS)
+            if(n >= MaxContracts())
                 throw debug::exception(FUNCTION, "contract create out of bounds");
 
             /* Allocate a new contract if on write. */
@@ -237,7 +237,7 @@ namespace TAO
                 return debug::error(FUNCTION, "genesis using incorrect leading byte");
 
             /* Check for max contracts. */
-            if(vContracts.size() > MAX_TRANSACTION_CONTRACTS)
+            if(vContracts.size() > MaxContracts())
                 return debug::error(FUNCTION, "transaction contract limit exceeded", vContracts.size());
 
             /* Check producer for coinstake transaction */
@@ -634,8 +634,8 @@ namespace TAO
         bool Transaction::Build()
         {
             /* Check for max contracts. */
-            if(vContracts.size() > MAX_TRANSACTION_CONTRACTS)
-                return debug::error(FUNCTION, "exceeded MAX_TRANSACTION_CONTRACTS");
+            if(vContracts.size() > MaxContracts())
+                return debug::error(FUNCTION, "exceeded MaxContracts()");
 
             {
                 RLOCK(mempool.MUTEX);
