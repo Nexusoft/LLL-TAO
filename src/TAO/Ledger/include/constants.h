@@ -254,7 +254,7 @@ namespace TAO
         inline uint32_t MaxContracts()
         {
             if(config::fPrivate.load())
-                return 1000;
+                return 50;
 
             return MAX_TRANSACTION_CONTRACTS;
         }

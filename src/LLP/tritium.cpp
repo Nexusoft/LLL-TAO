@@ -2035,7 +2035,7 @@ namespace LLP
                     ++nConsecutiveOrphans;
 
                 /* Detect large orphan chains and ask for new blocks from origin again. */
-                if(nConsecutiveOrphans >= 1000)
+                if(nConsecutiveOrphans >= 5000)
                 {
                     {
                         LOCK(TAO::Ledger::PROCESSING_MUTEX);
@@ -2054,7 +2054,7 @@ namespace LLP
 
 
                 /* Check for failure limit on node. */
-                if(nConsecutiveFails >= 1000)
+                if(nConsecutiveFails >= 5000)
                 {
                     /* Switch to another available node. */
                     if(TAO::Ledger::ChainState::Synchronizing() && TAO::Ledger::nSyncSession.load() == nCurrentSession)
@@ -2146,11 +2146,11 @@ namespace LLP
                 }
 
                 /* Check for failure limit on node. */
-                if(nConsecutiveFails >= 1000)
+                if(nConsecutiveFails >= 5000)
                     return debug::drop(NODE, "TX::node reached failure limit");
 
                 /* Check for orphan limit on node. */
-                if(nConsecutiveOrphans >= 1000)
+                if(nConsecutiveOrphans >= 5000)
                     return debug::drop(NODE, "TX::node reached ORPHAN limit");
 
                 break;
