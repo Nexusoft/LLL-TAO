@@ -86,10 +86,6 @@ namespace TAO
             /* Get the transaction hash. */
             uint512_t hashTx = tx.GetHash();
 
-            /* Check for transaction on disk. */
-            if(LLD::Ledger->HasTx(hashTx, FLAGS::MEMPOOL))
-                return false; //NOTE: this was true, but changed to false to prevent relay loops in tritium LLP
-
             debug::log(3, "ACCEPT --------------------------------------");
             if(config::nVerbose >= 3)
                 tx.print();
@@ -111,40 +107,39 @@ namespace TAO
             if(!tx.Check())
                 return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
 
-            /* Check for orphans and conflicts when not first transaction. */
-            if(!tx.IsFirst())
+            /* >>> START CRITICAL SECTION */
             {
-                /* Check memory and disk for previous transaction. */
-                if(!LLD::Ledger->HasTx(tx.hashPrevTx, FLAGS::MEMPOOL))
+                RLOCK(MUTEX);
+
+                /* Check for transaction on disk. */
+                if(LLD::Ledger->HasTx(hashTx, FLAGS::MEMPOOL))
+                    return false;
+
+                /* Check for orphans and conflicts when not first transaction. */
+                if(!tx.IsFirst())
                 {
-                    /* Debug output. */
-                    debug::log(0, FUNCTION, "tx ", hashTx.SubString(), " ",
-                        tx.nSequence, " prev ", tx.hashPrevTx.SubString(),
-                        " ORPHAN in ", std::dec, time.ElapsedMilliseconds(), " ms");
-
-
+                    /* Check memory and disk for previous transaction. */
+                    if(!LLD::Ledger->HasTx(tx.hashPrevTx, FLAGS::MEMPOOL))
                     {
-                        RLOCK(MUTEX);
+                        /* Debug output. */
+                        debug::log(0, FUNCTION, "tx ", hashTx.SubString(), " ",
+                            tx.nSequence, " prev ", tx.hashPrevTx.SubString(),
+                            " ORPHAN in ", std::dec, time.ElapsedMilliseconds(), " ms");
 
                         /* Push to orphan queue. */
                         mapOrphans[tx.hashPrevTx] = tx;
                         setOrphansByIndex.insert(hashTx);
+
+                        /* Increment consecutive orphans. */
+                        if(pnode)
+                            ++pnode->nConsecutiveOrphans;
+
+                        /* Ask for the missing transaction. */
+                        if(pnode)
+                            pnode->PushMessage(LLP::ACTION::GET, uint8_t(LLP::TYPES::TRANSACTION), tx.hashPrevTx);
+
+                        return false;
                     }
-
-                    /* Increment consecutive orphans. */
-                    if(pnode)
-                        ++pnode->nConsecutiveOrphans;
-
-                    /* Ask for the missing transaction. */
-                    if(pnode)
-                        pnode->PushMessage(LLP::ACTION::GET, uint8_t(LLP::TYPES::TRANSACTION), tx.hashPrevTx);
-
-                    return false;
-                }
-
-
-                {
-                    RLOCK(MUTEX);
 
                     /* Check for conflicts. */
                     bool fClaimed = (mapClaimed.count(tx.hashPrevTx) && mapClaimed[tx.hashPrevTx] != hashTx);
@@ -165,24 +160,30 @@ namespace TAO
                     /* Check for conflicts. */
                     if(tx.hashPrevTx != hashLast)
                     {
+                        TAO::Ledger::Transaction txPrev;
+                        if(!LLD::Ledger->ReadTx(tx.hashPrevTx, txPrev, FLAGS::MEMPOOL))
+                            return debug::error("failed to read ", tx.hashPrevTx.SubString());
+
+                        TAO::Ledger::Transaction txLast;
+                        if(!LLD::Ledger->ReadTx(hashLast, txLast, FLAGS::MEMPOOL))
+                            return debug::error("failed to read ", hashLast.SubString());
+
+                        txPrev.print();
+                        txLast.print();
 
                         /* Add to conflicts map. */
-                        debug::error(FUNCTION, "CONFLICT: hash last mismatch ", tx.hashPrevTx.SubString());
+                        debug::error(FUNCTION, "CONFLICT: hash last mismatch ", tx.hashPrevTx.SubString(), " last=", hashLast.SubString());
                         mapConflicts[hashTx] = tx;
 
                         return false;
                     }
                 }
-            }
 
-            /* Begin an ACID transction for internal memory commits. */
-            if(!tx.Verify(FLAGS::MEMPOOL))
-                return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
+                /* Verify the register's pre-states and post-states. */
+                if(!tx.Verify(FLAGS::MEMPOOL))
+                    return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
 
-            /* Begin an ACID transction for internal memory commits. */
-            {
-                RLOCK(MUTEX);
-
+                /* Begin an ACID transction for internal memory commits. */
                 LLD::TxnBegin(FLAGS::MEMPOOL);
                 if(!tx.Connect(FLAGS::MEMPOOL))
                 {
@@ -202,6 +203,7 @@ namespace TAO
                 if(!tx.IsFirst())
                     mapClaimed[tx.hashPrevTx] = hashTx;
             }
+
 
 
             /* Debug output. */
