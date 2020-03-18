@@ -130,6 +130,17 @@ namespace TAO
             void Bind(const TAO::Ledger::Transaction* tx, bool fBindTxid = true) const;
 
 
+            /** Bind
+             *
+             *  Bind the contract to a transaction with txid passed as param.
+             *
+             *  @param[in] tx The transaction to bind the contract to.
+             *  @param[in] hash The txid to bind the contract to.
+             *
+             **/
+            void Bind(const TAO::Ledger::Transaction* tx, const uint512_t& hash) const;
+
+
             /** Primitive
              *
              *  Get the primitive operation.

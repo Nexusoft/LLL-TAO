@@ -116,6 +116,21 @@ namespace TAO
             nVersion   = tx->nVersion;
         }
 
+
+        /* Bind the contract to a transaction with txid passed as param. */
+        void Contract::Bind(const TAO::Ledger::Transaction* tx, const uint512_t& hash) const
+        {
+            /* Check for nullptr bind. */
+            if(tx == nullptr)
+                throw debug::exception(FUNCTION, "cannot bind to a nullptr");
+
+            /* Don't bind a again if already bound as calling GetHash is expensive */
+            hashCaller = tx->hashGenesis;
+            nTimestamp = tx->nTimestamp;
+            hashTx     = hash;
+            nVersion   = tx->nVersion;
+        }
+
         /* Get the primitive operation. */
         uint8_t Contract::Primitive() const
         {

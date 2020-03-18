@@ -841,7 +841,7 @@ namespace TAO
                 }
 
                 /* Bind the contract to this transaction. */
-                contract.Bind(this);
+                contract.Bind(this, hash);
 
                 /* Verify the register pre-states. */
                 if(!TAO::Register::Verify(contract, mapStates, nFlags))
@@ -1064,7 +1064,7 @@ namespace TAO
             ss << *this;
 
             /* Get the hash. */
-            uint512_t hash = LLC::SK512(ss.begin(), ss.end());
+            uint512_t hash = LLC::SK512(ss.Bytes());
 
             /* Type of 0xff designates tritium tx. */
             hash.SetType(TAO::Ledger::TRITIUM);

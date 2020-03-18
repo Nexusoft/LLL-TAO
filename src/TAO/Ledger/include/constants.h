@@ -74,7 +74,7 @@ namespace TAO
 
 
         /** Maximum contracts per transction. **/
-        const uint32_t MAX_TRANSACTION_CONTRACTS = 1000;
+        const uint32_t MAX_TRANSACTION_CONTRACTS = 100;
 
 
         /** Nexus Coinbase/Coinstake Maturity Settings **/

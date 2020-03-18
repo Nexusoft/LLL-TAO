@@ -817,7 +817,7 @@ namespace TAO
                     return;
 
                 /* Keep block production to five seconds. */
-                runtime::sleep(5000);
+                runtime::sleep(15000);
 
                 /* Create the block object. */
                 runtime::timer TIMER;

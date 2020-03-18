@@ -63,6 +63,9 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/types/locator.h>
+#include <TAO/Ledger/types/mempool.h>
+
+#include <TAO/Operation/include/enum.h>
 
 class TestDB : public LLD::SectorDatabase<LLD::BinaryHashMap, LLD::BinaryLRU>
 {
@@ -136,6 +139,158 @@ const uint256_t hashSeed = 55;
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
+    using namespace TAO::Register;
+    using namespace TAO::Operation;
+
+    /* Initialize LLD. */
+    LLD::Initialize();
+
+
+    /* Parse out the parameters */
+    config::ParseParameters(argc, argv);
+
+
+
+    /* Once we have read in the CLI paramters and config file, cache the args into global variables*/
+    config::CacheArgs();
+
+
+
+    config::fTestNet.store(true);
+    config::fPrivate.store(true);
+
+    //create object
+    uint256_t hashGenesis   = TAO::Ledger::SignatureChain::Genesis("testuser");
+    uint512_t hashPrivKey1  = LLC::GetRand512();
+    uint512_t hashPrivKey2  = LLC::GetRand512();
+
+    uint512_t hashPrevTx;
+
+    TAO::Register::Address hashToken     = TAO::Register::Address(TAO::Register::Address::TOKEN);
+    {
+        //create the transaction object
+        TAO::Ledger::Transaction tx;
+        tx.hashGenesis = hashGenesis;
+        tx.nSequence   = 0;
+        tx.nTimestamp  = runtime::timestamp();
+        tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
+        tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
+        tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
+
+        //create object
+        Object token = CreateToken(hashToken, 1000000000, 0);
+
+        //payload
+        tx[0] << uint8_t(OP::CREATE) << hashToken << uint8_t(REGISTER::OBJECT) << token.GetState();
+
+        //generate the prestates and poststates
+        tx.Build();
+
+        //sign
+        tx.Sign(hashPrivKey1);
+
+        //commit to disk
+        TAO::Ledger::mempool.Accept(tx);
+
+        //set previous
+        hashPrevTx = tx.GetHash();
+
+        //commit to disk
+        LLD::Ledger->WriteTx(hashPrevTx, tx);
+        tx.Connect(TAO::Ledger::FLAGS::BLOCK);
+
+        LLD::Ledger->IndexBlock(hashPrevTx, TAO::Ledger::ChainState::Genesis());
+        TAO::Ledger::mempool.Remove(hashPrevTx);
+    }
+
+
+    TAO::Register::Address hashAccount     = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
+    {
+        //set private keys
+        hashPrivKey1 = hashPrivKey2;
+        hashPrivKey2 = LLC::GetRand512();
+
+        //create the transaction object
+        TAO::Ledger::Transaction tx;
+        tx.hashGenesis = hashGenesis;
+        tx.hashPrevTx  = hashPrevTx;
+        tx.nSequence   = 1;
+        tx.nTimestamp  = runtime::timestamp();
+        tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
+        tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
+        tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
+
+        //create object
+        Object account = CreateAccount(hashToken);
+
+        //payload
+        tx[0] << uint8_t(OP::CREATE) << hashAccount << uint8_t(REGISTER::OBJECT) << account.GetState();
+
+        //generate the prestates and poststates
+        tx.Build();
+
+        //sign
+        tx.Sign(hashPrivKey1);
+
+        //commit to disk
+        TAO::Ledger::mempool.Accept(tx);
+
+        //set previous
+        hashPrevTx = tx.GetHash();
+
+        //commit to disk
+        LLD::Ledger->WriteTx(hashPrevTx, tx);
+        tx.Connect(TAO::Ledger::FLAGS::BLOCK);
+
+        LLD::Ledger->IndexBlock(hashPrevTx, TAO::Ledger::ChainState::Genesis());
+        TAO::Ledger::mempool.Remove(hashPrevTx);
+    }
+
+
+    {
+        //set private keys
+        hashPrivKey1 = hashPrivKey2;
+        hashPrivKey2 = LLC::GetRand512();
+
+        //create the transaction object
+        TAO::Ledger::Transaction tx;
+        tx.hashGenesis = hashGenesis;
+        tx.hashPrevTx  = hashPrevTx;
+        tx.nSequence   = 2;
+        tx.nTimestamp  = runtime::timestamp();
+        tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
+        tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
+        tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
+
+        //payload
+        for(int i = 0; i < 10; ++i)
+            tx[i] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(1) << uint64_t(0);
+
+        //generate the prestates and poststates
+        tx.Build();
+
+        //sign
+        tx.Sign(hashPrivKey1);
+
+        //commit to disk
+        TAO::Ledger::mempool.Accept(tx);
+
+        //set previous
+        hashPrevTx = tx.GetHash();
+
+        //commit to disk
+        LLD::Ledger->WriteTx(hashPrevTx, tx);
+        tx.Connect(TAO::Ledger::FLAGS::BLOCK);
+
+        LLD::Ledger->IndexBlock(hashPrevTx, TAO::Ledger::ChainState::Genesis());
+        TAO::Ledger::mempool.Remove(hashPrevTx);
+    }
+
+
+    return 0;
+
+
+
     for(int i = 0; i < 10; ++i)
     {
         uint64_t nTimestamp = runtime::timestamp();
