@@ -319,7 +319,7 @@ namespace TAO
                 return debug::error(FUNCTION, "size limits failed ", MAX_BLOCK_SIZE);
 
             /* Make sure the Block was Created within Active Channel. */
-            if(GetChannel() > (config::GetBoolArg("-private") ? 3 : 2))
+            if(GetChannel() > (config::fPrivate.load() ? 3 : 2))
                 return debug::error(FUNCTION, "channel out of range");
 
             /* Check that the time was within range. */

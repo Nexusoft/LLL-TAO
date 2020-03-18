@@ -179,10 +179,6 @@ namespace TAO
                     }
                 }
 
-                /* Verify the register's pre-states and post-states. */
-                if(!tx.Verify(FLAGS::MEMPOOL))
-                    return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
-
                 /* Begin an ACID transction for internal memory commits. */
                 LLD::TxnBegin(FLAGS::MEMPOOL);
                 if(!tx.Connect(FLAGS::MEMPOOL))
@@ -225,7 +221,7 @@ namespace TAO
             }
 
             /* Notify private to produce block if valid. */
-            if(config::GetBoolArg("-private"))
+            if(config::fPrivate.load())
                 PRIVATE_CONDITION.notify_all();
 
             return true;

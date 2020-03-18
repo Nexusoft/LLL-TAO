@@ -259,108 +259,97 @@ namespace TAO
             uint8_t nCrypto    = 0;
             uint8_t nContracts = 0;
 
-            /* Check coinbase. */
-            bool fCoinBase = IsCoinBase();
-            for(const auto& contract : vContracts)
+            /* Check the genesis transactions. */
+            if(!config::fPrivate.load())
             {
-                /* Check for coinbase. */
-                if(fCoinBase)
+                /* Check coinbase. */
+                for(const auto& contract : vContracts)
                 {
-                    /* Check for foreign operations. */
-                    if(contract.Primitive() != TAO::Operation::OP::COINBASE)
-                        return debug::error(FUNCTION, "coinbase cannot include foreign ops");
+                    /* Skip over fees as counting against total contracts. */
+                    if(contract.Primitive() != TAO::Operation::OP::FEE)
+                        ++nContracts;
 
-                    /* Check for extra conditions. */
-                    if(!contract.Empty(TAO::Operation::Contract::CONDITIONS))
-                        return debug::error(FUNCTION, "coinbase cannot include conditions");
+                    /* For the first transaction. */
+                    if(IsFirst())
+                    {
+                        /* Reset the contract operation stream */
+                        contract.Reset();
+
+                        /* Get the Operation */
+                        uint8_t nOP = 0;
+                        contract >> nOP;
+
+                        /* Check that the operation is a CREATE as these are the only OP's allowed in the genesis transaction */
+                        if(nOP == TAO::Operation::OP::CREATE)
+                        {
+                            /* The register address */
+                            TAO::Register::Address address;
+
+                            /* Deserialize the register address from the contract */
+                            contract >> address;
+                            switch(address.GetType())
+                            {
+                                /* Tally total accounts created. */
+                                case TAO::Register::Address::ACCOUNT:
+                                    ++nAccounts;
+                                    break;
+
+                                /* Tally total trust accounts. */
+                                case TAO::Register::Address::TRUST:
+                                    ++nTrust;
+                                    break;
+
+                                /* Tally total name objects. */
+                                case TAO::Register::Address::NAME:
+                                    ++nNames;
+                                    break;
+
+                                /* Tally total crypto objects. */
+                                case TAO::Register::Address::CRYPTO:
+                                    ++nCrypto;
+                                    break;
+
+                                default:
+                                {
+                                    /* Contract is strict for genesis when not in private mode. */
+                                    if(!config::fPrivate.load())
+                                        return debug::error(FUNCTION, "genesis transaction contains invalid contracts.");
+
+                                    break;
+                                }
+
+                            }
+                        }
+                        else if(!config::fPrivate.load())
+                            return debug::error(FUNCTION, "genesis transaction contains invalid contracts.");
+
+                    }
                 }
 
-                /* Check for empty contracts. */
-                if(contract.Empty(TAO::Operation::Contract::OPERATIONS))
-                    return debug::error(FUNCTION, "contract is empty");
+                /* Check contains contracts. */
+                if(nContracts == 0)
+                    return debug::error(FUNCTION, "transaction is empty");
 
-                /* Skip over fees as counting against total contracts. */
-                if(contract.Primitive() != TAO::Operation::OP::FEE)
-                    ++nContracts;
-
-                /* For the first transaction. */
+                /* If genesis then check that the only contracts are those for the default registers.
+                 * We do not make this limitation in private mode */
                 if(IsFirst())
                 {
-                    /* Reset the contract operation stream */
-                    contract.Reset();
+                    //skip proof of work for unit tests
+                    #ifndef UNIT_TESTS
 
-                    /* Get the Operation */
-                    uint8_t nOP = 0;
-                    contract >> nOP;
+                    /* Check the difficulty of the hash. */
+                    if(ProofHash() > FIRST_REQUIRED_WORK)
+                        return debug::error(FUNCTION, "first transaction not enough work");
 
-                    /* Check that the operation is a CREATE as these are the only OP's allowed in the genesis transaction */
-                    if(nOP == TAO::Operation::OP::CREATE)
-                    {
-                        /* The register address */
-                        TAO::Register::Address address;
+                    #endif
 
-                        /* Deserialize the register address from the contract */
-                        contract >> address;
-                        switch(address.GetType())
-                        {
-                            /* Tally total accounts created. */
-                            case TAO::Register::Address::ACCOUNT:
-                                ++nAccounts;
-                                break;
-
-                            /* Tally total trust accounts. */
-                            case TAO::Register::Address::TRUST:
-                                ++nTrust;
-                                break;
-
-                            /* Tally total name objects. */
-                            case TAO::Register::Address::NAME:
-                                ++nNames;
-                                break;
-
-                            /* Tally total crypto objects. */
-                            case TAO::Register::Address::CRYPTO:
-                                ++nCrypto;
-                                break;
-
-                            default:
-                            {
-                                /* Contract is strict for genesis when not in private mode. */
-                                if(!config::GetBoolArg("-private"))
-                                    return debug::error(FUNCTION, "genesis transaction contains invalid contracts.");
-
-                                break;
-                            }
-
-                        }
-                    }
-                    else if(!config::GetBoolArg("-private"))
+                    /* Check that the there are not more than the allowable default contracts */
+                    if(vContracts.size() > 5 || nNames > 2 || nTrust > 1 || nAccounts > 1 || nCrypto > 1)
                         return debug::error(FUNCTION, "genesis transaction contains invalid contracts.");
-
                 }
             }
 
-            /* Check contains contracts. */
-            if(nContracts == 0)
-                return debug::error(FUNCTION, "transaction is empty");
 
-            /* If genesis then check that the only contracts are those for the default registers.
-             * We do not make this limitation in private mode */
-            if(IsFirst() && !config::GetBoolArg("-private"))
-            {
-                //skip proof of work for unit tests
-                #ifndef UNIT_TESTS
-
-                /* Check the difficulty of the hash. */
-                if(ProofHash() > FIRST_REQUIRED_WORK)
-                    return debug::error(FUNCTION, "first transaction not enough work");
-
-                #endif
-
-                /* Check that the there are not more than the allowable default contracts */
-                if(vContracts.size() > 5 || nNames > 2 || nTrust > 1 || nAccounts > 1 || nCrypto > 1)
-                    return debug::error(FUNCTION, "genesis transaction contains invalid contracts.");
-            }
 
             /* Verify the block signature (if not synchronizing) */
             if(!TAO::Ledger::ChainState::Synchronizing())
@@ -662,7 +651,7 @@ namespace TAO
             #ifndef UNIT_TESTS
 
             /* Check for first. */
-            if(IsFirst() && !config::GetBoolArg("-private"))
+            if(IsFirst() && !config::fPrivate.load())
             {
                 /* Timer to track proof of work time. */
                 runtime::timer timer;
@@ -793,9 +782,29 @@ namespace TAO
             uint512_t hashPrev = 0;
             uint32_t nContract = 0;
 
+            /* Create a temporary map for pre-states. */
+            std::map<uint256_t, TAO::Register::State> mapStates;
+
             /* Run through all the contracts. */
+            bool fCoinBase = IsCoinBase();
             for(const auto& contract : vContracts)
             {
+                /* Check for coinbase. */
+                if(fCoinBase)
+                {
+                    /* Check for foreign operations. */
+                    if(contract.Primitive() != TAO::Operation::OP::COINBASE)
+                        return debug::error(FUNCTION, "coinbase cannot include foreign ops");
+
+                    /* Check for extra conditions. */
+                    if(!contract.Empty(TAO::Operation::Contract::CONDITIONS))
+                        return debug::error(FUNCTION, "coinbase cannot include conditions");
+                }
+
+                /* Check for empty contracts. */
+                if(contract.Empty(TAO::Operation::Contract::OPERATIONS))
+                    return debug::error(FUNCTION, "contract is empty");
+
                 /* Check for dependants. */
                 if(contract.Dependant(hashPrev, nContract))
                 {
@@ -807,22 +816,25 @@ namespace TAO
                             return debug::error(FUNCTION, hashPrev.SubString(), " not indexed");
 
                         /* Read previous transaction from disk. */
-                        const TAO::Operation::Contract dependant = LLD::Ledger->ReadContract(hashPrev, nContract, nFlags);
-                        switch(dependant.Primitive())
+                        if(!config::fPrivate.load())
                         {
-                            /* Handle coinbase rules. */
-                            case TAO::Operation::OP::COINBASE:
+                            const TAO::Operation::Contract dependant = LLD::Ledger->ReadContract(hashPrev, nContract, nFlags);
+                            switch(dependant.Primitive())
                             {
-                                /* Get number of confirmations of previous TX */
-                                uint32_t nConfirms = 0;
-                                if(!LLD::Ledger->ReadConfirmations(hashPrev, nConfirms, pblock))
-                                    return debug::error(FUNCTION, "failed to read confirmations for coinbase");
+                                /* Handle coinbase rules. */
+                                case TAO::Operation::OP::COINBASE:
+                                {
+                                    /* Get number of confirmations of previous TX */
+                                    uint32_t nConfirms = 0;
+                                    if(!LLD::Ledger->ReadConfirmations(hashPrev, nConfirms, pblock))
+                                        return debug::error(FUNCTION, "failed to read confirmations for coinbase");
 
-                                /* Check that the previous TX has reached sig chain maturity */
-                                if(nConfirms + 1 < MaturityCoinBase((pblock ? *pblock : ChainState::stateBest.load())))
-                                    return debug::error(FUNCTION, "coinbase is immature ", nConfirms);
+                                    /* Check that the previous TX has reached sig chain maturity */
+                                    if(nConfirms + 1 < MaturityCoinBase((pblock ? *pblock : ChainState::stateBest.load())))
+                                        return debug::error(FUNCTION, "coinbase is immature ", nConfirms);
 
-                                break;
+                                    break;
+                                }
                             }
                         }
                     }
@@ -830,6 +842,10 @@ namespace TAO
 
                 /* Bind the contract to this transaction. */
                 contract.Bind(this);
+
+                /* Verify the register pre-states. */
+                if(!TAO::Register::Verify(contract, mapStates, nFlags))
+                    return false;
 
                 /* Execute the contracts to final state. */
                 if(!TAO::Operation::Execute(contract, nFlags, nCost))

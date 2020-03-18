@@ -251,8 +251,13 @@ namespace TAO
          *  @return Max allowed contracts.
          *
          **/
-        uint32_t MaxContracts();
+        inline uint32_t MaxContracts()
+        {
+            if(config::fPrivate.load())
+                return 1000;
 
+            return MAX_TRANSACTION_CONTRACTS;
+        }
     }
 }
 

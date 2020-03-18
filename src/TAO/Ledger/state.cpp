@@ -1006,10 +1006,6 @@ namespace TAO
                             return debug::error(FUNCTION, "last hash hash mismatch");
                     }
 
-                    /* Verify the Ledger Pre-States. */
-                    if(!tx.Verify(FLAGS::BLOCK)) //NOTE: double checking this for now in post-processing
-                        return false;
-
                     /* Connect the transaction. */
                     if(!tx.Connect(FLAGS::BLOCK, this))
                         return debug::error(FUNCTION, "failed to connect transaction");

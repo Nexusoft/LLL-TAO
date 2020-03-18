@@ -379,7 +379,7 @@ namespace TAO
             }
 
             /* Check for a private block work claims. */
-            if(IsPrivate() && !config::GetBoolArg("-private"))
+            if(IsPrivate() && !config::fPrivate.load())
                 return debug::error(FUNCTION, "Invalid channel: ", nChannel);
 
             return true;

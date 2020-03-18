@@ -352,7 +352,7 @@ namespace TAO
                             TAO::Ledger::Transaction& tx)
         {
             /* No need to check connections or maturity in private mode as there is no PoS/Pow */
-            if(!config::GetBoolArg("-private"))
+            if(!config::fPrivate.load())
             {
                 /* If not on local-only testnet then we need to ensure we are connected to the network and
                 synchronized before allowing any sig chain transactions to be created */
