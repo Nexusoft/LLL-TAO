@@ -103,7 +103,7 @@ namespace TAO
 
 
         /* Bind the contract to a transaction. */
-        void Contract::Bind(const TAO::Ledger::Transaction* tx, bool fBindTxid) const
+        void Contract::Bind(const TAO::Ledger::Transaction* tx) const
         {
             /* Check for nullptr bind. */
             if(tx == nullptr)
@@ -130,6 +130,23 @@ namespace TAO
             hashTx     = hash;
             nVersion   = tx->nVersion;
         }
+
+
+        /* Bind the contract to a transaction with timestamp and caller passed as param. */
+        void Contract::Bind(const uint64_t nTimestampIn, const uint256_t& hashCallerIn) const
+        {
+            /* Set the variables. */
+            hashCaller = hashCallerIn;
+            nTimestamp = nTimestampIn;
+
+            /* Set the transaction version based on the timestamp. */
+            uint32_t nCurrent = TAO::Ledger::CurrentTransactionVersion();
+            if(TAO::Ledger::TransactionVersionActive(nTimestamp, nCurrent))
+                nVersion = nCurrent;
+            else
+                nVersion = nCurrent - 1;
+        }
+        
 
         /* Get the primitive operation. */
         uint8_t Contract::Primitive() const

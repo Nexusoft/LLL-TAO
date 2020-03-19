@@ -127,7 +127,7 @@ namespace TAO
              *  @param[in] tx The transaction to bind the contract to.
              *
              **/
-            void Bind(const TAO::Ledger::Transaction* tx, bool fBindTxid = true) const;
+            void Bind(const TAO::Ledger::Transaction* tx) const;
 
 
             /** Bind
@@ -139,6 +139,17 @@ namespace TAO
              *
              **/
             void Bind(const TAO::Ledger::Transaction* tx, const uint512_t& hash) const;
+
+
+            /** Bind
+             *
+             *  Bind the contract to a transaction with timestamp and caller passed as param.
+             *
+             *  @param[in] nTimestampIn The timestamp to bind contract to
+             *  @param[in] hashCallerIn The contract executor to bind contract to.
+             *
+             **/
+            void Bind(const uint64_t nTimestampIn, const uint256_t& hashCallerIn) const;
 
 
             /** Primitive

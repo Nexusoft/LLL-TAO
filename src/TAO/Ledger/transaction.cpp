@@ -196,7 +196,7 @@ namespace TAO
                 vContracts.resize(n + 1);
 
             /* Bind this transaction. */
-            vContracts[n].Bind(this, false); //don't get txid yet, because the non-const version of this subscript will modify object
+            vContracts[n].Bind(this);
 
             return vContracts[n];
         }
@@ -599,13 +599,13 @@ namespace TAO
             uint64_t nPrevTimestamp = txPrev.nTimestamp;
 
             /* flag indicating that transaction fees should apply, depending on the time since the last transaction */
-            bool fApplyTxFee = nTimestamp - nPrevTimestamp < TX_FEE_INTERVAL;
+            bool fApplyTxFee = (nTimestamp - nPrevTimestamp) < TX_FEE_INTERVAL;
 
             /* Run through all the contracts. */
             for(auto& contract : vContracts)
             {
                 /* Bind the contract to this transaction. */
-                contract.Bind(this, false);  //don't bind txid yet, because it depends on the costs added for its final state
+                contract.Bind(nTimestamp, hashGenesis);
 
                 /* Calculate the total cost to execute. */
                 TAO::Operation::Cost(contract, nRet);
@@ -636,7 +636,7 @@ namespace TAO
                 for(auto& contract : vContracts)
                 {
                     /* Bind the contract to this transaction. */
-                    contract.Bind(this, false); //don't bind txid yet, because it depends on build for its final state
+                    contract.Bind(nTimestamp, hashGenesis);
 
                     /* Calculate the pre-states and post-states. */
                     if(!TAO::Register::Build(contract, mapStates, FLAGS::MEMPOOL))
@@ -1313,8 +1313,6 @@ namespace TAO
             for(const auto& contract : vContracts)
             {
                 /* Bind the contract to this transaction. */
-                contract.Bind(this);
-
                 if(contract.Primitive() == TAO::Operation::OP::FEE)
                 {
                     contract.Value(nContractValue);

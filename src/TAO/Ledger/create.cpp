@@ -817,7 +817,7 @@ namespace TAO
                     return;
 
                 /* Keep block production to five seconds. */
-                runtime::sleep(15000);
+                runtime::sleep(5000);
 
                 /* Create the block object. */
                 runtime::timer TIMER;
@@ -869,6 +869,9 @@ namespace TAO
                     }
                 }
 
+                /* Debug output. */
+                debug::log(0, FUNCTION, "Private Block CREATED in ", TIMER.ElapsedMilliseconds(), " ms");
+
                 /* Verify the block object. */
                 uint8_t nStatus = 0;
                 TAO::Ledger::Process(block, nStatus);
@@ -876,9 +879,6 @@ namespace TAO
                 /* Check the statues. */
                 if(!(nStatus & PROCESS::ACCEPTED))
                     continue;
-
-                /* Debug output. */
-                debug::log(0, FUNCTION, "Private Block Cleared in ", TIMER.ElapsedMilliseconds(), " ms");
             }
         }
 
