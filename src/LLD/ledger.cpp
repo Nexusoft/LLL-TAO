@@ -32,6 +32,14 @@ ________________________________________________________________________________
 namespace LLD
 {
 
+    /* Register transaction to track current open transaction. */
+    thread_local std::unique_ptr<LedgerTransaction> LedgerDB::pMemory;
+
+
+    /* Miner transaction to track current states for miner verification. */
+    thread_local std::unique_ptr<LedgerTransaction> LedgerDB::pMiner;
+
+
     /** The Database Constructor. To determine file location and the Bytes per Record. **/
     LedgerDB::LedgerDB(const uint8_t nFlagsIn, const uint32_t nBucketsIn, const uint32_t nCacheIn)
     : SectorDatabase(std::string("_LEDGER")
@@ -40,8 +48,6 @@ namespace LLD
     , nCacheIn)
 
     , MEMORY_MUTEX()
-    , pMemory(nullptr)
-    , pMiner(nullptr)
     , pCommit(new LedgerTransaction())
     {
     }
@@ -50,14 +56,6 @@ namespace LLD
     /* Default Destructor */
     LedgerDB::~LedgerDB()
     {
-        /* Free transaction memory. */
-        if(pMemory)
-            delete pMemory;
-
-        /* Free miner memory. */
-        if(pMiner)
-            delete pMiner;
-
         /* Free commited memory. */
         if(pCommit)
             delete pCommit;
@@ -270,8 +268,6 @@ namespace LLD
         /* Memory mode for pre-database commits. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::ERASE)
         {
-            LOCK(MEMORY_MUTEX);
-
             /* Check for pending tranasaction. */
             if(pMemory)
             {
@@ -282,14 +278,16 @@ namespace LLD
             }
 
             /* Set the state in the memory map. */
-            pCommit->mapClaims[pair] = nClaimed;
+            {
+                LOCK(MEMORY_MUTEX);
+
+                pCommit->mapClaims[pair] = nClaimed;
+            }
 
             return true;
         }
         else if(nFlags == TAO::Ledger::FLAGS::MINER)
         {
-            LOCK(MEMORY_MUTEX);
-
             /* Check for pending tranasaction. */
             if(pMiner)
                 pMiner->mapClaims[pair] = nClaimed;
@@ -332,8 +330,6 @@ namespace LLD
         /* Memory mode for pre-database commits. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::ERASE)
         {
-            LOCK(MEMORY_MUTEX);
-
             /* Check for pending transaction. */
             if(pMemory && pMemory->mapClaims.count(pair))
             {
@@ -343,19 +339,21 @@ namespace LLD
                 return true;
             }
 
-            /* Check for pending transaction. */
-            if(pCommit->mapClaims.count(pair))
             {
-                /* Set claimed from memory. */
-                nClaimed = pCommit->mapClaims[pair];
+                LOCK(MEMORY_MUTEX);
 
-                return true;
+                /* Check for pending transaction. */
+                if(pCommit->mapClaims.count(pair))
+                {
+                    /* Set claimed from memory. */
+                    nClaimed = pCommit->mapClaims[pair];
+
+                    return true;
+                }
             }
         }
         else if(nFlags == TAO::Ledger::FLAGS::MINER)
         {
-            LOCK(MEMORY_MUTEX);
-
             /* Check for pending transaction. */
             if(pMiner && pMiner->mapClaims.count(pair))
             {
@@ -725,8 +723,6 @@ namespace LLD
         /* Memory mode for pre-database commits. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
-            LOCK(MEMORY_MUTEX);
-
             /* Check for pending transactions. */
             if(pMemory)
             {
@@ -738,14 +734,16 @@ namespace LLD
             }
 
             /* Write proof to commited memory. */
-            pCommit->setProofs.insert(tuple);
+            {
+                LOCK(MEMORY_MUTEX);
+
+                pCommit->setProofs.insert(tuple);
+            }
 
             return true;
         }
         else if(nFlags == TAO::Ledger::FLAGS::MINER)
         {
-            LOCK(MEMORY_MUTEX);
-
             /* Check for pending transactions. */
             if(pMiner)
                 pMiner->setProofs.insert(tuple);
@@ -754,8 +752,6 @@ namespace LLD
         }
         else if(nFlags == TAO::Ledger::FLAGS::BLOCK || nFlags == TAO::Ledger::FLAGS::ERASE)
         {
-            LOCK(MEMORY_MUTEX);
-
             /* Erase memory proof if they exist. */
             if(pMemory)
             {
@@ -763,7 +759,10 @@ namespace LLD
                 pMemory->setProofs.erase(tuple);
             }
             else
-               pCommit->setProofs.erase(tuple);
+            {
+                LOCK(MEMORY_MUTEX);
+                pCommit->setProofs.erase(tuple);
+            }
 
             /* Check for erase to short circuit out. */
             if(nFlags == TAO::Ledger::FLAGS::ERASE)
@@ -784,20 +783,20 @@ namespace LLD
         /* Memory mode for pre-database commits. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
-            LOCK(MEMORY_MUTEX);
-
             /* Check pending transaction memory. */
             if(pMemory && pMemory->setProofs.count(tuple))
                 return true;
 
-            /* Check commited memory. */
-            if(pCommit->setProofs.count(tuple))
-                return true;
+            {
+                LOCK(MEMORY_MUTEX);
+
+                /* Check commited memory. */
+                if(pCommit->setProofs.count(tuple))
+                    return true;
+            }
         }
         else if(nFlags == TAO::Ledger::FLAGS::MINER)
         {
-            LOCK(MEMORY_MUTEX);
-
             /* Check pending transaction memory. */
             if(pMiner && pMiner->setProofs.count(tuple))
                 return true;
@@ -819,8 +818,6 @@ namespace LLD
         /* Check for memory transaction. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
-            LOCK(MEMORY_MUTEX);
-
             /* Check for available states. */
             if(pMemory)
             {
@@ -832,7 +829,11 @@ namespace LLD
             }
 
             /* Erase proof from mempool. */
-            pCommit->setProofs.erase(tuple);
+            {
+                LOCK(MEMORY_MUTEX);
+
+                pCommit->setProofs.erase(tuple);
+            }
 
             return true;
         }
@@ -956,25 +957,17 @@ namespace LLD
     /* Begin a memory transaction following ACID properties. */
     void LedgerDB::MemoryBegin(const uint8_t nFlags)
     {
-        LOCK(MEMORY_MUTEX);
-
         /* Check for miner. */
         if(nFlags == TAO::Ledger::FLAGS::MINER)
         {
             /* Set the pre-commit memory mode. */
-            if(pMiner)
-                delete pMiner;
-
-            pMiner = new LedgerTransaction();
+            pMiner = std::unique_ptr<LedgerTransaction>(new LedgerTransaction());
 
             return;
         }
 
         /* Set the pre-commit memory mode. */
-        if(pMemory)
-            delete pMemory;
-
-        pMemory = new LedgerTransaction();
+        pMemory = std::unique_ptr<LedgerTransaction>(new LedgerTransaction());
     }
 
 
@@ -987,18 +980,12 @@ namespace LLD
         if(nFlags == TAO::Ledger::FLAGS::MINER)
         {
             /* Set the pre-commit memory mode. */
-            if(pMiner)
-                delete pMiner;
-
             pMiner = nullptr;
 
             return;
         }
 
         /* Set the pre-commit memory mode. */
-        if(pMemory)
-            delete pMemory;
-
         pMemory = nullptr;
     }
 
@@ -1028,7 +1015,6 @@ namespace LLD
                 pCommit->setProofs.erase(erase);
 
             /* Free the memory. */
-            delete pMemory;
             pMemory = nullptr;
         }
     }

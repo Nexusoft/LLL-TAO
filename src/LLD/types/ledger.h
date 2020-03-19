@@ -80,11 +80,11 @@ namespace LLD
 
 
         /** Ledger transaction to track current open transaction. **/
-        LedgerTransaction* pMemory;
+        static thread_local std::unique_ptr<LedgerTransaction> pMemory;
 
 
         /** Miner transaction to track current states for miner verification. **/
-        LedgerTransaction* pMiner;
+        static thread_local std::unique_ptr<LedgerTransaction> pMiner;
 
 
         /** Ledger transaction to keep open all commited data. **/
