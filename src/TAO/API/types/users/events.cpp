@@ -288,7 +288,7 @@ namespace TAO
                     std::map<uint256_t, TAO::Register::State> mapStates;
 
                     /* Loop through each contract in the notification queue. */
-                    std::vector<TAO::Operation::Contract> vProcessed;
+                    std::queue<TAO::Operation::Contract> vProcessQueue;
                     for(const auto& contract : vContracts)
                     {
                         /* Get a reference to the contract */
@@ -415,7 +415,7 @@ namespace TAO
                                         continue;
 
                                     /* Add the contract to the transaction */
-                                    vProcessed.push_back(credit);
+                                    vProcessQueue.push(credit);
 
                                 }
                                 else
@@ -440,7 +440,7 @@ namespace TAO
                                         continue;
 
                                     /* Add the contract to the transaction */
-                                    vProcessed.push_back(credit);
+                                    vProcessQueue.push(credit);
                                 }
 
                                 /* Log debug message. */
@@ -481,7 +481,7 @@ namespace TAO
                                     continue;
 
                                 /* Add the contract to the transaction */
-                                vProcessed.push_back(credit);
+                                vProcessQueue.push(credit);
 
                                 /* Log debug message. */
                                 debug::log(2, FUNCTION, "Matching COINBASE with CREDIT");
@@ -515,7 +515,7 @@ namespace TAO
                                     /* If the Name contract operation was created then add it to the transaction */
                                     if(!nameContract.Empty())
                                     {
-                                        vProcessed.push_back(nameContract);
+                                        vProcessQueue.push(nameContract);
                                     }
                                 }
 
@@ -533,7 +533,7 @@ namespace TAO
                                     continue;
 
                                 /* Add the contract to the transaction */
-                                vProcessed.push_back(claim);
+                                vProcessQueue.push(claim);
 
                                 /* Log debug message. */
                                 debug::log(2, FUNCTION, "Matching TRANSFER with CLAIM");
@@ -671,7 +671,7 @@ namespace TAO
                                         continue;
 
                                     /* Add the contract to the transaction */
-                                    vProcessed.push_back(migrate);
+                                    vProcessQueue.push(migrate);
 
                                     /* Log debug message. */
                                     debug::log(2, FUNCTION, "Matching LEGACY SEND with trust key MIGRATE",
@@ -708,7 +708,7 @@ namespace TAO
                                     continue;
 
                                 /* Add the contract to the transaction */
-                                vProcessed.push_back(credit);
+                                vProcessQueue.push(credit);
 
                                 /* Log debug message. */
                                 debug::log(2, FUNCTION, "Matching LEGACY SEND with CREDIT");
@@ -738,12 +738,12 @@ namespace TAO
                                 continue;
 
                             /* Add the void contract */
-                            vProcessed.push_back(voidContract);
+                            vProcessQueue.push(voidContract);
                         }
                     }
 
                     /* If any of the notifications have been matched, execute the operations layer and sign the transaction. */
-                    while(!vProcessed.empty())
+                    while(!vProcessQueue.empty())
                     {
                         /* Lock the signature chain. */
                         LOCK(users->CREATE_MUTEX);
@@ -757,12 +757,12 @@ namespace TAO
                         for(uint32_t i = 0; i < TAO::Ledger::MAX_TRANSACTION_CONTRACTS; ++i)
                         {
                             /* Stop if run out of items to process. */
-                            if(vProcessed.empty())
+                            if(vProcessQueue.empty())
                                 break;
 
                             /* Add the contract to tx. */
-                            txout[i] = vProcessed[0];
-                            vProcessed.erase(vProcessed.begin());
+                            txout[i] = vProcessQueue.front();
+                            vProcessQueue.pop();
                         }
 
                         /* Check for end. */
