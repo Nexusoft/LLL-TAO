@@ -15,10 +15,20 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/enum.h>
 
+#include <Util/include/memory.h>
+
 namespace LLD
 {
 
-    /** The Database Constructor. To determine file location and the Bytes per Record. **/
+    /* Register transaction to track current open transaction. */
+    thread_local std::unique_ptr<RegisterTransaction> RegisterDB::pMemory;
+
+
+    /* Miner transaction to track current states for miner verification. */
+    thread_local std::unique_ptr<RegisterTransaction> RegisterDB::pMiner;
+
+
+    /* The Database Constructor. To determine file location and the Bytes per Record. */
     RegisterDB::RegisterDB(const uint8_t nFlagsIn, const uint32_t nBucketsIn, const uint32_t nCacheIn)
     : SectorDatabase(std::string("_REGISTER")
     , nFlagsIn
@@ -26,8 +36,6 @@ namespace LLD
     , nCacheIn)
 
     , MEMORY_MUTEX()
-    , pMemory(nullptr)
-    , pMiner(nullptr)
     , pCommit(new RegisterTransaction())
     {
     }
@@ -36,14 +44,6 @@ namespace LLD
     /* Default Destructor */
     RegisterDB::~RegisterDB()
     {
-        /* Cleanup memory transactions. */
-        if(pMemory)
-            delete pMemory;
-
-        /* Cleanup memory transactions. */
-        if(pMiner)
-            delete pMiner;
-
         /* Cleanup commited states. */
         if(pCommit)
             delete pCommit;
@@ -58,8 +58,6 @@ namespace LLD
         /* Memory mode for pre-database commits. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
-            LOCK(MEMORY_MUTEX);
-
             /* Check for memory mode. */
             if(pMemory)
             {
@@ -70,8 +68,12 @@ namespace LLD
                 return true;
             }
 
-            /* Otherwise commit like normal. */
-            pCommit->mapStates[hashRegister] = state;
+            {
+                LOCK(MEMORY_MUTEX);
+
+                /* Otherwise commit like normal. */
+                pCommit->mapStates[hashRegister] = state;
+            }
 
             return true;
         }
@@ -171,8 +173,6 @@ namespace LLD
         /* Memory mode for pre-database commits. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
-            LOCK(MEMORY_MUTEX);
-
             /* Check for a memory transaction first */
             if(pMemory && pMemory->mapStates.count(hashRegister))
             {
@@ -182,19 +182,21 @@ namespace LLD
                 return true;
             }
 
-            /* Check for state in memory map. */
-            if(pCommit->mapStates.count(hashRegister))
             {
-                /* Get the state from commited memory. */
-                state = pCommit->mapStates[hashRegister];
+                LOCK(MEMORY_MUTEX);
 
-                return true;
+                /* Check for state in memory map. */
+                if(pCommit->mapStates.count(hashRegister))
+                {
+                    /* Get the state from commited memory. */
+                    state = pCommit->mapStates[hashRegister];
+
+                    return true;
+                }
             }
         }
         else if(nFlags == TAO::Ledger::FLAGS::MINER)
         {
-            LOCK(MEMORY_MUTEX);
-
             /* Check for a memory transaction first */
             if(pMiner && pMiner->mapStates.count(hashRegister))
             {
@@ -215,8 +217,6 @@ namespace LLD
         /* Check for memory transaction. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
-            LOCK(MEMORY_MUTEX);
-
             /* Check for available states. */
             if(pMemory)
             {
@@ -227,7 +227,10 @@ namespace LLD
             }
 
             /* Erase state from mempool. */
-            pCommit->mapStates.erase(hashRegister);
+            {
+                LOCK(MEMORY_MUTEX);
+                pCommit->mapStates.erase(hashRegister);
+            }
 
             return true;
         }
@@ -301,8 +304,6 @@ namespace LLD
         /* Memory mode for pre-database commits. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
-            LOCK(MEMORY_MUTEX);
-
             /* Check for a memory transaction first */
             if(pMemory && pMemory->mapStates.count(hashRegister))
             {
@@ -313,18 +314,20 @@ namespace LLD
             }
 
             /* Check for state in memory map. */
-            if(pCommit->mapStates.count(hashRegister))
             {
-                /* Get the state from commited memory. */
-                state = pCommit->mapStates[hashRegister];
+                LOCK(MEMORY_MUTEX);
 
-                return true;
+                if(pCommit->mapStates.count(hashRegister))
+                {
+                    /* Get the state from commited memory. */
+                    state = pCommit->mapStates[hashRegister];
+
+                    return true;
+                }
             }
         }
         else if(nFlags == TAO::Ledger::FLAGS::MINER)
         {
-            LOCK(MEMORY_MUTEX);
-
             /* Check for a memory transaction first */
             if(pMiner && pMiner->mapStates.count(hashRegister))
             {
@@ -356,20 +359,21 @@ namespace LLD
         /* Memory mode for pre-database commits. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
-            LOCK(MEMORY_MUTEX);
-
             /* Check internal memory state. */
             if(pMemory && pMemory->mapStates.count(hashRegister))
                 return true;
 
             /* Check for state in memory map. */
-            if(pCommit->mapStates.count(hashRegister))
-                return true;
+            {
+                LOCK(MEMORY_MUTEX);
+
+                if(pCommit->mapStates.count(hashRegister))
+                    return true;
+            }
+
         }
         else if(nFlags == TAO::Ledger::FLAGS::MINER)
         {
-            LOCK(MEMORY_MUTEX);
-
             /* Check internal memory state. */
             if(pMiner && pMiner->mapStates.count(hashRegister))
                 return true;
@@ -381,49 +385,33 @@ namespace LLD
     /* Begin a memory transaction following ACID properties. */
     void RegisterDB::MemoryBegin(const uint8_t nFlags)
     {
-        LOCK(MEMORY_MUTEX);
-
         /* Check for miner. */
         if(nFlags == TAO::Ledger::FLAGS::MINER)
         {
             /* Set the pre-commit memory mode. */
-            if(pMiner)
-                delete pMiner;
-
-            pMiner = new RegisterTransaction();
+            pMiner = std::unique_ptr<RegisterTransaction>(new RegisterTransaction());
 
             return;
         }
 
         /* Set the pre-commit memory mode. */
-        if(pMemory)
-            delete pMemory;
-
-        pMemory = new RegisterTransaction();
+        pMemory = std::unique_ptr<RegisterTransaction>(new RegisterTransaction());
     }
 
 
     /* Abort a memory transaction following ACID properties. */
     void RegisterDB::MemoryRelease(const uint8_t nFlags)
     {
-        LOCK(MEMORY_MUTEX);
-
         /* Check for miner. */
         if(nFlags == TAO::Ledger::FLAGS::MINER)
         {
             /* Set the pre-commit memory mode. */
-            if(pMiner)
-                delete pMiner;
-
             pMiner = nullptr;
 
             return;
         }
 
         /* Set the pre-commit memory mode. */
-        if(pMemory)
-            delete pMemory;
-
         pMemory = nullptr;
     }
 
@@ -445,7 +433,6 @@ namespace LLD
                 pCommit->mapStates.erase(erase);
 
             /* Free the memory. */
-            delete pMemory;
             pMemory = nullptr;
         }
     }

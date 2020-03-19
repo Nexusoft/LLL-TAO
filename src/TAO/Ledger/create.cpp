@@ -179,15 +179,6 @@ namespace TAO
                     continue;
                 }
 
-                /* Check the pre-states and post-states. */
-                if(!tx.Verify(FLAGS::MINER))
-                {
-                    setDependents.insert(hash);
-
-                    debug::log(2, FUNCTION, "Skipping transaction ", hash.SubString(), " - failed to verify");
-                    continue;
-                }
-
                 /* Check to see if this transaction connects. */
                 if(!tx.Connect(FLAGS::MINER))
                 {

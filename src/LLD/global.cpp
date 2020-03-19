@@ -41,7 +41,7 @@ namespace LLD
         uint32_t nRegisterCacheSize = config::GetArg("-registercache", 2);
         Register = new RegisterDB(
                         FLAGS::CREATE | FLAGS::FORCE,
-                        77773, 
+                        77773,
                         nRegisterCacheSize * 1024 * 1024);
 
         /* Create the ledger database instance. */
