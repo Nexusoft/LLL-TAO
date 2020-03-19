@@ -773,6 +773,10 @@ namespace TAO
                         /* Add the fee */
                         AddFee(txout);
 
+                        /* Execute the operations layer. */
+                        if(!txout.Build())
+                            throw APIException(-30, "Failed to build register pre-states");
+
                         /* Sign the transaction. */
                         if(!txout.Sign(users->GetKey(txout.nSequence, strPIN, users->GetSession(params))))
                             throw APIException(-31, "Ledger failed to sign transaction");
@@ -787,7 +791,6 @@ namespace TAO
                     /* Log the error and attempt to continue processing */
                     debug::error(FUNCTION, e.what());
                 }
-
             }
         }
 
@@ -818,7 +821,6 @@ namespace TAO
 
                 /* Abort the mempool ACID transaction once the contract is sanitized */
                 LLD::TxnAbort(TAO::Ledger::FLAGS::MEMPOOL);
-
             }
             catch(const std::exception& e)
             {

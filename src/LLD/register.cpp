@@ -173,26 +173,15 @@ namespace LLD
         /* Memory mode for pre-database commits. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
-            /* Check for a memory transaction first */
-            if(pMemory && pMemory->mapStates.count(hashRegister))
+            LOCK(MEMORY_MUTEX);
+
+            /* Check for state in memory map. */
+            if(pCommit->mapStates.count(hashRegister))
             {
-                /* Get the state from temporary transaction. */
-                state = pMemory->mapStates[hashRegister];
+                /* Get the state from commited memory. */
+                state = pCommit->mapStates[hashRegister];
 
                 return true;
-            }
-
-            {
-                LOCK(MEMORY_MUTEX);
-
-                /* Check for state in memory map. */
-                if(pCommit->mapStates.count(hashRegister))
-                {
-                    /* Get the state from commited memory. */
-                    state = pCommit->mapStates[hashRegister];
-
-                    return true;
-                }
             }
         }
         else if(nFlags == TAO::Ledger::FLAGS::MINER)
@@ -304,26 +293,15 @@ namespace LLD
         /* Memory mode for pre-database commits. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
-            /* Check for a memory transaction first */
-            if(pMemory && pMemory->mapStates.count(hashRegister))
-            {
-                /* Get the state from temporary transaction. */
-                state = pMemory->mapStates[hashRegister];
-
-                return true;
-            }
+            LOCK(MEMORY_MUTEX);
 
             /* Check for state in memory map. */
+            if(pCommit->mapStates.count(hashRegister))
             {
-                LOCK(MEMORY_MUTEX);
+                /* Get the state from commited memory. */
+                state = pCommit->mapStates[hashRegister];
 
-                if(pCommit->mapStates.count(hashRegister))
-                {
-                    /* Get the state from commited memory. */
-                    state = pCommit->mapStates[hashRegister];
-
-                    return true;
-                }
+                return true;
             }
         }
         else if(nFlags == TAO::Ledger::FLAGS::MINER)
@@ -359,17 +337,11 @@ namespace LLD
         /* Memory mode for pre-database commits. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
-            /* Check internal memory state. */
-            if(pMemory && pMemory->mapStates.count(hashRegister))
-                return true;
-
             /* Check for state in memory map. */
-            {
-                LOCK(MEMORY_MUTEX);
+            LOCK(MEMORY_MUTEX);
 
-                if(pCommit->mapStates.count(hashRegister))
-                    return true;
-            }
+            if(pCommit->mapStates.count(hashRegister))
+                return true;
 
         }
         else if(nFlags == TAO::Ledger::FLAGS::MINER)
@@ -419,11 +391,11 @@ namespace LLD
     /* Commit a memory transaction following ACID properties. */
     void RegisterDB::MemoryCommit()
     {
-        LOCK(MEMORY_MUTEX);
-
         /* Abort the current memory mode. */
         if(pMemory)
         {
+            LOCK(MEMORY_MUTEX);
+
             /* Loop through all new states and apply to commit data. */
             for(const auto& state : pMemory->mapStates)
                 pCommit->mapStates[state.first] = state.second;
