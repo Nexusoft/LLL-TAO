@@ -27,6 +27,7 @@ ________________________________________________________________________________
 #include <TAO/Register/include/names.h>
 #include <TAO/Register/include/unpack.h>
 #include <TAO/Register/include/build.h>
+#include <TAO/Register/include/verify.h>
 #include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/include/create.h>
@@ -772,10 +773,6 @@ namespace TAO
                         /* Add the fee */
                         AddFee(txout);
 
-                        /* Execute the operations layer. */
-                        if(!txout.Build())
-                            throw APIException(-30, "Failed to build register pre-states");
-
                         /* Sign the transaction. */
                         if(!txout.Sign(users->GetKey(txout.nSequence, strPIN, users->GetSession(params))))
                             throw APIException(-31, "Ledger failed to sign transaction");
@@ -808,17 +805,16 @@ namespace TAO
         {
             /* Return flag */
             bool fSanitized = false;
-
-            /* Lock the mempool at this point so that we can build and execute inside a mempool transaction */
-            RLOCK(TAO::Ledger::mempool.MUTEX);
-
             try
             {
                 /* Start a ACID transaction (to be disposed). */
                 LLD::TxnBegin(TAO::Ledger::FLAGS::MEMPOOL);
 
-                fSanitized = TAO::Register::Build(contract, mapStates, TAO::Ledger::FLAGS::MEMPOOL)
-                             && TAO::Operation::Execute(contract, TAO::Ledger::FLAGS::MEMPOOL);
+                fSanitized =
+                (
+                    TAO::Register::Build(contract, mapStates, TAO::Ledger::FLAGS::MEMPOOL) &&
+                    TAO::Operation::Execute(contract, TAO::Ledger::FLAGS::MEMPOOL)
+                );
 
                 /* Abort the mempool ACID transaction once the contract is sanitized */
                 LLD::TxnAbort(TAO::Ledger::FLAGS::MEMPOOL);
