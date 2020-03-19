@@ -54,17 +54,17 @@ namespace LLD
      **/
     class RegisterDB : public SectorDatabase<BinaryHashMap, BinaryLRU>
     {
-        
+
         /** Memory mutex to lock when accessing internal memory states. **/
         std::mutex MEMORY_MUTEX;
 
 
         /** Register transaction to track current open transaction. **/
-        RegisterTransaction* pMemory;
+        static thread_local std::unique_ptr<RegisterTransaction> pMemory;
 
 
         /** Miner transaction to track current states for miner verification. **/
-        RegisterTransaction* pMiner;
+        static thread_local std::unique_ptr<RegisterTransaction> pMiner;
 
 
         /** Register transaction to keep open all commited data. **/
