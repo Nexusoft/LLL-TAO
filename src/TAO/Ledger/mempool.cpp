@@ -121,6 +121,16 @@ namespace TAO
                     /* Check memory and disk for previous transaction. */
                     if(!LLD::Ledger->HasTx(tx.hashPrevTx, FLAGS::MEMPOOL))
                     {
+                        /* Handle for duplicate ORPHANS. */
+                        if(mapOrphans.count(tx.hashPrevTx))
+                        {
+                            /* Ask for the missing transaction. */
+                            if(pnode)
+                                pnode->PushMessage(LLP::ACTION::GET, uint8_t(LLP::TYPES::TRANSACTION), tx.hashPrevTx);
+
+                            return false;
+                        }
+
                         /* Debug output. */
                         debug::log(0, FUNCTION, "tx ", hashTx.SubString(), " ",
                             tx.nSequence, " prev ", tx.hashPrevTx.SubString(),
