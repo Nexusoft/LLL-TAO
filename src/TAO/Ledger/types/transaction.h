@@ -336,7 +336,7 @@ namespace TAO
              *  @return 512-bit unsigned integer of hash.
              *
              **/
-            uint512_t GetHash() const;
+            uint512_t GetHash(const bool fCache = false) const;
 
 
             /** ProofHash
@@ -426,6 +426,12 @@ namespace TAO
             *
             **/
             uint64_t Fees() const;
+
+
+        private:
+
+            /** Internal cache used for optimized processing. **/
+            mutable uint512_t hashCached;
 
         };
     }

@@ -84,7 +84,7 @@ namespace TAO
         bool Mempool::Accept(const TAO::Ledger::Transaction& tx, LLP::TritiumNode* pnode)
         {
             /* Get the transaction hash. */
-            uint512_t hashTx = tx.GetHash();
+            uint512_t hashTx = tx.GetHash(true); //true is setting the internal txid cache
 
             debug::log(3, "ACCEPT --------------------------------------");
             if(config::nVerbose >= 3)

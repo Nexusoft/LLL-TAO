@@ -70,6 +70,7 @@ namespace TAO
         , nNextType    (0)
         , vchPubKey    ( )
         , vchSig       ( )
+        , hashCached   (0)
         {
         }
 
@@ -88,6 +89,7 @@ namespace TAO
         , nNextType    (tx.nNextType)
         , vchPubKey    (tx.vchPubKey)
         , vchSig       (tx.vchSig)
+        , hashCached   (tx.hashCached)
         {
         }
 
@@ -106,6 +108,7 @@ namespace TAO
         , nNextType    (std::move(tx.nNextType))
         , vchPubKey    (std::move(tx.vchPubKey))
         , vchSig       (std::move(tx.vchSig))
+        , hashCached   (std::move(tx.hashCached))
         {
         }
 
@@ -125,6 +128,7 @@ namespace TAO
             nNextType    = tx.nNextType;
             vchPubKey    = tx.vchPubKey;
             vchSig       = tx.vchSig;
+            hashCached   = tx.hashCached;
 
             return *this;
         }
@@ -145,6 +149,7 @@ namespace TAO
             nNextType    = std::move(tx.nNextType);
             vchPubKey    = std::move(tx.vchPubKey);
             vchSig       = std::move(tx.vchSig);
+            hashCached   = std::move(tx.hashCached);
 
             return *this;
         }
@@ -1052,8 +1057,13 @@ namespace TAO
 
 
         /* Gets the hash of the transaction object. */
-        uint512_t Transaction::GetHash() const
+        uint512_t Transaction::GetHash(const bool fCache) const
         {
+            /* Check for cache. */
+            if(hashCached != 0 && !fCache)
+                return hashCached;
+
+            /* Serialize tx into stream. */
             DataStream ss(SER_GETHASH, nVersion);
             ss << *this;
 
@@ -1062,6 +1072,10 @@ namespace TAO
 
             /* Type of 0xff designates tritium tx. */
             hash.SetType(TAO::Ledger::TRITIUM);
+
+            /* Handle cache. */
+            if(fCache)
+                hashCached = hash;
 
             return hash;
         }

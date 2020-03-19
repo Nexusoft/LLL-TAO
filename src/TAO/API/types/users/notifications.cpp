@@ -130,30 +130,30 @@ namespace TAO
             uint32_t nSequence = 0;
 
             /* Get the last event */
-            LLD::Ledger->ReadSequence(hashGenesis, nSequence);
-
-            /* Decrement the current sequence number to get the last event sequence number */
-            --nSequence;
+            if(!LLD::Ledger->ReadSequence(hashGenesis, nSequence))
+                return false;
 
             /* Look back through all events to find those that are not yet processed. */
-            while(LLD::Ledger->ReadEvent(hashGenesis, nSequence, tx))
+            std::set<uint512_t> setProcessed;
+            while(LLD::Ledger->ReadEvent(hashGenesis, --nSequence, tx))
             {
+                uint512_t hashTx = tx.GetHash(true); //we want to bind a cache of the hash
+
+                /* Check for duplicate processing. */
+                if(setProcessed.count(hashTx))
+                    continue;
+
                 /* Check to see if we have 100 (or the user configured amount) consecutive processed events.  If we do then we
                    assume all prior events are also processed.  This saves us having to scan the entire chain of events */
                 if(nConsecutive >= config::GetArg("-eventsdepth", 100))
                     break;
 
                 /* Check that the transaction is mature */
-                if(!LLD::Ledger->ReadMature(tx.GetHash()))
-                {
-                    /* If not, decrement the sequence id and continue to the next event. */
-                    --nSequence;
+                if(!LLD::Ledger->ReadMature(hashTx))
                     continue;
-                }
 
                 /* Loop through transaction contracts. */
-                uint32_t nContracts = tx.Size();
-                for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
+                for(uint32_t nContract = 0; nContract < tx.Size(); ++nContract)
                 {
                     /* Reference to contract to check */
                     const TAO::Operation::Contract& contract = tx[nContract];
@@ -244,7 +244,7 @@ namespace TAO
                                 continue;
 
                             /* Make sure we haven't already claimed it */
-                            if(LLD::Ledger->HasProof(hashRegister, tx.GetHash(), nContract, TAO::Ledger::FLAGS::MEMPOOL))
+                            if(LLD::Ledger->HasProof(hashRegister, hashTx, nContract, TAO::Ledger::FLAGS::MEMPOOL))
                             {
                                 nConsecutive++;
                                 continue;
@@ -272,7 +272,6 @@ namespace TAO
                     }
 
                     /* Check to see if we have already credited this debit. */
-                    uint512_t hashTx = tx.GetHash();
                     if(LLD::Ledger->HasProof(hashProof, hashTx, nContract, TAO::Ledger::FLAGS::MEMPOOL))
                     {
                         nConsecutive++;
@@ -290,13 +289,11 @@ namespace TAO
                     /* Add the coinbase transaction and skip rest of contracts. */
                     vContracts.push_back(std::make_tuple(contract, nContract, 0));
                     setUnique.insert(std::make_tuple(hashProof, hashTx, nContract));
+                    setProcessed.insert(tx.GetHash());
 
                     /* Reset the consecutive counter since this has not been processed */
                     nConsecutive = 0;
                 }
-
-                /* Iterate the sequence id backwards. */
-                --nSequence;
             }
 
             return true;
