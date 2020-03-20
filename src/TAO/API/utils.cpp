@@ -150,7 +150,7 @@ namespace TAO
             {
                 /* The cached register list */
                 std::pair<uint512_t, std::vector<TAO::Register::Address>> cacheEntry;
-                
+
                 /* Retrieve the cached register list from the LRU cache */
                 cache.Get(hashGenesis, cacheEntry);
 
@@ -317,10 +317,10 @@ namespace TAO
 
                                 /* If we are transferring to someone else but it has not yet been claimed then we ignore the
                                    transfer and still show it as ours */
-                                if(object.hashOwner == 0)
+                                if(object.hashOwner.GetType() == TAO::Ledger::GENESIS::SYSTEM)
                                     break;
                             }
-                            
+
 
                             /* If we find a TRANSFER then we can know for certain that we no longer own it */
                             if(vTransferred.find(hashAddress)    == vTransferred.end())
@@ -406,7 +406,7 @@ namespace TAO
 
 
         /* Calculates the required fee for the transaction and adds the OP::FEE contract to the transaction if necessary.
-         *  If a specified fee account is not specified, the method will lookup the "default" NXS account and use this account 
+         *  If a specified fee account is not specified, the method will lookup the "default" NXS account and use this account
          *  to pay the fees.  An exception will be thrownIf there are insufficient funds to pay the fee. */
         bool AddFee(TAO::Ledger::Transaction& tx, const TAO::Register::Address& hashFeeAccount)
         {
@@ -565,7 +565,7 @@ namespace TAO
             /* Look back through all events to find those that are not yet processed. */
             while(LLD::Ledger->ReadEvent(hashGenesis, nSequence, tx))
             {
-                /* Check to see if we have 100 (or the user configured amount) consecutive processed events.  If we do then we 
+                /* Check to see if we have 100 (or the user configured amount) consecutive processed events.  If we do then we
                    assume all prior events are also processed.  This saves us having to scan the entire chain of events */
                 if(nConsecutive >= config::GetArg("-eventsdepth", 100))
                     break;
@@ -618,9 +618,9 @@ namespace TAO
                         if(account.hashOwner != hashGenesis)
                             continue;
 
-                        /* Check to see if we have already credited this debit. NOTE we do this before checking whether the account 
-                           for this event matches the account we are getting the pending balance for, as we are making the 
-                           assumption that if the last X number of events have been processed then there are no others pending 
+                        /* Check to see if we have already credited this debit. NOTE we do this before checking whether the account
+                           for this event matches the account we are getting the pending balance for, as we are making the
+                           assumption that if the last X number of events have been processed then there are no others pending
                            for any account*/
                         if(LLD::Ledger->HasProof(hashProof, tx.GetHash(), nContract, TAO::Ledger::FLAGS::MEMPOOL))
                         {
@@ -1268,7 +1268,7 @@ namespace TAO
 
 
         /* Reads a batch of states registers from the Register DB */
-        bool GetRegisters(const std::vector<TAO::Register::Address>& vAddresses, 
+        bool GetRegisters(const std::vector<TAO::Register::Address>& vAddresses,
                           std::vector<std::pair<TAO::Register::Address, TAO::Register::State>>& vStates)
         {
             for(const auto& hashRegister : vAddresses)
@@ -1277,15 +1277,15 @@ namespace TAO
                 TAO::Register::State state;
                 if(!LLD::Register->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
                     throw APIException(-104, "Object not found");
-                
+
                 vStates.push_back(std::make_pair(hashRegister, state));
             }
 
             /* Now sort the states based on the creation time */
-            std::sort(vStates.begin(), vStates.end(), 
-                [](const std::pair<TAO::Register::Address, TAO::Register::State> &a,  
+            std::sort(vStates.begin(), vStates.end(),
+                [](const std::pair<TAO::Register::Address, TAO::Register::State> &a,
                 const std::pair<TAO::Register::Address, TAO::Register::State> &b)
-                { 
+                {
                     return ( a.second.nCreated < b.second.nCreated );
                 });
 
@@ -1344,7 +1344,7 @@ namespace TAO
                 /* Check to see whether there are any partial credits already claimed against the debit */
                 uint64_t nClaimed = 0;
                 if(!LLD::Ledger->ReadClaimed(hashTx, nContract, nClaimed, TAO::Ledger::FLAGS::MEMPOOL))
-                    nClaimed = 0; 
+                    nClaimed = 0;
 
                 /* Check that there is something to be claimed */
                 if(nClaimed == nAmount)
@@ -1355,8 +1355,8 @@ namespace TAO
 
                 /* Create the credit contract  */
                 voidContract<< uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract) << hashFrom <<  hashFrom << nAmount;
-                
-                bVoided = true;   
+
+                bVoided = true;
             }
             /* Process voiding a transfer */
             else if(nType == TAO::Operation::OP::TRANSFER)
@@ -1379,7 +1379,7 @@ namespace TAO
 
                 /* Create the claim contract  */
                 voidContract << (uint8_t)TAO::Operation::OP::CLAIM << hashTx << uint32_t(nContract) << hashAddress;
-                
+
                 bVoided = true;
             }
 
