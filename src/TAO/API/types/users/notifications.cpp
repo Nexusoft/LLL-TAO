@@ -454,7 +454,7 @@ namespace TAO
                                 continue;
 
                             /* Make sure the register claim is in SYSTEM pending from a transfer.  */
-                            if(state.hashOwner != 0)
+                            if(state.hashOwner.GetType() != TAO::Ledger::GENESIS::SYSTEM)
                                 continue;
 
                             /* Make sure we haven't already claimed it */
@@ -800,7 +800,7 @@ namespace TAO
                             continue;
 
                         /* Make sure the register claim is in SYSTEM pending from a transfer.  */
-                        if(state.hashOwner != 0)
+                        if(state.hashOwner.GetType() != TAO::Ledger::GENESIS::SYSTEM)
                             continue;
 
                         /* Check to see if this transfer has already been claimed by the recipient or us */
