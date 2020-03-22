@@ -55,10 +55,6 @@ namespace LLP
     public:
 
 
-        /** Thread to handle the time adjustment algorithms. **/
-        static std::thread TIME_ADJUSTMENT;
-
-
         /** Name
          *
          *  Returns a string for the name of this type of Node.

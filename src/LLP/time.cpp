@@ -35,10 +35,6 @@ namespace LLP
     std::map<std::string, int32_t> MAP_TIME_DATA;
 
 
-    /* Declare the static thread. */
-    std::thread TimeNode::TIME_ADJUSTMENT;
-
-
     /** Constructor **/
     TimeNode::TimeNode()
     : Connection ( )
@@ -138,7 +134,7 @@ namespace LLP
                 LOCK(TIME_MUTEX);
 
                 /* Check for time server that is still initializing. */
-                if(MAP_TIME_DATA.empty())
+                if(MAP_TIME_DATA.size() <= (config::fTestNet.load() ? 0 : 2))
                 {
                     debug::log(0, FUNCTION, "REJECT: no time samples available");
 
@@ -274,71 +270,5 @@ namespace LLP
         }
 
         return UNIFIED_MAJORITY.Majority();
-    }
-
-
-    /* This thread is responsible for unified time offset adjustments. This will be deleted on post v8 updates. */
-    const uint32_t TIME_ADJUSTMENT_VALUE = 299;
-    void TimeNode::AdjustmentThread()
-    {
-        /* Switch for different time adjustment intervals. */
-        static const uint32_t TIME_ADJUSTMENT_SPAN = (config::fTestNet ? 60 : 600);
-
-        /* Check for the current adjustment period. */
-        uint32_t nCurrentAdjustment = (TAO::Ledger::BlockVersionActive(runtime::unifiedtimestamp(), 8) ?
-            ((runtime::unifiedtimestamp() - TAO::Ledger::CurrentBlockTimelock()) / TIME_ADJUSTMENT_SPAN) : 0);
-
-        /* Check for valid adjustments. */
-        if(nCurrentAdjustment > TIME_ADJUSTMENT_VALUE)
-        {
-            debug::log(0, "Time Adjustment Complete... Exiting...");
-            return;
-        }
-
-        /* Loop to check for time changes. */
-        while(!config::fShutdown)
-        {
-            /* Sleep for 1 second at a time. */
-            runtime::sleep(1000);
-
-            /* Check current unified timestamp. */
-            if(runtime::unifiedtimestamp() < TAO::Ledger::StartBlockTimelock(8))
-                continue;
-
-            /* Grab the current time-lock. */
-            uint32_t nElapsed   = (runtime::unifiedtimestamp() - TAO::Ledger::CurrentBlockTimelock()) / TIME_ADJUSTMENT_SPAN;
-            if(nElapsed > nCurrentAdjustment)
-            {
-                /* This should adjust by one second at a time, but we must be prepared to handle things if this assumption fails. */
-                uint32_t nAdjustment = (std::min(TIME_ADJUSTMENT_VALUE, nElapsed) - nCurrentAdjustment);
-
-                {
-                    LOCK(TIME_MUTEX);
-
-                    /* Iterate the Time Data map to find the majority time seed. */
-                    for(auto it = MAP_TIME_DATA.begin(); it != MAP_TIME_DATA.end(); ++it)
-                        it->second += nAdjustment;
-                }
-
-                /* Recalculate the unified offset. */
-                UNIFIED_AVERAGE_OFFSET.store(TimeNode::GetOffset());
-
-                /* Increment adjustment to current period. */
-                nCurrentAdjustment += nAdjustment;
-
-                /* Log the debug output. */
-                debug::log(0, ANSI_COLOR_BRIGHT_CYAN, MAP_TIME_DATA.size(),
-                    " Offsets | ", UNIFIED_AVERAGE_OFFSET.load(),
-                    " Majority | ", runtime::unifiedtimestamp(),
-                    " ADJUSTMENT OF +", nAdjustment, " Seconds (", nCurrentAdjustment, "/", TIME_ADJUSTMENT_VALUE, ")", ANSI_COLOR_RESET);
-            }
-
-            /* Check that the adjustment is complete. */
-            if(nCurrentAdjustment > TIME_ADJUSTMENT_VALUE)
-            {
-                debug::log(0, "Time Adjustment Complete... Exiting...");
-                return;
-            }
-        }
     }
 }

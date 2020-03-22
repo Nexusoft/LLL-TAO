@@ -132,10 +132,7 @@ int main(int argc, char** argv)
         true,
         config::GetBoolArg(std::string("-meters"), false),
         true,
-        10000);
-
-    /* Start up the time adjustment thread. */
-    LLP::TimeNode::TIME_ADJUSTMENT = std::thread(LLP::TimeNode::AdjustmentThread);
+        60000);
 
     /* Get the port for the Core API Server. */
     nPort = static_cast<uint16_t>(config::GetArg(std::string("-rpcport"), config::fTestNet.load() ? TESTNET_RPC_PORT : MAINNET_RPC_PORT));
@@ -337,9 +334,6 @@ int main(int argc, char** argv)
             thread.join();
         }
     }
-
-    /* Wait for time activation thread to close. */
-    LLP::TimeNode::TIME_ADJUSTMENT.join();
 
 
     /* Shutdown metrics. */
