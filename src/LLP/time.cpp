@@ -134,7 +134,7 @@ namespace LLP
                 LOCK(TIME_MUTEX);
 
                 /* Check for time server that is still initializing. */
-                if(MAP_TIME_DATA.size() <= (config::fTestNet.load() ? 0 : 2))
+                if(MAP_TIME_DATA.size() <= (config::fTestNet.load() ? 0 : 1))
                 {
                     debug::log(0, FUNCTION, "REJECT: no time samples available");
 
