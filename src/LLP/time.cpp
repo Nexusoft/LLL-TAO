@@ -133,6 +133,20 @@ namespace LLP
                 /* Request for a new sample. */
                 GetSample();
             }
+            else
+            {
+                LOCK(TIME_MUTEX);
+
+                /* Check for time server that is still initializing. */
+                if(MAP_TIME_DATA.empty())
+                {
+                    debug::log(0, FUNCTION, "REJECT: no time samples available");
+
+                    Disconnect();
+
+                    return;
+                }
+            }
         }
 
         /* On Disconnect Event, Reduce the Connection Count for Daemon */
