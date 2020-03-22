@@ -152,7 +152,7 @@ namespace LLP
         /* On Disconnect Event, Reduce the Connection Count for Daemon */
         if(EVENT == EVENT_DISCONNECT)
         {
-            if(TIME_SERVER->pAddressManager)
+            if(fOUTGOING && TIME_SERVER->pAddressManager)
                 TIME_SERVER->pAddressManager->AddAddress(GetAddress(), ConnectState::DROPPED);
 
             return;
