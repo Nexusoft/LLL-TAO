@@ -266,9 +266,6 @@ namespace TAO
                     if(vContracts.size() == 0 && vLegacyTx.size() == 0 && vExpired.size() == 0)
                         continue;
 
-                    /* Lock the signature chain. */
-                    LOCK(users->CREATE_MUTEX);
-
                     /* Ensure that the signature is mature.  Note we only check this after we know there is something to process */
                     uint32_t nBlocksToMaturity = users->BlocksToMaturity(hashGenesis);
                     if(nBlocksToMaturity > 0)
@@ -285,24 +282,15 @@ namespace TAO
                     TAO::Register::Address hashTo;
 
                     uint64_t nAmount = 0;
-                    uint32_t nOut = 0;
-
-                    /* Create the transaction output. */
-                    TAO::Ledger::Transaction txout;
-                    if(!TAO::Ledger::CreateTransaction(user, strPIN, txout))
-                        throw APIException(-17, "Failed to create transaction");
-
+                    uint64_t nTimestamp = runtime::unifiedtimestamp() + 1;
 
                     /* Temporary map for pre-states to be passed into the sanitization Build() for each contract. */
                     std::map<uint256_t, TAO::Register::State> mapStates;
 
                     /* Loop through each contract in the notification queue. */
+                    std::vector<TAO::Operation::Contract> vProcessed;
                     for(const auto& contract : vContracts)
                     {
-                        /* Ensure we don't breach the max contracts/per transaction, leaving room for the fee contract */
-                        if(txout.Size() == TAO::Ledger::MAX_TRANSACTION_CONTRACTS -1)
-                            break;
-
                         /* Get a reference to the contract */
                         const TAO::Operation::Contract& refContract = std::get<0>(contract);
 
@@ -420,14 +408,14 @@ namespace TAO
                                     credit << nPartial;
 
                                     /* Bind the contract to the tx so that the genesis and timestamp are bound prior to sanitizing */
-                                    credit.Bind(&txout);
+                                    credit.Bind(nTimestamp, hashGenesis);
 
                                     /* Sanitize the contract to make sure it builds and executes before we add it to the transaction */
                                     if(!sanitize_contract(credit, mapStates))
                                         continue;
 
                                     /* Add the contract to the transaction */
-                                    txout[nOut] = credit;
+                                    vProcessed.push_back(credit);
 
                                 }
                                 else
@@ -445,18 +433,15 @@ namespace TAO
                                     credit << nAmount;
 
                                     /* Bind the contract to the tx so that the genesis and timestamp are bound prior to sanitizing */
-                                    credit.Bind(&txout);
+                                    credit.Bind(nTimestamp, hashGenesis);
 
                                     /* Sanitize the contract to make sure it builds and executes before we add it to the transaction */
                                     if(!sanitize_contract(credit, mapStates))
                                         continue;
 
                                     /* Add the contract to the transaction */
-                                    txout[nOut] = credit;
+                                    vProcessed.push_back(credit);
                                 }
-
-                                /* Increment the contract ID. */
-                                ++nOut;
 
                                 /* Log debug message. */
                                 debug::log(2, FUNCTION, "Matching DEBIT with CREDIT");
@@ -489,17 +474,14 @@ namespace TAO
                                 credit << nAmount;
 
                                 /* Bind the contract to the tx so that the genesis and timestamp are bound prior to sanitizing */
-                                credit.Bind(&txout);
+                                credit.Bind(nTimestamp, hashGenesis);
 
                                 /* Sanitize the contract to make sure it builds and executes before we add it to the transaction */
                                 if(!sanitize_contract(credit, mapStates))
                                     continue;
 
                                 /* Add the contract to the transaction */
-                                txout[nOut] = credit;
-
-                                /* Increment the contract ID. */
-                                ++nOut;
+                                vProcessed.push_back(credit);
 
                                 /* Log debug message. */
                                 debug::log(2, FUNCTION, "Matching COINBASE with CREDIT");
@@ -533,15 +515,7 @@ namespace TAO
                                     /* If the Name contract operation was created then add it to the transaction */
                                     if(!nameContract.Empty())
                                     {
-                                        /* If we need to add a name contract, ensure we don't breach the max contracts/per transaction,
-                                        leaving room for the claim contract and fee contract */
-                                        if(txout.Size() == TAO::Ledger::MAX_TRANSACTION_CONTRACTS -2 )
-                                            break;
-
-                                        txout[nOut] = nameContract;
-
-                                        /* Increment the contract ID. */
-                                        ++nOut;
+                                        vProcessed.push_back(nameContract);
                                     }
                                 }
 
@@ -552,19 +526,14 @@ namespace TAO
                                 claim << hashFrom; // the proof
 
                                 /* Bind the contract to the tx so that the genesis and timestamp are bound prior to sanitizing */
-                                claim.Bind(&txout);
+                                claim.Bind(nTimestamp, hashGenesis);
 
                                 /* Sanitize the contract to make sure it builds and executes before we add it to the transaction */
                                 if(!sanitize_contract(claim, mapStates))
                                     continue;
 
                                 /* Add the contract to the transaction */
-                                txout[nOut] = claim;
-
-                                /* Increment the contract ID. */
-                                ++nOut;
-
-
+                                vProcessed.push_back(claim);
 
                                 /* Log debug message. */
                                 debug::log(2, FUNCTION, "Matching TRANSFER with CLAIM");
@@ -580,10 +549,6 @@ namespace TAO
                     /* Now process the legacy transactions */
                     for(const auto& contract : vLegacyTx)
                     {
-                        /* Ensure we don't breach the max contracts/per transaction, leaving room for the fee contract */
-                        if(txout.Size() == TAO::Ledger::MAX_TRANSACTION_CONTRACTS -1)
-                            break;
-
                         /* Set the transaction hash. */
                         hashTx = contract.first->GetHash();
 
@@ -699,17 +664,14 @@ namespace TAO
                                                 << nAmount << nScore << hashLast;
 
                                     /* Bind the contract to the tx so that the genesis and timestamp are bound prior to sanitizing */
-                                    migrate.Bind(&txout);
+                                    migrate.Bind(nTimestamp, hashGenesis);
 
                                     /* Sanitize the contract to make sure it builds and executes before we add it to the transaction */
                                     if(!sanitize_contract(migrate, mapStates))
                                         continue;
 
                                     /* Add the contract to the transaction */
-                                    txout[nOut] = migrate;
-
-                                    /* Increment the contract ID. */
-                                    ++nOut;
+                                    vProcessed.push_back(migrate);
 
                                     /* Log debug message. */
                                     debug::log(2, FUNCTION, "Matching LEGACY SEND with trust key MIGRATE",
@@ -739,17 +701,14 @@ namespace TAO
                                 credit << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract) << hashAccount <<  TAO::Register::WILDCARD_ADDRESS << nAmount;
 
                                 /* Bind the contract to the tx so that the genesis and timestamp are bound prior to sanitizing */
-                                credit.Bind(&txout);
+                                credit.Bind(nTimestamp, hashGenesis);
 
                                 /* Sanitize the contract to make sure it builds and executes before we add it to the transaction */
                                 if(!sanitize_contract(credit, mapStates))
                                     continue;
 
                                 /* Add the contract to the transaction */
-                                txout[nOut] = credit;
-
-                                /* Increment the contract ID. */
-                                ++nOut;
+                                vProcessed.push_back(credit);
 
                                 /* Log debug message. */
                                 debug::log(2, FUNCTION, "Matching LEGACY SEND with CREDIT");
@@ -763,14 +722,8 @@ namespace TAO
                     /* Finally process any expired transactions that can be voided. */
                     for(const auto& contract : vExpired)
                     {
-                        /* Ensure we don't breach the max contracts/per transaction, leaving room for the fee contract */
-                        if(txout.Size() == TAO::Ledger::MAX_TRANSACTION_CONTRACTS -1)
-                            break;
-
                         /* Get a reference to the contract */
                         const TAO::Operation::Contract& refContract = std::get<0>(contract);
-
-                        /* Get the contract ID */
                         const uint32_t& nContract = std::get<1>(contract);
 
                         /* Attempt to add the void contract */
@@ -778,21 +731,44 @@ namespace TAO
                         if(VoidContract(refContract, nContract, voidContract))
                         {
                             /* Bind the contract to the tx so that the genesis and timestamp are bound prior to sanitizing */
-                            voidContract.Bind(&txout);
+                            voidContract.Bind(nTimestamp, hashGenesis);
 
                             /* Sanitize the contract to make sure it builds and executes before we add it to the transaction */
                             if(!sanitize_contract(voidContract, mapStates))
                                 continue;
 
                             /* Add the void contract */
-                            txout[nOut] = voidContract;
-                            ++nOut;
+                            vProcessed.push_back(voidContract);
                         }
                     }
 
                     /* If any of the notifications have been matched, execute the operations layer and sign the transaction. */
-                    if(nOut)
+                    while(!vProcessed.empty())
                     {
+                        /* Lock the signature chain. */
+                        LOCK(users->CREATE_MUTEX);
+
+                        /* Create the transaction output. */
+                        TAO::Ledger::Transaction txout;
+                        if(!TAO::Ledger::CreateTransaction(user, strPIN, txout))
+                            throw APIException(-17, "Failed to create transaction");
+
+                        /* Add the contracts into tx. */
+                        for(uint32_t i = 0; i < TAO::Ledger::MAX_TRANSACTION_CONTRACTS; ++i)
+                        {
+                            /* Stop if run out of items to process. */
+                            if(vProcessed.empty())
+                                break;
+
+                            /* Add the contract to tx. */
+                            txout[i] = vProcessed[0];
+                            vProcessed.erase(vProcessed.begin());
+                        }
+
+                        /* Check for end. */
+                        if(txout.Size() == 0)
+                            break;
+
                         /* Add the fee */
                         AddFee(txout);
 
@@ -808,7 +784,6 @@ namespace TAO
                         if(!TAO::Ledger::mempool.Accept(txout))
                             throw APIException(-32, "Failed to accept");
                     }
-
                 }
                 catch(const std::exception& e)
                 {
