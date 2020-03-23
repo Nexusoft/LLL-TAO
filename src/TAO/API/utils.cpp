@@ -1396,7 +1396,7 @@ namespace TAO
             /* Flag indicating that the register is a trust account, as we need to process trust-related transactions differently */
             bool fTrust = false;
 
-           
+
             /* We need to check if this register is a trust account as stake/genesis/trust/stake/unstake
                transactions don't include the account register address like all other transactions do */
             if(object.Standard() == TAO::Register::OBJECTS::TRUST)
@@ -1529,7 +1529,7 @@ namespace TAO
 
                 /* Set the next last. */
                 hashLast = !tx.IsFirst() ? tx.hashPrevTx : 0;
-                
+
             }
 
             return nCount;
