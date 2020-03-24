@@ -123,7 +123,7 @@ int main(int argc, char** argv)
     LLP::TIME_SERVER = new LLP::Server<LLP::TimeNode>(
         nPort,
         10,
-        30,
+        10, //Timeout set to 10s
         true,
         1,
         10,

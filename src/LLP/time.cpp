@@ -139,7 +139,6 @@ namespace LLP
                     debug::log(0, FUNCTION, "REJECT: no time samples available");
 
                     Disconnect();
-
                     return;
                 }
             }
