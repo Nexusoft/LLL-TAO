@@ -239,8 +239,9 @@ namespace TAO
         /* Check the overall consistency of trust score calculations. */
         bool CheckConsistency(const uint512_t& hashLastTrust, uint64_t& nTrustRet)
         {
-            /* Give a little bit of info that we are running the checks. */
-            debug::log(0, FUNCTION, "Checking trust key consistency from ", hashLastTrust.SubString());
+            /* Keep track of runtime metrics. */
+            runtime::stopwatch swTimer;
+            swTimer.start();
 
             /* Start searching from last stake block. */
             uint512_t hashLast = hashLastTrust;
@@ -346,6 +347,10 @@ namespace TAO
                         break;
                 }
             }
+
+            /* Give a little bit of info that we are running the checks. */
+            swTimer.stop();
+            debug::log(0, FUNCTION, "Checking trust key consistency from ", hashLastTrust.SubString(), " in ", swTimer.ElapsedMilliseconds(), " ms");
 
             /* Break early if all checks passed. */
             if(fConsistent)

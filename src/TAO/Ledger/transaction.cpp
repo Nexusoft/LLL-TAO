@@ -1314,18 +1314,13 @@ namespace TAO
             /* The calculated fee */
             uint64_t nFee = 0;
 
-            /* Thevalue of the contract */
-            uint64_t nContractValue = 0;
-
             /* Iterate through all contracts. */
             for(const auto& contract : vContracts)
             {
                 /* Bind the contract to this transaction. */
-                if(contract.Primitive() == TAO::Operation::OP::FEE)
-                {
-                    contract.Value(nContractValue);
-                    nFee += nContractValue;
-                }
+                uint64_t nValue = 0;
+                if(contract.Primitive() == TAO::Operation::OP::FEE && contract.Value(nContractValue))
+                    nFee += nValue;
             }
 
             return nFee;

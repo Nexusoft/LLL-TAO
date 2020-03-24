@@ -125,8 +125,8 @@ namespace TAO
                         if(mapOrphans.count(tx.hashPrevTx))
                         {
                             /* Ask for the missing transaction. */
-                            if(pnode)
-                                pnode->PushMessage(LLP::ACTION::GET, uint8_t(LLP::TYPES::TRANSACTION), tx.hashPrevTx);
+                            //if(pnode)
+                            //    pnode->PushMessage(LLP::ACTION::GET, uint8_t(LLP::TYPES::TRANSACTION), tx.hashPrevTx);
 
                             return false;
                         }

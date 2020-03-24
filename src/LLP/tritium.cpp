@@ -1831,7 +1831,7 @@ namespace LLP
             }
 
 
-            /* Standard type for a block. */
+            /* Standard type for an address. */
             case TYPES::ADDRESS:
             {
                 /* Check for subscription. */
@@ -2024,6 +2024,7 @@ namespace LLP
                     /* Reset last time received. */
                     if(nCurrentSession == TAO::Ledger::nSyncSession.load())
                         nLastTimeReceived.store(runtime::timestamp());
+
                 }
 
                 /* Check for failure status messages. */
