@@ -124,7 +124,7 @@ namespace LLP
         if(EVENT == EVENT_CONNECT)
         {
             /* Only send time seed when outgoing connection. */
-            if(fOUTGOING)
+            if(fOUTGOING.load())
             {
                 /* Request for a new sample. */
                 GetSample();
@@ -148,7 +148,7 @@ namespace LLP
         /* On Disconnect Event, Reduce the Connection Count for Daemon */
         if(EVENT == EVENT_DISCONNECT)
         {
-            if(fOUTGOING && TIME_SERVER->pAddressManager)
+            if(!fOUTGOING.load() && TIME_SERVER->pAddressManager)
                 TIME_SERVER->pAddressManager->AddAddress(GetAddress(), ConnectState::DROPPED);
 
             return;
