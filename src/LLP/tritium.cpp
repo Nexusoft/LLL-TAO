@@ -445,7 +445,7 @@ namespace LLP
 
                     /* Add to address manager. */
                     if(TRITIUM_SERVER->pAddressManager)
-                        TRITIUM_SERVER->pAddressManager->AddAddress(GetAddress());
+                        TRITIUM_SERVER->pAddressManager->AddAddress(GetAddress(), ConnectState::CONNECTED);
                 }
 
                 /* Send Auth immediately after version and before any other messages*/

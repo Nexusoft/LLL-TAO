@@ -583,11 +583,6 @@ namespace LLP
 
                     /* Verbose output. */
                     debug::log(3, FUNCTION, "Accepted Connection ", addr.ToString(), " on port ",  PORT);
-
-
-                    /* Update the address state. */
-                    if(pAddressManager)
-                        pAddressManager->AddAddress(addr, ConnectState::CONNECTED);
                 }
             }
         }
