@@ -46,6 +46,7 @@ ________________________________________________________________________________
 #define ANSI_COLOR_BRIGHT_WHITE   ""
 
 #define ANSI_COLOR_FUNCTION ""
+#define STRONG(data) data
 #else
 #define ANSI_COLOR_RED     "\x1b[31m"
 #define ANSI_COLOR_GREEN   "\x1b[32m"
@@ -64,6 +65,7 @@ ________________________________________________________________________________
 #define ANSI_COLOR_BRIGHT_WHITE   "\u001b[37;1m"
 
 #define ANSI_COLOR_FUNCTION "\u001b[1m"
+#define STRONG(data) "\u001b[1m" data "\x1b[0m"
 #endif
 
 #define VALUE(data) data

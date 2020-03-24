@@ -1066,6 +1066,7 @@ namespace TAO
             debug::log(3, "BLOCK BEGIN-------------------------------------");
 
             /* Check through all the transactions. */
+            uint64_t nBytes = 0;
             for(const auto& proof : vtx)
             {
                 /* Only work on tritium transactions for now. */
@@ -1088,6 +1089,8 @@ namespace TAO
 
                     if(config::nVerbose >= 3)
                         tx.print();
+
+                    //nBytes += tx.GetSerializeSize(SER_LLD, tx.nVersion);
 
                     /* Check the ledger rules for sigchain at end. */
                     if(!tx.IsFirst())
@@ -1160,7 +1163,7 @@ namespace TAO
                     if(LLD::Ledger->HasIndex(hash))
                         return debug::error(FUNCTION, "transaction overwrites not allowed");
 
-                    /* Make sure the transaction isn't on disk. */
+                    /* Make sure the transaction is on disk. */
                     Legacy::Transaction tx;
                     if(!LLD::Legacy->ReadTx(hash, tx))
                         return debug::error(FUNCTION, "transaction not on disk");
@@ -1173,6 +1176,8 @@ namespace TAO
                     /* Connect the inputs. */
                     if(!tx.Connect(inputs, *this, FLAGS::BLOCK))
                         return debug::error(FUNCTION, "failed to connect inputs");
+
+                    //nBytes += tx.GetSerializeSize(SER_LLD, tx.nVersion);
 
                     /* Add legacy transactions to the wallet where appropriate */
                     Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, *this, true);
@@ -1194,17 +1199,15 @@ namespace TAO
 
             debug::log(3, "BLOCK END-------------------------------------");
 
-            /* Update the previous state's next pointer. */
-            BlockState prev = Prev();
-
             /* Update the money supply. */
+            BlockState prev = Prev();
             nMoneySupply = (prev.IsNull() ? 0 : prev.nMoneySupply) + nMint;
 
             /* Update the fee reserves. */
             nFeeReserve += nFees;
 
             /* Log how much was generated / destroyed. */
-            debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION, nMint > 0 ? "Generated " : "Destroyed ", std::fixed, (double)nMint / TAO::Ledger::NXS_COIN, " Nexus | Money Supply ", std::fixed, (double)nMoneySupply / TAO::Ledger::NXS_COIN);
+            debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION, nMint > 0 ? "Generated " : "Destroyed ", std::fixed, (double)nMint / TAO::Ledger::NXS_COIN, " Nexus | Money Supply ", std::fixed, (double)nMoneySupply / TAO::Ledger::NXS_COIN, " | Payload ", std::fixed, double(nBytes / 1048576.0), " MB");
 
             /* Write the updated block state to disk. */
             if(!LLD::Ledger->WriteBlock(GetHash(), *this))
@@ -1447,30 +1450,30 @@ namespace TAO
             if(nState & debug::flags::header)
             {
                 strDebug += debug::safe_printstr("Block(",
-                VALUE("hash") " = ", GetHash().SubString(), ", ",
-                VALUE("nVersion") " = ", nVersion, ", ",
-                VALUE("hashPrevBlock") " = ", hashPrevBlock.SubString(), ", ",
-                VALUE("hashMerkleRoot") " = ", hashMerkleRoot.SubString(), ", ",
-                VALUE("nChannel") " = ", nChannel, ", ",
-                VALUE("nHeight") " = ", nHeight, ", ",
-                VALUE("nDiff") " = ", GetDifficulty(nBits, nChannel), ", ",
-                VALUE("nNonce") " = ", nNonce, ", ",
-                VALUE("nTime") " = ", nTime, ", ",
-                VALUE("blockSig") " = ", HexStr(vchBlockSig.begin(), vchBlockSig.end()));
+                STRONG("hash") " = ", GetHash().SubString(), ", ",
+                STRONG("nVersion") " = ", nVersion, ", ",
+                STRONG("hashPrevBlock") " = ", hashPrevBlock.SubString(), ", ",
+                STRONG("hashMerkleRoot") " = ", hashMerkleRoot.SubString(), ", ",
+                STRONG("nChannel") " = ", nChannel, ", ",
+                STRONG("nHeight") " = ", nHeight, ", ",
+                STRONG("nDiff") " = ", GetDifficulty(nBits, nChannel), ", ",
+                STRONG("nNonce") " = ", nNonce, ", ",
+                STRONG("nTime") " = ", nTime, ", ",
+                STRONG("blockSig") " = ", HexStr(vchBlockSig.begin(), vchBlockSig.end()));
             }
 
             /* Handle the verbose output for chain state. */
             if(nState & debug::flags::chain)
             {
                 strDebug += debug::safe_printstr(", ",
-                VALUE("nChainTrust") " = ", nChainTrust, ", ",
-                VALUE("nMoneySupply") " = ", nMoneySupply, ", ",
-                VALUE("nChannelHeight") " = ", nChannelHeight, ", ",
-                VALUE("nMinerReserve") " = ", nReleasedReserve[0], ", ",
-                VALUE("nAmbassadorReserve") " = ", nReleasedReserve[1], ", ",
-                VALUE("nDeveloperReserve") " = ", nReleasedReserve[2], ", ",
-                VALUE("hashNextBlock") " = ", hashNextBlock.SubString(), ", ",
-                VALUE("hashCheckpoint") " = ", hashCheckpoint.SubString());
+                STRONG("nChainTrust") " = ", nChainTrust, ", ",
+                STRONG("nMoneySupply") " = ", nMoneySupply, ", ",
+                STRONG("nChannelHeight") " = ", nChannelHeight, ", ",
+                STRONG("nMinerReserve") " = ", nReleasedReserve[0], ", ",
+                STRONG("nAmbassadorReserve") " = ", nReleasedReserve[1], ", ",
+                STRONG("nDeveloperReserve") " = ", nReleasedReserve[2], ", ",
+                STRONG("hashNextBlock") " = ", hashNextBlock.SubString(), ", ",
+                STRONG("hashCheckpoint") " = ", hashCheckpoint.SubString());
             }
 
             strDebug += ")";

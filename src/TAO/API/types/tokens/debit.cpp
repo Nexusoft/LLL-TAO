@@ -122,7 +122,7 @@ namespace TAO
                     throw APIException(-216, "recipients field must be an array.");
 
                 /* Get the recipients json array */
-                json::json jsonRecipients = params["recipients"];                    
+                json::json jsonRecipients = params["recipients"];
 
                 /* Check that there are recipient objects in the array */
                 if(jsonRecipients.size() == 0)
@@ -211,14 +211,11 @@ namespace TAO
                     nReference = stoull(jsonRecipient["reference"].get<std::string>());
 
                 /* Submit the payload object. */
-                tx[nContract] << (uint8_t)TAO::Operation::OP::DEBIT << hashFrom << hashTo << nAmount << nReference;
+                tx[0] << (uint8_t)TAO::Operation::OP::DEBIT << hashFrom << hashTo << nAmount << nReference;
 
                 /* Add expiration condition unless sending to self */
                 if(recipient.hashOwner != object.hashOwner)
-                    AddExpires( jsonRecipient, user->Genesis(), tx[nContract], false);
-
-                /* Increment the contract ID */
-                nContract++;
+                    AddExpires( jsonRecipient, user->Genesis(), tx[0], false);
 
                 /* Reduce the current balance by the amount for this recipient */
                 nCurrentBalance -= nAmount;
