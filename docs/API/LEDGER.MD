@@ -519,7 +519,7 @@ Submits a transaction to be included in the mempool and broadcast to the network
 
 # `void/transaction`
 
-Voids (reverses) a debit or transfer transaction that you have previously made, that has not yet been credited or claimed by the recipient.  The method creates a corresponding credit or claim transaction but back to the originating account/signature chain.  This means that any applicable fees will apply, as will conditions on the debit/transfer transaction (such as expiration conditions). 
+Voids (reverses) a debit or transfer transaction that you have previously made, that has not yet been credited or claimed by the recipient.  The method creates a corresponding credit or claim transaction but back to the originating account/signature chain.  This means that any applicable fees will apply, as will conditions on the debit/transfer transaction (such as expiration conditions).
 
 For debits that were made to a tokenized asset as part of a split payment transaction, the reversing credit will be made for the debit amount minus any partial amounts that have already been credited by the token holders.   
 
@@ -576,6 +576,9 @@ NONE
     "stakeDifficulty": 0.0,
     "primeDifficulty": 3.8210223,
     "hashDifficulty": 0.0,
+    "stakeHeight"   : 1,
+    "primeHeight"   : 1,
+    "hashHeight"    : 2,
     "primeReserve": 21852246.988376,
     "hashReserve": 0.0,
     "primeValue": 74.893038,
@@ -599,6 +602,12 @@ NONE
 `primeDifficulty` : The current difficulty of the prime channel.
 
 `hashDifficulty` : The current difficulty of the hash channel.
+
+`stakeHeight` : The current number of blocks for the stake channel.
+
+`primeHeight` : The current number of blocks for the prime channel.
+
+`hashHeight` : The current number of blocks for the hash channel.
 
 `primeReserve` : The amount of NXS in the reserve balance for the prime channel.
 

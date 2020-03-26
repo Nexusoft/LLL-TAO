@@ -177,7 +177,7 @@ namespace LLP
         {
             case EVENT_CONNECT:
             {
-                debug::log(1, NODE, fOUTGOING ? "Outgoing" : "Incoming", " Connected at timestamp ",   runtime::unifiedtimestamp());
+                debug::log(1, NODE, fOUTGOING ? "Outgoing" : "Incoming", " Connection Established");
 
                 /* Set the laset ping time. */
                 nLastPing    = runtime::unifiedtimestamp();
@@ -342,7 +342,7 @@ namespace LLP
 
                 /* Debug output for node disconnect. */
                 debug::log(1, NODE, fOUTGOING ? "Outgoing" : "Incoming",
-                    " Disconnected (", strReason, ") at timestamp ", runtime::unifiedtimestamp());
+                    " Disconnected (", strReason, ")");
 
                 /* Update address status. */
                 if(TRITIUM_SERVER->pAddressManager)
@@ -352,7 +352,7 @@ namespace LLP
                 if(nCurrentSession == TAO::Ledger::nSyncSession.load())
                 {
                     /* Debug output for node disconnect. */
-                    debug::log(0, NODE, "Sync Node Disconnected (", strReason, ") at timestamp ", runtime::unifiedtimestamp());
+                    debug::log(0, NODE, "Sync Node Disconnected (", strReason, ")");
 
                     SwitchNode();
                 }
@@ -445,7 +445,7 @@ namespace LLP
 
                     /* Add to address manager. */
                     if(TRITIUM_SERVER->pAddressManager)
-                        TRITIUM_SERVER->pAddressManager->AddAddress(GetAddress());
+                        TRITIUM_SERVER->pAddressManager->AddAddress(GetAddress(), ConnectState::CONNECTED);
                 }
 
                 /* Send Auth immediately after version and before any other messages*/
@@ -1736,7 +1736,7 @@ namespace LLP
                                 TRITIUM_SERVER->pAddressManager->AddAddress(addr);
 
                             /* Debug output. */
-                            debug::log(0, NODE, "ACTION::NOTIFY: ADDRESS ", addr.ToString());
+                            debug::log(0, NODE, "ACTION::NOTIFY: ADDRESS ", addr.ToStringIP());
 
                             break;
                         }

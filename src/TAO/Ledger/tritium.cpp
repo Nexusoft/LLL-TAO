@@ -292,7 +292,7 @@ namespace TAO
         /* For debugging Purposes seeing block state data dump */
         std::string TritiumBlock::ToString() const
         {
-            return debug::safe_printstr("Tritium Block("
+            return debug::safe_printstr(ANSI_COLOR_FUNCTION, "Tritium Block", ANSI_COLOR_RESET, "("
                 VALUE("hash")     " = ", GetHash().SubString(), " ",
                 VALUE("nVersion") " = ", nVersion, ", ",
                 VALUE("hashPrevBlock") " = ", hashPrevBlock.SubString(), ", ",
@@ -349,6 +349,10 @@ namespace TAO
             /* Check that the producer is a valid transaction. */
             if(!producer.Check())
                 return debug::error(FUNCTION, "producer transaction is invalid");
+
+            /* Print the block if it gets this far into processing. */
+            if(config::nVerbose >= 2)
+                debug::log(2, ToString());
 
             /* Proof of stake specific checks. */
             if(IsProofOfStake())

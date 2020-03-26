@@ -157,6 +157,9 @@ namespace TAO
             obj["stakeDifficulty"] = fHasStake ? TAO::Ledger::GetDifficulty(TAO::Ledger::GetNextTargetRequired(lastStakeBlockState, 0, false), 0) : 0;
             obj["primeDifficulty"] = fHasPrime ? TAO::Ledger::GetDifficulty(TAO::Ledger::GetNextTargetRequired(lastPrimeBlockState, 1, false), 1) : 0;
             obj["hashDifficulty"] = fHasHash ? TAO::Ledger::GetDifficulty(TAO::Ledger::GetNextTargetRequired(lastHashBlockState, 2, false), 2) : 0;
+            obj["stakeHeight"] = fHasStake ? lastStakeBlockState.nChannelHeight : 0;
+            obj["primeHeight"] = fHasPrime ? lastPrimeBlockState.nChannelHeight : 0;
+            obj["hashHeight"]  = fHasHash ? lastHashBlockState.nChannelHeight : 0;
             obj["primeReserve"] =    Legacy::SatoshisToAmount(lastPrimeBlockState.nReleasedReserve[0]);
             obj["hashReserve"] =     Legacy::SatoshisToAmount(lastHashBlockState.nReleasedReserve[0]);
             obj["primeValue"] =        Legacy::SatoshisToAmount(TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest.load(), 1, 0));
