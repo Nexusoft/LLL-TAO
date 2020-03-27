@@ -259,18 +259,30 @@ namespace LLP
                     /* Simple log to let us know we are making the subscription requests. */
                     debug::log(1, NODE, "Initializing Subscriptions with REMOTE HOST");
 
-                    /* Subscribe to notifications. */
-                    Subscribe(
-                           SUBSCRIPTION::BESTCHAIN
-                         | SUBSCRIPTION::BESTHEIGHT
-                         | SUBSCRIPTION::CHECKPOINT
-                         | SUBSCRIPTION::BLOCK
-                         | SUBSCRIPTION::TRANSACTION
-                    );
-
                     /* Grab list of memory pool transactions. */
                     if(!config::fClient.load())
+                    {
+                        /* Subscribe to notifications. */
+                        Subscribe(
+                               SUBSCRIPTION::BESTCHAIN
+                             | SUBSCRIPTION::BESTHEIGHT
+                             | SUBSCRIPTION::CHECKPOINT
+                             | SUBSCRIPTION::BLOCK
+                             | SUBSCRIPTION::TRANSACTION
+                        );
+
                         PushMessage(ACTION::LIST, uint8_t(TYPES::MEMPOOL));
+                    }
+                    else
+                    {
+                        /* Subscribe to notifications. */
+                        Subscribe(
+                               SUBSCRIPTION::BESTCHAIN
+                             | SUBSCRIPTION::BESTHEIGHT
+                             | SUBSCRIPTION::BLOCK
+                        );
+                    }
+
 
                     /* Set node as initialized. */
                     fInitialized.store(true);
