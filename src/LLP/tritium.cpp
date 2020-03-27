@@ -2404,20 +2404,18 @@ namespace LLP
                         if(TAO::Ledger::mempool.Accept(tx, this))
                         {
                             /* Relay the transaction notification. */
+                            uint512_t hashTx = tx.GetHash();
                             TRITIUM_SERVER->Relay
                             (
+                                /* Standard transaction relay. */
                                 ACTION::NOTIFY,
                                 uint8_t(TYPES::TRANSACTION),
-                                tx.GetHash()
-                            );
+                                hashTx,
 
-                            /* Relay any sigchain notifications. */
-                            TRITIUM_SERVER->Relay
-                            (
-                                ACTION::NOTIFY,
+                                /* Handle sigchain related notifications. */
                                 uint8_t(TYPES::SIGCHAIN),
                                 tx.hashGenesis,
-                                tx.GetHash()
+                                hashTx
                             );
 
                             /* Reset consecutive failures. */

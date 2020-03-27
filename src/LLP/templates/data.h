@@ -220,6 +220,22 @@ namespace LLP
         }
 
 
+        /** _Relay
+         *
+         *  Relays raw binary data to the network. Accepts only binary stream pre-serialized.
+         *
+         **/
+        template<typename MessageType>
+        void _Relay(const MessageType& message, const DataStream& ssData)
+        {
+            /* Push the relay message to outbound queue. */
+            RELAY->push(std::make_pair(message, ssData));
+
+            /* Wake up the flush thread. */
+            FLUSH_CONDITION.notify_all();
+        }
+
+
         /** GetConnectionCount
          *
          *  Returns the number of active connections.
