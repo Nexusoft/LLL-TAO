@@ -343,7 +343,7 @@ namespace TAO
 
             /* Read the previous block from ledger. */
             if(!LLD::Client->ReadBlock(hashPrevBlock, state))
-                throw debug::exception(FUNCTION, "failed to read previous block state ", hashPrevBlock.SubString());
+                throw debug::exception(FUNCTION, "failed to read previous client block ", hashPrevBlock.SubString());
 
             return state;
         }
@@ -359,7 +359,7 @@ namespace TAO
 
             /* Read next block from the ledger. */
             if(!LLD::Client->ReadBlock(hashNextBlock, state))
-                throw debug::exception(FUNCTION, "failed to read next block state ", hashNextBlock.SubString());
+                throw debug::exception(FUNCTION, "failed to read next client block ", hashNextBlock.SubString());
 
             return state;
         }
@@ -378,10 +378,6 @@ namespace TAO
             /* Check for client mode since this method should never be called except by a client. */
             if(!config::fClient.load())
                 return debug::error(FUNCTION, "cannot process client block if not in -client mode");
-
-            /* Read ledger DB for duplicate block. */
-            if(LLD::Client->HasBlock(GetHash()))
-                return false;//debug::error(FUNCTION, "already have block ", GetHash().SubString());
 
             /* Check the Size limits of the Current Block. */
             if(::GetSerializeSize(*this, SER_NETWORK, LLP::PROTOCOL_VERSION) > MAX_BLOCK_SIZE)
@@ -449,15 +445,15 @@ namespace TAO
             /* Read ledger DB for previous block. */
             TAO::Ledger::ClientBlock clientPrev;
             if(!LLD::Client->ReadBlock(hashPrevBlock, clientPrev))
-                return debug::error(FUNCTION, "previous block state not found");
+                return debug::error(FUNCTION, "previous client block not found");
 
             /* Check the Height of Block to Previous Block. */
             if(clientPrev.nHeight + 1 != nHeight)
                 return debug::error(FUNCTION, "incorrect block height.");
 
             /* Check that the nBits match the current Difficulty. */
-            if(nBits != GetNextTargetRequired(clientPrev, GetChannel()))
-                return debug::error(FUNCTION, "incorrect proof-of-work/proof-of-stake");
+            //if(nBits != GetNextTargetRequired(clientPrev, GetChannel()))
+            //    return debug::error(FUNCTION, "incorrect proof-of-work/proof-of-stake");
 
             /* Check That Block timestamp is not before previous block. */
             if(GetBlockTime() <= clientPrev.GetBlockTime())
@@ -487,8 +483,15 @@ namespace TAO
             runtime::timer timer;
             timer.Start();
 
+            /* Get the block's hash. */
+            uint1024_t hashBlock = GetHash();
+
+            /* Read ledger DB for duplicate block. */
+            if(LLD::Client->HasBlock(hashBlock))
+                return debug::error(FUNCTION, "already have block ", hashBlock.SubString());
+
             /* Write the block to disk. */
-            if(!LLD::Client->WriteBlock(GetHash(), *this))
+            if(!LLD::Client->WriteBlock(hashBlock, *this))
                 return debug::error(FUNCTION, "block state failed to write");
 
             /* Signal to set the best chain. */

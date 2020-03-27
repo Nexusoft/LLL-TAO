@@ -269,7 +269,8 @@ namespace LLP
                     );
 
                     /* Grab list of memory pool transactions. */
-                    PushMessage(ACTION::LIST, uint8_t(TYPES::MEMPOOL));
+                    if(!config::fClient.load())
+                        PushMessage(ACTION::LIST, uint8_t(TYPES::MEMPOOL));
 
                     /* Set node as initialized. */
                     fInitialized.store(true);
@@ -431,10 +432,13 @@ namespace LLP
                     mapSessions[nCurrentSession] = std::make_pair(nDataThread, nDataIndex);
                 }
 
-
                 /* Check versions. */
                 if(nProtocolVersion < MIN_PROTO_VERSION)
                     return debug::drop(NODE, "connection using obsolete protocol version");
+
+                /* Client mode only wants connections to correct version. */
+                if(config::fClient.load() && nProtocolVersion < MIN_TRITIUM_VERSION)
+                    return debug::drop(NODE, "-client mode requires version ", MIN_TRITIUM_VERSION);
 
                 /* Respond with version message if incoming connection. */
                 if(Incoming())
@@ -1899,7 +1903,7 @@ namespace LLP
                                             if(nElapsed == 0)
                                                 nElapsed = 1;
 
-                                            double dRate = nBlocks / nElapsed ;
+                                            double dRate = nBlocks / nElapsed;
 
                                             /* Log that sync is complete. */
                                             debug::log(0, NODE, "ACTION::NOTIFY: Synchronization COMPLETE at ", hashBestChain.SubString());
@@ -2279,7 +2283,7 @@ namespace LLP
                         TAO::Ledger::Process(block, nStatus);
 
                         /* Log received. */
-                        debug::log(3, FUNCTION, "received client block ", block.GetHash().SubString(), " height = ", block.nHeight);
+                        //debug::log(3, FUNCTION, "received client block ", block.GetHash().SubString(), " height = ", block.nHeight);
 
                         break;
                     }
