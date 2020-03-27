@@ -78,8 +78,7 @@ namespace LLP
             BESTCHAIN    = 0x36,
             MEMPOOL      = 0x37,
             SIGCHAIN     = 0x38,
-            STATUS       = 0x39,
-            MERKLE       = 0x40,
+            MERKLE       = 0x39,
         };
     }
 
@@ -108,8 +107,6 @@ namespace LLP
             REJECTED     = 0x51,
             STALE        = 0x52,
             UNSUBSCRIBED = 0x53, //let node know it was unsubscribed successfully
-            CONFIRMED    = 0x54, //let node know if transaction is confirmed
-            UNCONFIRMED  = 0x55, //let node know if transaction is unconfirmed
         };
     }
 
