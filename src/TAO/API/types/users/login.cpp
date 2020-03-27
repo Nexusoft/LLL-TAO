@@ -195,7 +195,7 @@ namespace TAO
 
                 /* Check whether it is valid before relaying it to all peers */
                 if(ssMessage.size() > 0)
-                    LLP::TRITIUM_SERVER->Relay(uint8_t(LLP::ACTION::AUTH), ssMessage.Bytes());
+                    LLP::TRITIUM_SERVER->_Relay(uint8_t(LLP::ACTION::AUTH), ssMessage);
             }
 
             return ret;
