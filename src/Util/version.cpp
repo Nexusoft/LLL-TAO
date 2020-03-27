@@ -18,16 +18,15 @@ namespace version
 {
 
     /* Major version X (X.y.z | X > 0). */
-    const uint32_t CLIENT_MAJOR = 4;
+    const uint32_t CLIENT_MAJOR = 5;
 
 
     /* Minor version Y (x.Y.z | x > 0). */
-    const uint32_t CLIENT_MINOR = 1;
+    const uint32_t CLIENT_MINOR = 0;
 
 
     /* Patch version Z (x.y.Z | x > 0). */
     const uint32_t CLIENT_PATCH = 3;
-
 
     /* The version of the actual wallet client. */
     const uint32_t CLIENT_VERSION = 10000 * CLIENT_MAJOR + 100 * CLIENT_MINOR + CLIENT_PATCH;

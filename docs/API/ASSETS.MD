@@ -31,6 +31,7 @@ The following methods are currently supported by this API
 [`claim/asset`](#claimasset)   
 [`list/asset/history`](#listassethistory)   
 [`tokenize/asset`](#tokenizeasset)
+[`get/schema`](#getschema)
 
 -----------------------------------
 ***
@@ -433,3 +434,62 @@ This will tokenize an asset into fungible tokens that represent ownership.  This
 `txid` : The ID (hash) of the transaction that includes the asset tokenization.
 
 `address` : The register address for this asset.
+
+
+****
+
+# `get/schema`
+
+This method returns the information about the user-defined fields that make up the asset. The Assets API supports an alternative endpoint that can include the asset name (if known) or address in the URI.  For example `/assets/get/schema/myasset` will resolve to `assets/get/schema?name=myasset`.
+
+
+
+### Endpoint:
+
+`/assets/get/schema`
+
+
+### Parameters:
+
+`name` : The name identifying the asset. This is optional if the address is provided.  The name should be in the format username:name (for local names) or namespace::name (for names in a namespace).  However, if the asset was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
+
+`session` : For multi-user API mode, (configured with multiuser=1) the session can be provided in conjunction with the name in order to deduce the register address of the asset.  The `session` parameter is only required when a name parameter is also provided without a namespace in the name string.  For single-user API mode the session should not be supplied.
+
+`address` : The register address of the asset. This is optional if the name is provided.
+
+`fieldname`: This optional field can be used to filter the response to return only a single field from the asset.
+
+
+### Return value JSON object:
+```
+[
+    {
+        "name": "description",
+        "type": "string",
+        "value": "this is the description",
+        "mutable": true,
+        "maxlength": 200
+    },
+
+    {
+        "name": "count",
+        "type": "uint64",
+        "value": 1000,
+        "mutable": true
+    }
+]
+```
+### Return values:
+
+`name` : The name of the data field.
+
+`type` : The data type to use for this field. Values can be `uint8`, `uint16`, `uint32`, `uint64`, `uint256`, `uint512`, `uint1024`, `string`, or `bytes`.
+
+`value` : The default value of the field.
+
+`mutable` : The boolean field to indicate whether the field is writable (true) or read-only (false).
+
+`maxlength`: Only applicable to `string` or `bytes` fields where `mutable`=true, this is the maximum number of characters (bytes) that can be stored in the field.   
+
+
+****

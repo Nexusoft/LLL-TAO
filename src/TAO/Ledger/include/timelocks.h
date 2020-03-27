@@ -33,6 +33,14 @@ namespace TAO
         extern const uint32_t TESTNET_BLOCK_CURRENT_VERSION;
 
 
+        /** The network current transaction version. **/
+        extern const uint32_t NETWORK_TRANSACTION_CURRENT_VERSION;
+
+
+        /** The testnet current transaction version. **/
+        extern const uint32_t TESTNET_TRANSACTION_CURRENT_VERSION;
+
+
         /** Nexus Testnet Timelock
          *
          *  Activated test network at timestamp.
@@ -54,7 +62,7 @@ namespace TAO
          *  Lock for the Nexus block version upgrades.
          *
          **/
-        extern const uint32_t TESTNET_VERSION_TIMELOCK[];
+        extern const uint32_t TESTNET_BLOCK_VERSION_TIMELOCK[];
 
 
         /** Network Version Timelock
@@ -62,7 +70,31 @@ namespace TAO
          *  Lock for the Nexus block version upgrades.
          *
          **/
-        extern const uint32_t NETWORK_VERSION_TIMELOCK[];
+        extern const uint32_t NETWORK_BLOCK_VERSION_TIMELOCK[];
+
+
+        /** Nexus Network Timelock
+         *
+         *  Activated main network at timestamp.
+         *
+         **/
+        extern const uint32_t NEXUS_NETWORK_TIMELOCK;
+        
+        
+        /** Testnet Transaction Version Timelock
+         *
+         *  Lock for the Nexus transaction version upgrades.
+         *
+         **/
+        extern const uint32_t TESTNET_TRANSACTION_VERSION_TIMELOCK[];
+
+
+        /** Network Transaction Version Timelock
+         *
+         *  Lock for the Nexus transaction version upgrades.
+         *
+         **/
+        extern const uint32_t NETWORK_TRANSACTION_VERSION_TIMELOCK[];
 
 
         /** Testnet Channel Timelock
@@ -106,7 +138,7 @@ namespace TAO
         bool ChannelActive(const uint64_t nTimestamp, const uint32_t nChannel);
 
 
-        /** VersionActive
+        /** BlockVersionActive
          *
          *  Helper function to test if a given block version is active
          *  at the time of the provided timestamp.
@@ -115,26 +147,54 @@ namespace TAO
          *  @param[in] nVersion The version to check against.
          *
          **/
-        bool VersionActive(const uint64_t nTimestamp, const uint32_t nVersion);
+        bool BlockVersionActive(const uint64_t nTimestamp, const uint32_t nVersion);
 
 
-        /** CurrentVersion
+        /** TransactionVersionActive
+         *
+         *  Helper function to test if a given transaction version is active
+         *  at the time of the provided timestamp.
+         *
+         *  @param[in] nTimestamp The timestamp to check against.
+         *  @param[in] nVersion The version to check against.
+         *
+         **/
+        bool TransactionVersionActive(const uint64_t nTimestamp, const uint32_t nVersion);
+
+
+        /** CurrentBlockVersion
          *
          *  Retrieve the current block version from mainnet or testnet.
          *
          **/
-        uint32_t CurrentVersion();
+        uint32_t CurrentBlockVersion();
 
 
-        /** CurrentTimelock
+        /** CurrentTransactionVersion
+         *
+         *  Retrieve the current transaction version from mainnet or testnet.
+         *
+         **/
+        uint32_t CurrentTransactionVersion();
+
+
+        /** CurrentBlockTimelock
          *
          *  Retrieve the current block timelock activation from mainnet or testnet.
          *
          **/
-        uint32_t CurrentTimelock();
+        uint32_t CurrentBlockTimelock();
 
 
-        /** StartTimelock
+        /** CurrentTransactionTimelock
+         *
+         *  Retrieve the current transaction timelock activation from mainnet or testnet.
+         *
+         **/
+        uint32_t CurrentTransactionTimelock();
+
+
+        /** StartBlockTimelock
          *
          *  Retrieve the timelock activation for a given block version on mainnet or testnet.
          *
@@ -145,12 +205,12 @@ namespace TAO
          *  @return version activation timelock
          *
          **/
-        uint64_t StartTimelock(const uint32_t nVersion);
+        uint64_t StartBlockTimelock(const uint32_t nVersion);
 
 
-        /** EndTimelock
+        /** EndBlockTimelock
          *
-         *  Retrieve the ending timelock for a given block version on mainnet or testnet. This value equals the StartTimelock()
+         *  Retrieve the ending timelock for a given block version on mainnet or testnet. This value equals the StartBlockTimelock()
          *  value of the next version.
          *
          *  Invalid versions (version 0 or anything after current version) return 0, as does the current version.
@@ -161,7 +221,37 @@ namespace TAO
          *  @return version ending timelock
          *
          **/
-        uint64_t EndTimelock(const uint32_t nVersion);
+        uint64_t EndBlockTimelock(const uint32_t nVersion);
+
+
+        /** StartTransactionTimelock
+         *
+         *  Retrieve the timelock activation for a given transaction version on mainnet or testnet.
+         *
+         *  Invalid versions (version 0 or anything after current version) return 0. This should be checked.
+         *
+         *  @param[in] nVersion The version of the timelock to retreive
+         *
+         *  @return version activation timelock
+         *
+         **/
+        uint64_t StartTransactionTimelock(const uint32_t nVersion);
+
+
+        /** EndTransactionTimelock
+         *
+         *  Retrieve the ending timelock for a given transaction version on mainnet or testnet. 
+         *  This value equals the StartTransactionTimelock() value of the next version.
+         *
+         *  Invalid versions (version 0 or anything after current version) return 0, as does the current version.
+         *  This should be checked.
+         *
+         *  @param[in] nVersion The version of the timelock to retreive
+         *
+         *  @return version ending timelock
+         *
+         **/
+        uint64_t EndTransactionTimelock(const uint32_t nVersion);
 
     }
 }

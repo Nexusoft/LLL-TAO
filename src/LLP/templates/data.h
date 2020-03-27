@@ -139,7 +139,7 @@ namespace LLP
         /** Default Constructor
          *
          **/
-        DataThread<ProtocolType>(uint32_t nID, bool fIsDDOS, uint32_t rScore, uint32_t cScore,
+        DataThread<ProtocolType>(uint32_t nID, bool ffDDOSIn, uint32_t rScore, uint32_t cScore,
                                  uint32_t nTimeout, bool fMeter = false);
 
 

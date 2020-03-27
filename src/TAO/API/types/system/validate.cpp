@@ -75,19 +75,22 @@ namespace TAO
                     TAO::Register::Object state;
                     if(LLD::Register->ReadState(hashAddress, state))
                     {
-                        /* parse object so that the data fields can be accessed */
-                            if(!state.Parse())
-                                throw APIException(-36, "Failed to parse object register");
-
                         /* Set the valid flag in the response */
                         jsonRet["is_valid"] = true;
 
                         /* Set the register type */
                         jsonRet["type"]    = RegisterType(state.nType);
 
-                        /* If it is an object then set the object type */
+                        /* If it is an object register than parse it to add the object_type */
                         if(state.nType == TAO::Register::REGISTER::OBJECT)
-                            jsonRet["object_type"] = ObjectType(state.Standard());
+                        {
+                        
+                            /* parse object so that the data fields can be accessed */
+                            if(state.Parse())
+                                jsonRet["object_type"] = ObjectType(state.Standard());
+                            else
+                                jsonRet["is_valid"] = false;
+                        }
                     }
                     else
                     {

@@ -124,6 +124,10 @@ namespace TAO
             if(OP != OP::MIGRATE)
                 return debug::error(FUNCTION, "called with incorrect OP");
 
+            /* Check transaction version. */
+            if(contract.Version() > 1)
+                return debug::error(FUNCTION, "OP::MIGRATE: invalid transaction version");
+
             /* Check for conditions. */
             if(!debit.Empty(Contract::CONDITIONS))
                 return debug::error(FUNCTION, "OP::MIGRATE: conditions not allowed on migrate debit");

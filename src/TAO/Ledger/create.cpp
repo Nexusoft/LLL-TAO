@@ -110,6 +110,14 @@ namespace TAO
                 tx.nTimestamp  = std::max(runtime::unifiedtimestamp(), txPrev.nTimestamp);
             }
 
+            /* Set the transaction version based on the timestamp. The transaction version is current version
+               unless an activation is pending */
+            uint32_t nCurrent = CurrentTransactionVersion();
+            if(TransactionVersionActive(tx.nTimestamp, nCurrent))
+                tx.nVersion = nCurrent;
+            else
+                tx.nVersion = nCurrent - 1;
+
             /* Genesis Transaction. */
             tx.NextHash(user->Generate(tx.nSequence + 1, pin), tx.nNextType);
             tx.hashGenesis = user->Genesis();
@@ -163,7 +171,7 @@ namespace TAO
                 }
 
                 /* Check for timestamp violations. */
-                if(tx.nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
+                if(tx.nTimestamp > runtime::unifiedtimestamp() + runtime::maxdrift())
                 {
                     setDependents.insert(hash);
 
@@ -256,7 +264,7 @@ namespace TAO
                 }
 
                 /* Check for timestamp violations. */
-                if(tx.nTime > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
+                if(tx.nTime > runtime::unifiedtimestamp() + runtime::maxdrift())
                     continue;
 
                 /* Retrieve tx inputs */
@@ -276,7 +284,7 @@ namespace TAO
                 }
 
                 /* Check that transction can be connected. */
-                if(!tx.Connect(mapInputs, stateBest))
+                if(!tx.Connect(mapInputs, stateBest, FLAGS::MINER))
                 {
                     debug::log(2, FUNCTION, "Failed to connect inputs ", hash.SubString(10));
                     continue;
@@ -295,14 +303,6 @@ namespace TAO
         /* Populate block header data for a new block. */
         void AddBlockData(const TAO::Ledger::BlockState& stateBest, const uint32_t nChannel, TAO::Ledger::TritiumBlock& block)
         {
-            /* Modulate the Block Versions if they correspond to their proper time stamp */
-            /* Normally, if condition is true and block version is current version unless an activation is pending */
-            uint32_t nCurrent = CurrentVersion();
-            if(VersionActive(runtime::unifiedtimestamp(), nCurrent)) // --> New Block Version Activation Switch
-                block.nVersion = nCurrent;
-            else
-                block.nVersion = nCurrent - 1;
-
             /* Calculate the merkle root (stake minter must handle channel 0 after completing coinstake producer setup) */
             if(nChannel != 0)
             {
@@ -333,6 +333,7 @@ namespace TAO
             const uint32_t nChannel, TAO::Ledger::TritiumBlock& block, const uint64_t nExtraNonce,
             Legacy::Coinbase *pCoinbaseRecipients)
         {
+
             /* Lock this user's sigchain. */
             LOCK(TAO::API::users->CREATE_MUTEX);
 
@@ -342,6 +343,14 @@ namespace TAO
 
             /* Set the block to null. */
             block.SetNull();
+
+            /* Modulate the Block Versions if they correspond to their proper time stamp */
+            /* Normally, if condition is true and block version is current version unless an activation is pending */
+            uint32_t nCurrent = CurrentBlockVersion();
+            if(BlockVersionActive(runtime::unifiedtimestamp(), nCurrent)) // --> New Block Version Activation Switch
+                block.nVersion = nCurrent;
+            else
+                block.nVersion = nCurrent - 1;
 
             /* Handle if the block is cached. */
             if(ChainState::stateBest.load().GetHash() == blockCache[nChannel].load().hashPrevBlock)
@@ -363,13 +372,8 @@ namespace TAO
                     if(!CreateTransaction(user, pin, block.producer))
                         return debug::error(FUNCTION, "Failed to create producer transactions.");
 
-                    /* Update the producer timestamp, making sure it is not earlier than the previous block.  However we can't simply
-                    set the timstamp to be last block time + 1, in case there is a long gap between blocks, as there is a consensus
-                    rule that the producer timestamp cannot be more than 3600 seconds before the current block time. */
-                    if(ChainState::stateBest.load().GetBlockTime() + 1 > runtime::unifiedtimestamp())
-                        block.producer.nTimestamp = std::max(block.producer.nTimestamp, ChainState::stateBest.load().GetBlockTime() + 1);
-                    else
-                        block.producer.nTimestamp = std::max(block.producer.nTimestamp, runtime::unifiedtimestamp());
+                    /* Update the producer timestamp */
+                    UpdateProducerTimestamp(block);
 
                     /* Store new block cache. */
                     blockCache[nChannel].store(block);
@@ -558,8 +562,7 @@ namespace TAO
                             if(nBalance > 0)
                             {
                                 /* Loop through the embassy sigchains. */
-                                for(auto it =  (config::fTestNet.load() ? AMBASSADOR_TESTNET.begin() : AMBASSADOR.begin());
-                                         it != (config::fTestNet.load() ? AMBASSADOR_TESTNET.end()   : AMBASSADOR.end()); ++it)
+                                for(auto it = Ambassador(block.nVersion).begin(); it != Ambassador(block.nVersion).end(); ++it)
                                 {
                                     /* Make sure to push to end. */
                                     uint32_t nContract = block.producer.Size();
@@ -586,8 +589,7 @@ namespace TAO
                             if(nBalance > 0)
                             {
                                 /* Loop through the embassy sigchains. */
-                                for(auto it =  (config::fTestNet.load() ? DEVELOPER_TESTNET.begin() : DEVELOPER.begin());
-                                         it != (config::fTestNet.load() ? DEVELOPER_TESTNET.end()   : DEVELOPER.end()); ++it)
+                                for(auto it = Developer(block.nVersion).begin(); it != Developer(block.nVersion).end(); ++it)
                                 {
                                     /* Make sure to push to end. */
                                     uint32_t nContract = block.producer.Size();
@@ -617,13 +619,8 @@ namespace TAO
                     block.producer[0] << block.producer.hashGenesis;
                 }
 
-                /* Update the producer timestamp, making sure it is not earlier than the previous block.  However we can't simply
-                   set the timstamp to be last block time + 1, in case there is a long gap between blocks, as there is a consensus
-                   rule that the producer timestamp cannot be more than 3600 seconds before the current block time. */
-                if(ChainState::stateBest.load().GetBlockTime() + 1 > runtime::unifiedtimestamp())
-                    block.producer.nTimestamp = std::max(block.producer.nTimestamp, ChainState::stateBest.load().GetBlockTime() + 1);
-                else
-                    block.producer.nTimestamp = std::max(block.producer.nTimestamp, runtime::unifiedtimestamp());
+                /* Update the producer timestamp */
+                UpdateProducerTimestamp(block);
 
                 /* Sign the producer transaction. */
                 block.producer.Sign(user->Generate(block.producer.nSequence, pin));
@@ -655,6 +652,14 @@ namespace TAO
             /* Set the block to null. */
             block.SetNull();
 
+            /* Modulate the Block Versions if they correspond to their proper time stamp */
+            /* Normally, if condition is true and block version is current version unless an activation is pending */
+            uint32_t nCurrent = CurrentBlockVersion();
+            if(BlockVersionActive(runtime::unifiedtimestamp(), nCurrent)) // --> New Block Version Activation Switch
+                block.nVersion = nCurrent;
+            else
+                block.nVersion = nCurrent - 1;
+
             /* Cache the best chain before processing. */
             const TAO::Ledger::BlockState stateBest = ChainState::stateBest.load();
 
@@ -667,13 +672,8 @@ namespace TAO
             if(!CreateTransaction(user, pin, block.producer))
                 return debug::error(FUNCTION, "failed to create producer transactions");
 
-            /* Update the producer timestamp, making sure it is not earlier than the previous block.  However we can't simply
-               set the timstamp to be last block time + 1, in case there is a long gap between blocks, as there is a consensus
-               rule that the producer timestamp cannot be more than 3600 seconds before the current block time. */
-            if(ChainState::stateBest.load().GetBlockTime() + 1 > runtime::unifiedtimestamp())
-                block.producer.nTimestamp = std::max(block.producer.nTimestamp, ChainState::stateBest.load().GetBlockTime() + 1);
-            else
-                block.producer.nTimestamp = std::max(block.producer.nTimestamp, runtime::unifiedtimestamp());
+            /* Update the producer timestamp */
+            UpdateProducerTimestamp(block);
 
             /* NOTE: The remainder of Coinstake producer not configured here. Stake minter must handle it. */
 
@@ -880,6 +880,26 @@ namespace TAO
                 /* Debug output. */
                 debug::log(0, FUNCTION, "Private Block Cleared in ", TIMER.ElapsedMilliseconds(), " ms");
             }
+        }
+
+        /* Updates the producer timestamp, making sure it is not earlier than the previous block. */
+        void UpdateProducerTimestamp(TAO::Ledger::TritiumBlock& block)
+        {
+            /* Update the producer timestamp, making sure it is not earlier than the previous block.  However we can't simply
+            set the timstamp to be last block time + 1, in case there is a long gap between blocks, as there is a consensus
+            rule that the producer timestamp cannot be more than 3600 seconds before the current block time. */
+            if(ChainState::stateBest.load().GetBlockTime() + 1 > runtime::unifiedtimestamp())
+                block.producer.nTimestamp = std::max(block.producer.nTimestamp, ChainState::stateBest.load().GetBlockTime() + 1);
+            else
+                block.producer.nTimestamp = std::max(block.producer.nTimestamp, runtime::unifiedtimestamp());
+
+            /* Since we have updated the producer transaction timestamp, we now also need to set the transaction version again as
+               the version is based on the transaction time. Transaction version is current version unless an activation is pending */
+            uint32_t nCurrent = CurrentTransactionVersion();
+            if(TransactionVersionActive(block.producer.nTimestamp, nCurrent))
+                block.producer.nVersion = nCurrent;
+            else
+                block.producer.nVersion = nCurrent - 1;
         }
     }
 }

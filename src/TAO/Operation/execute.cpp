@@ -335,7 +335,17 @@ namespace TAO
                         contract >> nType;
 
                         /* Register custody in SYSTEM ownership until claimed, unless the ForceTransfer flag has been set */
-                        uint256_t hashNewOwner = (nType == TRANSFER::FORCE ? hashTransfer : 0);
+                        uint256_t hashNewOwner = 0; //default to SYSTEM
+                        if(nType == TRANSFER::FORCE)
+                            hashNewOwner = hashTransfer;
+
+                        /* Handle version switch for contract to transfer to 0x00 leading genesis-id. */
+                        else if(contract.Version() > 1) //this allows us to iterate history while getting properties of transfer to system
+                        {
+                            /* Set the new owner to transfer recipient. */
+                            hashNewOwner = contract.Caller();
+                            hashNewOwner.SetType(Ledger::GENESIS::SYSTEM); //this byte (0x00) means there is no valid owner during transfer
+                        }
 
                         /* Deserialize the pre-state byte from the contract. */
                         uint8_t nState = 0;
@@ -397,7 +407,7 @@ namespace TAO
                         contract >> hashAddress;
 
                         /* Verify the operation rules. */
-                        const Contract transfer = LLD::Ledger->ReadContract(hashTx, nContract);
+                        const Contract transfer = LLD::Ledger->ReadContract(hashTx, nContract, nFlags);
                         if(!Claim::Verify(contract, transfer))
                             return false;
 
@@ -707,7 +717,7 @@ namespace TAO
                         contract >> nContract;
 
                         /* Verify the operation rules. */
-                        const Contract debit = LLD::Ledger->ReadContract(hashTx, nContract);
+                        const Contract debit = LLD::Ledger->ReadContract(hashTx, nContract, nFlags);
                         if(!Credit::Verify(contract, debit, nFlags))
                             return false;
 

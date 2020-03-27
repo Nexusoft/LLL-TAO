@@ -701,7 +701,7 @@ TEST_CASE( "Validate Primitive Tests", "[validate]" )
 
             //check for error
             std::string error = debug::GetLastError();
-            REQUIRE(error.find("failed to get l-value") != std::string::npos);
+            REQUIRE(error.find("OP::CLAIM: conditions not satisfied") != std::string::npos);
         }
 
 

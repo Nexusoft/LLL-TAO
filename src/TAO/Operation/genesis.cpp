@@ -20,6 +20,8 @@ ________________________________________________________________________________
 #include <TAO/Register/types/address.h>
 #include <TAO/Register/types/object.h>
 
+#include <TAO/Ledger/include/constants.h>
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -73,7 +75,8 @@ namespace TAO
                 return debug::error(FUNCTION, "cannot create genesis with already existing stake");
 
             /* Check that there is no trust. */
-            if(trust.get<uint64_t>("trust") != 0)
+            if(trust.get<uint64_t>("trust") !=
+            ((config::fTestNet.load() && config::GetBoolArg("-trustboost")) ? TAO::Ledger::ONE_YEAR : 0))
                 return debug::error(FUNCTION, "cannot create genesis with already existing trust");
 
             /* Check available balance to stake. */

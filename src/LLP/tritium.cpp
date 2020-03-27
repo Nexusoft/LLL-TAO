@@ -48,6 +48,11 @@ ________________________________________________________________________________
 #include <iomanip>
 #include <bitset>
 
+/* We use this to setup the node to start syncing from orphans with no transactions sent with blocks.
+ * This helps with stress testing and debugging the missing transaction algorithms
+ */
+//#define DEBUG_MISSING
+
 namespace LLP
 {
 
@@ -110,8 +115,8 @@ namespace LLP
 
 
     /** Constructor **/
-    TritiumNode::TritiumNode(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS)
-    : BaseConnection<TritiumPacket>(SOCKET_IN, DDOS_IN, isDDOS)
+    TritiumNode::TritiumNode(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool fDDOSIn)
+    : BaseConnection<TritiumPacket>(SOCKET_IN, DDOS_IN, fDDOSIn)
     , fAuthorized(false)
     , fInitialized(false)
     , nSubscriptions(0)
@@ -136,8 +141,8 @@ namespace LLP
 
 
     /** Constructor **/
-    TritiumNode::TritiumNode(DDOS_Filter* DDOS_IN, bool isDDOS)
-    : BaseConnection<TritiumPacket>(DDOS_IN, isDDOS)
+    TritiumNode::TritiumNode(DDOS_Filter* DDOS_IN, bool fDDOSIn)
+    : BaseConnection<TritiumPacket>(DDOS_IN, fDDOSIn)
     , fAuthorized(false)
     , fInitialized(false)
     , nSubscriptions(0)
@@ -174,7 +179,7 @@ namespace LLP
         {
             case EVENT_CONNECT:
             {
-                debug::log(1, NODE, fOUTGOING ? "Outgoing" : "Incoming", " Connected at timestamp ",   runtime::unifiedtimestamp());
+                debug::log(1, NODE, fOUTGOING ? "Outgoing" : "Incoming", " Connection Established");
 
                 /* Set the laset ping time. */
                 nLastPing    = runtime::unifiedtimestamp();
@@ -243,8 +248,8 @@ namespace LLP
                     PushMessage(ACTION::PING, nNonce);
 
                     /* Rebroadcast transactions. */
-                    //if(!TAO::Ledger::ChainState::Synchronizing())
-                    //    Legacy::Wallet::GetInstance().ResendWalletTransactions();
+                    if(!TAO::Ledger::ChainState::Synchronizing())
+                        Legacy::Wallet::GetInstance().ResendWalletTransactions();
                 }
 
 
@@ -339,7 +344,7 @@ namespace LLP
 
                 /* Debug output for node disconnect. */
                 debug::log(1, NODE, fOUTGOING ? "Outgoing" : "Incoming",
-                    " Disconnected (", strReason, ") at timestamp ", runtime::unifiedtimestamp());
+                    " Disconnected (", strReason, ")");
 
                 /* Update address status. */
                 if(TRITIUM_SERVER->pAddressManager)
@@ -349,7 +354,7 @@ namespace LLP
                 if(nCurrentSession == TAO::Ledger::nSyncSession.load())
                 {
                     /* Debug output for node disconnect. */
-                    debug::log(0, NODE, "Sync Node Disconnected (", strReason, ") at timestamp ", runtime::unifiedtimestamp());
+                    debug::log(0, NODE, "Sync Node Disconnected (", strReason, ")");
 
                     SwitchNode();
                 }
@@ -442,14 +447,24 @@ namespace LLP
 
                     /* Add to address manager. */
                     if(TRITIUM_SERVER->pAddressManager)
-                        TRITIUM_SERVER->pAddressManager->AddAddress(GetAddress());
+                        TRITIUM_SERVER->pAddressManager->AddAddress(GetAddress(), ConnectState::CONNECTED);
                 }
+
+                /* Send Auth immediately after version and before any other messages*/
+                //Auth(true);
+
+                #ifdef DEBUG_MISSING
+                fSynchronized.store(true);
+                #endif
 
                 /* If not synchronized and making an outbound connection, start the sync */
                 if(!fSynchronized.load())
                 {
+                    /* See if this is a local testnet, in which case we will allow a sync on incoming or outgoing */
+                    bool fLocalTestnet = config::fTestNet.load() && !config::GetBoolArg("-dns", true);
+
                     /* Start sync on startup, or override any legacy syncing currently in process. */
-                    if(TAO::Ledger::nSyncSession.load() == 0 && !Incoming())
+                    if(TAO::Ledger::nSyncSession.load() == 0 && (!Incoming() || fLocalTestnet))
                     {
                         /* Set the sync session-id. */
                         TAO::Ledger::nSyncSession.store(nCurrentSession);
@@ -2048,7 +2063,7 @@ namespace LLP
                                 TRITIUM_SERVER->pAddressManager->AddAddress(addr);
 
                             /* Debug output. */
-                            debug::log(0, NODE, "ACTION::NOTIFY: ADDRESS ", addr.ToString());
+                            debug::log(0, NODE, "ACTION::NOTIFY: ADDRESS ", addr.ToStringIP());
 
                             break;
                         }
@@ -2202,7 +2217,9 @@ namespace LLP
                         {
                             /* Ask for list of blocks. */
                             PushMessage(ACTION::LIST,
+                                #ifndef DEBUG_MISSING
                                 uint8_t(SPECIFIER::TRANSACTIONS),
+                                #endif
                                 uint8_t(TYPES::BLOCK),
                                 uint8_t(TYPES::LOCATOR),
                                 TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
@@ -2247,21 +2264,36 @@ namespace LLP
                                 debug::log(0, FUNCTION, "requesting missing tx ", tx.second.SubString());
                             }
 
-                            /* Ask for the block again last TODO: this block should be cached for further optimization. */
+                            /* Check for repeated missing loops. */
+                            if(DDOS)
+                            {
+                                /* Iterate a failure for missing transactions. */
+                                nConsecutiveFails += block.vMissing.size();
+
+                                /* Bump DDOS score. */
+                                DDOS->rSCORE += (block.vMissing.size() * 10);
+                            }
+
+
+                            /* Ask for the block again last TODO: this can be cached for further optimization. */
                             ssResponse << uint8_t(TYPES::BLOCK) << block.hashMissing;
 
                             /* Push the packet response. */
-                            WritePacket(NewMessage(ACTION::GET, ssResponse));
+                            if(ssResponse.size() != 0)
+                                WritePacket(NewMessage(ACTION::GET, ssResponse));
                         }
 
                         /* Check for duplicate and ask for previous block. */
                         if(!(nStatus & TAO::Ledger::PROCESS::DUPLICATE)
                         && !(nStatus & TAO::Ledger::PROCESS::IGNORED)
+                        && !(nStatus & TAO::Ledger::PROCESS::INCOMPLETE)
                         &&  (nStatus & TAO::Ledger::PROCESS::ORPHAN))
                         {
                             /* Ask for list of blocks. */
                             PushMessage(ACTION::LIST,
+                                #ifndef DEBUG_MISSING
                                 uint8_t(SPECIFIER::TRANSACTIONS),
+                                #endif
                                 uint8_t(TYPES::BLOCK),
                                 uint8_t(TYPES::LOCATOR),
                                 TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
@@ -2414,7 +2446,7 @@ namespace LLP
                         ssPacket >> tx;
 
                         /* Accept into memory pool. */
-                        if(TAO::Ledger::mempool.Accept(tx))
+                        if(TAO::Ledger::mempool.Accept(tx, this))
                         {
                             /* Relay the transaction notification. */
                             TRITIUM_SERVER->Relay
@@ -2479,11 +2511,11 @@ namespace LLP
                 }
 
                 /* Check for failure limit on node. */
-                if(nConsecutiveFails >= 500)
+                if(nConsecutiveFails >= 1000)
                     return debug::drop(NODE, "TX::node reached failure limit");
 
                 /* Check for orphan limit on node. */
-                if(nConsecutiveOrphans >= 500)
+                if(nConsecutiveOrphans >= 1000)
                     return debug::drop(NODE, "TX::node reached ORPHAN limit");
 
                 break;

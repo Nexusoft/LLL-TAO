@@ -11,39 +11,53 @@
 ____________________________________________________________________________________________*/
 
 #include <LLP/types/time.h>
-
-#include <Util/include/convert.h>
+#include <LLP/include/trust_address.h>
+#include <LLP/include/global.h>
+#include <LLP/include/manager.h>
 #include <LLP/templates/events.h>
 #include <LLP/templates/ddos.h>
+
+#include <TAO/Ledger/include/timelocks.h>
+
+#include <Util/include/convert.h>
 
 /* The location of the unified time seed. To enable a Unified Time System push data to this variable. */
 std::atomic<int32_t> UNIFIED_AVERAGE_OFFSET;
 
 namespace LLP
 {
+
+    /** Mutex to lock time data adjustments. **/
+    std::mutex TIME_MUTEX;
+
+
+    /** Map to keep track of current node's time data samples from other nodes. **/
     std::map<std::string, int32_t> MAP_TIME_DATA;
 
 
     /** Constructor **/
     TimeNode::TimeNode()
-    : Connection()
-    , nSamples()
+    : Connection ( )
+    , nSamples   ( )
+    , nRequests  (0)
     {
     }
 
 
     /** Constructor **/
-    TimeNode::TimeNode(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS)
-    : Connection(SOCKET_IN, DDOS_IN, isDDOS)
-    , nSamples()
+    TimeNode::TimeNode(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool fDDOSIn)
+    : Connection (SOCKET_IN, DDOS_IN, fDDOSIn)
+    , nSamples   ( )
+    , nRequests  (0)
     {
     }
 
 
     /** Constructor **/
-    TimeNode::TimeNode(DDOS_Filter* DDOS_IN, bool isDDOS)
-    : Connection(DDOS_IN, isDDOS)
-    , nSamples()
+    TimeNode::TimeNode(DDOS_Filter* DDOS_IN, bool fDDOSIn)
+    : Connection (DDOS_IN, fDDOSIn)
+    , nSamples   ( )
+    , nRequests  (0)
     {
     }
 
@@ -88,8 +102,8 @@ namespace LLP
                     DDOS->Ban("INVALID SIZE: GET_OFFSET");
 
                 /* Check for expected get time sizes. */
-                if(PACKET.HEADER == GET_TIME && PACKET.LENGTH > 4)
-                    DDOS->Ban("INVALID SIZE: GET_TIME");
+                if(PACKET.HEADER == GET_TIME)
+                    DDOS->Ban("INVALID PACKET: GET_TIME");
 
                 /* Return if banned. */
                 if(DDOS->Banned())
@@ -110,22 +124,35 @@ namespace LLP
         if(EVENT == EVENT_CONNECT)
         {
             /* Only send time seed when outgoing connection. */
-            if(fOUTGOING)
+            if(!Incoming())
             {
-                /* Reset the Timer and request another sample. */
-                Packet REQUEST;
-                REQUEST.HEADER = GET_OFFSET;
-                REQUEST.LENGTH = 4;
-                REQUEST.DATA = convert::uint2bytes(static_cast<uint32_t>(runtime::timestamp()));
+                /* Request for a new sample. */
+                GetSample();
+            }
+            else
+            {
+                LOCK(TIME_MUTEX);
 
-                WritePacket(REQUEST);
+                /* Check for time server that is still initializing. */
+                if(MAP_TIME_DATA.size() <= (config::fTestNet.load() ? 0 : 1))
+                {
+                    debug::log(0, FUNCTION, "REJECT: no time samples available");
+
+                    Disconnect();
+                    return;
+                }
             }
         }
 
         /* On Disconnect Event, Reduce the Connection Count for Daemon */
         if(EVENT == EVENT_DISCONNECT)
-            return;
+        {
+            /* Add address to time server as dropped. */
+            if(!Incoming() && TIME_SERVER->pAddressManager)
+                TIME_SERVER->pAddressManager->AddAddress(GetAddress(), ConnectState::DROPPED);
 
+            return;
+        }
     }
 
 
@@ -152,36 +179,23 @@ namespace LLP
             return true;
         }
 
-        if(PACKET.HEADER == GET_TIME)
-        {
-            uint32_t nTimestamp = static_cast<uint32_t>(runtime::unifiedtimestamp());
-
-            Packet RESPONSE;
-            RESPONSE.HEADER = TIME_DATA;
-            RESPONSE.LENGTH = 4;
-            RESPONSE.DATA = convert::uint2bytes(nTimestamp);
-
-            debug::log(4, NODE, "Sent time sample ", nTimestamp);
-
-            WritePacket(RESPONSE);
-            return true;
-        }
-
+        /* Disable GET_ADDRESS for now. */
         if(PACKET.HEADER == GET_ADDRESS)
             return true;
 
         /* Add a New Sample each Time Packet Arrives. */
         if(PACKET.HEADER == TIME_OFFSET)
         {
+            /* Make sure request counter hasn't exceeded requested offsets. */
+            if(--nRequests < 0)
+            {
+                DDOS->Ban("UNSOLICTED TIME OFFSET");
+                return false;
+            }
+
             /* Calculate this particular sample. */
             int32_t nOffset = convert::bytes2int(PACKET.DATA);
             nSamples.Add(nOffset);
-
-            /* Reset the Timer and request another sample. */
-            Packet REQUEST;
-            REQUEST.HEADER = GET_OFFSET;
-            REQUEST.LENGTH = 4;
-            REQUEST.DATA = convert::uint2bytes(static_cast<uint32_t>(runtime::timestamp()));
 
             /* Verbose debug output. */
             debug::log(2, NODE, "Added Sample ", nOffset, " | Seed ", GetAddress().ToStringIP());
@@ -189,43 +203,30 @@ namespace LLP
             /* Close the Connection Gracefully if Received all Packets. */
             if(nSamples.Samples() >= 5)
             {
-                MAP_TIME_DATA[GetAddress().ToStringIP()] = nSamples.Majority();
-
-                /* Update Iterators and Flags. */
-                if((MAP_TIME_DATA.size() > 0))
                 {
-                    /* Majority Object to check for consensus on time samples. */
-                    CMajority<int32_t> UNIFIED_MAJORITY;
+                    LOCK(TIME_MUTEX);
 
-                    /* Info tracker to see the total samples. */
-                    std::map<int32_t, uint32_t> TOTAL_SAMPLES;
-
-                    /* Iterate the Time Data map to find the majority time seed. */
-                    for(auto it=MAP_TIME_DATA.begin(); it != MAP_TIME_DATA.end(); ++it)
-                    {
-                        /* Update the Unified Majority. */
-                        UNIFIED_MAJORITY.Add(it->second);
-
-                        /* Increase the count per samples (for debugging only). */
-                        if(!TOTAL_SAMPLES.count(it->second))
-                            TOTAL_SAMPLES[it->second] = 1;
-                        else
-                            TOTAL_SAMPLES[it->second] ++;
-                    }
-
-                    /* Set the Unified Average to the Majority Seed. */
-                    UNIFIED_AVERAGE_OFFSET.store(UNIFIED_MAJORITY.Majority());
-
-                    /* Log the debug output. */
-                    debug::log(0, NODE, MAP_TIME_DATA.size(), " Total Samples | ", nSamples.Majority(), " Offset (", TOTAL_SAMPLES[nSamples.Majority()], ") | ", UNIFIED_AVERAGE_OFFSET.load(), " Majority (", TOTAL_SAMPLES[UNIFIED_AVERAGE_OFFSET.load()], ") | ", runtime::unifiedtimestamp());
+                    /* Add new time data by IP to the time data map. */
+                    MAP_TIME_DATA[GetAddress().ToStringIP()] = nSamples.Majority();
                 }
 
+                /* Set the Unified Average to the Majority Seed. */
+                UNIFIED_AVERAGE_OFFSET.store(TimeNode::GetOffset());
+
+                /* Log the debug output. */
+                debug::log(0, NODE, MAP_TIME_DATA.size(),
+                    " Total Samples | ", nSamples.Majority(),
+                    " Offset | ", UNIFIED_AVERAGE_OFFSET.load(),
+                    " Majority | ", runtime::unifiedtimestamp());
+
+                /* Reset node's samples. */
                 nSamples.clear();
 
                 return false;
             }
 
-            WritePacket(REQUEST);
+            /* Get a new sample. */
+            GetSample();
 
             return true;
         }
@@ -233,4 +234,41 @@ namespace LLP
         return true;
     }
 
+
+    /* Get a time sample from the time server. */
+    void TimeNode::GetSample()
+    {
+        /* Reset the Timer and request another sample. */
+        Packet REQUEST;
+        REQUEST.HEADER = GET_OFFSET;
+        REQUEST.LENGTH = 4;
+        REQUEST.DATA = convert::uint2bytes(static_cast<uint32_t>(runtime::timestamp()));
+
+        /* Write the packet to socket streams. */
+        WritePacket(REQUEST);
+
+        /* Increment packet counter. */
+        ++nRequests;
+    }
+
+
+    /* Get the current time offset from the unified majority. */
+    int32_t TimeNode::GetOffset()
+    {
+        /* Majority Object to check for consensus on time samples. */
+        CMajority<int32_t> UNIFIED_MAJORITY;
+
+        {
+            LOCK(TIME_MUTEX);
+
+            /* Iterate the Time Data map to find the majority time seed. */
+            for(auto it = MAP_TIME_DATA.begin(); it != MAP_TIME_DATA.end(); ++it)
+            {
+                /* Update the Unified Majority. */
+                UNIFIED_MAJORITY.Add(it->second);
+            }
+        }
+
+        return UNIFIED_MAJORITY.Majority();
+    }
 }

@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/types/contract.h>
 
 #include <TAO/Ledger/types/transaction.h>
+#include <TAO/Ledger/include/timelocks.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -34,6 +35,7 @@ namespace TAO
         , hashCaller  (0)
         , nTimestamp  (0)
         , hashTx      (0)
+        , nVersion    (TAO::Ledger::CurrentTransactionVersion())
         {
         }
 
@@ -46,6 +48,7 @@ namespace TAO
         , hashCaller  (contract.hashCaller)
         , nTimestamp  (contract.nTimestamp)
         , hashTx      (contract.hashTx)
+        , nVersion    (contract.nVersion)
         {
         }
 
@@ -58,6 +61,7 @@ namespace TAO
         , hashCaller  (std::move(contract.hashCaller))
         , nTimestamp  (std::move(contract.nTimestamp))
         , hashTx      (std::move(contract.hashTx))
+        , nVersion    (std::move(contract.nVersion))
         {
         }
 
@@ -71,6 +75,7 @@ namespace TAO
             hashCaller  = contract.hashCaller;
             nTimestamp  = contract.nTimestamp;
             hashTx      = contract.hashTx;
+            nVersion    = contract.nVersion;
 
             return *this;
         }
@@ -85,6 +90,7 @@ namespace TAO
             hashCaller  = std::move(contract.hashCaller);
             nTimestamp  = std::move(contract.nTimestamp);
             hashTx      = std::move(contract.hashTx);
+            nVersion    = std::move(contract.nVersion);
 
             return *this;
         }
@@ -107,6 +113,7 @@ namespace TAO
             hashCaller = tx->hashGenesis;
             nTimestamp = tx->nTimestamp;
             hashTx     = tx->GetHash();
+            nVersion   = tx->nVersion;
         }
 
         /* Get the primitive operation. */
@@ -160,6 +167,13 @@ namespace TAO
         const uint512_t& Contract::Hash() const
         {
             return hashTx;
+        }
+
+
+        /* Get the version of calling tx */
+        const uint32_t& Contract::Version() const
+        {
+            return nVersion;
         }
 
 
@@ -543,6 +557,13 @@ namespace TAO
         const std::vector<uint8_t>& Contract::Operations() const
         {
             return ssOperation.Bytes();
+        }
+
+
+        /* Get the raw conditions bytes from the contract.*/
+        const std::vector<uint8_t>& Contract::Conditions() const
+        {
+            return ssCondition.Bytes();
         }
 
 

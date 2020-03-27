@@ -27,7 +27,6 @@ The following methods are currently supported by this API
 [`list/account/transactions`](#listaccounttransactions)    
 [`get/stakeinfo`](#getstakeinfo)    
 [`set/stake`](#setstake)    
-[`migrate/stake`](#migratestake)  
 [`migrate/accounts`](#migrateaccounts)    
 [`get/balances`](#getbalances)    
 [`list/trustaccounts`](#listtrustaccounts)
@@ -599,7 +598,7 @@ To remove a stake change request, you can either set an expiration time, or set 
 
 `session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) owns the trust account. For single-user API mode the session should not be supplied.
 
-`amount` : The amount of NXS to add to stake.
+`amount` : The new amount of NXS to stake. 
 
 `expires` : Optional field to assign the number of seconds until the stake change request expires. A value of zero indicates it does not expire. Default is zero if not passed. 
 
@@ -616,42 +615,6 @@ To remove a stake change request, you can either set an expiration time, or set 
 
 `txid` : The ID (hash) of the transaction that includes the stake change.
 
-***
-
-# `migrate/stake`
-
-Initiates the process to migrate a legacy trust key to a signature chain's trust account. This process will migrate the current trust key balance and accumulated trust.
-
-You can only migrate to a new, previously unused trust account. Check get/stakeinfo to verify that the value returned for "new" is true. 
-
-The transaction created by migrate/stake is a special form of debit, and it will show up in the output of users/list/notifications to be claimed in the same manner as a normal debit. Issuing a credit against this debit finalizes the migrate and completes the trust key migration process.
-
-
-### Endpoint:
-
-`/finance/migrate/stake`
-
-
-### Parameters:
-
-`pin` : The PIN for the signature chain.
-
-`session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) owns the trust account. For single-user API mode the session should not be supplied.
-
-`walletpassphrase` : Optional field to provide the wallet passphrase. This value is required if the wallet is not currently unlocked.
-
-
-### Return value JSON object:
-```
-{
-    "txid": "318b86d2c208618aaa13946a3b75f14472ebc0cce9e659f2830b17e854984b55606738f689d886800f21ffee68a3e5fd5a29818e88f8c5b13b9f8ae67739903d"
-}
-```
-
-
-### Return values:
-
-`txid` : The ID (hash) of the migrate transaction.
 
 ***
 

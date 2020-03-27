@@ -33,12 +33,22 @@ namespace TAO
         {
             std::string strMethodRewritten = strMethod;
 
+            /* Optional name of address that comes after the method */
+            std::string strNameOrAddress;
+
+            /* Edge case for assets/get/schema/nameoraddress */
+            if(strMethod.find("get/schema/") != std::string::npos)
+            {
+                strMethodRewritten = "get/schema";
+
+                /* Get the name or address that comes after the assets/get/schema part */
+                strNameOrAddress = strMethod.substr(11); 
+            }
+
             /* support passing the asset name after the method e.g. get/asset/myasset */
             std::size_t nPos = strMethod.find("/asset/");
             if(nPos != std::string::npos)
             {
-                std::string strNameOrAddress;
-
                 /* Edge case for /assets/list/asset/history/assetname */
                 if(strMethod == "list/asset/history")
                     return strMethod;
@@ -72,18 +82,19 @@ namespace TAO
                     strNameOrAddress = strNameOrAddress.substr(0, nPos);
                     jsonParams["fieldname"] = strFieldName;
                 }
+            }
 
                 
-                /* Edge case for claim/asset/txid */
-                if(strMethodRewritten == "claim/asset")
-                    jsonParams["txid"] = strNameOrAddress;
-                /* Determine whether the name/address is a valid register address and set the name or address parameter accordingly */
-                else if(IsRegisterAddress(strNameOrAddress))
-                    jsonParams["address"] = strNameOrAddress;
-                else
-                    jsonParams["name"] = strNameOrAddress;
-                    
-            }
+            /* Edge case for claim/asset/txid */
+            if(strMethodRewritten == "claim/asset")
+                jsonParams["txid"] = strNameOrAddress;
+            /* Determine whether the name/address is a valid register address and set the name or address parameter accordingly */
+            else if(IsRegisterAddress(strNameOrAddress))
+                jsonParams["address"] = strNameOrAddress;
+            else
+                jsonParams["name"] = strNameOrAddress;
+                
+        
 
             return strMethodRewritten;
         }
@@ -99,6 +110,7 @@ namespace TAO
             mapFunctions["claim/asset"]              = Function(std::bind(&Assets::Claim,  this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/asset/history"]       = Function(std::bind(&Assets::History,   this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["tokenize/asset"]           = Function(std::bind(&Assets::Tokenize,  this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["get/schema"]                = Function(std::bind(&Assets::GetSchema,       this, std::placeholders::_1, std::placeholders::_2));
         }
     }
 }

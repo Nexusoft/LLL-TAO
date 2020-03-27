@@ -139,7 +139,7 @@ namespace LLP
          *  @return true if the socket is in a valid state.
          *
          **/
-        bool Attempt(const BaseAddress &addrDest, uint32_t nTimeout = 5000);
+        bool Attempt(const BaseAddress &addrDest, uint32_t nTimeout = 3000);
 
 
         /** Available

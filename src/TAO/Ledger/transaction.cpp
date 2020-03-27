@@ -59,7 +59,7 @@ namespace TAO
         /* Default Constructor. */
         Transaction::Transaction()
         : vContracts   ( )
-        , nVersion     (1)
+        , nVersion     (TAO::Ledger::CurrentTransactionVersion())
         , nSequence    (0)
         , nTimestamp   (runtime::unifiedtimestamp())
         , hashNext     (0)
@@ -289,8 +289,8 @@ namespace TAO
         bool Transaction::Check() const
         {
             /* Check transaction version */
-            if(nVersion != 1)
-                return debug::error(FUNCTION, "invalid transaction version");
+            if(!TransactionVersionActive(nTimestamp, nVersion))
+                return debug::error(FUNCTION, "invalid transaction version ", nVersion);
 
             /* Check for genesis valid numbers. */
             if(hashGenesis == 0)
@@ -301,7 +301,7 @@ namespace TAO
                 return debug::error(FUNCTION, "nextHash cannot be zero");
 
             /* Check the timestamp. */
-            if(nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
+            if(nTimestamp > runtime::unifiedtimestamp() + runtime::maxdrift())
                 return debug::error(FUNCTION, "transaction timestamp too far in the future ", nTimestamp);
 
             /* Check for empty signatures. */
@@ -309,7 +309,7 @@ namespace TAO
                 return debug::error(FUNCTION, "transaction with empty signature");
 
             /* Check the genesis first byte. */
-            if(hashGenesis.GetType() != (config::fTestNet.load() ? 0xa2 : 0xa1))
+            if(hashGenesis.GetType() != GenesisType())
                 return debug::error(FUNCTION, "genesis using incorrect leading byte");
 
             /* Check for max contracts. */
@@ -562,7 +562,7 @@ namespace TAO
 
                 /* Check for last hash consistency. */
                 if(hashLast != hashLastClaimed)
-                    return debug::error(FUNCTION, "list stake ", hashLastClaimed.SubString(), " mismatch ", hashLast.SubString());
+                    return debug::error(FUNCTION, "last stake ", hashLastClaimed.SubString(), " mismatch ", hashLast.SubString());
 
                 /* Get pre-state trust account values */
                 nTrustPrev = account.get<uint64_t>("trust");
@@ -582,11 +582,11 @@ namespace TAO
                 nBlockAge = statePrev.GetBlockTime() - stateLast.GetBlockTime();
 
                 /* Check for previous version 7 and current version 8. */
-                //uint64_t nTrustRet = 0;
-                //if(pblock->nVersion == 8 && stateLast.nVersion == 7 && !CheckConsistency(hashLast, nTrustRet))
-                //    nTrust = GetTrustScore(nTrustRet, nBlockAge, nStake, nStakeChange, pblock->nVersion);
-                //else //when consistency is correct, calculate like normal
-                nTrust = GetTrustScore(nTrustPrev, nBlockAge, nStake, nStakeChange, pblock->nVersion);
+                uint64_t nTrustRet = 0;
+                if(pblock->nVersion == 8 && stateLast.nVersion == 7 && !CheckConsistency(hashLast, nTrustRet))
+                    nTrust = GetTrustScore(nTrustRet, nBlockAge, nStake, nStakeChange, pblock->nVersion);
+                else //when consistency is correct, calculate like normal
+                    nTrust = GetTrustScore(nTrustPrev, nBlockAge, nStake, nStakeChange, pblock->nVersion);
 
                 /* Validate the trust score calculation */
                 if(nClaimedTrust != nTrust)
@@ -761,7 +761,7 @@ namespace TAO
         bool Transaction::Connect(const uint8_t nFlags, const BlockState* pblock) const
         {
             /* Get the transaction's hash. */
-            uint512_t hash = GetHash();
+            const uint512_t hash = GetHash();
 
             /* flag indicating that transaction fees should apply, depending on the time since the last transaction */
             bool fApplyTxFee = false;
@@ -772,22 +772,26 @@ namespace TAO
             /* Check for first. */
             if(IsFirst())
             {
-                /* Check for ambassador / developer sigchains. */
-                if(!config::fTestNet.load())
+                /* Check ambassador sigchains based on all versions, not the smaller subset of versions. */
+                for(uint32_t nSwitchVersion = 7; nSwitchVersion <= CurrentBlockVersion(); ++nSwitchVersion)
                 {
+                    /* Check switch time-lock for version 8. */
+                    if(runtime::unifiedtimestamp() < StartBlockTimelock(nSwitchVersion))
+                        continue;
+
                     /* Check for ambassador. */
-                    if(AMBASSADOR.find(hashGenesis) != AMBASSADOR.end())
+                    if(Ambassador(nSwitchVersion).find(hashGenesis) != Ambassador(nSwitchVersion).end())
                     {
                         /* Debug logging. */
                         debug::log(1, FUNCTION, "Processing AMBASSADOR sigchain ", hashGenesis.SubString());
 
                         /* Check that the hashes match. */
-                        if(AMBASSADOR.at(hashGenesis).first != PrevHash())
+                        if(Ambassador(nSwitchVersion).at(hashGenesis).first != PrevHash())
                             return debug::error(FUNCTION, "AMBASSADOR sigchain using invalid credentials");
                     }
 
                     /* Check for developer. */
-                    if(DEVELOPER.find(hashGenesis) != DEVELOPER.end())
+                    if(Developer(nSwitchVersion).find(hashGenesis) != Developer(nSwitchVersion).end())
                     {
                         /* Debug logging. */
                         debug::log(1, FUNCTION, "Processing DEVELOPER sigchain ", hashGenesis.SubString());
@@ -798,32 +802,6 @@ namespace TAO
                     }
                 }
 
-
-                /* Check for ambassador / developer sigchains. */
-                if(config::fTestNet.load())
-                {
-                    /* Check for ambassador. */
-                    if(AMBASSADOR_TESTNET.find(hashGenesis) != AMBASSADOR_TESTNET.end())
-                    {
-                        /* Debug logging. */
-                        debug::log(1, FUNCTION, "Processing TESTNET AMBASSADOR sigchain ", hashGenesis.SubString());
-
-                        /* Check that the hashes match. */
-                        if(AMBASSADOR_TESTNET.at(hashGenesis).first != PrevHash())
-                            return debug::error(FUNCTION, "TESTNET AMBASSADOR sigchain using invalid credentials");
-                    }
-
-                    /* Check for developer. */
-                    if(DEVELOPER_TESTNET.find(hashGenesis) != DEVELOPER_TESTNET.end())
-                    {
-                        /* Debug logging. */
-                        debug::log(1, FUNCTION, "Processing TESTNET DEVELOPER sigchain ", hashGenesis.SubString());
-
-                        /* Check that the hashes match. */
-                        if(DEVELOPER_TESTNET.at(hashGenesis).first != PrevHash())
-                            return debug::error(FUNCTION, "TESTNET DEVELOPER sigchain using invalid credentials");
-                    }
-                }
 
                 /* Write specific transaction flags. */
                 if(nFlags == TAO::Ledger::FLAGS::BLOCK)
@@ -879,10 +857,6 @@ namespace TAO
                 /* Check the previous genesis. */
                 if(txPrev.hashGenesis != hashGenesis)
                     return debug::error(FUNCTION, "genesis hash broken chain");
-
-                /* Check previous transaction from disk hash. */
-                if(txPrev.GetHash() != hashPrevTx) //NOTE: this is being extra paranoid. Consider removing.
-                    return debug::error(FUNCTION, "prev transaction prevhash mismatch");
             }
 
             /* Keep for dependants. */
@@ -895,13 +869,13 @@ namespace TAO
                 /* Check for dependants. */
                 if(contract.Dependant(hashPrev, nContract))
                 {
-                    /* Check that the previous transaction is indexed. */
-                    if(!LLD::Ledger->HasIndex(hashPrev))
-                        return debug::error(FUNCTION, hashPrev.SubString(), " not indexed");
-
                     /* Check for confirmations when on a block. */
                     if(nFlags == FLAGS::BLOCK || nFlags == FLAGS::MINER)
                     {
+                        /* Check that the previous transaction is indexed. */
+                        if(!LLD::Ledger->HasIndex(hashPrev))
+                            return debug::error(FUNCTION, hashPrev.SubString(), " not indexed");
+
                         /* Read previous transaction from disk. */
                         const TAO::Operation::Contract dependant = LLD::Ledger->ReadContract(hashPrev, nContract, nFlags);
                         switch(dependant.Primitive())
@@ -915,7 +889,7 @@ namespace TAO
                                     return debug::error(FUNCTION, "failed to read confirmations for coinbase");
 
                                 /* Check that the previous TX has reached sig chain maturity */
-                                if(nConfirms + 1 < MaturityCoinBase((pblock ? *pblock : TAO::Ledger::ChainState::stateBest.load())))
+                                if(nConfirms + 1 < MaturityCoinBase((pblock ? *pblock : ChainState::stateBest.load())))
                                     return debug::error(FUNCTION, "coinbase is immature ", nConfirms);
 
                                 break;
@@ -958,6 +932,10 @@ namespace TAO
                 if(nCost > nFees)
                     return debug::error(FUNCTION, "not enough fees supplied ", nFees);
             }
+
+            /* Write the last to disk. */
+            if(nFlags == FLAGS::BLOCK && !LLD::Ledger->WriteLast(hashGenesis, hash))
+                return debug::error(FUNCTION, "failed to write last hash");
 
             return true;
         }

@@ -123,7 +123,7 @@ int main(int argc, char** argv)
     LLP::TIME_SERVER = new LLP::Server<LLP::TimeNode>(
         nPort,
         10,
-        30,
+        10, //Timeout set to 10s
         true,
         1,
         10,
@@ -132,7 +132,7 @@ int main(int argc, char** argv)
         true,
         config::GetBoolArg(std::string("-meters"), false),
         true,
-        10000);
+        60000);
 
     /* Get the port for the Core API Server. */
     nPort = static_cast<uint16_t>(config::GetArg(std::string("-rpcport"), config::fTestNet.load() ? TESTNET_RPC_PORT : MAINNET_RPC_PORT));

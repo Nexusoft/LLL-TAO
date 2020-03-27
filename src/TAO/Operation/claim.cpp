@@ -53,7 +53,7 @@ namespace TAO
         bool Claim::Execute(TAO::Register::State &state, const uint256_t& hashClaim, const uint64_t nTimestamp)
         {
             /* Make sure the register claim is in SYSTEM pending from a transfer. */
-            if(state.hashOwner != 0)
+            if(state.hashOwner.GetType() != TAO::Ledger::GENESIS::SYSTEM)
                 return debug::error(FUNCTION, "can't claim untransferred register");
 
             /* Set the new owner of the register. */

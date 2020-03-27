@@ -238,7 +238,17 @@ namespace TAO
                         contract >> nType;
 
                         /* Register custody in SYSTEM ownership until claimed, unless the ForceTransfer flag has been set */
-                        uint256_t hashNewOwner = (nType == TAO::Operation::TRANSFER::FORCE ? hashTransfer : 0);
+                        uint256_t hashNewOwner = 0; //default to SYSTEM
+                        if(nType == TAO::Operation::TRANSFER::FORCE)
+                            hashNewOwner = hashTransfer;
+
+                        /* Handle version switch for contract to transfer to 0x00 leading genesis-id. */
+                        else if(contract.Version() > 1) //this allows us to iterate history while getting properties of transfer to system
+                        {
+                            /* Set the current owner to transfer recipient. */
+                            hashNewOwner = contract.Caller();
+                            hashNewOwner.SetType(Ledger::GENESIS::SYSTEM); //this byte (0x00) means there is no valid owner during transfer
+                        }
 
                         /* Verify the first register code. */
                         uint8_t nState = 0;
@@ -592,7 +602,7 @@ namespace TAO
                     }
 
 
-                    /* Credit tokens to an account you own. */
+                    /* Migrate legacy trust key. */
                     case TAO::Operation::OP::MIGRATE:
                     {
                         /* Seek to address. */
@@ -743,7 +753,7 @@ namespace TAO
 
                         /* Check the state is prestate. */
                         if(nState != STATES::PRESTATE)
-                            return debug::error(FUNCTION, "OP::DEBIT: register state not in pre-state");
+                            return debug::error(FUNCTION, "OP::LEGACY: register state not in pre-state");
 
                         /* Verify the register's prestate. */
                         State prestate;
@@ -756,15 +766,15 @@ namespace TAO
 
                         /* Read the register from database. */
                         else if(!LLD::Register->ReadState(hashAddress, object, nFlags))
-                            return debug::error(FUNCTION, "OP::DEBIT: failed to read pre-state");
+                            return debug::error(FUNCTION, "OP::LEGACY: failed to read pre-state");
 
                         /* Check that the checksums match. */
                         if(prestate != object)
-                            return debug::error(FUNCTION, "OP::DEBIT: pre-state verification failed");
+                            return debug::error(FUNCTION, "OP::LEGACY: pre-state verification failed");
 
                         /* Check contract account */
                         if(contract.Caller() != prestate.hashOwner)
-                            return debug::error(FUNCTION, "OP::DEBIT: not authorized ", contract.Caller().SubString());
+                            return debug::error(FUNCTION, "OP::LEGACY: not authorized ", contract.Caller().SubString());
 
                         /* Calculate the new operation. */
                         if(!TAO::Operation::Legacy::Execute(object, nAmount, contract.Timestamp()))

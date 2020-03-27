@@ -81,6 +81,10 @@ namespace TAO
             /** Record of legacy inputs in the mempool. **/
             std::map<Legacy::OutPoint, uint512_t> mapInputs;
 
+
+            /** Set to keep track of duplicate orphans by index. **/
+            std::set<uint512_t> setOrphansByIndex;
+
         public:
 
             /** Default Constructor. **/
@@ -137,7 +141,7 @@ namespace TAO
              *  @return true if added.
              *
              **/
-            bool Accept(const Legacy::Transaction& tx);
+            bool Accept(const Legacy::Transaction& tx, LLP::TritiumNode* pnode = nullptr);
 
 
             /** ProcessOrphans

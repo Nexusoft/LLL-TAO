@@ -94,7 +94,8 @@ namespace TAO
                 /* Only include raw and non-standard object types (assets)*/
                 if(object.nType != TAO::Register::REGISTER::OBJECT
                 && object.nType != TAO::Register::REGISTER::APPEND
-                && object.nType != TAO::Register::REGISTER::RAW)
+                && object.nType != TAO::Register::REGISTER::RAW
+                && object.nType != TAO::Register::REGISTER::READONLY)
                     throw APIException(-114, strType + "not found.");
 
                 /* parse object so that the data fields can be accessed and check that it is an asset*/

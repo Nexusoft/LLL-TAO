@@ -59,11 +59,11 @@ namespace LLP
 
 
         /** Constructor **/
-        HTTPNode(const Socket &SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false);
+        HTTPNode(const Socket &SOCKET_IN, DDOS_Filter* DDOS_IN, bool fDDOSIn = false);
 
 
         /** Constructor **/
-        HTTPNode(DDOS_Filter* DDOS_IN, bool isDDOS = false);
+        HTTPNode(DDOS_Filter* DDOS_IN, bool fDDOSIn = false);
 
 
         /** Default Destructor **/

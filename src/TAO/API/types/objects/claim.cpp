@@ -125,7 +125,8 @@ namespace TAO
                 /* Only include raw and non-standard object types */
                 if(object.nType != TAO::Register::REGISTER::OBJECT
                 && object.nType != TAO::Register::REGISTER::APPEND
-                && object.nType != TAO::Register::REGISTER::RAW)
+                && object.nType != TAO::Register::REGISTER::RAW
+                && object.nType != TAO::Register::REGISTER::READONLY)
                     continue;
 
                 /* parse object so that the data fields can be accessed */

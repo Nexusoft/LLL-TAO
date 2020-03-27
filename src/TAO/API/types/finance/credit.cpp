@@ -275,7 +275,7 @@ namespace TAO
 
                         /* Check that the coinbase was mined by the caller */
                         if(hashGenesis != user->Genesis())
-                            throw APIException(-62, "Coinbase transaction mined by different user.");
+                            continue;
 
                         /* Get the amount from the coinbase transaction. */
                         uint64_t nAmount = 0;

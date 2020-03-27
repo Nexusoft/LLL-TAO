@@ -139,7 +139,12 @@ namespace TAO
                     else
                     {
                         /* For all other register types the fee is based on the data size */
-                        nCost += std::max(TAO::Ledger::MIN_DATA_FEE,  vchData.size() * TAO::Ledger::DATA_FEE);
+
+                        /* The fee changed with transaction version 2 so need to apply version-dependent fee */
+                        if(contract.Version() == 1)
+                            nCost += std::max(TAO::Ledger::MIN_DATA_FEE,  vchData.size() * TAO::Ledger::DATA_FEE_V1);
+                        else
+                            nCost += std::max(TAO::Ledger::MIN_DATA_FEE,  vchData.size() * TAO::Ledger::DATA_FEE);
                     }
 
                     break;

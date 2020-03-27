@@ -438,7 +438,7 @@ namespace TAO
 
             /* Read the previous block from ledger. */
             if(!LLD::Ledger->ReadBlock(hashPrevBlock, state))
-                throw debug::exception(FUNCTION, "failed to read previous block state ", hashPrevBlock.SubString());
+                throw debug::exception(FUNCTION, "failed to read previous block state ", hashPrevBlock.SubString(), " at height ", nHeight);
 
             return state;
         }
@@ -541,7 +541,7 @@ namespace TAO
                             fAmbassador = true;
 
                             /* Reduce size. */
-                            nSize -= (config::fTestNet ? AMBASSADOR_TESTNET.size() : AMBASSADOR.size());
+                            nSize -= Ambassador(nVersion).size();
                         }
                     }
 
@@ -558,7 +558,7 @@ namespace TAO
                             fDeveloper = true;
 
                             /* Reduce size. */
-                            nSize -= (config::fTestNet ? DEVELOPER_TESTNET.size() : DEVELOPER.size());
+                            nSize -= Developer(nVersion).size();
                         }
                     }
 
@@ -572,8 +572,7 @@ namespace TAO
                         int64_t nBalance = stateLast.nReleasedReserve[1] - (33 * NXS_COIN); //leave 33 coins in the reserve
 
                         /* Loop through all ambassador sigchains. */
-                        for(auto it =  (config::fTestNet.load() ? AMBASSADOR_TESTNET.begin() : AMBASSADOR.begin());
-                                 it != (config::fTestNet.load() ? AMBASSADOR_TESTNET.end()   : AMBASSADOR.end()); ++it)
+                        for(auto it = Ambassador(nVersion).begin(); it != Ambassador(nVersion).end(); ++it)
                         {
                             /* Seek to Genesis */
                             tx[nContract].Seek(1, Operation::Contract::OPERATIONS, STREAM::BEGIN);
@@ -615,8 +614,7 @@ namespace TAO
                         int64_t nBalance = stateLast.nReleasedReserve[2] - (3 * NXS_COIN); //leave 3 coins in the reserve
 
                         /* Loop through the embassy sigchains. */
-                        for(auto it =  (config::fTestNet.load() ? DEVELOPER_TESTNET.begin() : DEVELOPER.begin());
-                                 it != (config::fTestNet.load() ? DEVELOPER_TESTNET.end()   : DEVELOPER.end()); ++it)
+                        for(auto it = Developer(nVersion).begin(); it != Developer(nVersion).end(); ++it)
                         {
                             /* Seek to Genesis */
                             tx[nContract].Seek(1, Operation::Contract::OPERATIONS, STREAM::BEGIN);
@@ -794,11 +792,16 @@ namespace TAO
 
 
         static uint32_t nTotalContracts = 0;
+        static runtime::stopwatch swContract;
+
+        static uint32_t nTotalInputs = 0;
+        static runtime::stopwatch swScript;
+
         bool BlockState::SetBest()
         {
-            /* Runtime calculations. */
-            runtime::timer timer;
-            timer.Start();
+            /* Reset timers for meters. */
+            swContract.reset();
+            swScript.reset();
 
             /* Get the hash. */
             uint1024_t hash = GetHash();
@@ -887,8 +890,9 @@ namespace TAO
                         LLD::Ledger->EraseBlock(state.GetHash());
                         //LLD::Ledger->EraseIndex(state.nHeight);
                     }
-                    else //don't resurrect on forkblocks
-                        vResurrect.insert(vResurrect.end(), state.vtx.rbegin(), state.vtx.rend());
+
+                    /* Resurrect transactions that were disconnected. */
+                    vResurrect.insert(vResurrect.end(), state.vtx.rbegin(), state.vtx.rend());
                 }
 
                 /* Keep track of mempool transactions to delete. */
@@ -918,37 +922,57 @@ namespace TAO
                     /* Check for tritium transctions. */
                     if(proof->first == TRANSACTION::TRITIUM)
                     {
-                        /* Make sure the transaction is on disk. */
-                        TAO::Ledger::Transaction tx;
-                        if(!LLD::Ledger->ReadTx(proof->second, tx))
-                            return debug::error(FUNCTION, "transaction not on disk");
+                        /* Special case for deleting blocks, delete tx as well. */
+                        if(vConnect.empty())
+                        {
+                            /* Make sure the transaction is not on disk. */
+                            if(!LLD::Ledger->EraseTx(proof->second))
+                                return debug::error(FUNCTION, "transaction not on disk");
+                        }
+                        else
+                        {
+                            /* Make sure the transaction is on disk. */
+                            TAO::Ledger::Transaction tx;
+                            if(!LLD::Ledger->ReadTx(proof->second, tx))
+                                return debug::error(FUNCTION, "transaction not on disk");
 
-                        /* Check for producer transaction. */
-                        if(tx.IsCoinBase() || tx.IsCoinStake())
-                            continue;
+                            /* Check for producer transaction. */
+                            if(tx.IsCoinBase() || tx.IsCoinStake())
+                                continue;
 
-                        /* Add back into memory pool. */
-                        mempool.Accept(tx);
+                            /* Add back into memory pool. */
+                            mempool.Accept(tx);
 
-                        if(config::nVerbose >= 3)
-                            tx.print();
+                            if(config::nVerbose >= 3)
+                                tx.print();
+                        }
                     }
                     else if(proof->first == TRANSACTION::LEGACY)
                     {
-                        /* Make sure the transaction is on disk. */
-                        Legacy::Transaction tx;
-                        if(!LLD::Legacy->ReadTx(proof->second, tx))
-                            return debug::error(FUNCTION, "transaction not on disk");
+                        /* Special case for deleting blocks, delete tx as well. */
+                        if(vConnect.empty())
+                        {
+                            /* Make sure the transaction is not on disk. */
+                            if(!LLD::Legacy->EraseTx(proof->second))
+                                return debug::error(FUNCTION, "transaction not on disk");
+                        }
+                        else
+                        {
+                            /* Make sure the transaction is on disk. */
+                            Legacy::Transaction tx;
+                            if(!LLD::Legacy->ReadTx(proof->second, tx))
+                                return debug::error(FUNCTION, "transaction not on disk");
 
-                        /* Check for producer transaction. */
-                        if(tx.IsCoinBase() || tx.IsCoinStake())
-                            continue;
+                            /* Check for producer transaction. */
+                            if(tx.IsCoinBase() || tx.IsCoinStake())
+                                continue;
 
-                        /* Add back into memory pool. */
-                        mempool.Accept(tx);
+                            /* Add back into memory pool. */
+                            mempool.Accept(tx);
 
-                        if(config::nVerbose >= 3)
-                            tx.print();
+                            if(config::nVerbose >= 3)
+                                tx.print();
+                        }
                     }
                 }
 
@@ -957,9 +981,11 @@ namespace TAO
                     mempool.Remove(proof.second);
 
 
+
                 /* Debug output about the best chain. */
                 uint64_t nElapsed = (GetBlockTime() - ChainState::stateBest.load().GetBlockTime());
-                uint64_t nTimer   = timer.ElapsedMilliseconds();
+                uint64_t nContractTime = swContract.ElapsedMicroseconds();
+                uint64_t nInputsTime   = swScript.ElapsedMicroseconds();
 
                 if(config::nVerbose >= TAO::Ledger::ChainState::Synchronizing() ? 1 : 0)
                     debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION,
@@ -967,10 +993,10 @@ namespace TAO
                         " height=", nHeight,
                         " trust=", nChainTrust,
                         " tx=", vtx.size(),
-                        " [", (nElapsed == 0 ? 0 : double(nTotalContracts / nElapsed)), " contracts/s]"
-                        " [verified in ", nTimer, " ms]",
-                        " [processing ", (nTotalContracts * 1000.0) / (nTimer + 1), " contracts/s]",
-                        " [", ::GetSerializeSize(*this, SER_LLD, nVersion), " bytes]");
+                        " [", (nElapsed == 0 ? 0 : double(nTotalContracts / nElapsed)), " tx/s]"
+                        " [processed at ", (nTotalContracts * 1000000.0) / (nContractTime + 1), " contract/s",
+                        " | ", (nTotalInputs * 1000000.0) / (nInputsTime + 1), " script/s]",
+                        " [", std::setw(3), (::GetSerializeSize(*this, SER_LLD, nVersion) / 1024.0), " kb]");
 
                 /* Set the best chain variables. */
                 ChainState::stateBest          = *this;
@@ -984,6 +1010,7 @@ namespace TAO
 
                 /* Reset contract meters. */
                 nTotalContracts = 0;
+                nTotalInputs    = 0;
 
                 /* Broadcast the block to nodes if not synchronizing. */
                 if(!ChainState::Synchronizing())
@@ -1042,6 +1069,9 @@ namespace TAO
                 /* Only work on tritium transactions for now. */
                 if(proof.first == TRANSACTION::TRITIUM)
                 {
+                    /* Start the contracts stopwatch. */
+                    swContract.start();
+
                     /* Get the transaction hash. */
                     const uint512_t& hash = proof.second;
 
@@ -1084,10 +1114,6 @@ namespace TAO
                     /* Accumulate the fees. */
                     nFees += tx.Fees();
 
-                    /* Write the last to disk. */
-                    if(!LLD::Ledger->WriteLast(tx.hashGenesis, hash))
-                        return debug::error(FUNCTION, "failed to write last hash");
-
                     /* If tx is coinstake, also write the last stake. */
                     if(tx.IsCoinStake())
                     {
@@ -1107,18 +1133,24 @@ namespace TAO
                         if(LLD::Local->ReadStakeChange(tx.hashGenesis, request)
                         && !request.fProcessed && request.hashTx == tx.GetHash())
                         {
+                            /* Mark as processed. */
                             request.fProcessed = true;
 
+                            /* Erase if we can't update it. */
                             if(!LLD::Local->WriteStakeChange(tx.hashGenesis, request))
-                                LLD::Local->EraseStakeChange(tx.hashGenesis); //if cannot update, erase the reqeust
+                                LLD::Local->EraseStakeChange(tx.hashGenesis);
                         }
                     }
 
                     /* Keep track of total contracts processed. */
                     nTotalContracts += tx.Size();
+                    swContract.stop();
                 }
                 else if(proof.first == TRANSACTION::LEGACY)
                 {
+                    /* Start the script stopwatch. */
+                    swScript.start();
+
                     /* Get the transaction hash. */
                     const uint512_t& hash = proof.second;
 
@@ -1137,12 +1169,15 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to fetch the inputs");
 
                     /* Connect the inputs. */
-                    if(!tx.Connect(inputs, *this, Legacy::FLAGS::BLOCK))
+                    if(!tx.Connect(inputs, *this, FLAGS::BLOCK))
                         return debug::error(FUNCTION, "failed to connect inputs");
 
                     /* Add legacy transactions to the wallet where appropriate */
                     Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, *this, true);
 
+                    /* Keep track of total inputs proceessed. */
+                    nTotalInputs += tx.vin.size();
+                    swScript.stop();
                 }
                 else
                     return debug::error(FUNCTION, "using an unknown transaction type");

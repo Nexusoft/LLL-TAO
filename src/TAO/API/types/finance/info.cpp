@@ -17,6 +17,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/finance.h>
 #include <TAO/API/include/global.h>
+#include <TAO/API/include/json.h>
 #include <TAO/API/include/utils.h>
 
 #include <TAO/Ledger/include/constants.h>
@@ -142,19 +143,7 @@ namespace TAO
                 ret["change"] = false;
 
             /* If the caller has requested to filter on a fieldname then filter out the json response to only include that field */
-            if(params.find("fieldname") != params.end())
-            {
-                /* First get the fieldname from the response */
-                std::string strFieldname =  params["fieldname"].get<std::string>();
-
-                /* Iterate through the response keys */
-                json::json temp = ret; //iterate on copy or erase will invalidate the iterator
-
-                for(auto it = temp.begin(); it != temp.end(); ++it)
-                    /* If this key is not the one that was requested then erase it */
-                    if(it.key() != strFieldname)
-                        ret.erase(it.key());
-            }
+            FilterResponse(params, ret);
 
             return ret;
         }

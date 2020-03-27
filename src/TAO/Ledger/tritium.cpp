@@ -292,7 +292,7 @@ namespace TAO
         /* For debugging Purposes seeing block state data dump */
         std::string TritiumBlock::ToString() const
         {
-            return debug::safe_printstr("Tritium Block("
+            return debug::safe_printstr(ANSI_COLOR_FUNCTION, "Tritium Block", ANSI_COLOR_RESET, "("
                 VALUE("hash")     " = ", GetHash().SubString(), " ",
                 VALUE("nVersion") " = ", nVersion, ", ",
                 VALUE("hashPrevBlock") " = ", hashPrevBlock.SubString(), ", ",
@@ -323,11 +323,15 @@ namespace TAO
                 return debug::error(FUNCTION, "channel out of range");
 
             /* Check that the time was within range. */
-            if(GetBlockTime() > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT * 60)
+            if(nVersion < 8 && GetBlockTime() > runtime::unifiedtimestamp() + runtime::maxdrift() * 60)
+                return debug::error(FUNCTION, "block timestamp too far in the future");
+
+            /* Check that the time was within range. */
+            if(nVersion >= 8 && GetBlockTime() > runtime::unifiedtimestamp() + runtime::maxdrift())
                 return debug::error(FUNCTION, "block timestamp too far in the future");
 
             /* Check the Current Version Block Time-Lock. */
-            if(!VersionActive(GetBlockTime(), nVersion))
+            if(!BlockVersionActive(GetBlockTime(), nVersion))
                 return debug::error(FUNCTION, "block created with invalid version");
 
             /* Check the Network Launch Time-Lock. */
@@ -346,6 +350,10 @@ namespace TAO
             if(!producer.Check())
                 return debug::error(FUNCTION, "producer transaction is invalid");
 
+            /* Print the block if it gets this far into processing. */
+            if(config::nVerbose >= 2)
+                debug::log(2, ToString());
+
             /* Proof of stake specific checks. */
             if(IsProofOfStake())
             {
@@ -358,7 +366,7 @@ namespace TAO
                     return debug::error(FUNCTION, "proof of stake can't have Nonce value of zero");
 
                 /* Check the trust time is before Unified timestamp. */
-                if(producer.nTimestamp > (runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT))
+                if(producer.nTimestamp > (runtime::unifiedtimestamp() + runtime::maxdrift()))
                     return debug::error(FUNCTION, "trust timestamp too far in the future");
 
                 /* Make Sure Trust Transaction Time is Before Block. */

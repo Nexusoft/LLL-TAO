@@ -85,17 +85,8 @@ namespace TAO
 
 
             /* If the caller has requested to filter on a fieldname then filter out the json response to only include that field */
-            if(params.find("fieldname") != params.end())
-            {
-                /* First get the fieldname from the response */
-                std::string strFieldname =  params["fieldname"].get<std::string>();
-
-                /* Iterate through the response keys */
-                for(auto it = jsonRet.begin(); it != jsonRet.end(); ++it)
-                    /* If this key is not the one that was requested then erase it */
-                    if(it.key() != strFieldname)
-                        jsonRet.erase(it);
-            }
+            /* If the caller has requested to filter on a fieldname then filter out the json response to only include that field */
+            FilterResponse(params, jsonRet);
 
             return jsonRet;
         }
@@ -136,17 +127,7 @@ namespace TAO
 
 
             /* If the caller has requested to filter on a fieldname then filter out the json response to only include that field */
-            if(params.find("fieldname") != params.end())
-            {
-                /* First get the fieldname from the response */
-                std::string strFieldname =  params["fieldname"].get<std::string>();
-
-                /* Iterate through the response keys */
-                for(auto it = jsonRet.begin(); it != jsonRet.end(); ++it)
-                    /* If this key is not the one that was requested then erase it */
-                    if(it.key() != strFieldname)
-                        jsonRet.erase(it);
-            }
+            FilterResponse(params, jsonRet);
 
             return jsonRet;
         }

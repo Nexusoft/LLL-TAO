@@ -21,6 +21,7 @@ ________________________________________________________________________________
 #include <Legacy/types/txout.h>
 
 #include <TAO/Ledger/types/state.h>
+#include <TAO/Ledger/include/enum.h>
 
 #include <Util/templates/serialize.h>
 #include <Util/templates/datastream.h>
@@ -453,7 +454,7 @@ namespace Legacy
 	     *  @return true if the inputs were found
 	     *
 	     **/
-		bool Connect(const std::map<uint512_t, std::pair<uint8_t, DataStream> >& inputs, TAO::Ledger::BlockState& state, uint8_t nFlags = FLAGS::MEMPOOL) const;
+		bool Connect(const std::map<uint512_t, std::pair<uint8_t, DataStream> >& inputs, TAO::Ledger::BlockState& state, uint8_t nFlags = TAO::Ledger::FLAGS::MEMPOOL) const;
 
 
 		/** Disconnect

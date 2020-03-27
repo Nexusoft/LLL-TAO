@@ -69,9 +69,14 @@ namespace TAO
             if(state.IsNull() && !LLD::Register->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-106, "Invalid name / address");
 
+            /* Make adjustment to history check and detect if the register is owned by system. */
+            uint256_t hashOwner = state.hashOwner;
+            if(hashOwner.GetType() == TAO::Ledger::GENESIS::SYSTEM)
+                hashOwner.SetType(TAO::Ledger::GenesisType());
+
             /* Read the last hash of owner. */
             uint512_t hashLast = 0;
-            if(!LLD::Ledger->ReadLast(state.hashOwner, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
+            if(!LLD::Ledger->ReadLast(hashOwner, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-107, "No history found");
 
             /* Iterate through sigchain for register updates. */
@@ -98,6 +103,25 @@ namespace TAO
                     uint8_t OPERATION = 0;
                     contract >> OPERATION;
 
+                    /* Check for conditional OP */
+                    switch(OPERATION)
+                    {
+                        case TAO::Operation::OP::VALIDATE:
+                        {
+                            /* Seek through validate. */
+                            contract.Seek(68);
+                            contract >> OPERATION;
+
+                            break;
+                        }
+
+                        case TAO::Operation::OP::CONDITION:
+                        {
+                            /* Get new operation. */
+                            contract >> OPERATION;
+                        }
+                    }
+
                     /* Check for key operations. */
                     switch(OPERATION)
                     {
@@ -123,6 +147,7 @@ namespace TAO
                             /* Check the register type */
                             if(nRegisterType != TAO::Register::REGISTER::APPEND
                             && nRegisterType != TAO::Register::REGISTER::RAW
+                            && nRegisterType != TAO::Register::REGISTER::READONLY
                             && nRegisterType != TAO::Register::REGISTER::OBJECT)
                             {
                                 throw APIException(-109, "Specified name/address is not of type " + strType);
@@ -274,8 +299,8 @@ namespace TAO
 
                             /* Get the JSON data for this object.  NOTE that we pass false for fLookupName if the requested type
                                is a name of namesace object, as those are the edge case that do not have a Name object themselves */
-                            bool fLookupName = nType != TAO::Register::OBJECTS::NAME && nType != TAO::Register::OBJECTS::NAMESPACE;
-                            json::json data  =TAO::API::ObjectToJSON(params, state, hashRegister, fLookupName);
+                            bool fLookupName = (nType != TAO::Register::OBJECTS::NAME && nType != TAO::Register::OBJECTS::NAMESPACE);
+                            json::json data  = TAO::API::ObjectToJSON(params, state, hashRegister, fLookupName);
 
                             /* Copy the name data in to the response after the type */
                             obj.insert(data.begin(), data.end());

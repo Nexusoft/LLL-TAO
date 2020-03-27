@@ -39,20 +39,25 @@ namespace LLD
                         FLAGS::CREATE | FLAGS::FORCE);
 
         /* Create the contract database instance. */
+        uint32_t nRegisterCacheSize = config::GetArg("-registercache", 2);
         Register = new RegisterDB(
-                        FLAGS::CREATE | FLAGS::FORCE);
+                        FLAGS::CREATE | FLAGS::FORCE,
+                        77773, 
+                        nRegisterCacheSize * 1024 * 1024);
 
         /* Create the ledger database instance. */
+        uint32_t nLedgerCacheSize = config::GetArg("-ledgercache", 2);
         Ledger    = new LedgerDB(
                         FLAGS::CREATE | FLAGS::FORCE,
                         256 * 256 * 64,
-                        16 * 1024 * 1024);
+                        nLedgerCacheSize * 1024 * 1024);
 
         /* Create the legacy database instance. */
+        uint32_t nLegacyCacheSize = config::GetArg("-legacycache", 1);
         Legacy = new LegacyDB(
                         FLAGS::CREATE | FLAGS::FORCE,
                         256 * 256 * 64,
-                        16 * 1024 * 1024);
+                        nLegacyCacheSize * 1024 * 1024);
 
         /* Create the trust database instance. */
         Trust  = new TrustDB(

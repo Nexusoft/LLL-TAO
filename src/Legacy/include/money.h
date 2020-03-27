@@ -60,11 +60,7 @@ namespace Legacy
      **/
     inline int64_t MaxTxOut()
     {
-        /* New maximum is live after v5 activation */
-        if(runtime::unifiedtimestamp() >= TAO::Ledger::StartTimelock(5))
-            return 50000000 * COIN;
-
-        return 1000000 * COIN;
+        return 50000000 * COIN;
     }
 
 

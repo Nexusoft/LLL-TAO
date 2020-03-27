@@ -142,14 +142,18 @@ namespace LLD
             return false;
 
         /* Relay sigchain event to subscribed nodes. */
-        LLP::TRITIUM_SERVER->Relay
-        (
-            LLP::ACTION::NOTIFY,
-            uint8_t(LLP::SPECIFIER::LEGACY),
-            uint8_t(LLP::TYPES::SIGCHAIN),
-            hashAddress,
-            hashTx
-        );
+        if(LLP::TRITIUM_SERVER)
+        {
+            LLP::TRITIUM_SERVER->Relay
+            (
+                LLP::ACTION::NOTIFY,
+                uint8_t(LLP::SPECIFIER::LEGACY),
+                uint8_t(LLP::TYPES::SIGCHAIN),
+                hashAddress,
+                hashTx
+            );
+        }
+
 
         return Index(std::make_pair(hashAddress, nSequence), std::make_pair(std::string("tx"), hashTx));
     }

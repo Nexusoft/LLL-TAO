@@ -190,19 +190,20 @@ namespace TAO
                 ret["confirmations"] = block.IsNull() ? 0 : TAO::Ledger::ChainState::nBestHeight.load() - block.nHeight + 1;
 
                 /* Don't add inputs for coinbase or coinstake transactions */
-                if(!tx.IsCoinBase() && !tx.IsCoinStake())
+                if(!tx.IsCoinBase())
                 {
                     /* Declare the inputs JSON array */
                     json::json inputs = json::json::array();
 
                     /* Iterate through each input */
-                    for(const Legacy::TxIn& txin : tx.vin)
+                    for (uint32_t i = (uint32_t)tx.IsCoinStake(); i < tx.vin.size(); ++i)
                     {
+                        const Legacy::TxIn& txin = tx.vin[i];
+
                         json::json input;
                         bool fFound = false;
 
-                        if((TAO::Ledger::VersionActive(tx.nTime, 7) || TAO::Ledger::CurrentVersion() > 7) && tx.nVersion >= 2
-                            && txin.prevout.hash.GetType() == TAO::Ledger::TRITIUM)
+                        if(tx.nVersion >= 2 && txin.prevout.hash.GetType() == TAO::Ledger::TRITIUM)
                         {
                             /* Previous output likely a Tritium send-to-legacy contract. Check for that first. It is possible for
                              * an older legacy tx to collide with the tritium hash type, so if not found still must check legacy.
@@ -273,6 +274,8 @@ namespace TAO
                     else if(Legacy::ExtractRegister(txout.scriptPubKey, hashRegister))
                         output["address"] = hashRegister.ToString();
 
+                    else if(block.nHeight == 112283) // Special case for malformed block 112283 with bad output address
+                        output["address"] = "";
                     else
                         throw APIException(-8, "Unable to Extract Output Address");
 
@@ -346,6 +349,25 @@ namespace TAO
                 /* Get the contract operations. */
                 uint8_t OPERATION = 0;
                 contract >> OPERATION;
+
+                /* Check for conditional OP */
+                switch(OPERATION)
+                {
+                    case TAO::Operation::OP::VALIDATE:
+                    {
+                        /* Seek through validate. */
+                        contract.Seek(68);
+                        contract >> OPERATION;
+
+                        break;
+                    }
+
+                    case TAO::Operation::OP::CONDITION:
+                    {
+                        /* Get new operation. */
+                        contract >> OPERATION;
+                    }
+                }
 
                 /* Check the current opcode. */
                 switch(OPERATION)
@@ -983,7 +1005,8 @@ namespace TAO
 
             /* Now build the response based on the register type */
             if(object.nType == TAO::Register::REGISTER::APPEND
-            || object.nType == TAO::Register::REGISTER::RAW)
+            || object.nType == TAO::Register::REGISTER::RAW
+            || object.nType == TAO::Register::REGISTER::READONLY)
             {
                 /* Raw state assets only have one data member containing the raw hex-encoded data*/
 
@@ -995,6 +1018,10 @@ namespace TAO
                 /* If this is an append register we need to grab the data from the end of the stream which will be the most recent data */
                 while(!object.end())
                 {
+                    /* Deserialize the leading byte of the state data to check the data type */
+                    uint16_t type;
+                    object >> type;
+
                     /* If the data type is string. */
                     std::string data;
                     object >> data;
@@ -1297,6 +1324,22 @@ namespace TAO
             }
 
             return ret;
+        }
+
+        /* If the caller has requested a fieldname to filter on then this filters the response JSON to only include that field */
+        void FilterResponse(const json::json& params, json::json& response)
+        {
+            if(params.find("fieldname") != params.end())
+            {
+                /* First get the fieldname from the response */
+                std::string strFieldname =  params["fieldname"].get<std::string>();
+
+                /* Iterate through the response keys */
+                for(auto it = response.begin(); it != response.end(); ++it)
+                    /* If this key is not the one that was requested then erase it */
+                    if(it.key() != strFieldname)
+                        response.erase(it);
+            }
         }
     }
 }

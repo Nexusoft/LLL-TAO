@@ -276,7 +276,7 @@ namespace TAO
         {
             if(*this == 0)
                 return "0";
-            else if(GetType() == RESERVED || GetType() == RESERVED2)
+            else if(GetType() == GENESIS1 || GetType() == GENESIS2)
                 return GetHex();
             else
                 return ToBase58();

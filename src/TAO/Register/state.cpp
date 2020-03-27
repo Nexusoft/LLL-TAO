@@ -236,11 +236,11 @@ namespace TAO
                 return debug::error(FUNCTION, "register checksum (", GetHash(), ") mismatch (", hashChecksum, ")");
 
             /* Check the timestamp. */
-            if(nCreated > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
+            if(nCreated > runtime::unifiedtimestamp() + runtime::maxdrift())
                 return debug::error(FUNCTION, "created timestamp too far in the future");
 
             /* Check the timestamp. */
-            if(nModified > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
+            if(nModified > runtime::unifiedtimestamp() + runtime::maxdrift())
                 return debug::error(FUNCTION, "modified timestamp too far in the future");
 
             /* Check register version. */

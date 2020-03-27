@@ -34,15 +34,15 @@ namespace LLP
     }
 
     /** Constructor **/
-    APINode::APINode(const LLP::Socket &SOCKET_IN, LLP::DDOS_Filter* DDOS_IN, bool isDDOS)
-    : HTTPNode(SOCKET_IN, DDOS_IN, isDDOS)
+    APINode::APINode(const LLP::Socket &SOCKET_IN, LLP::DDOS_Filter* DDOS_IN, bool fDDOSIn)
+    : HTTPNode(SOCKET_IN, DDOS_IN, fDDOSIn)
     {
     }
 
 
     /** Constructor **/
-    APINode::APINode(LLP::DDOS_Filter* DDOS_IN, bool isDDOS)
-    : HTTPNode(DDOS_IN, isDDOS)
+    APINode::APINode(LLP::DDOS_Filter* DDOS_IN, bool fDDOSIn)
+    : HTTPNode(DDOS_IN, fDDOSIn)
     {
     }
 
@@ -221,6 +221,8 @@ namespace LLP
                 ret = { {"result", TAO::API::dex->Execute(METHOD, params) } };
             else if(strAPI == "voting")
                 ret = { {"result", TAO::API::voting->Execute(METHOD, params) } };
+            else if(strAPI == "invoices")
+                ret = { {"result", TAO::API::invoices->Execute(METHOD, params) } };
             else
                 throw TAO::API::APIException(-4, debug::safe_printstr("API not found: ", strAPI));
         }

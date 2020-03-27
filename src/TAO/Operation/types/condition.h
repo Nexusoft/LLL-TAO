@@ -107,6 +107,25 @@ namespace TAO
              bool GetValue(TAO::Register::Value& vRet);
 
 
+            private:
+
+            /** EvaluateV1
+             *
+             *  Evaluate the conditions for version 1 transactions.
+             *
+             **/
+            bool EvaluateV1();
+
+
+            /** EvaluateV1
+             *
+             *  Evaluate the conditions for version 2 transactions.
+             *
+             **/
+            bool EvaluateV2();
+
+
+
         };
     }
 }

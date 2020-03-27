@@ -63,118 +63,115 @@ namespace TAO
             /* Flag indicating that the auto login has successfully run.  Once it has run successfully once it will not run again
                for the lifespan of the application, to avoid auto-logging you back in if you intentionally log out. */
             static bool fAutoLoggedIn = false;
-
             try
             {
                 /* If we haven't already logged in at least once, are configured for auto login, and are not currently logged in */
                 if(!fAutoLoggedIn && config::GetBoolArg("-autologin") && !config::fMultiuser.load() && !LoggedIn())
                 {
-                    /* First check that Tritium sig chains are active */
-                    if(TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 7) || TAO::Ledger::CurrentVersion() > 7)
+                    /* Keep a the credentials in secure allocated strings. */
+                    SecureString strUsername = config::GetArg("-username", "").c_str();
+                    SecureString strPassword = config::GetArg("-password", "").c_str();
+                    SecureString strPin = config::GetArg("-pin", "").c_str();
+
+                    /* Check we have user/pass/pin */
+                    if(strUsername.empty() || strPassword.empty() || strPin.empty())
+                        throw APIException(-203, "Autologin missing username/password/pin");
+
+                    /* Create the sigchain. */
+                    memory::encrypted_ptr<TAO::Ledger::SignatureChain> user =
+                        new TAO::Ledger::SignatureChain(strUsername.c_str(), strPassword.c_str());
+
+                    /* Get the genesis ID. */
+                    uint256_t hashGenesis = user->Genesis();
+
+                    /* See if the sig chain exists */
+                    if(!LLD::Ledger->HasGenesis(hashGenesis) && !TAO::Ledger::mempool.Has(hashGenesis))
                     {
-                        /* Keep a the credentials in secure allocated strings. */
-                        SecureString strUsername = config::GetArg("-username", "").c_str();
-                        SecureString strPassword = config::GetArg("-password", "").c_str();
-                        SecureString strPin = config::GetArg("-pin", "").c_str();
-
-                        /* Check we have user/pass/pin */
-                        if(strUsername.empty() || strPassword.empty() || strPin.empty())
-                            throw APIException(-203, "Autologin missing username/password/pin");
-
-                        /* Create the sigchain. */
-                        memory::encrypted_ptr<TAO::Ledger::SignatureChain> user =
-                            new TAO::Ledger::SignatureChain(strUsername.c_str(), strPassword.c_str());
-
-                        /* Get the genesis ID. */
-                        uint256_t hashGenesis = user->Genesis();
-
-                        /* See if the sig chain exists */
-                        if(!LLD::Ledger->HasGenesis(hashGenesis) && !TAO::Ledger::mempool.Has(hashGenesis))
+                        /* If it doesn't exist then create it if configured to do so */
+                        if(config::GetBoolArg("-autocreate"))
                         {
-                            /* If it doesn't exist then create it if configured to do so */
-                            if(config::GetBoolArg("-autocreate"))
+                            /* Testnet is considered local if no dns is being used or if using a private network */
+                            bool fLocalTestnet = config::fTestNet.load()
+                                && (!config::GetBoolArg("-dns", true) || config::GetBoolArg("-private"));
+
+                            /* Can only create user if synced and (if not local) have connections.
+                             * Return without create/login if cannot create, yet. It will have to try again.
+                             */
+                            if(TAO::Ledger::ChainState::Synchronizing()
+                            || (LLP::TRITIUM_SERVER->GetConnectionCount() == 0 && !fLocalTestnet))
                             {
-                                bool fLocalTestnet = config::fTestNet.load() && !config::GetBoolArg("-dns", true);
-
-                                /* Can only create user if synced and (if not local) have connections.
-                                 * Return without create/login if cannot create, yet. It will have to try again.
-                                 */
-                                if(TAO::Ledger::ChainState::Synchronizing()
-                                || (LLP::TRITIUM_SERVER->GetConnectionCount() == 0 && !fLocalTestnet))
-                                {
-                                    user.free();
-                                    return;
-                                }
-
-                                /* The genesis transaction  */
-                                TAO::Ledger::Transaction tx;
-
-                                /* Create the sig chain genesis transaction */
-                                create_sig_chain(strUsername, strPassword, strPin, tx);
-
-                                /* Display that login was successful. */
-                                debug::log(0, "Auto-Create Successful");
+                                user.free();
+                                return;
                             }
-                            else
-                                throw APIException(-203, "Autologin user not found");
+
+                            /* The genesis transaction  */
+                            TAO::Ledger::Transaction tx;
+
+                            /* Create the sig chain genesis transaction */
+                            create_sig_chain(strUsername, strPassword, strPin, tx);
+
+                            /* Display that login was successful. */
+                            debug::log(0, "Auto-Create Successful");
                         }
-
-                        /* Check for duplicates in ledger db. */
-                        TAO::Ledger::Transaction txPrev;
-
-                        /* Get the last transaction. */
-                        uint512_t hashLast;
-                        if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
-                        {
-                            user.free();
-                            throw APIException(-138, "No previous transaction found");
-                        }
-
-                        /* Get previous transaction */
-                        if(!LLD::Ledger->ReadTx(hashLast, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
-                        {
-                            user.free();
-                            throw APIException(-138, "No previous transaction found");
-                        }
-
-                        /* Genesis Transaction. */
-                        TAO::Ledger::Transaction tx;
-                        tx.NextHash(user->Generate(txPrev.nSequence + 1, config::GetArg("-pin", "").c_str(), false), txPrev.nNextType);
-
-                        /* Check for consistency. */
-                        if(txPrev.hashNext != tx.hashNext)
-                        {
-                            user.free();
-                            throw APIException(-139, "Invalid credentials");
-                        }
-
-                        /* Setup the account. */
-                        {
-                            LOCK(MUTEX);
-                            mapSessions.emplace(0, std::move(user));
-                        }
-
-                        /* Extract the PIN. */
-                        if(!pActivePIN.IsNull())
-                            pActivePIN.free();
-
-                        /* The unlock actions to apply for autologin.  NOTE we do NOT unlock for transactions */
-                        uint8_t nUnlockActions = TAO::Ledger::PinUnlock::UnlockActions::MINING
-                                               | TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS
-                                               | TAO::Ledger::PinUnlock::UnlockActions::STAKING;
-
-                        /* Set account to unlocked. */
-                        pActivePIN = new TAO::Ledger::PinUnlock(config::GetArg("-pin", "").c_str(), nUnlockActions);
-
-                        /* Display that login was successful. */
-                        debug::log(0, "Auto-Login Successful");
-
-                        /* Set the flag so that we don't attempt to log in again */
-                        fAutoLoggedIn = true;
-
-                        /* Start the stake minter if successful login. */
-                        TAO::Ledger::TritiumMinter::GetInstance().Start();
+                        else
+                            throw APIException(-203, "Autologin user not found");
                     }
+
+                    /* Check for duplicates in ledger db. */
+                    TAO::Ledger::Transaction txPrev;
+
+                    /* Get the last transaction. */
+                    uint512_t hashLast;
+                    if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
+                    {
+                        user.free();
+                        throw APIException(-138, "No previous transaction found");
+                    }
+
+                    /* Get previous transaction */
+                    if(!LLD::Ledger->ReadTx(hashLast, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
+                    {
+                        user.free();
+                        throw APIException(-138, "No previous transaction found");
+                    }
+
+                    /* Genesis Transaction. */
+                    TAO::Ledger::Transaction tx;
+                    tx.NextHash(user->Generate(txPrev.nSequence + 1, config::GetArg("-pin", "").c_str(), false), txPrev.nNextType);
+
+                    /* Check for consistency. */
+                    if(txPrev.hashNext != tx.hashNext)
+                    {
+                        user.free();
+                        throw APIException(-139, "Invalid credentials");
+                    }
+
+                    /* Setup the account. */
+                    {
+                        LOCK(MUTEX);
+                        mapSessions.emplace(0, std::move(user));
+                    }
+
+                    /* Extract the PIN. */
+                    if(!pActivePIN.IsNull())
+                        pActivePIN.free();
+
+                    /* The unlock actions to apply for autologin.  NOTE we do NOT unlock for transactions */
+                    uint8_t nUnlockActions = TAO::Ledger::PinUnlock::UnlockActions::MINING
+                                           | TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS
+                                           | TAO::Ledger::PinUnlock::UnlockActions::STAKING;
+
+                    /* Set account to unlocked. */
+                    pActivePIN = new TAO::Ledger::PinUnlock(config::GetArg("-pin", "").c_str(), nUnlockActions);
+
+                    /* Display that login was successful. */
+                    debug::log(0, "Auto-Login Successful");
+
+                    /* Set the flag so that we don't attempt to log in again */
+                    fAutoLoggedIn = true;
+
+                    /* Start the stake minter if successful login. */
+                    TAO::Ledger::TritiumMinter::GetInstance().Start();
                 }
             }
             catch(const APIException& e)
@@ -217,8 +214,11 @@ namespace TAO
                     if(!LoggedIn() || Locked() || !CanProcessNotifications() || TAO::Ledger::ChainState::Synchronizing())
                         continue;
 
+                    /* Testnet is considered local if no dns is being used or if using a private network */
+                    bool fLocalTestnet = config::fTestNet.load()
+                        && (!config::GetBoolArg("-dns", true) || config::GetBoolArg("-private"));
+
                     /* Make sure the mining server has a connection. (skip check if running local testnet) */
-                    bool fLocalTestnet = config::fTestNet.load() && !config::GetBoolArg("-dns", true);
                     if(!fLocalTestnet && LLP::TRITIUM_SERVER && LLP::TRITIUM_SERVER->GetConnectionCount() == 0)
                         continue;
 
@@ -234,9 +234,6 @@ namespace TAO
                     memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
                     if(!user)
                         throw APIException(-10, "Invalid session ID");
-
-                    /* Lock the signature chain. */
-                    LOCK(users->CREATE_MUTEX);
 
                     /* Set the hash genesis for this user. */
                     uint256_t hashGenesis = user->Genesis();
@@ -268,6 +265,9 @@ namespace TAO
                     /* Check if there is anything to process */
                     if(vContracts.size() == 0 && vLegacyTx.size() == 0 && vExpired.size() == 0)
                         continue;
+
+                    /* Lock the signature chain. */
+                    LOCK(users->CREATE_MUTEX);
 
                     /* Ensure that the signature is mature.  Note we only check this after we know there is something to process */
                     uint32_t nBlocksToMaturity = users->BlocksToMaturity(hashGenesis);
@@ -318,6 +318,25 @@ namespace TAO
                         /* Get the opcode. */
                         uint8_t OPERATION;
                         refContract >> OPERATION;
+
+                        /* Check for conditional OP */
+                        switch(OPERATION)
+                        {
+                            case TAO::Operation::OP::VALIDATE:
+                            {
+                                /* Seek through validate. */
+                                refContract.Seek(68);
+                                refContract >> OPERATION;
+
+                                break;
+                            }
+
+                            case TAO::Operation::OP::CONDITION:
+                            {
+                                /* Get new operation. */
+                                refContract >> OPERATION;
+                            }
+                        }
 
                         /* Check the opcodes for debit, coinbase or transfers. */
                         switch (OPERATION)

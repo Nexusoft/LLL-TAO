@@ -21,20 +21,16 @@ ________________________________________________________________________________
 #include <locale>
 #include <atomic>
 
+#include <TAO/Ledger/include/timelocks.h>
+
 #define ARRAYLEN(array)     (sizeof(array)/sizeof((array)[0]))
 
 /** The location of the unified time seed. To enable a Unified Time System push data to this variable. **/
 extern std::atomic<int32_t> UNIFIED_AVERAGE_OFFSET;
 
-/** The maximum time in the future clock can be. **/
-const uint32_t MAX_UNIFIED_DRIFT = 10;
-
-const uint32_t MAX_UNIFIED_DRIFT_LEGACY = 10;
-
 
 namespace runtime
 {
-
 
     /** timestamp
      *
@@ -64,6 +60,24 @@ namespace runtime
     inline uint64_t unifiedtimestamp(bool fMilliseconds = false)
     {
         return fMilliseconds ? timestamp(true) + (UNIFIED_AVERAGE_OFFSET.load() * 1000) : timestamp() + UNIFIED_AVERAGE_OFFSET.load();
+    }
+
+
+    /** max drift
+     *
+     *  The maximum time clocks can differ from one another.
+     *
+     *  @param[in] nVersion The version to check switch for.
+     *
+     **/
+    inline uint32_t maxdrift()
+    {
+        /* Check if before version 8 time-lock. */
+        if(unifiedtimestamp() < TAO::Ledger::StartBlockTimelock(8))
+            return 10;
+
+        //max drift post v8 is 1 second.
+        return 1;
     }
 
 
@@ -209,6 +223,84 @@ namespace runtime
                 return std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
 
             return std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - start_time).count();
+        }
+    };
+
+
+    /** Stopwatch class
+     *
+     *  Keeps track of total time with starts and stops in between.
+     *
+     **/
+    class stopwatch
+    {
+        /** The total time elapsed. **/
+        uint64_t nElapsed;
+
+        /** The time when last started. **/
+        std::chrono::high_resolution_clock::time_point tStart;
+
+        /** Flag to determine when started. **/
+        bool fStarted;
+
+    public:
+
+        /** Default Constructor. **/
+        stopwatch()
+        : nElapsed (0)
+        , tStart   ( )
+        , fStarted (false)
+        {
+        }
+
+
+        void start()
+        {
+            tStart = std::chrono::high_resolution_clock::now();
+            fStarted = true;
+        }
+
+
+        void stop()
+        {
+            /* Can't stop twice. */
+            if(!fStarted)
+                return;
+
+            /* Grab the current elapsed time. */
+            uint64_t nTime =
+                std::chrono::duration_cast<std::chrono::microseconds>
+                (
+                    std::chrono::high_resolution_clock::now() - tStart
+                ).count();
+
+            /* Add this to elapsed state. */
+            nElapsed += nTime;
+            fStarted  = false;
+        }
+
+
+        void reset()
+        {
+            nElapsed = 0;
+            fStarted = false;
+        }
+
+
+        uint64_t ElapsedMicroseconds()
+        {
+            return nElapsed;
+        }
+
+
+        uint64_t ElapsedSeconds() const
+        {
+            return nElapsed / 1000000;
+        }
+
+        uint64_t ElapsedMilliseconds() const
+        {
+            return nElapsed / 1000;
         }
     };
 

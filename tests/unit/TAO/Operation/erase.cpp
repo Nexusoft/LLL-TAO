@@ -1748,7 +1748,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
         REQUIRE(state.GetState() == vBytes);
 
         //check owner is system
-        REQUIRE(state.hashOwner == 0);
+        REQUIRE(state.hashOwner.GetType() == 0);
 
         //test value erase
         REQUIRE(tx.Disconnect(FLAGS::ERASE));
@@ -1805,7 +1805,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
         REQUIRE(state.GetState() == vBytes);
 
         //check owner is system
-        REQUIRE(state.hashOwner == 0);
+        REQUIRE(state.hashOwner.GetType() == 0);
 
         //write to disk
         REQUIRE(LLD::Ledger->WriteTx(hash, tx));
@@ -1830,7 +1830,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
 
         //check state is correct
         REQUIRE(object.GetState() == vBytes);
-        REQUIRE(object.hashOwner  == 0);
+        REQUIRE(object.hashOwner.GetType()  == 0);
 
         //set previous
         hashPrevTx[0] = hash;
@@ -1895,7 +1895,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
         REQUIRE(memory == object);
 
         //check owner is system
-        REQUIRE(object.hashOwner == 0);
+        REQUIRE(object.hashOwner.GetType() == 0);
     }
 
 

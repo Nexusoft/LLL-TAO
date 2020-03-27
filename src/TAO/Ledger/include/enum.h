@@ -15,6 +15,8 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEDGER_INCLUDE_ENUM_H
 #define NEXUS_TAO_LEDGER_INCLUDE_ENUM_H
 
+#include <Util/include/args.h>
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -57,12 +59,26 @@ namespace TAO
         {
             enum
             {
+                /** A system genesis is pre-pended with byte 0x00. SYSTEM genesis cannot be made by any users, only the system. **/
+                SYSTEM      = 0x00,
+
                 /** A mainnet genesis has to be pre-pended with byte 0xa1 **/
                 MAINNET     = 0xa1,
 
                 /** a testnet genesis has to be pre-pended with byte 0xa2. **/
                 TESTNET     = 0xa2,
             };
+        }
+
+
+        /** GenesisType
+         *
+         *  Method to handle switching the genesis leading byte.
+         *
+         **/
+        inline uint8_t GenesisType()
+        {
+            return (config::fTestNet.load() ? TAO::Ledger::GENESIS::TESTNET : TAO::Ledger::GENESIS::MAINNET);
         }
 
 

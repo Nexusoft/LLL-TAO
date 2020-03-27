@@ -25,15 +25,15 @@ namespace LLP
 
 
     /* Constructor */
-    Connection::Connection(const Socket &SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS, bool fOutgoing)
-    : BaseConnection(SOCKET_IN, DDOS_IN, isDDOS, fOutgoing)
+    Connection::Connection(const Socket &SOCKET_IN, DDOS_Filter* DDOS_IN, bool fDDOSIn, bool fOutgoing)
+    : BaseConnection(SOCKET_IN, DDOS_IN, fDDOSIn, fOutgoing)
     {
     }
 
 
     /* Constructor */
-    Connection::Connection(DDOS_Filter* DDOS_IN, bool isDDOS, bool fOutgoing)
-   : BaseConnection(DDOS_IN, isDDOS, fOutgoing)
+    Connection::Connection(DDOS_Filter* DDOS_IN, bool fDDOSIn, bool fOutgoing)
+   : BaseConnection(DDOS_IN, fDDOSIn, fOutgoing)
    {
    }
 

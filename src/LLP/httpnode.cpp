@@ -30,16 +30,16 @@ namespace LLP
 
 
     /** Constructor **/
-    HTTPNode::HTTPNode(const Socket &SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS)
-    : BaseConnection<HTTPPacket> (SOCKET_IN, DDOS_IN, isDDOS)
+    HTTPNode::HTTPNode(const Socket &SOCKET_IN, DDOS_Filter* DDOS_IN, bool fDDOSIn)
+    : BaseConnection<HTTPPacket> (SOCKET_IN, DDOS_IN, fDDOSIn)
     , vchBuffer                  ( )
     {
     }
 
 
     /** Constructor **/
-    HTTPNode::HTTPNode(DDOS_Filter* DDOS_IN, bool isDDOS)
-    : BaseConnection<HTTPPacket> (DDOS_IN, isDDOS)
+    HTTPNode::HTTPNode(DDOS_Filter* DDOS_IN, bool fDDOSIn)
+    : BaseConnection<HTTPPacket> (DDOS_IN, fDDOSIn)
     , vchBuffer                  ( )
     {
     }

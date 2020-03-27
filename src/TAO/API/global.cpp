@@ -32,6 +32,7 @@ namespace TAO
         Names*      names;
         DEX*        dex;
         Voting*     voting;
+        Invoices*   invoices;
 
 
         /*  Instantiate global instances of the API. */
@@ -52,6 +53,7 @@ namespace TAO
             names       = new Names();
             dex         = new DEX();
             voting      = new Voting();
+            invoices    = new Invoices();
         }
 
 
@@ -95,6 +97,9 @@ namespace TAO
 
             if(voting)
                 delete voting;
+
+            if(invoices)
+                delete invoices;
         }
     }
 }

@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/include/constants.h>
+#include <TAO/Ledger/include/timelocks.h>
 
 
 /* Global TAO namespace. */
@@ -65,7 +66,6 @@ namespace TAO
             hashChecksum = object.hashChecksum;
 
             nReadPos     = 0; //don't copy over read position
-
             mapData      = object.mapData;
 
             return *this;
@@ -114,7 +114,7 @@ namespace TAO
 
             /* Search object register for key types. */
             if(mapData.size() == 1
-            && Check("namespace", TYPES::STRING, false ))
+            && Check("namespace", TYPES::STRING, false))
             {
                 /* If it only contains one field called namespace then it must be a namespace */
                 /* Set the return value. */
@@ -203,7 +203,7 @@ namespace TAO
             uint8_t nStandard = Standard();
             switch(nStandard)
             {
-
+                /* Token fees are based on the total tokens created. */
                 case TAO::Register::OBJECTS::TOKEN:
                 {
                     /* Get the supply from the token object */
@@ -215,29 +215,43 @@ namespace TAO
                     return std::max(int64_t(TAO::Ledger::MIN_TOKEN_FEE),  int64_t(std::max(int64_t(0), int64_t(nBase - 2)) * TAO::Ledger::TOKEN_FEE));
                 }
 
+                /* Name objects have specific fees. */
                 case TAO::Register::OBJECTS::NAME:
                 {
                     /* Global names cost 2000 NXS */
                     if( get<std::string>("namespace") == TAO::Register::NAMESPACE::GLOBAL)
                         return TAO::Ledger::GLOBAL_NAME_FEE;
+
                     /* Local names cost 1 NXS. */
                     else
                         return TAO::Ledger::NAME_FEE;
                 }
+
                 /* Namespaces cost 1000 NXS. */
                 case TAO::Register::OBJECTS::NAMESPACE:
                     return TAO::Ledger::NAMESPACE_FEE;
 
+                /* Handle for Account Fees. */
                 case TAO::Register::OBJECTS::ACCOUNT:
                 case TAO::Register::OBJECTS::TRUST:
                     return TAO::Ledger::ACCOUNT_FEE;
 
+                /* Crypto object registers have special fees. */
                 case TAO::Register::OBJECTS::CRYPTO:
                     return TAO::Ledger::CRYPTO_FEE;
 
                 /* non standard object cost is dependant on the data size. */
                 case TAO::Register::OBJECTS::NONSTANDARD:
-                    return std::max(TAO::Ledger::MIN_DATA_FEE, vchState.size() * TAO::Ledger::DATA_FEE);
+                {
+                    /* The fee changed with transaction version 2 so need to apply version-dependent fee. NOTE we can use the
+                       nCreated time to determine the transaction version, as this is set to the transaction time when it is
+                       first created.  */
+                    const uint32_t nCurrent = TAO::Ledger::CurrentTransactionVersion();
+                    if(nCurrent < 2 || (nCurrent == 2 && !TAO::Ledger::TransactionVersionActive(nCreated, 2)))
+                        return std::max(TAO::Ledger::MIN_DATA_FEE, vchState.size() * TAO::Ledger::DATA_FEE_V1);
+                    else
+                        return std::max(TAO::Ledger::MIN_DATA_FEE, vchState.size() * TAO::Ledger::DATA_FEE);
+                }
 
                 default:
                     return TAO::Ledger::MIN_DATA_FEE;

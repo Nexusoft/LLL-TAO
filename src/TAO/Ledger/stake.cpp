@@ -239,6 +239,9 @@ namespace TAO
         /* Check the overall consistency of trust score calculations. */
         bool CheckConsistency(const uint512_t& hashLastTrust, uint64_t& nTrustRet)
         {
+            /* Give a little bit of info that we are running the checks. */
+            debug::log(0, FUNCTION, "Checking trust key consistency from ", hashLastTrust.SubString());
+
             /* Start searching from last stake block. */
             uint512_t hashLast = hashLastTrust;
             std::vector<int64_t> vChanges;
@@ -331,7 +334,7 @@ namespace TAO
 
                             /* Push the stake change to value. */
                             vChanges.push_back(nCheck - nTrustPrev);
-                            debug::log(0, FUNCTION, "Inconsistent ", nTrust, " value ", nCheck, " for user ", hashGenesis.SubString(), "... FIXED");
+                            debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_GREEN, "Inconsistent ", nTrust, " value ", nCheck, " for user ", hashGenesis.SubString(), "... FIXED", ANSI_COLOR_RESET);
                         }
                         else
                             vChanges.push_back(nTrust - nTrustPrev);

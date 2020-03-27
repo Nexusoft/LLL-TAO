@@ -271,15 +271,11 @@ namespace Legacy
             return debug::error(FUNCTION, "channel out of range");
 
         /* Check that the time was within range. If before v7 activation, keep legacy block compatible with legacy setting. */
-        uint64_t nMaxDrift = MAX_UNIFIED_DRIFT;
-        if(nVersion < 7)
-            nMaxDrift = MAX_UNIFIED_DRIFT_LEGACY;
-
-        if(GetBlockTime() > runtime::unifiedtimestamp() + nMaxDrift)
+        if(GetBlockTime() > runtime::unifiedtimestamp() + runtime::maxdrift())
             return debug::error(FUNCTION, "block timestamp too far in the future");
 
         /* Check the Current Version Block Time-Lock. */
-        if(!TAO::Ledger::VersionActive(GetBlockTime(), nVersion))
+        if(!TAO::Ledger::BlockVersionActive(GetBlockTime(), nVersion))
             return debug::error(FUNCTION, "block created with invalid version");
 
         /* Check the Network Launch Time-Lock. */
@@ -330,14 +326,8 @@ namespace Legacy
             if(nHeight > 2392970 && nNonce == 0)
                 return debug::error(FUNCTION, "stake cannot have nonce of 0");
 
-            /* Check the Coinstake Time is before Unified Timestamp.
-             * If before v7 activation, keep legacy coinstake compatible with legacy setting.
-             */
-            uint64_t nMaxDrift = MAX_UNIFIED_DRIFT;
-            if(nVersion < 7)
-                nMaxDrift = MAX_UNIFIED_DRIFT_LEGACY;
-
-            if(vtx[0].nTime > (runtime::unifiedtimestamp() + nMaxDrift))
+            /* Check timestamp is within tolerated drift. */
+            if(vtx[0].nTime > (runtime::unifiedtimestamp() + runtime::maxdrift()))
                 return debug::error(FUNCTION, "coinstake too far in Future.");
 
             /* Make Sure Coinstake Transaction is First. */

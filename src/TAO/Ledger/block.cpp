@@ -43,7 +43,7 @@ namespace TAO
 
         /** The default constructor. Sets block state to Null. **/
         Block::Block()
-        : nVersion       (TAO::Ledger::CurrentVersion())
+        : nVersion       (TAO::Ledger::CurrentBlockVersion())
         , hashPrevBlock  (0)
         , hashMerkleRoot (0)
         , nChannel       (0)
@@ -180,7 +180,7 @@ namespace TAO
         /* Set the block state to null. */
         void Block::SetNull()
         {
-            nVersion = TAO::Ledger::CurrentVersion();
+            nVersion = TAO::Ledger::CurrentBlockVersion();
             hashPrevBlock = 0;
             hashMerkleRoot = 0;
             nChannel = 0;

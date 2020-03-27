@@ -50,6 +50,9 @@ namespace TAO
             /* Reset the contract streams. */
             contract.Reset(TAO::Operation::Contract::ALL);
 
+            /* Clear the register stream in case this contract has already been built previously */
+            contract.Clear(TAO::Operation::Contract::REGISTERS);
+
             /* Make sure no exceptions are thrown. */
             try
             {
@@ -239,7 +242,17 @@ namespace TAO
                         contract >> nType;
 
                         /* Register custody in SYSTEM ownership until claimed, unless the ForceTransfer flag has been set */
-                        uint256_t hashNewOwner = (nType == TAO::Operation::TRANSFER::FORCE ? hashTransfer : 0);
+                        uint256_t hashNewOwner = 0; //default to SYSTEM
+                        if(nType == TAO::Operation::TRANSFER::FORCE)
+                            hashNewOwner = hashTransfer;
+
+                        /* Handle version switch for contract to transfer to 0x00 leading genesis-id. */
+                        else if(contract.Version() > 1) //this allows us to iterate history while getting properties of transfer to system
+                        {
+                            /* Set the new owner to transfer recipient. */
+                            hashNewOwner = contract.Caller();
+                            hashNewOwner.SetType(Ledger::GENESIS::SYSTEM); //this byte (0x00) means there is no valid owner during transfer
+                        }
 
                         /* Serialize the pre-state byte into contract. */
                         contract <<= uint8_t(TAO::Register::STATES::PRESTATE);

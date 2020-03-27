@@ -57,6 +57,25 @@ namespace TAO
 
         /** Developer payout threshold. **/
         const uint16_t DEVELOPER_PAYOUT_THRESHOLD_TESTNET = 10;
+
+
+        /** Developer
+         *
+         *  Grab the developer object based on version and testnet.
+         *
+         *  @param[in] nVersion The block version to check by.
+         *
+         *  @return a reference of the correct sigchain map.
+         *
+         **/
+        inline const std::map<uint256_t, std::pair<uint256_t, uint32_t>>& Developer(const uint32_t nVersion)
+        {
+            /* Grab a reference of the ambassador sigchain. */
+            const std::map<uint256_t, std::pair<uint256_t, uint32_t>>& mapRet =
+                (config::fTestNet.load() ? DEVELOPER_TESTNET : DEVELOPER);
+
+            return mapRet;
+        }
     }
 }
 

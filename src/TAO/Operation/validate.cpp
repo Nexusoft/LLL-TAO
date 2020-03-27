@@ -86,8 +86,8 @@ namespace TAO
                     if(nType != TRANSFER::CLAIM)
                         return debug::error(FUNCTION, "OP::VALIDATE: cannot validate on forced transfer");
 
-                    /* Check that transfer is wildcard. */
-                    if(hashTransfer != TAO::Register::WILDCARD_ADDRESS)
+                    /* Check that transfer is wildcard. NOTE: This rule was relaxed after version 1 */
+                    if(contract.Version() == 1 && hashTransfer != TAO::Register::WILDCARD_ADDRESS)
                         return debug::error(FUNCTION, "OP::VALIDATE: cannot validate without wildcard");
 
                     /* Check for condition. */
@@ -116,8 +116,8 @@ namespace TAO
                     uint64_t nReference = 0;
                     condition >> nReference;
 
-                    /* Check that transfer is wildcard. */
-                    if(hashTo != TAO::Register::WILDCARD_ADDRESS)
+                    /* Check that debit is wildcard. NOTE: This rule was relaxed after version 1 */
+                    if(contract.Version() <= 1 && hashTo != TAO::Register::WILDCARD_ADDRESS)
                         return debug::error(FUNCTION, "OP::VALIDATE: cannot validate without wildcard");
 
                     /* Check for condition. */

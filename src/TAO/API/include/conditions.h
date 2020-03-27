@@ -22,6 +22,19 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
+        /** HasCondition
+        *
+        *  Determines if a contract contains a specific condition.  The method searches the bytes of the conditions stream to see
+        *  if the pattern for condition exists somewhere within it 
+        *
+        *  @param[in] contract The contract to check
+        *  @param[in] condition The contract to search for
+        *
+        *  @return true if the contract contains the condition
+        *
+        **/
+        bool HasCondition(const TAO::Operation::Contract& contract, const TAO::Operation::Contract& condition);
+        
         
         /** AddExpires
         *
@@ -38,6 +51,18 @@ namespace TAO
         **/
         bool AddExpires(const json::json& params, const uint256_t& hashCaller, TAO::Operation::Contract& contract, bool fTokenizedDebit);
 
+
+        /** HasExpires
+        *
+        *  Determines if a contract has an expiration condition.  The method searches the bytes of the conditions stream to see
+        *  if the pattern for an expiration condition exists somewhere in the conditions 
+        *
+        *  @param[in] contract The contract to check
+        *
+        *  @return true if the contract contains an expiration condition
+        *
+        **/
+        bool HasExpires(const TAO::Operation::Contract& contract);
     
     } /* End API namespace */
 

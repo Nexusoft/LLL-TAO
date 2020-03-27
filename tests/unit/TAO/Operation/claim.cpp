@@ -34,8 +34,10 @@ TEST_CASE("Claim Primitive Tests", "[operation]")
     //create object
     uint256_t hashAsset  = TAO::Register::Address(TAO::Register::Address::OBJECT);
     uint256_t hashGenesis  = LLC::GetRand256();
-    uint256_t hashGenesis2  = LLC::GetRand256();
+    hashGenesis.SetType(TAO::Ledger::GENESIS::TESTNET);
 
+    uint256_t hashGenesis2  = LLC::GetRand256();
+    hashGenesis2.SetType(TAO::Ledger::GENESIS::TESTNET);
 
     // create an asset
     {
@@ -88,6 +90,25 @@ TEST_CASE("Claim Primitive Tests", "[operation]")
         REQUIRE(tx.Verify());
         REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
         REQUIRE(TAO::Operation::Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+
+        //check the new claim owner
+        {
+            TAO::Register::Object asset;
+            REQUIRE(LLD::Register->ReadState(hashAsset, asset));
+
+            //check asset owner
+            REQUIRE(asset.hashOwner.GetType() == 0);
+
+            //check the transfer owner
+            uint256_t hashCheck = hashGenesis;
+            hashCheck.SetType(TAO::Ledger::GENESIS::SYSTEM);
+
+            //check owner
+            REQUIRE(asset.hashOwner == hashCheck);
+
+            //ensure asset isn't previous owner
+            REQUIRE_FALSE(asset.hashOwner == hashGenesis);
+        }
 
         /* claim payload */
         tx2[0] << uint8_t(TAO::Operation::OP::CLAIM) << tx.GetHash() << uint32_t(0) << hashAsset;

@@ -131,11 +131,11 @@ namespace LLP
 
 
         /** Constructor **/
-        Miner(const Socket& SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false);
+        Miner(const Socket& SOCKET_IN, DDOS_Filter* DDOS_IN, bool fDDOSIn = false);
 
 
         /** Constructor **/
-        Miner(DDOS_Filter* DDOS_IN, bool isDDOS = false);
+        Miner(DDOS_Filter* DDOS_IN, bool fDDOSIn = false);
 
 
         /** Default Destructor **/

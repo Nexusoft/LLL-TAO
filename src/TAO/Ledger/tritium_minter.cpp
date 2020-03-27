@@ -39,6 +39,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/stake.h>
 #include <TAO/Ledger/include/process.h>
+#include <TAO/Ledger/include/constants.h>
 
 #include <TAO/Ledger/types/mempool.h>
 
@@ -252,7 +253,8 @@ namespace TAO
                     return debug::error(FUNCTION, "Cannot create Genesis with already existing stake");
 
                 /* Check that there is no trust. */
-                if(reg.get<uint64_t>("trust") != 0)
+                if(reg.get<uint64_t>("trust") !=
+                ((config::fTestNet.load() && config::GetBoolArg("-trustboost")) ? TAO::Ledger::ONE_YEAR : 0))
                     return debug::error(FUNCTION, "Cannot create Genesis with already existing trust");
 
                 /* Found valid trust account register. Save for minter use. */
@@ -526,11 +528,11 @@ namespace TAO
                 nBlockAge = statePrev.GetBlockTime() - stateLast.GetBlockTime();
 
                 /* Check for previous version 7 and current version 8. */
-                //uint64_t nTrustRet = 0;
-                //if(block.nVersion == 8 && stateLast.nVersion == 7 && !CheckConsistency(hashLast, nTrustRet))
-                //    nTrust = GetTrustScore(nTrustRet, nBlockAge, nStake, nStakeChange, block.nVersion);
-                //else //when not consistency check, calculate like normal
-                nTrust = GetTrustScore(nTrustPrev, nBlockAge, nStake, nStakeChange, block.nVersion);
+                uint64_t nTrustRet = 0;
+                if(block.nVersion == 8 && stateLast.nVersion == 7 && !CheckConsistency(hashLast, nTrustRet))
+                    nTrust = GetTrustScore(nTrustRet, nBlockAge, nStake, nStakeChange, block.nVersion);
+                else //when not consistency check, calculate like normal
+                    nTrust = GetTrustScore(nTrustPrev, nBlockAge, nStake, nStakeChange, block.nVersion);
 
                 /* Initialize block producer for Trust operation with hashLastTrust, new trust score.
                  * The coinstake reward will be added based on time when block is found.

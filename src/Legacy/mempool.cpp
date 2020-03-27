@@ -13,6 +13,8 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
+#include <LLD/include/global.h>
+
 #include <LLP/include/global.h>
 #include <LLP/types/tritium.h>
 
@@ -53,7 +55,7 @@ namespace TAO
         }
 
 
-        bool Mempool::Accept(const Legacy::Transaction& tx)
+        bool Mempool::Accept(const Legacy::Transaction& tx, LLP::TritiumNode* pnode)
         {
             /* Get the transaction hash. */
             uint512_t hashTx = tx.GetHash();
@@ -61,7 +63,7 @@ namespace TAO
             RLOCK(MUTEX);
 
             /* Check if we already have this tx. */
-            if(mapLegacy.count(hashTx))
+            if(LLD::Legacy->HasTx(hashTx, FLAGS::MEMPOOL))
                 return false;
 
             debug::log(3, "ACCEPT --------------------------------------");
@@ -95,7 +97,7 @@ namespace TAO
                     debug::error(FUNCTION, "LEGACY CONFLICT: INPUTS CLAIMED ", vin.prevout.hash.SubString(), ", ", vin.prevout.n);
                     mapLegacyConflicts[hashTx] = tx;
 
-                    return true;
+                    return false;
                 }
             }
 
@@ -104,7 +106,82 @@ namespace TAO
 
             /* Fetch the inputs. */
             if(!tx.FetchInputs(inputs))
-                return debug::error(FUNCTION, "tx ", hashTx.SubString(), " failed to fetch the inputs");
+            {
+                /* Create response data stream. */
+                DataStream ssResponse(SER_NETWORK, LLP::PROTOCOL_VERSION);
+
+                /* Check previous inputs. */
+                uint32_t nTotal = 0;
+                for(const auto& vin : tx.vin)
+                {
+                    /* Check for available inputs. */
+                    bool fExists  = false;
+
+                    /* Handle for finding inputs (fetch inputs style). */
+                    if(tx.nTime >= TAO::Ledger::StartBlockTimelock(7))
+                    {
+                        /* Get the type of transaction. */
+                        if(vin.prevout.hash.GetType() == TAO::Ledger::TRITIUM)
+                        {
+                            /* Ask for orphan if it wasn't found. */
+                            if(LLD::Ledger->HasTx(vin.prevout.hash, FLAGS::MEMPOOL))
+                                fExists  = true;
+                        }
+                    }
+
+                    /* Catch all for if tritium wasn't found. */
+                    if(!fExists && LLD::Legacy->HasTx(vin.prevout.hash, FLAGS::MEMPOOL))
+                        fExists = true;
+
+                    /* Check for any orphaned inputs. */
+                    if(!fExists && setOrphansByIndex.count(vin.prevout.hash))
+                    {
+                        fExists = true;
+
+                        /* Debug output. */
+                        debug::log(2, FUNCTION, "ORPHANED ", vin.prevout.hash.SubString(), " already have");
+                    }
+
+                    /* If there are missing inputs, request them and return. */
+                    if(!fExists)
+                    {
+                        /* Debug output. */
+                        debug::log(2, FUNCTION, "tx ", hashTx.SubString(), " input ", vin.prevout.hash.SubString(),
+                            " ORPHAN");
+
+                        /* Set orphan flag. */
+                        ++nTotal;
+
+                        /* Push to stream: NOTE: we need to ask for both types here since we don't have any good way to determine with */
+                        ssResponse << uint8_t(LLP::TYPES::TRANSACTION) << vin.prevout.hash; // 100% certainty what input tx type is
+                        ssResponse << uint8_t(LLP::SPECIFIER::LEGACY) << uint8_t(LLP::TYPES::TRANSACTION) << vin.prevout.hash;
+
+                        /* Debug output. */
+                        debug::log(2, FUNCTION, "Requesting missing tx ", vin.prevout.hash.SubString());
+                    }
+                }
+
+                /* We want to process all orphaned inputs before returning. */
+                if(nTotal > 0)
+                {
+                    /* Increment consecutive orphans. */
+                    if(pnode)
+                    {
+                        /* Push to stream. */
+                        ssResponse << uint8_t(LLP::SPECIFIER::LEGACY) << uint8_t(LLP::TYPES::TRANSACTION) << hashTx;
+
+                        /* Push the packet response. */
+                        pnode->WritePacket(LLP::TritiumNode::NewMessage(LLP::ACTION::GET, ssResponse));
+
+                        /* Update consecutive orphans. */
+                        ++pnode->nConsecutiveOrphans;
+                    }
+
+                    return debug::error(FUNCTION, "tx ", hashTx.SubString(), " missing ", nTotal, " inputs");
+                }
+
+                return debug::error(FUNCTION, "failed to fetch inputs");
+            }
 
             /* Check for standard inputs. */
             if(!tx.AreInputsStandard(inputs))
@@ -143,7 +220,7 @@ namespace TAO
 
             /* See if inputs can be connected. */
             TAO::Ledger::BlockState state = ChainState::stateBest.load();
-            if(!tx.Connect(inputs, state, Legacy::FLAGS::MEMPOOL))
+            if(!tx.Connect(inputs, state, TAO::Ledger::FLAGS::MEMPOOL))
                 return debug::error(FUNCTION, "tx ", hashTx.SubString(), " failed to connect inputs");
 
             /* Set the inputs to be claimed. */
@@ -154,9 +231,10 @@ namespace TAO
             /* Add to the legacy map. */
             mapLegacy[hashTx] = tx;
 
-            /* Relay the transaction. */
-            if(LLP::TRITIUM_SERVER)
+            /* Relay tx if creating ourselves. */
+            if(!pnode && LLP::TRITIUM_SERVER)
             {
+                /* Relay the transaction notification. */
                 LLP::TRITIUM_SERVER->Relay
                 (
                     LLP::ACTION::NOTIFY,

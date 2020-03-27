@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <Legacy/types/transaction.h>
 
 #include <Legacy/include/evaluate.h>
+#include <Legacy/include/constants.h>
 #include <Legacy/include/money.h>
 #include <Legacy/include/signature.h>
 #include <Legacy/include/trust.h>
@@ -42,23 +43,14 @@ ________________________________________________________________________________
 namespace Legacy
 {
 
-    /* Old legacy outdated threshold, currently a placeholder. */
-    const int64_t LOCKTIME_THRESHOLD = 500000000;
-
-
     /* Default Constructor. */
     Transaction::Transaction()
-    : nVersion  (1)
-    , nTime     (0)
+    : nVersion  (TRANSACTION_CURRENT_VERSION)
+    , nTime     (runtime::unifiedtimestamp())
     , vin       ( )
     , vout      ( )
     , nLockTime (0)
     {
-        /* When tx nTime after v7 activation, it is version 2 */
-        if(TAO::Ledger::VersionActive(nTime, 7) || TAO::Ledger::CurrentVersion() > 7)
-            nVersion = 2;
-
-        SetNull();
     }
 
 
@@ -118,7 +110,7 @@ namespace Legacy
 
     /* Copy Constructor (From Tritium). */
     Transaction::Transaction(const TAO::Ledger::Transaction& tx)
-    : nVersion  (tx.nVersion)
+    : nVersion  (TRANSACTION_CURRENT_VERSION) //we want to lock to current legacy tx version
     , nTime     (tx.nTimestamp)
     , vin       ( )
     , vout      ( )
@@ -132,10 +124,6 @@ namespace Legacy
             if(tx[n].Legacy(txout))
                 vout.push_back(txout);
         }
-
-        /* When tx nTime after v7 activation, legacy tx is version 2 */
-        if(TAO::Ledger::VersionActive(nTime, 7) || TAO::Ledger::CurrentVersion() > 7)
-            nVersion = 2;
     }
 
 
@@ -147,10 +135,6 @@ namespace Legacy
 		vin.clear();
 		vout.clear();
 		nLockTime = 0;
-
-        /* When tx nTime after v7 activation, it is version 2 */
-        if(TAO::Ledger::VersionActive(nTime, 7) || TAO::Ledger::CurrentVersion() > 7)
-            nVersion = 2;
 	}
 
 
@@ -175,7 +159,7 @@ namespace Legacy
 	    uint512_t hash = LLC::SK512(ss.begin(), ss.end());
 
         /* Type of 0xfe designates legacy tx beginning with v7 activation (tx version 2). */
-        if((TAO::Ledger::VersionActive(nTime, 7) || TAO::Ledger::CurrentVersion() > 7) && nVersion >= 2)
+        if(nVersion >= 2)
             hash.SetType(TAO::Ledger::LEGACY);
 
         return hash;
@@ -824,9 +808,11 @@ namespace Legacy
 	bool Transaction::CheckTransaction() const
     {
         /* Validate tx version 2 required when v7+ active and after v6 grace period end. */
-        if(nVersion != 2
-        && (TAO::Ledger::VersionActive(nTime, 7) || TAO::Ledger::CurrentVersion() > 7)
-        && !TAO::Ledger::VersionActive(nTime, 6))
+        if(nTime < TAO::Ledger::StartBlockTimelock(7) && nVersion != (TRANSACTION_CURRENT_VERSION - 1))
+            return debug::error(FUNCTION, "invalid transaction version ", nVersion);
+
+        /* Validate tx version 2 required when v7+ active and after v6 grace period end. */
+        if(nTime >= (TAO::Ledger::StartBlockTimelock(7) + 3600) && nVersion != TRANSACTION_CURRENT_VERSION)
             return debug::error(FUNCTION, "invalid transaction version ", nVersion);
 
         /* Check for empty inputs. */
@@ -909,8 +895,7 @@ namespace Legacy
                 continue;
 
             /* Cannot spend Tritium send-to-Legacy inputs until after v6 grace period ends */
-            if((TAO::Ledger::VersionActive(nTime, 7) || TAO::Ledger::CurrentVersion() > 7)
-            && !TAO::Ledger::VersionActive(nTime, 6))
+            if(nTime >= TAO::Ledger::StartBlockTimelock(7))
             {
                 /* Get the type of transaction. */
                 if(prevout.hash.GetType() == TAO::Ledger::TRITIUM)
@@ -919,10 +904,6 @@ namespace Legacy
                     TAO::Ledger::Transaction txPrev;
                     if(LLD::Ledger->ReadTx(prevout.hash, txPrev))
                     {   //we can't rely soley on the type byte, so we must revert to legacy if not found in ledger.}
-
-                        /* Check for existing indexes. */
-                        if(!LLD::Ledger->HasIndex(prevout.hash))
-                            return debug::error(FUNCTION, "tx ", prevout.hash.SubString(), " not connected");
 
                         /* Check that it is valid. */
                         if(prevout.n >= txPrev.Size())
@@ -944,11 +925,7 @@ namespace Legacy
             /* Read the previous transaction. */
             Transaction txPrev;
             if(!LLD::Legacy->ReadTx(prevout.hash, txPrev))
-                return debug::error(FUNCTION, "legacy tx ", prevout.hash.SubString(), " not found");
-
-            /* Check for existing indexes. */
-            if(!LLD::Ledger->HasIndex(prevout.hash))
-                return debug::error(FUNCTION, "tx ", prevout.hash.SubString(), " not connected");
+                return debug::error(FUNCTION, "tx ", prevout.hash.SubString(), " not found");
 
             /* Check that it is valid. */
             if(prevout.n >= txPrev.vout.size())
@@ -981,7 +958,7 @@ namespace Legacy
             if(fIsCoinBase)
             {
                 /* Calculate the mint when on a block. */
-                if(nFlags == FLAGS::BLOCK)
+                if(nFlags == TAO::Ledger::FLAGS::BLOCK)
                     state.nMint = GetValueOut();
 
                 return true;
@@ -1083,6 +1060,14 @@ namespace Legacy
                     inputs.at(prevout.hash).second.SetPos(0);
                     inputs.at(prevout.hash).second >> txPrev;
 
+                    /* Check indexes for miner and block. */
+                    if(nFlags == TAO::Ledger::FLAGS::BLOCK || nFlags == TAO::Ledger::FLAGS::MINER)
+                    {
+                        /* Check that dependant transaction is indexed. */
+                        if(!LLD::Ledger->HasIndex(prevout.hash))
+                            return debug::error(FUNCTION, "Legacy tx ", prevout.hash.SubString(), " not connected");
+                    }
+
                     /* Check the inputs range. */
                     if(prevout.n >= txPrev.vout.size())
                         return debug::error(FUNCTION, "prevout is out of range");
@@ -1124,7 +1109,7 @@ namespace Legacy
                         return debug::error(FUNCTION, "signature is invalid");
 
                     /* Commit to disk if flagged. */
-                    if((nFlags == FLAGS::BLOCK) && !LLD::Legacy->WriteSpend(prevout.hash, prevout.n))
+                    if((nFlags == TAO::Ledger::FLAGS::BLOCK) && !LLD::Legacy->WriteSpend(prevout.hash, prevout.n))
                         return debug::error(FUNCTION, "failed to write spend");
 
                     break;
@@ -1134,13 +1119,21 @@ namespace Legacy
                 case TAO::Ledger::TRITIUM:
                 {
                     /* Check Tritium spend activation. Becomes active with v7 after v6 grace period ends. */
-                    if(TAO::Ledger::VersionActive(nTime, 6) || TAO::Ledger::CurrentVersion() < 6)
+                    if(nTime < TAO::Ledger::StartBlockTimelock(7))
                         return debug::error(FUNCTION, "legacy spends of tritium inputs not available until version 7");
 
                     /* Get the previous transaction. */
                     TAO::Ledger::Transaction txPrev;
                     inputs.at(prevout.hash).second.SetPos(0);
                     inputs.at(prevout.hash).second >> txPrev;
+
+                    /* Check indexes for miner and block. */
+                    if(nFlags == TAO::Ledger::FLAGS::BLOCK || nFlags == TAO::Ledger::FLAGS::MINER)
+                    {
+                        /* Check that dependant transaction is indexed. */
+                        if(!LLD::Ledger->HasIndex(prevout.hash))
+                            return debug::error(FUNCTION, "Tritium tx ", prevout.hash.SubString(), " not connected");
+                    }
 
                     /* Check the inputs range. */
                     if(prevout.n >= txPrev.Size())
@@ -1177,7 +1170,7 @@ namespace Legacy
                     }
 
                     /* Commit to disk if flagged. */
-                    if((nFlags == FLAGS::BLOCK) && !LLD::Legacy->WriteSpend(prevout.hash, prevout.n))
+                    if((nFlags == TAO::Ledger::FLAGS::BLOCK) && !LLD::Legacy->WriteSpend(prevout.hash, prevout.n))
                         return debug::error(FUNCTION, "failed to write spend");
 
                     break;
@@ -1205,7 +1198,7 @@ namespace Legacy
             return debug::error(FUNCTION, GetHash().SubString(), " value in ", nValueIn, " < value out ", GetValueOut());
 
         /* Calculate the mint if connected with a block. */
-        if(nFlags == FLAGS::BLOCK)
+        if(nFlags == TAO::Ledger::FLAGS::BLOCK)
             state.nMint += (int32_t)(GetValueOut() - nValueIn);
 
         /* UTXO to Sig Chain support - If we are connected with a block then check the outputs to see if any of them
@@ -1215,13 +1208,14 @@ namespace Legacy
             uint256_t hashTo;
             if(ExtractRegister(txout.scriptPubKey, hashTo))
             {
-                /* Read the owner of register. (check this for MEMPOOL, too) */
-                TAO::Register::State state;
-                if(!LLD::Register->ReadState(hashTo, state, nFlags))
-                    return debug::error(FUNCTION, "failed to read register to");
-
-                if(nFlags == FLAGS::BLOCK)
+                /* Write event for FLAGS::BLOCK only. */
+                if(nFlags == TAO::Ledger::FLAGS::BLOCK)
                 {
+                    /* Read the owner of register. (check this for MEMPOOL, too) */
+                    TAO::Register::State state;
+                    if(!LLD::Register->ReadState(hashTo, state, nFlags))
+                        return debug::error(FUNCTION, "failed to read register to");
+
                     /* Commit an event for receiving sigchain in the legay DB. */
                     if(!LLD::Legacy->WriteEvent(state.hashOwner, GetHash()))
                         return debug::error(FUNCTION, "failed to write event for account ", state.hashOwner.SubString());

@@ -50,6 +50,7 @@ namespace TAO
         , mapOrphans         ( )
         , mapClaimed         ( )
         , mapInputs          ( )
+        , setOrphansByIndex  ( )
         {
         }
 
@@ -89,11 +90,7 @@ namespace TAO
 
             /* Check for transaction on disk. */
             if(LLD::Ledger->HasTx(hashTx, FLAGS::MEMPOOL))
-                return false; //NOTE: this was true, but changed to false to prevent relay loops in tritium LLP
-
-            /* Check for transaction in orphans. */
-            if(mapOrphans.count(tx.hashPrevTx))
-                return true;
+                return false;
 
             debug::log(3, "ACCEPT --------------------------------------");
             if(config::nVerbose >= 3)
@@ -129,6 +126,7 @@ namespace TAO
 
                     /* Push to orphan queue. */
                     mapOrphans[tx.hashPrevTx] = tx;
+                    setOrphansByIndex.insert(hashTx);
 
                     /* Increment consecutive orphans. */
                     if(pnode)
@@ -138,7 +136,7 @@ namespace TAO
                     if(pnode)
                         pnode->PushMessage(LLP::ACTION::GET, uint8_t(LLP::TYPES::TRANSACTION), tx.hashPrevTx);
 
-                    return true;
+                    return false;
                 }
 
                 /* Check for conflicts. */
@@ -148,10 +146,7 @@ namespace TAO
                     debug::error(FUNCTION, "CONFLICT: prev tx ", (mapClaimed.count(tx.hashPrevTx) ? "CLAIMED " : "CONFLICTED "), tx.hashPrevTx.SubString());
                     mapConflicts[hashTx] = tx;
 
-                    /* Process orphan queue. */
-                    ProcessOrphans(hashTx);
-
-                    return true;
+                    return false;
                 }
 
                 /* Get the last hash. */
@@ -166,10 +161,7 @@ namespace TAO
                     debug::error(FUNCTION, "CONFLICT: hash last mismatch ", tx.hashPrevTx.SubString());
                     mapConflicts[hashTx] = tx;
 
-                    /* Process orphan queue. */
-                    ProcessOrphans(hashTx);
-
-                    return true;
+                    return false;
                 }
             }
 
@@ -200,9 +192,13 @@ namespace TAO
             /* Debug output. */
             debug::log(3, FUNCTION, "tx ", hashTx.SubString(), " ACCEPTED in ", std::dec, time.ElapsedMilliseconds(), " ms");
 
-            /* Relay the transaction. */
-            if(LLP::TRITIUM_SERVER)
+            /* Process orphan queue. */
+            ProcessOrphans(hashTx);
+
+            /* Relay tx if creating ourselves. */
+            if(!pnode && LLP::TRITIUM_SERVER)
             {
+                /* Relay the transaction notification. */
                 LLP::TRITIUM_SERVER->Relay
                 (
                     LLP::ACTION::NOTIFY,
@@ -210,9 +206,6 @@ namespace TAO
                     hashTx
                 );
             }
-
-            /* Process orphan queue. */
-            ProcessOrphans(hashTx);
 
             /* Notify private to produce block if valid. */
             if(config::GetBoolArg("-private"))
@@ -235,7 +228,7 @@ namespace TAO
                 TAO::Ledger::Transaction& tx = mapOrphans[hashTx];
 
                 /* Get the previous hash. */
-                uint512_t hashThis = tx.GetHash();
+                const uint512_t hashThis = tx.GetHash();
 
                 /* Debug output. */
                 debug::log(0, FUNCTION, "PROCESSING ORPHAN tx ", hashThis.SubString());
@@ -250,6 +243,7 @@ namespace TAO
 
                 /* Erase the transaction. */
                 mapOrphans.erase(hashTx);
+                setOrphansByIndex.erase(hashThis);
 
                 /* Set the hashTx. */
                 hashTx = hashThis;
@@ -397,6 +391,10 @@ namespace TAO
             if(mapLegacyConflicts.count(hashTx))
                 mapLegacyConflicts.erase(hashTx);
 
+            /* Erase from orphans memory. */
+            if(setOrphansByIndex.count(hashTx))
+                setOrphansByIndex.erase(hashTx);
+
             /* Find the transaction in pool. */
             if(mapLedger.count(hashTx))
             {
@@ -405,6 +403,7 @@ namespace TAO
 
                 /* Erase from the memory map. */
                 mapClaimed.erase(tx.hashPrevTx);
+                mapOrphans.erase(tx.hashPrevTx);
                 mapLedger.erase(hashTx);
 
                 return true;

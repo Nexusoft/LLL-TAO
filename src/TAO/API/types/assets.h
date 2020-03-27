@@ -169,6 +169,19 @@ namespace TAO
              **/
             json::json Tokenize(const json::json& params, bool fHelp);
 
+
+            /** GetSchema
+             *
+             *  Get the schema for an asset
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json GetSchema(const json::json& params, bool fHelp);
+
         };
     }
 }
