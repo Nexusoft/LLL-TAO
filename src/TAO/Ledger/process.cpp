@@ -184,7 +184,7 @@ namespace TAO
 
                     uint64_t nElapsed = runtime::timestamp(true) - nSynchronizationTimer;
                     debug::log(0, FUNCTION,
-                        "Processed 1000 blocks in ", nElapsed, " ms [", std::setw(2),
+                        "Processed ", (config::fClient ? 5000 : 1000), " blocks in ", nElapsed, " ms [", std::setw(2),
                         TAO::Ledger::ChainState::PercentSynchronized(), " %]",
                         " height=", block.nHeight,
                         " trust=", TAO::Ledger::ChainState::nBestChainTrust.load(),
