@@ -623,9 +623,8 @@ namespace TAO
 
         /* Generates a signature for the data, using the specified crypto key type. */
         bool SignatureChain::Sign(const std::string& strType, const std::vector<uint8_t>& vchData, const uint512_t& hashSecret,
-                                  std::vector<uint8_t>& vchPubKey, std::vector<uint8_t>& vchSig ) const
+                                  std::vector<uint8_t>& vchPubKey, std::vector<uint8_t>& vchSig) const
         {
-
             /* Get the secret from new key. */
             std::vector<uint8_t> vBytes = hashSecret.GetBytes();
             LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
