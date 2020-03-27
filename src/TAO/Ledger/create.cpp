@@ -705,6 +705,10 @@ namespace TAO
                     /* Write the block to disk. */
                     if(!LLD::Client->WriteBlock(hashGenesis, ClientBlock(state)))
                         return debug::error(FUNCTION, "genesis didn't commit to disk");
+
+                    /* Write the best chain to the database. */
+                    if(!LLD::Client->WriteBestChain(hashGenesis))
+                        return debug::error(FUNCTION, "couldn't write best chain.");
                 }
                 else
                 {
@@ -712,10 +716,13 @@ namespace TAO
                     state = LegacyGenesis();
 
                     /* Write the block to disk. */
-                    if(!LLD::Ledger->WriteBlock(hashGenesis, ChainState::stateGenesis))
+                    if(!LLD::Ledger->WriteBlock(hashGenesis, state))
                         return debug::error(FUNCTION, "genesis didn't commit to disk");
-                }
 
+                    /* Write the best chain to the database. */
+                    if(!LLD::Ledger->WriteBestChain(hashGenesis))
+                        return debug::error(FUNCTION, "couldn't write best chain.");
+                }
 
                 /* Check that the genesis hash is correct. */
                 if(state.GetHash() != hashGenesis)
@@ -727,10 +734,6 @@ namespace TAO
                 /* Set the best block. */
                 ChainState::hashBestChain = hashGenesis;
                 ChainState::stateBest     = ChainState::stateGenesis;
-
-                /* Write the best chain to the database. */
-                if(!LLD::Ledger->WriteBestChain(hashGenesis))
-                    return debug::error(FUNCTION, "couldn't write best chain.");
             }
 
             return true;
