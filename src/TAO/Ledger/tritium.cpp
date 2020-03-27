@@ -616,7 +616,6 @@ namespace TAO
             LLD::TxnBegin();
 
             /* Write the transactions. */
-            DataStream ssRelay(SER_NETWORK, LLP::PROTOCOL_VERSION);
             for(const auto& proof : vtx)
             {
                 /* Get the tritium transction. */
@@ -633,10 +632,6 @@ namespace TAO
                     /* Write to disk. */
                     if(!LLD::Ledger->WriteTx(hash, tx))
                         return debug::error(FUNCTION, "failed to write tx to disk");
-
-                    /* Handle sigchain related notifications. */
-                    if(LLP::TRITIUM_SERVER)
-                        ssRelay << uint8_t(LLP::TYPES::SIGCHAIN) << tx.hashGenesis << hash;
                 }
 
                 /* Get the legacy transaction. */
@@ -678,16 +673,6 @@ namespace TAO
             /* Check for best chain. */
             if(GetHash() == ChainState::hashBestChain.load())
             {
-                /* Relay the SIGCHAIN notifications. */
-                if(LLP::TRITIUM_SERVER)
-                {
-                    LLP::TRITIUM_SERVER->_Relay
-                    (
-                        uint8_t(LLP::ACTION::NOTIFY),
-                        ssRelay
-                    );
-                }
-
                 /* Do a quick mempool processing check for ORPHANS. */
                 runtime::timer timer;
                 timer.Reset();
