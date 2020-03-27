@@ -2793,8 +2793,6 @@ namespace LLP
         {
             /* The genesis of the currently logged in user */
             uint256_t hashSigchain = TAO::API::users->GetGenesis(0);
-
-            /* The current timestamp */
             uint64_t nTimestamp = runtime::unifiedtimestamp();
 
             /* Add the basic auth data to the message */
@@ -2802,8 +2800,6 @@ namespace LLP
 
             /* The public key for the "network" key*/
             std::vector<uint8_t> vchPubKey;
-
-            /* The signature data for this message */
             std::vector<uint8_t> vchSig;
 
             /* Generate the public key and signature for the message data */
@@ -2811,10 +2807,7 @@ namespace LLP
 
             /* Add the public key to the message */
             ssMessage << vchPubKey;
-
-            /* Finally add the signature to the message */
             ssMessage << vchSig;
-
         }
 
         return ssMessage;
