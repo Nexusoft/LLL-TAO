@@ -485,7 +485,7 @@ namespace LLP
 
                         /* Ask for list of blocks if this is current sync node. */
                         PushMessage(ACTION::LIST,
-                            uint8_t(SPECIFIER::SYNC),
+                            config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::SYNC),
                             uint8_t(TYPES::BLOCK),
                             uint8_t(TYPES::LOCATOR),
                             TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
@@ -1729,16 +1729,25 @@ namespace LLP
                             uint1024_t hashBlock;
                             ssPacket >> hashBlock;
 
-                            /* Check for client mode since this method should never be called except by a client. */
+                            /* Check for client mode. */
                             if(config::fClient.load())
-                                ssResponse << uint8_t(SPECIFIER::CLIENT);
+                            {
+                                /* Check the database for the block. */
+                                if(!LLD::Client->HasBlock(hashBlock))
+                                    ssResponse << uint8_t(SPECIFIER::CLIENT) << uint8_t(TYPES::BLOCK) << hashBlock;
 
-                            /* Check the database for the block. */
-                            if(!LLD::Ledger->HasBlock(hashBlock))
-                                ssResponse << uint8_t(TYPES::BLOCK) << hashBlock;
+                                /* Debug output. */
+                                debug::log(3, NODE, "ACTION::NOTIFY: CLIENT BLOCK ", hashBlock.SubString());
+                            }
+                            else
+                            {
+                                /* Check the database for the block. */
+                                if(!LLD::Ledger->HasBlock(hashBlock))
+                                    ssResponse << uint8_t(TYPES::BLOCK) << hashBlock;
 
-                            /* Debug output. */
-                            debug::log(3, NODE, "ACTION::NOTIFY: BLOCK ", hashBlock.SubString());
+                                /* Debug output. */
+                                debug::log(3, NODE, "ACTION::NOTIFY: BLOCK ", hashBlock.SubString());
+                            }
 
                             break;
                         }
@@ -1917,7 +1926,7 @@ namespace LLP
                                         {
                                             /* Ask for list of blocks. */
                                             PushMessage(ACTION::LIST,
-                                                uint8_t(SPECIFIER::SYNC),
+                                                config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::SYNC),
                                                 uint8_t(TYPES::BLOCK),
                                                 uint8_t(TYPES::UINT1024_T),
                                                 hashLast,
