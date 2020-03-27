@@ -1675,80 +1675,6 @@ namespace LLP
                             break;
                         }
 
-
-                        /* Standard type for status. */
-                        case TYPES::STATUS:
-                        {
-                            /* Be strict on the allowed specifiers. */
-                            if(fLegacy || fTransactions || fClient)
-                                return debug::drop(NODE, "TYPES::STATUS: invalid specifier for TYPES::TRANSACTION");
-
-                            /* Check for client mode since this method should never be called except by a client. */
-                            if(config::fClient.load())
-                                return debug::drop(NODE, "TYPES::STATUS: disabled in -client mode");
-
-                            /* Check for available protocol version. */
-                            if(nProtocolVersion < MIN_TRITIUM_VERSION)
-                                return true;
-
-                            /* Check the status sub-type. */
-                            uint8_t nType = 0;
-                            ssPacket >> nType;
-
-                            /* Switch based on type. */
-                            switch(nType)
-                            {
-                                /* Transaction status check. */
-                                case TYPES::TRANSACTION:
-                                {
-                                    /* Get the txid for status. */
-                                    uint512_t hashTx = 0;
-                                    ssPacket >> hashTx;
-
-                                    /* Check tx status. */
-                                    if(LLD::Ledger->HasIndex(hashTx))
-                                        PushMessage(RESPONSE::CONFIRMED, hashTx);
-                                    else //no index in LLD means tx is unconfirmed
-                                        PushMessage(RESPONSE::UNCONFIRMED, hashTx);
-
-                                    break;
-                                }
-
-                                /* Block status check. */
-                                case TYPES::BLOCK:
-                                {
-                                    /* Get the block hash for status. */
-                                    uint1024_t hashBlock = 0;
-                                    ssPacket >> hashBlock;
-
-                                    /* Read Block from Disk. */
-                                    TAO::Ledger::BlockState state;
-                                    if(!LLD::Ledger->ReadBlock(hashBlock, state))
-                                        break;
-
-                                    /* Check status. */
-                                    if(state.IsInMainChain())
-                                        PushMessage(RESPONSE::CONFIRMED, hashBlock);
-                                    else //no forward index and block is orphaned
-                                        PushMessage(RESPONSE::UNCONFIRMED, hashBlock);
-
-                                    /* Bump DDOS scores. */
-                                    if(DDOS)
-                                        DDOS->rSCORE += 20;
-
-                                    break;
-                                }
-
-                                /* Catch malformed streams. */
-                                default:
-                                    return debug::drop(NODE, "ACTION::GET invalid status type");
-                            }
-
-
-
-                            break;
-                        }
-
                         /* Catch malformed notify binary streams. */
                         default:
                             return debug::drop(NODE, "ACTION::GET malformed binary stream");
@@ -2564,19 +2490,6 @@ namespace LLP
                     default:
                         return debug::drop(NODE, "invalid type specifier for TYPES::MERKLE");
                 }
-
-                break;
-            }
-
-
-            /* Handle responses for data objects. */
-            case RESPONSE::CONFIRMED:
-            {
-                /* Check for subscription. */
-                if(!(nSubscriptions & SUBSCRIPTION::SIGCHAIN))
-                    return debug::drop(NODE, "RESPONSE::CONFIRMED: unsolicited data");
-
-                //request merkleTx
 
                 break;
             }
