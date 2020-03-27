@@ -174,6 +174,11 @@ int main(int argc, char** argv)
         /* Initialize LLD. */
         LLD::Initialize();
 
+
+        /* Initialize ChainState. */
+        TAO::Ledger::ChainState::Initialize();
+        
+
         /* We don't need the wallet in client mode. */
         if(!config::fClient.load())
         {
@@ -182,9 +187,6 @@ int main(int argc, char** argv)
             bool fFirstRun;
             if (!Legacy::Wallet::InitializeWallet(config::GetArg(std::string("-wallet"), Legacy::WalletDB::DEFAULT_WALLET_DB)))
                 return debug::error("Failed initializing wallet");
-
-            /* Initialize ChainState. */
-            TAO::Ledger::ChainState::Initialize();
 
 
             /* Initialize the scripts for legacy mode. */
@@ -360,7 +362,7 @@ int main(int argc, char** argv)
 
 
     /* Shutdown these subsystems if nothing failed. */
-    if(!fFailed)
+    if(!fFailed && !config::fClient.load())
     {
         /* Shut down wallet database environment. */
         if (config::GetBoolArg(std::string("-flushwallet"), true))

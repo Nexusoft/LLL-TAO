@@ -67,6 +67,10 @@ namespace LLD
     /* Writes the best chain pointer to the ledger DB. */
     bool LedgerDB::WriteBestChain(const uint1024_t& hashBest)
     {
+        /* Check for client mode. */
+        if(config::fClient.load())
+            return Client->WriteBestChain(hashBest);
+
         return Write(std::string("hashbestchain"), hashBest);
     }
 
@@ -74,6 +78,10 @@ namespace LLD
     /* Reads the best chain pointer from the ledger DB. */
     bool LedgerDB::ReadBestChain(uint1024_t &hashBest)
     {
+        /* Check for client mode. */
+        if(config::fClient.load())
+            return Client->ReadBestChain(hashBest);
+
         return Read(std::string("hashbestchain"), hashBest);
     }
 
@@ -81,6 +89,18 @@ namespace LLD
     /* Reads the best chain pointer from the ledger DB. */
     bool LedgerDB::ReadBestChain(memory::atomic<uint1024_t> &atomicBest)
     {
+        /* Check for client mode. */
+        if(config::fClient.load())
+        {
+            uint1024_t hashBest = 0;
+            if(!Client->ReadBestChain(hashBest))
+                return false;
+
+            atomicBest.store(hashBest);
+            return true;
+        }
+
+        /* Check for best chain on disk. */
         uint1024_t hashBest = 0;
         if(!Read(std::string("hashbestchain"), hashBest))
             return false;

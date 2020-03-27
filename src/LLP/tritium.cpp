@@ -666,10 +666,6 @@ namespace LLP
                             /* Subscribe. */
                             if(INCOMING.MESSAGE == ACTION::SUBSCRIBE)
                             {
-                                /* Check for client mode since this method should never be called except by a client. */
-                                if(config::fClient.load())
-                                    return debug::drop(NODE, "ACTION::SUBSCRIBE::BLOCK disabled in -client mode");
-
                                 /* Set the block flag. */
                                 nNotifications |= SUBSCRIPTION::BLOCK;
 
@@ -678,10 +674,6 @@ namespace LLP
                             }
                             else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
                             {
-                                /* Check for client mode since this method should never be called except by a client. */
-                                if(config::fClient.load())
-                                    return debug::drop(NODE, "ACTION::UNSUBSCRIBE::BLOCK disabled in -client mode");
-
                                 /* Unset the block flag. */
                                 nNotifications &= ~SUBSCRIPTION::BLOCK;
 
@@ -774,10 +766,6 @@ namespace LLP
                             /* Subscribe. */
                             if(INCOMING.MESSAGE == ACTION::SUBSCRIBE)
                             {
-                                /* Check for client mode since this method should never be called except by a client. */
-                                if(config::fClient.load())
-                                    return debug::drop(NODE, "ACTION::SUBSCRIBE::CHECKPOINT disabled in -client mode");
-
                                 /* Set the checkpoints flag. */
                                 nNotifications |= SUBSCRIPTION::CHECKPOINT;
 
@@ -790,10 +778,6 @@ namespace LLP
                             }
                             else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
                             {
-                                /* Check for client mode since this method should never be called except by a client. */
-                                if(config::fClient.load())
-                                    return debug::drop(NODE, "ACTION::UNSUBSCRIBE::CHECKPOINT disabled in -client mode");
-
                                 /* Unset the checkpoints flag. */
                                 nNotifications &= ~SUBSCRIPTION::CHECKPOINT;
 
@@ -992,7 +976,7 @@ namespace LLP
             {
                 /* Check for client mode since this method should never be called except by a client. */
                 if(config::fClient.load())
-                    return debug::drop(NODE, "ACTION::LIST: disabled in -client mode");
+                    return true; //gracefully ignore these for now since there is no current way for remote nodes to know we are in client mode
 
                 /* Set the limits. 3000 seems to be the optimal amount to overcome higher-latency connections during sync */
                 int32_t nLimits = 3001;
@@ -3112,7 +3096,7 @@ namespace LLP
                 /* Subscribe to this node. */
                 pnode->Subscribe(SUBSCRIPTION::LASTINDEX | SUBSCRIPTION::BESTCHAIN | SUBSCRIPTION::BESTHEIGHT);
                 pnode->PushMessage(ACTION::LIST,
-                    uint8_t(SPECIFIER::SYNC),
+                    config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::SYNC),
                     uint8_t(TYPES::BLOCK),
                     uint8_t(TYPES::LOCATOR),
                     TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
