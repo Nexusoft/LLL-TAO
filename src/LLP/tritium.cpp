@@ -667,7 +667,7 @@ namespace LLP
                             if(INCOMING.MESSAGE == ACTION::SUBSCRIBE)
                             {
                                 /* Check for client mode since this method should never be called except by a client. */
-                                if(config::GetBoolArg("-client"))
+                                if(config::fClient.load())
                                     return debug::drop(NODE, "ACTION::SUBSCRIBE::BLOCK disabled in -client mode");
 
                                 /* Set the block flag. */
@@ -679,7 +679,7 @@ namespace LLP
                             else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
                             {
                                 /* Check for client mode since this method should never be called except by a client. */
-                                if(config::GetBoolArg("-client"))
+                                if(config::fClient.load())
                                     return debug::drop(NODE, "ACTION::UNSUBSCRIBE::BLOCK disabled in -client mode");
 
                                 /* Unset the block flag. */
@@ -775,7 +775,7 @@ namespace LLP
                             if(INCOMING.MESSAGE == ACTION::SUBSCRIBE)
                             {
                                 /* Check for client mode since this method should never be called except by a client. */
-                                if(config::GetBoolArg("-client"))
+                                if(config::fClient.load())
                                     return debug::drop(NODE, "ACTION::SUBSCRIBE::CHECKPOINT disabled in -client mode");
 
                                 /* Set the checkpoints flag. */
@@ -791,7 +791,7 @@ namespace LLP
                             else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
                             {
                                 /* Check for client mode since this method should never be called except by a client. */
-                                if(config::GetBoolArg("-client"))
+                                if(config::fClient.load())
                                     return debug::drop(NODE, "ACTION::UNSUBSCRIBE::CHECKPOINT disabled in -client mode");
 
                                 /* Unset the checkpoints flag. */
@@ -851,7 +851,7 @@ namespace LLP
                             if(INCOMING.MESSAGE == ACTION::SUBSCRIBE)
                             {
                                 /* Check for client mode since this method should never be called except by a client. */
-                                if(config::GetBoolArg("-client"))
+                                if(config::fClient.load())
                                     return debug::drop(NODE, "ACTION::SUBSCRIBE::LASTINDEX disabled in -client mode");
 
                                 /* Set the last flag. */
@@ -863,7 +863,7 @@ namespace LLP
                             else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
                             {
                                 /* Check for client mode since this method should never be called except by a client. */
-                                if(config::GetBoolArg("-client"))
+                                if(config::fClient.load())
                                     return debug::drop(NODE, "ACTION::UNSUBSCRIBE::LASTINDEX disabled in -client mode");
 
                                 /* Unset the last flag. */
@@ -936,7 +936,7 @@ namespace LLP
                             if(INCOMING.MESSAGE == ACTION::SUBSCRIBE)
                             {
                                 /* Check for client mode since this method should never be called except by a client. */
-                                if(config::GetBoolArg("-client"))
+                                if(config::fClient.load())
                                     return debug::drop(NODE, "ACTION::SUBSCRIBE::SIGCHAIN disabled in -client mode");
 
                                 /* Set the best chain flag. */
@@ -948,7 +948,7 @@ namespace LLP
                             else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
                             {
                                 /* Check for client mode since this method should never be called except by a client. */
-                                if(config::GetBoolArg("-client"))
+                                if(config::fClient.load())
                                     return debug::drop(NODE, "ACTION::UNSUBSCRIBE::SIGCHAIN disabled in -client mode");
 
                                 /* Unset the bestchain flag. */
@@ -991,7 +991,7 @@ namespace LLP
             case ACTION::LIST:
             {
                 /* Check for client mode since this method should never be called except by a client. */
-                if(config::GetBoolArg("-client"))
+                if(config::fClient.load())
                     return debug::drop(NODE, "ACTION::LIST: disabled in -client mode");
 
                 /* Set the limits. 3000 seems to be the optimal amount to overcome higher-latency connections during sync */
@@ -1501,7 +1501,7 @@ namespace LLP
                                 return debug::drop(NODE, "ACTION::GET: invalid specifier for TYPES::BLOCK");
 
                             /* Check for client mode since this method should never be called except by a client. */
-                            if(config::GetBoolArg("-client"))
+                            if(config::fClient.load())
                                 return debug::drop(NODE, "ACTION::GET::BLOCK disabled in -client mode");
 
                             /* Get the index of block. */
@@ -1604,7 +1604,7 @@ namespace LLP
                             if(fLegacy)
                             {
                                 /* Check for client mode since this method should never be called except by a client. */
-                                if(config::GetBoolArg("-client"))
+                                if(config::fClient.load())
                                     return debug::drop(NODE, "ACTION::GET::LEGACY::TRANSACTION disabled in -client mode");
 
                                 /* Check legacy database. */
@@ -1684,7 +1684,7 @@ namespace LLP
                                 return debug::drop(NODE, "TYPES::STATUS: invalid specifier for TYPES::TRANSACTION");
 
                             /* Check for client mode since this method should never be called except by a client. */
-                            if(config::GetBoolArg("-client"))
+                            if(config::fClient.load())
                                 return debug::drop(NODE, "TYPES::STATUS: disabled in -client mode");
 
                             /* Check for available protocol version. */
@@ -1804,7 +1804,7 @@ namespace LLP
                             ssPacket >> hashBlock;
 
                             /* Check for client mode since this method should never be called except by a client. */
-                            if(config::GetBoolArg("-client"))
+                            if(config::fClient.load())
                                 ssResponse << uint8_t(SPECIFIER::CLIENT);
 
                             /* Check the database for the block. */
@@ -1851,7 +1851,7 @@ namespace LLP
                             ssPacket >> hashTx;
 
                             /* Handle for -client mode which deals with merkle transactions. */
-                            if(config::GetBoolArg("-client"))
+                            if(config::fClient.load())
                             {
                                 /* Check ledger database. */
                                 if(!cacheInventory.Has(hashTx) && !LLD::Client->HasTx(hashTx, TAO::Ledger::FLAGS::MEMPOOL))
@@ -2200,7 +2200,7 @@ namespace LLP
                     case SPECIFIER::LEGACY:
                     {
                         /* Check for client mode since this method should never be called except by a client. */
-                        if(config::GetBoolArg("-client"))
+                        if(config::fClient.load())
                             return debug::drop(NODE, "TYPES::BLOCK::LEGACY: disabled in -client mode");
 
                         /* Get the block from the stream. */
@@ -2234,7 +2234,7 @@ namespace LLP
                     case SPECIFIER::TRITIUM:
                     {
                         /* Check for client mode since this method should never be called except by a client. */
-                        if(config::GetBoolArg("-client"))
+                        if(config::fClient.load())
                             return debug::drop(NODE, "TYPES::BLOCK::TRITIUM: disabled in -client mode");
 
                         /* Get the block from the stream. */
@@ -2308,7 +2308,7 @@ namespace LLP
                     case SPECIFIER::SYNC:
                     {
                         /* Check for client mode since this method should never be called except by a client. */
-                        if(config::GetBoolArg("-client"))
+                        if(config::fClient.load())
                             return debug::drop(NODE, "TYPES::BLOCK::SYNC: disabled in -client mode");
 
                         /* Check if this is an unsolicited sync block. */

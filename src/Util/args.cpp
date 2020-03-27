@@ -173,6 +173,7 @@ namespace config
         fDaemon                 = GetBoolArg("-daemon", false);
         fTestNet                = GetArg("-testnet", 0) > 0;
         fListen                 = GetBoolArg("-listen", true);
+        fClient                 = GetBoolArg("-client", false);
         //fUseProxy               = GetBoolArg("-proxy")
         fAllowDNS               = GetBoolArg("-allowdns", true);
         fLogTimestamps          = GetBoolArg("-logtimestamps", false);
