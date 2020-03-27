@@ -128,7 +128,7 @@ int main(int argc, char** argv)
         1,
         10,
         10,
-        config::GetBoolArg(std::string("-unified"), false),
+        config::fClient.load() ? false : config::GetBoolArg(std::string("-unified"), false),
         true,
         config::GetBoolArg(std::string("-meters"), false),
         true,
@@ -138,26 +138,29 @@ int main(int argc, char** argv)
     nPort = static_cast<uint16_t>(config::GetArg(std::string("-rpcport"), config::fTestNet.load() ? TESTNET_RPC_PORT : MAINNET_RPC_PORT));
 
     /* Set up RPC server */
-    LLP::RPC_SERVER = new LLP::Server<LLP::RPCNode>(
-        nPort,
-        static_cast<uint16_t>(config::GetArg(std::string("-rpcthreads"), 4)),
-        30,
-        true,
-        /* The connection score (total connections per second, default 5). */
-        static_cast<uint32_t>(config::GetArg(std::string("-rpccscore"), 5)),
+    if(!config::fClient.load())
+    {
+        LLP::RPC_SERVER = new LLP::Server<LLP::RPCNode>(
+            nPort,
+            static_cast<uint16_t>(config::GetArg(std::string("-rpcthreads"), 4)),
+            30,
+            true,
+            /* The connection score (total connections per second, default 5). */
+            static_cast<uint32_t>(config::GetArg(std::string("-rpccscore"), 5)),
 
-        /* The request score (total requests per second, default 5.) */
-        static_cast<uint32_t>(config::GetArg(std::string("-rpcrscore"), 5)),
+            /* The request score (total requests per second, default 5.) */
+            static_cast<uint32_t>(config::GetArg(std::string("-rpcrscore"), 5)),
 
-        /* The DDOS moving average timespan (default: 60 seconds). */
-        static_cast<uint32_t>(config::GetArg(std::string("-rpctimespan"), 60)),
-        true,
+            /* The DDOS moving average timespan (default: 60 seconds). */
+            static_cast<uint32_t>(config::GetArg(std::string("-rpctimespan"), 60)),
+            true,
 
-        /* Flag to determine if server should allow remote connections. */
-        config::GetBoolArg(std::string("-rpcremote"), false),
+            /* Flag to determine if server should allow remote connections. */
+            config::GetBoolArg(std::string("-rpcremote"), false),
 
-        false,
-        false);
+            false,
+            false);
+    }
 
 
     /* Startup timer stats. */
@@ -171,46 +174,50 @@ int main(int argc, char** argv)
         /* Initialize LLD. */
         LLD::Initialize();
 
-        /* Load the Wallet Database. NOTE this needs to be done before ChainState::Initialize as that can disconnect blocks causing
-           the wallet to be accessed if they contain any legacy stake transactions */
-        bool fFirstRun;
-        if (!Legacy::Wallet::InitializeWallet(config::GetArg(std::string("-wallet"), Legacy::WalletDB::DEFAULT_WALLET_DB)))
-            return debug::error("Failed initializing wallet");
-
-        /* Initialize ChainState. */
-        TAO::Ledger::ChainState::Initialize();
-
-
-        /* Initialize the scripts for legacy mode. */
-        Legacy::InitializeScripts();
-
-
-        /* Check the wallet loading for errors. */
-        uint32_t nLoadWalletRet = Legacy::Wallet::GetInstance().LoadWallet(fFirstRun);
-        if (nLoadWalletRet != Legacy::DB_LOAD_OK)
+        /* We don't need the wallet in client mode. */
+        if(!config::fClient.load())
         {
-            if (nLoadWalletRet == Legacy::DB_CORRUPT)
-                return debug::error("Failed loading wallet.dat: Wallet corrupted");
-            else if (nLoadWalletRet == Legacy::DB_TOO_NEW)
-                return debug::error("Failed loading wallet.dat: Wallet requires newer version of Nexus");
-            else if (nLoadWalletRet == Legacy::DB_NEEDS_RESCAN)
+            /* Load the Wallet Database. NOTE this needs to be done before ChainState::Initialize as that can disconnect blocks causing
+               the wallet to be accessed if they contain any legacy stake transactions */
+            bool fFirstRun;
+            if (!Legacy::Wallet::InitializeWallet(config::GetArg(std::string("-wallet"), Legacy::WalletDB::DEFAULT_WALLET_DB)))
+                return debug::error("Failed initializing wallet");
+
+            /* Initialize ChainState. */
+            TAO::Ledger::ChainState::Initialize();
+
+
+            /* Initialize the scripts for legacy mode. */
+            Legacy::InitializeScripts();
+
+
+            /* Check the wallet loading for errors. */
+            uint32_t nLoadWalletRet = Legacy::Wallet::GetInstance().LoadWallet(fFirstRun);
+            if (nLoadWalletRet != Legacy::DB_LOAD_OK)
             {
-                debug::log(0, FUNCTION, "Wallet.dat was cleaned or repaired, rescanning now");
+                if (nLoadWalletRet == Legacy::DB_CORRUPT)
+                    return debug::error("Failed loading wallet.dat: Wallet corrupted");
+                else if (nLoadWalletRet == Legacy::DB_TOO_NEW)
+                    return debug::error("Failed loading wallet.dat: Wallet requires newer version of Nexus");
+                else if (nLoadWalletRet == Legacy::DB_NEEDS_RESCAN)
+                {
+                    debug::log(0, FUNCTION, "Wallet.dat was cleaned or repaired, rescanning now");
 
-                Legacy::Wallet::GetInstance().ScanForWalletTransactions(TAO::Ledger::ChainState::stateGenesis, true);
+                    Legacy::Wallet::GetInstance().ScanForWalletTransactions(TAO::Ledger::ChainState::stateGenesis, true);
+                }
+                else
+                    return debug::error("Failed loading wallet.dat");
             }
-            else
-                return debug::error("Failed loading wallet.dat");
+
+
+            /* Handle Rescanning. */
+            if(config::GetBoolArg(std::string("-rescan")))
+                Legacy::Wallet::GetInstance().ScanForWalletTransactions(TAO::Ledger::ChainState::stateGenesis, true);
+
+
+            /* Relay transactions. */
+            Legacy::Wallet::GetInstance().ResendWalletTransactions();
         }
-
-
-        /* Handle Rescanning. */
-        if(config::GetBoolArg(std::string("-rescan")))
-            Legacy::Wallet::GetInstance().ScanForWalletTransactions(TAO::Ledger::ChainState::stateGenesis, true);
-
-
-        /* Relay transactions. */
-        Legacy::Wallet::GetInstance().ResendWalletTransactions();
 
 
         /* Get the port for Tritium Server. */
