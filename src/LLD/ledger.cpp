@@ -878,6 +878,10 @@ namespace LLD
     /* Checks if there is a block state object on disk. */
     bool LedgerDB::HasBlock(const uint1024_t& hashBlock)
     {
+        /* Check for client mode. */
+        if(config::fClient.load())
+            return Client->HasBlock(hashBlock);
+
         return Exists(hashBlock);
     }
 
