@@ -68,7 +68,7 @@ namespace LLD
                         FLAGS::CREATE | FLAGS::FORCE);
 
         /* Create new client database if enabled. */
-        if(config::GetBoolArg("-client"))
+        if(config::fClient.load())
         {
             Client    = new ClientDB(
                             FLAGS::CREATE | FLAGS::FORCE);

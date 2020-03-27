@@ -376,7 +376,7 @@ namespace TAO
         bool ClientBlock::Check() const
         {
             /* Check for client mode since this method should never be called except by a client. */
-            if(!config::GetBoolArg("-client"))
+            if(!config::fClient.load())
                 return debug::error(FUNCTION, "cannot process client block if not in -client mode");
 
             /* Read ledger DB for duplicate block. */
@@ -443,7 +443,7 @@ namespace TAO
         bool ClientBlock::Accept() const
         {
             /* Check for client mode since this method should never be called except by a client. */
-            if(!config::GetBoolArg("-client"))
+            if(!config::fClient.load())
                 return debug::error(FUNCTION, "cannot process block state if not in -client mode");
 
             /* Read ledger DB for previous block. */

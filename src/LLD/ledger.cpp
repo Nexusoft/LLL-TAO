@@ -145,7 +145,7 @@ namespace LLD
     const TAO::Ledger::Transaction LedgerDB::ReadTx(const uint512_t& hashTx, const uint8_t nFlags)
     {
         /* Check for client mode. */
-        if(config::GetBoolArg("-client"))
+        if(config::fClient.load())
         {
             TAO::Ledger::MerkleTx mTX;
             if(!Client->ReadTx(hashTx, mTX, nFlags))
@@ -182,7 +182,7 @@ namespace LLD
     bool LedgerDB::ReadTx(const uint512_t& hashTx, TAO::Ledger::Transaction &tx, const uint8_t nFlags)
     {
         /* Check for client mode. */
-        if(config::GetBoolArg("-client"))
+        if(config::fClient.load())
         {
             /* Get the merkle transaction from disk. */
             TAO::Ledger::MerkleTx mTX;
@@ -818,7 +818,7 @@ namespace LLD
     bool LedgerDB::ReadBlock(const uint1024_t& hashBlock, TAO::Ledger::BlockState &state)
     {
         /* Check for client mode. */
-        if(config::GetBoolArg("-client"))
+        if(config::fClient.load())
         {
             /* Get the merkle transaction from disk. */
             TAO::Ledger::ClientBlock block;
@@ -838,7 +838,7 @@ namespace LLD
     bool LedgerDB::ReadBlock(const uint1024_t& hashBlock, memory::atomic<TAO::Ledger::BlockState> &atomicState)
     {
         /* Check for client mode. */
-        if(config::GetBoolArg("-client"))
+        if(config::fClient.load())
         {
             /* Get the merkle transaction from disk. */
             TAO::Ledger::ClientBlock block;
