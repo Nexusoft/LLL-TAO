@@ -215,7 +215,7 @@ namespace TAO
                     /* Search back until fail or different checkpoint. */
                     BlockState state;
                     if(!LLD::Ledger->ReadBlock(hashCheckpoint.load(), state))
-                        return debug::error(FUNCTION, "no pending checkpoint");
+                        break;
 
                     /* Check we haven't reached the genesis */
                     if(state == stateGenesis)

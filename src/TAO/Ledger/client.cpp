@@ -399,6 +399,11 @@ namespace TAO
             if(!config::fClient.load())
                 return debug::error(FUNCTION, "cannot process client block if not in -client mode");
 
+            /* Read ledger DB for duplicate block. */
+            uint1024_t hashBlock = GetHash();
+            if(LLD::Client->HasBlock(hashBlock))
+                return false;
+
             /* Check the Size limits of the Current Block. */
             if(::GetSerializeSize(*this, SER_NETWORK, LLP::PROTOCOL_VERSION) > MAX_BLOCK_SIZE)
                 return debug::error(FUNCTION, "size limits failed ", MAX_BLOCK_SIZE);
@@ -471,10 +476,6 @@ namespace TAO
             if(clientPrev.nHeight + 1 != nHeight)
                 return debug::error(FUNCTION, "incorrect block height.");
 
-            /* Check that the nBits match the current Difficulty. */
-            //if(nBits != GetNextTargetRequired(clientPrev, GetChannel()))
-            //    return debug::error(FUNCTION, "incorrect proof-of-work/proof-of-stake");
-
             /* Check That Block timestamp is not before previous block. */
             if(GetBlockTime() <= clientPrev.GetBlockTime())
                 return debug::error(FUNCTION, "block's timestamp too early");
@@ -503,15 +504,8 @@ namespace TAO
             runtime::timer timer;
             timer.Start();
 
-            /* Get the block's hash. */
-            uint1024_t hashBlock = GetHash();
-
-            /* Read ledger DB for duplicate block. */
-            if(LLD::Client->HasBlock(hashBlock))
-                return debug::error(FUNCTION, "already have block ", hashBlock.SubString());
-
             /* Write the block to disk. */
-            if(!LLD::Client->WriteBlock(hashBlock, *this))
+            if(!LLD::Client->WriteBlock(GetHash(), *this))
                 return debug::error(FUNCTION, "block state failed to write");
 
             /* Signal to set the best chain. */
