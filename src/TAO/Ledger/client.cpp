@@ -304,17 +304,37 @@ namespace TAO
         }
 
 
-        /* Equivilence checking */
-        bool ClientBlock::operator==(const ClientBlock& block) const
+        /** Equivilence checking **/
+        bool ClientBlock::operator==(const ClientBlock& state) const
         {
-            return GetHash() == block.GetHash();
+            return
+            (
+                nVersion            == state.nVersion       &&
+                hashPrevBlock       == state.hashPrevBlock  &&
+                hashMerkleRoot      == state.hashMerkleRoot &&
+                nChannel            == state.nChannel       &&
+                nHeight             == state.nHeight        &&
+                nBits               == state.nBits          &&
+                nNonce              == state.nNonce         &&
+                nTime               == state.nTime
+            );
         }
 
 
-        /* Equivilence checking */
-        bool ClientBlock::operator!=(const ClientBlock& block) const
+        /** Equivilence checking **/
+        bool ClientBlock::operator!=(const ClientBlock& state) const
         {
-            return GetHash() != block.GetHash();
+            return
+            (
+                nVersion            != state.nVersion       ||
+                hashPrevBlock       != state.hashPrevBlock  ||
+                hashMerkleRoot      != state.hashMerkleRoot ||
+                nChannel            != state.nChannel       ||
+                nHeight             != state.nHeight        ||
+                nBits               != state.nBits          ||
+                nNonce              != state.nNonce         ||
+                nTime               != state.nTime
+            );
         }
 
 

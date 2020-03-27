@@ -403,14 +403,34 @@ namespace TAO
         /** Equivilence checking **/
         bool BlockState::operator==(const BlockState& state) const
         {
-            return GetHash() == state.GetHash();
+            return
+            (
+                nVersion            == state.nVersion       &&
+                hashPrevBlock       == state.hashPrevBlock  &&
+                hashMerkleRoot      == state.hashMerkleRoot &&
+                nChannel            == state.nChannel       &&
+                nHeight             == state.nHeight        &&
+                nBits               == state.nBits          &&
+                nNonce              == state.nNonce         &&
+                nTime               == state.nTime
+            );
         }
 
 
         /** Equivilence checking **/
         bool BlockState::operator!=(const BlockState& state) const
         {
-            return GetHash() != state.GetHash();
+            return
+            (
+                nVersion            != state.nVersion       ||
+                hashPrevBlock       != state.hashPrevBlock  ||
+                hashMerkleRoot      != state.hashMerkleRoot ||
+                nChannel            != state.nChannel       ||
+                nHeight             != state.nHeight        ||
+                nBits               != state.nBits          ||
+                nNonce              != state.nNonce         ||
+                nTime               != state.nTime
+            );
         }
 
 
