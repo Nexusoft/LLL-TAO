@@ -290,7 +290,7 @@ int main(int argc, char** argv)
 
 
         /* Set up Mining Server */
-        if(config::GetBoolArg(std::string("-mining")))
+        if(!config::fClient.load() && config::GetBoolArg(std::string("-mining")))
               LLP::MINING_SERVER.store(LLP::CreateMiningServer());
 
 
