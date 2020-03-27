@@ -90,15 +90,15 @@ namespace TAO
                 fSynchronizing =
                 (
                     /* If using main testnet then rely on the LLP synchronized flag */
-                    (!fLocalTestnet && !LLP::TritiumNode::fSynchronized.load() 
-                        && stateBest.load().GetBlockTime() < runtime::unifiedtimestamp() - 20 * 60) 
-                    
+                    (!fLocalTestnet && !LLP::TritiumNode::fSynchronized.load()
+                        && stateBest.load().GetBlockTime() < runtime::unifiedtimestamp() - 20 * 60)
+
                     /* If local testnet with connections then rely on LLP flag  */
                     || (fLocalTestnet && fHasConnections && !LLP::TritiumNode::fSynchronized.load() )
 
-                    /* If local testnet with no connections then assume sync'd if the last block was more than 30s ago 
+                    /* If local testnet with no connections then assume sync'd if the last block was more than 30s ago
                        and block age is more than 20 mins, which gives us a 30s window to connect to a local peer */
-                    || (fLocalTestnet && !fHasConnections 
+                    || (fLocalTestnet && !fHasConnections
                         && runtime::unifiedtimestamp() - nLastTime < 30
                         && stateBest.load().GetBlockTime() < runtime::unifiedtimestamp() - 20 * 60)
                 );
@@ -220,7 +220,7 @@ namespace TAO
                     /* Check we haven't reached the genesis */
                     if(state == stateGenesis)
                         break;
-                        
+
                     /* Get the previous state. */
                     state = state.Prev();
                     if(!state)
@@ -270,7 +270,7 @@ namespace TAO
         /* Get the hash of the genesis block. */
         uint1024_t ChainState::Genesis()
         {
-            return config::fTestNet.load() ? TAO::Ledger::hashGenesisTestnet : TAO::Ledger::hashGenesis;
+            return config::fTestNet.load() ? TAO::Ledger::hashGenesisTestnet : (config::fClient.load() ? TAO::Ledger::hashTritium : TAO::Ledger::hashGenesis);
         }
     }
 }

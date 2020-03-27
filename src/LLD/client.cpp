@@ -37,6 +37,32 @@ namespace LLD
     }
 
 
+    /* Writes the best chain pointer to the ledger DB. */
+    bool ClientDB::WriteBestChain(const uint1024_t& hashBest)
+    {
+        return Write(std::string("hashbestchain"), hashBest);
+    }
+
+
+    /* Reads the best chain pointer from the ledger DB. */
+    bool ClientDB::ReadBestChain(uint1024_t &hashBest)
+    {
+        return Read(std::string("hashbestchain"), hashBest);
+    }
+
+
+    /* Reads the best chain pointer from the ledger DB. */
+    bool ClientDB::ReadBestChain(memory::atomic<uint1024_t> &atomicBest)
+    {
+        uint1024_t hashBest = 0;
+        if(!Read(std::string("hashbestchain"), hashBest))
+            return false;
+
+        atomicBest.store(hashBest);
+        return true;
+    }
+
+
     /* Writes a transaction to the client DB. */
     bool ClientDB::WriteTx(const uint512_t& hashTx, const TAO::Ledger::MerkleTx& tx)
     {
@@ -102,7 +128,7 @@ namespace LLD
     {
         return Read(hashBlock, block);
     }
-    
+
 
     /* Checks if a client block exisets on disk. */
     bool ClientDB::HasBlock(const uint1024_t& hashBlock)

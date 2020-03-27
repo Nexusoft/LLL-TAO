@@ -129,6 +129,7 @@ _name.shard.file
 
 */
 
+#include <TAO/Ledger/include/genesis_block.h>
 
 const uint256_t hashSeed = 55;
 
@@ -136,66 +137,40 @@ const uint256_t hashSeed = 55;
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
-    for(int i = 0; i < 10; ++i)
-    {
-        uint64_t nTimestamp = runtime::timestamp();
-        uint32_t nInterval  = nTimestamp / 2;
+    config::mapArgs["-datadir"] = "/public/SYNC";
 
-        DataStream ssData(SER_LLD, LLD::DATABASE_VERSION);
-        ssData << hashSeed << nInterval;
+    /* Initialize LLD. */
+    LLD::Initialize();
 
-        std::vector<uint8_t> vResult = LLC::SK256(ssData.begin(), ssData.end()).GetBytes();
 
-        //run HMAC generator
-        uint32_t nOffset   =  vResult[31] & 0xf ;
-        uint32_t nBinary =
-             (vResult[nOffset + 0] & 0x7f) << 24
-           | (vResult[nOffset + 1] & 0xff) << 16
-           | (vResult[nOffset + 2] & 0xff) <<  8
-           | (vResult[nOffset + 3] & 0xff) ;
+    uint1024_t hashBlock = uint1024_t("0x9e804d2d1e1d3f64629939c6f405f15bdcf8cd18688e140a43beb2ac049333a230d409a1c4172465b6642710ba31852111abbd81e554b4ecb122bdfeac9f73d4f1570b6b976aa517da3c1ff753218e1ba940a5225b7366b0623e4200b8ea97ba09cb93be7d473b47b5aa75b593ff4b8ec83ed7f3d1b642b9bba9e6eda653ead9");
 
-        uint32_t nCode = nBinary % 1000000;
 
-        debug::log(0, "Code is ", nCode);
-
-        runtime::sleep(1000);
-    }
-
+    TAO::Ledger::BlockState state = TAO::Ledger::TritiumGenesis();
+    debug::log(0, state.hashMerkleRoot.ToString());
 
     return 0;
 
-    config::mapArgs["-datadir"] = "/public/tests";
-
-
-    uint1024_t hashBlock = uint1024_t("0xc326d8c68ebcf84d9e8889dcf0a57a34bf0721410c7011dddeda4e1ca0d05839df3ad825e45c62f8161e2c3b530abd3e09f72348d5d84d4d30902fe3504e39b7c52d9cd3ebecd5d45755a432f78c8559fa55d8b2e36022b7a2a82e37277b29f7e58120d795de6285b04109f077cf7b9f079e4ef00a39da0cde1e47de8480ae3a");
-
-    TAO::Ledger::BlockState state;
     if(!LLD::Ledger->ReadBlock(hashBlock, state))
         return debug::error("failed to read block");
 
-    debug::log(0, "Merkle: ", state.hashMerkleRoot.ToString());
+    printf("block.hashPrevBlock = uint1024_t(\"0x%s\");\n", state.hashPrevBlock.ToString().c_str());
+    printf("block.nVersion = %u;\n", state.nVersion);
+    printf("block.nHeight = %u;\n", state.nHeight);
+    printf("block.nChannel = %u;\n", state.nChannel);
+    printf("block.nTime = %lu;\n",    state.nTime);
+    printf("block.nBits = %u;\n", state.nBits);
+    printf("block.nNonce = %lu;\n", state.nNonce);
 
-    std::vector<uint512_t> vHashes;
-    for(const auto& tx : state.vtx)
+    for(int i = 0; i < state.vtx.size(); ++i)
     {
-        vHashes.push_back(tx.second);
+        printf("/* Hardcoded VALUE for INDEX %i. */\n", i);
+        printf("vHashes.push_back(uint512_t(\"0x%s\"));\n\n", state.vtx[i].second.ToString().c_str());
+        //printf("block.vtx.push_back(std::make_pair(%u, uint512_t(\"0x%s\")));\n\n", state.vtx[i].first, state.vtx[i].second.ToString().c_str());
     }
 
-    uint512_t hashTx = state.vtx[3].second;
-
-    std::vector<uint512_t> vBranch = state.GetMerkleBranch(vHashes, 3);
-
-    for(const auto& hash : vBranch)
-    {
-        debug::log(0, "Branch: ", hash.SubString());
-    }
-
-    uint512_t hashMerkleCheck = TAO::Ledger::BlockState::CheckMerkleBranch(hashTx, vBranch, 3);
-
-    if(hashMerkleCheck != state.hashMerkleRoot)
-        return debug::error("MERKLE BRANCH BAD!!!");
-
-    debug::log(0, "Branch: ", hashMerkleCheck.ToString());
+    for(int i = 0; i < state.vOffsets.size(); ++i)
+        printf("block.vOffsets.push_back(%u);\n", state.vOffsets[i]);
 
 
     return 0;

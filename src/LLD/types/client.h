@@ -23,6 +23,8 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/enum.h>
 
+#include <Util/include/memory.h>
+
 /** Forward declarations **/
 namespace Legacy { class MerkleTx; }
 namespace TAO
@@ -54,6 +56,42 @@ namespace LLD
 
         /** Default Destructor **/
         virtual ~ClientDB();
+
+
+        /** WriteBestChain
+         *
+         *  Writes the best chain pointer to the ledger DB.
+         *
+         *  @param[in] hashBest The best chain hash to write.
+         *
+         *  @return True if the write was successful, false otherwise.
+         *
+         **/
+        bool WriteBestChain(const uint1024_t& hashBest);
+
+
+        /** ReadBestChain
+         *
+         *  Reads the best chain pointer from the ledger DB.
+         *
+         *  @param[out] hashBest The best chain hash to read.
+         *
+         *  @return True if the read was successful, false otherwise.
+         *
+         **/
+        bool ReadBestChain(uint1024_t &hashBest);
+
+
+        /** ReadBestChain
+         *
+         *  Reads the best chain pointer from the ledger DB.
+         *
+         *  @param[out] atomicBest The best chain hash to read in atomic form.
+         *
+         *  @return True if the read was successful, false otherwise.
+         *
+         **/
+        bool ReadBestChain(memory::atomic<uint1024_t> &atomicBest);
 
 
         /** WriteTx
