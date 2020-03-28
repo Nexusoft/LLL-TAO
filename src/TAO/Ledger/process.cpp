@@ -188,7 +188,7 @@ namespace TAO
                         TAO::Ledger::ChainState::PercentSynchronized(), " %]",
                         " height=", block.nHeight,
                         " trust=", TAO::Ledger::ChainState::nBestChainTrust.load(),
-                        " [", 5000000 / nElapsed, " blocks/s]",
+                        " [", (config::fClient ? 5000000 : 1000000) / nElapsed, " blocks/s]",
                         "[", std::setw(2), std::setfill('0'), nHours, ":",
                               std::setw(2), std::setfill('0'), nMinutes, ":",
                               std::setw(2), std::setfill('0'), nSeconds, " remaining]");

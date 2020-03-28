@@ -73,6 +73,10 @@ namespace TAO
         };
 
 
+        /* Activated timestamp of first tritium block.*/
+        const uint32_t NEXUS_TRITIUM_TIMELOCK = 1573566343; //---->       11/12/2019 06:45:43 GMT - 7
+
+
         /* Lock for the Nexus transaction version upgrades. */
         const uint32_t TESTNET_TRANSACTION_VERSION_TIMELOCK[]   =
         {

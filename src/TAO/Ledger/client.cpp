@@ -480,18 +480,9 @@ namespace TAO
             if(GetBlockTime() <= clientPrev.GetBlockTime())
                 return debug::error(FUNCTION, "block's timestamp too early");
 
-            /* Start the database transaction. */
-            LLD::TxnBegin();
-
             /* Write the block to disk. */
             if(!Index())
-            {
-                LLD::TxnAbort();
                 return debug::error(FUNCTION, "client block failed to index");
-            }
-
-            /* Commit the transaction to database. */
-            LLD::TxnCommit();
 
             return true;
         }
@@ -670,11 +661,11 @@ namespace TAO
             if(!prev.IsNull())
             {
                 prev.hashNextBlock = GetHash();
-                if(!LLD::Ledger->WriteBlock(prev.GetHash(), prev))
+                if(!LLD::Client->WriteBlock(prev.GetHash(), prev))
                     return debug::error(FUNCTION, "failed to update previous block state");
 
                 /* If we just updated hashNextBlock for genesis block, update the in-memory genesis */
-                if(prev.GetHash() == ChainState::Genesis())
+                if(prev.nHeight == 0)
                     ChainState::stateGenesis = prev;
             }
 
