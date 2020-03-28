@@ -127,10 +127,10 @@ namespace TAO
         double ChainState::PercentSynchronized()
         {
             uint32_t nChainAge = (static_cast<uint32_t>(runtime::unifiedtimestamp()) - 60 * 60) - (config::fTestNet.load() ?
-                NEXUS_TESTNET_TIMELOCK : NEXUS_NETWORK_TIMELOCK);
+                NEXUS_TESTNET_TIMELOCK : (config::fClient.load() ? NEXUS_TRITIUM_TIMELOCK : NEXUS_NETWORK_TIMELOCK));
 
             uint32_t nSyncAge  = static_cast<uint32_t>(stateBest.load().GetBlockTime() - static_cast<uint64_t>(config::fTestNet.load() ?
-                NEXUS_TESTNET_TIMELOCK : NEXUS_NETWORK_TIMELOCK));
+                NEXUS_TESTNET_TIMELOCK : (config::fClient.load() ? NEXUS_TRITIUM_TIMELOCK : NEXUS_NETWORK_TIMELOCK)));
 
             return (100.0 * nSyncAge) / nChainAge;
         }

@@ -42,36 +42,45 @@ namespace LLD
         uint32_t nRegisterCacheSize = config::GetArg("-registercache", 2);
         Register = new RegisterDB(
                         FLAGS::CREATE | FLAGS::FORCE,
-                        77773, 
+                        77773,
                         nRegisterCacheSize * 1024 * 1024);
 
         /* Create the ledger database instance. */
         uint32_t nLedgerCacheSize = config::GetArg("-ledgercache", 2);
         Ledger    = new LedgerDB(
                         FLAGS::CREATE | FLAGS::FORCE,
-                        256 * 256 * 64,
+                        config::fClient.load() ? 77773 : (256 * 256 * 64),
                         nLedgerCacheSize * 1024 * 1024);
 
+
         /* Create the legacy database instance. */
-        uint32_t nLegacyCacheSize = config::GetArg("-legacycache", 1);
-        Legacy = new LegacyDB(
-                        FLAGS::CREATE | FLAGS::FORCE,
-                        256 * 256 * 64,
-                        nLegacyCacheSize * 1024 * 1024);
+        if(!config::fClient.load())
+        {
 
-        /* Create the trust database instance. */
-        Trust  = new TrustDB(
-                        FLAGS::CREATE | FLAGS::FORCE);
+            /* Create the legacy database instance. */
+            uint32_t nLegacyCacheSize = config::GetArg("-legacycache", 1);
+            Legacy = new LegacyDB(
+                            FLAGS::CREATE | FLAGS::FORCE,
+                            256 * 256 * 64,
+                            nLegacyCacheSize * 1024 * 1024);
 
-        /* Create the local database instance. */
-        Local    = new LocalDB(
-                        FLAGS::CREATE | FLAGS::FORCE);
+
+            /* Create the trust database instance. */
+            Trust  = new TrustDB(
+                            FLAGS::CREATE | FLAGS::FORCE);
+
+
+            /* Create the local database instance. */
+            Local    = new LocalDB(
+                            FLAGS::CREATE | FLAGS::FORCE);
+        }
 
         /* Create new client database if enabled. */
-        if(config::fClient.load())
+        else
         {
             Client    = new ClientDB(
-                            FLAGS::CREATE | FLAGS::FORCE);
+                            FLAGS::CREATE | FLAGS::FORCE,
+                            77773);
         }
 
         /* Handle database recovery mode. */
