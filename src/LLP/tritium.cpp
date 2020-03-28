@@ -281,6 +281,13 @@ namespace LLP
                              | SUBSCRIPTION::BESTHEIGHT
                              | SUBSCRIPTION::BLOCK
                         );
+
+                        /* Check for client mode. */
+                        if(!Incoming())
+                        {
+                            uint256_t hashGenesis = TAO::Ledger::SignatureChain::Genesis("US");
+                            PushMessage(ACTION::GET, uint8_t(TYPES::GENESIS), hashGenesis);
+                        }
                     }
 
 
@@ -2357,7 +2364,7 @@ namespace LLP
                         TAO::Ledger::Process(block, nStatus);
 
                         /* Log received. */
-                        //debug::log(3, FUNCTION, "received client block ", block.GetHash().SubString(), " height = ", block.nHeight);
+                        debug::log(3, FUNCTION, "received client block ", block.GetHash().SubString(), " height = ", block.nHeight);
 
                         break;
                     }
@@ -2521,8 +2528,11 @@ namespace LLP
             case TYPES::MERKLE:
             {
                 /* Check for subscription. */
-                if(!(nSubscriptions & SUBSCRIPTION::SIGCHAIN))
-                    return debug::drop(NODE, "TYPES::MERKLE: unsolicited data");
+                if(!config::fClient.load())
+                    return debug::drop(NODE, "TYPES::MERKLE: unavailable when not in -client mode");
+
+                //if(!(nSubscriptions & SUBSCRIPTION::SIGCHAIN))
+                //    return debug::drop(NODE, "TYPES::MERKLE: unsolicited data");
 
                 /* Get the specifier. */
                 uint8_t nSpecifier = 0;
@@ -2550,7 +2560,40 @@ namespace LLP
                         TAO::Ledger::MerkleTx tx;
                         ssPacket >> tx;
 
-                        //process merkle tx in -client mode
+                        /* Check if we have this transaction already. */
+                        if(!LLD::Client->HasTx(tx.GetHash()))
+                        {
+                            /* Grab the block to check merkle path. */
+                            TAO::Ledger::ClientBlock block;
+                            if(LLD::Client->ReadBlock(tx.hashBlock, block))
+                            {
+                                /* Cache the txid. */
+                                uint512_t hashTx = tx.GetHash();
+
+                                /* Check the merkle branch. */
+                                if(!tx.CheckMerkleBranch(block.hashMerkleRoot))
+                                    return debug::error(FUNCTION, "merkle transaction has invalid path");
+
+                                /* Commit transaction to disk. */
+                                if(!LLD::Client->WriteTx(hashTx, tx))
+                                    return debug::error(FUNCTION, "failed to write transaction");
+
+                                /* Index the transaction to it's block. */
+                                if(!LLD::Client->IndexBlock(hashTx, tx.hashBlock))
+                                    return debug::error(FUNCTION, "failed to write block indexing entry");
+
+                                /* Connect transaction in memory. */
+                                if(!tx.Connect(TAO::Ledger::FLAGS::BLOCK))
+                                {
+                                    /* Abort memory commits on failures. */
+                                    LLD::TxnAbort(TAO::Ledger::FLAGS::BLOCK);
+
+                                    return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
+                                }
+
+                                debug::log(0, hashTx.SubString(), " ACCEPTED");
+                            }
+                        }
 
                         break;
                     }

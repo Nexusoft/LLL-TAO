@@ -135,7 +135,7 @@ namespace TAO
              *  @return True if merkle path is valid.
              *
              **/
-            bool Check(const uint512_t& hashMerkleRoot) const;
+            bool CheckMerkleBranch(const uint512_t& hashMerkleRoot) const;
 
 
 
