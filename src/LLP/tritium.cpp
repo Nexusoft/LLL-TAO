@@ -1647,16 +1647,12 @@ namespace LLP
                         case TYPES::MERKLE:
                         {
                             /* Check for valid specifier. */
-                            if(fTransactions || fClient)
+                            if(fTransactions || fClient || fLegacy)
                                 return debug::drop(NODE, "ACTION::GET::MERKLE: invalid specifier for TYPES::MERKLE");
 
                             /* Get the index of transaction. */
                             uint512_t hashTx;
                             ssPacket >> hashTx;
-
-                            /* Check for legacy. */
-                            if(fLegacy)
-                                return debug::drop(NODE, "ACTION::GET::MERKLE: legacy specifier disabled for TYPES::MERKLE");
 
                             /* Check ledger database. */
                             TAO::Ledger::Transaction tx;
@@ -1671,6 +1667,72 @@ namespace LLP
 
                             /* Debug output. */
                             debug::log(3, NODE, "ACTION::GET: MERKLE TRANSACTION ", hashTx.SubString());
+
+                            break;
+                        }
+
+
+                        /* Standard type for a genesis transaction. */
+                        case TYPES::GENESIS:
+                        {
+                            /* Check for valid specifier. */
+                            if(fTransactions || fClient || fLegacy)
+                                return debug::drop(NODE, "ACTION::GET::GENESIS: invalid specifier for TYPES::GENESIS");
+
+                            /* Get the index of transaction. */
+                            uint256_t hashGenesis;
+                            ssPacket >> hashGenesis;
+
+                            /* Get the genesis txid. */
+                            uint512_t hashTx;
+                            if(LLD::Ledger->ReadGenesis(hashGenesis, hashTx))
+                            {
+                                TAO::Ledger::Transaction tx;
+                                if(LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                                {
+                                    /* Build a markle transaction. */
+                                    TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
+                                    merkle.BuildMerkleBranch(); //build the branch for merkle tree
+
+                                    PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::TRITIUM), merkle);
+                                }
+                            }
+
+                            /* Debug output. */
+                            debug::log(3, NODE, "ACTION::GET: GENESIS TRANSACTION ", hashTx.SubString());
+
+                            break;
+                        }
+
+
+                        /* Standard type for last sigchain transaction. */
+                        case TYPES::SIGCHAIN:
+                        {
+                            /* Check for valid specifier. */
+                            if(fTransactions || fClient || fLegacy)
+                                return debug::drop(NODE, "ACTION::GET::SIGCHAIN: invalid specifier for TYPES::SIGCHAIN");
+
+                            /* Get the index of transaction. */
+                            uint256_t hashGenesis;
+                            ssPacket >> hashGenesis;
+
+                            /* Get the genesis txid. */
+                            uint512_t hashTx;
+                            if(LLD::Ledger->ReadLast(hashGenesis, hashTx))
+                            {
+                                TAO::Ledger::Transaction tx;
+                                if(LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                                {
+                                    /* Build a markle transaction. */
+                                    TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
+                                    merkle.BuildMerkleBranch(); //build the branch for merkle tree
+
+                                    PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::TRITIUM), merkle);
+                                }
+                            }
+
+                            /* Debug output. */
+                            debug::log(3, NODE, "ACTION::GET: SIGCHAIN TRANSACTION ", hashTx.SubString());
 
                             break;
                         }
