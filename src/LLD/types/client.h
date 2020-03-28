@@ -188,6 +188,19 @@ namespace LLD
         bool ReadBlock(const uint1024_t& hashBlock, TAO::Ledger::ClientBlock &block);
 
 
+        /** ReadBlock
+         *
+         *  Reads a block state from disk from a tx index.
+         *
+         *  @param[in] hashBlock The block hash to read.
+         *  @param[out] block The client block to read.
+         *
+         *  @return True if the read was successful, false otherwise.
+         *
+         **/
+        bool ReadBlock(const uint512_t& hashTx, TAO::Ledger::ClientBlock &block);
+
+
         /** HasBlock
          *
          *  Checks if a client block exisets on disk.
@@ -210,6 +223,31 @@ namespace LLD
          *
          **/
         bool EraseBlock(const uint1024_t& hashBlock);
+
+
+        /** HasIndex
+         *
+         *  Determine if a transaction has already been indexed.
+         *
+         *  @param[in] hashTx The txid of transaction to write.
+         *
+         *  @return True if the transaction was successfully written, false otherwise.
+         *
+         **/
+        bool HasIndex(const uint512_t& hashTx);
+
+
+        /** IndexBlock
+         *
+         *  Index a transaction hash to a block in keychain.
+         *
+         *  @param[in] hashTx The txid of transaction to write.
+         *  @param[in] hashBlock The block hash to index to.
+         *
+         *  @return True if the transaction was successfully written, false otherwise.
+         *
+         **/
+        bool IndexBlock(const uint512_t& hashTx, const uint1024_t& hashBlock);
 
 
         /** HasFirst

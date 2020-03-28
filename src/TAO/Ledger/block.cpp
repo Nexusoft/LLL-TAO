@@ -304,11 +304,11 @@ namespace TAO
                 for(i = 0; i < nSize; i += 2)
                 {
                     /* get the references to the left and right leaves in the merkle tree */
-                    const uint512_t& left_tx  = vMerkleTree[j + i];
-                    const uint512_t& right_tx = vMerkleTree[j + std::min(i + 1, nSize - 1)];
+                    const uint512_t& hashLeft  = vMerkleTree[j + i];
+                    const uint512_t& hashRight = vMerkleTree[j + std::min(i + 1, nSize - 1)];
 
-                    vMerkleTree.push_back(LLC::SK512(BEGIN(left_tx),  END(left_tx),
-                                                     BEGIN(right_tx), END(right_tx)));
+                    vMerkleTree.push_back(LLC::SK512(BEGIN(hashLeft),  END(hashLeft),
+                                                     BEGIN(hashRight), END(hashRight)));
                 }
 
                 j += nSize;
@@ -329,16 +329,16 @@ namespace TAO
             /* Compute the merkle root. */
             uint32_t i = 0;
             uint32_t j = 0;
-            for(uint32_t nSize = static_cast<uint32_t>(vtx.size()); nSize > 1; nSize = (nSize + 1) >> 1)
+            for(uint32_t nSize = static_cast<uint32_t>(vtx.size()); nSize > 1; nSize = (nSize + 1) / 2)
             {
                 for(i = 0; i < nSize; i += 2)
                 {
                     /* get the references to the left and right leaves in the merkle tree */
-                    const uint512_t& left_tx  = vMerkleTree[j + i];
-                    const uint512_t& right_tx = vMerkleTree[j + std::min(i + 1, nSize - 1)];
+                    const uint512_t& hashLeft  = vMerkleTree[j + i];
+                    const uint512_t& hashRight = vMerkleTree[j + std::min(i + 1, nSize - 1)];
 
-                    vMerkleTree.push_back(LLC::SK512(BEGIN(left_tx),  END(left_tx),
-                                                     BEGIN(right_tx), END(right_tx)));
+                    vMerkleTree.push_back(LLC::SK512(BEGIN(hashLeft),  END(hashLeft),
+                                                     BEGIN(hashRight), END(hashRight)));
                 }
 
                 j += nSize;
@@ -404,10 +404,6 @@ namespace TAO
         /* Check the merkle branch of a transaction at given index. */
         uint512_t Block::CheckMerkleBranch(const uint512_t& hash, const std::vector<uint512_t>& vMerkleBranch, uint32_t nIndex)
         {
-            /* Check for valid range. */
-            if (nIndex > vMerkleBranch.size())
-                return 0;
-
             /* Generate merkle root. */
             uint512_t hashMerkleRet = hash;
             for(const auto& hashLeaf : vMerkleBranch)

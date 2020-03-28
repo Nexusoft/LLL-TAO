@@ -169,10 +169,10 @@ namespace TAO
 
 
         /* Checks if this transaction has a valid merkle path.*/
-        bool MerkleTx::Check(const uint512_t& hashMerkleRoot) const
+        bool MerkleTx::CheckMerkleBranch(const uint512_t& hashMerkleRoot) const
         {
             /* Generate merkle root from merkle branch. */
-            uint512_t hashMerkleCheck = TAO::Ledger::BlockState::CheckMerkleBranch(GetHash(), vMerkleBranch, 3);
+            uint512_t hashMerkleCheck = Block::CheckMerkleBranch(GetHash(), vMerkleBranch, nIndex);
 
             return hashMerkleRoot == hashMerkleCheck;
         }
@@ -192,13 +192,14 @@ namespace TAO
             /* Check for valid index. */
             if(nIndex == state.vtx.size())
                 return debug::error(FUNCTION, "transaction not found");
-
+                
             /* Build merkle branch. */
             vMerkleBranch = state.GetMerkleBranch(state.vtx, nIndex);
 
             /* NOTE: extra expensive check for testing, consider removing in production */
-            if(state.hashMerkleRoot != Block::CheckMerkleBranch(hash, vMerkleBranch, nIndex))
-                return debug::error(FUNCTION, "merkle root mismatch");
+            uint512_t hashCheck = Block::CheckMerkleBranch(hash, vMerkleBranch, nIndex);
+            if(state.hashMerkleRoot != hashCheck)
+                return debug::error(FUNCTION, "merkle root mismatch ", hashCheck.SubString());
 
             return true;
         }

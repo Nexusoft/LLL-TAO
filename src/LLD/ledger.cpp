@@ -527,7 +527,18 @@ namespace LLD
     /* Reads a block state from disk from a tx index. */
     bool LedgerDB::ReadBlock(const uint512_t& hashTx, TAO::Ledger::BlockState &state)
     {
-        //TODO: add -client switch for indexed blocks
+        /* Check for client mode. */
+        if(config::fClient.load())
+        {
+            /* Get the merkle transaction from disk. */
+            TAO::Ledger::ClientBlock block;
+            if(!Client->ReadBlock(hashTx, block))
+                return false;
+
+            /* Set the return value. */
+            state = block;
+            return true;
+        }
 
         return Read(std::make_pair(std::string("index"), hashTx), state);
     }

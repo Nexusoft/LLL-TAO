@@ -129,6 +129,12 @@ namespace LLD
         return Read(hashBlock, block);
     }
 
+    /* Reads a client block from disk from a tx index. */
+    bool ClientDB::ReadBlock(const uint512_t& hashTx, TAO::Ledger::ClientBlock &block)
+    {
+        return Read(std::make_pair(std::string("index"), hashTx), block);
+    }
+
 
     /* Checks if a client block exisets on disk. */
     bool ClientDB::HasBlock(const uint1024_t& hashBlock)
@@ -141,6 +147,20 @@ namespace LLD
     bool ClientDB::EraseBlock(const uint1024_t& hashBlock)
     {
         return Erase(hashBlock);
+    }
+
+
+    /* Determine if a transaction has already been indexed. */
+    bool ClientDB::HasIndex(const uint512_t& hashTx)
+    {
+        return Exists(std::make_pair(std::string("index"), hashTx));
+    }
+
+
+    /* Index a transaction hash to a block in keychain. */
+    bool ClientDB::IndexBlock(const uint512_t& hashTx, const uint1024_t& hashBlock)
+    {
+        return Index(std::make_pair(std::string("index"), hashTx), hashBlock);
     }
 
 
