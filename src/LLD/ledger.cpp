@@ -164,6 +164,15 @@ namespace LLD
     /*  Reads a transaction from the ledger DB. */
     const TAO::Ledger::Transaction LedgerDB::ReadTx(const uint512_t& hashTx, const uint8_t nFlags)
     {
+        /* Special check for memory pool. */
+        TAO::Ledger::Transaction tx;
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::MINER)
+        {
+            /* Get the transaction. */
+            if(TAO::Ledger::mempool.Get(hashTx, tx))
+                return tx;
+        }
+
         /* Check for client mode. */
         if(config::fClient.load())
         {
@@ -172,15 +181,6 @@ namespace LLD
                 throw debug::exception(FUNCTION, "failed to read -client tx");
 
             return mTX;
-        }
-
-        /* Special check for memory pool. */
-        TAO::Ledger::Transaction tx;
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::MINER)
-        {
-            /* Get the transaction. */
-            if(TAO::Ledger::mempool.Get(hashTx, tx))
-                return tx;
         }
 
         /* Check for failed read. */
@@ -201,6 +201,14 @@ namespace LLD
     /* Reads a transaction from the ledger DB. */
     bool LedgerDB::ReadTx(const uint512_t& hashTx, TAO::Ledger::Transaction &tx, const uint8_t nFlags)
     {
+        /* Special check for memory pool. */
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::MINER)
+        {
+            /* Get the transaction. */
+            if(TAO::Ledger::mempool.Get(hashTx, tx))
+                return true;
+        }
+
         /* Check for client mode. */
         if(config::fClient.load())
         {
@@ -212,14 +220,6 @@ namespace LLD
             /* Set the return value. */
             tx = mTX;
             return true;
-        }
-
-        /* Special check for memory pool. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::MINER)
-        {
-            /* Get the transaction. */
-            if(TAO::Ledger::mempool.Get(hashTx, tx))
-                return true;
         }
 
         return Read(hashTx, tx);
@@ -235,6 +235,19 @@ namespace LLD
             /* Get the transaction. */
             if(TAO::Ledger::mempool.Get(hashTx, tx, fConflicted))
                 return true;
+        }
+
+        /* Check for client mode. */
+        if(config::fClient.load())
+        {
+            /* Get the merkle transaction from disk. */
+            TAO::Ledger::MerkleTx mTX;
+            if(!Client->ReadTx(hashTx, mTX, nFlags))
+                return false;
+
+            /* Set the return value. */
+            tx = mTX;
+            return true;
         }
 
         return Read(hashTx, tx);
@@ -567,6 +580,10 @@ namespace LLD
             if(TAO::Ledger::mempool.Has(hashTx))
                 return true;
         }
+
+        /* Check indexes for -client mode. */
+        if(config::fClient.load())
+            return Client->HasIndex(hashTx);
 
         return Exists(hashTx);
     }

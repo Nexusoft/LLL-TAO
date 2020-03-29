@@ -2733,48 +2733,69 @@ namespace LLP
                         TAO::Ledger::MerkleTx tx;
                         ssPacket >> tx;
 
+                        /* Cache the txid. */
+                        uint512_t hashTx = tx.GetHash();
+
                         /* Check if we have this transaction already. */
-                        if(!LLD::Client->HasTx(tx.GetHash()))
+                        if(!LLD::Client->HasTx(hashTx))
                         {
-                            /* Grab the block to check merkle path. */
-                            TAO::Ledger::ClientBlock block;
-                            if(LLD::Client->ReadBlock(tx.hashBlock, block))
+                            /* Check for empty merkle tx. */
+                            if(tx.hashBlock != 0)
                             {
-                                /* Cache the txid. */
-                                uint512_t hashTx = tx.GetHash();
-
-                                /* Check the merkle branch. */
-                                if(!tx.CheckMerkleBranch(block.hashMerkleRoot))
-                                    return debug::error(FUNCTION, "merkle transaction has invalid path");
-
-                                tx.print();
-
-                                /* Commit transaction to disk. */
-                                LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK);
-                                if(!LLD::Client->WriteTx(hashTx, tx))
+                                /* Grab the block to check merkle path. */
+                                TAO::Ledger::ClientBlock block;
+                                if(LLD::Client->ReadBlock(tx.hashBlock, block))
                                 {
-                                    LLD::TxnAbort(TAO::Ledger::FLAGS::BLOCK);
-                                    return debug::error(FUNCTION, "failed to write transaction");
-                                }
+                                    /* Check the merkle branch. */
+                                    if(!tx.CheckMerkleBranch(block.hashMerkleRoot))
+                                        return debug::error(FUNCTION, "merkle transaction has invalid path");
 
-                                /* Index the transaction to it's block. */
-                                if(!LLD::Client->IndexBlock(hashTx, tx.hashBlock))
+                                    tx.print();
+
+                                    /* Commit transaction to disk. */
+                                    LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK);
+                                    if(!LLD::Client->WriteTx(hashTx, tx))
+                                    {
+                                        LLD::TxnAbort(TAO::Ledger::FLAGS::BLOCK);
+                                        return debug::error(FUNCTION, "failed to write transaction");
+                                    }
+
+                                    /* Index the transaction to it's block. */
+                                    if(!LLD::Client->IndexBlock(hashTx, tx.hashBlock))
+                                    {
+                                        LLD::TxnAbort(TAO::Ledger::FLAGS::BLOCK);
+                                        return debug::error(FUNCTION, "failed to write block indexing entry");
+                                    }
+
+                                    /* Connect transaction in memory. */
+                                    if(!tx.Connect(TAO::Ledger::FLAGS::BLOCK))
+                                    {
+                                        LLD::TxnAbort(TAO::Ledger::FLAGS::BLOCK);
+                                        return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
+                                    }
+
+                                    /* Flush to disk and clear mempool. */
+                                    LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
+                                    TAO::Ledger::mempool.Remove(hashTx);
+
+                                    debug::log(0, hashTx.SubString(), " ACCEPTED");
+                                }
+                                else
                                 {
-                                    LLD::TxnAbort(TAO::Ledger::FLAGS::BLOCK);
-                                    return debug::error(FUNCTION, "failed to write block indexing entry");
+                                    /* Ask for the missing block and merkle tx. */
+                                    PushMessage
+                                    (
+                                        ACTION::GET,
+                                        uint8_t(SPECIFIER::CLIENT), uint8_t(TYPES::BLOCK), tx.hashBlock,
+                                        uint8_t(TYPES::MERKLE), hashTx //as for transaction again after receiving block
+                                    );
                                 }
-
-                                /* Connect transaction in memory. */
-                                if(!tx.Connect(TAO::Ledger::FLAGS::BLOCK))
-                                {
-                                    LLD::TxnAbort(TAO::Ledger::FLAGS::BLOCK);
-                                    return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
-                                }
-
-                                LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
-
-                                debug::log(0, hashTx.SubString(), " ACCEPTED");
                             }
+                            else
+                            {
+                                TAO::Ledger::mempool.Accept(tx, this);
+                            }
+
                         }
 
                         break;
