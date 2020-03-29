@@ -109,6 +109,7 @@ namespace LLP
             REJECTED     = 0x51,
             STALE        = 0x52,
             UNSUBSCRIBED = 0x53, //let node know it was unsubscribed successfully
+            AUTHORIZED   = 0x54,
         };
     }
 
@@ -179,7 +180,11 @@ namespace LLP
         }
 
 
-        /** State of if node has currently verified signature. **/
+        /** State of if this node has logged in to remote node. **/
+        std::atomic<bool> fLoggedIn;
+
+
+        /** State of if remote node has currently verified signature. **/
         std::atomic<bool> fAuthorized;
 
 

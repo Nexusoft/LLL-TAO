@@ -295,6 +295,10 @@ namespace TAO
         bool Users::get_events(const uint256_t& hashGenesis,
                 std::vector<std::pair<std::shared_ptr<Legacy::Transaction>, uint32_t>> &vContracts)
         {
+            /* Check the database instance. */
+            if(!LLD::Legacy)
+                return false;
+                
             /* Get notifications for personal genesis indexes. */
             Legacy::Transaction tx;
 
@@ -370,7 +374,7 @@ namespace TAO
                 --nSequence;
             }
 
-            return true;
+            return (vContracts.size() > 0);
         }
 
 

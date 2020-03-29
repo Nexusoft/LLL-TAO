@@ -23,6 +23,8 @@ ________________________________________________________________________________
 
 #include <LLP/include/version.h>
 
+#include <TAO/API/include/global.h>
+
 #include <TAO/Operation/include/cost.h>
 #include <TAO/Operation/include/execute.h>
 #include <TAO/Operation/include/enum.h>
@@ -822,50 +824,59 @@ namespace TAO
             }
             else
             {
-                /* Make sure the previous transaction is on disk or mempool. */
-                TAO::Ledger::Transaction txPrev;
-                if(!LLD::Ledger->ReadTx(hashPrevTx, txPrev, nFlags))
-                    return debug::error(FUNCTION, "prev transaction not on disk");
+                /* We want to track the sigchain logged in so we can enforce certain rules for our own sigchain. */
+                uint256_t hashSigchain = 0;
+                if(config::fClient.load())
+                    hashSigchain = TAO::API::users->GetGenesis(0);
 
-                /* Double check sequence numbers here. */
-                if(txPrev.nSequence + 1 != nSequence)
-                    return debug::error(FUNCTION, "prev transaction incorrect sequence");
-
-                /* Check timestamp to previous transaction. */
-                if(nTimestamp < txPrev.nTimestamp)
-                    return debug::error(FUNCTION, "timestamp too far in the past ", txPrev.nTimestamp - nTimestamp);
-
-                /* Work out the whether transaction fees should apply based on the interval between transactions */
-                fApplyTxFee = ((nTimestamp - txPrev.nTimestamp) < TX_FEE_INTERVAL);
-
-                /* Check the previous next hash that is being claimed. */
-                bool fRecovery = false;
-                if(txPrev.hashNext != PrevHash())
+                /* We want this to trigger for times not in -client mode. */
+                if(!config::fClient.load() || hashGenesis == hashSigchain)
                 {
-                    /* Check that previous hash matches recovery. */
-                    if(txPrev.hashRecovery == PrevHash())
+                    /* Make sure the previous transaction is on disk or mempool. */
+                    TAO::Ledger::Transaction txPrev;
+                    if(!LLD::Ledger->ReadTx(hashPrevTx, txPrev, nFlags))
+                        return debug::error(FUNCTION, "prev transaction not on disk");
+
+                    /* Double check sequence numbers here. */
+                    if(txPrev.nSequence + 1 != nSequence)
+                        return debug::error(FUNCTION, "prev transaction incorrect sequence");
+
+                    /* Check timestamp to previous transaction. */
+                    if(nTimestamp < txPrev.nTimestamp)
+                        return debug::error(FUNCTION, "timestamp too far in the past ", txPrev.nTimestamp - nTimestamp);
+
+                    /* Work out the whether transaction fees should apply based on the interval between transactions */
+                    fApplyTxFee = ((nTimestamp - txPrev.nTimestamp) < TX_FEE_INTERVAL);
+
+                    /* Check the previous next hash that is being claimed. */
+                    bool fRecovery = false;
+                    if(txPrev.hashNext != PrevHash())
                     {
-                        /* Check that recovery hash is not 0. */
-                        if(txPrev.hashRecovery == 0)
-                            return debug::error(FUNCTION, "NOTICE: recovery hash disabled");
+                        /* Check that previous hash matches recovery. */
+                        if(txPrev.hashRecovery == PrevHash())
+                        {
+                            /* Check that recovery hash is not 0. */
+                            if(txPrev.hashRecovery == 0)
+                                return debug::error(FUNCTION, "NOTICE: recovery hash disabled");
 
-                        /* Log that transaction is being recovered. */
-                        debug::log(0, FUNCTION, "NOTICE: transaction is using recovery hash");
+                            /* Log that transaction is being recovered. */
+                            debug::log(0, FUNCTION, "NOTICE: transaction is using recovery hash");
 
-                        /* Set recovery mode to be enabled. */
-                        fRecovery = true;
+                            /* Set recovery mode to be enabled. */
+                            fRecovery = true;
+                        }
+                        else
+                            return debug::error(FUNCTION, "invalid signature chain credentials");
                     }
-                    else
-                        return debug::error(FUNCTION, "invalid signature chain credentials");
+
+                    /* Check recovery hash is sequenced from previous tx (except for changing from 0) */
+                    if(!fRecovery && txPrev.hashRecovery != hashRecovery && txPrev.hashRecovery != 0)
+                        return debug::error(FUNCTION, "recovery hash broken chain"); //this can only be updated when recovery executed
+
+                    /* Check the previous genesis. */
+                    if(txPrev.hashGenesis != hashGenesis)
+                        return debug::error(FUNCTION, "genesis hash broken chain");
                 }
-
-                /* Check recovery hash is sequenced from previous tx (except for changing from 0) */
-                if(!fRecovery && txPrev.hashRecovery != hashRecovery && txPrev.hashRecovery != 0)
-                    return debug::error(FUNCTION, "recovery hash broken chain"); //this can only be updated when recovery executed
-
-                /* Check the previous genesis. */
-                if(txPrev.hashGenesis != hashGenesis)
-                    return debug::error(FUNCTION, "genesis hash broken chain");
             }
 
             /* Keep for dependants. */

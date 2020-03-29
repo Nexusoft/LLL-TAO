@@ -91,6 +91,7 @@ namespace LLP
     /** Default Constructor **/
     TritiumNode::TritiumNode()
     : BaseConnection<TritiumPacket>()
+    , fLoggedIn(false)
     , fAuthorized(false)
     , fInitialized(false)
     , nSubscriptions(0)
@@ -117,6 +118,7 @@ namespace LLP
     /** Constructor **/
     TritiumNode::TritiumNode(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool fDDOSIn)
     : BaseConnection<TritiumPacket>(SOCKET_IN, DDOS_IN, fDDOSIn)
+    , fLoggedIn(false)
     , fAuthorized(false)
     , fInitialized(false)
     , nSubscriptions(0)
@@ -143,6 +145,7 @@ namespace LLP
     /** Constructor **/
     TritiumNode::TritiumNode(DDOS_Filter* DDOS_IN, bool fDDOSIn)
     : BaseConnection<TritiumPacket>(DDOS_IN, fDDOSIn)
+    , fLoggedIn(false)
     , fAuthorized(false)
     , fInitialized(false)
     , nSubscriptions(0)
@@ -293,19 +296,24 @@ namespace LLP
                              | SUBSCRIPTION::BESTHEIGHT
                              | SUBSCRIPTION::BLOCK
                         );
-
-                        /* Disable AUTH for older protocol versions. */
-                        if(nProtocolVersion >= MIN_TRITIUM_VERSION)
-                        {
-                            /* Generate an AUTH message to send to all peers */
-                            DataStream ssMessage = LLP::TritiumNode::GetAuth(true);
-                            if(ssMessage.size() > 0)
-                                WritePacket(NewMessage(ACTION::AUTH, ssMessage));
-                        }
                     }
 
                     /* Set node as initialized. */
                     fInitialized.store(true);
+                }
+
+
+                /* Disable AUTH for older protocol versions. */
+                if(nProtocolVersion >= MIN_TRITIUM_VERSION && !fLoggedIn.load())
+                {
+                    /* Generate an AUTH message to send to all peers */
+                    DataStream ssMessage = LLP::TritiumNode::GetAuth(true);
+                    if(ssMessage.size() > 0)
+                    {
+                        /* Authorize before we subscribe. */
+                        WritePacket(NewMessage(ACTION::AUTH, ssMessage));
+                        fLoggedIn.store(true);
+                    }
                 }
 
 
@@ -671,7 +679,26 @@ namespace LLP
                     /* Set to authorized node if passed all cryptographic checks. */
                     fAuthorized = true;
                     debug::log(0, NODE, "ACTION::AUTH: ", hashGenesis.SubString(), " AUTHORIZATION ACCEPTED");
+
+                    PushMessage(RESPONSE::AUTHORIZED, hashGenesis);
                 }
+
+                break;
+            }
+
+
+            /* Positive AUTH response. */
+            case RESPONSE::AUTHORIZED:
+            {
+                /* Grab the genesis. */
+                uint256_t hashGenesis;
+                ssPacket >> hashGenesis;
+
+                /* Subscribe to notifications. */
+                if(config::fClient.load())
+                    Subscribe(SUBSCRIPTION::SIGCHAIN);
+
+                debug::log(0, NODE, "RESPONSE::AUTHORIZED: ", hashGenesis.SubString(), " AUTHORIZATION ACCEPTED");
 
                 break;
             }
@@ -1510,7 +1537,7 @@ namespace LLP
 
                                 /* Look back through all events to find those that are not yet processed. */
                                 Legacy::Transaction tx;
-                                while(LLD::Legacy->ReadEvent(hashGenesis, --nSequence, tx))
+                                while(LLD::Legacy->ReadEvent(hashSigchain, --nSequence, tx))
                                 {
                                     /* Build a markle transaction. */
                                     Legacy::MerkleTx merkle = Legacy::MerkleTx(tx);
@@ -1530,11 +1557,12 @@ namespace LLP
                             else
                             {
                                 std::vector<TAO::Ledger::MerkleTx> vtx;
-                                LLD::Ledger->ReadSequence(hashSigchain, nSequence);
+                                if(!LLD::Ledger->ReadSequence(hashSigchain, nSequence))
+                                    nSequence = 0;
 
                                 /* Look back through all events to find those that are not yet processed. */
                                 TAO::Ledger::Transaction tx;
-                                while(LLD::Ledger->ReadEvent(hashGenesis, --nSequence, tx))
+                                while(LLD::Ledger->ReadEvent(hashSigchain, --nSequence, tx))
                                 {
                                     /* Build a markle transaction. */
                                     TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
@@ -1542,8 +1570,6 @@ namespace LLP
 
                                     /* Insert into container. */
                                     vtx.push_back(merkle);
-                                    ++nSequence;
-
                                     debug::log(0, "Added MERKLE ", merkle.GetHash().SubString());
                                 }
 
