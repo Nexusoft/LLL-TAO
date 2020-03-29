@@ -244,10 +244,7 @@ namespace TAO
                     return debug::error(FUNCTION, "credit disabled for coinbase of non-native token");
 
                 /* Seek read position to first position. */
-                contract.Rewind(72, Contract::OPERATIONS);
                 contract.Reset(Contract::REGISTERS);
-
-                /* Seek read position to first position. */
                 debit.Reset(Contract::OPERATIONS | Contract::REGISTERS);
 
                 return true;
@@ -293,10 +290,7 @@ namespace TAO
                     return debug::error(FUNCTION, "debit and credit value mismatch");
 
                 /* Seek read position to first position. */
-                contract.Rewind(72, Contract::OPERATIONS);
                 contract.Reset(Contract::REGISTERS);
-
-                /* Seek read position to first position. */
                 debit.Reset(Contract::OPERATIONS | Contract::REGISTERS);
 
                 return true;
@@ -361,10 +355,7 @@ namespace TAO
                     return debug::error(FUNCTION, "debit and credit value mismatch");
 
                 /* Seek read position to first position. */
-                contract.Rewind(72, Contract::OPERATIONS);
                 contract.Reset(Contract::REGISTERS);
-
-                /* Seek read position to first position. */
                 debit.Reset(Contract::OPERATIONS | Contract::REGISTERS);
 
                 return true;
@@ -442,10 +433,7 @@ namespace TAO
                 return debug::error(FUNCTION, "credit is beyond claimable debit amount");
 
             /* Seek read position to first position. */
-            contract.Rewind(72, Contract::OPERATIONS);
             contract.Reset(Contract::REGISTERS);
-
-            /* Seek read position to first position. */
             debit.Reset(Contract::OPERATIONS | Contract::REGISTERS);
 
             return true;
