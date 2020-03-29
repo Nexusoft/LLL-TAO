@@ -20,6 +20,8 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/users.h>
 
+#include <TAO/Register/types/object.h>
+
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/enum.h>
 
@@ -86,6 +88,131 @@ namespace TAO
 
             /* Get the genesis ID. */
             uint256_t hashGenesis = user->Genesis();
+
+            /* Check for -client mode. */
+            if(config::fClient.load())
+            {
+                /* Check for genesis. */
+                if(LLP::TRITIUM_SERVER && !LLD::Ledger->HasGenesis(hashGenesis))
+                {
+                    debug::log(0, FUNCTION, "CLIENT MODE: Initializing -client");
+
+                    memory::atomic_ptr<LLP::TritiumNode>& pNode = LLP::TRITIUM_SERVER->GetConnection();
+                    if(pNode != nullptr)
+                    {
+                        /* Request the inventory message. */
+                        pNode->PushMessage(LLP::ACTION::GET, uint8_t(LLP::TYPES::GENESIS), hashGenesis);
+                        debug::log(0, FUNCTION, "Requesting GENESIS for ", hashGenesis.SubString());
+
+                        /* Create the condition variable trigger. */
+                        std::condition_variable REQUEST_TRIGGER;
+                        pNode->AddTrigger(LLP::TYPES::MERKLE, &REQUEST_TRIGGER);
+
+                        std::mutex REQUEST_MUTEX;
+                        std::unique_lock<std::mutex> REQUEST_LOCK(REQUEST_MUTEX);
+
+                        /* Wait for trigger to complete. */
+                        REQUEST_TRIGGER.wait_for(REQUEST_LOCK, std::chrono::milliseconds(10000),
+                        [hashGenesis]
+                        {
+                            /* Check for genesis. */
+                            if(LLD::Ledger->HasGenesis(hashGenesis))
+                                return true;
+
+                            return false;
+                        });
+
+                        /* Cleanup our event trigger. */
+                        pNode->Release(LLP::TYPES::MERKLE);
+                        debug::log(0, FUNCTION, "CLIENT MODE: Releasing GENESIS trigger for ", hashGenesis.SubString());
+                    }
+                    else
+                        debug::error(FUNCTION, "no connections available...");
+                }
+
+                /* Check for genesis again before proceeding. */
+                if(!LLD::Ledger->HasGenesis(hashGenesis))
+                {
+                    user.free();
+                    throw APIException(-139, "CLIENT MODE: Unable to initialize sigchain GENESIS");
+                }
+
+                /* We want to auth in -client mode from the crypto object register. */
+                TAO::Register::Address hashCrypto =
+                    TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
+
+                /* Get the crypto register. */
+                TAO::Register::Object crypto;
+                if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::MEMPOOL))
+                {
+                    /* Account doesn't exist returns invalid credentials */
+                    user.free();
+                    throw APIException(-139, "CLIENT MODE: authorization failed, missing crypto register");
+                }
+
+                /* Parse the object. */
+                if(!crypto.Parse())
+                {
+                    /* Account doesn't exist returns invalid credentials */
+                    user.free();
+                    throw APIException(-139, "CLIENT MODE: failed to parse crypto register");
+                }
+
+                /* Check the credentials are correct. */
+                uint256_t hashCheck = user->KeyHash("auth", 0, strPin, crypto.get<uint256_t>("auth").GetType());
+                if(hashCheck != crypto.get<uint256_t>("auth"))
+                {
+                    /* Account doesn't exist returns invalid credentials */
+                    user.free();
+                    throw APIException(-139, "Invalid credentials");
+                }
+
+                /* Check the sessions. */
+                {
+                    LOCK(MUTEX);
+
+                    for(const auto& session : mapSessions)
+                    {
+                        if(hashGenesis == session.second->Genesis())
+                        {
+                            user.free();
+
+                            ret["genesis"] = hashGenesis.ToString();
+                            if(config::fMultiuser.load())
+                                ret["session"] = session.first.ToString();
+
+                            return ret;
+                        }
+                    }
+                }
+
+                /* If not using multiuser then check to see whether another user is already logged in */
+                if(!config::fMultiuser.load() && mapSessions.count(0) && mapSessions[0]->Genesis() != hashGenesis)
+                {
+                    user.free();
+                    throw APIException(-140, "CLIENT MODE: Already logged in with a different username.");
+                }
+
+                /* For sessionless API use the active sig chain which is stored in session 0 */
+                json::json ret;
+                ret["genesis"] = hashGenesis.ToString();
+
+                /* Setup the account. */
+                {
+                    LOCK(MUTEX);
+                    mapSessions.emplace(0, std::move(user));
+                }
+
+                /* Get the network's authorization key. */
+                pAuthKey = new memory::encrypted_type<uint512_t>(user->Generate("network", 0, strPin));
+
+                /* Generate an AUTH message to send to all peers */
+                //DataStream ssMessage = LLP::TritiumNode::GetAuth(true);
+                //if(ssMessage.size() > 0)
+                //    LLP::TRITIUM_SERVER->_Relay(uint8_t(LLP::ACTION::AUTH), ssMessage);
+
+                return ret;
+            }
 
             /* Check for duplicates in ledger db. */
             TAO::Ledger::Transaction txPrev;

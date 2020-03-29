@@ -293,15 +293,7 @@ namespace LLP
                              | SUBSCRIPTION::BESTHEIGHT
                              | SUBSCRIPTION::BLOCK
                         );
-
-                        /* Check for client mode. */
-                        if(!Incoming())
-                        {
-                            uint256_t hashGenesis = TAO::Ledger::SignatureChain::Genesis("US");
-                            PushMessage(ACTION::GET, uint8_t(TYPES::GENESIS), hashGenesis);
-                        }
                     }
-
 
                     /* Set node as initialized. */
                     fInitialized.store(true);
@@ -2596,12 +2588,7 @@ namespace LLP
 
                                 /* Connect transaction in memory. */
                                 if(!tx.Connect(TAO::Ledger::FLAGS::BLOCK))
-                                {
-                                    /* Abort memory commits on failures. */
-                                    LLD::TxnAbort(TAO::Ledger::FLAGS::BLOCK);
-
                                     return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
-                                }
 
                                 debug::log(0, hashTx.SubString(), " ACCEPTED");
                             }

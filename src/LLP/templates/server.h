@@ -183,6 +183,14 @@ namespace LLP
 
         /** Get Connection
          *
+         *  Select a random and currently open connection
+         *
+         **/
+        memory::atomic_ptr<ProtocolType>& GetConnection();
+
+
+        /** Get Connection
+         *
          *  Get the best connection based on latency
          *
          *  @param[in] pairExclude The connection that should be excluded from the search.
