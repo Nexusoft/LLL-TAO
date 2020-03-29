@@ -812,7 +812,6 @@ namespace TAO
                     }
                 }
 
-
                 /* Write specific transaction flags. */
                 if(nFlags == TAO::Ledger::FLAGS::BLOCK)
                 {
@@ -876,33 +875,37 @@ namespace TAO
             /* Run through all the contracts. */
             for(const auto& contract : vContracts)
             {
-                /* Check for dependants. */
-                if(contract.Dependant(hashPrev, nContract))
+                /* DISABLED for -client mode. */
+                if(!config::fClient.load())
                 {
-                    /* Check for confirmations when on a block. */
-                    if(nFlags == FLAGS::BLOCK || nFlags == FLAGS::MINER)
+                    /* Check for dependants. */
+                    if(contract.Dependant(hashPrev, nContract))
                     {
-                        /* Check that the previous transaction is indexed. */
-                        if(!LLD::Ledger->HasIndex(hashPrev))
-                            return debug::error(FUNCTION, hashPrev.SubString(), " not indexed");
-
-                        /* Read previous transaction from disk. */
-                        const TAO::Operation::Contract dependant = LLD::Ledger->ReadContract(hashPrev, nContract, nFlags);
-                        switch(dependant.Primitive())
+                        /* Check for confirmations when on a block. */
+                        if(nFlags == FLAGS::BLOCK || nFlags == FLAGS::MINER)
                         {
-                            /* Handle coinbase rules. */
-                            case TAO::Operation::OP::COINBASE:
+                            /* Check that the previous transaction is indexed. */
+                            if(!LLD::Ledger->HasIndex(hashPrev))
+                                return debug::error(FUNCTION, hashPrev.SubString(), " not indexed");
+
+                            /* Read previous transaction from disk. */
+                            const TAO::Operation::Contract dependant = LLD::Ledger->ReadContract(hashPrev, nContract, nFlags);
+                            switch(dependant.Primitive())
                             {
-                                /* Get number of confirmations of previous TX */
-                                uint32_t nConfirms = 0;
-                                if(!LLD::Ledger->ReadConfirmations(hashPrev, nConfirms, pblock))
-                                    return debug::error(FUNCTION, "failed to read confirmations for coinbase");
+                                /* Handle coinbase rules. */
+                                case TAO::Operation::OP::COINBASE:
+                                {
+                                    /* Get number of confirmations of previous TX */
+                                    uint32_t nConfirms = 0;
+                                    if(!LLD::Ledger->ReadConfirmations(hashPrev, nConfirms, pblock))
+                                        return debug::error(FUNCTION, "failed to read confirmations for coinbase");
 
-                                /* Check that the previous TX has reached sig chain maturity */
-                                if(nConfirms + 1 < MaturityCoinBase((pblock ? *pblock : ChainState::stateBest.load())))
-                                    return debug::error(FUNCTION, "coinbase is immature ", nConfirms);
+                                    /* Check that the previous TX has reached sig chain maturity */
+                                    if(nConfirms + 1 < MaturityCoinBase((pblock ? *pblock : ChainState::stateBest.load())))
+                                        return debug::error(FUNCTION, "coinbase is immature ", nConfirms);
 
-                                break;
+                                    break;
+                                }
                             }
                         }
                     }

@@ -79,7 +79,8 @@ namespace LLP
             MEMPOOL      = 0x37,
             SIGCHAIN     = 0x38,
             MERKLE       = 0x39,
-            GENESIS      = 0x3a
+            GENESIS      = 0x3a,
+            NOTIFICATION = 0x3b,
         };
     }
 

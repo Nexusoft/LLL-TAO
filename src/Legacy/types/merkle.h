@@ -29,6 +29,7 @@ namespace TAO
 	namespace Ledger
 	{
 		class Block;
+		class BlockState;
 	}
 }
 
@@ -158,7 +159,7 @@ namespace Legacy
 		uint32_t GetBlocksToMaturity() const;
 
 
-		/** Check
+		/** CheckMerkleBranch
 		 *
 		 *  Checks if this transaction has a valid merkle path.
 		 *
@@ -167,7 +168,42 @@ namespace Legacy
 		 *  @return True if merkle path is valid.
 		 *
 		 **/
-		bool Check(const uint512_t& hashMerkleRoot) const;
+		bool CheckMerkleBranch(const uint512_t& hashMerkleRoot) const;
+
+
+
+		/** BuildMerkleBranch
+		 *
+		 *  Builds a merkle branch from block state.
+		 *
+		 *  @param[in] state The block state to build branch from.
+		 *
+		 *  @return true if build was a success.
+		 *
+		 **/
+		bool BuildMerkleBranch(const TAO::Ledger::BlockState& state);
+
+
+		/** BuildMerkleBranch
+		 *
+		 *  Builds a merkle branch from block hash.
+		 *
+		 *  @param[in] hashConfirmed The block's hash to build merkle branch from.
+		 *
+		 *  @return true if build was a success.
+		 *
+		 **/
+		bool BuildMerkleBranch(const uint1024_t& hashConfirmed);
+
+
+		/** BuildMerkleBranch
+		 *
+		 *  Builds a merkle branch without any block data.
+		 *
+		 *  @return true if build was a success.
+		 *
+		 **/
+		bool BuildMerkleBranch();
 
 	};
 }
