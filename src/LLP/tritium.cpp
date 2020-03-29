@@ -1439,7 +1439,7 @@ namespace LLP
                                 break;
 
                             /* Check for empty hash stop. */
-                            if(hashStop == 0 && !LLD::Ledger->ReadLast(hashSigchain, hashStop, TAO::Ledger::FLAGS::MEMPOOL))
+                            if(hashStop == 0 && !LLD::Ledger->ReadLast(hashSigchain, hashStop))
                                 break;
 
                             /* Read sigchain entries. */
@@ -1448,12 +1448,12 @@ namespace LLP
                             {
                                 /* Read from disk. */
                                 TAO::Ledger::Transaction tx;
-                                if(!LLD::Ledger->ReadTx(hashStop, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                                if(!LLD::Ledger->ReadTx(hashStop, tx))
                                     break;
 
                                 /* Build a markle transaction. */
                                 TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
-                                merkle.BuildMerkleBranch(hashStop);
+                                merkle.BuildMerkleBranch();
 
                                 /* Insert into container. */
                                 vtx.push_back(merkle);
@@ -1466,6 +1466,86 @@ namespace LLP
 
                             break;
                         }
+
+
+                        /* Standard type for a sigchain listing. */
+                        case TYPES::NOTIFICATION:
+                        {
+                            /* Check for available protocol version. */
+                            if(nProtocolVersion < MIN_TRITIUM_VERSION)
+                                return true;
+
+                            /* Get the sigchain-id. */
+                            uint256_t hashSigchain;
+                            ssPacket >> hashSigchain;
+
+                            /* Total count. */
+                            uint32_t nCount = 0;
+                            ssPacket >> nCount;
+
+                            /* Set 0 as default for ALL. */
+                            if(nCount == 0)
+                                nCount = std::numeric_limits<uint32_t>::max();
+
+                            /* Get the last event */
+                            debug::log(0, "ACTION::LIST: ", fLegacy ? "LEGACY " : "", "NOTIFICATION for ", hashSigchain.SubString());
+
+                            /* Check for legacy. */
+                            uint32_t nSequence = 0;
+                            if(fLegacy)
+                            {
+                                std::vector<Legacy::MerkleTx> vtx;
+                                LLD::Ledger->ReadSequence(hashSigchain, nSequence);
+
+                                /* Look back through all events to find those that are not yet processed. */
+                                Legacy::Transaction tx;
+                                while(LLD::Legacy->ReadEvent(hashGenesis, --nSequence, tx))
+                                {
+                                    /* Build a markle transaction. */
+                                    Legacy::MerkleTx merkle = Legacy::MerkleTx(tx);
+                                    merkle.BuildMerkleBranch();
+
+                                    /* Insert into container. */
+                                    vtx.push_back(merkle);
+                                    ++nSequence;
+
+                                    debug::log(0, "Added MERKLE ", merkle.GetHash().SubString());
+                                }
+
+                                /* Reverse container to message forward. */
+                                for(auto tx = vtx.rbegin(); tx != vtx.rend(); ++tx)
+                                    PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::LEGACY), (*tx));
+                            }
+                            else
+                            {
+                                std::vector<TAO::Ledger::MerkleTx> vtx;
+                                LLD::Ledger->ReadSequence(hashSigchain, nSequence);
+
+                                /* Look back through all events to find those that are not yet processed. */
+                                TAO::Ledger::Transaction tx;
+                                while(LLD::Ledger->ReadEvent(hashGenesis, --nSequence, tx))
+                                {
+                                    /* Build a markle transaction. */
+                                    TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
+                                    merkle.BuildMerkleBranch();
+
+                                    /* Insert into container. */
+                                    vtx.push_back(merkle);
+                                    ++nSequence;
+
+                                    debug::log(0, "Added MERKLE ", merkle.GetHash().SubString());
+                                }
+
+                                /* Reverse container to message forward. */
+                                for(auto tx = vtx.rbegin(); tx != vtx.rend(); ++tx)
+                                    PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::TRITIUM), (*tx));
+                            }
+
+
+
+                            break;
+                        }
+
 
                         /* Catch malformed notify binary streams. */
                         default:
@@ -2552,7 +2632,42 @@ namespace LLP
                         Legacy::MerkleTx tx;
                         ssPacket >> tx;
 
-                        //process merkle tx in -client mode
+                        /* Check if we have this transaction already. */
+                        if(!LLD::Client->HasTx(tx.GetHash()))
+                        {
+                            /* Grab the block to check merkle path. */
+                            TAO::Ledger::ClientBlock block;
+                            if(LLD::Client->ReadBlock(tx.hashBlock, block))
+                            {
+                                /* Cache the txid. */
+                                uint512_t hashTx = tx.GetHash();
+
+                                /* Check the merkle branch. */
+                                if(!tx.CheckMerkleBranch(block.hashMerkleRoot))
+                                    return debug::error(FUNCTION, "merkle transaction has invalid path");
+
+                                /* Commit transaction to disk. */
+                                LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK);
+                                if(!LLD::Client->WriteTx(hashTx, tx))
+                                {
+                                    LLD::TxnAbort(TAO::Ledger::FLAGS::BLOCK);
+                                    return debug::error(FUNCTION, "failed to write transaction");
+                                }
+
+                                /* Index the transaction to it's block. */
+                                if(!LLD::Client->IndexBlock(hashTx, tx.hashBlock))
+                                {
+                                    LLD::TxnAbort(TAO::Ledger::FLAGS::BLOCK);
+                                    return debug::error(FUNCTION, "failed to write block indexing entry");
+                                }
+
+                                LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
+
+                                tx.print();
+
+                                debug::log(0, hashTx.SubString(), " ACCEPTED");
+                            }
+                        }
 
                         break;
                     }
@@ -2578,17 +2693,31 @@ namespace LLP
                                 if(!tx.CheckMerkleBranch(block.hashMerkleRoot))
                                     return debug::error(FUNCTION, "merkle transaction has invalid path");
 
+                                tx.print();
+
                                 /* Commit transaction to disk. */
+                                LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK);
                                 if(!LLD::Client->WriteTx(hashTx, tx))
+                                {
+                                    LLD::TxnAbort(TAO::Ledger::FLAGS::BLOCK);
                                     return debug::error(FUNCTION, "failed to write transaction");
+                                }
 
                                 /* Index the transaction to it's block. */
                                 if(!LLD::Client->IndexBlock(hashTx, tx.hashBlock))
+                                {
+                                    LLD::TxnAbort(TAO::Ledger::FLAGS::BLOCK);
                                     return debug::error(FUNCTION, "failed to write block indexing entry");
+                                }
 
                                 /* Connect transaction in memory. */
                                 if(!tx.Connect(TAO::Ledger::FLAGS::BLOCK))
+                                {
+                                    LLD::TxnAbort(TAO::Ledger::FLAGS::BLOCK);
                                     return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
+                                }
+
+                                LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
 
                                 debug::log(0, hashTx.SubString(), " ACCEPTED");
                             }

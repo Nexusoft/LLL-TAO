@@ -412,6 +412,10 @@ namespace LLD
     /* Determine if a transaction has already been indexed. */
     bool LedgerDB::HasIndex(const uint512_t& hashTx)
     {
+        /* Check indexes for -client mode. */
+        if(config::fClient.load())
+            return Client->HasIndex(hashTx);
+
         return Exists(std::make_pair(std::string("index"), hashTx));
     }
 

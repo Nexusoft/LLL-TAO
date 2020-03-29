@@ -92,6 +92,56 @@ namespace TAO
             /* Check for -client mode. */
             if(config::fClient.load())
             {
+                /* Check for genesis. */
+                if(LLP::TRITIUM_SERVER)
+                {
+                    memory::atomic_ptr<LLP::TritiumNode>& pNode = LLP::TRITIUM_SERVER->GetConnection();
+                    if(pNode != nullptr)
+                    {
+                        /* Request a genesis from Tritium LLP if none found. */
+                        if(!LLD::Ledger->HasGenesis(hashGenesis))
+                        {
+                            debug::log(0, FUNCTION, "CLIENT MODE: Initializing -client");
+
+                            /* Request the inventory message. */
+                            pNode->PushMessage(LLP::ACTION::GET, uint8_t(LLP::TYPES::GENESIS), hashGenesis);
+                            debug::log(0, FUNCTION, "Requesting GENESIS for ", hashGenesis.SubString());
+
+                            /* Create the condition variable trigger. */
+                            std::condition_variable REQUEST_TRIGGER;
+                            pNode->AddTrigger(LLP::TYPES::MERKLE, &REQUEST_TRIGGER);
+
+                            /* Wait for trigger to complete. */
+                            std::mutex REQUEST_MUTEX;
+                            std::unique_lock<std::mutex> REQUEST_LOCK(REQUEST_MUTEX);
+
+                            REQUEST_TRIGGER.wait_for(REQUEST_LOCK, std::chrono::milliseconds(10000),
+                            [hashGenesis]
+                            {
+                                /* Check for genesis. */
+                                if(LLD::Ledger->HasGenesis(hashGenesis))
+                                    return true;
+
+                                return false;
+                            });
+
+                            /* Cleanup our event trigger. */
+                            pNode->Release(LLP::TYPES::MERKLE);
+                            debug::log(0, FUNCTION, "CLIENT MODE: Releasing GENESIS trigger for ", hashGenesis.SubString());
+                        }
+
+                        /* Get the last txid in sigchain. */
+                        uint512_t hashLast;
+                        LLD::Ledger->ReadLast(hashGenesis, hashLast); //NOTE: we don't care if it fails here, because zero is first to endpoint
+
+                        /* Let's prime our disk now of the entire sigchain. */
+                        pNode->PushMessage(LLP::ACTION::LIST, uint8_t(LLP::TYPES::SIGCHAIN), hashGenesis, hashLast, uint512_t(0));
+                        pNode->PushMessage(LLP::ACTION::LIST, uint8_t(LLP::TYPES::NOTIFICATION), hashGenesis, uint32_t(0), uint32_t(0));
+                    }
+                    else
+                        debug::error(FUNCTION, "no connections available...");
+                }
+
                 /* If not using multiuser then check to see whether another user is already logged in */
                 if(mapSessions.count(0) && mapSessions[0]->Genesis() != hashGenesis)
                 {
@@ -104,44 +154,6 @@ namespace TAO
                     ret["genesis"] = hashGenesis.ToString();
 
                     return ret;
-                }
-
-                /* Check for genesis. */
-                if(LLP::TRITIUM_SERVER && !LLD::Ledger->HasGenesis(hashGenesis))
-                {
-                    debug::log(0, FUNCTION, "CLIENT MODE: Initializing -client");
-
-                    memory::atomic_ptr<LLP::TritiumNode>& pNode = LLP::TRITIUM_SERVER->GetConnection();
-                    if(pNode != nullptr)
-                    {
-                        /* Request the inventory message. */
-                        pNode->PushMessage(LLP::ACTION::GET, uint8_t(LLP::TYPES::GENESIS), hashGenesis);
-                        debug::log(0, FUNCTION, "Requesting GENESIS for ", hashGenesis.SubString());
-
-                        /* Create the condition variable trigger. */
-                        std::condition_variable REQUEST_TRIGGER;
-                        pNode->AddTrigger(LLP::TYPES::MERKLE, &REQUEST_TRIGGER);
-
-                        /* Wait for trigger to complete. */
-                        std::mutex REQUEST_MUTEX;
-                        std::unique_lock<std::mutex> REQUEST_LOCK(REQUEST_MUTEX);
-
-                        REQUEST_TRIGGER.wait_for(REQUEST_LOCK, std::chrono::milliseconds(10000),
-                        [hashGenesis]
-                        {
-                            /* Check for genesis. */
-                            if(LLD::Ledger->HasGenesis(hashGenesis))
-                                return true;
-
-                            return false;
-                        });
-
-                        /* Cleanup our event trigger. */
-                        pNode->Release(LLP::TYPES::MERKLE);
-                        debug::log(0, FUNCTION, "CLIENT MODE: Releasing GENESIS trigger for ", hashGenesis.SubString());
-                    }
-                    else
-                        debug::error(FUNCTION, "no connections available...");
                 }
 
                 /* Check for genesis again before proceeding. */
