@@ -44,8 +44,6 @@ namespace TAO
                 if(!LLD::Ledger->ReadBlock(hashTx, state))
                     return debug::error(FUNCTION, "failed to read block");
 
-                state.print();
-
                 return debug::error(FUNCTION, "credit is already claimed ", hashProof.SubString(), " txid ", hashTx.SubString(), " contract ", nContract);
             }
 
