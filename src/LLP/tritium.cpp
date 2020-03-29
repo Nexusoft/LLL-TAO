@@ -293,6 +293,15 @@ namespace LLP
                              | SUBSCRIPTION::BESTHEIGHT
                              | SUBSCRIPTION::BLOCK
                         );
+
+                        /* Disable AUTH for older protocol versions. */
+                        if(nProtocolVersion >= MIN_TRITIUM_VERSION)
+                        {
+                            /* Generate an AUTH message to send to all peers */
+                            DataStream ssMessage = LLP::TritiumNode::GetAuth(true);
+                            if(ssMessage.size() > 0)
+                                WritePacket(NewMessage(ACTION::AUTH, ssMessage));
+                        }
                     }
 
                     /* Set node as initialized. */
