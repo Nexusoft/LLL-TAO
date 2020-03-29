@@ -151,7 +151,7 @@ namespace TAO
 
                         /* Let's prime our disk now of the entire sigchain. */
                         pNode->PushMessage(LLP::ACTION::LIST, uint8_t(LLP::TYPES::SIGCHAIN), hashGenesis, hashLast, uint512_t(0));
-                        //pNode->PushMessage(LLP::ACTION::LIST, uint8_t(LLP::TYPES::NOTIFICATION), hashGenesis);
+                        pNode->PushMessage(LLP::ACTION::LIST, uint8_t(LLP::TYPES::NOTIFICATION), hashGenesis);
                     }
                     else
                         debug::error(FUNCTION, "no connections available...");
@@ -225,11 +225,6 @@ namespace TAO
 
                 /* Get the network's authorization key. */
                 pAuthKey = new memory::encrypted_type<uint512_t>(user->Generate("network", 0, strPin));
-
-                /* Generate an AUTH message to send to all peers */
-                DataStream ssMessage = LLP::TritiumNode::GetAuth(true);
-                if(ssMessage.size() > 0)
-                    LLP::TRITIUM_SERVER->_Relay(uint8_t(LLP::ACTION::AUTH), ssMessage);
 
                 return ret;
             }

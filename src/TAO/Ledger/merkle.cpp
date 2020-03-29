@@ -192,7 +192,7 @@ namespace TAO
             /* Check for valid index. */
             if(nIndex == state.vtx.size())
                 return debug::error(FUNCTION, "transaction not found");
-                
+
             /* Build merkle branch. */
             vMerkleBranch = state.GetMerkleBranch(state.vtx, nIndex);
 

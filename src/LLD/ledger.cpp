@@ -610,6 +610,9 @@ namespace LLD
             );
         }
 
+        /* Check for client mode. */
+        if(config::fClient.load())
+            return Client->Index(std::make_pair(hashAddress, nSequence), hashTx);
 
         return Index(std::make_pair(hashAddress, nSequence), hashTx);
     }
@@ -635,6 +638,10 @@ namespace LLD
      *  This is responsible for knowing foreign sigchain events that correlate to your own. */
     bool LedgerDB::ReadEvent(const uint256_t& hashAddress, const uint32_t nSequence, TAO::Ledger::Transaction &tx)
     {
+        /* Check for client mode. */
+        if(config::fClient.load())
+            return Client->Read(std::make_pair(hashAddress, nSequence), tx);
+
         return Read(std::make_pair(hashAddress, nSequence), tx);
     }
 
@@ -642,6 +649,10 @@ namespace LLD
     /* Writes the last txid of sigchain to disk indexed by genesis. */
     bool LedgerDB::WriteLast(const uint256_t& hashGenesis, const uint512_t& hashLast)
     {
+        /* Check for client mode. */
+        if(config::fClient.load())
+            return Client->WriteLast(hashGenesis, hashLast);
+
         return Write(std::make_pair(std::string("last"), hashGenesis), hashLast);
     }
 
@@ -667,6 +678,10 @@ namespace LLD
                 return true;
             }
         }
+
+        /* Check for client mode. */
+        if(config::fClient.load())
+            return Client->ReadLast(hashGenesis, hashLast);
 
         /* If we haven't checked the mempool or haven't found one in the mempool then read the last from the ledger DB */
         return Read(std::make_pair(std::string("last"), hashGenesis), hashLast);

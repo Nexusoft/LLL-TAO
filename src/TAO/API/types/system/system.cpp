@@ -192,6 +192,10 @@ namespace TAO
                             /* block hash of the peer's best chain */
                             obj["best"]     = connection->hashBestChain.SubString();
 
+                            /* block hash of the peer's best chain */
+                            if(connection->hashGenesis != 0)
+                                obj["genesis"] = connection->hashGenesis.SubString();
+
                             /* The calculated network latency between this node and the peer */
                             obj["latency"]  = connection->nLatency.load();
 
