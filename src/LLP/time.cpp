@@ -73,7 +73,7 @@ namespace LLP
     void TimeNode::Event(uint8_t EVENT, uint32_t LENGTH)
     {
         /* Handle any DDOS Packet Filters. */
-        if(EVENT == EVENT_HEADER)
+        if(EVENT == EVENTS::HEADER)
         {
             /* Checks for incoming connections only. */
             if(fDDOS && Incoming())
@@ -113,15 +113,15 @@ namespace LLP
         }
 
         /* Handle for a Packet Data Read. */
-        if(EVENT == EVENT_PACKET)
+        if(EVENT == EVENTS::PACKET)
             return;
 
         /* On Generic Event, Broadcast new block if flagged. */
-        if(EVENT == EVENT_GENERIC)
+        if(EVENT == EVENTS::GENERIC)
             return;
 
         /* On Connect Event, Assign the Proper Daemon Handle. */
-        if(EVENT == EVENT_CONNECT)
+        if(EVENT == EVENTS::CONNECT)
         {
             /* Only send time seed when outgoing connection. */
             if(!Incoming())
@@ -145,7 +145,7 @@ namespace LLP
         }
 
         /* On Disconnect Event, Reduce the Connection Count for Daemon */
-        if(EVENT == EVENT_DISCONNECT)
+        if(EVENT == EVENTS::DISCONNECT)
         {
             /* Add address to time server as dropped. */
             if(!Incoming() && TIME_SERVER->pAddressManager)

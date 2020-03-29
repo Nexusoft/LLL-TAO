@@ -57,7 +57,7 @@ namespace LLP
     void APINode::Event(uint8_t EVENT, uint32_t LENGTH)
     {
 
-        if(EVENT == EVENT_CONNECT)
+        if(EVENT == EVENTS::CONNECT)
         {
             /* Reset the error log for this thread */
             debug::GetLastError();

@@ -18,29 +18,41 @@ ________________________________________________________________________________
 namespace LLP
 {
 
-    /** Event Enumeration. Used to determine each Event from LLP Server. **/
-    enum
+    /* Events for LLP packet processing. */
+    namespace EVENTS
     {
-        EVENT_HEADER         = 0,
-        EVENT_PACKET         = 1,
-        EVENT_CONNECT        = 2,
-        EVENT_DISCONNECT     = 3,
-        EVENT_GENERIC        = 4,
-        EVENT_FAILED         = 5,
+        enum
+        {
+            HEADER         = 0,
+            PACKET         = 1,
+            CONNECT        = 2,
+            DISCONNECT     = 3,
+            GENERIC        = 4,
+            FAILED         = 5,
+            PROCESSED      = 6,
+        };
+    }
 
-        EVENT_COMMAND        = 6, /* For Message Pushing to Server Processors */
 
-        /* Disonnect reason flags */
-        DISCONNECT_TIMEOUT       = 7,
-        DISCONNECT_ERRORS        = 8,
-        DISCONNECT_POLL_ERROR    = 9,
-        DISCONNECT_POLL_EMPTY    = 10,
-        DISCONNECT_DDOS          = 11,
-        DISCONNECT_FORCE         = 12,
-        DISCONNECT_PEER          = 13,
-        DISCONNECT_BUFFER        = 14,
-        DISCONNECT_TIMEOUT_WRITE = 15,
-    };
+    /* Disonnect reason flags */
+    namespace DISCONNECT
+    {
+        enum
+        {
+            TIMEOUT       = 7,
+            ERRORS        = 8,
+            POLL_ERROR    = 9,
+            POLL_EMPTY    = 10,
+            DDOS          = 11,
+            FORCE         = 12,
+            PEER          = 13,
+            BUFFER        = 14,
+            TIMEOUT_WRITE = 15,
+        };
+    }
+
+
+
 
 }
 

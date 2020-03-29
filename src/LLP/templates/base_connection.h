@@ -135,6 +135,14 @@ namespace LLP
         std::condition_variable EVENT_CONDITION;
 
 
+        /** Mutex to protect events triggers. **/
+        std::mutex TRIGGER_MUTEX;
+
+
+        /** Special foreign triggers for connection. **/
+        std::map<message_t, std::condition_variable*> TRIGGERS;
+
+
     public:
 
 
@@ -172,6 +180,41 @@ namespace LLP
         {
             return ssData; //copy over relay like normal for all items to be relayed
         }
+
+
+        /** AddTrigger
+         *
+         *  Adds a new event listener to this connection to fire off condition variables on specific message types.
+         *
+         *  @param[in] nMsg The message type.
+         *  @param[in] EVENT_CONDITION The condition variable to set to triggers.
+         *
+         *  @return Returns a filled out tritium packet.
+         *
+         **/
+        void AddTrigger(const message_t nMsg, std::condition_variable* EVENT_CONDITION);
+
+
+        /** Trigger
+         *
+         *  Trigger an event if it exists.
+         *
+         *  @param[in] nMsg The message type.
+         *
+         *
+         **/
+        void Trigger(const message_t nMsg);
+
+
+        /** Release
+         *
+         *  Release an event listener from tirggers.
+         *
+         *  @param[in] nMsg The message type.
+         *
+         *
+         **/
+        void Release(const message_t nMsg);
 
 
         /** SetNull

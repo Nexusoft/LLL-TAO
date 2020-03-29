@@ -176,7 +176,7 @@ namespace LLP
 
         /** DisconnectAll
          *
-         *  Disconnects all connections by issuing a DISCONNECT_FORCE event message
+         *  Disconnects all connections by issuing a DISCONNECT::FORCE event message
          *  and then removes the connection from this data thread.
          *
          **/
