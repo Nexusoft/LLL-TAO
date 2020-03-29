@@ -1479,14 +1479,6 @@ namespace LLP
                             uint256_t hashSigchain;
                             ssPacket >> hashSigchain;
 
-                            /* Total count. */
-                            uint32_t nCount = 0;
-                            ssPacket >> nCount;
-
-                            /* Set 0 as default for ALL. */
-                            if(nCount == 0)
-                                nCount = std::numeric_limits<uint32_t>::max();
-
                             /* Get the last event */
                             debug::log(0, "ACTION::LIST: ", fLegacy ? "LEGACY " : "", "NOTIFICATION for ", hashSigchain.SubString());
 

@@ -136,7 +136,7 @@ namespace TAO
 
                         /* Let's prime our disk now of the entire sigchain. */
                         pNode->PushMessage(LLP::ACTION::LIST, uint8_t(LLP::TYPES::SIGCHAIN), hashGenesis, hashLast, uint512_t(0));
-                        pNode->PushMessage(LLP::ACTION::LIST, uint8_t(LLP::TYPES::NOTIFICATION), hashGenesis, uint32_t(0), uint32_t(0));
+                        pNode->PushMessage(LLP::ACTION::LIST, uint8_t(LLP::TYPES::NOTIFICATION), hashGenesis);
                     }
                     else
                         debug::error(FUNCTION, "no connections available...");
