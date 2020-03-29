@@ -576,9 +576,17 @@ namespace LLP
                     uint64_t nTimestamp;
                     ssPacket >> nTimestamp;
 
+                    /* Check the timestamp. */
+                    if(nTimestamp > runtime::unifiedtimestamp() || nTimestamp < runtime::unifiedtimestamp() - 10)
+                        return debug::drop(NODE, "ACTION::AUTH: timestamp out of rang (stale)");
+
                     /* Get the nonce */
                     uint64_t nNonce;
                     ssPacket >> nNonce;
+
+                    /* Check the nNonce for expected values. */
+                    if(nNonce != nCurrentSession)
+                        return debug::drop(NODE, "ACTION::AUTH: invalid session-id ", nNonce);
 
                     /* Get the public key. */
                     std::vector<uint8_t> vchPubKey;
