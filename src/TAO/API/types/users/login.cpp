@@ -92,6 +92,21 @@ namespace TAO
             /* Check for -client mode. */
             if(config::fClient.load())
             {
+
+                /* If not using multiuser then check to see whether another user is already logged in */
+                if(mapSessions.count(0) && mapSessions[0]->Genesis() != hashGenesis)
+                {
+                    user.free();
+                    throw APIException(-140, "CLIENT MODE: Already logged in with a different username.");
+                }
+                else if(mapSessions.count(0))
+                {
+                    json::json ret;
+                    ret["genesis"] = hashGenesis.ToString();
+
+                    return ret;
+                }
+
                 /* Check for genesis. */
                 if(LLP::TRITIUM_SERVER)
                 {
@@ -132,28 +147,14 @@ namespace TAO
 
                         /* Get the last txid in sigchain. */
                         uint512_t hashLast;
-                        LLD::Ledger->ReadLast(hashGenesis, hashLast); //NOTE: we don't care if it fails here, because zero is first to endpoint
+                        LLD::Ledger->ReadLast(hashGenesis, hashLast); //NOTE: we don't care if it fails here, because zero means begin
 
                         /* Let's prime our disk now of the entire sigchain. */
                         pNode->PushMessage(LLP::ACTION::LIST, uint8_t(LLP::TYPES::SIGCHAIN), hashGenesis, hashLast, uint512_t(0));
-                        pNode->PushMessage(LLP::ACTION::LIST, uint8_t(LLP::TYPES::NOTIFICATION), hashGenesis);
+                        //pNode->PushMessage(LLP::ACTION::LIST, uint8_t(LLP::TYPES::NOTIFICATION), hashGenesis);
                     }
                     else
                         debug::error(FUNCTION, "no connections available...");
-                }
-
-                /* If not using multiuser then check to see whether another user is already logged in */
-                if(mapSessions.count(0) && mapSessions[0]->Genesis() != hashGenesis)
-                {
-                    user.free();
-                    throw APIException(-140, "CLIENT MODE: Already logged in with a different username.");
-                }
-                else if(mapSessions.count(0))
-                {
-                    json::json ret;
-                    ret["genesis"] = hashGenesis.ToString();
-
-                    return ret;
                 }
 
                 /* Check for genesis again before proceeding. */
