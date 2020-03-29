@@ -227,9 +227,9 @@ namespace TAO
                 pAuthKey = new memory::encrypted_type<uint512_t>(user->Generate("network", 0, strPin));
 
                 /* Generate an AUTH message to send to all peers */
-                //DataStream ssMessage = LLP::TritiumNode::GetAuth(true);
-                //if(ssMessage.size() > 0)
-                //    LLP::TRITIUM_SERVER->_Relay(uint8_t(LLP::ACTION::AUTH), ssMessage);
+                DataStream ssMessage = LLP::TritiumNode::GetAuth(true);
+                if(ssMessage.size() > 0)
+                    LLP::TRITIUM_SERVER->_Relay(uint8_t(LLP::ACTION::AUTH), ssMessage);
 
                 return ret;
             }

@@ -551,9 +551,6 @@ namespace LLP
                 /* Hard requirement for genesis. */
                 ssPacket >> hashGenesis;
 
-                /* Debug logging. */
-                debug::log(0, NODE, "ACTION::AUTH: request from ", hashGenesis.SubString());
-
                 /* Get the signature information. */
                 if(hashGenesis == 0)
                     return debug::drop(NODE, "ACTION::AUTH: cannot authorize with reserved genesis");
@@ -587,8 +584,12 @@ namespace LLP
                     std::vector<uint8_t> vchPubKey;
                     ssPacket >> vchPubKey;
 
+                    /* Grab hash of pubkey and set its type. */
+                    uint256_t hashPubKey = LLC::SK256(vchPubKey);
+                    hashPubKey.SetType(hashCheck.GetType());
+
                     /* Check the public key to expected authorization key. */
-                    if(LLC::SK256(vchPubKey) != hashCheck)
+                    if(hashPubKey != hashCheck)
                         return debug::drop(NODE, "ACTION::AUTH: failed to authorize, invalid public key");
 
                     /* Build the byte stream from genesis+nonce in order to verify the signature */
@@ -603,7 +604,7 @@ namespace LLP
                     ssPacket >> vchSig;
 
                     /* Switch based on signature type. */
-                    switch(hashCheck.GetType())
+                    switch(hashPubKey.GetType())
                     {
                         /* Support for the FALCON signature scheeme. */
                         case TAO::Ledger::SIGNATURE::FALCON:
@@ -652,6 +653,7 @@ namespace LLP
 
                     /* Set to authorized node if passed all cryptographic checks. */
                     fAuthorized = true;
+                    debug::log(0, NODE, "ACTION::AUTH: ", hashGenesis.SubString(), " AUTHORIZATION ACCEPTED");
                 }
 
                 break;
@@ -3040,16 +3042,21 @@ namespace LLP
             /* Add the basic auth data to the message */
             ssMessage << hashSigchain <<  nTimestamp << SESSION_ID;
 
+            /* Get a hash of the data. */
+            uint256_t hashCheck = LLC::SK256(ssMessage.begin(), ssMessage.end());
+
             /* The public key for the "network" key*/
             std::vector<uint8_t> vchPubKey;
             std::vector<uint8_t> vchSig;
 
             /* Generate the public key and signature for the message data */
-            TAO::API::users->GetAccount(0)->Sign("network", ssMessage.Bytes(), TAO::API::users->GetAuthKey()->DATA, vchPubKey, vchSig);
+            TAO::API::users->GetAccount(0)->Sign("network", hashCheck.GetBytes(), TAO::API::users->GetAuthKey()->DATA, vchPubKey, vchSig);
 
             /* Add the public key to the message */
             ssMessage << vchPubKey;
             ssMessage << vchSig;
+
+            debug::log(0, FUNCTION, "SIGNING MESSAGE: ", hashSigchain.SubString(), " at timestamp ", nTimestamp);
         }
 
         return ssMessage;
@@ -3065,7 +3072,6 @@ namespace LLP
         /* Check whether it is valid before sending it */
         if(ssMessage.size() > 0)
             WritePacket(NewMessage((fAuth ? ACTION::AUTH : ACTION::DEAUTH), ssMessage));
-
     }
 
 
