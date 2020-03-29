@@ -92,6 +92,20 @@ namespace TAO
             /* Check for -client mode. */
             if(config::fClient.load())
             {
+                /* If not using multiuser then check to see whether another user is already logged in */
+                if(mapSessions.count(0) && mapSessions[0]->Genesis() != hashGenesis)
+                {
+                    user.free();
+                    throw APIException(-140, "CLIENT MODE: Already logged in with a different username.");
+                }
+                else if(mapSessions.count(0))
+                {
+                    json::json ret;
+                    ret["genesis"] = hashGenesis.ToString();
+
+                    return ret;
+                }
+
                 /* Check for genesis. */
                 if(LLP::TRITIUM_SERVER && !LLD::Ledger->HasGenesis(hashGenesis))
                 {
@@ -108,10 +122,10 @@ namespace TAO
                         std::condition_variable REQUEST_TRIGGER;
                         pNode->AddTrigger(LLP::TYPES::MERKLE, &REQUEST_TRIGGER);
 
+                        /* Wait for trigger to complete. */
                         std::mutex REQUEST_MUTEX;
                         std::unique_lock<std::mutex> REQUEST_LOCK(REQUEST_MUTEX);
 
-                        /* Wait for trigger to complete. */
                         REQUEST_TRIGGER.wait_for(REQUEST_LOCK, std::chrono::milliseconds(10000),
                         [hashGenesis]
                         {
@@ -184,13 +198,6 @@ namespace TAO
                             return ret;
                         }
                     }
-                }
-
-                /* If not using multiuser then check to see whether another user is already logged in */
-                if(!config::fMultiuser.load() && mapSessions.count(0) && mapSessions[0]->Genesis() != hashGenesis)
-                {
-                    user.free();
-                    throw APIException(-140, "CLIENT MODE: Already logged in with a different username.");
                 }
 
                 /* For sessionless API use the active sig chain which is stored in session 0 */
