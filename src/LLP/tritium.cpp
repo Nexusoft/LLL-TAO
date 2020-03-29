@@ -177,7 +177,7 @@ namespace LLP
     {
         switch(EVENT)
         {
-            case EVENT_CONNECT:
+            case EVENTS::CONNECT:
             {
                 debug::log(1, NODE, fOUTGOING ? "Outgoing" : "Incoming", " Connection Established");
 
@@ -191,7 +191,7 @@ namespace LLP
                 break;
             }
 
-            case EVENT_HEADER:
+            case EVENTS::HEADER:
             {
                 /* Check for initialization. */
                 if(nCurrentSession == 0 && nProtocolVersion == 0 && INCOMING.MESSAGE != ACTION::VERSION && DDOS)
@@ -200,7 +200,7 @@ namespace LLP
                 break;
             }
 
-            case EVENT_PACKET:
+            case EVENTS::PACKET:
             {
                 /* Check a packet's validity once it is finished being read. */
                 if(Incoming())
@@ -209,6 +209,7 @@ namespace LLP
                     if(INCOMING.Complete() && !INCOMING.IsValid() && DDOS)
                         DDOS->rSCORE += 15;
                 }
+
 
                 if(INCOMING.Complete())
                 {
@@ -219,7 +220,18 @@ namespace LLP
                 break;
             }
 
-            case EVENT_GENERIC:
+
+            /* Processed event is used for events triggers. */
+            case EVENTS::PROCESSED:
+            {
+                /* Dispatch an active trigger. */
+                Trigger(INCOMING.MESSAGE);
+
+                break;
+            }
+
+
+            case EVENTS::GENERIC:
             {
                 /* Make sure node responded on unsubscriion within 30 seconds. */
                 if(nUnsubscribed != 0 && nUnsubscribed + 30 < runtime::timestamp())
@@ -315,45 +327,45 @@ namespace LLP
             }
 
 
-            case EVENT_DISCONNECT:
+            case EVENTS::DISCONNECT:
             {
                 /* Debut output. */
                 std::string strReason;
                 switch(LENGTH)
                 {
-                    case DISCONNECT_TIMEOUT:
+                    case DISCONNECT::TIMEOUT:
                         strReason = "Timeout";
                         break;
 
-                    case DISCONNECT_ERRORS:
+                    case DISCONNECT::ERRORS:
                         strReason = "Errors";
                         break;
 
-                    case DISCONNECT_POLL_ERROR:
+                    case DISCONNECT::POLL_ERROR:
                         strReason = "Poll Error";
                         break;
 
-                    case DISCONNECT_POLL_EMPTY:
+                    case DISCONNECT::POLL_EMPTY:
                         strReason = "Unavailable";
                         break;
 
-                    case DISCONNECT_DDOS:
+                    case DISCONNECT::DDOS:
                         strReason = "DDOS";
                         break;
 
-                    case DISCONNECT_FORCE:
+                    case DISCONNECT::FORCE:
                         strReason = "Force";
                         break;
 
-                    case DISCONNECT_PEER:
+                    case DISCONNECT::PEER:
                         strReason = "Peer Hangup";
                         break;
 
-                    case DISCONNECT_BUFFER:
+                    case DISCONNECT::BUFFER:
                         strReason = "Flood Control";
                         break;
 
-                    case DISCONNECT_TIMEOUT_WRITE:
+                    case DISCONNECT::TIMEOUT_WRITE:
                         strReason = "Flood Control Timeout";
                         break;
 
@@ -2638,7 +2650,7 @@ namespace LLP
                     DataStream ssHeader(BYTES, SER_NETWORK, MIN_PROTO_VERSION);
                     ssHeader >> INCOMING;
 
-                    Event(EVENT_HEADER);
+                    Event(EVENTS::HEADER);
                 }
             }
 
@@ -2653,7 +2665,7 @@ namespace LLP
                 if(Read(DATA, DATA.size()) == DATA.size())
                 {
                     INCOMING.DATA.insert(INCOMING.DATA.end(), DATA.begin(), DATA.end());
-                    Event(EVENT_PACKET, static_cast<uint32_t>(DATA.size()));
+                    Event(EVENTS::PACKET, static_cast<uint32_t>(DATA.size()));
                 }
             }
         }

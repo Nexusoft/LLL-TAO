@@ -120,7 +120,7 @@ namespace LLP
          *  Set the Packet Null Flags.
          *
          **/
-        inline void SetNull()
+        void SetNull()
         {
             HEADER   = 255;
             LENGTH   = 0;

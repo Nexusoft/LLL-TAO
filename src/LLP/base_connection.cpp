@@ -55,6 +55,8 @@ namespace LLP
     , fEVENT          (false)
     , EVENT_MUTEX     ( )
     , EVENT_CONDITION ( )
+    , TRIGGER_MUTEX   ( )
+    , TRIGGERS        ( )
     {
         INCOMING.SetNull();
     }
@@ -75,6 +77,8 @@ namespace LLP
     , fEVENT          (false)
     , EVENT_MUTEX     ( )
     , EVENT_CONDITION ( )
+    , TRIGGER_MUTEX   ( )
+    , TRIGGERS        ( )
     {
     }
 
@@ -95,6 +99,8 @@ namespace LLP
     , fEVENT          (false)
     , EVENT_MUTEX     ( )
     , EVENT_CONDITION ( )
+    , TRIGGER_MUTEX   ( )
+    , TRIGGERS        ( )
     {
     }
 
@@ -105,6 +111,43 @@ namespace LLP
     {
         Disconnect();
         SetNull();
+    }
+
+
+    /* Adds a new event listener to this connection to fire off condition variables on specific message types.*/
+    template <class PacketType>
+    void BaseConnection<PacketType>::AddTrigger(const message_t nMsg, std::condition_variable* EVENT_CONDITION)
+    {
+        LOCK(TRIGGER_MUTEX);
+
+        TRIGGERS[nMsg] = EVENT_CONDITION;
+    }
+
+
+    /* Trigger an event if it exists. */
+    template <class PacketType>
+    void BaseConnection<PacketType>::Trigger(const message_t nMsg)
+    {
+        LOCK(TRIGGER_MUTEX);
+
+        /* Notify trigger if found. */
+        if(TRIGGERS.count(nMsg))
+        {
+            /* Grab the trigger and check for nullptr. */
+            std::condition_variable* pTrigger = TRIGGERS[nMsg];
+            if(pTrigger)
+                TRIGGERS[nMsg]->notify_all();
+        }
+    }
+
+
+    /* Release an event listener from tirggers. */
+    template <class PacketType>
+    void BaseConnection<PacketType>::Release(const message_t nMsg)
+    {
+        LOCK(TRIGGER_MUTEX);
+
+        TRIGGERS.erase(nMsg);
     }
 
 
