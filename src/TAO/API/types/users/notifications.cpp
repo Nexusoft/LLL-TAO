@@ -223,14 +223,18 @@ namespace TAO
                             if(hashGenesis != hashProof)
                                 continue;
 
-                            /* Check that the sender has not claimed it back (voided) */
-                            TAO::Register::State state;
-                            if(!LLD::Register->ReadState(hashRegister, state))
-                                continue;
+                            /* Check that the sender has not claimed it back (voided).  We can skip this in client mode and just 
+                               rely on whether a proof exists for it instead. */
+                            if(!config::fClient.load())
+                            {
+                                TAO::Register::State state;
+                                if(!LLD::Register->ReadState(hashRegister, state))
+                                    continue;
 
-                            /* Make sure the register claim is in SYSTEM pending from a transfer.  */
-                            if(state.hashOwner.GetType() != TAO::Ledger::GENESIS::SYSTEM)
-                                continue;
+                                /* Make sure the register claim is in SYSTEM pending from a transfer.  */
+                                if(state.hashOwner.GetType() != TAO::Ledger::GENESIS::SYSTEM)
+                                    continue;
+                            }
 
                             /* Make sure we haven't already claimed it */
                             if(LLD::Ledger->HasProof(hashRegister, tx.GetHash(), nContract, TAO::Ledger::FLAGS::MEMPOOL))
@@ -431,14 +435,18 @@ namespace TAO
                             if(hashGenesis != hashProof)
                                 continue;
 
-                            /* Check that the sender has not claimed it back (voided) */
-                            TAO::Register::State state;
-                            if(!LLD::Register->ReadState(hashRegister, state))
-                                continue;
+                            /* Check that the sender has not claimed it back (voided).  We can skip this in client mode and just 
+                               rely on whether a proof exists for it instead. */
+                            if(!config::fClient.load())
+                            {
+                                TAO::Register::State state;
+                                if(!LLD::Register->ReadState(hashRegister, state))
+                                    continue;
 
-                            /* Make sure the register claim is in SYSTEM pending from a transfer.  */
-                            if(state.hashOwner.GetType() != TAO::Ledger::GENESIS::SYSTEM)
-                                continue;
+                                /* Make sure the register claim is in SYSTEM pending from a transfer.  */
+                                if(state.hashOwner.GetType() != TAO::Ledger::GENESIS::SYSTEM)
+                                    continue;
+                            }
 
                             /* Make sure we haven't already claimed it */
                             if(LLD::Ledger->HasProof(hashRegister, tx.GetHash(), nContract, TAO::Ledger::FLAGS::MEMPOOL))
@@ -542,6 +550,11 @@ namespace TAO
         bool Users::get_tokenized_debits(const uint256_t& hashGenesis,
                 std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> &vContracts)
         {
+            /* Don't process tokenized debits in client mode (yet). */
+            /* TODO: obtain token register and token events list via LLP in client mode */
+            if(config::fClient.load())
+                return false;
+
             /* Get the list of registers owned by this sig chain */
             std::vector<TAO::Register::Address> vRegisters;
             if(!ListRegisters(hashGenesis, vRegisters))
@@ -660,6 +673,11 @@ namespace TAO
         bool Users::get_expired(const uint256_t& hashGenesis,
                 uint512_t hashLast, std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> &vContracts)
         {
+            /* Don't process expired contracts in client mode, as we will not be able to determine whether the recipient has
+               already claimed / credited */
+            if(config::fClient.load())
+                return false;
+                
             /* Temporary transaction to use to evaluate the conditions */
             TAO::Ledger::Transaction voidTx;
 
