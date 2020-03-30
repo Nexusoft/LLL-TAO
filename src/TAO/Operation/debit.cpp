@@ -39,13 +39,13 @@ namespace TAO
             {
                 /* Read the owner of register. */
                 TAO::Register::State state;
-                if(!LLD::Register->ReadState(hashTo, state, nFlags))
+                if(!LLD::Register->ReadState(hashTo, state, nFlags) && !config::fClient.load()) // don't error in client mode
                     return debug::error(FUNCTION, "failed to read register to");
 
                 if(nFlags == TAO::Ledger::FLAGS::BLOCK)
                 {
                     /* Commit an event for other sigchain. */
-                    if(!LLD::Ledger->WriteEvent(state.hashOwner, hashTx))
+                    if(!state.IsNull() && !LLD::Ledger->WriteEvent(state.hashOwner, hashTx))
                         return debug::error(FUNCTION, "failed to write event for account ", state.hashOwner.SubString());
                 }
             }
