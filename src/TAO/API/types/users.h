@@ -515,6 +515,19 @@ namespace TAO
             json::json Invoices(const json::json& params, bool fHelp);
 
 
+            /** ProcessNotifications
+             *
+             *  Process any outstanding notifications for a particular sig chain
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json ProcessNotifications(const json::json& params, bool fHelp);
+
+
             /** EventsThread
              *
              *  Background thread to handle/suppress sigchain notifications.
@@ -708,6 +721,14 @@ namespace TAO
             *
             **/
             void auto_login();
+
+
+            /** auto_process_notifications
+            *
+            *  Process notifications for the currently logged in user(s)
+            *
+            **/
+            void auto_process_notifications();
 
 
             /** update_crypto_keys

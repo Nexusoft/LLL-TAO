@@ -389,4 +389,6 @@ Error Codes
 | -251 | Missing name from or address from |
 | -252 | Account to debit is not for the required token |
 | -254 | Invoices API not yet active |
+| -255 | Cannot process notifications until peers are connected |
+| -256 | Cannot process notifications whilst synchronizing |
 
