@@ -700,7 +700,11 @@ namespace TAO
                 if(config::fClient.load())
                 {
                     /* Create the tritium genesis block. */
-                    state = TritiumGenesis();
+                    if(!config::fTestNet.load())
+                        state = TritiumGenesis();
+                    else
+                        state = LegacyGenesis();
+
 
                     /* Write the block to disk. */
                     if(!LLD::Client->WriteBlock(hashGenesis, ClientBlock(state)))
