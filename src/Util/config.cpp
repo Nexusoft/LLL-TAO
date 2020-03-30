@@ -201,14 +201,14 @@ namespace config
         else
             path = GetDefaultDataDir();
 
-        /* Check for client mode. */
-        if(config::GetBoolArg("-client", false))
-            path.append("client/");
-
         /* Check for testnet mode. */
         uint32_t nTestnet = GetArg("-testnet", 0);
         if(fNetSpecific && nTestnet > 0)
             path.append(debug::safe_printstr("testnet", nTestnet, "/"));
+
+        /* Check for client mode. */
+        if(config::GetBoolArg("-client", false))
+            path.append("client/");
 
         filesystem::create_directories(path);
 
