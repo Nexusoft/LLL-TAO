@@ -1485,7 +1485,7 @@ namespace LLP
                                 break;
 
                             /* Check for empty hash stop. */
-                            if(hashStop == 0 && !LLD::Ledger->ReadLast(hashSigchain, hashStop))
+                            if(hashStop == 0 && !LLD::Ledger->ReadLast(hashSigchain, hashStop, TAO::Ledger::FLAGS::MEMPOOL))
                                 break;
 
                             /* Read sigchain entries. */
@@ -1494,12 +1494,15 @@ namespace LLP
                             {
                                 /* Read from disk. */
                                 TAO::Ledger::Transaction tx;
-                                if(!LLD::Ledger->ReadTx(hashStop, tx))
+                                if(!LLD::Ledger->ReadTx(hashStop, tx, TAO::Ledger::FLAGS::MEMPOOL))
                                     break;
 
                                 /* Build a markle transaction. */
                                 TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
-                                merkle.BuildMerkleBranch();
+
+                                /* Build the merkle branch if the tx has been confirmed (i.e. it is not in the mempool) */
+                                if(!TAO::Ledger::mempool.Has(hashStop))
+                                    merkle.BuildMerkleBranch();
 
                                 /* Insert into container. */
                                 vtx.push_back(merkle);
@@ -1788,7 +1791,10 @@ namespace LLP
                             {
                                 /* Build a markle transaction. */
                                 TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
-                                merkle.BuildMerkleBranch(); //build the branch for merkle tree
+                                
+                                /* Build the merkle branch if the tx has been confirmed (i.e. it is not in the mempool) */
+                                if(!TAO::Ledger::mempool.Has(hashTx))
+                                    merkle.BuildMerkleBranch();
 
                                 PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::TRITIUM), merkle);
                             }
@@ -1820,7 +1826,10 @@ namespace LLP
                                 {
                                     /* Build a markle transaction. */
                                     TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
-                                    merkle.BuildMerkleBranch(); //build the branch for merkle tree
+                                    
+                                    /* Build the merkle branch if the tx has been confirmed (i.e. it is not in the mempool) */
+                                    if(!TAO::Ledger::mempool.Has(hashTx))
+                                        merkle.BuildMerkleBranch();
 
                                     PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::TRITIUM), merkle);
                                 }
@@ -1853,7 +1862,10 @@ namespace LLP
                                 {
                                     /* Build a markle transaction. */
                                     TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
-                                    merkle.BuildMerkleBranch(); //build the branch for merkle tree
+                                    
+                                    /* Build the merkle branch if the tx has been confirmed (i.e. it is not in the mempool) */
+                                    if(!TAO::Ledger::mempool.Has(hashTx))
+                                        merkle.BuildMerkleBranch();
 
                                     PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::TRITIUM), merkle);
                                 }
