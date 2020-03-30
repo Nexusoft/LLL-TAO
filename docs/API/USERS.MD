@@ -30,6 +30,7 @@ The following methods are currently supported by this API
 [`list/names`](#listnames)    
 [`list/namespaces`](#listnamespaces)  
 [`list/notifications`](#listnotifications)  
+[`process/notifications`](#processnotifications)  
 [`list/tokens`](#listtokens)  
 [`list/transactions`](#listtransactions)
 
@@ -906,6 +907,49 @@ An array of contracts deifned as:
 `proof` : The register address of the token account proving the the split dividend debit.
 
 `dividend_payment` : Flag indicating that this debit is a split dividend payment to a tokenized asset
+
+
+****
+
+
+# `process/notifications`
+
+Process all outstanding notifications for a logged in signature chain.  This API method can be used instead of running the  
+
+
+### Endpoint:
+
+`/users/process/notifications`
+
+
+### Parameters:
+
+`pin` : The PIN for this signature chain.  This is required unless the signature chain is already unlocked for notifications.
+
+`session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) the notifications should be processed for. For single-user API mode the session should not be supplied.
+
+
+### Return value JSON object:
+```
+{
+    "processed": 7,
+    "transactions": [
+        {
+            "txid": "01c4cf7b356d95bb783c31cd22119ff6dfcb5efc91dd1cf6c80f0cc4fd612dd7d03ed62955b0641f1b8985e38c2d7cd8fe7a07a98a46701b55c77559bd3c3152"
+        }
+    ]
+}
+
+
+```
+
+### Return values:
+
+`processed` : The number of notifications (contracts) processed.  
+
+`transactions` : Array of transaction ID's (`txid`) for each transaction that was created to process the notifications.  If there are more outstanding notifications than can fit in a single transaction, then additional transactions will be created until all notifications are processed.   
+
+**NOTE** : Some outstanding notifications may be skipped by this API call without resulting in an error message.  For example this can happen if the individual notifications conditions cannot be satisfied.
 
 ****
 
