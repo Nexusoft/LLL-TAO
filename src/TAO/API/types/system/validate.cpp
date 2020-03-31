@@ -84,26 +84,24 @@ namespace TAO
                         /* Set the register type */
                         jsonRet["type"]    = RegisterType(state.nType);
 
+                        /* Check if address is owned by current user */
+                        uint256_t hashGenesis = users->GetCallersGenesis(params);
+                        if(hashGenesis != 0)
+                        {
+                            if(state.hashOwner == hashGenesis)
+                                jsonRet["is_mine"] = true;
+                            else
+                                jsonRet["is_mine"] = false;
+                        }
+
                         /* If it is an object register then parse it to add the object_type */
                         if(state.nType == TAO::Register::REGISTER::OBJECT)
                         {
-
-                            uint256_t hashGenesis = users->GetCallersGenesis(params);
-
                             /* parse object so that the data fields can be accessed */
-                            if(state.Parse()) {
-                                if(hashGenesis != 0) {
-                                    if(state.hashOwner == hashGenesis)
-                                        jsonRet["is_mine"] = true;
-                                    else
-                                        jsonRet["is_mine"] = false;
-                                }
+                            if(state.Parse())
                                 jsonRet["object_type"] = ObjectType(state.Standard());
-                            }
                             else
-                            {
                                 jsonRet["is_valid"] = false;
-                            }
                         }
                     }
                     else
