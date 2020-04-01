@@ -357,6 +357,15 @@ namespace TAO
             uint64_t Position(const uint8_t nFlags = CONDITIONS) const;
 
 
+            /** SeekToPrimitive
+             *
+             *  Move the internal operation stream pointer to the position of the primitive operation byte.
+             *  If the stream starts with a CONDITION or VALIDATE byte then the pointer is moved forward to skip these bytes
+             *
+             **/
+            void SeekToPrimitive() const;
+
+
             /** Operator Overload <<
              *
              *  Serializes data into ssOperation

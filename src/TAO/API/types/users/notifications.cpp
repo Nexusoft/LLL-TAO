@@ -169,31 +169,12 @@ namespace TAO
                     /* The proof to check for this contract */
                     uint256_t hashProof = 0;
 
-                    /* Reset the op stream */
-                    contract.Reset();
+                    /* Reset the contract to the position of the primitive. */
+                    contract.SeekToPrimitive();
 
                     /* The operation */
                     uint8_t nOP;
                     contract >> nOP;
-
-                    /* Check for conditional OP */
-                    switch(nOP)
-                    {
-                        case TAO::Operation::OP::VALIDATE:
-                        {
-                            /* Seek through validate. */
-                            contract.Seek(68);
-                            contract >> nOP;
-
-                            break;
-                        }
-
-                        case TAO::Operation::OP::CONDITION:
-                        {
-                            /* Get new operation. */
-                            contract >> nOP;
-                        }
-                    }
 
                     /* Check for that the debit is meant for us. */
                     switch(nOP)
@@ -405,31 +386,12 @@ namespace TAO
                     /* The proof to check for this contract */
                     uint256_t hashProof = 0;
 
-                    /* Reset the op stream */
-                    contract.Reset();
+                    /* Reset the contract to the position of the primitive. */
+                    contract.SeekToPrimitive();
 
                     /* The operation */
                     uint8_t nOP;
                     contract >> nOP;
-
-                    /* Check for conditional OP */
-                    switch(nOP)
-                    {
-                        case TAO::Operation::OP::VALIDATE:
-                        {
-                            /* Seek through validate. */
-                            contract.Seek(68);
-                            contract >> nOP;
-
-                            break;
-                        }
-
-                        case TAO::Operation::OP::CONDITION:
-                        {
-                            /* Get new operation. */
-                            contract >> nOP;
-                        }
-                    }
 
                     /* Check for that the debit is meant for us. */
                     switch(nOP)
@@ -724,32 +686,12 @@ namespace TAO
                     /* The proof to check for this contract */
                     TAO::Register::Address hashProof;
 
-                    /* Reset the op stream */
-                    contract.Reset();
+                    /* Reset the contract to the position of the primitive. */
+                    contract.SeekToPrimitive();
 
                     /* The operation */
                     uint8_t nOP;
                     contract >> nOP;
-
-                    /* Check for conditional OP */
-                    /* Check for conditional OP */
-                    switch(nOP)
-                    {
-                        case TAO::Operation::OP::VALIDATE:
-                        {
-                            /* Seek through validate. */
-                            contract.Seek(68);
-                            contract >> nOP;
-
-                            break;
-                        }
-
-                        case TAO::Operation::OP::CONDITION:
-                        {
-                            /* Get new operation. */
-                            contract >> nOP;
-                        }
-                    }
 
                     /* Check for that the debit is meant for us. */
                     if(nOP == TAO::Operation::OP::DEBIT)
@@ -1131,31 +1073,12 @@ namespace TAO
                 /* Get the maturity for this transaction. */
                 bool fMature = LLD::Ledger->ReadMature(hashTx);
 
-                /* Reset the contract operation stream. */
-                refContract.Reset();
+                /* Reset the contract to the position of the primitive. */
+                refContract.SeekToPrimitive();
 
                 /* Get the opcode. */
                 uint8_t OPERATION;
                 refContract >> OPERATION;
-
-                /* Check for conditional OP */
-                switch(OPERATION)
-                {
-                    case TAO::Operation::OP::VALIDATE:
-                    {
-                        /* Seek through validate. */
-                        refContract.Seek(68);
-                        refContract >> OPERATION;
-
-                        break;
-                    }
-
-                    case TAO::Operation::OP::CONDITION:
-                    {
-                        /* Get new operation. */
-                        refContract >> OPERATION;
-                    }
-                }
 
                 /* Check the opcodes for debit, coinbase or transfers. */
                 switch (OPERATION)

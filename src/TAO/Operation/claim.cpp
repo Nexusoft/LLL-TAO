@@ -75,34 +75,12 @@ namespace TAO
             /* Reset register streams. */
             claim.Reset(Contract::REGISTERS);
 
+            /* Reset the claim contract to the position of the primitive. */
+            claim.SeekToPrimitive();
+
             /* Get operation byte. */
             uint8_t OP = 0;
             claim >> OP;
-
-            /* Check for condition or validate. */
-            switch(OP)
-            {
-                /* Handle a condition. */
-                case OP::CONDITION:
-                {
-                    /* Get new OP. */
-                    claim >> OP;
-
-                    break;
-                }
-
-                /* Handle a validate. */
-                case OP::VALIDATE:
-                {
-                    /* Seek past validate. */
-                    claim.Seek(68);
-
-                    /* Get new OP. */
-                    claim >> OP;
-
-                    break;
-                }
-            }
 
             /* Check operation byte. */
             if(OP != OP::TRANSFER)

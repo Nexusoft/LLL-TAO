@@ -192,38 +192,15 @@ namespace TAO
                     /* Get the contract output. */
                     const TAO::Operation::Contract& contract = tx[nContract];
 
-                    /* Seek to start of the operation stream in case this a transaction from mempool that has already been read*/
-                    contract.Reset(TAO::Operation::Contract::OPERATIONS);
+                    /* Reset all streams */
+                    contract.Reset();
+
+                    /* Seek the contract operation stream to the position of the primitive. */
+                    contract.SeekToPrimitive();
 
                     /* Deserialize the OP. */
                     uint8_t nOP = 0;
                     contract >> nOP;
-
-                    /* Check the current opcode. */
-                    switch(nOP)
-                    {
-                        /* Condition that allows a validation to occur. */
-                        case TAO::Operation::OP::CONDITION:
-                        {
-                            /* Condition has no parameters. */
-                            contract >> nOP;
-
-                            break;
-                        }
-
-
-                        /* Validate a previous contract's conditions */
-                        case TAO::Operation::OP::VALIDATE:
-                        {
-                            /* Skip over validate. */
-                            contract.Seek(68);
-
-                            /* Get next OP. */
-                            contract >> nOP;
-
-                            break;
-                        }
-                    }
 
                     /* Check the current opcode. */
                     switch(nOP)
@@ -1434,31 +1411,15 @@ namespace TAO
                     /* Retrieve the contract from the transaction for easier processing */
                     const TAO::Operation::Contract& contract = tx[nContract];
 
-                    /* Start the stream at the beginning. */
+                    /* Reset all streams */
                     contract.Reset();
+
+                    /* Seek the contract operation stream to the position of the primitive. */
+                    contract.SeekToPrimitive();
 
                     /* Get the contract operation. */
                     uint8_t OPERATION = 0;
                     contract >> OPERATION;
-
-                    /* Check for conditional OP */
-                    switch(OPERATION)
-                    {
-                        case TAO::Operation::OP::VALIDATE:
-                        {
-                            /* Seek through validate. */
-                            contract.Seek(68);
-                            contract >> OPERATION;
-
-                            break;
-                        }
-
-                        case TAO::Operation::OP::CONDITION:
-                        {
-                            /* Get new operation. */
-                            contract >> OPERATION;
-                        }
-                    }
 
                     /* Check the current opcode. */
                     switch(OPERATION)
