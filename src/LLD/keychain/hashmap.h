@@ -25,7 +25,6 @@ ________________________________________________________________________________
 #include <vector>
 #include <mutex>
 
-//TODO: Abstract base class for all keychains
 namespace LLD
 {
 

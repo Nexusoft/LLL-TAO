@@ -228,7 +228,7 @@ namespace LLP
             case EVENTS::PROCESSED:
             {
                 /* Dispatch an active trigger. */
-                Trigger(INCOMING.MESSAGE);
+                TriggerEvent(INCOMING.MESSAGE);
 
                 break;
             }
@@ -1791,7 +1791,7 @@ namespace LLP
                             {
                                 /* Build a markle transaction. */
                                 TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
-                                
+
                                 /* Build the merkle branch if the tx has been confirmed (i.e. it is not in the mempool) */
                                 if(!TAO::Ledger::mempool.Has(hashTx))
                                     merkle.BuildMerkleBranch();
@@ -1826,7 +1826,7 @@ namespace LLP
                                 {
                                     /* Build a markle transaction. */
                                     TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
-                                    
+
                                     /* Build the merkle branch if the tx has been confirmed (i.e. it is not in the mempool) */
                                     if(!TAO::Ledger::mempool.Has(hashTx))
                                         merkle.BuildMerkleBranch();
@@ -1862,7 +1862,7 @@ namespace LLP
                                 {
                                     /* Build a markle transaction. */
                                     TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
-                                    
+
                                     /* Build the merkle branch if the tx has been confirmed (i.e. it is not in the mempool) */
                                     if(!TAO::Ledger::mempool.Has(hashTx))
                                         merkle.BuildMerkleBranch();
