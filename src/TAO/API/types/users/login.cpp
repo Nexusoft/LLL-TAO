@@ -125,7 +125,7 @@ namespace TAO
 
                         /* Request the inventory message. */
                         pNode->PushMessage(LLP::ACTION::LIST, uint8_t(LLP::TYPES::SIGCHAIN), hashGenesis, hashLast);
-                        debug::log(0, FUNCTION, "Requesting LIST::SIGCHAIN for ", hashGenesis.SubString());
+                        debug::log(0, FUNCTION, "CLIENT MODE: Requesting LIST::SIGCHAIN for ", hashGenesis.SubString());
 
                         /* Create the condition variable trigger. */
                         LLP::Trigger REQUEST_TRIGGER;
