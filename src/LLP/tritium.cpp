@@ -111,6 +111,7 @@ namespace LLP
     , nConsecutiveFails(0)
     , strFullVersion()
     , nUnsubscribed(0)
+    , nTriggerNonce(0)
     {
     }
 
@@ -138,6 +139,7 @@ namespace LLP
     , nConsecutiveFails(0)
     , strFullVersion()
     , nUnsubscribed(0)
+    , nTriggerNonce(0)
     {
     }
 
@@ -165,6 +167,7 @@ namespace LLP
     , nConsecutiveFails(0)
     , strFullVersion()
     , nUnsubscribed(0)
+    , nTriggerNonce(0)
     {
     }
 
@@ -227,9 +230,6 @@ namespace LLP
             /* Processed event is used for events triggers. */
             case EVENTS::PROCESSED:
             {
-                /* Dispatch an active trigger. */
-                TriggerEvent(INCOMING.MESSAGE);
-
                 break;
             }
 
@@ -1476,37 +1476,44 @@ namespace LLP
                             uint512_t hashStart;
                             ssPacket >> hashStart;
 
-                            /* Get the ending hash. */
-                            uint512_t hashStop;
-                            ssPacket >> hashStop;
-
                             /* Check for empty hash start. */
+                            bool fGenesis = (hashStart == 0);
                             if(hashStart == 0 && !LLD::Ledger->ReadGenesis(hashSigchain, hashStart))
                                 break;
 
                             /* Check for empty hash stop. */
-                            if(hashStop == 0 && !LLD::Ledger->ReadLast(hashSigchain, hashStop, TAO::Ledger::FLAGS::MEMPOOL))
+                            uint512_t hashThis;
+                            if(hashThis == 0 && !LLD::Ledger->ReadLast(hashSigchain, hashThis, TAO::Ledger::FLAGS::MEMPOOL))
                                 break;
 
                             /* Read sigchain entries. */
                             std::vector<TAO::Ledger::MerkleTx> vtx;
-                            while(!config::fShutdown.load() && hashStop != hashStart)
+                            while(!config::fShutdown.load())
                             {
+                                /* Check for genesis. */
+                                if(!fGenesis && hashStart == hashThis)
+                                    break;
+
                                 /* Read from disk. */
                                 TAO::Ledger::Transaction tx;
-                                if(!LLD::Ledger->ReadTx(hashStop, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                                if(!LLD::Ledger->ReadTx(hashThis, tx, TAO::Ledger::FLAGS::MEMPOOL))
                                     break;
 
                                 /* Build a markle transaction. */
                                 TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
 
                                 /* Build the merkle branch if the tx has been confirmed (i.e. it is not in the mempool) */
-                                if(!TAO::Ledger::mempool.Has(hashStop))
+                                if(!TAO::Ledger::mempool.Has(hashThis))
                                     merkle.BuildMerkleBranch();
 
                                 /* Insert into container. */
                                 vtx.push_back(merkle);
-                                hashStop = tx.hashPrevTx;
+
+                                /* Check for genesis. */
+                                if(fGenesis && hashStart == hashThis)
+                                    break;
+
+                                hashThis = tx.hashPrevTx;
                             }
 
                             /* Reverse container to message forward. */
@@ -1549,8 +1556,6 @@ namespace LLP
                                     /* Insert into container. */
                                     vtx.push_back(merkle);
                                     ++nSequence;
-
-                                    debug::log(0, "Added MERKLE ", merkle.GetHash().SubString());
                                 }
 
                                 /* Reverse container to message forward. */
@@ -1573,7 +1578,6 @@ namespace LLP
 
                                     /* Insert into container. */
                                     vtx.push_back(merkle);
-                                    debug::log(0, "Added MERKLE ", merkle.GetHash().SubString());
                                 }
 
                                 /* Reverse container to message forward. */
@@ -1591,6 +1595,13 @@ namespace LLP
                         default:
                             return debug::drop(NODE, "ACTION::LIST malformed binary stream");
                     }
+                }
+
+                /* Check for trigger nonce. */
+                if(nTriggerNonce != 0)
+                {
+                    PushMessage(RESPONSE::COMPLETED, nTriggerNonce);
+                    nTriggerNonce = 0;
                 }
 
                 break;
@@ -1881,6 +1892,13 @@ namespace LLP
                         default:
                             return debug::drop(NODE, "ACTION::GET malformed binary stream");
                     }
+                }
+
+                /* Check for trigger nonce. */
+                if(nTriggerNonce != 0)
+                {
+                    PushMessage(RESPONSE::COMPLETED, nTriggerNonce);
+                    nTriggerNonce = 0;
                 }
 
                 break;
@@ -2817,6 +2835,30 @@ namespace LLP
                     default:
                         return debug::drop(NODE, "invalid type specifier for TYPES::MERKLE");
                 }
+
+                break;
+            }
+
+
+            /* Handle an event trigger. */
+            case TYPES::TRIGGER:
+            {
+                /* De-serialize the trigger nonce. */
+                ssPacket >> nTriggerNonce;
+
+                break;
+            }
+
+
+            /* Handle an event trigger. */
+            case RESPONSE::COMPLETED:
+            {
+                /* De-serialize the trigger nonce. */
+                uint64_t nNonce = 0;
+                ssPacket >> nNonce;
+
+                /* Trigger active events with this nonce. */
+                TriggerEvent(INCOMING.MESSAGE, nNonce);
 
                 break;
             }
