@@ -76,7 +76,7 @@ namespace TAO
              *  Handle relays of all events for LLP when processing block.
              *
              **/
-            void RelayThread();
+            void Relay();
         };
 
     }

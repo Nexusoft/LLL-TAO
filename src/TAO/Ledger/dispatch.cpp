@@ -40,7 +40,7 @@ namespace TAO
         Dispatch::Dispatch()
         : DISPATCH_MUTEX ( )
         , queueDispatch  ( )
-        , DISPATCH_THREAD (std::bind(&Dispatch::RelayThread, this))
+        , DISPATCH_THREAD (std::bind(&Dispatch::Relay, this))
         , CONDITION      ( )
         {
         }
@@ -75,7 +75,7 @@ namespace TAO
 
 
         /* Handle relays of all events for LLP when processing block. */
-        void Dispatch::RelayThread()
+        void Dispatch::Relay()
         {
             std::mutex CONDITION_MUTEX;
 
