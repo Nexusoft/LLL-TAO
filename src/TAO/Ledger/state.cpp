@@ -40,6 +40,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/include/retarget.h>
+#include <TAO/Ledger/include/dispatch.h>
 
 #include <TAO/Ledger/types/genesis.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -1045,27 +1046,8 @@ namespace TAO
                         debug::log(0, FUNCTION, "Block Notify Executed with code ", nRet);
                     }
 
-                    /* If using Tritium server then we need to include the blocks transactions in the inventory before the block. */
-                    if(LLP::TRITIUM_SERVER)
-                    {
-                        /* Relay the block and bestchain. */
-                        LLP::TRITIUM_SERVER->Relay
-                        (
-                            LLP::ACTION::NOTIFY,
-
-                            /* Relay BLOCK notification. */
-                            uint8_t(LLP::TYPES::BLOCK),
-                            ChainState::hashBestChain.load(),
-
-                            /* Relay BESTCHAIN notification. */
-                            uint8_t(LLP::TYPES::BESTCHAIN),
-                            ChainState::hashBestChain.load(),
-
-                            /* Relay BESTHEIGHT notification. */
-                            uint8_t(LLP::TYPES::BESTHEIGHT),
-                            ChainState::nBestHeight.load()
-                        );
-                    }
+                    /* Dispatch block to dispatch thread. */
+                    Dispatch::GetInstance().PushRelay(ChainState::hashBestChain.load());
                 }
                 else
                     debug::log(3, FUNCTION, "Skipping relay until chain is done synchronizing");
@@ -1084,7 +1066,6 @@ namespace TAO
             debug::log(3, "BLOCK BEGIN-------------------------------------");
 
             /* Check through all the transactions. */
-            DataStream ssRelay(SER_NETWORK, LLP::PROTOCOL_VERSION);
             for(const auto& proof : vtx)
             {
                 /* Only work on tritium transactions for now. */
@@ -1166,10 +1147,6 @@ namespace TAO
                     /* Keep track of total contracts processed. */
                     nTotalContracts += tx.Size();
                     swContract.stop();
-
-                    /* Handle sigchain related notifications. */
-                    if(LLP::TRITIUM_SERVER)
-                        ssRelay << uint8_t(LLP::TYPES::SIGCHAIN) << tx.hashGenesis << hash;
                 }
                 else if(proof.first == TRANSACTION::LEGACY)
                 {
@@ -1247,16 +1224,6 @@ namespace TAO
                 /* If we just updated hashNextBlock for genesis block, update the in-memory genesis */
                 if(prev.GetHash() == ChainState::Genesis())
                     ChainState::stateGenesis = prev;
-            }
-
-            /* Relay the SIGCHAIN notifications. */
-            if(LLP::TRITIUM_SERVER && !ChainState::Synchronizing())
-            {
-                LLP::TRITIUM_SERVER->_Relay
-                (
-                    uint8_t(LLP::ACTION::NOTIFY),
-                    ssRelay
-                );
             }
 
             return true;

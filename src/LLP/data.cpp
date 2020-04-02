@@ -230,13 +230,14 @@ namespace LLP
              * While loop catches potential for spurious wakeups. Also has the effect of skipping the wait() call after connections established.
              */
             std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
-            CONDITION.wait(CONDITION_LOCK, [this]
-                                                {
-                                                    return fDestruct.load()
-                                                    || config::fShutdown.load()
-                                                    || nIncoming.load() > 0
-                                                    || nOutbound.load() > 0;
-                                                });
+            CONDITION.wait(CONDITION_LOCK,
+            [this]
+            {
+                return fDestruct.load()
+                || config::fShutdown.load()
+                || nIncoming.load() > 0
+                || nOutbound.load() > 0;
+            });
 
             /* Check for close. */
             if(fDestruct.load() || config::fShutdown.load())
