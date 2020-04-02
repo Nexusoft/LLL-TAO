@@ -132,7 +132,7 @@ namespace TAO
                         pNode->AddTrigger(LLP::RESPONSE::COMPLETED, &REQUEST_TRIGGER);
 
                         /* Process the event. */
-                        REQUEST_TRIGGER.wait_for_nonce(nNonce);
+                        REQUEST_TRIGGER.wait_for_nonce(nNonce, 30000); //NOTE: we want to wait up to 30 seconds here, LIST can take a while
 
                         /* Cleanup our event trigger. */
                         pNode->Release(LLP::RESPONSE::COMPLETED);
