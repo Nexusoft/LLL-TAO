@@ -22,9 +22,6 @@ namespace LLP
 {
     class Trigger
     {
-        /** Internal locking. **/
-        mutable std::mutex MUTEX;
-
         /** The condition variable that is wrapped by this class. **/
         std::condition_variable CONDITION;
 
@@ -108,6 +105,32 @@ namespace LLP
         uint64_t GetNonce() const
         {
             return nNonce;
+        }
+
+
+        /** wait_for_nonce
+         *
+         *  Wait until designated nonce has been fired with a trigger.
+         *
+         *  @param[in] nTriggerNonce The nonce to wait for in trigger response.
+         *
+         **/
+        bool wait_for_nonce(const uint64_t nTriggerNonce, const uint64_t nTimeout = 10000)
+        {
+            /* Create the mutex for the condition variable. */
+            std::mutex REQUEST_MUTEX;
+            std::unique_lock<std::mutex> REQUEST_LOCK(REQUEST_MUTEX);
+
+            /* Wait for trigger to complete. */
+            return CONDITION.wait_for(REQUEST_LOCK, std::chrono::milliseconds(nTimeout),
+            [this, nTriggerNonce]
+            {
+                /* Check for genesis. */
+                if(nNonce == nTriggerNonce)
+                    return true;
+
+                return false;
+            });
         }
 
 

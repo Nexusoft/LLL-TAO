@@ -131,19 +131,8 @@ namespace TAO
                         LLP::Trigger REQUEST_TRIGGER;
                         pNode->AddTrigger(LLP::RESPONSE::COMPLETED, &REQUEST_TRIGGER);
 
-                        std::mutex REQUEST_MUTEX;
-                        std::unique_lock<std::mutex> REQUEST_LOCK(REQUEST_MUTEX);
-
-                        /* Wait for trigger to complete. */
-                        REQUEST_TRIGGER.wait_for(REQUEST_LOCK, std::chrono::milliseconds(10000),
-                        [&]
-                        {
-                            /* Check for genesis. */
-                            if(REQUEST_TRIGGER.GetNonce() == nNonce)
-                                return true;
-
-                            return false;
-                        });
+                        /* Process the event. */
+                        REQUEST_TRIGGER.wait_for_nonce(nNonce);
 
                         /* Cleanup our event trigger. */
                         pNode->Release(LLP::RESPONSE::COMPLETED);
