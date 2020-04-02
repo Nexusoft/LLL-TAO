@@ -615,18 +615,6 @@ namespace LLD
         if(!WriteSequence(hashAddress, nSequence + 1))
             return false;
 
-        /* Relay sigchain event to subscribed nodes. */
-        if(LLP::TRITIUM_SERVER)
-        {
-            LLP::TRITIUM_SERVER->Relay
-            (
-                LLP::ACTION::NOTIFY,
-                uint8_t(LLP::TYPES::SIGCHAIN),
-                hashAddress,
-                hashTx
-            );
-        }
-
         /* Check for client mode. */
         if(config::fClient.load())
             return Client->Index(std::make_pair(hashAddress, nSequence), hashTx);

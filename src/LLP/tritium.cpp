@@ -2812,13 +2812,7 @@ namespace LLP
                                 }
                                 else
                                 {
-                                    /* Ask for the missing block and merkle tx. */
-                                    PushMessage
-                                    (
-                                        ACTION::GET,
-                                        uint8_t(SPECIFIER::CLIENT), uint8_t(TYPES::BLOCK), tx.hashBlock,
-                                        uint8_t(TYPES::MERKLE), hashTx //as for transaction again after receiving block
-                                    );
+                                    debug::error(0, hashTx.SubString(), "REJECTED: missing block ", tx.hashBlock.SubString());
                                 }
                             }
                             else
