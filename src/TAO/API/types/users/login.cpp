@@ -17,6 +17,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/global.h>
 #include <LLP/types/tritium.h>
+#include <LLP/templates/trigger.h>
 
 #include <TAO/API/types/users.h>
 
@@ -123,13 +124,13 @@ namespace TAO
                             debug::log(0, FUNCTION, "Requesting GENESIS for ", hashGenesis.SubString());
 
                             /* Create the condition variable trigger. */
-                            std::condition_variable REQUEST_TRIGGER;
+                            LLP::Trigger REQUEST_TRIGGER;
                             pNode->AddTrigger(LLP::TYPES::MERKLE, &REQUEST_TRIGGER);
 
-                            /* Wait for trigger to complete. */
                             std::mutex REQUEST_MUTEX;
                             std::unique_lock<std::mutex> REQUEST_LOCK(REQUEST_MUTEX);
 
+                            /* Wait for trigger to complete. */
                             REQUEST_TRIGGER.wait_for(REQUEST_LOCK, std::chrono::milliseconds(10000),
                             [hashGenesis]
                             {

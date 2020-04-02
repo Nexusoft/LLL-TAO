@@ -19,6 +19,8 @@ ________________________________________________________________________________
 #include <LLP/packets/http.h>
 #include <LLP/packets/tritium.h>
 
+#include <LLP/templates/trigger.h>
+
 #include <Util/include/debug.h>
 #include <Util/include/hex.h>
 #include <Util/include/args.h>
@@ -116,17 +118,17 @@ namespace LLP
 
     /* Adds a new event listener to this connection to fire off condition variables on specific message types.*/
     template <class PacketType>
-    void BaseConnection<PacketType>::AddTrigger(const message_t nMsg, std::condition_variable* EVENT_CONDITION)
+    void BaseConnection<PacketType>::AddTrigger(const message_t nMsg, Trigger* TRIGGER)
     {
         LOCK(TRIGGER_MUTEX);
 
-        TRIGGERS[nMsg] = EVENT_CONDITION;
+        TRIGGERS[nMsg] = TRIGGER;
     }
 
 
     /* Trigger an event if it exists. */
     template <class PacketType>
-    void BaseConnection<PacketType>::Trigger(const message_t nMsg)
+    void BaseConnection<PacketType>::TriggerEvent(const message_t nMsg)
     {
         LOCK(TRIGGER_MUTEX);
 
@@ -134,9 +136,30 @@ namespace LLP
         if(TRIGGERS.count(nMsg))
         {
             /* Grab the trigger and check for nullptr. */
-            std::condition_variable* pTrigger = TRIGGERS[nMsg];
+            Trigger* pTrigger = TRIGGERS[nMsg];
             if(pTrigger)
-                TRIGGERS[nMsg]->notify_all();
+                pTrigger->notify_all();
+        }
+    }
+
+
+    /* Trigger an event if it exists. */
+    template <class PacketType>
+    void BaseConnection<PacketType>::TriggerEvent(const message_t nMsg, const uint64_t nNonce)
+    {
+        LOCK(TRIGGER_MUTEX);
+
+        /* Notify trigger if found. */
+        if(TRIGGERS.count(nMsg))
+        {
+            /* Grab the trigger and check for nullptr. */
+            Trigger* pTrigger = TRIGGERS[nMsg];
+            if(pTrigger)
+            {
+                /* Pass the nonce back with the trigger. */
+                pTrigger->SetNonce(nNonce);
+                pTrigger->notify_all();
+            }
         }
     }
 

@@ -23,13 +23,12 @@ ________________________________________________________________________________
 #include <vector>
 #include <condition_variable>
 
-#include <condition_variable>
-
 namespace LLP
 {
 
     /* Forward declarations. */
     class DDOS_Filter;
+    class Trigger;
 
 
     /** BaseConnection
@@ -140,7 +139,7 @@ namespace LLP
 
 
         /** Special foreign triggers for connection. **/
-        std::map<message_t, std::condition_variable*> TRIGGERS;
+        std::map<message_t, Trigger*> TRIGGERS;
 
 
     public:
@@ -192,10 +191,10 @@ namespace LLP
          *  @return Returns a filled out tritium packet.
          *
          **/
-        void AddTrigger(const message_t nMsg, std::condition_variable* EVENT_CONDITION);
+        void AddTrigger(const message_t nMsg, Trigger* TRIGGER);
 
 
-        /** Trigger
+        /** TriggerEvent
          *
          *  Trigger an event if it exists.
          *
@@ -203,7 +202,19 @@ namespace LLP
          *
          *
          **/
-        void Trigger(const message_t nMsg);
+        void TriggerEvent(const message_t nMsg);
+
+
+        /** TriggerEvent
+         *
+         *  Trigger an event if it exists.
+         *
+         *  @param[in] nMsg The message type.
+         *  @param[in] nNonce The Nonce to trigger with.
+         *
+         *
+         **/
+        void TriggerEvent(const message_t nMsg, const uint64_t nNonce);
 
 
         /** Release
