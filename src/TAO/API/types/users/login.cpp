@@ -93,7 +93,6 @@ namespace TAO
             /* Check for -client mode. */
             if(config::fClient.load())
             {
-
                 /* If not using multiuser then check to see whether another user is already logged in */
                 if(mapSessions.count(0) && mapSessions[0]->Genesis() != hashGenesis)
                 {
@@ -114,120 +113,48 @@ namespace TAO
                     memory::atomic_ptr<LLP::TritiumNode>& pNode = LLP::TRITIUM_SERVER->GetConnection();
                     if(pNode != nullptr)
                     {
-                        /* Request a genesis from Tritium LLP if none found. */
-                        if(!LLD::Ledger->HasGenesis(hashGenesis))
-                        {
-                            debug::log(0, FUNCTION, "CLIENT MODE: Initializing -client");
-
-                            /* Request the inventory message. */
-                            pNode->PushMessage(LLP::ACTION::GET, uint8_t(LLP::TYPES::GENESIS), hashGenesis);
-                            debug::log(0, FUNCTION, "Requesting GENESIS for ", hashGenesis.SubString());
-
-                            /* Create the condition variable trigger. */
-                            LLP::Trigger REQUEST_TRIGGER;
-                            pNode->AddTrigger(LLP::TYPES::MERKLE, &REQUEST_TRIGGER);
-
-                            std::mutex REQUEST_MUTEX;
-                            std::unique_lock<std::mutex> REQUEST_LOCK(REQUEST_MUTEX);
-
-                            /* Wait for trigger to complete. */
-                            REQUEST_TRIGGER.wait_for(REQUEST_LOCK, std::chrono::milliseconds(10000),
-                            [hashGenesis]
-                            {
-                                /* Check for genesis. */
-                                if(LLD::Ledger->HasGenesis(hashGenesis))
-                                    return true;
-
-                                return false;
-                            });
-
-                            /* Cleanup our event trigger. */
-                            pNode->Release(LLP::TYPES::MERKLE);
-                            debug::log(0, FUNCTION, "CLIENT MODE: Releasing GENESIS trigger for ", hashGenesis.SubString());
-                        }
+                        debug::log(0, FUNCTION, "CLIENT MODE: Sychronizing -client");
 
                         /* Get the last txid in sigchain. */
                         uint512_t hashLast;
                         LLD::Ledger->ReadLast(hashGenesis, hashLast); //NOTE: we don't care if it fails here, because zero means begin
 
-                        /* Let's prime our disk now of the entire sigchain. */
-                        pNode->PushMessage(LLP::ACTION::LIST, uint8_t(LLP::TYPES::SIGCHAIN), hashGenesis, hashLast, uint512_t(0));
+                        /* Create our trigger nonce. */
+                        uint64_t nNonce = LLC::GetRand();
+                        pNode->PushMessage(LLP::TYPES::TRIGGER, nNonce);
+
+                        /* Request the inventory message. */
+                        pNode->PushMessage(LLP::ACTION::LIST, uint8_t(LLP::TYPES::SIGCHAIN), hashGenesis, hashLast);
+                        debug::log(0, FUNCTION, "Requesting LIST::SIGCHAIN for ", hashGenesis.SubString());
+
+                        /* Create the condition variable trigger. */
+                        LLP::Trigger REQUEST_TRIGGER;
+                        pNode->AddTrigger(LLP::RESPONSE::COMPLETED, &REQUEST_TRIGGER);
+
+                        std::mutex REQUEST_MUTEX;
+                        std::unique_lock<std::mutex> REQUEST_LOCK(REQUEST_MUTEX);
+
+                        /* Wait for trigger to complete. */
+                        REQUEST_TRIGGER.wait_for(REQUEST_LOCK, std::chrono::milliseconds(10000),
+                        [&]
+                        {
+                            /* Check for genesis. */
+                            if(REQUEST_TRIGGER.GetNonce() == nNonce)
+                                return true;
+
+                            return false;
+                        });
+
+                        /* Cleanup our event trigger. */
+                        pNode->Release(LLP::RESPONSE::COMPLETED);
+                        debug::log(0, FUNCTION, "CLIENT MODE: Releasing SIGCHAIN trigger for ", hashGenesis.SubString());
+
+                        /* Grab list of notifications. */
                         pNode->PushMessage(LLP::ACTION::LIST, uint8_t(LLP::TYPES::NOTIFICATION), hashGenesis);
                     }
                     else
                         debug::error(FUNCTION, "no connections available...");
                 }
-
-                /* Check for genesis again before proceeding. */
-                if(!LLD::Ledger->HasGenesis(hashGenesis))
-                {
-                    user.free();
-                    throw APIException(-139, "CLIENT MODE: Unable to initialize sigchain GENESIS");
-                }
-
-                /* We want to auth in -client mode from the crypto object register. */
-                TAO::Register::Address hashCrypto =
-                    TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
-
-                /* Get the crypto register. */
-                TAO::Register::Object crypto;
-                if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::MEMPOOL))
-                {
-                    /* Account doesn't exist returns invalid credentials */
-                    user.free();
-                    throw APIException(-139, "CLIENT MODE: authorization failed, missing crypto register");
-                }
-
-                /* Parse the object. */
-                if(!crypto.Parse())
-                {
-                    /* Account doesn't exist returns invalid credentials */
-                    user.free();
-                    throw APIException(-139, "CLIENT MODE: failed to parse crypto register");
-                }
-
-                /* Check the credentials are correct. */
-                uint256_t hashCheck = user->KeyHash("auth", 0, strPin, crypto.get<uint256_t>("auth").GetType());
-                if(hashCheck != crypto.get<uint256_t>("auth"))
-                {
-                    /* Account doesn't exist returns invalid credentials */
-                    user.free();
-                    throw APIException(-139, "Invalid credentials");
-                }
-
-                /* Check the sessions. */
-                {
-                    LOCK(MUTEX);
-
-                    for(const auto& session : mapSessions)
-                    {
-                        if(hashGenesis == session.second->Genesis())
-                        {
-                            user.free();
-
-                            ret["genesis"] = hashGenesis.ToString();
-                            if(config::fMultiuser.load())
-                                ret["session"] = session.first.ToString();
-
-                            return ret;
-                        }
-                    }
-                }
-
-                /* For sessionless API use the active sig chain which is stored in session 0 */
-                json::json ret;
-                ret["genesis"] = hashGenesis.ToString();
-
-                /* Setup the account. */
-                {
-                    LOCK(MUTEX);
-                    mapSessions.emplace(0, std::move(user));
-                }
-
-                /* Get the network's authorization key. */
-                pAuthKey = new memory::encrypted_type<uint512_t>(user->Generate("network", 0, strPin));
-
-                return ret;
             }
 
             /* Check for duplicates in ledger db. */

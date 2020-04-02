@@ -81,6 +81,7 @@ namespace LLP
             MERKLE       = 0x39,
             GENESIS      = 0x3a,
             NOTIFICATION = 0x3b,
+            TRIGGER      = 0x3c,
         };
     }
 
@@ -110,6 +111,7 @@ namespace LLP
             STALE        = 0x52,
             UNSUBSCRIBED = 0x53, //let node know it was unsubscribed successfully
             AUTHORIZED   = 0x54,
+            COMPLETED    = 0x55, //let node know an event was completed
         };
     }
 
@@ -308,6 +310,10 @@ namespace LLP
 
         /** Timestamp of unsubscription. **/
         uint64_t nUnsubscribed;
+
+
+        /** Current nonce trigger. **/
+        uint64_t nTriggerNonce;
 
 
         /** Remaining time for sync meter. **/
