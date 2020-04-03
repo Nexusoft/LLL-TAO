@@ -119,24 +119,12 @@ namespace TAO
                         uint512_t hashLast;
                         LLD::Ledger->ReadLast(hashGenesis, hashLast); //NOTE: we don't care if it fails here, because zero means begin
 
-                        /* Create our trigger nonce. */
-                        uint64_t nNonce = LLC::GetRand();
-                        pNode->PushMessage(LLP::TYPES::TRIGGER, nNonce);
-
-                        /* Request the inventory message. */
-                        pNode->PushMessage(LLP::ACTION::LIST, uint8_t(LLP::TYPES::SIGCHAIN), hashGenesis, hashLast);
+                        /* Request the sig chain. */
                         debug::log(0, FUNCTION, "CLIENT MODE: Requesting LIST::SIGCHAIN for ", hashGenesis.SubString());
 
-                        /* Create the condition variable trigger. */
-                        LLP::Trigger REQUEST_TRIGGER;
-                        pNode->AddTrigger(LLP::RESPONSE::COMPLETED, &REQUEST_TRIGGER);
+                        LLP::TritiumNode::BlockingMessage(pNode, LLP::ACTION::LIST, uint8_t(LLP::TYPES::SIGCHAIN), hashGenesis, hashLast);
 
-                        /* Process the event. */
-                        REQUEST_TRIGGER.wait_for_nonce(nNonce, 30000); //NOTE: we want to wait up to 30 seconds here, LIST can take a while
-
-                        /* Cleanup our event trigger. */
-                        pNode->Release(LLP::RESPONSE::COMPLETED);
-                        debug::log(0, FUNCTION, "CLIENT MODE: Releasing SIGCHAIN trigger for ", hashGenesis.SubString());
+                        debug::log(0, FUNCTION, "CLIENT MODE: LIST::SIGCHAIN received for ", hashGenesis.SubString());
 
                         /* Grab list of notifications. */
                         pNode->PushMessage(LLP::ACTION::LIST, uint8_t(LLP::TYPES::NOTIFICATION), hashGenesis);

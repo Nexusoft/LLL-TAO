@@ -15,12 +15,15 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_TYPES_TRITIUM_H
 #define NEXUS_LLP_TYPES_TRITIUM_H
 
+#include <LLC/include/random.h>
+
 #include <LLP/include/network.h>
 #include <LLP/include/version.h>
 #include <LLP/packets/tritium.h>
 #include <LLP/templates/base_connection.h>
 #include <LLP/templates/events.h>
 #include <LLP/templates/ddos.h>
+#include <LLP/templates/trigger.h>
 
 #include <TAO/Ledger/types/tritium.h>
 
@@ -480,6 +483,40 @@ namespace LLP
             WritePacket(NewMessage(nMsg, ssData));
 
             debug::log(4, NODE, "sent message ", std::hex, nMsg, " of ", std::dec, ssData.size(), " bytes");
+        }
+
+
+        /** BlockingMessage
+         *
+         *  Adds a tritium packet to the queue and waits for the peer to send a COMPLETED message.
+         *  NOTE: this is a static method taking the node reference as a parameter to avoid locking access to the connection 
+         *  in the atomic_ptr.  If we did not do this, the data threads could not access the atomic_ptr to process the incoming 
+         *  messages until trigger timed out and this method returned 
+         *
+         *  @param[in] pNode Pointer to the TritiumNode connection instance to push the message to.
+         *  @param[in] nMsg The message type.
+         *  @param[in] args variable args to be sent in the message.
+         **/
+        template<typename... Args>
+        static void BlockingMessage(memory::atomic_ptr<LLP::TritiumNode>& pNode, const uint16_t nMsg, Args&&... args)
+        {
+            /* Create our trigger nonce. */
+            uint64_t nNonce = LLC::GetRand();
+            pNode->PushMessage(LLP::TYPES::TRIGGER, nNonce);
+
+            /* Request the inventory message. */
+            pNode->PushMessage(nMsg, std::forward<Args>(args)...);
+
+            /* Create the condition variable trigger. */
+            LLP::Trigger REQUEST_TRIGGER;
+            pNode->AddTrigger(LLP::RESPONSE::COMPLETED, &REQUEST_TRIGGER);
+
+            /* Process the event. */
+            REQUEST_TRIGGER.wait_for_nonce(nNonce, 30000); //NOTE: we want to wait up to 30 seconds here, LIST can take a while
+
+            /* Cleanup our event trigger. */
+            pNode->Release(LLP::RESPONSE::COMPLETED);
+            
         }
 
     };
