@@ -66,5 +66,5 @@ namespace version
         const std::string BUILD_ARCH = "[x64]";
     #endif
 
-    const std::string CLIENT_VERSION_BUILD_STRING(CLIENT_VERSION_STRING + " " + CLIENT_NAME  + " " + CLIENT_INTERFACE + " " + CLIENT_DATABASE + BUILD_ARCH);
+    const std::string CLIENT_VERSION_BUILD_STRING(CLIENT_VERSION_STRING + "-client " + CLIENT_NAME  + " " + CLIENT_INTERFACE + " " + CLIENT_DATABASE + BUILD_ARCH);
 }
