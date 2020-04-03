@@ -40,7 +40,7 @@ namespace TAO
         Dispatch::Dispatch()
         : DISPATCH_MUTEX ( )
         , queueDispatch  ( )
-        , DISPATCH_THREAD (std::bind(&Dispatch::RelayThread, this))
+        , DISPATCH_THREAD (std::bind(&Dispatch::Relay, this))
         , CONDITION      ( )
         {
         }
@@ -75,7 +75,7 @@ namespace TAO
 
 
         /* Handle relays of all events for LLP when processing block. */
-        void Dispatch::RelayThread()
+        void Dispatch::Relay()
         {
             std::mutex CONDITION_MUTEX;
 
@@ -120,27 +120,23 @@ namespace TAO
                     continue;
                 }
 
-                /* We want to relay to other nodes about our block first. */
-                if(LLP::TRITIUM_SERVER)
-                {
-                    /* Relay the block and bestchain. */
-                    LLP::TRITIUM_SERVER->Relay
-                    (
-                        LLP::ACTION::NOTIFY,
+                /* Relay the block and bestchain. */
+                LLP::TRITIUM_SERVER->Relay
+                (
+                    LLP::ACTION::NOTIFY,
 
-                        /* Relay BLOCK notification. */
-                        uint8_t(LLP::TYPES::BLOCK),
-                        hashBlock,
+                    /* Relay BLOCK notification. */
+                    uint8_t(LLP::TYPES::BLOCK),
+                    hashBlock,
 
-                        /* Relay BESTCHAIN notification. */
-                        uint8_t(LLP::TYPES::BESTCHAIN),
-                        hashBlock,
+                    /* Relay BESTCHAIN notification. */
+                    uint8_t(LLP::TYPES::BESTCHAIN),
+                    hashBlock,
 
-                        /* Relay BESTHEIGHT notification. */
-                        uint8_t(LLP::TYPES::BESTHEIGHT),
-                        block.nHeight
-                    );
-                }
+                    /* Relay BESTHEIGHT notification. */
+                    uint8_t(LLP::TYPES::BESTHEIGHT),
+                    block.nHeight
+                );
 
                 /* Keep track of the total items. */
                 uint32_t nTotalEvents = 0;
@@ -250,10 +246,8 @@ namespace TAO
                     }
                 }
 
-
-                    /* Relay all of our SIGCHAIN events. */
-                    LLP::TRITIUM_SERVER->_Relay(LLP::ACTION::NOTIFY, ssRelay);
-
+                /* Relay all of our SIGCHAIN events. */
+                LLP::TRITIUM_SERVER->_Relay(LLP::ACTION::NOTIFY, ssRelay);
 
                 /* Report status once complete. */
                 debug::log(0, FUNCTION, "Relay for ", hashBlock.SubString(), " completed in ", swTimer.ElapsedMilliseconds(), " ms [", (nTotalEvents * 1000000) / (swTimer.ElapsedMicroseconds() + 1), " events/s]");
