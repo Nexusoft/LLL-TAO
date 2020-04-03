@@ -278,6 +278,44 @@ namespace LLD
         bool ReadConfirmations(const uint512_t &hashTx, uint32_t &nConfirms, const TAO::Ledger::BlockState* pblock = nullptr);
 
 
+        /** HasRegister
+         *
+         *  Determine if a register contains a last index.
+         *
+         *  @param[in] hashRegister The register address to check index for.
+         *
+         *  @return True if the index exists.
+         *
+         **/
+        bool HasRegister(const uint256_t& hashRegister);
+
+
+        /** IndexRegister
+         *
+         *  Index a register's address to the last transaction that modified its state.
+         *
+         *  @param[in] hashRegister The register to index.
+         *  @param[in] hashTx The txid of transaction to index..
+         *
+         *  @return True if the transaction was successfully written, false otherwise.
+         *
+         **/
+        bool IndexRegister(const uint256_t& hashRegister, const uint512_t& hashTx);
+
+
+        /** ReadRegister
+         *
+         *  Read's the register's indexing entry to get the last tx that modified its state.
+         *
+         *  @param[in] hashRegister The register to index.
+         *  @param[out] tx The transaction to return.
+         *
+         *  @return True if the transaction was successfully read
+         *
+         **/
+        bool ReadRegister(const uint256_t& hashRegister, TAO::Ledger::Transaction &tx);
+
+
         /** HasIndex
          *
          *  Determine if a transaction has already been indexed.
