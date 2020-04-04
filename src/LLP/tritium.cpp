@@ -23,6 +23,8 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/global.h>
 
+#include <TAO/Operation/include/enum.h>
+
 #include <TAO/Register/include/names.h>
 #include <TAO/Register/types/object.h>
 
@@ -1884,6 +1886,142 @@ namespace LLP
 
                             /* Debug output. */
                             debug::log(3, NODE, "ACTION::GET: SIGCHAIN TRANSACTION ", hashTx.SubString());
+
+                            break;
+                        }
+
+
+                        /* Standard type for last sigchain transaction. */
+                        case TYPES::REGISTER:
+                        {
+                            /* Check for valid specifier. */
+                            if(fTransactions || fClient || fLegacy)
+                                return debug::drop(NODE, "ACTION::GET::REGISTER: invalid specifier for TYPES::REGISTER");
+
+                            /* Get the index of transaction. */
+                            uint256_t hashRegister;
+                            ssPacket >> hashRegister;
+
+                            /* Get the register from disk. */
+                            TAO::Register::State state;
+                            if(!LLD::Register->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
+                                break;
+
+                            /* Make adjustment to history check and detect if the register is owned by system. */
+                            uint256_t hashOwner = state.hashOwner;
+                            if(hashOwner.GetType() == TAO::Ledger::GENESIS::SYSTEM)
+                                hashOwner.SetType(TAO::Ledger::GenesisType());
+
+                            /* Read the last hash of owner. */
+                            uint512_t hashLast = 0;
+                            if(!LLD::Ledger->ReadLast(hashOwner, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
+                                break;
+
+                            /* Iterate through sigchain for register updates. */
+                            while(hashLast != 0)
+                            {
+                                /* Get the transaction from disk. */
+                                TAO::Ledger::Transaction tx;
+                                if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                                    break;
+
+                                /* Handle DDOS. */
+                                if(fDDOS && DDOS)
+                                    DDOS->rSCORE += 1;
+
+                                /* Set the next last. */
+                                hashLast = !tx.IsFirst() ? tx.hashPrevTx : 0;
+
+                                /* Check through all the contracts. */
+                                for(int32_t nContract = tx.Size() - 1; nContract >= 0; --nContract)
+                                {
+                                    /* Get the contract. */
+                                    const TAO::Operation::Contract& contract = tx[nContract];
+
+                                    /* Reset the operation stream position in case it was loaded from mempool and therefore still in previous state */
+                                    contract.Reset();
+
+                                    /* Get the operation byte. */
+                                    uint8_t OPERATION = 0;
+                                    contract >> OPERATION;
+
+                                    /* Check for conditional OP */
+                                    switch(OPERATION)
+                                    {
+                                        case TAO::Operation::OP::VALIDATE:
+                                        {
+                                            /* Seek through validate. */
+                                            contract.Seek(68);
+                                            contract >> OPERATION;
+
+                                            break;
+                                        }
+
+                                        case TAO::Operation::OP::CONDITION:
+                                        {
+                                            /* Get new operation. */
+                                            contract >> OPERATION;
+                                        }
+                                    }
+
+                                    /* Check for key operations. */
+                                    switch(OPERATION)
+                                    {
+                                        /* Break when at the register declaration. */
+                                        case TAO::Operation::OP::WRITE:
+                                        case TAO::Operation::OP::CREATE:
+                                        case TAO::Operation::OP::APPEND:
+                                        case TAO::Operation::OP::CLAIM:
+                                        case TAO::Operation::OP::DEBIT:
+                                        case TAO::Operation::OP::CREDIT:
+                                        case TAO::Operation::OP::TRUST:
+                                        case TAO::Operation::OP::GENESIS:
+                                        case TAO::Operation::OP::LEGACY:
+                                        case TAO::Operation::OP::FEE:
+                                        {
+                                            /* Seek past claim txid. */
+                                            if(OPERATION == TAO::Operation::OP::CLAIM ||
+                                               OPERATION == TAO::Operation::OP::CREDIT)
+                                                contract.Seek(68);
+
+                                            /* Extract the address from the contract. */
+                                            TAO::Register::Address hashAddress;
+                                            if(OPERATION == TAO::Operation::OP::TRUST ||
+                                               OPERATION == TAO::Operation::OP::GENESIS)
+                                            {
+                                                hashAddress =
+                                                    TAO::Register::Address(std::string("trust"), state.hashOwner, TAO::Register::Address::TRUST);
+                                            }
+                                            else
+                                                contract >> hashAddress;
+
+                                            /* Check for same address. */
+                                            if(hashAddress != hashRegister)
+                                                break;
+
+                                            /* Build a markle transaction. */
+                                            TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
+
+                                            /* Build the merkle branch if the tx has been confirmed (i.e. it is not in the mempool) */
+                                            if(!TAO::Ledger::mempool.Has(hashLast))
+                                                merkle.BuildMerkleBranch();
+
+                                            PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::TRITIUM), merkle);
+
+                                            /* Break out of main hash last. */
+                                            hashLast = 0;
+
+                                            break;
+                                        }
+
+                                        default:
+                                            continue;
+                                    }
+                                }
+                            }
+
+                            /* Debug output. */
+                            debug::log(3, NODE, "ACTION::GET: REGISTER ", hashRegister.SubString());
 
                             break;
                         }

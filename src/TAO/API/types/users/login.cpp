@@ -122,7 +122,7 @@ namespace TAO
                         /* Request the sig chain. */
                         debug::log(0, FUNCTION, "CLIENT MODE: Requesting LIST::SIGCHAIN for ", hashGenesis.SubString());
 
-                        LLP::TritiumNode::BlockingMessage(pNode, LLP::ACTION::LIST, uint8_t(LLP::TYPES::SIGCHAIN), hashGenesis, hashLast);
+                        LLP::TritiumNode::BlockingMessage(30000, pNode, LLP::ACTION::LIST, uint8_t(LLP::TYPES::SIGCHAIN), hashGenesis, hashLast);
 
                         debug::log(0, FUNCTION, "CLIENT MODE: LIST::SIGCHAIN received for ", hashGenesis.SubString());
 

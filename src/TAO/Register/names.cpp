@@ -15,6 +15,8 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <LLP/include/global.h>
+
 #include <TAO/Register/include/names.h>
 #include <TAO/Register/types/address.h>
 
@@ -35,6 +37,27 @@ namespace TAO
         {
             /* Get the register address for the Name object */
             Address hashAddress = Address(strName, hashNamespace, Address::NAME);
+
+            /* Check for client mode. */
+            if(config::fClient.load() && !LLD::Register->HasState(hashAddress))
+            {
+                /* Check for genesis. */
+                if(LLP::TRITIUM_SERVER)
+                {
+                    memory::atomic_ptr<LLP::TritiumNode>& pNode = LLP::TRITIUM_SERVER->GetConnection();
+                    if(pNode != nullptr)
+                    {
+                        debug::log(0, FUNCTION, "CLIENT MODE: Sychronizing -client");
+
+                        /* Request the sig chain. */
+                        debug::log(0, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::REGISTER for ", hashAddress.SubString());
+                        LLP::TritiumNode::BlockingMessage(5000, pNode, LLP::ACTION::GET, uint8_t(LLP::TYPES::REGISTER), hashAddress);
+                        debug::log(0, FUNCTION, "CLIENT MODE: TYPES::REGISTER received for ", hashAddress.SubString());
+                    }
+                    else
+                        debug::error(FUNCTION, "no connections available...");
+                }
+            }
 
             /* Read the Name Object */
             if(!LLD::Register->ReadState(hashAddress, nameRegister, TAO::Ledger::FLAGS::MEMPOOL))
@@ -61,6 +84,27 @@ namespace TAO
         {
             /* Namespace hash is a SK256 hash of the namespace name */
             uint256_t hashAddress  = Address(strNamespace, Address::NAMESPACE);
+
+            /* Check for client mode. */
+            if(config::fClient.load() && !LLD::Register->HasState(hashAddress))
+            {
+                /* Check for genesis. */
+                if(LLP::TRITIUM_SERVER)
+                {
+                    memory::atomic_ptr<LLP::TritiumNode>& pNode = LLP::TRITIUM_SERVER->GetConnection();
+                    if(pNode != nullptr)
+                    {
+                        debug::log(0, FUNCTION, "CLIENT MODE: Sychronizing -client");
+
+                        /* Request the sig chain. */
+                        debug::log(0, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::REGISTER for ", hashAddress.SubString());
+                        LLP::TritiumNode::BlockingMessage(5000, pNode, LLP::ACTION::GET, uint8_t(LLP::TYPES::REGISTER), hashAddress);
+                        debug::log(0, FUNCTION, "CLIENT MODE: TYPES::REGISTER received for ", hashAddress.SubString());
+                    }
+                    else
+                        debug::error(FUNCTION, "no connections available...");
+                }
+            }
 
             /* Read the Name Object */
             if(!LLD::Register->ReadState(hashAddress, namespaceRegister, TAO::Ledger::FLAGS::MEMPOOL))
