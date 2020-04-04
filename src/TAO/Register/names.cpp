@@ -39,7 +39,7 @@ namespace TAO
             Address hashAddress = Address(strName, hashNamespace, Address::NAME);
 
             /* Check for client mode. */
-            if(config::fClient.load() && !LLD::Register->HasState(hashAddress))
+            if(config::fClient.load() && !LLD::Register->HasState(hashAddress, TAO::Ledger::FLAGS::MEMPOOL))
             {
                 /* Check for genesis. */
                 if(LLP::TRITIUM_SERVER)
@@ -47,8 +47,6 @@ namespace TAO
                     memory::atomic_ptr<LLP::TritiumNode>& pNode = LLP::TRITIUM_SERVER->GetConnection();
                     if(pNode != nullptr)
                     {
-                        debug::log(0, FUNCTION, "CLIENT MODE: Sychronizing -client");
-
                         /* Request the sig chain. */
                         debug::log(0, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::REGISTER for ", hashAddress.SubString());
                         LLP::TritiumNode::BlockingMessage(5000, pNode, LLP::ACTION::GET, uint8_t(LLP::TYPES::REGISTER), hashAddress);
@@ -86,7 +84,7 @@ namespace TAO
             uint256_t hashAddress  = Address(strNamespace, Address::NAMESPACE);
 
             /* Check for client mode. */
-            if(config::fClient.load() && !LLD::Register->HasState(hashAddress))
+            if(config::fClient.load() && !LLD::Register->HasState(hashAddress, TAO::Ledger::FLAGS::MEMPOOL))
             {
                 /* Check for genesis. */
                 if(LLP::TRITIUM_SERVER)
