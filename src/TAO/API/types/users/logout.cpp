@@ -22,7 +22,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/sigchain.h>
-#include <TAO/Ledger/types/tritium_minter.h>
+#include <TAO/Ledger/types/stake_minter.h>
 
 #include <Util/include/hex.h>
 
@@ -88,7 +88,7 @@ namespace TAO
             }
 
             /* If stake minter is running when logout, stop it */
-            TAO::Ledger::TritiumMinter& stakeMinter = TAO::Ledger::TritiumMinter::GetInstance();
+            TAO::Ledger::StakeMinter& stakeMinter = TAO::Ledger::StakeMinter::GetInstance();
             if(stakeMinter.IsStarted())
                 stakeMinter.Stop();
 

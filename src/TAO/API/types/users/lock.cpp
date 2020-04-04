@@ -12,7 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/types/users.h>
-#include <TAO/Ledger/types/tritium_minter.h>
+#include <TAO/Ledger/types/stake_minter.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -125,7 +125,7 @@ namespace TAO
             if(pActivePIN.IsNull() || (!(nUnlockedActions & TAO::Ledger::PinUnlock::UnlockActions::STAKING)))
             {
                 /* If stake minter is running, stop it */
-                TAO::Ledger::TritiumMinter& stakeMinter = TAO::Ledger::TritiumMinter::GetInstance();
+                TAO::Ledger::StakeMinter& stakeMinter = TAO::Ledger::StakeMinter::GetInstance();
                 if(stakeMinter.IsStarted())
                     stakeMinter.Stop();
             }

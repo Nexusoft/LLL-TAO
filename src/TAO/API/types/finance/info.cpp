@@ -25,7 +25,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/stake_change.h>
 
 #include <TAO/Ledger/types/sigchain.h>
-#include <TAO/Ledger/types/tritium_minter.h>
+#include <TAO/Ledger/types/stake_minter.h>
 
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/types/object.h>
@@ -86,7 +86,7 @@ namespace TAO
 
             ret["trust"] = nTrustScore;
 
-            TAO::Ledger::StakeMinter& stakeMinter = TAO::Ledger::TritiumMinter::GetInstance();
+            TAO::Ledger::StakeMinter& stakeMinter = TAO::Ledger::StakeMinter::GetInstance();
 
             /* Indexed trust account has genesis */
             bool fTrustIndexed = LLD::Register->HasTrust(user->Genesis());

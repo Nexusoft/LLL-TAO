@@ -37,9 +37,9 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/stake_minter.h>
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/types/transaction.h>
-#include <TAO/Ledger/types/tritium_minter.h>
 
 #include <Legacy/include/evaluate.h>
 #include <Legacy/include/trust.h>
@@ -171,7 +171,7 @@ namespace TAO
                     fAutoLoggedIn = true;
 
                     /* Start the stake minter if successful login. */
-                    TAO::Ledger::TritiumMinter::GetInstance().Start();
+                    TAO::Ledger::StakeMinter::GetInstance().Start();
                 }
             }
             catch(const APIException& e)

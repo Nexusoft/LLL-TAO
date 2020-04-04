@@ -482,7 +482,6 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Register_state.o \
 		build/Register_unpack.o \
 		build/Register_verify.o \
-		build/Ledger_base_minter.o \
 		build/Ledger_block.o \
 		build/Ledger_chainstate.o \
 		build/Ledger_checkpoints.o \
@@ -498,6 +497,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Ledger_sigchain.o \
 		build/Ledger_stake.o \
 		build/Ledger_stake_change.o \
+		build/Ledger_stake_minter.o \
 		build/Ledger_state.o \
 		build/Ledger_supply.o \
 		build/Ledger_syncblock.o \

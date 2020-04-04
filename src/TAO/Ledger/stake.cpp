@@ -85,7 +85,7 @@ namespace TAO
              * If unstake penalty were applied first, trust would fully decay in less time than it should.
              */
             uint64_t nScore = 0;
-            uint64_t nBlockAgeMax = MaxBlockAge();
+            const uint64_t nBlockAgeMax = MaxBlockAge();
 
             /* Block age less than maximum awards trust score increase equal to the current block age. */
             if(nBlockAge <= nBlockAgeMax)

@@ -18,8 +18,8 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/stake_minter.h>
 #include <TAO/Ledger/types/transaction.h>
-#include <TAO/Ledger/types/tritium_minter.h>
 
 #include <Util/include/allocators.h>
 
@@ -182,7 +182,7 @@ namespace TAO
             /* After unlock complete, attempt to start stake minter if unlocked for staking */
             if(pActivePIN->CanStake())
             {
-                TAO::Ledger::TritiumMinter& stakeMinter = TAO::Ledger::TritiumMinter::GetInstance();
+                TAO::Ledger::StakeMinter& stakeMinter = TAO::Ledger::StakeMinter::GetInstance();
 
                 if(!stakeMinter.IsStarted())
                     stakeMinter.Start();

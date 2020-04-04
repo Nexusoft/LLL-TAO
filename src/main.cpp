@@ -26,7 +26,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/cmd.h>
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/chainstate.h>
-#include <TAO/Ledger/types/tritium_minter.h>
+#include <TAO/Ledger/types/stake_minter.h>
 #include <TAO/Ledger/include/timelocks.h>
 
 #include <Util/include/convert.h>
@@ -327,7 +327,7 @@ int main(int argc, char** argv)
 
 
         /* Stop stake minter if running. Minter ignores request if not running, so safe to just call both */
-        TAO::Ledger::TritiumMinter::GetInstance().Stop();
+        TAO::Ledger::StakeMinter::GetInstance().Stop();
 
 
         /* Wait for the private condition. */

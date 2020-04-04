@@ -15,17 +15,11 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEDGER_TYPES_TRITIUM_MINTER_H
 #define NEXUS_TAO_LEDGER_TYPES_TRITIUM_MINTER_H
 
-#include <TAO/Ledger/include/stake_change.h>
-#include <TAO/Ledger/types/base_minter.h>
-#include <TAO/Ledger/types/sigchain.h>
-#include <TAO/Ledger/types/state.h>
-#include <TAO/Ledger/types/transaction.h>
-#include <TAO/Ledger/types/tritium.h>
+#include <TAO/Ledger/types/stake_minter.h>
 
-#include <TAO/Register/types/object.h>
+#include <TAO/Ledger/types/sigchain.h>
 
 #include <Util/include/allocators.h>
-#include <Util/include/memory.h>
 
 #include <atomic>
 #include <thread>
@@ -41,19 +35,27 @@ namespace TAO
 
     /** @class TritiumMinter
      *
-     * This class performs all operations for mining blocks on the Proof of Stake channel.
+     * This class supports solo mining blocks on the Proof of Stake channel.
+     *
      * It is implemented as a Singleton instance retrieved by calling GetInstance().
      *
      * Staking does not start, though, until Start() is called for the first time.
-     * It requires single user mode, with a user account unlocked for minting before it
-     * will start successfully.
+     * It requires single user mode, with a user account unlocked for staking before it will start successfully.
      *
      * The stake balance and trust score from the trust account will be used for Proof of Stake.
-     * A new trust account register must be created for the active user account signature chain
-     * before it can successfully stake.
+     * A new trust account register must be created for the active user account signature chain and balance
+     * sent to this account before it can successfully stake.
      *
      * The initial stake transaction for a new trust account is the Genesis transaction using OP::GENESIS
-     * in the block producer. All subsequent stake transactions are Trust transactions and use OP::TRUST.
+     * in the block producer. Genesis commits the current available balance from the trust account to the stake balance.
+     *
+     * All subsequent stake transactions are Trust transactions and use OP::TRUST applied to the committed stake balance.
+     *
+     * Committed stake may be changed by a StakeChange stored in the local database. Added stake is moved from the available
+     * balance in the trust account to the committed stake balance upon successfully mining a stake block. Although the added
+     * amount is not moved until a block is found, it is immediately included in stake minting calculations. Stake
+     * removed (unstake) is moved from committed stake to available balance (with associated trust cost) upon successfully
+     * mining a stake block. The unstake amount continues to be included in minting calculations until it is moved.
      *
      * Staking operations can be suspended by calling Stop() (for example, when the account is locked)
      * and restarted by calling Start() again.
@@ -83,16 +85,6 @@ namespace TAO
         static TritiumMinter& GetInstance();
 
 
-        /** IsStarted
-         *
-         * Tests whether or not the stake minter is currently running.
-         *
-         * @return true if the stake minter is started, false otherwise
-         *
-         */
-        bool IsStarted() const override;
-
-
         /** Start
          *
          * Start the stake minter.
@@ -100,15 +92,10 @@ namespace TAO
          * Call this method to start the stake minter thread and begin mining Proof of Stake, or
          * to restart it after it was stopped.
          *
-         * The first time this method is called, it will retrieve a reference to the wallet
-         * by calling Wallet::GetInstance(), so the wallet must be initialized and loaded before
-         * starting the stake minter.
-         *
-         * In general, this method should be called when the wallet is unlocked.
+         * In general, this method should be called when a signature chain is unlocked for staking.
          *
          * If the system is configured not to run the TritiumMinter, this method will return false.
-         * By default, the TritiumMinter will run for non-server, and won't run for server/daemon.
-         * These defaults can be changed using the -stake setting.
+         * This configuration is managed using the -staking (or the deprecated -stake) setting.
          *
          * After calling this method, the TritiumMinter thread may stay in suspended state if
          * the local node is synchronizing, or if it does not have any connections, yet.
@@ -136,134 +123,15 @@ namespace TAO
         bool Stop() override;
 
 
-    private:
-        /** Set true when stake miner thread starts and remains true while it is running **/
-        static std::atomic<bool> fStarted;
-
-
-        /** Flag to tell the stake minter thread to stop processing and exit. **/
-        static std::atomic<bool> fStop;
-
-
-        /** Thread for operating the stake minter **/
-        static std::thread tritiumMinterThread;
-
-
-        /** Trust account to use for staking. **/
-        TAO::Register::Object account;
-
-
-        /** Last stake block found by current trust account. */
-        TAO::Ledger::BlockState stateLast;
-
-
-        /** Flag to indicate whether the user has a current stake change request **/
-        bool fStakeChange;
-
-
-        /** Stake change request for current user */
-        TAO::Ledger::StakeChange stakeChange;
-
-
-        /** The candidate block that the stake minter is currently attempting to mine **/
-        TritiumBlock block;
-
-
-        /** Flag to indicate whether staking for Genesis or Trust **/
-        bool fGenesis;
-
-
-        /** Trust score applied for the candidate block the stake minter is attempting to mine **/
-        uint64_t nTrust;
-
-
-        /** Block age (time since last stake for trust account) for the candidate block the stake minter is attempting to mine **/
-        uint64_t nBlockAge;
-
-
-        /** Default constructor **/
-        TritiumMinter()
-        : account()
-        , stateLast()
-        , fStakeChange(false)
-        , stakeChange()
-        , block()
-        , fGenesis(false)
-        , nTrust(0)
-        , nBlockAge(0)
-        {
-        }
-
-
-        /** CheckUser
+    protected:
+        /** CreateCoinstake
          *
-         *  Verify user account unlocked for minting.
+         * Creates the base coinstake transaction for a solo mined Proof of Stake block and adds as the candidate block producer.
          *
-         *  @return true if the user account can stake
+         * @return true if the coinstake was successfully created
          *
          **/
-        bool CheckUser();
-
-
-        /** FindTrust
-         *
-         *  Gets the trust account for the current active signature chain and stores it into account.
-         *
-         *  @param[in] hashGenesis - genesis of user account signature chain
-         *
-         *  @return true if the trust account was successfully retrieved
-         *
-         **/
-        bool FindTrustAccount(const uint256_t& hashGenesis);
-
-
-        /** FindLastStake
-         *
-         *  Retrieves the most recent stake transaction for a user account.
-         *
-         *  @param[in] hashGenesis - genesis of user account signature chain
-         *  @param[out] hashLast - the most recent stake transaction hash
-         *
-         *  @return true if the last stake transaction was successfully retrieved
-         *
-         **/
-        bool FindLastStake(const uint256_t& hashGenesis, uint512_t& hashLast);
-
-
-        /** FindStakeChange
-         *
-         *  Identifies any pending stake change request and populates the appropriate instance data.
-         *
-         *  @param[in] hashGenesis - genesis of user account signature chain
-         *  @param[in] hashLast - hash of last stake transation for the user's trust account
-         *
-         *  @return true if processed successfully
-         *
-         **/
-        bool FindStakeChange(const uint256_t& hashGenesis, const uint512_t hashLast);
-
-
-        /** CreateCandidateBlock
-         *
-         *  Creates a new tritium block that the stake minter will attempt to mine via the Proof of Stake process.
-         *
-         *  @param[in] user - the currently active signature chain
-         *  @param[in] strPIN - active pin corresponding to the sig chain
-         *
-         *  @return true if the candidate block was successfully created
-         *
-         **/
-        bool CreateCandidateBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN);
-
-
-        /** CalculateWeights
-         *
-         *  Calculates the Trust Weight and Block Weight values for the current trust account and candidate block.
-         *
-         *  @return true if the weights were properly calculated
-         *
-         */
-        bool CalculateWeights();
+        bool CreateCoinstake(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user) override;
 
 
         /** MintBlock
@@ -276,34 +144,44 @@ namespace TAO
          *  @param[in] strPIN - active pin corresponding to the sig chain
          *
          **/
-        void MintBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN);
+        void MintBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN) override;
 
 
-        /** ProcessBlock
+        /** CheckBreak
          *
-         *  Processes a newly mined Proof of Stake block, adds transactions from the mempool, and submits it
-         *  to the network
+         *  Checks whether need to break from hashing the current block to update the block before continuing.
          *
-         *  @param[in] user - the currently active signature chain
-         *  @param[in] strPIN - active pin corresponding to the sig chain
-         *
-         *  @return true if the block passed all process checks and was successfully submitted
+         *  @return always false for solo staking
          *
          **/
-        bool ProcessBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN);
+        bool CheckBreak() override;
 
 
-        /** SignBlock
+        /** CalculateCoinstakeReward
          *
-         *  Sign a candidate block after it is successfully mined.
+         * Calculates the coinstake reward for a newly mined Proof of Stake block.
          *
-         *  @param[in] user - the currently active signature chain
-         *  @param[in] strPIN - active pin corresponding to the sig chain
+         * This implementation returns the reward for a solo mined block.
          *
-         *  @return true if block successfully signed
+         * @return the amount of reward paid by the block
          *
          **/
-        bool SignBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN);
+        uint64_t CalculateCoinstakeReward() override;
+
+
+    private:
+        /** Set true when stake miner thread starts and remains true while it is running **/
+        static std::atomic<bool> fStarted;
+
+
+        /** Thread for operating the stake minter **/
+        static std::thread tritiumMinterThread;
+
+
+        /** Default constructor **/
+        TritiumMinter()
+        {
+        }
 
 
         /** TritiumMinterThread
