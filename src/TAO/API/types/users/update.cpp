@@ -179,6 +179,13 @@ namespace TAO
             if(!strNewRecovery.empty())
                 tx.hashRecovery = userUpdated->RecoveryHash(strNewRecovery, txPrev.nNextType );
 
+            /* Update the sig chain with the new password if it has changed */
+            if(strNewPassword != strPassword)
+            {
+                userUpdated.free();
+                userUpdated = new TAO::Ledger::SignatureChain(user->UserName(), strNewPassword); 
+            }
+
             /* Update the Crypto keys with the new pin */
             update_crypto_keys(userUpdated, strNewPin, tx);
 

@@ -179,38 +179,12 @@ namespace TAO
             if(!account.Parse())
                 return debug::error(FUNCTION, "failed to parse account");
 
-            /* Seek claim read position to first. */
-            debit.Reset();
+            /* Reset the contract to the position of the primitive. */
+            debit.SeekToPrimitive();
 
             /* Get operation byte. */
             OP = 0;
             debit >> OP;
-
-            /* Check for condition or validate. */
-            switch(OP)
-            {
-                /* Handle a condition. */
-                case OP::CONDITION:
-                {
-                    /* Get new OP. */
-                    debit >> OP;
-
-                    break;
-                }
-
-
-                /* Handle a validate. */
-                case OP::VALIDATE:
-                {
-                    /* Seek past validate. */
-                    debit.Seek(68);
-
-                    /* Get new OP. */
-                    debit >> OP;
-
-                    break;
-                }
-            }
 
             /* Check that prev is coinbase. */
             if(OP == OP::COINBASE)

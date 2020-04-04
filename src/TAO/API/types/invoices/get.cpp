@@ -86,14 +86,14 @@ namespace TAO
         }
 
 
-        /* Returns a status for the invoice (outstanding/paid/cancelled) */ 
+        /* Returns a status for the invoice (outstanding/paid/cancelled) */
         std::string Invoices::get_status(const TAO::Register::State& state, const uint256_t& hashRecipient)
         {
             /* The return value string */
             std::string strStatus;
-    
+
             /* If the Invoice currently has no owner then we know it is outstanding */
-            if(state.hashOwner == 0)
+            if(state.hashOwner.GetType() == TAO::Ledger::GENESIS::SYSTEM)
                 strStatus = "OUTSTANDING";
             else if(state.hashOwner == hashRecipient)
                 strStatus = "PAID";
@@ -104,7 +104,7 @@ namespace TAO
         }
 
         /* Looks up the transaction ID and Contract ID for the transfer transaction that needs to be paid */
-        bool Invoices::get_tx(const uint256_t& hashRecipient, const TAO::Register::Address& hashInvoice, 
+        bool Invoices::get_tx(const uint256_t& hashRecipient, const TAO::Register::Address& hashInvoice,
                               uint512_t& txid, uint32_t& contractID)
         {
             /* Get all registers that have been transferred to the recipient but not yet paid (claimed) */
@@ -112,9 +112,9 @@ namespace TAO
             Users::get_unclaimed(hashRecipient, vUnclaimed);
 
             /* search the vector of unclaimed to see if this invoice is in there */
-            const auto& itt = std::find_if(vUnclaimed.begin(), vUnclaimed.end(), 
+            const auto& itt = std::find_if(vUnclaimed.begin(), vUnclaimed.end(),
                                             [&](const std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>& unclaimed) { return std::get<2>(unclaimed) == hashInvoice; });
-            
+
             /* If found set the txid from the contract */
             if( itt != vUnclaimed.end())
             {
@@ -129,7 +129,7 @@ namespace TAO
         }
 
         /* Returns the JSON representation of this invoice */
-        json::json Invoices::InvoiceToJSON(const json::json& params, const TAO::Register::State& state, 
+        json::json Invoices::InvoiceToJSON(const json::json& params, const TAO::Register::State& state,
                                              const TAO::Register::Address& hashInvoice)
         {
             /* The JSON to return */
@@ -168,7 +168,7 @@ namespace TAO
             ret["status"] = get_status(state, hashRecipient);
 
             /* Add the payment txid and contract, if it is unclaimed (unpaid) */
-            if(state.hashOwner == 0)
+            if(state.hashOwner.GetType() == TAO::Ledger::GENESIS::SYSTEM)
             {
                 uint512_t txid = 0;
                 uint32_t contract = 0;
@@ -178,11 +178,11 @@ namespace TAO
                     ret["txid"] = txid.ToString();
                     ret["contract"] = contract;
                 }
-                
+
             }
             /* return the JSON */
             return ret;
-            
+
         }
     }
 }

@@ -53,40 +53,15 @@ namespace TAO
             /* Clear the register stream in case this contract has already been built previously */
             contract.Clear(TAO::Operation::Contract::REGISTERS);
 
+            /* Reset the contract to the position of the primitive. */
+            contract.SeekToPrimitive();
+
             /* Make sure no exceptions are thrown. */
             try
             {
                 /* Get the contract OP. */
                 uint8_t nOP = 0;
                 contract >> nOP;
-
-                /* Check the current opcode. */
-                switch(nOP)
-                {
-
-                    /* Condition that allows a validation to occur. */
-                    case TAO::Operation::OP::CONDITION:
-                    {
-                        /* Get next operation. */
-                        contract >> nOP;
-
-                        /* Condition has no parameters. */
-                        break;
-                    }
-
-
-                    /* Validate a previous contract's conditions */
-                    case TAO::Operation::OP::VALIDATE:
-                    {
-                        /* Seek to end of stream. */
-                        contract.Seek(68);
-
-                        /* Get next operation. */
-                        contract >> nOP;
-
-                        break;
-                    }
-                }
 
                 /* Check the current opcode. */
                 switch(nOP)

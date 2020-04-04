@@ -103,7 +103,7 @@ namespace TAO
 
 
         /* Bind the contract to a transaction. */
-        void Contract::Bind(const TAO::Ledger::Transaction* tx, bool fBindTxid) const
+        void Contract::Bind(const TAO::Ledger::Transaction* tx) const
         {
             /* Check for nullptr bind. */
             if(tx == nullptr)
@@ -114,6 +114,79 @@ namespace TAO
             nTimestamp = tx->nTimestamp;
             hashTx     = tx->GetHash();
             nVersion   = tx->nVersion;
+        }
+
+
+        /* Bind the contract to a transaction with txid passed as param. */
+        void Contract::Bind(const TAO::Ledger::Transaction* tx, const uint512_t& hash) const
+        {
+            /* Check for nullptr bind. */
+            if(tx == nullptr)
+                throw debug::exception(FUNCTION, "cannot bind to a nullptr");
+
+            /* Don't bind a again if already bound as calling GetHash is expensive */
+            hashCaller = tx->hashGenesis;
+            nTimestamp = tx->nTimestamp;
+            hashTx     = hash;
+            nVersion   = tx->nVersion;
+        }
+
+
+        /* Bind the contract to a transaction with timestamp and caller passed as param. */
+        void Contract::Bind(const uint64_t nTimestampIn, const uint256_t& hashCallerIn) const
+        {
+            /* Set the variables. */
+            hashCaller = hashCallerIn;
+            nTimestamp = nTimestampIn;
+
+            /* Set the transaction version based on the timestamp. */
+            uint32_t nCurrent = TAO::Ledger::CurrentTransactionVersion();
+            if(TAO::Ledger::TransactionVersionActive(nTimestamp, nCurrent))
+                nVersion = nCurrent;
+            else
+                nVersion = nCurrent - 1;
+        }
+
+
+        /* Move the internal operation stream pointer to the position of the primitive operation byte.
+        *  If the stream starts with a CONDITION or VALIDATE byte then the pointer is moved forward to skip these bytes */
+        void Contract::SeekToPrimitive() const
+        {
+            /* Sanity checks. */
+            if(ssOperation.size() == 0)
+                throw debug::exception(FUNCTION, "cannot get primitive when empty");
+
+            /* Reset the operations stream to the beginning */
+            ssOperation.seek(0, STREAM::BEGIN);
+
+            /* Get the operation code.*/
+            uint8_t nOP = ssOperation.get(0);
+
+            /* Switch for validate or condition. */
+            switch(nOP)
+            {
+                /* Check for condition. */
+                case OP::CONDITION:
+                {
+                    /* Seek forward to the next byte, which will contain the primitive op. */
+                    ssOperation.seek(1);
+                    break;
+                }
+
+                /* Check for validate. */
+                case OP::VALIDATE:
+                {
+                    /* Skip over the validate byte, 64 bytes for the transaction hash and 4 bytes for the contract ID . */
+                    ssOperation.seek(69);
+                    break;
+                }
+                default :
+                {
+                    /* Nothing to do as the stream is already in the correct position (0) */
+                    break;
+                }
+            }
+
         }
 
         /* Get the primitive operation. */
@@ -180,8 +253,8 @@ namespace TAO
         /* Get the value of the contract if valid */
         bool Contract::Value(uint64_t &nValue) const
         {
-            /* Reset the contract. */
-            ssOperation.seek(0, STREAM::BEGIN);
+            /* Reset the contract to the position of the primitive. */
+            SeekToPrimitive();
 
             /* Set value. */
             nValue = 0;
@@ -189,31 +262,6 @@ namespace TAO
             /* Get the operation code.*/
             uint8_t nOP = 0;
             ssOperation >> nOP;
-
-            /* Switch for validate or condition. */
-            switch(nOP)
-            {
-                /* Check for condition. */
-                case OP::CONDITION:
-                {
-                    /* Get next op. */
-                    ssOperation >> nOP;
-
-                    break;
-                }
-
-                /* Check for validate. */
-                case OP::VALIDATE:
-                {
-                    /* Skip over on validate. */
-                    ssOperation.seek(68);
-
-                    /* Get next op. */
-                    ssOperation >> nOP;
-
-                    break;
-                }
-            }
 
             /* Switch for validate or condition. */
             switch(nOP)
@@ -369,35 +417,12 @@ namespace TAO
             hashPrev  = 0;
             nContract = 0;
 
-            /* Reset contract. */
-            ssOperation.seek(0, STREAM::BEGIN);
+            /* Reset the contract to the position of the primitive. */
+            SeekToPrimitive();
 
             /* Get the operation code.*/
             uint8_t nOP = 0;
             ssOperation >> nOP;
-
-            /* Switch for validate or condition. */
-            switch(nOP)
-            {
-                /* Check for condition. */
-                case OP::CONDITION:
-                {
-                    /* Get next op. */
-                    ssOperation >> nOP;
-
-                    break;
-                }
-
-                /* Check for validate. */
-                case OP::VALIDATE:
-                {
-                    /* Skip over on validate. */
-                    ssOperation.seek(68);
-
-                    /* Get next op. */
-                    ssOperation >> nOP;
-                }
-            }
 
             /* Switch for validate or condition. */
             switch(nOP)

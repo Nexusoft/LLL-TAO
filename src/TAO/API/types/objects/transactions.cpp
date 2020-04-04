@@ -145,31 +145,15 @@ namespace TAO
                     /* Retrieve the contract from the transaction for easier processing */
                     const TAO::Operation::Contract& contract = tx[nContract];
 
-                    /* Start the stream at the beginning. */
+                    /* Reset the operation stream position in case it was loaded from mempool and therefore still in previous state */
                     contract.Reset();
+
+                    /* Seek the contract operation stream to the position of the primitive. */
+                    contract.SeekToPrimitive();
 
                     /* Get the contract operation. */
                     uint8_t OPERATION = 0;
                     contract >> OPERATION;
-
-                    /* Check for conditional OP */
-                    switch(OPERATION)
-                    {
-                        case TAO::Operation::OP::VALIDATE:
-                        {
-                            /* Seek through validate. */
-                            contract.Seek(68);
-                            contract >> OPERATION;
-
-                            break;
-                        }
-
-                        case TAO::Operation::OP::CONDITION:
-                        {
-                            /* Get new operation. */
-                            contract >> OPERATION;
-                        }
-                    }
 
                     /* Check the current opcode. */
                     switch(OPERATION)

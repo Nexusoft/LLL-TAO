@@ -21,7 +21,7 @@ ________________________________________________________________________________
 namespace LLD
 {
     /*  Node to hold the binary data of the double linked list. */
-    class BinaryNode
+    struct BinaryNode
     {
     public:
 
