@@ -422,27 +422,6 @@ namespace LLD
     }
 
 
-    /* Determine if a register contains a last index. */
-    bool LedgerDB::HasRegister(const uint256_t& hashRegister)
-    {
-        return Exists(std::make_pair(std::string("register"), hashRegister));
-    }
-
-
-    /* Index a register's address to the last transaction that modified its state. */
-    bool LedgerDB::IndexRegister(const uint256_t& hashRegister, const uint512_t& hashTx)
-    {
-        return Index(std::make_pair(std::string("register"), hashRegister), hashTx);
-    }
-
-
-    /* Read's the register's indexing entry to get the last tx that modified its state. */
-    bool LedgerDB::ReadRegister(const uint256_t& hashRegister, TAO::Ledger::Transaction &tx)
-    {
-        return Read(std::make_pair(std::string("register"), hashRegister), tx);
-    }
-
-
     /* Determine if a transaction has already been indexed. */
     bool LedgerDB::HasIndex(const uint512_t& hashTx)
     {

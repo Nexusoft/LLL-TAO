@@ -44,7 +44,7 @@ namespace TAO
             /* Check name length */
             if(strName.length() == 0)
                 throw APIException(-88, "Missing name");
-            
+
             /* Name can't start with : */
             if(strName[0]== ':' )
                 throw APIException(-161, "Names cannot start with a colon");
@@ -172,7 +172,7 @@ namespace TAO
         }
 
         /* Retrieves a Name object by name. */
-        TAO::Register::Object Names::GetName(const json::json& params, const std::string& strObjectName, 
+        TAO::Register::Object Names::GetName(const json::json& params, const std::string& strObjectName,
                                              TAO::Register::Address& hashNameObject, const bool fThrow)
         {
             /* Declare the name object to return */
@@ -183,7 +183,7 @@ namespace TAO
 
             /* In order to resolve an object name to a register address we also need to know the namespace.
             *  First we check to see whether a local name exists in the caller's sig chain.
-            *  If that doesn't exist then we check to see whether the name contains a single : denoting a username qualified namespace. 
+            *  If that doesn't exist then we check to see whether the name contains a single : denoting a username qualified namespace.
             *  If so then we check to see whether the name exists in that users sig chain
             *  If the name contains a double colon then we assume that is namespace qualified and search the name in that namespace
             *  If the name contains no colons and is not a local name then we check to see whether the name exists in the global namespace   */
@@ -194,7 +194,7 @@ namespace TAO
             TAO::Register::Address hashNamespace;
 
             /* First check the callers local namespace to see if it exists */
-            /* Get the session to be used for this API call.  Note we pass in false for fThrow here so that we can check the 
+            /* Get the session to be used for this API call.  Note we pass in false for fThrow here so that we can check the
                other namespaces after */
             uint256_t nSession = users->GetSession(params, false);
 
@@ -209,7 +209,7 @@ namespace TAO
                 fFound = TAO::Register::GetNameRegister(hashNamespace, strName, nameObject);
             }
 
-            /* If it wasn't in the callers local namespace then check to see if the name was provided in either 
+            /* If it wasn't in the callers local namespace then check to see if the name was provided in either
                the userspace:name or namespace::name format */
             if(!fFound)
             {
@@ -217,7 +217,7 @@ namespace TAO
                 size_t nUserspacePos = strName.find(":");
 
                 /* If there is a namespace delimiter and it appears before the userspace delimiter (if there is one) */
-                if(nNamespacePos != std::string::npos 
+                if(nNamespacePos != std::string::npos
                 && (nUserspacePos == std::string::npos || nNamespacePos <= nUserspacePos))
                 {
                     /* If the name is namespace::name format then split the namespace and name into separate variables at the first ::*/
@@ -228,7 +228,7 @@ namespace TAO
                     hashNamespace = TAO::Register::Address(strNamespace, TAO::Register::Address::NAMESPACE);
                 }
                 /* If there is a userspace delimiter and it appears before any namespace delimiter (if there is one) */
-                else if(nUserspacePos != std::string::npos 
+                else if(nUserspacePos != std::string::npos
                 && (nNamespacePos == std::string::npos || nUserspacePos < nNamespacePos))
                 {
                     /* If the name is in username:name format then split the username and name into separate variables at the first :*/
@@ -257,7 +257,7 @@ namespace TAO
             /* If it wasn't resolved then error */
             if(!fFound && fThrow)
                 throw APIException(-101, debug::safe_printstr("Unknown name: ", strObjectName));
-            
+
             if(fFound)
                 /* Get the address of the Name object to return */
                 hashNameObject = TAO::Register::Address(strName, hashNamespace, TAO::Register::Address::NAME);
@@ -292,7 +292,7 @@ namespace TAO
             {
                 /* The cached register list */
                 std::pair<uint512_t, std::map<TAO::Register::Address, TAO::Register::Address>> cacheEntry;
-                
+
                 /* Retrieve the cached name-address map from the LRU cache */
                 cache.Get(hashGenesis, cacheEntry);
 
@@ -326,14 +326,14 @@ namespace TAO
                         }
                     }
                 }
-                
+
             }
 
             /* If we've never cached names for this sig chain or if the cache is out of date, add a blank map to the cache */
             if(!bCacheValid)
                 cache.Put(hashGenesis, std::make_pair(hashLast, std::map<TAO::Register::Address, TAO::Register::Address>()));
-            
-            
+
+
             /* Not found in cache so have to look it up by scanning all registers */
 
             /* Get all object registers owned by this sig chain */
@@ -346,7 +346,7 @@ namespace TAO
                     /* Initial check that it is a name before we hit the DB to get the address */
                     if(!hashRegister.IsName())
                         continue;
-                        
+
                     /* Get the object from the register DB.  We can read it as an Object and then check its nType
                     to determine whether or not it is a Name. */
                     TAO::Register::Object object;
@@ -372,7 +372,7 @@ namespace TAO
 
                             /* The cached register list */
                             std::pair<uint512_t, std::map<TAO::Register::Address, TAO::Register::Address>> cacheEntry;
-                            
+
                             /* Retrieve the cached name-address map from the LRU cache */
                             cache.Get(hashGenesis, cacheEntry);
 
@@ -404,10 +404,11 @@ namespace TAO
 
             /* Get the Name object by name */
             TAO::Register::Object name = Names::GetName(params, strName, hashNameObject, fThrow);
-
             if(!name.IsNull())
+            {
                 /* Get the address that this name register is pointing to */
                 hashRegister = name.get<uint256_t>("address");
+            }
 
             return hashRegister;
         }
@@ -423,8 +424,8 @@ namespace TAO
             TAO::Register::Address hashNameObject;
 
             /* The resolved name record  */
-            TAO::Register::Object name; 
-            
+            TAO::Register::Object name;
+
             /* Look up the Name object for the register address in the specified sig chain, if one has been provided */
             if(hashGenesis != 0)
                 name =Names::GetName(hashGenesis, hashRegister, hashNameObject);
@@ -438,9 +439,9 @@ namespace TAO
             else
             {
                 /* If we couldn't resolve the register name from the callers local names, we next scan the register owners sig chain
-                   to see if they have a name record for it.  NOTE: we only want to search global names from the register owners 
+                   to see if they have a name record for it.  NOTE: we only want to search global names from the register owners
                    sig chain, so that we don't leak the private names */
-                
+
                 /* Read the  the object from the register DB.  We can read it as an Object and then check its nType
                    to determine whether or not it is a Name. */
                 TAO::Register::State state;
@@ -448,7 +449,7 @@ namespace TAO
                 {
                     /* Look up the Name object for the register address hash in the register owners sig chain*/
                     name = Names::GetName(state.hashOwner, hashRegister, hashNameObject);
-                    
+
                     /* Get the name from the register owners name record as long as it is a global name */
                     if(!name.IsNull() && name.get<std::string>("namespace") == TAO::Register::NAMESPACE::GLOBAL)
                     {
@@ -487,7 +488,7 @@ namespace TAO
                 {
                     /* the genesis hash of the caller */
                     uint256_t hashGenesis = users->GetCallersGenesis(params);
-                    
+
                     /* Look up the token name based on the Name records in the caller's sig chain */
                     strTokenName = Names::ResolveName(hashGenesis, hashToken);
                 }
