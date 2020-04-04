@@ -11,6 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
+#include <LLP/include/global.h>
+
 #include <LLD/types/register.h>
 
 #include <TAO/Register/include/enum.h>
@@ -169,7 +171,8 @@ namespace LLD
     bool RegisterDB::ReadState(const uint256_t& hashRegister, TAO::Register::State& state, const uint8_t nFlags)
     {
         /* Memory mode for pre-database commits. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL ||
+           nFlags == TAO::Ledger::FLAGS::LOOKUP)
         {
             LOCK(MEMORY_MUTEX);
 
@@ -202,6 +205,29 @@ namespace LLD
                 state = pMiner->mapStates[hashRegister];
 
                 return true;
+            }
+        }
+
+        /* Handle lookup if requested. */
+        if(nFlags == TAO::Ledger::FLAGS::LOOKUP && config::fClient.load())
+        {
+            /* Check for missing register. */
+            if(!HasState(hashRegister, TAO::Ledger::FLAGS::MEMPOOL))
+            {
+                /* Check for genesis. */
+                if(LLP::TRITIUM_SERVER)
+                {
+                    memory::atomic_ptr<LLP::TritiumNode>& pNode = LLP::TRITIUM_SERVER->GetConnection();
+                    if(pNode != nullptr)
+                    {
+                        /* Request the sig chain. */
+                        debug::log(0, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::REGISTER for ", hashRegister.SubString());
+                        LLP::TritiumNode::BlockingMessage(5000, pNode, LLP::ACTION::GET, uint8_t(LLP::TYPES::REGISTER), hashRegister);
+                        debug::log(0, FUNCTION, "CLIENT MODE: TYPES::REGISTER received for ", hashRegister.SubString());
+                    }
+                    else
+                        debug::error(FUNCTION, "no connections available...");
+                }
             }
         }
 

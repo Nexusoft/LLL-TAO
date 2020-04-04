@@ -46,7 +46,7 @@ namespace TAO
 
             /* Get the token / account object. */
             TAO::Register::Object object;
-            if(!LLD::Register->ReadState(hashRegister, object, TAO::Ledger::FLAGS::MEMPOOL))
+            if(!LLD::Register->ReadState(hashRegister, object, TAO::Ledger::FLAGS::LOOKUP))
                 throw APIException(-122, "Token/account not found");
 
             /* Parse the object register. */
