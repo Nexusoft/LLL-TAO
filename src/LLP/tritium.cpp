@@ -1790,6 +1790,10 @@ namespace LLP
                         /* Standard type for a merkle transaction. */
                         case TYPES::MERKLE:
                         {
+                            /* Check for available protocol version. */
+                            if(nProtocolVersion < MIN_TRITIUM_VERSION)
+                                return true;
+
                             /* Check for valid specifier. */
                             if(fTransactions || fClient || fLegacy)
                                 return debug::drop(NODE, "ACTION::GET::MERKLE: invalid specifier for TYPES::MERKLE");
@@ -1822,6 +1826,10 @@ namespace LLP
                         /* Standard type for a genesis transaction. */
                         case TYPES::GENESIS:
                         {
+                            /* Check for available protocol version. */
+                            if(nProtocolVersion < MIN_TRITIUM_VERSION)
+                                return true;
+
                             /* Check for valid specifier. */
                             if(fTransactions || fClient || fLegacy)
                                 return debug::drop(NODE, "ACTION::GET::GENESIS: invalid specifier for TYPES::GENESIS");
@@ -1858,6 +1866,10 @@ namespace LLP
                         /* Standard type for last sigchain transaction. */
                         case TYPES::SIGCHAIN:
                         {
+                            /* Check for available protocol version. */
+                            if(nProtocolVersion < MIN_TRITIUM_VERSION)
+                                return true;
+
                             /* Check for valid specifier. */
                             if(fTransactions || fClient || fLegacy)
                                 return debug::drop(NODE, "ACTION::GET::SIGCHAIN: invalid specifier for TYPES::SIGCHAIN");
@@ -1894,6 +1906,10 @@ namespace LLP
                         /* Standard type for last sigchain transaction. */
                         case TYPES::REGISTER:
                         {
+                            /* Check for available protocol version. */
+                            if(nProtocolVersion < MIN_TRITIUM_VERSION)
+                                return true;
+
                             /* Check for valid specifier. */
                             if(fTransactions || fClient || fLegacy)
                                 return debug::drop(NODE, "ACTION::GET::REGISTER: invalid specifier for TYPES::REGISTER");
