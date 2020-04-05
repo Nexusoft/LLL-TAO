@@ -56,68 +56,56 @@ namespace LLD
         virtual ~LocalDB();
 
 
-        /** WriteGenesis
+        /** WriteIndex
          *
-         *  Writes a genesis transaction-id to disk.
+         *  Writes the txid of the transaction that modified the given register.
          *
-         *  @param[in] hashGenesis The genesis ID to write for.
-         *  @param[in] tx The transaction to write.
-         *
-         *  @return True if the genesis is written, false otherwise.
-         *
-         **/
-        bool WriteGenesis(const uint256_t& hashGenesis, const TAO::Ledger::Transaction& tx);
-
-
-        /** ReadGenesis
-         *
-         *  Reads a genesis transaction-id from disk.
-         *
-         *  @param[in] hashGenesis The genesis ID to read for.
-         *  @param[out] tx The transaction to read.
-         *
-         *  @return True if the genesis was read, false otherwise.
-         *
-         **/
-        bool ReadGenesis(const uint256_t& hashGenesis, TAO::Ledger::Transaction &tx);
-
-
-        /** HasGenesis
-         *
-         *  Checks if a genesis transaction exists.
-         *
-         *  @param[in] hashGenesis The genesis ID to check for.
-         *
-         *  @return True if the genesis exists, false otherwise.
-         *
-         **/
-        bool HasGenesis(const uint256_t& hashGenesis);
-
-
-        /** WriteLast
-         *
-         *  Writes the last txid of sigchain to disk indexed by genesis.
-         *
-         *  @param[in] hashGenesis The genesis hash to write.
-         *  @param[in] hashLast The last hash (txid) to write.
+         *  @param[in] hashAddress The register address.
+         *  @param[in] pairIndex The index containing expiration and txid.
          *
          *  @return True if the last was successfully written, false otherwise.
          *
          **/
-        bool WriteLast(const uint256_t& hashGenesis, const uint512_t& hashLast);
+        bool WriteIndex(const uint256_t& hashAddress, const std::pair<uint512_t, uint64_t>& pairIndex);
 
 
-        /** ReadLast
+        /** ReadIndex
          *
-         *  Reads the last txid of sigchain to disk indexed by genesis.
+         *  Reads the txid of the transaction that modified the given register.
          *
-         *  @param[in] hashGenesis The genesis hash to read.
-         *  @param[in] hashLast The last hash (txid) to read.
+         *  @param[in] hashAddress The register address.
+         *  @param[out] pairIndex The index containing expiration and txid.
          *
          *  @return True if the last was successfully read, false otherwise.
          *
          **/
-        bool ReadLast(const uint256_t& hashGenesis, uint512_t &hashLast);
+        bool ReadIndex(const uint256_t& hashAddress, std::pair<uint512_t, uint64_t> &pairIndex);
+
+
+        /** WriteExpiration
+         *
+         *  Writes the timestamp of a register's local disk cache expiration.
+         *
+         *  @param[in] hashAddress The register address.
+         *  @param[in] nTimestamp The timestamp the register cache expires.
+         *
+         *  @return True if the last was successfully written, false otherwise.
+         *
+         **/
+        bool WriteExpiration(const uint256_t& hashAddress, const uint64_t nTimestamp);
+
+
+        /** ReadExpiration
+         *
+         *  Reads the timestamp of a register's local disk cache expiration.
+         *
+         *  @param[in] hashAddress The register address.
+         *  @param[out] nTimestamp The timestamp register cache expires.
+         *
+         *  @return True if the last was successfully read, false otherwise.
+         *
+         **/
+        bool ReadExpiration(const uint256_t& hashAddress, uint64_t &nTimestamp);
 
 
         /** WriteStakeChange

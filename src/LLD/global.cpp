@@ -74,10 +74,13 @@ namespace LLD
             Local    = new LocalDB(
                             FLAGS::CREATE | FLAGS::FORCE);
         }
-
-        /* Create new client database if enabled. */
         else
         {
+            /* Create the local database instance. */
+            Local    = new LocalDB(
+                            FLAGS::CREATE | FLAGS::FORCE);
+
+            /* Create new client database if enabled. */
             Client    = new ClientDB(
                             FLAGS::CREATE | FLAGS::FORCE,
                             77773);

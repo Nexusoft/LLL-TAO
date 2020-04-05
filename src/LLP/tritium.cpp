@@ -1918,6 +1918,34 @@ namespace LLP
                             uint256_t hashRegister;
                             ssPacket >> hashRegister;
 
+                            /* Check for existing localdb indexes. */
+                            std::pair<uint512_t, uint64_t> pairIndex;
+                            if(LLD::Local->ReadIndex(hashRegister, pairIndex))
+                            {
+                                /* Check for cache expiration. */
+                                if(runtime::unifiedtimestamp() <= pairIndex.second)
+                                {
+                                    /* Get the transaction from disk. */
+                                    TAO::Ledger::Transaction tx;
+                                    if(!LLD::Ledger->ReadTx(pairIndex.first, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                                        break;
+
+                                    /* Build a markle transaction. */
+                                    TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
+
+                                    /* Build the merkle branch if the tx has been confirmed (i.e. it is not in the mempool) */
+                                    if(!TAO::Ledger::mempool.Has(pairIndex.first))
+                                        merkle.BuildMerkleBranch();
+
+                                    /* Send off the transaction to remote node. */
+                                    PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::TRITIUM), merkle);
+
+                                    debug::log(0, NODE, "ACTION::GET: Using INDEX CACHE for ", hashRegister.SubString());
+
+                                    break;
+                                }
+                            }
+
                             /* Get the register from disk. */
                             TAO::Register::State state;
                             if(!LLD::Register->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
@@ -2022,7 +2050,14 @@ namespace LLP
                                             if(!TAO::Ledger::mempool.Has(hashLast))
                                                 merkle.BuildMerkleBranch();
 
+                                            /* Send off the transaction to remote node. */
                                             PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::TRITIUM), merkle);
+
+                                            /* Build indexes for optimized processing. */
+                                            debug::log(0, NODE, "ACTION::GET: Update INDEX for register ", hashAddress.SubString());
+                                            std::pair<uint512_t, uint64_t> pairIndex = std::make_pair(tx.GetHash(), runtime::unifiedtimestamp() + 3600);
+                                            if(!LLD::Local->WriteIndex(hashAddress, pairIndex)) //Index expires 1 hour after created
+                                                break;
 
                                             /* Break out of main hash last. */
                                             hashLast = 0;
