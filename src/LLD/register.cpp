@@ -11,6 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
+#include <LLD/include/global.h>
+
 #include <LLP/include/global.h>
 
 #include <LLD/types/register.h>
@@ -211,8 +213,25 @@ namespace LLD
         /* Handle lookup if requested. */
         if(nFlags == TAO::Ledger::FLAGS::LOOKUP && config::fClient.load())
         {
+            uint64_t nExpires = 0;
+
             /* Check for missing register. */
-            if(!HasState(hashRegister, TAO::Ledger::FLAGS::MEMPOOL))
+            bool fExpired = false, fHas = HasState(hashRegister, TAO::Ledger::FLAGS::MEMPOOL);
+            if(fHas)
+            {
+                /* Check for a localdb index. */
+                if(LLD::Local->ReadExpiration(hashRegister, nExpires))
+                {
+                    /* Check expiration timestamp. */
+                    if(runtime::unifiedtimestamp() > nExpires)
+                        fExpired = true;
+                }
+                else
+                    fExpired = true;
+            }
+
+            /* Check for expired or missing. */
+            if(!fHas || fExpired)
             {
                 /* Check for genesis. */
                 if(LLP::TRITIUM_SERVER)
@@ -220,6 +239,13 @@ namespace LLD
                     memory::atomic_ptr<LLP::TritiumNode>& pNode = LLP::TRITIUM_SERVER->GetConnection();
                     if(pNode != nullptr)
                     {
+                        /* Handle expired. */
+                        if(fExpired)
+                            debug::log(0, FUNCTION, "EXPIRED: Cache is out of date by ", (runtime::unifiedtimestamp() - nExpires), " seconds");
+
+                        /* Write new expiration. */
+                        LLD::Local->WriteExpiration(hashRegister, runtime::unifiedtimestamp() + 600); //10 minute expiration
+
                         /* Request the sig chain. */
                         debug::log(0, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::REGISTER for ", hashRegister.SubString());
                         LLP::TritiumNode::BlockingMessage(5000, pNode, LLP::ACTION::GET, uint8_t(LLP::TYPES::REGISTER), hashRegister);
