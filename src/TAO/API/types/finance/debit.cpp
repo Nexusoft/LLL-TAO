@@ -219,7 +219,7 @@ namespace TAO
                     TAO::Register::Object recipient;
 
                     /* If we successfully read the register then valiate it */
-                    if(LLD::Register->ReadState(hashTo, recipient, TAO::Ledger::FLAGS::MEMPOOL))
+                    if(LLD::Register->ReadState(hashTo, recipient, TAO::Ledger::FLAGS::LOOKUP))
                     {
                         /* Parse the object register. */
                         if(!recipient.Parse())

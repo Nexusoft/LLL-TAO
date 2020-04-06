@@ -190,7 +190,7 @@ namespace TAO
 
                 /* Get the recipent token / account object. */
                 TAO::Register::Object recipient;
-                if(!LLD::Register->ReadState(hashTo, recipient, TAO::Ledger::FLAGS::MEMPOOL))
+                if(!LLD::Register->ReadState(hashTo, recipient, TAO::Ledger::FLAGS::LOOKUP))
                     throw APIException(-209, "Recipient is not a valid account");
 
                 /* Parse the object register. */
