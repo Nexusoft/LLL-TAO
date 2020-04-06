@@ -572,7 +572,7 @@ namespace TAO
                 std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> &vContracts)
         {
             /* Don't process tokenized debits in client mode (yet). */
-            /* TODO: obtain token register and token events list via LLP in client mode */
+            /* TODO: obtain token events list via LLP in client mode */
             if(config::fClient.load())
                 return false;
 
@@ -590,7 +590,7 @@ namespace TAO
 
                 /* Read the object register. */
                 TAO::Register::Object object;
-                if(!LLD::Register->ReadState(hashRegister, object, TAO::Ledger::FLAGS::MEMPOOL))
+                if(!LLD::Register->ReadState(hashRegister, object, TAO::Ledger::FLAGS::LOOKUP))
                     continue;
 
                 /* Parse the object register. */
@@ -954,7 +954,7 @@ namespace TAO
 
                     /* Read the token register. */
                     TAO::Register::Object token;
-                    if(!LLD::Register->ReadState(hashToken, token, TAO::Ledger::FLAGS::MEMPOOL))
+                    if(!LLD::Register->ReadState(hashToken, token, TAO::Ledger::FLAGS::LOOKUP))
                         throw APIException(-125, "Token not found");
 
                     /* Parse the object register. */
@@ -977,7 +977,7 @@ namespace TAO
 
                     /* Get the account that made the debit, so that we can determine the decimals */
                     TAO::Register::Object accountFrom;
-                    if(!LLD::Register->ReadState(hashFrom, accountFrom, TAO::Ledger::FLAGS::MEMPOOL))
+                    if(!LLD::Register->ReadState(hashFrom, accountFrom, TAO::Ledger::FLAGS::LOOKUP))
                         throw APIException(-13, "Account not found");
 
                     /* Parse the object register. */
