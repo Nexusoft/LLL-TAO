@@ -39,6 +39,9 @@ namespace TAO
         /* Retrieves the transaction for the given hash. */
         json::json Ledger::Transaction(const json::json& params, bool fHelp)
         {
+            if(config::fClient.load())
+                throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
+
             /* Extract the hash out of the JSON params*/
             uint512_t hash;
             if(params.find("hash") != params.end())
