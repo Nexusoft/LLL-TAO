@@ -60,6 +60,10 @@ namespace TAO
             if(!LLD::Register->ReadState(hashRegister, object, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-34, "Asset not found");
 
+            if(config::fClient.load() && object.hashOwner != users->GetCallersGenesis(params))
+                throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
+
+
             /* Only include non-standard object types */
             if(object.nType == TAO::Register::REGISTER::OBJECT)
             {
