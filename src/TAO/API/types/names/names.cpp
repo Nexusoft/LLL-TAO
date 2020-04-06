@@ -436,11 +436,13 @@ namespace TAO
                 /* Get the name from the Name register */
                 strName = name.get<std::string>("name");
             }
-            else
+            else if(!config::fClient.load())
             {
                 /* If we couldn't resolve the register name from the callers local names, we next scan the register owners sig chain
-                   to see if they have a name record for it.  NOTE: we only want to search global names from the register owners
-                   sig chain, so that we don't leak the private names */
+                   to see if they have a name record for it.  
+                   NOTE: we don't do this in client mode as we will not have access to the foreign sig chain to read its name records.
+                   NOTE: we only want to search global names from the register owners sig chain, so that we don't leak the 
+                   private names */
 
                 /* Read the  the object from the register DB.  We can read it as an Object and then check its nType
                    to determine whether or not it is a Name. */

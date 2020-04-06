@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/assets.h>
 #include <TAO/API/types/names.h>
+#include <TAO/API/include/global.h>
 #include <TAO/API/include/json.h>
 
 #include <Util/include/base64.h>

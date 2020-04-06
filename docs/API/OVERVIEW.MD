@@ -389,4 +389,5 @@ Error Codes
 | -251 | Missing name from or address from |
 | -252 | Account to debit is not for the required token |
 | -254 | Invoices API not yet active |
+| -300 | API can only be used to lookup data for the currently logged in signature chain when running in client mode |
 

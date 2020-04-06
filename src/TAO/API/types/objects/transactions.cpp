@@ -61,6 +61,9 @@ namespace TAO
             /* The genesis hash of the API caller, if logged in */
             uint256_t hashCaller = users->GetCallersGenesis(params);
 
+            if(config::fClient.load() && hashGenesis != hashCaller)
+                throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
+
             /* The register address of the object to get the transactions for. */
             TAO::Register::Address hashRegister ;
 
@@ -80,6 +83,9 @@ namespace TAO
             TAO::Register::Object object;
             if(!LLD::Register->ReadState(hashRegister, object))
                 throw APIException(-104, "Object not found");
+
+            if(config::fClient.load() && object.hashOwner != users->GetCallersGenesis(params))
+                throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
 
             /* We need to check if this register is a trust account as stake/genesis/trust/stake/unstake
                transactions don't include the account register address like all other transactions do */
