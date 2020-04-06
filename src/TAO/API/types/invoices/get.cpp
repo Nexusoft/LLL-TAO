@@ -64,6 +64,9 @@ namespace TAO
             if(!LLD::Register->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-241, "Invoice not found");
 
+            if(config::fClient.load() && state.hashOwner != users->GetCallersGenesis(params))
+                throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
+
             /* Ensure that it is an invoice register */
             if(state.nType != TAO::Register::REGISTER::READONLY)
                 throw APIException(-242, "Data at this address is not an invoice");

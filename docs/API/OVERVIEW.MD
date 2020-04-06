@@ -391,4 +391,5 @@ Error Codes
 | -254 | Invoices API not yet active |
 | -255 | Cannot process notifications until peers are connected |
 | -256 | Cannot process notifications whilst synchronizing |
+| -300 | API can only be used to lookup data for the currently logged in signature chain when running in client mode |
 

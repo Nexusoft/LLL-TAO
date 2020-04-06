@@ -840,6 +840,9 @@ namespace TAO
             /* The genesis hash of the API caller, if logged in */
             uint256_t hashCaller = users->GetCallersGenesis(params);
 
+            if(config::fClient.load() && hashGenesis != hashCaller)
+                throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
+
             /* Check for paged parameter. */
             uint32_t nPage = 0;
             if(params.find("page") != params.end())
