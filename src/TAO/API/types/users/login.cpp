@@ -113,7 +113,7 @@ namespace TAO
                     memory::atomic_ptr<LLP::TritiumNode>& pNode = LLP::TRITIUM_SERVER->GetConnection();
                     if(pNode != nullptr)
                     {
-                        debug::log(0, FUNCTION, "CLIENT MODE: Sychronizing -client");
+                        debug::log(0, FUNCTION, "CLIENT MODE: Synchronizing client");
 
                         /* Get the last txid in sigchain. */
                         uint512_t hashLast;
