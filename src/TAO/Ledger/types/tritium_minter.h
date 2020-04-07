@@ -126,9 +126,11 @@ namespace TAO
     protected:
         /** CreateCoinstake
          *
-         * Creates the base coinstake transaction for a solo mined Proof of Stake block and adds as the candidate block producer.
+         *  Create the coinstake transaction for a solo Proof of Stake block and add it as the candidate block producer.
          *
-         * @return true if the coinstake was successfully created
+         *  @param[in] user - the currently active signature chain
+         *
+         *  @return true if the coinstake was successfully created
          *
          **/
         bool CreateCoinstake(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user) override;
@@ -136,11 +138,9 @@ namespace TAO
 
         /** MintBlock
          *
-         *  Attempt to solve the hashing algorithm at the current staking difficulty for the candidate block, while
-         *  operating within the energy efficiency requirements. This process will continue to iterate until it either
-         *  mines a new block or the hashBestChain changes and the minter must start over with a new candidate block.
+         *  Initialize the staking process for solo Proof of Stake and call HashBlock() to perform block hashing.
          *
-         *  @param[in] user - the currently active signature chain
+         *  @param[in] user - the user account signature chain that is staking
          *  @param[in] strPIN - active pin corresponding to the sig chain
          *
          **/
@@ -149,7 +149,7 @@ namespace TAO
 
         /** CheckBreak
          *
-         *  Checks whether need to break from hashing the current block to update the block before continuing.
+         *  Check whether or not to stop hashing in HashBlock() to process block updates.
          *
          *  @return always false for solo staking
          *
@@ -159,23 +159,21 @@ namespace TAO
 
         /** CalculateCoinstakeReward
          *
-         * Calculates the coinstake reward for a newly mined Proof of Stake block.
+         *  Calculate the coinstake reward for a solo mined Proof of Stake block.
          *
-         * This implementation returns the reward for a solo mined block.
-         *
-         * @return the amount of reward paid by the block
+         *  @return the amount of reward paid by the block
          *
          **/
         uint64_t CalculateCoinstakeReward() override;
 
 
     private:
-        /** Set true when stake miner thread starts and remains true while it is running **/
+        /** Set true when solo minter thread starts and remains true while it is running **/
         static std::atomic<bool> fStarted;
 
 
         /** Thread for operating the stake minter **/
-        static std::thread tritiumMinterThread;
+        static std::thread stakeMinterThread;
 
 
         /** Default constructor **/
@@ -184,7 +182,7 @@ namespace TAO
         }
 
 
-        /** TritiumMinterThread
+        /** StakeMinterThread
          *
          *  Method run on its own thread to oversee stake minter operation using the methods in the
          *  tritium minter instance. The thread will continue running after initialized, but operation can
@@ -195,7 +193,7 @@ namespace TAO
          *  @param[in] pTritiumMinter - the minter thread will use this instance to perform all the tritium minter work
          *
          **/
-        static void TritiumMinterThread(TritiumMinter* pTritiumMinter);
+        static void StakeMinterThread(TritiumMinter* pTritiumMinter);
 
         };
 

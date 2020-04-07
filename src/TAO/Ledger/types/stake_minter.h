@@ -41,8 +41,8 @@ namespace TAO
 
 	/** @class StakeMinter
 	 *
-	 * This class provides the base class and process metrics for mining blocks on the Proof of Stake channel.
-	 * Implementations will provide the details for mining each specific PoS block type.
+	 * This class provides the base class and processes for mining blocks on the Proof of Stake channel.
+	 * Implementations will provide the details for each specific mining type.
 	 *
 	 * Staking starts when Start() is called.
 	 *
@@ -57,14 +57,14 @@ namespace TAO
 		virtual ~StakeMinter() {}
 
 
-        /** GetInstance
-         *
-         * Retrieves the stake minter instance to use for staking.
-         *
-         * @return reference to the TritiumMinter instance
-         *
-         **/
-        static StakeMinter& GetInstance();
+		/** GetInstance
+		 *
+		 * Retrieves the stake minter instance to use for staking.
+		 *
+		 * @return reference to the TritiumMinter instance
+		 *
+		 **/
+		static StakeMinter& GetInstance();
 
 
 		/** IsStarted
@@ -198,7 +198,7 @@ namespace TAO
 		uint1024_t hashLastBlock;
 
 
-		/** Time (in milliseconds) to sleep between candidate blocks. **/
+		/** Time (in milliseconds) to sleep between blocks. **/
 		uint64_t nSleepTime;
 
 
@@ -218,7 +218,9 @@ namespace TAO
 		std::atomic<double> nBlockWeight;
 
 
-		/** The current staking rate for calculating staking rewards **/
+		/** The current stake rate for calculating staking rewards. This is for display only, updated at the start of each
+         *  mining round. The actual rate used for calculating reward paid is based on block time when the block is found.
+         **/
 		std::atomic<double> nStakeRate;
 
 
@@ -226,7 +228,7 @@ namespace TAO
         TAO::Register::Object account;
 
 
-        /** Last stake block found by current trust account. **/
+        /** Last stake block found by current trust account. Not used for Genesis. **/
         TAO::Ledger::BlockState stateLast;
 
 
@@ -234,7 +236,7 @@ namespace TAO
         bool fStakeChange;
 
 
-        /** Stake change request for current user **/
+        /** Stake change request for current user, when one is present **/
         TAO::Ledger::StakeChange stakeChange;
 
 
@@ -246,11 +248,11 @@ namespace TAO
         bool fGenesis;
 
 
-        /** Trust score applied for the candidate block the stake minter is attempting to mine **/
+        /** Trust score applied for the current candidate block. Not used for Genesis. **/
         uint64_t nTrust;
 
 
-        /** Block age (time since last stake for trust account) for the candidate block the stake minter is attempting to mine **/
+        /** Block age (time since stateLast) for the current candidate block. Not used for Genesis. **/
         uint64_t nBlockAge;
 
 
@@ -275,6 +277,60 @@ namespace TAO
 		}
 
 
+        /** CreateCoinstake
+         *
+         *  Create the coinstake transaction and add it as the candidate block producer.
+         *
+         *  Each staking algorithm will implement its own approach for coinstake generation.
+         *
+         *  @param[in] user - the currently active signature chain
+         *
+         *  @return true if the coinstake was successfully created
+         *
+         **/
+        virtual bool CreateCoinstake(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user) = 0;
+
+
+        /** MintBlock
+         *
+         *  Initialize the staking process for the candidate block and call HashBlock() to perform block hashing.
+         *
+         *  When HashBlock() returns because CheckBreak() is true, this method will alter the candidate block appropriate
+         *  and then call HashBlock() again to continue hashing.
+         *
+         *  Each staking algorithm will implement its own setup for minting blocks.
+         *
+         *  @param[in] user - the currently active signature chain
+         *  @param[in] strPIN - active pin corresponding to the sig chain
+         *
+         **/
+        virtual void MintBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN) = 0;
+
+
+        /** CheckBreak
+         *
+         *  Check whether or not to stop hashing in HashBlock() to process block updates.
+         *
+         *  Each staking algorithm will implement its own process for checking when this is needed.
+         *
+         *  @return true if HashBLock() should break and return
+         *
+         **/
+        virtual bool CheckBreak() = 0;
+
+
+        /** CalculateCoinstakeReward
+         *
+         *  Calculate the coinstake reward for a newly mined Proof of Stake block.
+         *
+         *  Each staking algorithm will implement its own reward calculation.
+         *
+         *  @return the amount of reward paid by the block
+         *
+         **/
+        virtual uint64_t CalculateCoinstakeReward() = 0;
+
+
 		/** CheckUser
 		 *
 		 *  Verify user account unlocked for minting.
@@ -289,7 +345,7 @@ namespace TAO
 		 *
 		 *  Gets the trust account for the staking signature chain and stores it into account instance variable.
 		 *
-		 *  @param[in] hashGenesis - genesis of user account signature chain
+		 *  @param[in] hashGenesis - genesis of user account signature chain that is staking
 		 *
 		 *  @return true if the trust account was successfully retrieved
 		 *
@@ -297,53 +353,56 @@ namespace TAO
 		bool FindTrustAccount(const uint256_t& hashGenesis);
 
 
+        /** FindLastStake
+         *
+         *  Retrieves the most recent stake transaction for a user account.
+         *
+         *  @param[in] hashGenesis - genesis of user account signature chain that is staking
+         *  @param[out] hashLast - the most recent stake transaction hash
+         *
+         *  @return true if the last stake transaction was successfully retrieved
+         *
+         **/
+        bool FindLastStake(const uint256_t& hashGenesis, uint512_t& hashLast);
+
+
+        /** FindStakeChange
+         *
+         *  Identifies any pending stake change request, populates the stakeChange instance variable with it, and sets
+         *  fStakeChange to the appropriate value.
+         *
+         *  A sig chain cannot have generated any stake blocks since the change request was created (example, if stake on
+         *  a different machine). If the hashLast for the sig chain does not match the hashLast on the change request, then
+         *  the request is stale and is removed.
+         *
+         *  If there is an expired stake change request, it will be removed.
+         *
+         *  If the change request adds more than the available balance, or removes more than the stake amount, then it
+         *  will be modified to use current available balance or stake amount as appropriate.
+         *
+         *  The signature on the change request is also verified against the crypto register for the supplied hashGenesis.
+         *  If it does not match, the request is removed.
+         *
+         *  @param[in] hashGenesis - genesis of user account signature chain that is staking
+         *  @param[in] hashLast - hash of last stake transaction for the user's trust account
+         *
+         *  @return true if processed successfully
+         *
+         **/
+        bool FindStakeChange(const uint256_t& hashGenesis, const uint512_t hashLast);
+
+
         /** CreateCandidateBlock
          *
          *  Creates a new tritium block that the stake minter will attempt to mine via the Proof of Stake process.
          *
-         *  @param[in] user - the currently active signature chain
+         *  @param[in] user - the user account signature chain that is staking
          *  @param[in] strPIN - active pin corresponding to the sig chain
          *
          *  @return true if the candidate block was successfully created
          *
          **/
         bool CreateCandidateBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN);
-
-
-		/** CreateCoinstake
-		 *
-		 * Creates the base coinstake transaction and adds as the candidate block producer.
-		 *
-		 * @return true if the coinstake was successfully created
-		 *
-		 **/
-		virtual bool CreateCoinstake(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user) = 0;
-
-
-		/** FindLastStake
-		 *
-		 *  Retrieves the most recent stake transaction for a user account.
-		 *
-		 *  @param[in] hashGenesis - genesis of user account signature chain
-		 *  @param[out] hashLast - the most recent stake transaction hash
-		 *
-		 *  @return true if the last stake transaction was successfully retrieved
-		 *
-		 **/
-		bool FindLastStake(const uint256_t& hashGenesis, uint512_t& hashLast);
-
-
-		/** FindStakeChange
-		 *
-		 *  Identifies any pending stake change request and populates the appropriate instance data.
-		 *
-		 *  @param[in] hashGenesis - genesis of user account signature chain
-		 *  @param[in] hashLast - hash of last stake transation for the user's trust account
-		 *
-		 *  @return true if processed successfully
-		 *
-		 **/
-		bool FindStakeChange(const uint256_t& hashGenesis, const uint512_t hashLast);
 
 
         /** CalculateWeights
@@ -356,59 +415,61 @@ namespace TAO
         bool CalculateWeights();
 
 
-        /** MintBlock
+        /** CheckInterval
          *
-         *  Attempt to solve the hashing algorithm at the current staking difficulty for the candidate block, while
-         *  operating within the energy efficiency requirements. This process will continue to iterate until it either
-         *  mines a new block or the hashBestChain changes and the minter must start over with a new candidate block.
+         *  Verify whether or not a signature chain has met the interval requirement for minimum number of blocks
+         *  between stake blocks it mines (Trust only).
          *
-         *  @param[in] user - the currently active signature chain
-         *  @param[in] strPIN - active pin corresponding to the sig chain
+         *  @param[in] user - the user account signature chain that is staking
+         *
+         *  @return true if sig chain has met interval requirement
          *
          **/
         bool CheckInterval(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user);
 
 
-        /** MintBlock
+        /** CheckMempool
          *
-         *  Attempt to solve the hashing algorithm at the current staking difficulty for the candidate block, while
-         *  operating within the energy efficiency requirements. This process will continue to iterate until it either
-         *  mines a new block or the hashBestChain changes and the minter must start over with a new candidate block.
+         *  Verify no transactions for same signature chain in the mempool (Genesis only).
          *
-         *  @param[in] user - the currently active signature chain
-         *  @param[in] strPIN - active pin corresponding to the sig chain
+         *  Genesis blocks do not include mempool transactions. Therefore, if the mempool already has any transactions
+         *  for a sig chain, they would be orphaned if the chain generated stake Genesis. This method allows minter
+         *  to skip mining rounds until mempool transactions are cleared.
+         *
+         *  @param[in] user - the user account signature chain that is staking
+         *
+         *  @return true if no transactions pending for sig chain
          *
          **/
-        virtual void MintBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN) = 0;
+        bool CheckMempool(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user);
 
 
 		/** HashBlock
 		 *
-		 * Calculates the coinstake reward for a newly mined Proof of Stake block.
+         *  Attempt to solve the hashing algorithm at the current staking difficulty for the candidate block, while
+         *  operating within the required threshold restriction.
+         *
+         *  This process periodically calls the algorithm-specific CheckBreak() method to determine whether or not it needs
+         *  to stop iterating to alter the block setup. Otherwise, it will continue to iterate until it either
+         *  mines a new block or the hashBestChain changes and the minter must start over with a new candidate block.
+         *
+         *  When a block solution is found, this method calls ProcessBlock() to process and relay the new block.
 		 *
-		 * @return the amount of reward paid by the block
+         *  @param[in] user - the user account signature chain that is staking
+         *  @param[in] strPIN - active pin corresponding to the sig chain
+         *  @param[in] nRequired - required theshold for stake block hashing
 		 *
 		 **/
 		void HashBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN,
 			           const cv::softdouble nRequired);
 
 
-		/** HashBlock
-		 *
-		 * Calculates the coinstake reward for a newly mined Proof of Stake block.
-		 *
-		 * @return the amount of reward paid by the block
-		 *
-		 **/
-		virtual bool CheckBreak() = 0;
-
-
         /** ProcessBlock
          *
-         *  Processes a newly mined Proof of Stake block, adds transactions from the mempool, and submits it
-         *  to the network
+         *  Processes a newly mined Proof of Stake block, adds transactions from the mempool, and relays it
+         *  to the network.
          *
-         *  @param[in] user - the currently active signature chain
+         *  @param[in] user - the user account signature chain that is staking
          *  @param[in] strPIN - active pin corresponding to the sig chain
          *
          *  @return true if the block passed all process checks and was successfully submitted
@@ -417,21 +478,11 @@ namespace TAO
         bool ProcessBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN);
 
 
-		/** CalculateCoinstakeReward
-		 *
-		 * Calculates the coinstake reward for a newly mined Proof of Stake block.
-		 *
-		 * @return the amount of reward paid by the block
-		 *
-		 **/
-		virtual uint64_t CalculateCoinstakeReward() = 0;
-
-
         /** SignBlock
          *
          *  Sign a candidate block after it is successfully mined.
          *
-         *  @param[in] user - the currently active signature chain
+         *  @param[in] user - the user account signature chain that is staking
          *  @param[in] strPIN - active pin corresponding to the sig chain
          *
          *  @return true if block successfully signed

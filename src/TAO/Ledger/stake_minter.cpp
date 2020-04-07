@@ -258,29 +258,6 @@ namespace TAO
         }
 
 
-        /* Creates a new legacy block that the stake minter will attempt to mine via the Proof of Stake process. */
-        bool StakeMinter::CreateCandidateBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user,
-                                               const SecureString& strPIN)
-        {
-            /* Reset any prior value of trust score, block age, and stake update amount */
-            nTrust = 0;
-            nBlockAge = 0;
-
-            /* Create the block to work on */
-            block = TritiumBlock();
-
-            /* Create the base Tritium block. */
-            if(!TAO::Ledger::CreateStakeBlock(user, strPIN, block, fGenesis))
-                return debug::error(FUNCTION, "Unable to create candidate block");
-
-            /* Add a coinstake producer to the new candidate block */
-            if(!CreateCoinstake(user))
-                return false;
-
-            return true;
-        }
-
-
         /** Retrieves the most recent stake transaction for a user account. */
         bool StakeMinter::FindLastStake(const uint256_t& hashGenesis, uint512_t& hashLast)
         {
@@ -479,6 +456,29 @@ namespace TAO
         }
 
 
+        /* Creates a new legacy block that the stake minter will attempt to mine via the Proof of Stake process. */
+        bool StakeMinter::CreateCandidateBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user,
+                                               const SecureString& strPIN)
+        {
+            /* Reset any prior value of trust score, block age, and stake update amount */
+            nTrust = 0;
+            nBlockAge = 0;
+
+            /* Create the block to work on */
+            block = TritiumBlock();
+
+            /* Create the base Tritium block. */
+            if(!TAO::Ledger::CreateStakeBlock(user, strPIN, block, fGenesis))
+                return debug::error(FUNCTION, "Unable to create candidate block");
+
+            /* Add a coinstake producer to the new candidate block */
+            if(!CreateCoinstake(user))
+                return false;
+
+            return true;
+        }
+
+
         /* Calculates the Trust Weight and Block Weight values for the current trust account and candidate block. */
         bool StakeMinter::CalculateWeights()
         {
@@ -549,20 +549,16 @@ namespace TAO
         }
 
 
-        /* Attempt to solve the hashing algorithm at the current staking difficulty for the candidate block */
+        /* Verify whether or not a signature chain has met the interval requirement */
         bool StakeMinter::CheckInterval(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user)
         {
             static uint32_t nCounter = 0; //Prevents log spam during wait period
+            static const uint32_t nMinInterval = MinStakeInterval(block);
 
-            /* Check the block interval for trust transactions.
-             * This is checked here before minting and after setting up the block/calculating weights so that all staking metrics
-             * continue to be updated during the interval wait. This way, anyone who retrieves and display metrics will see them
-             * change appropriately. For example, they will see block weight reset after minting a block.
-             */
+            /* Check the block interval for trust transactions. */
             if(!fGenesis)
             {
                 const uint32_t nInterval = block.nHeight - stateLast.nHeight;
-                const uint32_t nMinInterval = MinStakeInterval(block);
 
                 if(nInterval <= nMinInterval)
                 {
@@ -578,19 +574,32 @@ namespace TAO
 
                     return false;
                 }
+                else if(nSleepTime == 5000)
+                {
+                    /* Reset sleep time after interval requirement met */
+                    nSleepTime = 1000;
+                }
             }
 
-            /* Genesis blocks do not include mempool transactions.  Therefore if there are already any transactions in the mempool
-               for this sig chain the genesis block will fail to be accepted because the producer.hashPrevTx would not be on disk.
-               Therefore if this is a genesis block, skip until there are no mempool transactions for this sig chain. */
-            else if(fGenesis && mempool.Has(user->Genesis()))
+            nCounter = 0;
+            return true;
+        }
+
+
+        /* Verify no transactions for same signature chain in the mempool */
+        bool StakeMinter::CheckMempool(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user)
+        {
+            static uint32_t nCounter = 0; //Prevents log spam during wait period
+
+            /* Check there are no mempool transactions for this sig chain. */
+            if(fGenesis && mempool.Has(user->Genesis()))
             {
                 /* 5 second wait is reset below (can't sleep too long or will hang until wakes up on shutdown) */
                 nSleepTime = 5000;
 
                 /* Update log every 10 iterations (50 seconds, which is average block time) */
                 if((nCounter % 10) == 0)
-                    debug::log(0, FUNCTION, "Skipping genesis as mempool transactions would be orphaned.");
+                    debug::log(0, FUNCTION, "Skipping stake genesis for current block as mempool transactions would be orphaned.");
 
                 ++nCounter;
 
@@ -598,11 +607,11 @@ namespace TAO
             }
             else if(nSleepTime == 5000)
             {
-                /* Reset sleep time after interval requirements met. */
+                /* Reset sleep time after mempool clear */
                 nSleepTime = 1000;
-                nCounter = 0;
             }
 
+            nCounter = 0;
             return true;
 
         }
@@ -615,7 +624,7 @@ namespace TAO
             /* Calculate the target value based on difficulty. */
             LLC::CBigNum bnTarget;
             bnTarget.SetCompact(block.nBits);
-            uint1024_t nHashTarget = bnTarget.getuint1024();
+            const uint1024_t nHashTarget = bnTarget.getuint1024();
 
             /* Search for the proof of stake hash solution until it mines a block, minter is stopped,
              * or network generates a new block (minter must start over with new candidate)

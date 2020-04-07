@@ -43,7 +43,7 @@ namespace TAO
         /* Initialize static variables */
         std::atomic<bool> TritiumMinter::fStarted(false);
 
-        std::thread TritiumMinter::tritiumMinterThread;
+        std::thread TritiumMinter::stakeMinterThread;
 
 
         TritiumMinter& TritiumMinter::GetInstance()
@@ -94,10 +94,10 @@ namespace TAO
             while(StakeMinter::fStop.load())
                 runtime::sleep(100);
 
-            TritiumMinter::tritiumMinterThread = std::thread(TritiumMinter::TritiumMinterThread, this);
+            TritiumMinter::stakeMinterThread = std::thread(TritiumMinter::StakeMinterThread, this);
 
             StakeMinter::fStarted.store(true);   //base class flag indicates any stake minter started
-            TritiumMinter::fStarted.store(true); //local class flag indicate a stake minter of type Tritium Minter started
+            TritiumMinter::fStarted.store(true); //local class flag indicate a stake minter of type TritiumMinter started
 
             return true;
         }
@@ -114,7 +114,7 @@ namespace TAO
                 StakeMinter::fStop.store(true);
 
                 /* Wait for minter thread to stop */
-                TritiumMinter::tritiumMinterThread.join();
+                TritiumMinter::stakeMinterThread.join();
 
                 /* Reset internals */
                 hashLastBlock = 0;
@@ -146,7 +146,7 @@ namespace TAO
         }
 
 
-        /* Creates the base coinstake transaction for a solo mined Proof of Stake block and adds as the candidate block producer. */
+        /* Create the coinstake transaction for a solo Proof of Stake block and add it as the candidate block producer */
         bool TritiumMinter::CreateCoinstake(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user)
         {
             static uint32_t nCounter = 0; //Prevents log spam during wait period
@@ -272,12 +272,23 @@ namespace TAO
         }
 
 
-        /* Attempt to solve the hashing algorithm at the current staking difficulty for the candidate block */
+        /* Initialize the staking process for solo Proof of Stake and call HashBlock() to perform block hashing */
         void TritiumMinter::MintBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN)
         {
-            if(!CheckInterval(user))
+            /* This are checked here before minting and after setting up the block/calculating weights so that all staking metrics
+             * continue to be updated during a wait. This way, anyone who retrieves and display metrics will see them
+             * change appropriately. For example, they will see block weight reset after minting a block.
+             */
+
+            /* Skip trust minting until minimum interval requirement met */
+            if(!fGenesis && !CheckInterval(user))
                 return;
 
+            /* Skip genesis minting if sig chain has transaction in the mempool */
+            else if (fGenesis && !CheckMempool(user))
+                return;
+
+            /* When ok to stake, calculate the required threshold for solo staking and pass to hashing method */
             uint64_t nStake;
             if (fGenesis)
             {
@@ -291,7 +302,7 @@ namespace TAO
                 /* Include added stake into the amount for threshold calculations. Need this because, if not included and someone
                  * unstaked their full stake amount, their trust account would be stuck unable to ever stake another block.
                  * By allowing minter to proceed when adding stake to a zero stake trust account, it must be added in here also
-                 * or there would be no stake amount (require threshold calculation would fail).
+                 * or there would be no stake amount (required threshold calculation would fail).
                  *
                  * For other cases, where more is added to existing stake, we also include it as an immediate benefit
                  * to improve the chances to stake the block that implements the change. If not, low balance accounts could
@@ -316,7 +327,7 @@ namespace TAO
         }
 
 
-        /* Checks whether need to break from hashing the current block to update the block before continuing. */
+        /* Check whether or not to stop hashing in HashBlock() to process block updates */
         bool TritiumMinter::CheckBreak()
         {
             /* Solo stake minter will never need to alter the block during hashing */
@@ -324,31 +335,35 @@ namespace TAO
         }
 
 
+        /* Calculate the coinstake reward for a solo mined Proof of Stake block */
         uint64_t TritiumMinter::CalculateCoinstakeReward()
         {
             uint64_t nReward = 0;
 
             /* Calculate the coinstake reward.
-             * Reward is based on final block time for block. Block time is updated with each iteration in MintBlock() so we
+             * Reward is based on final block time for block. Block time is updated with each iteration so we
              * have deferred reward calculation until after the block is found to get the exact correct amount.
              *
              * The reward prior to this one was based on stateLast.GetBlockTime(), which is the previous block's final time.
              * This puts all reward calculations on a continuum where all time between stake blocks is credited for each reward.
              *
              * If we had instead calculated the stake reward when initially creating the block and setting up the coinstake
-             * operation, then the time spent in MintBlock() would not be credited as part of the reward. This uncredited time
-             * could accumulate to a significant amount as many stake blocks are minted.
+             * operation, then the time spent to find a block solution would not be credited as part of the reward. This
+             * uncredited time could accumulate to a significant amount as many stake blocks are minted.
              */
             if(!fGenesis)
             {
-                /* Trust reward based on trust account stake and time since last stake block. */
+                /* Trust reward based on stake amount, new trust score after block found, and time since last stake block.
+                 * Note that, while nRequired for hashing includes any stake amount added by a stake change, the reward
+                 * only includes the current stake amount.
+                 */
                 const uint64_t nTime = block.GetBlockTime() - stateLast.GetBlockTime();
 
                 nReward = GetCoinstakeReward(account.get<uint64_t>("stake"), nTime, nTrust, fGenesis);
             }
             else
             {
-                /* Genesis reward based on trust account balance and coin age as defined by register timestamp. */
+                /* Genesis reward based on trust account balance and coin age based on trust register timestamp. */
                 const uint64_t nAge = block.GetBlockTime() - account.nModified;
 
                 nReward = GetCoinstakeReward(account.get<uint64_t>("balance"), nAge, 0, fGenesis);
@@ -359,7 +374,7 @@ namespace TAO
 
 
         /* Method run on its own thread to oversee stake minter operation. */
-        void TritiumMinter::TritiumMinterThread(TritiumMinter* pTritiumMinter)
+        void TritiumMinter::StakeMinterThread(TritiumMinter* pTritiumMinter)
         {
 
             debug::log(0, FUNCTION, "Stake Minter Started");
