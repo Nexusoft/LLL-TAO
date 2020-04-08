@@ -86,8 +86,12 @@ namespace TAO
 
             /* Get any expired contracts not yet voided. */
             GetExpired(hashGenesis, vContracts);
+
+            /* Get any legacy transactions . */
+            std::vector<std::pair<std::shared_ptr<Legacy::Transaction>, uint32_t>> vLegacyTx;
+            GetOutstanding(hashGenesis, vLegacyTx);
             
-            ret["notifications"] = vContracts.size();
+            ret["notifications"] = vContracts.size() + vLegacyTx.size();
 
 
             /* populate unlocked status */

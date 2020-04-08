@@ -128,8 +128,8 @@ namespace TAO
             /* Get notifications for personal genesis indexes. */
             TAO::Ledger::Transaction tx;
 
-            /* Keep track of unique proofs. */
-            std::set<std::tuple<uint256_t, uint512_t, uint32_t>> setUnique;
+            /* Keep track of unique contracts. */
+            std::set<std::pair<uint512_t, uint32_t>> setUnique;
 
             /* Counter of consecutive processed events. */
             uint32_t nConsecutive = 0;
@@ -268,20 +268,20 @@ namespace TAO
                         continue;
                     }
 
-                    /* Check that this is a unique proof. */
-                    if(setUnique.count(std::make_tuple(hashProof, hashTx, nContract)))
+                    /* Check that we haven't already added this contract to the vContracts list.  Since events are written by 
+                       transaction hash only, if two or more contracts exist in the same transaction for the same sig chain, then
+                       there will be duplicate events written for the same transaction. */
+                    if(setUnique.count(std::make_pair(hashTx, nContract)) == 0)
                     {
-                        //TODO: remove this debug print, this is to ensure consistency with the internal events
-                        debug::error(FUNCTION, "non unique event proof ", hashTx.SubString(), ", ", hashProof.SubString(), ", ", nContract);
-                        continue;
+                        setUnique.insert(std::make_pair(hashTx, nContract));
+
+                        /* Add the contract to the list. */
+                        vContracts.push_back(std::make_tuple(contract, nContract, 0));
+
+                        /* Reset the consecutive counter since this has not been processed */
+                        nConsecutive = 0;
                     }
 
-                    /* Add the coinbase transaction and skip rest of contracts. */
-                    vContracts.push_back(std::make_tuple(contract, nContract, 0));
-                    setUnique.insert(std::make_tuple(hashProof, hashTx, nContract));
-
-                    /* Reset the consecutive counter since this has not been processed */
-                    nConsecutive = 0;
                 }
 
                 /* Iterate the sequence id backwards. */
@@ -297,6 +297,9 @@ namespace TAO
         {
             /* Get notifications for personal genesis indexes. */
             Legacy::Transaction tx;
+
+            /* Keep track of unique contracts. */
+            std::set<std::pair<uint512_t, uint32_t>> setUnique;
 
             /* Counter of consecutive processed events. */
             uint32_t nConsecutive = 0;
@@ -347,11 +350,20 @@ namespace TAO
                         continue;
                     }
 
-                    /* Add the coinbase transaction and skip rest of contracts. */
-                    vContracts.push_back(std::make_pair(ptx, nContract));
+                    /* Check that we haven't already added this contract to the vContracts list.  Since events are written by 
+                       transaction hash only, if two or more contracts exist in the same transaction for the same sig chain, then
+                       there will be duplicate events written for the same transaction. */
+                    uint512_t hashTx = tx.GetHash();
+                    if(setUnique.count(std::make_pair(hashTx, nContract)) == 0)
+                    {
+                        setUnique.insert(std::make_pair(hashTx, nContract));
 
-                    /* Reset the consecutive counter since this has not been processed */
-                    nConsecutive = 0;
+                        /* Add the contract to the list. */
+                        vContracts.push_back(std::make_pair(ptx, nContract));
+
+                        /* Reset the consecutive counter since this has not been processed */
+                        nConsecutive = 0;
+                    }
                 }
 
                 /* Iterate the sequence id backwards. */
@@ -368,9 +380,6 @@ namespace TAO
         {
             /* Get notifications for personal genesis indexes. */
             TAO::Ledger::Transaction tx;
-
-            /* Keep track of unique proofs. */
-            std::set<std::tuple<uint256_t, uint512_t, uint32_t>> setUnique;
 
             /* Read back all the events. */
             uint32_t nSequence = 0;
