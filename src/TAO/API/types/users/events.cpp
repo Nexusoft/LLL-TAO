@@ -826,6 +826,92 @@ namespace TAO
                         /* Add the fee */
                         AddFee(txout);
 
+                        /* If we are in client mode then we need to get a peer to validate the transaction for us, as we will not
+                           have the ability to sanitize contracts with conditions or where other consensus rules require foreign
+                           registers.  
+                        */
+                        if(config::fClient.load())
+                        {
+                            /* Check tritium server enabled. */
+                            if(LLP::TRITIUM_SERVER)
+                            {
+                                memory::atomic_ptr<LLP::TritiumNode>& pNode = LLP::TRITIUM_SERVER->GetConnection();
+                                if(pNode != nullptr)
+                                {
+                                    debug::log(0, FUNCTION, "CLIENT MODE: Validating transaction");
+
+                                    /* Create our trigger nonce. */
+                                    uint64_t nNonce = LLC::GetRand();
+                                    pNode->PushMessage(LLP::TYPES::TRIGGER, nNonce);
+
+                                    /* Request the transaction validation */
+                                    pNode->PushMessage(LLP::ACTION::VALIDATE, uint8_t(LLP::TYPES::TRANSACTION), txout);
+
+                                    /* Create the condition variable trigger. */
+                                    LLP::Trigger REQUEST_TRIGGER;
+                                    pNode->AddTrigger(LLP::RESPONSE::VALIDATED, &REQUEST_TRIGGER);
+
+                                    /* Process the event. */
+                                    REQUEST_TRIGGER.wait_for_nonce(nNonce, 10000);
+
+                                    /* Cleanup our event trigger. */
+                                    pNode->Release(LLP::RESPONSE::VALIDATED);
+
+                                    debug::log(0, FUNCTION, "CLIENT MODE: RESPONSE::VALIDATED received");
+
+                                    /* Check the response args to see if it was valid */
+                                    bool fValid = false;
+
+                                    if(REQUEST_TRIGGER.HasArgs())
+                                    {
+                                        REQUEST_TRIGGER >> fValid;
+
+                                        /* If it was not valid then deserialize the failing contract ID from the response */
+                                        if(!fValid)
+                                        {
+                                            /* Deserialize the failing hash (which should be the one we sent) */
+                                            uint512_t hashTx;
+                                            REQUEST_TRIGGER >> hashTx;
+
+                                            /* Deserialize the failing contract ID */
+                                            uint32_t nContract;
+                                            REQUEST_TRIGGER >> nContract;
+
+                                            /* Check the hash is valid */
+                                            if(hashTx != txout.GetHash())
+                                                throw APIException(0, "Invalid transaction ID received from RESPONSE::VALIDATED");
+
+                                            /* Check the contract ID is valid */
+                                            if(nContract > txout.Size() -1)
+                                                throw APIException(0, "Invalid contract ID received from RESPONSE::VALIDATED");
+
+                                            /* Retrieve the contract from our transaction */
+                                            const TAO::Operation::Contract& contract = txout[nContract];
+
+                                            /* Unpack the txid and contract ID of the notification that this contract credits/claims */
+                                            TAO::Register::Unpack(contract, hashTx, nContract);
+
+                                            debug::log(0, FUNCTION, "CLIENT MODE: validation failed for notification: ", hashTx.SubString());
+
+                                            /* Suppress this notification until manually attempted */
+                                            /* TODO */
+
+                                            /* Throw exception to signify this transaction failed to be accepted and 
+                                               break out of this iteration of the process */
+                                            throw APIException(-32, "Failed to accept");
+                                        }
+                                    }
+                                    else
+                                    {
+                                        throw APIException(0, "CLIENT MODE: timeout waiting for RESPONSE::VALIDATED");
+                                    }
+                                    
+                                }
+                                else
+                                    debug::error(FUNCTION, "no connections available...");
+                            }
+                        }
+
                         /* Execute the operations layer. */
                         if(!txout.Build())
                             throw APIException(-30, "Failed to build register pre-states");
