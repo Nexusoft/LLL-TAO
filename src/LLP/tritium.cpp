@@ -3151,11 +3151,16 @@ namespace LLP
 
                             /* If this contract failed, then respond with the failed contract ID */
                             if(!fSanitized)
-                                PushMessage(RESPONSE::VALIDATED, false, tx.GetHash(), nContract);
+                            {
+                                PushMessage(RESPONSE::VALIDATED, nTriggerNonce, false, tx.GetHash(), nContract);
+
+                                /* Stop processing any more contracts  */
+                                break;
+                            }
                         }
 
                         /* If none failed then send a validated response */
-                        PushMessage(RESPONSE::VALIDATED, true, tx.GetHash());
+                        PushMessage(RESPONSE::VALIDATED, nTriggerNonce, true, tx.GetHash());
 
                         break;
                     }
