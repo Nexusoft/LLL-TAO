@@ -92,7 +92,7 @@ namespace LLP
         bool HasArgs() const
         {
             LOCK(TRIGGER_MUTEX);
-            return (ssArgs.size() == 0);
+            return (ssArgs.size() > 0);
         }
 
 
