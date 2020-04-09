@@ -132,7 +132,7 @@ namespace TAO
 
 
         /* Unpack a previous transaction from operation scripts. */
-        bool Unpack(const TAO::Operation::Contract& contract, uint512_t& hashPrevTx)
+        bool Unpack(const TAO::Operation::Contract& contract, uint512_t& hashPrevTx, uint32_t& nContract)
         {
             /* Reset the contract to the position of the primitive. */
             contract.SeekToPrimitive();
@@ -151,9 +151,12 @@ namespace TAO
                     case TAO::Operation::OP::CREDIT:
                     case TAO::Operation::OP::CLAIM:
                     {
-                        /* Extract the address from the contract. */
+                        /* Extract the previous tx hash from the contract. */
                         contract >> hashPrevTx;
 
+                        /* Extract the previous contact ID from the contract */
+                        contract >> nContract;
+                        
                         return true;
                     }
 
