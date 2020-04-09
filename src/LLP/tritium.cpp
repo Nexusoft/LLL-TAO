@@ -3049,13 +3049,13 @@ namespace LLP
 
             case RESPONSE::VALIDATED:
             {
-                /* De-serialize the trigger nonce. */
-                uint64_t nNonce = 0;
-                ssPacket >> nNonce;
-
                 /* deserialize the type */
                 uint8_t nType;
                 ssPacket >> nType;
+
+                /* De-serialize the trigger nonce. */
+                uint64_t nNonce = 0;
+                ssPacket >> nNonce;
 
                 switch(nType)
                 {
