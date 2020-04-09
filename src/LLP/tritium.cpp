@@ -24,7 +24,9 @@ ________________________________________________________________________________
 #include <TAO/API/include/global.h>
 
 #include <TAO/Operation/include/enum.h>
+#include <TAO/Operation/include/execute.h>
 
+#include <TAO/Register/include/build.h>
 #include <TAO/Register/include/names.h>
 #include <TAO/Register/types/object.h>
 
@@ -3039,13 +3041,132 @@ namespace LLP
                 /* De-serialize the trigger nonce. */
                 uint64_t nNonce = 0;
                 ssPacket >> nNonce;
-
-                /* Trigger active events with this nonce. */
+                
                 TriggerEvent(INCOMING.MESSAGE, nNonce);
+                
+                break;
+            }
+
+            case RESPONSE::VALIDATED:
+            {
+                /* De-serialize the trigger nonce. */
+                uint64_t nNonce = 0;
+                ssPacket >> nNonce;
+
+                /* deserialize the type */
+                uint8_t nType;
+                ssPacket >> nType;
+
+                switch(nType)
+                {
+                    case TYPES::TRANSACTION:
+                    {
+                        /* get the valid flag */
+                        bool fValid = false;
+                        ssPacket >> fValid;
+
+                        /* deserialize the transaction hash */
+                        uint512_t hashTx;
+                        ssPacket >> hashTx;
+
+                        if(fValid)
+                        {
+                            /* Trigger event with this nonce. */
+                            TriggerEvent(INCOMING.MESSAGE, nNonce, fValid, hashTx);  
+                        }
+                        else
+                        { 
+                            /* deserialize the contract ID */
+                            uint32_t nContract;
+                            ssPacket >> nContract;
+
+                            /* Trigger active events with this nonce. */
+                            TriggerEvent(INCOMING.MESSAGE, nNonce, fValid, hashTx, nContract);
+                        }
+
+                        break;
+                    }
+                    default:
+                    {
+                        /* Trigger active events with this nonce. */
+                        TriggerEvent(INCOMING.MESSAGE, nNonce);
+                    }
+                }
 
                 break;
             }
 
+            case ACTION::VALIDATE:
+            {
+                /* deserialize the type */
+                uint8_t nType;
+                ssPacket >> nType;
+
+                switch(nType)
+                {
+                    case TYPES::TRANSACTION:
+                    {
+                        /* deserialize the transaction */
+                        TAO::Ledger::Transaction tx;
+                        ssPacket >> tx;
+
+                        /* Validating a transaction simply sanitizes the contracts within it.  If any of them fail then we stop 
+                           sanitizing and return the contract ID that failed */
+                        bool fSanitized = false;
+                        
+                        /* Temporary map for pre-states to be passed into the sanitization Build() for each contract. */
+                        std::map<uint256_t, TAO::Register::State> mapStates;
+
+                        /* Loop through each contract in the transaction. */
+                        for(uint32_t nContract = 0; nContract < tx.Size(); ++nContract)
+                        {   
+                            /* Get the contract. */
+                            TAO::Operation::Contract& contract = tx[nContract];
+
+                            /* Lock the mempool at this point so that we can see if the transaction would be accepted into the mempool */
+                            RLOCK(TAO::Ledger::mempool.MUTEX);
+
+                            try
+                            {
+                                /* Start a ACID transaction (to be disposed). */
+                                LLD::TxnBegin(TAO::Ledger::FLAGS::MEMPOOL);
+
+                                fSanitized = TAO::Register::Build(contract, mapStates, TAO::Ledger::FLAGS::MEMPOOL)
+                                            && TAO::Operation::Execute(contract, TAO::Ledger::FLAGS::MEMPOOL);
+
+                                /* Abort the mempool ACID transaction once the contract is sanitized */
+                                LLD::TxnAbort(TAO::Ledger::FLAGS::MEMPOOL);
+
+                            }
+                            catch(const std::exception& e)
+                            {
+                                /* Abort the mempool ACID transaction */
+                                LLD::TxnAbort(TAO::Ledger::FLAGS::MEMPOOL);
+
+                                /* Log the error and attempt to continue processing */
+                                debug::error(FUNCTION, e.what());
+
+                                fSanitized = false;
+                            }
+
+                            /* If this contract failed, then respond with the failed contract ID */
+                            if(!fSanitized)
+                                PushMessage(RESPONSE::VALIDATED, false, tx.GetHash(), nContract);
+                        }
+
+                        /* If none failed then send a validated response */
+                        PushMessage(RESPONSE::VALIDATED, true, tx.GetHash());
+
+                        break;
+                    }
+                    default:
+                    {
+                        return debug::drop(NODE, "ACTION::VALIDATE invalidate type specified");
+                    }
+                }
+
+                break;
+            }
 
             default:
                 return debug::drop(NODE, "invalid protocol message ", INCOMING.MESSAGE);
