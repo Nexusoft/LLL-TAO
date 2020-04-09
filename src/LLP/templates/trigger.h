@@ -18,6 +18,10 @@ ________________________________________________________________________________
 #include <condition_variable>
 #include <cstdint>
 
+#include <LLP/include/version.h>
+
+#include <Util/templates/datastream.h>
+
 namespace LLP
 {
     class Trigger
@@ -25,23 +29,21 @@ namespace LLP
         /** The condition variable that is wrapped by this class. **/
         std::condition_variable CONDITION;
 
-        /** The nonce associated with the trigger. **/
-        std::atomic<uint64_t> nNonce;
+
+        /** Mutex to protect data stream. **/
+        mutable std::mutex TRIGGER_MUTEX;
+
+
+        /** The data stream for args. **/
+        DataStream ssArgs;
 
     public:
 
         /** Default Constructor. **/
         Trigger()
-        : CONDITION ( )
-        , nNonce    (0)
-        {
-        }
-
-
-        /** Constructor taking nonce. **/
-        Trigger(const uint64_t nNonceIn)
-        : CONDITION ( )
-        , nNonce    (nNonceIn)
+        : CONDITION     ( )
+        , TRIGGER_MUTEX ( )
+        , ssArgs        (SER_NETWORK, MIN_PROTO_VERSION)
         {
         }
 
@@ -82,29 +84,36 @@ namespace LLP
         }
 
 
-        /** SetNonce
+        /** HasArgs
          *
-         *  Set's the internal nonce's value.
+         *  Checks if a trigger has arguments packed into trigger.
+         *
+         **/
+        bool HasArgs() const
+        {
+            LOCK(TRIGGER_MUTEX);
+            return (ssArgs.size() == 0);
+        }
+
+
+        /** SetArgs
+         *
+         *  Set's the internal arguments
          *
          *  @param[in] nNonceIn The nonce value to set.
          *
          **/
-        void SetNonce(const uint64_t nNonceIn)
+        template<typename... Args>
+        void SetArgs(Args&&... args)
         {
-            nNonce.store(nNonceIn);
-        }
+            LOCK(TRIGGER_MUTEX);
 
+            /* Clear the stream and unpack args. */
+            ssArgs.clear();
+            message_args(ssArgs, std::forward<Args>(args)...);
 
-        /** GetNonce
-         *
-         *  Gets the internal nonce's value.
-         *
-         *  @return the current nonce's value.
-         *
-         **/
-        uint64_t GetNonce() const
-        {
-            return nNonce;
+            /* Reset read pointer. */
+            ssArgs.Reset();
         }
 
 
@@ -125,7 +134,18 @@ namespace LLP
             return CONDITION.wait_for(REQUEST_LOCK, std::chrono::milliseconds(nTimeout),
             [this, nTriggerNonce]
             {
+                LOCK(TRIGGER_MUTEX);
+
+                /* Reset the stream. */
+                ssArgs.Reset();
+                if(ssArgs.size() == 0)
+                    return false;
+
                 /* Check for genesis. */
+                uint64_t nNonce = 0;
+                ssArgs >> nNonce;
+
+                /* Check the nonce for trigger. */
                 if(nNonce == nTriggerNonce)
                     return true;
 
@@ -155,6 +175,23 @@ namespace LLP
         bool wait_for (std::unique_lock<std::mutex>& lck, const std::chrono::duration<Rep, Period>& rel_time)
         {
             return CONDITION.wait_for(lck, rel_time);
+        }
+
+
+        /** Operator Overload >>
+         *
+         *  Serializes data into vchOperations.
+         *
+         *  @param[out] obj The object to de-serialize from ledger data.
+         *
+         **/
+        template<typename Type>
+        const Trigger& operator>>(Type& obj) const
+        {
+            LOCK(TRIGGER_MUTEX);
+            ssArgs >> obj;
+
+            return *this;
         }
     };
 }

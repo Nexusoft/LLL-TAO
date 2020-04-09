@@ -16,6 +16,8 @@ ________________________________________________________________________________
 #define NEXUS_LLP_TEMPLATES_BASE_CONNECTION_H
 
 #include <LLP/templates/socket.h>
+#include <LLP/templates/trigger.h>
+#include <LLP/include/version.h>
 
 #include <Util/include/mutex.h>
 #include <Util/templates/datastream.h>
@@ -28,7 +30,6 @@ namespace LLP
 
     /* Forward declarations. */
     class DDOS_Filter;
-    class Trigger;
 
 
     /** BaseConnection
@@ -49,7 +50,6 @@ namespace LLP
         typedef PacketType packet_t;
 
     protected:
-
 
         /** Event
          *
@@ -194,27 +194,29 @@ namespace LLP
         void AddTrigger(const message_t nMsg, Trigger* TRIGGER);
 
 
-        /** TriggerEvent
+        /** PushMessage
          *
-         *  Trigger an event if it exists.
-         *
-         *  @param[in] nMsg The message type.
-         *
+         *  Adds a tritium packet to the queue to write to the socket.
          *
          **/
-        void TriggerEvent(const message_t nMsg);
+        template<typename... Args>
+        void TriggerEvent(const message_t nMsg, Args&&... args)
+        {
+            LOCK(TRIGGER_MUTEX);
 
-
-        /** TriggerEvent
-         *
-         *  Trigger an event if it exists.
-         *
-         *  @param[in] nMsg The message type.
-         *  @param[in] nNonce The Nonce to trigger with.
-         *
-         *
-         **/
-        void TriggerEvent(const message_t nMsg, const uint64_t nNonce);
+            /* Notify trigger if found. */
+            if(TRIGGERS.count(nMsg))
+            {
+                /* Grab the trigger and check for nullptr. */
+                Trigger* pTrigger = TRIGGERS[nMsg];
+                if(pTrigger)
+                {
+                    /* Pass back the data to the trigger. */
+                    pTrigger->SetArgs(std::forward<Args>(args)...);
+                    pTrigger->notify_all();
+                }
+            }
+        }
 
 
         /** Release

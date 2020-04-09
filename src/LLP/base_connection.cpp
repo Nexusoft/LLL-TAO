@@ -126,44 +126,6 @@ namespace LLP
     }
 
 
-    /* Trigger an event if it exists. */
-    template <class PacketType>
-    void BaseConnection<PacketType>::TriggerEvent(const message_t nMsg)
-    {
-        LOCK(TRIGGER_MUTEX);
-
-        /* Notify trigger if found. */
-        if(TRIGGERS.count(nMsg))
-        {
-            /* Grab the trigger and check for nullptr. */
-            Trigger* pTrigger = TRIGGERS[nMsg];
-            if(pTrigger)
-                pTrigger->notify_all();
-        }
-    }
-
-
-    /* Trigger an event if it exists. */
-    template <class PacketType>
-    void BaseConnection<PacketType>::TriggerEvent(const message_t nMsg, const uint64_t nNonce)
-    {
-        LOCK(TRIGGER_MUTEX);
-
-        /* Notify trigger if found. */
-        if(TRIGGERS.count(nMsg))
-        {
-            /* Grab the trigger and check for nullptr. */
-            Trigger* pTrigger = TRIGGERS[nMsg];
-            if(pTrigger)
-            {
-                /* Pass the nonce back with the trigger. */
-                pTrigger->SetNonce(nNonce);
-                pTrigger->notify_all();
-            }
-        }
-    }
-
-
     /* Release an event listener from tirggers. */
     template <class PacketType>
     void BaseConnection<PacketType>::Release(const message_t nMsg)
