@@ -1547,7 +1547,7 @@ namespace LLP
                             if(fLegacy)
                             {
                                 std::vector<Legacy::MerkleTx> vtx;
-                                LLD::Ledger->ReadSequence(hashSigchain, nSequence);
+                                LLD::Legacy->ReadSequence(hashSigchain, nSequence);
 
                                 /* Look back through all events to find those that are not yet processed. */
                                 Legacy::Transaction tx;
@@ -1559,7 +1559,6 @@ namespace LLP
 
                                     /* Insert into container. */
                                     vtx.push_back(merkle);
-                                    ++nSequence;
                                 }
 
                                 /* Reverse container to message forward. */
