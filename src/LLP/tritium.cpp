@@ -2205,6 +2205,10 @@ namespace LLP
                                     /* Debug output. */
                                     debug::log(3, NODE, "ACTION::NOTIFY: MERKLE TRANSACTION ", hashTx.SubString());
 
+                                    /* Add legacy flag if necessary */
+                                    if(fLegacy)
+                                        ssResponse << uint8_t(SPECIFIER::LEGACY);
+
                                     ssResponse << uint8_t(TYPES::MERKLE) << hashTx;
                                 }
 
@@ -3688,19 +3692,16 @@ namespace LLP
                     uint512_t hashTx = 0;
                     ssData >> hashTx;
 
-                    /* Check for legacy. */
-                    if(fLegacy)
-                    {
-                        debug::error(FUNCTION, "SIGCHAIN cannot have legacy specifier");
-                        continue;
-                    }
-
                     /* Check subscription. */
                     if(nNotifications & SUBSCRIPTION::SIGCHAIN)
                     {
                         /* Check for matching sigchain-id. */
                         if(hashSigchain != hashGenesis)
                             break;
+
+                        /* Check for legacy. */
+                        if(fLegacy)
+                            ssRelay << uint8_t(SPECIFIER::LEGACY);
 
                         /* Write transaction to stream. */
                         ssRelay << uint8_t(TYPES::SIGCHAIN);
