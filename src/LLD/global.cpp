@@ -54,32 +54,25 @@ namespace LLD
 
 
         /* Create the legacy database instance. */
-        if(!config::fClient.load())
+        uint32_t nLegacyCacheSize = config::GetArg("-legacycache", 1);
+        Legacy = new LegacyDB(
+                        FLAGS::CREATE | FLAGS::FORCE,
+                        config::fClient.load() ? 77773 : 256 * 256 * 64,
+                        nLegacyCacheSize * 1024 * 1024);
+
+
+        /* Create the trust database instance. */
+        Trust  = new TrustDB(
+                        FLAGS::CREATE | FLAGS::FORCE);
+
+
+        /* Create the local database instance. */
+        Local    = new LocalDB(
+                        FLAGS::CREATE | FLAGS::FORCE);
+        
+
+        if(config::fClient.load())
         {
-
-            /* Create the legacy database instance. */
-            uint32_t nLegacyCacheSize = config::GetArg("-legacycache", 1);
-            Legacy = new LegacyDB(
-                            FLAGS::CREATE | FLAGS::FORCE,
-                            256 * 256 * 64,
-                            nLegacyCacheSize * 1024 * 1024);
-
-
-            /* Create the trust database instance. */
-            Trust  = new TrustDB(
-                            FLAGS::CREATE | FLAGS::FORCE);
-
-
-            /* Create the local database instance. */
-            Local    = new LocalDB(
-                            FLAGS::CREATE | FLAGS::FORCE);
-        }
-        else
-        {
-            /* Create the local database instance. */
-            Local    = new LocalDB(
-                            FLAGS::CREATE | FLAGS::FORCE);
-
             /* Create new client database if enabled. */
             Client    = new ClientDB(
                             FLAGS::CREATE | FLAGS::FORCE,

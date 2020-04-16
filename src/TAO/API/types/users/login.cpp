@@ -128,6 +128,7 @@ namespace TAO
 
                         /* Grab list of notifications. */
                         pNode->PushMessage(LLP::ACTION::LIST, uint8_t(LLP::TYPES::NOTIFICATION), hashGenesis);
+                        pNode->PushMessage(LLP::ACTION::LIST, uint8_t(LLP::SPECIFIER::LEGACY), uint8_t(LLP::TYPES::NOTIFICATION), hashGenesis);
                     }
                     else
                         debug::error(FUNCTION, "no connections available...");

@@ -40,6 +40,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/client.h>
 
 #include <Legacy/wallet/wallet.h>
+#include <Legacy/include/evaluate.h>
 
 #include <Util/include/runtime.h>
 #include <Util/include/args.h>
@@ -2939,7 +2940,30 @@ namespace LLP
                                     return debug::error(FUNCTION, "failed to write block indexing entry");
                                 }
 
+                                /* UTXO to Sig Chain support - The only reason we would be receiving a legacy transaction in client
+                                   mode is if we are being sent a legacy event.  The event would normally be written to the DB in 
+                                   Transaction::Connect, but we cannot connect legacy transactions in client mode as we will not 
+                                   have all of the inputs.  Therefore, we need to check the outputs to see if any of them
+                                   are to a register address we know about and, if so, write an event for the account holder */
+                                for(const auto txout : tx.vout )
+                                {
+                                    uint256_t hashTo;
+                                    if(Legacy::ExtractRegister(txout.scriptPubKey, hashTo))
+                                    {
+                                        /* Read the owner of register. (check this for MEMPOOL, too) */
+                                        TAO::Register::State state;
+                                        if(!LLD::Register->ReadState(hashTo, state))
+                                            return debug::error(FUNCTION, "failed to read register to");
+
+                                        /* Commit an event for receiving sigchain in the legay DB. */
+                                        if(!LLD::Legacy->WriteEvent(state.hashOwner, hashTx))
+                                            return debug::error(FUNCTION, "failed to write event for account ", state.hashOwner.SubString());
+                                    }
+                                }
+
+                                /* Flush to disk and clear mempool. */
                                 LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
+                                TAO::Ledger::mempool.Remove(hashTx);
 
                                 tx.print();
 
