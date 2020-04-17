@@ -714,6 +714,21 @@ namespace TAO
 
 
 
+            /** validate_transaction
+            *
+            *  Used when in client mode, this method will send the transaction to a peer to validate it.  This will in turn check 
+            *  each contract in the transaction to verify that the conditions are met, the contract can be built, and executed.
+            *  If any of the contracts in the transaction fail then the method will return the index of the failed contract.
+            *
+            *  @param[in] tx The transaction to validate 
+            *  @param[out] nContract ID of the first failed contract
+            * 
+            *  @return True if the transaction was validated without errors, false if an error was encountered.
+            *
+            **/
+            bool validate_transaction(const TAO::Ledger::Transaction& tx, uint32_t& nContract);
+
+
             /** auto_login
             *
             *  Automatically logs in the sig chain using the credentials configured in the config file.  Will also create the sig

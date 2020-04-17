@@ -247,9 +247,9 @@ namespace LLD
                         LLD::Local->WriteExpiration(hashRegister, runtime::unifiedtimestamp() + 600); //10 minute expiration
 
                         /* Request the sig chain. */
-                        debug::log(0, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::REGISTER for ", hashRegister.SubString());
+                        debug::log(1, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::REGISTER for ", hashRegister.SubString());
                         LLP::TritiumNode::BlockingMessage(5000, pNode, LLP::ACTION::GET, uint8_t(LLP::TYPES::REGISTER), hashRegister);
-                        debug::log(0, FUNCTION, "CLIENT MODE: TYPES::REGISTER received for ", hashRegister.SubString());
+                        debug::log(1, FUNCTION, "CLIENT MODE: TYPES::REGISTER received for ", hashRegister.SubString());
                     }
                     else
                         debug::error(FUNCTION, "no connections available...");

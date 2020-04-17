@@ -113,18 +113,18 @@ namespace TAO
                     memory::atomic_ptr<LLP::TritiumNode>& pNode = LLP::TRITIUM_SERVER->GetConnection();
                     if(pNode != nullptr)
                     {
-                        debug::log(0, FUNCTION, "CLIENT MODE: Synchronizing client");
+                        debug::log(1, FUNCTION, "CLIENT MODE: Synchronizing client");
 
                         /* Get the last txid in sigchain. */
                         uint512_t hashLast;
                         LLD::Ledger->ReadLast(hashGenesis, hashLast); //NOTE: we don't care if it fails here, because zero means begin
 
                         /* Request the sig chain. */
-                        debug::log(0, FUNCTION, "CLIENT MODE: Requesting LIST::SIGCHAIN for ", hashGenesis.SubString());
+                        debug::log(1, FUNCTION, "CLIENT MODE: Requesting LIST::SIGCHAIN for ", hashGenesis.SubString());
 
                         LLP::TritiumNode::BlockingMessage(30000, pNode, LLP::ACTION::LIST, uint8_t(LLP::TYPES::SIGCHAIN), hashGenesis, hashLast);
 
-                        debug::log(0, FUNCTION, "CLIENT MODE: LIST::SIGCHAIN received for ", hashGenesis.SubString());
+                        debug::log(1, FUNCTION, "CLIENT MODE: LIST::SIGCHAIN received for ", hashGenesis.SubString());
 
                         /* Grab list of notifications. */
                         pNode->PushMessage(LLP::ACTION::LIST, uint8_t(LLP::TYPES::NOTIFICATION), hashGenesis);

@@ -126,11 +126,11 @@ namespace TAO
                     if(pNode != nullptr)
                     {
                         /* Request the genesis hash from the peer. */
-                        debug::log(0, FUNCTION, "CLIENT MODE: Requesting GET::GENESIS for ", hashRecipient.SubString());
+                        debug::log(1, FUNCTION, "CLIENT MODE: Requesting GET::GENESIS for ", hashRecipient.SubString());
 
                         LLP::TritiumNode::BlockingMessage(10000, pNode, LLP::ACTION::GET, uint8_t(LLP::TYPES::GENESIS), hashRecipient);
 
-                        debug::log(0, FUNCTION, "CLIENT MODE: GET::GENESIS received for ", hashRecipient.SubString());
+                        debug::log(1, FUNCTION, "CLIENT MODE: GET::GENESIS received for ", hashRecipient.SubString());
                     }
                 }
 

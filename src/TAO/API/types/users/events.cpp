@@ -137,18 +137,18 @@ namespace TAO
                             memory::atomic_ptr<LLP::TritiumNode>& pNode = LLP::TRITIUM_SERVER->GetConnection();
                             if(pNode != nullptr)
                             {
-                                debug::log(0, FUNCTION, "CLIENT MODE: Synchronizing client");
+                                debug::log(1, FUNCTION, "CLIENT MODE: Synchronizing client");
 
                                 /* Get the last txid in sigchain. */
                                 uint512_t hashLast;
                                 LLD::Ledger->ReadLast(hashGenesis, hashLast); //NOTE: we don't care if it fails here, because zero means begin
 
                                 /* Request the sig chain. */
-                                debug::log(0, FUNCTION, "CLIENT MODE: Requesting LIST::SIGCHAIN for ", hashGenesis.SubString());
+                                debug::log(1, FUNCTION, "CLIENT MODE: Requesting LIST::SIGCHAIN for ", hashGenesis.SubString());
 
                                 LLP::TritiumNode::BlockingMessage(30000, pNode, LLP::ACTION::LIST, uint8_t(LLP::TYPES::SIGCHAIN), hashGenesis, hashLast);
 
-                                debug::log(0, FUNCTION, "CLIENT MODE: LIST::SIGCHAIN received for ", hashGenesis.SubString());
+                                debug::log(1, FUNCTION, "CLIENT MODE: LIST::SIGCHAIN received for ", hashGenesis.SubString());
 
                                 /* Grab list of notifications. */
                                 pNode->PushMessage(LLP::ACTION::LIST, uint8_t(LLP::TYPES::NOTIFICATION), hashGenesis);
@@ -331,6 +331,80 @@ namespace TAO
             }
 
             return fSanitized;
+        }
+
+
+        /*Used when in client mode, this method will send the transaction to a peer to validate it.  This will in turn check 
+        *  each contract in the transaction to verify that the conditions are met, the contract can be built, and executed.
+        *  If any of the contracts in the transaction fail then the method will return the index of the failed contract.
+        */
+        bool Users::validate_transaction(const TAO::Ledger::Transaction& tx, uint32_t& nContract)
+        {
+            bool fValid = false;
+
+            /* Check tritium server enabled. */
+            if(LLP::TRITIUM_SERVER)
+            {
+                memory::atomic_ptr<LLP::TritiumNode>& pNode = LLP::TRITIUM_SERVER->GetConnection();
+                if(pNode != nullptr)
+                {
+                    debug::log(1, FUNCTION, "CLIENT MODE: Validating transaction");
+
+                    /* Create our trigger nonce. */
+                    uint64_t nNonce = LLC::GetRand();
+                    pNode->PushMessage(LLP::TYPES::TRIGGER, nNonce);
+
+                    /* Request the transaction validation */
+                    pNode->PushMessage(LLP::ACTION::VALIDATE, uint8_t(LLP::TYPES::TRANSACTION), tx);
+
+                    /* Create the condition variable trigger. */
+                    LLP::Trigger REQUEST_TRIGGER;
+                    pNode->AddTrigger(LLP::RESPONSE::VALIDATED, &REQUEST_TRIGGER);
+
+                    /* Process the event. */
+                    REQUEST_TRIGGER.wait_for_nonce(nNonce, 10000);
+
+                    /* Cleanup our event trigger. */
+                    pNode->Release(LLP::RESPONSE::VALIDATED);
+
+                    debug::log(1, FUNCTION, "CLIENT MODE: RESPONSE::VALIDATED received");
+
+                    /* Check the response args to see if it was valid */
+                    if(REQUEST_TRIGGER.HasArgs())
+                    {
+                        REQUEST_TRIGGER >> fValid;
+
+                        /* If it was not valid then deserialize the failing contract ID from the response */
+                        if(!fValid)
+                        {
+                            /* Deserialize the failing hash (which should be the one we sent) */
+                            uint512_t hashTx;
+                            REQUEST_TRIGGER >> hashTx;
+
+                            /* Deserialize the failing contract ID */
+                            REQUEST_TRIGGER >> nContract;
+
+                            /* Check the hash is valid */
+                            if(hashTx != tx.GetHash())
+                                throw APIException(0, "Invalid transaction ID received from RESPONSE::VALIDATED");
+
+                            /* Check the contract ID is valid */
+                            if(nContract > tx.Size() -1)
+                                throw APIException(0, "Invalid contract ID received from RESPONSE::VALIDATED");
+                        }
+                    }
+                    else
+                    {
+                        throw APIException(0, "CLIENT MODE: timeout waiting for RESPONSE::VALIDATED");
+                    }
+                    
+                }
+                else
+                    debug::error(FUNCTION, "no connections available...");
+            }
+        
+            /* return the valid flag */
+            return fValid;
         }
     }
 }
