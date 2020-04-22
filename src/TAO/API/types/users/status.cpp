@@ -82,14 +82,14 @@ namespace TAO
 
             /* Get the notifications so that we can return the notification count. */
             std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> vContracts;
-            GetOutstanding(hashGenesis, vContracts);
+            GetOutstanding(hashGenesis, false, vContracts);
 
             /* Get any expired contracts not yet voided. */
-            GetExpired(hashGenesis, vContracts);
+            GetExpired(hashGenesis, false, vContracts);
 
             /* Get any legacy transactions . */
             std::vector<std::pair<std::shared_ptr<Legacy::Transaction>, uint32_t>> vLegacyTx;
-            GetOutstanding(hashGenesis, vLegacyTx);
+            GetOutstanding(hashGenesis, false, vLegacyTx);
             
             ret["notifications"] = vContracts.size() + vLegacyTx.size();
 

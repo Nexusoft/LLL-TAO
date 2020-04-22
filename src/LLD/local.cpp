@@ -80,4 +80,25 @@ namespace LLD
         return Erase(std::make_pair(std::string("stakechange"), hashGenesis));
     }
 
+
+    /* Writes a notification suppression record */
+    bool LocalDB::WriteSuppressNotification(const uint512_t& hashTx, const uint32_t nContract, const uint64_t &nTimestamp)
+    {
+        return Write(std::make_tuple(std::string("suppress"), hashTx, nContract), nTimestamp);
+    }
+
+
+    /* Reads a notification suppression record */
+    bool LocalDB::ReadSuppressNotification(const uint512_t& hashTx, const uint32_t nContract, uint64_t &nTimestamp)
+    {
+        return Read(std::make_tuple(std::string("suppress"), hashTx, nContract), nTimestamp);
+    }
+
+
+    /* Removes a suppressed notification record */
+    bool LocalDB::EraseSuppressNotification(const uint512_t& hashTx, const uint32_t nContract)
+    {
+        return Erase(std::make_tuple(std::string("suppress"), hashTx, nContract));
+    }
+
 }

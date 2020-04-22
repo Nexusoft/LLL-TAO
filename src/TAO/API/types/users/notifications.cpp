@@ -59,6 +59,7 @@ namespace TAO
 
         /*  Gets the currently outstanding contracts that have not been matched with a credit or claim. */
         bool Users::GetOutstanding(const uint256_t& hashGenesis,
+                const bool& fIncludeSuppressed,
                 std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> &vContracts)
         {
             /* Get the last transaction in the sig chain from disk. */
@@ -76,6 +77,26 @@ namespace TAO
 
             }
 
+            /* Remove any suppressed if flagged to do so */
+            if(!fIncludeSuppressed)
+            {
+                vContracts.erase
+                (
+                    /* Use std remove_if function to return the iterator to erase. This allows us to pass in a lambda function,
+                    which itself can check to see if a notification suppression exists and, if so, whether it has expired */
+                    std::remove_if(vContracts.begin(), vContracts.end(), 
+                    [](const std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>& entry)
+                    {
+                        uint64_t nTimestamp;
+                        if(!LLD::Local->ReadSuppressNotification(std::get<0>(entry).Hash(), std::get<1>(entry), nTimestamp))
+                            return false;
+                        else
+                            return nTimestamp > runtime::unifiedtimestamp(); // remove notification if timeout not expired
+                    }), 
+                    vContracts.end()
+                );
+            }
+
             /* Sort transactions by timestamp from oldest to newest. */
             std::sort(vContracts.begin(), vContracts.end(),
                 [](const std::tuple<TAO::Operation::Contract, uint32_t, uint256_t> &a,
@@ -89,6 +110,7 @@ namespace TAO
 
         /*  Gets the any debit or transfer transactions that have expired and can be voided. */
         bool Users::GetExpired(const uint256_t& hashGenesis,
+                const bool& fIncludeSuppressed,
                 std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> &vContracts)
         {
             /* Get the last transaction in the sig chain from disk. */
@@ -99,15 +121,56 @@ namespace TAO
                 get_expired(hashGenesis, hashLast, vContracts);
             }
 
+            /* Remove any suppressed if flagged to do so */
+            if(!fIncludeSuppressed)
+            {
+                vContracts.erase
+                (
+                    /* Use std remove_if function to return the iterator to erase. This allows us to pass in a lambda function,
+                    which itself can check to see if a notification suppression exists and, if so, whether it has expired */
+                    std::remove_if(vContracts.begin(), vContracts.end(), 
+                    [](const std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>& entry)
+                    {
+                        uint64_t nTimestamp;
+                        if(!LLD::Local->ReadSuppressNotification(std::get<0>(entry).Hash(), std::get<1>(entry), nTimestamp))
+                            return false;
+                        else
+                            return nTimestamp > runtime::unifiedtimestamp(); // remove notification if timeout not expired
+                    }), 
+                    vContracts.end()
+                );
+            }
+
             return true;
         }
 
 
         /*  Gets the currently outstanding legacy UTXO to register transactions that have not been matched with a credit */
         bool Users::GetOutstanding(const uint256_t& hashGenesis,
+                const bool& fIncludeSuppressed,
                 std::vector<std::pair<std::shared_ptr<Legacy::Transaction>, uint32_t>> &vContracts)
         {
             get_events(hashGenesis, vContracts);
+
+            /* Remove any suppressed if flagged to do so */
+            if(!fIncludeSuppressed)
+            {
+                vContracts.erase
+                (
+                    /* Use std remove_if function to return the iterator to erase. This allows us to pass in a lambda function,
+                    which itself can check to see if a notification suppression exists and, if so, whether it has expired */
+                    std::remove_if(vContracts.begin(), vContracts.end(), 
+                    [](const std::pair<std::shared_ptr<Legacy::Transaction>, uint32_t>& entry)
+                    {
+                        uint64_t nTimestamp;
+                        if(!LLD::Local->ReadSuppressNotification(std::get<0>(entry)->GetHash(), std::get<1>(entry), nTimestamp))
+                            return false;
+                        else
+                            return nTimestamp > runtime::unifiedtimestamp(); // remove notification if timeout not expired
+                    }), 
+                    vContracts.end()
+                );
+            }
 
             /* Sort transactions by timestamp from oldest to newest. */
             std::sort(vContracts.begin(), vContracts.end(),
@@ -853,15 +916,20 @@ namespace TAO
             if(params.find("limit") != params.end())
                 nLimit = std::stoul(params["limit"].get<std::string>());
 
+            /* Check for suppressed parameter. */
+            bool fIncludeSuppressed = false;
+            if(params.find("suppressed") != params.end())
+                fIncludeSuppressed = params["suppressed"].get<std::string>() == "true" || params["suppressed"].get<std::string>() == "1";
+
             /* The total number of notifications. */
             uint32_t nTotal = 0;
 
             /* Get the outstanding contracts not yet credited or claimed. */
             std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> vContracts;
-            GetOutstanding(hashGenesis, vContracts);
+            GetOutstanding(hashGenesis, fIncludeSuppressed, vContracts);
 
             /* Get any expired contracts not yet voided. */
-            GetExpired(hashGenesis, vContracts);
+            GetExpired(hashGenesis, fIncludeSuppressed, vContracts);
 
             /* Get notifications for foreign token registers. */
             for(const auto& contract : vContracts)
@@ -969,7 +1037,7 @@ namespace TAO
 
             /* Get the outstanding legacy transactions not yet credited. */
             std::vector<std::pair<std::shared_ptr<Legacy::Transaction>, uint32_t>> vLegacy;
-            GetOutstanding(hashGenesis, vLegacy);
+            GetOutstanding(hashGenesis, fIncludeSuppressed, vLegacy);
 
             /* Get notifications for foreign token registers. */
             for(const auto& tx : vLegacy)
@@ -1061,17 +1129,23 @@ namespace TAO
             if(!TAO::Register::GetNameRegister(hashGenesis, strAccount, defaultAccount))
                 throw APIException(-63, "Could not retrieve default NXS account to credit");
 
+            /* Check for suppressed parameter. */
+            bool fIncludeSuppressed = false;
+            if(params.find("suppressed") != params.end())
+                fIncludeSuppressed = params["suppressed"].get<std::string>() == "true" || params["suppressed"].get<std::string>() == "1";
+
+
             /* Get the list of outstanding contracts. */
             std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> vContracts;
-            GetOutstanding(hashGenesis, vContracts);
+            GetOutstanding(hashGenesis, fIncludeSuppressed, vContracts);
 
             /* Get any expired contracts not yet voided. */
             std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> vExpired;
-            GetExpired(hashGenesis, vExpired);
+            GetExpired(hashGenesis, fIncludeSuppressed, vExpired);
 
             /* Get the list of outstanding legacy transactions . */
             std::vector<std::pair<std::shared_ptr<Legacy::Transaction>, uint32_t>> vLegacyTx;
-            GetOutstanding(hashGenesis, vLegacyTx);
+            GetOutstanding(hashGenesis, fIncludeSuppressed, vLegacyTx);
 
             /* Check if there is anything to process */
             if(vContracts.size() == 0 && vLegacyTx.size() == 0 && vExpired.size() == 0)
@@ -1581,12 +1655,12 @@ namespace TAO
 
                         debug::log(1, FUNCTION, "CLIENT MODE: validation failed for notification: ", hashTx.SubString());
 
-                        /* Suppress this notification until manually attempted */
-                        /* TODO */
+                        /* Suppress this notification for 1 hour or until manually attempted  */
+                        LLD::Local->WriteSuppressNotification(hashTx, nContract, runtime::unifiedtimestamp() + 3600);
 
-                        /* Throw exception to signify this transaction failed to be accepted and 
-                            break out of this iteration of the process */
-                        throw APIException(-32, "Failed to accept");
+                        /* Throw exception to signify this transaction failed to be accepted due to the contract failing peer 
+                           validation and break out of this iteration of the process */
+                        throw APIException(-257, "Contract failed peer validation");
                     }
                     
                 }

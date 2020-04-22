@@ -144,6 +144,47 @@ namespace LLD
          **/
         bool EraseStakeChange(const uint256_t& hashGenesis);
 
+
+        /** WriteSuppressNotification
+         *
+         *  Writes a notification suppression record
+         *
+         *  @param[in] hashTx The transaction Id of the notification to suppress.
+         *  @param[in] nContract The contract Id of the notification to suppress.
+         *  @param[in] nTimestamp Timestamp of when the notification should be suppressed until
+         *
+         *  @return True if the record was successfully written, false otherwise.
+         *
+         **/
+        bool WriteSuppressNotification(const uint512_t& hashTx, const uint32_t nContract, const uint64_t &nTimestamp);
+
+
+        /** ReadSuppressNotification
+         *
+         *  Reads a notification suppression record
+         *
+         *  @param[in] hashTx The transaction Id of the notification .
+         *  @param[in] nContract The contract Id of the notification.
+         *  @param[out] nTimestamp Timestamp of when the notification should be suppressed until
+         *
+         *  @return True if the record was successfully read, false otherwise.
+         *
+         **/
+        bool ReadSuppressNotification(const uint512_t& hashTx, const uint32_t nContract, uint64_t &nTimestamp);
+
+
+        /** EraseSuppressNotification
+         *
+         *  Removes a suppressed notification record.
+         *
+         *  @param[in] hashTx The transaction Id of the notification .
+         *  @param[in] nContract The contract Id of the notification.
+         *
+         *  @return True if the record successfully erased, false otherwise.
+         *
+         **/
+        bool EraseSuppressNotification(const uint512_t& hashTx, const uint32_t nContract);
+
     };
 }
 

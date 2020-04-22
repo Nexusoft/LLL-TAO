@@ -551,10 +551,12 @@ namespace TAO
              *  Gets the currently outstanding transactions that have not been matched with a credit or claim.
              *
              *  @param[in] hashGenesis The genesis hash for the sig chain owner.
+             *  @param[in] fIncludeSuppressed Flag indicating whether suppresed notifications should be included 
              *  @param[out] vContracts The array of outstanding contracts.
              *
              **/
             static bool GetOutstanding(const uint256_t& hashGenesis,
+                const bool& fIncludeSuppressed,
                 std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> &vContracts);
 
 
@@ -563,10 +565,12 @@ namespace TAO
              *  Gets the currently outstanding legacy UTXO to register transactions that have not been matched with a credit.
              *
              *  @param[in] hashGenesis The genesis hash for the sig chain owner.
+             *  @param[in] fIncludeSuppressed Flag indicating whether suppresed notifications should be included 
              *  @param[out] vContracts The array of outstanding contracts.
              *
              **/
             static bool GetOutstanding(const uint256_t& hashGenesis,
+                const bool& fIncludeSuppressed,
                 std::vector<std::pair<std::shared_ptr<Legacy::Transaction>, uint32_t>> &vContracts);
 
 
@@ -575,10 +579,12 @@ namespace TAO
              *  Gets the any debit or transfer transactions that have expired and can be voided.
              *
              *  @param[in] hashGenesis The genesis hash for the sig chain owner.
+             *  @param[in] fIncludeSuppressed Flag indicating whether suppresed notifications should be included 
              *  @param[out] vContracts The array of expired contracts.
              *
              **/
             static bool GetExpired(const uint256_t& hashGenesis,
+                const bool& fIncludeSuppressed,
                 std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> &vContracts);
 
 
