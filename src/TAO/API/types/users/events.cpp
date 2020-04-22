@@ -264,30 +264,49 @@ namespace TAO
             /* Dummy params to pass into ProcessNotifications call */
             json::json params;
 
-            try
+            /* Flag indicating the process should immediately retry upon failure.  This is flagged by certain exception codes */
+            bool fRetry = false;
+
+            /* As a safety measure we will break out after 100 retries */
+            uint8_t nRetries = 0;
+
+            do
             {
-                /* Invoke the process notifications method to process all oustanding */
-                ProcessNotifications(params, false);
-            }
-            catch(const APIException& ex)
-            {
-                /* Absorb certain errors and write them to the log instead */
-                switch (ex.id)
+                try
                 {
-                case 202: // Signature chain not mature after your previous mined/stake block. X more confirmation(s) required
-                case 255: // Cannot process notifications until peers are connected
-                case 256: // Cannot process notifications whilst synchronizing
-                    debug::log(2, FUNCTION, ex.what());
-                    break;
-                
-                default:
-                    break;
+                    /* Invoke the process notifications method to process all oustanding */
+                    ProcessNotifications(params, false);
+                }
+                catch(const APIException& ex)
+                {
+                    /* Absorb certain errors and write them to the log instead */
+                    switch (ex.id)
+                    {
+                    case -202: // Signature chain not mature after your previous mined/stake block. X more confirmation(s) required
+                    case -255: // Cannot process notifications until peers are connected
+                    case -256: // Cannot process notifications whilst synchronizing
+                    {
+                        debug::log(2, FUNCTION, ex.what());
+                        break;
+                    }
+                    case -257: // Contract failed peer validation
+                    {
+                        debug::log(2, FUNCTION, ex.what());
+
+                        /* Immediately retry processing if a contract failed peer validation, as it will now be suppressed */
+                        fRetry = true;
+
+                        /* Increment the retry counter, so that we only retry 100 times */
+                        nRetries++;
+
+                        break;
+                    }
+                    default:
+                        throw ex;
+                    }
                 }
             }
-            
-            
-
-            
+            while(fRetry && nRetries < 100);
 
         }
 
@@ -334,7 +353,7 @@ namespace TAO
         }
 
 
-        /*Used when in client mode, this method will send the transaction to a peer to validate it.  This will in turn check 
+        /* Used when in client mode, this method will send the transaction to a peer to validate it.  This will in turn check 
         *  each contract in the transaction to verify that the conditions are met, the contract can be built, and executed.
         *  If any of the contracts in the transaction fail then the method will return the index of the failed contract.
         */
