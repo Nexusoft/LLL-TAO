@@ -847,6 +847,8 @@ This will list off all of the transactions sent to a particular genesis or usern
 
 `limit` : The number of notifications to return for the current page.  Default is 100
 
+`suppressed`: Optional boolean flag indicating that suppressed notifications should be included in the list. 
+
 
 ### Return value JSON object:
 ```
@@ -888,6 +890,8 @@ An array of contracts deifned as:
 
 `txid` : The transaction that was credited / claimed.
 
+`suppressed`: If the caller included the optional `suppressed` flag, then the response will include this field to indicate whether this notification is currently being suppressed or not. 
+
 `from` : For `DEBIT` transactions, the register address of the account that the debit is being made from.
 
 `from_name` : For `DEBIT` transactions, the name of the account that the debit is being made from.  Only included if the name can be resolved.
@@ -927,6 +931,8 @@ Process all outstanding notifications for a logged in signature chain.  This API
 `pin` : The PIN for this signature chain.  This is required unless the signature chain is already unlocked for notifications.
 
 `session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) the notifications should be processed for. For single-user API mode the session should not be supplied.
+
+`suppressed`: Optional boolean flag indicating that suppressed notifications should be included when processing.
 
 
 ### Return value JSON object:

@@ -957,6 +957,14 @@ namespace TAO
                 obj["txid"]      = refContract.Hash().ToString();
                 obj["time"]      = refContract.Timestamp();
 
+                /* If caller has chosen to include suppressed notifications, then include an extra field in the response to 
+                   indicate which ones are suppressed */
+                if(fIncludeSuppressed)
+                {
+                    uint64_t nTimeout = 0;
+                    obj["suppressed"] = (LLD::Local->ReadSuppressNotification(refContract.Hash(), std::get<1>(contract), nTimeout) && nTimeout > runtime::unifiedtimestamp());
+                }
+
                 /* Check to see if there is a proof for the contract, indicating this is a split dividend payment and the
                    hashProof is the account the proves the ownership of it*/
                 TAO::Register::Address hashProof = std::get<2>(contract);
