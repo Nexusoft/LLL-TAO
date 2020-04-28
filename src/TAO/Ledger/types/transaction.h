@@ -29,6 +29,7 @@ namespace TAO
     namespace Ledger
     {
         class BlockState;
+        class MerkleTx;
 
 
         /** Transaction
@@ -41,6 +42,8 @@ namespace TAO
          **/
         class Transaction
         {
+        protected:
+
             /** For disk indexing on contract. **/
             std::vector<TAO::Operation::Contract> vContracts;
 
@@ -126,12 +129,28 @@ namespace TAO
             Transaction(Transaction&& tx) noexcept;
 
 
+            /** Copy constructor. **/
+            Transaction(const MerkleTx& tx);
+
+
+            /** Move constructor. **/
+            Transaction(MerkleTx&& tx) noexcept;
+
+
             /** Copy assignment. **/
             Transaction& operator=(const Transaction& tx);
 
 
             /** Move assignment. **/
             Transaction& operator=(Transaction&& tx) noexcept;
+
+
+            /** Copy assignment. **/
+            Transaction& operator=(const MerkleTx& tx);
+
+
+            /** Move assignment. **/
+            Transaction& operator=(MerkleTx&& tx) noexcept;
 
 
             /** Default Destructor. **/
@@ -426,6 +445,10 @@ namespace TAO
             *
             **/
             uint64_t Fees() const;
+
+
+            /** Class friends. **/
+            friend class MerkleTx;
 
         };
     }

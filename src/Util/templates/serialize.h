@@ -53,6 +53,39 @@ inline T& REF(const T& val)
     return const_cast<T&>(val);
 }
 
+
+/** message_args
+ *
+ *  Overload of variadic templates
+ *
+ *  @param[out] s The data stream to write to
+ *  @param[in] head The object being written
+ *
+ **/
+template<class Stream, class Head>
+void message_args(Stream& s, Head&& head)
+{
+    s << std::forward<Head>(head);
+}
+
+
+/** message_args
+ *
+ *  Variadic template pack to handle any message size of any type.
+ *
+ *  @param[out] s The data stream to write to
+ *  @param[in] head The object being written
+ *  @param[in] tail The variadic paramters
+ *
+ **/
+template<class Stream, class Head, class... Tail>
+void message_args(Stream& s, Head&& head, Tail&&... tail)
+{
+    s << std::forward<Head>(head);
+    message_args(s, std::forward<Tail>(tail)...);
+}
+
+
 /**
  *
  *  Templates for serializing to anything that looks like a stream,

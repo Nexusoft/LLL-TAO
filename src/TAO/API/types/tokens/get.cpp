@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/tokens.h>
 #include <TAO/API/types/names.h>
+#include <TAO/API/include/global.h>
 #include <TAO/API/include/json.h>
 
 
@@ -46,8 +47,11 @@ namespace TAO
 
             /* Get the token / account object. */
             TAO::Register::Object object;
-            if(!LLD::Register->ReadState(hashRegister, object, TAO::Ledger::FLAGS::MEMPOOL))
+            if(!LLD::Register->ReadState(hashRegister, object, TAO::Ledger::FLAGS::LOOKUP))
                 throw APIException(-122, "Token/account not found");
+
+            if(config::fClient.load() && object.hashOwner != users->GetCallersGenesis(params))
+                throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
 
             /* Parse the object register. */
             if(!object.Parse())

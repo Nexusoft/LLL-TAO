@@ -212,38 +212,61 @@ namespace TAO
                     /* flag indicating if the contract is a debit to a tokenized asset  */
                     bool fTokenizedDebit = false;
 
+                    /* flag indicating that this is a send to self */
+                    bool fSendToSelf = false;
+
                     /* Get the recipent account object. */
                     TAO::Register::Object recipient;
-                    if(!LLD::Register->ReadState(hashTo, recipient, TAO::Ledger::FLAGS::MEMPOOL))
-                        throw APIException(-209, "Recipient is not a valid account");
 
-                    /* Parse the object register. */
-                    if(!recipient.Parse())
-                        throw APIException(-14, "Object failed to parse");
-
-                    /* Check recipient account type */
-                    switch(recipient.Base())
+                    /* If we successfully read the register then valiate it */
+                    if(LLD::Register->ReadState(hashTo, recipient, TAO::Ledger::FLAGS::LOOKUP))
                     {
-                        case TAO::Register::OBJECTS::ACCOUNT:
-                        {
-                            if(recipient.get<uint256_t>("token") != object.get<uint256_t>("token"))
-                                throw APIException(-209, "Recipient account is for a different token.");
+                        /* Parse the object register. */
+                        if(!recipient.Parse())
+                            throw APIException(-14, "Object failed to parse");
 
-                            break;
-                        }
-                        case TAO::Register::OBJECTS::NONSTANDARD :
+                        /* Check recipient account type */
+                        switch(recipient.Base())
                         {
+                            case TAO::Register::OBJECTS::ACCOUNT:
+                            {
+                                if(recipient.get<uint256_t>("token") != object.get<uint256_t>("token"))
+                                    throw APIException(-209, "Recipient account is for a different token.");
+
+                                fSendToSelf = recipient.hashOwner == object.hashOwner;
+
+                                break;
+                            }
+                            case TAO::Register::OBJECTS::NONSTANDARD :
+                            {
+                                fTokenizedDebit = true;
+
+                                /* For payments to objects, they must be owned by a token */
+                                if(recipient.hashOwner.GetType() != TAO::Register::Address::TOKEN)
+                                    throw APIException(-211, "Recipient object has not been tokenized.");
+
+                                break;
+                            }
+                            default :
+                                throw APIException(-209, "Recipient is not a valid account.");
+                        }
+                    }  
+
+                    /* If in client mode we won't have the recipient register, so we have to loosen the checks to only look at 
+                       the receiving register address type, rather than check that the account/asset exists */
+                    else if(config::fClient.load())
+                    {
+                        if(hashTo.IsObject())
                             fTokenizedDebit = true;
-
-                            /* For payments to objects, they must be owned by a token */
-                            if(recipient.hashOwner.GetType() != TAO::Register::Address::TOKEN)
-                                throw APIException(-211, "Recipient object has not been tokenized.");
-
-                            break;
-                        }
-                        default :
-                            throw APIException(-209, "Recipient is not a valid account.");
+                        else if(!hashTo.IsAccount())
+                            throw APIException(-209, "Recipient is not a valid account");
                     }
+                    
+                    else
+                    {
+                        throw APIException(-209, "Recipient is not a valid account");
+                    }
+                    
 
                     /* The optional payment reference */
                     uint64_t nReference = 0;
@@ -264,7 +287,7 @@ namespace TAO
                     tx[nContract] << (uint8_t)OP::DEBIT << hashFrom << hashTo << nAmount << nReference;
 
                     /* Add expiration condition unless sending to self */
-                    if(recipient.hashOwner != object.hashOwner)
+                    if(!fSendToSelf)
                         AddExpires( jsonRecipient, user->Genesis(), tx[nContract], fTokenizedDebit);
 
                     /* Increment the contract ID */
@@ -290,8 +313,8 @@ namespace TAO
             if(!TAO::Ledger::mempool.Accept(tx))
                 throw APIException(-32, "Failed to accept");
 
-            /* If this has a legacy transaction then we need to make sure it shows in the legacy wallet */
-            if(fHasLegacy)
+            /* If this has a legacy transaction and not in client mode  then we need to make sure it shows in the legacy wallet */
+            if(fHasLegacy && !config::fClient.load())
             {
                 TAO::Ledger::BlockState notUsed;
                 Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, notUsed, true);

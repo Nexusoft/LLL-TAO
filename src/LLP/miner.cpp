@@ -125,7 +125,7 @@ namespace LLP
         switch(EVENT)
         {
             /* Handle for a Packet Header Read. */
-            case EVENT_HEADER:
+            case EVENTS::HEADER:
             {
                 if(DDOS && Incoming())
                 {
@@ -183,12 +183,12 @@ namespace LLP
 
 
             /* Handle for a Packet Data Read. */
-            case EVENT_PACKET:
+            case EVENTS::PACKET:
                 return;
 
 
             /* On Generic Event, Broadcast new block if flagged. */
-            case EVENT_GENERIC:
+            case EVENTS::GENERIC:
             {
                 /* On generic events, return if no workers subscribed. */
                 uint32_t count = nSubscribed.load();
@@ -245,7 +245,7 @@ namespace LLP
 
 
             /* On Connect Event, Assign the Proper Daemon Handle. */
-            case EVENT_CONNECT:
+            case EVENTS::CONNECT:
             {
                 /* Cache the last transaction ID of the sig chain so that we can detect if
                    new transactions enter the mempool for this sig chain. */
@@ -258,7 +258,7 @@ namespace LLP
 
 
             /* On Disconnect Event, Reduce the Connection Count for Daemon */
-            case EVENT_DISCONNECT:
+            case EVENTS::DISCONNECT:
             {
                 /* Debut output. */
                 uint32_t reason = LENGTH;
@@ -266,17 +266,17 @@ namespace LLP
 
                 switch(reason)
                 {
-                    case DISCONNECT_TIMEOUT:
-                        strReason = "DISCONNECT_TIMEOUT";
+                    case DISCONNECT::TIMEOUT:
+                        strReason = "DISCONNECT::TIMEOUT";
                         break;
-                    case DISCONNECT_ERRORS:
-                        strReason = "DISCONNECT_ERRORS";
+                    case DISCONNECT::ERRORS:
+                        strReason = "DISCONNECT::ERRORS";
                         break;
-                    case DISCONNECT_DDOS:
-                        strReason = "DISCONNECT_DDOS";
+                    case DISCONNECT::DDOS:
+                        strReason = "DISCONNECT::DDOS";
                         break;
-                    case DISCONNECT_FORCE:
-                        strReason = "DISCONNECT_FORCE";
+                    case DISCONNECT::FORCE:
+                        strReason = "DISCONNECT::FORCE";
                         break;
                     default:
                         strReason = "UNKNOWN";

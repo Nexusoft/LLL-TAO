@@ -81,6 +81,9 @@ namespace TAO
         /* Retrieves the block data for a given hash or height. */
         json::json Ledger::Block(const json::json& params, bool fHelp)
         {
+            if(config::fClient.load())
+                throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
+
             /* Check for the block height parameter. */
             if(params.find("hash") == params.end() && params.find("height") == params.end())
                 throw APIException(-84, "Missing hash or height");

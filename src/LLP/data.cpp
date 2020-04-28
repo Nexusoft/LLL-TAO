@@ -101,7 +101,7 @@ namespace LLP
 
                 /* Fire the connected event. */
                 memory::atomic_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nSlot);
-                CONNECTION->Event(EVENT_CONNECT);
+                CONNECTION->Event(EVENTS::CONNECT);
 
                 /* Iterate the DDOS cScore (Connection score). */
                 if(DDOS)
@@ -159,7 +159,7 @@ namespace LLP
 
                 /* Fire the connected event. */
                 memory::atomic_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nSlot);
-                CONNECTION->Event(EVENT_CONNECT);
+                CONNECTION->Event(EVENTS::CONNECT);
 
                 /* Check for inbound socket. */
                 if(CONNECTION->Incoming())
@@ -183,7 +183,7 @@ namespace LLP
     }
 
 
-    /*  Disconnects all connections by issuing a DISCONNECT_FORCE event message
+    /*  Disconnects all connections by issuing a DISCONNECT::FORCE event message
      *  and then removes the connection from this data thread. */
     template <class ProtocolType>
     void DataThread<ProtocolType>::DisconnectAll()
@@ -194,7 +194,7 @@ namespace LLP
         for(uint32_t nIndex = 0; nIndex < CONNECTIONS->size(); ++nIndex)
         {
             if(!fDestruct.load())
-                disconnect_remove_event(nIndex, DISCONNECT_FORCE);
+                disconnect_remove_event(nIndex, DISCONNECT::FORCE);
             else
                 remove(nIndex);
         }
@@ -230,13 +230,14 @@ namespace LLP
              * While loop catches potential for spurious wakeups. Also has the effect of skipping the wait() call after connections established.
              */
             std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
-            CONDITION.wait(CONDITION_LOCK, [this]
-                                                {
-                                                    return fDestruct.load()
-                                                    || config::fShutdown.load()
-                                                    || nIncoming.load() > 0
-                                                    || nOutbound.load() > 0;
-                                                });
+            CONDITION.wait(CONDITION_LOCK,
+            [this]
+            {
+                return fDestruct.load()
+                || config::fShutdown.load()
+                || nIncoming.load() > 0
+                || nOutbound.load() > 0;
+            });
 
             /* Check for close. */
             if(fDestruct.load() || config::fShutdown.load())
@@ -307,28 +308,28 @@ namespace LLP
                     /* Disconnect if there was a polling error */
                     if(POLLFDS.at(nIndex).revents & POLLERR)
                     {
-                         disconnect_remove_event(nIndex, DISCONNECT_POLL_ERROR);
+                         disconnect_remove_event(nIndex, DISCONNECT::POLL_ERROR);
                          continue;
                     }
 
                     /* Disconnect if the socket was disconnected by peer (need for Windows) */
                     if(POLLFDS.at(nIndex).revents & POLLHUP)
                     {
-                        disconnect_remove_event(nIndex, DISCONNECT_PEER);
+                        disconnect_remove_event(nIndex, DISCONNECT::PEER);
                         continue;
                     }
 
                     /* Remove Connection if it has Timed out or had any read/write Errors. */
                     if(CONNECTION->Errors())
                     {
-                        disconnect_remove_event(nIndex, DISCONNECT_ERRORS);
+                        disconnect_remove_event(nIndex, DISCONNECT::ERRORS);
                         continue;
                     }
 
                     /* Remove Connection if it has Timed out or had any Errors. */
                     if(CONNECTION->Timeout(TIMEOUT * 1000, Socket::READ))
                     {
-                        disconnect_remove_event(nIndex, DISCONNECT_TIMEOUT);
+                        disconnect_remove_event(nIndex, DISCONNECT::TIMEOUT);
                         continue;
                     }
 
@@ -336,7 +337,7 @@ namespace LLP
                     if((POLLFDS.at(nIndex).revents & POLLIN)
                     && CONNECTION->Available() == 0)
                     {
-                        disconnect_remove_event(nIndex, DISCONNECT_POLL_EMPTY);
+                        disconnect_remove_event(nIndex, DISCONNECT::POLL_EMPTY);
                         continue;
                     }
 
@@ -344,14 +345,14 @@ namespace LLP
                     if(CONNECTION->Buffered()
                     && CONNECTION->Timeout(15000, Socket::WRITE))
                     {
-                        disconnect_remove_event(nIndex, DISCONNECT_TIMEOUT_WRITE);
+                        disconnect_remove_event(nIndex, DISCONNECT::TIMEOUT_WRITE);
                         continue;
                     }
 
                     /* Check that write buffers aren't overflowed. */
                     if(CONNECTION->Buffered() > config::GetArg("-maxsendbuffer", MAX_SEND_BUFFER))
                     {
-                        disconnect_remove_event(nIndex, DISCONNECT_BUFFER);
+                        disconnect_remove_event(nIndex, DISCONNECT::BUFFER);
                         continue;
                     }
 
@@ -367,13 +368,13 @@ namespace LLP
                         if(CONNECTION->DDOS->Banned())
                         {
                             debug::log(0, "BANNED: ", CONNECTION->GetAddress().ToString());
-                            disconnect_remove_event(nIndex, DISCONNECT_DDOS);
+                            disconnect_remove_event(nIndex, DISCONNECT::DDOS);
                             continue;
                         }
                     }
 
                     /* Generic event for Connection. */
-                    CONNECTION->Event(EVENT_GENERIC);
+                    CONNECTION->Event(EVENTS::GENERIC);
 
                     /* Work on Reading a Packet. **/
                     CONNECTION->ReadPacket();
@@ -382,11 +383,11 @@ namespace LLP
                     if(CONNECTION->PacketComplete())
                     {
                         /* Debug dump of message type. */
-                        if(config::GetArg("-verbose", 0) >= 4)
+                        if(config::nVerbose.load() >= 4)
                             debug::log(4, FUNCTION, "Recieved Message (", CONNECTION->INCOMING.GetBytes().size(), " bytes)");
 
                         /* Debug dump of packet data. */
-                        if(config::GetArg("-verbose", 0) >= 5)
+                        if(config::nVerbose.load() >= 5)
                             PrintHex(CONNECTION->INCOMING.GetBytes());
 
                         /* Handle Meters and DDOS. */
@@ -400,17 +401,19 @@ namespace LLP
                         /* Packet Process return value of False will flag Data Thread to Disconnect. */
                         if(!CONNECTION->ProcessPacket())
                         {
-                            disconnect_remove_event(nIndex, DISCONNECT_FORCE);
+                            disconnect_remove_event(nIndex, DISCONNECT::FORCE);
                             continue;
                         }
 
+                        /* Run procssed event for connection triggers. */
+                        CONNECTION->Event(EVENTS::PROCESSED);
                         CONNECTION->ResetPacket();
                     }
                 }
                 catch(const std::exception& e)
                 {
                     debug::error(FUNCTION, "Data Connection: ", e.what());
-                    disconnect_remove_event(nIndex, DISCONNECT_ERRORS);
+                    disconnect_remove_event(nIndex, DISCONNECT::ERRORS);
                 }
             }
         }
@@ -546,7 +549,7 @@ namespace LLP
     void DataThread<ProtocolType>::disconnect_remove_event(uint32_t nIndex, uint8_t nReason)
     {
         ProtocolType* raw = CONNECTIONS->at(nIndex).load(); //we use raw pointer here because event could contain switch node that will cause deadlocks
-        raw->Event(EVENT_DISCONNECT, nReason);
+        raw->Event(EVENTS::DISCONNECT, nReason);
 
         remove(nIndex);
     }

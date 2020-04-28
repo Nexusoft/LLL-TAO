@@ -39,9 +39,12 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/stake_change.h>
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/include/timelocks.h>
+#include <TAO/Ledger/include/retarget.h>
+#include <TAO/Ledger/include/dispatch.h>
 
 #include <TAO/Ledger/types/genesis.h>
 #include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/types/client.h>
 
 #include <Util/include/string.h>
 
@@ -229,6 +232,118 @@ namespace TAO
         }
 
 
+        /* Copy constructor. */
+        BlockState::BlockState(const ClientBlock& block)
+        : Block            (block)
+        , nTime            (block.nTime)
+        , ssSystem         (block.ssSystem)
+        , vtx              ( )
+        , nChainTrust      (0)
+        , nMoneySupply     (block.nMoneySupply)
+        , nMint            (0)
+        , nFees            (0)
+        , nChannelHeight   (block.nChannelHeight)
+        , nChannelWeight   {block.nChannelWeight[0]
+                           ,block.nChannelWeight[1]
+                           ,block.nChannelWeight[2]}
+        , nReleasedReserve {block.nReleasedReserve[0]
+                           ,block.nReleasedReserve[1]
+                           ,block.nReleasedReserve[2]}
+        , nFeeReserve      (0)
+        , hashNextBlock    (block.hashNextBlock)
+        , hashCheckpoint   (0)
+        {
+        }
+
+
+        /* Move constructor. */
+        BlockState::BlockState(ClientBlock&& block) noexcept
+        : Block            (std::move(block))
+        , nTime            (std::move(block.nTime))
+        , ssSystem         (std::move(block.ssSystem))
+        , vtx              ( )
+        , nChainTrust      (0)
+        , nMoneySupply     (std::move(block.nMoneySupply))
+        , nMint            (0)
+        , nFees            (0)
+        , nChannelHeight   (std::move(block.nChannelHeight))
+        , nChannelWeight   {std::move(block.nChannelWeight[0])
+                           ,std::move(block.nChannelWeight[1])
+                           ,std::move(block.nChannelWeight[2])}
+        , nReleasedReserve {std::move(block.nReleasedReserve[0])
+                           ,std::move(block.nReleasedReserve[1])
+                           ,std::move(block.nReleasedReserve[2])}
+        , nFeeReserve      (0)
+        , hashNextBlock    (std::move(block.hashNextBlock))
+        , hashCheckpoint   (0)
+        {
+        }
+
+
+        /* Copy assignment. */
+        BlockState& BlockState::operator=(const ClientBlock& block)
+        {
+            nVersion            = block.nVersion;
+            hashPrevBlock       = block.hashPrevBlock;
+            hashMerkleRoot      = block.hashMerkleRoot;
+            nChannel            = block.nChannel;
+            nHeight             = block.nHeight;
+            nBits               = block.nBits;
+            nNonce              = block.nNonce;
+            vOffsets            = block.vOffsets;
+            vchBlockSig         = block.vchBlockSig;
+            vMissing            = block.vMissing;
+            hashMissing         = block.hashMissing;
+            fConflicted         = block.fConflicted;
+
+            nTime               = block.nTime;
+            ssSystem            = block.ssSystem;
+            nMoneySupply        = block.nMoneySupply;
+            nChannelHeight      = block.nChannelHeight;
+            nChannelWeight[0]   = block.nChannelWeight[0];
+            nChannelWeight[1]   = block.nChannelWeight[1];
+            nChannelWeight[2]   = block.nChannelWeight[2];
+            nReleasedReserve[0] = block.nReleasedReserve[0];
+            nReleasedReserve[1] = block.nReleasedReserve[1];
+            nReleasedReserve[2] = block.nReleasedReserve[2];
+            hashNextBlock       = block.hashNextBlock;
+
+            return *this;
+        }
+
+
+        /* Move assignment. */
+        BlockState& BlockState::operator=(ClientBlock&& block) noexcept
+        {
+            nVersion            = std::move(block.nVersion);
+            hashPrevBlock       = std::move(block.hashPrevBlock);
+            hashMerkleRoot      = std::move(block.hashMerkleRoot);
+            nChannel            = std::move(block.nChannel);
+            nHeight             = std::move(block.nHeight);
+            nBits               = std::move(block.nBits);
+            nNonce              = std::move(block.nNonce);
+            vOffsets            = std::move(block.vOffsets);
+            vchBlockSig         = std::move(block.vchBlockSig);
+            vMissing            = std::move(block.vMissing);
+            hashMissing         = std::move(block.hashMissing);
+            fConflicted         = std::move(block.fConflicted);
+
+            nTime               = std::move(block.nTime);
+            ssSystem            = std::move(block.ssSystem);
+            nMoneySupply        = std::move(block.nMoneySupply);
+            nChannelHeight      = std::move(block.nChannelHeight);
+            nChannelWeight[0]   = std::move(block.nChannelWeight[0]);
+            nChannelWeight[1]   = std::move(block.nChannelWeight[1]);
+            nChannelWeight[2]   = std::move(block.nChannelWeight[2]);
+            nReleasedReserve[0] = std::move(block.nReleasedReserve[0]);
+            nReleasedReserve[1] = std::move(block.nReleasedReserve[1]);
+            nReleasedReserve[2] = std::move(block.nReleasedReserve[2]);
+            hashNextBlock       = std::move(block.hashNextBlock);
+
+            return *this;
+        }
+
+
         /** Default Destructor **/
         BlockState::~BlockState()
         {
@@ -289,14 +404,34 @@ namespace TAO
         /** Equivilence checking **/
         bool BlockState::operator==(const BlockState& state) const
         {
-            return GetHash() == state.GetHash();
+            return
+            (
+                nVersion            == state.nVersion       &&
+                hashPrevBlock       == state.hashPrevBlock  &&
+                hashMerkleRoot      == state.hashMerkleRoot &&
+                nChannel            == state.nChannel       &&
+                nHeight             == state.nHeight        &&
+                nBits               == state.nBits          &&
+                nNonce              == state.nNonce         &&
+                nTime               == state.nTime
+            );
         }
 
 
         /** Equivilence checking **/
         bool BlockState::operator!=(const BlockState& state) const
         {
-            return GetHash() != state.GetHash();
+            return
+            (
+                nVersion            != state.nVersion       ||
+                hashPrevBlock       != state.hashPrevBlock  ||
+                hashMerkleRoot      != state.hashMerkleRoot ||
+                nChannel            != state.nChannel       ||
+                nHeight             != state.nHeight        ||
+                nBits               != state.nBits          ||
+                nNonce              != state.nNonce         ||
+                nTime               != state.nTime
+            );
         }
 
 
@@ -911,27 +1046,8 @@ namespace TAO
                         debug::log(0, FUNCTION, "Block Notify Executed with code ", nRet);
                     }
 
-                    /* If using Tritium server then we need to include the blocks transactions in the inventory before the block. */
-                    if(LLP::TRITIUM_SERVER)
-                    {
-                        /* Relay the block and bestchain. */
-                        LLP::TRITIUM_SERVER->Relay
-                        (
-                            LLP::ACTION::NOTIFY,
-
-                            /* Relay BLOCK notification. */
-                            uint8_t(LLP::TYPES::BLOCK),
-                            ChainState::hashBestChain.load(),
-
-                            /* Relay BESTCHAIN notification. */
-                            uint8_t(LLP::TYPES::BESTCHAIN),
-                            ChainState::hashBestChain.load(),
-
-                            /* Relay BESTHEIGHT notification. */
-                            uint8_t(LLP::TYPES::BESTHEIGHT),
-                            ChainState::nBestHeight.load()
-                        );
-                    }
+                    /* Dispatch block to dispatch thread. */
+                    Dispatch::GetInstance().PushRelay(ChainState::hashBestChain.load());
                 }
                 else
                     debug::log(3, FUNCTION, "Skipping relay until chain is done synchronizing");

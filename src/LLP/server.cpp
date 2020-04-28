@@ -58,7 +58,8 @@ namespace LLP
     Server<ProtocolType>::Server(uint16_t nPort, uint16_t nMaxThreads, uint32_t nTimeout, bool fDDOS_,
                          uint32_t cScore, uint32_t rScore, uint32_t nTimespan, bool fListen, bool fRemote,
                          bool fMeter, bool fManager, uint32_t nSleepTimeIn)
-    : fDDOS           (fDDOS_)
+    : DDOS_MAP        ( )
+    , fDDOS           (fDDOS_)
     , PORT            (nPort)
     , MAX_THREADS     (nMaxThreads)
     , DDOS_TIMESPAN   (nTimespan)
@@ -258,12 +259,59 @@ namespace LLP
     }
 
 
+    /*  Select a random and currently open connections. */
+    template <class ProtocolType>
+    memory::atomic_ptr<ProtocolType>& Server<ProtocolType>::GetConnection()
+    {
+        /* List of connections to return. */
+        uint64_t nLatency   = std::numeric_limits<uint64_t>::max();
+
+        int16_t nRetThread = -1;
+        int16_t nRetIndex  = -1;
+        for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
+        {
+            /* Loop through connections in data thread. */
+            uint16_t nSize = static_cast<uint16_t>(DATA_THREADS[nThread]->CONNECTIONS->size());
+            for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
+            {
+                try
+                {
+                    /* Get the current atomic_ptr. */
+                    memory::atomic_ptr<ProtocolType>& CONNECTION = DATA_THREADS[nThread]->CONNECTIONS->at(nIndex);
+                    if(!CONNECTION)
+                        continue;
+
+                    /* Push the active connection. */
+                    if(CONNECTION->nLatency < nLatency)
+                    {
+                        nLatency = CONNECTION->nLatency;
+
+                        nRetThread = nThread;
+                        nRetIndex  = nIndex;
+                    }
+                }
+                catch(const std::exception& e)
+                {
+                    //debug::error(FUNCTION, e.what());
+                }
+            }
+        }
+
+        /* Handle if no connections were found. */
+        static memory::atomic_ptr<ProtocolType> pNULL;
+        if(nRetThread == -1 || nRetIndex == -1)
+            return pNULL;
+
+        return DATA_THREADS[nRetThread]->CONNECTIONS->at(nRetIndex);
+    }
+
+
     /*  Get the best connection based on latency. */
     template <class ProtocolType>
     memory::atomic_ptr<ProtocolType>& Server<ProtocolType>::GetConnection(const std::pair<uint32_t, uint32_t>& pairExclude)
     {
         /* List of connections to return. */
-        uint32_t nLatency   = std::numeric_limits<uint32_t>::max();
+        uint64_t nLatency   = std::numeric_limits<uint64_t>::max();
 
         int16_t nRetThread = -1;
         int16_t nRetIndex  = -1;

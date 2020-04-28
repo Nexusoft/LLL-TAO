@@ -58,6 +58,9 @@ namespace TAO
             else
                 throw APIException(-111, "Missing genesis / username");
 
+            if(config::fClient.load() && hashGenesis != users->GetCallersGenesis(params))
+                throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
+
             /* Check for paged parameter. */
             uint32_t nPage = 0;
             if(params.find("page") != params.end())

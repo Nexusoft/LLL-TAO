@@ -15,12 +15,15 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_TYPES_TRITIUM_H
 #define NEXUS_LLP_TYPES_TRITIUM_H
 
+#include <LLC/include/random.h>
+
 #include <LLP/include/network.h>
 #include <LLP/include/version.h>
 #include <LLP/packets/tritium.h>
 #include <LLP/templates/base_connection.h>
 #include <LLP/templates/events.h>
 #include <LLP/templates/ddos.h>
+#include <LLP/templates/trigger.h>
 
 #include <TAO/Ledger/types/tritium.h>
 
@@ -45,6 +48,7 @@ namespace LLP
             VERSION      = 0x15,
             SUBSCRIBE    = 0x16,
             UNSUBSCRIBE  = 0x17,
+            VALIDATE     = 0x18,
 
             /* Protocol. */
             PING         = 0x1a,
@@ -77,6 +81,12 @@ namespace LLP
             ADDRESS      = 0x35,
             BESTCHAIN    = 0x36,
             MEMPOOL      = 0x37,
+            SIGCHAIN     = 0x38,
+            MERKLE       = 0x39,
+            GENESIS      = 0x3a,
+            NOTIFICATION = 0x3b,
+            TRIGGER      = 0x3c,
+            REGISTER     = 0x3d,
         };
     }
 
@@ -91,6 +101,7 @@ namespace LLP
             TRITIUM      = 0x41, //specify for tritium data types
             SYNC         = 0x42,  //specify a sync block type
             TRANSACTIONS = 0x43, //specify to send memory transactions first
+            CLIENT       = 0x44, //specify for blocks to be sent and received for clients
         };
     }
 
@@ -104,6 +115,9 @@ namespace LLP
             REJECTED     = 0x51,
             STALE        = 0x52,
             UNSUBSCRIBED = 0x53, //let node know it was unsubscribed successfully
+            AUTHORIZED   = 0x54,
+            COMPLETED    = 0x55, //let node know an event was completed
+            VALIDATED    = 0x56,
         };
     }
 
@@ -142,39 +156,11 @@ namespace LLP
         static void SwitchNode();
 
 
-        /** message_args
-         *
-         *  Overload of variadic templates
-         *
-         *  @param[out] s The data stream to write to
-         *  @param[in] head The object being written
-         *
-         **/
-        template<class Head>
-        void message_args(DataStream& s, Head&& head)
-        {
-            s << std::forward<Head>(head);
-        }
+        /** State of if this node has logged in to remote node. **/
+        std::atomic<bool> fLoggedIn;
 
 
-        /** message_args
-         *
-         *  Variadic template pack to handle any message size of any type.
-         *
-         *  @param[out] s The data stream to write to
-         *  @param[in] head The object being written
-         *  @param[in] tail The variadic paramters
-         *
-         **/
-        template<class Head, class... Tail>
-        void message_args(DataStream& s, Head&& head, Tail&&... tail)
-        {
-            s << std::forward<Head>(head);
-            message_args(s, std::forward<Tail>(tail)...);
-        }
-
-
-        /** State of if node has currently verified signature. **/
+        /** State of if remote node has currently verified signature. **/
         std::atomic<bool> fAuthorized;
 
 
@@ -298,6 +284,10 @@ namespace LLP
 
         /** Timestamp of unsubscription. **/
         uint64_t nUnsubscribed;
+
+
+        /** Current nonce trigger. **/
+        uint64_t nTriggerNonce;
 
 
         /** Remaining time for sync meter. **/
@@ -464,6 +454,40 @@ namespace LLP
             WritePacket(NewMessage(nMsg, ssData));
 
             debug::log(4, NODE, "sent message ", std::hex, nMsg, " of ", std::dec, ssData.size(), " bytes");
+        }
+
+
+        /** BlockingMessage
+         *
+         *  Adds a tritium packet to the queue and waits for the peer to send a COMPLETED message.
+         *  NOTE: this is a static method taking the node reference as a parameter to avoid locking access to the connection
+         *  in the atomic_ptr.  If we did not do this, the data threads could not access the atomic_ptr to process the incoming
+         *  messages until trigger timed out and this method returned
+         *
+         *  @param[in] pNode Pointer to the TritiumNode connection instance to push the message to.
+         *  @param[in] nMsg The message type.
+         *  @param[in] args variable args to be sent in the message.
+         **/
+        template<typename... Args>
+        static void BlockingMessage(const uint32_t nTimeout, memory::atomic_ptr<LLP::TritiumNode>& pNode, const uint16_t nMsg, Args&&... args)
+        {
+            /* Create our trigger nonce. */
+            uint64_t nNonce = LLC::GetRand();
+            pNode->PushMessage(LLP::TYPES::TRIGGER, nNonce);
+
+            /* Request the inventory message. */
+            pNode->PushMessage(nMsg, std::forward<Args>(args)...);
+
+            /* Create the condition variable trigger. */
+            LLP::Trigger REQUEST_TRIGGER;
+            pNode->AddTrigger(LLP::RESPONSE::COMPLETED, &REQUEST_TRIGGER);
+
+            /* Process the event. */
+            REQUEST_TRIGGER.wait_for_nonce(nNonce, nTimeout);
+
+            /* Cleanup our event trigger. */
+            pNode->Release(LLP::RESPONSE::COMPLETED);
+
         }
 
     };

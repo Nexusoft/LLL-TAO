@@ -15,7 +15,9 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEDGER_TYPES_STATE_H
 #define NEXUS_TAO_LEDGER_TYPES_STATE_H
 
-#include <TAO/Ledger/types/tritium.h>
+#include <TAO/Register/types/stream.h>
+
+#include <TAO/Ledger/types/block.h>
 
 namespace Legacy
 {
@@ -29,6 +31,10 @@ namespace TAO
     /* Ledger Layer namespace. */
     namespace Ledger
     {
+        class ClientBlock;
+        class TritiumBlock;
+        class SyncBlock;
+        class Transaction;
 
         /** BlockState
          *
@@ -54,7 +60,7 @@ namespace TAO
              *  The critical system level pre-states and post-states.
              *
              **/
-            TAO::Register::Stream  ssSystem;
+            TAO::Register::Stream ssSystem;
 
 
             /** The transaction history.
@@ -121,21 +127,17 @@ namespace TAO
                 READWRITE(nMoneySupply);
                 READWRITE(nMint);
                 READWRITE(nChannelHeight);
-
-                /* Tritium Block States. */
                 READWRITE(nFees);
                 READWRITE(nChannelWeight[0]);
                 READWRITE(nChannelWeight[1]);
                 READWRITE(nChannelWeight[2]);
                 READWRITE(nFeeReserve);
-
-                /* Reserves. */
                 READWRITE(nReleasedReserve[0]);
                 READWRITE(nReleasedReserve[1]);
                 READWRITE(nReleasedReserve[2]);
                 READWRITE(hashCheckpoint);
-
                 READWRITE(vchBlockSig);
+
                 READWRITE(ssSystem);
                 READWRITE(vOffsets);
                 READWRITE(vtx);
@@ -160,6 +162,22 @@ namespace TAO
 
             /** Move assignment. **/
             BlockState& operator=(BlockState&& block) noexcept;
+
+
+            /** Copy constructor. **/
+            BlockState(const ClientBlock& block);
+
+
+            /** Move constructor. **/
+            BlockState(ClientBlock&& block) noexcept;
+
+
+            /** Copy assignment. **/
+            BlockState& operator=(const ClientBlock& block);
+
+
+            /** Move assignment. **/
+            BlockState& operator=(ClientBlock&& block) noexcept;
 
 
             /** Default Destructor **/

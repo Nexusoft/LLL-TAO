@@ -90,15 +90,15 @@ namespace TAO
                 fSynchronizing =
                 (
                     /* If using main testnet then rely on the LLP synchronized flag */
-                    (!fLocalTestnet && !LLP::TritiumNode::fSynchronized.load() 
-                        && stateBest.load().GetBlockTime() < runtime::unifiedtimestamp() - 20 * 60) 
-                    
+                    (!fLocalTestnet && !LLP::TritiumNode::fSynchronized.load()
+                        && stateBest.load().GetBlockTime() < runtime::unifiedtimestamp() - 20 * 60)
+
                     /* If local testnet with connections then rely on LLP flag  */
                     || (fLocalTestnet && fHasConnections && !LLP::TritiumNode::fSynchronized.load() )
 
-                    /* If local testnet with no connections then assume sync'd if the last block was more than 30s ago 
+                    /* If local testnet with no connections then assume sync'd if the last block was more than 30s ago
                        and block age is more than 20 mins, which gives us a 30s window to connect to a local peer */
-                    || (fLocalTestnet && !fHasConnections 
+                    || (fLocalTestnet && !fHasConnections
                         && runtime::unifiedtimestamp() - nLastTime < 30
                         && stateBest.load().GetBlockTime() < runtime::unifiedtimestamp() - 20 * 60)
                 );
@@ -127,10 +127,10 @@ namespace TAO
         double ChainState::PercentSynchronized()
         {
             uint32_t nChainAge = (static_cast<uint32_t>(runtime::unifiedtimestamp()) - 60 * 60) - (config::fTestNet.load() ?
-                NEXUS_TESTNET_TIMELOCK : NEXUS_NETWORK_TIMELOCK);
+                NEXUS_TESTNET_TIMELOCK : (config::fClient.load() ? NEXUS_TRITIUM_TIMELOCK : NEXUS_NETWORK_TIMELOCK));
 
             uint32_t nSyncAge  = static_cast<uint32_t>(stateBest.load().GetBlockTime() - static_cast<uint64_t>(config::fTestNet.load() ?
-                NEXUS_TESTNET_TIMELOCK : NEXUS_NETWORK_TIMELOCK));
+                NEXUS_TESTNET_TIMELOCK : (config::fClient.load() ? NEXUS_TRITIUM_TIMELOCK : NEXUS_NETWORK_TIMELOCK)));
 
             return (100.0 * nSyncAge) / nChainAge;
         }
@@ -215,12 +215,12 @@ namespace TAO
                     /* Search back until fail or different checkpoint. */
                     BlockState state;
                     if(!LLD::Ledger->ReadBlock(hashCheckpoint.load(), state))
-                        return debug::error(FUNCTION, "no pending checkpoint");
+                        break;
 
                     /* Check we haven't reached the genesis */
                     if(state == stateGenesis)
                         break;
-                        
+
                     /* Get the previous state. */
                     state = state.Prev();
                     if(!state)
@@ -270,7 +270,7 @@ namespace TAO
         /* Get the hash of the genesis block. */
         uint1024_t ChainState::Genesis()
         {
-            return config::fTestNet.load() ? TAO::Ledger::hashGenesisTestnet : TAO::Ledger::hashGenesis;
+            return config::fTestNet.load() ? TAO::Ledger::hashGenesisTestnet : (config::fClient.load() ? TAO::Ledger::hashTritium : TAO::Ledger::hashGenesis);
         }
     }
 }

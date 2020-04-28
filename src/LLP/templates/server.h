@@ -49,6 +49,7 @@ namespace LLP
     {
     private:
 
+
         /** The DDOS variables. **/
         std::map<BaseAddress, DDOS_Filter *> DDOS_MAP;
 
@@ -182,6 +183,14 @@ namespace LLP
 
         /** Get Connection
          *
+         *  Select a random and currently open connection
+         *
+         **/
+        memory::atomic_ptr<ProtocolType>& GetConnection();
+
+
+        /** Get Connection
+         *
          *  Get the best connection based on latency
          *
          *  @param[in] pairExclude The connection that should be excluded from the search.
@@ -209,6 +218,20 @@ namespace LLP
             /* Relay message to each data thread, which will relay message to each connection of each data thread */
             for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
                 DATA_THREADS[nThread]->Relay(message, args...);
+        }
+
+
+        /** Relay_
+         *
+         *  Relays raw binary data to the network. Accepts only binary stream pre-serialized.
+         *
+         **/
+        template<typename MessageType>
+        void _Relay(const MessageType& message, const DataStream& ssData)
+        {
+            /* Relay message to each data thread, which will relay message to each connection of each data thread */
+            for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
+                DATA_THREADS[nThread]->_Relay(message, ssData);
         }
 
 

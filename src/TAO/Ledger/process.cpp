@@ -152,7 +152,7 @@ namespace TAO
                 nStatus |= PROCESS::ACCEPTED;
 
                 /* Special meter for synchronizing. */
-                if(block.nHeight % 1000 == 0 && TAO::Ledger::ChainState::Synchronizing())
+                if(block.nHeight % (config::fClient ? 5000 : 1000) == 0 && TAO::Ledger::ChainState::Synchronizing())
                 {
                     /* Grab the current sync node. */
                     uint32_t nHours = 0, nMinutes = 0, nSeconds = 0;
@@ -184,11 +184,11 @@ namespace TAO
 
                     uint64_t nElapsed = runtime::timestamp(true) - nSynchronizationTimer;
                     debug::log(0, FUNCTION,
-                        "Processed 1000 blocks in ", nElapsed, " ms [", std::setw(2),
+                        "Processed ", (config::fClient ? 5000 : 1000), " blocks in ", nElapsed, " ms [", std::setw(2),
                         TAO::Ledger::ChainState::PercentSynchronized(), " %]",
                         " height=", block.nHeight,
                         " trust=", TAO::Ledger::ChainState::nBestChainTrust.load(),
-                        " [", 1000000 / nElapsed, " blocks/s]",
+                        " [", (config::fClient ? 5000000 : 1000000) / nElapsed, " blocks/s]",
                         "[", std::setw(2), std::setfill('0'), nHours, ":",
                               std::setw(2), std::setfill('0'), nMinutes, ":",
                               std::setw(2), std::setfill('0'), nSeconds, " remaining]");

@@ -15,6 +15,8 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <LLP/include/global.h>
+
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/user_types.h>
 #include <TAO/API/include/utils.h>
@@ -114,9 +116,32 @@ namespace TAO
             else
                 throw APIException(-229, "Missing recipient");
 
-            /* Check that the destination exists. */
-            if(!LLD::Ledger->HasGenesis(hashRecipient))
+            /* Check that the recipient genesis hash exists. If not, in client mode and we should ask a peer for the genesis */
+            if(config::fClient.load() && !LLD::Ledger->HasGenesis(hashRecipient))
+            {
+                 /* Check tritium server enabled. */
+                if(LLP::TRITIUM_SERVER)
+                {
+                    memory::atomic_ptr<LLP::TritiumNode>& pNode = LLP::TRITIUM_SERVER->GetConnection();
+                    if(pNode != nullptr)
+                    {
+                        /* Request the genesis hash from the peer. */
+                        debug::log(1, FUNCTION, "CLIENT MODE: Requesting GET::GENESIS for ", hashRecipient.SubString());
+
+                        LLP::TritiumNode::BlockingMessage(10000, pNode, LLP::ACTION::GET, uint8_t(LLP::TYPES::GENESIS), hashRecipient);
+
+                        debug::log(1, FUNCTION, "CLIENT MODE: GET::GENESIS received for ", hashRecipient.SubString());
+                    }
+                }
+
+                /* Now check again after asking the peer for the genesis */
+                if(!LLD::Ledger->HasGenesis(hashRecipient)) 
+                    throw APIException(-230, "Recipient user does not exist");
+            }
+            else if(!LLD::Ledger->HasGenesis(hashRecipient))
+            { 
                 throw APIException(-230, "Recipient user does not exist");
+            }
 
             /* Check that the recipient isn't the sender */
             if(hashRecipient == user->Genesis())

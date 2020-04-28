@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/finance.h>
 #include <TAO/API/types/names.h>
+#include <TAO/API/include/global.h>
 #include <TAO/API/include/json.h>
 
 #include <TAO/Ledger/types/sigchain.h>
@@ -53,6 +54,9 @@ namespace TAO
             TAO::Register::Object object;
             if(!LLD::Register->ReadState(hashRegister, object, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-13, "Account not found");
+
+            if(config::fClient.load() && object.hashOwner != users->GetCallersGenesis(params))
+                throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
 
             /* Parse the object register. */
             if(!object.Parse())

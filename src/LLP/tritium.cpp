@@ -23,6 +23,10 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/global.h>
 
+#include <TAO/Operation/include/enum.h>
+#include <TAO/Operation/include/execute.h>
+
+#include <TAO/Register/include/build.h>
 #include <TAO/Register/include/names.h>
 #include <TAO/Register/types/object.h>
 
@@ -32,8 +36,11 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/locator.h>
 #include <TAO/Ledger/types/syncblock.h>
 #include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/types/merkle.h>
+#include <TAO/Ledger/types/client.h>
 
 #include <Legacy/wallet/wallet.h>
+#include <Legacy/include/evaluate.h>
 
 #include <Util/include/runtime.h>
 #include <Util/include/args.h>
@@ -89,6 +96,7 @@ namespace LLP
     /** Default Constructor **/
     TritiumNode::TritiumNode()
     : BaseConnection<TritiumPacket>()
+    , fLoggedIn(false)
     , fAuthorized(false)
     , fInitialized(false)
     , nSubscriptions(0)
@@ -108,6 +116,7 @@ namespace LLP
     , nConsecutiveFails(0)
     , strFullVersion()
     , nUnsubscribed(0)
+    , nTriggerNonce(0)
     {
     }
 
@@ -115,6 +124,7 @@ namespace LLP
     /** Constructor **/
     TritiumNode::TritiumNode(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool fDDOSIn)
     : BaseConnection<TritiumPacket>(SOCKET_IN, DDOS_IN, fDDOSIn)
+    , fLoggedIn(false)
     , fAuthorized(false)
     , fInitialized(false)
     , nSubscriptions(0)
@@ -134,6 +144,7 @@ namespace LLP
     , nConsecutiveFails(0)
     , strFullVersion()
     , nUnsubscribed(0)
+    , nTriggerNonce(0)
     {
     }
 
@@ -141,6 +152,7 @@ namespace LLP
     /** Constructor **/
     TritiumNode::TritiumNode(DDOS_Filter* DDOS_IN, bool fDDOSIn)
     : BaseConnection<TritiumPacket>(DDOS_IN, fDDOSIn)
+    , fLoggedIn(false)
     , fAuthorized(false)
     , fInitialized(false)
     , nSubscriptions(0)
@@ -160,6 +172,7 @@ namespace LLP
     , nConsecutiveFails(0)
     , strFullVersion()
     , nUnsubscribed(0)
+    , nTriggerNonce(0)
     {
     }
 
@@ -175,7 +188,7 @@ namespace LLP
     {
         switch(EVENT)
         {
-            case EVENT_CONNECT:
+            case EVENTS::CONNECT:
             {
                 debug::log(1, NODE, fOUTGOING ? "Outgoing" : "Incoming", " Connection Established");
 
@@ -189,7 +202,7 @@ namespace LLP
                 break;
             }
 
-            case EVENT_HEADER:
+            case EVENTS::HEADER:
             {
                 /* Check for initialization. */
                 if(nCurrentSession == 0 && nProtocolVersion == 0 && INCOMING.MESSAGE != ACTION::VERSION && DDOS)
@@ -198,7 +211,7 @@ namespace LLP
                 break;
             }
 
-            case EVENT_PACKET:
+            case EVENTS::PACKET:
             {
                 /* Check a packet's validity once it is finished being read. */
                 if(Incoming())
@@ -207,6 +220,7 @@ namespace LLP
                     if(INCOMING.Complete() && !INCOMING.IsValid() && DDOS)
                         DDOS->rSCORE += 15;
                 }
+
 
                 if(INCOMING.Complete())
                 {
@@ -217,7 +231,15 @@ namespace LLP
                 break;
             }
 
-            case EVENT_GENERIC:
+
+            /* Processed event is used for events triggers. */
+            case EVENTS::PROCESSED:
+            {
+                break;
+            }
+
+
+            case EVENTS::GENERIC:
             {
                 /* Make sure node responded on unsubscriion within 30 seconds. */
                 if(nUnsubscribed != 0 && nUnsubscribed + 30 < runtime::timestamp())
@@ -257,20 +279,46 @@ namespace LLP
                     /* Simple log to let us know we are making the subscription requests. */
                     debug::log(1, NODE, "Initializing Subscriptions with REMOTE HOST");
 
-                    /* Subscribe to notifications. */
-                    Subscribe(
-                           SUBSCRIPTION::BESTCHAIN
-                         | SUBSCRIPTION::BESTHEIGHT
-                         | SUBSCRIPTION::CHECKPOINT
-                         | SUBSCRIPTION::BLOCK
-                         | SUBSCRIPTION::TRANSACTION
-                    );
-
                     /* Grab list of memory pool transactions. */
-                    PushMessage(ACTION::LIST, uint8_t(TYPES::MEMPOOL));
+                    if(!config::fClient.load())
+                    {
+                        /* Subscribe to notifications. */
+                        Subscribe(
+                               SUBSCRIPTION::BESTCHAIN
+                             | SUBSCRIPTION::BESTHEIGHT
+                             | SUBSCRIPTION::CHECKPOINT
+                             | SUBSCRIPTION::BLOCK
+                             | SUBSCRIPTION::TRANSACTION
+                        );
+
+                        PushMessage(ACTION::LIST, uint8_t(TYPES::MEMPOOL));
+                    }
+                    else
+                    {
+                        /* Subscribe to notifications. */
+                        Subscribe(
+                               SUBSCRIPTION::BESTCHAIN
+                             | SUBSCRIPTION::BESTHEIGHT
+                             | SUBSCRIPTION::BLOCK
+                        );
+                    }
 
                     /* Set node as initialized. */
                     fInitialized.store(true);
+                }
+
+
+                /* Disable AUTH for older protocol versions. */
+                if(nProtocolVersion >= MIN_TRITIUM_VERSION && !fLoggedIn.load())
+                {
+                    /* Generate an AUTH message to send to all peers */
+                    DataStream ssMessage = LLP::TritiumNode::GetAuth(true);
+                    if(ssMessage.size() > 0)
+                    {
+                        /* Authorize before we subscribe. */
+                        WritePacket(NewMessage(ACTION::AUTH, ssMessage));
+                        fLoggedIn.store(true);
+                    }
                 }
 
 
@@ -293,45 +341,45 @@ namespace LLP
             }
 
 
-            case EVENT_DISCONNECT:
+            case EVENTS::DISCONNECT:
             {
                 /* Debut output. */
                 std::string strReason;
                 switch(LENGTH)
                 {
-                    case DISCONNECT_TIMEOUT:
+                    case DISCONNECT::TIMEOUT:
                         strReason = "Timeout";
                         break;
 
-                    case DISCONNECT_ERRORS:
+                    case DISCONNECT::ERRORS:
                         strReason = "Errors";
                         break;
 
-                    case DISCONNECT_POLL_ERROR:
+                    case DISCONNECT::POLL_ERROR:
                         strReason = "Poll Error";
                         break;
 
-                    case DISCONNECT_POLL_EMPTY:
+                    case DISCONNECT::POLL_EMPTY:
                         strReason = "Unavailable";
                         break;
 
-                    case DISCONNECT_DDOS:
+                    case DISCONNECT::DDOS:
                         strReason = "DDOS";
                         break;
 
-                    case DISCONNECT_FORCE:
+                    case DISCONNECT::FORCE:
                         strReason = "Force";
                         break;
 
-                    case DISCONNECT_PEER:
+                    case DISCONNECT::PEER:
                         strReason = "Peer Hangup";
                         break;
 
-                    case DISCONNECT_BUFFER:
+                    case DISCONNECT::BUFFER:
                         strReason = "Flood Control";
                         break;
 
-                    case DISCONNECT_TIMEOUT_WRITE:
+                    case DISCONNECT::TIMEOUT_WRITE:
                         strReason = "Flood Control Timeout";
                         break;
 
@@ -429,10 +477,13 @@ namespace LLP
                     mapSessions[nCurrentSession] = std::make_pair(nDataThread, nDataIndex);
                 }
 
-
                 /* Check versions. */
                 if(nProtocolVersion < MIN_PROTO_VERSION)
                     return debug::drop(NODE, "connection using obsolete protocol version");
+
+                /* Client mode only wants connections to correct version. */
+                if(config::fClient.load() && nProtocolVersion < MIN_TRITIUM_VERSION)
+                    return debug::drop(NODE, "-client mode requires version ", MIN_TRITIUM_VERSION);
 
                 /* Respond with version message if incoming connection. */
                 if(Incoming())
@@ -483,7 +534,7 @@ namespace LLP
 
                         /* Ask for list of blocks if this is current sync node. */
                         PushMessage(ACTION::LIST,
-                            uint8_t(SPECIFIER::SYNC),
+                            config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::SYNC),
                             uint8_t(TYPES::BLOCK),
                             uint8_t(TYPES::LOCATOR),
                             TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
@@ -511,7 +562,9 @@ namespace LLP
             case ACTION::AUTH:
             case ACTION::DEAUTH:
             {
-                return true; //disable AUTH for testnet
+                /* Disable AUTH for older protocol versions. */
+                if(nProtocolVersion < MIN_TRITIUM_VERSION)
+                    return true;
 
                 /* Disable AUTH messages when synchronizing. */
                 if(TAO::Ledger::ChainState::Synchronizing())
@@ -520,15 +573,15 @@ namespace LLP
                 /* Hard requirement for genesis. */
                 ssPacket >> hashGenesis;
 
-                /* Debug logging. */
-                debug::log(0, NODE, "ACTION::AUTH: request from ", hashGenesis.SubString());
-
                 /* Get the signature information. */
                 if(hashGenesis == 0)
                     return debug::drop(NODE, "ACTION::AUTH: cannot authorize with reserved genesis");
 
+                /* Derive the object register address. */
+                TAO::Register::Address hashCrypto =
+                    TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
+
                 /* Get the crypto register. */
-                TAO::Register::Address hashCrypto = TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
                 TAO::Register::Object crypto;
                 if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::MEMPOOL))
                     return debug::drop(NODE, "ACTION::AUTH: authorization failed, missing crypto register");
@@ -545,16 +598,28 @@ namespace LLP
                     uint64_t nTimestamp;
                     ssPacket >> nTimestamp;
 
+                    /* Check the timestamp. */
+                    if(nTimestamp > runtime::unifiedtimestamp() || nTimestamp < runtime::unifiedtimestamp() - 10)
+                        return debug::drop(NODE, "ACTION::AUTH: timestamp out of rang (stale)");
+
                     /* Get the nonce */
                     uint64_t nNonce;
                     ssPacket >> nNonce;
+
+                    /* Check the nNonce for expected values. */
+                    if(nNonce != nCurrentSession)
+                        return debug::drop(NODE, "ACTION::AUTH: invalid session-id ", nNonce);
 
                     /* Get the public key. */
                     std::vector<uint8_t> vchPubKey;
                     ssPacket >> vchPubKey;
 
+                    /* Grab hash of pubkey and set its type. */
+                    uint256_t hashPubKey = LLC::SK256(vchPubKey);
+                    hashPubKey.SetType(hashCheck.GetType());
+
                     /* Check the public key to expected authorization key. */
-                    if(LLC::SK256(vchPubKey) != hashCheck)
+                    if(hashPubKey != hashCheck)
                         return debug::drop(NODE, "ACTION::AUTH: failed to authorize, invalid public key");
 
                     /* Build the byte stream from genesis+nonce in order to verify the signature */
@@ -569,7 +634,7 @@ namespace LLP
                     ssPacket >> vchSig;
 
                     /* Switch based on signature type. */
-                    switch(hashCheck.GetType())
+                    switch(hashPubKey.GetType())
                     {
                         /* Support for the FALCON signature scheeme. */
                         case TAO::Ledger::SIGNATURE::FALCON:
@@ -618,7 +683,27 @@ namespace LLP
 
                     /* Set to authorized node if passed all cryptographic checks. */
                     fAuthorized = true;
+                    debug::log(0, NODE, "ACTION::AUTH: ", hashGenesis.SubString(), " AUTHORIZATION ACCEPTED");
+
+                    PushMessage(RESPONSE::AUTHORIZED, hashGenesis);
                 }
+
+                break;
+            }
+
+
+            /* Positive AUTH response. */
+            case RESPONSE::AUTHORIZED:
+            {
+                /* Grab the genesis. */
+                uint256_t hashGenesis;
+                ssPacket >> hashGenesis;
+
+                /* Subscribe to notifications. */
+                if(config::fClient.load())
+                    Subscribe(SUBSCRIPTION::SIGCHAIN);
+
+                debug::log(0, NODE, "RESPONSE::AUTHORIZED: ", hashGenesis.SubString(), " AUTHORIZATION ACCEPTED");
 
                 break;
             }
@@ -663,7 +748,7 @@ namespace LLP
                                 nNotifications |= SUBSCRIPTION::BLOCK;
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "ACTION::SUBSCRIBE: BLOCK ", std::bitset<16>(nNotifications));
+                                debug::log(3, NODE, "ACTION::SUBSCRIBE: BLOCK: ", std::bitset<16>(nNotifications));
                             }
                             else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
                             {
@@ -671,7 +756,7 @@ namespace LLP
                                 nNotifications &= ~SUBSCRIPTION::BLOCK;
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE: BLOCK ", std::bitset<16>(nNotifications));
+                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE::BLOCK: ", std::bitset<16>(nNotifications));
                             }
                             else
                             {
@@ -679,7 +764,7 @@ namespace LLP
                                 nSubscriptions &= ~SUBSCRIPTION::BLOCK;
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED: BLOCK ", std::bitset<16>(nSubscriptions));
+                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED::BLOCK: ", std::bitset<16>(nSubscriptions));
                             }
 
                             break;
@@ -695,7 +780,7 @@ namespace LLP
                                 nNotifications |= SUBSCRIPTION::TRANSACTION;
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "ACTION::SUBSCRIBE: TRANSACTION ", std::bitset<16>(nNotifications));
+                                debug::log(3, NODE, "ACTION::SUBSCRIBE::TRANSACTION: ", std::bitset<16>(nNotifications));
                             }
                             else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
                             {
@@ -703,7 +788,7 @@ namespace LLP
                                 nNotifications &= ~SUBSCRIPTION::TRANSACTION;
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE: TRANSACTION ", std::bitset<16>(nNotifications));
+                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE::TRANSACTION: ", std::bitset<16>(nNotifications));
                             }
                             else
                             {
@@ -711,7 +796,7 @@ namespace LLP
                                 nSubscriptions &= ~SUBSCRIPTION::TRANSACTION;
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED: TRANSACTION ", std::bitset<16>(nSubscriptions));
+                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED::TRANSACTION: ", std::bitset<16>(nSubscriptions));
                             }
 
                             break;
@@ -731,7 +816,7 @@ namespace LLP
                                     uint8_t(TYPES::BESTHEIGHT), TAO::Ledger::ChainState::nBestHeight.load());
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "ACTION::SUBSCRIBE: BESTHEIGHT ", std::bitset<16>(nNotifications));
+                                debug::log(3, NODE, "ACTION::SUBSCRIBE::BESTHEIGHT: ", std::bitset<16>(nNotifications));
                             }
                             else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
                             {
@@ -739,7 +824,7 @@ namespace LLP
                                 nNotifications &= ~SUBSCRIPTION::BESTHEIGHT;
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE: BESTHEIGHT ", std::bitset<16>(nNotifications));
+                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE::BESTHEIGHT: ", std::bitset<16>(nNotifications));
                             }
                             else
                             {
@@ -747,7 +832,7 @@ namespace LLP
                                 nSubscriptions &= ~SUBSCRIPTION::BESTHEIGHT;
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED: BESTHEIGHT ", std::bitset<16>(nSubscriptions));
+                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED::BESTHEIGHT: ", std::bitset<16>(nSubscriptions));
                             }
 
                             break;
@@ -767,7 +852,7 @@ namespace LLP
                                     uint8_t(TYPES::CHECKPOINT), TAO::Ledger::ChainState::hashCheckpoint.load());
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "ACTION::SUBSCRIBE: CHECKPOINT ", std::bitset<16>(nNotifications));
+                                debug::log(3, NODE, "ACTION::SUBSCRIBE::CHECKPOINT: ", std::bitset<16>(nNotifications));
                             }
                             else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
                             {
@@ -775,7 +860,7 @@ namespace LLP
                                 nNotifications &= ~SUBSCRIPTION::CHECKPOINT;
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE: CHECKPOINT ", std::bitset<16>(nNotifications));
+                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE::CHECKPOINT: ", std::bitset<16>(nNotifications));
                             }
                             else
                             {
@@ -783,7 +868,7 @@ namespace LLP
                                 nSubscriptions &= ~SUBSCRIPTION::CHECKPOINT;
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED: CHECKPOINT ", std::bitset<16>(nSubscriptions));
+                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED::CHECKPOINT: ", std::bitset<16>(nSubscriptions));
                             }
 
                             break;
@@ -799,7 +884,7 @@ namespace LLP
                                 nNotifications |= SUBSCRIPTION::ADDRESS;
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "ACTION::SUBSCRIBE: ADDRESS ", std::bitset<16>(nNotifications));
+                                debug::log(3, NODE, "ACTION::SUBSCRIBE::ADDRESS: ", std::bitset<16>(nNotifications));
                             }
                             else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
                             {
@@ -807,7 +892,7 @@ namespace LLP
                                 nNotifications &= ~SUBSCRIPTION::ADDRESS;
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE: ADDRESS ", std::bitset<16>(nNotifications));
+                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE::ADDRESS: ", std::bitset<16>(nNotifications));
                             }
                             else
                             {
@@ -815,7 +900,7 @@ namespace LLP
                                 nSubscriptions &= ~SUBSCRIPTION::ADDRESS;
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED: ADDRESS ", std::bitset<16>(nSubscriptions));
+                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED::ADDRESS: ", std::bitset<16>(nSubscriptions));
                             }
 
                             break;
@@ -827,19 +912,27 @@ namespace LLP
                             /* Subscribe. */
                             if(INCOMING.MESSAGE == ACTION::SUBSCRIBE)
                             {
+                                /* Check for client mode since this method should never be called except by a client. */
+                                if(config::fClient.load())
+                                    return debug::drop(NODE, "ACTION::SUBSCRIBE::LASTINDEX disabled in -client mode");
+
                                 /* Set the last flag. */
                                 nNotifications |= SUBSCRIPTION::LASTINDEX;
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "ACTION::SUBSCRIBE: LAST ", std::bitset<16>(nNotifications));
+                                debug::log(3, NODE, "ACTION::SUBSCRIBE::LAST: ", std::bitset<16>(nNotifications));
                             }
                             else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
                             {
+                                /* Check for client mode since this method should never be called except by a client. */
+                                if(config::fClient.load())
+                                    return debug::drop(NODE, "ACTION::UNSUBSCRIBE::LASTINDEX disabled in -client mode");
+
                                 /* Unset the last flag. */
                                 nNotifications &= ~SUBSCRIPTION::LASTINDEX;
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE: LAST ", std::bitset<16>(nNotifications));
+                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE::LAST: ", std::bitset<16>(nNotifications));
                             }
                             else
                             {
@@ -847,7 +940,7 @@ namespace LLP
                                 nSubscriptions &= ~SUBSCRIPTION::LASTINDEX;
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED: LASTINDEX ", std::bitset<16>(nSubscriptions));
+                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED::LASTINDEX: ", std::bitset<16>(nSubscriptions));
                             }
 
                             break;
@@ -867,7 +960,7 @@ namespace LLP
                                     uint8_t(TYPES::BESTCHAIN), TAO::Ledger::ChainState::hashBestChain.load());
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "ACTION::SUBSCRIBE: BESTCHAIN ", std::bitset<16>(nNotifications));
+                                debug::log(3, NODE, "ACTION::SUBSCRIBE::BESTCHAIN: ", std::bitset<16>(nNotifications));
                             }
                             else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
                             {
@@ -875,7 +968,7 @@ namespace LLP
                                 nNotifications &= ~SUBSCRIPTION::BESTCHAIN;
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE: BESTCHAIN" , std::bitset<16>(nNotifications));
+                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE::BESTCHAIN: " , std::bitset<16>(nNotifications));
                             }
                             else
                             {
@@ -883,7 +976,56 @@ namespace LLP
                                 nSubscriptions &= ~SUBSCRIPTION::BESTCHAIN;
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED: BESTCHAIN ", std::bitset<16>(nSubscriptions));
+                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED::BESTCHAIN: ", std::bitset<16>(nSubscriptions));
+                            }
+
+                            break;
+                        }
+
+
+                        /* Subscribe to getting transactions. */
+                        case TYPES::SIGCHAIN:
+                        {
+                            /* Check for available protocol version. */
+                            if(nProtocolVersion < MIN_TRITIUM_VERSION)
+                                return true;
+
+                            /* Check that node is logged in. */
+                            if(!fAuthorized || hashGenesis == 0)
+                                return debug::drop(NODE, "ACTION::SUBSCRIBE::SIGCHAIN: Access Denied");
+
+                            /* Subscribe. */
+                            if(INCOMING.MESSAGE == ACTION::SUBSCRIBE)
+                            {
+                                /* Check for client mode since this method should never be called except by a client. */
+                                if(config::fClient.load())
+                                    return debug::drop(NODE, "ACTION::SUBSCRIBE::SIGCHAIN disabled in -client mode");
+
+                                /* Set the best chain flag. */
+                                nNotifications |= SUBSCRIPTION::SIGCHAIN;
+
+                                /* Debug output. */
+                                debug::log(3, NODE, "ACTION::SUBSCRIBE::SIGCHAIN: ", std::bitset<16>(nNotifications));
+                            }
+                            else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
+                            {
+                                /* Check for client mode since this method should never be called except by a client. */
+                                if(config::fClient.load())
+                                    return debug::drop(NODE, "ACTION::UNSUBSCRIBE::SIGCHAIN disabled in -client mode");
+
+                                /* Unset the bestchain flag. */
+                                nNotifications &= ~SUBSCRIPTION::SIGCHAIN;
+
+                                /* Debug output. */
+                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE::SIGCHAIN: " , std::bitset<16>(nNotifications));
+                            }
+                            else
+                            {
+                                /* Unset the bestchain flag. */
+                                nSubscriptions &= ~SUBSCRIPTION::SIGCHAIN;
+
+                                /* Debug output. */
+                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED::SIGCHAIN: ", std::bitset<16>(nSubscriptions));
                             }
 
                             break;
@@ -910,6 +1052,10 @@ namespace LLP
             /* Handle for list command. */
             case ACTION::LIST:
             {
+                /* Check for client mode since this method should never be called except by a client. */
+                if(config::fClient.load())
+                    return true; //gracefully ignore these for now since there is no current way for remote nodes to know we are in client mode
+
                 /* Set the limits. 3000 seems to be the optimal amount to overcome higher-latency connections during sync */
                 int32_t nLimits = 3001;
 
@@ -921,13 +1067,15 @@ namespace LLP
                     ssPacket >> nType;
 
                     /* Check for legacy or transactions specifiers. */
-                    bool fLegacy = false, fTransactions = false, fSyncBlock = false;
-                    if(nType == SPECIFIER::LEGACY || nType == SPECIFIER::TRANSACTIONS || nType == SPECIFIER::SYNC)
+                    bool fLegacy = false, fTransactions = false, fSyncBlock = false, fClientBlock = false;
+                    if(nType == SPECIFIER::LEGACY || nType == SPECIFIER::TRANSACTIONS
+                    || nType == SPECIFIER::SYNC   || nType == SPECIFIER::CLIENT)
                     {
                         /* Set specifiers. */
                         fLegacy       = (nType == SPECIFIER::LEGACY);
                         fTransactions = (nType == SPECIFIER::TRANSACTIONS);
                         fSyncBlock    = (nType == SPECIFIER::SYNC);
+                        fClientBlock  = (nType == SPECIFIER::CLIENT);
 
                         /* Go to next type in stream. */
                         ssPacket >> nType;
@@ -1060,6 +1208,16 @@ namespace LLP
 
                                         /* Push message in response. */
                                         PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::SYNC), block);
+                                    }
+
+                                    /* Handle for a client block header. */
+                                    else if(fClientBlock)
+                                    {
+                                        /* Build the client block from state. */
+                                        TAO::Ledger::ClientBlock block(state);
+
+                                        /* Push message in response. */
+                                        PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::CLIENT), block);
                                     }
                                     else
                                     {
@@ -1307,10 +1465,147 @@ namespace LLP
                             break;
                         }
 
+
+                        /* Standard type for a sigchain listing. */
+                        case TYPES::SIGCHAIN:
+                        {
+                            /* Check for available protocol version. */
+                            if(nProtocolVersion < MIN_TRITIUM_VERSION)
+                                return true;
+
+                            /* Get the sigchain-id. */
+                            uint256_t hashSigchain;
+                            ssPacket >> hashSigchain;
+
+                            /* Get the index of block. */
+                            uint512_t hashStart;
+                            ssPacket >> hashStart;
+
+                            /* Check for empty hash start. */
+                            bool fGenesis = (hashStart == 0);
+                            if(hashStart == 0 && !LLD::Ledger->ReadGenesis(hashSigchain, hashStart))
+                                break;
+
+                            /* Check for empty hash stop. */
+                            uint512_t hashThis;
+                            if(hashThis == 0 && !LLD::Ledger->ReadLast(hashSigchain, hashThis, TAO::Ledger::FLAGS::MEMPOOL))
+                                break;
+
+                            /* Read sigchain entries. */
+                            std::vector<TAO::Ledger::MerkleTx> vtx;
+                            while(!config::fShutdown.load())
+                            {
+                                /* Check for genesis. */
+                                if(!fGenesis && hashStart == hashThis)
+                                    break;
+
+                                /* Read from disk. */
+                                TAO::Ledger::Transaction tx;
+                                if(!LLD::Ledger->ReadTx(hashThis, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                                    break;
+
+                                /* Build a markle transaction. */
+                                TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
+
+                                /* Build the merkle branch if the tx has been confirmed (i.e. it is not in the mempool) */
+                                if(!TAO::Ledger::mempool.Has(hashThis))
+                                    merkle.BuildMerkleBranch();
+
+                                /* Insert into container. */
+                                vtx.push_back(merkle);
+
+                                /* Check for genesis. */
+                                if(fGenesis && hashStart == hashThis)
+                                    break;
+
+                                hashThis = tx.hashPrevTx;
+                            }
+
+                            /* Reverse container to message forward. */
+                            for(auto tx = vtx.rbegin(); tx != vtx.rend(); ++tx)
+                                PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::TRITIUM), (*tx));
+
+                            break;
+                        }
+
+
+                        /* Standard type for a sigchain listing. */
+                        case TYPES::NOTIFICATION:
+                        {
+                            /* Check for available protocol version. */
+                            if(nProtocolVersion < MIN_TRITIUM_VERSION)
+                                return true;
+
+                            /* Get the sigchain-id. */
+                            uint256_t hashSigchain;
+                            ssPacket >> hashSigchain;
+
+                            /* Get the last event */
+                            debug::log(0, "ACTION::LIST: ", fLegacy ? "LEGACY " : "", "NOTIFICATION for ", hashSigchain.SubString());
+
+                            /* Check for legacy. */
+                            uint32_t nSequence = 0;
+                            if(fLegacy)
+                            {
+                                std::vector<Legacy::MerkleTx> vtx;
+                                LLD::Legacy->ReadSequence(hashSigchain, nSequence);
+
+                                /* Look back through all events to find those that are not yet processed. */
+                                Legacy::Transaction tx;
+                                while(LLD::Legacy->ReadEvent(hashSigchain, --nSequence, tx))
+                                {
+                                    /* Build a markle transaction. */
+                                    Legacy::MerkleTx merkle = Legacy::MerkleTx(tx);
+                                    merkle.BuildMerkleBranch();
+
+                                    /* Insert into container. */
+                                    vtx.push_back(merkle);
+                                }
+
+                                /* Reverse container to message forward. */
+                                for(auto tx = vtx.rbegin(); tx != vtx.rend(); ++tx)
+                                    PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::LEGACY), (*tx));
+                            }
+                            else
+                            {
+                                std::vector<TAO::Ledger::MerkleTx> vtx;
+                                if(!LLD::Ledger->ReadSequence(hashSigchain, nSequence))
+                                    nSequence = 0;
+
+                                /* Look back through all events to find those that are not yet processed. */
+                                TAO::Ledger::Transaction tx;
+                                while(LLD::Ledger->ReadEvent(hashSigchain, --nSequence, tx))
+                                {
+                                    /* Build a markle transaction. */
+                                    TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
+                                    merkle.BuildMerkleBranch();
+
+                                    /* Insert into container. */
+                                    vtx.push_back(merkle);
+                                }
+
+                                /* Reverse container to message forward. */
+                                for(auto tx = vtx.rbegin(); tx != vtx.rend(); ++tx)
+                                    PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::TRITIUM), (*tx));
+                            }
+
+
+
+                            break;
+                        }
+
+
                         /* Catch malformed notify binary streams. */
                         default:
                             return debug::drop(NODE, "ACTION::LIST malformed binary stream");
                     }
+                }
+
+                /* Check for trigger nonce. */
+                if(nTriggerNonce != 0)
+                {
+                    PushMessage(RESPONSE::COMPLETED, nTriggerNonce);
+                    nTriggerNonce = 0;
                 }
 
                 break;
@@ -1329,12 +1624,13 @@ namespace LLP
                     ssPacket >> nType;
 
                     /* Check for legacy or transactions specifiers. */
-                    bool fLegacy = false, fTransactions = false;
-                    if(nType == SPECIFIER::LEGACY || nType == SPECIFIER::TRANSACTIONS)
+                    bool fLegacy = false, fTransactions = false, fClient = false;
+                    if(nType == SPECIFIER::LEGACY || nType == SPECIFIER::TRANSACTIONS || nType == SPECIFIER::CLIENT)
                     {
                         /* Set specifiers. */
                         fLegacy       = (nType == SPECIFIER::LEGACY);
                         fTransactions = (nType == SPECIFIER::TRANSACTIONS);
+                        fClient       = (nType == SPECIFIER::CLIENT);
 
                         /* Go to next type in stream. */
                         ssPacket >> nType;
@@ -1346,6 +1642,14 @@ namespace LLP
                         /* Standard type for a block. */
                         case TYPES::BLOCK:
                         {
+                            /* Check for valid specifier. */
+                            if(fLegacy)
+                                return debug::drop(NODE, "ACTION::GET: invalid specifier for TYPES::BLOCK");
+
+                            /* Check for client mode since this method should never be called except by a client. */
+                            if(config::fClient.load())
+                                return debug::drop(NODE, "ACTION::GET::BLOCK disabled in -client mode");
+
                             /* Get the index of block. */
                             uint1024_t hashBlock;
                             ssPacket >> hashBlock;
@@ -1357,6 +1661,10 @@ namespace LLP
                                 /* Push legacy blocks for less than version 7. */
                                 if(state.nVersion < 7)
                                 {
+                                    /* Check for bad client requests. */
+                                    if(fClient)
+                                        return debug::drop(NODE, "ACTION::GET: CLIENT specifier disabled for legacy blocks");
+
                                     /* Build legacy block from state. */
                                     Legacy::LegacyBlock block(state);
 
@@ -1365,6 +1673,21 @@ namespace LLP
                                 }
                                 else
                                 {
+                                    /* Handle for client blocks. */
+                                    if(fClient)
+                                    {
+                                        /* Build the client block and send off. */
+                                        TAO::Ledger::ClientBlock block(state);
+
+                                        /* Push the new client block. */
+                                        PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::CLIENT), block);
+
+                                        /* Debug output. */
+                                        debug::log(3, NODE, "ACTION::GET: CLIENT::BLOCK ", hashBlock.SubString());
+
+                                        break;
+                                    }
+
                                     /* Build tritium block from state. */
                                     TAO::Ledger::TritiumBlock block(state);
 
@@ -1412,12 +1735,12 @@ namespace LLP
                             break;
                         }
 
-                        /* Standard type for a block. */
+                        /* Standard type for a transaction. */
                         case TYPES::TRANSACTION:
                         {
                             /* Check for valid specifier. */
-                            if(fTransactions)
-                                return debug::drop(NODE, "ACTION::GET: cannot use SPECIFIER::TRANSACTIONS for TYPES::TRANSACTION");
+                            if(fTransactions || fClient)
+                                return debug::drop(NODE, "ACTION::GET::TRANSACTION: invalid specifier for TYPES::TRANSACTION");
 
                             /* Get the index of transaction. */
                             uint512_t hashTx;
@@ -1426,6 +1749,10 @@ namespace LLP
                             /* Check for legacy. */
                             if(fLegacy)
                             {
+                                /* Check for client mode since this method should never be called except by a client. */
+                                if(config::fClient.load())
+                                    return debug::drop(NODE, "ACTION::GET::LEGACY::TRANSACTION disabled in -client mode");
+
                                 /* Check legacy database. */
                                 Legacy::Transaction tx;
                                 if(LLD::Legacy->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
@@ -1448,8 +1775,6 @@ namespace LLP
                                             TAO::Ledger::TritiumBlock block(state);
                                             PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::TRITIUM), block);
                                         }
-
-
                                     }
                                     else
                                         PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::TRITIUM), tx);
@@ -1463,10 +1788,308 @@ namespace LLP
                             break;
                         }
 
+
+                        /* Standard type for a merkle transaction. */
+                        case TYPES::MERKLE:
+                        {
+                            /* Check for available protocol version. */
+                            if(nProtocolVersion < MIN_TRITIUM_VERSION)
+                                return true;
+
+                            /* Check for valid specifier. */
+                            if(fTransactions || fClient || fLegacy)
+                                return debug::drop(NODE, "ACTION::GET::MERKLE: invalid specifier for TYPES::MERKLE");
+
+                            /* Get the index of transaction. */
+                            uint512_t hashTx;
+                            ssPacket >> hashTx;
+
+                            /* Check ledger database. */
+                            TAO::Ledger::Transaction tx;
+                            if(LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                            {
+                                /* Build a markle transaction. */
+                                TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
+
+                                /* Build the merkle branch if the tx has been confirmed (i.e. it is not in the mempool) */
+                                if(!TAO::Ledger::mempool.Has(hashTx))
+                                    merkle.BuildMerkleBranch();
+
+                                PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::TRITIUM), merkle);
+                            }
+
+                            /* Debug output. */
+                            debug::log(3, NODE, "ACTION::GET: MERKLE TRANSACTION ", hashTx.SubString());
+
+                            break;
+                        }
+
+
+                        /* Standard type for a genesis transaction. */
+                        case TYPES::GENESIS:
+                        {
+                            /* Check for available protocol version. */
+                            if(nProtocolVersion < MIN_TRITIUM_VERSION)
+                                return true;
+
+                            /* Check for valid specifier. */
+                            if(fTransactions || fClient || fLegacy)
+                                return debug::drop(NODE, "ACTION::GET::GENESIS: invalid specifier for TYPES::GENESIS");
+
+                            /* Get the index of transaction. */
+                            uint256_t hashGenesis;
+                            ssPacket >> hashGenesis;
+
+                            /* Get the genesis txid. */
+                            uint512_t hashTx;
+                            if(LLD::Ledger->ReadGenesis(hashGenesis, hashTx))
+                            {
+                                TAO::Ledger::Transaction tx;
+                                if(LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                                {
+                                    /* Build a markle transaction. */
+                                    TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
+
+                                    /* Build the merkle branch if the tx has been confirmed (i.e. it is not in the mempool) */
+                                    if(!TAO::Ledger::mempool.Has(hashTx))
+                                        merkle.BuildMerkleBranch();
+
+                                    PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::TRITIUM), merkle);
+                                }
+                            }
+
+                            /* Debug output. */
+                            debug::log(3, NODE, "ACTION::GET: GENESIS TRANSACTION ", hashTx.SubString());
+
+                            break;
+                        }
+
+
+                        /* Standard type for last sigchain transaction. */
+                        case TYPES::SIGCHAIN:
+                        {
+                            /* Check for available protocol version. */
+                            if(nProtocolVersion < MIN_TRITIUM_VERSION)
+                                return true;
+
+                            /* Check for valid specifier. */
+                            if(fTransactions || fClient || fLegacy)
+                                return debug::drop(NODE, "ACTION::GET::SIGCHAIN: invalid specifier for TYPES::SIGCHAIN");
+
+                            /* Get the index of transaction. */
+                            uint256_t hashGenesis;
+                            ssPacket >> hashGenesis;
+
+                            /* Get the genesis txid. */
+                            uint512_t hashTx;
+                            if(LLD::Ledger->ReadLast(hashGenesis, hashTx))
+                            {
+                                TAO::Ledger::Transaction tx;
+                                if(LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                                {
+                                    /* Build a markle transaction. */
+                                    TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
+
+                                    /* Build the merkle branch if the tx has been confirmed (i.e. it is not in the mempool) */
+                                    if(!TAO::Ledger::mempool.Has(hashTx))
+                                        merkle.BuildMerkleBranch();
+
+                                    PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::TRITIUM), merkle);
+                                }
+                            }
+
+                            /* Debug output. */
+                            debug::log(3, NODE, "ACTION::GET: SIGCHAIN TRANSACTION ", hashTx.SubString());
+
+                            break;
+                        }
+
+
+                        /* Standard type for last sigchain transaction. */
+                        case TYPES::REGISTER:
+                        {
+                            /* Check for available protocol version. */
+                            if(nProtocolVersion < MIN_TRITIUM_VERSION)
+                                return true;
+
+                            /* Check for valid specifier. */
+                            if(fTransactions || fClient || fLegacy)
+                                return debug::drop(NODE, "ACTION::GET::REGISTER: invalid specifier for TYPES::REGISTER");
+
+                            /* Get the index of transaction. */
+                            uint256_t hashRegister;
+                            ssPacket >> hashRegister;
+
+                            /* Check for existing localdb indexes. */
+                            std::pair<uint512_t, uint64_t> pairIndex;
+                            if(LLD::Local->ReadIndex(hashRegister, pairIndex))
+                            {
+                                /* Check for cache expiration. */
+                                if(runtime::unifiedtimestamp() <= pairIndex.second)
+                                {
+                                    /* Get the transaction from disk. */
+                                    TAO::Ledger::Transaction tx;
+                                    if(!LLD::Ledger->ReadTx(pairIndex.first, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                                        break;
+
+                                    /* Build a markle transaction. */
+                                    TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
+
+                                    /* Build the merkle branch if the tx has been confirmed (i.e. it is not in the mempool) */
+                                    if(!TAO::Ledger::mempool.Has(pairIndex.first))
+                                        merkle.BuildMerkleBranch();
+
+                                    /* Send off the transaction to remote node. */
+                                    PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::TRITIUM), merkle);
+
+                                    debug::log(0, NODE, "ACTION::GET: Using INDEX CACHE for ", hashRegister.SubString());
+
+                                    break;
+                                }
+                            }
+
+                            /* Get the register from disk. */
+                            TAO::Register::State state;
+                            if(!LLD::Register->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
+                                break;
+
+                            /* Make adjustment to history check and detect if the register is owned by system. */
+                            uint256_t hashOwner = state.hashOwner;
+                            if(hashOwner.GetType() == TAO::Ledger::GENESIS::SYSTEM)
+                                hashOwner.SetType(TAO::Ledger::GenesisType());
+
+                            /* Read the last hash of owner. */
+                            uint512_t hashLast = 0;
+                            if(!LLD::Ledger->ReadLast(hashOwner, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
+                                break;
+
+                            /* Iterate through sigchain for register updates. */
+                            while(hashLast != 0)
+                            {
+                                /* Get the transaction from disk. */
+                                TAO::Ledger::Transaction tx;
+                                if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                                    break;
+
+                                /* Handle DDOS. */
+                                if(fDDOS && DDOS)
+                                    DDOS->rSCORE += 1;
+
+                                /* Set the next last. */
+                                hashLast = !tx.IsFirst() ? tx.hashPrevTx : 0;
+
+                                /* Check through all the contracts. */
+                                for(int32_t nContract = tx.Size() - 1; nContract >= 0; --nContract)
+                                {
+                                    /* Get the contract. */
+                                    const TAO::Operation::Contract& contract = tx[nContract];
+
+                                    /* Reset the operation stream position in case it was loaded from mempool and therefore still in previous state */
+                                    contract.Reset();
+
+                                    /* Get the operation byte. */
+                                    uint8_t OPERATION = 0;
+                                    contract >> OPERATION;
+
+                                    /* Check for conditional OP */
+                                    switch(OPERATION)
+                                    {
+                                        case TAO::Operation::OP::VALIDATE:
+                                        {
+                                            /* Seek through validate. */
+                                            contract.Seek(68);
+                                            contract >> OPERATION;
+
+                                            break;
+                                        }
+
+                                        case TAO::Operation::OP::CONDITION:
+                                        {
+                                            /* Get new operation. */
+                                            contract >> OPERATION;
+                                        }
+                                    }
+
+                                    /* Check for key operations. */
+                                    switch(OPERATION)
+                                    {
+                                        /* Break when at the register declaration. */
+                                        case TAO::Operation::OP::WRITE:
+                                        case TAO::Operation::OP::CREATE:
+                                        case TAO::Operation::OP::APPEND:
+                                        case TAO::Operation::OP::CLAIM:
+                                        case TAO::Operation::OP::DEBIT:
+                                        case TAO::Operation::OP::CREDIT:
+                                        case TAO::Operation::OP::TRUST:
+                                        case TAO::Operation::OP::GENESIS:
+                                        case TAO::Operation::OP::LEGACY:
+                                        case TAO::Operation::OP::FEE:
+                                        {
+                                            /* Seek past claim txid. */
+                                            if(OPERATION == TAO::Operation::OP::CLAIM ||
+                                               OPERATION == TAO::Operation::OP::CREDIT)
+                                                contract.Seek(68);
+
+                                            /* Extract the address from the contract. */
+                                            TAO::Register::Address hashAddress;
+                                            if(OPERATION == TAO::Operation::OP::TRUST ||
+                                               OPERATION == TAO::Operation::OP::GENESIS)
+                                            {
+                                                hashAddress =
+                                                    TAO::Register::Address(std::string("trust"), state.hashOwner, TAO::Register::Address::TRUST);
+                                            }
+                                            else
+                                                contract >> hashAddress;
+
+                                            /* Check for same address. */
+                                            if(hashAddress != hashRegister)
+                                                break;
+
+                                            /* Build a markle transaction. */
+                                            TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
+
+                                            /* Build the merkle branch if the tx has been confirmed (i.e. it is not in the mempool) */
+                                            if(!TAO::Ledger::mempool.Has(hashLast))
+                                                merkle.BuildMerkleBranch();
+
+                                            /* Send off the transaction to remote node. */
+                                            PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::TRITIUM), merkle);
+
+                                            /* Build indexes for optimized processing. */
+                                            debug::log(0, NODE, "ACTION::GET: Update INDEX for register ", hashAddress.SubString());
+                                            std::pair<uint512_t, uint64_t> pairIndex = std::make_pair(tx.GetHash(), runtime::unifiedtimestamp() + 3600);
+                                            if(!LLD::Local->WriteIndex(hashAddress, pairIndex)) //Index expires 1 hour after created
+                                                break;
+
+                                            /* Break out of main hash last. */
+                                            hashLast = 0;
+
+                                            break;
+                                        }
+
+                                        default:
+                                            continue;
+                                    }
+                                }
+                            }
+
+                            /* Debug output. */
+                            debug::log(3, NODE, "ACTION::GET: REGISTER ", hashRegister.SubString());
+
+                            break;
+                        }
+
                         /* Catch malformed notify binary streams. */
                         default:
                             return debug::drop(NODE, "ACTION::GET malformed binary stream");
                     }
+                }
+
+                /* Check for trigger nonce. */
+                if(nTriggerNonce != 0)
+                {
+                    PushMessage(RESPONSE::COMPLETED, nTriggerNonce);
+                    nTriggerNonce = 0;
                 }
 
                 break;
@@ -1517,26 +2140,80 @@ namespace LLP
                             uint1024_t hashBlock;
                             ssPacket >> hashBlock;
 
-                            /* Check the database for the block. */
-                            if(!LLD::Ledger->HasBlock(hashBlock))
-                                ssResponse << uint8_t(TYPES::BLOCK) << hashBlock;
+                            /* Check for client mode. */
+                            if(config::fClient.load())
+                            {
+                                /* Check the database for the block. */
+                                if(!LLD::Client->HasBlock(hashBlock))
+                                    ssResponse << uint8_t(SPECIFIER::CLIENT) << uint8_t(TYPES::BLOCK) << hashBlock;
 
-                            /* Debug output. */
-                            debug::log(3, NODE, "ACTION::NOTIFY: BLOCK ", hashBlock.SubString());
+                                /* Debug output. */
+                                debug::log(3, NODE, "ACTION::NOTIFY: CLIENT BLOCK ", hashBlock.SubString());
+                            }
+                            else
+                            {
+                                /* Check the database for the block. */
+                                if(!LLD::Ledger->HasBlock(hashBlock))
+                                    ssResponse << uint8_t(TYPES::BLOCK) << hashBlock;
+
+                                /* Debug output. */
+                                debug::log(3, NODE, "ACTION::NOTIFY: BLOCK ", hashBlock.SubString());
+                            }
 
                             break;
                         }
 
                         /* Standard type for a block. */
                         case TYPES::TRANSACTION:
+                        case TYPES::SIGCHAIN:
                         {
-                            /* Check for subscription. */
-                            if(!(nSubscriptions & SUBSCRIPTION::TRANSACTION))
-                                return debug::drop(NODE, "TRANSACTION: unsolicited notification");
+                            /* Check for active subscriptions. */
+                            if(nType == TYPES::TRANSACTION && !(nSubscriptions & SUBSCRIPTION::TRANSACTION))
+                                return debug::drop(NODE, "ACTION::NOTIFY::TRANSACTION: unsolicited notification");
+
+                            /* Sigchain specific validation and de-serialization. */
+                            if(nType == TYPES::SIGCHAIN)
+                            {
+                                /* Check for available protocol version. */
+                                if(nProtocolVersion < MIN_TRITIUM_VERSION)
+                                    return true;
+
+                                /* Check for subscription. */
+                                if(!(nSubscriptions & SUBSCRIPTION::SIGCHAIN))
+                                    return debug::drop(NODE, "ACTION::NOTIFY::SIGCHAIN: unsolicited notification");
+
+                                /* Get the sigchain genesis. */
+                                uint256_t hashSigchain = 0;
+                                ssPacket >> hashSigchain;
+
+                                /* Check for expected genesis. */
+                                uint256_t hashLogin = TAO::API::users->GetGenesis(0);
+                                if(hashSigchain != hashLogin)
+                                    return debug::drop(NODE, "ACTION::NOTIFY::SIGCHAIN: unexpected genesis-id ", hashLogin.SubString());
+                            }
 
                             /* Get the index of transaction. */
-                            uint512_t hashTx;
+                            uint512_t hashTx = 0;
                             ssPacket >> hashTx;
+
+                            /* Handle for -client mode which deals with merkle transactions. */
+                            if(config::fClient.load())
+                            {
+                                /* Check ledger database. */
+                                if(!cacheInventory.Has(hashTx) && !LLD::Client->HasTx(hashTx, TAO::Ledger::FLAGS::MEMPOOL))
+                                {
+                                    /* Debug output. */
+                                    debug::log(3, NODE, "ACTION::NOTIFY: MERKLE TRANSACTION ", hashTx.SubString());
+
+                                    /* Add legacy flag if necessary */
+                                    if(fLegacy)
+                                        ssResponse << uint8_t(SPECIFIER::LEGACY);
+
+                                    ssResponse << uint8_t(TYPES::MERKLE) << hashTx;
+                                }
+
+                                break;
+                            }
 
                             /* Check for legacy. */
                             if(fLegacy)
@@ -1545,7 +2222,7 @@ namespace LLP
                                 if(!cacheInventory.Has(hashTx) && !LLD::Legacy->HasTx(hashTx, TAO::Ledger::FLAGS::MEMPOOL))
                                 {
                                     /* Debug output. */
-                                    debug::log(3, NODE, "ACTION::NOTIFY: LEGACY TRANSACTION ", hashTx.SubString()); //TODO: fix chatty relays
+                                    debug::log(3, NODE, "ACTION::NOTIFY: LEGACY TRANSACTION ", hashTx.SubString());
 
                                     ssResponse << uint8_t(SPECIFIER::LEGACY) << uint8_t(TYPES::TRANSACTION) << hashTx;
                                 }
@@ -1653,7 +2330,7 @@ namespace LLP
                                             if(nElapsed == 0)
                                                 nElapsed = 1;
 
-                                            double dRate = nBlocks / nElapsed ;
+                                            double dRate = nBlocks / nElapsed;
 
                                             /* Log that sync is complete. */
                                             debug::log(0, NODE, "ACTION::NOTIFY: Synchronization COMPLETE at ", hashBestChain.SubString());
@@ -1664,7 +2341,7 @@ namespace LLP
                                         {
                                             /* Ask for list of blocks. */
                                             PushMessage(ACTION::LIST,
-                                                uint8_t(SPECIFIER::SYNC),
+                                                config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::SYNC),
                                                 uint8_t(TYPES::BLOCK),
                                                 uint8_t(TYPES::UINT1024_T),
                                                 hashLast,
@@ -1872,6 +2549,10 @@ namespace LLP
                     /* Handle for a legacy transaction. */
                     case SPECIFIER::LEGACY:
                     {
+                        /* Check for client mode since this method should never be called except by a client. */
+                        if(config::fClient.load())
+                            return debug::drop(NODE, "TYPES::BLOCK::LEGACY: disabled in -client mode");
+
                         /* Get the block from the stream. */
                         Legacy::LegacyBlock block;
                         ssPacket >> block;
@@ -1887,7 +2568,7 @@ namespace LLP
                             /* Ask for list of blocks. */
                             PushMessage(ACTION::LIST,
                                 #ifndef DEBUG_MISSING
-                                uint8_t(SPECIFIER::TRANSACTIONS),
+                                (config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::TRANSACTIONS)),
                                 #endif
                                 uint8_t(TYPES::BLOCK),
                                 uint8_t(TYPES::LOCATOR),
@@ -1902,6 +2583,10 @@ namespace LLP
                     /* Handle for a tritium transaction. */
                     case SPECIFIER::TRITIUM:
                     {
+                        /* Check for client mode since this method should never be called except by a client. */
+                        if(config::fClient.load())
+                            return debug::drop(NODE, "TYPES::BLOCK::TRITIUM: disabled in -client mode");
+
                         /* Get the block from the stream. */
                         TAO::Ledger::TritiumBlock block;
                         ssPacket >> block;
@@ -1957,7 +2642,7 @@ namespace LLP
                             /* Ask for list of blocks. */
                             PushMessage(ACTION::LIST,
                                 #ifndef DEBUG_MISSING
-                                uint8_t(SPECIFIER::TRANSACTIONS),
+                                (config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::TRANSACTIONS)),
                                 #endif
                                 uint8_t(TYPES::BLOCK),
                                 uint8_t(TYPES::LOCATOR),
@@ -1972,6 +2657,10 @@ namespace LLP
                     /* Handle for a tritium transaction. */
                     case SPECIFIER::SYNC:
                     {
+                        /* Check for client mode since this method should never be called except by a client. */
+                        if(config::fClient.load())
+                            return debug::drop(NODE, "TYPES::BLOCK::SYNC: disabled in -client mode");
+
                         /* Check if this is an unsolicited sync block. */
                         //if(nCurrentSession != TAO::Ledger::nSyncSession)
                         //    return debug::drop(FUNCTION, "unsolicted sync block");
@@ -2005,6 +2694,40 @@ namespace LLP
                             /* Process the block. */
                             TAO::Ledger::Process(legacy, nStatus);
                         }
+
+                        break;
+                    }
+
+
+                    /* Handle for a tritium transaction. */
+                    case SPECIFIER::CLIENT:
+                    {
+                        /* Get the block from the stream. */
+                        TAO::Ledger::ClientBlock block;
+                        ssPacket >> block;
+
+                        /* Process the block. */
+                        TAO::Ledger::Process(block, nStatus);
+
+                        /* Check for duplicate and ask for previous block. */
+                        if(!(nStatus & TAO::Ledger::PROCESS::DUPLICATE)
+                        && !(nStatus & TAO::Ledger::PROCESS::IGNORED)
+                        &&  (nStatus & TAO::Ledger::PROCESS::ORPHAN))
+                        {
+                            /* Ask for list of blocks. */
+                            PushMessage(ACTION::LIST,
+                                uint8_t(SPECIFIER::CLIENT),
+                                uint8_t(TYPES::BLOCK),
+                                uint8_t(TYPES::LOCATOR),
+                                TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
+                                uint1024_t(block.hashPrevBlock)
+                            );
+                        }
+
+                        break;
+
+                        /* Log received. */
+                        debug::log(3, FUNCTION, "received client block ", block.GetHash().SubString(), " height = ", block.nHeight);
 
                         break;
                     }
@@ -2122,11 +2845,18 @@ namespace LLP
                         if(TAO::Ledger::mempool.Accept(tx, this))
                         {
                             /* Relay the transaction notification. */
+                            uint512_t hashTx = tx.GetHash();
                             TRITIUM_SERVER->Relay
                             (
+                                /* Standard transaction relay. */
                                 ACTION::NOTIFY,
                                 uint8_t(TYPES::TRANSACTION),
-                                tx.GetHash()
+                                hashTx,
+
+                                /* Handle sigchain related notifications. */
+                                uint8_t(TYPES::SIGCHAIN),
+                                tx.hashGenesis,
+                                hashTx
                             );
 
                             /* Reset consecutive failures. */
@@ -2152,6 +2882,320 @@ namespace LLP
                 /* Check for orphan limit on node. */
                 if(nConsecutiveOrphans >= 1000)
                     return debug::drop(NODE, "TX::node reached ORPHAN limit");
+
+                break;
+            }
+
+
+            /* Handle incoming merkle transaction. */
+            case TYPES::MERKLE:
+            {
+                /* Check for subscription. */
+                if(!config::fClient.load())
+                    return debug::drop(NODE, "TYPES::MERKLE: unavailable when not in -client mode");
+
+                //if(!(nSubscriptions & SUBSCRIPTION::SIGCHAIN))
+                //    return debug::drop(NODE, "TYPES::MERKLE: unsolicited data");
+
+                /* Get the specifier. */
+                uint8_t nSpecifier = 0;
+                ssPacket >> nSpecifier;
+
+                /* Switch based on type. */
+                switch(nSpecifier)
+                {
+                    /* Handle for a legacy transaction. */
+                    case SPECIFIER::LEGACY:
+                    {
+                        /* Get the transction from the stream. */
+                        Legacy::MerkleTx tx;
+                        ssPacket >> tx;
+
+                        /* Check if we have this transaction already. */
+                        if(!LLD::Client->HasTx(tx.GetHash()))
+                        {
+                            /* Grab the block to check merkle path. */
+                            TAO::Ledger::ClientBlock block;
+                            if(LLD::Client->ReadBlock(tx.hashBlock, block))
+                            {
+                                /* Cache the txid. */
+                                uint512_t hashTx = tx.GetHash();
+
+                                /* Check the merkle branch. */
+                                if(!tx.CheckMerkleBranch(block.hashMerkleRoot))
+                                    return debug::error(FUNCTION, "merkle transaction has invalid path");
+
+                                /* Commit transaction to disk. */
+                                LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK);
+                                if(!LLD::Client->WriteTx(hashTx, tx))
+                                {
+                                    LLD::TxnAbort(TAO::Ledger::FLAGS::BLOCK);
+                                    return debug::error(FUNCTION, "failed to write transaction");
+                                }
+
+                                /* Index the transaction to it's block. */
+                                if(!LLD::Client->IndexBlock(hashTx, tx.hashBlock))
+                                {
+                                    LLD::TxnAbort(TAO::Ledger::FLAGS::BLOCK);
+                                    return debug::error(FUNCTION, "failed to write block indexing entry");
+                                }
+
+                                /* UTXO to Sig Chain support - The only reason we would be receiving a legacy transaction in client
+                                   mode is if we are being sent a legacy event.  The event would normally be written to the DB in 
+                                   Transaction::Connect, but we cannot connect legacy transactions in client mode as we will not 
+                                   have all of the inputs.  Therefore, we need to check the outputs to see if any of them
+                                   are to a register address we know about and, if so, write an event for the account holder */
+                                for(const auto txout : tx.vout )
+                                {
+                                    uint256_t hashTo;
+                                    if(Legacy::ExtractRegister(txout.scriptPubKey, hashTo))
+                                    {
+                                        /* Read the owner of register. (check this for MEMPOOL, too) */
+                                        TAO::Register::State state;
+                                        if(!LLD::Register->ReadState(hashTo, state))
+                                            return debug::error(FUNCTION, "failed to read register to");
+
+                                        /* Commit an event for receiving sigchain in the legay DB. */
+                                        if(!LLD::Legacy->WriteEvent(state.hashOwner, hashTx))
+                                            return debug::error(FUNCTION, "failed to write event for account ", state.hashOwner.SubString());
+                                    }
+                                }
+
+                                /* Flush to disk and clear mempool. */
+                                LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
+                                TAO::Ledger::mempool.Remove(hashTx);
+
+                                tx.print();
+
+                                debug::log(0, hashTx.SubString(), " ACCEPTED");
+                            }
+                        }
+
+                        break;
+                    }
+
+                    /* Handle for a tritium transaction. */
+                    case SPECIFIER::TRITIUM:
+                    {
+                        /* Get the transction from the stream. */
+                        TAO::Ledger::MerkleTx tx;
+                        ssPacket >> tx;
+
+                        /* Cache the txid. */
+                        uint512_t hashTx = tx.GetHash();
+
+                        /* Check if we have this transaction already. */
+                        if(!LLD::Client->HasTx(hashTx))
+                        {
+                            /* Check for empty merkle tx. */
+                            if(tx.hashBlock != 0)
+                            {
+                                /* Grab the block to check merkle path. */
+                                TAO::Ledger::ClientBlock block;
+                                if(LLD::Client->ReadBlock(tx.hashBlock, block))
+                                {
+                                    /* Check the merkle branch. */
+                                    if(!tx.CheckMerkleBranch(block.hashMerkleRoot))
+                                        return debug::error(FUNCTION, "merkle transaction has invalid path");
+
+                                    tx.print();
+
+                                    /* Commit transaction to disk. */
+                                    LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK);
+                                    if(!LLD::Client->WriteTx(hashTx, tx))
+                                    {
+                                        LLD::TxnAbort(TAO::Ledger::FLAGS::BLOCK);
+                                        return debug::error(FUNCTION, "failed to write transaction");
+                                    }
+
+                                    /* Index the transaction to it's block. */
+                                    if(!LLD::Client->IndexBlock(hashTx, tx.hashBlock))
+                                    {
+                                        LLD::TxnAbort(TAO::Ledger::FLAGS::BLOCK);
+                                        return debug::error(FUNCTION, "failed to write block indexing entry");
+                                    }
+
+                                    /* Connect transaction in memory. */
+                                    if(!tx.Connect(TAO::Ledger::FLAGS::BLOCK))
+                                    {
+                                        LLD::TxnAbort(TAO::Ledger::FLAGS::BLOCK);
+                                        return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
+                                    }
+
+                                    /* Flush to disk and clear mempool. */
+                                    LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
+                                    TAO::Ledger::mempool.Remove(hashTx);
+
+                                    debug::log(0, hashTx.SubString(), " ACCEPTED");
+                                }
+                                else
+                                {
+                                    debug::error(0, hashTx.SubString(), "REJECTED: missing block ", tx.hashBlock.SubString());
+                                }
+                            }
+                            else
+                            {
+                                TAO::Ledger::mempool.Accept(tx, this);
+                            }
+
+                        }
+
+                        break;
+                    }
+
+                    /* Default catch all. */
+                    default:
+                        return debug::drop(NODE, "invalid type specifier for TYPES::MERKLE");
+                }
+
+                break;
+            }
+
+
+            /* Handle an event trigger. */
+            case TYPES::TRIGGER:
+            {
+                /* De-serialize the trigger nonce. */
+                ssPacket >> nTriggerNonce;
+
+                break;
+            }
+
+
+            /* Handle an event trigger. */
+            case RESPONSE::COMPLETED:
+            {
+                /* De-serialize the trigger nonce. */
+                uint64_t nNonce = 0;
+                ssPacket >> nNonce;
+                
+                TriggerEvent(INCOMING.MESSAGE, nNonce);
+                
+                break;
+            }
+
+            case RESPONSE::VALIDATED:
+            {
+                /* deserialize the type */
+                uint8_t nType;
+                ssPacket >> nType;
+
+                /* De-serialize the trigger nonce. */
+                uint64_t nNonce = 0;
+                ssPacket >> nNonce;
+
+                switch(nType)
+                {
+                    case TYPES::TRANSACTION:
+                    {
+                        /* get the valid flag */
+                        bool fValid = false;
+                        ssPacket >> fValid;
+
+                        /* deserialize the transaction hash */
+                        uint512_t hashTx;
+                        ssPacket >> hashTx;
+
+                        if(fValid)
+                        {
+                            /* Trigger event with this nonce. */
+                            TriggerEvent(INCOMING.MESSAGE, nNonce, fValid, hashTx);  
+                        }
+                        else
+                        { 
+                            /* deserialize the contract ID */
+                            uint32_t nContract;
+                            ssPacket >> nContract;
+
+                            /* Trigger active events with this nonce. */
+                            TriggerEvent(INCOMING.MESSAGE, nNonce, fValid, hashTx, nContract);
+                        }
+
+                        break;
+                    }
+                    default:
+                    {
+                        /* Trigger active events with this nonce. */
+                        TriggerEvent(INCOMING.MESSAGE, nNonce);
+                    }
+                }
+
+                break;
+            }
+
+            case ACTION::VALIDATE:
+            {
+                /* deserialize the type */
+                uint8_t nType;
+                ssPacket >> nType;
+
+                switch(nType)
+                {
+                    case TYPES::TRANSACTION:
+                    {
+                        /* deserialize the transaction */
+                        TAO::Ledger::Transaction tx;
+                        ssPacket >> tx;
+
+                        /* Validating a transaction simply sanitizes the contracts within it.  If any of them fail then we stop 
+                           sanitizing and return the contract ID that failed */
+                        bool fSanitized = false;
+                        
+                        /* Temporary map for pre-states to be passed into the sanitization Build() for each contract. */
+                        std::map<uint256_t, TAO::Register::State> mapStates;
+
+                        /* Loop through each contract in the transaction. */
+                        for(uint32_t nContract = 0; nContract < tx.Size(); ++nContract)
+                        {   
+                            /* Get the contract. */
+                            TAO::Operation::Contract& contract = tx[nContract];
+
+                            /* Lock the mempool at this point so that we can see if the transaction would be accepted into the mempool */
+                            RLOCK(TAO::Ledger::mempool.MUTEX);
+
+                            try
+                            {
+                                /* Start a ACID transaction (to be disposed). */
+                                LLD::TxnBegin(TAO::Ledger::FLAGS::MEMPOOL);
+
+                                fSanitized = TAO::Register::Build(contract, mapStates, TAO::Ledger::FLAGS::MEMPOOL)
+                                            && TAO::Operation::Execute(contract, TAO::Ledger::FLAGS::MEMPOOL);
+
+                                /* Abort the mempool ACID transaction once the contract is sanitized */
+                                LLD::TxnAbort(TAO::Ledger::FLAGS::MEMPOOL);
+
+                            }
+                            catch(const std::exception& e)
+                            {
+                                /* Abort the mempool ACID transaction */
+                                LLD::TxnAbort(TAO::Ledger::FLAGS::MEMPOOL);
+
+                                /* Log the error and attempt to continue processing */
+                                debug::error(FUNCTION, e.what());
+
+                                fSanitized = false;
+                            }
+
+                            /* If this contract failed, then respond with the failed contract ID */
+                            if(!fSanitized)
+                            {
+                                PushMessage(RESPONSE::VALIDATED, uint8_t(TYPES::TRANSACTION), nTriggerNonce, false, tx.GetHash(), nContract);
+
+                                /* Stop processing any more contracts  */
+                                break;
+                            }
+                        }
+
+                        /* If none failed then send a validated response */
+                        PushMessage(RESPONSE::VALIDATED, uint8_t(TYPES::TRANSACTION), nTriggerNonce, true, tx.GetHash());
+
+                        break;
+                    }
+                    default:
+                    {
+                        return debug::drop(NODE, "ACTION::VALIDATE invalidate type specified");
+                    }
+                }
 
                 break;
             }
@@ -2187,7 +3231,7 @@ namespace LLP
                     DataStream ssHeader(BYTES, SER_NETWORK, MIN_PROTO_VERSION);
                     ssHeader >> INCOMING;
 
-                    Event(EVENT_HEADER);
+                    Event(EVENTS::HEADER);
                 }
             }
 
@@ -2202,7 +3246,7 @@ namespace LLP
                 if(Read(DATA, DATA.size()) == DATA.size())
                 {
                     INCOMING.DATA.insert(INCOMING.DATA.end(), DATA.begin(), DATA.end());
-                    Event(EVENT_PACKET, static_cast<uint32_t>(DATA.size()));
+                    Event(EVENTS::PACKET, static_cast<uint32_t>(DATA.size()));
                 }
             }
         }
@@ -2409,11 +3453,34 @@ namespace LLP
             }
         }
 
+
+        /* Check for sigchain. */
+        if(nFlags & SUBSCRIPTION::SIGCHAIN)
+        {
+            /* Build the message. */
+            ssMessage << uint8_t(TYPES::SIGCHAIN);
+
+            /* Check for subscription. */
+            if(fSubscribe)
+            {
+                /* Set the flag. */
+                nSubscriptions |=  SUBSCRIPTION::SIGCHAIN;
+
+                /* Debug output. */
+                debug::log(3, NODE, "SUBSCRIBING TO SIGCHAIN ", std::bitset<16>(nSubscriptions));
+            }
+            else
+            {
+                /* Debug output. */
+                debug::log(3, NODE, "UNSUBSCRIBING FROM SIGCHAIN ", std::bitset<16>(nSubscriptions));
+            }
+        }
+
         /* Write the subscription packet. */
         WritePacket(NewMessage((fSubscribe ? ACTION::SUBSCRIBE : ACTION::UNSUBSCRIBE), ssMessage));
     }
 
-    /*  Builds an Auth message for this node.*/
+    /* Builds an Auth message for this node.*/
     DataStream TritiumNode::GetAuth(bool fAuth)
     {
         /* Build auth message. */
@@ -2423,29 +3490,27 @@ namespace LLP
         if(TAO::API::users->LoggedIn() && !TAO::API::users->GetAuthKey().IsNull())
         {
             /* The genesis of the currently logged in user */
-            uint256_t hashGenesis = TAO::API::users->GetGenesis(0);
-
-            /* The current timestamp */
+            uint256_t hashSigchain = TAO::API::users->GetGenesis(0);
             uint64_t nTimestamp = runtime::unifiedtimestamp();
 
             /* Add the basic auth data to the message */
-            ssMessage << hashGenesis <<  nTimestamp << SESSION_ID;
+            ssMessage << hashSigchain <<  nTimestamp << SESSION_ID;
+
+            /* Get a hash of the data. */
+            uint256_t hashCheck = LLC::SK256(ssMessage.begin(), ssMessage.end());
 
             /* The public key for the "network" key*/
             std::vector<uint8_t> vchPubKey;
-
-            /* The signature data for this message */
             std::vector<uint8_t> vchSig;
 
             /* Generate the public key and signature for the message data */
-            TAO::API::users->GetAccount(0)->Sign("network", ssMessage.Bytes(), TAO::API::users->GetAuthKey()->DATA, vchPubKey, vchSig);
+            TAO::API::users->GetAccount(0)->Sign("network", hashCheck.GetBytes(), TAO::API::users->GetAuthKey()->DATA, vchPubKey, vchSig);
 
             /* Add the public key to the message */
             ssMessage << vchPubKey;
-
-            /* Finally add the signature to the message */
             ssMessage << vchSig;
 
+            debug::log(0, FUNCTION, "SIGNING MESSAGE: ", hashSigchain.SubString(), " at timestamp ", nTimestamp);
         }
 
         return ssMessage;
@@ -2461,7 +3526,6 @@ namespace LLP
         /* Check whether it is valid before sending it */
         if(ssMessage.size() > 0)
             WritePacket(NewMessage((fAuth ? ACTION::AUTH : ACTION::DEAUTH), ssMessage));
-
     }
 
 
@@ -2639,6 +3703,38 @@ namespace LLP
                     break;
                 }
 
+
+                /* Check for sigchain subscription. */
+                case TYPES::SIGCHAIN:
+                {
+                    /* Get the index. */
+                    uint256_t hashSigchain = 0;
+                    ssData >> hashSigchain;
+
+                    /* Get the txid. */
+                    uint512_t hashTx = 0;
+                    ssData >> hashTx;
+
+                    /* Check subscription. */
+                    if(nNotifications & SUBSCRIPTION::SIGCHAIN)
+                    {
+                        /* Check for matching sigchain-id. */
+                        if(hashSigchain != hashGenesis)
+                            break;
+
+                        /* Check for legacy. */
+                        if(fLegacy)
+                            ssRelay << uint8_t(SPECIFIER::LEGACY);
+
+                        /* Write transaction to stream. */
+                        ssRelay << uint8_t(TYPES::SIGCHAIN);
+                        ssRelay << hashSigchain;
+                        ssRelay << hashTx;
+                    }
+
+                    break;
+                }
+
                 /* Default catch (relay up to this point) */
                 default:
                 {
@@ -2708,7 +3804,7 @@ namespace LLP
                 /* Subscribe to this node. */
                 pnode->Subscribe(SUBSCRIPTION::LASTINDEX | SUBSCRIPTION::BESTCHAIN | SUBSCRIPTION::BESTHEIGHT);
                 pnode->PushMessage(ACTION::LIST,
-                    uint8_t(SPECIFIER::SYNC),
+                    config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::SYNC),
                     uint8_t(TYPES::BLOCK),
                     uint8_t(TYPES::LOCATOR),
                     TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),

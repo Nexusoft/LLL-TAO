@@ -17,8 +17,11 @@ ________________________________________________________________________________
 
 #include <LLP/include/global.h>
 #include <LLP/types/tritium.h>
+#include <LLP/templates/trigger.h>
 
 #include <TAO/API/types/users.h>
+
+#include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/enum.h>
@@ -86,6 +89,51 @@ namespace TAO
 
             /* Get the genesis ID. */
             uint256_t hashGenesis = user->Genesis();
+
+            /* Check for -client mode. */
+            if(config::fClient.load())
+            {
+                /* If not using multiuser then check to see whether another user is already logged in */
+                if(mapSessions.count(0) && mapSessions[0]->Genesis() != hashGenesis)
+                {
+                    user.free();
+                    throw APIException(-140, "CLIENT MODE: Already logged in with a different username.");
+                }
+                else if(mapSessions.count(0))
+                {
+                    json::json ret;
+                    ret["genesis"] = hashGenesis.ToString();
+
+                    return ret;
+                }
+
+                /* Check for genesis. */
+                if(LLP::TRITIUM_SERVER)
+                {
+                    memory::atomic_ptr<LLP::TritiumNode>& pNode = LLP::TRITIUM_SERVER->GetConnection();
+                    if(pNode != nullptr)
+                    {
+                        debug::log(1, FUNCTION, "CLIENT MODE: Synchronizing client");
+
+                        /* Get the last txid in sigchain. */
+                        uint512_t hashLast;
+                        LLD::Ledger->ReadLast(hashGenesis, hashLast); //NOTE: we don't care if it fails here, because zero means begin
+
+                        /* Request the sig chain. */
+                        debug::log(1, FUNCTION, "CLIENT MODE: Requesting LIST::SIGCHAIN for ", hashGenesis.SubString());
+
+                        LLP::TritiumNode::BlockingMessage(30000, pNode, LLP::ACTION::LIST, uint8_t(LLP::TYPES::SIGCHAIN), hashGenesis, hashLast);
+
+                        debug::log(1, FUNCTION, "CLIENT MODE: LIST::SIGCHAIN received for ", hashGenesis.SubString());
+
+                        /* Grab list of notifications. */
+                        pNode->PushMessage(LLP::ACTION::LIST, uint8_t(LLP::TYPES::NOTIFICATION), hashGenesis);
+                        pNode->PushMessage(LLP::ACTION::LIST, uint8_t(LLP::SPECIFIER::LEGACY), uint8_t(LLP::TYPES::NOTIFICATION), hashGenesis);
+                    }
+                    else
+                        debug::error(FUNCTION, "no connections available...");
+                }
+            }
 
             /* Check for duplicates in ledger db. */
             TAO::Ledger::Transaction txPrev;
@@ -195,7 +243,7 @@ namespace TAO
 
                 /* Check whether it is valid before relaying it to all peers */
                 if(ssMessage.size() > 0)
-                    LLP::TRITIUM_SERVER->Relay(uint8_t(LLP::ACTION::AUTH), ssMessage.Bytes());
+                    LLP::TRITIUM_SERVER->_Relay(uint8_t(LLP::ACTION::AUTH), ssMessage);
             }
 
             return ret;

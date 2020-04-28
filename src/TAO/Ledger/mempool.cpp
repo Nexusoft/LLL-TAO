@@ -90,7 +90,7 @@ namespace TAO
 
             /* Check for transaction on disk. */
             if(LLD::Ledger->HasTx(hashTx, FLAGS::MEMPOOL))
-                return false;
+                return false; //NOTE: this was true, but changed to false to prevent relay loops in tritium LLP
 
             debug::log(3, "ACCEPT --------------------------------------");
             if(config::nVerbose >= 3)

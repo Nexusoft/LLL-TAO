@@ -68,7 +68,7 @@ namespace LLP
                 if(Read(BYTES, 4) == 4)
                 {
                     INCOMING.SetLength(BYTES);
-                    Event(EVENT_HEADER);
+                    Event(EVENTS::HEADER);
                 }
             }
 
@@ -83,7 +83,7 @@ namespace LLP
                 if(Read(DATA, DATA.size()) == DATA.size())
                 {
                     INCOMING.DATA.insert(INCOMING.DATA.end(), DATA.begin(), DATA.end());
-                    Event(EVENT_PACKET, static_cast<uint32_t>(DATA.size()));
+                    Event(EVENTS::PACKET, static_cast<uint32_t>(DATA.size()));
                 }
             }
         }

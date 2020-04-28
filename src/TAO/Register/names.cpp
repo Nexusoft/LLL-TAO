@@ -15,6 +15,8 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <LLP/include/global.h>
+
 #include <TAO/Register/include/names.h>
 #include <TAO/Register/types/address.h>
 
@@ -37,7 +39,7 @@ namespace TAO
             Address hashAddress = Address(strName, hashNamespace, Address::NAME);
 
             /* Read the Name Object */
-            if(!LLD::Register->ReadState(hashAddress, nameRegister, TAO::Ledger::FLAGS::MEMPOOL))
+            if(!LLD::Register->ReadState(hashAddress, nameRegister, TAO::Ledger::FLAGS::LOOKUP))
                 return false; /* Don't log an error if it is not in the DB as the caller might have provided an invalid name */
 
             /* Check that the name object is proper type. */
@@ -63,7 +65,7 @@ namespace TAO
             uint256_t hashAddress  = Address(strNamespace, Address::NAMESPACE);
 
             /* Read the Name Object */
-            if(!LLD::Register->ReadState(hashAddress, namespaceRegister, TAO::Ledger::FLAGS::MEMPOOL))
+            if(!LLD::Register->ReadState(hashAddress, namespaceRegister, TAO::Ledger::FLAGS::LOOKUP))
                 return debug::error(FUNCTION, "Namespace register not found: ", strNamespace);
 
             /* Check that the name object is proper type. */

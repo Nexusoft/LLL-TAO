@@ -67,6 +67,13 @@ namespace TAO
                 return false;
             }
 
+            /* Disable stake minter in client mode. */
+            if(config::fClient.load())
+            {
+                debug::log(0, FUNCTION, "Stake minter disabled in client mode.");
+                return false;
+            }
+
             /* Check that stake minter is configured to run.
              * Either -stake or -staking argument are supported, with -stake (legacy setting) deprecated
              */

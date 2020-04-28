@@ -22,6 +22,7 @@ namespace LLD
     RegisterDB*   Register;
     LedgerDB*     Ledger;
     LocalDB*      Local;
+    ClientDB*     Client;
 
     /* For Legacy LLD objects. */
     TrustDB*      Trust;
@@ -41,30 +42,42 @@ namespace LLD
         uint32_t nRegisterCacheSize = config::GetArg("-registercache", 2);
         Register = new RegisterDB(
                         FLAGS::CREATE | FLAGS::FORCE,
-                        77773, 
+                        77773,
                         nRegisterCacheSize * 1024 * 1024);
 
         /* Create the ledger database instance. */
         uint32_t nLedgerCacheSize = config::GetArg("-ledgercache", 2);
         Ledger    = new LedgerDB(
                         FLAGS::CREATE | FLAGS::FORCE,
-                        256 * 256 * 64,
+                        config::fClient.load() ? 77773 : (256 * 256 * 64),
                         nLedgerCacheSize * 1024 * 1024);
+
 
         /* Create the legacy database instance. */
         uint32_t nLegacyCacheSize = config::GetArg("-legacycache", 1);
         Legacy = new LegacyDB(
                         FLAGS::CREATE | FLAGS::FORCE,
-                        256 * 256 * 64,
+                        config::fClient.load() ? 77773 : 256 * 256 * 64,
                         nLegacyCacheSize * 1024 * 1024);
+
 
         /* Create the trust database instance. */
         Trust  = new TrustDB(
                         FLAGS::CREATE | FLAGS::FORCE);
 
+
         /* Create the local database instance. */
         Local    = new LocalDB(
                         FLAGS::CREATE | FLAGS::FORCE);
+        
+
+        if(config::fClient.load())
+        {
+            /* Create new client database if enabled. */
+            Client    = new ClientDB(
+                            FLAGS::CREATE | FLAGS::FORCE,
+                            77773);
+        }
 
         /* Handle database recovery mode. */
         TxnRecovery();
@@ -107,6 +120,14 @@ namespace LLD
         }
 
 
+        /* Cleanup the client database. */
+        if(Client)
+        {
+            debug::log(2, FUNCTION, "Shutting down ClientDB");
+            delete Client;
+        }
+
+
         /* Cleanup the legacy database. */
         if(Legacy)
         {
@@ -146,6 +167,10 @@ namespace LLD
         if(Local && !Local->TxnRecovery())
             fRecovery = false;
 
+        /* Check the client DB journal. */
+        if(Client && !Client->TxnRecovery())
+            fRecovery = false;
+
         /* Check the ledger DB journal. */
         if(Trust && !Trust->TxnRecovery())
             fRecovery = false;
@@ -174,6 +199,10 @@ namespace LLD
             /* Commit the local DB transaction. */
             if(Local)
                 Local->TxnCommit();
+
+            /* Commit the client DB transaction. */
+            if(Client)
+                Client->TxnCommit();
 
             /* Commit the trust DB transaction. */
             if(Trust)
@@ -224,6 +253,10 @@ namespace LLD
         if(Local)
             Local->TxnBegin();
 
+        /* Start the client DB transaction. */
+        if(Client)
+            Client->TxnBegin();
+
         /* Start the trust DB transaction. */
         if(Trust)
             Trust->TxnBegin();
@@ -268,6 +301,10 @@ namespace LLD
         /* Abort the local DB transaction. */
         if(Local)
             Local->TxnRelease();
+
+        /* Abort the client DB transaction. */
+        if(Client)
+            Client->TxnRelease();
 
         /* Abort the trust DB transaction. */
         if(Trust)
@@ -314,6 +351,10 @@ namespace LLD
         if(Local)
             Local->TxnCheckpoint();
 
+        /* Set a checkpoint for client DB. */
+        if(Client)
+            Client->TxnCheckpoint();
+
         /* Set a checkpoint for trust DB. */
         if(Trust)
             Trust->TxnCheckpoint();
@@ -339,6 +380,10 @@ namespace LLD
         if(Local)
             Local->TxnCommit();
 
+        /* Commit the client DB transaction. */
+        if(Client)
+            Client->TxnCommit();
+
         /* Commit the trust DB transaction. */
         if(Trust)
             Trust->TxnCommit();
@@ -363,6 +408,10 @@ namespace LLD
         /* Abort the local DB transaction. */
         if(Local)
             Local->TxnRelease();
+
+        /* Abort the client DB transaction. */
+        if(Client)
+            Client->TxnRelease();
 
         /* Abort the trust DB transaction. */
         if(Trust)

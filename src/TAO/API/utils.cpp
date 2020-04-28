@@ -100,7 +100,7 @@ namespace TAO
                     {
 
                         TAO::Register::Object token;
-                        if(!LLD::Register->ReadState(nIdentifier, token, TAO::Ledger::FLAGS::MEMPOOL))
+                        if(!LLD::Register->ReadState(nIdentifier, token, TAO::Ledger::FLAGS::LOOKUP))
                             throw APIException(-125, "Token not found");
 
                         /* Parse the object register. */
@@ -285,7 +285,11 @@ namespace TAO
                                 if(newOwner.hashOwner == hashGenesis)
                                     break;
                             }
-                            else
+                            /* We need to retrieve the object so we can see whether it has been claimed or not.  If it has not been
+                               claimed then we ignore the transfer operation and still show it as ours.  However we need to skip 
+                               this check in light mode because we will not have the register state available in order to determine
+                               if it has been claimed or not */
+                            else if(!config::fClient.load())
                             {
                                 /* Retrieve the object so we can see whether it has been claimed or not */
                                 TAO::Register::Object object;
@@ -295,6 +299,18 @@ namespace TAO
                                 /* If we are transferring to someone else but it has not yet been claimed then we ignore the
                                    transfer and still show it as ours */
                                 if(object.hashOwner.GetType() == TAO::Ledger::GENESIS::SYSTEM)
+                                {
+                                    /* Ensure it is the caller that made the most recent transfer */
+                                    uint256_t hashPrevOwner = hashGenesis;; 
+                                    
+                                    /* Set the SYSTEM byte so that we can compare the prev owner */
+                                    hashPrevOwner.SetType(TAO::Ledger::GENESIS::SYSTEM);
+                                    
+                                    /* If we transferred it  */
+                                    if(object.hashOwner == hashPrevOwner)
+                                        break;
+
+                                }
                                     break;
                             }
 
@@ -632,6 +648,11 @@ namespace TAO
                     else
                         continue;
 
+                    /* Check that this notification hasn't been suppressed */
+                    uint64_t nTimeout = 0;
+                    if(LLD::Local->ReadSuppressNotification(tx.GetHash(), nContract, nTimeout) && nTimeout > runtime::unifiedtimestamp())
+                        continue;
+
                     /* Get the amount */
                     uint64_t nAmount = 0;
                     TAO::Register::Unpack(tx[nContract], nAmount);
@@ -681,6 +702,11 @@ namespace TAO
                     uint64_t nAmount = 0;
                     refContract >> nAmount;
 
+                    /* Check that this notification hasn't been suppressed */
+                    uint64_t nTimeout = 0;
+                    if(LLD::Local->ReadSuppressNotification(refContract.Hash(), std::get<1>(contract), nTimeout) && nTimeout > runtime::unifiedtimestamp())
+                        continue;
+
                     /* Add this to the pending amount */
                     nPending += nAmount;
                 }
@@ -699,6 +725,11 @@ namespace TAO
                 {
                     /* Get a reference to the contract */
                     const TAO::Operation::Contract& refContract = std::get<0>(contract);
+
+                    /* Check that this notification hasn't been suppressed */
+                    uint64_t nTimeout = 0;
+                    if(LLD::Local->ReadSuppressNotification(refContract.Hash(), std::get<1>(contract), nTimeout) && nTimeout > runtime::unifiedtimestamp())
+                        continue;
 
                     /* Reset the contract operation stream. */
                     refContract.Reset();
@@ -768,7 +799,6 @@ namespace TAO
                     /* Add this to our pending balance */
                     nPending += nPartial;
                 }
-
             }
 
             return nPending;

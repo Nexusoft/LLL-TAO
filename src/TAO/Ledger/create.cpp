@@ -34,8 +34,10 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/include/process.h>
 #include <TAO/Ledger/include/timelocks.h>
+#include <TAO/Ledger/include/genesis_block.h>
 
 #include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/types/client.h>
 
 #include <TAO/Operation/include/enum.h>
 
@@ -693,63 +695,49 @@ namespace TAO
             /* Check for genesis from disk. */
             if(!LLD::Ledger->ReadBlock(hashGenesis, ChainState::stateGenesis))
             {
-                /* Build the first transaction for genesis. */
-                const char* pszTimestamp = "Silver Doctors [2-19-2014] BANKER CLEAN-UP: WE ARE AT THE PRECIPICE OF SOMETHING BIG";
+                /* Check for client mode. */
+                BlockState state;
+                if(config::fClient.load())
+                {
+                    /* Create the tritium genesis block. */
+                    if(!config::fTestNet.load())
+                        state = TritiumGenesis();
+                    else
+                        state = LegacyGenesis();
 
-                /* Main coinbase genesis. */
-                Legacy::Transaction genesis;
-                genesis.nVersion = 1;
-                genesis.nTime = 1409456199;
-                genesis.vin.resize(1);
-                genesis.vout.resize(1);
-                genesis.vin[0].scriptSig = Legacy::Script() << std::vector<uint8_t>((const uint8_t*)pszTimestamp,
-                    (const uint8_t*)pszTimestamp + strlen(pszTimestamp));
-                genesis.vout[0].SetEmpty();
 
-                /* Build the hashes to calculate the merkle root. */
-                std::vector<uint512_t> vHashes;
-                vHashes.push_back(genesis.GetHash());
+                    /* Write the block to disk. */
+                    if(!LLD::Client->WriteBlock(hashGenesis, ClientBlock(state)))
+                        return debug::error(FUNCTION, "genesis didn't commit to disk");
 
-                /* Create the genesis block. */
-                Legacy::LegacyBlock block;
-                block.vtx.push_back(genesis);
-                block.hashPrevBlock = 0;
-                block.hashMerkleRoot = block.BuildMerkleTree(vHashes);
-                block.nVersion = 1;
-                block.nHeight  = 0;
-                block.nChannel = 2;
-                block.nTime    = 1409456199;
-                block.nBits    = LLC::CBigNum(bnProofOfWorkLimit[2]).GetCompact();
-                block.nNonce   = config::fTestNet.load() ? 122999499 : 2196828850;
+                    /* Write the best chain to the database. */
+                    if(!LLD::Client->WriteBestChain(hashGenesis))
+                        return debug::error(FUNCTION, "couldn't write best chain.");
+                }
+                else
+                {
+                    /* Create the genesis block. */
+                    state = LegacyGenesis();
 
-                /* Ensure the hard coded merkle root is the same calculated merkle root. */
-                assert(block.hashMerkleRoot == uint512_t("0x8a971e1cec5455809241a3f345618a32dc8cb3583e03de27e6fe1bb4dfa210c413b7e6e15f233e938674a309df5a49db362feedbf96f93fb1c6bfeaa93bd1986"));
+                    /* Write the block to disk. */
+                    if(!LLD::Ledger->WriteBlock(hashGenesis, state))
+                        return debug::error(FUNCTION, "genesis didn't commit to disk");
 
-                /* Ensure the time of transaction is the same time as the block time. */
-                assert(genesis.nTime == block.nTime);
+                    /* Write the best chain to the database. */
+                    if(!LLD::Ledger->WriteBestChain(hashGenesis))
+                        return debug::error(FUNCTION, "couldn't write best chain.");
+                }
 
                 /* Check that the genesis hash is correct. */
-                LLC::CBigNum target;
-                target.SetCompact(block.nBits);
-                if(block.GetHash() != hashGenesis)
+                if(state.GetHash() != hashGenesis)
                     return debug::error(FUNCTION, "genesis hash does not match");
 
                 /* Set the proper chain state variables. */
-                ChainState::stateGenesis = BlockState(block);
-                ChainState::stateGenesis.nChannelHeight = 1;
-                ChainState::stateGenesis.hashCheckpoint = hashGenesis;
+                ChainState::stateGenesis = state;
 
                 /* Set the best block. */
-                ChainState::stateBest = ChainState::stateGenesis;
-
-                /* Write the block to disk. */
-                if(!LLD::Ledger->WriteBlock(hashGenesis, ChainState::stateGenesis))
-                    return debug::error(FUNCTION, "genesis didn't commit to disk");
-
-                /* Write the best chain to the database. */
                 ChainState::hashBestChain = hashGenesis;
-                if(!LLD::Ledger->WriteBestChain(hashGenesis))
-                    return debug::error(FUNCTION, "couldn't write best chain.");
+                ChainState::stateBest     = ChainState::stateGenesis;
             }
 
             return true;
@@ -881,6 +869,7 @@ namespace TAO
                     continue;
             }
         }
+
 
         /* Updates the producer timestamp, making sure it is not earlier than the previous block. */
         void UpdateProducerTimestamp(TAO::Ledger::TritiumBlock& block)

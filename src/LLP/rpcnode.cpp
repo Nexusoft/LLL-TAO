@@ -70,7 +70,7 @@ namespace LLP
     void RPCNode::Event(uint8_t EVENT, uint32_t LENGTH)
     {
         /* Log connect event */
-        if(EVENT == EVENT_CONNECT)
+        if(EVENT == EVENTS::CONNECT)
         {
             debug::log(3, NODE, fOUTGOING ? "Outgoing" : "Incoming",
                        " RPC Connected at timestamp ",   runtime::unifiedtimestamp());
@@ -80,36 +80,36 @@ namespace LLP
 
 
         /* Log disconnect event */
-        if(EVENT == EVENT_DISCONNECT)
+        if(EVENT == EVENTS::DISCONNECT)
         {
             std::string strReason = "";
             switch(LENGTH)
             {
-                case DISCONNECT_TIMEOUT:
+                case DISCONNECT::TIMEOUT:
                     strReason = "Timeout";
                     break;
 
-                case DISCONNECT_PEER:
+                case DISCONNECT::PEER:
                     strReason = "Peer disconnected";
                     break;
 
-                case DISCONNECT_ERRORS:
+                case DISCONNECT::ERRORS:
                     strReason = "Errors";
                     break;
 
-                case DISCONNECT_POLL_ERROR:
+                case DISCONNECT::POLL_ERROR:
                     strReason = "Poll Error";
                     break;
 
-                case DISCONNECT_POLL_EMPTY:
+                case DISCONNECT::POLL_EMPTY:
                     strReason = "Unavailable";
                     break;
 
-                case DISCONNECT_DDOS:
+                case DISCONNECT::DDOS:
                     strReason = "DDOS";
                     break;
 
-                case DISCONNECT_FORCE:
+                case DISCONNECT::FORCE:
                     strReason = "Forced";
                     break;
 

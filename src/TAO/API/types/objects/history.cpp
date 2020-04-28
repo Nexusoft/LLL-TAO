@@ -13,12 +13,15 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/objects.h>
 #include <TAO/API/types/names.h>
+#include <TAO/API/include/global.h>
 #include <TAO/API/include/json.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/create.h>
 #include <TAO/Operation/include/write.h>
 #include <TAO/Operation/include/append.h>
+
+#include <TAO/Ledger/types/transaction.h>
 
 #include <LLD/include/global.h>
 
@@ -85,6 +88,9 @@ namespace TAO
             /* Make adjustment to history check and detect if the register is owned by system. */
             if(hashOwner.GetType() == TAO::Ledger::GENESIS::SYSTEM)
                 hashOwner.SetType(TAO::Ledger::GenesisType());
+
+            if(config::fClient.load() && hashOwner != users->GetCallersGenesis(params))
+                throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
 
             /* Read the last hash of owner. */
             uint512_t hashLast = 0;

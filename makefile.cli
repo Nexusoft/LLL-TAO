@@ -318,6 +318,7 @@ OBJS+=  build/LLC_base_uint.o \
         build/LLD_ledger.o \
         build/LLD_legacy.o \
 		build/LLD_contract.o \
+		build/LLD_client.o \
         build/LLD_local.o \
         build/LLD_register.o \
         build/LLD_trust.o \
@@ -485,12 +486,16 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Ledger_block.o \
 		build/Ledger_chainstate.o \
 		build/Ledger_checkpoints.o \
+		build/Ledger_client.o \
 		build/Ledger_constants.o \
 		build/Ledger_create.o \
 		build/Ledger_difficulty.o \
+		build/Ledger_dispatch.o \
 		build/Ledger_genesis.o \
+		build/Ledger_genesis_block.o \
 		build/Ledger_locator.o \
 		build/Ledger_mempool.o \
+		build/Ledger_merkle.o \
 		build/Ledger_prime.o \
 		build/Ledger_process.o \
 		build/Ledger_retarget.o \

@@ -59,38 +59,7 @@ namespace LLP
     template <class ProtocolType>
     class DataThread
     {
-        /** message_args
-         *
-         *  Overload of variadic templates
-         *
-         *  @param[out] s The data stream to write to
-         *  @param[in] head The object being written
-         *
-         **/
-        template<class Head>
-        void message_args(DataStream& s, Head&& head)
-        {
-            s << std::forward<Head>(head);
-        }
-
-
-        /** message_args
-         *
-         *  Variadic template pack to handle any message size of any type.
-         *
-         *  @param[out] s The data stream to write to
-         *  @param[in] head The object being written
-         *  @param[in] tail The variadic paramters
-         *
-         **/
-        template<class Head, class... Tail>
-        void message_args(DataStream& s, Head&& head, Tail&&... tail)
-        {
-            s << std::forward<Head>(head);
-            message_args(s, std::forward<Tail>(tail)...);
-        }
-
-
+        
         /** Lock access to find slot to ensure no race conditions happend between threads. **/
         std::mutex SLOT_MUTEX;
 
@@ -176,7 +145,7 @@ namespace LLP
 
         /** DisconnectAll
          *
-         *  Disconnects all connections by issuing a DISCONNECT_FORCE event message
+         *  Disconnects all connections by issuing a DISCONNECT::FORCE event message
          *  and then removes the connection from this data thread.
          *
          **/
@@ -212,6 +181,22 @@ namespace LLP
             DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
             message_args(ssData, std::forward<Args>(args)...);
 
+            /* Push the relay message to outbound queue. */
+            RELAY->push(std::make_pair(message, ssData));
+
+            /* Wake up the flush thread. */
+            FLUSH_CONDITION.notify_all();
+        }
+
+
+        /** _Relay
+         *
+         *  Relays raw binary data to the network. Accepts only binary stream pre-serialized.
+         *
+         **/
+        template<typename MessageType>
+        void _Relay(const MessageType& message, const DataStream& ssData)
+        {
             /* Push the relay message to outbound queue. */
             RELAY->push(std::make_pair(message, ssData));
 

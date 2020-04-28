@@ -84,11 +84,10 @@ namespace TAO
                 READWRITE(nHeight);
                 READWRITE(nBits);
                 READWRITE(nNonce);
-
                 READWRITE(nTime);
                 READWRITE(vchBlockSig);
-
                 READWRITE(producer);
+
                 READWRITE(ssSystem);
                 READWRITE(vOffsets);
                 READWRITE(vtx);

@@ -130,7 +130,7 @@ namespace Legacy
         uint32_t nMaturity;
         uint32_t nDepth = GetDepthInMainChain();
 
-        
+
         TAO::Ledger::BlockState state;
 
         /* If this transaction has been included in a block then find the block so we can base the maturity calculation on it */
@@ -152,5 +152,75 @@ namespace Legacy
             return 0;
         else
             return nMaturity - nDepth;
+    }
+
+
+    /* Checks if this transaction has a valid merkle path.*/
+    bool MerkleTx::CheckMerkleBranch(const uint512_t& hashMerkleRoot) const
+    {
+        /* Generate merkle root from merkle branch. */
+        uint512_t hashMerkleCheck = TAO::Ledger::Block::CheckMerkleBranch(GetHash(), vMerkleBranch, nIndex);
+
+        return hashMerkleRoot == hashMerkleCheck;
+    }
+
+
+    /* Builds a merkle branch from block state. */
+    bool MerkleTx::BuildMerkleBranch(const TAO::Ledger::BlockState& state)
+    {
+        /* Cache this txid. */
+        uint512_t hash = GetHash();
+
+        /* Find the index of this transaction. */
+        for(nIndex = 0; nIndex < state.vtx.size(); ++nIndex)
+            if(state.vtx[nIndex].second == hash)
+                break;
+
+        /* Check for valid index. */
+        if(nIndex == state.vtx.size())
+            return debug::error(FUNCTION, "transaction not found");
+
+        /* Build merkle branch. */
+        vMerkleBranch = state.GetMerkleBranch(state.vtx, nIndex);
+
+        /* NOTE: extra expensive check for testing, consider removing in production */
+        uint512_t hashCheck = TAO::Ledger::Block::CheckMerkleBranch(hash, vMerkleBranch, nIndex);
+        if(state.hashMerkleRoot != hashCheck)
+            return debug::error(FUNCTION, "merkle root mismatch ", hashCheck.SubString());
+
+        return true;
+    }
+
+
+    /* Builds a merkle branch from block state. */
+    bool MerkleTx::BuildMerkleBranch(const uint1024_t& hashConfirmed)
+    {
+        /* Get the confirming block. */
+        TAO::Ledger::BlockState state;
+        if(!LLD::Ledger->ReadBlock(hashConfirmed, state))
+            return debug::error(FUNCTION, "no valid block to generate merkle path");
+
+        /* Set his block's hash. */
+        hashBlock     = hashConfirmed;
+
+        return BuildMerkleBranch(state);;
+    }
+
+
+    /* Builds a merkle branch without any block data. */
+    bool MerkleTx::BuildMerkleBranch()
+    {
+        /* Cache this txid. */
+        uint512_t hash = GetHash();
+
+        /* Get the confirming block. */
+        TAO::Ledger::BlockState state;
+        if(!LLD::Ledger->ReadBlock(hash, state))
+            return debug::error(FUNCTION, "no valid block to generate merkle path");
+
+        /* Set his block's hash. */
+        hashBlock = state.GetHash();
+
+        return BuildMerkleBranch(state);
     }
 }

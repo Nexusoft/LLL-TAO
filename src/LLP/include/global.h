@@ -129,7 +129,7 @@ namespace LLP
             static_cast<uint32_t>(config::GetArg(std::string("-timespan"), 20)),
 
             /* Flag to determine if server should listen. */
-            config::GetBoolArg(std::string("-listen"), true),
+            (config::fClient.load() ? false : config::GetBoolArg(std::string("-listen"), true)),
 
             /* Flag to determine if server should allow remote connections. */
             true,

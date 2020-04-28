@@ -19,6 +19,8 @@ ________________________________________________________________________________
 #include <LLP/packets/http.h>
 #include <LLP/packets/tritium.h>
 
+#include <LLP/templates/trigger.h>
+
 #include <Util/include/debug.h>
 #include <Util/include/hex.h>
 #include <Util/include/args.h>
@@ -55,6 +57,8 @@ namespace LLP
     , fEVENT          (false)
     , EVENT_MUTEX     ( )
     , EVENT_CONDITION ( )
+    , TRIGGER_MUTEX   ( )
+    , TRIGGERS        ( )
     {
         INCOMING.SetNull();
     }
@@ -75,6 +79,8 @@ namespace LLP
     , fEVENT          (false)
     , EVENT_MUTEX     ( )
     , EVENT_CONDITION ( )
+    , TRIGGER_MUTEX   ( )
+    , TRIGGERS        ( )
     {
     }
 
@@ -95,6 +101,8 @@ namespace LLP
     , fEVENT          (false)
     , EVENT_MUTEX     ( )
     , EVENT_CONDITION ( )
+    , TRIGGER_MUTEX   ( )
+    , TRIGGERS        ( )
     {
     }
 
@@ -105,6 +113,26 @@ namespace LLP
     {
         Disconnect();
         SetNull();
+    }
+
+
+    /* Adds a new event listener to this connection to fire off condition variables on specific message types.*/
+    template <class PacketType>
+    void BaseConnection<PacketType>::AddTrigger(const message_t nMsg, Trigger* TRIGGER)
+    {
+        LOCK(TRIGGER_MUTEX);
+
+        TRIGGERS[nMsg] = TRIGGER;
+    }
+
+
+    /* Release an event listener from tirggers. */
+    template <class PacketType>
+    void BaseConnection<PacketType>::Release(const message_t nMsg)
+    {
+        LOCK(TRIGGER_MUTEX);
+
+        TRIGGERS.erase(nMsg);
     }
 
 

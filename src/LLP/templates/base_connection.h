@@ -16,13 +16,13 @@ ________________________________________________________________________________
 #define NEXUS_LLP_TEMPLATES_BASE_CONNECTION_H
 
 #include <LLP/templates/socket.h>
+#include <LLP/templates/trigger.h>
+#include <LLP/include/version.h>
 
 #include <Util/include/mutex.h>
 #include <Util/templates/datastream.h>
 
 #include <vector>
-#include <condition_variable>
-
 #include <condition_variable>
 
 namespace LLP
@@ -50,7 +50,6 @@ namespace LLP
         typedef PacketType packet_t;
 
     protected:
-
 
         /** Event
          *
@@ -135,6 +134,14 @@ namespace LLP
         std::condition_variable EVENT_CONDITION;
 
 
+        /** Mutex to protect events triggers. **/
+        std::mutex TRIGGER_MUTEX;
+
+
+        /** Special foreign triggers for connection. **/
+        std::map<message_t, Trigger*> TRIGGERS;
+
+
     public:
 
 
@@ -172,6 +179,55 @@ namespace LLP
         {
             return ssData; //copy over relay like normal for all items to be relayed
         }
+
+
+        /** AddTrigger
+         *
+         *  Adds a new event listener to this connection to fire off condition variables on specific message types.
+         *
+         *  @param[in] nMsg The message type.
+         *  @param[in] EVENT_CONDITION The condition variable to set to triggers.
+         *
+         *  @return Returns a filled out tritium packet.
+         *
+         **/
+        void AddTrigger(const message_t nMsg, Trigger* TRIGGER);
+
+
+        /** PushMessage
+         *
+         *  Adds a tritium packet to the queue to write to the socket.
+         *
+         **/
+        template<typename... Args>
+        void TriggerEvent(const message_t nMsg, Args&&... args)
+        {
+            LOCK(TRIGGER_MUTEX);
+
+            /* Notify trigger if found. */
+            if(TRIGGERS.count(nMsg))
+            {
+                /* Grab the trigger and check for nullptr. */
+                Trigger* pTrigger = TRIGGERS[nMsg];
+                if(pTrigger)
+                {
+                    /* Pass back the data to the trigger. */
+                    pTrigger->SetArgs(std::forward<Args>(args)...);
+                    pTrigger->notify_all();
+                }
+            }
+        }
+
+
+        /** Release
+         *
+         *  Release an event listener from tirggers.
+         *
+         *  @param[in] nMsg The message type.
+         *
+         *
+         **/
+        void Release(const message_t nMsg);
 
 
         /** SetNull
