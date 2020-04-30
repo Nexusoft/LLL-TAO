@@ -29,6 +29,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/objects.h>
 #include <TAO/API/types/voting.h>
 #include <TAO/API/types/invoices.h>
+#include <TAO/API/types/crypto.h>
 
 namespace TAO
 {
@@ -47,6 +48,7 @@ namespace TAO
         extern DEX*         dex;
         extern Voting*      voting;
         extern Invoices*    invoices;
+        extern Crypto*      crypto;
 
 
         /** Initialize

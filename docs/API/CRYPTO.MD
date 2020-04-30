@@ -303,7 +303,7 @@ The `data` must be supplied as a base64 encoded string.  This will be decoded in
 
 `session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) should be used to decrypt the data. For single-user API mode the session should not be supplied. 
 
-`privatekey` : Optional, the private key to use to decrypt the data.  If this is provided then this will be used instead of generating the private key from the signature chain credentials.  
+`privatekey` : Optional, the private key to use to decrypt the data.  If this is provided then this will be used instead of generating the private key from the signature chain credentials. The private key should be hex encoded. 
 
 `data` : The data to decrypt. This should be passed in as a base64-encoded string
 

@@ -392,5 +392,7 @@ Error Codes
 | -255 | Cannot process notifications until peers are connected |
 | -256 | Cannot process notifications whilst synchronizing |
 | -257 | Contract failed peer validation |
+| -258 | Unknown genesis |
+| -259 | Could not read crypto object register |
 | -300 | API can only be used to lookup data for the currently logged in signature chain when running in client mode |
 
