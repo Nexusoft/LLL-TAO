@@ -394,5 +394,6 @@ Error Codes
 | -257 | Contract failed peer validation |
 | -258 | Unknown genesis |
 | -259 | Could not read crypto object register |
+| -260 | Key not found in crypto object register |
 | -300 | API can only be used to lookup data for the currently logged in signature chain when running in client mode |
 
