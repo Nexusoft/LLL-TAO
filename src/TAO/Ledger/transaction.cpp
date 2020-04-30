@@ -1319,7 +1319,7 @@ namespace TAO
             {
                 /* Bind the contract to this transaction. */
                 uint64_t nValue = 0;
-                if(contract.Primitive() == TAO::Operation::OP::FEE && contract.Value(nContractValue))
+                if(contract.Primitive() == TAO::Operation::OP::FEE && contract.Value(nValue))
                     nFee += nValue;
             }
 
