@@ -100,7 +100,7 @@ Generates a new public-private key pair and stores it in the crypto object regis
 
 ### Parameters:
 
-`name` : The name of the key to create.  If a key already exists in the crypto object register for this key name then the method will return an error
+`name` : The name of the key to create.  If a key already exists in the crypto object register for this key name then the method will return an error.  Accepted values are `auth`, `lisp`, `network`, `sign`, `verify`, `cert`, `app1`, `app2`, and `app3`
 
 `pin` : The PIN for this signature chain.
 
@@ -175,7 +175,7 @@ Returns the public key from the crypto object register for the specified key nam
 
 # `get/privatekey`
 
-Returns the private key for a public key stored in the users crypto object register. This method can only be used to obtain the private key for the `app1`, `app2`, `app3` or any other user-added keys. **`Cannot be used to obtain the private key for the six default keys (`auth`, `lisp`, `network`, `sign`, `verify`, and `cert`).`**  
+Returns the private key for a public key stored in the users crypto object register. This method can only be used to obtain the private key for the `app1`, `app2`, or `app3`keys. **`Cannot be used to obtain the private key for the six default keys (`auth`, `lisp`, `network`, `sign`, `verify`, and `cert`).`**  
 
 
 ### Endpoint:
@@ -212,7 +212,7 @@ Returns the private key for a public key stored in the users crypto object regis
 
 Change the cryptographic scheme used to generate the public-private keys for the users signature chain as well as keys stored in the crypto object register.  Users must be logged in to create a new key.
 
-**NOTE** Changing the cryptographic scheme will also regenerate the six default keys (`auth`, `lisp`, `network`, `sign`, `verify`, and `cert`) stored the crypto object register.  The `app1`, `app2`, `app3` and any other user-added keys are `not` modified. 
+**NOTE** Changing the cryptographic scheme will also regenerate the six default keys (`auth`, `lisp`, `network`, `sign`, `verify`, and `cert`) stored the crypto object register.  The `app1`, `app2`, `app3` keys are `not` modified. 
 
 
 ### Endpoint:

@@ -72,17 +72,6 @@ namespace TAO
             /* Last sigchain transaction. */
             uint512_t hashLast = 0;
 
-            /* Set default signature types. */
-            tx.nKeyType  = SIGNATURE::BRAINPOOL;
-            tx.nNextType = SIGNATURE::BRAINPOOL;
-
-            /* Check for configuration options. */
-            if(config::GetBoolArg("-falcon"))
-            {
-                tx.nNextType = SIGNATURE::FALCON;
-                tx.nKeyType  = SIGNATURE::FALCON;
-            }
-
             /* Check mempool for other transactions. */
             TAO::Ledger::Transaction txPrev;
             if(mempool.Get(hashGenesis, txPrev))
@@ -111,6 +100,22 @@ namespace TAO
                 tx.hashRecovery = txPrev.hashRecovery;
                 tx.nTimestamp  = std::max(runtime::unifiedtimestamp(), txPrev.nTimestamp);
             }
+
+            /* If in single user mode or if this is a genesis transaction then we use the node config to set the next key type */
+            if(!config::fMultiuser.load() || tx.IsFirst())
+            {
+                if(config::GetBoolArg("-falcon"))
+                    tx.nNextType = SIGNATURE::FALCON;
+                else
+                    tx.nNextType = SIGNATURE::BRAINPOOL;
+            }
+            /* In multiuser mode we just set the next keytype based on the previous tx */
+            else
+            {
+                tx.nNextType = txPrev.nNextType;
+            }
+            
+            
 
             /* Set the transaction version based on the timestamp. The transaction version is current version
                unless an activation is pending */

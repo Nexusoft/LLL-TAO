@@ -67,7 +67,7 @@ namespace TAO
             
             /* Read the crypto object register */
             TAO::Register::Object crypto;
-            if(!LLD::Register->ReadState(hashCrypto, crypto))
+            if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-259, "Could not read crypto object register");
 
             /* Parse the object. */

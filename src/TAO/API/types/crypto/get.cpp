@@ -74,7 +74,7 @@ namespace TAO
             
             /* Read the crypto object register */
             TAO::Register::Object crypto;
-            if(!LLD::Register->ReadState(hashCrypto, crypto))
+            if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-259, "Could not read crypto object register");
 
             /* Parse the object. */
@@ -83,7 +83,7 @@ namespace TAO
             
             /* Check the key exists */
             if(!crypto.CheckName(strName))
-                throw APIException(-26, "Key not found in crypto object register");
+                throw APIException(-260, "Invalid key name");
 
             /* Get List of key names in the crypto object */
             std::vector<std::string> vKeys = crypto.GetFieldNames();
