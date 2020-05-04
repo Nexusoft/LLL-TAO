@@ -170,14 +170,7 @@ namespace TAO
                   << uint8_t(TAO::Register::REGISTER::OBJECT) << crypto.GetState();
 
             /* Add the fee */
-            AddFee(tx);
-
-            /* Calculate the prestates and poststates. */
-            if(!tx.Build())
-            {
-                user.free();
-                throw APIException(-30, "Operations failed to execute");
-            }
+            BuildWithFee(tx);
 
             /* Sign the transaction. */
             if(!tx.Sign(user->Generate(tx.nSequence, strPin)))

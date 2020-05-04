@@ -2039,7 +2039,7 @@ namespace LLP
                 if(nConsecutiveOrphans >= 5000)
                 {
                     {
-                        LOCK(TAO::Ledger::PROCESSING_MUTEX);
+                        LOCK(TAO::Ledger::ORPHANS_MUTEX);
 
                         /* Clear the memory to prevent DoS attacks. */
                         TAO::Ledger::mapOrphans.clear();

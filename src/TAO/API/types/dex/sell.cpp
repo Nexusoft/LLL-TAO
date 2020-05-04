@@ -131,11 +131,7 @@ namespace TAO
             tx[0] <= uint8_t(TAO::Operation::OP::UNGROUP);
 
             /* Add the fee */
-            AddFee(tx);
-
-            /* Execute the operations layer. */
-            if(!tx.Build())
-                throw APIException(-30, "Operations failed to execute");
+            BuildWithFee(tx);
 
             /* Sign the transaction. */
             if(!tx.Sign(users->GetKey(tx.nSequence, strPIN, nSession)))

@@ -129,11 +129,7 @@ namespace TAO
             AddExpires(params, user->Genesis(), tx[0], false);
 
             /* Add the fee */
-            AddFee(tx);
-
-            /* Execute the operations layer. */
-            if(!tx.Build())
-                throw APIException(-30, "Operations failed to execute");
+            BuildWithFee(tx);
 
             /* Sign the transaction. */
             if(!tx.Sign(users->GetKey(tx.nSequence, strPIN, nSession)))

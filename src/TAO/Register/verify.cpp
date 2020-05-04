@@ -526,7 +526,7 @@ namespace TAO
                             debug::log(0, FUNCTION, "Balance (dsk): ", object1.get<uint64_t>("balance"));
                             debug::log(0, FUNCTION, "Balance (pre): ", object2.get<uint64_t>("balance"));
 
-                            return debug::error(FUNCTION, "OP::DEBIT: pre-state verification failed");
+                            return debug::error(FUNCTION, "OP::DEBIT: pre-state verification failed ", hashAddress.SubString());
                         }
 
 

@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <LLD/types/register.h>
 
 #include <TAO/Register/include/enum.h>
+#include <TAO/Register/types/object.h>
 
 #include <Util/include/memory.h>
 
@@ -62,7 +63,7 @@ namespace LLD
             if(pMemory)
             {
                 /* Check erase queue. */
-                pMemory->setErase.erase(hashRegister);
+                pMemory->mapErase.erase(hashRegister);
                 pMemory->mapStates[hashRegister] = state;
 
                 return true;
@@ -79,11 +80,13 @@ namespace LLD
         }
         else if(nFlags == TAO::Ledger::FLAGS::MINER)
         {
-            LOCK(MEMORY_MUTEX);
-
             /* Check for memory mode. */
             if(pMiner)
+            {
+                pMiner->mapErase.erase(hashRegister);
                 pMiner->mapStates[hashRegister] = state;
+            }
+
 
             return true;
         }
@@ -101,8 +104,9 @@ namespace LLD
                     /* Erase if transaction. */
                     if(pMemory)
                     {
-                        pMemory->setErase.insert(hashRegister);
+                        /* Erase from ACID transaction. */
                         pMemory->mapStates.erase(hashRegister);
+                        pMemory->mapErase.insert(std::make_pair(hashRegister, state));
                     }
                     else
                         pCommit->mapStates.erase(hashRegister);
@@ -221,7 +225,13 @@ namespace LLD
             if(pMemory)
             {
                 pMemory->mapStates.erase(hashRegister);
-                pMemory->setErase.insert(hashRegister);
+
+                /* Erase state from mempool. */
+                {
+                    LOCK(MEMORY_MUTEX);
+                    if(pCommit->mapStates.count(hashRegister))
+                        pMemory->mapErase.insert(std::make_pair(hashRegister, pCommit->mapStates[hashRegister]));
+                }
 
                 return true;
             }
@@ -244,8 +254,12 @@ namespace LLD
                 /* Check for transction. */
                 if(pMemory)
                 {
-                    pMemory->setErase.insert(hashRegister);
+                    /* Erase from ACID transaction. */
                     pMemory->mapStates.erase(hashRegister);
+
+                    /* Erase state from mempool. */
+                    if(pCommit->mapStates.count(hashRegister))
+                        pMemory->mapErase.insert(std::make_pair(hashRegister, pCommit->mapStates[hashRegister]));
                 }
                 else
                     pCommit->mapStates.erase(hashRegister);
@@ -419,18 +433,43 @@ namespace LLD
     /* Commit a memory transaction following ACID properties. */
     void RegisterDB::MemoryCommit()
     {
-        LOCK(MEMORY_MUTEX);
-
         /* Abort the current memory mode. */
         if(pMemory)
         {
+            LOCK(MEMORY_MUTEX);
+
             /* Loop through all new states and apply to commit data. */
             for(const auto& state : pMemory->mapStates)
                 pCommit->mapStates[state.first] = state.second;
 
             /* Loop through values to erase. */
-            for(const auto& erase : pMemory->setErase)
-                pCommit->mapStates.erase(erase);
+            for(const auto& erase : pMemory->mapErase)
+            {
+                /* Check current commited state. */
+                if(pCommit->mapStates.count(erase.first))
+                {
+                    /* Get the current register's state. */
+                    const TAO::Register::State& state = pCommit->mapStates[erase.first];
+                    if(erase.second != state)
+                    {
+                        debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "CONFLICTED STATE ", ANSI_COLOR_RESET, erase.first.SubString());
+
+                        TAO::Register::Object object1 = TAO::Register::Object(state);
+                        object1.Parse();
+
+                        TAO::Register::Object object2 = TAO::Register::Object(erase.second);
+                        object2.Parse();
+
+                        debug::log(0, FUNCTION, "Balance (COMM): ", object1.get<uint64_t>("balance"));
+                        debug::log(0, FUNCTION, "Balance (ACID): ", object2.get<uint64_t>("balance"));
+
+                        continue;
+                    }
+
+                    pCommit->mapStates.erase(erase.first);
+                    debug::log(0, "ERASING entry ", erase.first.SubString());
+                }
+            }
 
             /* Free the memory. */
             pMemory = nullptr;

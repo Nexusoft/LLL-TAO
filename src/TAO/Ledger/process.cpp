@@ -29,8 +29,12 @@ namespace TAO
         std::map<uint1024_t, std::unique_ptr<TAO::Ledger::Block>> mapOrphans;
 
 
-        /* Mutex to protect checking more than one block at a time. */
+        /* Mutex to protect processing the global state. */
         std::mutex PROCESSING_MUTEX;
+
+
+        /* Mutex to protect the orphans map. */
+        std::mutex ORPHANS_MUTEX;
 
 
         /* Sync timer value. */
@@ -48,8 +52,6 @@ namespace TAO
         /* Processes a block incoming over the network. */
         void Process(const TAO::Ledger::Block& block, uint8_t &nStatus)
         {
-            LOCK(PROCESSING_MUTEX);
-
             /* Get the block's hash. */
             const uint1024_t hashBlock = block.GetHash();
 
@@ -59,6 +61,8 @@ namespace TAO
                 /* Check for orphan. */
                 if(!LLD::Ledger->HasBlock(block.hashPrevBlock))
                 {
+                    LOCK(ORPHANS_MUTEX);
+
                     /* Set the status message. */
                     nStatus |= PROCESS::ORPHAN;
 
@@ -117,122 +121,132 @@ namespace TAO
                     return;
                 }
 
-                /* Check if the block is valid. */
-                if(!block.Check())
+
+                /* CRITICAL SECTION >>>>> */
                 {
-                    /* Check for missing transactions. */
-                    if(block.vMissing.size() == 0)
-                    {
-                        nStatus |= PROCESS::REJECTED;
-                        return;
-                    }
-
-                    /* Incomplete blocks can pass through orphan checks. */
-                    nStatus |= PROCESS::INCOMPLETE;
-
-                    /* Insert the block hash into incomplete set. */
-                    setIncomplete.insert(hashBlock);
-
-                    /* Set the missing block. */
-                    block.hashMissing = hashBlock;
-
-                    return;
-                }
-
-                /* Check if valid in the chain. */
-                else if(!block.Accept())
-                {
-                    /* Set the status. */
-                    nStatus |= PROCESS::REJECTED;
-
-                    return;
-                }
-
-                /* Set the status. */
-                nStatus |= PROCESS::ACCEPTED;
-
-                /* Special meter for synchronizing. */
-                if(block.nHeight % 1000 == 0 && TAO::Ledger::ChainState::Synchronizing())
-                {
-                    /* Grab the current sync node. */
-                    uint32_t nHours = 0, nMinutes = 0, nSeconds = 0;
-                    if(LLP::TritiumNode::SessionActive(nSyncSession.load()))
-                    {
-                        /* Get the current connected legacy node. */
-                        memory::atomic_ptr<LLP::TritiumNode>& pnode = LLP::TritiumNode::GetNode(nSyncSession.load());
-                        try //we want to catch exceptions thrown by atomic_ptr in the case there was a free on another thread
-                        {
-                            /* Check for potential overflow if current height is not set. */
-                            if(pnode->nCurrentHeight > ChainState::nBestHeight.load())
-                            {
-                                /* Get the total height left to go. */
-                                uint32_t nRemaining = (pnode->nCurrentHeight - ChainState::nBestHeight.load());
-                                uint32_t nTotalBlocks = (ChainState::nBestHeight.load() - LLP::TritiumNode::nSyncStart.load());
-
-                                /* Calculate blocks per second. */
-                                uint32_t nRate = nTotalBlocks / (LLP::TritiumNode::SYNCTIMER.Elapsed() + 1);
-                                LLP::TritiumNode::nRemainingTime.store(nRemaining / (nRate + 1));
-
-                                /* Get the remaining time. */
-                                nHours   =  LLP::TritiumNode::nRemainingTime.load() / 3600;
-                                nMinutes = (LLP::TritiumNode::nRemainingTime.load() - (nHours * 3600)) / 60;
-                                nSeconds = (LLP::TritiumNode::nRemainingTime.load() - (nHours * 3600)) % 60;
-                            }
-                        }
-                        catch(const std::exception& e) {}
-                    }
-
-                    uint64_t nElapsed = runtime::timestamp(true) - nSynchronizationTimer;
-                    debug::log(0, FUNCTION,
-                        "Processed 1000 blocks in ", nElapsed, " ms [", std::setw(2),
-                        TAO::Ledger::ChainState::PercentSynchronized(), " %]",
-                        " height=", block.nHeight,
-                        " trust=", TAO::Ledger::ChainState::nBestChainTrust.load(),
-                        " [", 1000000 / nElapsed, " blocks/s]",
-                        "[", std::setw(2), std::setfill('0'), nHours, ":",
-                              std::setw(2), std::setfill('0'), nMinutes, ":",
-                              std::setw(2), std::setfill('0'), nSeconds, " remaining]");
-
-                    nSynchronizationTimer = runtime::timestamp(true);
-                }
-
-                /* Process orphan if found. */
-                uint1024_t hash = block.GetHash();
-                while(mapOrphans.count(hash))
-                {
-                    /* Grab local copy of the pointer. */
-                    const std::unique_ptr<TAO::Ledger::Block>& pOrphan = mapOrphans.at(hash);
-
-                    /* Get the next hash backwards in the series. */
-                    const uint1024_t hashPrev = pOrphan->GetHash();
-
-                    /* Debug output. */
-                    debug::log(0, FUNCTION, "processing ORPHAN prev=", hashPrev.SubString(), " size=", mapOrphans.size());
+                    LOCK(PROCESSING_MUTEX);
 
                     /* Check if the block is valid. */
-                    if(!pOrphan->Check())
+                    if(!block.Check())
                     {
                         /* Check for missing transactions. */
-                        if(pOrphan->vMissing.size() == 0)
+                        if(block.vMissing.size() == 0)
+                        {
+                            nStatus |= PROCESS::REJECTED;
                             return;
+                        }
 
                         /* Incomplete blocks can pass through orphan checks. */
                         nStatus |= PROCESS::INCOMPLETE;
 
-                        /* Add the missing transactions to this current block. */
-                        block.vMissing.insert(block.vMissing.end(), pOrphan->vMissing.begin(), pOrphan->vMissing.end());
+                        {
+                            LOCK(ORPHANS_MUTEX);
 
-                        /* Set the hash missing. */
-                        block.hashMissing = pOrphan->GetHash();
+                            /* Insert the block hash into incomplete set. */
+                            setIncomplete.insert(hashBlock);
+                        }
+
+                        /* Set the missing block. */
+                        block.hashMissing = hashBlock;
+
+                        return;
                     }
 
-                    /* Accept each orphan. */
-                    else if(!pOrphan->Accept())
-                        return;
+                    /* Check if valid in the chain. */
+                    else if(!block.Accept())
+                    {
+                        /* Set the status. */
+                        nStatus |= PROCESS::REJECTED;
 
-                    /* Erase orphans from map. */
-                    mapOrphans.erase(hash);
-                    hash = hashPrev;
+                        return;
+                    }
+
+                    /* Set the status. */
+                    nStatus |= PROCESS::ACCEPTED;
+
+                    /* Special meter for synchronizing. */
+                    if(block.nHeight % 1000 == 0 && TAO::Ledger::ChainState::Synchronizing())
+                    {
+                        /* Grab the current sync node. */
+                        uint32_t nHours = 0, nMinutes = 0, nSeconds = 0;
+                        if(LLP::TritiumNode::SessionActive(nSyncSession.load()))
+                        {
+                            /* Get the current connected legacy node. */
+                            memory::atomic_ptr<LLP::TritiumNode>& pnode = LLP::TritiumNode::GetNode(nSyncSession.load());
+                            try //we want to catch exceptions thrown by atomic_ptr in the case there was a free on another thread
+                            {
+                                /* Check for potential overflow if current height is not set. */
+                                if(pnode->nCurrentHeight > ChainState::nBestHeight.load())
+                                {
+                                    /* Get the total height left to go. */
+                                    uint32_t nRemaining = (pnode->nCurrentHeight - ChainState::nBestHeight.load());
+                                    uint32_t nTotalBlocks = (ChainState::nBestHeight.load() - LLP::TritiumNode::nSyncStart.load());
+
+                                    /* Calculate blocks per second. */
+                                    uint32_t nRate = nTotalBlocks / (LLP::TritiumNode::SYNCTIMER.Elapsed() + 1);
+                                    LLP::TritiumNode::nRemainingTime.store(nRemaining / (nRate + 1));
+
+                                    /* Get the remaining time. */
+                                    nHours   =  LLP::TritiumNode::nRemainingTime.load() / 3600;
+                                    nMinutes = (LLP::TritiumNode::nRemainingTime.load() - (nHours * 3600)) / 60;
+                                    nSeconds = (LLP::TritiumNode::nRemainingTime.load() - (nHours * 3600)) % 60;
+                                }
+                            }
+                            catch(const std::exception& e) {}
+                        }
+
+                        uint64_t nElapsed = runtime::timestamp(true) - nSynchronizationTimer;
+                        debug::log(0, FUNCTION,
+                            "Processed 1000 blocks in ", nElapsed, " ms [", std::setw(2),
+                            TAO::Ledger::ChainState::PercentSynchronized(), " %]",
+                            " height=", block.nHeight,
+                            " trust=", TAO::Ledger::ChainState::nBestChainTrust.load(),
+                            " [", 1000000 / nElapsed, " blocks/s]",
+                            "[", std::setw(2), std::setfill('0'), nHours, ":",
+                                  std::setw(2), std::setfill('0'), nMinutes, ":",
+                                  std::setw(2), std::setfill('0'), nSeconds, " remaining]");
+
+                        nSynchronizationTimer = runtime::timestamp(true);
+                    }
+
+                    /* Process orphan if found. */
+                    uint1024_t hash = block.GetHash();
+                    while(mapOrphans.count(hash))
+                    {
+                        /* Grab local copy of the pointer. */
+                        const std::unique_ptr<TAO::Ledger::Block>& pOrphan = mapOrphans.at(hash);
+
+                        /* Get the next hash backwards in the series. */
+                        const uint1024_t hashPrev = pOrphan->GetHash();
+
+                        /* Debug output. */
+                        debug::log(0, FUNCTION, "processing ORPHAN prev=", hashPrev.SubString(), " size=", mapOrphans.size());
+
+                        /* Check if the block is valid. */
+                        if(!pOrphan->Check())
+                        {
+                            /* Check for missing transactions. */
+                            if(pOrphan->vMissing.size() == 0)
+                                return;
+
+                            /* Incomplete blocks can pass through orphan checks. */
+                            nStatus |= PROCESS::INCOMPLETE;
+
+                            /* Add the missing transactions to this current block. */
+                            block.vMissing.insert(block.vMissing.end(), pOrphan->vMissing.begin(), pOrphan->vMissing.end());
+
+                            /* Set the hash missing. */
+                            block.hashMissing = pOrphan->GetHash();
+                        }
+
+                        /* Accept each orphan. */
+                        else if(!pOrphan->Accept())
+                            return;
+
+                        /* Erase orphans from map. */
+                        mapOrphans.erase(hash);
+                        hash = hashPrev;
+                    }
                 }
             }
             catch(const std::exception& e)

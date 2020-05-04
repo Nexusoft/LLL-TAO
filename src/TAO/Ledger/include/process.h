@@ -50,8 +50,12 @@ namespace TAO
         extern std::map<uint1024_t, std::unique_ptr<TAO::Ledger::Block>> mapOrphans;
 
 
-        /** Mutex to protect checking more than one block at a time. **/
+        /** Mutex to protect processing the global state. **/
         extern std::mutex PROCESSING_MUTEX;
+
+
+        /** Mutex to protect the orphans map. **/
+        extern std::mutex ORPHANS_MUTEX;
 
 
         /** Sync timer value. **/

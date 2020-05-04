@@ -993,7 +993,7 @@ namespace TAO
                     if(config::nVerbose >= 3)
                         tx.print();
 
-                    //nBytes += tx.GetSerializeSize(SER_LLD, tx.nVersion);
+                    nBytes += tx.GetSerializeSize(SER_LLD, tx.nVersion);
 
                     /* Check the ledger rules for sigchain at end. */
                     if(!tx.IsFirst())
@@ -1076,7 +1076,7 @@ namespace TAO
                     if(!tx.Connect(inputs, *this, FLAGS::BLOCK))
                         return debug::error(FUNCTION, "failed to connect inputs");
 
-                    //nBytes += tx.GetSerializeSize(SER_LLD, tx.nVersion);
+                    nBytes += tx.GetSerializeSize(SER_LLD, tx.nVersion);
 
                     /* Add legacy transactions to the wallet where appropriate */
                     Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, *this, true);

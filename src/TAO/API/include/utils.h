@@ -92,14 +92,14 @@ namespace TAO
          *  @return A vector of register addresses owned by the sig chain
          *
          **/
-        bool ListAccounts(const uint256_t& hashGenesis, std::vector<TAO::Register::Address>& vAccounts, 
+        bool ListAccounts(const uint256_t& hashGenesis, std::vector<TAO::Register::Address>& vAccounts,
                           bool fTokens, bool fTrust);
 
 
-        /** AddFee
+        /** BuildWithFee
          *
          *  Calculates the required fee for the transaction and adds the OP::FEE contract to the transaction if necessary.
-         *  If a specified fee account is not specified, the method will lookup the "default" NXS account and use this account 
+         *  If a specified fee account is not specified, the method will lookup the "default" NXS account and use this account
          *  to pay the fees.  An exception will be thrownIf there are insufficient funds to pay the fee. .
          *
          *  @param[in] tx The transaction to add the fee to
@@ -108,7 +108,7 @@ namespace TAO
          *  @return true if the fee was successfully added, otherwise false
          *
          **/
-        bool AddFee(TAO::Ledger::Transaction& tx, const TAO::Register::Address& hashFeeAccount = TAO::Register::Address());
+        bool BuildWithFee(TAO::Ledger::Transaction& tx, const TAO::Register::Address& hashFeeAccount = TAO::Register::Address());
 
 
         /** RegisterType
@@ -119,7 +119,7 @@ namespace TAO
          *
          *  @return A string representation of the register type
          *
-         **/  
+         **/
         std::string RegisterType(uint8_t nType);
 
 
@@ -142,7 +142,7 @@ namespace TAO
          *  @param[in] hashGenesis The genesis hash for the sig chain owner.
          *  @param[in] hashToken The token to find the pending for .
          *  @param[in] hashAccount Optional account/token register to filter on
-         * 
+         *
          *  @return The sum of all pending debits
          *
          **/
@@ -157,22 +157,22 @@ namespace TAO
          *  @param[in] hashToken The token to find the pending for.
          *  @param[in] fOutgoing Flag indicating to include outgoing debits, i.e. debits in the mempool that we have made.
          *  @param[in] hashAccount Optional account/token register to filter on
-         * 
+         *
          *  @return The sum of all pending debits
          *
          **/
-        uint64_t GetUnconfirmed(const uint256_t& hashGenesis, 
-                                const uint256_t& hashToken, 
-                                bool fOutgoing, 
+        uint64_t GetUnconfirmed(const uint256_t& hashGenesis,
+                                const uint256_t& hashToken,
+                                bool fOutgoing,
                                 const uint256_t& hashAccount = 0);
 
 
         /** GetImmature
          *
-         *  Get the sum of all immature coinbase transactions 
+         *  Get the sum of all immature coinbase transactions
          *
          *  @param[in] hashGenesis The genesis hash for the sig chain owner.
-         * 
+         *
          *  @return The sum of all immature coinbase transactions
          *
          **/
@@ -194,7 +194,7 @@ namespace TAO
 
         /** ListPartial
          *
-         *  Lists all object registers partially owned by way of tokens that the sig chain owns 
+         *  Lists all object registers partially owned by way of tokens that the sig chain owns
          *
          *  @param[in] hashGenesis The genesis hash of the signature chain to scan
          *  @param[out] vObjects The list of object register addresses from sigchain.
@@ -215,7 +215,7 @@ namespace TAO
          *  @return A vector of register addresses owned by the token
          *
          **/
-        bool ListTokenizedObjects(const TAO::Register::Address& hashToken, 
+        bool ListTokenizedObjects(const TAO::Register::Address& hashToken,
                                   std::vector<TAO::Register::Address>& vObjects);
 
 
@@ -232,16 +232,16 @@ namespace TAO
 
         /** GetRegisters
          *
-         *  Reads a batch of states registers from the Register DB 
+         *  Reads a batch of states registers from the Register DB
          *
          *  @param[in] vAddresses The list of register addresses to read
-         *  @param[out] vStates The list of states paired to the register address.  
+         *  @param[out] vStates The list of states paired to the register address.
          *              The list will be sorted by the create timestamp of the register, oldest first
          *
          *  @return True if successful
          *
          **/
-        bool GetRegisters(const std::vector<TAO::Register::Address>& vAddresses, 
+        bool GetRegisters(const std::vector<TAO::Register::Address>& vAddresses,
                           std::vector<std::pair<TAO::Register::Address, TAO::Register::State>>& vStates);
 
 
@@ -252,7 +252,7 @@ namespace TAO
         *  @param[in] contract The contract to void
         *  @param[in] the ID of the contract in the transaction
         *  @param[out] voidContract The void contract to be created
-        * 
+        *
         *  @return True if a void contract was created.
         *
         **/
@@ -266,7 +266,7 @@ namespace TAO
         *  @param[in] hashGenesis The genesis hash of the sig chain to search
         *  @param[in] object  The object register to get the tx count for
         *  @param[in] hashRegister The address of the register to get the tx count for
-        * 
+        *
         *  @return The number of transactions in the sig chain relating to the register
         *
         **/

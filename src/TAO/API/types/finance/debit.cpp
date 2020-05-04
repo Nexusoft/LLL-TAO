@@ -276,11 +276,7 @@ namespace TAO
             }
 
             /* Add the fee, taking it from the sending account */
-            AddFee(tx, hashFrom);
-
-            /* Execute the operations layer. */
-            if(!tx.Build())
-                throw APIException(-44, "Transaction failed to build");
+            BuildWithFee(tx, hashFrom);
 
             /* Sign the transaction. */
             if(!tx.Sign(users->GetKey(tx.nSequence, strPIN, nSession)))

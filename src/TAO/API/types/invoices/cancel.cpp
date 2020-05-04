@@ -126,13 +126,13 @@ namespace TAO
             TAO::Ledger::Transaction tx;
             if(!Users::CreateTransaction(user, strPIN, tx))
                 throw APIException(-17, "Failed to create transaction");
-        
+
             /* The transaction to be voided */
             TAO::Ledger::Transaction txVoid;
-            
+
             /* Read the debit transaction. */
             if(LLD::Ledger->ReadTx(hashTx, txVoid))
-            { 
+            {
                 /* Check that the transaction belongs to the caller */
                 if( txVoid.hashGenesis != user->Genesis())
                     throw APIException(-172, "Cannot void a transaction that does not belong to you.");
@@ -147,18 +147,14 @@ namespace TAO
             {
                 throw APIException(-40, "Previous transaction not found.");
             }
-                
+
 
             /* Check that output was found. */
             if(tx.Size() == 0)
                 throw APIException(-174, "Transaction contains no contracts that can be voided");
 
             /* Add the fee */
-            AddFee(tx);
-            
-            /* Execute the operations layer. */
-            if(!tx.Build())
-                throw APIException(-44, "Transaction failed to build");
+            BuildWithFee(tx);
 
             /* Sign the transaction. */
             if(!tx.Sign(users->GetKey(tx.nSequence, strPIN, nSession)))

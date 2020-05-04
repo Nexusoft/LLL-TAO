@@ -292,6 +292,10 @@ namespace TAO
                     std::queue<TAO::Operation::Contract> vProcessQueue;
                     for(const auto& contract : vContracts)
                     {
+                        /* Check for shutdown. */
+                        if(config::fShutdown.load())
+                            return;
+                            
                         /* Get a reference to the contract */
                         const TAO::Operation::Contract& refContract = std::get<0>(contract);
 
@@ -550,6 +554,10 @@ namespace TAO
                     /* Now process the legacy transactions */
                     for(const auto& contract : vLegacyTx)
                     {
+                        /* Check for shutdown. */
+                        if(config::fShutdown.load())
+                            return;
+
                         /* Set the transaction hash. */
                         hashTx = contract.first->GetHash();
 
@@ -744,7 +752,7 @@ namespace TAO
                     }
 
                     /* If any of the notifications have been matched, execute the operations layer and sign the transaction. */
-                    while(!vProcessQueue.empty())
+                    while(!vProcessQueue.empty() && !config::fShutdown.load())
                     {
                         /* Lock the signature chain. */
                         LOCK(users->CREATE_MUTEX);
@@ -771,11 +779,7 @@ namespace TAO
                             break;
 
                         /* Add the fee */
-                        AddFee(txout);
-
-                        /* Execute the operations layer. */
-                        if(!txout.Build())
-                            throw APIException(-30, "Failed to build register pre-states");
+                        BuildWithFee(txout);
 
                         /* Sign the transaction. */
                         if(!txout.Sign(users->GetKey(txout.nSequence, strPIN, users->GetSession(params))))
@@ -783,7 +787,12 @@ namespace TAO
 
                         /* Execute the operations layer. */
                         if(!TAO::Ledger::mempool.Accept(txout))
+                        {
+                            debug::error(FUNCTION, "EVENTS FAILED TO ACCEPT");
                             throw APIException(-32, "Failed to accept");
+                        }
+
+                        debug::log(0, FUNCTION, "Created tx ", txout.GetHash().SubString(), " with ", txout.Size(), " contracts");
                     }
                 }
                 catch(const std::exception& e)

@@ -26,6 +26,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/process.h>
 #include <TAO/Ledger/types/mempool.h>
 
 #include <TAO/Ledger/include/create.h>
@@ -209,8 +210,6 @@ namespace TAO
                 if(!tx.IsFirst())
                     mapClaimed[tx.hashPrevTx] = hashTx;
             }
-
-
 
             /* Debug output. */
             debug::log(3, FUNCTION, "tx ", hashTx.SubString(), " ACCEPTED in ", std::dec, time.ElapsedMilliseconds(), " ms");

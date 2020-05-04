@@ -41,8 +41,9 @@ namespace LLD
         std::map<uint256_t, TAO::Register::State> mapStates;
 
 
-        /** Set of indexes to remove during commit. **/
-        std::set<uint256_t> setErase;
+        /** Map of indexes to remove during commit. **/
+        std::map<uint256_t, TAO::Register::State> mapErase;
+
 
     };
 

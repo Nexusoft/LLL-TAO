@@ -135,7 +135,7 @@ namespace TAO
 
             /* Look back through all events to find those that are not yet processed. */
             std::set<uint512_t> setProcessed;
-            while(LLD::Ledger->ReadEvent(hashGenesis, --nSequence, tx))
+            while(LLD::Ledger->ReadEvent(hashGenesis, --nSequence, tx) && !config::fShutdown.load())
             {
                 uint512_t hashTx = tx.GetHash(true); //we want to bind a cache of the hash
 
@@ -319,7 +319,7 @@ namespace TAO
             --nSequence;
 
             /* Look back through all events to find those that are not yet processed. */
-            while(LLD::Legacy->ReadEvent(hashGenesis, nSequence, tx))
+            while(LLD::Legacy->ReadEvent(hashGenesis, nSequence, tx) && !config::fShutdown.load())
             {
                 /* Check to see if we have 100 (or the user configured amount) consecutive processed events.  If we do then we
                    assume all prior events are also processed.  This saves us having to scan the entire chain of events */
@@ -382,7 +382,7 @@ namespace TAO
 
             /* Read back all the events. */
             uint32_t nSequence = 0;
-            while(LLD::Ledger->ReadEvent(hashGenesis, nSequence, tx))
+            while(LLD::Ledger->ReadEvent(hashGenesis, nSequence, tx) && !config::fShutdown.load())
             {
                 /* Loop through transaction contracts. */
                 uint32_t nContracts = tx.Size();
@@ -486,7 +486,7 @@ namespace TAO
             uint32_t nConsecutive = 0;
 
             /* Reverse iterate until genesis (newest to oldest). */
-            while(hashLast != 0)
+            while(hashLast != 0 && !config::fShutdown.load())
             {
                 /* Get the transaction from disk. */
                 TAO::Ledger::Transaction tx;
@@ -611,7 +611,7 @@ namespace TAO
                 /* Loop through all events for the token (split payments). */
                 TAO::Ledger::Transaction tx;
                 uint32_t nSequence = 0;
-                while(LLD::Ledger->ReadEvent(hashToken, nSequence, tx))
+                while(LLD::Ledger->ReadEvent(hashToken, nSequence, tx) && !config::fShutdown.load())
                 {
                     /* Iterate sequence forward. */
                     ++nSequence;
@@ -687,7 +687,7 @@ namespace TAO
             voidContract.Bind(&voidTx);
 
             /* Reverse iterate until genesis (newest to oldest). */
-            while(hashLast != 0)
+            while(hashLast != 0 && !config::fShutdown.load())
             {
                 /* Get the transaction from disk. NOTE we do not include mempool transactions here as you cannot void a transaction
                    until it has been at least one confirmation */
@@ -879,6 +879,10 @@ namespace TAO
             /* Get notifications for foreign token registers. */
             for(const auto& contract : vContracts)
             {
+                /* Check for a shutdown event. */
+                if(fShutdown.load())
+                    break;
+
                 /* Get a reference to the contract */
                 const TAO::Operation::Contract& refContract = std::get<0>(contract);
 

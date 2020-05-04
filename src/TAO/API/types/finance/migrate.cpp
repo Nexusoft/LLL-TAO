@@ -201,11 +201,7 @@ namespace TAO
                     if(nContracts +(fCreateName ? 1 : 2) >= 99)
                     {
                         /* Add the fee */
-                        AddFee(tx);
-
-                        /* Execute the operations layer. */
-                        if(!tx.Build())
-                            throw APIException(-44, "Transaction failed to build");
+                        BuildWithFee(tx);
 
                         /* Sign the transaction. */
                         if(!tx.Sign(users->GetKey(tx.nSequence, strPIN, nSession)))
@@ -249,11 +245,7 @@ namespace TAO
             if(nContracts > 0)
             {
                 /* Add the fee */
-                AddFee(tx);
-
-                /* Execute the operations layer. */
-                if(!tx.Build())
-                    throw APIException(-44, "Transaction failed to build");
+                BuildWithFee(tx);
 
                 /* Sign the transaction. */
                 if(!tx.Sign(users->GetKey(tx.nSequence, strPIN, nSession)))

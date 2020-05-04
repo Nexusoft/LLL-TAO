@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/exception.h>
 
 #include <TAO/Ledger/include/constants.h>
+#include <TAO/Ledger/include/process.h>
 #include <TAO/Ledger/types/mempool.h>
 
 #include <TAO/Operation/types/stream.h>
@@ -408,21 +409,19 @@ namespace TAO
         /* Calculates the required fee for the transaction and adds the OP::FEE contract to the transaction if necessary.
          *  If a specified fee account is not specified, the method will lookup the "default" NXS account and use this account
          *  to pay the fees.  An exception will be thrownIf there are insufficient funds to pay the fee. */
-        bool AddFee(TAO::Ledger::Transaction& tx, const TAO::Register::Address& hashFeeAccount)
+        bool BuildWithFee(TAO::Ledger::Transaction& tx, const TAO::Register::Address& hashFeeAccount)
         {
+            LOCK(LLD::ACID_MUTEX); //We are locking this here and keeping Build() internal to this method to protect against race conditions.
+
             /* First we need to ensure that the transaction is built so that the contracts have their pre states */
             tx.Build();
 
             /* Obtain the transaction cost */
-            uint64_t nCost = tx.Cost();
-
-            /* If a fee needs to be applied then add it */
+            uint64_t nCost = 0;//tx.Cost();
             if(nCost > 0)
             {
-                /* The register adddress of the account to deduct fees from */
-                TAO::Register::Address hashRegister;
-
                 /* If the caller has specified a fee account to use then use this */
+                TAO::Register::Address hashRegister;
                 if(hashFeeAccount.IsValid() && hashFeeAccount.IsAccount())
                 {
                     hashRegister = hashFeeAccount;
@@ -431,7 +430,6 @@ namespace TAO
                 {
                     /* Otherwise we need to look up the default fee account */
                     TAO::Register::Object defaultNameRegister;
-
                     if(!TAO::Register::GetNameRegister(tx.hashGenesis, std::string("default"), defaultNameRegister))
                         throw TAO::API::APIException(-163, "Could not retrieve default NXS account to debit fees.");
 
@@ -450,8 +448,6 @@ namespace TAO
 
                 /* Get the object standard. */
                 uint8_t nStandard = object.Standard();
-
-                /* Check the object standard. */
                 if(nStandard != TAO::Register::OBJECTS::ACCOUNT)
                     throw TAO::API::APIException(-65, "Object is not an account");
 
@@ -461,14 +457,15 @@ namespace TAO
 
                 /* Get the account balance */
                 uint64_t nCurrentBalance = object.get<uint64_t>("balance");
-
-                /* Check that there is enough balance to pay the fee */
                 if(nCurrentBalance < nCost)
                     throw TAO::API::APIException(-214, "Insufficient funds to pay fee");
 
                 /* Add the fee contract */
                 uint32_t nContractPos = tx.Size();
                 tx[nContractPos] << uint8_t(TAO::Operation::OP::FEE) << hashRegister << nCost;
+
+                /* Build the contracts again. */
+                tx.Build();
 
                 return true;
             }

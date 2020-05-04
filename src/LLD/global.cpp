@@ -27,6 +27,8 @@ namespace LLD
     TrustDB*      Trust;
     LegacyDB*     Legacy;
 
+    /* For global ACID transaction. */
+    std::mutex ACID_MUTEX;
 
     /*  Initialize the global LLD instances. */
     void Initialize()
@@ -282,21 +284,25 @@ namespace LLD
     /* Global handler for all LLD instances. */
     void TxnCommit(const uint8_t nFlags)
     {
-        /* Commit the contract DB transaction. */
-        if(Contract)
-            Contract->MemoryCommit();
+        {
+            LOCK(ACID_MUTEX);
 
-        /* Commit the register DB transacdtion. */
-        if(Register)
-            Register->MemoryCommit();
+            /* Commit the contract DB transaction. */
+            if(Contract)
+                Contract->MemoryCommit();
 
-        /* Commit the ledger DB transaction. */
-        if(Ledger)
-            Ledger->MemoryCommit();
+            /* Commit the register DB transacdtion. */
+            if(Register)
+                Register->MemoryCommit();
 
-        /* Handle memory commits if in memory mode. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
-            return;
+            /* Commit the ledger DB transaction. */
+            if(Ledger)
+                Ledger->MemoryCommit();
+
+            /* Handle memory commits if in memory mode. */
+            if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+                return;
+        }
 
         /* Set a checkpoint for contract DB. */
         if(Contract)

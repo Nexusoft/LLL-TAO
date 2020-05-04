@@ -165,11 +165,7 @@ namespace TAO
                 throw APIException(-152, "Transaction contains no valid transfers.");
 
             /* Add the fee */
-            AddFee(tx);
-
-            /* Execute the operations layer. */
-            if(!tx.Build())
-                throw APIException(-30, "Operations failed to execute");
+            BuildWithFee(tx);
 
             /* Sign the transaction. */
             if(!tx.Sign(users->GetKey(tx.nSequence, strPIN, nSession)))

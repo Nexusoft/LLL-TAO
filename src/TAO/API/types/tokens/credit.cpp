@@ -285,11 +285,7 @@ namespace TAO
                 throw APIException(-43, "No valid contracts in debit tx.");
 
             /* Add the fee */
-            AddFee(tx);
-
-            /* Execute the operations layer. */
-            if(!tx.Build())
-                throw APIException(-44, "Transaction failed to build");
+            BuildWithFee(tx);
 
             /* Sign the transaction. */
             if(!tx.Sign(users->GetKey(tx.nSequence, strPIN, nSession)))

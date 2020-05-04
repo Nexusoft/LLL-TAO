@@ -183,7 +183,7 @@ namespace TAO
             TAO::Ledger::Transaction tx;
             if(!Users::CreateTransaction(user, strPIN, tx))
                 throw APIException(-17, "Failed to create transaction");
-        
+
             /* Add the DEBIT contract with the OP::VALIDATE */
             tx[0] << uint8_t(TAO::Operation::OP::VALIDATE) << hashTx << nContract;
             tx[0] << uint8_t(TAO::Operation::OP::DEBIT) << hashFrom << hashTo << nAmount << uint64_t(0);
@@ -192,11 +192,7 @@ namespace TAO
             tx[1] << (uint8_t)TAO::Operation::OP::CLAIM << hashTx << nContract << hashRegister;
 
             /* Add the fee */
-            AddFee(tx);
-            
-            /* Execute the operations layer. */
-            if(!tx.Build())
-                throw APIException(-44, "Transaction failed to build");
+            BuildWithFee(tx);
 
             /* Sign the transaction. */
             if(!tx.Sign(users->GetKey(tx.nSequence, strPIN, nSession)))

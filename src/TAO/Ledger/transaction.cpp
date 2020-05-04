@@ -409,7 +409,7 @@ namespace TAO
             for(const auto& contract : vContracts)
             {
                 /* Bind the contract to this transaction. */
-                contract.Bind(this);
+                contract.Bind(nTimestamp, hashGenesis);
 
                 /* Verify the register pre-states. */
                 if(!TAO::Register::Verify(contract, mapStates, nFlags))
@@ -779,7 +779,7 @@ namespace TAO
 
             /* Keep for dependants. */
             uint512_t hashPrev = 0;
-            uint32_t nContract = 0;
+            uint32_t nContract = 0, nIndex = 0;
 
             /* Create a temporary map for pre-states. */
             std::map<uint256_t, TAO::Register::State> mapStates;
@@ -815,25 +815,22 @@ namespace TAO
                             return debug::error(FUNCTION, hashPrev.SubString(), " not indexed");
 
                         /* Read previous transaction from disk. */
-                        if(!config::fPrivate.load())
+                        const TAO::Operation::Contract dependant = LLD::Ledger->ReadContract(hashPrev, nContract, nFlags);
+                        switch(dependant.Primitive())
                         {
-                            const TAO::Operation::Contract dependant = LLD::Ledger->ReadContract(hashPrev, nContract, nFlags);
-                            switch(dependant.Primitive())
+                            /* Handle coinbase rules. */
+                            case TAO::Operation::OP::COINBASE:
                             {
-                                /* Handle coinbase rules. */
-                                case TAO::Operation::OP::COINBASE:
-                                {
-                                    /* Get number of confirmations of previous TX */
-                                    uint32_t nConfirms = 0;
-                                    if(!LLD::Ledger->ReadConfirmations(hashPrev, nConfirms, pblock))
-                                        return debug::error(FUNCTION, "failed to read confirmations for coinbase");
+                                /* Get number of confirmations of previous TX */
+                                uint32_t nConfirms = 0;
+                                if(!LLD::Ledger->ReadConfirmations(hashPrev, nConfirms, pblock))
+                                    return debug::error(FUNCTION, "failed to read confirmations for coinbase");
 
-                                    /* Check that the previous TX has reached sig chain maturity */
-                                    if(nConfirms + 1 < MaturityCoinBase((pblock ? *pblock : ChainState::stateBest.load())))
-                                        return debug::error(FUNCTION, "coinbase is immature ", nConfirms);
+                                /* Check that the previous TX has reached sig chain maturity */
+                                if(nConfirms + 1 < MaturityCoinBase((pblock ? *pblock : ChainState::stateBest.load())))
+                                    return debug::error(FUNCTION, "coinbase is immature ", nConfirms);
 
-                                    break;
-                                }
+                                break;
                             }
                         }
                     }
@@ -853,11 +850,11 @@ namespace TAO
                 /* If transaction fees should apply, calculate the additional transaction cost for the contract */
                 if(fApplyTxFee)
                     TAO::Operation::TxCost(contract, nCost);
+
+                ++nIndex;
             }
 
-            /* Once we have executed the contracts we need to check the fees.
-               NOTE there are fixed fees on the genesis transaction to allow for the default registers to be created.
-               NOTE: There are no fees required in private mode.  */
+            /* Once we have executed the contracts we need to check the fees. We allow first transaction to contain required contracts. */
             if(!config::GetBoolArg("-private", false))
             {
                 /* The fee applied to this transaction */

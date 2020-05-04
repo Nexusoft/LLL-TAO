@@ -34,6 +34,9 @@ namespace LLD
     extern TrustDB*      Trust;
     extern LegacyDB*     Legacy;
 
+    //for global ACID transaction
+    extern std::mutex ACID_MUTEX;
+
 
     /** Initialize
      *
