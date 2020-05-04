@@ -85,9 +85,12 @@ namespace TAO
             if(!crypto.CheckName(strName))
                 throw APIException(-260, "Invalid key name");
 
+            /* Check to see if the the key already exists */
+            if(crypto.get<uint256_t>(strName) != 0)
+                throw APIException(-261, "Key already exists");
+
             /* Get List of key names in the crypto object */
-            std::vector<std::string> vKeys = crypto.GetFieldNames();
-        
+            std::vector<std::string> vKeys = crypto.GetFieldNames();        
 
             /* Get the public key */
             uint256_t hashPublic = crypto.get<uint256_t>(strName);
@@ -114,6 +117,87 @@ namespace TAO
 
             /* If the caller has requested to filter on a fieldname then filter out the json response to only include that field */
             FilterResponse(params, ret);
+
+            return ret;
+        }
+
+
+        /* Generates private key based on keyname/user/pass/pin and stores it in the keyname slot in the crypto register. */
+        json::json Crypto::GetPrivate(const json::json& params, bool fHelp)
+        {
+            /* JSON return value. */
+            json::json ret;
+
+            /* Get the PIN to be used for this API call */
+            SecureString strPIN = users->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
+
+            /* Get the session to be used for this API call */
+            uint256_t nSession = users->GetSession(params);
+
+            /* Get the account. */
+            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
+            if(!user)
+                throw APIException(-10, "Invalid session ID");
+
+            /* Check the caller included the key name */
+            if(params.find("name") == params.end() || params["name"].get<std::string>().empty())
+                throw APIException(-88, "Missing name.");
+            
+            /* Get the requested key name */
+            std::string strName = params["name"].get<std::string>();
+
+            /* Ensure the user has not requested the private key for one of the default keys, only the app or additional 3rd party keys */
+            std::set<std::string> setDefaults{"auth", "lisp", "network", "sign", "verify", "cert"};
+            if(setDefaults.find(strName) != setDefaults.end())
+                throw APIException(-263, "Private key can only be retrieved for app1, app2, app3, and other 3rd-party keys");
+
+            /* The logged in sig chain genesis hash */
+            uint256_t hashGenesis = user->Genesis();
+
+            /* The address of the crypto object register, which is deterministic based on the genesis */
+            TAO::Register::Address hashCrypto = TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
+            
+            /* Read the crypto object register */
+            TAO::Register::Object crypto;
+            if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::MEMPOOL))
+                throw APIException(-259, "Could not read crypto object register");
+
+            /* Parse the object. */
+            if(!crypto.Parse())
+                throw APIException(-36, "Failed to parse object register");
+            
+            /* Check to see if the key name is valid */
+            if(!crypto.CheckName(strName))
+                throw APIException(-260, "Invalid key name");
+ 
+
+            /* Check to see if the the has been generated.  Even though the key is deterministic,  */
+            if(crypto.get<uint256_t>(strName) == 0)
+                throw APIException(-264, "Key not yet created");
+
+            /* Get the last transaction. */
+            uint512_t hashLast;
+            if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
+                throw APIException(-138, "No previous transaction found");
+
+            /* Get previous transaction */
+            TAO::Ledger::Transaction txPrev;
+            if(!LLD::Ledger->ReadTx(hashLast, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
+                throw APIException(-138, "No previous transaction found");
+
+            /* Generate a new transaction hash next using the current credentials so that we can verify them. */
+            TAO::Ledger::Transaction tx;
+            tx.NextHash(user->Generate(txPrev.nSequence + 1, strPIN, false), txPrev.nNextType);
+
+            /* Check the calculated next hash matches the one on the last transaction in the sig chain. */
+            if(txPrev.hashNext != tx.hashNext)
+                throw APIException(-139, "Invalid credentials");
+                        
+            /* Generate the private key */
+            uint512_t hashPrivate = user->Generate(strName, 0, strPIN);
+
+            /* Populate the key, hex encoded */
+            ret["privatekey"] = hashPrivate.ToString();
 
             return ret;
         }

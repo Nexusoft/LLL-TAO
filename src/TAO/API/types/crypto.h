@@ -104,6 +104,19 @@ namespace TAO
             json::json Get(const json::json& params, bool fHelp);
 
 
+            /** GetPrivate
+             *
+             *  Generates and returns the private key for a public key stored in the crypto object register
+             *
+             *  @param[in] params The parameters from the API call
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json GetPrivate(const json::json& params, bool fHelp);
+
+
             /** Create
              *
              *  Generates private key based on keyname/user/pass/pin and stores it in the keyname slot in the crypto register
