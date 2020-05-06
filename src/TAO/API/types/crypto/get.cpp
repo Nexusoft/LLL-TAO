@@ -85,10 +85,6 @@ namespace TAO
             if(!crypto.CheckName(strName))
                 throw APIException(-260, "Invalid key name");
 
-            /* Check to see if the the key already exists */
-            if(crypto.get<uint256_t>(strName) != 0)
-                throw APIException(-261, "Key already exists");
-
             /* Get List of key names in the crypto object */
             std::vector<std::string> vKeys = crypto.GetFieldNames();        
 
