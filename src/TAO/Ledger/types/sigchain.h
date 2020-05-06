@@ -176,6 +176,20 @@ namespace TAO
             uint512_t Generate(const SecureString& strSecret) const;
 
 
+            /** Key
+             *
+             *  This function generates a public key generated from random seed phrase.
+             *
+             *  @param[in] strType The type of signing key used.
+             *  @param[in] nKeyID The key number in the keychian
+             *  @param[in] strSecret The secret phrase to use
+             *  @param[in] nType The key type to use.
+             *
+             *  @return The vector of bytes representing this public key.
+             **/
+            std::vector<uint8_t> Key(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret, const uint8_t nType) const;
+
+
             /** KeyHash
              *
              *  This function generates a hash of a public key generated from random seed phrase.

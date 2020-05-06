@@ -203,7 +203,7 @@ Returns the private key for a public key stored in the users crypto object regis
 ### Return values:
 
 
-`privatekey` : The private key, hex encoded.
+`privatekey` : The private key, base58 encoded.
 
 
 ****
@@ -256,7 +256,7 @@ This method can be used to encrypt arbitrary data using the public key from a cr
 
 ### Parameters:
 
-`publickey` : The public key used to encrypt the data. This should be passed in as a base64-encoded string
+`publickey` : The public key used to encrypt the data. This should be passed in as a base58-encoded string
 
 `data` : The data to encrypt. This should be passed in as a base64-encoded string
 
@@ -297,7 +297,7 @@ The `data` must be supplied as a base64 encoded string.  This will be decoded in
 
 `session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) should be used to decrypt the data. For single-user API mode the session should not be supplied. 
 
-`privatekey` : Optional, the private key to use to decrypt the data.  If this is provided then this will be used instead of generating the private key from the signature chain credentials. The private key should be hex encoded. 
+`privatekey` : Optional, the private key to use to decrypt the data.  If this is provided then this will be used instead of generating the private key from the signature chain credentials. The private key should be base58 encoded. 
 
 `data` : The data to decrypt. This should be passed in as a base64-encoded string
 
@@ -350,7 +350,7 @@ The `data` must be supplied as a base64 encoded string.  This will be decoded in
 
 ### Return values:
 
-`publickey` : The corresponding public key that can be used to verify the signature, base64 encoded.
+`publickey` : The corresponding public key that can be used to verify the signature, base58 encoded.
 
 `signature` : The signature, base64 encoded.
 
@@ -373,7 +373,7 @@ The `data` must be supplied as a base64 encoded string.  This will be decoded in
 ### Parameters:
  
 
-`publickey` : The public key to use to verify the signature, base64 encoded.
+`publickey` : The public key to use to verify the signature, base58 encoded.
 
 `data` : The signed data. This should be passed in as a base64-encoded string
 

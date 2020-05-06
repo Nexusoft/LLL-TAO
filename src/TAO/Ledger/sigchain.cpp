@@ -484,9 +484,12 @@ namespace TAO
         }
 
 
-        /* This function generates a hash of a public key generated from random seed phrase. */
-        uint256_t SignatureChain::KeyHash(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret, const uint8_t nType) const
+        /* This function generates a public key generated from random seed phrase. */
+        std::vector<uint8_t> SignatureChain::Key(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret, const uint8_t nType) const
         {
+            /* The public key bytes */
+            std::vector<uint8_t> vchPubKey;
+
             /* Get the private key. */
             uint512_t hashSecret = Generate(strType, nKeyID, strSecret);
 
@@ -507,13 +510,10 @@ namespace TAO
                     if(!key.SetSecret(vchSecret))
                         throw debug::exception(FUNCTION, "failed to set falcon secret key");
 
-                    /* Calculate the next hash. */
-                    uint256_t hashRet = LLC::SK256(key.GetPubKey());
+                    /* Set the key bytes to return */
+                    vchPubKey = key.GetPubKey();
 
-                    /* Set the leading byte. */
-                    hashRet.SetType(nType);
-
-                    return hashRet;
+                    break;
                 }
 
                 /* Support for the BRAINPOOL signature scheme. */
@@ -526,17 +526,32 @@ namespace TAO
                     if(!key.SetSecret(vchSecret, true))
                         throw debug::exception(FUNCTION, "failed to set brainpool secret key");
 
-                    /* Calculate the next hash. */
-                    uint256_t hashRet = LLC::SK256(key.GetPubKey());
+                    /* Set the key bytes to return */
+                    vchPubKey = key.GetPubKey();
 
-                    /* Set the leading byte. */
-                    hashRet.SetType(nType);
+                    break;
 
-                    return hashRet;
                 }
             }
 
-            return 0;
+            /* return the public key */
+            return vchPubKey;
+        }
+
+        /* This function generates a hash of a public key generated from random seed phrase. */
+        uint256_t SignatureChain::KeyHash(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret, const uint8_t nType) const
+        {
+            /* Generate the public key */
+            std::vector<uint8_t> vchPubKey = Key(strType, nKeyID, strSecret, nType);
+            
+            /* Calculate the key hash. */
+            uint256_t hashRet = LLC::SK256(vchPubKey);
+
+            /* Set the leading byte. */
+            hashRet.SetType(nType);
+
+            return hashRet;
+
         }
 
 

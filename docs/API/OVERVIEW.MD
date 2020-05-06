@@ -399,5 +399,6 @@ Error Codes
 | -262 | Invalid scheme |
 | -263 | Private key can only be retrieved for app1, app2, app3, and other 3rd-party keys |
 | -264 | Key not yet created |
+| -265 | Missing public key |
 | -300 | API can only be used to lookup data for the currently logged in signature chain when running in client mode |
 
