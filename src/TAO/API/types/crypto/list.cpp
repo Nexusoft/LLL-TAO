@@ -104,7 +104,7 @@ namespace TAO
                 }
                 
                 /* Populate the key, base58 encoded */
-                jsonKey["key"] = hashPublic == 0 ? "" : encoding::EncodeBase58(hashPublic.GetBytes());
+                jsonKey["hashkey"] = hashPublic == 0 ? "" : encoding::EncodeBase58(hashPublic.GetBytes());
 
                 /* add key to the response array */
                 ret.push_back(jsonKey);

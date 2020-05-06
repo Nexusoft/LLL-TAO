@@ -109,7 +109,7 @@ namespace TAO
             }
             
             /* Populate the key, base58 encoded */
-            ret["key"] = hashPublic == 0 ? "" : encoding::EncodeBase58(hashPublic.GetBytes());
+            ret["hashkey"] = hashPublic == 0 ? "" : encoding::EncodeBase58(hashPublic.GetBytes());
 
             /* If the caller has requested to filter on a fieldname then filter out the json response to only include that field */
             FilterResponse(params, ret);
@@ -166,7 +166,6 @@ namespace TAO
             if(!crypto.CheckName(strName))
                 throw APIException(-260, "Invalid key name");
  
-
             /* Check to see if the the has been generated.  Even though the key is deterministic,  */
             if(crypto.get<uint256_t>(strName) == 0)
                 throw APIException(-264, "Key not yet created");

@@ -156,7 +156,7 @@ namespace TAO
             }
             
             /* Populate the key, base58 encoded */
-            ret["key"] = encoding::EncodeBase58(hashPublic.GetBytes());
+            ret["hashkey"] = encoding::EncodeBase58(hashPublic.GetBytes());
 
             return ret;
         }

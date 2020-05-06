@@ -58,17 +58,17 @@ Returns a list of all public keys in the crypto object register for the specifie
     {
         "name": "auth",
         "scheme": "FALCON",
-        "publickey": "8FJxzexVDUN5YiQYK4QjvfRNrAUym8FNu4B8yvYGXgKFJL8nBse"
+        "hashkey": "8FJxzexVDUN5YiQYK4QjvfRNrAUym8FNu4B8yvYGXgKFJL8nBse"
     },
     {
         "name": "network",
         "scheme": "FALCON",
-        "publickey": "8CvLySLAWEKDB9SJSUDdRgzAG6ALVcXLzPQREN9Nbf7AzuJkg5P"
+        "hashkey": "8CvLySLAWEKDB9SJSUDdRgzAG6ALVcXLzPQREN9Nbf7AzuJkg5P"
     },
     {
         "name": "app1",
         "scheme": "BRAINPOOL",
-        "publickey": "8HJxzexVDUN5YiQYK4QjvfRNrAUym8FNu4B8yvYGXgKFJL8n8Dc"
+        "hashkey": "8HJxzexVDUN5YiQYK4QjvfRNrAUym8FNu4B8yvYGXgKFJL8n8Dc"
     },
   
 ]
@@ -81,7 +81,7 @@ Returns a list of all public keys in the crypto object register for the specifie
 
 `scheme` : The cryptographic scheme used to generate the key pair.  This can be `FALCON` or `BRAINPOOL`.
 
-`publickey` : The public key, hashed (using Skein-Keccak 256), and then base58 encoded.
+`hashkey` : The public key, hashed (using Skein-Keccak 256), and then base58 encoded.
 
 
 
@@ -114,7 +114,7 @@ Generates a new public-private key pair and stores it in the crypto object regis
 {
     "name": "app1",
     "scheme": "BRAINPOOL",
-    "publickey": "8HJxzexVDUN5YiQYK4QjvfRNrAUym8FNu4B8yvYGXgKFJL8n8Dc"
+    "hashkey": "8HJxzexVDUN5YiQYK4QjvfRNrAUym8FNu4B8yvYGXgKFJL8n8Dc"
 }
 
 ```
@@ -125,7 +125,7 @@ Generates a new public-private key pair and stores it in the crypto object regis
 
 `scheme` : The cryptographic scheme used to generate the key pair.  This can be `FALCON` or `BRAINPOOL`.
 
-`publickey` : The newly created public key, hashed (using Skein-Keccak 256), and then base58 encoded.
+`hashkey` : The newly created public key, hashed (using Skein-Keccak 256), and then base58 encoded.
 
 
 ****
@@ -156,7 +156,7 @@ Returns the public key from the crypto object register for the specified key nam
 {
     "name": "auth",
     "scheme": "FALCON",
-    "publickey": "8FJxzexVDUN5YiQYK4QjvfRNrAUym8FNu4B8yvYGXgKFJL8nBse"
+    "hashkey": "8FJxzexVDUN5YiQYK4QjvfRNrAUym8FNu4B8yvYGXgKFJL8nBse"
 }
 
 ```
@@ -167,7 +167,7 @@ Returns the public key from the crypto object register for the specified key nam
 
 `scheme` : The cryptographic scheme used to generate the key pair.  This can be `FALCON` or `BRAINPOOL`.
 
-`publickey` : The public key, hashed (using Skein-Keccak 256), and then base58 encoded.
+`hashkey` : The public key, hashed (using Skein-Keccak 256), and then base58 encoded.
 
 
 ****
@@ -256,13 +256,7 @@ This method can be used to encrypt arbitrary data using the public key from a cr
 
 ### Parameters:
 
-`name` : The name of the public key in the crypto object register to use to encrypt the data.
-
-`genesis` : The genesis hash identifying the signature chain (optional if username is supplied).
-
-`username` : The username identifying the signature chain (optional if genesis is supplied).
-
-`session` : If no username/genesis is supplied, in multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) to get the public key from. For single-user API mode the session should not be supplied.   
+`publickey` : The public key used to encrypt the data. This should be passed in as a base64-encoded string
 
 `data` : The data to encrypt. This should be passed in as a base64-encoded string
 
@@ -356,7 +350,7 @@ The `data` must be supplied as a base64 encoded string.  This will be decoded in
 
 ### Return values:
 
-`publickey` : The corresponding public key that can be used to verify the signature, hashed (using Skein-Keccak 256), and then base58 encoded.
+`publickey` : The corresponding public key that can be used to verify the signature, base64 encoded.
 
 `signature` : The signature, base64 encoded.
 
@@ -377,16 +371,9 @@ The `data` must be supplied as a base64 encoded string.  This will be decoded in
 
 
 ### Parameters:
+ 
 
-`name` : The name of the public key in the crypto object register that should be used to verify the signature.  
-
-`genesis` : The genesis hash identifying the signature chain (optional if username is supplied).
-
-`username` : The username identifying the signature chain (optional if genesis is supplied).
-
-`session` : If no username/genesis is supplied, in multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) to get the public key from. For single-user API mode the session should not be supplied. 
-
-`publickey` : Optional, the public key to use to verify the signature.  If this is provided then this will be used instead of retrieving the key from the crypto object register.  
+`publickey` : The public key to use to verify the signature, base64 encoded.
 
 `data` : The signed data. This should be passed in as a base64-encoded string
 
