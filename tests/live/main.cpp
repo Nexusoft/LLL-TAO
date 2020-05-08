@@ -148,7 +148,7 @@ int main(int argc, char** argv)
     uint512_t hash = 293548230430984;
 
 
-    LLD::BloomFilter* bloom = new LLD::BloomFilter(256 * 256 * 64);
+    LLD::BloomFilter* bloom = new LLD::BloomFilter(256 * 256 * 64, config::GetDataDir() + "/TEST/bloom/");
     bloom->Initialize();
     //bloom->Insert(hash + 3);
 

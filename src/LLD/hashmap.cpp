@@ -38,6 +38,7 @@ namespace LLD
     , HASHMAP_KEY_ALLOCATION (static_cast<uint16_t>(HASHMAP_MAX_KEY_SIZE + 13))
     , nFlags                 (nFlagsIn)
     , RECORD_MUTEX           (1024)
+    , BLOOM                  (nBucketsIn * 64, strBaseLocationIn)
     {
         Initialize();
     }
@@ -55,6 +56,7 @@ namespace LLD
     , HASHMAP_KEY_ALLOCATION (map.HASHMAP_KEY_ALLOCATION)
     , nFlags                 (map.nFlags)
     , RECORD_MUTEX           (map.RECORD_MUTEX.size())
+    , BLOOM                  (map.BLOOM)
     {
         Initialize();
     }
@@ -72,6 +74,7 @@ namespace LLD
     , HASHMAP_KEY_ALLOCATION (std::move(map.HASHMAP_KEY_ALLOCATION))
     , nFlags                 (std::move(map.nFlags))
     , RECORD_MUTEX           (map.RECORD_MUTEX.size())
+    , BLOOM                  (std::move(map.BLOOM))
     {
         Initialize();
     }
@@ -88,6 +91,7 @@ namespace LLD
         HASHMAP_MAX_KEY_SIZE   = map.HASHMAP_MAX_KEY_SIZE;
         HASHMAP_KEY_ALLOCATION = map.HASHMAP_KEY_ALLOCATION;
         nFlags                 = map.nFlags;
+        BLOOM                  = map.BLOOM;
 
         Initialize();
 
@@ -106,6 +110,7 @@ namespace LLD
         HASHMAP_MAX_KEY_SIZE   = std::move(map.HASHMAP_MAX_KEY_SIZE);
         HASHMAP_KEY_ALLOCATION = std::move(map.HASHMAP_KEY_ALLOCATION);
         nFlags                 = std::move(map.nFlags);
+        BLOOM                  = std::move(map.BLOOM);
 
         Initialize();
 
@@ -223,12 +228,19 @@ namespace LLD
 
         /* Load the stream object into the stream LRU cache. */
         fileCache->Put(0, new std::fstream(file, std::ios::in | std::ios::out | std::ios::binary));
+
+        /* Initialize the bloom filter. */
+        BLOOM.Initialize();
     }
 
 
     /* Read a key index from the disk hashmaps. */
     bool BinaryHashMap::Get(const std::vector<uint8_t>& vKey, SectorKey &cKey)
     {
+        /* Check bloom filter first. */
+        if(!BLOOM.Has(vKey))
+            return false;
+
         LOCK(KEY_MUTEX);
 
         /* Get the assigned bucket for the hashmap. */
@@ -319,7 +331,7 @@ namespace LLD
         CompressKey(vKeyCompressed, HASHMAP_MAX_KEY_SIZE);
 
         /* Handle if not in append mode which will update the key. */
-        if(!(nFlags & FLAGS::APPEND))
+        if(!(nFlags & FLAGS::APPEND) && BLOOM.Has(cKey.vKey))
         {
             /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
             std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
@@ -408,7 +420,7 @@ namespace LLD
         if(!filesystem::exists(file))
         {
             /* Blank vector to write empty space in new disk file. */
-            std::vector<uint8_t> vSpace(HASHMAP_KEY_ALLOCATION, 0);
+            const static std::vector<uint8_t> vSpace(HASHMAP_KEY_ALLOCATION, 0);
 
             /* Write the blank data to the new file handle. */
             std::ofstream stream(file, std::ios::out | std::ios::binary | std::ios::app);
@@ -462,6 +474,9 @@ namespace LLD
         /* Write the index into hashmap. */
         pindex->write((char*)&vBucket[0], vBucket.size());
         pindex->flush();
+
+        /* Update the bloom filter. */
+        BLOOM.Insert(cKey.vKey);
 
         /* Debug Output of Sector Key Information. */
         if(config::nVerbose >= 4)

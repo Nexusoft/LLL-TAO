@@ -148,7 +148,7 @@ namespace LLD
 
 
         /** Create bloom filter with given number of buckets. **/
-        BloomFilter  (const uint64_t nBuckets);
+        BloomFilter  (const uint64_t nBuckets, const std::string& strBaseLocationIn);
 
 
         /** Initialize

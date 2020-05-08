@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <LLD/keychain/keychain.h>
 #include <LLD/cache/template_lru.h>
 #include <LLD/include/enum.h>
+#include <LLD/templates/bloom.h>
 
 #include <cstdint>
 #include <string>
@@ -25,7 +26,7 @@ ________________________________________________________________________________
 #include <vector>
 #include <mutex>
 
-//TODO: Abstract base class for all keychains
+
 namespace LLD
 {
 
@@ -80,6 +81,10 @@ namespace LLD
 
         /* The key level locking hashmap. */
         mutable std::vector<std::mutex> RECORD_MUTEX;
+
+
+        /** Bloom Filter for hashmap keys. **/
+        BloomFilter BLOOM;
 
 
     public:

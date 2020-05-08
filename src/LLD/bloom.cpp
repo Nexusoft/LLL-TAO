@@ -129,11 +129,11 @@ namespace LLD
 
 
     /* Create bloom filter with given number of buckets. */
-    BloomFilter::BloomFilter  (const uint64_t nBuckets)
-    : HASHMAP_TOTAL_BUCKETS (nBuckets * 8)
+    BloomFilter::BloomFilter  (const uint64_t nBuckets, const std::string& strBaseLocationIn)
+    : HASHMAP_TOTAL_BUCKETS (nBuckets)
     , bloom                 (HASHMAP_TOTAL_BUCKETS / 64, 0)
     , pindex                (nullptr)
-    , strBaseLocation       (config::GetDataDir() + "TEST/bloom/")
+    , strBaseLocation       (strBaseLocationIn)
     , MUTEX                 ( )
     , THREAD                ( )
     , CONDITION             ( )
@@ -179,7 +179,7 @@ namespace LLD
             stream.close();
 
             /* Debug output showing generation of disk index. */
-            debug::log(0, FUNCTION, "Generated Disk Index of ", bloom.size() * 8, " bytes");
+            debug::log(0, FUNCTION, "Generated Bloom Filter of ", bloom.size() * 8, " bytes");
         }
 
         /* Create the stream index object. */
@@ -201,7 +201,7 @@ namespace LLD
         nTotalKeys.store(nCurrentKeys);
 
         /* Debug output showing loading of disk index. */
-        debug::log(0, FUNCTION, "Loaded Disk Index of ", (bloom.size() * 8) + 8, " bytes and ", nTotalKeys.load(), " keys");
+        debug::log(0, FUNCTION, "Loaded Bloom Filter of ", (bloom.size() * 8) + 8, " bytes and ", nTotalKeys.load(), " keys");
 
         /* Start up the flush thread. */
         THREAD = std::thread(std::bind(&BloomFilter::flush_thread, this));
@@ -231,7 +231,7 @@ namespace LLD
         }
         pindex->flush();
 
-        debug::log(0, "Flushed to disk with ", nTotalKeys.load(), " keys");
+        //debug::log(0, "Flushed to disk with ", nTotalKeys.load(), " keys");
     }
 
 
