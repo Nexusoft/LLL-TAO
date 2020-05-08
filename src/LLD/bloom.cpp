@@ -55,10 +55,18 @@ namespace LLD
             /* Check for data to be written. */
             uint64_t nCurrentKeys = nTotalKeys.load();
             std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
+
+            /* Wait for signals. */
+            runtime::stopwatch swTimer;
+            swTimer.start();
             CONDITION.wait(CONDITION_LOCK,
                 [&]
                 {
-                    return config::fShutdown.load() || fDestruct.load() || (nCurrentKeys != nTotalKeys.load());
+                    return
+                    (
+                        config::fShutdown.load() || fDestruct.load() ||
+                        (nCurrentKeys != nTotalKeys.load() && swTimer.ElapsedMilliseconds() > 500) //we don't want to flush every wakeup
+                    );
                 }
             );
 
@@ -245,7 +253,7 @@ namespace LLD
         LOCK(MUTEX);
 
         /* Run over k hashes. */
-        for(uint16_t nK = 0; nK < 2; ++nK)
+        for(uint16_t nK = 0; nK < 3; ++nK)
         {
             uint64_t nBucket = get_bucket(vKey, nK);
             set_bit(nBucket);
@@ -262,7 +270,7 @@ namespace LLD
         LOCK(MUTEX);
 
         /* Run over k hashes. */
-        for(uint16_t nK = 0; nK < 2; ++nK)
+        for(uint16_t nK = 0; nK < 3; ++nK)
         {
             uint64_t nBucket = get_bucket(vKey, nK);
             if(!is_set(nBucket))

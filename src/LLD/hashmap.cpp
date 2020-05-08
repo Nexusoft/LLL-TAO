@@ -237,10 +237,6 @@ namespace LLD
     /* Read a key index from the disk hashmaps. */
     bool BinaryHashMap::Get(const std::vector<uint8_t>& vKey, SectorKey &cKey)
     {
-        /* Check bloom filter first. */
-        if(!BLOOM.Has(vKey))
-            return false;
-
         LOCK(KEY_MUTEX);
 
         /* Get the assigned bucket for the hashmap. */
@@ -255,6 +251,10 @@ namespace LLD
         /* Compress any keys larger than max size. */
         std::vector<uint8_t> vKeyCompressed = vKey;
         CompressKey(vKeyCompressed, HASHMAP_MAX_KEY_SIZE);
+
+        /* Check bloom filter first. */
+        if(!BLOOM.Has(vKey))
+            return false;
 
         /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
         std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
