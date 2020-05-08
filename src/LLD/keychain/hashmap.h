@@ -50,7 +50,7 @@ namespace LLD
 
 
         /** Keychain stream object. **/
-        TemplateLRU<uint16_t, std::fstream*> *fileCache;
+        TemplateLRU<uint16_t, std::fstream*>* fileCache;
 
 
         /** Keychain index stream. **/

@@ -52,9 +52,11 @@ ________________________________________________________________________________
 #include <Util/include/runtime.h>
 
 #include <list>
+#include <functional>
 #include <variant>
 
 #include <Util/include/softfloat.h>
+#include <Util/include/filesystem.h>
 
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/stake.h>
@@ -63,6 +65,8 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/types/locator.h>
+
+#include <LLD/templates/bloom.h>
 
 class TestDB : public LLD::SectorDatabase<LLD::BinaryHashMap, LLD::BinaryLRU>
 {
@@ -134,93 +138,40 @@ _name.shard.file
 const uint256_t hashSeed = 55;
 
 
+#include <bitset>
+
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
-    config::mapArgs["-datadir"] = "/public/SYNC";
-
-    /* Initialize LLD. */
-    LLD::Initialize();
+    uint512_t hash = 293548230430984;
 
 
-    uint1024_t hashBlock = uint1024_t("0x9e804d2d1e1d3f64629939c6f405f15bdcf8cd18688e140a43beb2ac049333a230d409a1c4172465b6642710ba31852111abbd81e554b4ecb122bdfeac9f73d4f1570b6b976aa517da3c1ff753218e1ba940a5225b7366b0623e4200b8ea97ba09cb93be7d473b47b5aa75b593ff4b8ec83ed7f3d1b642b9bba9e6eda653ead9");
+    LLD::BloomFilter* bloom = new LLD::BloomFilter(256 * 256 * 64);
+    bloom->Initialize();
+    //bloom->Insert(hash + 3);
 
+    for(; hash < 293548230430984 + 10; ++hash)
+        debug::log(0, "Has (", hash.SubString(), ") Item ", bloom->Has(hash) ? "TRUE" : "FALSE");
 
-    TAO::Ledger::BlockState state = TAO::Ledger::TritiumGenesis();
-    debug::log(0, state.hashMerkleRoot.ToString());
+    hash = 823828;
+    bloom->Insert(hash);
 
-    return 0;
+    debug::log(0, "------------ NEXT SET -------------");
+    for(; hash < 823828 + 10; ++hash)
+        debug::log(0, "Has (", hash.SubString(), ") Item ", bloom->Has(hash) ? "TRUE" : "FALSE");
 
-    if(!LLD::Ledger->ReadBlock(hashBlock, state))
-        return debug::error("failed to read block");
-
-    printf("block.hashPrevBlock = uint1024_t(\"0x%s\");\n", state.hashPrevBlock.ToString().c_str());
-    printf("block.nVersion = %u;\n", state.nVersion);
-    printf("block.nHeight = %u;\n", state.nHeight);
-    printf("block.nChannel = %u;\n", state.nChannel);
-    printf("block.nTime = %lu;\n",    state.nTime);
-    printf("block.nBits = %u;\n", state.nBits);
-    printf("block.nNonce = %lu;\n", state.nNonce);
-
-    for(int i = 0; i < state.vtx.size(); ++i)
-    {
-        printf("/* Hardcoded VALUE for INDEX %i. */\n", i);
-        printf("vHashes.push_back(uint512_t(\"0x%s\"));\n\n", state.vtx[i].second.ToString().c_str());
-        //printf("block.vtx.push_back(std::make_pair(%u, uint512_t(\"0x%s\")));\n\n", state.vtx[i].first, state.vtx[i].second.ToString().c_str());
-    }
-
-    for(int i = 0; i < state.vOffsets.size(); ++i)
-        printf("block.vOffsets.push_back(%u);\n", state.vOffsets[i]);
-
-
-    return 0;
-
-    //config::mapArgs["-datadir"] = "/public/tests";
-
-    //TestDB* db = new TestDB();
-
-    uint1024_t hashLast = 0;
-    //db->ReadLast(hashLast);
-
-    std::fstream stream1(config::GetDataDir() + "/test1.txt", std::ios::in | std::ios::out | std::ios::binary);
-    std::fstream stream2(config::GetDataDir() + "/test2.txt", std::ios::in | std::ios::out | std::ios::binary);
-    std::fstream stream3(config::GetDataDir() + "/test3.txt", std::ios::in | std::ios::out | std::ios::binary);
-    std::fstream stream4(config::GetDataDir() + "/test4.txt", std::ios::in | std::ios::out | std::ios::binary);
-    std::fstream stream5(config::GetDataDir() + "/test5.txt", std::ios::in | std::ios::out | std::ios::binary);
-
-    std::vector<uint8_t> vBlank(1024, 0); //1 kb
-
-    stream1.write((char*)&vBlank[0], vBlank.size());
-    stream2.write((char*)&vBlank[0], vBlank.size());
-    stream3.write((char*)&vBlank[0], vBlank.size());
-    stream4.write((char*)&vBlank[0], vBlank.size());
-    stream5.write((char*)&vBlank[0], vBlank.size());
-
-    runtime::timer timer;
-    timer.Start();
-    for(uint64_t n = 0; n < 100000; ++n)
-    {
-        stream1.seekp(0, std::ios::beg);
-        stream1.write((char*)&vBlank[0], vBlank.size());
-
-        stream1.seekp(8, std::ios::beg);
-        stream1.write((char*)&vBlank[0], vBlank.size());
-
-        stream1.seekp(16, std::ios::beg);
-        stream1.write((char*)&vBlank[0], vBlank.size());
-
-        stream1.seekp(32, std::ios::beg);
-        stream1.write((char*)&vBlank[0], vBlank.size());
-
-        stream1.seekp(64, std::ios::beg);
-        stream1.write((char*)&vBlank[0], vBlank.size());
-        stream1.flush();
-
-        //db->WriteKey(n, n);
-    }
+    //bloom.Flush();
+    delete bloom;
 
     debug::log(0, "Wrote 100k records in ", timer.ElapsedMicroseconds(), " micro-seconds");
 
+
+    return 0;
+
+    TestDB* db = new TestDB();
+
+    uint1024_t hashLast = 0;
+    db->ReadLast(hashLast);
 
     timer.Reset();
     for(uint64_t n = 0; n < 100000; ++n)
