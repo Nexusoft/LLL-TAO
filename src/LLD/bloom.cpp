@@ -176,6 +176,10 @@ namespace LLD
             /* Write the new disk index .*/
             std::fstream stream(strIndex, std::ios::out | std::ios::binary | std::ios::trunc);
             stream.write((char*)&bloom[0], bloom.size() * 8);
+
+            /* Append the total keys. */
+            uint64_t nCurrentKeys = 0;
+            stream.write((char*)&nCurrentKeys, 8);
             stream.close();
 
             /* Debug output showing generation of disk index. */
