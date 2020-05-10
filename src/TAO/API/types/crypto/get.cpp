@@ -187,7 +187,7 @@ namespace TAO
                 throw APIException(-139, "Invalid credentials");
                         
             /* Generate the public key */
-            std::vector<uint8_t> vchPubKey = user->Key("strName", 0, strPIN, hashKey.GetType());
+            std::vector<uint8_t> vchPubKey = user->Key(strName, 0, strPIN, hashKey.GetType());
 
             /* Populate the key, base64 encoded */
             ret["publickey"] = encoding::EncodeBase58(vchPubKey);
