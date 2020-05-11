@@ -211,11 +211,14 @@ namespace TAO
                     nReference = stoull(jsonRecipient["reference"].get<std::string>());
 
                 /* Submit the payload object. */
-                tx[0] << (uint8_t)TAO::Operation::OP::DEBIT << hashFrom << hashTo << nAmount << nReference;
+                tx[nContract] << (uint8_t)TAO::Operation::OP::DEBIT << hashFrom << hashTo << nAmount << nReference;
 
                 /* Add expiration condition unless sending to self */
                 if(recipient.hashOwner != object.hashOwner)
-                    AddExpires( jsonRecipient, user->Genesis(), tx[0], false);
+                    AddExpires(jsonRecipient, user->Genesis(), tx[nContract], false);
+
+                /* Increment the contract ID */
+                nContract++;
 
                 /* Reduce the current balance by the amount for this recipient */
                 nCurrentBalance -= nAmount;
