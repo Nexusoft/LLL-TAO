@@ -339,8 +339,11 @@ namespace TAO
             /* Add the id */
             ret["id"] = nContract;
 
-            /* Start the stream at the beginning. */
+            /* Reset all streams */
             contract.Reset();
+
+            /* Seek the contract operation stream to the position of the primitive. */
+            contract.SeekToPrimitive();
 
             /* Make sure no exceptions are thrown. */
             try
@@ -349,25 +352,6 @@ namespace TAO
                 /* Get the contract operations. */
                 uint8_t OPERATION = 0;
                 contract >> OPERATION;
-
-                /* Check for conditional OP */
-                switch(OPERATION)
-                {
-                    case TAO::Operation::OP::VALIDATE:
-                    {
-                        /* Seek through validate. */
-                        contract.Seek(68);
-                        contract >> OPERATION;
-
-                        break;
-                    }
-
-                    case TAO::Operation::OP::CONDITION:
-                    {
-                        /* Get new operation. */
-                        contract >> OPERATION;
-                    }
-                }
 
                 /* Check the current opcode. */
                 switch(OPERATION)
@@ -787,7 +771,7 @@ namespace TAO
                                         ret["from_name"] = strFrom;
 
                                     /* Reset the operation stream position in case it was loaded from mempool and therefore still in previous state */
-                                    debitContract.Reset();
+                                    debitContract.SeekToPrimitive();
 
                                     /* Seek to reference. */
                                     debitContract.Seek(73);
@@ -1097,6 +1081,11 @@ namespace TAO
                             ret["stake"]    = (double)object.get<uint64_t>("stake") / pow(10, nDecimals);
                         }
 
+                        /* Add tx count if requested by the caller*/
+                        if(params.find("count") != params.end() 
+                        && (params["count"].get<std::string>() == "1" ||  params["count"].get<std::string>() == "true"))
+                            ret["count"] = GetTxCount(object.hashOwner, object, hashRegister);
+
 
                         break;
                     }
@@ -1142,7 +1131,12 @@ namespace TAO
                         ret["maxsupply"]        = (double) object.get<uint64_t>("supply") / pow(10, nDecimals);
                         ret["currentsupply"]    = (double) (object.get<uint64_t>("supply")
                                                 - object.get<uint64_t>("balance")) / pow(10, nDecimals); // current supply is based on unconfirmed balance
-                        ret["decimals"]           = nDecimals;
+                        ret["decimals"]         = nDecimals;
+
+                        /* Add tx count if requested by the caller*/
+                        if(params.find("count") != params.end() 
+                        && (params["count"].get<std::string>() == "1" ||  params["count"].get<std::string>() == "true"))
+                            ret["count"] = GetTxCount(object.hashOwner, object, hashRegister);
 
                         break;
                     }

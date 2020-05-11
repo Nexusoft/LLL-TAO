@@ -237,7 +237,7 @@ namespace TAO
                                     continue;
 
                                 /* Fire off our event. */
-                                ssRelay << uint8_t(LLP::TYPES::SIGCHAIN) << state.hashOwner << hash;
+                                ssRelay << uint8_t(LLP::SPECIFIER::LEGACY) << uint8_t(LLP::TYPES::SIGCHAIN) << state.hashOwner << hash;
                                 ++nTotalEvents;
 
                                 debug::log(0, FUNCTION, "LEGACY: ", hash.SubString(), " for genesis ", state.hashOwner.SubString());

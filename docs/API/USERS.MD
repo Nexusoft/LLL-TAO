@@ -30,6 +30,7 @@ The following methods are currently supported by this API
 [`list/names`](#listnames)    
 [`list/namespaces`](#listnamespaces)  
 [`list/notifications`](#listnotifications)  
+[`process/notifications`](#processnotifications)  
 [`list/tokens`](#listtokens)  
 [`list/transactions`](#listtransactions)
 
@@ -511,6 +512,8 @@ This will list off all of the token accounts belonging to a particular signature
 
 `limit` : The number of results to return for the current page.  Default is 100
 
+`count` : Optional boolean field that determines whether the response includes the transaction `count` field.  This defaults to false, as including the transaction count can slow the response time of the method considerably.   
+
 
 
 ### Return value JSON object:
@@ -559,6 +562,8 @@ This will list off all of the token accounts belonging to a particular signature
 `pending` : This is the sum of all confirmed debit transactions that have been made to this account, that have not yet been credited.  To move coins from pending into the available balance you must create a corresponding credit transaction.  NOTE: if configured to run, the events processor does this for you.
 
 `unconfirmed` : This is the sum of all unconfirmed debit transactions that have been made to this account PLUS the sum of all unconfirmed credits that you have for confirmed debit transactions.  When someone makes a debit to your account it will immediately appear in the unconfirmed balance until that transaction is included in a block, at which point it moves into `pending`.  When you (or the events processor) creates the corresponding credit transaction for that debit, the amount will move from `pending` back into `unconfirmed` until the credit transaction is included in a block, at which point the amount moves to `balance`.  
+
+`count` : Only returned if the caller requested `count` : true.  This is the number of transactions made to/from the account.
 
 
 ****
@@ -842,6 +847,8 @@ This will list off all of the transactions sent to a particular genesis or usern
 
 `limit` : The number of notifications to return for the current page.  Default is 100
 
+`suppressed`: Optional boolean flag indicating that suppressed notifications should be included in the list. 
+
 
 ### Return value JSON object:
 ```
@@ -883,6 +890,8 @@ An array of contracts deifned as:
 
 `txid` : The transaction that was credited / claimed.
 
+`suppressed`: If the caller included the optional `suppressed` flag, then the response will include this field to indicate whether this notification is currently being suppressed or not. 
+
 `from` : For `DEBIT` transactions, the register address of the account that the debit is being made from.
 
 `from_name` : For `DEBIT` transactions, the name of the account that the debit is being made from.  Only included if the name can be resolved.
@@ -902,6 +911,51 @@ An array of contracts deifned as:
 `proof` : The register address of the token account proving the the split dividend debit.
 
 `dividend_payment` : Flag indicating that this debit is a split dividend payment to a tokenized asset
+
+
+****
+
+
+# `process/notifications`
+
+Process all outstanding notifications for a logged in signature chain.  This API method can be used instead of running the  
+
+
+### Endpoint:
+
+`/users/process/notifications`
+
+
+### Parameters:
+
+`pin` : The PIN for this signature chain.  This is required unless the signature chain is already unlocked for notifications.
+
+`session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) the notifications should be processed for. For single-user API mode the session should not be supplied.
+
+`suppressed`: Optional boolean flag indicating that suppressed notifications should be included when processing.
+
+
+### Return value JSON object:
+```
+{
+    "processed": 7,
+    "transactions": [
+        {
+            "txid": "01c4cf7b356d95bb783c31cd22119ff6dfcb5efc91dd1cf6c80f0cc4fd612dd7d03ed62955b0641f1b8985e38c2d7cd8fe7a07a98a46701b55c77559bd3c3152"
+        }
+    ]
+}
+
+
+```
+
+### Return values:
+
+`processed` : The number of notifications (contracts) processed.  
+
+`transactions` : Array of transaction ID's (`txid`) for each transaction that was created to process the notifications.  If there are more outstanding notifications than can fit in a single transaction, then additional transactions will be created until all notifications are processed.   
+
+**NOTE** : Some outstanding notifications may be skipped by this API call without resulting in an error message.  For example this can happen if the individual notifications conditions cannot be satisfied.
 
 ****
 
@@ -927,6 +981,8 @@ This will list off all of the tokens that were created by a particular signature
 `page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) results.  The default value is 0 if not supplied.
 
 `limit` : The number of results to return for the current page.  Default is 100
+
+`count` : Optional boolean field that determines whether the response includes the transaction `count` field.  This defaults to false, as including the transaction count can slow the response time of the method considerably.   
 
 
 
@@ -963,13 +1019,19 @@ This will list off all of the tokens that were created by a particular signature
 
 `address` : The register address for the account
 
-`balance` : The current balance of the token account.
+`balance` : The available balance of this token.  Initially the balance of the token is equal to the max supply, until the tokens have been distributed to accounts. This is the last confirmed balance less any new debits that you have made since the last block.
+
+`pending` : This is the sum of all confirmed debit transactions that have been made to this token, that have not yet been credited.  To move tokens from pending into the available balance you must create a corresponding credit transaction.  NOTE: if configured to run, the events processor does this for you.
+
+`unconfirmed` : This is the sum of all unconfirmed debit transactions that have been made to this token PLUS the sum of all unconfirmed credits that you have for confirmed debit transactions.  When someone makes a debit to the token it will immediately appear in the unconfirmed balance until that transaction is included in a block, at which point it moves into `pending`.  When you (or the events processor) creates the corresponding credit transaction for that debit, the amount will move from `pending` back into `unconfirmed` until the credit transaction is included in a block, at which point the amount moves to `balance`.  
 
 `maxsupply` : The maximum available supply for this token.
 
 `currentsupply` : The current number of tokens that have been distributed from this token register.
 
 `decimals` : The maximum number of decimal places that can be applied to token amounts.  For example decimals=2 will allow a token amount to be given to 2 decimal places.
+
+`count` : Only returned if the caller requested `count` : true.  This is the number of transactions made to/from the token.
 
 
 ****

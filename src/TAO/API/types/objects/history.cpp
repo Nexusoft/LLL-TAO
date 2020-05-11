@@ -70,8 +70,22 @@ namespace TAO
             if(state.IsNull() && !LLD::Register->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-106, "Invalid name / address");
 
+            /* The owner genesis hash, used to search for the object history */
+            TAO::Register::Address hashOwner = state.hashOwner;
+
+            /* If the object is tokenized then we need to use the token owner sig chain to search for history */
+            if(hashOwner.GetType() == TAO::Register::Address::TOKEN)
+            {
+                /* The token that owns the object */
+                TAO::Register::Object token;
+                if(!LLD::Register->ReadState(hashOwner, token, TAO::Ledger::FLAGS::MEMPOOL))
+                    throw APIException(-125, "Token not found");
+                
+                /* Update the hashOwner to be the owner of the token */
+                hashOwner = token.hashOwner;
+            }
+
             /* Make adjustment to history check and detect if the register is owned by system. */
-            uint256_t hashOwner = state.hashOwner;
             if(hashOwner.GetType() == TAO::Ledger::GENESIS::SYSTEM)
                 hashOwner.SetType(TAO::Ledger::GenesisType());
 
@@ -103,28 +117,12 @@ namespace TAO
                     /* Reset the operation stream position in case it was loaded from mempool and therefore still in previous state */
                     contract.Reset();
 
+                    /* Seek the contract operation stream to the position of the primitive. */
+                    contract.SeekToPrimitive();
+
                     /* Get the operation byte. */
                     uint8_t OPERATION = 0;
                     contract >> OPERATION;
-
-                    /* Check for conditional OP */
-                    switch(OPERATION)
-                    {
-                        case TAO::Operation::OP::VALIDATE:
-                        {
-                            /* Seek through validate. */
-                            contract.Seek(68);
-                            contract >> OPERATION;
-
-                            break;
-                        }
-
-                        case TAO::Operation::OP::CONDITION:
-                        {
-                            /* Get new operation. */
-                            contract >> OPERATION;
-                        }
-                    }
 
                     /* Check for key operations. */
                     switch(OPERATION)

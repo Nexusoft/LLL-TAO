@@ -106,31 +106,12 @@ namespace TAO
                 /* Get the contract. */
                 const TAO::Operation::Contract& contract = txDebit[nContract];
 
-                /* Reset the operation stream position in case it was loaded from mempool and therefore still in previous state */
-                contract.Reset();
+                /* Reset the contract to the position of the primitive. */
+                contract.SeekToPrimitive();
 
                 /* Get the operation byte. */
                 uint8_t nType = 0;
                 contract >> nType;
-
-                /* Check for validate and condition. */
-                switch(nType)
-                {
-                    case TAO::Operation::OP::VALIDATE:
-                    {
-                        /* Seek through validate. */
-                        contract.Seek(68);
-                        contract >> nType;
-
-                        break;
-                    }
-
-                    case TAO::Operation::OP::CONDITION:
-                    {
-                        /* Get new operation. */
-                        contract >> nType;
-                    }
-                }
 
                 /* Check type. */
                 if(nType != TAO::Operation::OP::DEBIT)

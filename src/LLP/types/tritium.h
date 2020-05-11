@@ -48,6 +48,7 @@ namespace LLP
             VERSION      = 0x15,
             SUBSCRIBE    = 0x16,
             UNSUBSCRIBE  = 0x17,
+            VALIDATE     = 0x18,
 
             /* Protocol. */
             PING         = 0x1a,
@@ -116,6 +117,7 @@ namespace LLP
             UNSUBSCRIBED = 0x53, //let node know it was unsubscribed successfully
             AUTHORIZED   = 0x54,
             COMPLETED    = 0x55, //let node know an event was completed
+            VALIDATED    = 0x56,
         };
     }
 

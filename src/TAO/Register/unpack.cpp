@@ -36,8 +36,8 @@ namespace TAO
         /* Unpack a state register from operation scripts. */
         bool Unpack(const TAO::Operation::Contract& contract, State &state, uint256_t &hashAddress)
         {
-            /* Reset the contract. */
-            contract.Reset();
+            /* Reset the contract to the position of the primitive. */
+            contract.SeekToPrimitive();
 
             /* Make sure no exceptions are thrown. */
             try
@@ -92,8 +92,8 @@ namespace TAO
         /* Unpack a source register address from operation scripts. */
         bool Unpack(const TAO::Operation::Contract& contract, uint256_t &hashAddress)
         {
-            /* Reset the contract. */
-            contract.Reset();
+            /* Reset the contract to the position of the primitive. */
+            contract.SeekToPrimitive();
 
             /* Make sure no exceptions are thrown. */
             try
@@ -132,10 +132,10 @@ namespace TAO
 
 
         /* Unpack a previous transaction from operation scripts. */
-        bool Unpack(const TAO::Operation::Contract& contract, uint512_t& hashPrevTx)
+        bool Unpack(const TAO::Operation::Contract& contract, uint512_t& hashPrevTx, uint32_t& nContract)
         {
-            /* Reset the contract. */
-            contract.Reset();
+            /* Reset the contract to the position of the primitive. */
+            contract.SeekToPrimitive();
 
             /* Make sure no exceptions are thrown. */
             try
@@ -151,9 +151,12 @@ namespace TAO
                     case TAO::Operation::OP::CREDIT:
                     case TAO::Operation::OP::CLAIM:
                     {
-                        /* Extract the address from the contract. */
+                        /* Extract the previous tx hash from the contract. */
                         contract >> hashPrevTx;
 
+                        /* Extract the previous contact ID from the contract */
+                        contract >> nContract;
+                        
                         return true;
                     }
 
@@ -174,8 +177,8 @@ namespace TAO
         /* Unpack the amount of NXS in contract. */
         bool Unpack(const TAO::Operation::Contract& contract, uint64_t& nAmount)
         {
-            /* Reset the contract. */
-            contract.Reset();
+            /* Reset the contract to the position of the primitive. */
+            contract.SeekToPrimitive();
             nAmount = 0;
 
             /* Make sure no exceptions are thrown. */
@@ -280,8 +283,8 @@ namespace TAO
         /* Unpack an op legacy contract to find it's output script. */
         bool Unpack(const TAO::Operation::Contract& contract, Legacy::Script& script)
         {
-            /* Reset the contract. */
-            contract.Reset();
+            /* Reset the contract to the position of the primitive. */
+            contract.SeekToPrimitive();
 
             /* Make sure no exceptions are thrown. */
             try
@@ -317,5 +320,6 @@ namespace TAO
 
             return false;
         }
+        
     }
 }

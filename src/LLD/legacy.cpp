@@ -11,10 +11,11 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLD/types/legacy.h>
+#include <LLD/include/global.h>
 #include <LLP/include/global.h>
 
 #include <TAO/Ledger/types/mempool.h>
+#include <Legacy/types/merkle.h>
 
 namespace LLD
 {
@@ -68,6 +69,19 @@ namespace LLD
                 return true;
         }
 
+        /* Check for client mode. */
+        if(config::fClient.load())
+        {
+            /* Get the merkle transaction from disk. */
+            Legacy::MerkleTx mTX;
+            if(!Client->ReadTx(hashTx, mTX, nFlags))
+                return false;
+
+            /* Set the return value. */
+            tx = mTX;
+            return true;
+        }
+
         return Read(std::make_pair(std::string("tx"), hashTx), tx);
     }
 
@@ -90,6 +104,10 @@ namespace LLD
             if(TAO::Ledger::mempool.Has(hashTx))
                 return true;
         }
+
+        /* Check indexes for -client mode. */
+        if(config::fClient.load())
+            return Client->HasIndex(hashTx);
 
         return Exists(std::make_pair(std::string("tx"), hashTx));
     }
@@ -141,6 +159,11 @@ namespace LLD
         if(!WriteSequence(hashAddress, nSequence + 1))
             return false;
 
+        /* Check for client mode. NOTE: we use a tuple key including a legacy identifer for legacy events so that they can be
+           differentiated from tritium events whilst being stored in the same database. */
+        if(config::fClient.load())
+            return Client->Index(std::make_tuple(hashAddress, nSequence, uint8_t(TAO::Ledger::LEGACY)), hashTx);
+
         return Index(std::make_pair(hashAddress, nSequence), std::make_pair(std::string("tx"), hashTx));
     }
 
@@ -157,6 +180,10 @@ namespace LLD
         if(!WriteSequence(hashAddress, nSequence - 1))
             return false;
 
+        /* Check for client mode. */
+        if(config::fClient.load())
+            return Client->Erase(std::make_tuple(hashAddress, nSequence - 1, uint8_t(TAO::Ledger::LEGACY)));
+
         return Erase(std::make_pair(hashAddress, nSequence - 1));
     }
 
@@ -165,6 +192,10 @@ namespace LLD
      *  This is responsible for knowing foreign sigchain events that correlate to your own. */
     bool LegacyDB::ReadEvent(const uint256_t& hashAddress, const uint32_t nSequence, Legacy::Transaction& tx)
     {
+        /* Check for client mode. */
+        if(config::fClient.load())
+            return Client->Read(std::make_tuple(hashAddress, nSequence, uint8_t(TAO::Ledger::LEGACY)), tx);
+
         return Read(std::make_pair(hashAddress, nSequence), tx);
     }
 

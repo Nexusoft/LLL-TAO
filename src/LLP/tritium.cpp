@@ -24,7 +24,9 @@ ________________________________________________________________________________
 #include <TAO/API/include/global.h>
 
 #include <TAO/Operation/include/enum.h>
+#include <TAO/Operation/include/execute.h>
 
+#include <TAO/Register/include/build.h>
 #include <TAO/Register/include/names.h>
 #include <TAO/Register/types/object.h>
 
@@ -38,6 +40,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/client.h>
 
 #include <Legacy/wallet/wallet.h>
+#include <Legacy/include/evaluate.h>
 
 #include <Util/include/runtime.h>
 #include <Util/include/args.h>
@@ -1545,7 +1548,7 @@ namespace LLP
                             if(fLegacy)
                             {
                                 std::vector<Legacy::MerkleTx> vtx;
-                                LLD::Ledger->ReadSequence(hashSigchain, nSequence);
+                                LLD::Legacy->ReadSequence(hashSigchain, nSequence);
 
                                 /* Look back through all events to find those that are not yet processed. */
                                 Legacy::Transaction tx;
@@ -1557,7 +1560,6 @@ namespace LLP
 
                                     /* Insert into container. */
                                     vtx.push_back(merkle);
-                                    ++nSequence;
                                 }
 
                                 /* Reverse container to message forward. */
@@ -2202,6 +2204,10 @@ namespace LLP
                                 {
                                     /* Debug output. */
                                     debug::log(3, NODE, "ACTION::NOTIFY: MERKLE TRANSACTION ", hashTx.SubString());
+
+                                    /* Add legacy flag if necessary */
+                                    if(fLegacy)
+                                        ssResponse << uint8_t(SPECIFIER::LEGACY);
 
                                     ssResponse << uint8_t(TYPES::MERKLE) << hashTx;
                                 }
@@ -2934,7 +2940,30 @@ namespace LLP
                                     return debug::error(FUNCTION, "failed to write block indexing entry");
                                 }
 
+                                /* UTXO to Sig Chain support - The only reason we would be receiving a legacy transaction in client
+                                   mode is if we are being sent a legacy event.  The event would normally be written to the DB in
+                                   Transaction::Connect, but we cannot connect legacy transactions in client mode as we will not
+                                   have all of the inputs.  Therefore, we need to check the outputs to see if any of them
+                                   are to a register address we know about and, if so, write an event for the account holder */
+                                for(const auto txout : tx.vout )
+                                {
+                                    uint256_t hashTo;
+                                    if(Legacy::ExtractRegister(txout.scriptPubKey, hashTo))
+                                    {
+                                        /* Read the owner of register. (check this for MEMPOOL, too) */
+                                        TAO::Register::State state;
+                                        if(!LLD::Register->ReadState(hashTo, state))
+                                            return debug::error(FUNCTION, "failed to read register to");
+
+                                        /* Commit an event for receiving sigchain in the legay DB. */
+                                        if(!LLD::Legacy->WriteEvent(state.hashOwner, hashTx))
+                                            return debug::error(FUNCTION, "failed to write event for account ", state.hashOwner.SubString());
+                                    }
+                                }
+
+                                /* Flush to disk and clear mempool. */
                                 LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
+                                TAO::Ledger::mempool.Remove(hashTx);
 
                                 tx.print();
 
@@ -3040,12 +3069,136 @@ namespace LLP
                 uint64_t nNonce = 0;
                 ssPacket >> nNonce;
 
-                /* Trigger active events with this nonce. */
                 TriggerEvent(INCOMING.MESSAGE, nNonce);
 
                 break;
             }
 
+            case RESPONSE::VALIDATED:
+            {
+                /* deserialize the type */
+                uint8_t nType;
+                ssPacket >> nType;
+
+                /* De-serialize the trigger nonce. */
+                uint64_t nNonce = 0;
+                ssPacket >> nNonce;
+
+                switch(nType)
+                {
+                    case TYPES::TRANSACTION:
+                    {
+                        /* get the valid flag */
+                        bool fValid = false;
+                        ssPacket >> fValid;
+
+                        /* deserialize the transaction hash */
+                        uint512_t hashTx;
+                        ssPacket >> hashTx;
+
+                        if(fValid)
+                        {
+                            /* Trigger event with this nonce. */
+                            TriggerEvent(INCOMING.MESSAGE, nNonce, fValid, hashTx);
+                        }
+                        else
+                        {
+                            /* deserialize the contract ID */
+                            uint32_t nContract;
+                            ssPacket >> nContract;
+
+                            /* Trigger active events with this nonce. */
+                            TriggerEvent(INCOMING.MESSAGE, nNonce, fValid, hashTx, nContract);
+                        }
+
+                        break;
+                    }
+                    default:
+                    {
+                        /* Trigger active events with this nonce. */
+                        TriggerEvent(INCOMING.MESSAGE, nNonce);
+                    }
+                }
+
+                break;
+            }
+
+            case ACTION::VALIDATE:
+            {
+                /* deserialize the type */
+                uint8_t nType;
+                ssPacket >> nType;
+
+                switch(nType)
+                {
+                    case TYPES::TRANSACTION:
+                    {
+                        /* deserialize the transaction */
+                        TAO::Ledger::Transaction tx;
+                        ssPacket >> tx;
+
+                        /* Validating a transaction simply sanitizes the contracts within it.  If any of them fail then we stop
+                           sanitizing and return the contract ID that failed */
+                        bool fSanitized = false;
+
+                        /* Temporary map for pre-states to be passed into the sanitization Build() for each contract. */
+                        std::map<uint256_t, TAO::Register::State> mapStates;
+
+                        /* Loop through each contract in the transaction. */
+                        for(uint32_t nContract = 0; nContract < tx.Size(); ++nContract)
+                        {
+                            /* Get the contract. */
+                            TAO::Operation::Contract& contract = tx[nContract];
+
+                            /* Lock the mempool at this point so that we can see if the transaction would be accepted into the mempool */
+                            RLOCK(TAO::Ledger::mempool.MUTEX);
+
+                            try
+                            {
+                                /* Start a ACID transaction (to be disposed). */
+                                LLD::TxnBegin(TAO::Ledger::FLAGS::MEMPOOL);
+
+                                fSanitized = TAO::Register::Build(contract, mapStates, TAO::Ledger::FLAGS::MEMPOOL)
+                                            && TAO::Operation::Execute(contract, TAO::Ledger::FLAGS::MEMPOOL);
+
+                                /* Abort the mempool ACID transaction once the contract is sanitized */
+                                LLD::TxnAbort(TAO::Ledger::FLAGS::MEMPOOL);
+
+                            }
+                            catch(const std::exception& e)
+                            {
+                                /* Abort the mempool ACID transaction */
+                                LLD::TxnAbort(TAO::Ledger::FLAGS::MEMPOOL);
+
+                                /* Log the error and attempt to continue processing */
+                                debug::error(FUNCTION, e.what());
+
+                                fSanitized = false;
+                            }
+
+                            /* If this contract failed, then respond with the failed contract ID */
+                            if(!fSanitized)
+                            {
+                                PushMessage(RESPONSE::VALIDATED, uint8_t(TYPES::TRANSACTION), nTriggerNonce, false, tx.GetHash(), nContract);
+
+                                /* Stop processing any more contracts  */
+                                break;
+                            }
+                        }
+
+                        /* If none failed then send a validated response */
+                        PushMessage(RESPONSE::VALIDATED, uint8_t(TYPES::TRANSACTION), nTriggerNonce, true, tx.GetHash());
+
+                        break;
+                    }
+                    default:
+                    {
+                        return debug::drop(NODE, "ACTION::VALIDATE invalidate type specified");
+                    }
+                }
+
+                break;
+            }
 
             default:
                 return debug::drop(NODE, "invalid protocol message ", INCOMING.MESSAGE);
@@ -3562,19 +3715,16 @@ namespace LLP
                     uint512_t hashTx = 0;
                     ssData >> hashTx;
 
-                    /* Check for legacy. */
-                    if(fLegacy)
-                    {
-                        debug::error(FUNCTION, "SIGCHAIN cannot have legacy specifier");
-                        continue;
-                    }
-
                     /* Check subscription. */
                     if(nNotifications & SUBSCRIPTION::SIGCHAIN)
                     {
                         /* Check for matching sigchain-id. */
                         if(hashSigchain != hashGenesis)
                             break;
+
+                        /* Check for legacy. */
+                        if(fLegacy)
+                            ssRelay << uint8_t(SPECIFIER::LEGACY);
 
                         /* Write transaction to stream. */
                         ssRelay << uint8_t(TYPES::SIGCHAIN);

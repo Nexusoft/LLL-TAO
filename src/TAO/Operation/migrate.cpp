@@ -62,7 +62,7 @@ namespace TAO
                     return debug::error(FUNCTION, "failed to write last trust to disk");
 
                 /* Record that the legacy trust key has completed migration. */
-                if(!LLD::Legacy->WriteTrustConversion(hashTrust))
+                if(!config::fClient.load() && !LLD::Legacy->WriteTrustConversion(hashTrust))
                     return debug::error(FUNCTION, "failed to record trust key migration to disk");
             }
 
@@ -225,7 +225,7 @@ namespace TAO
                 return debug::error(FUNCTION, "migrate debit register must be from UTXO");
 
             /* Check whether the legacy trust key has already completed migration. */
-            if(LLD::Legacy->HasTrustConversion(hashTrust))
+            if(!config::fClient.load() && LLD::Legacy->HasTrustConversion(hashTrust))
                 return debug::error(FUNCTION, "trust key is already converted");
 
             /* Validate migrate is to address in UTXO output */

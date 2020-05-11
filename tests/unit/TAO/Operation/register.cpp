@@ -3,6 +3,8 @@
 
 #include <LLD/include/global.h>
 
+#include <TAO/Ledger/types/transaction.h>
+
 #include <TAO/Operation/include/execute.h>
 #include <TAO/Operation/include/enum.h>
 

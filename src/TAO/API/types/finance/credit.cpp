@@ -107,7 +107,7 @@ namespace TAO
 
             /* Read the debit transaction. This may be a tritium or legacy transaction so we need to check both database
                and process it accordingly. */
-            if(LLD::Ledger->ReadTx(hashTx, txDebit))
+            if(hashTx.GetType() == TAO::Ledger::TRITIUM && LLD::Ledger->ReadTx(hashTx, txDebit))
             {
 
                 /* Loop through all transactions. */
@@ -315,7 +315,7 @@ namespace TAO
 
                 }
             }
-            else if(LLD::Legacy->ReadTx(hashTx, txSend))
+            else if(hashTx.GetType() == TAO::Ledger::LEGACY && LLD::Legacy->ReadTx(hashTx, txSend))
             {
                 /* Iterate through all TxOut's in the legacy transaction to see which are sends to a sig chain  */
                 for(uint32_t nContract = 0; nContract < txSend.vout.size(); ++nContract)

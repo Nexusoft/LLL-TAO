@@ -364,7 +364,7 @@ Error Codes
 | -227 | Missing payment account name / address |
 | -228 | Missing sender detail |
 | -229 | Missing recipient |
-| -230 | Recipient user does not exist | 
+| -230 | Recipient user does not exist |
 | -231 | Missing recipient detail |
 | -232 | Missing items |
 | -233 | Invoice must include at least one item |
@@ -389,5 +389,7 @@ Error Codes
 | -251 | Missing name from or address from |
 | -252 | Account to debit is not for the required token |
 | -254 | Invoices API not yet active |
+| -255 | Cannot process notifications until peers are connected |
+| -256 | Cannot process notifications whilst synchronizing |
+| -257 | Contract failed peer validation |
 | -300 | API can only be used to lookup data for the currently logged in signature chain when running in client mode |
-
