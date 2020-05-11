@@ -142,13 +142,28 @@ const uint256_t hashSeed = 55;
 
 #include <bitset>
 
+
+static std::atomic<uint32_t> nThread;
+void Testing()
+{
+    ++nThread;
+    std::fstream pstream = std::fstream(config::GetDataDir() + "/TEST/files/" + debug::safe_printstr("_file.", nThread.load()), std::ios::in | std::ios::out | std::ios::binary);
+
+    runtime::timer swFiles;
+    swFiles.Start();
+
+    std::vector<uint8_t> vData(1024, 0);
+    pstream.write((char*)&vData[0], vData.size());
+    pstream.flush();
+
+    debug::log(0, "Completed in ", swFiles.ElapsedNanoseconds(), " microseconds");
+}
+
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
     uint512_t hash = 293548230430984;
-
-
-    LLD::BloomFilter* bloom = new LLD::BloomFilter(256 * 256 * 64, config::GetDataDir() + "/TEST/bloom/");
+    LLD::BloomFilter* bloom = new LLD::BloomFilter(256 * 256 * 256, config::GetDataDir() + "/TEST/bloom/", 3);
     bloom->Initialize();
     //bloom->Insert(hash + 3);
 

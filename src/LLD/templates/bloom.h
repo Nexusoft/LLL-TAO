@@ -116,6 +116,15 @@ namespace LLD
         /** Atomic flag to destroy running threads. **/
         std::atomic<bool> fDestruct;
 
+
+        /** Max value for K-hashing or number of hashes to fill in the bloom filter. */
+        const uint16_t MAX_BLOOM_HASHES;
+
+
+        /** The maximum number of keys in this filter before false positives begin. **/
+        uint64_t MAX_BLOOM_KEYS;
+
+
     public:
 
 
@@ -148,7 +157,7 @@ namespace LLD
 
 
         /** Create bloom filter with given number of buckets. **/
-        BloomFilter  (const uint64_t nBuckets, const std::string& strBaseLocationIn);
+        BloomFilter  (const uint64_t nBuckets, const std::string& strBaseLocationIn, const uint16_t nK = 3);
 
 
         /** Initialize
@@ -187,6 +196,14 @@ namespace LLD
          *
          **/
         bool Has(const std::vector<uint8_t>& vKey) const;
+
+
+        /** Full
+         *
+         *  Determines if the bloom filter is full based on chosen value of k to reduce false positives.
+         *
+         **/
+        bool Full() const;
 
 
         /** Insert

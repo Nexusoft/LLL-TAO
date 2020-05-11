@@ -239,6 +239,10 @@ namespace LLD
     {
         LOCK(KEY_MUTEX);
 
+        /* Check bloom filter first. */
+        if(!BLOOM.Has(vKey))
+            return false;
+
         /* Get the assigned bucket for the hashmap. */
         uint32_t nBucket = GetBucket(vKey);
 
@@ -251,10 +255,6 @@ namespace LLD
         /* Compress any keys larger than max size. */
         std::vector<uint8_t> vKeyCompressed = vKey;
         CompressKey(vKeyCompressed, HASHMAP_MAX_KEY_SIZE);
-
-        /* Check bloom filter first. */
-        if(!BLOOM.Has(vKey))
-            return false;
 
         /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
         std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
@@ -391,12 +391,10 @@ namespace LLD
                         fileCache->Put(i, pstream);
                     }
 
-
                     /* Handle the disk writing operations. */
                     pstream->seekp (nFilePos, std::ios::beg);
                     pstream->write((char*)&ssKey.Bytes()[0], ssKey.size());
                     pstream->flush();
-
 
                     /* Debug Output of Sector Key Information. */
                     if(config::nVerbose >= 4)

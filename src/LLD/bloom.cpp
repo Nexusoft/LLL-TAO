@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <LLD/templates/bloom.h>
 
 #include <Util/include/filesystem.h>
+#include <Util/include/softfloat.h>
 #include <Util/templates/serialize.h>
 
 namespace LLD
@@ -85,8 +86,10 @@ namespace LLD
     , MUTEX                 ( )
     , THREAD                ( )
     , CONDITION             ( )
-    , fDestruct             (fDestruct.load())
-    , nTotalKeys            (nTotalKeys.load())
+    , fDestruct             (filter.fDestruct.load())
+    , MAX_BLOOM_HASHES      (filter.MAX_BLOOM_HASHES)
+    , MAX_BLOOM_KEYS        (filter.MAX_BLOOM_KEYS)
+    , nTotalKeys            (filter.nTotalKeys.load())
     {
     }
 
@@ -100,8 +103,10 @@ namespace LLD
     , MUTEX                 ( )
     , THREAD                ( )
     , CONDITION             ( )
-    , fDestruct             (fDestruct.load())
-    , nTotalKeys            (nTotalKeys.load())
+    , fDestruct             (filter.fDestruct.load())
+    , MAX_BLOOM_HASHES      (std::move(filter.MAX_BLOOM_HASHES))
+    , MAX_BLOOM_KEYS        (std::move(filter.MAX_BLOOM_KEYS))
+    , nTotalKeys            (filter.nTotalKeys.load())
     {
     }
 
@@ -115,6 +120,7 @@ namespace LLD
         strBaseLocation       = filter.strBaseLocation;
 
         fDestruct             = filter.fDestruct.load();
+        MAX_BLOOM_KEYS        = filter.MAX_BLOOM_KEYS;
         nTotalKeys            = filter.nTotalKeys.load();
 
         return *this;
@@ -130,6 +136,7 @@ namespace LLD
         strBaseLocation       = std::move(filter.strBaseLocation);
 
         fDestruct             = std::move(filter.fDestruct.load());
+        MAX_BLOOM_KEYS        = filter.MAX_BLOOM_KEYS;
         nTotalKeys            = std::move(filter.nTotalKeys.load());
 
         return *this;
@@ -137,7 +144,7 @@ namespace LLD
 
 
     /* Create bloom filter with given number of buckets. */
-    BloomFilter::BloomFilter  (const uint64_t nBuckets, const std::string& strBaseLocationIn)
+    BloomFilter::BloomFilter  (const uint64_t nBuckets, const std::string& strBaseLocationIn, const uint16_t nK)
     : HASHMAP_TOTAL_BUCKETS (nBuckets)
     , bloom                 (HASHMAP_TOTAL_BUCKETS / 64, 0)
     , pindex                (nullptr)
@@ -146,6 +153,7 @@ namespace LLD
     , THREAD                ( )
     , CONDITION             ( )
     , fDestruct             (false)
+    , MAX_BLOOM_HASHES      (nK)
     , nTotalKeys            (0)
     {
     }
@@ -179,6 +187,7 @@ namespace LLD
         if(!filesystem::exists(strBaseLocation) && filesystem::create_directories(strBaseLocation))
             debug::log(0, FUNCTION, "Generated Path ", strBaseLocation);
 
+        /* Check that a new bloom filter disk file needs to be created. */
         if(!filesystem::exists(strIndex))
         {
             /* Write the new disk index .*/
@@ -212,8 +221,13 @@ namespace LLD
         }
         nTotalKeys.store(nCurrentKeys);
 
+        /* Calculate the maximum keys. */
+        MAX_BLOOM_KEYS =
+            cv::softdouble((bloom.size() * 64) * cv::log(cv::softdouble(2.0)))
+                        / cv::softdouble(MAX_BLOOM_HASHES); //(m ln(2) / k = n)
+
         /* Debug output showing loading of disk index. */
-        debug::log(0, FUNCTION, "Loaded Bloom Filter of ", (bloom.size() * 8) + 8, " bytes and ", nTotalKeys.load(), " keys");
+        debug::log(0, FUNCTION, "Loaded Bloom Filter of ", (bloom.size() * 8) + 8, " bytes and (", nTotalKeys.load(), "/", MAX_BLOOM_KEYS, ") keys");
 
         /* Start up the flush thread. */
         THREAD = std::thread(std::bind(&BloomFilter::flush_thread, this));
@@ -252,8 +266,12 @@ namespace LLD
     {
         LOCK(MUTEX);
 
+        /* Check for maximum keys. */
+        if(nTotalKeys.load() >= MAX_BLOOM_KEYS)
+            return;
+
         /* Run over k hashes. */
-        for(uint16_t nK = 0; nK < 3; ++nK)
+        for(uint16_t nK = 0; nK < MAX_BLOOM_HASHES; ++nK)
         {
             uint64_t nBucket = get_bucket(vKey, nK);
             set_bit(nBucket);
@@ -270,7 +288,7 @@ namespace LLD
         LOCK(MUTEX);
 
         /* Run over k hashes. */
-        for(uint16_t nK = 0; nK < 3; ++nK)
+        for(uint16_t nK = 0; nK < MAX_BLOOM_HASHES; ++nK)
         {
             uint64_t nBucket = get_bucket(vKey, nK);
             if(!is_set(nBucket))
@@ -278,5 +296,16 @@ namespace LLD
         }
 
         return true;
+    }
+
+
+    /** Full
+     *
+     *  Determines if the bloom filter is full based on chosen value of k to reduce false positives.
+     *
+     **/
+    bool BloomFilter::Full() const
+    {
+        return nTotalKeys.load() >= MAX_BLOOM_KEYS;
     }
 }

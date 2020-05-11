@@ -162,54 +162,52 @@ namespace LLD
 
         /* Get the key from the keychain. */
         SectorKey cKey;
-        if(pSectorKeys->Get(vKey, cKey))
+        if(!pSectorKeys->Get(vKey, cKey))
+            return false;
+
         {
+            LOCK(SECTOR_MUTEX);
+
+            /* Find the file stream for LRU cache. */
+            std::fstream* pstream;
+            if(!fileCache->Get(cKey.nSectorFile, pstream))
             {
-                LOCK(SECTOR_MUTEX);
-
-                /* Find the file stream for LRU cache. */
-                std::fstream* pstream;
-                if(!fileCache->Get(cKey.nSectorFile, pstream))
+                /* Set the new stream pointer. */
+                pstream = new std::fstream(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
+                if(!pstream->is_open())
                 {
-                    /* Set the new stream pointer. */
-                    pstream = new std::fstream(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
-                    if(!pstream->is_open())
-                    {
-                        delete pstream;
-                        return debug::error(FUNCTION, "couldn't create stream file");
-                    }
-
-                    /* If file not found add to LRU cache. */
-                    fileCache->Put(cKey.nSectorFile, pstream);
+                    delete pstream;
+                    return debug::error(FUNCTION, "couldn't create stream file");
                 }
 
-                /* Get compact size from record. */
-                uint64_t nSize = GetSizeOfCompactSize(cKey.nSectorSize);
-
-                /* Seek to the Sector Position on Disk. */
-                pstream->seekg(cKey.nSectorStart + nSize, std::ios::beg);
-
-                /* Resize for proper record length. */
-                vData.resize(cKey.nSectorSize - nSize);
-
-                /* Read the State and Size of Sector Header. */
-                if(!pstream->read((char*) &vData[0], vData.size()))
-                    return debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes read");
-
+                /* If file not found add to LRU cache. */
+                fileCache->Put(cKey.nSectorFile, pstream);
             }
 
-            /* Add to cache */
-            cachePool->Put(cKey, vKey, vData);
+            /* Get compact size from record. */
+            uint64_t nSize = GetSizeOfCompactSize(cKey.nSectorSize);
 
-            /* Verbose Debug Logging. */
-            if(config::nVerbose >= 5)
-                debug::log(5, FUNCTION, "Current File: ", cKey.nSectorFile,
-                    " | Current File Size: ", cKey.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
+            /* Seek to the Sector Position on Disk. */
+            pstream->seekg(cKey.nSectorStart + nSize, std::ios::beg);
 
-            return true;
+            /* Resize for proper record length. */
+            vData.resize(cKey.nSectorSize - nSize);
+
+            /* Read the State and Size of Sector Header. */
+            if(!pstream->read((char*) &vData[0], vData.size()))
+                return debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes read");
+
         }
 
-        return false;
+        /* Add to cache */
+        cachePool->Put(cKey, vKey, vData);
+
+        /* Verbose Debug Logging. */
+        if(config::nVerbose >= 5)
+            debug::log(5, FUNCTION, "Current File: ", cKey.nSectorFile,
+                " | Current File Size: ", cKey.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
+
+        return true;
     }
 
 
