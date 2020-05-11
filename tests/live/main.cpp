@@ -163,7 +163,7 @@ void Testing()
 int main(int argc, char** argv)
 {
     uint512_t hash = 293548230430984;
-    LLD::BloomFilter* bloom = new LLD::BloomFilter(256 * 256 * 256, config::GetDataDir() + "/TEST/bloom/", 3);
+    LLD::BloomFilter* bloom = new LLD::BloomFilter(256 * 256 * 64 * 4.4, config::GetDataDir() + "/TEST/bloom/", 3);
     bloom->Initialize();
     //bloom->Insert(hash + 3);
 

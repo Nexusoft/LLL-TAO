@@ -88,6 +88,7 @@ namespace LLD
     , CONDITION             ( )
     , fDestruct             (filter.fDestruct.load())
     , MAX_BLOOM_HASHES      (filter.MAX_BLOOM_HASHES)
+    , FILE_ID               (filter.FILE_ID)
     , MAX_BLOOM_KEYS        (filter.MAX_BLOOM_KEYS)
     , nTotalKeys            (filter.nTotalKeys.load())
     {
@@ -105,6 +106,7 @@ namespace LLD
     , CONDITION             ( )
     , fDestruct             (filter.fDestruct.load())
     , MAX_BLOOM_HASHES      (std::move(filter.MAX_BLOOM_HASHES))
+    , FILE_ID               (std::move(filter.FILE_ID))
     , MAX_BLOOM_KEYS        (std::move(filter.MAX_BLOOM_KEYS))
     , nTotalKeys            (filter.nTotalKeys.load())
     {
@@ -144,7 +146,7 @@ namespace LLD
 
 
     /* Create bloom filter with given number of buckets. */
-    BloomFilter::BloomFilter  (const uint64_t nBuckets, const std::string& strBaseLocationIn, const uint16_t nK)
+    BloomFilter::BloomFilter  (const uint64_t nBuckets, const std::string& strBaseLocationIn, const uint16_t nID, const uint16_t nK)
     : HASHMAP_TOTAL_BUCKETS (nBuckets)
     , bloom                 (HASHMAP_TOTAL_BUCKETS / 64, 0)
     , pindex                (nullptr)
@@ -154,6 +156,7 @@ namespace LLD
     , CONDITION             ( )
     , fDestruct             (false)
     , MAX_BLOOM_HASHES      (nK)
+    , FILE_ID               (nID)
     , nTotalKeys            (0)
     {
     }
@@ -181,9 +184,7 @@ namespace LLD
         LOCK(MUTEX);
 
         /* Build the hashmap indexes. */
-        std::string strIndex = debug::safe_printstr(strBaseLocation, "_bloom.index");
-
-        /* Create directories if they don't exist yet. */
+        std::string strIndex = debug::safe_printstr(strBaseLocation, "_bloom.", std::setfill('0'), std::setw(5), FILE_ID);
         if(!filesystem::exists(strBaseLocation) && filesystem::create_directories(strBaseLocation))
             debug::log(0, FUNCTION, "Generated Path ", strBaseLocation);
 

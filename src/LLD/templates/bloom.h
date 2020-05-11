@@ -121,6 +121,10 @@ namespace LLD
         const uint16_t MAX_BLOOM_HASHES;
 
 
+        /** The bloom filter file-id. **/
+        const uint16_t FILE_ID;
+
+
         /** The maximum number of keys in this filter before false positives begin. **/
         uint64_t MAX_BLOOM_KEYS;
 
@@ -157,7 +161,7 @@ namespace LLD
 
 
         /** Create bloom filter with given number of buckets. **/
-        BloomFilter  (const uint64_t nBuckets, const std::string& strBaseLocationIn, const uint16_t nK = 3);
+        BloomFilter  (const uint64_t nBuckets, const std::string& strBaseLocationIn, const uint16_t nID = 0, const uint16_t nK = 3);
 
 
         /** Initialize

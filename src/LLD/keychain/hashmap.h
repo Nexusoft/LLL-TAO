@@ -84,7 +84,7 @@ namespace LLD
 
 
         /** Bloom Filter for hashmap keys. **/
-        BloomFilter BLOOM;
+        std::vector<BloomFilter> vBloom;
 
 
     public:
