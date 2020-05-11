@@ -735,6 +735,9 @@ namespace LLD
                 return debug::error(FUNCTION, "failed to write indexing entry");
         }
 
+        /* Flush the keychain. */
+        //pSectorKeys->Flush();
+
         /* Cleanup the transaction object. */
         delete pTransaction;
         pTransaction = nullptr;

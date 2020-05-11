@@ -93,40 +93,12 @@ namespace LLD
         std::vector<uint64_t> bloom;
 
 
-        /** Disk index stream. **/
-        std::fstream* pindex;
-
-
-        /** Bloom filter disk file path. **/
-        std::string strBaseLocation;
-
-
         /** Mutex to protect internal states. **/
         mutable std::mutex MUTEX;
 
 
-        /** Thread for flushing filter to disk. **/
-        std::thread THREAD;
-
-
-        /** Condition variable for flush thread. **/
-        std::condition_variable CONDITION;
-
-
-        /** Atomic flag to destroy running threads. **/
-        std::atomic<bool> fDestruct;
-
-
         /** Max value for K-hashing or number of hashes to fill in the bloom filter. */
         const uint16_t MAX_BLOOM_HASHES;
-
-
-        /** The bloom filter file-id. **/
-        const uint16_t FILE_ID;
-
-
-        /** The maximum number of keys in this filter before false positives begin. **/
-        uint64_t MAX_BLOOM_KEYS;
 
 
     public:
@@ -161,15 +133,7 @@ namespace LLD
 
 
         /** Create bloom filter with given number of buckets. **/
-        BloomFilter  (const uint64_t nBuckets, const std::string& strBaseLocationIn, const uint16_t nID = 0, const uint16_t nK = 3);
-
-
-        /** Initialize
-         *
-         *  Initialize the bit-array from disk.
-         *
-         **/
-        void Initialize();
+        BloomFilter  (const uint64_t nBuckets, const uint16_t nTotalHashes = 3);
 
 
         /** Flush
@@ -178,6 +142,22 @@ namespace LLD
          *
          **/
         void Flush();
+
+
+        /** Bytes
+         *
+         *  Get the beginning memory location of the bloom filter.
+         *
+         **/
+        uint8_t* Bytes() const;
+
+
+        /** Size
+         *
+         *  Get the size (in bytes) of the bloom filter.
+         *
+         **/
+        uint64_t Size() const;
 
 
         /** Insert
@@ -200,14 +180,6 @@ namespace LLD
          *
          **/
         bool Has(const std::vector<uint8_t>& vKey) const;
-
-
-        /** Full
-         *
-         *  Determines if the bloom filter is full based on chosen value of k to reduce false positives.
-         *
-         **/
-        bool Full() const;
 
 
         /** Insert

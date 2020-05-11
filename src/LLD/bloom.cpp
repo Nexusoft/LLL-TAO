@@ -46,51 +46,12 @@ namespace LLD
     }
 
 
-    /* Thread to flush bloom filter disk states periodically. */
-    void BloomFilter::flush_thread()
-    {
-        /* Loop until shutdown or destruct. */
-        std::mutex CONDITION_MUTEX;
-        while(!config::fShutdown.load() && !fDestruct.load())
-        {
-            /* Check for data to be written. */
-            uint64_t nCurrentKeys = nTotalKeys.load();
-            std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
-
-            /* Wait for signals. */
-            runtime::stopwatch swTimer;
-            swTimer.start();
-            CONDITION.wait(CONDITION_LOCK,
-                [&]
-                {
-                    return
-                    (
-                        config::fShutdown.load() || fDestruct.load() ||
-                        (nCurrentKeys != nTotalKeys.load() && swTimer.ElapsedMilliseconds() > 500) //we don't want to flush every wakeup
-                    );
-                }
-            );
-
-            /* Flush the disk states. */
-            Flush();
-        }
-    }
-
-
     /* Copy Constructor. */
     BloomFilter::BloomFilter(const BloomFilter& filter)
     : HASHMAP_TOTAL_BUCKETS (filter.HASHMAP_TOTAL_BUCKETS)
     , bloom                 (filter.bloom)
-    , pindex                (filter.pindex)
-    , strBaseLocation       (filter.strBaseLocation)
     , MUTEX                 ( )
-    , THREAD                ( )
-    , CONDITION             ( )
-    , fDestruct             (filter.fDestruct.load())
     , MAX_BLOOM_HASHES      (filter.MAX_BLOOM_HASHES)
-    , FILE_ID               (filter.FILE_ID)
-    , MAX_BLOOM_KEYS        (filter.MAX_BLOOM_KEYS)
-    , nTotalKeys            (filter.nTotalKeys.load())
     {
     }
 
@@ -99,16 +60,8 @@ namespace LLD
     BloomFilter::BloomFilter(BloomFilter&& filter)
     : HASHMAP_TOTAL_BUCKETS (std::move(filter.HASHMAP_TOTAL_BUCKETS))
     , bloom                 (std::move(filter.bloom))
-    , pindex                (std::move(filter.pindex))
-    , strBaseLocation       (std::move(filter.strBaseLocation))
     , MUTEX                 ( )
-    , THREAD                ( )
-    , CONDITION             ( )
-    , fDestruct             (filter.fDestruct.load())
     , MAX_BLOOM_HASHES      (std::move(filter.MAX_BLOOM_HASHES))
-    , FILE_ID               (std::move(filter.FILE_ID))
-    , MAX_BLOOM_KEYS        (std::move(filter.MAX_BLOOM_KEYS))
-    , nTotalKeys            (filter.nTotalKeys.load())
     {
     }
 
@@ -118,12 +71,6 @@ namespace LLD
     {
         HASHMAP_TOTAL_BUCKETS = filter.HASHMAP_TOTAL_BUCKETS;
         bloom                 = filter.bloom;
-        pindex                = filter.pindex;
-        strBaseLocation       = filter.strBaseLocation;
-
-        fDestruct             = filter.fDestruct.load();
-        MAX_BLOOM_KEYS        = filter.MAX_BLOOM_KEYS;
-        nTotalKeys            = filter.nTotalKeys.load();
 
         return *this;
     }
@@ -134,29 +81,17 @@ namespace LLD
     {
         HASHMAP_TOTAL_BUCKETS = std::move(filter.HASHMAP_TOTAL_BUCKETS);
         bloom                 = std::move(filter.bloom);
-        pindex                = std::move(filter.pindex);
-        strBaseLocation       = std::move(filter.strBaseLocation);
-
-        fDestruct             = std::move(filter.fDestruct.load());
-        MAX_BLOOM_KEYS        = filter.MAX_BLOOM_KEYS;
-        nTotalKeys            = std::move(filter.nTotalKeys.load());
 
         return *this;
     }
 
 
     /* Create bloom filter with given number of buckets. */
-    BloomFilter::BloomFilter  (const uint64_t nBuckets, const std::string& strBaseLocationIn, const uint16_t nID, const uint16_t nK)
+    BloomFilter::BloomFilter(const uint64_t nBuckets, const uint16_t nTotalHashes)
     : HASHMAP_TOTAL_BUCKETS (nBuckets)
     , bloom                 (HASHMAP_TOTAL_BUCKETS / 64, 0)
-    , pindex                (nullptr)
-    , strBaseLocation       (strBaseLocationIn)
     , MUTEX                 ( )
-    , THREAD                ( )
-    , CONDITION             ( )
-    , fDestruct             (false)
-    , MAX_BLOOM_HASHES      (nK)
-    , FILE_ID               (nID)
+    , MAX_BLOOM_HASHES      (nTotalHashes)
     , nTotalKeys            (0)
     {
     }
@@ -165,100 +100,20 @@ namespace LLD
     /* Default Destructor. */
     BloomFilter::~BloomFilter()
     {
-        fDestruct.store(true);
-
-        /* Wait for background thread. */
-        CONDITION.notify_all();
-        if(THREAD.joinable())
-            THREAD.join();
-
-        /* Flush one last time. */
-        Flush();
-        delete pindex;
     }
 
 
-    /* Initialize the bit-array from disk. */
-    void BloomFilter::Initialize()
+    /* Get the beginning memory location of the bloom filter. */
+    uint8_t* BloomFilter::Bytes() const
     {
-        LOCK(MUTEX);
-
-        /* Build the hashmap indexes. */
-        std::string strIndex = debug::safe_printstr(strBaseLocation, "_bloom.", std::setfill('0'), std::setw(5), FILE_ID);
-        if(!filesystem::exists(strBaseLocation) && filesystem::create_directories(strBaseLocation))
-            debug::log(0, FUNCTION, "Generated Path ", strBaseLocation);
-
-        /* Check that a new bloom filter disk file needs to be created. */
-        if(!filesystem::exists(strIndex))
-        {
-            /* Write the new disk index .*/
-            std::fstream stream(strIndex, std::ios::out | std::ios::binary | std::ios::trunc);
-            stream.write((char*)&bloom[0], bloom.size() * 8);
-
-            /* Append the total keys. */
-            uint64_t nCurrentKeys = 0;
-            stream.write((char*)&nCurrentKeys, 8);
-            stream.close();
-
-            /* Debug output showing generation of disk index. */
-            debug::log(0, FUNCTION, "Generated Bloom Filter of ", bloom.size() * 8, " bytes");
-        }
-
-        /* Create the stream index object. */
-        pindex = new std::fstream(strIndex, std::ios::in | std::ios::out | std::ios::binary);
-        pindex->seekg(0, std::ios::beg);
-        if(!pindex->read((char*)&bloom[0], bloom.size() * 8))
-        {
-            debug::error(FUNCTION, "only ", pindex->gcount(), "/", bloom.size() * 8, " bytes read");
-            return;
-        }
-
-        /* Grab the total keys from disk. */
-        uint64_t nCurrentKeys = 0;
-        if(!pindex->read((char*) &nCurrentKeys, 8))
-        {
-            debug::error(FUNCTION, "only ", pindex->gcount(), "/8 bytes read");
-            return;
-        }
-        nTotalKeys.store(nCurrentKeys);
-
-        /* Calculate the maximum keys. */
-        MAX_BLOOM_KEYS =
-            cv::softdouble((bloom.size() * 64) * cv::log(cv::softdouble(2.0)))
-                        / cv::softdouble(MAX_BLOOM_HASHES); //(m ln(2) / k = n)
-
-        /* Debug output showing loading of disk index. */
-        debug::log(0, FUNCTION, "Loaded Bloom Filter of ", (bloom.size() * 8) + 8, " bytes and (", nTotalKeys.load(), "/", MAX_BLOOM_KEYS, ") keys");
-
-        /* Start up the flush thread. */
-        THREAD = std::thread(std::bind(&BloomFilter::flush_thread, this));
+        return (uint8_t*)&bloom[0];
     }
 
 
-    /* Flush the bit-array to the file stream. */
-    void BloomFilter::Flush()
+    /* Get the size (in bytes) of the bloom filter. */
+    uint64_t BloomFilter::Size() const
     {
-        LOCK(MUTEX);
-
-        /* Flush data from array to disk. */
-        pindex->seekp(0, std::ios::beg);
-        if(!pindex->write((char*) &bloom[0], bloom.size() * 8))
-        {
-            debug::error(FUNCTION, "only ", pindex->gcount(), "/", bloom.size() * 8, " bytes written");
-            return;
-        }
-        pindex->flush();
-
-        /* Flush the total keys to disk. */
-        uint64_t nCurrentKeys = nTotalKeys.load();
-        if(!pindex->write((char*) &nCurrentKeys, 8))
-        {
-            debug::error(FUNCTION, "only ", pindex->gcount(), "/8 bytes written");
-            return;
-        }
-        pindex->flush();
-
-        //debug::log(0, "Flushed to disk with ", nTotalKeys.load(), " keys");
+        return bloom.size() * 8;
     }
 
 
@@ -266,10 +121,6 @@ namespace LLD
     void BloomFilter::Insert(const std::vector<uint8_t>& vKey)
     {
         LOCK(MUTEX);
-
-        /* Check for maximum keys. */
-        if(nTotalKeys.load() >= MAX_BLOOM_KEYS)
-            return;
 
         /* Run over k hashes. */
         for(uint16_t nK = 0; nK < MAX_BLOOM_HASHES; ++nK)
@@ -279,7 +130,6 @@ namespace LLD
         }
 
         ++nTotalKeys;
-        CONDITION.notify_all();
     }
 
 
@@ -297,16 +147,5 @@ namespace LLD
         }
 
         return true;
-    }
-
-
-    /** Full
-     *
-     *  Determines if the bloom filter is full based on chosen value of k to reduce false positives.
-     *
-     **/
-    bool BloomFilter::Full() const
-    {
-        return nTotalKeys.load() >= MAX_BLOOM_KEYS;
     }
 }

@@ -162,6 +162,32 @@ void Testing()
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
+    std::vector<uint8_t> vBuckets(4096, 0);
+
+    for(int i = 0; i < vBuckets.size(); ++i)
+    {
+        std::vector<uint8_t> vBytes(16, 0);
+        RAND_bytes((uint8_t*)&vBytes[0], vBytes.size());
+
+        uint64_t nBucket = XXH64(&vBytes[0], vBytes.size(), 0);
+                 nBucket ^= XXH64(&vBytes[0], vBytes.size(), 1);
+                 //nBucket += XXH64(&vBytes[0], vBytes.size(), 2);
+
+        ++vBuckets[nBucket % vBuckets.size()];
+    }
+
+    uint32_t nTotalSet = 0;
+    for(int i = 0; i < vBuckets.size(); ++i)
+    {
+        if(vBuckets[i] > 0)
+            ++nTotalSet;
+    }
+
+    debug::log(0, "Set percent of ", (nTotalSet * 100.0) / double(vBuckets.size()));
+
+    return 0;
+
+
     uint512_t hash = 293548230430984;
     LLD::BloomFilter* bloom = new LLD::BloomFilter(256 * 256 * 64 * 4.4, config::GetDataDir() + "/TEST/bloom/", 3);
     bloom->Initialize();

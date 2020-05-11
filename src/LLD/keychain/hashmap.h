@@ -87,6 +87,34 @@ namespace LLD
         std::vector<BloomFilter> vBloom;
 
 
+        /** Set for current bloom filter updates. **/
+        std::set<uint32_t> setUpdated;
+
+
+        /** compress_key
+         *
+         *  Compresses a given key until it matches size criteria.
+         *  This function is one way and efficient for reducing key sizes.
+         *
+         *  @param[out] vData The binary data of key to compress.
+         *  @param[in] nSize The desired size of key after compression.
+         *
+         **/
+        void compress_key(std::vector<uint8_t>& vData, uint16_t nSize = 32);
+
+
+        /** get_bucket
+         *
+         *  Calculates a bucket to be used for the hashmap allocation.
+         *
+         *  @param[in] vKey The key object to calculate with.
+         *
+         *  @return The bucket assigned to the key.
+         *
+         **/
+        uint32_t get_bucket(const std::vector<uint8_t>& vKey);
+
+
     public:
 
 
@@ -116,30 +144,6 @@ namespace LLD
 
         /** Default Destructor **/
         virtual ~BinaryHashMap();
-
-
-        /** CompressKey
-         *
-         *  Compresses a given key until it matches size criteria.
-         *  This function is one way and efficient for reducing key sizes.
-         *
-         *  @param[out] vData The binary data of key to compress.
-         *  @param[in] nSize The desired size of key after compression.
-         *
-         **/
-        void CompressKey(std::vector<uint8_t>& vData, uint16_t nSize = 32);
-
-
-        /** GetBucket
-         *
-         *  Calculates a bucket to be used for the hashmap allocation.
-         *
-         *  @param[in] vKey The key object to calculate with.
-         *
-         *  @return The bucket assigned to the key.
-         *
-         **/
-        uint32_t GetBucket(const std::vector<uint8_t>& vKey);
 
 
         /** Initialize
