@@ -21,6 +21,7 @@ The following methods are currently supported by this API
 [`list/keys`](#listkeys)  
 [`create/key`](#createkey)   
 [`get/key`](#getkey)   
+[`get/publickey`](#getpublickey)   
 [`get/privatekey`](#getprivatekey)   
 [`change/scheme`](#changescheme)   
 [`encrypt/data`](#encryptdata)  
@@ -58,17 +59,17 @@ Returns a list of all public keys in the crypto object register for the specifie
     {
         "name": "auth",
         "scheme": "FALCON",
-        "hashkey": "8FJxzexVDUN5YiQYK4QjvfRNrAUym8FNu4B8yvYGXgKFJL8nBse"
+        "hashkey": "37wdeKaudAnBQrtrUTvWxnDtDjvYGWf6ttXp6QNsvf5t"
     },
     {
         "name": "network",
         "scheme": "FALCON",
-        "hashkey": "8CvLySLAWEKDB9SJSUDdRgzAG6ALVcXLzPQREN9Nbf7AzuJkg5P"
+        "hashkey": "AQXVkTMaDtncHW3pA7HR8bL5BfRqumW29JaAYn9QEWkV"
     },
     {
         "name": "app1",
         "scheme": "BRAINPOOL",
-        "hashkey": "8HJxzexVDUN5YiQYK4QjvfRNrAUym8FNu4B8yvYGXgKFJL8n8Dc"
+        "hashkey": "CbXyKRQbGTj7NaQHqhxDri5himo52L1vZT3rHerp6eBP"
     },
   
 ]
@@ -114,7 +115,7 @@ Generates a new public-private key pair and stores it in the crypto object regis
 {
     "name": "app1",
     "scheme": "BRAINPOOL",
-    "hashkey": "8HJxzexVDUN5YiQYK4QjvfRNrAUym8FNu4B8yvYGXgKFJL8n8Dc"
+    "hashkey": "CbXyKRQbGTj7NaQHqhxDri5himo52L1vZT3rHerp6eBP"
 }
 
 ```
@@ -156,7 +157,7 @@ Returns the public key from the crypto object register for the specified key nam
 {
     "name": "auth",
     "scheme": "FALCON",
-    "hashkey": "8FJxzexVDUN5YiQYK4QjvfRNrAUym8FNu4B8yvYGXgKFJL8nBse"
+    "hashkey": "CbXyKRQbGTj7NaQHqhxDri5himo52L1vZT3rHerp6eBP"
 }
 
 ```
@@ -168,6 +169,42 @@ Returns the public key from the crypto object register for the specified key nam
 `scheme` : The cryptographic scheme used to generate the key pair.  This can be `FALCON` or `BRAINPOOL`.
 
 `hashkey` : The public key, hashed (using Skein-Keccak 256), and then base58 encoded.
+
+
+****
+
+
+# `get/publickey`
+
+Returns the public key (as opposed to the hashed key that is returned by get/key) for a key stored in the users crypto object register. This can only be issued by the owner of the key, so the caller must be logged in to call this method.  The un-hashed public key is required when encrypting and decrypting data via the API. 
+
+
+### Endpoint:
+
+`/crypto/get/publickey`
+
+
+### Parameters:
+
+`name` : The name of the public key to return.  
+
+`pin` : The PIN for this signature chain.
+
+`session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) the key should be returned from. For single-user API mode the session should not be supplied.
+
+
+### Return value JSON object:
+```    
+{
+    "publickey": "EZipQHgMrmyDo78Ahp7S7zCdpdwp6Q1abVXSv3GxiF6THvhGhvXmATrzMWwdimdrbkKS9LrbEa4foGxPNrizKrer"
+}
+
+```
+
+### Return values:
+
+
+`publickey` : The 64-bit public key, base58 encoded.
 
 
 ****
@@ -195,7 +232,7 @@ Returns the private key for a public key stored in the users crypto object regis
 ### Return value JSON object:
 ```    
 {
-    "privatekey": ""
+    "privatekey": "2687a494478c3ffdbc5fdf73139a710470097777aca080572a68f2a6204eb27d431a6d81d9f3f15d4e6b1c4a70eb6fb2c345fa462b2a717397514a8190484001"
 }
 
 ```
@@ -203,7 +240,7 @@ Returns the private key for a public key stored in the users crypto object regis
 ### Return values:
 
 
-`privatekey` : The private key, base58 encoded.
+`privatekey` : The 512-bit private key, hex encoded.
 
 
 ****
@@ -247,7 +284,9 @@ Change the cryptographic scheme used to generate the public-private keys for the
 
 # `encrypt/data`
 
-This method can be used to encrypt arbitrary data using the public key from a crypto object register.  The `data` must be supplied as a base64 encoded string.  This will be decoded into a byte array before encryption.  
+This method can be used to encrypt arbitrary data using the AES256 encryption function and a shared symmetric key.  The shared key is generated using ECDH from a public key (from a peer) and local private key.  The resulting encrypted data can then be decrypted by either the party, as long as the other users public key is known. 
+
+The `data` must be supplied as a base64 encoded string.  This will be decoded into a byte array before encryption.  
 
 ### Endpoint:
 
@@ -256,28 +295,43 @@ This method can be used to encrypt arbitrary data using the public key from a cr
 
 ### Parameters:
 
-`publickey` : The public key used to encrypt the data. This should be passed in as a base58-encoded string
+`name` : The name of the private key to use to generate the shared key.  
+
+`pin` : The PIN for this signature chain.
+
+`session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) the private key should be taken from. For single-user API mode the session should not be supplied.
+
+`publickey` : The public key used to to generate the shared key. This should be passed in as a base58-encoded string
 
 `data` : The data to encrypt. This should be passed in as a base64-encoded string
 
 ### Return value JSON object:
 ```    
 {
-    "data": ""
+    "data": "qjJ4B+cOI/AK6hzmpIvDRyZX7sbXiWtvbutCBYSU9v4=",
+    "publickey1": "Dd4Cb9gTgsT5wk6e1eCw9tTPMKSyCa9e7p2mxAggSRBWHY2cWBxExRMrjGk7PXY6TiysmvRoBvSSKsyybNdGPXFm",
+    "publickey2": "EZipQHgMrmyDo78Ahp7S7zCdpdwp6Q1abVXSv3GxiF6THvhGhvXmATrzMWwdimdrbkKS9LrbEa4foGxPNrizKrer"
 }
+
 
 ```
 
 ### Return values:
 
-`data` : The encrypted data, base64 encoded.
+`data` : The AES256 encrypted data, base64 encoded.
+
+`publickey1` : The first of the public keys used in the shared symmetric key.
+
+`publickey2` : The second of the public keys used in the shared symmetric key.
 
 ****
 
 
 # `decrypt/data`
 
-Decrypt arbitrary data using a private key.  This method can work in two "modes", either by generating the private key based on the logged in signature chain credentials (username/password/pin), or by passing in the known private key.  The first mode is the most secure as the private key is never exposed, but requires that the user must not change their password and/or pin after the initial encryption of the data.  This mode is useful when encrypted data is transient.  
+Decrypt data previously encrypted using AES256 and a shared symmetric key.  The shared key is regenerated by API method using the specified private key and the supplied public (peer) key.  
+
+This method can work in two "modes", either by generating the private key based on the logged in signature chain credentials (username/password/pin), or by passing in the known private key.  The first mode is the most secure as the private key is never exposed, but requires that the user must not change their password and/or pin after the initial encryption of the data.  This mode is useful when encrypted data is transient.  
 
 Where the encrypted data is persistent, to safeguard against users changing their password/pin and no longer being able to decrypt the data, calling applications should make a copy of the private key used to decrypt the data and store it in their own application.  The second mode of this method allows callers to provide the private key to use to decrypt the data.  The private key for any key in the crypto object register (except the default six keys) can be obtained via `crypto/get/privatekey`   
 
@@ -297,14 +351,14 @@ The `data` must be supplied as a base64 encoded string.  This will be decoded in
 
 `session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) should be used to decrypt the data. For single-user API mode the session should not be supplied. 
 
-`privatekey` : Optional, the private key to use to decrypt the data.  If this is provided then this will be used instead of generating the private key from the signature chain credentials. The private key should be base58 encoded. 
+`privatekey` : Optional, the private key to use to decrypt the data.  If this is provided then this will be used instead of generating the private key from the signature chain credentials. The private key should be hex encoded. 
 
-`data` : The data to decrypt. This should be passed in as a base64-encoded string
+`data` : The encrypted data to decrypt. This should be passed in as a base64-encoded string
 
 ### Return value JSON object:
 ```    
 {
-    "data": ""
+    "data": "aGVsbG8gd29ybGQ="
 }
 
 ```
@@ -421,7 +475,7 @@ The `data` must be supplied as a base64 encoded string.  This will be decoded in
 
 ### Return values:
 
-`hash` : The hash of the data, returned as a hex encoded string.  The length of the hash will depend on the function used to generate it.  `SK256` results in an unsigned 256-bit integer, `SK612` results in an unsigned 512-bit integer, and `ARGON2` results in an unsigned 512-bit integer.   
+`hash` : The hash of the data, returned as a hex encoded string.  The length of the hash will depend on the function used to generate it.  `SK256` results in an unsigned 256-bit integer, `SK512` results in an unsigned 512-bit integer, and `ARGON2` results in an unsigned 512-bit integer.   
 
 ****
 

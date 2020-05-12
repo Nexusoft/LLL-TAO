@@ -143,6 +143,32 @@ namespace TAO
             json::json Create(const json::json& params, bool fHelp);
 
 
+            /** Encrypt
+             *
+             *  Encrypts data using the specified public key 
+             *
+             *  @param[in] params The parameters from the API call
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json Encrypt(const json::json& params, bool fHelp);
+
+
+            /** Decrypt
+             *
+             *  Decrypts data using the local private key 
+             *
+             *  @param[in] params The parameters from the API call
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json Decrypt(const json::json& params, bool fHelp);
+
+
         };
     }
 }
