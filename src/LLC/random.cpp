@@ -115,6 +115,14 @@ namespace LLC
     }
 
 
+    uint128_t GetRand128()
+    {
+        uint128_t hash;
+        RAND_bytes((uint8_t*)&hash, sizeof(hash));
+        return hash;
+    }
+    
+
     uint256_t GetRand256()
     {
         uint256_t hash;
