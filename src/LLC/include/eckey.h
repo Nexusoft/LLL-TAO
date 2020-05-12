@@ -315,6 +315,20 @@ namespace LLC
          **/
         bool IsValid() const;
 
+        /** MakeShared
+         *
+         *  Uses ECDH to generate a shared key from the private and public keys of two different EC keypairs.       
+         *
+         *  @param[in] privateKey The private key used for the shared key.
+         *  @param[in] publicKey  The public key used for the shared key.
+         *  @param[in] vchShared  The vector or bytes making up the shared key.
+         *
+         *  @return True if the key was created successfully.
+         *
+         **/
+        static bool MakeShared(const ECKey& privateKey, const ECKey& publicKey, std::vector<uint8_t>& vchShared);
+
+
     };
 }
 #endif
