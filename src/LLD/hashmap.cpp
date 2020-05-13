@@ -453,6 +453,10 @@ namespace LLD
                         pFileStreams->Put(i, pstream);
                     }
 
+                    /* Update the bloom filter with new key. */
+                    vBloom[i].Insert(cKey.vKey);
+                    setUpdated.insert(i);
+
                     /* Handle the disk writing operations. */
                     pstream->seekp (nFilePos, std::ios::beg);
                     pstream->write((char*)&ssKey.Bytes()[0], ssKey.size());
