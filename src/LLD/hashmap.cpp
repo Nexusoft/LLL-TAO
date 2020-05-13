@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #include <LLD/include/enum.h>
 #include <LLD/include/version.h>
 #include <LLD/hash/xxh3.h>
+#include <LLD/templates/bloom.h>
 
 #include <Util/templates/datastream.h>
 #include <Util/include/filesystem.h>
@@ -38,6 +39,8 @@ namespace LLD
     , HASHMAP_KEY_ALLOCATION (static_cast<uint16_t>(HASHMAP_MAX_KEY_SIZE + 13))
     , nFlags                 (nFlagsIn)
     , RECORD_MUTEX           (1024)
+    , vBloom                 ( )
+    , setUpdated             ( )
     {
         Initialize();
     }
@@ -55,6 +58,8 @@ namespace LLD
     , HASHMAP_KEY_ALLOCATION (map.HASHMAP_KEY_ALLOCATION)
     , nFlags                 (map.nFlags)
     , RECORD_MUTEX           (map.RECORD_MUTEX.size())
+    , vBloom                 (map.vBloom)
+    , setUpdated             (map.setUpdated)
     {
         Initialize();
     }
@@ -72,6 +77,8 @@ namespace LLD
     , HASHMAP_KEY_ALLOCATION (std::move(map.HASHMAP_KEY_ALLOCATION))
     , nFlags                 (std::move(map.nFlags))
     , RECORD_MUTEX           (map.RECORD_MUTEX.size())
+    , vBloom                 (std::move(map.vBloom))
+    , setUpdated             (std::move(map.setUpdated))
     {
         Initialize();
     }
@@ -88,6 +95,9 @@ namespace LLD
         HASHMAP_MAX_KEY_SIZE   = map.HASHMAP_MAX_KEY_SIZE;
         HASHMAP_KEY_ALLOCATION = map.HASHMAP_KEY_ALLOCATION;
         nFlags                 = map.nFlags;
+
+        vBloom                 = map.vBloom;
+        setUpdated             = map.setUpdated;
 
         Initialize();
 
@@ -107,6 +117,9 @@ namespace LLD
         HASHMAP_KEY_ALLOCATION = std::move(map.HASHMAP_KEY_ALLOCATION);
         nFlags                 = std::move(map.nFlags);
 
+        vBloom                 = std::move(map.vBloom);
+        setUpdated             = std::move(map.setUpdated);
+
         Initialize();
 
         return *this;
@@ -125,7 +138,7 @@ namespace LLD
 
 
     /*  Compresses a given key until it matches size criteria. */
-    void BinaryHashMap::CompressKey(std::vector<uint8_t>& vData, uint16_t nSize)
+    void BinaryHashMap::compress_key(std::vector<uint8_t>& vData, uint16_t nSize)
     {
         /* Loop until key is of desired size. */
         while(vData.size() > nSize)
@@ -146,7 +159,7 @@ namespace LLD
 
 
     /* Calculates a bucket to be used for the hashmap allocation. */
-    uint32_t BinaryHashMap::GetBucket(const std::vector<uint8_t>& vKey)
+    uint32_t BinaryHashMap::get_bucket(const std::vector<uint8_t>& vKey)
     {
         /* Get an xxHash. */
         uint64_t nBucket = XXH64(&vKey[0], vKey.size(), 0) / 7;
@@ -232,7 +245,7 @@ namespace LLD
         LOCK(KEY_MUTEX);
 
         /* Get the assigned bucket for the hashmap. */
-        uint32_t nBucket = GetBucket(vKey);
+        uint32_t nBucket = get_bucket(vKey);
 
         /* Get the file binary position. */
         uint32_t nFilePos = nBucket * HASHMAP_KEY_ALLOCATION;
@@ -242,7 +255,7 @@ namespace LLD
 
         /* Compress any keys larger than max size. */
         std::vector<uint8_t> vKeyCompressed = vKey;
-        CompressKey(vKeyCompressed, HASHMAP_MAX_KEY_SIZE);
+        compress_key(vKeyCompressed, HASHMAP_MAX_KEY_SIZE);
 
         /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
         std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
@@ -309,14 +322,14 @@ namespace LLD
         LOCK(KEY_MUTEX);
 
         /* Get the assigned bucket for the hashmap. */
-        uint32_t nBucket = GetBucket(cKey.vKey);
+        uint32_t nBucket = get_bucket(cKey.vKey);
 
         /* Get the file binary position. */
         uint32_t nFilePos = nBucket * HASHMAP_KEY_ALLOCATION;
 
         /* Compress any keys larger than max size. */
         std::vector<uint8_t> vKeyCompressed = cKey.vKey;
-        CompressKey(vKeyCompressed, HASHMAP_MAX_KEY_SIZE);
+        compress_key(vKeyCompressed, HASHMAP_MAX_KEY_SIZE);
 
         /* Handle if not in append mode which will update the key. */
         if(!(nFlags & FLAGS::APPEND))
@@ -483,7 +496,7 @@ namespace LLD
     /* Flush all buffers to disk if using ACID transaction. */
     void BinaryHashMap::Flush()
     {
-        
+
     }
 
 
@@ -494,14 +507,14 @@ namespace LLD
         LOCK(KEY_MUTEX);
 
         /* Get the assigned bucket for the hashmap. */
-        uint32_t nBucket = GetBucket(vKey);
+        uint32_t nBucket = get_bucket(vKey);
 
         /* Get the file binary position. */
         uint32_t nFilePos = nBucket * HASHMAP_KEY_ALLOCATION;
 
         /* Compress any keys larger than max size. */
         std::vector<uint8_t> vKeyCompressed = vKey;
-        CompressKey(vKeyCompressed, HASHMAP_MAX_KEY_SIZE);
+        compress_key(vKeyCompressed, HASHMAP_MAX_KEY_SIZE);
 
         /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
         std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
@@ -568,14 +581,14 @@ namespace LLD
         LOCK(KEY_MUTEX);
 
         /* Get the assigned bucket for the hashmap. */
-        uint32_t nBucket = GetBucket(vKey);
+        uint32_t nBucket = get_bucket(vKey);
 
         /* Get the file binary position. */
         uint32_t nFilePos = nBucket * HASHMAP_KEY_ALLOCATION;
 
         /* Compress any keys larger than max size. */
         std::vector<uint8_t> vKeyCompressed = vKey;
-        CompressKey(vKeyCompressed, HASHMAP_MAX_KEY_SIZE);
+        compress_key(vKeyCompressed, HASHMAP_MAX_KEY_SIZE);
 
         /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
         std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
