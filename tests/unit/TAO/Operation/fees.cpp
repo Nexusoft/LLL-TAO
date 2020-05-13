@@ -109,7 +109,7 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
 
         REQUIRE(tx.Build());
         REQUIRE(tx.Sign(user->Generate(tx.nSequence, strPin)));
-        //REQUIRE(tx.Verify());
+        //
         //REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
 
         REQUIRE(TAO::Ledger::mempool.Accept(tx));

@@ -189,10 +189,6 @@ namespace TAO
                     }
                 }
 
-                /* Verify the register's pre-states and post-states. */
-                if(!tx.Verify(FLAGS::MEMPOOL))
-                    return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
-
                 /* Begin an ACID transction for internal memory commits. */
                 LLD::TxnBegin(FLAGS::MEMPOOL);
                 if(!tx.Connect(FLAGS::MEMPOOL))

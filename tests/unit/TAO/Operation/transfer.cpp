@@ -58,7 +58,7 @@ TEST_CASE( "Transfer Primitive Tests", "[operation]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -85,7 +85,7 @@ TEST_CASE( "Transfer Primitive Tests", "[operation]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -106,7 +106,7 @@ TEST_CASE( "Transfer Primitive Tests", "[operation]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             //write transaction
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));

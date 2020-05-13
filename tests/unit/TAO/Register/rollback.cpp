@@ -57,7 +57,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
         REQUIRE(tx.Build());
 
         //verify the prestates and poststates
-        REQUIRE(tx.Verify());
+
 
         //commit to disk
         REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -94,7 +94,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -123,7 +123,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -161,7 +161,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -207,7 +207,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -235,7 +235,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
         REQUIRE(tx.Build());
 
         //verify the prestates and poststates
-        REQUIRE(tx.Verify());
+
 
         //write transaction
         REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
@@ -281,7 +281,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -309,7 +309,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
         REQUIRE(tx.Build());
 
         //verify the prestates and poststates
-        REQUIRE(tx.Verify());
+
 
         //write transaction
         REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
@@ -358,7 +358,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -389,7 +389,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+
 
             //write transaction
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
@@ -426,7 +426,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -489,7 +489,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -565,7 +565,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+
 
             //write transaction
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
@@ -634,7 +634,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -658,7 +658,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -680,7 +680,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+
 
             //write transaction
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
@@ -743,7 +743,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
                 REQUIRE(tx.Build());
 
                 //verify the prestates and poststates
-                REQUIRE(tx.Verify());
+
 
                 //commit to disk
                 REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -767,7 +767,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
                 REQUIRE(tx.Build());
 
                 //verify the prestates and poststates
-                REQUIRE(tx.Verify());
+
 
                 //commit to disk
                 REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -790,7 +790,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
                 REQUIRE(tx.Build());
 
                 //verify the prestates and poststates
-                REQUIRE(tx.Verify());
+
 
                 //write transaction
                 REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
@@ -830,7 +830,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
                 REQUIRE(tx.Build());
 
                 //verify the prestates and poststates
-                REQUIRE(tx.Verify());
+
 
                 //commit to disk
                 REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -885,7 +885,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
                 REQUIRE(tx.Build());
 
                 //verify the prestates and poststates
-                REQUIRE(tx.Verify());
+
 
                 //commit to disk
                 REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -952,7 +952,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
                 REQUIRE(tx.Build());
 
                 //verify the prestates and poststates
-                REQUIRE(tx.Verify());
+
 
                 //commit to disk
                 REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -989,7 +989,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
                 REQUIRE(tx.Build());
 
                 //verify the prestates and poststates
-                REQUIRE(tx.Verify());
+
 
                 //make sure it fails
                 REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
@@ -1011,7 +1011,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
                 REQUIRE(tx.Build());
 
                 //verify the prestates and poststates
-                REQUIRE(tx.Verify());
+
 
                 //make sure it fails
                 REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
@@ -1080,7 +1080,7 @@ TEST_CASE( "Register Rollback Tests - Stake operations", "[register]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -1117,7 +1117,7 @@ TEST_CASE( "Register Rollback Tests - Stake operations", "[register]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -1154,7 +1154,7 @@ TEST_CASE( "Register Rollback Tests - Stake operations", "[register]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -1215,7 +1215,7 @@ TEST_CASE( "Register Rollback Tests - Stake operations", "[register]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -1258,7 +1258,7 @@ TEST_CASE( "Register Rollback Tests - Stake operations", "[register]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -1313,7 +1313,7 @@ TEST_CASE( "Register Rollback Tests - Stake operations", "[register]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -1364,7 +1364,7 @@ TEST_CASE( "Register Rollback Tests - Stake operations", "[register]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -1419,7 +1419,7 @@ TEST_CASE( "Register Rollback Tests - Stake operations", "[register]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));

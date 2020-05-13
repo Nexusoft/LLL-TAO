@@ -211,16 +211,6 @@ namespace TAO
             bool Check() const;
 
 
-            /** Verify
-             *
-             *  Verify a transaction contracts.
-             *
-             *  @return true if transaction is valid.
-             *
-             **/
-            bool Verify(const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK) const;
-
-
             /** CheckTrust
              *
              *  Check the trust score that is claimed is correct.

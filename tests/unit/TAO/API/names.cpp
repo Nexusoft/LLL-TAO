@@ -463,7 +463,7 @@ TEST_CASE( "Test Names API - claim namespace", "[names/claim/namespace]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
 
@@ -485,7 +485,7 @@ TEST_CASE( "Test Names API - claim namespace", "[names/claim/namespace]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             //write transaction
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
@@ -1308,7 +1308,7 @@ TEST_CASE( "Test Names API - claim name", "[names/claim/name]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
 
@@ -1336,7 +1336,7 @@ TEST_CASE( "Test Names API - claim name", "[names/claim/name]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
 
@@ -1360,7 +1360,7 @@ TEST_CASE( "Test Names API - claim name", "[names/claim/name]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             //write transaction
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));

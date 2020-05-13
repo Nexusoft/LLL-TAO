@@ -492,30 +492,6 @@ namespace TAO
         }
 
 
-        /* Verify a transaction contracts. */
-        bool Transaction::Verify(const uint8_t nFlags) const
-        {
-            /* Grab the txid (once). */
-            uint512_t hash = GetHash(true);
-
-            /* Create a temporary map for pre-states. */
-            std::map<uint256_t, TAO::Register::State> mapStates;
-
-            /* Run through all the contracts. */
-            for(const auto& contract : vContracts)
-            {
-                /* Bind the contract to this transaction. */
-                contract.Bind(this, hash);
-
-                /* Verify the register pre-states. */
-                if(!TAO::Register::Verify(contract, mapStates, nFlags))
-                    return false;
-            }
-
-            return true;
-        }
-
-
         /* Check the trust score that is claimed is correct. */
         bool Transaction::CheckTrust(BlockState* pblock) const
         {

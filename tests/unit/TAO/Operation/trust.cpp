@@ -64,7 +64,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
         REQUIRE(tx.Build());
 
         //verify the prestates and poststates
-        REQUIRE(tx.Verify());
+        
 
         //commit to disk
         REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -90,7 +90,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -180,7 +180,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
         REQUIRE(tx.Build());
 
         //verify the prestates and poststates
-        REQUIRE(tx.Verify());
+        
 
         //commit to disk
         REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -307,7 +307,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
         REQUIRE(tx.Build());
 
         //verify the prestates and poststates
-        REQUIRE(tx.Verify());
+        
 
         //commit to disk
         REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -373,7 +373,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
         REQUIRE(tx.Build());
 
         //verify the prestates and poststates
-        REQUIRE(tx.Verify());
+        
 
         //commit to disk
         REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -553,7 +553,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
         REQUIRE(tx.Build());
 
         //verify the prestates and poststates
-        REQUIRE(tx.Verify());
+        
 
         //commit to disk
         REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -616,7 +616,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
         REQUIRE(tx.Build());
 
         //verify the prestates and poststates
-        REQUIRE(tx.Verify());
+        
 
         //commit to disk
         REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -679,7 +679,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
         REQUIRE(tx.Build());
 
         //verify the prestates and poststates
-        REQUIRE(tx.Verify());
+        
 
         //commit to disk
         REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));

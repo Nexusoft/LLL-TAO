@@ -66,7 +66,7 @@ TEST_CASE( "Validate Primitive Tests", "[validate]" )
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -90,7 +90,7 @@ TEST_CASE( "Validate Primitive Tests", "[validate]" )
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -114,7 +114,7 @@ TEST_CASE( "Validate Primitive Tests", "[validate]" )
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -138,7 +138,7 @@ TEST_CASE( "Validate Primitive Tests", "[validate]" )
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -161,7 +161,7 @@ TEST_CASE( "Validate Primitive Tests", "[validate]" )
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             //commit to disk
             REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -192,7 +192,7 @@ TEST_CASE( "Validate Primitive Tests", "[validate]" )
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -221,7 +221,7 @@ TEST_CASE( "Validate Primitive Tests", "[validate]" )
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             //commit to disk
             REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -247,7 +247,7 @@ TEST_CASE( "Validate Primitive Tests", "[validate]" )
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -269,7 +269,7 @@ TEST_CASE( "Validate Primitive Tests", "[validate]" )
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             //commit to disk
             REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -333,7 +333,7 @@ TEST_CASE( "Validate Primitive Tests", "[validate]" )
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             //write transaction to disk
             REQUIRE(LLD::Ledger->WriteTx(hashTx, tx));
@@ -360,7 +360,7 @@ TEST_CASE( "Validate Primitive Tests", "[validate]" )
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             //write transaction to disk
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
@@ -393,7 +393,7 @@ TEST_CASE( "Validate Primitive Tests", "[validate]" )
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             //write transaction to disk
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
@@ -433,7 +433,7 @@ TEST_CASE( "Validate Primitive Tests", "[validate]" )
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             //write transaction to disk
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
@@ -464,7 +464,7 @@ TEST_CASE( "Validate Primitive Tests", "[validate]" )
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             //write transaction to disk
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
@@ -496,7 +496,7 @@ TEST_CASE( "Validate Primitive Tests", "[validate]" )
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             //write transaction to disk
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
@@ -524,7 +524,7 @@ TEST_CASE( "Validate Primitive Tests", "[validate]" )
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             //write transaction to disk
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
@@ -614,7 +614,7 @@ TEST_CASE( "Validate Primitive Tests", "[validate]" )
                REQUIRE(tx.Build());
 
                //verify the prestates and poststates
-               REQUIRE(tx.Verify());
+               
 
                //commit to disk
                REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -664,7 +664,7 @@ TEST_CASE( "Validate Primitive Tests", "[validate]" )
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             //write transaction to disk
             REQUIRE(LLD::Ledger->WriteTx(hashTx, tx));
@@ -691,7 +691,7 @@ TEST_CASE( "Validate Primitive Tests", "[validate]" )
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             //write transaction to disk
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
@@ -722,7 +722,7 @@ TEST_CASE( "Validate Primitive Tests", "[validate]" )
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             //write transaction to disk
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
@@ -761,7 +761,7 @@ TEST_CASE( "Validate Primitive Tests", "[validate]" )
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             //write transaction to disk
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
@@ -792,7 +792,7 @@ TEST_CASE( "Validate Primitive Tests", "[validate]" )
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             //write transaction to disk
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
@@ -823,7 +823,7 @@ TEST_CASE( "Validate Primitive Tests", "[validate]" )
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             //write transaction to disk
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
@@ -851,7 +851,7 @@ TEST_CASE( "Validate Primitive Tests", "[validate]" )
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             //write transaction to disk
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));

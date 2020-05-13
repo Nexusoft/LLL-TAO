@@ -55,7 +55,7 @@ TEST_CASE( "Write Primitive Tests", "[operation]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
 
             //reset the streams
@@ -98,7 +98,7 @@ TEST_CASE( "Write Primitive Tests", "[operation]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
 
             //reset the streams
