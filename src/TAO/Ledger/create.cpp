@@ -100,14 +100,21 @@ namespace TAO
                 tx.hashRecovery = txPrev.hashRecovery;
                 tx.nTimestamp  = std::max(runtime::unifiedtimestamp(), txPrev.nTimestamp);
             }
+            
+            /* Default the key type to brainpool in case this is a genesis transaction and no specific key type has been specified */
+            tx.nNextType = SIGNATURE::BRAINPOOL;
 
-            /* If in single user mode or if this is a genesis transaction then we use the node config to set the next key type */
+            /* If in single user mode or if this is a genesis transaction then use the node config to set the next key type. 
+               If a specific key type has not been configured then for non-genesis transactions we default to using 
+               the key type from the previous transaction */
             if(!config::fMultiuser.load() || tx.IsFirst())
             {
                 if(config::GetBoolArg("-falcon"))
                     tx.nNextType = SIGNATURE::FALCON;
-                else
+                else if(config::GetBoolArg("-brainpool"))
                     tx.nNextType = SIGNATURE::BRAINPOOL;
+                else if(!tx.IsFirst())
+                    tx.nNextType = txPrev.nNextType;
             }
             /* In multiuser mode we just set the next keytype based on the previous tx */
             else
