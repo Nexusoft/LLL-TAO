@@ -26,117 +26,6 @@ ________________________________________________________________________________
 
 namespace LLD
 {
-
-    /* The Database Constructor. To determine file location and the Bytes per Record. */
-    BinaryHashMap::BinaryHashMap(const std::string& strBaseLocationIn, const uint8_t nFlagsIn, const uint64_t nBucketsIn)
-    : KEY_MUTEX              ( )
-    , strBaseLocation        (strBaseLocationIn)
-    , fileCache              (new TemplateLRU<uint16_t, std::fstream*>(8))
-    , pindex                 (nullptr)
-    , hashmap                (nBucketsIn)
-    , HASHMAP_TOTAL_BUCKETS  (nBucketsIn)
-    , HASHMAP_MAX_KEY_SIZE   (32)
-    , HASHMAP_KEY_ALLOCATION (static_cast<uint16_t>(HASHMAP_MAX_KEY_SIZE + 13))
-    , nFlags                 (nFlagsIn)
-    , RECORD_MUTEX           (1024)
-    , vBloom                 ( )
-    , setUpdated             ( )
-    {
-        Initialize();
-    }
-
-
-    /* Copy Constructor */
-    BinaryHashMap::BinaryHashMap(const BinaryHashMap& map)
-    : KEY_MUTEX              ( )
-    , strBaseLocation        (map.strBaseLocation)
-    , fileCache              (map.fileCache)
-    , pindex                 (map.pindex)
-    , hashmap                (map.hashmap)
-    , HASHMAP_TOTAL_BUCKETS  (map.HASHMAP_TOTAL_BUCKETS)
-    , HASHMAP_MAX_KEY_SIZE   (map.HASHMAP_MAX_KEY_SIZE)
-    , HASHMAP_KEY_ALLOCATION (map.HASHMAP_KEY_ALLOCATION)
-    , nFlags                 (map.nFlags)
-    , RECORD_MUTEX           (map.RECORD_MUTEX.size())
-    , vBloom                 (map.vBloom)
-    , setUpdated             (map.setUpdated)
-    {
-        Initialize();
-    }
-
-
-    /* Move Constructor */
-    BinaryHashMap::BinaryHashMap(BinaryHashMap&& map)
-    : KEY_MUTEX              ( )
-    , strBaseLocation        (std::move(map.strBaseLocation))
-    , fileCache              (std::move(map.fileCache))
-    , pindex                 (std::move(map.pindex))
-    , hashmap                (std::move(map.hashmap))
-    , HASHMAP_TOTAL_BUCKETS  (std::move(map.HASHMAP_TOTAL_BUCKETS))
-    , HASHMAP_MAX_KEY_SIZE   (std::move(map.HASHMAP_MAX_KEY_SIZE))
-    , HASHMAP_KEY_ALLOCATION (std::move(map.HASHMAP_KEY_ALLOCATION))
-    , nFlags                 (std::move(map.nFlags))
-    , RECORD_MUTEX           (map.RECORD_MUTEX.size())
-    , vBloom                 (std::move(map.vBloom))
-    , setUpdated             (std::move(map.setUpdated))
-    {
-        Initialize();
-    }
-
-
-    /* Copy Assignment Operator */
-    BinaryHashMap& BinaryHashMap::operator=(const BinaryHashMap& map)
-    {
-        strBaseLocation        = map.strBaseLocation;
-        fileCache              = map.fileCache;
-        pindex                 = map.pindex;
-        hashmap                = map.hashmap;
-        HASHMAP_TOTAL_BUCKETS  = map.HASHMAP_TOTAL_BUCKETS;
-        HASHMAP_MAX_KEY_SIZE   = map.HASHMAP_MAX_KEY_SIZE;
-        HASHMAP_KEY_ALLOCATION = map.HASHMAP_KEY_ALLOCATION;
-        nFlags                 = map.nFlags;
-
-        vBloom                 = map.vBloom;
-        setUpdated             = map.setUpdated;
-
-        Initialize();
-
-        return *this;
-    }
-
-
-    /* Move Assignment Operator */
-    BinaryHashMap& BinaryHashMap::operator=(BinaryHashMap&& map)
-    {
-        strBaseLocation        = std::move(map.strBaseLocation);
-        fileCache              = std::move(map.fileCache);
-        pindex                 = std::move(map.pindex);
-        hashmap                = std::move(map.hashmap);
-        HASHMAP_TOTAL_BUCKETS  = std::move(map.HASHMAP_TOTAL_BUCKETS);
-        HASHMAP_MAX_KEY_SIZE   = std::move(map.HASHMAP_MAX_KEY_SIZE);
-        HASHMAP_KEY_ALLOCATION = std::move(map.HASHMAP_KEY_ALLOCATION);
-        nFlags                 = std::move(map.nFlags);
-
-        vBloom                 = std::move(map.vBloom);
-        setUpdated             = std::move(map.setUpdated);
-
-        Initialize();
-
-        return *this;
-    }
-
-
-    /* Default Destructor */
-    BinaryHashMap::~BinaryHashMap()
-    {
-        if(fileCache)
-            delete fileCache;
-
-        if(pindex)
-            delete pindex;
-    }
-
-
     /*  Compresses a given key until it matches size criteria. */
     void BinaryHashMap::compress_key(std::vector<uint8_t>& vData, uint16_t nSize)
     {
@@ -168,9 +57,127 @@ namespace LLD
     }
 
 
+    /* The Database Constructor. To determine file location and the Bytes per Record. */
+    BinaryHashMap::BinaryHashMap(const std::string& strBaseLocationIn, const uint8_t nFlagsIn, const uint64_t nBucketsIn)
+    : KEY_MUTEX              ( )
+    , strBaseLocation        (strBaseLocationIn)
+    , pFileStreams           (new TemplateLRU<uint16_t, std::fstream*>(8))
+    , pBloomStreams          (new TemplateLRU<uint16_t, std::fstream*>(8))
+    , pindex                 (nullptr)
+    , hashmap                (nBucketsIn)
+    , HASHMAP_TOTAL_BUCKETS  (nBucketsIn)
+    , HASHMAP_MAX_KEY_SIZE   (32)
+    , HASHMAP_KEY_ALLOCATION (static_cast<uint16_t>(HASHMAP_MAX_KEY_SIZE + 13))
+    , nFlags                 (nFlagsIn)
+    , RECORD_MUTEX           (1024)
+    , vBloom                 ( )
+    , setUpdated             ( )
+    {
+        Initialize();
+    }
+
+
+    /* Copy Constructor */
+    BinaryHashMap::BinaryHashMap(const BinaryHashMap& map)
+    : KEY_MUTEX              ( )
+    , strBaseLocation        (map.strBaseLocation)
+    , pFileStreams           (map.pFileStreams)
+    , pBloomStreams          (map.pBloomStreams)
+    , pindex                 (map.pindex)
+    , hashmap                (map.hashmap)
+    , HASHMAP_TOTAL_BUCKETS  (map.HASHMAP_TOTAL_BUCKETS)
+    , HASHMAP_MAX_KEY_SIZE   (map.HASHMAP_MAX_KEY_SIZE)
+    , HASHMAP_KEY_ALLOCATION (map.HASHMAP_KEY_ALLOCATION)
+    , nFlags                 (map.nFlags)
+    , RECORD_MUTEX           (map.RECORD_MUTEX.size())
+    , vBloom                 (map.vBloom)
+    , setUpdated             (map.setUpdated)
+    {
+        Initialize();
+    }
+
+
+    /* Move Constructor */
+    BinaryHashMap::BinaryHashMap(BinaryHashMap&& map)
+    : KEY_MUTEX              ( )
+    , strBaseLocation        (std::move(map.strBaseLocation))
+    , pFileStreams           (std::move(map.pFileStreams))
+    , pBloomStreams          (std::move(map.pBloomStreams))
+    , pindex                 (std::move(map.pindex))
+    , hashmap                (std::move(map.hashmap))
+    , HASHMAP_TOTAL_BUCKETS  (std::move(map.HASHMAP_TOTAL_BUCKETS))
+    , HASHMAP_MAX_KEY_SIZE   (std::move(map.HASHMAP_MAX_KEY_SIZE))
+    , HASHMAP_KEY_ALLOCATION (std::move(map.HASHMAP_KEY_ALLOCATION))
+    , nFlags                 (std::move(map.nFlags))
+    , RECORD_MUTEX           (map.RECORD_MUTEX.size())
+    , vBloom                 (std::move(map.vBloom))
+    , setUpdated             (std::move(map.setUpdated))
+    {
+        Initialize();
+    }
+
+
+    /* Copy Assignment Operator */
+    BinaryHashMap& BinaryHashMap::operator=(const BinaryHashMap& map)
+    {
+        strBaseLocation        = map.strBaseLocation;
+        pFileStreams           = map.pFileStreams;
+        pBloomStreams          = map.pBloomStreams;
+        pindex                 = map.pindex;
+        hashmap                = map.hashmap;
+        HASHMAP_TOTAL_BUCKETS  = map.HASHMAP_TOTAL_BUCKETS;
+        HASHMAP_MAX_KEY_SIZE   = map.HASHMAP_MAX_KEY_SIZE;
+        HASHMAP_KEY_ALLOCATION = map.HASHMAP_KEY_ALLOCATION;
+        nFlags                 = map.nFlags;
+
+        vBloom                 = map.vBloom;
+        setUpdated             = map.setUpdated;
+
+        Initialize();
+
+        return *this;
+    }
+
+
+    /* Move Assignment Operator */
+    BinaryHashMap& BinaryHashMap::operator=(BinaryHashMap&& map)
+    {
+        strBaseLocation        = std::move(map.strBaseLocation);
+        pFileStreams           = std::move(map.pFileStreams);
+        pBloomStreams          = std::move(map.pBloomStreams);
+        pindex                 = std::move(map.pindex);
+        hashmap                = std::move(map.hashmap);
+        HASHMAP_TOTAL_BUCKETS  = std::move(map.HASHMAP_TOTAL_BUCKETS);
+        HASHMAP_MAX_KEY_SIZE   = std::move(map.HASHMAP_MAX_KEY_SIZE);
+        HASHMAP_KEY_ALLOCATION = std::move(map.HASHMAP_KEY_ALLOCATION);
+        nFlags                 = std::move(map.nFlags);
+
+        vBloom                 = std::move(map.vBloom);
+        setUpdated             = std::move(map.setUpdated);
+
+        Initialize();
+
+        return *this;
+    }
+
+
+    /* Default Destructor */
+    BinaryHashMap::~BinaryHashMap()
+    {
+        if(pFileStreams)
+            delete pFileStreams;
+
+        if(pindex)
+            delete pindex;
+    }
+
+
     /* Read a key index from the disk hashmaps. */
     void BinaryHashMap::Initialize()
     {
+        /* Keep track of total hashmaps. */
+        uint32_t nTotalHashmaps = 0;
+
         /* Create directories if they don't exist yet. */
         if(!filesystem::exists(strBaseLocation) && filesystem::create_directories(strBaseLocation))
             debug::log(0, FUNCTION, "Generated Path ", strBaseLocation);
@@ -199,20 +206,25 @@ namespace LLD
 
             /* Read the disk index bytes. */
             std::fstream stream(index, std::ios::in | std::ios::binary);
-            stream.read((char*)&vIndex[0], vIndex.size());
+            stream.read((char*)&hashmap[0], hashmap.size() * 2);
             stream.close();
 
             /* Deserialize the values into memory index. */
             uint32_t nTotalKeys = 0;
             for(uint32_t nBucket = 0; nBucket < HASHMAP_TOTAL_BUCKETS; ++nBucket)
             {
-                std::copy((uint8_t *)&vIndex[nBucket * 2], (uint8_t *)&vIndex[nBucket * 2] + 2, (uint8_t *)&hashmap[nBucket]);
-
                 nTotalKeys += hashmap[nBucket];
+                nTotalHashmaps = std::max(nTotalHashmaps, uint32_t(hashmap[nBucket]));
+            }
+
+            /* Load the bloom filter disk images. */
+            for(uint32_t nBloom = 0; nBloom < nTotalHashmaps; ++nBloom)
+            {
+                
             }
 
             /* Debug output showing loading of disk index. */
-            debug::log(0, FUNCTION, "Loaded Disk Index of ", vIndex.size(), " bytes and ", nTotalKeys, " keys");
+            debug::log(0, FUNCTION, "Loaded Disk Index | ", vIndex.size(), " bytes | ", nTotalKeys, " keys | ", nTotalHashmaps, " hashmaps");
         }
 
         /* Build the first hashmap index file if it doesn't exist. */
@@ -235,7 +247,7 @@ namespace LLD
         pindex = new std::fstream(index, std::ios::in | std::ios::out | std::ios::binary);
 
         /* Load the stream object into the stream LRU cache. */
-        fileCache->Put(0, new std::fstream(file, std::ios::in | std::ios::out | std::ios::binary));
+        pFileStreams->Put(0, new std::fstream(file, std::ios::in | std::ios::out | std::ios::binary));
     }
 
 
@@ -263,7 +275,7 @@ namespace LLD
         {
             /* Find the file stream for LRU cache. */
             std::fstream *pstream;
-            if(!fileCache->Get(i, pstream))
+            if(!pFileStreams->Get(i, pstream))
             {
                 /* Set the new stream pointer. */
                 std::string filename = debug::safe_printstr(strBaseLocation, "_hashmap.", std::setfill('0'), std::setw(5), i);
@@ -276,7 +288,7 @@ namespace LLD
                 }
 
                 /* If file not found add to LRU cache. */
-                fileCache->Put(i, pstream);
+                pFileStreams->Put(i, pstream);
             }
 
             /* Seek to the hashmap index in file. */
@@ -340,7 +352,7 @@ namespace LLD
             {
                 /* Find the file stream for LRU cache. */
                 std::fstream* pstream;
-                if(!fileCache->Get(i, pstream))
+                if(!pFileStreams->Get(i, pstream))
                 {
                     std::string filename = debug::safe_printstr(strBaseLocation, "_hashmap.", std::setfill('0'), std::setw(5), i);
 
@@ -354,7 +366,7 @@ namespace LLD
                     }
 
                     /* If file not found add to LRU cache. */
-                    fileCache->Put(i, pstream);
+                    pFileStreams->Put(i, pstream);
                 }
 
                 /* Seek to the hashmap index in file. */
@@ -375,7 +387,7 @@ namespace LLD
 
                     /* Find the file stream for LRU cache. */
                     std::fstream* pstream;
-                    if(!fileCache->Get(i, pstream))
+                    if(!pFileStreams->Get(i, pstream))
                     {
                         std::string filename = debug::safe_printstr(strBaseLocation, "_hashmap.", std::setfill('0'), std::setw(5), i);
 
@@ -389,7 +401,7 @@ namespace LLD
                         }
 
                         /* If file not found add to LRU cache. */
-                        fileCache->Put(i, pstream);
+                        pFileStreams->Put(i, pstream);
                     }
 
 
@@ -444,7 +456,7 @@ namespace LLD
 
         /* Find the file stream for LRU cache. */
         std::fstream* pstream;
-        if(!fileCache->Get(hashmap[nBucket], pstream))
+        if(!pFileStreams->Get(hashmap[nBucket], pstream))
         {
             /* Set the new stream pointer. */
             pstream = new std::fstream(file, std::ios::in | std::ios::out | std::ios::binary);
@@ -455,7 +467,7 @@ namespace LLD
             }
 
             /* If not in cache, add to the LRU. */
-            fileCache->Put(hashmap[nBucket], pstream);
+            pFileStreams->Put(hashmap[nBucket], pstream);
         }
 
         /* Flush the key file to disk. */
@@ -522,7 +534,7 @@ namespace LLD
         {
             /* Find the file stream for LRU cache. */
             std::fstream* pstream;
-            if(!fileCache->Get(i, pstream))
+            if(!pFileStreams->Get(i, pstream))
             {
                 /* Set the new stream pointer. */
                 pstream = new std::fstream(
@@ -530,7 +542,7 @@ namespace LLD
                   std::ios::in | std::ios::out | std::ios::binary);
 
                 /* If file not found add to LRU cache. */
-                fileCache->Put(i, pstream);
+                pFileStreams->Put(i, pstream);
             }
 
             /* Seek to the hashmap index in file. */
@@ -596,7 +608,7 @@ namespace LLD
         {
             /* Find the file stream for LRU cache. */
             std::fstream* pstream;
-            if(!fileCache->Get(i, pstream))
+            if(!pFileStreams->Get(i, pstream))
             {
                 /* Set the new stream pointer. */
                 pstream = new std::fstream(
@@ -604,7 +616,7 @@ namespace LLD
                   std::ios::in | std::ios::out | std::ios::binary);
 
                 /* If file not found add to LRU cache. */
-                fileCache->Put(i, pstream);
+                pFileStreams->Put(i, pstream);
             }
 
             /* Seek to the hashmap index in file. */

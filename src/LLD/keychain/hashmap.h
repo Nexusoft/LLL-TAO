@@ -27,6 +27,7 @@ ________________________________________________________________________________
 
 namespace LLD
 {
+    //forward declaration
     class BloomFilter;
 
     /** BinaryHashMap
@@ -51,7 +52,11 @@ namespace LLD
 
 
         /** Keychain stream object. **/
-        TemplateLRU<uint16_t, std::fstream*>* fileCache;
+        TemplateLRU<uint16_t, std::fstream*>* pFileStreams;
+
+
+        /** Bloom filter stream objects. **/
+        TemplateLRU<uint16_t, std::fstream*>* pBloomStreams;
 
 
         /** Keychain index stream. **/
