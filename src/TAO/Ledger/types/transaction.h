@@ -90,6 +90,10 @@ namespace TAO
             std::vector<uint8_t> vchPubKey;
             std::vector<uint8_t> vchSig;
 
+
+            //MEMORY ONLY: cache of the txid for faster access time.
+            mutable uint512_t hashThis;
+
             /* serialization macros */
             IMPLEMENT_SERIALIZE
             (
@@ -352,10 +356,12 @@ namespace TAO
              *
              *  Gets the hash of the transaction object.
              *
+             *  @param[in] fCache Flag to set internal cache for txid.
+             *
              *  @return 512-bit unsigned integer of hash.
              *
              **/
-            uint512_t GetHash() const;
+            uint512_t GetHash(const bool fCache = false) const;
 
 
             /** ProofHash

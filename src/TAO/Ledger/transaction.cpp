@@ -72,6 +72,7 @@ namespace TAO
         , nNextType    (0)
         , vchPubKey    ( )
         , vchSig       ( )
+        , hashThis     (0)
         {
         }
 
@@ -90,6 +91,7 @@ namespace TAO
         , nNextType    (tx.nNextType)
         , vchPubKey    (tx.vchPubKey)
         , vchSig       (tx.vchSig)
+        , hashThis     (tx.hashThis)
         {
         }
 
@@ -108,6 +110,7 @@ namespace TAO
         , nNextType    (std::move(tx.nNextType))
         , vchPubKey    (std::move(tx.vchPubKey))
         , vchSig       (std::move(tx.vchSig))
+        , hashThis     (std::move(tx.hashThis))
         {
         }
 
@@ -126,6 +129,7 @@ namespace TAO
         , nNextType    (tx.nNextType)
         , vchPubKey    (tx.vchPubKey)
         , vchSig       (tx.vchSig)
+        , hashThis     (tx.hashThis)
         {
         }
 
@@ -144,6 +148,7 @@ namespace TAO
         , nNextType    (std::move(tx.nNextType))
         , vchPubKey    (std::move(tx.vchPubKey))
         , vchSig       (std::move(tx.vchSig))
+        , hashThis     (std::move(tx.hashThis))
         {
         }
 
@@ -163,6 +168,7 @@ namespace TAO
             nNextType    = tx.nNextType;
             vchPubKey    = tx.vchPubKey;
             vchSig       = tx.vchSig;
+            hashThis     = tx.hashThis;
 
             return *this;
         }
@@ -183,6 +189,7 @@ namespace TAO
             nNextType    = std::move(tx.nNextType);
             vchPubKey    = std::move(tx.vchPubKey);
             vchSig       = std::move(tx.vchSig);
+            hashThis     = std::move(tx.hashThis);
 
             return *this;
         }
@@ -203,6 +210,7 @@ namespace TAO
             nNextType    = tx.nNextType;
             vchPubKey    = tx.vchPubKey;
             vchSig       = tx.vchSig;
+            hashThis     = tx.hashThis;
 
             return *this;
         }
@@ -223,6 +231,7 @@ namespace TAO
             nNextType    = std::move(tx.nNextType);
             vchPubKey    = std::move(tx.vchPubKey);
             vchSig       = std::move(tx.vchSig);
+            hashThis     = std::move(tx.hashThis);
 
             return *this;
         }
@@ -486,6 +495,9 @@ namespace TAO
         /* Verify a transaction contracts. */
         bool Transaction::Verify(const uint8_t nFlags) const
         {
+            /* Grab the txid (once). */
+            uint512_t hash = GetHash(true);
+
             /* Create a temporary map for pre-states. */
             std::map<uint256_t, TAO::Register::State> mapStates;
 
@@ -493,7 +505,7 @@ namespace TAO
             for(const auto& contract : vContracts)
             {
                 /* Bind the contract to this transaction. */
-                contract.Bind(this);
+                contract.Bind(this, hash);
 
                 /* Verify the register pre-states. */
                 if(!TAO::Register::Verify(contract, mapStates, nFlags))
@@ -773,15 +785,13 @@ namespace TAO
         bool Transaction::Connect(const uint8_t nFlags, const BlockState* pblock) const
         {
             /* Get the transaction's hash. */
-            const uint512_t hash = GetHash();
+            const uint512_t hash = GetHash(true);
 
             /* flag indicating that transaction fees should apply, depending on the time since the last transaction */
             bool fApplyTxFee = false;
 
             /* The total cost of this transaction.  This is calculated from executing each contract. */
             uint64_t nCost = 0;
-
-            /* Check for first. */
             if(IsFirst())
             {
                 /* Check ambassador sigchains based on all versions, not the smaller subset of versions. */
@@ -884,6 +894,7 @@ namespace TAO
             uint32_t nContract = 0;
 
             /* Run through all the contracts. */
+            std::map<uint256_t, TAO::Register::State> mapStates;
             for(const auto& contract : vContracts)
             {
                 /* DISABLED for -client mode. */
@@ -923,7 +934,11 @@ namespace TAO
                 }
 
                 /* Bind the contract to this transaction. */
-                contract.Bind(this);
+                contract.Bind(this, hash);
+
+                /* Verify the register pre-states. */
+                if(!TAO::Register::Verify(contract, mapStates, nFlags))
+                    return false;
 
                 /* Execute the contracts to final state. */
                 if(!TAO::Operation::Execute(contract, nFlags, nCost))
@@ -1136,8 +1151,13 @@ namespace TAO
 
 
         /* Gets the hash of the transaction object. */
-        uint512_t Transaction::GetHash() const
+        uint512_t Transaction::GetHash(const bool fCache) const
         {
+            /* Check if cache is enabled. */
+            if(hashThis != 0)
+                return hashThis;
+
+            /* Serialize transaction data. */
             DataStream ss(SER_GETHASH, nVersion);
             ss << *this;
 
@@ -1146,6 +1166,10 @@ namespace TAO
 
             /* Type of 0xff designates tritium tx. */
             hash.SetType(TAO::Ledger::TRITIUM);
+
+            /* Check for cache. */
+            if(fCache)
+                hashThis = hash;
 
             return hash;
         }
