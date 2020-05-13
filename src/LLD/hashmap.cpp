@@ -483,19 +483,7 @@ namespace LLD
     /* Flush all buffers to disk if using ACID transaction. */
     void BinaryHashMap::Flush()
     {
-        /* Flush the index files. */
-        pindex->flush();
-
-        /* Iterate the linked list until end. */
-        TemplateNode<uint16_t, std::fstream*>* pnode = fileCache->pfirst;
-        while(pnode && pnode->pnext)
-        {
-            /* Flush to disk. */
-            pnode->Data->flush();
-
-            /* Set to next. */
-            pnode = pnode->pnext;
-        }
+        
     }
 
 

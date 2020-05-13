@@ -77,14 +77,6 @@ namespace LLD
         uint64_t get_bucket(const std::vector<uint8_t>& vKey, const uint32_t nK) const;
 
 
-        /** flush_thread
-         *
-         *  Thread to flush bloom filter disk states periodically.
-         *
-         **/
-        void flush_thread();
-
-
         /** The total number of buckets for this bloom filter. **/
         uint32_t HASHMAP_TOTAL_BUCKETS;
 
@@ -93,34 +85,10 @@ namespace LLD
         std::vector<uint64_t> bloom;
 
 
-        /** Disk index stream. **/
-        std::fstream* pindex;
-
-
-        /** Bloom filter disk file path. **/
-        std::string strBaseLocation;
-
-
         /** Mutex to protect internal states. **/
         mutable std::mutex MUTEX;
 
-
-        /** Thread for flushing filter to disk. **/
-        std::thread THREAD;
-
-
-        /** Condition variable for flush thread. **/
-        std::condition_variable CONDITION;
-
-
-        /** Atomic flag to destroy running threads. **/
-        std::atomic<bool> fDestruct;
-
     public:
-
-
-        /** Atomic flag to destroy running threads. **/
-        std::atomic<uint64_t> nTotalKeys;
 
 
         /** Default Constructor. **/
@@ -149,22 +117,6 @@ namespace LLD
 
         /** Create bloom filter with given number of buckets. **/
         BloomFilter  (const uint64_t nBuckets);
-
-
-        /** Initialize
-         *
-         *  Initialize the bit-array from disk.
-         *
-         **/
-        void Initialize();
-
-
-        /** Flush
-         *
-         *  Flush the bit-array to the file stream.
-         *
-         **/
-        void Flush();
 
 
         /** Insert
