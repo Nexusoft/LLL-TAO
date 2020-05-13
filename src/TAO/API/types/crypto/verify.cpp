@@ -26,6 +26,7 @@ ________________________________________________________________________________
 #include <Util/include/debug.h>
 #include <Util/include/encoding.h>
 #include <Util/include/base64.h>
+#include <Util/include/string.h>
 
 
 /* Global TAO namespace. */
@@ -60,12 +61,12 @@ namespace TAO
                 throw APIException(-266, "Malformed public key.");
 
             /* Get the scheme string */
-            std::string strScheme = params["scheme"].get<std::string>();
+            std::string strScheme = ToLower(params["scheme"].get<std::string>());
 
             /* Convert to scheme type */
-            if(strScheme == "FALCON")
+            if(strScheme == "falcon")
                 nScheme = TAO::Ledger::SIGNATURE::FALCON;
-            else if(strScheme == "BRAINPOOL")
+            else if(strScheme == "brainpool")
                 nScheme = TAO::Ledger::SIGNATURE::BRAINPOOL;
             else
                 throw APIException(-262, "Invalid scheme.");

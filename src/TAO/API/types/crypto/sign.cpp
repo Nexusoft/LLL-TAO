@@ -23,6 +23,7 @@ ________________________________________________________________________________
 #include <Util/include/debug.h>
 #include <Util/include/encoding.h>
 #include <Util/include/base64.h>
+#include <Util/include/string.h>
 
 
 /* Global TAO namespace. */

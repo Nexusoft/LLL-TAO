@@ -26,6 +26,7 @@ ________________________________________________________________________________
 
 #include <Util/include/debug.h>
 #include <Util/include/encoding.h>
+#include <Util/include/string.h>
 
 
 /* Global TAO namespace. */
@@ -98,11 +99,11 @@ namespace TAO
             /* Check the caller included a specific scheme */
             if(params.find("scheme") != params.end() )
             {
-                std::string strScheme = params["scheme"].get<std::string>(); 
+                std::string strScheme = ToLower(params["scheme"].get<std::string>()); 
 
-                if(strScheme == "FALCON")
+                if(strScheme == "falcon")
                     nKeyType = TAO::Ledger::SIGNATURE::FALCON;
-                else if(strScheme == "BRAINPOOL")
+                else if(strScheme == "brainpool")
                     nKeyType = TAO::Ledger::SIGNATURE::BRAINPOOL;
                 else
                     throw APIException(-262, "Invalid scheme");
