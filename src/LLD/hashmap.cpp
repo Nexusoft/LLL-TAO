@@ -182,12 +182,28 @@ namespace LLD
         if(!filesystem::exists(strBaseLocation) && filesystem::create_directories(strBaseLocation))
             debug::log(0, FUNCTION, "Generated Path ", strBaseLocation);
 
+        /* Set the new stream pointer. */
+        std::string filename = debug::safe_printstr(strBaseLocation, "_bloom.", std::setfill('0'), std::setw(5), 0u);
+        if(!filesystem::exists(filename))
+        {
+            /* Read bloom filter into memory. */
+            vBloom.emplace_back(BloomFilter(HASHMAP_TOTAL_BUCKETS));
+
+            /* Write the new disk index .*/
+            std::fstream bloom(filename, std::ios::out | std::ios::binary | std::ios::trunc);
+            bloom.write((char*)vBloom[0].Bytes(), vBloom[0].Size());
+            bloom.close();
+
+            /* Debug output showing generating of the hashmap file. */
+            debug::log(0, FUNCTION, "Generated Bloom Filter 0 of ", vBloom[0].Size(), " bytes");
+        }
+
         /* Build the hashmap indexes. */
         std::string index = debug::safe_printstr(strBaseLocation, "_hashmap.index");
         if(!filesystem::exists(index))
         {
             /* Generate empty space for new file. */
-            const static std::vector<uint8_t> vSpace(HASHMAP_TOTAL_BUCKETS * 4, 0);
+            std::vector<uint8_t> vSpace(HASHMAP_TOTAL_BUCKETS * 2, 0);
 
             /* Write the new disk index .*/
             std::fstream stream(index, std::ios::out | std::ios::binary | std::ios::trunc);
@@ -218,9 +234,31 @@ namespace LLD
             }
 
             /* Load the bloom filter disk images. */
-            for(uint32_t nBloom = 0; nBloom < nTotalHashmaps; ++nBloom)
+            for(uint32_t nBloom = 0; nBloom <= nTotalHashmaps; ++nBloom)
             {
-                
+                /* Find the file stream for LRU cache. */
+                std::fstream *pstream;
+                if(!pBloomStreams->Get(nBloom, pstream))
+                {
+                    /* Set the new stream pointer. */
+                    std::string filename = debug::safe_printstr(strBaseLocation, "_bloom.", std::setfill('0'), std::setw(5), nBloom);
+                    pstream = new std::fstream(filename, std::ios::in | std::ios::out | std::ios::binary);
+                    if(!pstream->is_open())
+                    {
+                        delete pstream;
+                        continue;
+                    }
+
+                    /* If file not found add to LRU cache. */
+                    pBloomStreams->Put(nBloom, pstream);
+                }
+
+                /* Read bloom filter into memory. */
+                vBloom.emplace_back(BloomFilter(HASHMAP_TOTAL_BUCKETS));
+
+                /* Read data into bloom filter. */
+                pstream->seekg(0, std::ios::beg);
+                pstream->read((char*)vBloom[nBloom].Bytes(), vBloom[nBloom].Size());
             }
 
             /* Debug output showing loading of disk index. */
@@ -273,6 +311,10 @@ namespace LLD
         std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
         for(int16_t i = hashmap[nBucket] - 1; i >= 0; --i)
         {
+            /* Check the bloom filters for keys. */
+            if(!vBloom[i].Has(vKey))
+                continue;
+
             /* Find the file stream for LRU cache. */
             std::fstream *pstream;
             if(!pFileStreams->Get(i, pstream))
@@ -350,6 +392,10 @@ namespace LLD
             std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
             for(int16_t i = hashmap[nBucket] - 1; i >= 0; --i)
             {
+                /* Check the bloom filters for keys. */
+                if(!vBloom[i].Has(cKey.vKey))
+                    continue;
+
                 /* Find the file stream for LRU cache. */
                 std::fstream* pstream;
                 if(!pFileStreams->Get(i, pstream))
@@ -404,12 +450,10 @@ namespace LLD
                         pFileStreams->Put(i, pstream);
                     }
 
-
                     /* Handle the disk writing operations. */
                     pstream->seekp (nFilePos, std::ios::beg);
                     pstream->write((char*)&ssKey.Bytes()[0], ssKey.size());
                     pstream->flush();
-
 
                     /* Debug Output of Sector Key Information. */
                     if(config::nVerbose >= 4)
@@ -429,14 +473,14 @@ namespace LLD
         }
 
         /* Create a new disk hashmap object in linked list if it doesn't exist. */
-        std::string file = debug::safe_printstr(strBaseLocation, "_hashmap.", std::setfill('0'), std::setw(5), hashmap[nBucket]);
-        if(!filesystem::exists(file))
+        std::string strHashmap = debug::safe_printstr(strBaseLocation, "_hashmap.", std::setfill('0'), std::setw(5), hashmap[nBucket]);
+        if(!filesystem::exists(strHashmap))
         {
             /* Blank vector to write empty space in new disk file. */
             std::vector<uint8_t> vSpace(HASHMAP_KEY_ALLOCATION, 0);
 
             /* Write the blank data to the new file handle. */
-            std::ofstream stream(file, std::ios::out | std::ios::binary | std::ios::app);
+            std::ofstream stream(strHashmap, std::ios::out | std::ios::binary | std::ios::app);
             if(!stream)
                 return debug::error(FUNCTION, strerror(errno));
 
@@ -444,6 +488,23 @@ namespace LLD
                 stream.write((char*)&vSpace[0], vSpace.size());
 
             //stream.flush();
+            stream.close();
+        }
+
+        /* Set the new stream pointer. */
+        std::string strBloom = debug::safe_printstr(strBaseLocation, "_bloom.", std::setfill('0'), std::setw(5), hashmap[nBucket]);
+        if(!filesystem::exists(strBloom))
+        {
+            /* Read bloom filter into memory. */
+            vBloom.emplace_back(BloomFilter(HASHMAP_TOTAL_BUCKETS));
+
+            /* Write the new disk index .*/
+            std::ofstream stream(strBloom, std::ios::out | std::ios::binary | std::ios::trunc);
+            if(!stream)
+                return debug::error(FUNCTION, strerror(errno));
+
+            /* Write a blank bloom filter to the disk. */
+            stream.write((char*)vBloom[0].Bytes(), vBloom[0].Size());
             stream.close();
         }
 
@@ -459,7 +520,7 @@ namespace LLD
         if(!pFileStreams->Get(hashmap[nBucket], pstream))
         {
             /* Set the new stream pointer. */
-            pstream = new std::fstream(file, std::ios::in | std::ios::out | std::ios::binary);
+            pstream = new std::fstream(strHashmap, std::ios::in | std::ios::out | std::ios::binary);
             if(!pstream->is_open())
             {
                 delete pstream;
@@ -469,6 +530,10 @@ namespace LLD
             /* If not in cache, add to the LRU. */
             pFileStreams->Put(hashmap[nBucket], pstream);
         }
+
+        /* Update the bloom filter with new key. */
+        vBloom[hashmap[nBucket]].Insert(cKey.vKey);
+        setUpdated.insert(hashmap[nBucket]);
 
         /* Flush the key file to disk. */
         pstream->seekp (nFilePos, std::ios::beg);
@@ -508,7 +573,36 @@ namespace LLD
     /* Flush all buffers to disk if using ACID transaction. */
     void BinaryHashMap::Flush()
     {
+        LOCK(KEY_MUTEX);
 
+        /* Flush the bloom filters to disk. */
+        for(const auto& nBloom : setUpdated)
+        {
+            /* Find the file stream for LRU cache. */
+            std::fstream *pstream;
+            if(!pBloomStreams->Get(nBloom, pstream))
+            {
+                /* Set the new stream pointer. */
+                std::string filename = debug::safe_printstr(strBaseLocation, "_bloom.", std::setfill('0'), std::setw(5), nBloom);
+                pstream = new std::fstream(filename, std::ios::in | std::ios::out | std::ios::binary);
+                if(!pstream->is_open())
+                {
+                    delete pstream;
+                    continue;
+                }
+
+                /* If file not found add to LRU cache. */
+                pBloomStreams->Put(nBloom, pstream);
+            }
+
+            /* Read data into bloom filter. */
+            pstream->seekg(0, std::ios::beg);
+            pstream->write((char*)vBloom[nBloom].Bytes(), vBloom[nBloom].Size());
+            pstream->flush();
+        }
+
+        /* Cleanup updated set. */
+        setUpdated.clear();
     }
 
 
@@ -532,6 +626,10 @@ namespace LLD
         std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
         for(int16_t i = hashmap[nBucket] - 1; i >= 0; --i)
         {
+            /* Check the bloom filters for keys. */
+            if(!vBloom[i].Has(vKey))
+                continue;
+
             /* Find the file stream for LRU cache. */
             std::fstream* pstream;
             if(!pFileStreams->Get(i, pstream))

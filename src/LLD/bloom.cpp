@@ -102,6 +102,20 @@ namespace LLD
     }
 
 
+    /* Get the beginning memory location of the bloom filter. */
+    uint8_t* BloomFilter::Bytes() const
+    {
+        return (uint8_t*)&bloom[0];
+    }
+
+
+    /* Get the size (in bytes) of the bloom filter. */
+    uint64_t BloomFilter::Size() const
+    {
+        return bloom.size() * 8;
+    }
+
+
     /* Add a new key to the bloom filter. */
     void BloomFilter::Insert(const std::vector<uint8_t>& vKey)
     {

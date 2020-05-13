@@ -23,6 +23,7 @@ ________________________________________________________________________________
 
 #include <Util/include/filesystem.h>
 #include <Util/include/hex.h>
+#include <Util/include/runtime.h>
 
 #include <functional>
 
@@ -73,7 +74,7 @@ namespace LLD
         }
 
         CacheWriterThread = std::thread(std::bind(&SectorDatabase::CacheWriter, this));
-        MeterThread = std::thread(std::bind(&SectorDatabase::Meter, this));
+        MeterThread       = std::thread(std::bind(&SectorDatabase::Meter, this));
     }
 
 
@@ -516,26 +517,41 @@ namespace LLD
             runtime::sleep(100);
 
         /* Check if writing is enabled. */
-        if(!(nFlags & FLAGS::WRITE) && !(nFlags & FLAGS::APPEND))
-            return;
-
-        /* No cache write on force mode. */
-        if(nFlags & FLAGS::FORCE)
+        if(!(nFlags & FLAGS::WRITE) && !(nFlags & FLAGS::APPEND) && !(nFlags & FLAGS::FORCE))
         {
-            debug::log(0, FUNCTION, strBaseLocation, " in FORCE mode... closing");
+            debug::log(0, FUNCTION, "Cache Writer is Closing...");
             return;
         }
 
-
+        /* Loop until shutdown. */
         while(true)
         {
             /* Wait for buffer to empty before shutting down. */
             if((fDestruct.load()) && nBufferBytes.load() == 0)
+            {
+                pSectorKeys->Flush();
                 return;
+            }
 
             /* Check for data to be written. */
+            runtime::timer timer;
+            timer.Start();
+
+            /* Wait for thread to wake-up. */
             std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
-            CONDITION.wait(CONDITION_LOCK, [this]{ return fDestruct.load() || nBufferBytes.load() > 0; });
+            CONDITION.wait_for(CONDITION_LOCK, std::chrono::milliseconds(500),
+                [&]
+                {
+                    return fDestruct.load() || nBufferBytes.load() > 0 || timer.ElapsedMilliseconds() >= 500;
+                }
+            );
+
+            /* Flush the keychain. */
+            pSectorKeys->Flush();
+
+            /* Check for buffered bytes. */
+            if(nBufferBytes.load() == 0)
+                continue;
 
             /* Swap the buffer object to get ready for writes. */
             std::vector< std::pair<std::vector<uint8_t>, std::vector<uint8_t>> > vIndexes;
@@ -736,6 +752,9 @@ namespace LLD
             if(!pSectorKeys->Put(cKey))
                 return debug::error(FUNCTION, "failed to write indexing entry");
         }
+
+        /* Flush the keychains. */
+        pSectorKeys->Flush();
 
         /* Cleanup the transaction object. */
         delete pTransaction;

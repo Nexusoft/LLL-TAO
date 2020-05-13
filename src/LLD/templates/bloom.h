@@ -119,6 +119,23 @@ namespace LLD
         BloomFilter  (const uint64_t nBuckets);
 
 
+
+        /** Bytes
+         *
+         *  Get the beginning memory location of the bloom filter.
+         *
+         **/
+        uint8_t* Bytes() const;
+
+
+        /** Size
+         *
+         *  Get the size (in bytes) of the bloom filter.
+         *
+         **/
+         uint64_t Size() const;
+
+
         /** Insert
          *
          *  Add a new key to the bloom filter.
@@ -139,6 +156,9 @@ namespace LLD
          *
          **/
         bool Has(const std::vector<uint8_t>& vKey) const;
+
+
+
 
 
         /** Insert
