@@ -195,6 +195,19 @@ namespace TAO
             json::json Verify(const json::json& params, bool fHelp);
 
 
+            /** GetHash
+             *
+             *  Generates a hash of the data using the requested hashing function
+             *
+             *  @param[in] params The parameters from the API call
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json GetHash(const json::json& params, bool fHelp);
+
+
         };
     }
 }

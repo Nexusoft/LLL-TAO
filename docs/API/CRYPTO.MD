@@ -470,7 +470,7 @@ The `data` must be supplied as a base64 encoded string.  This will be decoded in
 
 `data` : The data to generate the hash for. This should be passed in as a base64-encoded string
 
-`function` : The hashing function to use to generate the hash.  Options can be `SK256`, `SK512`, `ARGON2` 
+`function` : Optional hashing function to use to generate the hash.  Options can be `SK256`, `SK512`, `ARGON2`.  If no function is provided then it will default to SK256.  
 
 
 ### Return value JSON object:

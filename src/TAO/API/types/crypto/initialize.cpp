@@ -37,7 +37,7 @@ namespace TAO
             mapFunctions["decrypt/data"]        = Function(std::bind(&Crypto::Decrypt,this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["sign/data"]           = Function(std::bind(&Crypto::Sign,this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["verify/signature"]    = Function(std::bind(&Crypto::Verify,this, std::placeholders::_1, std::placeholders::_2));
-            // mapFunctions["get/hash"]            = Function(std::bind(&Crypto::Hash,this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["get/hash"]            = Function(std::bind(&Crypto::GetHash,this, std::placeholders::_1, std::placeholders::_2));
         }
 
         /* Allows derived API's to handle custom/dynamic URL's where the strMethod does not

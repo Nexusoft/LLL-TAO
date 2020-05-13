@@ -13,6 +13,8 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <LLC/hash/argon2.h>
+
 #include <TAO/API/types/objects.h>
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/utils.h>
@@ -24,6 +26,7 @@ ________________________________________________________________________________
 #include <Util/include/encoding.h>
 #include <Util/include/base58.h>
 #include <Util/include/base64.h>
+#include <Util/include/string.h>
 
 
 /* Global TAO namespace. */
@@ -271,6 +274,113 @@ namespace TAO
 
             /* Populate the key, hex encoded */
             ret["privatekey"] = hashPrivate.ToString();
+
+            return ret;
+        }
+
+        /* Generates a hash of the data using the requested hashing function. */
+        json::json Crypto::GetHash(const json::json& params, bool fHelp)
+        {
+            /* JSON return value. */
+            json::json ret;
+
+            /* Check the caller included the data */
+            if(params.find("data") == params.end() || params["data"].get<std::string>().empty())
+                throw APIException(-18, "Missing data.");
+
+            /* Decode the data into a vector of bytes */
+            std::vector<uint8_t> vchData;
+            try
+            {
+                vchData = encoding::DecodeBase64(params["data"].get<std::string>().c_str());
+            }
+            catch(const std::exception& e)
+            {
+                throw APIException(-27, "Malformed base64 encoding.");
+            }
+
+            
+            /* The hash function to use.  This default to SK256 */
+            std::string strFunction = "sk256";
+            
+            /* Check they included the hashing function */
+            if(params.find("function") != params.end())
+                strFunction = ToLower(params["function"].get<std::string>());
+
+            /* hash based on the requested function */
+            if(strFunction == "sk256")
+            {
+                uint256_t hashData = LLC::SK256(vchData);
+                ret["hash"] = hashData.ToString();
+            }
+            else if(strFunction == "sk512")
+            {
+                uint512_t hashData = LLC::SK512(vchData);
+                ret["hash"] = hashData.ToString();
+            }
+            else if(strFunction == "argon2")
+            {
+            
+                // vectors used by the argon2 API
+                std::vector<uint8_t> vHash(64);
+                std::vector<uint8_t> vSalt(16);
+                std::vector<uint8_t> vSecret(16);
+                
+                /* Create the hash context. */
+                argon2_context context =
+                {
+                    /* Hash Return Value. */
+                    &vHash[0],
+                    64,
+
+                    /* The secret (not used). */
+                    &vSecret[0],
+                    static_cast<uint32_t>(vSecret.size()),
+
+                    /* The salt (not used) */
+                    &vSalt[0],
+                    static_cast<uint32_t>(vSalt.size()),
+
+                    /* Optional secret data */
+                    NULL, 0,
+
+                    /* Optional associated data */
+                    NULL, 0,
+
+                    /* Computational Cost. */
+                    64,
+
+                    /* Memory Cost (64 MB). */
+                    (1 << 16),
+
+                    /* The number of threads and lanes */
+                    1, 1,
+
+                    /* Algorithm Version */
+                    ARGON2_VERSION_13,
+
+                    /* Custom memory allocation / deallocation functions. */
+                    NULL, NULL,
+
+                    /* By default only internal memory is cleared (pwd is not wiped) */
+                    ARGON2_DEFAULT_FLAGS
+                };
+
+                /* Run the argon2 computation. */
+                int32_t nRet = argon2id_ctx(&context);
+                if(nRet != ARGON2_OK)
+                    throw APIException(-276, "Error generating hash");
+                
+                uint512_t hashData(vHash);
+
+                ret["hash"] = hashData.ToString();
+            }
+            else
+            {
+                throw APIException(-277, "Invalid hash function");
+            }
+            
+             
 
             return ret;
         }

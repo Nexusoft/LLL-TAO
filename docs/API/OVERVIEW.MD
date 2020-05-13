@@ -410,5 +410,7 @@ Error Codes
 | -273 | Failed to generate signature |
 | -274 | Missing signature |
 | -275 | Missing scheme |
+| -276 | Error generating hash |
+| -277 | Invalid hash function |
 | -300 | API can only be used to lookup data for the currently logged in signature chain when running in client mode |
 
