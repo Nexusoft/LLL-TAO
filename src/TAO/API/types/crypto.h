@@ -169,6 +169,32 @@ namespace TAO
             json::json Decrypt(const json::json& params, bool fHelp);
 
 
+            /** Sign
+             *
+             *  Generates a signature for the data based on the private key for the keyname/user/pass/pin combination 
+             *
+             *  @param[in] params The parameters from the API call
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json Sign(const json::json& params, bool fHelp);
+
+
+            /** Verify
+             *
+             *  Verifies the signature is correct for the specified public key and data
+             *
+             *  @param[in] params The parameters from the API call
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json Verify(const json::json& params, bool fHelp);
+
+
         };
     }
 }

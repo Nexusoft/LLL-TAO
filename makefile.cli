@@ -373,6 +373,8 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_crypto_get.o \
 		build/API_types_crypto_initialize.o \
 		build/API_types_crypto_list.o \
+		build/API_types_crypto_sign.o \
+		build/API_types_crypto_verify.o \
 		build/API_types_dex_buy.o \
 		build/API_types_dex_sell.o \
 		build/API_types_dex_initialize.o \

@@ -26,7 +26,7 @@ The following methods are currently supported by this API
 [`change/scheme`](#changescheme)   
 [`encrypt/data`](#encryptdata)  
 [`decrypt/data`](#decryptdata)   
-[`create/signature`](#createsignature)   
+[`sign/data`](#signdata)   
 [`verify/signature`](#verifysignature)   
 [`get/hash`](#gethash)   
 
@@ -371,16 +371,16 @@ The `data` must be supplied as a base64 encoded string.  This will be decoded in
 ****
 
 
-# `create/signature`
+# `sign/data`
 
-Generates the private key for keyname/user/pass/pin combination and uses it to generate a signature for the data  
+Generates a signature for the data based on the private key for the keyname/user/pass/pin combination.  The signature can be used to prove ownership of the public key by passing the public key and data to the `crypto/verify/signature` API method 
 
 The `data` must be supplied as a base64 encoded string.  This will be decoded into a byte array before being signed.  
 
 
 ### Endpoint:
 
-`/crypto/create/signature`
+`/crypto/sign/data`
 
 
 ### Parameters:
@@ -396,15 +396,19 @@ The `data` must be supplied as a base64 encoded string.  This will be decoded in
 ### Return value JSON object:
 ```    
 {
-    "publickey": "8FJxzexVDUN5YiQYK4QjvfRNrAUym8FNu4B8yvYGXgKFJL8nBse",
-    "signature": ""
+    "publickey": "Dd4Cb9gTgsT5wk6e1eCw9tTPMKSyCa9e7p2mxAggSRBWHY2cWBxExRMrjGk7PXY6TiysmvRoBvSSKsyybNdGPXFm",
+    "scheme": "BRAINPOOL",
+    "signature": "MIGEAkAZSA/O9DSiwmrCZ3p6xTQau5F1EiSsVcp+Vvetw1oCqJyxb5BwnyksPcQ4kHiWOzFZls45o4bQnhHED3VYH+xaAkBUJbg4+HbRFNXnqCFZt2Ud6NqIOGKCPDjrP1bG2NQSbdaWcyRTWm7Qgm1RJ+gohQXdkkCdajaYevqA2CreAYSE"
 }
+
 
 ```
 
 ### Return values:
 
 `publickey` : The corresponding public key that can be used to verify the signature, base58 encoded.
+
+`scheme` : The cryptographic scheme used to generate the signature.  This can be `FALCON` or `BRAINPOOL`.
 
 `signature` : The signature, base64 encoded.
 
@@ -414,7 +418,7 @@ The `data` must be supplied as a base64 encoded string.  This will be decoded in
 
 # `verify/signature`
 
-Verifies the signature is correct for the specified public key and data.  This method can work in two "modes", either by retrieving public key from the specified signature chain's crypto object register, or by passing in the known public key. 
+Verifies the signature is correct for the specified public key and data.  This method accepts the public key in either the hashed or raw formats
 
 The `data` must be supplied as a base64 encoded string.  This will be decoded into a byte array before verifying.  
 
@@ -428,6 +432,10 @@ The `data` must be supplied as a base64 encoded string.  This will be decoded in
  
 
 `publickey` : The public key to use to verify the signature, base58 encoded.
+
+`scheme` : The cryptographic scheme that should be used to verify the signature.  Options are `FALCON` or `BRAINPOOL`.  
+
+`signature` : The signature to be verified, base64 encoded.
 
 `data` : The signed data. This should be passed in as a base64-encoded string
 

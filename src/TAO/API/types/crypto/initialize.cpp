@@ -28,15 +28,15 @@ namespace TAO
         void Crypto::Initialize()
         {
             mapFunctions["list/keys"]           = Function(std::bind(&Crypto::List, this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["create/key"]          = Function(std::bind(&Crypto::Create,    this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["get/key"]             = Function(std::bind(&Crypto::Get,    this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["get/publickey"]      = Function(std::bind(&Crypto::GetPublic, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["create/key"]          = Function(std::bind(&Crypto::Create, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["get/key"]             = Function(std::bind(&Crypto::Get, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["get/publickey"]       = Function(std::bind(&Crypto::GetPublic, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["get/privatekey"]      = Function(std::bind(&Crypto::GetPrivate, this, std::placeholders::_1, std::placeholders::_2));
             // mapFunctions["change/scheme"]       = Function(std::bind(&Crypto::ChangeScheme,this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["encrypt/data"]        = Function(std::bind(&Crypto::Encrypt,this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["decrypt/data"]        = Function(std::bind(&Crypto::Decrypt,this, std::placeholders::_1, std::placeholders::_2));
-            // mapFunctions["create/signature"]    = Function(std::bind(&Crypto::Sign,this, std::placeholders::_1, std::placeholders::_2));
-            // mapFunctions["verify/signature"]    = Function(std::bind(&Crypto::Verify,this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["sign/data"]           = Function(std::bind(&Crypto::Sign,this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["verify/signature"]    = Function(std::bind(&Crypto::Verify,this, std::placeholders::_1, std::placeholders::_2));
             // mapFunctions["get/hash"]            = Function(std::bind(&Crypto::Hash,this, std::placeholders::_1, std::placeholders::_2));
         }
 

@@ -406,5 +406,9 @@ Error Codes
 | -269 | Malformed private key |
 | -270 | Failed to encrypt data |
 | -271 | Failed to decrypt data |
+| -272 | Unsupported key type |
+| -273 | Failed to generate signature |
+| -274 | Missing signature |
+| -275 | Missing scheme |
 | -300 | API can only be used to lookup data for the currently logged in signature chain when running in client mode |
 
