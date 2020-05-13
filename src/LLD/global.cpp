@@ -29,7 +29,7 @@ namespace LLD
     LegacyDB*     Legacy;
 
     /* For global ACID transaction. */
-    std::mutex ACID_MUTEX;
+    std::recursive_mutex ACID_MUTEX;
 
 
     /*  Initialize the global LLD instances. */
@@ -330,7 +330,7 @@ namespace LLD
         /* Handle memory commits if in memory mode. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
-            LOCK(ACID_MUTEX);
+            RLOCK(ACID_MUTEX);
 
             /* Commit the contract DB transaction. */
             if(Contract)

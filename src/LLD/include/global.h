@@ -37,7 +37,7 @@ namespace LLD
     extern LegacyDB*     Legacy;
 
     //for global ACID transaction
-    extern std::mutex ACID_MUTEX;
+    extern std::recursive_mutex ACID_MUTEX;
 
 
     /** Initialize

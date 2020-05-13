@@ -1641,9 +1641,6 @@ namespace TAO
                 /* Increment processed contracts counter by number of contracts in transaction */
                 nProcessed += txout.Size();
 
-                /* Add the fee */
-                AddFee(txout);
-
                 /* If we are in client mode then we need to get a peer to validate the transaction for us, as we will not
                     have the ability to sanitize contracts with conditions or where other consensus rules require foreign
                     registers.
@@ -1651,7 +1648,6 @@ namespace TAO
                 if(config::fClient.load())
                 {
                     uint32_t nContract = 0;
-
                     if(!validate_transaction(txout, nContract))
                     {
                         /* Retrieve the contract from our transaction */
@@ -1659,7 +1655,6 @@ namespace TAO
 
                         /* Unpack the txid and contract ID of the notification that this contract credits/claims */
                         TAO::Register::Unpack(contract, hashTx, nContract);
-
                         debug::log(1, FUNCTION, "CLIENT MODE: validation failed for notification: ", hashTx.SubString());
 
                         /* Suppress this notification for 1 hour or until manually attempted  */
@@ -1669,27 +1664,17 @@ namespace TAO
                            validation and break out of this iteration of the process */
                         throw APIException(-257, "Contract failed peer validation");
                     }
-
                 }
 
-                /* Execute the operations layer. */
-                if(!txout.Build())
-                    throw APIException(-30, "Failed to build register pre-states");
-
-                /* Sign the transaction. */
-                if(!txout.Sign(users->GetKey(txout.nSequence, strPIN, users->GetSession(params))))
-                    throw APIException(-31, "Ledger failed to sign transaction");
-
-                /* Execute the operations layer. */
-                if(!TAO::Ledger::mempool.Accept(txout))
-                    throw APIException(-32, "Failed to accept");
+                /* Finalize the transaction. */
+                BuildAndAccept(txout, users->GetKey(txout.nSequence, strPIN, users->GetSession(params)));
 
                 /* Capture the transaction ID */
                 vTxIDs.push_back(txout.GetHash());
             }
 
             /* Populate the response JSON */
-            ret["processed"] = nProcessed;
+            ret["processed"]    = nProcessed;
             ret["transactions"] = json::json::array();
 
             for(const auto& tx : vTxIDs)

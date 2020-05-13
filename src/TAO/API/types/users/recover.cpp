@@ -43,11 +43,11 @@ namespace TAO
             /* Check for recovery parameter. */
             if(params.find("recovery") == params.end())
                 throw APIException(-220, "Missing recovery seed");
-            
+
             /* Check for password parameter. */
             if(params.find("password") == params.end())
                 throw APIException(-128, "Missing password");
-            
+
             /* Check for pin parameter. Extract the pin. */
             if(params.find("pin") == params.end())
                 throw APIException(-129, "Missing PIN");
@@ -58,16 +58,16 @@ namespace TAO
             /* Get the genesis ID. */
             uint256_t hashGenesis = TAO::Ledger::SignatureChain::Genesis(strUsername);
 
-            
+
             /* Extract the recovery seed */
             SecureString strRecovery = SecureString(params["recovery"].get<std::string>().c_str());
-            
+
             /* Extract the new password */
             SecureString strPassword = SecureString(params["password"].get<std::string>().c_str());
 
             /* Existing new pin parameter. */
             SecureString strPin = SecureString(params["pin"].get<std::string>().c_str());
-  
+
             /* Check the new password length */
             if(strPassword.length() < 8)
                 throw APIException(-192, "Password must be a minimum of 8 characters");
@@ -98,10 +98,10 @@ namespace TAO
             if(txPrev.hashRecovery == 0)
                 throw APIException(-223, "Recovery seed not set on this signature chain");
 
-            /* When signing with the recovery seed we need to set the transaction key type to be the same type that was used 
+            /* When signing with the recovery seed we need to set the transaction key type to be the same type that was used
                 to generate the current recovery hash.  To obtain this we iterate back through the sig chain until we find where
                 the hashRecovery was first set, and use the nKeyType from that transaction */
-            
+
             /* The key type to set */
             uint8_t nKeyType = 0;
 
@@ -114,7 +114,7 @@ namespace TAO
                 nKeyType = txPrev.nKeyType;
 
                 if(!LLD::Ledger->ReadTx(txPrev.hashPrevTx, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-138, "No previous transaction found");  
+                    throw APIException(-138, "No previous transaction found");
             }
 
 
@@ -122,9 +122,9 @@ namespace TAO
             LOCK(CREATE_MUTEX);
 
             /* Create sig chain based on the new credentials */
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain> user = new TAO::Ledger::SignatureChain(strUsername, strPassword); 
+            memory::encrypted_ptr<TAO::Ledger::SignatureChain> user = new TAO::Ledger::SignatureChain(strUsername, strPassword);
 
-            /* Validate the recovery seed is correct.  We do this at this stage so that we can return a helpful error response 
+            /* Validate the recovery seed is correct.  We do this at this stage so that we can return a helpful error response
                from the API call, rather than waiting for mempool::Accept to fail  */
             if(user->RecoveryHash(strRecovery, nKeyType ) != hashRecovery)
                 throw APIException(-139, "Invalid credentials");
@@ -139,33 +139,13 @@ namespace TAO
 
             /* Now set the new credentials */
             tx.NextHash(user->Generate(tx.nSequence + 1, strPassword, strPin), txPrev.nNextType);
+            tx.nKeyType = nKeyType;
 
             /* Update the Crypto keys with the new pin */
             update_crypto_keys(user, strPin, tx);
 
-            /* Calculate the prestates and poststates. */
-            if(!tx.Build())
-            {
-                user.free();
-                throw APIException(-30, "Operations failed to execute");
-            }
-
-            /* Set the key type */
-            tx.nKeyType = nKeyType;
-
-            /* Sign the transaction with private key generated from the recovery seed. */
-            if(!tx.Sign(user->Generate(strRecovery)))
-            {
-                user.free();
-                throw APIException(-31, "Ledger failed to sign transaction");
-            }
-            
-            /* Execute the operations layer. */
-            if(!TAO::Ledger::mempool.Accept(tx))
-            {
-                user.free();
-                throw APIException(-32, "Failed to accept");
-            }
+            /* Finalize the transaction. */
+            BuildAndAccept(tx, user->Generate(strRecovery));
 
             /* Free the sigchain. */
             user.free();
@@ -177,7 +157,7 @@ namespace TAO
             jsonRet["pubkey"]    = HexStr(tx.vchPubKey.begin(), tx.vchPubKey.end());
             jsonRet["signature"] = HexStr(tx.vchSig.begin(),    tx.vchSig.end());
             jsonRet["txid"]      = tx.GetHash().ToString();
-            
+
             return jsonRet;
         }
     }

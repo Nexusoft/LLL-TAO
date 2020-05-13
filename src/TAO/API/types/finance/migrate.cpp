@@ -200,20 +200,8 @@ namespace TAO
                        and create a new one.  NOTE we add a maximum of 99 to leave room for the fee  */
                     if(nContracts +(fCreateName ? 1 : 2) >= 99)
                     {
-                        /* Add the fee */
-                        AddFee(tx);
-
-                        /* Execute the operations layer. */
-                        if(!tx.Build())
-                            throw APIException(-44, "Transaction failed to build");
-
-                        /* Sign the transaction. */
-                        if(!tx.Sign(users->GetKey(tx.nSequence, strPIN, nSession)))
-                            throw APIException(-31, "Ledger failed to sign transaction");
-
-                        /* Execute the operations layer. */
-                        if(!TAO::Ledger::mempool.Accept(tx))
-                            throw APIException(-32, "Failed to accept");
+                        /* Finalize the transaction. */
+                        BuildAndAccept(tx, users->GetKey(tx.nSequence, strPIN, nSession));
 
                         /* Create the next transaction and reset the counter */
                         tx = TAO::Ledger::Transaction();
@@ -248,20 +236,8 @@ namespace TAO
             /* If there are accounts to create then submit the transaction */
             if(nContracts > 0)
             {
-                /* Add the fee */
-                AddFee(tx);
-
-                /* Execute the operations layer. */
-                if(!tx.Build())
-                    throw APIException(-44, "Transaction failed to build");
-
-                /* Sign the transaction. */
-                if(!tx.Sign(users->GetKey(tx.nSequence, strPIN, nSession)))
-                    throw APIException(-31, "Ledger failed to sign transaction");
-
-                /* Execute the operations layer. */
-                if(!TAO::Ledger::mempool.Accept(tx))
-                    throw APIException(-32, "Failed to accept");
+                /* Finalize the transaction. */
+                BuildAndAccept(tx, users->GetKey(tx.nSequence, strPIN, nSession));
             }
 
             /* Once the accounts have been created transfer the balance from the legacy account to the new ones */

@@ -164,20 +164,8 @@ namespace TAO
             if(nCurrent == -1)
                 throw APIException(-152, "Transaction contains no valid transfers.");
 
-            /* Add the fee */
-            AddFee(tx);
-
-            /* Execute the operations layer. */
-            if(!tx.Build())
-                throw APIException(-30, "Operations failed to execute");
-
-            /* Sign the transaction. */
-            if(!tx.Sign(users->GetKey(tx.nSequence, strPIN, nSession)))
-                throw APIException(-31, "Ledger failed to sign transaction");
-
-            /* Execute the operations layer. */
-            if(!TAO::Ledger::mempool.Accept(tx))
-                throw APIException(-32, "Failed to accept");
+            /* Finalize the transaction. */
+            BuildAndAccept(tx, users->GetKey(tx.nSequence, strPIN, nSession));
 
             /* Build a JSON response object. */
             ret["claimed"]  = jsonClaimed;

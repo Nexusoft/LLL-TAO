@@ -250,9 +250,9 @@ namespace TAO
                             default :
                                 throw APIException(-209, "Recipient is not a valid account.");
                         }
-                    }  
+                    }
 
-                    /* If in client mode we won't have the recipient register, so we have to loosen the checks to only look at 
+                    /* If in client mode we won't have the recipient register, so we have to loosen the checks to only look at
                        the receiving register address type, rather than check that the account/asset exists */
                     else if(config::fClient.load())
                     {
@@ -261,12 +261,12 @@ namespace TAO
                         else if(!hashTo.IsAccount())
                             throw APIException(-209, "Recipient is not a valid account");
                     }
-                    
+
                     else
                     {
                         throw APIException(-209, "Recipient is not a valid account");
                     }
-                    
+
 
                     /* The optional payment reference */
                     uint64_t nReference = 0;
@@ -298,21 +298,9 @@ namespace TAO
                 }
             }
 
-            /* Add the fee, taking it from the sending account */
-            AddFee(tx, hashFrom);
-
-            /* Execute the operations layer. */
-            if(!tx.Build())
-                throw APIException(-44, "Transaction failed to build");
-
-            /* Sign the transaction. */
-            if(!tx.Sign(users->GetKey(tx.nSequence, strPIN, nSession)))
-                throw APIException(-31, "Ledger failed to sign transaction");
-
-            /* Execute the operations layer. */
-            if(!TAO::Ledger::mempool.Accept(tx))
-                throw APIException(-32, "Failed to accept");
-
+            /* Finalize the transaction. */
+            BuildAndAccept(tx, users->GetKey(tx.nSequence, strPIN, nSession));
+            
             /* If this has a legacy transaction and not in client mode  then we need to make sure it shows in the legacy wallet */
             if(fHasLegacy && !config::fClient.load())
             {

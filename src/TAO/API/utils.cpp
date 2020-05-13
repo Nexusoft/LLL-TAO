@@ -286,7 +286,7 @@ namespace TAO
                                     break;
                             }
                             /* We need to retrieve the object so we can see whether it has been claimed or not.  If it has not been
-                               claimed then we ignore the transfer operation and still show it as ours.  However we need to skip 
+                               claimed then we ignore the transfer operation and still show it as ours.  However we need to skip
                                this check in light mode because we will not have the register state available in order to determine
                                if it has been claimed or not */
                             else if(!config::fClient.load())
@@ -301,11 +301,11 @@ namespace TAO
                                 if(object.hashOwner.GetType() == TAO::Ledger::GENESIS::SYSTEM)
                                 {
                                     /* Ensure it is the caller that made the most recent transfer */
-                                    uint256_t hashPrevOwner = hashGenesis;; 
-                                    
+                                    uint256_t hashPrevOwner = hashGenesis;;
+
                                     /* Set the SYSTEM byte so that we can compare the prev owner */
                                     hashPrevOwner.SetType(TAO::Ledger::GENESIS::SYSTEM);
-                                    
+
                                     /* If we transferred it  */
                                     if(object.hashOwner == hashPrevOwner)
                                         break;
@@ -1527,6 +1527,27 @@ namespace TAO
         }
 
 
+        /* Utility method that builds and accepts a transaction into the mempool under the same ACID memory lock. */
+        void BuildAndAccept(TAO::Ledger::Transaction &tx, const uint512_t& hashSecret)
+        {
+            RLOCK(LLD::ACID_MUTEX);
+
+            /* Add the fee */
+            AddFee(tx);
+
+            /* Execute the operations layer. */
+            if(!tx.Build())
+                throw APIException(-30, "Operations failed to execute");
+
+            /* Sign the transaction. */
+            if(!tx.Sign(hashSecret))
+                throw APIException(-31, "Ledger failed to sign transaction");
+
+            /* Execute the operations layer. */
+            if(!TAO::Ledger::mempool.Accept(tx))
+                throw APIException(-32, "Failed to accept");
+
+        }
 
 
     } // End API namespace

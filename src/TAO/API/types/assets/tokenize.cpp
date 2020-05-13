@@ -99,20 +99,8 @@ namespace TAO
                token without requiring a Claim */
             tx[0] << (uint8_t)TAO::Operation::OP::TRANSFER << hashRegister << hashToken << uint8_t(TAO::Operation::TRANSFER::FORCE);
 
-            /* Add the fee */
-            AddFee(tx);
-
-            /* Execute the operations layer. */
-            if(!tx.Build())
-                throw APIException(-30, "Operations failed to execute");
-
-            /* Sign the transaction. */
-            if(!tx.Sign(users->GetKey(tx.nSequence, strPIN, nSession)))
-                throw APIException(-31, "Ledger failed to sign transaction");
-
-            /* Execute the operations layer. */
-            if(!TAO::Ledger::mempool.Accept(tx))
-                throw APIException(-32, "Failed to accept");
+            /* Finalize the transaction. */
+            BuildAndAccept(tx, users->GetKey(tx.nSequence, strPIN, nSession));
 
             /* Build a JSON response object. */
             ret["txid"]  = tx.GetHash().ToString();

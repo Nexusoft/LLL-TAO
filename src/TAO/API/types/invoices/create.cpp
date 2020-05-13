@@ -107,7 +107,7 @@ namespace TAO
 
             /* The decimals for this token type */
             uint8_t nDecimals = GetDecimals(account);
-            
+
             /* Check for recipient parameter. */
             if(params.find("recipient") != params.end())
                 hashRecipient.SetHex(params["recipient"].get<std::string>());
@@ -135,11 +135,11 @@ namespace TAO
                 }
 
                 /* Now check again after asking the peer for the genesis */
-                if(!LLD::Ledger->HasGenesis(hashRecipient)) 
+                if(!LLD::Ledger->HasGenesis(hashRecipient))
                     throw APIException(-230, "Recipient user does not exist");
             }
             else if(!LLD::Ledger->HasGenesis(hashRecipient))
-            { 
+            {
                 throw APIException(-230, "Recipient user does not exist");
             }
 
@@ -174,11 +174,11 @@ namespace TAO
                     invoice[it.key()] = it.value();
             }
 
-            
+
             /* Parse the invoice items details */
             if(params.find("items") == params.end() || !params["items"].is_array())
                 throw APIException(-232, "Missing items");
-            
+
             /* Check items is not empty */
             json::json items = params["items"];
             if(items.empty())
@@ -257,8 +257,8 @@ namespace TAO
 
             /* Calculate the amount to pay in token units */
             uint64_t nTotal = dTotal * pow(10, nDecimals);
-        
-        
+
+
             /* Lock the signature chain. */
             LOCK(users->CREATE_MUTEX);
 
@@ -298,7 +298,7 @@ namespace TAO
 
             /* Add the transfer contract */
             tx[nContract] << uint8_t(TAO::Operation::OP::CONDITION) << (uint8_t)TAO::Operation::OP::TRANSFER << hashRegister << hashRecipient << uint8_t(TAO::Operation::TRANSFER::CLAIM);
-            
+
             /* Add the payment conditions.  The condition is essentially that the claim must include a conditional debit for the
                invoice total being made to the payment account */
             TAO::Operation::Stream compare;
@@ -322,20 +322,8 @@ namespace TAO
             tx[nContract] <= uint8_t(TAO::Operation::OP::CONTRACT::GENESIS);
             tx[nContract] <= uint8_t(TAO::Operation::OP::UNGROUP);
 
-            /* Add the fee */
-            AddFee(tx);
-
-            /* Execute the operations layer. */
-            if(!tx.Build())
-                throw APIException(-30, "Operations failed to execute");
-
-            /* Sign the transaction. */
-            if(!tx.Sign(users->GetKey(tx.nSequence, strPIN, nSession)))
-                throw APIException(-31, "Ledger failed to sign transaction");
-
-            /* Execute the operations layer. */
-            if(!TAO::Ledger::mempool.Accept(tx))
-                throw APIException(-32, "Failed to accept");
+            /* Finalize the transaction. */
+            BuildAndAccept(tx, users->GetKey(tx.nSequence, strPIN, nSession));
 
             /* Build a JSON response object. */
             ret["txid"]  = tx.GetHash().ToString();
