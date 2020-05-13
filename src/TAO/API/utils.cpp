@@ -1530,14 +1530,16 @@ namespace TAO
         /* Utility method that builds and accepts a transaction into the mempool under the same ACID memory lock. */
         void BuildAndAccept(TAO::Ledger::Transaction &tx, const uint512_t& hashSecret)
         {
-            RLOCK(LLD::ACID_MUTEX);
+            {
+                RLOCK(LLD::ACID_MUTEX);
 
-            /* Add the fee */
-            AddFee(tx);
+                /* Add the fee */
+                AddFee(tx);
 
-            /* Execute the operations layer. */
-            if(!tx.Build())
-                throw APIException(-30, "Operations failed to execute");
+                /* Execute the operations layer. */
+                if(!tx.Build())
+                    throw APIException(-30, "Operations failed to execute");
+            }
 
             /* Sign the transaction. */
             if(!tx.Sign(hashSecret))

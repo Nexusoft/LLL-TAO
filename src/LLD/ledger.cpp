@@ -410,7 +410,7 @@ namespace LLD
         if(nHeight < state.nHeight)
         {
             nConfirms = 0;
-            return debug::error(FUNCTION, "height overflow catch");
+            return false;
         }
 
         /* Set the number of confirmations based on chainstate/blockstate height. */

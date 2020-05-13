@@ -1677,7 +1677,10 @@ namespace TAO
                 BuildAndAccept(txout, users->GetKey(txout.nSequence, strPIN, users->GetSession(params)));
 
                 /* Capture the transaction ID */
-                vTxIDs.push_back(txout.GetHash());
+                vTxIDs.push_back(txout.GetHash(true));
+
+                /* Debug output for events processor. */
+                debug::log(0, FUNCTION, "Created tx ", txout.GetHash().SubString(), " with ", txout.Size(), " contracts");
             }
 
             /* Populate the response JSON */
