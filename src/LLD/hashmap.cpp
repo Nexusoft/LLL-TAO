@@ -167,6 +167,9 @@ namespace LLD
         if(pFileStreams)
             delete pFileStreams;
 
+        if(pBloomStreams)
+            delete pBloomStreams;
+
         if(pindex)
             delete pindex;
     }

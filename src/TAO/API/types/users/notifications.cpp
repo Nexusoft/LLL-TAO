@@ -1141,7 +1141,6 @@ namespace TAO
             if(params.find("suppressed") != params.end())
                 fIncludeSuppressed = params["suppressed"].get<std::string>() == "true" || params["suppressed"].get<std::string>() == "1";
 
-
             /* Get the list of outstanding contracts. */
             std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> vContracts;
             GetOutstanding(hashGenesis, fIncludeSuppressed, vContracts);
@@ -1179,6 +1178,10 @@ namespace TAO
             std::queue<TAO::Operation::Contract> vProcessQueue;
             for(const auto& contract : vContracts)
             {
+                /* Check for shutdown. */
+                if(config::fShutdown.load())
+                    break;
+
                 /* Get a reference to the contract */
                 const TAO::Operation::Contract& refContract = std::get<0>(contract);
 
@@ -1418,6 +1421,10 @@ namespace TAO
             /* Now process the legacy transactions */
             for(const auto& contract : vLegacyTx)
             {
+                /* Check for shutdown. */
+                if(config::fShutdown.load())
+                    break;
+
                 /* Set the transaction hash. */
                 hashTx = contract.first->GetHash();
 

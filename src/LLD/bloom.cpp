@@ -24,18 +24,18 @@ namespace LLD
     /* Check if a particular bit is set in the bloom filter. */
     bool BloomFilter::is_set(const uint64_t nBucket) const
     {
-        LOCK(MUTEX);
+        //LOCK(MUTEX);
 
-        return bloom[nBucket / 64] & (1 << (63 - (nBucket % 64)));
+        return (bloom[nBucket / 64] & (uint64_t(1) << (nBucket % 64)));
     }
 
 
     /* Set a bit in the bloom filter at given bucket */
     void BloomFilter::set_bit(const uint64_t nBucket)
     {
-        LOCK(MUTEX);
+        //LOCK(MUTEX);
 
-        bloom[nBucket / 64] |= (1 << (63 - (nBucket % 64)));
+        bloom[nBucket / 64] |= (uint64_t(1) << (nBucket % 64));
     }
 
 
@@ -90,7 +90,7 @@ namespace LLD
     /* Create bloom filter with given number of buckets. */
     BloomFilter::BloomFilter  (const uint64_t nBuckets)
     : HASHMAP_TOTAL_BUCKETS ((nBuckets * 3) / 0.693147) //n * k / ln(2) = m
-    , bloom                 (HASHMAP_TOTAL_BUCKETS / 64, 0)
+    , bloom                 ((HASHMAP_TOTAL_BUCKETS / 64) + 1, 0)
     , MUTEX                 ( )
     {
     }

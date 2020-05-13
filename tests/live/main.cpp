@@ -140,68 +140,24 @@ const uint256_t hashSeed = 55;
 
 #include <bitset>
 
+
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
     uint512_t hash = 293548230430984;
 
 
+    std::vector<uint64_t> vBloom(256 * 256, 0);
+
+
     LLD::BloomFilter* bloom = new LLD::BloomFilter(256 * 256 * 64);
-    bloom->Initialize();
-    //bloom->Insert(hash + 3);
-
-    for(; hash < 293548230430984 + 10; ++hash)
-        debug::log(0, "Has (", hash.SubString(), ") Item ", bloom->Has(hash) ? "TRUE" : "FALSE");
-
-    hash = 823828;
-    bloom->Insert(hash);
-
-    debug::log(0, "------------ NEXT SET -------------");
-    for(; hash < 823828 + 10; ++hash)
-        debug::log(0, "Has (", hash.SubString(), ") Item ", bloom->Has(hash) ? "TRUE" : "FALSE");
-
-    //bloom.Flush();
-    delete bloom;
-
-    debug::log(0, "Wrote 100k records in ", timer.ElapsedMicroseconds(), " micro-seconds");
-
-
-    return 0;
-
-    TestDB* db = new TestDB();
-
-    uint1024_t hashLast = 0;
-    db->ReadLast(hashLast);
-
-    timer.Reset();
-    for(uint64_t n = 0; n < 100000; ++n)
+    for(uint64_t nBucket = 0; nBucket < 1000000; ++nBucket)
     {
-        stream1.seekp(0, std::ios::beg);
-        stream1.write((char*)&vBlank[0], vBlank.size());
-        stream1.flush();
-
-        stream2.seekp(8, std::ios::beg);
-        stream2.write((char*)&vBlank[0], vBlank.size());
-        stream2.flush();
-
-        stream3.seekp(16, std::ios::beg);
-        stream3.write((char*)&vBlank[0], vBlank.size());
-        stream3.flush();
-
-        stream4.seekp(32, std::ios::beg);
-        stream4.write((char*)&vBlank[0], vBlank.size());
-        stream4.flush();
-
-        stream5.seekp(64, std::ios::beg);
-        stream5.write((char*)&vBlank[0], vBlank.size());
-        stream5.flush();
-        //db->WriteKey(n, n);
+        uint256_t hashKey = LLC::GetRand256();
+        bloom->Insert(hashKey);
     }
-    timer.Stop();
 
-    debug::log(0, "Wrote 100k records in ", timer.ElapsedMicroseconds(), " micro-seconds");
-
-    //db->WriteLast(hashLast + 100000);
+    delete bloom;
 
     return 0;
 }

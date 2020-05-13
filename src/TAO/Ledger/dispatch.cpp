@@ -136,9 +136,6 @@ namespace TAO
                     block.nHeight
                 );
 
-                /* Keep track of the total items. */
-                uint32_t nTotalEvents = 0;
-
                 /* Let's process all the transactios now. */
                 DataStream ssRelay(SER_NETWORK, LLP::PROTOCOL_VERSION);
                 for(const auto& proof : block.vtx)
@@ -179,7 +176,6 @@ namespace TAO
 
                                     /* Fire off our event. */
                                     ssRelay << uint8_t(LLP::TYPES::SIGCHAIN) << state.hashOwner << hash;
-                                    ++nTotalEvents;
 
                                     debug::log(2, FUNCTION, (nOP == TAO::Operation::OP::TRANSFER ? "TRANSFER: " : "DEBIT: "),
                                         hash.SubString(), " for genesis ", state.hashOwner.SubString());
@@ -198,7 +194,6 @@ namespace TAO
                                     {
                                         /* Fire off our event. */
                                         ssRelay << uint8_t(LLP::TYPES::SIGCHAIN) << hashGenesis << hash;
-                                        ++nTotalEvents;
 
                                         debug::log(2, FUNCTION, "COINBASE: ", hash.SubString(), " for genesis ", hashGenesis.SubString());
                                     }
@@ -210,7 +205,6 @@ namespace TAO
 
                         /* Notify the sender as well. */
                         ssRelay << uint8_t(LLP::TYPES::SIGCHAIN) << tx.hashGenesis << hash;
-                        ++nTotalEvents;
                     }
                     else if(proof.first == TRANSACTION::LEGACY)
                     {
@@ -236,7 +230,6 @@ namespace TAO
 
                                 /* Fire off our event. */
                                 ssRelay << uint8_t(LLP::SPECIFIER::LEGACY) << uint8_t(LLP::TYPES::SIGCHAIN) << state.hashOwner << hash;
-                                ++nTotalEvents;
 
                                 debug::log(2, FUNCTION, "LEGACY: ", hash.SubString(), " for genesis ", state.hashOwner.SubString());
                             }
@@ -246,9 +239,6 @@ namespace TAO
 
                 /* Relay all of our SIGCHAIN events. */
                 LLP::TRITIUM_SERVER->_Relay(LLP::ACTION::NOTIFY, ssRelay);
-
-                /* Report status once complete. */
-                debug::log(0, FUNCTION, "Relay for ", hashBlock.SubString(), " completed in ", swTimer.ElapsedMilliseconds(), " ms [", (nTotalEvents * 1000000) / (swTimer.ElapsedMicroseconds() + 1), " events/s]");
             }
         }
     }
