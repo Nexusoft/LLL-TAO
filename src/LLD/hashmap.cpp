@@ -234,7 +234,7 @@ namespace LLD
             }
 
             /* Load the bloom filter disk images. */
-            for(uint32_t nBloom = 0; nBloom <= nTotalHashmaps; ++nBloom)
+            for(uint32_t nBloom = 0; nBloom < nTotalHashmaps; ++nBloom)
             {
                 /* Find the file stream for LRU cache. */
                 std::fstream *pstream;

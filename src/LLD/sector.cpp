@@ -539,10 +539,10 @@ namespace LLD
 
             /* Wait for thread to wake-up. */
             std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
-            CONDITION.wait_for(CONDITION_LOCK, std::chrono::milliseconds(500),
+            CONDITION.wait_for(CONDITION_LOCK, std::chrono::milliseconds(100),
                 [&]
                 {
-                    return fDestruct.load() || nBufferBytes.load() > 0 || timer.ElapsedMilliseconds() >= 500;
+                    return fDestruct.load() || nBufferBytes.load() > 0 || timer.ElapsedMilliseconds() >= 100;
                 }
             );
 

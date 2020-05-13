@@ -78,8 +78,6 @@ namespace TAO
         void Dispatch::Relay()
         {
             std::mutex CONDITION_MUTEX;
-
-            debug::log(0, FUNCTION, "Dispatch thread initialized...");
             while(!config::fShutdown.load())
             {
                 /* Wait for entries in the queue. */
@@ -183,7 +181,7 @@ namespace TAO
                                     ssRelay << uint8_t(LLP::TYPES::SIGCHAIN) << state.hashOwner << hash;
                                     ++nTotalEvents;
 
-                                    debug::log(0, FUNCTION, (nOP == TAO::Operation::OP::TRANSFER ? "TRANSFER: " : "DEBIT: "),
+                                    debug::log(2, FUNCTION, (nOP == TAO::Operation::OP::TRANSFER ? "TRANSFER: " : "DEBIT: "),
                                         hash.SubString(), " for genesis ", state.hashOwner.SubString());
 
                                     break;
@@ -202,7 +200,7 @@ namespace TAO
                                         ssRelay << uint8_t(LLP::TYPES::SIGCHAIN) << hashGenesis << hash;
                                         ++nTotalEvents;
 
-                                        debug::log(0, FUNCTION, "COINBASE: ", hash.SubString(), " for genesis ", hashGenesis.SubString());
+                                        debug::log(2, FUNCTION, "COINBASE: ", hash.SubString(), " for genesis ", hashGenesis.SubString());
                                     }
 
                                     break;
@@ -240,7 +238,7 @@ namespace TAO
                                 ssRelay << uint8_t(LLP::SPECIFIER::LEGACY) << uint8_t(LLP::TYPES::SIGCHAIN) << state.hashOwner << hash;
                                 ++nTotalEvents;
 
-                                debug::log(0, FUNCTION, "LEGACY: ", hash.SubString(), " for genesis ", state.hashOwner.SubString());
+                                debug::log(2, FUNCTION, "LEGACY: ", hash.SubString(), " for genesis ", state.hashOwner.SubString());
                             }
                         }
                     }
