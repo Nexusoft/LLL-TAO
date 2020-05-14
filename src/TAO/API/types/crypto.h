@@ -208,6 +208,20 @@ namespace TAO
             json::json GetHash(const json::json& params, bool fHelp);
 
 
+            /** ChangeScheme
+             *
+             *  Change the signature scheme used to generate the public-private keys for the users signature chain 
+             *  as well as keys stored in the crypto object register
+             *
+             *  @param[in] params The parameters from the API call
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json ChangeScheme(const json::json& params, bool fHelp);
+
+
         };
     }
 }

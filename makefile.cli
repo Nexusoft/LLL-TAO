@@ -367,6 +367,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_assets_tokenize.o \
 		build/API_types_assets_transfer.o \
 		build/API_types_assets_update.o \
+		build/API_types_crypto_change.o \
 		build/API_types_crypto_create.o \
 		build/API_types_crypto_decrypt.o \
 		build/API_types_crypto_encrypt.o \

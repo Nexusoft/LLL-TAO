@@ -412,5 +412,6 @@ Error Codes
 | -275 | Missing scheme |
 | -276 | Error generating hash |
 | -277 | Invalid hash function |
+| -278 | Scheme already in use |
 | -300 | API can only be used to lookup data for the currently logged in signature chain when running in client mode |
 
