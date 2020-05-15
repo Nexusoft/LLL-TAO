@@ -123,7 +123,7 @@ namespace TAO
 
                     /* Create the sigchain. */
                     memory::encrypted_ptr<TAO::Ledger::SignatureChain> user =
-                        new TAO::Ledger::SignatureChain(strUsername.c_str(), strPassword.c_str());
+                        new TAO::Ledger::SignatureChain(strUsername, strPassword);
 
                     /* Get the genesis ID. */
                     uint256_t hashGenesis = user->Genesis();

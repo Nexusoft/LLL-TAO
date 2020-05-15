@@ -41,8 +41,8 @@ namespace TAO
 
         /* Copy Constructor */
         SignatureChain::SignatureChain(const SignatureChain& sigchain)
-        : strUsername (sigchain.strUsername)
-        , strPassword (sigchain.strPassword)
+        : strUsername (sigchain.strUsername.c_str())
+        , strPassword (sigchain.strPassword.c_str())
         , MUTEX       ( )
         , pairCache   (sigchain.pairCache)
         , hashGenesis (sigchain.hashGenesis)
