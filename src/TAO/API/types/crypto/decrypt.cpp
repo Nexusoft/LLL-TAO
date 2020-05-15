@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <LLC/include/encrypt.h>
+#include <LLC/include/flkey.h>
 
 #include <TAO/API/types/objects.h>
 #include <TAO/API/include/global.h>
@@ -45,26 +46,41 @@ namespace TAO
             /* JSON return value. */
             json::json ret;
 
-            /* Create an ECKey for the private key */
-            LLC::ECKey keyPrivate = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
+            /* The data to be encrypted */
+            std::vector<uint8_t> vchData;
 
-            /* The 512-bit private key data*/
-            std::vector<uint8_t> vchPrivate;
+            /* The symmetric key used to encrypt */
+            std::vector<uint8_t> vchKey;
 
-            /* If the caller has provided the private key parameter then use that, otherwise they must supply a key name and pin
-               to generate the key based on the logged in signature chain */
-            if(params.find("privatekey") != params.end())
+            /* Check the caller included the data */
+            if(params.find("data") == params.end() || params["data"].get<std::string>().empty())
+                throw APIException(-18, "Missing data.");
+
+            /* Decode the data into a vector of bytes */
+            try
             {
-                /* Decode the hex private key into a 512-bit integer  */
-                uint512_t nPrivate;
-                nPrivate.SetHex(params["privatekey"].get<std::string>());
+                vchData = encoding::DecodeBase64(params["data"].get<std::string>().c_str());
+            }
+            catch(const std::exception& e)
+            {
+                throw APIException(-27, "Malformed base64 encoding.");
+            }
 
-                /* Grab the bytes into a vector for later use */
-                vchPrivate = nPrivate.GetBytes();
+            /* Check for explicit key */
+            if(params.find("key") != params.end())
+            {
+                /* Decode the key into a vector of bytes */
+                try
+                {
+                    vchKey = encoding::DecodeBase64(params["key"].get<std::string>().c_str());
+                }
+                catch(const std::exception& e)
+                {
+                    throw APIException(-27, "Malformed base64 encoding.");
+                }
             }
             else
             {
-            
                 /* Get the PIN to be used for this API call */
                 SecureString strPIN = users->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
 
@@ -101,14 +117,16 @@ namespace TAO
                 /* Check to see if the key name is valid */
                 if(!crypto.CheckName(strName))
                     throw APIException(-260, "Invalid key name");
+
+                /* Get the public key hash from the register */
+                uint256_t hashKey = crypto.get<uint256_t>(strName);
     
                 /* Check to see if the the has been generated.  Even though the key is deterministic,  */
-                if(crypto.get<uint256_t>(strName) == 0)
+                if(hashKey == 0)
                     throw APIException(-264, "Key not yet created");
 
-                /* Check that it is a brainpool key */
-                if(crypto.get<uint256_t>(strName).GetType() != TAO::Ledger::SIGNATURE::BRAINPOOL)
-                    throw APIException(-267, "Encryption only supported for EC (Brainpool) keys");
+                /* Get the key type */
+                uint8_t nScheme = hashKey.GetType();
 
                 /* Get the last transaction. */
                 uint512_t hashLast;
@@ -120,6 +138,9 @@ namespace TAO
                 if(!LLD::Ledger->ReadTx(hashLast, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
                     throw APIException(-138, "No previous transaction found");
 
+                /* Get the private key. */
+                uint512_t hashSecret = user->Generate(strName, 0, strPIN);
+
                 /* Generate a new transaction hash next using the current credentials so that we can verify them. */
                 TAO::Ledger::Transaction tx;
                 tx.NextHash(user->Generate(txPrev.nSequence + 1, strPIN, false), txPrev.nNextType);
@@ -128,59 +149,76 @@ namespace TAO
                 if(txPrev.hashNext != tx.hashNext)
                     throw APIException(-139, "Invalid credentials");
 
-                /* Get the private key. */
-                vchPrivate = user->Generate(strName, 0, strPIN).GetBytes();
-            
+                /* If a peer key has been provided then generate a shared key */
+                if(params.find("peerkey") != params.end() && !params["peerkey"].get<std::string>().empty())
+                {
+                    /* Check that the local key is a brainpool key as only EC keys can be used in ECDH shared keys*/
+                    if(nScheme != TAO::Ledger::SIGNATURE::BRAINPOOL)
+                        throw APIException(-267, "Shared key encryption only supported for EC (Brainpool) keys");
+                        
+                    /* Decode the public key into a vector of bytes */
+                    std::vector<uint8_t> vchPubKey;
+                    if(!encoding::DecodeBase58(params["peerkey"].get<std::string>(), vchPubKey))
+                        throw APIException(-266, "Malformed public key.");
+
+                    /* Get the secret from new key. */
+                    std::vector<uint8_t> vBytes = hashSecret.GetBytes();
+                    LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
+
+                    /* Create an ECKey for the private key */
+                    LLC::ECKey keyPrivate = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
+
+                    /* Set the secret key. */
+                    if(!keyPrivate.SetSecret(vchSecret, true))
+                        throw APIException(269, "Malformed private key");
+
+                    /* Create an ECKey for the public key */
+                    LLC::ECKey keyPublic = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
+                    if(!keyPublic.SetPubKey(vchPubKey))
+                        throw APIException(-266, "Malformed public key.");
+
+                    /* Generate the shared symmetric key */
+                    if(!LLC::ECKey::MakeShared(keyPrivate, keyPublic, vchKey))
+                        throw APIException(268, "Failed to generate shared key");
+
+                }
+                else
+                {
+                    /* Otherwise we use the private key as the symmetric key */
+                    vchKey = hashSecret.GetBytes();
+
+                    /* Get the secret from key. */
+                    LLC::CSecret vchSecret(vchKey.begin(), vchKey.end());
+
+                    /* Get the public key to populate into the response */
+                    if(nScheme == TAO::Ledger::SIGNATURE::BRAINPOOL)
+                    {
+                        /* Create an ECKey for the private key */
+                        LLC::ECKey keyPrivate = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
+
+                        /* Set the secret key. */
+                        if(!keyPrivate.SetSecret(vchSecret, true))
+                            throw APIException(269, "Malformed private key");
+                    }
+                    else if(nScheme == TAO::Ledger::SIGNATURE::FALCON)
+                    {
+                        /* Create an FLKey for the private key */
+                        LLC::FLKey keyPrivate = LLC::FLKey();
+
+                        /* Set the secret key. */
+                        if(!keyPrivate.SetSecret(vchSecret))
+                            throw APIException(269, "Malformed private key");
+
+                    }
+                }
+
             }
-
-            /* Get the secret from the private key data. */
-            LLC::CSecret vchSecret(vchPrivate.begin(), vchPrivate.end());            
-
-            /* Set the secret key. */
-            if(!keyPrivate.SetSecret(vchSecret, true))
-                throw APIException(267, "Encryption only supported for EC (Brainpool) keys");
-
-            /* Check the caller included the publickey  */
-            if(params.find("publickey") == params.end() || params["publickey"].get<std::string>().empty())
-                throw APIException(-265, "Missing public key.");
-
-            /* Decode the public key into a vector of bytes */
-            std::vector<uint8_t> vchPublic;
-            if(!encoding::DecodeBase58(params["publickey"].get<std::string>(), vchPublic))
-                throw APIException(-266, "Malformed public key.");
-            
-
-            /* Check the caller included the data */
-            if(params.find("data") == params.end() || params["data"].get<std::string>().empty())
-                throw APIException(-18, "Missing data.");
-
-            /* Decode the data into a vector of bytes */
-            std::vector<uint8_t> vchData;
-            try
-            {
-                vchData = encoding::DecodeBase64(params["data"].get<std::string>().c_str());
-            }
-            catch(const std::exception& e)
-            {
-                throw APIException(-27, "Malformed base64 encoding.");
-            }
-            
-
-            /* Create an ECKey for the public key */
-            LLC::ECKey keyPublic = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
-            if(!keyPublic.SetPubKey(vchPublic))
-                throw APIException(-266, "Malformed public key.");
-
-            /* Generate the shared symmetric key */
-            std::vector<uint8_t> vchShared;
-            if(!LLC::ECKey::MakeShared(keyPrivate, keyPublic, vchShared))
-                throw APIException(268, "Failed to generate shared key");
 
             /* The decrypted data */
             std::vector<uint8_t> vchPlainText;
 
             /* Encrypt the data */
-            if(!LLC::DecryptAES256(vchShared, vchData, vchPlainText))
+            if(!LLC::DecryptAES256(vchKey, vchData, vchPlainText))
                 throw APIException(-271, "Failed to decrypt data.");
             
             /* Add the decrypted data to the response, base64 encoded*/

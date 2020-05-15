@@ -401,7 +401,7 @@ Error Codes
 | -264 | Key not yet created |
 | -265 | Missing public key |
 | -266 | Malformed public key |
-| -267 | Encryption only supported for EC (Brainpool) keys |
+| -267 | Shared key encryption only supported for EC (Brainpool) keys |
 | -268 | Failed to generate shared key |
 | -269 | Malformed private key |
 | -270 | Failed to encrypt data |
