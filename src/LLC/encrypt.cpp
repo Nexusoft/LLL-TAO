@@ -112,7 +112,7 @@ namespace LLC
         uint8_t *pDecrypted = (uint8_t*)malloc(nCiphertextLen);
 
         /* Copy the encrypted bytes into the buffer to be decrypted */
-        std::copy(vEncrypted.begin() + nCiphertextLen, vEncrypted.end(), pDecrypted);
+        std::copy(vEncrypted.begin() + 16, vEncrypted.end(), pDecrypted);
         
         /* Do the decryption */
         try
