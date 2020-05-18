@@ -209,6 +209,8 @@ Returns the public key (as opposed to the hashed public key that is returned by 
 
 `publickey` : The 64-bit public key, base58 encoded.
 
+`scheme` : The cryptographic scheme used to generate the key.  This can be `FALCON` or `BRAINPOOL`.
+
 
 ****
 
@@ -336,6 +338,8 @@ The `data` must be supplied as a base64 encoded string.  This will be decoded in
 ### Return values:
 
 `publickey` : The public key corresponding to the users private key used for encryption.  This is not returned if the caller provided an external `key` to use for encryption.
+
+`scheme` : The cryptographic scheme used to generate the key.  This can be `FALCON` or `BRAINPOOL`.
 
 `hashkey` : The public key, hashed (using Skein-Keccak 256), and then base58 encoded. This is not returned if the caller provided an external `key` to use for encryption.
 

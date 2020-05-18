@@ -179,6 +179,20 @@ namespace TAO
             /* Populate the key, base64 encoded */
             ret["publickey"] = encoding::EncodeBase58(vchPubKey);
 
+            /* convert the scheme type to a string */
+            switch(nKeyType)
+            {
+                case TAO::Ledger::SIGNATURE::FALCON:
+                    ret["scheme"] = "FALCON";
+                    break;
+                case TAO::Ledger::SIGNATURE::BRAINPOOL:
+                    ret["scheme"] = "BRAINPOOL";
+                    break;
+                default:
+                    ret["scheme"] = "";
+
+            }
+
             return ret;
         }
 

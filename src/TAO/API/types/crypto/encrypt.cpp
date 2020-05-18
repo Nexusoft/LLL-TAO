@@ -126,6 +126,9 @@ namespace TAO
                 /* The public key to return */
                 std::vector<uint8_t> vchPubKey;
 
+                /* The key type*/
+                uint8_t nScheme = TAO::Ledger::SIGNATURE::BRAINPOOL;
+
                 /* If a peer key has been provided then generate a shared key */
                 if(params.find("peerkey") != params.end() && !params["peerkey"].get<std::string>().empty())
                 {   
@@ -161,7 +164,7 @@ namespace TAO
                 else
                 {
                     /* Get the scheme */
-                    uint8_t nScheme = get_scheme(params);
+                    nScheme = get_scheme(params);
 
                     /* Otherwise we use the private key as the symmetric key */
                     vchKey = hashSecret.GetBytes();
@@ -198,6 +201,20 @@ namespace TAO
 
                 /* Add the public key to the response */
                 ret["publickey"] = encoding::EncodeBase58(vchPubKey);
+
+                /* convert the scheme type to a string */
+                switch(nScheme)
+                {
+                    case TAO::Ledger::SIGNATURE::FALCON:
+                        ret["scheme"] = "FALCON";
+                        break;
+                    case TAO::Ledger::SIGNATURE::BRAINPOOL:
+                        ret["scheme"] = "BRAINPOOL";
+                        break;
+                    default:
+                        ret["scheme"] = "";
+
+                }
                 
                 /* add the hash key */
                 ret["hashkey"] = encoding::EncodeBase58(LLC::SK256(vchPubKey).GetBytes());
