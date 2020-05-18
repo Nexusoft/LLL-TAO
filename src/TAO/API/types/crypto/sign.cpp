@@ -126,8 +126,11 @@ namespace TAO
             /* Buffer to receive the public key */
             std::vector<uint8_t> vchPubKey;
 
+            /* Get the scheme */
+            uint8_t nScheme = get_scheme(params);
+
             /* Generate the signature */
-            if(!user->Sign(strName, vchData, hashSecret, vchPubKey, vchSig))
+            if(!user->Sign(nScheme, vchData, hashSecret, vchPubKey, vchSig))
                 throw APIException(-273, "Failed to generate signature");
 
             ret["publickey"] = encoding::EncodeBase58(vchPubKey);

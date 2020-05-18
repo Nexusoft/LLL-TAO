@@ -102,32 +102,6 @@ namespace TAO
                 /* The logged in sig chain genesis hash */
                 uint256_t hashGenesis = user->Genesis();
 
-                /* The address of the crypto object register, which is deterministic based on the genesis */
-                TAO::Register::Address hashCrypto = TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
-                
-                /* Read the crypto object register */
-                TAO::Register::Object crypto;
-                if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-259, "Could not read crypto object register");
-
-                /* Parse the object. */
-                if(!crypto.Parse())
-                    throw APIException(-36, "Failed to parse object register");
-                
-                /* Check to see if the key name is valid */
-                if(!crypto.CheckName(strName))
-                    throw APIException(-260, "Invalid key name");
-
-                /* Get the public key hash from the register */
-                uint256_t hashKey = crypto.get<uint256_t>(strName);
-    
-                /* Check to see if the the has been generated.  Even though the key is deterministic,  */
-                if(hashKey == 0)
-                    throw APIException(-264, "Key not yet created");
-
-                /* Get the key type */
-                uint8_t nScheme = hashKey.GetType();
-
                 /* Get the last transaction. */
                 uint512_t hashLast;
                 if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
@@ -151,11 +125,7 @@ namespace TAO
 
                 /* If a peer key has been provided then generate a shared key */
                 if(params.find("peerkey") != params.end() && !params["peerkey"].get<std::string>().empty())
-                {
-                    /* Check that the local key is a brainpool key as only EC keys can be used in ECDH shared keys*/
-                    if(nScheme != TAO::Ledger::SIGNATURE::BRAINPOOL)
-                        throw APIException(-267, "Shared key encryption only supported for EC (Brainpool) keys");
-                        
+                {       
                     /* Decode the public key into a vector of bytes */
                     std::vector<uint8_t> vchPubKey;
                     if(!encoding::DecodeBase58(params["peerkey"].get<std::string>(), vchPubKey))
@@ -184,6 +154,9 @@ namespace TAO
                 }
                 else
                 {
+                    /* Get the scheme */
+                    uint8_t nScheme = get_scheme(params);
+                    
                     /* Otherwise we use the private key as the symmetric key */
                     vchKey = hashSecret.GetBytes();
 

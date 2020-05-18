@@ -3503,8 +3503,27 @@ namespace LLP
             std::vector<uint8_t> vchPubKey;
             std::vector<uint8_t> vchSig;
 
+             /* The crypto register object */
+            TAO::Register::Object crypto;
+
+            /* Get the crypto register. This is needed so that we can determine the key type used to generate the public key */
+            TAO::Register::Address hashCrypto = TAO::Register::Address(std::string("network"), hashSigchain, TAO::Register::Address::CRYPTO);
+            if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::MEMPOOL))
+                throw debug::exception(FUNCTION, "Could not sign - missing crypto register");
+
+            /* Parse the object. */
+            if(!crypto.Parse())
+                throw debug::exception(FUNCTION, "failed to parse crypto register");
+
+            /* Check that the requested key is in the crypto register */
+            if(!crypto.CheckName("network"))
+                throw debug::exception(FUNCTION, "Key type not found in crypto register: ", "network");
+
+            /* Get the encryption key type from the hash of the public key */
+            uint8_t nType = crypto.get<uint256_t>("network").GetType();
+
             /* Generate the public key and signature for the message data */
-            TAO::API::users->GetAccount(0)->Sign("network", hashCheck.GetBytes(), TAO::API::users->GetAuthKey()->DATA, vchPubKey, vchSig);
+            TAO::API::users->GetAccount(0)->Sign(nType, hashCheck.GetBytes(), TAO::API::users->GetAuthKey()->DATA, vchPubKey, vchSig);
 
             /* Add the public key to the message */
             ssMessage << vchPubKey;

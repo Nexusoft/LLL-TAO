@@ -237,7 +237,7 @@ namespace TAO
             *
             *  Generates a signature for the data, using the specified crypto key type
             *
-            *  @param[in] strType The type of signing key to use
+            *  @param[in] nKeyType The type of signing key to use
             *  @param[in] vchData The data to base the signature off
             *  @param[in] hashSecret The private key to use for the signature
             *  @param[out] vchPubKey The public key generated from the private key
@@ -246,7 +246,7 @@ namespace TAO
             *  @return True if successful
             *
             **/
-            bool Sign(const std::string& strType, const std::vector<uint8_t>& vchData, const uint512_t& hashSecret,
+            bool Sign(const uint8_t& nKeyType, const std::vector<uint8_t>& vchData, const uint512_t& hashSecret,
                                       std::vector<uint8_t>& vchPubKey, std::vector<uint8_t>& vchSig) const;
 
         };

@@ -222,6 +222,22 @@ namespace TAO
             json::json ChangeScheme(const json::json& params, bool fHelp);
 
 
+        /* private helper methods */
+        private:
+
+            /** get_scheme
+             *
+             *  Determines the scheme (key type) to use for constructing keys.
+             *
+             *  @param[in] params The parameters from the API call
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            uint8_t get_scheme(const json::json& params );
+
+
         };
     }
 }

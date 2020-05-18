@@ -208,8 +208,27 @@ namespace TAO
                 /* The stake change request signature */
                 std::vector<uint8_t> vchSig;
 
+                /* The crypto register object */
+                TAO::Register::Object crypto;
+
+                /* Get the crypto register. This is needed so that we can determine the key type used to generate the public key */
+                TAO::Register::Address hashCrypto = TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
+                if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::MEMPOOL))
+                    throw debug::exception(FUNCTION, "Could not sign - missing crypto register");
+
+                /* Parse the object. */
+                if(!crypto.Parse())
+                    throw debug::exception(FUNCTION, "failed to parse crypto register");
+
+                /* Check that the requested key is in the crypto register */
+                if(!crypto.CheckName("auth"))
+                    throw debug::exception(FUNCTION, "Key type not found in crypto register: ", "auth");
+
+                /* Get the encryption key type from the hash of the public key */
+                uint8_t nType = crypto.get<uint256_t>("auth").GetType();
+
                 /* Generate the public key and signature */
-                user->Sign("auth", request.GetHash().GetBytes(), hashSecret, vchPubKey, vchSig);
+                user->Sign(nType, request.GetHash().GetBytes(), hashSecret, vchPubKey, vchSig);
 
                 request.vchPubKey = vchPubKey;
                 request.vchSig = vchSig;

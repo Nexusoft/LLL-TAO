@@ -102,32 +102,6 @@ namespace TAO
                 /* The logged in sig chain genesis hash */
                 uint256_t hashGenesis = user->Genesis();
 
-                /* The address of the crypto object register, which is deterministic based on the genesis */
-                TAO::Register::Address hashCrypto = TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
-                
-                /* Read the crypto object register */
-                TAO::Register::Object crypto;
-                if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-259, "Could not read crypto object register");
-
-                /* Parse the object. */
-                if(!crypto.Parse())
-                    throw APIException(-36, "Failed to parse object register");
-                
-                /* Check to see if the key name is valid */
-                if(!crypto.CheckName(strName))
-                    throw APIException(-260, "Invalid key name");
-
-                /* Get the public key hash from the register */
-                uint256_t hashKey = crypto.get<uint256_t>(strName);
-    
-                /* Check to see if the the has been generated.  Even though the key is deterministic,  */
-                if(hashKey == 0)
-                    throw APIException(-264, "Key not yet created");
-
-                /* Get the key type */
-                uint8_t nScheme = hashKey.GetType();
-
                 /* Get the last transaction. */
                 uint512_t hashLast;
                 if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
@@ -149,16 +123,15 @@ namespace TAO
                 if(txPrev.hashNext != tx.hashNext)
                     throw APIException(-139, "Invalid credentials");
 
+                /* The public key to return */
+                std::vector<uint8_t> vchPubKey;
+
                 /* If a peer key has been provided then generate a shared key */
                 if(params.find("peerkey") != params.end() && !params["peerkey"].get<std::string>().empty())
-                {
-                    /* Check that the local key is a brainpool key as only EC keys can be used in ECDH shared keys*/
-                    if(nScheme != TAO::Ledger::SIGNATURE::BRAINPOOL)
-                        throw APIException(-267, "Shared key encryption only supported for EC (Brainpool) keys");
-                        
+                {   
                     /* Decode the public key into a vector of bytes */
-                    std::vector<uint8_t> vchPubKey;
-                    if(!encoding::DecodeBase58(params["peerkey"].get<std::string>(), vchPubKey))
+                    std::vector<uint8_t> vchPeerKey;
+                    if(!encoding::DecodeBase58(params["peerkey"].get<std::string>(), vchPeerKey))
                         throw APIException(-266, "Malformed public key.");
 
                     /* Get the secret from new key. */
@@ -174,19 +147,22 @@ namespace TAO
 
                     /* Create an ECKey for the public key */
                     LLC::ECKey keyPublic = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
-                    if(!keyPublic.SetPubKey(vchPubKey))
+                    if(!keyPublic.SetPubKey(vchPeerKey))
                         throw APIException(-266, "Malformed public key.");
 
                     /* Generate the shared symmetric key */
                     if(!LLC::ECKey::MakeShared(keyPrivate, keyPublic, vchKey))
                         throw APIException(268, "Failed to generate shared key");
 
-                    /* Add the public key for our private keyto the response */
-                    ret["publickey"] = encoding::EncodeBase58(keyPrivate.GetPubKey());
+                    /* Set the public key for our private key*/
+                    vchPubKey = keyPrivate.GetPubKey();
 
                 }
                 else
                 {
+                    /* Get the scheme */
+                    uint8_t nScheme = get_scheme(params);
+
                     /* Otherwise we use the private key as the symmetric key */
                     vchKey = hashSecret.GetBytes();
 
@@ -203,8 +179,8 @@ namespace TAO
                         if(!keyPrivate.SetSecret(vchSecret, true))
                             throw APIException(269, "Malformed private key");
 
-                        /* Add the public key to the response */
-                        ret["publickey"] = encoding::EncodeBase58(keyPrivate.GetPubKey());
+                        /* Set the public key for our private key*/
+                        vchPubKey = keyPrivate.GetPubKey();
                     }
                     else if(nScheme == TAO::Ledger::SIGNATURE::FALCON)
                     {
@@ -215,13 +191,16 @@ namespace TAO
                         if(!keyPrivate.SetSecret(vchSecret))
                             throw APIException(269, "Malformed private key");
 
-                        /* Add the public key to the response */
-                        ret["publickey"] = encoding::EncodeBase58(keyPrivate.GetPubKey());
+                        /* Set the public key for our private key*/
+                        vchPubKey = keyPrivate.GetPubKey();
                     }
                 }
+
+                /* Add the public key to the response */
+                ret["publickey"] = encoding::EncodeBase58(vchPubKey);
                 
                 /* add the hash key */
-                ret["hashkey"] = encoding::EncodeBase58(hashKey.GetBytes());
+                ret["hashkey"] = encoding::EncodeBase58(LLC::SK256(vchPubKey).GetBytes());
 
             }
 

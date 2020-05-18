@@ -1,17 +1,19 @@
 # Crypto API
 -----------------------------------
 
-The Crypto API provides methods to read and manage the cryptographic keys held in the signature chain's crypto object register, in addition to methods to encrypt and decrypt data using those keys. 
+The Crypto API provides methods to generate public-private key pairs, encrypt and decrypt data, and manage the public key hashes held in the signature chain's crypto object register. 
 
-Every signature chain owns a special register known as the crypto object register.  Held in this register are a number of public keys that can be used for a variety of purposes, both internally by the Nexus core and externally by 3rd party applications.  Each key is stored in a named slot allowing integrators to identify which key they wish to use.  
+Every signature chain owns a special register known as the crypto object register.  Held in this register are a number of public key hashes that can be used for a variety of purposes, both internally by the Nexus core and externally by 3rd party applications.  The crypto object register provides the ability to verify which identity if the user sending a public key, since the hash of the public key is stored in the crypto object register of the signature chain.  Each key is stored in a named slot allowing integrators to identify which key they wish to use.  
 
-By default the crypto object register contains nine named keys: `auth`, `lisp`, `network`, `sign`, `verify`, `cert`, `app1`, `app2`, and `app3`.   The crypto object register is created automatically as part of the genesis transaction when a signature chain is created via the `users/create/user` API method.  During initial creation the `auth`, `network`, and `sign` keys are generated and stored in the register.  The remaining keys can be populated as necessary using the `crypto/create/key` API method.
+The crypto object register contains nine named keys: `auth`, `lisp`, `network`, `sign`, `verify`, `cert`, `app1`, `app2`, and `app3`.   The crypto object register is created automatically as part of the genesis transaction when a signature chain is created via the `users/create/user` API method.  During initial creation the `auth`, `network`, and `sign` keys are generated and stored in the register.  The remaining keys can be populated as necessary using the `crypto/create/key` API method.
 
 Each key stored in the crypto register is a 256-bit hash of the public key of an asymmetric (public-private) key pair. The cryptographic scheme used to generate the key pairs is configurable via the `crypto/change/scheme` API method. Nexus currently supports both Brainpool (ECDSA-based) and FALCON (Lattice-based) schemes.
 
-**NOTE** All key pairs generated via the crypto API are based on the username, password, and pin of the users signature chain.  The **`private keys are NOT stored on-chain`**, but instead re-constructed as necessary based on the username, password, and pin of the logged in user.  This is important, as changing the password and pin of a signature chain (including recovering an account) will invalidate any existing keys held in the crypto object register.  Therefore, when a user changes their password/pin or uses their recovery seed to set a new password/pin, we will **`automatically regenerate`** new public keys for the following keys, if they have been previously set: `auth`, `lisp`, `network`, `sign`, `verify`, and `cert`.   
+**NOTE** All key pairs generated via the crypto API are based on the username, password, and pin of the users signature chain.  The **`private keys are NOT stored on-chain`**, but instead re-constructed as necessary based on the username, password, and pin of the logged in user.  This is important, as changing the password and pin of a signature chain (including recovering an account) will invalidate any existing keys held in the crypto object register.  Therefore, when a user changes their password/pin or uses their recovery seed to set a new password/pin, we will **`automatically regenerate`** new public key hashes for the following keys, if they have been previously set: `auth`, `lisp`, `network`, `sign`, `verify`, and `cert`.   
 
 **NOTE** The `app1`, `app2`, and `app3` keys are `not` updated when a user changes their password/pin.  This is intentional as any 3rd party application using these keys to encrypt data would be left unable to decrypt them again.  To help 3rd party applications manage this situation, the API includes a method to retrieve the private key for the app1, app2, and app3 keys, allowing them to be stored off-chain and later used to decrypt data in the event that the user changes their password/pin. 
+
+**NOTE** You are *not* required to create a key in the crypto object register (via `crypto/create/key`) in order to use the other methods in the crypto API (with the exception of `crypto/get/key`).  This is because the public and private keys are reconstructed as necessary from the logged in user credentials and key name.  However, callers will need to provide the key type (`scheme`) as a request parameter so that the correct key can be constructed.  
 
 
 ## `Methods`
@@ -36,7 +38,7 @@ The following methods are currently supported by this API
 
 # `list/keys`
 
-Returns a list of all public keys in the crypto object register for the specified signature chain.  If no username/genesis is supplied then the method will default to listing keys for the logged in signature chain.
+Returns a list of all hashed public keys in the crypto object register for the specified signature chain.  If no username/genesis is supplied then the method will default to listing keys for the logged in signature chain.
 
 
 ### Endpoint:
@@ -91,7 +93,7 @@ Returns a list of all public keys in the crypto object register for the specifie
 
 # `create/key`
 
-Generates a new public-private key pair and stores it in the crypto object register.  Users must be logged in to create a new key
+Generates a new public-private key pair and stores the hashed public key in the crypto object register.  Users must be logged in to create a new key
 
 
 ### Endpoint:
@@ -133,7 +135,7 @@ Generates a new public-private key pair and stores it in the crypto object regis
 
 # `get/key`
 
-Returns the public key from the crypto object register for the specified key name, from the specified signature chain.  If no username/genesis is supplied then the method will default to searching the logged in signature chain.
+Returns the hashed public key from the crypto object register for the specified key name, from the specified signature chain.  If no username/genesis is supplied then the method will default to searching the logged in signature chain.
 
 
 ### Endpoint:
@@ -176,7 +178,7 @@ Returns the public key from the crypto object register for the specified key nam
 
 # `get/publickey`
 
-Returns the public key (as opposed to the hashed key that is returned by get/key) for a key stored in the users crypto object register. This can only be issued by the owner of the key, so the caller must be logged in to call this method.  The un-hashed public key is required when encrypting and decrypting data via the API. 
+Returns the public key (as opposed to the hashed public key that is returned by get/key) for a given key name.. This can only be issued by the owner of the key, so the caller must be logged in to call this method.  The un-hashed public key is required when encrypting and decrypting data, or verifying signatures, via the API. 
 
 
 ### Endpoint:
@@ -192,6 +194,7 @@ Returns the public key (as opposed to the hashed key that is returned by get/key
 
 `session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) the key should be returned from. For single-user API mode the session should not be supplied.
 
+`scheme`: Optional.  When creating the app1, app2, app3, or any other key name apart from the six default keys, users can specify which scheme to use to generate the key pair.  Values can be `BRAINPOOL` or `FALCON`. If no scheme parameter is provided then it will be determined from the crypto object register (for previously created keys) or taken from the users signature chain configuration. 
 
 ### Return value JSON object:
 ```    
@@ -212,7 +215,7 @@ Returns the public key (as opposed to the hashed key that is returned by get/key
 
 # `get/privatekey`
 
-Returns the private key for a public key stored in the users crypto object register. This method can only be used to obtain the private key for the `app1`, `app2`, or `app3`keys. **`Cannot be used to obtain the private key for the six default keys (`auth`, `lisp`, `network`, `sign`, `verify`, and `cert`).`**  
+Returns the private key for a key pair. This method can only be used to obtain the private key for the `app1`, `app2`, or `app3` keys or any other key name that is NOT stored in the crypto object register. **`Cannot be used to obtain the private key for the six default keys (`auth`, `lisp`, `network`, `sign`, `verify`, and `cert`).`**  
 
 
 ### Endpoint:
@@ -228,6 +231,7 @@ Returns the private key for a public key stored in the users crypto object regis
 
 `session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) the key should be returned from. For single-user API mode the session should not be supplied.
 
+`scheme`: Optional.  When creating the app1, app2, app3, or any other key name apart from the six default keys, users can specify which scheme to use to generate the key pair.  Values can be `BRAINPOOL` or `FALCON`. If no scheme parameter is provided then it will be determined from the crypto object register (for previously created keys) or taken from the users signature chain configuration.
 
 ### Return value JSON object:
 ```    
@@ -284,7 +288,7 @@ Change the signature scheme used to generate the public-private keys for the use
 
 # `encrypt/data`
 
-This method can be used to encrypt arbitrary data using the AES256 encryption function and a symmetric key.  This method supports three options for providing the symmetric key:
+This method can be used to encrypt arbitrary data using the AES256 encryption function and a symmetric key.  The method supports three options for providing the symmetric key:
 1) by providing an explicit key using the `key` parameter
 2) by providing the key `name` and `pin` parameters.
 3) by providing the key `name`, `pin`, and `peerkey` parameters, in which case a shared key is generated. 

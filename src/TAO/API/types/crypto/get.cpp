@@ -20,6 +20,8 @@ ________________________________________________________________________________
 #include <TAO/API/include/utils.h>
 #include <TAO/API/include/json.h>
 
+#include <TAO/Ledger/include/create.h>
+
 #include <TAO/Register/types/object.h>
 
 #include <Util/include/debug.h>
@@ -150,27 +152,9 @@ namespace TAO
             /* The logged in sig chain genesis hash */
             uint256_t hashGenesis = user->Genesis();
 
-            /* The address of the crypto object register, which is deterministic based on the genesis */
-            TAO::Register::Address hashCrypto = TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
+            /* The scheme to use to generate the key. */
+            uint8_t nKeyType = get_scheme(params);
             
-            /* Read the crypto object register */
-            TAO::Register::Object crypto;
-            if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-259, "Could not read crypto object register");
-
-            /* Parse the object. */
-            if(!crypto.Parse())
-                throw APIException(-36, "Failed to parse object register");
-            
-            /* Check to see if the key name is valid */
-            if(!crypto.CheckName(strName))
-                throw APIException(-260, "Invalid key name");
- 
-            /* Check to see if the the has been generated.  Even though the key is deterministic,  */
-            uint256_t hashKey = crypto.get<uint256_t>(strName);
-            if(hashKey == 0)
-                throw APIException(-264, "Key not yet created");
-
             /* Get the last transaction. */
             uint512_t hashLast;
             if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
@@ -190,7 +174,7 @@ namespace TAO
                 throw APIException(-139, "Invalid credentials");
                         
             /* Generate the public key */
-            std::vector<uint8_t> vchPubKey = user->Key(strName, 0, strPIN, hashKey.GetType());
+            std::vector<uint8_t> vchPubKey = user->Key(strName, 0, strPIN, nKeyType);
 
             /* Populate the key, base64 encoded */
             ret["publickey"] = encoding::EncodeBase58(vchPubKey);
@@ -229,27 +213,7 @@ namespace TAO
                 throw APIException(-263, "Private key can only be retrieved for app1, app2, app3, and other 3rd-party keys");
 
             /* The logged in sig chain genesis hash */
-            uint256_t hashGenesis = user->Genesis();
-
-            /* The address of the crypto object register, which is deterministic based on the genesis */
-            TAO::Register::Address hashCrypto = TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
-            
-            /* Read the crypto object register */
-            TAO::Register::Object crypto;
-            if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-259, "Could not read crypto object register");
-
-            /* Parse the object. */
-            if(!crypto.Parse())
-                throw APIException(-36, "Failed to parse object register");
-            
-            /* Check to see if the key name is valid */
-            if(!crypto.CheckName(strName))
-                throw APIException(-260, "Invalid key name");
- 
-            /* Check to see if the the has been generated.  Even though the key is deterministic,  */
-            if(crypto.get<uint256_t>(strName) == 0)
-                throw APIException(-264, "Key not yet created");
+            uint256_t hashGenesis = user->Genesis();            
 
             /* Get the last transaction. */
             uint512_t hashLast;
