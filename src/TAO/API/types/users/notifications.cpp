@@ -539,7 +539,7 @@ namespace TAO
         bool Users::get_coinbases(const uint256_t& hashGenesis,
                 uint512_t hashLast, std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> &vContracts)
         {
-            /* Counter of consecutive claimed coinbases.  If this reaches 10 then assume there are none older to process */
+            /* Counter of consecutive claimed coinbases.  If this reaches -coinbasedepth then assume there are none older to process */
             uint32_t nConsecutive = 0;
 
             /* Reverse iterate until genesis (newest to oldest). */
@@ -549,9 +549,9 @@ namespace TAO
                 TAO::Ledger::Transaction tx;
                 if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
                     return debug::error(FUNCTION, "Failed to read transaction");
-
-                /* Skip this transaction if it is immature. */
-                if(!LLD::Ledger->ReadMature(hashLast))
+                    
+                /* Skip this transaction if it not a coinbase or is immature. */
+                if(!tx.IsCoinBase() || !LLD::Ledger->ReadMature(tx))
                 {
                     /* Set the next last. */
                     hashLast = !tx.IsFirst() ? tx.hashPrevTx : 0;
