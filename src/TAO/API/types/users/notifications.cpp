@@ -48,6 +48,7 @@ ________________________________________________________________________________
 #include <Legacy/include/evaluate.h>
 
 #include <queue>
+#include <unordered_set>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -56,6 +57,18 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
+        /* Helper struct to allow a std::pair to be used as the type in an unordered_set */
+        struct pair_hash
+        {
+            template <class T1, class T2>
+            std::size_t operator () (std::pair<T1, T2> const &pair) const
+            {
+                std::size_t h1 = std::hash<T1>()(pair.first);
+                std::size_t h2 = std::hash<T2>()(pair.second);
+
+                return h1 ^ h2;
+            }
+        };
 
         /*  Gets the currently outstanding contracts that have not been matched with a credit or claim. */
         bool Users::GetOutstanding(const uint256_t& hashGenesis,
@@ -118,7 +131,7 @@ namespace TAO
             if(LLD::Ledger->ReadLast(hashGenesis, hashLast))
             {
                 /* Get any expired debit and transfer transactions we made */
-                get_expired(hashGenesis, hashLast, vContracts);
+               get_expired(hashGenesis, hashLast, vContracts);
             }
 
             /* Remove any suppressed if flagged to do so */
@@ -740,6 +753,11 @@ namespace TAO
                already claimed / credited */
             if(config::fClient.load())
                 return false;
+
+            /* Cache of contracts by genesis hash for all contracts that we have already determined either do not have 
+               any conditions or have already been claimed/credited.  If any contract is already in this vector then we can skip
+               it for all future invocations of the get_expired method. */
+            static std::unordered_set<std::pair<uint512_t, uint32_t>, pair_hash> cacheProcessed(256);
                 
             /* Temporary transaction to use to evaluate the conditions */
             TAO::Ledger::Transaction voidTx;
@@ -766,16 +784,28 @@ namespace TAO
                 uint32_t nContracts = tx.Size();
                 for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
                 {
+                    /* Check to see whether this contract has already been processed */
+                    if(cacheProcessed.find(std::make_pair(hashLast, nContract)) != cacheProcessed.end() )
+                        continue;
+
                     /* Reference to contract to check */
                     TAO::Operation::Contract& contract = tx[nContract];
 
                     /* First check to see if there are any conditions.  If not then they can't have expired! */
                     if(contract.Empty(TAO::Operation::Contract::CONDITIONS))
+                    {
+                        /* Add this contract to the processed list so we don't ever process it again and continue */
+                        cacheProcessed.insert(std::make_pair(hashLast, nContract));
                         continue;
+                    }
 
                     /* Next check to see if there is an expiration condition */
                     if(!HasExpires(contract))
+                    {
+                        /* Add this contract to the processed list so we don't ever process it again and continue */
+                        cacheProcessed.insert(std::make_pair(hashLast, nContract));
                         continue;
+                    }
 
                     /* The proof to check for this contract */
                     TAO::Register::Address hashProof;
@@ -803,7 +833,11 @@ namespace TAO
 
                         /* Check to see if this debit has already been sent */
                         if(LLD::Ledger->HasProof(hashProof, hashLast, nContract, TAO::Ledger::FLAGS::MEMPOOL))
+                        {
+                            /* Add this contract to the processed list so we don't ever process it again and continue */
+                            cacheProcessed.insert(std::make_pair(hashLast, nContract));
                             continue;
+                        }
 
                          /* Check to see whether there are any partial credits already claimed against the debit */
                         uint64_t nClaimed = 0;
@@ -812,7 +846,11 @@ namespace TAO
 
                         /* Check that there is something to be claimed */
                         if(nClaimed == nAmount)
+                        {
+                            /* Add this contract to the processed list so we don't ever process it again and continue */
+                            cacheProcessed.insert(std::make_pair(hashLast, nContract));
                             continue;
+                        }
 
                         /* Reduce the amount to credit by the amount already claimed */
                         nAmount -= nClaimed;
@@ -836,20 +874,36 @@ namespace TAO
 
                         /* Ensure this wasn't a forced transfer (which requires no Claim) */
                         if(nType == TAO::Operation::TRANSFER::FORCE)
+                        {
+                            /* Add this contract to the processed list so we don't ever process it again and continue */
+                            cacheProcessed.insert(std::make_pair(hashLast, nContract));
                             continue;
+                        }
 
                         /* Check that the sender has not claimed it back (voided) */
                         TAO::Register::State state;
                         if(!LLD::Register->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
+                        {
+                            /* Add this contract to the processed list so we don't ever process it again and continue */
+                            cacheProcessed.insert(std::make_pair(hashLast, nContract));
                             continue;
+                        }
 
                         /* Make sure the register claim is in SYSTEM pending from a transfer.  */
                         if(state.hashOwner.GetType() != TAO::Ledger::GENESIS::SYSTEM)
+                        {
+                            /* Add this contract to the processed list so we don't ever process it again and continue */
+                            cacheProcessed.insert(std::make_pair(hashLast, nContract));
                             continue;
+                        }
 
                         /* Check to see if this transfer has already been claimed by the recipient or us */
                         if(LLD::Ledger->HasProof(hashRegister, tx.GetHash(), nContract, TAO::Ledger::FLAGS::MEMPOOL))
+                        {
+                            /* Add this contract to the processed list so we don't ever process it again and continue */
+                            cacheProcessed.insert(std::make_pair(hashLast, nContract));
                             continue;
+                        }
 
                         /* Populate the temp void contract */
                         voidContract.Clear();
