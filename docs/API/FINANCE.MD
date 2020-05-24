@@ -269,7 +269,7 @@ Additionally the API supports passing a field name in the URL after the account 
     "address": "8CbkwEQ9S8owmX74joU6XmiwxJq1aoiqUoXc9fLCKzw15HscM99",
     "token_name": "NXS",
     "token": "0",
-    "data": "abcd1234"
+    "data": "abcd1234",
     "balance": 2903.239792,
     "pending": 0.0,
     "unconfirmed": 76.492244
