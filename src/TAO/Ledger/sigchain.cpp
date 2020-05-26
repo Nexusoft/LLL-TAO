@@ -640,7 +640,7 @@ namespace TAO
         bool SignatureChain::Sign(const std::string& strKey, const std::vector<uint8_t>& vchData, const uint512_t& hashSecret,
                                   std::vector<uint8_t>& vchPubKey, std::vector<uint8_t>& vchSig) const
         {
-                         /* The crypto register object */
+            /* The crypto register object */
             TAO::Register::Object crypto;
 
             /* Get the crypto register. This is needed so that we can determine the key type used to generate the public key */
@@ -724,6 +724,87 @@ namespace TAO
             /* Return success */
             return true;
 
+        }
+
+
+        /* Verifies a signature for the data, as well as verifying that the hashed public key matches the 
+        *  specified key from the crypto object register */
+        bool SignatureChain::Verify(const uint256_t hashGenesis, const std::string& strKey, const std::vector<uint8_t>& vchData, 
+                    const std::vector<uint8_t>& vchPubKey, const std::vector<uint8_t>& vchSig)
+        {
+            /* Derive the object register address. */
+            TAO::Register::Address hashCrypto =
+                TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
+
+            /* Get the crypto register. */
+            TAO::Register::Object crypto;
+            if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::MEMPOOL))
+                return debug::error(FUNCTION, "Missing crypto register");
+
+            /* Parse the object. */
+            if(!crypto.Parse())
+                return debug::drop(FUNCTION, "ailed to parse crypto register");
+
+            /* Check that the requested key is in the crypto register */
+            if(!crypto.CheckName(strKey))
+                return debug::error(FUNCTION, "Key type not found in crypto register: ", strKey);
+
+            /* Check the authorization hash. */
+            uint256_t hashCheck = crypto.get<uint256_t>(strKey);
+
+            /* Check that the hashed public key exists in the register*/
+            if(hashCheck == 0)
+                return debug::error(FUNCTION, "Public key hash not found in crypto register: ", strKey);
+
+            /* Get the encryption key type from the hash of the public key */
+            uint8_t nType = hashCheck.GetType();
+
+            /* Grab hash of incoming pubkey and set its type. */
+            uint256_t hashPubKey = LLC::SK256(vchPubKey);
+            hashPubKey.SetType(nType);
+
+            /* Check the public key to expected authorization key. */
+            if(hashPubKey != hashCheck)
+                return debug::error(FUNCTION, "Invalid public key");
+
+            /* Switch based on signature type. */
+            switch(nType)
+            {
+                /* Support for the FALCON signature scheeme. */
+                case TAO::Ledger::SIGNATURE::FALCON:
+                {
+                    /* Create the FL Key object. */
+                    LLC::FLKey key;
+
+                    /* Set the public key and verify. */
+                    key.SetPubKey(vchPubKey);
+                    if(!key.Verify(hashCheck.GetBytes(), vchSig))
+                        return debug::error(FUNCTION, "Invalid transaction signature");
+
+                    break;
+                }
+
+                /* Support for the BRAINPOOL signature scheme. */
+                case TAO::Ledger::SIGNATURE::BRAINPOOL:
+                {
+                    /* Create EC Key object. */
+                    LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
+
+                    /* Set the public key and verify. */
+                    key.SetPubKey(vchPubKey);
+                    if(!key.Verify(hashCheck.GetBytes(), vchSig))
+                        return debug::error(FUNCTION, "Invalid transaction signature");
+
+                    break;
+                }
+
+                default:
+                    return debug::error(FUNCTION, "Unknown signature scheme");
+
+            }
+
+            /* Not verified! */
+            return false;
         }
 
     }

@@ -267,6 +267,24 @@ namespace TAO
                                       std::vector<uint8_t>& vchPubKey, std::vector<uint8_t>& vchSig) const;
 
 
+            /** Verify
+            *
+            *  Verifies a signature for the data, as well as verifying that the hashed public key matches the 
+            *  specified key from the crypto object register
+            *
+            *  @param[in] hashGenesis The genesis hash of the sig chain to read the crypto object register for
+            *  @param[in] strKey The name of the signing key from the crypto object register
+            *  @param[in] vchData The data to base the verification from 
+            *  @param[in] vchPubKey The public key of the private key used to sign the data
+            *  @param[in] vchSig The signature bytes
+            *
+            *  @return True if the signature is successfully verified
+            *
+            **/
+            static bool Verify(const uint256_t hashGenesis, const std::string& strKey, const std::vector<uint8_t>& vchData, 
+                        const std::vector<uint8_t>& vchPubKey, const std::vector<uint8_t>& vchSig);
+
+
         };
     }
 }
