@@ -12,14 +12,10 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_LLP_PACKETS_TRITIUM_H
-#define NEXUS_LLP_PACKETS_TRITIUM_H
 
 #include <vector>
 #include <limits.h>
 #include <cstdint>
-
-#include <LLC/hash/SK.h>
 
 #include <LLP/include/version.h>
 
@@ -30,9 +26,9 @@ namespace LLP
 {
 
 
-    /** TritiumPacket
+    /** MessagePacket
      *
-     *  Class to handle sending and receiving of More Complese Message LLP Packets.
+     *  Class to handle sending and receiving of More Complex Message LLP Packets.
      *
      *  Components of a Message LLP Packet.
      *  BYTE 0 - 1  : Message Code
@@ -41,7 +37,7 @@ namespace LLP
      *  Byte 11 +   : Packet Data
      *
      **/
-    class TritiumPacket
+    class MessagePacket
     {
     public:
         /* Message typedef. */
@@ -65,7 +61,7 @@ namespace LLP
 
 
         /** Default Constructor **/
-        TritiumPacket()
+        MessagePacket()
         : MESSAGE (0)
         , FLAGS   (0)
         , LENGTH  (0)
@@ -75,7 +71,7 @@ namespace LLP
 
 
         /** Copy Constructor **/
-        TritiumPacket(const TritiumPacket& packet)
+        MessagePacket(const MessagePacket& packet)
         : MESSAGE (packet.MESSAGE)
         , FLAGS   (packet.FLAGS)
         , LENGTH  (packet.LENGTH)
@@ -85,7 +81,7 @@ namespace LLP
 
 
         /** Move Constructor **/
-        TritiumPacket(TritiumPacket&& packet) noexcept
+        MessagePacket(MessagePacket&& packet) noexcept
         : MESSAGE (std::move(packet.MESSAGE))
         , FLAGS   (std::move(packet.FLAGS))
         , LENGTH  (std::move(packet.LENGTH))
@@ -95,7 +91,7 @@ namespace LLP
 
 
         /** Copy Assignment Operator **/
-        TritiumPacket& operator=(const TritiumPacket& packet)
+        MessagePacket& operator=(const MessagePacket& packet)
         {
             MESSAGE = packet.MESSAGE;
             FLAGS   = packet.FLAGS;
@@ -107,7 +103,7 @@ namespace LLP
 
 
         /** Move Assignment Operator **/
-        TritiumPacket& operator=(TritiumPacket&& packet) noexcept
+        MessagePacket& operator=(MessagePacket&& packet) noexcept
         {
             MESSAGE = std::move(packet.MESSAGE);
             FLAGS   = std::move(packet.FLAGS);
@@ -119,14 +115,14 @@ namespace LLP
 
 
         /** Destructor. **/
-        ~TritiumPacket()
+        ~MessagePacket()
         {
             std::vector<uint8_t>().swap(DATA);
         }
 
 
         /** Constructor **/
-        TritiumPacket(const message_t nMessage)
+        MessagePacket(const message_t nMessage)
         {
             SetNull();
 
@@ -257,5 +253,3 @@ namespace LLP
         }
     };
 }
-
-#endif

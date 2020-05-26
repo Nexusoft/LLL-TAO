@@ -92,10 +92,16 @@ namespace LLP
     /* The local relay inventory cache. */
     static LLD::KeyLRU cacheInventory = LLD::KeyLRU(1024 * 1024);
 
+    /** Mutex for controlling access to the p2p requests map. **/
+    std::mutex TritiumNode::P2P_REQUESTS_MUTEX;
+
+    /** map of P2P request timestamps by source genesis hash. **/
+    std::map<uint256_t, uint64_t> TritiumNode::mapP2PRequests;
+
 
     /** Default Constructor **/
     TritiumNode::TritiumNode()
-    : BaseConnection<TritiumPacket>()
+    : BaseConnection<MessagePacket>()
     , fLoggedIn(false)
     , fAuthorized(false)
     , fInitialized(false)
@@ -123,7 +129,7 @@ namespace LLP
 
     /** Constructor **/
     TritiumNode::TritiumNode(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool fDDOSIn)
-    : BaseConnection<TritiumPacket>(SOCKET_IN, DDOS_IN, fDDOSIn)
+    : BaseConnection<MessagePacket>(SOCKET_IN, DDOS_IN, fDDOSIn)
     , fLoggedIn(false)
     , fAuthorized(false)
     , fInitialized(false)
@@ -151,7 +157,7 @@ namespace LLP
 
     /** Constructor **/
     TritiumNode::TritiumNode(DDOS_Filter* DDOS_IN, bool fDDOSIn)
-    : BaseConnection<TritiumPacket>(DDOS_IN, fDDOSIn)
+    : BaseConnection<MessagePacket>(DDOS_IN, fDDOSIn)
     , fLoggedIn(false)
     , fAuthorized(false)
     , fInitialized(false)
@@ -3194,6 +3200,178 @@ namespace LLP
                     default:
                     {
                         return debug::drop(NODE, "ACTION::VALIDATE invalidate type specified");
+                    }
+                }
+
+                break;
+            }
+
+            case ACTION::REQUEST:
+            {
+                /* deserialize the type */
+                uint8_t nType;
+                ssPacket >> nType;
+
+                switch(nType)
+                {
+                    /* Caller is requesting a peer to peer connection to communicate via the messaging LLP*/
+                    case TYPES::P2PMESSAGE:
+                    {
+                        /* Get the timestamp */
+                        uint64_t nTimestamp;
+                        ssPacket >> nTimestamp;
+
+                        /* Get the nonce */
+                        uint64_t nNonce;
+                        ssPacket >> nNonce;
+
+                        /* Get the destination genesis hash */
+                        uint256_t hashDestination;
+                        ssPacket >> hashDestination;
+
+                        /* get the appid */
+                        uint64_t nAppID;
+                        ssPacket >> nAppID;
+
+                        /* get the source genesis hash */
+                        uint256_t hashSource;
+                        ssPacket >> hashSource;
+
+                        /* get the source address / port*/
+                        BaseAddress address;
+                        ssPacket >> address;
+
+                        /* Check the timestamp. If the request is older than 30s then it is stale so ignore the message */
+                        if(nTimestamp > runtime::unifiedtimestamp() || nTimestamp < runtime::unifiedtimestamp() - 30)
+                            return debug::error(NODE, "ACTION::REQUEST::P2P: timestamp out of range (stale)");
+
+                        /* Check that the destination genesis exists */
+                        if(!LLD::Ledger->HasGenesis(hashDestination))
+                            return debug::drop(NODE, "ACTION::REQUEST::P2P: invalid destination genesis hash");
+
+                        /* Check that the source genesis exi sts */
+                        if(!LLD::Ledger->HasGenesis(hashSource))
+                            return debug::drop(NODE, "ACTION::REQUEST::P2P: invalid source genesis hash");
+
+                        /* Verify the signature */
+                                    
+                        /* Derive the crypto object register address. */
+                        TAO::Register::Address hashCrypto =
+                            TAO::Register::Address(std::string("crypto"), hashDestination, TAO::Register::Address::CRYPTO);
+
+                        /* Get the crypto register. */
+                        TAO::Register::Object crypto;
+                        if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::MEMPOOL))
+                            return debug::error(NODE, "ACTION::REQUEST::P2P: authorization failed, missing crypto register");
+
+                        /* Parse the object. */
+                        if(!crypto.Parse())
+                            return debug::error(NODE, "ACTION::REQUEST::P2P: failed to parse crypto register");
+
+                        /* Check the authorization hash. */
+                        uint256_t hashCheck = crypto.get<uint256_t>("network");
+                        if(hashCheck != 0) //a hash of 0 is a disabled authorization hash
+                        {
+                            /* Get the public key. */
+                            std::vector<uint8_t> vchPubKey;
+                            ssPacket >> vchPubKey;
+
+                            /* Grab hash of pubkey and set its type. */
+                            uint256_t hashPubKey = LLC::SK256(vchPubKey);
+                            hashPubKey.SetType(hashCheck.GetType());
+
+                            /* Check the public key to expected authorization key. */
+                            if(hashPubKey != hashCheck)
+                                return debug::error(NODE, "ACTION::REQUEST::P2P: invalid public key");
+
+                            /* Build the byte stream from the request data in order to verify the signature */
+                            DataStream ssCheck(SER_NETWORK, PROTOCOL_VERSION);
+                            ssCheck << nTimestamp << nNonce << hashDestination << nAppID << hashSource << address;
+
+                            /* Get a hash of the data. */
+                            uint256_t hashCheck = LLC::SK256(ssCheck.begin(), ssCheck.end());
+
+                            /* Get the signature. */
+                            std::vector<uint8_t> vchSig;
+                            ssPacket >> vchSig;
+
+                            /* Switch based on signature type. */
+                            switch(hashPubKey.GetType())
+                            {
+                                /* Support for the FALCON signature scheeme. */
+                                case TAO::Ledger::SIGNATURE::FALCON:
+                                {
+                                    /* Create the FL Key object. */
+                                    LLC::FLKey key;
+
+                                    /* Set the public key and verify. */
+                                    key.SetPubKey(vchPubKey);
+                                    if(!key.Verify(hashCheck.GetBytes(), vchSig))
+                                        return debug::error(NODE, "ACTION::REQUEST::P2P: invalid transaction signature");
+
+                                    break;
+                                }
+
+                                /* Support for the BRAINPOOL signature scheme. */
+                                case TAO::Ledger::SIGNATURE::BRAINPOOL:
+                                {
+                                    /* Create EC Key object. */
+                                    LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
+
+                                    /* Set the public key and verify. */
+                                    key.SetPubKey(vchPubKey);
+                                    if(!key.Verify(hashCheck.GetBytes(), vchSig))
+                                        return debug::error(NODE, "ACTION::REQUEST::P2P: invalid transaction signature");
+
+                                    break;
+                                }
+
+                                default:
+                                    return debug::error(NODE, "ACTION::REQUEST::P2P: invalid signature type");
+                            }
+                        }
+                        else
+                        {
+                            return debug::error(NODE, "ACTION::REQUEST::P2P: source network key not found in crypto register");
+                        }
+                        
+
+                        /* See whether we have processed a P2P request from this user in the last 5 seconds.  
+                           If so then ignore the message. If not then relay the message to our peers.  
+                           NOTE: we relay the message regardless of whether the destination genesis is logged in on this node, 
+                           as the user may be logged in on multiple nodes and  might want to process the request on a 
+                           different node/device. */
+                        {
+                            LOCK(P2P_REQUESTS_MUTEX);
+                            if(mapP2PRequests.count(hashSource) == 0 || mapP2PRequests[hashSource] < nTimestamp - 5)
+                            {
+                                /* Relay the P2P request */
+                                TRITIUM_SERVER->Relay
+                                (
+                                    INCOMING.MESSAGE,
+                                    INCOMING.DATA
+                                );
+
+                                /* Check to see whether the destination genesis is logged in on this node */
+                                if(TAO::API::users->LoggedIn(hashDestination))
+                                {
+                                    /* If they are then add this request to the P2P requests queue in the Messaging LLP */
+                                    
+                                }
+                            }
+
+                            /* Log this request */
+                            mapP2PRequests[hashSource] = nTimestamp;
+
+                                
+                        }
+
+                        break;
+                        
+                    }
+                    default:
+                    {
+                        return debug::drop(NODE, "ACTION::REQUEST invalidate type specified");
                     }
                 }
 

@@ -15,7 +15,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
-#include <LLP/packets/tritium.h>
+#include <LLP/packets/message.h>
 #include <LLP/include/global.h>
 #include <LLP/include/inv.h>
 

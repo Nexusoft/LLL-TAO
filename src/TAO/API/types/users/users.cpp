@@ -99,6 +99,30 @@ namespace TAO
             return !config::fMultiuser.load() && mapSessions.count(0);
         }
 
+        /* Determine if a particular genesis is logged in on this node. */
+        bool Users::LoggedIn(const uint256_t& hashGenesis) const
+        {
+            LOCK(MUTEX);
+
+            if(!config::fMultiuser.load())
+            {
+                return mapSessions[0]->Genesis() == hashGenesis;
+            }
+            else
+            {
+                std::map<uint256_t, memory::encrypted_ptr<TAO::Ledger::SignatureChain>>::iterator user = mapSessions.begin();
+                while(user != mapSessions.end())
+                {
+                    if(user->second->Genesis() == hashGenesis)
+                        return true;
+                    /* increment iterator */
+                    ++user;
+                }
+            }
+
+            return false;
+        }
+
 
         /* Determine if the Users are locked. */
         bool Users::Locked() const

@@ -19,7 +19,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/network.h>
 #include <LLP/include/version.h>
-#include <LLP/packets/tritium.h>
+#include <LLP/packets/message.h>
 #include <LLP/templates/base_connection.h>
 #include <LLP/templates/events.h>
 #include <LLP/templates/ddos.h>
@@ -49,6 +49,7 @@ namespace LLP
             SUBSCRIBE    = 0x16,
             UNSUBSCRIBE  = 0x17,
             VALIDATE     = 0x18,
+            REQUEST      = 0x19,
 
             /* Protocol. */
             PING         = 0x1a,
@@ -87,6 +88,7 @@ namespace LLP
             NOTIFICATION = 0x3b,
             TRIGGER      = 0x3c,
             REGISTER     = 0x3d,
+            P2PMESSAGE   = 0x3e,
         };
     }
 
@@ -145,7 +147,7 @@ namespace LLP
      *  A Node that processes packets and messages for the Tritium Server
      *
      **/
-    class TritiumNode : public BaseConnection<TritiumPacket>
+    class TritiumNode : public BaseConnection<MessagePacket>
     {
 
         /** Switch Node
@@ -174,6 +176,13 @@ namespace LLP
 
         /** Set for connected session. **/
         static std::map<uint64_t, std::pair<uint32_t, uint32_t>> mapSessions;
+
+
+        /** Mutex for controlling access to the p2p requests map. **/
+        static std::mutex P2P_REQUESTS_MUTEX;
+
+        /** map of P2P request timestamps by source genesis hash. **/
+        static std::map<uint256_t, uint64_t> mapP2PRequests;
 
 
         /** The current subscriptions. **/
@@ -417,9 +426,9 @@ namespace LLP
          *  @return Returns a filled out tritium packet.
          *
          **/
-        static TritiumPacket NewMessage(const uint16_t nMsg, const DataStream& ssData)
+        static MessagePacket NewMessage(const uint16_t nMsg, const DataStream& ssData)
         {
-            TritiumPacket RESPONSE(nMsg);
+            MessagePacket RESPONSE(nMsg);
             RESPONSE.SetData(ssData);
 
             return RESPONSE;
@@ -435,7 +444,7 @@ namespace LLP
          **/
         void PushMessage(const uint16_t nMsg)
         {
-            TritiumPacket RESPONSE(nMsg);
+            MessagePacket RESPONSE(nMsg);
             WritePacket(RESPONSE);
         }
 

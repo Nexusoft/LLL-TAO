@@ -17,7 +17,7 @@ ________________________________________________________________________________
 
 #include <LLP/packets/packet.h>
 #include <LLP/packets/http.h>
-#include <LLP/packets/tritium.h>
+#include <LLP/packets/message.h>
 
 #include <LLP/templates/trigger.h>
 
@@ -289,7 +289,7 @@ namespace LLP
 
     /* Explicity instantiate all template instances needed for compiler. */
     template class BaseConnection<Packet>;
-    template class BaseConnection<TritiumPacket>;
+    template class BaseConnection<MessagePacket>;
     template class BaseConnection<HTTPPacket>;
 
 }

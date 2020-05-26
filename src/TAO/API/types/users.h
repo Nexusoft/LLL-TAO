@@ -115,6 +115,17 @@ namespace TAO
             bool LoggedIn() const;
 
 
+            /** LoggedIn
+             *
+             *  Determine if a particular genesis is logged in on this node.
+             *
+             *  @param[in] hashGenesis The genesis hash to search for.
+             * 
+             *  @return True if the hashGenesis is logged in on this node
+             **/
+            bool LoggedIn(const uint256_t& hashGenesis) const;
+
+
             /** Locked
              *
              *  Determine if the currently active sig chain is locked.
