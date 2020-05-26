@@ -584,116 +584,61 @@ namespace LLP
                 if(hashGenesis == 0)
                     return debug::drop(NODE, "ACTION::AUTH: cannot authorize with reserved genesis");
 
-                /* Derive the object register address. */
-                TAO::Register::Address hashCrypto =
-                    TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
+                /* Get the timestamp */
+                uint64_t nTimestamp;
+                ssPacket >> nTimestamp;
+
+                /* Check the timestamp. */
+                if(nTimestamp > runtime::unifiedtimestamp() || nTimestamp < runtime::unifiedtimestamp() - 10)
+                    return debug::drop(NODE, "ACTION::AUTH: timestamp out of rang (stale)");
+
+                /* Get the nonce */
+                uint64_t nNonce;
+                ssPacket >> nNonce;
+
+                /* Check the nNonce for expected values. */
+                if(nNonce != nCurrentSession)
+                    return debug::drop(NODE, "ACTION::AUTH: invalid session-id ", nNonce);
+
+                /* Get the public key. */
+                std::vector<uint8_t> vchPubKey;
+                ssPacket >> vchPubKey;
+
+                
+                /* Build the byte stream from genesis+nonce in order to verify the signature */
+                DataStream ssCheck(SER_NETWORK, PROTOCOL_VERSION);
+                ssCheck << hashGenesis << nTimestamp << nNonce;
+
+                /* Get a hash of the data. */
+                uint256_t hashCheck = LLC::SK256(ssCheck.begin(), ssCheck.end());
+
+                /* Get the signature. */
+                std::vector<uint8_t> vchSig;
+                ssPacket >> vchSig;
+
+                /* Verify the signature */
+                if(!TAO::Ledger::SignatureChain::Verify(hashGenesis, "network", hashCheck.GetBytes(), vchPubKey, vchSig))
+                    return debug::drop(NODE, "ACTION::AUTH: invalid transaction signature");
 
                 /* Get the crypto register. */
-                TAO::Register::Object crypto;
-                if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::MEMPOOL))
-                    return debug::drop(NODE, "ACTION::AUTH: authorization failed, missing crypto register");
+                TAO::Register::Object trust;
+                if(!LLD::Register->ReadState(TAO::Register::Address(std::string("trust"),
+                    hashGenesis, TAO::Register::Address::TRUST), trust, TAO::Ledger::FLAGS::MEMPOOL))
+                    return debug::drop(NODE, "ACTION::AUTH: authorization failed, missing trust register");
 
                 /* Parse the object. */
-                if(!crypto.Parse())
-                    return debug::drop(NODE, "ACTION::AUTH: failed to parse crypto register");
+                if(!trust.Parse())
+                    return debug::drop(NODE, "ACTION::AUTH: failed to parse trust register");
 
-                /* Check the authorization hash. */
-                uint256_t hashCheck = crypto.get<uint256_t>("network");
-                if(hashCheck != 0) //a hash of 0 is a disabled authorization hash
-                {
-                    /* Get the timestamp */
-                    uint64_t nTimestamp;
-                    ssPacket >> nTimestamp;
+                /* Set the node's current trust score. */
+                nTrust = trust.get<uint64_t>("trust");
 
-                    /* Check the timestamp. */
-                    if(nTimestamp > runtime::unifiedtimestamp() || nTimestamp < runtime::unifiedtimestamp() - 10)
-                        return debug::drop(NODE, "ACTION::AUTH: timestamp out of rang (stale)");
+                /* Set to authorized node if passed all cryptographic checks. */
+                fAuthorized = true;
+                debug::log(0, NODE, "ACTION::AUTH: ", hashGenesis.SubString(), " AUTHORIZATION ACCEPTED");
 
-                    /* Get the nonce */
-                    uint64_t nNonce;
-                    ssPacket >> nNonce;
-
-                    /* Check the nNonce for expected values. */
-                    if(nNonce != nCurrentSession)
-                        return debug::drop(NODE, "ACTION::AUTH: invalid session-id ", nNonce);
-
-                    /* Get the public key. */
-                    std::vector<uint8_t> vchPubKey;
-                    ssPacket >> vchPubKey;
-
-                    /* Grab hash of pubkey and set its type. */
-                    uint256_t hashPubKey = LLC::SK256(vchPubKey);
-                    hashPubKey.SetType(hashCheck.GetType());
-
-                    /* Check the public key to expected authorization key. */
-                    if(hashPubKey != hashCheck)
-                        return debug::drop(NODE, "ACTION::AUTH: failed to authorize, invalid public key");
-
-                    /* Build the byte stream from genesis+nonce in order to verify the signature */
-                    DataStream ssCheck(SER_NETWORK, PROTOCOL_VERSION);
-                    ssCheck << hashGenesis << nTimestamp << nNonce;
-
-                    /* Get a hash of the data. */
-                    uint256_t hashCheck = LLC::SK256(ssCheck.begin(), ssCheck.end());
-
-                    /* Get the signature. */
-                    std::vector<uint8_t> vchSig;
-                    ssPacket >> vchSig;
-
-                    /* Switch based on signature type. */
-                    switch(hashPubKey.GetType())
-                    {
-                        /* Support for the FALCON signature scheeme. */
-                        case TAO::Ledger::SIGNATURE::FALCON:
-                        {
-                            /* Create the FL Key object. */
-                            LLC::FLKey key;
-
-                            /* Set the public key and verify. */
-                            key.SetPubKey(vchPubKey);
-                            if(!key.Verify(hashCheck.GetBytes(), vchSig))
-                                return debug::drop(NODE, "ACTION::AUTH: invalid transaction signature");
-
-                            break;
-                        }
-
-                        /* Support for the BRAINPOOL signature scheme. */
-                        case TAO::Ledger::SIGNATURE::BRAINPOOL:
-                        {
-                            /* Create EC Key object. */
-                            LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
-
-                            /* Set the public key and verify. */
-                            key.SetPubKey(vchPubKey);
-                            if(!key.Verify(hashCheck.GetBytes(), vchSig))
-                                return debug::drop(NODE, "ACTION::AUTH: invalid transaction signature");
-
-                            break;
-                        }
-
-                        default:
-                            return debug::drop(NODE, "ACTION::AUTH: invalid signature type");
-                    }
-
-                    /* Get the crypto register. */
-                    TAO::Register::Object trust;
-                    if(!LLD::Register->ReadState(TAO::Register::Address(std::string("trust"),
-                        hashGenesis, TAO::Register::Address::TRUST), trust, TAO::Ledger::FLAGS::MEMPOOL))
-                        return debug::drop(NODE, "ACTION::AUTH: authorization failed, missing trust register");
-
-                    /* Parse the object. */
-                    if(!trust.Parse())
-                        return debug::drop(NODE, "ACTION::AUTH: failed to parse trust register");
-
-                    /* Set the node's current trust score. */
-                    nTrust = trust.get<uint64_t>("trust");
-
-                    /* Set to authorized node if passed all cryptographic checks. */
-                    fAuthorized = true;
-                    debug::log(0, NODE, "ACTION::AUTH: ", hashGenesis.SubString(), " AUTHORIZATION ACCEPTED");
-
-                    PushMessage(RESPONSE::AUTHORIZED, hashGenesis);
-                }
+                PushMessage(RESPONSE::AUTHORIZED, hashGenesis);
+                
 
                 break;
             }
@@ -3242,6 +3187,14 @@ namespace LLP
                         BaseAddress address;
                         ssPacket >> address;
 
+                        /* Get the public key. */
+                        std::vector<uint8_t> vchPubKey;
+                        ssPacket >> vchPubKey;
+
+                        /* Get the signature. */
+                        std::vector<uint8_t> vchSig;
+                        ssPacket >> vchSig;
+
                         /* Check the timestamp. If the request is older than 30s then it is stale so ignore the message */
                         if(nTimestamp > runtime::unifiedtimestamp() || nTimestamp < runtime::unifiedtimestamp() - 30)
                             return debug::error(NODE, "ACTION::REQUEST::P2P: timestamp out of range (stale)");
@@ -3254,87 +3207,16 @@ namespace LLP
                         if(!LLD::Ledger->HasGenesis(hashSource))
                             return debug::drop(NODE, "ACTION::REQUEST::P2P: invalid source genesis hash");
 
+                        /* Build the byte stream from the request data in order to verify the signature */
+                        DataStream ssCheck(SER_NETWORK, PROTOCOL_VERSION);
+                        ssCheck << nTimestamp << nNonce << hashDestination << nAppID << hashSource << address;
+
+                        /* Get a hash of the data. */
+                        uint256_t hashCheck = LLC::SK256(ssCheck.begin(), ssCheck.end());
+
                         /* Verify the signature */
-                                    
-                        /* Derive the crypto object register address. */
-                        TAO::Register::Address hashCrypto =
-                            TAO::Register::Address(std::string("crypto"), hashDestination, TAO::Register::Address::CRYPTO);
-
-                        /* Get the crypto register. */
-                        TAO::Register::Object crypto;
-                        if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::MEMPOOL))
-                            return debug::error(NODE, "ACTION::REQUEST::P2P: authorization failed, missing crypto register");
-
-                        /* Parse the object. */
-                        if(!crypto.Parse())
-                            return debug::error(NODE, "ACTION::REQUEST::P2P: failed to parse crypto register");
-
-                        /* Check the authorization hash. */
-                        uint256_t hashCheck = crypto.get<uint256_t>("network");
-                        if(hashCheck != 0) //a hash of 0 is a disabled authorization hash
-                        {
-                            /* Get the public key. */
-                            std::vector<uint8_t> vchPubKey;
-                            ssPacket >> vchPubKey;
-
-                            /* Grab hash of pubkey and set its type. */
-                            uint256_t hashPubKey = LLC::SK256(vchPubKey);
-                            hashPubKey.SetType(hashCheck.GetType());
-
-                            /* Check the public key to expected authorization key. */
-                            if(hashPubKey != hashCheck)
-                                return debug::error(NODE, "ACTION::REQUEST::P2P: invalid public key");
-
-                            /* Build the byte stream from the request data in order to verify the signature */
-                            DataStream ssCheck(SER_NETWORK, PROTOCOL_VERSION);
-                            ssCheck << nTimestamp << nNonce << hashDestination << nAppID << hashSource << address;
-
-                            /* Get a hash of the data. */
-                            uint256_t hashCheck = LLC::SK256(ssCheck.begin(), ssCheck.end());
-
-                            /* Get the signature. */
-                            std::vector<uint8_t> vchSig;
-                            ssPacket >> vchSig;
-
-                            /* Switch based on signature type. */
-                            switch(hashPubKey.GetType())
-                            {
-                                /* Support for the FALCON signature scheeme. */
-                                case TAO::Ledger::SIGNATURE::FALCON:
-                                {
-                                    /* Create the FL Key object. */
-                                    LLC::FLKey key;
-
-                                    /* Set the public key and verify. */
-                                    key.SetPubKey(vchPubKey);
-                                    if(!key.Verify(hashCheck.GetBytes(), vchSig))
-                                        return debug::error(NODE, "ACTION::REQUEST::P2P: invalid transaction signature");
-
-                                    break;
-                                }
-
-                                /* Support for the BRAINPOOL signature scheme. */
-                                case TAO::Ledger::SIGNATURE::BRAINPOOL:
-                                {
-                                    /* Create EC Key object. */
-                                    LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
-
-                                    /* Set the public key and verify. */
-                                    key.SetPubKey(vchPubKey);
-                                    if(!key.Verify(hashCheck.GetBytes(), vchSig))
-                                        return debug::error(NODE, "ACTION::REQUEST::P2P: invalid transaction signature");
-
-                                    break;
-                                }
-
-                                default:
-                                    return debug::error(NODE, "ACTION::REQUEST::P2P: invalid signature type");
-                            }
-                        }
-                        else
-                        {
-                            return debug::error(NODE, "ACTION::REQUEST::P2P: source network key not found in crypto register");
-                        }
+                        if(!TAO::Ledger::SignatureChain::Verify(hashSource, "network", hashCheck.GetBytes(), vchPubKey, vchSig))
+                            return debug::error(NODE, "ACTION::REQUEST::P2P: invalid transaction signature");
                         
 
                         /* See whether we have processed a P2P request from this user in the last 5 seconds.  
