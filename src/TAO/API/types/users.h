@@ -57,8 +57,8 @@ namespace TAO
             /** The active pin for sessionless API use **/
             mutable memory::encrypted_ptr<TAO::Ledger::PinUnlock> pActivePIN;
 
-            /** The auth private key for sessionless API use **/
-            mutable memory::encrypted_ptr<memory::encrypted_type<uint512_t>> pAuthKey;
+            /** The map network private keys for each session **/
+            mutable std::map<uint256_t, memory::encrypted_ptr<memory::encrypted_type<uint512_t>>> mapNetworkKeys;
 
             /** The mutex for locking. **/
             mutable std::mutex MUTEX;
@@ -265,14 +265,27 @@ namespace TAO
             uint256_t GetSession(const json::json params, bool fThrow = true) const;
 
 
-            /** GetAuthKey
+            /** GetSession
+             *
+             *  Gets the session ID for a given genesis, if it is logged in on this node.
+             *
+             *  @param[in] hashGenesis The genesis hash to search for.
+             * 
+             *  @return The session ID if the genesis is logged in, otherwise throws an exception
+             **/
+            uint256_t GetSession(const uint256_t& hashGenesis) const;
+
+
+            /** GetNetworkKey
             *
-            *  Returns the private key for the auth public key
+            *  Returns the private key for the network public key for a logged in session
+            * 
+            *  @param[in] nSession The session identifier.
             *
             *  @return the private key for the auth public key
             *
             **/
-            memory::encrypted_ptr<memory::encrypted_type<uint512_t>>& GetAuthKey() const;
+            memory::encrypted_ptr<memory::encrypted_type<uint512_t>>& GetNetworkKey(uint256_t nSession) const;
 
 
 

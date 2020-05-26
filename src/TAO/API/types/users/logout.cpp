@@ -82,10 +82,10 @@ namespace TAO
                 /* Check whether it is valid before relaying it to all peers */
                 if(ssMessage.size() > 0)
                     LLP::TRITIUM_SERVER->_Relay(uint8_t(LLP::Tritium::ACTION::DEAUTH), ssMessage);
-
-                /* Free up the Auth private key */
-                pAuthKey.free();
             }
+
+            /* Free up the Network private key */
+            mapNetworkKeys[nSession].free();
 
             /* If stake minter is running when logout, stop it */
             TAO::Ledger::TritiumMinter& stakeMinter = TAO::Ledger::TritiumMinter::GetInstance();

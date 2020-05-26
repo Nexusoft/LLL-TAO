@@ -324,10 +324,47 @@ namespace TAO
         }
 
 
-        /* Returns the private key for the auth public key */
-        memory::encrypted_ptr<memory::encrypted_type<uint512_t>>& Users::GetAuthKey() const
+        /*Gets the session ID for a given genesis, if it is logged in on this node. */
+        uint256_t Users::GetSession(const uint256_t& hashGenesis) const
         {
-            return pAuthKey;
+            LOCK(MUTEX);
+
+            if(!config::fMultiuser.load())
+            {
+                if(mapSessions[0]->Genesis() == hashGenesis)
+                    return 0;
+            }
+            else
+            {
+                std::map<uint256_t, memory::encrypted_ptr<TAO::Ledger::SignatureChain>>::iterator user = mapSessions.begin();
+                while(user != mapSessions.end())
+                {
+                    if(user->second->Genesis() == hashGenesis)
+                        return user->first;
+                    /* increment iterator */
+                    ++user;
+                }
+            }
+
+            throw APIException(-11, "User not logged in"); 
+        }
+
+
+        /* Returns the private key for the auth public key */
+        memory::encrypted_ptr<memory::encrypted_type<uint512_t>>& Users::GetNetworkKey(uint256_t nSession) const
+        {
+            /* For sessionless API use the active sig chain which is stored in session 0 */
+            uint256_t nSessionToUse = config::fMultiuser.load() ? nSession : 0;
+
+            if(!mapNetworkKeys.count(nSessionToUse))
+            {
+                if(config::fMultiuser.load())
+                    throw APIException(-9, debug::safe_printstr("Session ", nSessionToUse.ToString(), " doesn't exist"));
+                else
+                    throw APIException(-11, "User not logged in");
+            }
+
+            return mapNetworkKeys[nSessionToUse];
         }
 
 

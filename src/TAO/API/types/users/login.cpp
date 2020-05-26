@@ -231,13 +231,12 @@ namespace TAO
                 mapSessions.emplace(nSession, std::move(user));
             }
 
-            /* If not using Multiuser then generate and cache the private key for the "network" key so that we can generate AUTH
-               LLP messages to authenticate to peers */
+            /* Generate and cache the private key for the "network" key so that we can sign LLP messages to authenticate to peers */
+            mapNetworkKeys[nSession] = new memory::encrypted_type<uint512_t>(user->Generate("network", 0, strPin));
+            
+            /* If not using Multiuser then send an AUTH message to our peers */
             if(!config::fMultiuser.load())
             {
-                /* Get the private key. */
-                pAuthKey = new memory::encrypted_type<uint512_t>(user->Generate("network", 0, strPin));
-
                 /* Generate an AUTH message to send to all peers */
                 DataStream ssMessage = LLP::TritiumNode::GetAuth(true);
 
