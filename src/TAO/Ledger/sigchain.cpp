@@ -636,6 +636,34 @@ namespace TAO
         }
 
 
+        /* Generates a signature for the data, using the specified crypto key from the crypto object register. */
+        bool SignatureChain::Sign(const std::string& strKey, const std::vector<uint8_t>& vchData, const uint512_t& hashSecret,
+                                  std::vector<uint8_t>& vchPubKey, std::vector<uint8_t>& vchSig) const
+        {
+                         /* The crypto register object */
+            TAO::Register::Object crypto;
+
+            /* Get the crypto register. This is needed so that we can determine the key type used to generate the public key */
+            TAO::Register::Address hashCrypto = TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
+            if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::MEMPOOL))
+                return debug::error(FUNCTION, "Could not sign - missing crypto register");
+
+            /* Parse the object. */
+            if(!crypto.Parse())
+                return debug::error(FUNCTION, "failed to parse crypto register");
+
+            /* Check that the requested key is in the crypto register */
+            if(!crypto.CheckName(strKey))
+                return debug::error(FUNCTION, "Key type not found in crypto register: ", strKey);
+
+            /* Get the encryption key type from the hash of the public key */
+            uint8_t nType = crypto.get<uint256_t>(strKey).GetType();
+
+            /* call the Sign method with the retrieved type */
+            return Sign(nType, vchData, hashSecret, vchPubKey, vchSig);
+
+        }
+        
         /* Generates a signature for the data, using the specified crypto key type. */
         bool SignatureChain::Sign(const uint8_t& nKeyType, const std::vector<uint8_t>& vchData, const uint512_t& hashSecret,
                                   std::vector<uint8_t>& vchPubKey, std::vector<uint8_t>& vchSig) const
