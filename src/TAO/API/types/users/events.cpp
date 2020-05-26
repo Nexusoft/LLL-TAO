@@ -146,13 +146,13 @@ namespace TAO
                                 /* Request the sig chain. */
                                 debug::log(1, FUNCTION, "CLIENT MODE: Requesting LIST::SIGCHAIN for ", hashGenesis.SubString());
 
-                                LLP::TritiumNode::BlockingMessage(30000, pNode, LLP::ACTION::LIST, uint8_t(LLP::TYPES::SIGCHAIN), hashGenesis, hashLast);
+                                LLP::TritiumNode::BlockingMessage(30000, pNode, LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::SIGCHAIN), hashGenesis, hashLast);
 
                                 debug::log(1, FUNCTION, "CLIENT MODE: LIST::SIGCHAIN received for ", hashGenesis.SubString());
 
                                 /* Grab list of notifications. */
-                                pNode->PushMessage(LLP::ACTION::LIST, uint8_t(LLP::TYPES::NOTIFICATION), hashGenesis);
-                                pNode->PushMessage(LLP::ACTION::LIST, uint8_t(LLP::SPECIFIER::LEGACY), uint8_t(LLP::TYPES::NOTIFICATION), hashGenesis);
+                                pNode->PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashGenesis);
+                                pNode->PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::SPECIFIER::LEGACY), uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashGenesis);
                                 
                             }
                             else
@@ -371,20 +371,20 @@ namespace TAO
 
                     /* Create our trigger nonce. */
                     uint64_t nNonce = LLC::GetRand();
-                    pNode->PushMessage(LLP::TYPES::TRIGGER, nNonce);
+                    pNode->PushMessage(LLP::Tritium::TYPES::TRIGGER, nNonce);
 
                     /* Request the transaction validation */
-                    pNode->PushMessage(LLP::ACTION::VALIDATE, uint8_t(LLP::TYPES::TRANSACTION), tx);
+                    pNode->PushMessage(LLP::Tritium::ACTION::VALIDATE, uint8_t(LLP::Tritium::TYPES::TRANSACTION), tx);
 
                     /* Create the condition variable trigger. */
                     LLP::Trigger REQUEST_TRIGGER;
-                    pNode->AddTrigger(LLP::RESPONSE::VALIDATED, &REQUEST_TRIGGER);
+                    pNode->AddTrigger(LLP::Tritium::RESPONSE::VALIDATED, &REQUEST_TRIGGER);
 
                     /* Process the event. */
                     REQUEST_TRIGGER.wait_for_nonce(nNonce, 10000);
 
                     /* Cleanup our event trigger. */
-                    pNode->Release(LLP::RESPONSE::VALIDATED);
+                    pNode->Release(LLP::Tritium::RESPONSE::VALIDATED);
 
                     debug::log(1, FUNCTION, "CLIENT MODE: RESPONSE::VALIDATED received");
 

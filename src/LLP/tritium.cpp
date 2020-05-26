@@ -60,6 +60,7 @@ ________________________________________________________________________________
 
 namespace LLP
 {
+    using namespace LLP::Tritium;
 
     /* Declaration of sessions mutex. (private). */
     std::mutex TritiumNode::SESSIONS_MUTEX;
