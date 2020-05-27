@@ -232,7 +232,7 @@ int main(int argc, char** argv)
 
 
         /* Get the port for the P2P server. */
-        nPort = static_cast<uint16_t>(config::GetArg(std::string("-p2pport"), config::fTestNet.load() ? (TESTNET_P2P_PORT + (config::GetArg("-testnet", 0) - 1)) : MAINNET_P2P_PORT));
+        nPort = static_cast<uint16_t>(config::GetArg(std::string("-p2pport"), config::fTestNet.load() ? TESTNET_P2P_PORT : MAINNET_P2P_PORT));
 
         /* Initialize the P2P Server */
         LLP::P2P_SERVER = LLP::CreateP2PServer<LLP::P2PNode>(nPort);
