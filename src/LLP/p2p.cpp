@@ -455,6 +455,7 @@ namespace LLP
             /* Handle terminate command. */
             case ACTION::TERMINATE:
             {
+                return debug::drop(NODE, "Connection terminated by peer");
 
                 break;
             }
