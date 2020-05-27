@@ -106,7 +106,7 @@ namespace TAO
 
             if(!config::fMultiuser.load())
             {
-                return mapSessions[0]->Genesis() == hashGenesis;
+                return mapSessions.count(0) > 0 && mapSessions[0]->Genesis() == hashGenesis;
             }
             else
             {
