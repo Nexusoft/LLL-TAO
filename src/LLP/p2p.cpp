@@ -508,6 +508,28 @@ namespace LLP
                 break;
             }
 
+            /* Handle an event trigger. */
+            case TYPES::TRIGGER:
+            {
+                /* De-serialize the trigger nonce. */
+                ssPacket >> nTriggerNonce;
+
+                break;
+            }
+
+
+            /* Handle an event trigger. */
+            case RESPONSE::COMPLETED:
+            {
+                /* De-serialize the trigger nonce. */
+                uint64_t nNonce = 0;
+                ssPacket >> nNonce;
+                
+                TriggerEvent(INCOMING.MESSAGE, nNonce);
+                
+                break;
+            }
+
 
            
             default:
