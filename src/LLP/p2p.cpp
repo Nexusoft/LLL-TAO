@@ -131,9 +131,42 @@ namespace LLP
                 nLastPing    = runtime::unifiedtimestamp();
 
                 /* Respond with init message if outgoing connection. */
-                //TODO send protocol version, app id, hashgenesis, hashpeer, session id, pub key and signature
-                //if(fOUTGOING)
-                //    PushMessage(ACTION::INITIALIZE, P2P::PROTOCOL_VERSION, );
+                if(fOUTGOING)
+                {
+                    /* Make sure the local user is logged in before  sending the initialization message. */
+                    if(!TAO::API::users->LoggedIn(hashGenesis))
+                    {
+                        debug::error(NODE, "User not logged in. Disconnecting.");
+                        Disconnect();
+                    }
+
+                    /* Get the API session ID for the local users genesis hash. */
+                    uint256_t nAPISessionID = TAO::API::users->GetSession(hashGenesis);
+
+                    /* Build the byte stream from the request data in order to generate the signature */
+                    DataStream ssMsgData(SER_NETWORK, P2P::PROTOCOL_VERSION);
+                    ssMsgData << P2P::PROTOCOL_VERSION << nAppID << hashGenesis << hashPeer << nSession;
+
+                    /* Public key  bytes*/
+                    std::vector<uint8_t> vchPubKey;
+                
+                    /* Signature bytes */
+                    std::vector<uint8_t> vchSig;
+                    
+                    /* Generate signature */
+                    TAO::API::users->GetAccount(nAPISessionID)->Sign("network", ssMsgData.Bytes(), TAO::API::users->GetNetworkKey(nAPISessionID)->DATA, vchPubKey, vchSig);
+
+                    /* Respond with initialize message. 
+                       Format is protocol version, app id, hashgenesis, hashpeer, session id, pub key, and signature*/
+                    PushMessage(ACTION::INITIALIZE,
+                        P2P::PROTOCOL_VERSION,
+                        nAppID,
+                        hashGenesis,
+                        hashPeer,
+                        nSession,
+                        vchPubKey,
+                        vchSig);
+                }
 
                 break;
             }
