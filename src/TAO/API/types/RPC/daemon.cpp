@@ -69,7 +69,7 @@ namespace TAO
                     "-serverport", config::fTestNet.load() ? TRITIUM_TESTNET_PORT : TRITIUM_MAINNET_PORT));
 
                 for(const auto& node : config::mapMultiArgs["-connect"])
-                    LLP::TRITIUM_SERVER->AddConnection(node, nPort);
+                    LLP::TRITIUM_SERVER->AddConnection(node, nPort, false);
 
                 for(const auto& node : config::mapMultiArgs["-addnode"])
                     LLP::TRITIUM_SERVER->AddNode(node, nPort);
