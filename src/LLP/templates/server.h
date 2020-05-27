@@ -261,6 +261,64 @@ namespace LLP
         memory::atomic_ptr<ProtocolType>& GetConnection(const uint32_t nDataThread, const uint32_t nDataIndex);
 
 
+        /** GetSpecificConnection
+         *
+         *  Get connection matching variable args, which are passed on to the ProtocolType instance.
+         *
+         **/
+        template<typename... Args>
+        memory::atomic_ptr<ProtocolType>& GetSpecificConnection(Args&&... args)
+        {
+            /* Thread ID and index of the matchingconnection */
+            int16_t nRetThread = -1;
+            int16_t nRetIndex  = -1;
+
+            /* Loop through all threads */
+            for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
+            {
+                /* Loop through connections in data thread. */
+                uint16_t nSize = static_cast<uint16_t>(DATA_THREADS[nThread]->CONNECTIONS->size());
+                for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
+                {
+                    try
+                    {
+                        /* Get the current atomic_ptr. */
+                        memory::atomic_ptr<ProtocolType>& CONNECTION = DATA_THREADS[nThread]->CONNECTIONS->at(nIndex);
+                        if(!CONNECTION)
+                            continue;
+
+                        /* check the details */
+                        if(CONNECTION->Matches(std::forward<Args>(args)...))
+                        {
+
+                            nRetThread = nThread;
+                            nRetIndex  = nIndex;
+
+                            /* Break out as we have found a match */
+                            break;
+                        }
+                    }
+                    catch(const std::exception& e)
+                    {
+                        //debug::error(FUNCTION, e.what());
+                    }
+                }
+
+                /* break if we have a match */
+                if(nRetThread != -1 && nRetIndex != -1)
+                    break;
+
+            }
+
+            /* Handle if no connections were found. */
+            static memory::atomic_ptr<ProtocolType> pNULL;
+            if(nRetThread == -1 || nRetIndex == -1)
+                return pNULL;
+
+            return DATA_THREADS[nRetThread]->CONNECTIONS->at(nRetIndex);
+        }
+
+
         /** Relay
          *
          *  Relays data to all nodes on the network.
