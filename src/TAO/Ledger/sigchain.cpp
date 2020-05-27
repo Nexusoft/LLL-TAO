@@ -743,7 +743,7 @@ namespace TAO
 
             /* Parse the object. */
             if(!crypto.Parse())
-                return debug::drop(FUNCTION, "ailed to parse crypto register");
+                return debug::drop(FUNCTION, "failed to parse crypto register");
 
             /* Check that the requested key is in the crypto register */
             if(!crypto.CheckName(strKey))
@@ -778,7 +778,7 @@ namespace TAO
 
                     /* Set the public key and verify. */
                     key.SetPubKey(vchPubKey);
-                    if(!key.Verify(hashCheck.GetBytes(), vchSig))
+                    if(!key.Verify(vchData, vchSig))
                         return debug::error(FUNCTION, "Invalid transaction signature");
 
                     break;
@@ -792,7 +792,7 @@ namespace TAO
 
                     /* Set the public key and verify. */
                     key.SetPubKey(vchPubKey);
-                    if(!key.Verify(hashCheck.GetBytes(), vchSig))
+                    if(!key.Verify(vchData, vchSig))
                         return debug::error(FUNCTION, "Invalid transaction signature");
 
                     break;
@@ -803,8 +803,8 @@ namespace TAO
 
             }
 
-            /* Not verified! */
-            return false;
+            /* Verified! */
+            return true;
         }
 
     }
