@@ -23,6 +23,7 @@ ________________________________________________________________________________
 #include <LLP/types/apinode.h>
 #include <LLP/types/rpcnode.h>
 #include <LLP/types/miner.h>
+#include <LLP/types/p2p.h>
 
 namespace LLP
 {
@@ -31,6 +32,7 @@ namespace LLP
     extern Server<APINode>*      API_SERVER;
     extern Server<RPCNode>*      RPC_SERVER;
     extern std::atomic<Server<Miner>*>        MINING_SERVER;
+    extern Server<P2PNode>*      P2P_SERVER;
 
 
     /** Current session identifier. **/
@@ -144,6 +146,58 @@ namespace LLP
     }
 
 
+    /** CreateP2PServer
+     *
+     *  Helper for creating P2P Servers.
+     *
+     *  @param[in] port The unique port for the server type
+     *
+     *  @return Returns a templated server.
+     *
+     **/
+    template <class ProtocolType>
+    Server<ProtocolType>* CreateP2PServer(uint16_t nPort)
+    {
+        /* Create the new server object. */
+        return new Server<ProtocolType>(
+
+            /* The port this server listens on. */
+            nPort,
+
+            /* The total data I/O threads. */
+            static_cast<uint16_t>(config::GetArg(std::string("-threads"), 8)),
+
+            /* The timeout value (default: 30 seconds). */
+            static_cast<uint32_t>(config::GetArg(std::string("-timeout"), 120)),
+
+            /* The DDOS if enabled. */
+            config::GetBoolArg(std::string("-ddos"), false),
+
+            /* The connection score (total connections per second). */
+            static_cast<uint32_t>(config::GetArg(std::string("-cscore"), 1)),
+
+            /* The request score (total packets per second.) */
+            static_cast<uint32_t>(config::GetArg(std::string("-rscore"), 2000)),
+
+            /* The DDOS moving average timespan (default: 20 seconds). */
+            static_cast<uint32_t>(config::GetArg(std::string("-timespan"), 20)),
+
+            /* Flag to determine if server should listen. */
+            true,
+
+            /* Flag to determine if server should allow remote connections. */
+            true,
+
+            /* Flag to determine if meters should be active. */
+            config::GetBoolArg(std::string("-meters"), false),
+
+            /* Never use connection manager */
+            false
+
+        );
+    }
+
+
     /** Shutdown
      *
      *  Performs a shutdown and cleanup of resources on a server if it exists.
@@ -162,6 +216,7 @@ namespace LLP
             debug::log(0, FUNCTION, ProtocolType::Name());
         }
     }
+
 }
 
 #endif

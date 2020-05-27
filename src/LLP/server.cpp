@@ -21,8 +21,8 @@ ________________________________________________________________________________
 #include <LLP/types/apinode.h>
 #include <LLP/types/rpcnode.h>
 #include <LLP/types/miner.h>
+#include <LLP/types/p2p.h>
 
-#include <LLP/include/manager.h>
 #include <LLP/include/trust_address.h>
 
 #include <Util/include/args.h>
@@ -853,4 +853,5 @@ namespace LLP
     template class Server<APINode>;
     template class Server<RPCNode>;
     template class Server<Miner>;
+    template class Server<P2PNode>;
 }

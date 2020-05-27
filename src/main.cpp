@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <LLP/types/apinode.h>
 #include <LLP/types/rpcnode.h>
 #include <LLP/types/miner.h>
+#include <LLP/types/p2p.h>
 #include <LLP/include/lisp.h>
 #include <LLP/include/port.h>
 
@@ -228,6 +229,13 @@ int main(int argc, char** argv)
 
         /* Initialize the Tritium Server. */
         LLP::TRITIUM_SERVER = LLP::CreateTAOServer<LLP::TritiumNode>(nPort);
+
+
+        /* Get the port for the P2P server. */
+        nPort = static_cast<uint16_t>(config::GetArg(std::string("-p2pport"), config::fTestNet.load() ? (TESTNET_P2P_PORT + (config::GetArg("-testnet", 0) - 1)) : MAINNET_P2P_PORT));
+
+        /* Initialize the P2P Server */
+        LLP::P2P_SERVER = LLP::CreateP2PServer<LLP::P2PNode>(nPort);
 
 
         /* Initialize API Pointers. */

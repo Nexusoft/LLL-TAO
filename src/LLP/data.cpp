@@ -484,4 +484,5 @@ namespace LLP
     template class DataThread<APINode>;
     template class DataThread<RPCNode>;
     template class DataThread<Miner>;
+    template class DataThread<P2PNode>;
 }

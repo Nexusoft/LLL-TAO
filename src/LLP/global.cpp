@@ -24,6 +24,7 @@ namespace LLP
     Server<APINode>*     API_SERVER;
     Server<RPCNode>*     RPC_SERVER;
     std::atomic<Server<Miner>*>        MINING_SERVER;
+    Server<P2PNode>*  P2P_SERVER;
 
 
     /* Current session identifier. */
@@ -58,6 +59,9 @@ namespace LLP
 
         /* Shutdown the mining server and its subsystems. */
         Shutdown<Miner>(MINING_SERVER);
+
+        /* Shutdown the P2P server and its subsystems. */
+        Shutdown<P2PNode>(P2P_SERVER);
 
         /* After all servers shut down, clean up underlying network resources. */
         NetworkShutdown();
