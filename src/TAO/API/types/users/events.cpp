@@ -228,6 +228,9 @@ namespace TAO
                         mapSessions.emplace(0, std::move(user));
                     }
 
+                    /* Generate and cache the private key for the "network" key so that we can sign LLP messages to authenticate to peers */
+                    mapNetworkKeys[0] = new memory::encrypted_type<uint512_t>(user->Generate("network", 0, strPin));
+
                     /* Extract the PIN. */
                     if(!pActivePIN.IsNull())
                         pActivePIN.free();
@@ -245,6 +248,17 @@ namespace TAO
 
                     /* Set the flag so that we don't attempt to log in again */
                     fAutoLoggedIn = true;
+
+                    /* If not using Multiuser then send an AUTH message to our peers */
+                    if(!config::fMultiuser.load())
+                    {
+                        /* Generate an AUTH message to send to all peers */
+                        DataStream ssMessage = LLP::TritiumNode::GetAuth(true);
+
+                        /* Check whether it is valid before relaying it to all peers */
+                        if(ssMessage.size() > 0)
+                            LLP::TRITIUM_SERVER->_Relay(uint8_t(LLP::Tritium::ACTION::AUTH), ssMessage);
+                    }
 
                     /* Start the stake minter if successful login. */
                     TAO::Ledger::TritiumMinter::GetInstance().Start();
