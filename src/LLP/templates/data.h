@@ -18,10 +18,14 @@ ________________________________________________________________________________
 #include <LLP/include/network.h>
 #include <LLP/include/version.h>
 
+#include <LLP/templates/ddos.h>
+#include <LLP/templates/events.h>
+
 #include <Util/include/mutex.h>
 #include <Util/include/memory.h>
 
 #include <Util/templates/datastream.h>
+
 
 #include <atomic>
 #include <vector>
@@ -124,23 +128,127 @@ namespace LLP
          *
          *  @param[in] SOCKET The socket for the connection.
          *  @param[in] DDOS The pointer to the DDOS filter to add to connection.
+         *  @param[in] args variadic args to forward to the LLP protocol constructor
          *
          **/
-        void AddConnection(const Socket& SOCKET, DDOS_Filter* DDOS);
+        template<typename... Args>
+        void AddConnection(const Socket& SOCKET, DDOS_Filter* DDOS, Args&&... args)
+        {
+            try
+            {
+                /* Create a new pointer on the heap. */
+                ProtocolType* pnode = new ProtocolType(SOCKET, DDOS, fDDOS, std::forward<Args>(args)...);
+                pnode->fCONNECTED.store(true);
+
+                {
+                    LOCK(SLOT_MUTEX);
+
+                    /* Find an available slot. */
+                    uint32_t nSlot = find_slot();
+
+                    /* Update the indexes. */
+                    pnode->nDataThread     = ID;
+                    pnode->nDataIndex      = nSlot;
+                    pnode->FLUSH_CONDITION = &FLUSH_CONDITION;
+
+                    /* Find a slot that is empty. */
+                    if(nSlot == CONNECTIONS->size())
+                        CONNECTIONS->push_back(memory::atomic_ptr<ProtocolType>(pnode));
+                    else
+                        CONNECTIONS->at(nSlot).store(pnode);
+
+                    /* Fire the connected event. */
+                    memory::atomic_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nSlot);
+                    CONNECTION->Event(EVENTS::CONNECT);
+
+                    /* Iterate the DDOS cScore (Connection score). */
+                    if(DDOS)
+                        DDOS -> cSCORE += 1;
+
+                    /* Check for inbound socket. */
+                    if(CONNECTION->Incoming())
+                        ++nIncoming;
+                    else
+                        ++nOutbound;
+                }
+
+                /* Notify data thread to wake up. */
+                CONDITION.notify_all();
+            }
+            catch(const std::runtime_error& e)
+            {
+                debug::error(FUNCTION, e.what()); //catch any atomic_ptr exceptions
+            }
+        }
 
 
         /** AddConnection
          *
          *  Adds a new connection to current Data Thread
          *
-         *  @param[in] strAddress The IP address for the connection.
-         *  @param[in] nPort The port number for the connection.
+         *  @param[in] addr TAddress class instnace containing the IP address and port for the connection.
          *  @param[in] DDOS The pointer to the DDOS filter to add to the connection.
+         *  @param[in] args variadic args to forward to the LLP protocol constructor
          *
          *  @return Returns true if successfully added, false otherwise.
          *
          **/
-        bool AddConnection(const BaseAddress &addr, DDOS_Filter* DDOS);
+        template<typename... Args>
+        bool AddConnection(const BaseAddress &addr, DDOS_Filter* DDOS, Args&&... args)
+        {
+            try
+            {
+                /* Create a new pointer on the heap. */
+                ProtocolType* pnode = new ProtocolType(nullptr, false, std::forward<Args>(args)...); //turn off DDOS for outgoing connections
+
+                /* Attempt to make the connection. */
+                if(!pnode->Connect(addr))
+                {
+                    delete pnode;
+                    return false;
+                }
+
+                {
+                    LOCK(SLOT_MUTEX);
+
+                    /* Find an available slot. */
+                    uint32_t nSlot = find_slot();
+
+                    /* Update the indexes. */
+                    pnode->nDataThread     = ID;
+                    pnode->nDataIndex      = nSlot;
+                    pnode->FLUSH_CONDITION = &FLUSH_CONDITION;
+
+                    /* Find a slot that is empty. */
+                    if(nSlot == CONNECTIONS->size())
+                        CONNECTIONS->push_back(memory::atomic_ptr<ProtocolType>(pnode));
+                    else
+                        CONNECTIONS->at(nSlot).store(pnode);
+
+                    /* Fire the connected event. */
+                    memory::atomic_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nSlot);
+                    CONNECTION->Event(EVENTS::CONNECT);
+
+                    /* Check for inbound socket. */
+                    if(CONNECTION->Incoming())
+                        ++nIncoming;
+                    else
+                        ++nOutbound;
+                }
+
+                /* Notify data thread to wake up. */
+                CONDITION.notify_all();
+
+            }
+            catch(const std::runtime_error& e)
+            {
+                debug::error(FUNCTION, e.what()); //catch any atomic_ptr exceptions
+
+                return false;
+            }
+
+            return true;
+        }
 
 
         /** DisconnectAll

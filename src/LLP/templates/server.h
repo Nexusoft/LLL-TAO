@@ -18,6 +18,7 @@ ________________________________________________________________________________
 
 #include <LLP/templates/data.h>
 #include <LLP/include/legacy_address.h>
+#include <LLP/include/manager.h>
 
 #include <map>
 #include <condition_variable>
@@ -164,11 +165,64 @@ namespace LLP
          *
          *  @param[in] strAddress	IPv4 Address of outgoing connection
          *  @param[in] strPort		Port of outgoing connection
+         *  @param[in] fLookup		Flag indicating whether address lookup should occur
+         *  @param[in] args variadic args to forward to the data thread constructor
          *
          *  @return	Returns 1 If successful, 0 if unsuccessful, -1 on errors.
          *
          **/
-        bool AddConnection(std::string strAddress, uint16_t nPort, bool fLookup = false);
+        template<typename... Args>
+        bool AddConnection(std::string strAddress, uint16_t nPort, bool fLookup, Args&&... args)
+        {
+            /* Initialize DDOS Protection for Incoming IP Address. */
+            BaseAddress addrConnect(strAddress, nPort, fLookup);
+
+            /* Make sure address is valid. */
+            if(!addrConnect.IsValid())
+            {
+                /* Ban the address. */
+                if(pAddressManager)
+                    pAddressManager->Ban(addrConnect);
+
+                return false;
+            }
+
+
+            /* Create new DDOS Filter if Needed. */
+            if(fDDOS.load())
+            {
+                if(!DDOS_MAP.count(addrConnect))
+                    DDOS_MAP[addrConnect] = new DDOS_Filter(DDOS_TIMESPAN);
+
+                /* DDOS Operations: Only executed when DDOS is enabled. */
+                if(DDOS_MAP[addrConnect]->Banned())
+                    return false;
+            }
+
+            /* Find a balanced Data Thread to Add Connection to. */
+            int32_t nThread = FindThread();
+            if(nThread < 0)
+                return false;
+
+            /* Select the proper data thread. */
+            DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
+
+            /* Attempt the connection. */
+            if(!dt->AddConnection(addrConnect, DDOS_MAP[addrConnect], std::forward<Args>(args)...))
+            {
+                /* Add the address to the address manager if it exists. */
+                if(pAddressManager)
+                    pAddressManager->AddAddress(addrConnect, ConnectState::FAILED);
+
+                return false;
+            }
+
+            /* Add the address to the address manager if it exists. */
+            if(pAddressManager)
+                pAddressManager->AddAddress(addrConnect, ConnectState::CONNECTED);
+
+            return true;
+            }
 
 
         /** GetConnectionCount

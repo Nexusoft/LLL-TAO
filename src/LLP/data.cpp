@@ -13,8 +13,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/base_address.h>
 #include <LLP/templates/data.h>
-#include <LLP/templates/ddos.h>
-#include <LLP/templates/events.h>
+
 #include <LLP/templates/socket.h>
 
 #include <LLP/types/tritium.h>
@@ -22,6 +21,7 @@ ________________________________________________________________________________
 #include <LLP/types/apinode.h>
 #include <LLP/types/rpcnode.h>
 #include <LLP/types/miner.h>
+#include <LLP/types/p2p.h>
 
 #include <Util/include/hex.h>
 
@@ -69,117 +69,6 @@ namespace LLP
 
         CONNECTIONS.free();
         RELAY.free();
-    }
-
-
-    /*  Adds a new connection to current Data Thread. */
-    template <class ProtocolType>
-    void DataThread<ProtocolType>::AddConnection(const Socket& SOCKET, DDOS_Filter* DDOS)
-    {
-        try
-        {
-            /* Create a new pointer on the heap. */
-            ProtocolType* pnode = new ProtocolType(SOCKET, DDOS, fDDOS);
-            pnode->fCONNECTED.store(true);
-
-            {
-                LOCK(SLOT_MUTEX);
-
-                /* Find an available slot. */
-                uint32_t nSlot = find_slot();
-
-                /* Update the indexes. */
-                pnode->nDataThread     = ID;
-                pnode->nDataIndex      = nSlot;
-                pnode->FLUSH_CONDITION = &FLUSH_CONDITION;
-
-                /* Find a slot that is empty. */
-                if(nSlot == CONNECTIONS->size())
-                    CONNECTIONS->push_back(memory::atomic_ptr<ProtocolType>(pnode));
-                else
-                    CONNECTIONS->at(nSlot).store(pnode);
-
-                /* Fire the connected event. */
-                memory::atomic_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nSlot);
-                CONNECTION->Event(EVENTS::CONNECT);
-
-                /* Iterate the DDOS cScore (Connection score). */
-                if(DDOS)
-                    DDOS -> cSCORE += 1;
-
-                /* Check for inbound socket. */
-                if(CONNECTION->Incoming())
-                    ++nIncoming;
-                else
-                    ++nOutbound;
-            }
-
-            /* Notify data thread to wake up. */
-            CONDITION.notify_all();
-        }
-        catch(const std::runtime_error& e)
-        {
-            debug::error(FUNCTION, e.what()); //catch any atomic_ptr exceptions
-        }
-    }
-
-
-    /*  Adds a new connection to current Data Thread */
-    template <class ProtocolType>
-    bool DataThread<ProtocolType>::AddConnection(const BaseAddress& addr, DDOS_Filter* DDOS)
-    {
-        try
-        {
-            /* Create a new pointer on the heap. */
-            ProtocolType* pnode = new ProtocolType(nullptr, false); //turn off DDOS for outgoing connections
-
-            /* Attempt to make the connection. */
-            if(!pnode->Connect(addr))
-            {
-                delete pnode;
-                return false;
-            }
-
-            {
-                LOCK(SLOT_MUTEX);
-
-                /* Find an available slot. */
-                uint32_t nSlot = find_slot();
-
-                /* Update the indexes. */
-                pnode->nDataThread     = ID;
-                pnode->nDataIndex      = nSlot;
-                pnode->FLUSH_CONDITION = &FLUSH_CONDITION;
-
-                /* Find a slot that is empty. */
-                if(nSlot == CONNECTIONS->size())
-                    CONNECTIONS->push_back(memory::atomic_ptr<ProtocolType>(pnode));
-                else
-                    CONNECTIONS->at(nSlot).store(pnode);
-
-                /* Fire the connected event. */
-                memory::atomic_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nSlot);
-                CONNECTION->Event(EVENTS::CONNECT);
-
-                /* Check for inbound socket. */
-                if(CONNECTION->Incoming())
-                    ++nIncoming;
-                else
-                    ++nOutbound;
-            }
-
-            /* Notify data thread to wake up. */
-            CONDITION.notify_all();
-
-        }
-        catch(const std::runtime_error& e)
-        {
-            debug::error(FUNCTION, e.what()); //catch any atomic_ptr exceptions
-
-            return false;
-        }
-
-        return true;
     }
 
 
