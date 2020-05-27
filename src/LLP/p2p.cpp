@@ -443,12 +443,39 @@ namespace LLP
                         vchPubKey,
                         vchSig);
 
+
+                    /* Test */
+                    std::string strTest = "Hello World";
+                    PushMessage(TYPES::P2PMESSAGE, std::vector<uint8_t>(strTest.begin(), strTest.end()));
+
                 }
 
                 /* Store the initialized state */
-                fInitialized.store(true);
+                fInitialized.store(true);               
 
-                
+                break;
+            }
+
+
+            /* Handle message . */
+            case TYPES::P2PMESSAGE:
+            {
+                /* Get the message data */
+                std::vector<uint8_t> vchData;
+                ssPacket >> vchData;
+
+                /* Add this to the message FIFO queue */
+                {
+                    LOCK(MESSAGES_MUTEX);
+                    queueMessages.push(vchData);
+                }
+
+                /* Check for trigger nonce. */
+                if(nTriggerNonce != 0)
+                {
+                    PushMessage(RESPONSE::COMPLETED, nTriggerNonce);
+                    nTriggerNonce = 0;
+                }
 
                 break;
             }
