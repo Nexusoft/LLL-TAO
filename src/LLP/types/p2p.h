@@ -25,6 +25,8 @@ ________________________________________________________________________________
 
 #include <Util/include/memory.h>
 
+#include <queue>
+
 namespace LLP
 {
     /* P2P namespace to encapsulate P2P LLP message types */
@@ -101,6 +103,13 @@ namespace LLP
 
         /** Map connected sessions.  The key to this map is a tuple consisting of the app ID, genesis hash and peer genesis hash **/
         static std::map<std::tuple<uint64_t, uint256_t, uint256_t>, std::pair<uint32_t, uint32_t>> mapSessions;
+
+        
+        /** Mutex to protect the queue. **/
+        std::mutex MESSAGES_MUTEX;
+
+        /* FIFO queue of messages received on this connection */
+        std::queue<std::vector<uint8_t>> queueMessages;
 
     public:
 
@@ -197,7 +206,6 @@ namespace LLP
          **/
         void ReadPacket() final;
 
-
        
         /** SessionActive
          *
@@ -225,6 +233,36 @@ namespace LLP
          *
          **/
         bool Matches(const uint64_t& nAppID, const uint256_t& hashGenesis, const uint256_t& hashPeer);
+
+
+        /** HasMessage
+         *
+         *  Checks to see if there are any messages in the message queue.
+         *
+         *  @return true if there are messages in the queue.
+         *
+         **/
+        bool HasMessage();
+
+
+        /** PeekMessage
+         *
+         *  Returns the message at the front of the queue but leaves the message in the queue.
+         *
+         *  @return the message at the front of the queue.
+         *
+         **/
+        std::vector<uint8_t> PeekMessage();
+
+        
+        /** PopMessage
+         *
+         *  Removes the message at the front of the queue and returns it.
+         *
+         *  @return the message at the front of the queue.
+         *
+         **/
+        std::vector<uint8_t> PopMessage();
 
 
         /** NewMessage
@@ -268,7 +306,7 @@ namespace LLP
         template<typename... Args>
         void PushMessage(const uint16_t nMsg, Args&&... args)
         {
-            DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
+            DataStream ssData(SER_NETWORK, LLP::P2P::MIN_P2P_VERSION);
             message_args(ssData, std::forward<Args>(args)...);
 
             WritePacket(NewMessage(nMsg, ssData));

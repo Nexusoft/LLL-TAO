@@ -45,6 +45,8 @@ namespace LLP
     P2PNode::P2PNode()
     : BaseConnection<MessagePacket>()
     , fInitialized(false)
+    , MESSAGES_MUTEX()
+    , queueMessages()
     , nAppID(0)
     , hashGenesis(0)
     , hashPeer(0)
@@ -147,7 +149,7 @@ namespace LLP
                     DataStream ssMsgData(SER_NETWORK, P2P::PROTOCOL_VERSION);
                     ssMsgData << P2P::PROTOCOL_VERSION << nAppID << hashGenesis << hashPeer << nSession;
 
-                    /* Public key  bytes*/
+                    /* Public key bytes*/
                     std::vector<uint8_t> vchPubKey;
                 
                     /* Signature bytes */
@@ -597,6 +599,48 @@ namespace LLP
     bool P2PNode::Matches(const uint64_t& nAppID, const uint256_t& hashGenesis, const uint256_t& hashPeer)
     {
         return nAppID == this->nAppID && hashGenesis == this->hashGenesis && hashPeer == this->hashPeer;
+    }
+
+
+    /* Checks to see if there are any messages in the message queue. */
+    bool P2PNode::HasMessage()
+    {
+        LOCK(MESSAGES_MUTEX);
+        return queueMessages.size() != 0;
+    }
+
+
+    /* Returns the message at the front of the queue but leaves the message in the queue. */
+    std::vector<uint8_t> P2PNode::PeekMessage()
+    {
+        /* Return the message at the front of the queue */
+        LOCK(MESSAGES_MUTEX);
+        if(queueMessages.size() > 0)
+            return queueMessages.front();
+        else
+            return std::vector<uint8_t>();
+    }
+
+    
+    /* Removes the message at the front of the queue and returns it. */
+    std::vector<uint8_t> P2PNode::PopMessage()
+    {
+        /* Retrieve the message at the front of the queue */
+        LOCK(MESSAGES_MUTEX);
+        std::vector<uint8_t> vchMessage; 
+        
+        /* Check that there are messages in the queue before accessing the front message */
+        if(queueMessages.size() > 0)
+        {
+            /* Get the message from the front of the queue */
+            vchMessage = queueMessages.front();
+
+            /* Pop the queue to remove the item */
+            queueMessages.pop();
+        }
+
+        /* Return the message */
+        return vchMessage;
     }
 
 
