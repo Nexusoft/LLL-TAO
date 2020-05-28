@@ -82,6 +82,17 @@ namespace LLP
             };
         }
 
+        /* Struct encapsulating a P2P message */
+        struct Message
+        {
+            /* Time the message was received */
+            uint64_t nTimestamp;
+
+            /* The message content */
+            std::vector<uint8_t> vchData;
+        };
+        
+
     } // End namespace P2P
 
 
@@ -109,7 +120,7 @@ namespace LLP
         std::mutex MESSAGES_MUTEX;
 
         /* FIFO queue of messages received on this connection */
-        std::queue<std::vector<uint8_t>> queueMessages;
+        std::queue<P2P::Message> queueMessages;
 
     public:
 
@@ -252,7 +263,7 @@ namespace LLP
          *  @return the message at the front of the queue.
          *
          **/
-        std::vector<uint8_t> PeekMessage();
+        P2P::Message PeekMessage();
 
         
         /** PopMessage
@@ -262,7 +273,7 @@ namespace LLP
          *  @return the message at the front of the queue.
          *
          **/
-        std::vector<uint8_t> PopMessage();
+        P2P::Message PopMessage();
 
 
         /** NewMessage

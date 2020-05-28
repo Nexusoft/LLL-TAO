@@ -465,16 +465,21 @@ namespace LLP
             /* Handle message . */
             case TYPES::P2PMESSAGE:
             {
+                /* Message to add to the queue */
+                P2P::Message message;
+
+                /* Set the message timestamp */
+                message.nTimestamp = runtime::unifiedtimestamp();
+
                 /* Get the message data */
-                std::vector<uint8_t> vchData;
-                ssPacket >> vchData;
+                ssPacket >> message.vchData;
 
                 debug::log(3, NODE, "Message received from peer"); 
 
                 /* Add this to the message FIFO queue */
                 {
                     LOCK(MESSAGES_MUTEX);
-                    queueMessages.push(vchData);
+                    queueMessages.push(message);
                 }
 
                 /* Check for trigger nonce. */
@@ -645,36 +650,40 @@ namespace LLP
 
 
     /* Returns the message at the front of the queue but leaves the message in the queue. */
-    std::vector<uint8_t> P2PNode::PeekMessage()
+    P2P::Message P2PNode::PeekMessage()
     {
         /* Return the message at the front of the queue */
         LOCK(MESSAGES_MUTEX);
+        P2P::Message message; 
+
+        /* Get the message from the front of the queue */
         if(queueMessages.size() > 0)
-            return queueMessages.front();
-        else
-            return std::vector<uint8_t>();
+            message = queueMessages.front();
+
+        /* Return the message */
+        return message;
     }
 
     
     /* Removes the message at the front of the queue and returns it. */
-    std::vector<uint8_t> P2PNode::PopMessage()
+    P2P::Message P2PNode::PopMessage()
     {
         /* Retrieve the message at the front of the queue */
         LOCK(MESSAGES_MUTEX);
-        std::vector<uint8_t> vchMessage; 
+        P2P::Message message; 
         
         /* Check that there are messages in the queue before accessing the front message */
         if(queueMessages.size() > 0)
         {
             /* Get the message from the front of the queue */
-            vchMessage = queueMessages.front();
+            message = queueMessages.front();
 
             /* Pop the queue to remove the item */
             queueMessages.pop();
         }
 
         /* Return the message */
-        return vchMessage;
+        return message;
     }
 
 
