@@ -530,6 +530,7 @@ namespace LLP
                     if(GetConnectionCount(FLAGS::INCOMING) >= nMaxIncoming
                     || GetConnectionCount(FLAGS::ALL) >= nMaxConnections)
                     {
+                        debug::log(3, FUNCTION, "Incoming Connection Request ",  addr.ToString(), " refused... Max connection count exceeded.");
                         closesocket(hSocket);
                         runtime::sleep(500);
 

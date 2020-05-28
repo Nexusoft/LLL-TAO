@@ -158,6 +158,7 @@ namespace LLP
                     /* Generate signature */
                     TAO::API::users->GetAccount(nAPISessionID)->Sign("network", ssMsgData.Bytes(), TAO::API::users->GetNetworkKey(nAPISessionID)->DATA, vchPubKey, vchSig);
 
+                    debug::log(3, NODE, "Sending P2P Initialization request."); 
                     /* Respond with initialize message. 
                        Format is protocol version, app id, hashgenesis, hashpeer, session id, pub key, and signature*/
                     PushMessage(ACTION::INITIALIZE,
@@ -317,8 +318,10 @@ namespace LLP
             /* Handle for the version command. */
             case ACTION::INITIALIZE:
             {
+                debug::log(3, NODE, "Initialize message received."); 
+                
                 /* Check for duplicate version messages. */
-                if(fInitialized)
+                if(fInitialized.load())
                     return debug::drop(NODE, "duplicate initialize message");
 
                 /* Initialize message format is protocol version, app id, genesis, session id, pub key, and signature */
@@ -421,6 +424,8 @@ namespace LLP
                 /* Respond with our own initialize message if incoming connection. */
                 if(Incoming())
                 {
+                    debug::log(3, NODE, "Incoming peer connection verified, sending Initialization response."); 
+
                     /* Get the API session ID for the recipient users genesis hash.  NOTE we have already established that this user
                        is logged in, so we know we will get a valid session ID */
                     uint256_t nAPISessionID = TAO::API::users->GetSession(hashGenesis);
@@ -463,6 +468,8 @@ namespace LLP
                 /* Get the message data */
                 std::vector<uint8_t> vchData;
                 ssPacket >> vchData;
+
+                debug::log(3, NODE, "Message received from peer"); 
 
                 /* Add this to the message FIFO queue */
                 {
