@@ -451,7 +451,7 @@ namespace LLP
 
                     /* Test */
                     std::string strTest = "Hello World";
-                    PushMessage(TYPES::P2PMESSAGE, std::vector<uint8_t>(strTest.begin(), strTest.end()));
+                    PushMessage(TYPES::MESSAGE, std::vector<uint8_t>(strTest.begin(), strTest.end()));
 
                 }
 
@@ -463,7 +463,7 @@ namespace LLP
 
 
             /* Handle message . */
-            case TYPES::P2PMESSAGE:
+            case TYPES::MESSAGE:
             {
                 /* Message to add to the queue */
                 P2P::Message message;

@@ -64,7 +64,7 @@ namespace LLP
             enum
             {
                 /* Key Types. */
-                P2PMESSAGE    = 0x20,
+                MESSAGE    = 0x20,
                 TRIGGER    = 0x21,                
             };
         }

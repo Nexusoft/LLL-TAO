@@ -3161,27 +3161,27 @@ namespace LLP
                 switch(nType)
                 {
                     /* Caller is requesting a peer to peer connection to communicate via the messaging LLP*/
-                    case TYPES::P2PMESSAGE:
+                    case TYPES::P2PCONNECTION:
                     {
                         /* Get the timestamp */
                         uint64_t nTimestamp;
                         ssPacket >> nTimestamp;
 
-                        /* Get the nonce */
-                        uint64_t nNonce;
-                        ssPacket >> nNonce;
-
-                        /* Get the destination genesis hash */
-                        uint256_t hashDestination;
-                        ssPacket >> hashDestination;
-
                         /* get the appid */
                         uint64_t nAppID;
                         ssPacket >> nAppID;
-
+                        
                         /* get the source genesis hash */
                         uint256_t hashSource;
                         ssPacket >> hashSource;
+                        
+                        /* Get the destination genesis hash */
+                        uint256_t hashDestination;
+                        ssPacket >> hashDestination;
+                        
+                        /* Get the nonce / session ID */
+                        uint64_t nSession;
+                        ssPacket >> nSession;
 
                         /* get the source address / port*/
                         BaseAddress address;
@@ -3209,7 +3209,7 @@ namespace LLP
 
                         /* Build the byte stream from the request data in order to verify the signature */
                         DataStream ssCheck(SER_NETWORK, PROTOCOL_VERSION);
-                        ssCheck << nTimestamp << nNonce << hashDestination << nAppID << hashSource << address;
+                        ssCheck << nTimestamp << nAppID << hashSource << hashDestination << nSession << address;
 
                         /* Get a hash of the data. */
                         uint256_t hashCheck = LLC::SK256(ssCheck.begin(), ssCheck.end());

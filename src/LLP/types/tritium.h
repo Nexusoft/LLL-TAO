@@ -89,7 +89,7 @@ namespace LLP
                 NOTIFICATION = 0x3b,
                 TRIGGER      = 0x3c,
                 REGISTER     = 0x3d,
-                P2PMESSAGE   = 0x3e,
+                P2PCONNECTION   = 0x3e,
             };
         }
 
