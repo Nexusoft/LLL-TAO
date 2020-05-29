@@ -13,7 +13,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
-#include <TAO/Operation/include/genesis.h>
+#include <TAO/Operation/include/genesispool.h>
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/include/reserved.h>
@@ -31,7 +31,7 @@ namespace TAO
     {
 
         /* Commit the final state to disk. */
-        bool Genesis::Commit(const TAO::Register::State& state, const uint8_t nFlags)
+        bool Genesispool::Commit(const TAO::Register::State& state, const uint8_t nFlags)
         {
             /* This should never be executed from mempool because Genesis should be in producer, but
              * check the nFlags as a precaution
@@ -59,8 +59,8 @@ namespace TAO
         }
 
 
-        /* Commits funds from a staking genesis transaction. */
-        bool Genesis::Execute(TAO::Register::Object &trust, const uint64_t nReward, const uint64_t nTimestamp)
+        /* Commits funds from a pooled staking genesis transaction. */
+        bool Genesispool::Execute(TAO::Register::Object &trust, const uint64_t nReward, const uint64_t nTimestamp)
         {
             /* Parse the account object register. */
             if(!trust.Parse())
@@ -104,7 +104,7 @@ namespace TAO
 
 
         /* Verify trust validation rules and caller. */
-        bool Genesis::Verify(const Contract& contract)
+        bool Genesispool::Verify(const Contract& contract)
         {
             /* Rewind back on byte. */
             contract.Rewind(1, Contract::OPERATIONS);
@@ -117,7 +117,7 @@ namespace TAO
             contract >> OP;
 
             /* Check operation byte. */
-            if(OP != OP::GENESIS)
+            if(OP != OP::GENESISPOOL)
                 return debug::error(FUNCTION, "called with incorrect OP");
 
             /* Get the state byte. */

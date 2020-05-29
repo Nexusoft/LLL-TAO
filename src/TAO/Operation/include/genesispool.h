@@ -12,8 +12,8 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_TAO_OPERATION_INCLUDE_GENESISPOOL_H
-#define NEXUS_TAO_OPERATION_INCLUDE_GENESISPOOL_H
+#ifndef NEXUS_TAO_OPERATION_INCLUDE_GENESIS_H
+#define NEXUS_TAO_OPERATION_INCLUDE_GENESIS_H
 
 #include <LLC/types/uint1024.h>
 
@@ -38,12 +38,12 @@ namespace TAO
         class Contract;
 
 
-        /** Genesis
+        /** Genesispool
          *
-         *  Namespace to contain main functions for OP::GENESIS
+         *  Namespace to contain main functions for OP::GENESISPOOL
          *
          **/
-        namespace Genesis
+        namespace Genesispool
         {
 
             /** Commit

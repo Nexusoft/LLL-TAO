@@ -134,7 +134,7 @@ namespace TAO
 
                         /* Add the object cost to the overall cost. */
                         nCost += object.Cost();
- 
+
                     }
                     else
                     {
@@ -245,9 +245,11 @@ namespace TAO
                 case OP::COINBASE:
                 case OP::TRUST:
                 case OP::GENESIS:
+                case OP::TRUSTPOOL:
+                case OP::GENESISPOOL:
                 {
                     /* This case is included for clarity as it is essentially a no-op. Claim contracts attract no
-                       transaction fee as the fee is essentially paid by the transfer. Fee, coinbase, genesis, and trust 
+                       transaction fee as the fee is essentially paid by the transfer. Fee, coinbase, genesis, and trust
                        contracts should also not incur a tx fee. */
                     nCost += 0;
                     break;

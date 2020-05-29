@@ -13,14 +13,10 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
-#include <TAO/Operation/include/genesis.h>
+#include <TAO/Operation/include/trustpool.h>
 #include <TAO/Operation/include/enum.h>
 
-#include <TAO/Register/include/reserved.h>
-#include <TAO/Register/types/address.h>
 #include <TAO/Register/types/object.h>
-
-#include <TAO/Ledger/include/constants.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -30,66 +26,77 @@ namespace TAO
     namespace Operation
     {
 
-        /* Commit the final state to disk. */
-        bool Genesis::Commit(const TAO::Register::State& state, const uint8_t nFlags)
+        /*  Commit the final state to disk. */
+        bool Trustpool::Commit(const TAO::Register::State& state, const uint8_t nFlags)
         {
             /* This should never be executed from mempool because Genesis should be in producer, but
              * check the nFlags as a precaution
              */
             if(nFlags != TAO::Ledger::FLAGS::BLOCK)
-                return debug::error(FUNCTION, "can't commit genesis with invalid flags");
+                return debug::error(FUNCTION, "can't commit trust with invalid flags");
 
             /* Get trust account address for state owner */
             uint256_t hashAddress =
                 TAO::Register::Address(std::string("trust"), state.hashOwner, TAO::Register::Address::TRUST);
 
-            /* Check if trust register already has genesis. */
-            if(LLD::Register->HasTrust(state.hashOwner))
-                return debug::error(FUNCTION, "cannot create genesis when already exists");
+            /* Check that a trust register exists. */
+            if(!LLD::Register->HasTrust(state.hashOwner))
+                return debug::error(FUNCTION, "trust account not indexed");
 
-            /* Write the register to the database. */
+            /* Attempt to write to disk. */
             if(!LLD::Register->WriteTrust(state.hashOwner, state))
-                return debug::error(FUNCTION, "failed to write new state");
-
-            /* Index register to genesis-id. */
-            if(!LLD::Register->IndexTrust(state.hashOwner, hashAddress))
-                return debug::error(FUNCTION, "could not index the address to the genesis");
+                return debug::error(FUNCTION, "failed to write post-state to disk");
 
             return true;
         }
 
 
-        /* Commits funds from a staking genesis transaction. */
-        bool Genesis::Execute(TAO::Register::Object &trust, const uint64_t nReward, const uint64_t nTimestamp)
+        /* Commits funds from a coinbase transaction. */
+        bool Trustpool::Execute(TAO::Register::Object &trust, const uint64_t nReward, const uint64_t nScore,
+                            const int64_t nStakeChange, const uint64_t nTimestamp)
         {
             /* Parse the account object register. */
             if(!trust.Parse())
-                return debug::error(FUNCTION, "failed to parse trust account object register");
+                return debug::error(FUNCTION, "Failed to parse account object register");
 
             /* Check it is a trust account register. */
             if(trust.Standard() != TAO::Register::OBJECTS::TRUST)
-                return debug::error(FUNCTION, "no genesis for non-trust account");
+                return debug::error(FUNCTION, "no trust for non-trust account");
 
-            /* Check that there is no stake. */
-            if(trust.get<uint64_t>("stake") != 0)
-                return debug::error(FUNCTION, "cannot create genesis with already existing stake");
+            /* Get account starting values */
+            uint64_t nStakePrev = trust.get<uint64_t>("stake");
+            uint64_t nBalancePrev = trust.get<uint64_t>("balance");
 
-            /* Check that there is no trust. */
-            if(trust.get<uint64_t>("trust") !=
-            ((config::fTestNet.load() && config::GetBoolArg("-trustboost")) ? TAO::Ledger::ONE_YEAR : 0))
-                return debug::error(FUNCTION, "cannot create genesis with already existing trust");
+            uint64_t nStakeAdded = 0;
+            uint64_t nStakeRemoved = 0;
 
-            /* Check available balance to stake. */
-            if(trust.get<uint64_t>("balance") == 0)
-                return debug::error(FUNCTION, "cannot create genesis with no available balance");
+            if(nStakeChange > 0)
+            {
+                if(nStakeChange > nBalancePrev)
+                    return debug::error(FUNCTION, "cannot add stake exceeding existing trust account balance");
+                else
+                    nStakeAdded = nStakeChange;
+            }
 
-            /* Move existing balance to stake. */
-            if(!trust.Write("stake", trust.get<uint64_t>("balance")))
-                return debug::error(FUNCTION, "stake could not be written to object register");
+            else if(nStakeChange < 0)
+            {
+                if((0 - nStakeChange) > nStakePrev)
+                    return debug::error(FUNCTION, "cannot unstake more than existing stake balance");
+                else
+                    nStakeRemoved = (0 - nStakeChange);
+            }
 
-            /* Write the stake reward to balance in object register. */
-            if(!trust.Write("balance", nReward))
+            /* Write the new trust to object register. */
+            if(!trust.Write("trust", nScore))
+                return debug::error(FUNCTION, "trust could not be written to object register");
+
+            /* Write the new balance to object register. */
+            if(!trust.Write("balance", nBalancePrev + nReward + nStakeRemoved - nStakeAdded))
                 return debug::error(FUNCTION, "balance could not be written to object register");
+
+            /* Write the new stake to object register. */
+            if(!trust.Write("stake", nStakePrev + nStakeAdded - nStakeRemoved))
+                return debug::error(FUNCTION, "stake could not be written to object register");
 
             /* Update the state register's timestamp. */
             trust.nModified = nTimestamp;
@@ -97,14 +104,14 @@ namespace TAO
 
             /* Check that the register is in a valid state. */
             if(!trust.IsValid())
-                return debug::error(FUNCTION, "memory address is in invalid state");
+                return debug::error(FUNCTION, "trust address is in invalid state");
 
             return true;
         }
 
 
         /* Verify trust validation rules and caller. */
-        bool Genesis::Verify(const Contract& contract)
+        bool Trustpool::Verify(const Contract& contract)
         {
             /* Rewind back on byte. */
             contract.Rewind(1, Contract::OPERATIONS);
@@ -117,7 +124,7 @@ namespace TAO
             contract >> OP;
 
             /* Check operation byte. */
-            if(OP != OP::GENESIS)
+            if(OP != OP::TRUSTPOOL)
                 return debug::error(FUNCTION, "called with incorrect OP");
 
             /* Get the state byte. */
@@ -140,7 +147,7 @@ namespace TAO
             if(state.hashOwner != contract.Caller())
                 return debug::error(FUNCTION, "caller not authorized ", contract.Caller().SubString());
 
-            /* Reset register streams. */
+            /* Reset the register streams. */
             contract.Reset(Contract::REGISTERS);
 
             return true;

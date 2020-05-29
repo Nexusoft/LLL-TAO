@@ -12,8 +12,8 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_TAO_OPERATION_INCLUDE_GENESISPOOL_H
-#define NEXUS_TAO_OPERATION_INCLUDE_GENESISPOOL_H
+#ifndef NEXUS_TAO_OPERATION_INCLUDE_TRUSTPOOL_H
+#define NEXUS_TAO_OPERATION_INCLUDE_TRUSTPOOL_H
 
 #include <LLC/types/uint1024.h>
 
@@ -38,12 +38,12 @@ namespace TAO
         class Contract;
 
 
-        /** Genesis
+        /** Trustpool
          *
-         *  Namespace to contain main functions for OP::GENESIS
+         *  Namespace to contain main functions for OP::TRUSTPOOL
          *
          **/
-        namespace Genesis
+        namespace Trustpool
         {
 
             /** Commit
@@ -61,16 +61,19 @@ namespace TAO
 
             /** Execute
              *
-             *  Handles the Coinstake operation for a genesis transaction.
+             *  Handles the Coinstake operation for a trust transaction.
              *
              *  @param[out] trust The trust object register to stake.
              *  @param[in] nReward The reward to apply to trust account.
+             *  @param[in] nScore The score to apply to trust account.
+             *  @param[in] nStakeChange The change in stake amount to apply to the trust account.
              *  @param[in] nTimestamp The timestamp to update register to.
              *
              *  @return true if successful.
              *
              **/
-            bool Execute(TAO::Register::Object &trust, const uint64_t nReward, const uint64_t nTimestamp);
+            bool Execute(TAO::Register::Object &trust, const uint64_t nReward, const uint64_t nScore,
+                         const int64_t nStakeChange, const uint64_t nTimestamp);
 
 
             /** Verify
