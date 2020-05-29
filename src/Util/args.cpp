@@ -43,6 +43,8 @@ namespace config
     std::atomic<bool> fMultiuser(false);
     std::atomic<bool> fProcessNotifications(false);
     std::atomic<bool> fInitialized(false);
+    std::atomic<bool> fPoolStaking(false);
+    std::atomic<bool> fStaking(false);
     std::atomic<int32_t> nVerbose(0);
 
     std::mutex ARGS_MUTEX;
@@ -179,6 +181,8 @@ namespace config
         fLogTimestamps          = GetBoolArg("-logtimestamps", false);
         fMultiuser              = GetBoolArg("-multiuser", false);
         fProcessNotifications   = GetBoolArg("-processnotifications", true);
+        fPoolStaking            = GetBoolArg("-poolstaking", false);
+        fStaking                = GetBoolArg("-staking", false) || GetBoolArg("-stake", false); //Both supported, -stake deprecated
         nVerbose                = GetArg("-verbose", 0);
 
 
