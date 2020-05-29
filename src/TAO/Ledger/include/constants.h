@@ -222,6 +222,35 @@ namespace TAO
         const uint64_t TX_FEE = 0.01 * NXS_COIN;
 
 
+        /* Stake pool settings */
+
+        /* Percentage of stake reward paid to block finder by coinstakes in the stake pool */
+        const uint64_t POOL_FEE_PCT = 16;
+
+        /* Initial maximum number of coinstakes in a pool stake block (this can be increased based on block age) */
+        const uint64_t POOL_MAX_TX_BASE = 20;
+
+        /* Hard maximum for number of coinstakes in a pool block */
+        const uint64_t POOL_MAX_TX = 200;
+
+        /* Minimum net balance of coinstakes in a pool stake block
+         * Number of coinstakes can exceed current max (up to hard max) to reach this amount
+         */
+        const uint64_t POOL_MIN_STAKE = 10000 * NXS_COIN;
+
+        /* Minimum trust account balance to participate in the stake pool */
+        const uint64_t POOL_MIN_STAKE_BALANCE = 1 * NXS_COIN;
+
+        /* Maximum number of times a pool coinstake transmitted to the network will be relayed */
+        const uint64_t POOL_MAX_TTL_COUNT = 2;
+
+        /* Starting maximum number of transactions accepted into the stake pool */
+        const uint64_t POOL_MAX_SIZE_BASE = 50;
+
+        /* Amount the maximum pool size is incremented if more transactions are needed */
+        const uint64_t POOL_MAX_SIZE_INCREMENT = 50;
+
+
 
         /** MaturityCoinbase
          *
