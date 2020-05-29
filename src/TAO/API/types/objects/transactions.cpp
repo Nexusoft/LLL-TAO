@@ -209,6 +209,8 @@ namespace TAO
 
                         case TAO::Operation::OP::TRUST:
                         case TAO::Operation::OP::GENESIS:
+                        case TAO::Operation::OP::TRUSTPOOL:
+                        case TAO::Operation::OP::GENESISPOOL:
                         case TAO::Operation::OP::MIGRATE:
                         {
                             fTrustRelated = true;

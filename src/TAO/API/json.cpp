@@ -543,7 +543,7 @@ namespace TAO
                     /* Trust operation. Builds trust and generates reward. */
                     case TAO::Operation::OP::TRUST:
                     {
-                        /* Get the genesis. */
+                        /* Get the last stake tx hash. */
                         uint512_t hashLastTrust = 0;
                         contract >> hashLastTrust;
 
@@ -555,15 +555,15 @@ namespace TAO
                         int64_t nStakeChange = 0;
                         contract >> nStakeChange;
 
-                        /* The total trust reward. */
+                        /* The trust reward. */
                         uint64_t nReward = 0;
                         contract >> nReward;
 
                         /* Output the json information. */
-                        ret["OP"]      = "TRUST";
-                        ret["last"]    = hashLastTrust.ToString();
-                        ret["score"]   = nScore;
-                        ret["amount"]  = (double) nReward / TAO::Ledger::NXS_COIN;
+                        ret["OP"]     = "TRUST";
+                        ret["last"]   = hashLastTrust.ToString();
+                        ret["score"]  = nScore;
+                        ret["amount"] = (double) nReward / TAO::Ledger::NXS_COIN;
 
                         if(nStakeChange > 0)
                             ret["add_stake"] = (double) nStakeChange / TAO::Ledger::NXS_COIN;
@@ -578,13 +578,90 @@ namespace TAO
                     /* Genesis operation. Begins trust and stakes. */
                     case TAO::Operation::OP::GENESIS:
                     {
-                        /* The total trust reward. */
+                        /* The genesis reward. */
                         uint64_t nReward = 0;
                         contract >> nReward;
 
                         /* Output the json information. */
                         ret["OP"]        = "GENESIS";
                         ret["amount"]    = (double) nReward / TAO::Ledger::NXS_COIN;;
+
+                        break;
+                    }
+
+
+                    /* Trust operation for pooled staking. Builds trust and generates reward. */
+                    case TAO::Operation::OP::TRUSTPOOL:
+                    {
+                        /* Get the last stake tx hash. */
+                        uint512_t hashLastTrust = 0;
+                        contract >> hashLastTrust;
+
+                        /* Get the pooled staking proofs. */
+                        uint256_t hashProof = 0;
+                        contract >> hashProof;
+
+                        uint64_t nTimeBegin = 0;
+                        contract >> nTimeBegin;
+
+                        uint64_t nTimeEnd = 0;
+                        contract >> nTimeEnd;
+
+                        /* The total trust score. */
+                        uint64_t nScore = 0;
+                        contract >> nScore;
+
+                        /* Change to stake amount. */
+                        int64_t nStakeChange = 0;
+                        contract >> nStakeChange;
+
+                        /* The trust reward. */
+                        uint64_t nReward = 0;
+                        contract >> nReward;
+
+                        /* Output the json information. */
+                        ret["OP"]        = "TRUSTPOOL";
+                        ret["last"]      = hashLastTrust.ToString();
+                        ret["score"]     = nScore;
+                        ret["amount"]    = (double) nReward / TAO::Ledger::NXS_COIN;
+
+                        if(nStakeChange > 0)
+                            ret["add_stake"] = (double) nStakeChange / TAO::Ledger::NXS_COIN;
+
+                        else if (nStakeChange < 0)
+                            ret["unstake"] = (double) (0 - nStakeChange) / TAO::Ledger::NXS_COIN;
+
+                        ret["proof"]      = hashProof.ToString();
+                        ret["proofbegin"] = nTimeBegin;
+                        ret["proofend"]   = nTimeEnd;
+
+                        break;
+                    }
+
+
+                    /* Genesis operation for pooled staking. Begins trust and stakes. */
+                    case TAO::Operation::OP::GENESISPOOL:
+                    {
+                        /* Get the pooled staking proofs. */
+                        uint256_t hashProof = 0;
+                        contract >> hashProof;
+
+                        uint64_t nTimeBegin = 0;
+                        contract >> nTimeBegin;
+
+                        uint64_t nTimeEnd = 0;
+                        contract >> nTimeEnd;
+
+                        /* The genesis reward. */
+                        uint64_t nReward = 0;
+                        contract >> nReward;
+
+                        /* Output the json information. */
+                        ret["OP"]        = "GENESISPOOL";
+                        ret["amount"]    = (double) nReward / TAO::Ledger::NXS_COIN;;
+                        ret["proof"]     = hashProof.ToString();
+                        ret["proofbegin"] = nTimeBegin;
+                        ret["proofend"]   = nTimeEnd;
 
                         break;
                     }
@@ -1082,7 +1159,7 @@ namespace TAO
                         }
 
                         /* Add tx count if requested by the caller*/
-                        if(params.find("count") != params.end() 
+                        if(params.find("count") != params.end()
                         && (params["count"].get<std::string>() == "1" ||  params["count"].get<std::string>() == "true"))
                             ret["count"] = GetTxCount(object.hashOwner, object, hashRegister);
 
@@ -1134,7 +1211,7 @@ namespace TAO
                         ret["decimals"]         = nDecimals;
 
                         /* Add tx count if requested by the caller*/
-                        if(params.find("count") != params.end() 
+                        if(params.find("count") != params.end()
                         && (params["count"].get<std::string>() == "1" ||  params["count"].get<std::string>() == "true"))
                             ret["count"] = GetTxCount(object.hashOwner, object, hashRegister);
 

@@ -286,7 +286,7 @@ namespace TAO
                                     break;
                             }
                             /* We need to retrieve the object so we can see whether it has been claimed or not.  If it has not been
-                               claimed then we ignore the transfer operation and still show it as ours.  However we need to skip 
+                               claimed then we ignore the transfer operation and still show it as ours.  However we need to skip
                                this check in light mode because we will not have the register state available in order to determine
                                if it has been claimed or not */
                             else if(!config::fClient.load())
@@ -301,11 +301,11 @@ namespace TAO
                                 if(object.hashOwner.GetType() == TAO::Ledger::GENESIS::SYSTEM)
                                 {
                                     /* Ensure it is the caller that made the most recent transfer */
-                                    uint256_t hashPrevOwner = hashGenesis;; 
-                                    
+                                    uint256_t hashPrevOwner = hashGenesis;;
+
                                     /* Set the SYSTEM byte so that we can compare the prev owner */
                                     hashPrevOwner.SetType(TAO::Ledger::GENESIS::SYSTEM);
-                                    
+
                                     /* If we transferred it  */
                                     if(object.hashOwner == hashPrevOwner)
                                         break;
@@ -1499,6 +1499,8 @@ namespace TAO
 
                         case TAO::Operation::OP::TRUST:
                         case TAO::Operation::OP::GENESIS:
+                        case TAO::Operation::OP::TRUSTPOOL:
+                        case TAO::Operation::OP::GENESISPOOL:
                         case TAO::Operation::OP::MIGRATE:
                         {
                             fTrustRelated = true;
