@@ -313,8 +313,11 @@ namespace TAO
                 for(const auto& tx : block.vtx)
                     vHashes.push_back(tx.second);
 
-                /* Producer transaction is last. */
-                vHashes.push_back(block.producer.GetHash());
+                /* Producer transaction is last hash in list. */
+                if(block.nVersion < 9)
+                    vHashes.push_back(block.producer.GetHash());
+                else
+                    vHashes.push_back(block.vProducer[0].GetHash()); //only one producer outside stake pool
 
                 /* Build the block's merkle root. */
                 block.hashMerkleRoot = block.BuildMerkleTree(vHashes);
@@ -354,6 +357,9 @@ namespace TAO
             else
                 block.nVersion = nCurrent - 1;
 
+            /* Handle the producer outside the block, then add it manually to support multiple block structures by version */
+            TAO::Ledger::Transaction txProducer;
+
             /* Handle if the block is cached. */
             if(ChainState::stateBest.load().GetHash() == blockCache[nChannel].load().hashPrevBlock)
             {
@@ -363,19 +369,34 @@ namespace TAO
                 /* Add new transactions. */
                 AddTransactions(block);
 
+                /* Retrieve block producer from cached block */
+                if(block.nVersion < 9)
+                    txProducer = block.producer;
+                else
+                    txProducer = block.vProducer[0]; //outside of stake pool, only one producer
+
                 /* Check that the producer isn't going to orphan any transactions. */
                 TAO::Ledger::Transaction tx;
-                if(mempool.Get(block.producer.hashGenesis, tx) && block.producer.hashPrevTx != tx.GetHash())
+                if(mempool.Get(txProducer.hashGenesis, tx) && txProducer.hashPrevTx != tx.GetHash())
                 {
                     /* Handle for STALE producer. */
                     debug::log(0, FUNCTION, "Producer is stale, rebuilding...");
 
-                    /* Setup the producer transaction. */
-                    if(!CreateTransaction(user, pin, block.producer))
+                    /* Setup a new producer transaction. */
+                    if(!CreateTransaction(user, pin, txProducer))
                         return debug::error(FUNCTION, "Failed to create producer transactions.");
 
                     /* Update the producer timestamp */
-                    UpdateProducerTimestamp(block);
+                    UpdateProducerTimestamp(txProducer);
+
+                    /* Update block producer to store back into cache */
+                    if(block.nVersion < 9)
+                        block.producer = txProducer;
+                    else
+                    {
+                        block.vProducer.clear();
+                        block.vProducer.push_back(txProducer);
+                    }
 
                     /* Store new block cache. */
                     blockCache[nChannel].store(block);
@@ -388,14 +409,14 @@ namespace TAO
                     uint64_t nBlockReward = GetCoinbaseReward(ChainState::stateBest.load(), nChannel, 0);
 
                     /* Create coinbase transaction. */
-                    block.producer[0].Clear();
-                    block.producer[0] << uint8_t(TAO::Operation::OP::COINBASE);
+                    txProducer[0].Clear();
+                    txProducer[0] << uint8_t(TAO::Operation::OP::COINBASE);
 
                     /* Add the spendable genesis. */
-                    block.producer[0] << user->Genesis();
+                    txProducer[0] << user->Genesis();
 
                     /* The total to be credited. */
-                    uint64_t  nCredit = nBlockReward;
+                    uint64_t nCredit = nBlockReward;
 
                     /* If there are coinbase recipients, set the reward to the coinbase wallet reward. */
                     if(pCoinbaseRecipients && !pCoinbaseRecipients->IsNull())
@@ -405,115 +426,10 @@ namespace TAO
                     if(nCredit == 0)
                         return debug::error(FUNCTION, "Empty block producer reward.");
 
-                    block.producer[0] << nCredit;
+                    txProducer[0] << nCredit;
 
                     /* The extra nonce to coinbase. */
-                    block.producer[0] << nExtraNonce;
-
-                    /* Add coinbase recipient amounts to block producer transaction if any. */
-                    if(pCoinbaseRecipients && !pCoinbaseRecipients->IsNull())
-                    {
-                        /* Ensure wallet reward and recipient amounts add up to correct block reward. */
-                        if(!pCoinbaseRecipients->IsValid())
-                            return debug::error(FUNCTION, "Coinbase recipients contain invalid amounts.");
-
-                        /* Get the map of outputs for this coinbase. */
-                        std::map<std::string, uint64_t> mapOutputs = pCoinbaseRecipients->Outputs();
-                        uint32_t nTx = 1;
-
-                        for(const auto&entry : mapOutputs)
-                        {
-                            /* Build the recipient address from a hex string. */
-                            uint256_t hashGenesis = uint256_t(entry.first);
-
-                            /* Ensure the address is valid. */
-                            if(!LLD::Ledger->HasGenesis(hashGenesis))
-                                return debug::error(FUNCTION, "Invaild recipient address: ", entry.first, " (", nTx, ")");
-
-                            /* Set coinbase operation. */
-                            block.producer[nTx].Clear();
-                            block.producer[nTx] << uint8_t(TAO::Operation::OP::COINBASE);
-
-                            /* Set sigchain recipient. */
-                            block.producer[nTx] << hashGenesis;
-
-                            /* Set coinbase amount for associated recipent. */
-                            block.producer[nTx] << entry.second;
-
-                            /* The extra nonce to coinbase. */
-                            block.producer[nTx] << nExtraNonce;
-
-                            ++nTx;
-                        }
-                    }
-                }
-                else if(nChannel == 3)
-                {
-                    /* Create an authorize producer. */
-                    block.producer[0].Clear();
-                    block.producer[0] << uint8_t(TAO::Operation::OP::AUTHORIZE);
-
-                    /* Get the sigchain txid. */
-                    block.producer[0] << block.producer.hashPrevTx;
-
-                    /* Set the genesis operation. */
-                    block.producer[0] << block.producer.hashGenesis;
-                }
-
-                /* Sign the producer transaction. */
-                block.producer.Sign(user->Generate(block.producer.nSequence, pin));
-
-                /* Rebuild the merkle tree for updated block. */
-                std::vector<uint512_t> vHashes;
-                for(const auto& tx : block.vtx)
-                    vHashes.push_back(tx.second);
-
-                /* Producer transaction is last. */
-                vHashes.push_back(block.producer.GetHash());
-
-                /* Build the block's merkle root. */
-                block.hashMerkleRoot  = block.BuildMerkleTree(vHashes);
-            }
-            else //block not cached, set up new block
-            {
-                /* Cache the best chain before processing. */
-                const TAO::Ledger::BlockState stateBest = ChainState::stateBest.load();
-
-                /* Must add transactions first, before creating producer, so producer is sequenced last if user has tx in block */
-                AddTransactions(block);
-
-                /* Setup the producer transaction. */
-                if(!CreateTransaction(user, pin, block.producer))
-                    return debug::error(FUNCTION, "Failed to create producer transactions.");
-
-                /* Create the Coinbase Transaction if the Channel specifies. */
-                if(nChannel == 1 || nChannel == 2)
-                {
-                    /* Output type 0 is mining/minting reward */
-                    uint64_t nBlockReward = GetCoinbaseReward(stateBest, nChannel, 0);
-
-                    /* Create coinbase transaction. */
-                    block.producer[0] << uint8_t(TAO::Operation::OP::COINBASE);
-
-                    /* Add the spendable genesis. */
-                    block.producer[0] << user->Genesis();
-
-                    /* The total to be credited. */
-                    uint64_t  nCredit = nBlockReward;
-
-                    /* If there are coinbase recipients, set the reward to the coinbase wallet reward. */
-                    if(pCoinbaseRecipients && !pCoinbaseRecipients->IsNull())
-                        nCredit = pCoinbaseRecipients->WalletReward();
-
-                    /* Check to make sure credit is non-zero. */
-                    if(nCredit == 0)
-                        return debug::error(FUNCTION, "Empty block producer reward.");
-
-
-                    block.producer[0] << nCredit;
-
-                    /* The extra nonce to coinbase. */
-                    block.producer[0] << nExtraNonce;
+                    txProducer[0] << nExtraNonce;
 
                     /* Add coinbase recipient amounts to block producer transaction if any. */
                     if(pCoinbaseRecipients && !pCoinbaseRecipients->IsNull())
@@ -536,16 +452,129 @@ namespace TAO
                                 return debug::error(FUNCTION, "Invaild recipient address: ", entry.first, " (", nTx, ")");
 
                             /* Set coinbase operation. */
-                            block.producer[nTx] << uint8_t(TAO::Operation::OP::COINBASE);
+                            txProducer[nTx].Clear();
+                            txProducer[nTx] << uint8_t(TAO::Operation::OP::COINBASE);
 
                             /* Set sigchain recipient. */
-                            block.producer[nTx] << hashGenesis;
+                            txProducer[nTx] << hashGenesis;
 
                             /* Set coinbase amount for associated recipent. */
-                            block.producer[nTx] << entry.second;
+                            txProducer[nTx] << entry.second;
 
                             /* The extra nonce to coinbase. */
-                            block.producer[nTx] << nExtraNonce;
+                            txProducer[nTx] << nExtraNonce;
+
+                            ++nTx;
+                        }
+                    }
+                }
+                else if(nChannel == 3)
+                {
+                    /* Create an authorize producer. */
+                    txProducer[0].Clear();
+                    txProducer[0] << uint8_t(TAO::Operation::OP::AUTHORIZE);
+
+                    /* Get the sigchain txid. */
+                    txProducer[0] << txProducer.hashPrevTx;
+
+                    /* Set the genesis operation. */
+                    txProducer[0] << txProducer.hashGenesis;
+                }
+
+                /* Sign the producer transaction. */
+                txProducer.Sign(user->Generate(txProducer.nSequence, pin));
+
+                /* Update block producer */
+                if(block.nVersion < 9)
+                    block.producer = txProducer;
+                else
+                {
+                    block.vProducer.clear();
+                    block.vProducer.push_back(txProducer);
+                }
+
+                /* Rebuild the merkle tree for updated block. */
+                std::vector<uint512_t> vHashes;
+                for(const auto& tx : block.vtx)
+                    vHashes.push_back(tx.second);
+
+                /* Producer transaction is last. */
+                vHashes.push_back(txProducer.GetHash());
+
+                /* Build the block's merkle root. */
+                block.hashMerkleRoot = block.BuildMerkleTree(vHashes);
+            }
+            else //block not cached, set up new block
+            {
+                /* Cache the best chain before processing. */
+                const TAO::Ledger::BlockState stateBest = ChainState::stateBest.load();
+
+                /* Must add transactions first, before creating producer, so producer is sequenced last if user has tx in block */
+                AddTransactions(block);
+
+                /* Setup the producer transaction. */
+                if(!CreateTransaction(user, pin, txProducer))
+                    return debug::error(FUNCTION, "Failed to create producer transactions.");
+
+                /* Create the Coinbase Transaction if the Channel specifies. */
+                if(nChannel == 1 || nChannel == 2)
+                {
+                    /* Output type 0 is mining/minting reward */
+                    uint64_t nBlockReward = GetCoinbaseReward(stateBest, nChannel, 0);
+
+                    /* Create coinbase transaction. */
+                    txProducer[0] << uint8_t(TAO::Operation::OP::COINBASE);
+
+                    /* Add the spendable genesis. */
+                    txProducer[0] << user->Genesis();
+
+                    /* The total to be credited. */
+                    uint64_t nCredit = nBlockReward;
+
+                    /* If there are coinbase recipients, set the reward to the coinbase wallet reward. */
+                    if(pCoinbaseRecipients && !pCoinbaseRecipients->IsNull())
+                        nCredit = pCoinbaseRecipients->WalletReward();
+
+                    /* Check to make sure credit is non-zero. */
+                    if(nCredit == 0)
+                        return debug::error(FUNCTION, "Empty block producer reward.");
+
+                    txProducer[0] << nCredit;
+
+                    /* The extra nonce to coinbase. */
+                    txProducer[0] << nExtraNonce;
+
+                    /* Add coinbase recipient amounts to block producer transaction if any. */
+                    if(pCoinbaseRecipients && !pCoinbaseRecipients->IsNull())
+                    {
+                        /* Ensure wallet reward and recipient amounts add up to correct block reward. */
+                        if(!pCoinbaseRecipients->IsValid())
+                            return debug::error(FUNCTION, "Coinbase recipients contain invalid amounts.");
+
+                        /* Get the map of outputs for this coinbase. */
+                        std::map<std::string, uint64_t> mapOutputs = pCoinbaseRecipients->Outputs();
+                        uint32_t nTx = 1;
+
+                        for(const auto& entry : mapOutputs)
+                        {
+                            /* Build the recipient address from a hex string. */
+                            uint256_t hashGenesis = uint256_t(entry.first);
+
+                            /* Ensure the address is valid. */
+                            if(!LLD::Ledger->HasGenesis(hashGenesis))
+                                return debug::error(FUNCTION, "Invaild recipient address: ", entry.first, " (", nTx, ")");
+
+                            /* Set coinbase operation. */
+                            txProducer[nTx] << uint8_t(TAO::Operation::OP::COINBASE);
+
+                            /* Set sigchain recipient. */
+                            txProducer[nTx] << hashGenesis;
+
+                            /* Set coinbase amount for associated recipent. */
+                            txProducer[nTx] << entry.second;
+
+                            /* The extra nonce to coinbase. */
+                            txProducer[nTx] << nExtraNonce;
 
                             ++nTx;
                         }
@@ -567,16 +596,16 @@ namespace TAO
                                 for(auto it = Ambassador(block.nVersion).begin(); it != Ambassador(block.nVersion).end(); ++it)
                                 {
                                     /* Make sure to push to end. */
-                                    uint32_t nContract = block.producer.Size();
+                                    uint32_t nContract = txProducer.Size();
 
                                     /* Create coinbase transaction. */
-                                    block.producer[nContract] << uint8_t(TAO::Operation::OP::COINBASE);
-                                    block.producer[nContract] << it->first;
+                                    txProducer[nContract] << uint8_t(TAO::Operation::OP::COINBASE);
+                                    txProducer[nContract] << it->first;
 
                                     /* The total to be credited. */
                                     uint64_t nCredit = (nBalance * it->second.second) / 1000;
-                                    block.producer[nContract] << nCredit;
-                                    block.producer[nContract] << uint64_t(0);
+                                    txProducer[nContract] << nCredit;
+                                    txProducer[nContract] << uint64_t(0);
                                 }
                             }
                         }
@@ -594,16 +623,16 @@ namespace TAO
                                 for(auto it = Developer(block.nVersion).begin(); it != Developer(block.nVersion).end(); ++it)
                                 {
                                     /* Make sure to push to end. */
-                                    uint32_t nContract = block.producer.Size();
+                                    uint32_t nContract = txProducer.Size();
 
                                     /* Create coinbase transaction. */
-                                    block.producer[nContract] << uint8_t(TAO::Operation::OP::COINBASE);
-                                    block.producer[nContract] << it->first;
+                                    txProducer[nContract] << uint8_t(TAO::Operation::OP::COINBASE);
+                                    txProducer[nContract] << it->first;
 
                                     /* The total to be credited. */
                                     uint64_t nCredit = (nBalance * it->second.second) / 1000;
-                                    block.producer[nContract] << nCredit;
-                                    block.producer[nContract] << uint64_t(0);
+                                    txProducer[nContract] << nCredit;
+                                    txProducer[nContract] << uint64_t(0);
                                 }
                             }
                         }
@@ -612,20 +641,29 @@ namespace TAO
                 else if(nChannel == 3)
                 {
                     /* Create an authorize producer. */
-                    block.producer[0] << uint8_t(TAO::Operation::OP::AUTHORIZE);
+                    txProducer[0] << uint8_t(TAO::Operation::OP::AUTHORIZE);
 
                     /* Get the sigchain txid. */
-                    block.producer[0] << block.producer.hashPrevTx;
+                    txProducer[0] << txProducer.hashPrevTx;
 
                     /* Set the genesis operation. */
-                    block.producer[0] << block.producer.hashGenesis;
+                    txProducer[0] << txProducer.hashGenesis;
                 }
 
                 /* Update the producer timestamp */
-                UpdateProducerTimestamp(block);
+                UpdateProducerTimestamp(txProducer);
 
                 /* Sign the producer transaction. */
-                block.producer.Sign(user->Generate(block.producer.nSequence, pin));
+                txProducer.Sign(user->Generate(txProducer.nSequence, pin));
+
+                /* Add block producer to block */
+                if(block.nVersion < 9)
+                    block.producer = txProducer;
+                else
+                {
+                    block.vProducer.clear();
+                    block.vProducer.push_back(txProducer);
+                }
 
                 /* Populate the block metadata */
                 AddBlockData(stateBest, nChannel, block);
@@ -665,17 +703,28 @@ namespace TAO
             /* Cache the best chain before processing. */
             const TAO::Ledger::BlockState stateBest = ChainState::stateBest.load();
 
-            /* Add the transactions to the block (no transactions for PoS Genesis block). */
+            /* Add the transactions to the block. */
+            /* Solo Genesis has no transactions, but pool Genesis does to calculate proofs (pool Genesis won't hash this block) */
             /* Must add transactions first, before creating producer, so producer is sequenced last if user has tx in block */
-            if(!fGenesis)
+            if(!fGenesis || config::fPoolStaking.load())
                 AddTransactions(block);
 
             /* Create the producer transaction. */
-            if(!CreateTransaction(user, pin, block.producer))
+            TAO::Ledger::Transaction txProducer;
+            if(!CreateTransaction(user, pin, txProducer))
                 return debug::error(FUNCTION, "failed to create producer transactions");
 
             /* Update the producer timestamp */
-            UpdateProducerTimestamp(block);
+            UpdateProducerTimestamp(txProducer);
+
+            /* Add block producer to block */
+            if(block.nVersion < 9)
+                block.producer = txProducer;
+            else
+            {
+                block.vProducer.clear();
+                block.vProducer.push_back(txProducer);
+            }
 
             /* NOTE: The remainder of Coinstake producer not configured here. Stake minter must handle it. */
 
@@ -815,12 +864,18 @@ namespace TAO
                 if(!TAO::Ledger::CreateBlock(user, "1234", 3, block))
                     continue;
 
+                TAO::Ledger::Transaction txProducer;
+                if(block.nVersion < 9)
+                    txProducer = block.producer;
+                else
+                    txProducer = block.vProducer[0]; //outside of stake pool, only one producer
+
                 /* Get the secret from new key. */
-                std::vector<uint8_t> vBytes = user->Generate(block.producer.nSequence, "1234").GetBytes();
+                std::vector<uint8_t> vBytes = user->Generate(txProducer.nSequence, "1234").GetBytes();
                 LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
                 /* Switch based on signature type. */
-                switch(block.producer.nKeyType)
+                switch(txProducer.nKeyType)
                 {
                     /* Support for the FALCON signature scheeme. */
                     case SIGNATURE::FALCON:
@@ -872,23 +927,49 @@ namespace TAO
 
 
         /* Updates the producer timestamp, making sure it is not earlier than the previous block. */
-        void UpdateProducerTimestamp(TAO::Ledger::TritiumBlock& block)
+        void UpdateProducerTimestamp(TAO::Ledger::Transaction& txProducer)
         {
             /* Update the producer timestamp, making sure it is not earlier than the previous block.  However we can't simply
             set the timstamp to be last block time + 1, in case there is a long gap between blocks, as there is a consensus
             rule that the producer timestamp cannot be more than 3600 seconds before the current block time. */
             if(ChainState::stateBest.load().GetBlockTime() + 1 > runtime::unifiedtimestamp())
-                block.producer.nTimestamp = std::max(block.producer.nTimestamp, ChainState::stateBest.load().GetBlockTime() + 1);
+                txProducer.nTimestamp = std::max(txProducer.nTimestamp, ChainState::stateBest.load().GetBlockTime() + 1);
             else
-                block.producer.nTimestamp = std::max(block.producer.nTimestamp, runtime::unifiedtimestamp());
+                txProducer.nTimestamp = std::max(txProducer.nTimestamp, runtime::unifiedtimestamp());
 
             /* Since we have updated the producer transaction timestamp, we now also need to set the transaction version again as
                the version is based on the transaction time. Transaction version is current version unless an activation is pending */
             uint32_t nCurrent = CurrentTransactionVersion();
-            if(TransactionVersionActive(block.producer.nTimestamp, nCurrent))
-                block.producer.nVersion = nCurrent;
+            if(TransactionVersionActive(txProducer.nTimestamp, nCurrent))
+                txProducer.nVersion = nCurrent;
             else
-                block.producer.nVersion = nCurrent - 1;
+                txProducer.nVersion = nCurrent - 1;
+        }
+
+
+        /* Updates the producer timestamp, making sure it is not earlier than the previous block. */
+        void UpdateProducerTimestamp(TAO::Ledger::TritiumBlock& block)
+        {
+            /* This method only supports single producer blocks */
+            TAO::Ledger::Transaction txProducer;
+
+            if(block.nVersion < 9)
+            {
+                txProducer = block.producer;
+
+                UpdateProducerTimestamp(txProducer);
+
+                block.producer = txProducer;
+            }
+            else
+            {
+                txProducer = block.vProducer.at(block.vProducer.size() - 1);
+
+                UpdateProducerTimestamp(txProducer);
+
+                block.vProducer.erase(block.vProducer.begin() + (block.vProducer.size() - 1));
+                block.vProducer.push_back(txProducer);
+            }
         }
     }
 }
