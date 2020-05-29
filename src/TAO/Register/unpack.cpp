@@ -156,7 +156,7 @@ namespace TAO
 
                         /* Extract the previous contact ID from the contract */
                         contract >> nContract;
-                        
+
                         return true;
                     }
 
@@ -203,7 +203,7 @@ namespace TAO
 
                     case TAO::Operation::OP::TRUST:
                     {
-                        /* Seek to coinstake. */
+                        /* Seek to reward. */
                         contract.Seek(80);
 
                         contract >> nAmount;
@@ -213,6 +213,26 @@ namespace TAO
 
                     case TAO::Operation::OP::GENESIS:
                     {
+                        contract >> nAmount;
+
+                        return true;
+                    }
+
+                    case TAO::Operation::OP::TRUSTPOOL:
+                    {
+                        /* Seek to reward. */
+                        contract.Seek(128);
+
+                        contract >> nAmount;
+
+                        return true;
+                    }
+
+                    case TAO::Operation::OP::GENESISPOOL:
+                    {
+                        /* Seek to reward. */
+                        contract.Seek(48);
+
                         contract >> nAmount;
 
                         return true;
@@ -320,6 +340,6 @@ namespace TAO
 
             return false;
         }
-        
+
     }
 }

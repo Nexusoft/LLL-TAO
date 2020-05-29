@@ -329,6 +329,66 @@ namespace TAO
                     }
 
 
+                    /* Coinstake operation for pooled staking. Requires an account. */
+                    case TAO::Operation::OP::TRUSTPOOL:
+                    {
+                        /* Seek to end. */
+                        contract.Seek(136);
+
+                        /* Verify the first register code. */
+                        uint8_t nState = 0;
+                        contract >>= nState;
+
+                        /* Check the state is prestate. */
+                        if(nState != STATES::PRESTATE)
+                            return debug::error(FUNCTION, "OP::TRUSTPOOL: register state not in pre-state");
+
+                        /* Verify the register's prestate. */
+                        State state;
+                        contract >>= state;
+
+                        /* Write the register prestate to database. */
+                        if(!LLD::Register->WriteTrust(state.hashOwner, state))
+                            return debug::error(FUNCTION, "OP::TRUSTPOOL: failed to rollback to pre-state");
+
+                        break;
+                    }
+
+
+                    /* Coinstake operation for pooled staking. Requires an account. */
+                    case TAO::Operation::OP::GENESISPOOL:
+                    {
+                        /* Seek to end. */
+                        contract.Seek(56);
+
+                        /* Verify the first register code. */
+                        uint8_t nState = 0;
+                        contract >>= nState;
+
+                        /* Check the state is prestate. */
+                        if(nState != STATES::PRESTATE)
+                            return debug::error(FUNCTION, "OP::GENESISPOOL: register state not in pre-state");
+
+                        /* Verify the register's prestate. */
+                        State state;
+                        contract >>= state;
+
+                        /* Get trust account addresses for owner (caller = hashOwner was verified by op, can use either) */
+                        uint256_t hashAddress =
+                            TAO::Register::Address(std::string("trust"), state.hashOwner, TAO::Register::Address::TRUST);
+
+                        /* Write the register prestate to database. */
+                        if(!LLD::Register->WriteState(hashAddress, state))
+                            return debug::error(FUNCTION, "OP::GENESISPOOL: failed to rollback to pre-state");
+
+                        /* Erase the trust index. */
+                        if(!LLD::Register->EraseTrust(contract.Caller()))
+                            return debug::error(FUNCTION, "OP::GENESISPOOL: failed to erase trust index");
+
+                        break;
+                    }
+
+
                     /* Debit tokens from an account you own. */
                     case TAO::Operation::OP::DEBIT:
                     {
