@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #pragma once
 
 #include <TAO/API/types/base.h>
+#include <TAO/API/include/session.h>
 
 #include <TAO/Operation/types/contract.h>
 
@@ -50,20 +51,6 @@ namespace TAO
 
         private:
 
-            /** The signature chain for login and logout. */
-            mutable std::map<uint256_t, memory::encrypted_ptr<TAO::Ledger::SignatureChain> > mapSessions;
-
-
-            /** The active pin for sessionless API use **/
-            mutable memory::encrypted_ptr<TAO::Ledger::PinUnlock> pActivePIN;
-
-            /** The map network private keys for each session **/
-            mutable std::map<uint256_t, memory::encrypted_ptr<memory::encrypted_type<uint512_t>>> mapNetworkKeys;
-
-            /** The mutex for locking. **/
-            mutable std::mutex MUTEX;
-
-
             /** The mutex for events processing. **/
             mutable std::mutex EVENTS_MUTEX;
 
@@ -95,106 +82,13 @@ namespace TAO
             ~Users();
 
 
-            /** Public mutex for creating transactions on signature chain. **/
-            std::mutex CREATE_MUTEX;
-
-
             /** Initialize.
              *
              *  Sets the function pointers for this API.
              *
              **/
             void Initialize() final;
-
-
-            /** LoggedIn
-             *
-             *  Determine if a sessionless user is logged in.
-             *
-             **/
-            bool LoggedIn() const;
-
-
-            /** LoggedIn
-             *
-             *  Determine if a particular genesis is logged in on this node.
-             *
-             *  @param[in] hashGenesis The genesis hash to search for.
-             * 
-             *  @return True if the hashGenesis is logged in on this node
-             **/
-            bool LoggedIn(const uint256_t& hashGenesis) const;
-
-
-            /** Locked
-             *
-             *  Determine if the currently active sig chain is locked.
-             *
-             **/
-            bool Locked() const;
-
-
-            /** CanTransact
-             *
-             *  In sessionless API mode this method checks that the active sig chain has
-             *  been unlocked to allow transactions.  If the account has not been specifically
-             *  unlocked then we assume that they ARE allowed to transact, since the PIN would
-             *  need to be provided in each API call.
-             *
-             **/
-            bool CanTransact() const;
-
-
-            /** CanMine
-             *
-             *  In sessionless API mode this method checks that the active sig chain has
-             *  been unlocked to allow mining.
-             *
-             **/
-            bool CanMine() const;
-
-
-            /** CanStake
-             *
-             *  In sessionless API mode this method checks that the active sig chain has
-             *  been unlocked to allow staking.
-             *
-             **/
-            bool CanStake() const;
-
-
-            /** CanProcessNotifications
-             *
-             *  In sessionless API mode this method checks that the active sig chain has
-             *  been unlocked to allow notifications to be processed.
-             *
-             **/
-            bool CanProcessNotifications() const;
-
-
-            /** GetKey
-             *
-             *  Returns a key from the account logged in.
-             *
-             *  @param[in] nKey The key nonce used.
-             *  @param[in] strSecret The secret phrase to use.
-             *  @param[in] nSession The session identifier.
-             *
-             **/
-            uint512_t GetKey(uint32_t nKey, SecureString strSecret, uint256_t nSession) const;
-
-
-            /** GetGenesis
-             *
-             *  Returns the genesis ID from the account logged in.
-             *
-             *  @param[in] nSession The session identifier.
-             *  @param[in] fThrow Flag indicating whether to throw if the session is not found / not logged in.
-             *
-             *  @return The genesis ID if logged in.
-             *
-             **/
-            uint256_t GetGenesis(uint256_t nSession, bool fThrow = false) const;
+            
 
 
             /** GetCallersGenesis
@@ -209,26 +103,18 @@ namespace TAO
             uint256_t GetCallersGenesis(const json::json& params) const;
 
 
-            /** GetAccount
+            /** GetGenesis
              *
-             *  Returns the sigchain the account logged in.
+             *  Returns the genesis ID from the account logged in.
              *
              *  @param[in] nSession The session identifier.
+             *  @param[in] fThrow Flag indicating whether to throw if the session is not found / not logged in.
              *
-             *  @return the signature chain.
-             *
-             **/
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& GetAccount(uint256_t nSession) const;
-
-
-            /** GetActivePin
-             *
-             *  Returns the pin number for the currently logged in account.
-             *
-             *  @return the pin.
+             *  @return The genesis ID if logged in.
              *
              **/
-            SecureString GetActivePin() const;
+            uint256_t GetGenesis(uint256_t nSession, bool fThrow = false) const;
+
 
 
             /** GetPin
@@ -250,7 +136,7 @@ namespace TAO
             /** GetSession
              *
              *  If the API is running in sessionless mode this method will return the default
-             *  session ID that is used to store the one and only session (ID 0). If the user is not
+             *  session that is used to store the one and only session (ID 0). If the user is not
              *  logged in than an APIException is thrown.
              *  If not in sessionless mode then the method will return the session from the params.
              *  If the session is not is available in the params then an APIException is thrown.
@@ -262,7 +148,7 @@ namespace TAO
              *  @return the session id.
              *
              **/
-            uint256_t GetSession(const json::json params, bool fThrow = true) const;
+            Session& GetSession(const json::json params, bool fThrow = true) const;
 
 
             /** GetSession
@@ -271,22 +157,40 @@ namespace TAO
              *
              *  @param[in] hashGenesis The genesis hash to search for.
              * 
-             *  @return The session ID if the genesis is logged in, otherwise throws an exception
+             *  @return The session if the genesis is logged in, otherwise throws an exception
              **/
-            uint256_t GetSession(const uint256_t& hashGenesis) const;
+            Session& GetSession(const uint256_t& hashGenesis) const;
 
 
-            /** GetNetworkKey
-            *
-            *  Returns the private key for the network public key for a logged in session
-            * 
-            *  @param[in] nSession The session identifier.
-            *
-            *  @return the private key for the auth public key
-            *
-            **/
-            memory::encrypted_ptr<memory::encrypted_type<uint512_t>>& GetNetworkKey(uint256_t nSession) const;
+            /** LoggedIn
+             *
+             *  Determine if a sessionless user is logged in.
+             *
+             **/
+            bool LoggedIn() const;
 
+
+            /** LoggedIn
+             *
+             *  Determine if a particular genesis is logged in on this node.
+             *
+             *  @param[in] hashGenesis The genesis hash to search for.
+             * 
+             *  @return True if the hashGenesis is logged in on this node
+             **/
+            bool LoggedIn(const uint256_t& hashGenesis) const;
+
+
+            /** GetKey
+             *
+             *  Returns a key from the account logged in.
+             *
+             *  @param[in] nKey The key nonce used.
+             *  @param[in] strSecret The secret phrase to use.
+             *  @param[in] nSession The session identifier.
+             *
+             **/
+            uint512_t GetKey(uint32_t nKey, SecureString strSecret, const Session& session) const;
 
 
             /** RewriteURL

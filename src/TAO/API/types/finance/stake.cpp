@@ -48,10 +48,10 @@ namespace TAO
                 throw APIException(-135, "Zero-length PIN");
 
             /* Get the session to be used for this API call */
-            uint256_t nSession = users->GetSession(params);
+            Session& session = users->GetSession(params);;
 
             /* Get the user account. */
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
+            const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = session.GetAccount();
             if(!user)
                 throw APIException(-10, "Invalid session ID");
 
@@ -96,7 +96,7 @@ namespace TAO
                 throw APIException(-204, "Cannot set stake to a negative amount");
 
             /* Lock the signature chain. */
-            LOCK(users->CREATE_MUTEX);
+            LOCK(session.CREATE_MUTEX);
 
             /* Check that the sig chain is mature after the last coinbase/coinstake transaction in the chain. */
             CheckMature(hashGenesis);

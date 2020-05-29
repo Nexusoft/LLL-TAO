@@ -51,10 +51,10 @@ namespace TAO
             SecureString strPIN = users->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
 
             /* Get the session to be used for this API call */
-            uint256_t nSession = users->GetSession(params);
+            Session& session = users->GetSession(params);;
 
             /* Get the account. */
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
+            const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = session.GetAccount();
             if(!user)
                 throw APIException(-10, "Invalid session ID");
 
@@ -89,7 +89,7 @@ namespace TAO
                 throw APIException(-36, "Failed to parse object register");
             
             /* Lock the signature chain. */
-            LOCK(users->CREATE_MUTEX);
+            LOCK(session.CREATE_MUTEX);
 
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
@@ -139,7 +139,7 @@ namespace TAO
                 throw APIException(-44, "Transaction failed to build");
 
             /* Sign the transaction. */
-            if(!tx.Sign(users->GetKey(tx.nSequence, strPIN, nSession)))
+            if(!tx.Sign(users->GetKey(tx.nSequence, strPIN, session)))
                 throw APIException(-31, "Ledger failed to sign transaction");
 
             /* Execute the operations layer. */

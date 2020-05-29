@@ -42,6 +42,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/API/include/global.h> //for CREATE_MUTEX
+#include <TAO/API/include/sessionmanager.h> 
 
 #include <Util/include/convert.h>
 #include <Util/include/debug.h>
@@ -362,7 +363,7 @@ namespace TAO
         {
 
             /* Lock this user's sigchain. */
-            LOCK(TAO::API::users->CREATE_MUTEX);
+            LOCK(TAO::API::users->GetSession(user->Genesis()).CREATE_MUTEX);
 
             /* Only allow prime, hash, and private channels. */
             if (nChannel < 1 || nChannel > 3)
@@ -671,7 +672,7 @@ namespace TAO
                               TAO::Ledger::TritiumBlock& block, const bool fGenesis)
         {
             /* Lock this user's sigchain. */
-            LOCK(TAO::API::users->CREATE_MUTEX);
+            LOCK(TAO::API::users->GetSession(user->Genesis()).CREATE_MUTEX);
 
             /* Proof of stake has channel-id of 0. */
             const uint32_t nChannel = 0;

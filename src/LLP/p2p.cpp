@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <LLP/templates/events.h>
 
 #include <TAO/API/include/global.h>
+#include <TAO/API/include/sessionmanager.h>
 
 #include <Util/include/runtime.h>
 #include <Util/include/args.h>
@@ -143,7 +144,7 @@ namespace LLP
                     }
 
                     /* Get the API session ID for the local users genesis hash. */
-                    uint256_t nAPISessionID = TAO::API::users->GetSession(hashGenesis);
+                    TAO::API::Session& session = TAO::API::users->GetSession(hashGenesis);
 
                     /* Build the byte stream from the request data in order to generate the signature */
                     DataStream ssMsgData(SER_NETWORK, P2P::PROTOCOL_VERSION);
@@ -156,7 +157,7 @@ namespace LLP
                     std::vector<uint8_t> vchSig;
                     
                     /* Generate signature */
-                    TAO::API::users->GetAccount(nAPISessionID)->Sign("network", ssMsgData.Bytes(), TAO::API::users->GetNetworkKey(nAPISessionID)->DATA, vchPubKey, vchSig);
+                    session.GetAccount()->Sign("network", ssMsgData.Bytes(), session.GetNetworkKey(), vchPubKey, vchSig);
 
                     debug::log(3, NODE, "Sending P2P Initialization request."); 
                     /* Respond with initialize message. 
@@ -428,14 +429,15 @@ namespace LLP
 
                     /* Get the API session ID for the recipient users genesis hash.  NOTE we have already established that this user
                        is logged in, so we know we will get a valid session ID */
-                    uint256_t nAPISessionID = TAO::API::users->GetSession(hashGenesis);
+                    /* Get the API session ID for the local users genesis hash. */
+                    TAO::API::Session& session = TAO::API::users->GetSession(hashGenesis);
 
                     /* Build the byte stream from the request data in order to generate the signature */
                     DataStream ssMsgData(SER_NETWORK, P2P::PROTOCOL_VERSION);
                     ssMsgData << nProtocolVersion << nAppID << hashGenesis << hashPeer << nSession;
 
                     /* Generate signature */
-                    TAO::API::users->GetAccount(nAPISessionID)->Sign("network", ssMsgData.Bytes(), TAO::API::users->GetNetworkKey(nAPISessionID)->DATA, vchPubKey, vchSig);
+                    session.GetAccount()->Sign("network", ssMsgData.Bytes(), session.GetNetworkKey(), vchPubKey, vchSig);
 
                     /* Respond with initialize message. 
                        Format is protocol version, app id, hashgenesis, hashpeer, session id, pub key, and signature*/

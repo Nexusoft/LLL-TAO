@@ -17,6 +17,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/json.h>
+#include <TAO/API/include/sessionmanager.h>
 #include <TAO/API/include/utils.h>
 #include <TAO/API/types/users.h>
 
@@ -84,8 +85,12 @@ namespace TAO
                         auto_login();
 
                     /* Ensure that the user is logged, in, wallet unlocked, and unlocked for notifications. */
-                    if(LoggedIn() && !Locked() && CanProcessNotifications() && !TAO::Ledger::ChainState::Synchronizing())
-                        auto_process_notifications();
+                    if(LoggedIn())
+                    { 
+                        Session& session = GetSessionManager().Get(0);
+                        if( !session.Locked() && session.CanProcessNotifications() && !TAO::Ledger::ChainState::Synchronizing())
+                            auto_process_notifications();
+                    }
 
                 }
                 catch(const std::exception& e)
@@ -121,12 +126,11 @@ namespace TAO
                     if(strUsername.empty() || strPassword.empty() || strPin.empty())
                         throw APIException(-203, "Autologin missing username/password/pin");
 
-                    /* Create the sigchain. */
-                    memory::encrypted_ptr<TAO::Ledger::SignatureChain> user =
-                        new TAO::Ledger::SignatureChain(strUsername, strPassword);
+                    /* Create the session for ID 0 */
+                    Session& session = GetSessionManager().Add(strUsername, strPassword, strPin);
 
                     /* Get the genesis ID. */
-                    uint256_t hashGenesis = user->Genesis();
+                    uint256_t hashGenesis = session.GetAccount()->Genesis();
 
                     /* Check for -client mode. */
                     if(config::fClient.load())
@@ -176,7 +180,6 @@ namespace TAO
                             if(TAO::Ledger::ChainState::Synchronizing()
                             || (LLP::TRITIUM_SERVER->GetConnectionCount() == 0 && !fLocalTestnet))
                             {
-                                user.free();
                                 return;
                             }
 
@@ -200,40 +203,25 @@ namespace TAO
                     uint512_t hashLast;
                     if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
                     {
-                        user.free();
                         throw APIException(-138, "No previous transaction found");
                     }
 
                     /* Get previous transaction */
                     if(!LLD::Ledger->ReadTx(hashLast, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
                     {
-                        user.free();
                         throw APIException(-138, "No previous transaction found");
                     }
 
                     /* Genesis Transaction. */
                     TAO::Ledger::Transaction tx;
-                    tx.NextHash(user->Generate(txPrev.nSequence + 1, config::GetArg("-pin", "").c_str(), false), txPrev.nNextType);
+                    tx.NextHash(session.GetAccount()->Generate(txPrev.nSequence + 1, config::GetArg("-pin", "").c_str(), false), txPrev.nNextType);
 
                     /* Check for consistency. */
                     if(txPrev.hashNext != tx.hashNext)
                     {
-                        user.free();
                         throw APIException(-139, "Invalid credentials");
                     }
-
-                    /* Setup the account. */
-                    {
-                        LOCK(MUTEX);
-                        mapSessions.emplace(0, std::move(user));
-                    }
-
-                    /* Generate and cache the private key for the "network" key so that we can sign LLP messages to authenticate to peers */
-                    mapNetworkKeys[0] = new memory::encrypted_type<uint512_t>(user->Generate("network", 0, strPin));
-
-                    /* Extract the PIN. */
-                    if(!pActivePIN.IsNull())
-                        pActivePIN.free();
+                                            
 
                     /* The unlock actions to apply for autologin.  NOTE we do NOT unlock for transactions */
                     uint8_t nUnlockActions = TAO::Ledger::PinUnlock::UnlockActions::MINING
@@ -241,8 +229,9 @@ namespace TAO
                                            | TAO::Ledger::PinUnlock::UnlockActions::STAKING;
 
                     /* Set account to unlocked. */
-                    pActivePIN = new TAO::Ledger::PinUnlock(config::GetArg("-pin", "").c_str(), nUnlockActions);
+                    session.UpdatePIN(config::GetArg("-pin", "").c_str(), nUnlockActions);
 
+                    
                     /* Display that login was successful. */
                     debug::log(0, "Auto-Login Successful");
 
@@ -250,7 +239,7 @@ namespace TAO
                     fAutoLoggedIn = true;
 
                     /* If not using Multiuser then send an AUTH message to our peers */
-                    if(!config::fMultiuser.load())
+                    if(!config::fMultiuser.load() && GetSessionManager().Get(0).GetNetworkKey() > 0)
                     {
                         /* Generate an AUTH message to send to all peers */
                         DataStream ssMessage = LLP::TritiumNode::GetAuth(true);

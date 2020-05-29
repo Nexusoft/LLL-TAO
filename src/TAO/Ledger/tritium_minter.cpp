@@ -24,6 +24,7 @@ ________________________________________________________________________________
 #include <LLP/types/tritium.h>
 
 #include <TAO/API/include/global.h>
+#include <TAO/API/include/sessionmanager.h>
 #include <TAO/API/include/utils.h>
 
 #include <TAO/Operation/include/enum.h>
@@ -182,14 +183,14 @@ namespace TAO
         bool TritiumMinter::CheckUser()
         {
             /* Check whether unlocked account available. */
-            if(TAO::API::users->Locked())
+            if(TAO::API::GetSessionManager().Get(0).Locked())
             {
                 debug::log(0, FUNCTION, "No unlocked account available for staking");
                 return false;
             }
 
             /* Check that the account is unlocked for staking */
-            if(!TAO::API::users->CanStake())
+            if(!TAO::API::GetSessionManager().Get(0).CanStake())
             {
                 debug::log(0, FUNCTION, "Account has not been unlocked for staking");
                 return false;
@@ -894,7 +895,7 @@ namespace TAO
             }
 
             /* Lock the sigchain that is being mined. */
-            LOCK(TAO::API::users->CREATE_MUTEX);
+            LOCK(TAO::API::GetSessionManager().Get(0).CREATE_MUTEX);
 
             /* Process the block and relay to network if it gets accepted into main chain.
              * This method will call TritiumBlock::Check() TritiumBlock::Accept() and BlockState::Index()
@@ -1031,22 +1032,17 @@ namespace TAO
                 if(!pTritiumMinter->CheckUser())
                     break;
 
-                /* Get the active, unlocked sigchain. Requires session 0 */
-                memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = TAO::API::users->GetAccount(0);
-                if(!user)
-                {
-                    debug::error(0, FUNCTION, "Stake minter could not retrieve the unlocked signature chain.");
-                    break;
-                }
+                /* Get the session */
+                TAO::API::Session& session = TAO::API::GetSessionManager().Get(0);
 
-                SecureString strPIN = TAO::API::users->GetActivePin();
+                SecureString strPIN = session.GetActivePIN()->PIN();
 
                 /* Retrieve the latest trust account data */
-                if(!pTritiumMinter->FindTrustAccount(user->Genesis()))
+                if(!pTritiumMinter->FindTrustAccount(session.GetAccount()->Genesis()))
                     break;
 
                 /* Set up the candidate block the minter is attempting to mine */
-                if(!pTritiumMinter->CreateCandidateBlock(user, strPIN))
+                if(!pTritiumMinter->CreateCandidateBlock(session.GetAccount(), strPIN))
                     continue;
 
                 /* Updates weights for new candidate block */
@@ -1054,7 +1050,7 @@ namespace TAO
                     continue;
 
                 /* Attempt to mine the current proof of stake block */
-                pTritiumMinter->MintBlock(user, strPIN);
+                pTritiumMinter->MintBlock(session.GetAccount(), strPIN);
 
             }
 

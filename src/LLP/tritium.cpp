@@ -22,6 +22,7 @@ ________________________________________________________________________________
 #include <LLP/include/manager.h>
 
 #include <TAO/API/include/global.h>
+#include <TAO/API/include/sessionmanager.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
@@ -3548,10 +3549,14 @@ namespace LLP
         DataStream ssMessage(SER_NETWORK, MIN_PROTO_VERSION);
 
         /* Only send auth messages if the auth key has been cached */
-        if(TAO::API::users->LoggedIn() && !TAO::API::users->GetNetworkKey(0).IsNull())
+        if(TAO::API::users->LoggedIn() && !TAO::API::GetSessionManager().Get(0).GetNetworkKey() != 0)
         {
+            /* Get the Session */
+            TAO::API::Session& session = TAO::API::GetSessionManager().Get(0);
+
             /* The genesis of the currently logged in user */
-            uint256_t hashSigchain = TAO::API::users->GetGenesis(0);
+            uint256_t hashSigchain = session.GetAccount()->Genesis();
+
             uint64_t nTimestamp = runtime::unifiedtimestamp();
 
             /* Add the basic auth data to the message */
@@ -3566,7 +3571,7 @@ namespace LLP
 
 
             /* Generate the public key and signature for the message data */
-            TAO::API::users->GetAccount(0)->Sign("network", hashCheck.GetBytes(), TAO::API::users->GetNetworkKey(0)->DATA, vchPubKey, vchSig);
+            session.GetAccount()->Sign("network", hashCheck.GetBytes(), session.GetNetworkKey(), vchPubKey, vchSig);
 
             /* Add the public key to the message */
             ssMessage << vchPubKey;

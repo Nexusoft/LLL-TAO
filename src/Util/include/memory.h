@@ -892,7 +892,8 @@ namespace memory
             data = pdata;
 
             /* Encrypt the memory. */
-            data->Encrypt();
+            if(data)
+                data->Encrypt();
         }
 
 

@@ -22,6 +22,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/utils.h>
 #include <TAO/API/include/json.h>
+#include <TAO/API/include/sessionmanager.h>
 
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/chainstate.h>
@@ -947,8 +948,8 @@ namespace TAO
                 hashGenesis = TAO::Ledger::SignatureChain::Genesis(params["username"].get<std::string>().c_str());
 
             /* Get genesis by session. */
-            else if(!config::fMultiuser.load() && mapSessions.count(0))
-                hashGenesis = mapSessions[0]->Genesis();
+            else if(!config::fMultiuser.load() && GetSessionManager().Has(0))
+                hashGenesis = GetSessionManager().Get(0).GetAccount()->Genesis();
 
             /* Handle for no genesis. */
             else
@@ -1172,10 +1173,10 @@ namespace TAO
                 throw APIException(-256, "Cannot process notifications whilst synchronizing");
 
             /* Get the session to be used for this API call */
-            uint256_t nSession = users->GetSession(params);
+            Session& session = users->GetSession(params);;
 
             /* Get the account. */
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
+            const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = session.GetAccount();
             if(!user)
                 throw APIException(-10, "Invalid session ID");
 
@@ -1670,7 +1671,7 @@ namespace TAO
             while(!vProcessQueue.empty())
             {
                 /* Lock the signature chain. */
-                LOCK(users->CREATE_MUTEX);
+                LOCK(session.CREATE_MUTEX);
 
                 /* Create the transaction output. */
                 TAO::Ledger::Transaction txout;

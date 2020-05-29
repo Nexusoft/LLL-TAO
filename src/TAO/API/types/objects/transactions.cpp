@@ -43,21 +43,16 @@ namespace TAO
 
             /* Get the Genesis ID. */
             uint256_t hashGenesis = 0;
-
-            /* The session to use */
-            uint256_t nSession = users->GetSession(params, false);
-
+            
             /* Check to see if caller has supplied a specific genesis or username. */
             if(params.find("genesis") != params.end())
                 hashGenesis.SetHex(params["genesis"].get<std::string>());
             else if(params.find("username") != params.end())
                 hashGenesis = TAO::Ledger::SignatureChain::Genesis(params["username"].get<std::string>().c_str());
-            else if(nSession != -1)
-                /* If no specific genesis or username have been provided then fall back to the active sig chain */
-                hashGenesis = users->GetGenesis(nSession);
             else
-                throw APIException(-111, "Missing genesis / username");
-
+                /* If no specific genesis or username have been provided then fall back to the active sig chain */
+                hashGenesis = users->GetSession(params).GetAccount()->Genesis();
+            
             /* The genesis hash of the API caller, if logged in */
             uint256_t hashCaller = users->GetCallersGenesis(params);
 

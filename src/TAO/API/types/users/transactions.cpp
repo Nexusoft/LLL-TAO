@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/utils.h>
 #include <TAO/API/include/json.h>
+#include <TAO/API/include/sessionmanager.h>
 
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -46,10 +47,10 @@ namespace TAO
                 hashGenesis.SetHex(params["genesis"].get<std::string>());
             else if(params.find("username") != params.end())
                 hashGenesis = TAO::Ledger::SignatureChain::Genesis(params["username"].get<std::string>().c_str());
-            else if(!config::fMultiuser.load() && mapSessions.count(0))
+            else if(!config::fMultiuser.load() && GetSessionManager().Has(0))
             {
                 /* If no specific genesis or username have been provided then fall back to the active sig chain */
-                hashGenesis = mapSessions[0]->Genesis();
+                hashGenesis = GetSessionManager().Get(0).GetAccount()->Genesis();
             }
             else
                 throw APIException(-111, "Missing genesis / username");

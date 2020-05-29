@@ -20,6 +20,8 @@ ________________________________________________________________________________
 #include <LLP/templates/trigger.h>
 
 #include <TAO/API/types/users.h>
+#include <TAO/API/include/global.h>
+#include <TAO/API/include/sessionmanager.h>
 
 #include <TAO/Register/types/object.h>
 
@@ -84,22 +86,21 @@ namespace TAO
             if(strPin.size() == 0)
                 throw APIException(-135, "Zero-length PIN");
 
-            /* Create the sigchain. */
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain> user = new TAO::Ledger::SignatureChain(strUser, strPass);
+            /* Create a temp sig chain for checking credentials */
+            TAO::Ledger::SignatureChain user(strUser, strPass);
 
-            /* Get the genesis ID. */
-            uint256_t hashGenesis = user->Genesis();
+            /* Get the genesis ID of the user logging in. */
+            uint256_t hashGenesis = user.Genesis();
 
             /* Check for -client mode. */
             if(config::fClient.load())
             {
                 /* If not using multiuser then check to see whether another user is already logged in */
-                if(mapSessions.count(0) && mapSessions[0]->Genesis() != hashGenesis)
+                if(GetSessionManager().Has(0) && GetSessionManager().Get(0).GetAccount()->Genesis() != hashGenesis)
                 {
-                    user.free();
                     throw APIException(-140, "CLIENT MODE: Already logged in with a different username.");
                 }
-                else if(mapSessions.count(0))
+                else if(GetSessionManager().Has(0))
                 {
                     json::json ret;
                     ret["genesis"] = hashGenesis.ToString();
@@ -145,21 +146,18 @@ namespace TAO
                 if(!TAO::Ledger::mempool.Has(hashGenesis))
                 {
                     /* Account doesn't exist returns invalid credentials */
-                    user.free();
                     throw APIException(-139, "Invalid credentials");
                 }
 
                 if(!config::fTestNet.load())
                 {
                     /* After credentials verified, disallow login while in mempool and unconfirmed */
-                    user.free();
                     throw APIException(-222, "User create pending confirmation");
                 }
 
                 /* Testnet allows mempool login. Get the memory pool tranasction. */
                 else if(!TAO::Ledger::mempool.Get(hashGenesis, txPrev))
                 {
-                    user.free();
                     throw APIException(-137, "Couldn't get transaction");
                 }
             }
@@ -169,71 +167,61 @@ namespace TAO
                 uint512_t hashLast;
                 if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
                 {
-                    user.free();
                     throw APIException(-138, "No previous transaction found");
                 }
 
                 /* Get previous transaction */
                 if(!LLD::Ledger->ReadTx(hashLast, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
                 {
-                    user.free();
                     throw APIException(-138, "No previous transaction found");
                 }
             }
 
             /* Genesis Transaction. */
             TAO::Ledger::Transaction tx;
-            tx.NextHash(user->Generate(txPrev.nSequence + 1, strPin, false), txPrev.nNextType);
+            tx.NextHash(user.Generate(txPrev.nSequence + 1, strPin, false), txPrev.nNextType);
 
             /* Check for consistency. */
             if(txPrev.hashNext != tx.hashNext)
             {
-                user.free();
                 throw APIException(-139, "Invalid credentials");
             }
 
             /* Check the sessions. */
             {
-                LOCK(MUTEX);
-
-                for(const auto& session : mapSessions)
+                auto session = GetSessionManager().mapSessions.begin();
+                while(session != GetSessionManager().mapSessions.end())
                 {
-                    if(hashGenesis == session.second->Genesis())
+                    if(session->second.GetAccount()->Genesis() == hashGenesis)
                     {
-                        user.free();
-
                         ret["genesis"] = hashGenesis.ToString();
                         if(config::fMultiuser.load())
-                            ret["session"] = session.first.ToString();
+                            ret["session"] = session->first.ToString();
 
                         return ret;
                     }
+
+                    /* increment iterator */
+                    ++session;
                 }
+                    
+
             }
 
             /* If not using multiuser then check to see whether another user is already logged in */
-            if(!config::fMultiuser.load() && mapSessions.count(0) && mapSessions[0]->Genesis() != hashGenesis)
+            if(!config::fMultiuser.load() && GetSessionManager().Has(0) && GetSessionManager().Get(0).GetAccount()->Genesis() != hashGenesis)
             {
-                user.free();
                 throw APIException(-140, "Already logged in with a different username.");
             }
 
-            /* For sessionless API use the active sig chain which is stored in session 0 */
-            uint256_t nSession = config::fMultiuser.load() ? LLC::GetRand256() : 0;
+            /* Create the new session */
+            Session& session = GetSessionManager().Add(strUser, strPass, strPin);
+
             ret["genesis"] = hashGenesis.ToString();
 
             if(config::fMultiuser.load())
-                ret["session"] = nSession.ToString();
+                ret["session"] = session.ID().ToString();
 
-            /* Setup the account. */
-            {
-                LOCK(MUTEX);
-                mapSessions.emplace(nSession, std::move(user));
-            }
-
-            /* Generate and cache the private key for the "network" key so that we can sign LLP messages to authenticate to peers */
-            mapNetworkKeys[nSession] = new memory::encrypted_type<uint512_t>(user->Generate("network", 0, strPin));
-            
             /* If not using Multiuser then send an AUTH message to our peers */
             if(!config::fMultiuser.load())
             {

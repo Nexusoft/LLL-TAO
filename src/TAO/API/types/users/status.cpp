@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/types/users.h>
+#include <TAO/API/include/sessionmanager.h>
 
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/sigchain.h>
@@ -41,15 +42,15 @@ namespace TAO
                 throw APIException(-145, "Unlock not supported in multiuser mode");
 
             /* Check default session (unlock only supported in single user mode). */
-            if(!mapSessions.count(0))
+            if(!GetSessionManager().Has(0))
                 throw APIException(-11, "User not logged in.");
 
-            /* Get the sigchain from map of users. */
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = mapSessions[0];
+            /* Get the session. */
+            Session& session = GetSessionManager().Get(0);
 
-            uint256_t hashGenesis = user->Genesis();
+            uint256_t hashGenesis = session.GetAccount()->Genesis();
             /* populate response */
-            ret["username"] = user->UserName().c_str();
+            ret["username"] = session.GetAccount()->UserName().c_str();
             ret["genesis"] = hashGenesis.GetHex();
 
             /* sig chain transaction count */
@@ -97,10 +98,10 @@ namespace TAO
             /* populate unlocked status */
             json::json jsonUnlocked;
 
-            jsonUnlocked["mining"] = !pActivePIN.IsNull() && pActivePIN->CanMine();
-            jsonUnlocked["notifications"] = !pActivePIN.IsNull() && pActivePIN->ProcessNotifications();
-            jsonUnlocked["staking"] = !pActivePIN.IsNull() && pActivePIN->CanStake();
-            jsonUnlocked["transactions"] = !pActivePIN.IsNull() && pActivePIN->CanTransact();
+            jsonUnlocked["mining"] = !session.GetActivePIN().IsNull() && session.CanMine();
+            jsonUnlocked["notifications"] = !session.GetActivePIN().IsNull() && session.CanProcessNotifications();
+            jsonUnlocked["staking"] = !session.GetActivePIN().IsNull() && session.CanStake();
+            jsonUnlocked["transactions"] = !session.GetActivePIN().IsNull() && session.CanTransact();
 
             ret["unlocked"] = jsonUnlocked;
             

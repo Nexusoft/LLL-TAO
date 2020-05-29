@@ -52,7 +52,7 @@ namespace TAO
             
             /* use logged in session. */
             else 
-                hashGenesis = users->GetGenesis(users->GetSession(params));
+                hashGenesis = users->GetSession(params).GetAccount()->Genesis();
            
             /* Prevent foreign data lookup in client mode */
             if(config::fClient.load() && hashGenesis != users->GetCallersGenesis(params))

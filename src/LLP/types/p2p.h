@@ -82,6 +82,27 @@ namespace LLP
             };
         }
 
+
+        /* Struct encapsulating a P2P connection request */
+        struct ConnectionRequest
+        {
+            /* Time the request was received */
+            uint64_t nTimestamp;
+
+            /* The appid */
+            uint64_t nAppID;
+
+            /* The genesis hash of the peer making the request*/
+            uint256_t hashPeer;            
+            
+            /* The P2P session ID */
+            uint64_t nSession;
+            
+            /* The address / port to connect to*/
+            BaseAddress address;
+        };
+
+
         /* Struct encapsulating a P2P message */
         struct Message
         {
