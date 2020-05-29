@@ -12,12 +12,13 @@ file COPYING or http://www.opensource.org/licenses/mit-license.php.
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_TAO_LEDGER_TYPES_TRITIUM_MINTER_H
-#define NEXUS_TAO_LEDGER_TYPES_TRITIUM_MINTER_H
+#ifndef NEXUS_TAO_LEDGER_TYPES_TRITIUM_POOL_MINTER_H
+#define NEXUS_TAO_LEDGER_TYPES_TRITIUM_POOL_MINTER_H
 
 #include <TAO/Ledger/types/stake_minter.h>
 
 #include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/transaction.h>
 
 #include <Util/include/allocators.h>
 
@@ -33,23 +34,31 @@ namespace TAO
     namespace Ledger
     {
 
-    /** @class TritiumMinter
+    /** @class TritiumPoolMinter
      *
-     * This class supports solo mining blocks on the Proof of Stake channel.
+     * This class supports pool mining blocks on the Proof of Stake channel.
      *
      * It is implemented as a Singleton instance retrieved by calling GetInstance().
      *
      * Staking does not start, though, until Start() is called for the first time.
      * It requires single user mode, with a user account unlocked for staking before it will start successfully.
      *
-     * The stake balance and trust score from the trust account will be used for Proof of Stake.
      * A new trust account register must be created for the active user account signature chain and balance
      * sent to this account before it can successfully stake.
      *
-     * The initial stake transaction for a new trust account is the Genesis transaction using OP::GENESIS
-     * in the block producer. Genesis commits the current available balance from the trust account to the stake balance.
+     * The initial stake transaction for a new trust account is the Genesis transaction using OP::POOL_GENESIS
+     * in the coinstake. Genesis commits the current available balance from the trust account to the stake balance.
      *
-     * All subsequent stake transactions are Trust transactions and use OP::TRUST applied to the committed stake balance.
+     * Accounts staking for Genesis cannot be the block finder for a pool stake block, so the minter will not attempt
+     * to hash blocks until after the account has completed stake genesis. Before then, it will only submit a Genesis
+     * coinstake to the stake pool.
+     *
+     * All subsequent stake transactions are Trust transactions and use OP::POOL_TRUST in the producer.
+     * This operation will generete stake reward based on each individual account trust and stake balance, with a portion of
+     * the overall reward going to the block finder.
+     *
+     * Pool staking also supports running in -client mode. In this mode, it will not hash blocks for either Genesis or Trust.
+     * It will only create a coinstake and submit it to the pool to be mined by a full node that is pool staking.
      *
      * Committed stake may be changed by a StakeChange stored in the local database. Added stake is moved from the available
      * balance in the trust account to the committed stake balance upon successfully mining a stake block. Although the added
@@ -61,28 +70,28 @@ namespace TAO
      * and restarted by calling Start() again.
      *
      **/
-    class TritiumMinter final : public TAO::Ledger::StakeMinter
+    class TritiumPoolMinter final : public TAO::Ledger::StakeMinter
     {
     public:
         /** Copy constructor deleted **/
-        TritiumMinter(const TritiumMinter&) = delete;
+        TritiumPoolMinter(const TritiumPoolMinter&) = delete;
 
         /** Copy assignment deleted **/
-        TritiumMinter& operator=(const TritiumMinter&) = delete;
+        TritiumPoolMinter& operator=(const TritiumPoolMinter&) = delete;
 
 
         /** Destructor **/
-        ~TritiumMinter() {}
+        ~TritiumPoolMinter() {}
 
 
         /** GetInstance
          *
-         * Retrieves the TritiumMinter.
+         * Retrieves the TritiumPoolMinter.
          *
-         * @return reference to the TritiumMinter instance
+         * @return reference to the TritiumPoolMinter instance
          *
          **/
-        static TritiumMinter& GetInstance();
+        static TritiumPoolMinter& GetInstance();
 
 
         /** Start
@@ -94,9 +103,9 @@ namespace TAO
          *
          * In general, this method should be called when a signature chain is unlocked for staking.
          *
-         * If the system is configured not to run the TritiumMinter, this method will return false.
+         * If the system is configured not to run the TritiumPoolMinter, this method will return false.
          *
-         * After calling this method, the TritiumMinter thread may stay in suspended state if
+         * After calling this method, the TritiumPoolMinter thread may stay in suspended state if
          * the local node is synchronizing, or if it does not have any connections, yet.
          * In that case, it will automatically begin when sync is complete and connections
          * are available.
@@ -125,10 +134,10 @@ namespace TAO
     protected:
         /** CreateCoinstake
          *
-         *  Create the coinstake transaction for a solo Proof of Stake block and add it as the candidate block producer.
+         *  Create the coinstake transaction for a pool Proof of Stake block and add it as the candidate block producer.
          *
          *  @param[in] user - the currently active signature chain
-         *  @param[in] strPIN - active pin corresponding to the sig chain (not used by solo minter)
+         *  @param[in] strPIN - active pin corresponding to the sig chain
          *
          *  @return true if the coinstake was successfully created
          *
@@ -138,7 +147,7 @@ namespace TAO
 
         /** MintBlock
          *
-         *  Initialize the staking process for solo Proof of Stake and call HashBlock() to perform block hashing.
+         *  Initialize the staking process for pool Proof of Stake and call HashBlock() to perform block hashing.
          *
          *  @param[in] user - the user account signature chain that is staking
          *  @param[in] strPIN - active pin corresponding to the sig chain
@@ -151,7 +160,7 @@ namespace TAO
          *
          *  Check whether or not to stop hashing in HashBlock() to process block updates.
          *
-         *  @return always false for solo staking
+         *  @return true if block requires update
          *
          **/
         bool CheckBreak() override;
@@ -159,7 +168,7 @@ namespace TAO
 
         /** CheckStale
          *
-         *  Check that producer coinstake won't orphan any new transaction for the same hashGenesis received in mempool
+         *  Check that producer coinstakes won't orphan any new transaction for the same hashGenesis received in mempool
          *  since starting work on the current block.
          *
          *  @return true if current block is stale
@@ -170,7 +179,9 @@ namespace TAO
 
         /** CalculateCoinstakeReward
          *
-         *  Calculate the coinstake reward for a solo mined Proof of Stake block.
+         *  Calculate the block finder coinstake reward for a pool mined Proof of Stake block.
+         *
+         *  Block finder receives stake reward + net fees paid by pooled coinstakes
          *
          *  @param[in] nTime - the time for which the reward will be calculated
          *
@@ -181,7 +192,7 @@ namespace TAO
 
 
     private:
-        /** Set true when solo minter thread starts and remains true while it is running **/
+        /** Set true when pool minter thread starts and remains true while it is running **/
         static std::atomic<bool> fStarted;
 
 
@@ -189,8 +200,46 @@ namespace TAO
         static std::thread stakeMinterThread;
 
 
+        /** Producer transaction for this node as block finder in pooled stake.
+         *  This is kept separate from block so it can be added as last producer in block when it is built from stakepool.
+         **/
+        TAO::Ledger::Transaction txProducer;
+
+        /** Maximum number of coinstakes to include in candidate block **/
+        uint32_t nProducerSize;
+
+        /** Last recorded count of entries in the stake pool. Tells when stake pool has received more tx. **/
+        uint32_t nPoolCount;
+
+        /** Net balance of coinstakes from pool included in the current block **/
+        uint64_t nPoolStake;
+
+        /** Net fees paid by coinstakes from pool included in the current block **/
+        uint64_t nPoolFee;
+
+
         /** Constructor **/
-        TritiumMinter() {}
+        TritiumPoolMinter();
+
+
+        /** SetupPool
+         *
+         *  Setup pooled stake parameters.
+         *
+         *  @return true if process completed successfully
+         *
+         **/
+        bool SetupPool();
+
+
+        /** AddPoolCoinstakes
+         *
+         *  Add coinstake transactions from the stake pool to the current candidate block.
+         *
+         *  @return true if process completed successfully
+         *
+         **/
+        bool AddPoolCoinstakes();
 
 
         /** StakeMinterThread
@@ -201,10 +250,10 @@ namespace TAO
          *
          *  On shutdown, the thread will cease operation and wait for the minter destructor to tell it to exit/join.
          *
-         *  @param[in] pTritiumMinter - the minter thread will use this instance to perform all the tritium minter work
+         *  @param[in] pTritiumPoolMinter - the minter thread will use this instance to perform all the tritium minter work
          *
          **/
-        static void StakeMinterThread(TritiumMinter* pTritiumMinter);
+        static void StakeMinterThread(TritiumPoolMinter* pTritiumPoolMinter);
 
         };
 

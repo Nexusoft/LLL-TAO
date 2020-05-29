@@ -35,152 +35,152 @@ ________________________________________________________________________________
 namespace TAO
 {
 
-	/* Ledger namespace. */
-	namespace Ledger
-	{
+    /* Ledger namespace. */
+    namespace Ledger
+    {
 
-	/** @class StakeMinter
-	 *
-	 * This class provides the base class and processes for mining blocks on the Proof of Stake channel.
-	 * Implementations will provide the details for each specific mining type.
-	 *
-	 * Staking starts when Start() is called.
-	 *
-	 * Staking operations can be suspended by calling Stop and restarted by calling Start() again.
-	 *
-	 **/
-	class StakeMinter
-	{
-	public:
+    /** @class StakeMinter
+     *
+     * This class provides the base class and processes for mining blocks on the Proof of Stake channel.
+     * Implementations will provide the details for each specific mining type.
+     *
+     * Staking starts when Start() is called.
+     *
+     * Staking operations can be suspended by calling Stop and restarted by calling Start() again.
+     *
+     **/
+    class StakeMinter
+    {
+    public:
 
-		/** Destructor **/
-		virtual ~StakeMinter() {}
-
-
-		/** GetInstance
-		 *
-		 * Retrieves the stake minter instance to use for staking.
-		 *
-		 * @return reference to the TritiumMinter instance
-		 *
-		 **/
-		static StakeMinter& GetInstance();
+        /** Destructor **/
+        virtual ~StakeMinter() {}
 
 
-		/** IsStarted
-		 *
-		 * Tests whether or not a stake minter is currently running.
-		 *
-		 * @return true if a stake minter is started, false otherwise
-		 *
-		 **/
-		bool IsStarted() const;
+        /** GetInstance
+         *
+         * Retrieves the stake minter instance to use for staking.
+         *
+         * @return reference to the TritiumMinter instance
+         *
+         **/
+        static StakeMinter& GetInstance();
 
 
-		/** GetBlockWeight
-		 *
-		 * Retrieves the current internal value for the block weight metric.
-		 *
-		 * @return value of current block weight
-		 *
-		 **/
-		double GetBlockWeight() const;
+        /** IsStarted
+         *
+         * Tests whether or not a stake minter is currently running.
+         *
+         * @return true if a stake minter is started, false otherwise
+         *
+         **/
+        bool IsStarted() const;
 
 
-		/** GetBlockWeightPercent
-		 *
-		 * Retrieves the block weight metric as a percentage of maximum.
-		 *
-		 * @return the current block weight percentage
-		 *
-		 **/
-		double GetBlockWeightPercent() const;
+        /** GetBlockWeight
+         *
+         * Retrieves the current internal value for the block weight metric.
+         *
+         * @return value of current block weight
+         *
+         **/
+        double GetBlockWeight() const;
 
 
-		/** GetTrustWeight
-		 *
-		 * Retrieves the current internal value for the trust weight metric.
-		 *
-		 * @return value of current trust weight
-		 *
-		 **/
-		double GetTrustWeight() const;
+        /** GetBlockWeightPercent
+         *
+         * Retrieves the block weight metric as a percentage of maximum.
+         *
+         * @return the current block weight percentage
+         *
+         **/
+        double GetBlockWeightPercent() const;
 
 
-		/** GetTrustWeightPercent
-		 *
-		 * Retrieves the trust weight metric as a percentage of maximum.
-		 *
-		 * @return the current trust weight percentage
-		 *
-		 **/
-		double GetTrustWeightPercent() const;
+        /** GetTrustWeight
+         *
+         * Retrieves the current internal value for the trust weight metric.
+         *
+         * @return value of current trust weight
+         *
+         **/
+        double GetTrustWeight() const;
 
 
-		/** GetStakeRate
-		 *
-		 * Retrieves the current staking reward rate.
-		 *
-		 * @return the current stake rate
-		 *
-		 **/
-		double GetStakeRate() const;
+        /** GetTrustWeightPercent
+         *
+         * Retrieves the trust weight metric as a percentage of maximum.
+         *
+         * @return the current trust weight percentage
+         *
+         **/
+        double GetTrustWeightPercent() const;
 
 
-		/** GetStakeRatePercent
-		 *
-		 * Retrieves the current staking reward rate as an annual percentage.
-		 *
-		 * @return the current stake rate percentage
-		 *
-		 **/
-		double GetStakeRatePercent() const;
+        /** GetStakeRate
+         *
+         * Retrieves the current staking reward rate.
+         *
+         * @return the current stake rate
+         *
+         **/
+        double GetStakeRate() const;
 
 
-		/** IsWaitPeriod
-		 *
-		 * Checks whether the stake minter is waiting to begin staking.
-		 *
-		 * @return true if minter is waiting, false otherwise
-		 *
-		 **/
-		bool IsWaitPeriod() const;
+        /** GetStakeRatePercent
+         *
+         * Retrieves the current staking reward rate as an annual percentage.
+         *
+         * @return the current stake rate percentage
+         *
+         **/
+        double GetStakeRatePercent() const;
 
 
-		/** GetWaitTime
-		 *
-		 * When IsWaitPeriod() is true, this method returns the remaining wait time before staking is active.
-		 *
-		 * @return number of seconds remaining for minimum age to stake
-		 *
-		 **/
-		uint64_t GetWaitTime() const;
+        /** IsWaitPeriod
+         *
+         * Checks whether the stake minter is waiting to begin staking.
+         *
+         * @return true if minter is waiting, false otherwise
+         *
+         **/
+        bool IsWaitPeriod() const;
 
 
-		/** Start
-		 *
-		 * Starts the stake minter.
-		 *
-		 * Call this method to start the stake minter thread and begin mining Proof of Stake, or
-		 * to restart it after it was stopped.
-		 *
-		 * @return true if the stake minter was started, false if it was already running or not started
-		 *
-		 **/
-		virtual bool Start() = 0;
+        /** GetWaitTime
+         *
+         * When IsWaitPeriod() is true, this method returns the remaining wait time before staking is active.
+         *
+         * @return number of seconds remaining for minimum age to stake
+         *
+         **/
+        uint64_t GetWaitTime() const;
 
 
-		/** Stop
-		 *
-		 * Stops the stake minter.
-		 *
-		 * Call this method to signal the stake minter thread stop Proof of Stake mining and end.
-		 * It can be restarted via a subsequent call to Start().
-		 *
-		 * @return true if the stake minter was stopped, false if it was already stopped
-		 *
-		 **/
-		virtual bool Stop() = 0;
+        /** Start
+         *
+         * Starts the stake minter.
+         *
+         * Call this method to start the stake minter thread and begin mining Proof of Stake, or
+         * to restart it after it was stopped.
+         *
+         * @return true if the stake minter was started, false if it was already running or not started
+         *
+         **/
+        virtual bool Start() = 0;
+
+
+        /** Stop
+         *
+         * Stops the stake minter.
+         *
+         * Call this method to signal the stake minter thread stop Proof of Stake mining and end.
+         * It can be restarted via a subsequent call to Start().
+         *
+         * @return true if the stake minter was stopped, false if it was already stopped
+         *
+         **/
+        virtual bool Stop() = 0;
 
 
 	protected:
@@ -192,36 +192,36 @@ namespace TAO
         static std::atomic<bool> fStop;
 
 
-		/** Hash of the best chain when the minter began attempting to mine its current candidate.
-		 *  If current hashBestChain changes, the minter must start over with a new candidate.
-		 **/
-		uint1024_t hashLastBlock;
+        /** Hash of the best chain when the minter began attempting to mine its current candidate.
+         *  If current hashBestChain changes, the minter must start over with a new candidate.
+         **/
+        uint1024_t hashLastBlock;
 
 
-		/** Time (in milliseconds) to sleep between blocks. **/
-		uint64_t nSleepTime;
+        /** Time (in milliseconds) to sleep between blocks. **/
+        uint64_t nSleepTime;
 
 
-		/** true when the minter is waiting to begin staking **/
-		std::atomic<bool> fWait;
+        /** true when the minter is waiting to begin staking **/
+        std::atomic<bool> fWait;
 
 
-		/** When fWait is true, this field will store the remaining wait time before staking is active **/
-		std::atomic<uint64_t> nWaitTime;
+        /** When fWait is true, this field will store the remaining wait time before staking is active **/
+        std::atomic<uint64_t> nWaitTime;
 
 
-		/** The current internal trust weight value **/
-		std::atomic<double> nTrustWeight;
+        /** The current internal trust weight value **/
+        std::atomic<double> nTrustWeight;
 
 
-		/** The current internal block weight value **/
-		std::atomic<double> nBlockWeight;
+        /** The current internal block weight value **/
+        std::atomic<double> nBlockWeight;
 
 
-		/** The current stake rate for calculating staking rewards. This is for display only, updated at the start of each
+        /** The current stake rate for calculating staking rewards. This is for display only, updated at the start of each
          *  mining round. The actual rate used for calculating reward paid is based on block time when the block is found.
          **/
-		std::atomic<double> nStakeRate;
+        std::atomic<double> nStakeRate;
 
 
         /** Trust account to use for staking. **/
@@ -256,25 +256,8 @@ namespace TAO
         uint64_t nBlockAge;
 
 
-		/** Default constructor **/
-		StakeMinter()
-		: hashLastBlock(0)
-		, nSleepTime(1000)
-		, fWait(false)
-		, nWaitTime(0)
-		, nTrustWeight(0.0)
-		, nBlockWeight(0.0)
-		, nStakeRate(0.0)
-        , account()
-        , stateLast()
-        , fStakeChange(false)
-        , stakeChange()
-        , block()
-        , fGenesis(false)
-        , nTrust(0)
-        , nBlockAge(0)
-		{
-		}
+        /** Constructor **/
+        StakeMinter();
 
 
         /** CreateCoinstake
@@ -288,7 +271,7 @@ namespace TAO
          *  @return true if the coinstake was successfully created
          *
          **/
-        virtual bool CreateCoinstake(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user) = 0;
+        virtual bool CreateCoinstake(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN) = 0;
 
 
         /** MintBlock
@@ -319,38 +302,53 @@ namespace TAO
         virtual bool CheckBreak() = 0;
 
 
+        /** CheckStale
+         *
+         *  Check that producer coinstake(s) won't orphan any new transaction for the same hashGenesis received in mempool
+         *  since starting work on the current block.
+         *
+         *  Each staking algorithm will implement its own process for checking when this is needed.
+         *
+         *  @return true if current block is stale
+         *
+         **/
+        virtual bool CheckStale() = 0;
+
+
         /** CalculateCoinstakeReward
          *
          *  Calculate the coinstake reward for a newly mined Proof of Stake block.
          *
          *  Each staking algorithm will implement its own reward calculation.
          *
+         *  @param[in] nTime - the time for which the reward will be calculated
+         *
          *  @return the amount of reward paid by the block
          *
          **/
-        virtual uint64_t CalculateCoinstakeReward() = 0;
+        virtual uint64_t CalculateCoinstakeReward(uint64_t nTime) = 0;
 
 
-		/** CheckUser
-		 *
-		 *  Verify user account unlocked for minting.
-		 *
-		 *  @return true if the user account can stake
-		 *
-		 **/
-		bool CheckUser();
+        /** CheckUser
+         *
+         *  Verify user account unlocked for minting.
+         *
+         *  @return true if the user account can stake
+         *
+         **/
+        bool CheckUser();
 
 
-		/** FindTrust
-		 *
-		 *  Gets the trust account for the staking signature chain and stores it into account instance variable.
-		 *
-		 *  @param[in] hashGenesis - genesis of user account signature chain that is staking
-		 *
-		 *  @return true if the trust account was successfully retrieved
-		 *
-		 **/
-		bool FindTrustAccount(const uint256_t& hashGenesis);
+        /** FindTrust
+         *
+         *  Gets the trust account for the staking signature chain and stores it into account instance variable.
+         *
+         *  @param[in] hashGenesis - genesis of user account signature chain that is staking
+         *
+         *  @return true if the trust account was successfully retrieved
+         *
+         **/
+        bool FindTrustAccount(const uint256_t& hashGenesis);
 
 
         /** FindLastStake
@@ -444,24 +442,28 @@ namespace TAO
         bool CheckMempool(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user);
 
 
-		/** HashBlock
-		 *
+        /** HashBlock
+         *
          *  Attempt to solve the hashing algorithm at the current staking difficulty for the candidate block, while
          *  operating within the required threshold restriction.
          *
-         *  This process periodically calls the algorithm-specific CheckBreak() method to determine whether or not it needs
-         *  to stop iterating to alter the block setup. Otherwise, it will continue to iterate until it either
-         *  mines a new block or the hashBestChain changes and the minter must start over with a new candidate block.
+         *  This process periodically calls the algorithm-specific CheckBreak() method to determine whether or not minter
+         *  needs to alter the block setup. When it does, the hashing process will stop and return false.
+         *
+         *  Otherwise, it will continue to hash until it either mines a new block or hashBestChain changes and the
+         *  minter must start over with a new candidate block. Then it returns true to indicate hashing complete.
          *
          *  When a block solution is found, this method calls ProcessBlock() to process and relay the new block.
-		 *
+         *
          *  @param[in] user - the user account signature chain that is staking
          *  @param[in] strPIN - active pin corresponding to the sig chain
          *  @param[in] nRequired - required theshold for stake block hashing
-		 *
-		 **/
-		void HashBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN,
-			           const cv::softdouble nRequired);
+         *
+         *  @return true if hashing current block complete and minter should start a new block
+         *
+         **/
+        bool HashBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN,
+                       const cv::softdouble nRequired);
 
 
         /** ProcessBlock
@@ -490,10 +492,10 @@ namespace TAO
          **/
         bool SignBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN);
 
-	};
+    };
 
 
-	}
+    }
 }
 
 #endif

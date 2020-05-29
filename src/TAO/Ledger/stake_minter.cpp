@@ -13,6 +13,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/stake_minter.h>
 #include <TAO/Ledger/types/tritium_minter.h>
+#include <TAO/Ledger/types/tritium_pool_minter.h>
 
 #include <LLC/hash/SK.h>
 #include <LLC/include/eckey.h>
@@ -29,6 +30,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/stake.h>
 
 #include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/types/transaction.h>
 
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/types/address.h>
@@ -58,7 +60,7 @@ namespace TAO
             static bool fPool = false;
 
             /* When set to pool stake or for light client, use the pool stake minter */
-            if(config::GetBoolArg("-stakepool", false) || config::GetBoolArg("-client", false))
+            if(config::fPoolStaking.load() || config::fClient.load())
             {
                 if(!fPool) //checks if previously set for solo
                 {
@@ -70,25 +72,45 @@ namespace TAO
                 }
 
                 fPool = true;
-                //return TritiumPoolMinter::GetInstance();
-                return TritiumMinter::GetInstance(); //TODO remove when implement pool stake minter
+                return TritiumPoolMinter::GetInstance();
             }
 
             /* Otherwise, use the solo stake minter */
             else
             {
-                // if(!fPool) //checks if previously set for solo
-                // {
-                //     /* Switch to pool staking */
-                //     StakeMinter& oldStakeMinter = TritiumPoolMinter::GetInstance();
-                //     if(oldStakeMinter.IsStarted())
-                //         oldStakeMinter.Stop();
+                if(fPool) //checks if previously set for pool
+                {
+                    /* Switch to pool staking */
+                    StakeMinter& oldStakeMinter = TritiumPoolMinter::GetInstance();
+                    if(oldStakeMinter.IsStarted())
+                        oldStakeMinter.Stop();
 
-                // }
+                }
 
                 fPool = false;
                 return TritiumMinter::GetInstance();
             }
+        }
+
+
+        /** Constructor **/
+        StakeMinter::StakeMinter()
+        : hashLastBlock(0)
+        , nSleepTime(1000)
+        , fWait(false)
+        , nWaitTime(0)
+        , nTrustWeight(0.0)
+        , nBlockWeight(0.0)
+        , nStakeRate(0.0)
+        , account()
+        , stateLast()
+        , fStakeChange(false)
+        , stakeChange()
+        , block()
+        , fGenesis(false)
+        , nTrust(0)
+        , nBlockAge(0)
+        {
         }
 
 
@@ -185,73 +207,24 @@ namespace TAO
         /*  Retrieves the most recent stake transaction for a user account. */
         bool StakeMinter::FindTrustAccount(const uint256_t& hashGenesis)
         {
+            bool fIndexed;
 
-            /* Reset saved trust account data */
-            account = TAO::Register::Object();
+            /* Retrieve the trust account for the user's hashGenesis */
+            if(!TAO::Ledger::FindTrustAccount(hashGenesis, account, fIndexed))
+                return false;
 
-            /*
-             * Every user account should have a corresponding trust account created with its first transaction.
-             * Upon staking Genesis, that account is indexed into the register DB and is directly retrievable.
-             * Pre-Genesis, we have to retrieve the name register to obtain the trust account address.
-             *
-             * If this process fails in any way, the user account has no trust account available and cannot stake.
-             * This is logged as an error and the stake minter should be suspended pending stop/shutdown.
-             */
+            fGenesis = !fIndexed;
 
-            if(LLD::Register->HasTrust(hashGenesis))
+            if(fGenesis)
             {
-                fGenesis = false;
-
-                /* Staking Trust for trust account */
-
-                /* Retrieve the trust account register */
-                TAO::Register::Object reg;
-                if(!LLD::Register->ReadTrust(hashGenesis, reg))
-                   return debug::error(FUNCTION, "Unable to retrieve trust account");
-
-                if(!reg.Parse())
-                    return debug::error(FUNCTION, "Unable to parse trust account register");
-
-                if(reg.Standard() != TAO::Register::OBJECTS::TRUST)
-                    return debug::error(FUNCTION, "Invalid trust account register");
-
-                /* Found valid trust account register. Save for minter use. */
-                account = reg;
-
-                return true;
-            }
-            else
-            {
-                fGenesis = true;
-
-                /* Staking Genesis for trust account. Trust account is not indexed, need to use trust account address. */
-                uint256_t hashAddress = TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
-
-                /* Retrieve the trust account */
-                TAO::Register::Object reg;
-                if(!LLD::Register->ReadState(hashAddress, reg))
-                    return debug::error(FUNCTION, "Unable to retrieve trust account for Genesis");
-
-                /* Verify we have trust account register for the user account */
-                if(!reg.Parse())
-                    return debug::error(FUNCTION, "Unable to parse trust account register for Genesis");
-
-                if(reg.Standard() != TAO::Register::OBJECTS::TRUST)
-                    return debug::error(FUNCTION, "Invalid trust account register for Genesis");
-
-                /* Validate that this is a new trust account staking Genesis */
-
                 /* Check that there is no stake. */
-                if(reg.get<uint64_t>("stake") != 0)
+                if(account.get<uint64_t>("stake") != 0)
                     return debug::error(FUNCTION, "Cannot create Genesis with already existing stake");
 
                 /* Check that there is no trust. Preset trust is allowed for testing on testnet when -trustboost is used. */
-                if(reg.get<uint64_t>("trust") !=
+                if(account.get<uint64_t>("trust") !=
                 ((config::fTestNet.load() && config::GetBoolArg("-trustboost")) ? TAO::Ledger::ONE_YEAR : 0))
                     return debug::error(FUNCTION, "Cannot create Genesis with already existing trust");
-
-                /* Found valid trust account register. Save for minter use. */
-                account = reg;
             }
 
             return true;
@@ -472,7 +445,7 @@ namespace TAO
                 return debug::error(FUNCTION, "Unable to create candidate block");
 
             /* Add a coinstake producer to the new candidate block */
-            if(!CreateCoinstake(user))
+            if(!CreateCoinstake(user, strPIN))
                 return false;
 
             return true;
@@ -567,7 +540,7 @@ namespace TAO
 
                     /* Update log every 60 iterations (5 minutes) */
                     if((nCounter % 60) == 0)
-                        debug::log(0, FUNCTION, "Too soon after mining last stake block. ",
+                        debug::log(0, FUNCTION, "Too soon after last stake block. ",
                                    (nMinInterval - nInterval + 1), " blocks remaining until staking available.");
 
                     ++nCounter;
@@ -618,9 +591,11 @@ namespace TAO
 
 
         /* Attempt to solve the hashing algorithm at the current staking difficulty for the candidate block */
-        void StakeMinter::HashBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN,
+        bool StakeMinter::HashBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN,
                                     const cv::softdouble nRequired)
         {
+            uint64_t nTimeStart = 0;
+
             /* Calculate the target value based on difficulty. */
             LLC::CBigNum bnTarget;
             bnTarget.SetCompact(block.nBits);
@@ -632,9 +607,8 @@ namespace TAO
             while(!StakeMinter::fStop.load() && !config::fShutdown.load()
                 && hashLastBlock == TAO::Ledger::ChainState::hashBestChain.load())
             {
-                /* Check that the producer isn't going to orphan any new transaction from the same hashGenesis. */
-                Transaction tx;
-                if(mempool.Get(block.producer.hashGenesis, tx) && block.producer.hashPrevTx != tx.GetHash())
+                /* Check that the producer(s) won't orphan any new transaction from the same hashGenesis. */
+                if(CheckStale())
                 {
                     debug::log(2, FUNCTION, "Stake block producer is stale, rebuilding...");
                     break; //Start over with a new block
@@ -642,7 +616,28 @@ namespace TAO
 
                 /* Update the block time for threshold accuracy. */
                 block.UpdateTime();
-                uint32_t nBlockTime = block.GetBlockTime() - block.producer.nTimestamp; // How long working on this block
+                uint64_t nTimeCurrent = block.GetBlockTime();
+                uint32_t nBlockTime;
+
+                /* How long working on this block */
+                if(block.nVersion < 9)
+                    nBlockTime = nTimeCurrent - block.producer.nTimestamp;
+                else
+                    nBlockTime = nTimeCurrent - block.vProducer.at(block.vProducer.size() - 1).nTimestamp;
+
+                /* Start the check interval on first loop iteration */
+                if(nTimeStart == 0)
+                    nTimeStart = nTimeCurrent;
+
+                /* After 5 second interval, check whether need to break for block updates. */
+                else if((nTimeCurrent - nTimeStart) >= 5000)
+                {
+                    if(CheckBreak())
+                        return false;
+
+                    /* Start a new interval */
+                    nTimeStart = nTimeCurrent;
+                }
 
                 /* If just starting on block, wait */
                 if(nBlockTime == 0)
@@ -665,15 +660,10 @@ namespace TAO
                     continue;
                 }
 
-                /* Every 1000 attempts, log progress and check if need to alter the block */
+                /* Every 1000 attempts, log progress. */
                 if(block.nNonce % 1000 == 0)
-                {
                     debug::log(3, FUNCTION, "Threshold ", nThreshold, " exceeds required ",
                         nRequired,", mining Proof of Stake with nonce ", block.nNonce);
-
-                    if(CheckBreak())
-                        break;
-                }
 
                 /* Handle if block is found. */
                 uint1024_t hashProof = block.StakeHash();
@@ -689,32 +679,57 @@ namespace TAO
                 ++block.nNonce;
             }
 
-            return;
+            return true;
         }
 
 
         bool StakeMinter::ProcessBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN)
         {
-            uint64_t nReward = CalculateCoinstakeReward();
+            /* Calculate coinstake reward for producer.
+             * Reward is based on final block time for block. Block time is updated with each iteration so we
+             * have deferred reward calculation until after the block is found to get the exact correct amount.
+             */
+            uint64_t nReward = CalculateCoinstakeReward(block.GetBlockTime());
 
-            /* Add coinstake reward to producer */
-            block.producer[0] << nReward;
+            TAO::Ledger::Transaction txProducer;
+            if(block.nVersion < 9)
+                txProducer = block.producer;
+            else
+                txProducer = block.vProducer.at(block.vProducer.size() - 1);
+
+            /* Add coinstake reward */
+            txProducer[0] << nReward;
 
             /* Execute operation pre- and post-state. */
-            if(!block.producer.Build())
+            if(!txProducer.Build())
                 return debug::error(FUNCTION, "Coinstake transaction failed to build");
 
-            /* Coinstake producer now complete. Sign the block producer. */
-            block.producer.Sign(user->Generate(block.producer.nSequence, strPIN));
+            /* Coinstake producer now complete. Sign the transaction. */
+            txProducer.Sign(user->Generate(txProducer.nSequence, strPIN));
+
+            if(block.nVersion < 9)
+                block.producer = txProducer;
+            else
+            {
+                /* Replace last producer in block with the completed & signed one */
+                block.vProducer.erase(block.vProducer.begin() + (block.vProducer.size() - 1));
+                block.vProducer.push_back(txProducer);
+            }
 
             /* Build the Merkle Root. */
             std::vector<uint512_t> vHashes;
 
-            for(const auto& tx : block.vtx)
-                vHashes.push_back(tx.second);
+            for(const auto& item : block.vtx)
+                vHashes.push_back(item.second);
 
-            /* producer is not part of vtx, add to vHashes last */
-            vHashes.push_back(block.producer.GetHash());
+            /* producers are not part of vtx, add to vHashes last */
+            if(block.nVersion < 9)
+                vHashes.push_back(block.producer.GetHash());
+            else
+            {
+                for(const TAO::Ledger::Transaction& tx : block.vProducer)
+                    vHashes.push_back(tx.GetHash());
+            }
 
             block.hashMerkleRoot = block.BuildMerkleTree(vHashes);
 
@@ -763,7 +778,7 @@ namespace TAO
             if(fStakeChange)
             {
                 stakeChange.fProcessed = true;
-                stakeChange.hashTx = block.producer.GetHash();
+                stakeChange.hashTx = block.vProducer.at(block.vProducer.size() - 1).GetHash();
 
                 if(!LLD::Local->WriteStakeChange(user->Genesis(), stakeChange))
                 {
@@ -782,11 +797,24 @@ namespace TAO
         {
             /* Get the sigchain and the PIN. */
             /* Sign the submitted block */
-            std::vector<uint8_t> vBytes = user->Generate(block.producer.nSequence, strPIN).GetBytes();
+            std::vector<uint8_t> vBytes;
+            uint8_t nKeyType;
+
+            if(block.nVersion < 9)
+            {
+                user->Generate(block.producer.nSequence, strPIN).GetBytes();
+                nKeyType = block.producer.nKeyType;
+            }
+            else
+            {
+                user->Generate(block.vProducer.at(block.vProducer.size() - 1).nSequence, strPIN).GetBytes();
+                nKeyType = block.vProducer.at(block.vProducer.size() - 1).nKeyType;
+            }
+
             LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
             /* Switch based on signature type. */
-            switch(block.producer.nKeyType)
+            switch(nKeyType)
             {
                 /* Support for the FALCON signature scheeme. */
                 case TAO::Ledger::SIGNATURE::FALCON:

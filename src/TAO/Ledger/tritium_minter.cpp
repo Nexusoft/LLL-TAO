@@ -24,6 +24,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/stake.h>
+#include <TAO/Ledger/types/mempool.h>
 
 #include <Util/include/config.h>
 #include <Util/include/debug.h>
@@ -74,10 +75,8 @@ namespace TAO
                 return false;
             }
 
-            /* Check that stake minter is configured to run.
-             * Either -stake or -staking argument are supported, with -stake (legacy setting) deprecated
-             */
-            if(!config::GetBoolArg("-staking") && !config::GetBoolArg("-stake"))
+            /* Check that stake minter is configured to run. */
+            if(!config::fStaking.load())
             {
                 debug::log(0, "Stake Minter not configured. Startup cancelled.");
                 return false;
@@ -154,13 +153,17 @@ namespace TAO
 
 
         /* Create the coinstake transaction for a solo Proof of Stake block and add it as the candidate block producer */
-        bool TritiumMinter::CreateCoinstake(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user)
+        bool TritiumMinter::CreateCoinstake(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user,
+                                            const SecureString& strPIN)
         {
             static uint32_t nCounter = 0; //Prevents log spam during wait period
 
             /* Reset any prior value of trust score and block age */
             nTrust = 0;
             nBlockAge = 0;
+
+            /* Producer transaction for coinstake */
+            TAO::Ledger::Transaction txProducer;
 
             if(!fGenesis)
             {
@@ -225,7 +228,7 @@ namespace TAO
                 /* Initialize Trust operation for block producer.
                  * The coinstake reward will be added based on time when block is found.
                  */
-                block.producer[0] << uint8_t(TAO::Operation::OP::TRUST) << hashLast << nTrust << nStakeChange;
+                txProducer[0] << uint8_t(TAO::Operation::OP::TRUST) << hashLast << nTrust << nStakeChange;
             }
             else
             {
@@ -259,9 +262,15 @@ namespace TAO
                 /* Initialize Genesis operation for block producer.
                  * The coinstake reward will be added based on time when block is found.
                  */
-                block.producer[0] << uint8_t(TAO::Operation::OP::GENESIS);
+                txProducer[0] << uint8_t(TAO::Operation::OP::GENESIS);
 
             }
+
+            /* Add the producer transaction to the block */
+            if(block.nVersion < 9)
+                block.producer = txProducer;
+            else
+                block.vProducer.push_back(txProducer);
 
             /* Do not sign producer transaction, yet. Coinstake reward must be added to operation first. */
 
@@ -342,38 +351,51 @@ namespace TAO
         }
 
 
+        /* Check that producer coinstake won't orphan any new transaction for the same hashGenesis */
+        bool TritiumMinter::CheckStale()
+        {
+            TAO::Ledger::Transaction tx;
+            TAO::Ledger::Transaction txProducer;
+
+            if(block.nVersion < 9)
+                txProducer = block.producer;
+
+            else
+                txProducer = block.vProducer[0]; //only one producer for solo stake
+
+            if(mempool.Get(txProducer.hashGenesis, tx) && txProducer.hashPrevTx != tx.GetHash())
+                return true;
+
+            return false;
+        }
+
+
         /* Calculate the coinstake reward for a solo mined Proof of Stake block */
-        uint64_t TritiumMinter::CalculateCoinstakeReward()
+        uint64_t TritiumMinter::CalculateCoinstakeReward(uint64_t nTime)
         {
             uint64_t nReward = 0;
 
-            /* Calculate the coinstake reward.
-             * Reward is based on final block time for block. Block time is updated with each iteration so we
-             * have deferred reward calculation until after the block is found to get the exact correct amount.
-             *
-             * The reward prior to this one was based on stateLast.GetBlockTime(), which is the previous block's final time.
-             * This puts all reward calculations on a continuum where all time between stake blocks is credited for each reward.
-             *
-             * If we had instead calculated the stake reward when initially creating the block and setting up the coinstake
-             * operation, then the time spent to find a block solution would not be credited as part of the reward. This
-             * uncredited time could accumulate to a significant amount as many stake blocks are minted.
-             */
             if(!fGenesis)
             {
-                /* Trust reward based on stake amount, new trust score after block found, and time since last stake block.
-                 * Note that, while nRequired for hashing includes any stake amount added by a stake change, the reward
-                 * only includes the current stake amount.
-                 */
-                const uint64_t nTime = block.GetBlockTime() - stateLast.GetBlockTime();
+                /* Trust reward based on current stake amount, new trust score, and time since last stake block. */
+                const uint64_t nTimeLast = stateLast.GetBlockTime();
 
-                nReward = GetCoinstakeReward(account.get<uint64_t>("stake"), nTime, nTrust, fGenesis);
+                if(nTime < nTimeLast)
+                    nTime = nTimeLast;
+
+                const uint64_t nTimeStake = nTime - nTimeLast;
+
+                nReward = GetCoinstakeReward(account.get<uint64_t>("stake"), nTimeStake, nTrust);
             }
             else
             {
                 /* Genesis reward based on trust account balance and coin age based on trust register timestamp. */
-                const uint64_t nAge = block.GetBlockTime() - account.nModified;
+                if(nTime < account.nModified)
+                    nTime = account.nModified;
 
-                nReward = GetCoinstakeReward(account.get<uint64_t>("balance"), nAge, 0, fGenesis);
+                const uint64_t nAge = nTime - account.nModified;
+
+                nReward = GetCoinstakeReward(account.get<uint64_t>("balance"), nAge, 0, true); //pass true for Genesis
             }
 
             return nReward;
@@ -414,11 +436,6 @@ namespace TAO
             /* Minting thread will continue repeating this loop until stop minter or shutdown */
             while(!StakeMinter::fStop.load() && !config::fShutdown.load())
             {
-                runtime::sleep(pTritiumMinter->nSleepTime);
-
-                /* Check stop/shutdown status after wakeup */
-                if(StakeMinter::fStop.load() || config::fShutdown.load())
-                    continue;
 
                 /* Save the current best block hash immediately in case it changes while we do setup */
                 pTritiumMinter->hashLastBlock = TAO::Ledger::ChainState::hashBestChain.load();
@@ -452,6 +469,7 @@ namespace TAO
                 /* Attempt to mine the current proof of stake block */
                 pTritiumMinter->MintBlock(user, strPIN);
 
+                runtime::sleep(pTritiumMinter->nSleepTime);
             }
 
             /* If break because cannot continue (error retrieving user account or FindTrust failed), wait for stop or shutdown */
