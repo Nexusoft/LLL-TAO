@@ -574,7 +574,7 @@ namespace TAO
         }
 
 
-        /* Generates the StakeHash for this block from a uint256_t hashGenesis*/
+        /* Generates the StakeHash for this block from a uint256_t hashGenesis */
         uint1024_t Block::StakeHash(const uint256_t& hashGenesis) const
         {
             /* Create a data stream to get the hash. */
@@ -588,7 +588,7 @@ namespace TAO
         }
 
 
-        /* Generates the StakeHash for this block from a uint256_t hashGenesis*/
+        /* Generates the StakeHash for this block from a legacy trust key */
         uint1024_t Block::StakeHash(bool fGenesis, const uint576_t& hashTrustKey) const
         {
             /* Create a data stream to get the hash. */

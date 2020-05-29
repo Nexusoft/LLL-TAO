@@ -51,12 +51,20 @@ namespace TAO
             uint64_t nTime;
 
 
-            /** Verifier Transaction.
+            /** Producer Transaction.
              *
-             *  Transaction responsible for the block producer.
+             *  Transaction responsible for the block producer (pre-version 9).
              *
              **/
             Transaction producer;
+
+
+            /** Producer Transactions.
+             *
+             *  Transaction(s) responsible for the block producer (v9+).
+             *
+             **/
+            std::vector<Transaction> vProducer;
 
 
             /** System Script
@@ -86,7 +94,11 @@ namespace TAO
                 READWRITE(nNonce);
                 READWRITE(nTime);
                 READWRITE(vchBlockSig);
-                READWRITE(producer);
+
+                if(nVersion < 9)
+                    READWRITE(producer);
+                else
+                    READWRITE(vProducer);
 
                 READWRITE(ssSystem);
                 READWRITE(vOffsets);

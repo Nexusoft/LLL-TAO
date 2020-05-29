@@ -56,33 +56,36 @@ namespace TAO
 
         /* Default constructor. */
         TritiumBlock::TritiumBlock()
-        : Block    ( )
-        , nTime    (runtime::unifiedtimestamp())
-        , producer ( )
-        , ssSystem ( )
-        , vtx      ( )
+        : Block     ( )
+        , nTime     (runtime::unifiedtimestamp())
+        , producer  ( )
+        , vProducer ( )
+        , ssSystem  ( )
+        , vtx       ( )
         {
         }
 
 
         /* Copy constructor. */
         TritiumBlock::TritiumBlock(const TritiumBlock& block)
-        : Block    (block)
-        , nTime    (block.nTime)
-        , producer (block.producer)
-        , ssSystem (block.ssSystem)
-        , vtx      (block.vtx)
+        : Block     (block)
+        , nTime     (block.nTime)
+        , producer  (block.producer)
+        , vProducer (block.vProducer)
+        , ssSystem  (block.ssSystem)
+        , vtx       (block.vtx)
         {
         }
 
 
         /* Move constructor. */
         TritiumBlock::TritiumBlock(TritiumBlock&& block) noexcept
-        : Block    (std::move(block))
-        , nTime    (std::move(block.nTime))
-        , producer (std::move(block.producer))
-        , ssSystem (std::move(block.ssSystem))
-        , vtx      (std::move(block.vtx))
+        : Block     (std::move(block))
+        , nTime     (std::move(block.nTime))
+        , producer  (std::move(block.producer))
+        , vProducer (std::move(block.vProducer))
+        , ssSystem  (std::move(block.ssSystem))
+        , vtx       (std::move(block.vtx))
         {
         }
 
@@ -104,9 +107,13 @@ namespace TAO
             fConflicted    = block.fConflicted;
 
             nTime          = block.nTime;
-            producer       = block.producer;
             ssSystem       = block.ssSystem;
             vtx            = block.vtx;
+
+            if(block.nVersion < 9)
+                producer   = block.producer;
+            else
+                vProducer  = block.vProducer;
 
             return *this;
         }
@@ -129,9 +136,13 @@ namespace TAO
             fConflicted    = std::move(block.fConflicted);
 
             nTime          = std::move(block.nTime);
-            producer       = std::move(block.producer);
             ssSystem       = std::move(block.ssSystem);
             vtx            = std::move(block.vtx);
+
+            if(block.nVersion < 9)
+                producer   = std::move(block.producer);
+            else
+                vProducer  = std::move(block.vProducer);
 
             return *this;
         }
@@ -145,36 +156,68 @@ namespace TAO
 
         /* Copy Constructor. */
         TritiumBlock::TritiumBlock(const Block& block)
-        : Block    (block)
-        , nTime    (runtime::unifiedtimestamp())
-        , producer ( )
-        , ssSystem ( )
-        , vtx      ( )
+        : Block     (block)
+        , nTime     (runtime::unifiedtimestamp())
+        , producer  ( )
+        , vProducer ( )
+        , ssSystem  ( )
+        , vtx       ( )
         {
         }
 
 
         /* Copy Constructor. */
         TritiumBlock::TritiumBlock(const BlockState& state)
-        : Block    (state)
-        , nTime    (state.nTime)
-        , producer ( )
-        , ssSystem (state.ssSystem)
-        , vtx      (state.vtx.begin(), state.vtx.end() - 1)
+        : Block     (state)
+        , nTime     (state.nTime)
+        , producer  ( )
+        , vProducer ( )
+        , ssSystem  (state.ssSystem)
+        , vtx       ()
         {
-            /* Read the producer transaction from disk. */
-            if(!LLD::Ledger->ReadTx(state.vtx.back().second, producer))
+            /* Read the producer transaction(s) from disk. */
+            if(nVersion < 9 && !LLD::Ledger->ReadTx(state.vtx.back().second, producer))
                 throw debug::exception(FUNCTION, "failed to read producer");
+
+            else if(nVersion >= 9)
+            {
+                std::vector<std::pair<uint8_t, uint512_t> > vtxTemp;
+
+                /* Copies state.vtx manually until it reaches producer(s), then copies them to vProducer */
+                for(const auto& item : state.vtx)
+                {
+                    /* Legacy cannot be producer */
+                    if(item.first == TAO::Ledger::TRANSACTION::LEGACY)
+                    {
+                        vtx.push_back(item);
+                        continue;
+                    }
+
+                    Transaction tx;
+                    if(!LLD::Ledger->ReadTx(item.second, tx))
+                        throw debug::exception(FUNCTION, "failed to read producer");
+
+                    /* Non-producer still goes into vtx */
+                    if(!tx.IsCoinBase() && !tx.IsCoinStake())
+                    {
+                        vtx.push_back(item);
+                        continue;
+                    }
+
+                    vProducer.push_back(tx);
+                }
+            }
         }
 
 
         /* Copy Constructor. */
         TritiumBlock::TritiumBlock(const SyncBlock& block)
-        : Block    (block)
-        , nTime    (block.nTime)
-        , producer ( )
-        , ssSystem (block.ssSystem)
-        , vtx      ( )
+        : Block     (block)
+        , nTime     (block.nTime)
+        , producer  ( )
+        , vProducer ( )
+        , ssSystem  (block.ssSystem)
+        , vtx       ( )
         {
             /* Check for version conversions. */
             if(block.nVersion < 7)
@@ -197,8 +240,12 @@ namespace TAO
                         ssData >> tx;
 
                         /* Add transaction to binary data. */
-                        if(n == block.vtx.size() - 1)
-                            producer = tx; //handle for the producer transaction
+                        if(nVersion < 9 && n == (block.vtx.size() - 1))
+                            producer = tx; //handle the producer transaction
+
+                        else if(nVersion >= 9 && (tx.IsCoinBase() || tx.IsCoinStake()))
+                            vProducer.push_back(tx); // copy all producers from vtx to vProducer
+
                         else
                         {
                             /* Get the transaction hash */
@@ -271,6 +318,7 @@ namespace TAO
             Block::SetNull();
 
             vtx.clear();
+            vProducer.clear();
             producer = Transaction();
         }
 
@@ -342,13 +390,32 @@ namespace TAO
             if(!ChannelActive(GetBlockTime(), GetChannel()))
                 return debug::error(FUNCTION, "block created before channel time-lock");
 
-            /* Check coinbase/coinstake timestamp against block time */
-            if(GetBlockTime() > (uint64_t)producer.nTimestamp + ((nVersion < 4) ? 1200 : 3600))
-                return debug::error(FUNCTION, "producer transaction timestamp is too early");
+            if(nVersion < 9)
+            {
+                /* Check coinbase/coinstake timestamp against block time */
+                if(GetBlockTime() > (uint64_t)producer.nTimestamp + ((nVersion < 4) ? 1200 : 3600))
+                    return debug::error(FUNCTION, "producer transaction timestamp is too early");
 
-            /* Check that the producer is a valid transaction. */
-            if(!producer.Check())
-                return debug::error(FUNCTION, "producer transaction is invalid");
+                /* Check that the producer is a valid transaction. */
+                if(!producer.Check())
+                    return debug::error(FUNCTION, "producer transaction is invalid");
+            }
+            else
+            {
+                if(vProducer.size() == 0)
+                    return debug::error(FUNCTION, "missing producer transaction");
+
+                for(const TAO::Ledger::Transaction& txProducer : vProducer)
+                {
+                    /* Check coinbase/coinstake timestamp against block time */
+                    if(GetBlockTime() > (uint64_t)txProducer.nTimestamp + 3600)
+                        return debug::error(FUNCTION, "producer transaction timestamp is too early");
+
+                    /* Check that the producer is a valid transaction. */
+                    if(!txProducer.Check())
+                        return debug::error(FUNCTION, "producer transaction is invalid");
+                }
+            }
 
             /* Print the block if it gets this far into processing. */
             if(config::nVerbose >= 2)
@@ -357,21 +424,50 @@ namespace TAO
             /* Proof of stake specific checks. */
             if(IsProofOfStake())
             {
-                /* Check the producer transaction. */
-                if(!producer.IsCoinStake())
-                    return debug::error(FUNCTION, "producer transaction has to be trust/genesis for proof of stake");
-
                 /* Check for nonce of zero values. */
                 if(nNonce == 0)
                     return debug::error(FUNCTION, "proof of stake can't have Nonce value of zero");
 
-                /* Check the trust time is before Unified timestamp. */
-                if(producer.nTimestamp > (runtime::unifiedtimestamp() + runtime::maxdrift()))
-                    return debug::error(FUNCTION, "trust timestamp too far in the future");
+                /* Check the producer transaction(s). */
+                if(nVersion < 9)
+                {
+                    /* Check producer is coinstake */
+                    if(!producer.IsCoinStake())
+                        return debug::error(FUNCTION, "producer transaction has to be trust/genesis for proof of stake");
 
-                /* Make Sure Trust Transaction Time is Before Block. */
-                if(producer.nTimestamp > GetBlockTime())
-                    return debug::error(FUNCTION, "coinstake timestamp is after block timestamp");
+                    /* Check the trust time is before Unified timestamp. */
+                    if(producer.nTimestamp > (runtime::unifiedtimestamp() + runtime::maxdrift()))
+                        return debug::error(FUNCTION, "coinstake timestamp too far in the future");
+
+                     /* Check coinstake transaction Time is Before Block. */
+                    if(producer.nTimestamp > GetBlockTime())
+                        return debug::error(FUNCTION, "coinstake timestamp is after block timestamp");
+                }
+                else
+                {
+                    /* Check producer size when block finder is solo trust or solo genesis */
+                    {
+                        TAO::Ledger::Transaction txProducer = vProducer.at(vProducer.size() - 1);
+
+                        if((txProducer.IsTrust() || txProducer.IsGenesis()) && vProducer.size() > 1)
+                            return debug::error(FUNCTION, "cannot have more than one producer transaction for solo proof of stake");
+                    }
+
+                    for(const TAO::Ledger::Transaction& txProducer : vProducer)
+                    {
+                        /* Check producer is coinstake */
+                        if(!txProducer.IsCoinStake())
+                            return debug::error(FUNCTION, "producer transaction has to be trust/genesis for proof of stake");
+
+                        /* Check the trust time is before Unified timestamp. */
+                        if(txProducer.nTimestamp > (runtime::unifiedtimestamp() + runtime::maxdrift()))
+                            return debug::error(FUNCTION, "coinstake timestamp too far in the future");
+
+                         /* Check coinstake transaction Time is Before Block. */
+                        if(txProducer.nTimestamp > GetBlockTime())
+                            return debug::error(FUNCTION, "coinstake timestamp is after block timestamp");
+                    }
+                }
 
                 /* Check the Proof of Stake Claims. */
                 if(!TAO::Ledger::ChainState::Synchronizing() && !VerifyWork())
@@ -382,8 +478,19 @@ namespace TAO
             else if(IsProofOfWork())
             {
                 /* Check the producer transaction. */
-                if(!producer.IsCoinBase())
-                    return debug::error(FUNCTION, "producer transaction has to be coinbase for proof of work");
+                if(nVersion < 9)
+                {
+                    if(!producer.IsCoinBase())
+                        return debug::error(FUNCTION, "producer transaction has to be coinbase for proof of work");
+                }
+                else
+                {
+                    if(vProducer.size() > 1)
+                        return debug::error(FUNCTION, "cannot have more than one producer transaction for proof of work");
+
+                    if(!vProducer[0].IsCoinBase())
+                        return debug::error(FUNCTION, "producer transaction has to be coinbase for proof of work");
+                }
 
                 /* Check for prime offsets. */
                 if(GetChannel() == CHANNEL::PRIME && vOffsets.empty())
@@ -402,8 +509,19 @@ namespace TAO
             else if(IsPrivate())
             {
                 /* Check the producer transaction. */
-                if(!producer.IsPrivate())
-                    return debug::error(FUNCTION, "producer transaction has to be authorize for private mode");
+                if(nVersion < 9)
+                {
+                    if(!producer.IsPrivate())
+                        return debug::error(FUNCTION, "producer transaction has to be authorize for private mode");
+                }
+                else
+                {
+                    if(vProducer.size() > 1)
+                        return debug::error(FUNCTION, "cannot have more than one producer transaction for private mode block");
+
+                    if(!vProducer[0].IsPrivate())
+                        return debug::error(FUNCTION, "producer transaction has to be authorize for private mode");
+                }
             }
 
             /* Default catch. */
@@ -445,7 +563,7 @@ namespace TAO
 
                     /* Check for coinbase / coinstake. */
                     if(tx.IsCoinBase() || tx.IsCoinStake())
-                        return debug::error(FUNCTION, "more than one coinbase / coinstake");
+                        return debug::error(FUNCTION, "cannot have non-producer coinbase / coinstake transaction");
 
                     /* Check the transaction timestamp. */
                     if(GetBlockTime() < uint64_t(tx.nTime))
@@ -473,7 +591,7 @@ namespace TAO
 
                     /* Check for coinbase / coinstake. */
                     if(tx.IsCoinBase() || tx.IsCoinStake() || tx.IsPrivate())
-                        return debug::error(FUNCTION, "more than one coinbase / coinstake");
+                        return debug::error(FUNCTION, "cannot have non-producer coinbase / coinstake transaction");
 
                     /* Check the sequencing. */
                     if(mapLast.count(tx.hashGenesis) && tx.hashPrevTx != mapLast[tx.hashGenesis])
@@ -487,15 +605,33 @@ namespace TAO
             }
 
             /* Check producer. */
-            if(mapLast.count(producer.hashGenesis) && producer.hashPrevTx != mapLast[producer.hashGenesis])
-                return debug::error(FUNCTION, "producer transaction out of sequence");
+            if(nVersion < 9)
+            {
+                if(mapLast.count(producer.hashGenesis) && producer.hashPrevTx != mapLast[producer.hashGenesis])
+                    return debug::error(FUNCTION, "producer transaction out of sequence");
 
-            /* Get producer hash. */
-            uint512_t hashProducer = producer.GetHash();
+                /* Get producer hash. */
+                uint512_t hashProducer = producer.GetHash();
 
-            /* Add producer to merkle tree list. */
-            vHashes.push_back(hashProducer);
-            setUnique.insert(hashProducer);
+                /* Add producer to merkle tree list. */
+                vHashes.push_back(hashProducer);
+                setUnique.insert(hashProducer);
+            }
+            else
+            {
+                for(const TAO::Ledger::Transaction& txProducer : vProducer)
+                {
+                    if(mapLast.count(txProducer.hashGenesis) && txProducer.hashPrevTx != mapLast[txProducer.hashGenesis])
+                        return debug::error(FUNCTION, "producer transaction out of sequence");
+
+                    /* Get producer hash. */
+                    uint512_t hashProducer = txProducer.GetHash();
+
+                    /* Add producer to merkle tree list. */
+                    vHashes.push_back(hashProducer);
+                    setUnique.insert(hashProducer);
+                }
+            }
 
             /* Check for missing transactions. */
             if(vMissing.size() != 0)
@@ -513,46 +649,67 @@ namespace TAO
             if(hashMerkleRoot != BuildMerkleTree(vHashes))
                 return debug::error(FUNCTION, "hashMerkleRoot mismatch");
 
-            /* Verify producer signature (if not synchronizing) */
+            /* Verify producer signature(s) (if not synchronizing) */
             if(!TAO::Ledger::ChainState::Synchronizing())
             {
-                /* Switch based on signature type. */
-                switch(producer.nKeyType)
+                uint32_t nIndex = 0;
+
+                /* A different approach to handling producer versions, so only needs one copy of the signature checking code */
+                while(true)
                 {
-                    /* Support for the FALCON signature scheeme. */
-                    case SIGNATURE::FALCON:
+                    TAO::Ledger::Transaction txProducer;
+
+                    if(nVersion < 9)
+                        txProducer = producer;
+                    else
+                        txProducer = vProducer[nIndex];
+
+                    /* Switch based on signature type. */
+                    switch(txProducer.nKeyType)
                     {
-                        /* Create the FL Key object. */
-                        LLC::FLKey key;
+                        /* Support for the FALCON signature scheeme. */
+                        case SIGNATURE::FALCON:
+                        {
+                            /* Create the FL Key object. */
+                            LLC::FLKey key;
 
-                        /* Set the public key and verify. */
-                        key.SetPubKey(producer.vchPubKey);
+                            /* Set the public key and verify. */
+                            key.SetPubKey(txProducer.vchPubKey);
 
-                        /* Check the Block Signature. */
-                        if(!VerifySignature(key))
-                            return debug::error(FUNCTION, "bad block signature");
+                            /* Check the Block Signature. */
+                            if(!VerifySignature(key))
+                                return debug::error(FUNCTION, "bad block signature");
 
-                        break;
+                            break;
+                        }
+
+                        /* Support for the BRAINPOOL signature scheme. */
+                        case SIGNATURE::BRAINPOOL:
+                        {
+                            /* Create EC Key object. */
+                            LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
+
+                            /* Set the public key and verify. */
+                            key.SetPubKey(txProducer.vchPubKey);
+
+                            /* Check the Block Signature. */
+                            if(!VerifySignature(key))
+                                return debug::error(FUNCTION, "bad block signature");
+
+                            break;
+                        }
+
+                        default:
+                            return debug::error(FUNCTION, "unknown signature type");
                     }
 
-                    /* Support for the BRAINPOOL signature scheme. */
-                    case SIGNATURE::BRAINPOOL:
-                    {
-                        /* Create EC Key object. */
-                        LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
-
-                        /* Set the public key and verify. */
-                        key.SetPubKey(producer.vchPubKey);
-
-                        /* Check the Block Signature. */
-                        if(!VerifySignature(key))
-                            return debug::error(FUNCTION, "bad block signature");
-
+                    if(nVersion < 9) //only one iteration if prior to version 9
                         break;
-                    }
 
-                    default:
-                        return debug::error(FUNCTION, "unknown signature type");
+                    else if(nIndex == (vProducer.size() - 1))
+                        break;
+
+                    ++nIndex;
                 }
             }
 
@@ -595,7 +752,13 @@ namespace TAO
             if(IsPrivate())
             {
                 /* Check producer for correct genesis. */
-                if(producer.hashGenesis != (config::fTestNet ?
+                uint256_t hashGenesis;
+                if(nVersion < 9)
+                    hashGenesis = producer.hashGenesis;
+                else
+                    hashGenesis = vProducer[0].hashGenesis;
+
+                if(hashGenesis != (config::fTestNet ?
                     uint256_t("0xa2a74c14508bd09e104eff93d86cbbdc5c9556ae68546895d964d8374a0e9a41") :
                     uint256_t("0xa1a74c14508bd09e104eff93d86cbbdc5c9556ae68546895d964d8374a0e9a41")))
                     return debug::error(FUNCTION, "invalid genesis generated");
@@ -606,8 +769,19 @@ namespace TAO
                 return debug::error(FUNCTION, "invalid proof of stake");
 
             /* Check that producer isn't before previous block time. */
-            if(producer.nTimestamp <= statePrev.GetBlockTime())
-                return debug::error(FUNCTION, "producer can't be before previous block");
+            if(nVersion < 9)
+            {
+                if(producer.nTimestamp <= statePrev.GetBlockTime())
+                    return debug::error(FUNCTION, "producer can't be before previous block");
+            }
+            else
+            {
+                for(const TAO::Ledger::Transaction& txProducer : vProducer)
+                {
+                    if(txProducer.nTimestamp <= statePrev.GetBlockTime())
+                        return debug::error(FUNCTION, "producer can't be before previous block");
+                }
+            }
 
             /* Process the block state. */
             TAO::Ledger::BlockState state(*this);
@@ -655,9 +829,20 @@ namespace TAO
                     return debug::error(FUNCTION, "using an unknown transaction type");
             }
 
-            /* Add the producer transaction */
-            if(!LLD::Ledger->WriteTx(producer.GetHash(), producer))
-                return debug::error(FUNCTION, "failed to write producer to disk");
+            /* Add the producer transaction(s) */
+            if(nVersion > 9)
+            {
+                if(!LLD::Ledger->WriteTx(producer.GetHash(), producer))
+                    return debug::error(FUNCTION, "failed to write producer to disk");
+            }
+            else
+            {
+                for(const TAO::Ledger::Transaction& txProducer : vProducer)
+                {
+                    if(!LLD::Ledger->WriteTx(txProducer.GetHash(), txProducer))
+                        return debug::error(FUNCTION, "failed to write producer to disk");
+                }
+            }
 
             /* Accept the block state. */
             if(!state.Index())
@@ -846,7 +1031,11 @@ namespace TAO
         /* Prove that you staked a number of seconds based on weight */
         uint1024_t TritiumBlock::StakeHash() const
         {
-            return Block::StakeHash(producer.hashGenesis);
+            if(nVersion < 9)
+                return Block::StakeHash(producer.hashGenesis);
+
+            else
+                return Block::StakeHash(vProducer.at(vProducer.size() - 1).hashGenesis); //last producer is block finder
         }
     }
 }

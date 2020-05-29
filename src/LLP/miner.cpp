@@ -875,7 +875,12 @@ namespace LLP
               return debug::error(FUNCTION, "Couldn't get the unlocked sigchain");
 
           /* Sign the submitted block */
-          std::vector<uint8_t> vBytes = pSigChain->Generate(pBlock->producer.nSequence, PIN).GetBytes();
+          std::vector<uint8_t> vBytes;
+          if(pBlock->nVersion < 9)
+            vBytes = pSigChain->Generate(pBlock->producer.nSequence, PIN).GetBytes();
+          else
+            vBytes = pSigChain->Generate(pBlock->vProducer[0].nSequence, PIN).GetBytes(); //PoW blocks have one producer tx
+
           LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
           /* Switch based on signature type. */
