@@ -134,6 +134,18 @@ namespace TAO
          *
          *  Updates the producer timestamp, making sure it is not earlier than the previous block.
          *
+         *  @param[out] txProducer The producer transaction to have its timestamp updated.
+         *
+         **/
+        void UpdateProducerTimestamp(TAO::Ledger::Transaction& txProducer);
+
+
+        /** UpdateProducerTimestamp
+         *
+         *  Updates the producer timestamp, making sure it is not earlier than the previous block.
+         *
+         *  For v9+ this only updates the block finding producer (last producer).
+         *
          *  @param[out] block The block to have its producer timestamp updated.
          *
          **/
