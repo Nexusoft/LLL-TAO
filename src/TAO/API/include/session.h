@@ -13,6 +13,8 @@ ________________________________________________________________________________
 
 #pragma once
 
+#include <LLP/types/p2p.h>
+
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/pinunlock.h>
 
@@ -155,79 +157,138 @@ namespace TAO
                 uint64_t GetLastActive() const;
 
 
-                
+                /** Locked
+                 *
+                 *  Determine if the currently active sig chain is locked.
+                 *
+                 **/
+                bool Locked() const;
 
 
-            /** Locked
-             *
-             *  Determine if the currently active sig chain is locked.
-             *
-             **/
-            bool Locked() const;
+                /** CanTransact
+                 *
+                 *  In sessionless API mode this method checks that the active sig chain has
+                 *  been unlocked to allow transactions.  If the account has not been specifically
+                 *  unlocked then we assume that they ARE allowed to transact, since the PIN would
+                 *  need to be provided in each API call.
+                 *
+                 **/
+                bool CanTransact() const;
 
 
-            /** CanTransact
-             *
-             *  In sessionless API mode this method checks that the active sig chain has
-             *  been unlocked to allow transactions.  If the account has not been specifically
-             *  unlocked then we assume that they ARE allowed to transact, since the PIN would
-             *  need to be provided in each API call.
-             *
-             **/
-            bool CanTransact() const;
+                /** CanMine
+                 *
+                 *  In sessionless API mode this method checks that the active sig chain has
+                 *  been unlocked to allow mining.
+                 *
+                 **/
+                bool CanMine() const;
 
 
-            /** CanMine
-             *
-             *  In sessionless API mode this method checks that the active sig chain has
-             *  been unlocked to allow mining.
-             *
-             **/
-            bool CanMine() const;
+                /** CanStake
+                 *
+                 *  In sessionless API mode this method checks that the active sig chain has
+                 *  been unlocked to allow staking.
+                 *
+                 **/
+                bool CanStake() const;
 
 
-            /** CanStake
-             *
-             *  In sessionless API mode this method checks that the active sig chain has
-             *  been unlocked to allow staking.
-             *
-             **/
-            bool CanStake() const;
+                /** CanProcessNotifications
+                 *
+                 *  In sessionless API mode this method checks that the active sig chain has
+                 *  been unlocked to allow notifications to be processed.
+                 *
+                 **/
+                bool CanProcessNotifications() const;
 
 
-            /** CanProcessNotifications
-             *
-             *  In sessionless API mode this method checks that the active sig chain has
-             *  been unlocked to allow notifications to be processed.
-             *
-             **/
-            bool CanProcessNotifications() const;
+                /** GetAccount
+                 *
+                 *  Returns the sigchain the account logged in.
+                 *
+                 *  @param[in] nSession The session identifier.
+                 *
+                 *  @return the signature chain.
+                 *
+                 **/
+                const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& GetAccount() const;
 
 
-
-            /** GetAccount
-             *
-             *  Returns the sigchain the account logged in.
-             *
-             *  @param[in] nSession The session identifier.
-             *
-             *  @return the signature chain.
-             *
-             **/
-            const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& GetAccount() const;
-
+                /** GetNetworkKey
+                *
+                *  Returns the private key for the network public key for a logged in session
+                * 
+                *  @param[in] nSession The session identifier.
+                *
+                *  @return the private key for the auth public key
+                *
+                **/
+                memory::encrypted_ptr<memory::encrypted_type<uint512_t>>& GetNetworkKey(uint256_t nSession) const;
 
 
-            /** GetNetworkKey
-            *
-            *  Returns the private key for the network public key for a logged in session
-            * 
-            *  @param[in] nSession The session identifier.
-            *
-            *  @return the private key for the auth public key
-            *
-            **/
-            memory::encrypted_ptr<memory::encrypted_type<uint512_t>>& GetNetworkKey(uint256_t nSession) const;
+                /** AddP2PRequest
+                *
+                *  Adds a new P2P Request. 
+                * 
+                *  @param[in] request The request to add.
+                *  @param[in] fIncoming Flag indicating whether this is an incoming or outgoing request .
+                *
+                **/
+                void AddP2PRequest(const LLP::P2P::ConnectionRequest& request, bool fIncoming);
+
+
+                /** GetP2PRequest
+                *
+                *  Gets P2P Request matching the app id / hashPeer criteria.  
+                * 
+                *  @param[in] request The application ID of the request to search for.
+                *  @param[in] request The peer genesis hash of the request to search for.
+                *  @param[in] fIncoming Flag indicating whether this is an incoming or outgoing request .
+                *
+                *  @return The connection request.  
+                *
+                **/
+                LLP::P2P::ConnectionRequest GetP2PRequest(const uint64_t& nAppID, const uint256_t hashPeer, bool fIncoming) const;
+
+
+                /** HasP2PRequest
+                *
+                *  Checks to see if a P2P Request matching the app id / hashPeer criteria exists.  
+                * 
+                *  @param[in] request The application ID of the request to search for.
+                *  @param[in] request The peer genesis hash of the request to search for.
+                *  @param[in] fIncoming Flag indicating whether this is an incoming or outgoing request .
+                *
+                *  @return True if a matching connection exists.  
+                *
+                **/
+                bool HasP2PRequest(const uint64_t& nAppID, const uint256_t hashPeer, bool fIncoming) const;
+
+
+                /** DeleteP2PRequest
+                *
+                *  Deletes the P2P Request matching the app id / hashPeer criteria exists.  
+                * 
+                *  @param[in] request The application ID of the request to search for.
+                *  @param[in] request The peer genesis hash of the request to search for.
+                *  @param[in] fIncoming Flag indicating whether this is an incoming or outgoing request .
+                *
+                **/
+                void DeleteP2PRequest(const uint64_t& nAppID, const uint256_t hashPeer, bool fIncoming);
+
+
+                /** GetP2PRequests
+                *
+                *  Returns a vector of all connection requests.  NOTE: This will copy the internal vector to protect against 
+                *  direct manipulation by calling code
+                * 
+                *  @param[in] fIncoming Flag indicating whether to return incoming or outgoing requests .
+                *
+                *  @return The vector of connection requests.  
+                *
+                **/
+                const std::vector<LLP::P2P::ConnectionRequest> GetP2PRequests(bool fIncoming) const;
 
 
 
@@ -240,22 +301,32 @@ namespace TAO
                 uint256_t nID;
 
                 
-                /* Timstamp when the session started */
+                /** Timstamp when the session started **/
                 uint64_t nStarted;
                 
 
-                /* Timstamp when the session was last active */
+                /** Timstamp when the session was last active **/
                 uint64_t nLastActive;
                 
 
                 /** Encrypted pointer of signature chain **/
                 memory::encrypted_ptr<TAO::Ledger::SignatureChain> pSigChain;
 
+
                 /** The active pin for sessionless API use **/
                 memory::encrypted_ptr<TAO::Ledger::PinUnlock> pActivePIN;
 
+
                 /** Cached network private key **/
                 memory::encrypted_ptr<memory::encrypted_type<uint512_t>> nNetworkKey;
+
+
+                /** Vector of P2P connection requests that have been made TO this sig chain but not yet established **/
+                std::vector<LLP::P2P::ConnectionRequest> vP2PIncoming; 
+
+
+                /** Vector of P2P connection requests that have been made BY this sig chain but not yet established **/
+                std::vector<LLP::P2P::ConnectionRequest> vP2POutgoing;
 
 
         };

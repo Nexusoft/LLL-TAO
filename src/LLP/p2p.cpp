@@ -361,10 +361,6 @@ namespace LLP
                 /* If the peer has made the connection to us, then check that the details match a p2p request that we made */
                 if(Incoming())
                 {
-                    //TODO
-                    //if(!HasP2PRequst(nAppID, hashIncomingGenesis, hashIncomingPeer, nIncomingSession))
-                    //    return debug::drop(NODE, "unsolicited P2P connection");
-
                     /* Check that the recipient of this p2p session is logged in on this node*/
                     if(!TAO::API::users->LoggedIn(hashIncomingPeer))
                         return debug::drop(NODE, "User not logged in");
@@ -398,7 +394,18 @@ namespace LLP
                     if(nIncomingSession == 0 || nIncomingSession != nSession)
                         return debug::drop(NODE, "invalid session id");
                 }
- 
+
+                /* Get the local users session */
+                TAO::API::Session& session = TAO::API::users->GetSession(hashGenesis);
+
+                /* Check that we are receiving an initialization message from a peer that we are expecting.  If this is an 
+                   incoming connection then we need to check that the local user has made an outgoing request that the peer 
+                   is responding to.  If this is an outgoing connection then check that the peer is responding with an 
+                   initialization for an incoming request */
+                if(!session.HasP2PRequest(nAppID, hashPeer, !Incoming()))
+                    return debug::drop(NODE, "Unsolicited P2P connection");
+
+
                 /* Build the byte stream from the request data in order to verify the signature */
                 DataStream ssCheck(SER_NETWORK, P2P::PROTOCOL_VERSION);
                 ssCheck << nProtocolVersion << nIncomingAppID << hashIncomingGenesis << hashIncomingPeer << nIncomingSession;
@@ -457,6 +464,9 @@ namespace LLP
 
                 }
 
+                /* Secure P2P connection successfully established so remove the connection request. */
+                session.DeleteP2PRequest(nAppID, hashPeer, !Incoming());
+
                 /* Store the initialized state */
                 fInitialized.store(true);               
 
@@ -467,6 +477,10 @@ namespace LLP
             /* Handle message . */
             case TYPES::MESSAGE:
             {
+                /* Check that secure connection has been established. */
+                if(!fInitialized.load())
+                    return debug::drop(NODE, "Message received before secure connection initialization");
+
                 /* Message to add to the queue */
                 P2P::Message message;
 

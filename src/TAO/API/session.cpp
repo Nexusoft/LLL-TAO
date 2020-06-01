@@ -38,6 +38,8 @@ namespace TAO
         , pSigChain             ()
         , pActivePIN            ()
         , nNetworkKey           (0)
+        , vP2PIncoming          ()
+        , vP2POutgoing          ()
         {
         }
 
@@ -50,6 +52,8 @@ namespace TAO
         , pSigChain             (std::move(session.pSigChain))
         , pActivePIN            (std::move(session.pActivePIN))
         , nNetworkKey           (std::move(session.nNetworkKey))
+        , vP2PIncoming          (std::move(session.vP2PIncoming))
+        , vP2POutgoing          (std::move(session.vP2POutgoing))
         {
         }
 
@@ -63,6 +67,8 @@ namespace TAO
             pSigChain =         (std::move(session.pSigChain));
             pActivePIN =        (std::move(session.pActivePIN));
             nNetworkKey =       (std::move(session.nNetworkKey));
+            vP2PIncoming =      (std::move(session.vP2PIncoming));
+            vP2POutgoing =      (std::move(session.vP2POutgoing));
 
             return *this;
         }
@@ -262,6 +268,103 @@ namespace TAO
             LOCK(MUTEX);
 
             return pSigChain;
+        }
+
+
+        /* Adds a new P2P Request. */
+        void Session::AddP2PRequest(const LLP::P2P::ConnectionRequest& request, bool fIncoming)
+        {
+            /* Lock mutex so p2p request vector can't be accessed by another thread */
+            LOCK(MUTEX);
+
+            /* Reference to the vector to work on, based on the fIncoming flag */
+            std::vector<LLP::P2P::ConnectionRequest>& vP2PRequests = fIncoming ? vP2PIncoming : vP2POutgoing;
+
+            /* Add the request */
+            vP2PRequests.push_back(request);
+        }
+
+
+        /* Gets P2P Request matching the app id / hashPeer criteria. */
+        LLP::P2P::ConnectionRequest Session::GetP2PRequest(const uint64_t& nAppID, const uint256_t hashPeer, bool fIncoming) const
+        {
+            /* Lock mutex so p2p request vector can't be accessed by another thread */
+            LOCK(MUTEX);
+
+            /* Reference to the vector to work on, based on the fIncoming flag */
+            const std::vector<LLP::P2P::ConnectionRequest>& vP2PRequests = fIncoming ? vP2PIncoming : vP2POutgoing;
+
+            /* Check each request */
+            for(const auto request : vP2PRequests)
+            {
+                /* If the request matches the appID and hashPeer then return it*/
+                if(request.nAppID == nAppID && request.hashPeer == hashPeer)
+                    return request;
+            }
+
+            /* If we haven't found one then return an empty connection request */
+            return LLP::P2P::ConnectionRequest();
+
+        }
+
+
+        /* Checks to see if a P2P Request matching the app id / hashPeer criteria exists. */
+        bool Session::HasP2PRequest(const uint64_t& nAppID, const uint256_t hashPeer, bool fIncoming) const
+        {
+            /* Lock mutex so p2p request vector can't be accessed by another thread */
+            LOCK(MUTEX);
+
+            /* Reference to the vector to work on, based on the fIncoming flag */
+            const std::vector<LLP::P2P::ConnectionRequest>& vP2PRequests = fIncoming ? vP2PIncoming : vP2POutgoing;
+
+            /* Check each request */
+            for(const auto request : vP2PRequests)
+            {
+                /* Check the appID and hashPeer */
+                if(request.nAppID == nAppID && request.hashPeer == hashPeer)
+                    return true;
+            }
+
+            /* No match found */
+            return false;
+        }
+
+
+        /* Deletes the P2P Request matching the app id / hashPeer criteria exists. */
+        void Session::DeleteP2PRequest(const uint64_t& nAppID, const uint256_t hashPeer, bool fIncoming)
+        {
+            /* Lock mutex so p2p request vector can't be accessed by another thread */
+            LOCK(MUTEX);
+
+            /* Reference to the vector to work on, based on the fIncoming flag */
+            std::vector<LLP::P2P::ConnectionRequest>& vP2PRequests = fIncoming ? vP2PIncoming : vP2POutgoing;
+
+            vP2PRequests.erase
+            (
+                /* Use std remove_if function to return the iterator to erase. This allows us to pass in a lambda function,
+                which itself can check to see if a match exists */
+                std::remove_if(vP2PRequests.begin(), vP2PRequests.end(), 
+                [&](const LLP::P2P::ConnectionRequest& request)
+                {
+                    return (request.nAppID == nAppID && request.hashPeer == hashPeer);
+                }), 
+                vP2PRequests.end()
+            );
+        }
+
+
+        /* Returns a vector of all connection requests. NOTE: This will copy the internal vector to protect against 
+           direct manipulation by calling code */
+        const std::vector<LLP::P2P::ConnectionRequest> Session::GetP2PRequests(bool fIncoming) const
+        {
+            /* Lock mutex so p2p request vector can't be accessed by another thread */
+            LOCK(MUTEX);
+
+            /* Reference to the vector to work on, based on the fIncoming flag */
+            const std::vector<LLP::P2P::ConnectionRequest>& vP2PRequests = fIncoming ? vP2PIncoming : vP2POutgoing;
+
+            /* Return the required vector. */
+            return vP2PRequests;
         }
         
 

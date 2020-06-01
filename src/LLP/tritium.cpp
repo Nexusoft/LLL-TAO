@@ -3173,12 +3173,12 @@ namespace LLP
                         ssPacket >> nAppID;
                         
                         /* get the source genesis hash */
-                        uint256_t hashSource;
-                        ssPacket >> hashSource;
+                        uint256_t hashFrom;
+                        ssPacket >> hashFrom;
                         
                         /* Get the destination genesis hash */
-                        uint256_t hashDestination;
-                        ssPacket >> hashDestination;
+                        uint256_t hashTo;
+                        ssPacket >> hashTo;
                         
                         /* Get the nonce / session ID */
                         uint64_t nSession;
@@ -3201,22 +3201,22 @@ namespace LLP
                             return debug::error(NODE, "ACTION::REQUEST::P2P: timestamp out of range (stale)");
 
                         /* Check that the destination genesis exists */
-                        if(!LLD::Ledger->HasGenesis(hashDestination))
+                        if(!LLD::Ledger->HasGenesis(hashFrom))
                             return debug::drop(NODE, "ACTION::REQUEST::P2P: invalid destination genesis hash");
 
-                        /* Check that the source genesis exi sts */
-                        if(!LLD::Ledger->HasGenesis(hashSource))
+                        /* Check that the source genesis exists */
+                        if(!LLD::Ledger->HasGenesis(hashTo))
                             return debug::drop(NODE, "ACTION::REQUEST::P2P: invalid source genesis hash");
 
                         /* Build the byte stream from the request data in order to verify the signature */
                         DataStream ssCheck(SER_NETWORK, PROTOCOL_VERSION);
-                        ssCheck << nTimestamp << nAppID << hashSource << hashDestination << nSession << address;
+                        ssCheck << nTimestamp << nAppID << hashFrom << hashTo << nSession << address;
 
                         /* Get a hash of the data. */
                         uint256_t hashCheck = LLC::SK256(ssCheck.begin(), ssCheck.end());
 
                         /* Verify the signature */
-                        if(!TAO::Ledger::SignatureChain::Verify(hashSource, "network", hashCheck.GetBytes(), vchPubKey, vchSig))
+                        if(!TAO::Ledger::SignatureChain::Verify(hashFrom, "network", hashCheck.GetBytes(), vchPubKey, vchSig))
                             return debug::error(NODE, "ACTION::REQUEST::P2P: invalid transaction signature");
                         
 
@@ -3227,7 +3227,7 @@ namespace LLP
                            different node/device. */
                         {
                             LOCK(P2P_REQUESTS_MUTEX);
-                            if(mapP2PRequests.count(hashSource) == 0 || mapP2PRequests[hashSource] < nTimestamp - 5)
+                            if(mapP2PRequests.count(hashFrom) == 0 || mapP2PRequests[hashFrom] < nTimestamp - 5)
                             {
                                 /* Relay the P2P request */
                                 TRITIUM_SERVER->Relay
@@ -3237,15 +3237,23 @@ namespace LLP
                                 );
 
                                 /* Check to see whether the destination genesis is logged in on this node */
-                                if(TAO::API::users->LoggedIn(hashDestination))
+                                if(TAO::API::users->LoggedIn(hashTo))
                                 {
-                                    /* If they are then add this request to the P2P requests queue in the Messaging LLP */
-                                    
+                                    /* Get the users session */
+                                    TAO::API::Session& session = TAO::API::users->GetSession(hashTo);
+
+                                    /* If an incoming request already exists from this peer then remove it */
+                                    if(session.HasP2PRequest(nAppID, hashFrom, true))
+                                        session.DeleteP2PRequest(nAppID, hashFrom, true);
+
+                                    /* Add this incoming request to the P2P requests queue for this user */
+                                    LLP::P2P::ConnectionRequest request = { runtime::unifiedtimestamp(), nAppID, hashFrom, nSession, address };
+                                    session.AddP2PRequest(request, true);
                                 }
                             }
 
                             /* Log this request */
-                            mapP2PRequests[hashSource] = nTimestamp;
+                            mapP2PRequests[hashFrom] = nTimestamp;
 
                                 
                         }
