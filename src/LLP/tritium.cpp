@@ -91,6 +91,10 @@ namespace LLP
     std::atomic<uint64_t> TritiumNode::nRemainingTime(0);
 
 
+    /** This node's address, as seen by the peer **/
+    LLP::BaseAddress TritiumNode::thisAddress;
+
+
     /* The local relay inventory cache. */
     static LLD::KeyLRU cacheInventory = LLD::KeyLRU(1024 * 1024);
 
@@ -206,6 +210,7 @@ namespace LLP
                 /* Respond with version message if incoming connection. */
                 if(fOUTGOING)
                     PushMessage(ACTION::VERSION, PROTOCOL_VERSION, SESSION_ID, version::CLIENT_VERSION_BUILD_STRING);
+                    
 
                 break;
             }
@@ -493,6 +498,7 @@ namespace LLP
                 if(config::fClient.load() && nProtocolVersion < MIN_TRITIUM_VERSION)
                     return debug::drop(NODE, "-client mode requires version ", MIN_TRITIUM_VERSION);
 
+
                 /* Respond with version message if incoming connection. */
                 if(Incoming())
                 {
@@ -509,6 +515,15 @@ namespace LLP
 
                 /* Send Auth immediately after version and before any other messages*/
                 //Auth(true);
+
+                /* If we dont yet know our IP address and the peer is on the newer protocol version then request the IP address */
+                {
+                    /* Lock session mutex to prevent other sessions from accessing thisAddress */
+                    LOCK(SESSIONS_MUTEX);
+                    
+                    if(!thisAddress.IsValid() && nProtocolVersion >= MIN_TRITIUM_VERSION)
+                        PushMessage(ACTION::REQUEST, uint8_t(TYPES::PEERADDRESS));
+                }
 
                 #ifdef DEBUG_MISSING
                 fSynchronized.store(true);
@@ -2032,6 +2047,13 @@ namespace LLP
                             break;
                         }
 
+                        case TYPES::PEERADDRESS:
+                        {
+                            /* Send back the peer's own address from our connection */
+                            PushMessage(TYPES::PEERADDRESS, addr);
+                            break;
+                        }
+
                         /* Catch malformed notify binary streams. */
                         default:
                             return debug::drop(NODE, "ACTION::GET malformed binary stream");
@@ -3270,6 +3292,26 @@ namespace LLP
                 break;
             }
 
+            case TYPES::PEERADDRESS:
+            {
+                {
+                    /* Lock session mutex to prevent other sessions from accessing thisAddress */
+                    LOCK(SESSIONS_MUTEX);
+                    
+                    /* Ignore the message if we have already obtained our IP address */
+                    if(!thisAddress.IsValid())
+                    {
+                        /* Deserialize the address */
+                        BaseAddress addr;
+                        ssPacket >> addr;
+
+                        thisAddress = addr;
+                    }
+                }
+
+                break;
+            }
+
             default:
                 return debug::drop(NODE, "invalid protocol message ", INCOMING.MESSAGE);
         }
@@ -3605,219 +3647,262 @@ namespace LLP
 
 
     /* Checks if a node is subscribed to receive a notification. */
-    const DataStream TritiumNode::Notifications(const uint16_t nMsg, const DataStream& ssData) const
+    const DataStream TritiumNode::RelayFilter(const uint16_t nMsg, const DataStream& ssData) const
     {
-        /* Only filter relays when message is notify. */
-        if(nMsg != ACTION::NOTIFY)
-            return ssData;
-
-        /* Build a response data stream. */
+        /* The data stream to relay*/
         DataStream ssRelay(SER_NETWORK, MIN_PROTO_VERSION);
-        while(!ssData.End())
+
+        /* Switch based on message type */
+        switch(nMsg)
         {
-            /* Get the first notify type. */
-            uint8_t nType = 0;
-            ssData >> nType;
-
-            /* Skip over legacy. */
-            bool fLegacy = false;
-            if(nType == SPECIFIER::LEGACY)
+            /* Filter out request messages so that we don't send them to peers on older protocol versions */
+            case ACTION::REQUEST :
             {
-                /* Set legacy specifier. */
-                fLegacy = true;
-
-                /* Go to next type in stream. */
+                /* Get the request type */
+                uint8_t nType = 0;
                 ssData >> nType;
+
+                /* Switch based on type. */
+                switch(nType)  
+                {
+                    case TYPES::P2PCONNECTION:
+                    {
+                        /* Ensure the peer is on a high enough version to receive the P2PCONNECTION message */
+                        if(nProtocolVersion >= MIN_TRITIUM_VERSION)
+                            ssRelay = ssData;
+                        break;
+                    }
+                    default:
+                    {
+                        /* Default to letting the message be relayed */
+                        ssRelay = ssData;
+                        break;
+                    }
+                }
+                
+                break;
             }
 
-            /* Switch based on type. */
-            switch(nType)
+            /* Filter notifications. */
+            case ACTION::NOTIFY:
             {
-                /* Check for block subscription. */
-                case TYPES::BLOCK:
+                /* Build a response data stream. */
+                while(!ssData.End())
                 {
-                    /* Get the index. */
-                    uint1024_t hashBlock;
-                    ssData >> hashBlock;
+                    /* Get the first notify type. */
+                    uint8_t nType = 0;
+                    ssData >> nType;
 
-                    /* Check subscription. */
-                    if(nNotifications & SUBSCRIPTION::BLOCK)
+                    /* Skip over legacy. */
+                    bool fLegacy = false;
+                    if(nType == SPECIFIER::LEGACY)
                     {
-                        /* Write block to stream. */
-                        ssRelay << uint8_t(TYPES::BLOCK);
-                        ssRelay << hashBlock;
+                        /* Set legacy specifier. */
+                        fLegacy = true;
+
+                        /* Go to next type in stream. */
+                        ssData >> nType;
                     }
 
-                    break;
-                }
-
-
-                /* Check for transaction subscription. */
-                case TYPES::TRANSACTION:
-                {
-                    /* Get the index. */
-                    uint512_t hashTx;
-                    ssData >> hashTx;
-
-                    /* Check subscription. */
-                    if(nNotifications & SUBSCRIPTION::TRANSACTION)
+                    /* Switch based on type. */
+                    switch(nType)
                     {
-                        /* Check for legacy. */
-                        if(fLegacy)
-                            ssRelay << uint8_t(SPECIFIER::LEGACY);
+                        /* Check for block subscription. */
+                        case TYPES::BLOCK:
+                        {
+                            /* Get the index. */
+                            uint1024_t hashBlock;
+                            ssData >> hashBlock;
 
-                        /* Write transaction to stream. */
-                        ssRelay << uint8_t(TYPES::TRANSACTION);
-                        ssRelay << hashTx;
-                    }
+                            /* Check subscription. */
+                            if(nNotifications & SUBSCRIPTION::BLOCK)
+                            {
+                                /* Write block to stream. */
+                                ssRelay << uint8_t(TYPES::BLOCK);
+                                ssRelay << hashBlock;
+                            }
 
-                    break;
-                }
-
-
-                /* Check for height subscription. */
-                case TYPES::BESTHEIGHT:
-                {
-                    /* Get the index. */
-                    uint32_t nHeight;
-                    ssData >> nHeight;
-
-                    /* Check for legacy. */
-                    if(fLegacy)
-                    {
-                        debug::error(FUNCTION, "BESTHEIGHT cannot have legacy specifier");
-                        continue;
-                    }
-
-                    /* Check subscription. */
-                    if(nNotifications & SUBSCRIPTION::BESTHEIGHT)
-                    {
-                        /* Write transaction to stream. */
-                        ssRelay << uint8_t(TYPES::BESTHEIGHT);
-                        ssRelay << nHeight;
-                    }
-
-                    break;
-                }
-
-
-                /* Check for checkpoint subscription. */
-                case TYPES::CHECKPOINT:
-                {
-                    /* Get the index. */
-                    uint1024_t hashCheck;
-                    ssData >> hashCheck;
-
-                    /* Check for legacy. */
-                    if(fLegacy)
-                    {
-                        debug::error(FUNCTION, "CHECKPOINT cannot have legacy specifier");
-                        continue;
-                    }
-
-                    /* Check subscription. */
-                    if(nNotifications & SUBSCRIPTION::CHECKPOINT)
-                    {
-                        /* Write transaction to stream. */
-                        ssRelay << uint8_t(TYPES::CHECKPOINT);
-                        ssRelay << hashCheck;
-                    }
-
-                    break;
-                }
-
-
-                /* Check for best chain subscription. */
-                case TYPES::BESTCHAIN:
-                {
-                    /* Get the index. */
-                    uint1024_t hashBest;
-                    ssData >> hashBest;
-
-                    /* Check for legacy. */
-                    if(fLegacy)
-                    {
-                        debug::error(FUNCTION, "BESTCHAIN cannot have legacy specifier");
-                        continue;
-                    }
-
-                    /* Check subscription. */
-                    if(nNotifications & SUBSCRIPTION::BESTCHAIN)
-                    {
-                        /* Write transaction to stream. */
-                        ssRelay << uint8_t(TYPES::BESTCHAIN);
-                        ssRelay << hashBest;
-                    }
-
-                    break;
-                }
-
-
-                /* Check for address subscription. */
-                case TYPES::ADDRESS:
-                {
-                    /* Get the index. */
-                    BaseAddress addr;
-                    ssData >> addr;
-
-                    /* Check for legacy. */
-                    if(fLegacy)
-                    {
-                        debug::error(FUNCTION, "ADDRESS cannot have legacy specifier");
-                        continue;
-                    }
-
-                    /* Check subscription. */
-                    if(nNotifications & SUBSCRIPTION::ADDRESS)
-                    {
-                        /* Write transaction to stream. */
-                        ssRelay << uint8_t(TYPES::ADDRESS);
-                        ssRelay << addr;
-                    }
-
-                    break;
-                }
-
-
-                /* Check for sigchain subscription. */
-                case TYPES::SIGCHAIN:
-                {
-                    /* Get the index. */
-                    uint256_t hashSigchain = 0;
-                    ssData >> hashSigchain;
-
-                    /* Get the txid. */
-                    uint512_t hashTx = 0;
-                    ssData >> hashTx;
-
-                    /* Check subscription. */
-                    if(nNotifications & SUBSCRIPTION::SIGCHAIN)
-                    {
-                        /* Check for matching sigchain-id. */
-                        if(hashSigchain != hashGenesis)
                             break;
+                        }
 
-                        /* Check for legacy. */
-                        if(fLegacy)
-                            ssRelay << uint8_t(SPECIFIER::LEGACY);
 
-                        /* Write transaction to stream. */
-                        ssRelay << uint8_t(TYPES::SIGCHAIN);
-                        ssRelay << hashSigchain;
-                        ssRelay << hashTx;
+                        /* Check for transaction subscription. */
+                        case TYPES::TRANSACTION:
+                        {
+                            /* Get the index. */
+                            uint512_t hashTx;
+                            ssData >> hashTx;
+
+                            /* Check subscription. */
+                            if(nNotifications & SUBSCRIPTION::TRANSACTION)
+                            {
+                                /* Check for legacy. */
+                                if(fLegacy)
+                                    ssRelay << uint8_t(SPECIFIER::LEGACY);
+
+                                /* Write transaction to stream. */
+                                ssRelay << uint8_t(TYPES::TRANSACTION);
+                                ssRelay << hashTx;
+                            }
+
+                            break;
+                        }
+
+
+                        /* Check for height subscription. */
+                        case TYPES::BESTHEIGHT:
+                        {
+                            /* Get the index. */
+                            uint32_t nHeight;
+                            ssData >> nHeight;
+
+                            /* Check for legacy. */
+                            if(fLegacy)
+                            {
+                                debug::error(FUNCTION, "BESTHEIGHT cannot have legacy specifier");
+                                continue;
+                            }
+
+                            /* Check subscription. */
+                            if(nNotifications & SUBSCRIPTION::BESTHEIGHT)
+                            {
+                                /* Write transaction to stream. */
+                                ssRelay << uint8_t(TYPES::BESTHEIGHT);
+                                ssRelay << nHeight;
+                            }
+
+                            break;
+                        }
+
+
+                        /* Check for checkpoint subscription. */
+                        case TYPES::CHECKPOINT:
+                        {
+                            /* Get the index. */
+                            uint1024_t hashCheck;
+                            ssData >> hashCheck;
+
+                            /* Check for legacy. */
+                            if(fLegacy)
+                            {
+                                debug::error(FUNCTION, "CHECKPOINT cannot have legacy specifier");
+                                continue;
+                            }
+
+                            /* Check subscription. */
+                            if(nNotifications & SUBSCRIPTION::CHECKPOINT)
+                            {
+                                /* Write transaction to stream. */
+                                ssRelay << uint8_t(TYPES::CHECKPOINT);
+                                ssRelay << hashCheck;
+                            }
+
+                            break;
+                        }
+
+
+                        /* Check for best chain subscription. */
+                        case TYPES::BESTCHAIN:
+                        {
+                            /* Get the index. */
+                            uint1024_t hashBest;
+                            ssData >> hashBest;
+
+                            /* Check for legacy. */
+                            if(fLegacy)
+                            {
+                                debug::error(FUNCTION, "BESTCHAIN cannot have legacy specifier");
+                                continue;
+                            }
+
+                            /* Check subscription. */
+                            if(nNotifications & SUBSCRIPTION::BESTCHAIN)
+                            {
+                                /* Write transaction to stream. */
+                                ssRelay << uint8_t(TYPES::BESTCHAIN);
+                                ssRelay << hashBest;
+                            }
+
+                            break;
+                        }
+
+
+                        /* Check for address subscription. */
+                        case TYPES::ADDRESS:
+                        {
+                            /* Get the index. */
+                            BaseAddress addr;
+                            ssData >> addr;
+
+                            /* Check for legacy. */
+                            if(fLegacy)
+                            {
+                                debug::error(FUNCTION, "ADDRESS cannot have legacy specifier");
+                                continue;
+                            }
+
+                            /* Check subscription. */
+                            if(nNotifications & SUBSCRIPTION::ADDRESS)
+                            {
+                                /* Write transaction to stream. */
+                                ssRelay << uint8_t(TYPES::ADDRESS);
+                                ssRelay << addr;
+                            }
+
+                            break;
+                        }
+
+
+                        /* Check for sigchain subscription. */
+                        case TYPES::SIGCHAIN:
+                        {
+                            /* Get the index. */
+                            uint256_t hashSigchain = 0;
+                            ssData >> hashSigchain;
+
+                            /* Get the txid. */
+                            uint512_t hashTx = 0;
+                            ssData >> hashTx;
+
+                            /* Check subscription. */
+                            if(nNotifications & SUBSCRIPTION::SIGCHAIN)
+                            {
+                                /* Check for matching sigchain-id. */
+                                if(hashSigchain != hashGenesis)
+                                    break;
+
+                                /* Check for legacy. */
+                                if(fLegacy)
+                                    ssRelay << uint8_t(SPECIFIER::LEGACY);
+
+                                /* Write transaction to stream. */
+                                ssRelay << uint8_t(TYPES::SIGCHAIN);
+                                ssRelay << hashSigchain;
+                                ssRelay << hashTx;
+                            }
+
+                            break;
+                        }
+
+                        /* Default catch (relay up to this point) */
+                        default:
+                        {
+                            debug::error(FUNCTION, "Malformed binary stream");
+                            return ssRelay;
+                        }
                     }
-
-                    break;
                 }
 
-                /* Default catch (relay up to this point) */
-                default:
-                {
-                    debug::error(FUNCTION, "Malformed binary stream");
-                    return ssRelay;
-                }
+                break;
+            }
+            default:
+            {
+                /* default behaviour is to let the message be relayed */
+                ssRelay = ssData;
+                break;
             }
         }
+        
 
         return ssRelay;
     }

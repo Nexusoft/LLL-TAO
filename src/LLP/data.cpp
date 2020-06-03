@@ -381,7 +381,7 @@ namespace LLP
                     memory::atomic_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nIndex);
 
                     /* Relay if there are active subscriptions. */
-                    const DataStream ssRelay = CONNECTION->Notifications(qRelay.first, qRelay.second);
+                    const DataStream ssRelay = CONNECTION->RelayFilter(qRelay.first, qRelay.second);
                     if(ssRelay.size() != 0)
                     {
                         /* Build the sender packet. */

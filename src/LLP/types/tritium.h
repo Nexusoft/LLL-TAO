@@ -90,6 +90,7 @@ namespace LLP
                 TRIGGER      = 0x3c,
                 REGISTER     = 0x3d,
                 P2PCONNECTION   = 0x3e,
+                PEERADDRESS  = 0x3f,
             };
         }
 
@@ -183,6 +184,7 @@ namespace LLP
 
         /** Mutex for controlling access to the p2p requests map. **/
         static std::mutex P2P_REQUESTS_MUTEX;
+
 
         /** map of P2P request timestamps by source genesis hash. **/
         static std::map<uint256_t, uint64_t> mapP2PRequests;
@@ -306,6 +308,10 @@ namespace LLP
         static std::atomic<uint64_t> nRemainingTime;
 
 
+        /** This node's address, as seen by the peer **/
+        static LLP::BaseAddress thisAddress;
+
+
         /** Event
          *
          *  Virtual Functions to Determine Behavior of Message LLP.
@@ -372,7 +378,7 @@ namespace LLP
          *  @return a data stream with relevant relay information
          *
          **/
-        const DataStream Notifications(const uint16_t nMsg, const DataStream& ssData) const;
+        const DataStream RelayFilter(const uint16_t nMsg, const DataStream& ssData) const;
 
 
         /** Auth

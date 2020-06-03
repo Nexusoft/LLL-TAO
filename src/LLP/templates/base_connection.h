@@ -175,7 +175,7 @@ namespace LLP
          *
          **/
         template<typename MessageType>
-        const DataStream Notifications(const MessageType& message, const DataStream& ssData) const
+        const DataStream RelayFilter(const MessageType& message, const DataStream& ssData) const
         {
             return ssData; //copy over relay like normal for all items to be relayed
         }
