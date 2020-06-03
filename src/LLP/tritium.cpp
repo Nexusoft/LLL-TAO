@@ -3168,7 +3168,7 @@ namespace LLP
                     }
                     default:
                     {
-                        return debug::drop(NODE, "ACTION::VALIDATE invalidate type specified");
+                        return debug::drop(NODE, "ACTION::VALIDATE invalid type specified");
                     }
                 }
 
@@ -3248,11 +3248,14 @@ namespace LLP
                             LOCK(P2P_REQUESTS_MUTEX);
                             if(mapP2PRequests.count(hashFrom) == 0 || mapP2PRequests[hashFrom] < nTimestamp - 5)
                             {
+                                /* Reset the packet data pointer */
+                                ssPacket.Reset();
+
                                 /* Relay the P2P request */
                                 TRITIUM_SERVER->Relay
                                 (
                                     INCOMING.MESSAGE,
-                                    INCOMING.DATA
+                                    ssPacket.Bytes()
                                 );
 
                                 /* Check to see whether the destination genesis is logged in on this node */
@@ -3282,7 +3285,7 @@ namespace LLP
                     }
                     default:
                     {
-                        return debug::drop(NODE, "ACTION::REQUEST invalidate type specified");
+                        return debug::drop(NODE, "ACTION::REQUEST invalid type specified");
                     }
                 }
 
