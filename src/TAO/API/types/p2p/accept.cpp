@@ -96,9 +96,6 @@ namespace TAO
             {
                 throw new APIException(-284, "Failed to connect to peer");
             }
-
-            /* Remove the connection request now that we are connected */
-            session.DeleteP2PRequest(strAppID, hashPeer, true);
             
             /* Get the actual connection data thread */
             if(get_connection(strAppID, hashGenesis, hashPeer, connection))
