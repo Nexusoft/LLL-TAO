@@ -69,16 +69,16 @@ namespace TAO
             if(!LLP::P2P_SERVER)
                 throw APIException(-280, "P2P server not enabled on this node");
 
-            /* Check the requested connection exists */
-            if(!session.HasP2PRequest(strAppID, hashPeer, true))
-                throw APIException(-282, "Connection not found");
-
             /* Connection pointer  */
             memory::atomic_ptr<LLP::P2PNode> connection;
 
             /* Check to see if a connection already exists */
             if(get_connection(strAppID, hashGenesis, hashPeer, connection))
                 throw APIException(-283, "A connection to this peer already exists");
+
+            /* Check the requested connection exists */
+            if(!session.HasP2PRequest(strAppID, hashPeer, true))
+                throw APIException(-282, "Connection not found");
 
             /* Get the connection request */
             LLP::P2P::ConnectionRequest request = session.GetP2PRequest(strAppID, hashPeer, true);
