@@ -3234,11 +3234,8 @@ namespace LLP
                         DataStream ssCheck(SER_NETWORK, PROTOCOL_VERSION);
                         ssCheck << nTimestamp << strAppID << hashFrom << hashTo << nSession << address;
 
-                        /* Get a hash of the data. */
-                        uint256_t hashCheck = LLC::SK256(ssCheck.begin(), ssCheck.end());
-
                         /* Verify the signature */
-                        if(!TAO::Ledger::SignatureChain::Verify(hashFrom, "network", hashCheck.GetBytes(), vchPubKey, vchSig))
+                        if(!TAO::Ledger::SignatureChain::Verify(hashFrom, "network", ssCheck.Bytes(), vchPubKey, vchSig))
                             return debug::error(NODE, "ACTION::REQUEST::P2P: invalid transaction signature");
                         
 
