@@ -20,11 +20,7 @@ ________________________________________________________________________________
 #include <Util/templates/serialize.h>
 #include <Util/templates/datastream.h>
 
-#include <cstdint>
-#include <vector>
-#include <atomic>
-#include <fstream>
-#include <condition_variable>
+#include <Util/templates/bitarray.h>
 
 #include <Util/include/mutex.h>
 
@@ -39,30 +35,8 @@ namespace LLD
      *  It has an internal file handler that commits to disk when called.
      *
      **/
-    class BloomFilter
+    class BloomFilter : public BitArray
     {
-
-        /** is_set
-         *
-         *  Check if a particular bit is set in the bloom filter.
-         *
-         *  @param[in] nBucket The bucket to check bit for.
-         *
-         *  @return true if the bit is set.
-         *
-         **/
-        bool is_set(const uint64_t nBucket) const;
-
-
-        /** set_bit
-         *
-         *  Set a bit in the bloom filter at given bucket
-         *
-         *  @param[in] nBucket The bucket to set bit for.
-         *
-         **/
-        void set_bit(const uint64_t nBucket);
-
 
         /** get_bucket
          *
@@ -74,15 +48,11 @@ namespace LLD
          *  @return the bucket for given value k.
          *
          **/
-        uint64_t get_bucket(const std::vector<uint8_t>& vKey, const uint32_t nK) const;
+        uint64_t get_bucket(const std::vector<uint8_t>& vKey, const uint32_t nK = 0) const;
 
 
         /** The total number of buckets for this bloom filter. **/
         uint32_t HASHMAP_TOTAL_BUCKETS;
-
-
-        /** The bloom filter bitarray using 64 bit registers. **/
-        std::vector<uint64_t> bloom;
 
 
         /** Mutex to protect internal states. **/
@@ -119,23 +89,6 @@ namespace LLD
         BloomFilter  (const uint64_t nBuckets);
 
 
-
-        /** Bytes
-         *
-         *  Get the beginning memory location of the bloom filter.
-         *
-         **/
-        uint8_t* Bytes() const;
-
-
-        /** Size
-         *
-         *  Get the size (in bytes) of the bloom filter.
-         *
-         **/
-         uint64_t Size() const;
-
-
         /** Insert
          *
          *  Add a new key to the bloom filter.
@@ -156,9 +109,6 @@ namespace LLD
          *
          **/
         bool Has(const std::vector<uint8_t>& vKey) const;
-
-
-
 
 
         /** Insert

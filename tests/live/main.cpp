@@ -75,7 +75,7 @@ public:
     : SectorDatabase("testdb"
     , LLD::FLAGS::CREATE | LLD::FLAGS::FORCE
     , 256 * 256 * 64
-    , 1024 * 1024 * 4)
+    , 1024 * 1024 * 8)
     {
     }
 
@@ -137,25 +137,42 @@ _name.shard.file
 
 const uint256_t hashSeed = 55;
 
-
 #include <bitset>
 
 
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
-    uint512_t hash = 293548230430984;
+    config::mapArgs["-datadir"] = "/public/LIVE";
+
+    TestDB* bloom = new TestDB();
+
+    std::vector<uint1024_t> vKeys;
+    for(int i = 0; i < 10000; ++i)
+        vKeys.push_back(LLC::GetRand1024());
 
 
-    std::vector<uint64_t> vBloom(256 * 256, 0);
-
-
-    LLD::BloomFilter* bloom = new LLD::BloomFilter(256 * 256 * 64);
-    for(uint64_t nBucket = 0; nBucket < 1000000; ++nBucket)
+    runtime::stopwatch swTimer;
+    swTimer.start();
+    for(const auto& nBucket : vKeys)
     {
-        uint256_t hashKey = LLC::GetRand256();
-        bloom->Insert(hashKey);
+        bloom->WriteKey(nBucket, nBucket);
     }
+    swTimer.stop();
+
+    debug::log(0, "100k records written in ", swTimer.ElapsedMicroseconds());
+
+    uint1024_t hashKey = 0;
+
+    swTimer.reset();
+    swTimer.start();
+    for(const auto& nBucket : vKeys)
+    {
+        bloom->ReadKey(nBucket, hashKey);
+    }
+    swTimer.stop();
+
+    debug::log(0, "100k records read in ", swTimer.ElapsedMicroseconds());
 
     delete bloom;
 

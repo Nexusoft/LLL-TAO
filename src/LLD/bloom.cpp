@@ -21,23 +21,6 @@ ________________________________________________________________________________
 
 namespace LLD
 {
-    /* Check if a particular bit is set in the bloom filter. */
-    bool BloomFilter::is_set(const uint64_t nBucket) const
-    {
-        //LOCK(MUTEX);
-
-        return (bloom[nBucket / 64] & (uint64_t(1) << (nBucket % 64)));
-    }
-
-
-    /* Set a bit in the bloom filter at given bucket */
-    void BloomFilter::set_bit(const uint64_t nBucket)
-    {
-        //LOCK(MUTEX);
-
-        bloom[nBucket / 64] |= (uint64_t(1) << (nBucket % 64));
-    }
-
 
     /* Get the bucket for given value k and key. */
     uint64_t BloomFilter::get_bucket(const std::vector<uint8_t>& vKey, const uint32_t nK) const
@@ -51,8 +34,8 @@ namespace LLD
 
     /* Copy Constructor. */
     BloomFilter::BloomFilter(const BloomFilter& filter)
-    : HASHMAP_TOTAL_BUCKETS (filter.HASHMAP_TOTAL_BUCKETS)
-    , bloom                 (filter.bloom)
+    : BitArray              (filter)
+    , HASHMAP_TOTAL_BUCKETS (filter.HASHMAP_TOTAL_BUCKETS)
     , MUTEX                 ( )
     {
     }
@@ -60,8 +43,8 @@ namespace LLD
 
     /* Move Constructor. */
     BloomFilter::BloomFilter(BloomFilter&& filter)
-    : HASHMAP_TOTAL_BUCKETS (std::move(filter.HASHMAP_TOTAL_BUCKETS))
-    , bloom                 (std::move(filter.bloom))
+    : BitArray              (std::move(filter))
+    , HASHMAP_TOTAL_BUCKETS (std::move(filter.HASHMAP_TOTAL_BUCKETS))
     , MUTEX                 ( )
     {
     }
@@ -70,8 +53,8 @@ namespace LLD
     /* Copy assignment. */
     BloomFilter& BloomFilter::operator=(const BloomFilter& filter)
     {
-        HASHMAP_TOTAL_BUCKETS = filter.HASHMAP_TOTAL_BUCKETS;
-        bloom                 = filter.bloom;
+        HASHMAP_TOTAL_BUCKETS      = filter.HASHMAP_TOTAL_BUCKETS;
+        vRegisters                 = filter.vRegisters;
 
         return *this;
     }
@@ -80,8 +63,8 @@ namespace LLD
     /* Move assignment. */
     BloomFilter& BloomFilter::operator=(BloomFilter&& filter)
     {
-        HASHMAP_TOTAL_BUCKETS = std::move(filter.HASHMAP_TOTAL_BUCKETS);
-        bloom                 = std::move(filter.bloom);
+        HASHMAP_TOTAL_BUCKETS      = std::move(filter.HASHMAP_TOTAL_BUCKETS);
+        vRegisters                 = std::move(filter.vRegisters);
 
         return *this;
     }
@@ -89,8 +72,8 @@ namespace LLD
 
     /* Create bloom filter with given number of buckets. */
     BloomFilter::BloomFilter  (const uint64_t nBuckets)
-    : HASHMAP_TOTAL_BUCKETS ((nBuckets * 3) / 0.693147) //n * k / ln(2) = m
-    , bloom                 ((HASHMAP_TOTAL_BUCKETS / 64) + 1, 0)
+    : BitArray              ((nBuckets * 3) / 0.693147)
+    , HASHMAP_TOTAL_BUCKETS ((nBuckets * 3) / 0.693147) //n * k / ln(2) = m
     , MUTEX                 ( )
     {
     }
@@ -99,20 +82,6 @@ namespace LLD
     /* Default Destructor. */
     BloomFilter::~BloomFilter()
     {
-    }
-
-
-    /* Get the beginning memory location of the bloom filter. */
-    uint8_t* BloomFilter::Bytes() const
-    {
-        return (uint8_t*)&bloom[0];
-    }
-
-
-    /* Get the size (in bytes) of the bloom filter. */
-    uint64_t BloomFilter::Size() const
-    {
-        return bloom.size() * 8;
     }
 
 
