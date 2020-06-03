@@ -225,6 +225,8 @@ namespace LLP
                 ret = { {"result", TAO::API::invoices->Execute(METHOD, params) } };
             else if(strAPI == "crypto")
                 ret = { {"result", TAO::API::crypto->Execute(METHOD, params) } };
+            else if(strAPI == "p2p")
+                ret = { {"result", TAO::API::p2p->Execute(METHOD, params) } };
             else
                 throw TAO::API::APIException(-4, debug::safe_printstr("API not found: ", strAPI));
         }

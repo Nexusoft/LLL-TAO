@@ -414,5 +414,8 @@ Error Codes
 | -277 | Invalid hash function |
 | -278 | Scheme already in use |
 | -279 | P2P request not found |
+| -280 | P2P server not enabled on this node |
+| -281 | Missing App ID |
+| -282 | Connection not found |
 | -300 | API can only be used to lookup data for the currently logged in signature chain when running in client mode |
 

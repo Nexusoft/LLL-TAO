@@ -34,6 +34,7 @@ namespace TAO
         Voting*     voting;
         Invoices*   invoices;
         Crypto*     crypto;
+        P2P*        p2p;
 
 
         /*  Instantiate global instances of the API. */
@@ -56,6 +57,7 @@ namespace TAO
             voting      = new Voting();
             invoices    = new Invoices();
             crypto      = new Crypto();
+            p2p         = new P2P();
         }
 
 
@@ -105,6 +107,9 @@ namespace TAO
 
             if(crypto)
                 delete crypto;
+
+            if(p2p)
+                delete p2p;
         }
     }
 }
