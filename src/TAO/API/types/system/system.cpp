@@ -91,6 +91,10 @@ namespace TAO
             gethostname(hostname, sizeof(hostname));
             jsonRet["hostname"] = std::string(hostname);
 
+            /* The IP address, if known */
+            if(LLP::TritiumNode::thisAddress.IsValid())
+                jsonRet["ipaddress"] = LLP::TritiumNode::thisAddress.ToStringIP();
+
             /* If this node is running on the testnet then this shows the testnet number*/
             jsonRet["testnet"] = config::GetArg("-testnet", 0);
 
