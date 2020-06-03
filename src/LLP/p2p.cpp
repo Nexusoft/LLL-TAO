@@ -512,6 +512,9 @@ namespace LLP
             /* Handle terminate command. */
             case ACTION::TERMINATE:
             {
+                /* Echo back terminate message so both sides gracefully stop */
+                PushMessage(LLP::P2P::ACTION::TERMINATE, nSession);
+
                 return debug::drop(NODE, "Connection terminated by peer");
 
                 break;
