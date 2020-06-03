@@ -120,6 +120,9 @@ namespace TAO
                 vchPubKey,
                 vchSig);
 
+            /* Flag successful request */
+            response["success"] = true;
+
             return response;
         }
 
