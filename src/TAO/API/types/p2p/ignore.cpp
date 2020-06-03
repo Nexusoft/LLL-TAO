@@ -51,7 +51,7 @@ namespace TAO
 
             /* Get App ID  */
             if(params.find("appid") == params.end())
-                throw new APIException(-281, "Missing App ID");
+                throw APIException(-281, "Missing App ID");
 
             strAppID = params["appid"].get<std::string>();
 
@@ -62,19 +62,19 @@ namespace TAO
             else if(params.find("username") != params.end())
                 hashPeer = TAO::Ledger::SignatureChain::Genesis(params["username"].get<std::string>().c_str());
             else 
-                throw new APIException(-111, "Missing genesis / username");
+                throw APIException(-111, "Missing genesis / username");
             
            
             /* Check to see if P2P is enabled */
             if(!LLP::P2P_SERVER)
-                throw new APIException(-280, "P2P server not enabled on this node");
+                throw APIException(-280, "P2P server not enabled on this node");
 
             /* Connection pointer  */
             memory::atomic_ptr<LLP::P2PNode> connection;
 
             /* Check the connection exists */
             if(!session.HasP2PRequest(strAppID, hashPeer, true))
-                throw new APIException(-282, "Connection not found");
+                throw APIException(-282, "Connection not found");
 
             /* Remove the connection */
             session.DeleteP2PRequest(strAppID, hashPeer, true);

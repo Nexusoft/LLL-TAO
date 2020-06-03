@@ -50,7 +50,7 @@ namespace TAO
            
             /* Check to see if P2P is enabled */
             if(!LLP::P2P_SERVER)
-                throw new APIException(-280, "P2P server not enabled on this node");
+                throw APIException(-280, "P2P server not enabled on this node");
             
             for(uint16_t nThread = 0; nThread < LLP::P2P_SERVER->MAX_THREADS; ++nThread)
             {
@@ -128,7 +128,7 @@ namespace TAO
            
             /* Check to see if P2P is enabled */
             if(!LLP::P2P_SERVER)
-                throw new APIException(-280, "P2P server not enabled on this node");
+                throw APIException(-280, "P2P server not enabled on this node");
 
 
             /* Get the connection requests */

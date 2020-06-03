@@ -52,7 +52,7 @@ namespace TAO
 
             /* Get App ID  */
             if(params.find("appid") == params.end())
-                throw new APIException(-281, "Missing App ID");
+                throw APIException(-281, "Missing App ID");
 
             strAppID = params["appid"].get<std::string>();
 
@@ -63,12 +63,12 @@ namespace TAO
             else if(params.find("username") != params.end())
                 hashPeer = TAO::Ledger::SignatureChain::Genesis(params["username"].get<std::string>().c_str());
             else 
-                throw new APIException(-111, "Missing genesis / username");
+                throw APIException(-111, "Missing genesis / username");
             
            
             /* Check to see if P2P is enabled */
             if(!LLP::P2P_SERVER)
-                throw new APIException(-280, "P2P server not enabled on this node");
+                throw APIException(-280, "P2P server not enabled on this node");
 
             /* The new connection request */
             LLP::P2P::ConnectionRequest request;
@@ -78,7 +78,7 @@ namespace TAO
 
             /* Check to see if a connection already exists */
             if(get_connection(strAppID, hashGenesis, hashPeer, connection))
-                throw new APIException(-283, "A connection to this peer already exists");
+                throw APIException(-283, "A connection to this peer already exists");
 
             /* Set up the request  */
             request.strAppID = strAppID;

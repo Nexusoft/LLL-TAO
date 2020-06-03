@@ -51,7 +51,7 @@ namespace TAO
 
             /* Get App ID  */
             if(params.find("appid") == params.end())
-                throw new APIException(-281, "Missing App ID");
+                throw APIException(-281, "Missing App ID");
 
             strAppID = params["appid"].get<std::string>();
 
@@ -62,23 +62,23 @@ namespace TAO
             else if(params.find("username") != params.end())
                 hashPeer = TAO::Ledger::SignatureChain::Genesis(params["username"].get<std::string>().c_str());
             else 
-                throw new APIException(-111, "Missing genesis / username");
+                throw APIException(-111, "Missing genesis / username");
             
            
             /* Check to see if P2P is enabled */
             if(!LLP::P2P_SERVER)
-                throw new APIException(-280, "P2P server not enabled on this node");
+                throw APIException(-280, "P2P server not enabled on this node");
 
             /* Check the requested connection exists */
             if(!session.HasP2PRequest(strAppID, hashPeer, true))
-                throw new APIException(-282, "Connection not found");
+                throw APIException(-282, "Connection not found");
 
             /* Connection pointer  */
             memory::atomic_ptr<LLP::P2PNode> connection;
 
             /* Check to see if a connection already exists */
             if(get_connection(strAppID, hashGenesis, hashPeer, connection))
-                throw new APIException(-283, "A connection to this peer already exists");
+                throw APIException(-283, "A connection to this peer already exists");
 
             /* Get the connection request */
             LLP::P2P::ConnectionRequest request = session.GetP2PRequest(strAppID, hashPeer, true);
@@ -94,7 +94,7 @@ namespace TAO
                                                hashPeer, 
                                                request.nSession))
             {
-                throw new APIException(-284, "Failed to connect to peer");
+                throw APIException(-284, "Failed to connect to peer");
             }
             
             /* Get the actual connection data thread */
@@ -110,7 +110,7 @@ namespace TAO
                 response["lastseen"] = connection->nLastPing.load();
             }
             else
-                throw new APIException(-284, "Failed to connect to peer");              
+                throw APIException(-284, "Failed to connect to peer");              
 
             return response;
         }
