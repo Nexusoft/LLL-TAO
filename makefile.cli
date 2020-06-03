@@ -424,6 +424,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_p2p_list.o \
 		build/API_types_p2p_p2p.o \
 		build/API_types_p2p_request.o \
+		build/API_types_p2p_terminate.o \
 		build/API_types_RPC_account.o \
 		build/API_types_RPC_daemon.o \
 		build/API_types_RPC_info.o \

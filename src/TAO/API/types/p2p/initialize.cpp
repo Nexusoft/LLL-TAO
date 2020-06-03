@@ -33,7 +33,7 @@ namespace TAO
             mapFunctions["request/connection"]      = Function(std::bind(&P2P::Request, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["accept/connection"]       = Function(std::bind(&P2P::Accept, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["ignore/connection"]       = Function(std::bind(&P2P::Ignore,this, std::placeholders::_1, std::placeholders::_2));
-            //mapFunctions["terminate/connection"]    = Function(std::bind(&P2P::Terminate,this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["terminate/connection"]    = Function(std::bind(&P2P::Terminate,this, std::placeholders::_1, std::placeholders::_2));
             // mapFunctions["send/message"]            = Function(std::bind(&P2P::Send,this, std::placeholders::_1, std::placeholders::_2));
             // mapFunctions["peek/message"]            = Function(std::bind(&P2P::Peek,this, std::placeholders::_1, std::placeholders::_2));
             // mapFunctions["pop/message"]             = Function(std::bind(&P2P::Pop,this, std::placeholders::_1, std::placeholders::_2));
