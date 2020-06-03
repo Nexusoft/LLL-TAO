@@ -3220,7 +3220,10 @@ namespace LLP
 
                         /* Check the timestamp. If the request is older than 30s then it is stale so ignore the message */
                         if(nTimestamp > runtime::unifiedtimestamp() || nTimestamp < runtime::unifiedtimestamp() - 30)
-                            return debug::error(NODE, "ACTION::REQUEST::P2P: timestamp out of range (stale)");
+                        {
+                            debug::log(3, NODE, "ACTION::REQUEST::P2P: timestamp out of range (stale)");
+                            return true;
+                        }
 
                         /* Check that the destination genesis exists */
                         if(!LLD::Ledger->HasGenesis(hashFrom))
@@ -3254,8 +3257,16 @@ namespace LLP
                                 /* Relay the P2P request */
                                 TRITIUM_SERVER->Relay
                                 (
-                                    INCOMING.MESSAGE,
-                                    ssPacket.Bytes()
+                                    uint8_t(ACTION::REQUEST),
+                                    uint8_t(TYPES::P2PCONNECTION),
+                                    nTimestamp,
+                                    strAppID,
+                                    hashFrom,
+                                    hashTo,
+                                    nSession,
+                                    address,
+                                    vchPubKey,
+                                    vchSig
                                 );
 
                                 /* Check to see whether the destination genesis is logged in on this node */
@@ -3271,6 +3282,8 @@ namespace LLP
                                     /* Add this incoming request to the P2P requests queue for this user */
                                     LLP::P2P::ConnectionRequest request = { runtime::unifiedtimestamp(), strAppID, hashFrom, nSession, address };
                                     session.AddP2PRequest(request, true);
+
+                                    debug::log(3, NODE, "P2P Request received from " , hashFrom.ToString(), " for appID ", strAppID );
                                 }
                             }
 
