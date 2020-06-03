@@ -73,6 +73,13 @@ namespace TAO
             /* The new connection request */
             LLP::P2P::ConnectionRequest request;
 
+            /* Connection pointer  */
+            memory::atomic_ptr<LLP::P2PNode> connection;
+
+            /* Check to see if a connection already exists */
+            if(get_connection(strAppID, hashGenesis, hashPeer, connection))
+                throw new APIException(-283, "A connection to this peer already exists");
+
             /* Set up the request  */
             request.strAppID = strAppID;
             request.hashPeer = hashPeer;
