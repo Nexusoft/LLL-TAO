@@ -286,7 +286,7 @@ namespace TAO
 
 
         /* Gets P2P Request matching the app id / hashPeer criteria. */
-        LLP::P2P::ConnectionRequest Session::GetP2PRequest(const uint64_t& nAppID, const uint256_t hashPeer, bool fIncoming) const
+        LLP::P2P::ConnectionRequest Session::GetP2PRequest(const std::string& strAppID, const uint256_t hashPeer, bool fIncoming) const
         {
             /* Lock mutex so p2p request vector can't be accessed by another thread */
             LOCK(MUTEX);
@@ -298,7 +298,7 @@ namespace TAO
             for(const auto request : vP2PRequests)
             {
                 /* If the request matches the appID and hashPeer then return it*/
-                if(request.nAppID == nAppID && request.hashPeer == hashPeer)
+                if(request.strAppID == strAppID && request.hashPeer == hashPeer)
                     return request;
             }
 
@@ -309,7 +309,7 @@ namespace TAO
 
 
         /* Checks to see if a P2P Request matching the app id / hashPeer criteria exists. */
-        bool Session::HasP2PRequest(const uint64_t& nAppID, const uint256_t hashPeer, bool fIncoming) const
+        bool Session::HasP2PRequest(const std::string& strAppID, const uint256_t hashPeer, bool fIncoming) const
         {
             /* Lock mutex so p2p request vector can't be accessed by another thread */
             LOCK(MUTEX);
@@ -321,7 +321,7 @@ namespace TAO
             for(const auto request : vP2PRequests)
             {
                 /* Check the appID and hashPeer */
-                if(request.nAppID == nAppID && request.hashPeer == hashPeer)
+                if(request.strAppID == strAppID && request.hashPeer == hashPeer)
                     return true;
             }
 
@@ -331,7 +331,7 @@ namespace TAO
 
 
         /* Deletes the P2P Request matching the app id / hashPeer criteria exists. */
-        void Session::DeleteP2PRequest(const uint64_t& nAppID, const uint256_t hashPeer, bool fIncoming)
+        void Session::DeleteP2PRequest(const std::string& strAppID, const uint256_t hashPeer, bool fIncoming)
         {
             /* Lock mutex so p2p request vector can't be accessed by another thread */
             LOCK(MUTEX);
@@ -346,7 +346,7 @@ namespace TAO
                 std::remove_if(vP2PRequests.begin(), vP2PRequests.end(), 
                 [&](const LLP::P2P::ConnectionRequest& request)
                 {
-                    return (request.nAppID == nAppID && request.hashPeer == hashPeer);
+                    return (request.strAppID == strAppID && request.hashPeer == hashPeer);
                 }), 
                 vP2PRequests.end()
             );
