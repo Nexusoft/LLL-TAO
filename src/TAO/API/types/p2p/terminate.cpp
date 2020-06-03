@@ -77,10 +77,8 @@ namespace TAO
                 throw new APIException(-282, "Connection not found");
 
             /* Send the terminate message to peer for graceful termination */
-            connection->PushMessage(LLP::P2P::ACTION::TERMINATE);
+            connection->PushMessage(LLP::P2P::ACTION::TERMINATE, connection->nSession);
 
-            /* Disconnect the socket */
-            connection->Disconnect();
 
             /* Flag successful request */
             response["success"] = true;                
