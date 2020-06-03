@@ -90,6 +90,8 @@ namespace TAO
         /* Initializes the session from username / password / pin */
         void Session::Initialize(const SecureString& strUsername, const SecureString& strPassword, const SecureString& strPin, const uint256_t nSessionID)
         {
+            LOCK(MUTEX);
+
             /* Set the session ID */
             nID = nSessionID;
 
