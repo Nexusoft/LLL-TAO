@@ -38,7 +38,7 @@ namespace LLP
 
 
     /* Declaration of sessions sets. (private). */
-    std::map<std::tuple<uint64_t, uint256_t, uint256_t>, std::pair<uint32_t, uint32_t>> P2PNode::mapSessions;
+    std::map<std::tuple<std::string, uint256_t, uint256_t>, std::pair<uint32_t, uint32_t>> P2PNode::mapSessions;
 
 
 
@@ -48,7 +48,7 @@ namespace LLP
     , fInitialized(false)
     , MESSAGES_MUTEX()
     , queueMessages()
-    , nAppID(0)
+    , strAppID()
     , hashGenesis(0)
     , hashPeer(0)
     , nSession(0)
@@ -64,7 +64,7 @@ namespace LLP
     P2PNode::P2PNode(const Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool fDDOSIn)
     : BaseConnection<MessagePacket>(SOCKET_IN, DDOS_IN, fDDOSIn)
     , fInitialized(false)
-    , nAppID(0)
+    , strAppID()
     , hashGenesis(0)
     , hashPeer(0)
     , nSession(0)
@@ -78,13 +78,13 @@ namespace LLP
 
     /** Constructor for outgoing connection **/
     P2PNode::P2PNode(DDOS_Filter* DDOS_IN, bool fDDOSIn,
-                const uint64_t& APPID,
+                const std::string& APPID,
                 const uint256_t& HASHGENESIS,
                 const uint256_t& HASHPEER,
                 const uint64_t& SESSIONID)
     : BaseConnection<MessagePacket>(DDOS_IN, fDDOSIn)
     , fInitialized(false)
-    , nAppID(APPID)
+    , strAppID(APPID)
     , hashGenesis(HASHGENESIS)
     , hashPeer(HASHPEER)
     , nSession(SESSIONID)
@@ -100,7 +100,7 @@ namespace LLP
     P2PNode::P2PNode(DDOS_Filter* DDOS_IN, bool fDDOSIn)
     : BaseConnection<MessagePacket>(DDOS_IN, fDDOSIn)
     , fInitialized(false)
-    , nAppID(0)
+    , strAppID()
     , hashGenesis(0)
     , hashPeer(0)
     , nSession(0)
@@ -148,7 +148,7 @@ namespace LLP
 
                     /* Build the byte stream from the request data in order to generate the signature */
                     DataStream ssMsgData(SER_NETWORK, P2P::PROTOCOL_VERSION);
-                    ssMsgData << P2P::PROTOCOL_VERSION << nAppID << hashGenesis << hashPeer << nSession;
+                    ssMsgData << P2P::PROTOCOL_VERSION << strAppID << hashGenesis << hashPeer << nSession;
 
                     /* Public key bytes*/
                     std::vector<uint8_t> vchPubKey;
@@ -164,7 +164,7 @@ namespace LLP
                        Format is protocol version, app id, hashgenesis, hashpeer, session id, pub key, and signature*/
                     PushMessage(ACTION::INITIALIZE,
                         P2P::PROTOCOL_VERSION,
-                        nAppID,
+                        strAppID,
                         hashGenesis,
                         hashPeer,
                         nSession,
@@ -286,7 +286,7 @@ namespace LLP
                     LOCK(SESSIONS_MUTEX);
 
                     /* Generate session key */
-                    std::tuple<uint64_t, uint256_t, uint256_t> key = std::make_tuple(nAppID, hashGenesis, hashPeer);
+                    std::tuple<std::string, uint256_t, uint256_t> key = std::make_tuple(strAppID, hashGenesis, hashPeer);
 
                     /* Check for sessions to free. */
                     if(mapSessions.count(key))
@@ -335,8 +335,8 @@ namespace LLP
                     return debug::drop(NODE, "connection using obsolete protocol version");
 
                 /* Get the app-id. */
-                uint64_t nIncomingAppID;
-                ssPacket >> nIncomingAppID;
+                std::string strIncomingAppID;
+                ssPacket >> strIncomingAppID;
 
                 /* Get the incoming genesis. */
                 uint256_t hashIncomingGenesis;
@@ -366,7 +366,7 @@ namespace LLP
                         return debug::drop(NODE, "User not logged in");
 
                     /* Store the incoming details */
-                    nAppID = nIncomingAppID;
+                    strAppID = strIncomingAppID;
 
                     /* Since this is an incoming connection, the hashGenesis and hashPeer are the opposite way around */
                     hashGenesis = hashIncomingPeer;
@@ -387,7 +387,7 @@ namespace LLP
                         return debug::drop(NODE, "invalid genesis hash");
 
                     /* Check for invalid app-id. */
-                    if(nIncomingAppID == 0 || nIncomingAppID != nAppID)
+                    if(strIncomingAppID.empty() || strIncomingAppID != strAppID)
                         return debug::drop(NODE, "invalid app id");
 
                     /* Check for invalid session-id. */
@@ -402,13 +402,13 @@ namespace LLP
                    incoming connection then we need to check that the local user has made an outgoing request that the peer 
                    is responding to.  If this is an outgoing connection then check that the peer is responding with an 
                    initialization for an incoming request */
-                if(!session.HasP2PRequest(nAppID, hashPeer, !Incoming()))
+                if(!session.HasP2PRequest(strAppID, hashPeer, !Incoming()))
                     return debug::drop(NODE, "Unsolicited P2P connection");
 
 
                 /* Build the byte stream from the request data in order to verify the signature */
                 DataStream ssCheck(SER_NETWORK, P2P::PROTOCOL_VERSION);
-                ssCheck << nProtocolVersion << nIncomingAppID << hashIncomingGenesis << hashIncomingPeer << nIncomingSession;
+                ssCheck << nProtocolVersion << strIncomingAppID << hashIncomingGenesis << hashIncomingPeer << nIncomingSession;
                 
                 /* Verify the incoming signature */
                 if(!TAO::Ledger::SignatureChain::Verify(hashIncomingGenesis, "network", ssCheck.Bytes(), vchPubKey, vchSig))
@@ -418,7 +418,7 @@ namespace LLP
                 /* Check if session is already connected. */
                 {
                     /* Generate session key */
-                    std::tuple<uint64_t, uint256_t, uint256_t> key = std::make_tuple(nAppID, hashGenesis, hashPeer);
+                    std::tuple<std::string, uint256_t, uint256_t> key = std::make_tuple(strAppID, hashGenesis, hashPeer);
                     
                     LOCK(SESSIONS_MUTEX);
                     if(mapSessions.count(key))
@@ -441,7 +441,7 @@ namespace LLP
 
                     /* Build the byte stream from the request data in order to generate the signature */
                     DataStream ssMsgData(SER_NETWORK, P2P::PROTOCOL_VERSION);
-                    ssMsgData << nProtocolVersion << nAppID << hashGenesis << hashPeer << nSession;
+                    ssMsgData << nProtocolVersion << strAppID << hashGenesis << hashPeer << nSession;
 
                     /* Generate signature */
                     session.GetAccount()->Sign("network", ssMsgData.Bytes(), session.GetNetworkKey(), vchPubKey, vchSig);
@@ -450,7 +450,7 @@ namespace LLP
                        Format is protocol version, app id, hashgenesis, hashpeer, session id, pub key, and signature*/
                     PushMessage(ACTION::INITIALIZE,
                         P2P::PROTOCOL_VERSION,
-                        nAppID,
+                        strAppID,
                         hashGenesis,
                         hashPeer,
                         nSession,
@@ -465,7 +465,7 @@ namespace LLP
                 }
 
                 /* Secure P2P connection successfully established so remove the connection request. */
-                session.DeleteP2PRequest(nAppID, hashPeer, !Incoming());
+                session.DeleteP2PRequest(strAppID, hashPeer, !Incoming());
 
                 /* Store the initialized state */
                 fInitialized.store(true);               
@@ -639,21 +639,21 @@ namespace LLP
 
 
     /* Determine whether a session is connected for the specified app / genesis / peer. */
-    bool P2PNode::SessionActive(const uint64_t& nAppID, const uint256_t& hashGenesis, const uint256_t& hashPeer)
+    bool P2PNode::SessionActive(const std::string& strAppID, const uint256_t& hashGenesis, const uint256_t& hashPeer)
     {
         LOCK(SESSIONS_MUTEX);
 
         /* Generate session key */
-        std::tuple<uint64_t, uint256_t, uint256_t> key = std::make_tuple(nAppID, hashGenesis, hashPeer);
+        std::tuple<std::string, uint256_t, uint256_t> key = std::make_tuple(strAppID, hashGenesis, hashPeer);
 
         return mapSessions.count(key);
     }
 
 
     /* Checks to see if this connection instance matches the specified app / genesis / peer. */
-    bool P2PNode::Matches(const uint64_t& nAppID, const uint256_t& hashGenesis, const uint256_t& hashPeer)
+    bool P2PNode::Matches(const std::string& strAppID, const uint256_t& hashGenesis, const uint256_t& hashPeer)
     {
-        return nAppID == this->nAppID && hashGenesis == this->hashGenesis && hashPeer == this->hashPeer;
+        return strAppID == this->strAppID && hashGenesis == this->hashGenesis && hashPeer == this->hashPeer;
     }
 
 
@@ -662,6 +662,14 @@ namespace LLP
     {
         LOCK(MESSAGES_MUTEX);
         return queueMessages.size() != 0;
+    }
+
+
+    /* Returns the number of messages in the message queue. */
+    uint32_t P2PNode::MessageCount()
+    {
+        LOCK(MESSAGES_MUTEX);
+        return queueMessages.size();
     }
 
 

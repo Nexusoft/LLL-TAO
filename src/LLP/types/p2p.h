@@ -90,7 +90,7 @@ namespace LLP
             uint64_t nTimestamp;
 
             /* The appid */
-            uint64_t nAppID;
+            std::string strAppID;
 
             /* The genesis hash of the peer making the request*/
             uint256_t hashPeer;            
@@ -134,7 +134,7 @@ namespace LLP
 
 
         /** Map connected sessions.  The key to this map is a tuple consisting of the app ID, genesis hash and peer genesis hash **/
-        static std::map<std::tuple<uint64_t, uint256_t, uint256_t>, std::pair<uint32_t, uint32_t>> mapSessions;
+        static std::map<std::tuple<std::string, uint256_t, uint256_t>, std::pair<uint32_t, uint32_t>> mapSessions;
 
         
         /** Mutex to protect the queue. **/
@@ -164,7 +164,7 @@ namespace LLP
 
         /** Constructor for outgoing connection **/
         P2PNode(DDOS_Filter* DDOS_IN, bool fDDOSIn,
-                const uint64_t& APPID,
+                const std::string& APPID,
                 const uint256_t& HASHGENESIS,
                 const uint256_t& HASHPEER,
                 const uint64_t& SESSIONID);
@@ -177,7 +177,7 @@ namespace LLP
         virtual ~P2PNode();
 
         /** The application ID for this connection **/
-        uint64_t nAppID;
+        std::string strAppID;
 
 
         /** The current genesis hash of this user. **/
@@ -243,28 +243,28 @@ namespace LLP
          *
          *  Determine whether a session is connected for the specified app / genesis / peer.
          *
-         *  @param[in] nAppID The app ID to check for
+         *  @param[in] strAppID The app ID to check for
          *  @param[in] hashGenesis The genesis hash to search for
          *  @param[in] hashGenesis The peer genesis hash to search for 
          *
          *  @return true if session is connected.
          *
          **/
-        static bool SessionActive(const uint64_t& nAppID, const uint256_t& hashGenesis, const uint256_t& hashPeer);
+        static bool SessionActive(const std::string& strAppID, const uint256_t& hashGenesis, const uint256_t& hashPeer);
 
 
         /** Matches
          *
          *  Checks to see if this connection instance matches the specified app / genesis / peer.
          *
-         *  @param[in] nAppID The app ID to check for
+         *  @param[in] strAppID The app ID to check for
          *  @param[in] hashGenesis The genesis hash to search for
          *  @param[in] hashGenesis The peer genesis hash to search for 
          *
          *  @return true if this connection instance matches.
          *
          **/
-        bool Matches(const uint64_t& nAppID, const uint256_t& hashGenesis, const uint256_t& hashPeer);
+        bool Matches(const std::string& strAppID, const uint256_t& hashGenesis, const uint256_t& hashPeer);
 
 
         /** HasMessage
@@ -275,6 +275,16 @@ namespace LLP
          *
          **/
         bool HasMessage();
+
+
+        /** MessageCount
+         *
+         *  Returns the number of messages in the message queue.
+         *
+         *  @return the number messages in the queue.
+         *
+         **/
+        uint32_t MessageCount();
 
 
         /** PeekMessage

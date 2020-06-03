@@ -3169,8 +3169,8 @@ namespace LLP
                         ssPacket >> nTimestamp;
 
                         /* get the appid */
-                        uint64_t nAppID;
-                        ssPacket >> nAppID;
+                        std::string strAppID;
+                        ssPacket >> strAppID;
                         
                         /* get the source genesis hash */
                         uint256_t hashFrom;
@@ -3210,7 +3210,7 @@ namespace LLP
 
                         /* Build the byte stream from the request data in order to verify the signature */
                         DataStream ssCheck(SER_NETWORK, PROTOCOL_VERSION);
-                        ssCheck << nTimestamp << nAppID << hashFrom << hashTo << nSession << address;
+                        ssCheck << nTimestamp << strAppID << hashFrom << hashTo << nSession << address;
 
                         /* Get a hash of the data. */
                         uint256_t hashCheck = LLC::SK256(ssCheck.begin(), ssCheck.end());
@@ -3243,11 +3243,11 @@ namespace LLP
                                     TAO::API::Session& session = TAO::API::users->GetSession(hashTo);
 
                                     /* If an incoming request already exists from this peer then remove it */
-                                    if(session.HasP2PRequest(nAppID, hashFrom, true))
-                                        session.DeleteP2PRequest(nAppID, hashFrom, true);
+                                    if(session.HasP2PRequest(strAppID, hashFrom, true))
+                                        session.DeleteP2PRequest(strAppID, hashFrom, true);
 
                                     /* Add this incoming request to the P2P requests queue for this user */
-                                    LLP::P2P::ConnectionRequest request = { runtime::unifiedtimestamp(), nAppID, hashFrom, nSession, address };
+                                    LLP::P2P::ConnectionRequest request = { runtime::unifiedtimestamp(), strAppID, hashFrom, nSession, address };
                                     session.AddP2PRequest(request, true);
                                 }
                             }
