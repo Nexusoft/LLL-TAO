@@ -495,14 +495,14 @@ namespace memory
         void encrypt(const TypeName& data)
         {
             static bool fKeySet = false;
-            static std::vector<uint8_t> vKey(16);
-            static std::vector<uint8_t> vIV(16);
+            static std::vector<uint8_t> vKey(AES_KEYLEN);
+            static std::vector<uint8_t> vIV(AES_BLOCKLEN);
 
             /* Set the encryption key if not set. */
             if(!fKeySet)
             {
-                RAND_bytes((uint8_t*)&vKey[0], 16);
-                RAND_bytes((uint8_t*)&vIV[0], 16);
+                RAND_bytes((uint8_t*)&vKey[0], AES_KEYLEN);
+                RAND_bytes((uint8_t*)&vIV[0], AES_BLOCKLEN);
 
                 fKeySet = true;
             }
@@ -525,14 +525,14 @@ namespace memory
         void encrypt(const std::vector<TypeName>& data)
         {
             static bool fKeySet = false;
-            static std::vector<uint8_t> vKey(16);
-            static std::vector<uint8_t> vIV(16);
+            static std::vector<uint8_t> vKey(AES_KEYLEN);
+            static std::vector<uint8_t> vIV(AES_BLOCKLEN);
 
             /* Set the encryption key if not set. */
             if(!fKeySet)
             {
-                RAND_bytes((uint8_t*)&vKey[0], 16);
-                RAND_bytes((uint8_t*)&vIV[0], 16);
+                RAND_bytes((uint8_t*)&vKey[0], AES_KEYLEN);
+                RAND_bytes((uint8_t*)&vIV[0], AES_BLOCKLEN);
 
                 fKeySet = true;
             }
@@ -554,14 +554,14 @@ namespace memory
         void encrypt(const std::string& data)
         {
             static bool fKeySet = false;
-            static std::vector<uint8_t> vKey(16);
-            static std::vector<uint8_t> vIV(16);
+            static std::vector<uint8_t> vKey(AES_KEYLEN);
+            static std::vector<uint8_t> vIV(AES_BLOCKLEN);
 
             /* Set the encryption key if not set. */
             if(!fKeySet)
             {
-                RAND_bytes((uint8_t*)&vKey[0], 16);
-                RAND_bytes((uint8_t*)&vIV[0], 16);
+                RAND_bytes((uint8_t*)&vKey[0], AES_KEYLEN);
+                RAND_bytes((uint8_t*)&vIV[0], AES_BLOCKLEN);
 
                 fKeySet = true;
             }
@@ -584,14 +584,14 @@ namespace memory
         void encrypt(const SecureString& data)
         {
             static bool fKeySet = false;
-            static std::vector<uint8_t> vKey(16);
-            static std::vector<uint8_t> vIV(16);
+            static std::vector<uint8_t> vKey(AES_KEYLEN);
+            static std::vector<uint8_t> vIV(AES_BLOCKLEN);
 
             /* Set the encryption key if not set. */
             if(!fKeySet)
             {
-                RAND_bytes((uint8_t*)&vKey[0], 16);
-                RAND_bytes((uint8_t*)&vIV[0], 16);
+                RAND_bytes((uint8_t*)&vKey[0], AES_KEYLEN);
+                RAND_bytes((uint8_t*)&vIV[0], AES_BLOCKLEN);
 
                 fKeySet = true;
             }
