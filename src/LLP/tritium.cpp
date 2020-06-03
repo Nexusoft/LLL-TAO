@@ -522,7 +522,7 @@ namespace LLP
                     LOCK(SESSIONS_MUTEX);
                     
                     if(!thisAddress.IsValid() && nProtocolVersion >= MIN_TRITIUM_VERSION)
-                        PushMessage(ACTION::REQUEST, uint8_t(TYPES::PEERADDRESS));
+                        PushMessage(ACTION::GET, uint8_t(TYPES::PEERADDRESS));
                 }
 
                 #ifdef DEBUG_MISSING
@@ -3679,7 +3679,7 @@ namespace LLP
                         break;
                     }
                 }
-                
+
                 break;
             }
 
