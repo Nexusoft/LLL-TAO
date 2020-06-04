@@ -50,6 +50,9 @@ namespace TAO
             /* The peer genesis hash to search for */
             uint256_t hashPeer;
 
+            /* Flag indicating whether to wait for the peer to respond and establish a connection */
+            bool fWait = false;
+
             /* Get App ID  */
             if(params.find("appid") == params.end())
                 throw APIException(-281, "Missing App ID");
@@ -65,6 +68,10 @@ namespace TAO
             else 
                 throw APIException(-111, "Missing genesis / username");
             
+            /* Get the wait parameter */
+            if(params.find("wait") != params.end())
+                fWait = params["wait"].get<std::string>() == "1" || params["wait"].get<std::string>() == "true";
+
            
             /* Check to see if P2P is enabled */
             if(!LLP::P2P_SERVER)
@@ -127,6 +134,32 @@ namespace TAO
                 vchPubKey,
                 vchSig);
 
+            /* Optionally wait for a response */
+            if(fWait)
+            {
+                /* Indicates the peer has accepted the request and a connection has been established */
+                bool fConnected = false;
+
+                /* Calculate the timestamp when the wait should expire.  The maximum time to wait is the 5s less than the API server 
+                   timeout, so that there is time to respond before the API request times out. */
+                uint32_t nExpires = runtime::unifiedtimestamp() + (static_cast<uint32_t>(config::GetArg(std::string("-apitimeout"), 30)) - 5);
+
+                /* Loop until expiry or connection established */
+                while(runtime::unifiedtimestamp() < nExpires && !fConnected)
+                {
+                    /* Check to see if there is a connection */
+                    if(get_connection(strAppID, hashGenesis, hashPeer, connection))
+                        fConnected = true; //break out
+                    
+                    /* Sleep for 1s */
+                    runtime::sleep(1000);
+                }
+
+                if(!fConnected)
+                    throw APIException(-286, "Timeout waiting for peer to accept connection request");
+
+            }
+            
             /* Flag successful request */
             response["success"] = true;
 

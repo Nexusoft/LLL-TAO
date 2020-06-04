@@ -420,5 +420,6 @@ Error Codes
 | -283 | A connection to this peer already exists |
 | -284 | Failed to connect to peer |
 | -285 | No messages available |
+| -286 | Timeout waiting for peer to accept connection request |
 | -300 | API can only be used to lookup data for the currently logged in signature chain when running in client mode |
 
