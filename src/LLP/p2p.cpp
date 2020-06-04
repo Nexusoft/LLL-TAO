@@ -130,8 +130,8 @@ namespace LLP
             {
                 debug::log(1, NODE, fOUTGOING ? "Outgoing" : "Incoming", " Connection Established");
 
-                /* Set the laset ping time. */
-                nLastPing    = runtime::unifiedtimestamp();
+                /* Set the laset ping time to now - 15 seconds so that we get an immediate ping-ping. */
+                nLastPing = runtime::unifiedtimestamp() - 15;
 
                 /* Respond with init message if outgoing connection. */
                 if(fOUTGOING)
@@ -220,7 +220,11 @@ namespace LLP
                 {
                     /* Create a random nonce. */
                     uint64_t nNonce = LLC::GetRand();
-                    nLastPing = runtime::unifiedtimestamp();       
+                    nLastPing = runtime::unifiedtimestamp();
+
+                    /* Keep track of latency for this ping. */
+                    mapLatencyTracker.insert(std::pair<uint64_t, runtime::timer>(nNonce, runtime::timer()));
+                    mapLatencyTracker[nNonce].Start();
 
                     /* Push new message. */
                     PushMessage(ACTION::PING, nNonce);

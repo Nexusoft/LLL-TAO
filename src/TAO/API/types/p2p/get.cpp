@@ -81,7 +81,7 @@ namespace TAO
                 response["session"]  = connection->nSession;
                 response["messages"] = connection->MessageCount();
                 response["address"]  = connection->addr.ToString();    
-                response["latency"]  = connection->nLatency.load();
+                response["latency"]  = connection->nLatency.load() == std::numeric_limits<uint32_t>::max() ? 0 : connection->nLatency.load();
                 response["lastseen"] = connection->nLastPing.load();
             }
             else

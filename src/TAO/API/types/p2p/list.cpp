@@ -87,7 +87,7 @@ namespace TAO
                             jsonConnection["session"]  = connection->nSession;
                             jsonConnection["messages"] = connection->MessageCount();
                             jsonConnection["address"]  = connection->addr.ToString();    
-                            jsonConnection["latency"]  = connection->nLatency.load();
+                            jsonConnection["latency"]  = connection->nLatency.load() == std::numeric_limits<uint32_t>::max() ? 0 : connection->nLatency.load();
                             jsonConnection["lastseen"] = connection->nLastPing.load();
 
                             response.push_back(jsonConnection);
