@@ -86,7 +86,8 @@ namespace TAO
                             jsonConnection["genesis"]  = connection->hashPeer.ToString();
                             jsonConnection["session"]  = connection->nSession;
                             jsonConnection["messages"] = connection->MessageCount();
-                            jsonConnection["address"]  = connection->addr.ToString();    
+                            jsonConnection["address"]  = connection->addr.ToStringIP();
+                            jsonConnection["port"]     = connection->addr.ToStringPort();
                             jsonConnection["latency"]  = connection->nLatency.load() == std::numeric_limits<uint32_t>::max() ? 0 : connection->nLatency.load();
                             jsonConnection["lastseen"] = connection->nLastPing.load();
 
@@ -143,7 +144,8 @@ namespace TAO
                 jsonConnection["appid"]     = connection.strAppID;
                 jsonConnection["genesis"]   = connection.hashPeer.ToString();
                 jsonConnection["session"]   = connection.nSession;
-                jsonConnection["address"]   = connection.address.ToString();    
+                jsonConnection["address"]   = connection.address.ToStringIP();
+                jsonConnection["port"]   = connection.address.ToStringPort();    
                 jsonConnection["timestamp"] = connection.nTimestamp;
 
                 response.push_back(jsonConnection);

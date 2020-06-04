@@ -80,7 +80,8 @@ namespace TAO
                 response["genesis"]  = connection->hashPeer.ToString();
                 response["session"]  = connection->nSession;
                 response["messages"] = connection->MessageCount();
-                response["address"]  = connection->addr.ToString();    
+                response["address"]  = connection->addr.ToStringIP();
+                response["port"]     = connection->addr.ToStringPort();
                 response["latency"]  = connection->nLatency.load() == std::numeric_limits<uint32_t>::max() ? 0 : connection->nLatency.load();
                 response["lastseen"] = connection->nLastPing.load();
             }
