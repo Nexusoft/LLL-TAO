@@ -87,6 +87,10 @@ namespace TAO
             if(get_connection(strAppID, hashGenesis, hashPeer, connection))
                 throw APIException(-283, "A connection to this peer already exists");
 
+            /* If an outgoing request already exists from this peer then remove it */
+            if(session.HasP2PRequest(strAppID, hashPeer, false))
+                session.DeleteP2PRequest(strAppID, hashPeer, false);
+
             /* Set up the request  */
             request.strAppID = strAppID;
             request.hashPeer = hashPeer;
