@@ -419,5 +419,6 @@ Error Codes
 | -282 | Connection not found |
 | -283 | A connection to this peer already exists |
 | -284 | Failed to connect to peer |
+| -285 | No messages available |
 | -300 | API can only be used to lookup data for the currently logged in signature chain when running in client mode |
 

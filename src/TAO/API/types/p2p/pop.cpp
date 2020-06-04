@@ -77,13 +77,17 @@ namespace TAO
             /* Get the connection matching the criteria */
             if(!get_connection(strAppID, hashGenesis, hashPeer, connection))
                 throw APIException(-282, "Connection not found");
+
+            /* Check there are messages */
+            if(connection->MessageCount() == 0)
+                throw APIException(-285, "No messages available");
              
             /* Get the message */
-            LLP::P2P::Message message = connection->PeekMessage();
+            LLP::P2P::Message message = connection->PopMessage();
 
             /* Populate the response */
             response["timestamp"] = message.nTimestamp;
-            response["data"] = encoding::EncodeBase64(&message.vchData[0], message.vchData.size()); 
+            response["data"] = std::string(message.vchData.begin(), message.vchData.end()); 
 
             return response;
         }

@@ -49,9 +49,6 @@ namespace TAO
             /* The peer genesis hash to search for */
             uint256_t hashPeer;
 
-            /* The data to be sent */
-            std::vector<uint8_t> vchData;
-
             /* Get App ID  */
             if(params.find("appid") == params.end())
                 throw APIException(-281, "Missing App ID");
@@ -72,15 +69,10 @@ namespace TAO
             if(params.find("data") == params.end() || params["data"].get<std::string>().empty())
                 throw APIException(-18, "Missing data.");
 
-            /* Decode the data into a vector of bytes */
-            try
-            {
-                vchData = encoding::DecodeBase64(params["data"].get<std::string>().c_str());
-            }
-            catch(const std::exception& e)
-            {
-                throw APIException(-27, "Malformed base64 encoding.");
-            }
+            /* Convert the data into a vector of bytes */
+            std::string strData = params["data"].get<std::string>();
+            std::vector<uint8_t> vchData(strData.begin(), strData.end());
+
    
             /* Check to see if P2P is enabled */
             if(!LLP::P2P_SERVER)
