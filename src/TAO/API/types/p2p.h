@@ -168,7 +168,7 @@ namespace TAO
              *  @return The return object in JSON.
              *
              **/
-            //json::json Send(const json::json& params, bool fHelp);
+            json::json Send(const json::json& params, bool fHelp);
 
 
             /** Peek
@@ -181,7 +181,7 @@ namespace TAO
              *  @return The return object in JSON.
              *
              **/
-            //json::json Peek(const json::json& params, bool fHelp);
+            json::json Peek(const json::json& params, bool fHelp);
 
 
             /** Pop
@@ -194,7 +194,7 @@ namespace TAO
              *  @return The return object in JSON.
              *
              **/
-            //json::json Pop(const json::json& params, bool fHelp);
+            json::json Pop(const json::json& params, bool fHelp);
             
 
 

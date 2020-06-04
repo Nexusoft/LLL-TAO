@@ -31,8 +31,8 @@ namespace TAO
     namespace API
     {
 
-        /* Closes an existing P2P connection . */
-        json::json P2P::Terminate(const json::json& params, bool fHelp)
+        /* Accepts an incoming connection request from a peer and starts a messaging session . */
+        json::json P2P::Send(const json::json& params, bool fHelp)
         {
             /* JSON return value. */
             json::json response;
@@ -49,6 +49,9 @@ namespace TAO
             /* The peer genesis hash to search for */
             uint256_t hashPeer;
 
+            /* The data to be sent */
+            std::vector<uint8_t> vchData;
+
             /* Get App ID  */
             if(params.find("appid") == params.end())
                 throw APIException(-281, "Missing App ID");
@@ -63,8 +66,22 @@ namespace TAO
                 hashPeer = TAO::Ledger::SignatureChain::Genesis(params["username"].get<std::string>().c_str());
             else 
                 throw APIException(-111, "Missing genesis / username");
-            
-           
+
+            /* Get the data */
+            /* Check the caller included the data */
+            if(params.find("data") == params.end() || params["data"].get<std::string>().empty())
+                throw APIException(-18, "Missing data.");
+
+            /* Decode the data into a vector of bytes */
+            try
+            {
+                vchData = encoding::DecodeBase64(params["data"].get<std::string>().c_str());
+            }
+            catch(const std::exception& e)
+            {
+                throw APIException(-27, "Malformed base64 encoding.");
+            }
+   
             /* Check to see if P2P is enabled */
             if(!LLP::P2P_SERVER)
                 throw APIException(-280, "P2P server not enabled on this node");
@@ -75,12 +92,12 @@ namespace TAO
             /* Get the connection matching the criteria */
             if(!get_connection(strAppID, hashGenesis, hashPeer, connection))
                 throw APIException(-282, "Connection not found");
+             
+            /* Send the message */
+            connection->PushMessage(LLP::P2P::TYPES::MESSAGE, vchData);
 
-            /* Send the terminate message to peer for graceful termination */
-            connection->PushMessage(LLP::P2P::ACTION::TERMINATE, connection->nSession);
-
-            /* Flag successful termination */
-            response["success"] = true;                
+            /* Successful send */
+            response["success"] = true; 
 
             return response;
         }

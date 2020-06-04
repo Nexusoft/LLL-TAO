@@ -31,8 +31,8 @@ namespace TAO
     namespace API
     {
 
-        /* Closes an existing P2P connection . */
-        json::json P2P::Terminate(const json::json& params, bool fHelp)
+        /* Returns the oldest message in the message queue from a peer without removing it from the queue . */
+        json::json P2P::Peek(const json::json& params, bool fHelp)
         {
             /* JSON return value. */
             json::json response;
@@ -49,6 +49,9 @@ namespace TAO
             /* The peer genesis hash to search for */
             uint256_t hashPeer;
 
+            /* The data to be sent */
+            std::vector<uint8_t> vchData;
+
             /* Get App ID  */
             if(params.find("appid") == params.end())
                 throw APIException(-281, "Missing App ID");
@@ -63,8 +66,7 @@ namespace TAO
                 hashPeer = TAO::Ledger::SignatureChain::Genesis(params["username"].get<std::string>().c_str());
             else 
                 throw APIException(-111, "Missing genesis / username");
-            
-           
+   
             /* Check to see if P2P is enabled */
             if(!LLP::P2P_SERVER)
                 throw APIException(-280, "P2P server not enabled on this node");
@@ -75,12 +77,13 @@ namespace TAO
             /* Get the connection matching the criteria */
             if(!get_connection(strAppID, hashGenesis, hashPeer, connection))
                 throw APIException(-282, "Connection not found");
+             
+            /* Get the message */
+            LLP::P2P::Message message = connection->PeekMessage();
 
-            /* Send the terminate message to peer for graceful termination */
-            connection->PushMessage(LLP::P2P::ACTION::TERMINATE, connection->nSession);
-
-            /* Flag successful termination */
-            response["success"] = true;                
+            /* Populate the response */
+            response["timestamp"] = message.nTimestamp;
+            response["data"] = encoding::EncodeBase64(&message.vchData[0], message.vchData.size()); 
 
             return response;
         }
