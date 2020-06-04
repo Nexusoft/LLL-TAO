@@ -461,11 +461,6 @@ namespace LLP
                         vchPubKey,
                         vchSig);
 
-
-                    /* Test */
-                    std::string strTest = "Hello World";
-                    PushMessage(TYPES::MESSAGE, std::vector<uint8_t>(strTest.begin(), strTest.end()));
-
                 }
 
                 /* Secure P2P connection successfully established so remove the connection request. */
