@@ -38,10 +38,6 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
-        /* Returns the sigchain the account logged in. */
-        static memory::encrypted_ptr<TAO::Ledger::SignatureChain> null_ptr;
-
-
         /* Default Constructor. */
         Users::Users()
         : Base()
@@ -169,9 +165,14 @@ namespace TAO
                     nSession.SetHex(params["session"].get<std::string>());
                 
                 /* Check that the session ID is valid */
-                if(!GetSessionManager().Has(nSession))
+                if(fThrow && !GetSessionManager().Has(nSession))
                     throw APIException(-10, "Invalid session ID");
             }
+
+            /* Calling SessionManager.Get() with an invalid session ID will throw an exception.  Therefore if the caller has
+               specified not to throw an exception we have to check whether the session exists first. */
+            if(!fThrow && !GetSessionManager().Has(nSession))
+                return null_session;
 
             return GetSessionManager().Get(nSession);
         }

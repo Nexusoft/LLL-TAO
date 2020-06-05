@@ -25,9 +25,6 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
-        /* null sigchain reference for helper. */
-        static memory::encrypted_ptr<TAO::Ledger::SignatureChain> null_ptr;
-
         /* Default Constructor. */
         Session::Session()
         : CREATE_MUTEX          ()

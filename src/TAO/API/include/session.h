@@ -331,6 +331,8 @@ namespace TAO
 
         };
 
+        /* null session reference for helper. */
+        static Session null_session;
 
     }// end API namespace
 
