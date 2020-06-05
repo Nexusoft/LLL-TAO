@@ -1,4 +1,4 @@
-# Crypto API
+# P2P API
 -----------------------------------
 
 The P2P API can be used to establish a secure peer-to-peer connection between two nodes and then send and receive arbitrary data messages between them.  Callers do **not** need to know the IP address of the peer node as connections are requested only by a users username or genesis hash. Once the peer accepts a connection request, a direct connection is made between the two nodes and communication commences.

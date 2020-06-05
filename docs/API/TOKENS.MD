@@ -660,7 +660,7 @@ Additionally the API supports passing a field name in the URL after the account 
     "modified": 1566616211,
     "name": "myaccount",
     "address": "8CbkwEQ9S8owmX74joU6XmiwxJq1aoiqUoXc9fLCKzw15HscM99",
-    "token_name": "mytoken"
+    "token_name": "mytoken",
     "token": "8EHRNnxn5qX9gMF1Jbqvo1jkAeP7XY1PETnMtegv9rdr6QG3ZJy",
     "balance": 990,
     "pending": 0.0,
