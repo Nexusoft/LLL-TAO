@@ -150,20 +150,15 @@ namespace TAO
         /* Updates the password stored in the internal sig chain */
         void Session::UpdatePassword(const SecureString& strPassword)
         {
-            /* Since we are changing the sig chain reference, we need to lock the CREATE mutex as another process might be using it */
-            LOCK(CREATE_MUTEX);
+            LOCK(MUTEX);
 
-            {
-                LOCK(MUTEX);
+            /* Get the existing username so that we can use it for the new sig chain */
+            SecureString strUsername = pSigChain->UserName();
+            /* Clear the existing sig chain pointer */
+            pSigChain.free();
 
-                /* Get the existing username so that we can use it for the new sig chain */
-                SecureString strUsername = pSigChain->UserName();
-                /* Clear the existing sig chain pointer */
-                pSigChain.free();
-
-                /* Instantate a new one with the existing username and the new password */
-                pSigChain = new TAO::Ledger::SignatureChain(strUsername, strPassword);
-            }
+            /* Instantate a new one with the existing username and the new password */
+            pSigChain = new TAO::Ledger::SignatureChain(strUsername, strPassword);
         }
 
 
