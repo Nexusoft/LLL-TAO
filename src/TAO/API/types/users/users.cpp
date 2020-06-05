@@ -167,6 +167,10 @@ namespace TAO
                 }
                 else
                     nSession.SetHex(params["session"].get<std::string>());
+                
+                /* Check that the session ID is valid */
+                if(!GetSessionManager().Has(nSession))
+                    throw APIException(-10, "Invalid session ID");
             }
 
             return GetSessionManager().Get(nSession);
