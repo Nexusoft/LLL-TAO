@@ -84,15 +84,8 @@ namespace TAO
                 throw APIException(-18, "Missing data.");
 
             /* Decode the data into a vector of bytes */
-            std::vector<uint8_t> vchData;
-            try
-            {
-                vchData = encoding::DecodeBase64(params["data"].get<std::string>().c_str());
-            }
-            catch(const std::exception& e)
-            {
-                throw APIException(-27, "Malformed base64 encoding.");
-            }
+            std::string strData = params["data"].get<std::string>();
+            std::vector<uint8_t> vchData(strData.begin(), strData.end());
             
             /* Get the private key. */
             uint512_t hashSecret = user->Generate(strName, 0, strPIN);

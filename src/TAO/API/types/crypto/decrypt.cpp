@@ -70,14 +70,8 @@ namespace TAO
             if(params.find("key") != params.end())
             {
                 /* Decode the key into a vector of bytes */
-                try
-                {
-                    vchKey = encoding::DecodeBase64(params["key"].get<std::string>().c_str());
-                }
-                catch(const std::exception& e)
-                {
-                    throw APIException(-27, "Malformed base64 encoding.");
-                }
+                std::string strKey = params["key"].get<std::string>();
+                vchKey.insert(vchKey.begin(), strKey.begin(), strKey.end());
             }
             else
             {
@@ -185,6 +179,14 @@ namespace TAO
                     }
                 }
 
+                /* For added security the actual private key is not directly used as the symmetric key.  Therefore we hash
+                   the private key. NOTE: the AES256 function requires a 32-byte key, so we reduce the length if necessary by using
+                   the 256-bit version of the Skein Keccak hashing function */
+                uint256_t nKey = LLC::SK256(vchKey);
+
+                /* Put the key back into the vector */
+                vchKey = nKey.GetBytes();
+
             }
 
             /* The decrypted data */
@@ -194,8 +196,8 @@ namespace TAO
             if(!LLC::DecryptAES256(vchKey, vchData, vchPlainText))
                 throw APIException(-271, "Failed to decrypt data.");
             
-            /* Add the decrypted data to the response, base64 encoded*/
-            ret["data"] = encoding::EncodeBase64(&vchPlainText[0], vchPlainText.size());
+            /* Add the decrypted data to the response */
+            ret["data"] = std::string(vchPlainText.begin(), vchPlainText.end());
 
             return ret;
         }

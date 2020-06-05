@@ -55,31 +55,31 @@ std::string SIGNATURE_FALCON_CHECK = "WZazifZ5KAyNWSRFZqigC4jv6SmUsf6qCRots1x8PG
 /* brainpool public key from key2 */
 std::string PUBLIC_KEY_BRAINPOOL_2 = "K1FCufkNgAmxEhJoGHYFXZRWw2reUvXTGkLUySKBQUUP2qZVGSBGTVgkfPYdj8DtVVSEkFeezMNmS4yVLeYHGKdb";
 
-/* base64 encoded 64-byte symmetric key used to test encryption */
-std::string SYMMETRIC_KEY = encoding::EncodeBase64("1234567812345678123456781234567812345678123456781234567812345678");
+/* 256-bit / 32-byte symmetric key used to test encryption */
+std::string SYMMETRIC_KEY = "12345678123456781234567812345678";
 
 /* plain text data to be encrypted */
-std::string PLAIN_TEXT_DATA = encoding::EncodeBase64("hello world"); 
+std::string PLAIN_TEXT_DATA = "hello world"; 
 
 /* result of the encryption using symmetric key */
 std::string SYMMETRICKEY_CIPHERTEXT = "";
 
 /* encrypted data using symmetric key to check decryption*/
-std::string SYMMETRICKEY_CIPHERTEXT_CHECK = "va7z9/JLHui3xNeuLhixRlXl7h6ga9A8nnAOrG0Yp9U=";
+std::string SYMMETRICKEY_CIPHERTEXT_CHECK = "rv5oJ+BdgruGEhs3BS6a8W9LMMDwmcpPtlvs7SvidJY=";
 
 
 /* result of the encryption using private key */
 std::string PRIVATEKEY_CIPHERTEXT = "";
 
 /* encrypted data using private key to check decryption*/
-std::string PRIVATEKEY_CIPHERTEXT_CHECK = "PZyat8qgOUKBPZdJFWK0CEtJuCA703LY56WZ9Guh7CA=";
+std::string PRIVATEKEY_CIPHERTEXT_CHECK = "A4DfmcRpiXq/Bap2QSnzECbhm6dwxA03y0kRqeZLR9U=";
 
 
 /* result of the encryption using shared symmetric key */
 std::string SHAREDKEY_CIPHERTEXT = "";
 
 /* encrypted data using shared symmetric key to check decryption*/
-std::string SHAREDKEY_CIPHERTEXT_CHECK = "hsM7U4710H6DPuORPg9KHpHllFp0LAIxaAk/kKG7xS4=";
+std::string SHAREDKEY_CIPHERTEXT_CHECK = "6QZlXzhNAKZxnrZf7rsGGlSnS+rjMbKmR0Tw65tq6Es=";
 
 /* the public key from the shared key (the public key of testkey2) */
 std::string SHARED_PUBLICKEY = "";
@@ -730,6 +730,8 @@ TEST_CASE( "Test Crypto API - encrypt data", "[crypto/encrypt/data]")
 
         REQUIRE(result.find("data") != result.end());
 
+        debug::log(0, "SYMMETRICKEY_CIPHERTEXT ", result["data"].get<std::string>());
+
         /* extract the encrypted data in order to check the decryption of it later */
         SYMMETRICKEY_CIPHERTEXT = result["data"].get<std::string>();
     } 
@@ -753,6 +755,8 @@ TEST_CASE( "Test Crypto API - encrypt data", "[crypto/encrypt/data]")
 
         REQUIRE(result.find("data") != result.end());
         REQUIRE(result.find("publickey") != result.end());
+
+        debug::log(0, "PRIVATEKEY_CIPHERTEXT ", result["data"].get<std::string>());
 
         /* extract the encrypted data in order to check the decryption of it later */
         PRIVATEKEY_CIPHERTEXT = result["data"].get<std::string>();
@@ -783,6 +787,8 @@ TEST_CASE( "Test Crypto API - encrypt data", "[crypto/encrypt/data]")
         /* extract the encrypted data in order to check the decryption of it later */
         SHAREDKEY_CIPHERTEXT = result["data"].get<std::string>();
         SHARED_PUBLICKEY = result["publickey"].get<std::string>();
+
+        debug::log(0, "SHAREDKEY_CIPHERTEXT ", result["data"].get<std::string>());
 
         /* Check that the correct public key has been returned for the private key */
         REQUIRE(SHARED_PUBLICKEY == PUBLIC_KEY_BRAINPOOL);
@@ -1167,6 +1173,8 @@ TEST_CASE( "Test Crypto API - sign data", "[crypto/sign/data]")
         REQUIRE(result.find("scheme") != result.end());
         REQUIRE(result.find("signature") != result.end());
 
+        debug::log(0, "SIGNATURE_BRAINPOOL ", result["signature"].get<std::string>());
+
         /* extract the signature data so we can verify it */
         SIGNATURE_BRAINPOOL = result["signature"].get<std::string>();
     } 
@@ -1193,6 +1201,8 @@ TEST_CASE( "Test Crypto API - sign data", "[crypto/sign/data]")
         REQUIRE(result.find("publickey") != result.end());
         REQUIRE(result.find("scheme") != result.end());
         REQUIRE(result.find("signature") != result.end());
+
+        debug::log(0, "SIGNATURE_FALCON ", result["signature"].get<std::string>());
 
         /* extract the signature data so we can verify it */
         SIGNATURE_FALCON = result["signature"].get<std::string>();
@@ -1441,6 +1451,8 @@ TEST_CASE( "Test Crypto API - get hash", "[crypto/get/hash]")
 
         REQUIRE(result.find("hash") != result.end());
 
+        debug::log(0, "HASH_SK256 ", result["hash"].get<std::string>());
+
         /* check the result */
         REQUIRE(result["hash"].get<std::string>() == HASH_SK256);
     }
@@ -1461,6 +1473,8 @@ TEST_CASE( "Test Crypto API - get hash", "[crypto/get/hash]")
 
         REQUIRE(result.find("hash") != result.end());
 
+        debug::log(0, "HASH_SK512 ", result["hash"].get<std::string>());
+
         /* check the result */
         REQUIRE(result["hash"].get<std::string>() == HASH_SK512);
     }
@@ -1480,6 +1494,8 @@ TEST_CASE( "Test Crypto API - get hash", "[crypto/get/hash]")
         result = ret["result"];
 
         REQUIRE(result.find("hash") != result.end());
+
+        debug::log(0, "HASH_ARGON2 ", result["hash"].get<std::string>());
 
         /* check the result */
         REQUIRE(result["hash"].get<std::string>() == HASH_ARGON2);

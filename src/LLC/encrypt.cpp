@@ -27,7 +27,7 @@ namespace LLC
     bool EncryptAES256(std::vector<uint8_t>& vchKey, const std::vector<uint8_t>& vchPlainText, std::vector<uint8_t>& vchEncrypted)
     {
         /* Check the key length.  NOTE that this should be double AES_KEYLEN as the incoming key is in hex */
-        if(vchKey.size() != AES_KEYLEN * 2)
+        if(vchKey.size() != AES_KEYLEN)
             return debug::error(FUNCTION, "Invalid key length");
 
         /* Check the incoming data is not empty */
@@ -90,7 +90,7 @@ namespace LLC
     bool DecryptAES256(std::vector<uint8_t>& vchKey, const std::vector<uint8_t>& vEncrypted, std::vector<uint8_t>& vPlainText)
     {
         /* Check the key length.  NOTE that this should be double AES_KEYLEN as the incoming key is in hex */
-        if(vchKey.size() != AES_KEYLEN * 2)
+        if(vchKey.size() != AES_KEYLEN)
             return debug::error(FUNCTION, "Invalid key length");
 
         /* Check size of the encrypted data vector.  This must be at least 32 bytes, 16 for the IV and 16 for the minimum 
