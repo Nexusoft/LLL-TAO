@@ -51,7 +51,7 @@ namespace TAO
         private:
 
             /** The transactions in the stake pool.
-             *  This maps the tx hash to the transaction plus saved metadata (tx, block age, balance, fee, fGenesis)
+             *  This maps the tx hash to the transaction plus saved metadata (tx, block age, balance, fee, fTrust)
              **/
             std::map<uint512_t, std::tuple<TAO::Ledger::Transaction, uint64_t, uint64_t, uint64_t, bool>> mapPool;
 
@@ -70,6 +70,10 @@ namespace TAO
              *  for this height. If the chain best height changes and no longer matches this value, proof values are stale.
              **/
             uint32_t nHeight;
+
+
+            /** The coinstake produced by the local node. This transaction will not be included in Select results. **/
+            uint512_t hashLocal;
 
 
             /** Proof in use by the pooled stake minter for the current mining round. **/
@@ -147,6 +151,18 @@ namespace TAO
              *
              **/
             bool Get(const uint512_t& hashTx, TAO::Ledger::Transaction &tx) const;
+
+
+            /** Has
+             *
+             *  Check if a transaction exists in the stake pool.
+             *
+             *  @param[in] hashTx Hash of transaction to check.
+             *
+             *  @return true if pool contains the transaction.
+             *
+             **/
+            bool Has(const uint512_t& hashTx) const;
 
 
             /** IsTrust

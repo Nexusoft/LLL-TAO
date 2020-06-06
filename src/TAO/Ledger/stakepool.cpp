@@ -69,15 +69,15 @@ namespace TAO
 
             /* Get the trust account for tx user genesis */
             TAO::Register::Object account;
-            bool fIndexed;
+            bool fTrust;
             uint64_t nReward;
             uint64_t nPoolReward;
 
-            if(!TAO::Ledger::FindTrustAccount(tx.hashGenesis, account, fIndexed))
+            if(!TAO::Ledger::FindTrustAccount(tx.hashGenesis, account, fTrust))
                 return debug::error(FUNCTION, "Unable to retrieve trust account for pooled coinstake");
 
             /* Get the transaction's block age and balance for current mining round */
-            if(fIndexed)
+            if(fTrust)
             {
                 /* trust */
                 uint512_t hashLast;
@@ -157,7 +157,7 @@ namespace TAO
                 return debug::error(FUNCTION, "Pooled coinstake invalid reward");
 
             /* Add to pool */
-            mapPool[tx.GetHash()] = std::make_tuple(tx, nBlockAge, nBalance, nFee, !fIndexed);
+            mapPool[tx.GetHash()] = std::make_tuple(tx, nBlockAge, nBalance, nFee, fTrust);
 
             return true;
         }
@@ -173,7 +173,10 @@ namespace TAO
 
             tx[0].Reset();
 
-            tx[0].Seek(65, TAO::Operation::Contract::OPERATIONS);
+            if(IsTrust(tx.GetHash()))
+                tx[0].Seek(65, TAO::Operation::Contract::OPERATIONS);
+            else
+                tx[0].Seek(1, TAO::Operation::Contract::OPERATIONS);
 
             tx[0] >> txProof;
             tx[0] >> txTimeBegin;
@@ -259,6 +262,12 @@ namespace TAO
 
                     mapGenesis[tx.hashGenesis] = hashTx;
 
+                    /* The coinstake produced by local node is in pool so it can be relayed, but should not be in Select results.
+                     * Save the hash so we can filter in Select.
+                     */
+                    if(!pnode)
+                        hashLocal = tx.GetHash();
+
                     debug::log(3, FUNCTION, "Pooled stake tx ", hashTx.SubString(), " ACCEPTED");
                 }
 
@@ -266,19 +275,6 @@ namespace TAO
                 else
                     debug::log(3, FUNCTION, "Pooled stake tx ", hashTx.SubString(), " RELAYED");
             }
-
-//TODO Stake pool relaying
-            // /* Relay tx if creating ourselves. */
-            // if(!pnode && LLP::TRITIUM_SERVER)
-            // {
-            //     /* Relay the transaction notification. */
-            //     LLP::TRITIUM_SERVER->Relay
-            //     (
-            //         LLP::ACTION::NOTIFY,
-            //         uint8_t(LLP::TYPES::TRANSACTION),
-            //         hashTx
-            //     );
-            // }
 
             return true;
         }
@@ -301,6 +297,19 @@ namespace TAO
         }
 
 
+        /* CCheck if a transaction exists in the stake pool */
+        bool Stakepool::Has(const uint512_t& hashTx) const
+        {
+            RLOCK(MUTEX);
+
+            /* Check if pool map contains the requested hashTx */
+            if(mapPool.count(hashTx))
+                    return true;
+
+            return false;
+        }
+
+
         /*  Checks whether a particular pool entry is a trust transaction. */
         bool Stakepool::IsTrust(const uint512_t& hashTx) const
         {
@@ -308,10 +317,7 @@ namespace TAO
 
             /* Find the transaction in pool. */
             if(mapPool.count(hashTx))
-            {
-                bool fGenesis = std::get<4>(mapPool.at(hashTx));
-                return !fGenesis;
-            }
+                return std::get<4>(mapPool.at(hashTx));
 
             return false;
         }
@@ -387,18 +393,33 @@ namespace TAO
             vHashes.clear();
             nBalanceTotal = 0;
             nFeeTotal = 0;
+            bool fGenesisAdded = false;
 
             /* If ask for more than the current pool size, just return all of them */
             if(nCount >= mapPool.size())
             {
                 for(const auto& item : mapPool)
                 {
-                    vHashes.push_back(item.first);
+                    /* Skip the coinstake created by the local node */
+                    if(item.first == hashLocal)
+                        continue;
 
-                    nBalanceTotal += std::get<2>(item.second);
+                    bool fTrust = IsTrust(item.first);
+
+                    if(fTrust || !fGenesisAdded)
+                    {
+                        vHashes.push_back(item.first);
+
+                        nBalanceTotal += std::get<2>(item.second);
+                        nFeeTotal += std::get<3>(item.second);
+
+                        /* Only select at most one genesis for addition to the block */
+                        if(!fTrust)
+                            fGenesisAdded = true;
+                    }
                 }
 
-                return true;
+                return vHashes.size() > 0;
             }
 
             std::vector<uint512_t> vAvailable;
@@ -407,6 +428,10 @@ namespace TAO
             /* Loop through all the transactions to build available hash list and corresponding weights. */
             for(const auto& item : mapPool)
             {
+                /* Skip the coinstake created by the local node */
+                if(item.first == hashLocal)
+                    continue;
+
                 vAvailable.push_back(item.first);
 
                 uint64_t nBlockAge = std::get<1>(item.second);
@@ -429,7 +454,6 @@ namespace TAO
 
             /* Set up the random generator */
             std::mt19937 g(runtime::timestamp());
-            bool fGenesisAdded;
 
             /* It is possible to run out of available tx if skip over multiple genesis coinstakes */
             while((vHashes.size() < nCount) && (vHashes.size() < mapPool.size()) && (vAvailable.size() > 0))
@@ -443,11 +467,13 @@ namespace TAO
 
                 /* Add selection to the results */
                 uint512_t hashSelected = vAvailable.at(nSelection);
-                bool fTrust =  IsTrust(hashSelected);
+
+                bool fTrust = IsTrust(hashSelected);
 
                 if(fTrust || !fGenesisAdded)
                 {
                     vHashes.push_back(hashSelected);
+
                     nBalanceTotal += std::get<2>(mapPool[hashSelected]);
                     nFeeTotal += std::get<3>(mapPool[hashSelected]);
 
