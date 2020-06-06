@@ -18,8 +18,8 @@ ________________________________________________________________________________
 
 #include <LLP/types/tritium.h>
 #include <LLP/include/global.h>
-#include <LLP/templates/events.h>
 #include <LLP/include/manager.h>
+#include <LLP/templates/events.h>
 
 #include <TAO/API/include/global.h>
 
@@ -31,20 +31,22 @@ ________________________________________________________________________________
 #include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/include/chainstate.h>
-#include <TAO/Ledger/include/process.h>
 #include <TAO/Ledger/include/enum.h>
+#include <TAO/Ledger/include/process.h>
+
+#include <TAO/Ledger/types/client.h>
 #include <TAO/Ledger/types/locator.h>
-#include <TAO/Ledger/types/syncblock.h>
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/merkle.h>
-#include <TAO/Ledger/types/client.h>
+#include <TAO/Ledger/types/stakepool.h>
+#include <TAO/Ledger/types/syncblock.h>
 
-#include <Legacy/wallet/wallet.h>
 #include <Legacy/include/evaluate.h>
+#include <Legacy/wallet/wallet.h>
 
-#include <Util/include/runtime.h>
 #include <Util/include/args.h>
 #include <Util/include/debug.h>
+#include <Util/include/runtime.h>
 #include <Util/include/version.h>
 
 
@@ -1624,11 +1626,13 @@ namespace LLP
                     ssPacket >> nType;
 
                     /* Check for legacy or transactions specifiers. */
-                    bool fLegacy = false, fTransactions = false, fClient = false;
-                    if(nType == SPECIFIER::LEGACY || nType == SPECIFIER::TRANSACTIONS || nType == SPECIFIER::CLIENT)
+                    bool fLegacy = false, fPoolstake = false, fTransactions = false, fClient = false;
+                    if(nType == SPECIFIER::LEGACY || nType == SPECIFIER::POOLSTAKE
+                    || nType == SPECIFIER::TRANSACTIONS || nType == SPECIFIER::CLIENT)
                     {
                         /* Set specifiers. */
                         fLegacy       = (nType == SPECIFIER::LEGACY);
+                        fPoolstake    = (nType == SPECIFIER::POOLSTAKE);
                         fTransactions = (nType == SPECIFIER::TRANSACTIONS);
                         fClient       = (nType == SPECIFIER::CLIENT);
 
@@ -1643,7 +1647,7 @@ namespace LLP
                         case TYPES::BLOCK:
                         {
                             /* Check for valid specifier. */
-                            if(fLegacy)
+                            if(fLegacy || fPoolstake)
                                 return debug::drop(NODE, "ACTION::GET: invalid specifier for TYPES::BLOCK");
 
                             /* Check for client mode since this method should never be called except by a client. */
@@ -1749,7 +1753,7 @@ namespace LLP
                             /* Check for legacy. */
                             if(fLegacy)
                             {
-                                /* Check for client mode since this method should never be called except by a client. */
+                                /* Check for client mode since this method should never be except by a client. */
                                 if(config::fClient.load())
                                     return debug::drop(NODE, "ACTION::GET::LEGACY::TRANSACTION disabled in -client mode");
 
@@ -1757,6 +1761,17 @@ namespace LLP
                                 Legacy::Transaction tx;
                                 if(LLD::Legacy->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
                                     PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::LEGACY), tx);
+                            }
+                            /* Check for poolstake. */
+                            else if(fPoolstake)
+                            {
+                                uint8_t nTTL;
+                                ssPacket >> nTTL;
+
+                                /* Check stake pool for pooled coinstake. */
+                                TAO::Ledger::Transaction tx;
+                                if(TAO::Ledger::stakepool.Get(hashTx, tx))
+                                    PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::POOLSTAKE), uint8_t(nTTL), tx);
                             }
                             else
                             {
@@ -2111,12 +2126,14 @@ namespace LLP
                     uint8_t nType = 0;
                     ssPacket >> nType;
 
-                    /* Check for legacy specifier. */
+                    /* Check for legacy or poolstake specifier. */
                     bool fLegacy = false;
-                    if(nType == SPECIFIER::LEGACY)
+                    bool fPoolstake = false;
+                    if(nType == SPECIFIER::LEGACY || nType == SPECIFIER::POOLSTAKE)
                     {
-                        /* Set legacy specifier. */
-                        fLegacy = true;
+                        /* Set specifiers. */
+                        fLegacy    = (nType == SPECIFIER::LEGACY);
+                        fPoolstake = (nType == SPECIFIER::POOLSTAKE);
 
                         /* Go to next type in stream. */
                         ssPacket >> nType;
@@ -2225,6 +2242,21 @@ namespace LLP
                                     debug::log(3, NODE, "ACTION::NOTIFY: LEGACY TRANSACTION ", hashTx.SubString());
 
                                     ssResponse << uint8_t(SPECIFIER::LEGACY) << uint8_t(TYPES::TRANSACTION) << hashTx;
+                                }
+                            }
+                            /* Check for pool stake. */
+                            else if(fPoolstake)
+                            {
+                                uint8_t nTTL;
+                                ssPacket >> nTTL;
+
+                                /* Check stake pool. */
+                                if(!TAO::Ledger::stakepool.Has(hashTx))
+                                {
+                                    /* Debug output. */
+                                    debug::log(3, NODE, "ACTION::NOTIFY: POOL STAKE TRANSACTION ", hashTx.SubString());
+
+                                    ssResponse << uint8_t(SPECIFIER::POOLSTAKE) << uint8_t(TYPES::TRANSACTION) << hashTx << nTTL;
                                 }
                             }
                             else
@@ -2870,6 +2902,46 @@ namespace LLP
                         break;
                     }
 
+                    /* Handle a pooled coinstake. */
+                    case SPECIFIER::POOLSTAKE:
+                    {
+                        /* Get the transction from the stream. */
+                        TAO::Ledger::Transaction tx;
+                        uint8_t nTTL;
+
+                        ssPacket >> nTTL;
+                        ssPacket >> tx;
+
+                        /* Accept into stake pool. */
+                        if(TAO::Ledger::stakepool.Accept(tx, this))
+                        {
+                            /* Relay the transaction notification if more TTL count */
+                            if(nTTL > 0)
+                            {
+                                uint512_t hashTx = tx.GetHash();
+                                --nTTL;
+
+                                TRITIUM_SERVER->Relay
+                                (
+                                    ACTION::NOTIFY,
+                                    uint8_t(SPECIFIER::POOLSTAKE),
+                                    uint8_t(TYPES::TRANSACTION),
+                                    hashTx,
+                                    nTTL
+                                );
+                            }
+
+                            /* Reset consecutive failures. */
+                            nConsecutiveFails   = 0;
+                            nConsecutiveOrphans = 0;
+                        }
+                        else
+                            ++nConsecutiveFails;
+
+
+                        break;
+                    }
+
                     /* Default catch all. */
                     default:
                         return debug::drop(NODE, "invalid type specifier for transaction");
@@ -2941,8 +3013,8 @@ namespace LLP
                                 }
 
                                 /* UTXO to Sig Chain support - The only reason we would be receiving a legacy transaction in client
-                                   mode is if we are being sent a legacy event.  The event would normally be written to the DB in 
-                                   Transaction::Connect, but we cannot connect legacy transactions in client mode as we will not 
+                                   mode is if we are being sent a legacy event.  The event would normally be written to the DB in
+                                   Transaction::Connect, but we cannot connect legacy transactions in client mode as we will not
                                    have all of the inputs.  Therefore, we need to check the outputs to see if any of them
                                    are to a register address we know about and, if so, write an event for the account holder */
                                 for(const auto txout : tx.vout )
@@ -3068,9 +3140,9 @@ namespace LLP
                 /* De-serialize the trigger nonce. */
                 uint64_t nNonce = 0;
                 ssPacket >> nNonce;
-                
+
                 TriggerEvent(INCOMING.MESSAGE, nNonce);
-                
+
                 break;
             }
 
@@ -3099,10 +3171,10 @@ namespace LLP
                         if(fValid)
                         {
                             /* Trigger event with this nonce. */
-                            TriggerEvent(INCOMING.MESSAGE, nNonce, fValid, hashTx);  
+                            TriggerEvent(INCOMING.MESSAGE, nNonce, fValid, hashTx);
                         }
                         else
-                        { 
+                        {
                             /* deserialize the contract ID */
                             uint32_t nContract;
                             ssPacket >> nContract;
@@ -3137,16 +3209,16 @@ namespace LLP
                         TAO::Ledger::Transaction tx;
                         ssPacket >> tx;
 
-                        /* Validating a transaction simply sanitizes the contracts within it.  If any of them fail then we stop 
+                        /* Validating a transaction simply sanitizes the contracts within it.  If any of them fail then we stop
                            sanitizing and return the contract ID that failed */
                         bool fSanitized = false;
-                        
+
                         /* Temporary map for pre-states to be passed into the sanitization Build() for each contract. */
                         std::map<uint256_t, TAO::Register::State> mapStates;
 
                         /* Loop through each contract in the transaction. */
                         for(uint32_t nContract = 0; nContract < tx.Size(); ++nContract)
-                        {   
+                        {
                             /* Get the contract. */
                             TAO::Operation::Contract& contract = tx[nContract];
 

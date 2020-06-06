@@ -99,9 +99,10 @@ namespace LLP
             /* Specifier. */
             LEGACY       = 0x40, //specify for legacy data types
             TRITIUM      = 0x41, //specify for tritium data types
-            SYNC         = 0x42,  //specify a sync block type
+            SYNC         = 0x42, //specify a sync block type
             TRANSACTIONS = 0x43, //specify to send memory transactions first
             CLIENT       = 0x44, //specify for blocks to be sent and received for clients
+            POOLSTAKE    = 0x45, //specify for pooled coinstake transactions
         };
     }
 
