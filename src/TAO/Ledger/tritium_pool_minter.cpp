@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <LLP/include/global.h>
+#include <LLP/types/tritium.h>
 
 #include <TAO/API/include/global.h>
 
@@ -165,6 +166,19 @@ namespace TAO
                                                 const SecureString& strPIN)
         {
             static uint32_t nCounter = 0; //Prevents log spam during wait period
+
+            /* Get setting for maximum number of relays. Assure it is positive with max value of 255 */
+            static const uint8_t nTTL = static_cast<uint8_t>(
+                                            std::min(
+                                            (uint64_t)255,
+                                            static_cast<uint64_t>(
+                                                std::max(
+                                                (int64_t)0,
+                                                (int64_t)config::GetArg("-stakepoolttl", POOL_MAX_TTL_COUNT)
+                                                ))
+                                            ));
+
+
 
             /* Reset any prior value of trust score and block age */
             nTrust = 0;
@@ -325,9 +339,18 @@ namespace TAO
                 if(!SetupPool())
                     return false;
 
-//TODO relay pooled coinstake to network
-            // if(SubmitToPool(txPool))
-            //     return debug::error(FUNCTION, "Unable to submit coinstake to stake pool");
+                if(!TAO::Ledger::stakepool.Accept(txPool))
+                    return false;
+
+                /* Relay this node's coinstake to the network for pooled staking */
+                LLP::TRITIUM_SERVER->Relay
+                (
+                    LLP::ACTION::NOTIFY,
+                    uint8_t(LLP::SPECIFIER::POOLSTAKE),
+                    uint8_t(LLP::TYPES::TRANSACTION),
+                    txPool.GetHash(),
+                    nTTL
+                );
             }
 
             return true;

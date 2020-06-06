@@ -241,8 +241,8 @@ namespace TAO
         /* Minimum trust account balance to participate in the stake pool */
         const uint64_t POOL_MIN_STAKE_BALANCE = 1 * NXS_COIN;
 
-        /* Maximum number of times a pool coinstake transmitted to the network will be relayed */
-        const uint64_t POOL_MAX_TTL_COUNT = 2;
+        /* Maximum number of times a pool coinstake will be relayed */
+        const uint64_t POOL_MAX_TTL_COUNT = 3;
 
         /* Starting maximum number of transactions accepted into the stake pool */
         const uint64_t POOL_MAX_SIZE_BASE = 50;

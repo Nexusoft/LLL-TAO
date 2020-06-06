@@ -538,8 +538,8 @@ namespace TAO
                     /* Below minimum interval for generating stake blocks. Increase sleep time until can continue normally. */
                     nSleepTime = 5000; //5 second wait is reset below (can't sleep too long or will hang until wakes up on shutdown)
 
-                    /* Update log every 60 iterations (5 minutes) */
-                    if((nCounter % 60) == 0)
+                    /* Update log every 100 iterations */
+                    if((nCounter % 100) == 0)
                         debug::log(0, FUNCTION, "Too soon after last stake block. ",
                                    (nMinInterval - nInterval + 1), " blocks remaining until staking available.");
 
