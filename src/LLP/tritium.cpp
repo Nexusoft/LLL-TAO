@@ -34,6 +34,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/include/process.h>
 
+#include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/types/client.h>
 #include <TAO/Ledger/types/locator.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -1765,6 +1766,10 @@ namespace LLP
                             /* Check for poolstake. */
                             else if(fPoolstake)
                             {
+                                /* Poolstake specifier not active until v9 */
+                                if(runtime::unifiedtimestamp() < TAO::Ledger::StartBlockTimelock(9))
+                                    return debug::drop(NODE, "ACTION::GET: poolstake specifier not active");
+
                                 uint8_t nTTL;
                                 ssPacket >> nTTL;
 
@@ -2247,6 +2252,10 @@ namespace LLP
                             /* Check for pool stake. */
                             else if(fPoolstake)
                             {
+                                /* Poolstake specifier not active until v9 */
+                                if(runtime::unifiedtimestamp() < TAO::Ledger::StartBlockTimelock(9))
+                                    return debug::drop(NODE, "ACTION::NOTIFY: poolstake specifier not active");
+
                                 uint8_t nTTL;
                                 ssPacket >> nTTL;
 
@@ -2905,6 +2914,10 @@ namespace LLP
                     /* Handle a pooled coinstake. */
                     case SPECIFIER::POOLSTAKE:
                     {
+                        /* Poolstake specifier not active until v9 */
+                        if(runtime::unifiedtimestamp() < TAO::Ledger::StartBlockTimelock(9))
+                            return debug::drop(NODE, "TYPES::TRANSACTION: poolstake specifier not active");
+
                         /* Get the transction from the stream. */
                         TAO::Ledger::Transaction tx;
                         uint8_t nTTL;
