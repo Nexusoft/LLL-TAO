@@ -174,7 +174,7 @@ namespace TAO
                                             static_cast<uint64_t>(
                                                 std::max(
                                                 (int64_t)0,
-                                                (int64_t)config::GetArg("-stakepoolttl", POOL_MAX_TTL_COUNT)
+                                                (int64_t)config::GetArg("-poolstakettl", POOL_MAX_TTL_COUNT)
                                                 ))
                                             ));
 
@@ -198,8 +198,7 @@ namespace TAO
                 return debug::error(FUNCTION, "Failed to get previous block");
 
             /* Calculate the pool coinstake proofs for the current block */
-            BlockState stateCurrent(block);
-            if(!GetStakeProofs(stateCurrent, statePrev, nTimeBegin, nTimeEnd, hashProof))
+            if(!GetStakeProofs(block, statePrev, nTimeBegin, nTimeEnd, hashProof))
                 return debug::error(FUNCTION, "Failed to get pooled stake proofs");
 
             if(!fGenesis)
@@ -339,6 +338,7 @@ namespace TAO
                 if(!SetupPool())
                     return false;
 
+                /* Put local coinstake into pool (relay will get it from there) */
                 if(!TAO::Ledger::stakepool.Accept(txPool))
                     return false;
 
@@ -532,7 +532,7 @@ namespace TAO
             block.vProducer.clear();
 
             /* Perform coinstake selection on pool to choose which coinstakes to use.
-             * This is repeated every time new coinstakes are processed. (or block fills to max with first transactions in pool)
+             * This is repeated every time new coinstakes are processed.
              */
             if(TAO::Ledger::stakepool.Select(vHashes, nPoolStake, nPoolFee, nProducerSize))
             {

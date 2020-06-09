@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/block.h>
 #include <TAO/Ledger/types/genesis.h>
 #include <TAO/Ledger/types/transaction.h>
+#include <TAO/Ledger/types/tritium.h>
 
 #include <TAO/Register/types/object.h>
 
@@ -263,8 +264,8 @@ namespace TAO
          *  Only transactions generated prior to nTimeEnd are included in this calculation.
          *  When nTimeBegin = nTimeEnd (no tx in current block), hashProof is the hash of the previous block hash (from statePrev)
          *
-         *  @param[in] stateCurrent - The pool stake block for which the stake proofs apply
-         *  @param[in] statePrev - The block prior to the one for which the stake proofs apply
+         *  @param[in] blockCurrent - The pool stake block for which the stake proofs apply
+         *  @param[in] statePrev - The block state prior to the block for which the stake proofs apply
          *  @param[out] nTimeBegin - beginning time for coinstake op
          *  @param[out] nTimeEnd - ending time for coinstake op
          *  @param[out] hashProof - proof for coinstake op
@@ -272,7 +273,7 @@ namespace TAO
          *  @return true if stake proofs calculated successfully, false otherwise
          *
          **/
-        bool GetStakeProofs(const BlockState& stateCurrent, const BlockState& statePrev,
+        bool GetStakeProofs(const TritiumBlock& blockCurrent, const BlockState& statePrev,
                             uint64_t& nTimeBegin, uint64_t& nTimeEnd, uint256_t& hashProof);
 
 

@@ -781,6 +781,10 @@ namespace TAO
                     return debug::error(FUNCTION, "invalid genesis generated");
             }
 
+            /* Validate proof of stake. */
+            if(IsProofOfStake() && !CheckStake())
+                return debug::error(FUNCTION, "invalid proof of stake");
+
             /* Check that producer isn't before previous block time. */
             if(nVersion < 9)
             {
@@ -798,10 +802,6 @@ namespace TAO
 
             /* Process the block state. */
             TAO::Ledger::BlockState state(*this);
-
-            /* Validate proof of stake. */
-            if(IsProofOfStake() && !CheckStake(state))
-                return debug::error(FUNCTION, "invalid proof of stake");
 
             /* Start the database transaction. */
             LLD::TxnBegin();
@@ -890,7 +890,7 @@ namespace TAO
 
 
         /* Check the proof of stake calculations. */
-        bool TritiumBlock::CheckStake(const BlockState& stateCurrent) const
+        bool TritiumBlock::CheckStake() const
         {
             /* Get the block finder producer */
             TAO::Ledger::Transaction txProducer;
@@ -999,7 +999,7 @@ namespace TAO
                 uint64_t nTimeBegin;
                 uint64_t nTimeEnd;
 
-                GetStakeProofs(stateCurrent, statePrev, nTimeBegin, nTimeEnd, hashProof);
+                GetStakeProofs(*this, statePrev, nTimeBegin, nTimeEnd, hashProof);
 
                 /* Weights and stake change value for thresholds are from the block finder only, which we know is a pooled trust */
                 txProducer[0].Seek(1, TAO::Operation::Contract::OPERATIONS);

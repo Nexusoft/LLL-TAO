@@ -22,6 +22,8 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/types/state.h>
+#include <TAO/Ledger/types/tritium.h>
 
 #include <TAO/Operation/include/enum.h>
 
@@ -457,7 +459,7 @@ namespace TAO
 
 
         /* Retrieve the coinstake proofs for a given pool stake block */
-        bool GetStakeProofs(const BlockState& stateCurrent, const BlockState& statePrev,
+        bool GetStakeProofs(const TritiumBlock& blockCurrent, const BlockState& statePrev,
                             uint64_t& nTimeBegin, uint64_t& nTimeEnd, uint256_t& hashProof)
         {
             nTimeEnd = statePrev.GetBlockTime();
@@ -466,7 +468,7 @@ namespace TAO
             DataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
             hashProof = 0;
 
-            for(const auto& proof : stateCurrent.vtx)
+            for(const auto& proof : blockCurrent.vtx)
             {
                 if(proof.first == TRANSACTION::TRITIUM)
                 {
