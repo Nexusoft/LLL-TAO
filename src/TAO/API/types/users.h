@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #pragma once
 
 #include <TAO/API/types/base.h>
+#include <TAO/API/types/notifications_thread.h>
 #include <TAO/API/include/session.h>
 
 #include <TAO/Operation/types/contract.h>
@@ -51,28 +52,13 @@ namespace TAO
 
         private:
 
-            /** The mutex for events processing. **/
-            mutable std::mutex EVENTS_MUTEX;
-
-
-            /** The sigchain events processing thread. **/
-            std::thread EVENTS_THREAD;
-
-
-            /** The condition variable to awaken sleeping events thread. **/
-            std::condition_variable CONDITION;
-
-
-            /** the events flag for active oustanding events. **/
-            std::atomic<bool> fEvent;
-
-
             /** the shutdown flag for gracefully shutting down events thread. **/
             std::atomic<bool> fShutdown;
 
+            
             /** The auto login thread. **/
             std::thread LOGIN_THREAD;
-
+            
 
         public:
 
@@ -83,6 +69,10 @@ namespace TAO
 
             /** Destructor. **/
             ~Users();
+
+
+            /** Vector of notifications processor threads **/
+            std::vector<NotificationsThread*> NOTIFICATIONS_THREADS;
 
 
             /** Initialize.
@@ -464,25 +454,7 @@ namespace TAO
              *  Background thread to auto login user once connections are established .
              *
              **/
-             void LoginThread();
-
-
-            /** NotificationsThread
-             *
-             *  Background thread to handle/suppress sigchain notifications.
-             *
-             **/
-            void NotificationsThread();
-
-
-            /** NotifyEvent
-             *
-             *  Notifies the events processor that an event has occurred so it
-             *  can check and update it's state.
-             *
-             **/
-            void NotifyEvent();
-
+            void LoginThread();
 
 
             /** GetOutstanding

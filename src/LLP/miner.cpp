@@ -730,7 +730,7 @@ namespace LLP
             /* Wake up events processor and wait for a signal to guarantee added transactions won't orphan a mined block. */
             if(TAO::API::users && TAO::API::GetSessionManager().Get(0).CanProcessNotifications())
             {
-                TAO::API::users->NotifyEvent();
+                TAO::API::users->NOTIFICATIONS_THREADS[0]->NotifyEvent();
                 WaitEvent();
             }
 

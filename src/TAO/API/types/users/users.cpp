@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/utils.h>
 #include <TAO/API/include/sessionmanager.h>
+#include <TAO/API/types/notifications_thread.h>
 
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/constants.h>
@@ -41,22 +42,18 @@ namespace TAO
         /* Default Constructor. */
         Users::Users()
         : Base()
-        , EVENTS_MUTEX()
-        , EVENTS_THREAD()
-        , CONDITION()
-        , fEvent(false)
         , fShutdown(false)
         , LOGIN_THREAD()
+        , NOTIFICATIONS_THREADS()
         {
             Initialize();
-
-            /* enable events processor only if configured and multi-user session is disabled. */
-            if(!config::fMultiuser.load() && config::fProcessNotifications)
-                EVENTS_THREAD = std::thread(std::bind(&Users::NotificationsThread, this));
 
             /* Auto login thread only if enabled and not in multiuser mode */
             if(!config::fMultiuser.load() && config::GetBoolArg("-autologin"))
                 LOGIN_THREAD = std::thread(std::bind(&Users::LoginThread, this));
+
+            /* Add a single notifications processor thread (for now) */
+            NOTIFICATIONS_THREADS.push_back(new NotificationsThread());
         }
 
 
@@ -66,11 +63,11 @@ namespace TAO
             /* Set the shutdown flag and join events processing thread. */
             fShutdown = true;
 
-            /* Events processor only enabled if multi-user session is disabled. */
-            if(EVENTS_THREAD.joinable())
+            /* Delete the notifications processor threads. */
+            for(uint16_t nIndex = 0; nIndex < NOTIFICATIONS_THREADS.size(); ++nIndex)
             {
-                NotifyEvent();
-                EVENTS_THREAD.join();
+                delete NOTIFICATIONS_THREADS[nIndex];
+                NOTIFICATIONS_THREADS[nIndex] = nullptr;
             }
 
             /* Clear all sessions */
