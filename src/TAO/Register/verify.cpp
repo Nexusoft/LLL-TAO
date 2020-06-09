@@ -505,7 +505,7 @@ namespace TAO
 
                         /* Check the state is prestate. */
                         if(nState != STATES::PRESTATE)
-                            return debug::error(FUNCTION, "OP::TRUST: register state not in pre-state");
+                            return debug::error(FUNCTION, "OP::TRUSTPOOL: register state not in pre-state");
 
                         /* Verify the register's prestate. */
                         Object prestate;
@@ -518,7 +518,7 @@ namespace TAO
 
                         /* Read the register from database. */
                         else if(!LLD::Register->ReadState(hashAddress, object))
-                            return debug::error(FUNCTION, "OP::TRUST: failed to read pre-state");
+                            return debug::error(FUNCTION, "OP::TRUSTPOOL: failed to read pre-state");
 
                         /* Check that the checksums match. */
                         if(prestate != object)
@@ -532,13 +532,13 @@ namespace TAO
                             debug::log(0, FUNCTION, "Balance (dsk): ", object1.get<uint64_t>("balance"));
                             debug::log(0, FUNCTION, "Balance (pre): ", object2.get<uint64_t>("balance"));
 
-                            return debug::error(FUNCTION, "OP::TRUST: pre-state verification failed");
+                            return debug::error(FUNCTION, "OP::TRUSTPOOL: pre-state verification failed");
                         }
 
 
                         /* Check contract account */
                         if(contract.Caller() != prestate.hashOwner)
-                            return debug::error(FUNCTION, "OP::TRUST: not authorized ", contract.Caller().SubString());
+                            return debug::error(FUNCTION, "OP::TRUSTPOOL: not authorized ", contract.Caller().SubString());
 
                         /* Calculate the new operation. */
                         if(!TAO::Operation::Trustpool::Execute(object, nReward, nScore, nStakeChange, contract.Timestamp()))
@@ -571,7 +571,7 @@ namespace TAO
 
                         /* Check the state is prestate. */
                         if(nState != STATES::PRESTATE)
-                            return debug::error(FUNCTION, "OP::GENESIS: register state not in pre-state");
+                            return debug::error(FUNCTION, "OP::GENESISPOOL: register state not in pre-state");
 
                         /* Verify the register's prestate. */
                         State prestate;
@@ -579,7 +579,7 @@ namespace TAO
 
                         /* Hard rule: genesis requires to resolve to trust account. */
                         if(prestate.hashOwner != contract.Caller())
-                            return debug::error(FUNCTION, "OP::GENESIS: caller is not state owner");
+                            return debug::error(FUNCTION, "OP::GENESISPOOL: caller is not state owner");
 
                         /* Check temporary memory states first. */
                         Object object;
@@ -588,15 +588,15 @@ namespace TAO
 
                         /* Read the register from database. */
                         else if(!LLD::Register->ReadState(hashAddress, object))
-                            return debug::error(FUNCTION, "OP::GENESIS: failed to read pre-state");
+                            return debug::error(FUNCTION, "OP::GENESISPOOL: failed to read pre-state");
 
                         /* Check that the checksums match. */
                         if(prestate != object)
-                            return debug::error(FUNCTION, "OP::GENESIS: pre-state verification failed");
+                            return debug::error(FUNCTION, "OP::GENESISPOOL: pre-state verification failed");
 
                         /* Check contract account */
                         if(contract.Caller() != prestate.hashOwner)
-                            return debug::error(FUNCTION, "OP::GENESIS: not authorized ", contract.Caller().SubString());
+                            return debug::error(FUNCTION, "OP::GENESISPOOL: not authorized ", contract.Caller().SubString());
 
                         /* Calculate the new operation. */
                         if(!TAO::Operation::Genesispool::Execute(object, nReward, contract.Timestamp()))
