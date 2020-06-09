@@ -1766,8 +1766,8 @@ namespace LLP
                             /* Check for poolstake. */
                             else if(fPoolstake)
                             {
-                                /* Poolstake specifier not active until v9 */
-                                if(runtime::unifiedtimestamp() < TAO::Ledger::StartBlockTimelock(9))
+                                /* Check for poolstake specifier active */
+                                if(nProtocolVersion < MIN_TRITIUM_VERSION)
                                     return debug::drop(NODE, "ACTION::GET: poolstake specifier not active");
 
                                 uint8_t nTTL;
@@ -2252,8 +2252,8 @@ namespace LLP
                             /* Check for pool stake. */
                             else if(fPoolstake)
                             {
-                                /* Poolstake specifier not active until v9 */
-                                if(runtime::unifiedtimestamp() < TAO::Ledger::StartBlockTimelock(9))
+                                /* Check for poolstake specifier active */
+                                if(nProtocolVersion < MIN_TRITIUM_VERSION)
                                     return debug::drop(NODE, "ACTION::NOTIFY: poolstake specifier not active");
 
                                 uint8_t nTTL;
@@ -2914,8 +2914,8 @@ namespace LLP
                     /* Handle a pooled coinstake. */
                     case SPECIFIER::POOLSTAKE:
                     {
-                        /* Poolstake specifier not active until v9 */
-                        if(runtime::unifiedtimestamp() < TAO::Ledger::StartBlockTimelock(9))
+                        /* Check for poolstake specifier active */
+                        if(nProtocolVersion < MIN_TRITIUM_VERSION)
                             return debug::drop(NODE, "TYPES::TRANSACTION: poolstake specifier not active");
 
                         /* Get the transction from the stream. */
