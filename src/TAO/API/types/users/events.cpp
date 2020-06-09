@@ -80,10 +80,6 @@ namespace TAO
 
                 try
                 {
-                    /* Auto-login feature if configured and not already logged in. */
-                    if(!config::fMultiuser.load() && !LoggedIn() && config::GetBoolArg("-autologin"))
-                        auto_login();
-
                     /* Ensure that the user is logged, in, wallet unlocked, and unlocked for notifications. */
                     if(LoggedIn())
                     { 

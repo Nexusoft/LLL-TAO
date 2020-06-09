@@ -46,12 +46,17 @@ namespace TAO
         , CONDITION()
         , fEvent(false)
         , fShutdown(false)
+        , LOGIN_THREAD()
         {
             Initialize();
 
-            /* Events processor only if multi-user session is disabled. */
-            if(config::fMultiuser.load() == false)
+            /* enable events processor only if configured and multi-user session is disabled. */
+            if(!config::fMultiuser.load() && config::fProcessNotifications)
                 EVENTS_THREAD = std::thread(std::bind(&Users::EventsThread, this));
+
+            /* Auto login thread only if enabled and not in multiuser mode */
+            if(!config::fMultiuser.load() && config::GetBoolArg("-autologin"))
+                LOGIN_THREAD = std::thread(std::bind(&Users::LoginThread, this));
         }
 
 
@@ -71,6 +76,42 @@ namespace TAO
             /* Clear all sessions */
             GetSessionManager().Clear();
 
+        }
+
+
+        /*  Background thread to auto login user once connections are established. */
+        void Users::LoginThread()
+        {
+            /* Mutex for this thread's condition variable */
+            std::mutex LOGIN_MUTEX;
+
+            /* The condition variable to wait on */
+            std::condition_variable LOGIN_CONDITION;
+
+            /* Loop the events processing thread until shutdown. */
+            while(!fShutdown.load())
+            {
+                /* retry every 5s if not logged in */
+                std::unique_lock<std::mutex> lock(LOGIN_MUTEX);
+                LOGIN_CONDITION.wait_for(lock, std::chrono::milliseconds(5000), [this]{return fShutdown.load();});
+
+                /* Check for a shutdown event. */
+                if(fShutdown.load())
+                    return;
+
+                try
+                {
+                    /* Auto-login if not already logged in. */
+                    if(!LoggedIn())
+                        auto_login();
+
+                }
+                catch(const std::exception& e)
+                {
+                    /* Log the error and attempt to continue processing */
+                    debug::error(FUNCTION, e.what());
+                }
+            }
         }
 
 

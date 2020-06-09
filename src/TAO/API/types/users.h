@@ -70,6 +70,9 @@ namespace TAO
             /** the shutdown flag for gracefully shutting down events thread. **/
             std::atomic<bool> fShutdown;
 
+            /** The auto login thread. **/
+            std::thread LOGIN_THREAD;
+
 
         public:
 
@@ -456,12 +459,20 @@ namespace TAO
             json::json ProcessNotifications(const json::json& params, bool fHelp);
 
 
+            /** LoginThread
+             *
+             *  Background thread to auto login user once connections are established .
+             *
+             **/
+             void LoginThread();
+
+
             /** EventsThread
              *
              *  Background thread to handle/suppress sigchain notifications.
              *
              **/
-             void EventsThread();
+            void EventsThread();
 
 
             /** NotifyEvent
