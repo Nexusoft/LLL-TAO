@@ -52,7 +52,7 @@ namespace TAO
 
             /* enable events processor only if configured and multi-user session is disabled. */
             if(!config::fMultiuser.load() && config::fProcessNotifications)
-                EVENTS_THREAD = std::thread(std::bind(&Users::EventsThread, this));
+                EVENTS_THREAD = std::thread(std::bind(&Users::NotificationsThread, this));
 
             /* Auto login thread only if enabled and not in multiuser mode */
             if(!config::fMultiuser.load() && config::GetBoolArg("-autologin"))

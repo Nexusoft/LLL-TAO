@@ -57,7 +57,7 @@ namespace TAO
     namespace API
     {
         /*  Background thread to initiate user events . */
-        void Users::EventsThread()
+        void Users::NotificationsThread()
         {
             /* Loop the events processing thread until shutdown. */
             while(!fShutdown.load())
@@ -84,7 +84,7 @@ namespace TAO
                     if(LoggedIn())
                     { 
                         Session& session = GetSessionManager().Get(0);
-                        if( !session.Locked() && session.CanProcessNotifications() && !TAO::Ledger::ChainState::Synchronizing())
+                        if(!session.Locked() && session.CanProcessNotifications() && !TAO::Ledger::ChainState::Synchronizing())
                             auto_process_notifications();
                     }
 
@@ -318,111 +318,6 @@ namespace TAO
             CONDITION.notify_one();
         }
 
-        /* Checks that the contract passes both Build() and Execute() */
-        bool Users::sanitize_contract(TAO::Operation::Contract& contract, std::map<uint256_t, TAO::Register::State> &mapStates)
-        {
-            /* Return flag */
-            bool fSanitized = false;
-
-            /* Lock the mempool at this point so that we can build and execute inside a mempool transaction */
-            RLOCK(TAO::Ledger::mempool.MUTEX);
-
-            try
-            {
-                /* Start a ACID transaction (to be disposed). */
-                LLD::TxnBegin(TAO::Ledger::FLAGS::MEMPOOL);
-
-                fSanitized = TAO::Register::Build(contract, mapStates, TAO::Ledger::FLAGS::MEMPOOL)
-                             && TAO::Operation::Execute(contract, TAO::Ledger::FLAGS::MEMPOOL);
-
-                /* Abort the mempool ACID transaction once the contract is sanitized */
-                LLD::TxnAbort(TAO::Ledger::FLAGS::MEMPOOL);
-
-            }
-            catch(const std::exception& e)
-            {
-                /* Abort the mempool ACID transaction */
-                LLD::TxnAbort(TAO::Ledger::FLAGS::MEMPOOL);
-
-                /* Log the error and attempt to continue processing */
-                debug::error(FUNCTION, e.what());
-            }
-
-            return fSanitized;
-        }
-
-
-        /* Used when in client mode, this method will send the transaction to a peer to validate it.  This will in turn check 
-        *  each contract in the transaction to verify that the conditions are met, the contract can be built, and executed.
-        *  If any of the contracts in the transaction fail then the method will return the index of the failed contract.
-        */
-        bool Users::validate_transaction(const TAO::Ledger::Transaction& tx, uint32_t& nContract)
-        {
-            bool fValid = false;
-
-            /* Check tritium server enabled. */
-            if(LLP::TRITIUM_SERVER)
-            {
-                memory::atomic_ptr<LLP::TritiumNode>& pNode = LLP::TRITIUM_SERVER->GetConnection();
-                if(pNode != nullptr)
-                {
-                    debug::log(1, FUNCTION, "CLIENT MODE: Validating transaction");
-
-                    /* Create our trigger nonce. */
-                    uint64_t nNonce = LLC::GetRand();
-                    pNode->PushMessage(LLP::Tritium::TYPES::TRIGGER, nNonce);
-
-                    /* Request the transaction validation */
-                    pNode->PushMessage(LLP::Tritium::ACTION::VALIDATE, uint8_t(LLP::Tritium::TYPES::TRANSACTION), tx);
-
-                    /* Create the condition variable trigger. */
-                    LLP::Trigger REQUEST_TRIGGER;
-                    pNode->AddTrigger(LLP::Tritium::RESPONSE::VALIDATED, &REQUEST_TRIGGER);
-
-                    /* Process the event. */
-                    REQUEST_TRIGGER.wait_for_nonce(nNonce, 10000);
-
-                    /* Cleanup our event trigger. */
-                    pNode->Release(LLP::Tritium::RESPONSE::VALIDATED);
-
-                    debug::log(1, FUNCTION, "CLIENT MODE: RESPONSE::VALIDATED received");
-
-                    /* Check the response args to see if it was valid */
-                    if(REQUEST_TRIGGER.HasArgs())
-                    {
-                        REQUEST_TRIGGER >> fValid;
-
-                        /* If it was not valid then deserialize the failing contract ID from the response */
-                        if(!fValid)
-                        {
-                            /* Deserialize the failing hash (which should be the one we sent) */
-                            uint512_t hashTx;
-                            REQUEST_TRIGGER >> hashTx;
-
-                            /* Deserialize the failing contract ID */
-                            REQUEST_TRIGGER >> nContract;
-
-                            /* Check the hash is valid */
-                            if(hashTx != tx.GetHash())
-                                throw APIException(0, "Invalid transaction ID received from RESPONSE::VALIDATED");
-
-                            /* Check the contract ID is valid */
-                            if(nContract > tx.Size() -1)
-                                throw APIException(0, "Invalid contract ID received from RESPONSE::VALIDATED");
-                        }
-                    }
-                    else
-                    {
-                        throw APIException(0, "CLIENT MODE: timeout waiting for RESPONSE::VALIDATED");
-                    }
-                    
-                }
-                else
-                    debug::error(FUNCTION, "no connections available...");
-            }
         
-            /* return the valid flag */
-            return fValid;
-        }
     }
 }

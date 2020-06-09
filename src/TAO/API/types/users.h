@@ -467,12 +467,12 @@ namespace TAO
              void LoginThread();
 
 
-            /** EventsThread
+            /** NotificationsThread
              *
              *  Background thread to handle/suppress sigchain notifications.
              *
              **/
-            void EventsThread();
+            void NotificationsThread();
 
 
             /** NotifyEvent
