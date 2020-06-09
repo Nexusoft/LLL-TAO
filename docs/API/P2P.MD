@@ -5,7 +5,9 @@ The P2P API can be used to establish a secure peer-to-peer connection between tw
 
 To begin a p2p session an initial connection request message is broadcast to the network, which propagates until the node where the peer is logged in is found.  The connection request is then added to the peers connection request list, which the peer can then choose to accept or ignore.  The connection request contains the IP address of the sending node, along with the senders genesis hash.    
 
-If the peer accepts a connection request, a new socket connection is established directly from the peer to the sender.  An immediate "handshake" takes place where both nodes will send a message, signed using the `network` key from their crypto object register.  The receiving node can then verify the message signature and also check that the public key matches what is stored the crypto object register of the sending signature chain.  This mechanism guarantees the identity of each peer, securing the communication.
+If the peer accepts a connection request, a new socket connection is established directly from the peer to the sender.  **NOTE** Since a direct socket connection is being made, the requesting node must be reachable from the peer.  This means that they either need to have a public IP address or, if behind a router, have UPNP enabled or else manually configure the required port forwarding. 
+
+Upon initial connection an immediate "handshake" takes place where both nodes will send a message, signed using the `network` key from their crypto object register.  The receiving node can then verify the message signature and also check that the public key matches what is stored the crypto object register of the sending signature chain.  This mechanism guarantees the identity of each peer, securing the communication.
 
 Once a p2p connection is established, users can send a message to the other user via the `send/message` method.  The message is added to a FIFO queue in the receiving users session.  The user can then read the message using `peek/message` (to read the message leaving it in the queue) or `pop/message` to read and remove it from the queue.
 
