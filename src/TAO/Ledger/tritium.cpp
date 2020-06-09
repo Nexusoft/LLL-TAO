@@ -432,7 +432,7 @@ namespace TAO
                 if(nVersion < 9)
                 {
                     /* Check producer is coinstake */
-                    if(!producer.IsCoinStake())
+                    if(!(producer.IsTrust() || producer.IsGenesis()))
                         return debug::error(FUNCTION, "producer transaction has to be trust/genesis for proof of stake");
 
                     /* Check the trust time is before Unified timestamp. */
@@ -445,19 +445,14 @@ namespace TAO
                 }
                 else
                 {
-                    /* Check producer size when block finder is solo trust or solo genesis */
-                    {
-                        TAO::Ledger::Transaction txProducer = vProducer.at(vProducer.size() - 1);
+                    /* Block finder is last producer */
+                    TAO::Ledger::Transaction txProducer = vProducer.at(vProducer.size() - 1);
 
-                        if((txProducer.IsTrust() || txProducer.IsGenesis()) && vProducer.size() > 1)
+                    if(txProducer.IsTrust() || txProducer.IsGenesis())
+                    {
+                        /* Solo staking has one producer that must be trust or genesis */
+                        if(vProducer.size() > 1)
                             return debug::error(FUNCTION, "cannot have more than one producer transaction for solo proof of stake");
-                    }
-
-                    for(const TAO::Ledger::Transaction& txProducer : vProducer)
-                    {
-                        /* Check producer is coinstake */
-                        if(!txProducer.IsCoinStake())
-                            return debug::error(FUNCTION, "producer transaction has to be trust/genesis for proof of stake");
 
                         /* Check the trust time is before Unified timestamp. */
                         if(txProducer.nTimestamp > (runtime::unifiedtimestamp() + runtime::maxdrift()))
@@ -466,6 +461,28 @@ namespace TAO
                          /* Check coinstake transaction Time is Before Block. */
                         if(txProducer.nTimestamp > GetBlockTime())
                             return debug::error(FUNCTION, "coinstake timestamp is after block timestamp");
+                    }
+                    else
+                    {
+                        /* Pooled stake block finder must be trust */
+                        if(!txProducer.IsTrustPool())
+                            return debug::error(FUNCTION, "pooled stake block finder must be pooled trust");
+
+                        /* Pooled staking can have multiple producers in vProducer, all must be pooled trust or genesis */
+                        for(const TAO::Ledger::Transaction& txPool : vProducer)
+                        {
+                            /* Check producer is coinstake */
+                            if(!(txPool.IsTrustPool() || txPool.IsGenesisPool()))
+                                return debug::error(FUNCTION, "pooled stake producer transaction must be pooled trust or genesis");
+
+                            /* Check the trust time is before Unified timestamp. */
+                            if(txPool.nTimestamp > (runtime::unifiedtimestamp() + runtime::maxdrift()))
+                                return debug::error(FUNCTION, "pooled coinstake timestamp too far in the future");
+
+                             /* Check coinstake transaction Time is Before Block. */
+                            if(txPool.nTimestamp > GetBlockTime())
+                                return debug::error(FUNCTION, "pooled coinstake timestamp is after block timestamp");
+                        }
                     }
                 }
 
@@ -654,7 +671,7 @@ namespace TAO
             {
                 uint32_t nIndex = 0;
 
-                /* A different approach to handling producer versions, so only needs one copy of the signature checking code */
+                /* A different approach to handling producer and vProducer, so only needs one copy of the signature checking code */
                 while(true)
                 {
                     TAO::Ledger::Transaction txProducer;
@@ -764,10 +781,6 @@ namespace TAO
                     return debug::error(FUNCTION, "invalid genesis generated");
             }
 
-            /* Check for proof of stake. */
-            if(IsProofOfStake() && !CheckStake())
-                return debug::error(FUNCTION, "invalid proof of stake");
-
             /* Check that producer isn't before previous block time. */
             if(nVersion < 9)
             {
@@ -785,6 +798,10 @@ namespace TAO
 
             /* Process the block state. */
             TAO::Ledger::BlockState state(*this);
+
+            /* Validate proof of stake. */
+            if(IsProofOfStake() && !CheckStake(state))
+                return debug::error(FUNCTION, "invalid proof of stake");
 
             /* Start the database transaction. */
             LLD::TxnBegin();
@@ -873,59 +890,136 @@ namespace TAO
 
 
         /* Check the proof of stake calculations. */
-        bool TritiumBlock::CheckStake() const
+        bool TritiumBlock::CheckStake(const BlockState& stateCurrent) const
         {
-            /* Reset the coinstake contract streams. */
-            producer[0].Reset();
+            /* Get the block finder producer */
+            TAO::Ledger::Transaction txProducer;
 
-            /* Get the trust object register. */
+            if(nVersion < 9)
+                txProducer = producer;
+            else
+                txProducer = vProducer.at(vProducer.size() - 1);
+
+            /* Get previous block. Used for block age/coin age and pooled stake proof calculations */
+            TAO::Ledger::BlockState statePrev;
+            if(!LLD::Ledger->ReadBlock(hashPrevBlock, statePrev))
+                return debug::error(FUNCTION, "prev block not in database");
+
+            /* The trust object register. */
             TAO::Register::Object account;
 
-            /* Deserialize from the stream. */
-            uint8_t nState = 0;
-            producer[0] >>= nState;
-            producer[0] >>= account;
-
-            /* Parse the object. */
-            if(!account.Parse())
-                return debug::error(FUNCTION, "failed to parse object register from pre-state");
-
-            /* Validate that it is a trust account. */
-            if(account.Standard() != TAO::Register::OBJECTS::TRUST)
-                return debug::error(FUNCTION, "stake producer account is not a trust account");
-
-            /* Calculate weights */
+            /* Weights for threshold calculations */
             cv::softdouble nTrustWeight = cv::softdouble(0.0);
             cv::softdouble nBlockWeight = cv::softdouble(0.0);
 
-            /* Keep track of stake change. */
+            /* Stake amount and stake change for threshold calculations */
             int64_t nStakeChange = 0;
             uint64_t nStake      = 0;
 
-            /* Check for trust transactions. */
-            if(producer.IsTrust())
+            /* Solo staking */
+            if(!txProducer.IsTrustPool())
             {
-                /* Seek to last trust. */
-                producer[0].Seek(1, TAO::Operation::Contract::OPERATIONS);
+                /* Reset the coinstake contract streams. */
+                txProducer[0].Reset();
+
+                /* Deserialize from the stream. */
+                uint8_t nState = 0;
+                txProducer[0] >>= nState;
+                txProducer[0] >>= account;
+
+                /* Parse the object. */
+                if(!account.Parse())
+                    return debug::error(FUNCTION, "failed to parse object register from pre-state");
+
+                /* Validate that it is a trust account. */
+                if(account.Standard() != TAO::Register::OBJECTS::TRUST)
+                    return debug::error(FUNCTION, "stake producer account is not a trust account");
+
+                /* Process trust transaction. */
+                if(txProducer.IsTrust())
+                {
+                    /* Seek to last trust. */
+                    txProducer[0].Seek(1, TAO::Operation::Contract::OPERATIONS);
+
+                    /* Get last trust hash. */
+                    uint512_t hashLastTrust = 0;
+                    txProducer[0] >> hashLastTrust;
+
+                    /* Get the trust score and stake change. */
+                    uint64_t nTrustScore = 0;
+                    txProducer[0] >> nTrustScore;
+                    txProducer[0] >> nStakeChange;
+
+                    /* Get the last stake block. */
+                    TAO::Ledger::BlockState stateLast;
+                    if(!LLD::Ledger->ReadBlock(hashLastTrust, stateLast))
+                        return debug::error(FUNCTION, "last block not in database");
+
+                    /* Calculate Block Age (time from last stake block until previous block) */
+                    uint64_t nBlockAge = statePrev.GetBlockTime() - stateLast.GetBlockTime();
+
+                    /* Get expected trust and block weights. */
+                    nTrustWeight = TrustWeight(nTrustScore);
+                    nBlockWeight = BlockWeight(nBlockAge);
+
+                    /* Set the stake to pre-state value. */
+                    nStake = account.get<uint64_t>("stake");
+                }
+
+                /* Process genesis transaction. */
+                else if(txProducer.IsGenesis())
+                {
+                    /* Genesis transaction can't have any transactions. */
+                    if(vtx.size() != 0)
+                        return debug::error(FUNCTION, "stake genesis cannot include transactions");
+
+                    /* Calculate the Coin Age. */
+                    const uint64_t nAge = GetBlockTime() - account.nModified;
+
+                    /* Validate that Genesis coin age exceeds required minimum. */
+                    if(nAge < MinCoinAge())
+                        return debug::error(FUNCTION, "stake genesis age is immature");
+
+                    /* Trust Weight For Genesis Transaction based on coin age. */
+                    nTrustWeight = GenesisWeight(nAge);
+
+                    /* Set the stake to pre-state value. */
+                    nStake = account.get<uint64_t>("balance");
+                }
+
+                else
+                    return debug::error(FUNCTION, "invalid stake operation");
+            }
+
+            /* Pooled staking */
+            else
+            {
+                /* Get the stake proofs */
+                uint256_t hashProof;
+                uint64_t nTimeBegin;
+                uint64_t nTimeEnd;
+
+                GetStakeProofs(stateCurrent, statePrev, nTimeBegin, nTimeEnd, hashProof);
+
+                /* Weights and stake change value for thresholds are from the block finder only, which we know is a pooled trust */
+                txProducer[0].Seek(1, TAO::Operation::Contract::OPERATIONS);
 
                 /* Get last trust hash. */
                 uint512_t hashLastTrust = 0;
-                producer[0] >> hashLastTrust;
+                txProducer[0] >> hashLastTrust;
 
-                /* Get the claimed trust score. */
+                /* Skip proofs */
+                txProducer[0].Seek(48, TAO::Operation::Contract::OPERATIONS);
+
+                /* Get the trust score and stake change. */
                 uint64_t nTrustScore = 0;
-                producer[0] >> nTrustScore;
-                producer[0] >> nStakeChange;
-
-                /* Get previous block. Block time used for block age/coin age calculation */
-                TAO::Ledger::BlockState statePrev;
-                if(!LLD::Ledger->ReadBlock(hashPrevBlock, statePrev))
-                    return debug::error(FUNCTION, "prev block not in database");
+                txProducer[0] >> nTrustScore;
+                txProducer[0] >> nStakeChange;
 
                 /* Get the last stake block. */
                 TAO::Ledger::BlockState stateLast;
                 if(!LLD::Ledger->ReadBlock(hashLastTrust, stateLast))
-                    return debug::error(FUNCTION, "last block not in database");
+                    return debug::error(FUNCTION, "last stake block not in database");
 
                 /* Calculate Block Age (time from last stake block until previous block) */
                 uint64_t nBlockAge = statePrev.GetBlockTime() - stateLast.GetBlockTime();
@@ -934,32 +1028,66 @@ namespace TAO
                 nTrustWeight = TrustWeight(nTrustScore);
                 nBlockWeight = BlockWeight(nBlockAge);
 
-                /* Set the stake to pre-state value. */
-                nStake = account.get<uint64_t>("stake");
+                /* For all producers, total up balance and verify proofs */
+                for(const TAO::Ledger::Transaction& txPool : vProducer)
+                {
+                    /* Reset the coinstake contract streams. */
+                    txPool[0].Reset();
+
+                    /* Deserialize from the stream. */
+                    uint8_t nState = 0;
+                    txPool[0] >>= nState;
+                    txPool[0] >>= account;
+
+                    /* Parse the object. */
+                    if(!account.Parse())
+                        return debug::error(FUNCTION, "failed to parse object register from pre-state");
+
+                    /* Validate that it is a trust account. */
+                    if(account.Standard() != TAO::Register::OBJECTS::TRUST)
+                        return debug::error(FUNCTION, "pooled stake producer account is not a trust account");
+
+                    /* Check for trust transactions. */
+                    if(txPool.IsTrustPool())
+                    {
+                        /* Seek to proofs */
+                        txPool[0].Seek(65, TAO::Operation::Contract::OPERATIONS);
+
+                        nStake += account.get<uint64_t>("stake");
+                    }
+
+                    else if(txProducer.IsGenesisPool())
+                    {
+                        /* Seek to proofs */
+                        txPool[0].Seek(1, TAO::Operation::Contract::OPERATIONS);
+
+                        /* Calculate the Coin Age. */
+                        const uint64_t nAge = GetBlockTime() - account.nModified;
+
+                        /* Validate that Genesis coin age exceeds required minimum. */
+                        if(nAge < MinCoinAge())
+                            return debug::error(FUNCTION, "stake genesis age is immature");
+
+                        nStake += account.get<uint64_t>("balance");
+                    }
+
+                    else
+                        return debug::error(FUNCTION, "invalid pooled stake operation");
+
+                    /* Get proofs */
+                    uint256_t txProof;
+                    uint64_t txTimeBegin;
+                    uint64_t txTimeEnd;
+
+                    txPool[0] >> txProof;
+                    txPool[0] >> txTimeBegin;
+                    txPool[0] >> txTimeEnd;
+
+                    if(hashProof == txProof && nTimeBegin == txTimeBegin && nTimeEnd == txTimeEnd)
+                        return debug::error(FUNCTION, "invalid pooled stake proofs");
+
+                }
             }
-
-            else if(producer.IsGenesis())
-            {
-                /* Genesis transaction can't have any transactions. */
-                if(vtx.size() != 0)
-                    return debug::error(FUNCTION, "genesis cannot include transactions");
-
-                /* Calculate the Coin Age. */
-                const uint64_t nAge = GetBlockTime() - account.nModified;
-
-                /* Validate that Genesis coin age exceeds required minimum. */
-                if(nAge < MinCoinAge())
-                    return debug::error(FUNCTION, "genesis age is immature");
-
-                /* Trust Weight For Genesis Transaction Reaches Maximum at 90 day Limit. */
-                nTrustWeight = GenesisWeight(nAge);
-
-                /* Set the stake to pre-state value. */
-                nStake = account.get<uint64_t>("balance");
-            }
-
-            else
-                return debug::error(FUNCTION, "invalid stake operation");
 
             /* If stake added, apply to threshold calculation. */
             uint64_t nStakeApplied = nStake;
@@ -971,7 +1099,7 @@ namespace TAO
                 return debug::error(FUNCTION, "cannot stake if stake balance is zero");
 
             /* Calculate the energy efficiency thresholds. */
-            uint64_t nBlockTime       = GetBlockTime() - producer.nTimestamp;
+            uint64_t nBlockTime       = GetBlockTime() - txProducer.nTimestamp;
             cv::softdouble nThreshold = GetCurrentThreshold(nBlockTime, nNonce);
             cv::softdouble nRequired  = GetRequiredThreshold(nTrustWeight, nBlockWeight, nStakeApplied);
 

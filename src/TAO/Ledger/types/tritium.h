@@ -202,8 +202,10 @@ namespace TAO
              *
              *  Check the proof of stake calculations.
              *
+             *  @param[in] stateCurrent - The current block being checked
+             *
              **/
-            bool CheckStake() const;
+            bool CheckStake(const BlockState& stateCurrent) const;
 
 
             /** VerifyWork

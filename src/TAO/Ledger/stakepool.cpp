@@ -204,8 +204,7 @@ namespace TAO
             debug::log(3, "STAKE POOL END ACCEPT ------------------------");
 
             /* Transaction must be a pooled staking coinstake. */
-//TODO Check specifically for pooled coinstake
-            if(!tx.IsCoinStake())
+            if(!(tx.IsTrustPool() || tx.IsGenesisPool()))
                 return debug::error(FUNCTION, "Pooled stake tx ", hashTx.SubString(), " REJECTED: not a pooled staking coinstake");
 
             /* Check that the transaction is in a valid state. */
@@ -297,7 +296,7 @@ namespace TAO
         }
 
 
-        /* CCheck if a transaction exists in the stake pool */
+        /* Check if a transaction exists in the stake pool */
         bool Stakepool::Has(const uint512_t& hashTx) const
         {
             RLOCK(MUTEX);

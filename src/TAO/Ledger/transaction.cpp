@@ -1045,7 +1045,7 @@ namespace TAO
         /* Determines if the transaction is a coinstake (trust or genesis) transaction. */
         bool Transaction::IsCoinStake() const
         {
-            return (IsGenesis() || IsTrust());
+            return (IsTrustPool() || IsTrust() || IsGenesisPool() || IsGenesis());
         }
 
 
@@ -1064,7 +1064,7 @@ namespace TAO
         }
 
 
-        /* Determines if the transaction is a coinstake transaction. */
+        /* Determines if the transaction is a solo staking trust transaction. */
         bool Transaction::IsTrust() const
         {
             /* Check all contracts. */
@@ -1079,7 +1079,7 @@ namespace TAO
         }
 
 
-        /* Determines if the transaction is a genesis transaction */
+        /* Determines if the transaction is a solo staking genesis transaction */
         bool Transaction::IsGenesis() const
         {
             /* Check all contracts. */
@@ -1087,6 +1087,36 @@ namespace TAO
             {
                 /* Check for occurance of genesis operation. */
                 if(contract.Primitive() == TAO::Operation::OP::GENESIS)
+                    return true;
+            }
+
+            return false;
+        }
+
+
+        /* Determines if the transaction is a pooled staking trust transaction. */
+        bool Transaction::IsTrustPool() const
+        {
+            /* Check all contracts. */
+            for(const auto& contract : vContracts)
+            {
+                /* Check for occurance of trust operation. */
+                if(contract.Primitive() == TAO::Operation::OP::TRUSTPOOL)
+                    return true;
+            }
+
+            return false;
+        }
+
+
+        /* Determines if the transaction is a pooled staking genesis transaction */
+        bool Transaction::IsGenesisPool() const
+        {
+            /* Check all contracts. */
+            for(const auto& contract : vContracts)
+            {
+                /* Check for occurance of genesis operation. */
+                if(contract.Primitive() == TAO::Operation::OP::GENESISPOOL)
                     return true;
             }
 

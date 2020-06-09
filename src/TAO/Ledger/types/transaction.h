@@ -305,7 +305,7 @@ namespace TAO
 
             /** IsTrust
              *
-             *  Determines if the transaction is a trust transaction.
+             *  Determines if the transaction is a solo staking trust transaction.
              *
              *  @return true if transaction is a coinbase.
              *
@@ -315,12 +315,32 @@ namespace TAO
 
             /** IsGenesis
              *
-             *  Determines if the transaction is a genesis transaction
+             *  Determines if the transaction is a solo staking genesis transaction
              *
              *  @return true if transaction is genesis
              *
              **/
             bool IsGenesis() const;
+
+
+            /** IsTrustPool
+             *
+             *  Determines if the transaction is a pooled staking trust transaction.
+             *
+             *  @return true if transaction is a coinbase.
+             *
+             **/
+            bool IsTrustPool() const;
+
+
+            /** IsGenesisPool
+             *
+             *  Determines if the transaction is a pooled staking genesis transaction
+             *
+             *  @return true if transaction is genesis
+             *
+             **/
+            bool IsGenesisPool() const;
 
 
             /** IsFirst
