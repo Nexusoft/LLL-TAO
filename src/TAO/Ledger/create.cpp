@@ -361,9 +361,12 @@ namespace TAO
             const uint32_t nChannel, TAO::Ledger::TritiumBlock& block, const uint64_t nExtraNonce,
             Legacy::Coinbase *pCoinbaseRecipients)
         {
+            /* Get the session */
+            uint256_t hashGenesis = user->Genesis();
+            TAO::API::Session& session = TAO::API::users->GetSession(hashGenesis);
 
             /* Lock this user's sigchain. */
-            LOCK(TAO::API::users->GetSession(user->Genesis()).CREATE_MUTEX);
+            LOCK(session.CREATE_MUTEX);
 
             /* Only allow prime, hash, and private channels. */
             if (nChannel < 1 || nChannel > 3)
