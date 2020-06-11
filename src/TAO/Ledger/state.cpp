@@ -908,7 +908,7 @@ namespace TAO
                     if(config::GetBoolArg("-printstate"))
                         debug::log(0, state.ToString(debug::flags::header | debug::flags::tx));
 
-                    /* Connect the block. */
+                    /* Disconnect the block. */
                     if(!state.Disconnect())
                         return debug::error(FUNCTION, "failed to disconnect ", state.GetHash().SubString());
 
@@ -1072,6 +1072,10 @@ namespace TAO
 
             debug::log(3, "BLOCK BEGIN-------------------------------------");
 
+            /* Pooled staking data */
+            uint64_t nPoolFeeTotal = 0;
+            uint512_t hashBlockFinder = vtx.back().second; //block finder is last in vtx
+
             /* Check through all the transactions. */
             for(const auto& proof : vtx)
             {
@@ -1126,8 +1130,8 @@ namespace TAO
                     /* If tx is coinstake, also write the last stake. */
                     if(tx.IsCoinStake())
                     {
-                        /* Check the trust values. */
-                        if(!tx.CheckTrust(this))
+                        /* Check the coinstake trust and reward values. */
+                        if(!tx.CheckTrust(this, nPoolFeeTotal, (hash == hashBlockFinder)))
                             return debug::error(FUNCTION, "trust checks failed");
 
                         /* Write the last stake value into the database. */

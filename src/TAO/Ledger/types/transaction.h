@@ -219,14 +219,19 @@ namespace TAO
 
             /** CheckTrust
              *
-             *  Check the trust score that is claimed is correct.
+             *  Check that the claimed trust score and stake reward are correct.
              *
              *  @param[in] pblock Pointer to the block that is connecting
+             *  @param[in,out] nPoolFeeTotal accumulates the net fees paid by non-block finder coinstakes in a pooled stake block;
+             *                               the net amount is added to the block finder reward and validated by this method
+             *  @param[in] fBlockFinder indicates that this transaction is the block finder coinstake
              *
-             *  @return true if trust score is correct.
+             *  nPoolFeeTotal and fBlockFinder are only used with pooled coinstakes, ignored for solo coinstake
+             *
+             *  @return true if trust score and reward correct.
              *
              **/
-            bool CheckTrust(BlockState* pblock) const;
+            bool CheckTrust(BlockState* pblock, uint64_t& nPoolFeeTotal, const bool fBlockFinder) const;
 
 
             /** Cost

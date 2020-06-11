@@ -505,11 +505,14 @@ namespace TAO
 
 
         /* Check the trust score that is claimed is correct. */
-        bool Transaction::CheckTrust(BlockState* pblock) const
+        bool Transaction::CheckTrust(BlockState* pblock, uint64_t& nPoolFeeTotal, const bool fBlockFinder) const
         {
             /* Check for proof of stake. */
-            if(!IsCoinStake())
+            if(!(IsCoinStake()))
                 return debug::error(FUNCTION, "no trust on non coinstake");
+
+            /* Identify whether coinstake is pooled stake or solo */
+            bool fPool = (IsTrustPool() || IsGenesisPool());
 
             /* Reset the coinstake contract streams. */
             vContracts[0].Reset();
@@ -534,12 +537,13 @@ namespace TAO
             uint64_t nTrust       = 0;
             uint64_t nTrustPrev   = 0;
             uint64_t nReward      = 0;
+            uint64_t nPoolFee     = 0;
             uint64_t nBlockAge    = 0;
             uint64_t nStake       = 0;
             int64_t  nStakeChange = 0;
 
             /* Check for trust calculations. */
-            if(IsTrust())
+            if(IsTrust() || IsTrustPool())
             {
                 /* Extract values from producer operation */
                 vContracts[0].Seek(1, TAO::Operation::Contract::OPERATIONS);
@@ -547,6 +551,10 @@ namespace TAO
                 /* Get last trust hash. */
                 uint512_t hashLastClaimed = 0;
                 vContracts[0] >> hashLastClaimed;
+
+                /* Skip proofs for pooled trust */
+                if(fPool)
+                    vContracts[0].Seek(48, TAO::Operation::Contract::OPERATIONS);
 
                 /* Get claimed trust score. */
                 uint64_t nClaimedTrust = 0;
@@ -604,6 +612,30 @@ namespace TAO
                 const uint64_t nTime = pblock->GetBlockTime() - stateLast.GetBlockTime();
                 nReward = GetCoinstakeReward(nStake, nTime, nTrust, false);
 
+                /* Handle pool fee for pooled staking */
+                if(fPool)
+                {
+                    if(fBlockFinder)
+                    {
+                        /* Block finder has total of pool fees from other producers in the block added to its reward */
+                        nReward = nReward + nPoolFeeTotal;
+                    }
+                    else
+                    {
+                        nPoolFee = CalculatePoolStakeFee(nReward);
+                        nPoolFeeTotal += nPoolFee; //accumulate pool fees from pooled coinstakes in the block
+
+                        /* Pooled coinstake producer has fee subtracted from reward, to be added to block finder */
+                        nReward -= nPoolFee;
+                    }
+                }
+                else
+                {
+                    /* Solo staking has no pool fee */
+                    nPoolFee = 0;
+                    nPoolFeeTotal = 0;
+                }
+
                 /* Validate the coinstake reward calculation */
                 if(nClaimedReward != nReward)
                     return debug::error(FUNCTION, "claimed stake reward ", nClaimedReward,
@@ -613,10 +645,14 @@ namespace TAO
                 pblock->nMint += nReward;
             }
 
-            else if(IsGenesis())
+            else if(IsGenesis() || IsGenesisPool())
             {
                 /* Seek to claimed reward. */
                 vContracts[0].Seek(1, TAO::Operation::Contract::OPERATIONS);
+
+                /* Skip proofs for pooled genesis */
+                if(fPool)
+                    vContracts[0].Seek(48, TAO::Operation::Contract::OPERATIONS);
 
                 /* Check claimed reward calculations. */
                 uint64_t nClaimedReward = 0;
@@ -631,16 +667,33 @@ namespace TAO
                 /* Calculate the coinstake reward */
                 nReward = GetCoinstakeReward(nStake, nAge, 0, true);
 
+                /* Pooled genesis cannot be block finder, so must pay a fee */
+                if(fPool)
+                {
+                    nPoolFee = CalculatePoolStakeFee(nReward);
+                    nPoolFeeTotal += nPoolFee; //accumulate pool fees from pooled coinstakes in the block
+
+                    /* Pooled coinstake producer has fee subtracted from reward, to be added to block finder */
+                    nReward -= nPoolFee;
+                }
+                else
+                {
+                    /* Solo staking has no pool fee */
+                    nPoolFee = 0;
+                    nPoolFeeTotal = 0;
+                }
+
                 /* Validate the coinstake reward calculation */
                 if(nClaimedReward != nReward)
-                    return debug::error(FUNCTION, "claimed hashGenesis reward ", nClaimedReward, " does not match calculated reward ", nReward);
+                    return debug::error(FUNCTION, "claimed stake genesis reward ", nClaimedReward,
+                                                  " does not match calculated reward ", nReward);
 
                 /* Update mint values. */
                 pblock->nMint += nReward;
             }
 
             else
-                return debug::error(FUNCTION, "invalid stake operation");
+                return debug::error(FUNCTION, "invalid pooled stake operation");
 
             /* Set target for logging */
             LLC::CBigNum bnTarget;
@@ -648,18 +701,51 @@ namespace TAO
 
             /* Verbose logging. */
             if(config::nVerbose >= 2)
-                debug::log(2, FUNCTION,
-                    "stake hash=", pblock->StakeHash().SubString(), ", ",
-                    "target=", bnTarget.getuint1024().SubString(), ", ",
-                    "type=", (IsTrust() ? "Trust" : "Genesis"), ", ",
-                    "trust score=", nTrust, ", ",
-                    "prev trust score=", nTrustPrev, ", ",
-                    "trust change=", int64_t(nTrust - nTrustPrev), ", ",
-                    "block age=", nBlockAge, ", ",
-                    "stake=", nStake, ", ",
-                    "reward=", nReward, ", ",
-                    "add stake=", ((nStakeChange > 0) ? nStakeChange : 0), ", ",
-                    "unstake=", ((nStakeChange < 0) ? (0 - nStakeChange) : 0));
+            {
+                if(!fPool)
+                    debug::log(2, FUNCTION,
+                        "stake hash=", pblock->StakeHash().SubString(), ", ",
+                        "target=", bnTarget.getuint1024().SubString(), ", ",
+                        "type=", (IsTrust() ? "Trust" : "Genesis"), ", ",
+                        "trust score=", nTrust, ", ",
+                        "prev trust score=", nTrustPrev, ", ",
+                        "trust change=", int64_t(nTrust - nTrustPrev), ", ",
+                        "block age=", nBlockAge, ", ",
+                        "stake=", nStake, ", ",
+                        "reward=", nReward, ", ",
+                        "add stake=", ((nStakeChange > 0) ? nStakeChange : 0), ", ",
+                        "unstake=", ((nStakeChange < 0) ? (0 - nStakeChange) : 0));
+
+                else if(!fBlockFinder)
+                    debug::log(2, FUNCTION,
+                        "type=", (IsTrustPool() ? "Pooled Trust" : "Pooled Genesis"), ", ",
+                        "trust score=", nTrust, ", ",
+                        "prev trust score=", nTrustPrev, ", ",
+                        "trust change=", int64_t(nTrust - nTrustPrev), ", ",
+                        "block age=", nBlockAge, ", ",
+                        "stake=", nStake, ", ",
+                        "stake reward=", (nReward + nPoolFee), ", ",
+                        "pool fee paid=", (0 - nPoolFee), ", ",
+                        "net reward=", nReward, ", ",
+                        "add stake=", ((nStakeChange > 0) ? nStakeChange : 0), ", ",
+                        "unstake=", ((nStakeChange < 0) ? (0 - nStakeChange) : 0));
+
+                else
+                    debug::log(2, FUNCTION,
+                        "pooled stake hash=", pblock->StakeHash().SubString(), ", ",
+                        "target=", bnTarget.getuint1024().SubString(), ", ",
+                        "type=", "Pooled Stake Block Finder (Trust)", ", ",
+                        "trust score=", nTrust, ", ",
+                        "prev trust score=", nTrustPrev, ", ",
+                        "trust change=", int64_t(nTrust - nTrustPrev), ", ",
+                        "block age=", nBlockAge, ", ",
+                        "stake=", nStake, ", ",
+                        "stake reward=", (nReward - nPoolFeeTotal), ", ",
+                        "pool fee received=", nPoolFeeTotal, ", ",
+                        "total reward=", nReward, ", ",
+                        "add stake=", ((nStakeChange > 0) ? nStakeChange : 0), ", ",
+                        "unstake=", ((nStakeChange < 0) ? (0 - nStakeChange) : 0));
+            }
 
             return true;
         }
