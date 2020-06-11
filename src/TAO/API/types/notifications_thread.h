@@ -49,29 +49,6 @@ namespace TAO
         class NotificationsThread 
         {
 
-        private:
-
-            /** the events flag for active oustanding events. **/
-            std::atomic<bool> fEvent;
-
-
-            /** the shutdown flag for gracefully shutting down events thread. **/
-            std::atomic<bool> fShutdown;
-
-            
-            /** The mutex for events processing. **/
-            mutable std::mutex NOTIFICATIONS_MUTEX;
-
-
-            /** The condition variable to awaken sleeping notification thread. **/
-            std::condition_variable CONDITION;
-
-
-            /** The sigchain notifications processing thread. **/
-            std::thread NOTIFICATIONS_THREAD;
-
-
-
         public:
 
 
@@ -90,9 +67,62 @@ namespace TAO
              **/
             void NotifyEvent();
 
+
+            /** Add
+             *
+             *  Adds a session ID to be processed by this thread
+             *
+             *  @param[in] nSession The session ID to process notifications for
+             * 
+             **/
+            void Add(const uint256_t& nSession);
+
+
+            /** Remove
+             *
+             *  Removes a session ID from the list processed by this thread
+             *
+             *  @param[in] nSession The session ID to remove
+             * 
+             **/
+            void Remove(const uint256_t& nSession);
+
+
+            /** Has
+             *
+             *  Checks to see if session ID is being processed by this thread
+             *
+             *  @param[in] nSession The session ID to search for
+             * 
+             **/
+            bool Has(const uint256_t& nSession) const;
+
+
+            /** Ssssion ID's that this thread is responsible for processing notifications for **/
+            std::vector<uint256_t> SESSIONS;
+
             
 
           private:
+
+            /** the events flag for active oustanding events. **/
+            std::atomic<bool> fEvent;
+
+
+            /** the shutdown flag for gracefully shutting down events thread. **/
+            std::atomic<bool> fShutdown;
+
+
+            /** The mutex for events processing. **/
+            mutable std::mutex NOTIFICATIONS_MUTEX;
+
+
+            /** The condition variable to awaken sleeping notification thread. **/
+            std::condition_variable CONDITION;
+
+
+            /** The sigchain notifications processing thread. **/
+            std::thread NOTIFICATIONS_THREAD;
 
 
             /** Thread
@@ -108,8 +138,10 @@ namespace TAO
             *
             *  Process notifications for the currently logged in user(s)
             *
+            *  @param[in] nSession The session ID to process notifications for
+            * 
             **/
-            void auto_process_notifications();
+            void auto_process_notifications(const uint256_t& nSession);
 
         };
     }

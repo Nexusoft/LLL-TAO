@@ -728,10 +728,18 @@ namespace LLP
             nLastNotificationsHeight.store(nBestHeight);
 
             /* Wake up events processor and wait for a signal to guarantee added transactions won't orphan a mined block. */
-            if(TAO::API::users && TAO::API::GetSessionManager().Get(0).CanProcessNotifications())
+            if(TAO::API::users && TAO::API::users->NOTIFICATIONS_PROCESSOR 
+                && TAO::API::GetSessionManager().Has(0) 
+                && TAO::API::GetSessionManager().Get(0).CanProcessNotifications())
             {
-                TAO::API::users->NOTIFICATIONS_THREADS[0]->NotifyEvent();
-                WaitEvent();
+                /* Find the thread processing notifications for this user */
+                TAO::API::NotificationsThread* pThread = TAO::API::users->NOTIFICATIONS_PROCESSOR->FindThread(0);
+                
+                if(pThread)
+                {
+                    pThread->NotifyEvent();
+                    WaitEvent();
+                }
             }
 
             /* If we detected a block height change, update the cached last hash of the logged in sig chain.
@@ -1013,7 +1021,7 @@ namespace LLP
     /*  Determines if the mining wallet is unlocked. */
     bool Miner::is_locked()
     {
-        return TAO::API::GetSessionManager().Get(0).Locked();
+        return TAO::API::GetSessionManager().Get(0).Locked() && !TAO::API::GetSessionManager().Get(0).CanMine();
     }
 
 

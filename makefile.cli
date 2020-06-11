@@ -463,6 +463,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_users_names.o \
 		build/API_types_users_namespaces.o \
 		build/API_types_users_notifications.o \
+		build/API_types_users_notifications_processor.o \
 		build/API_types_users_notifications_thread.o \
 		build/API_types_users_recover.o \
 		build/API_types_users_status.o \

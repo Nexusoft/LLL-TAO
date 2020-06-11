@@ -44,7 +44,7 @@ namespace TAO
         : Base()
         , fShutdown(false)
         , LOGIN_THREAD()
-        , NOTIFICATIONS_THREADS()
+        , NOTIFICATIONS_PROCESSOR(nullptr)
         {
             Initialize();
 
@@ -52,8 +52,9 @@ namespace TAO
             if(!config::fMultiuser.load() && config::GetBoolArg("-autologin"))
                 LOGIN_THREAD = std::thread(std::bind(&Users::LoginThread, this));
 
-            /* Add a single notifications processor thread (for now) */
-            NOTIFICATIONS_THREADS.push_back(new NotificationsThread());
+            /* Initialize the notifications processor if configured */
+            if(config::fProcessNotifications)
+                NOTIFICATIONS_PROCESSOR = new NotificationsProcessor(config::GetArg("-notificationsthreads", 1));
         }
 
 
@@ -63,12 +64,9 @@ namespace TAO
             /* Set the shutdown flag and join events processing thread. */
             fShutdown = true;
 
-            /* Delete the notifications processor threads. */
-            for(uint16_t nIndex = 0; nIndex < NOTIFICATIONS_THREADS.size(); ++nIndex)
-            {
-                delete NOTIFICATIONS_THREADS[nIndex];
-                NOTIFICATIONS_THREADS[nIndex] = nullptr;
-            }
+            /* Destroy the notifications processor */
+            if(NOTIFICATIONS_PROCESSOR)
+                delete NOTIFICATIONS_PROCESSOR;
 
             /* Clear all sessions */
             GetSessionManager().Clear();

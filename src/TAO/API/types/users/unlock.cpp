@@ -41,13 +41,8 @@ namespace TAO
             /* Pin parameter. */
             SecureString strPin;
 
-            /* Restrict Unlock to sessionless API */
-            if(config::fMultiuser.load())
-                throw APIException(-145, "Unlock not supported in multiuser mode");
-
-            /* Check default session (unlock only supported in single user mode). */
-            if(!GetSessionManager().Has(0))
-                throw APIException(-11, "User not logged in.");
+            /* Get the session */
+            Session& session = GetSession(params);
 
             /* Check for pin parameter. Parse the pin parameter. */
             if(params.find("pin") != params.end())
@@ -63,9 +58,6 @@ namespace TAO
             /* Check for unlock actions */
             uint8_t nUnlockedActions = TAO::Ledger::PinUnlock::UnlockActions::NONE; // default to ALL actions
 
-            /* Get the session */
-            Session& session = GetSessionManager().Get(0);
-
             /* If it has already been unlocked then set the Unlocked actions to the current unlocked actions */
             if(!session.Locked())
                 nUnlockedActions = session.GetActivePIN()->UnlockedActions();
@@ -77,6 +69,10 @@ namespace TAO
 
                 if(strMint == "1" || strMint == "true")
                 {
+                    /* Can't unlock for mining in multiuser mode */
+                    if(config::fMultiuser.load())
+                        throw APIException(-288, "Cannot unlock for mining in multiuser mode");
+
                      /* Check if already unlocked. */
                     if(!session.GetActivePIN().IsNull() && session.GetActivePIN()->CanMine())
                         throw APIException(-146, "Account already unlocked for mining");
@@ -92,6 +88,10 @@ namespace TAO
 
                 if(strMint == "1" || strMint == "true")
                 {
+                    /* Can't unlock for staking in multiuser mode */
+                    if(config::fMultiuser.load())
+                        throw APIException(-289, "Cannot unlock for staking in multiuser mode");
+
                      /* Check if already unlocked. */
                     if(!session.GetActivePIN().IsNull() && session.GetActivePIN()->CanStake())
                         throw APIException(-195, "Account already unlocked for staking");

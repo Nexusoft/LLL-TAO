@@ -39,7 +39,7 @@ namespace TAO
             
             /* Restrict Unlock to sessionless API */
             if(config::fMultiuser.load())
-                throw APIException(-145, "Unlock not supported in multiuser mode");
+                throw APIException(-287, "API method not supported in multiuser mode");
 
             /* Check default session (unlock only supported in single user mode). */
             if(!GetSessionManager().Has(0))

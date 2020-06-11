@@ -201,53 +201,47 @@ namespace TAO
         }
 
 
-        /* In sessionless API mode this method checks that the active sig chain has
-         * been unlocked to allow transactions.  If the account has not been specifically
-         * unlocked then we assume that they ARE allowed to transact, since the PIN would
-         * need to be provided in each API call */
+        /* Checks that the active sig chain has been unlocked to allow transactions. */
         bool Session::CanTransact() const
         {
             LOCK(MUTEX);
 
-            if(config::fMultiuser.load() || pActivePIN.IsNull() || pActivePIN->CanTransact())
+            if(pActivePIN.IsNull() && pActivePIN->CanTransact())
                 return true;
 
             return false;
         }
 
 
-        /* In sessionless API mode this method checks that the active sig chain has
-         *  been unlocked to allow mining */
+        /* Checks that the active sig chain has been unlocked to allow mining */
         bool Session::CanMine() const
         {
             LOCK(MUTEX);
 
-            if(config::fMultiuser.load() || (!pActivePIN.IsNull() && pActivePIN->CanMine()))
+            if(!config::fMultiuser.load() && (!pActivePIN.IsNull() && pActivePIN->CanMine()))
                 return true;
 
             return false;
         }
 
 
-        /* In sessionless API mode this method checks that the active sig chain has
-         *  been unlocked to allow staking */
+        /* Checks that the active sig chain has been unlocked to allow staking */
         bool Session::CanStake() const
         {
             LOCK(MUTEX);
             
-            if(config::fMultiuser.load() || (!pActivePIN.IsNull() && pActivePIN->CanStake()))
+            if(!config::fMultiuser.load() &&(!pActivePIN.IsNull() && pActivePIN->CanStake()))
                 return true;
 
             return false;
         }
 
-        /* In sessionless API mode this method checks that the active sig chain has
-         *  been unlocked to allow notifications to be processed */
+        /* Checks that the active sig chain has been unlocked to allow notifications to be processed */
         bool Session::CanProcessNotifications() const
         {
             LOCK(MUTEX);
             
-            if(config::fMultiuser.load() || (!pActivePIN.IsNull() && pActivePIN->ProcessNotifications()))
+            if(!pActivePIN.IsNull() && pActivePIN->ProcessNotifications())
                 return true;
 
             return false;

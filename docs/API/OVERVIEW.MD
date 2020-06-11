@@ -421,5 +421,8 @@ Error Codes
 | -284 | Failed to connect to peer |
 | -285 | No messages available |
 | -286 | Timeout waiting for peer to accept connection request |
+| -287 | API method not supported in multiuser mode |
+| -288 | Cannot unlock for mining in multiuser mode |
+| -289 | Cannot unlock for staking in multiuser mode |
 | -300 | API can only be used to lookup data for the currently logged in signature chain when running in client mode |
 

@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #pragma once
 
 #include <TAO/API/types/base.h>
-#include <TAO/API/types/notifications_thread.h>
+#include <TAO/API/types/notifications_processor.h>
 #include <TAO/API/include/session.h>
 
 #include <TAO/Operation/types/contract.h>
@@ -71,8 +71,8 @@ namespace TAO
             ~Users();
 
 
-            /** Vector of notifications processor threads **/
-            std::vector<NotificationsThread*> NOTIFICATIONS_THREADS;
+            /** Notifications processor for the uers API **/
+            NotificationsProcessor* NOTIFICATIONS_PROCESSOR;
 
 
             /** Initialize.

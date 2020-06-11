@@ -219,6 +219,10 @@ namespace TAO
             /* Create the new session */
             Session& session = GetSessionManager().Add(strUser, strPass, strPin);
 
+            /* Add the session to the notifications processor */
+            if(NOTIFICATIONS_PROCESSOR)
+                NOTIFICATIONS_PROCESSOR->Add(session.ID());
+
             ret["genesis"] = hashGenesis.ToString();
 
             if(config::fMultiuser.load())
@@ -382,6 +386,10 @@ namespace TAO
                         if(ssMessage.size() > 0)
                             LLP::TRITIUM_SERVER->_Relay(uint8_t(LLP::Tritium::ACTION::AUTH), ssMessage);
                     }
+
+                    /* Add the session to the notifications processor */
+                    if(NOTIFICATIONS_PROCESSOR)
+                        NOTIFICATIONS_PROCESSOR->Add(session.ID());
 
                     /* Start the stake minter if successful login. */
                     TAO::Ledger::TritiumMinter::GetInstance().Start();

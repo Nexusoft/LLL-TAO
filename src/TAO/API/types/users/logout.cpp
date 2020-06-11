@@ -104,6 +104,10 @@ namespace TAO
             if(stakeMinter.IsStarted())
                 stakeMinter.Stop();
 
+            /* Remove the session from the notifications processor */
+            if(NOTIFICATIONS_PROCESSOR)
+                NOTIFICATIONS_PROCESSOR->Remove(nSession);
+
             /* Delete the sigchan. */
             {
                 /* Lock the signature chain in case another process attempts to create a transaction . */

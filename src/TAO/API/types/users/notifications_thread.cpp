@@ -29,7 +29,8 @@ namespace TAO
     {
         /* Default Constructor. */
         NotificationsThread::NotificationsThread()
-        : fEvent(false)
+        : SESSIONS()
+        , fEvent(false)
         , fShutdown(false)
         , NOTIFICATIONS_MUTEX()
         , CONDITION()  
@@ -54,6 +55,41 @@ namespace TAO
 
         }
 
+        /* Adds a session ID to be processed by this thread */
+        void NotificationsThread::Add(const uint256_t& nSession)
+        {
+            /* lock the notifications mutex so we can access the sessions */
+            LOCK(NOTIFICATIONS_MUTEX);
+
+            /* Add the session if it is not already in the vector*/
+            if(std::find(SESSIONS.begin(), SESSIONS.end(), nSession) == SESSIONS.end() )
+                SESSIONS.push_back(nSession);
+
+        }
+
+
+        /* Removes a session ID from the list processed by this thread */
+        void NotificationsThread::Remove(const uint256_t& nSession)
+        {
+            /* lock the notifications mutex so we can access the sessions */
+            LOCK(NOTIFICATIONS_MUTEX);
+
+            /* Remove the session if it is in the vector*/
+            SESSIONS.erase(std::remove(SESSIONS.begin(), SESSIONS.end(), nSession));
+        }
+
+
+        /* Checks to see if session ID is being processed by this thread*/
+        bool NotificationsThread::Has(const uint256_t& nSession) const
+        {
+            /* lock the notifications mutex so we can access the sessions */
+            LOCK(NOTIFICATIONS_MUTEX);
+
+            /* Check if the sessions vector contains the session id */
+            return std::find(SESSIONS.begin(), SESSIONS.end(), nSession) != SESSIONS.end();
+        }
+
+
         /*  Background thread to initiate user events . */
         void NotificationsThread::Thread()
         {
@@ -76,21 +112,29 @@ namespace TAO
                 if(fShutdown.load())
                     return;
 
-                try
-                {
-                    /* Ensure that the user is logged, in, wallet unlocked, and unlocked for notifications. */
-                    if(TAO::API::users->LoggedIn())
-                    { 
-                        Session& session = GetSessionManager().Get(0);
-                        if(!session.Locked() && session.CanProcessNotifications() && !TAO::Ledger::ChainState::Synchronizing())
-                            auto_process_notifications();
-                    }
+                /* Check we're not synchronizing */
+                if(TAO::Ledger::ChainState::Synchronizing())
+                    return;
 
-                }
-                catch(const std::exception& e)
+                /* Iterate through all sessions */
+                for(const auto nSession : SESSIONS)
                 {
-                    /* Log the error and attempt to continue processing */
-                    debug::error(FUNCTION, e.what());
+                    try
+                    {
+                        /* Ensure that the user is logged, in, wallet unlocked, and unlocked for notifications. */
+                        if(GetSessionManager().Has(nSession))
+                        { 
+                            Session& session = GetSessionManager().Get(nSession);
+                            if(!session.Locked() && session.CanProcessNotifications())
+                                auto_process_notifications(session.ID());
+                        }
+
+                    }
+                    catch(const std::exception& e)
+                    {
+                        /* Log the error and attempt to continue processing */
+                        debug::error(FUNCTION, e.what());
+                    }
                 }
 
             }
@@ -102,10 +146,13 @@ namespace TAO
 
 
         /* Process notifications for the currently logged in user(s) */
-        void NotificationsThread::auto_process_notifications()
+        void NotificationsThread::auto_process_notifications(const uint256_t& nSession)
         {
             /* Dummy params to pass into ProcessNotifications call */
             json::json params;
+
+            /* Set the session ID in the params */
+            params["session"] = nSession.ToString();
 
             /* Flag indicating the process should immediately retry upon failure.  This is flagged by certain exception codes */
             bool fRetry = false;

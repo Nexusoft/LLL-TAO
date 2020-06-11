@@ -167,10 +167,7 @@ namespace TAO
 
                 /** CanTransact
                  *
-                 *  In sessionless API mode this method checks that the active sig chain has
-                 *  been unlocked to allow transactions.  If the account has not been specifically
-                 *  unlocked then we assume that they ARE allowed to transact, since the PIN would
-                 *  need to be provided in each API call.
+                 *  Checks that the active sig chain has been unlocked to allow transactions.
                  *
                  **/
                 bool CanTransact() const;
@@ -178,8 +175,7 @@ namespace TAO
 
                 /** CanMine
                  *
-                 *  In sessionless API mode this method checks that the active sig chain has
-                 *  been unlocked to allow mining.
+                 *  Checks that the active sig chain has been unlocked to allow mining
                  *
                  **/
                 bool CanMine() const;
@@ -187,8 +183,7 @@ namespace TAO
 
                 /** CanStake
                  *
-                 *  In sessionless API mode this method checks that the active sig chain has
-                 *  been unlocked to allow staking.
+                 *  Checks that the active sig chain has been unlocked to allow staking
                  *
                  **/
                 bool CanStake() const;
@@ -196,8 +191,7 @@ namespace TAO
 
                 /** CanProcessNotifications
                  *
-                 *  In sessionless API mode this method checks that the active sig chain has
-                 *  been unlocked to allow notifications to be processed.
+                 *  Checks that the active sig chain has been unlocked to allow notifications to be processed
                  *
                  **/
                 bool CanProcessNotifications() const;
