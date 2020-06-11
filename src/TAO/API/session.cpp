@@ -190,7 +190,7 @@ namespace TAO
         {
             LOCK(MUTEX);
 
-            if(config::fMultiuser.load() || pActivePIN.IsNull() || pActivePIN->PIN().empty())
+            if(pActivePIN.IsNull() || pActivePIN->PIN().empty())
                 return true;
 
             return false;
