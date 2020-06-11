@@ -433,7 +433,7 @@ namespace TAO
                 {
                     /* Check producer is coinstake */
                     if(!(producer.IsTrust() || producer.IsGenesis()))
-                        return debug::error(FUNCTION, "producer transaction has to be trust/genesis for proof of stake");
+                        return debug::error(FUNCTION, "producer transaction must be trust/genesis for proof of stake");
 
                     /* Check the trust time is before Unified timestamp. */
                     if(producer.nTimestamp > (runtime::unifiedtimestamp() + runtime::maxdrift()))
@@ -446,7 +446,11 @@ namespace TAO
                 else
                 {
                     /* Block finder is last producer */
-                    TAO::Ledger::Transaction txProducer = vProducer.at(vProducer.size() - 1);
+                    TAO::Ledger::Transaction txProducer = vProducer.back();
+
+                    /* Check that block finder is s coinstake */
+                    if(!txProducer.IsCoinStake())
+                        return debug::error(FUNCTION, "block finder transaction must be a coinstake for proof of stake");
 
                     if(txProducer.IsTrust() || txProducer.IsGenesis())
                     {
@@ -621,7 +625,7 @@ namespace TAO
                     return debug::error(FUNCTION, "unknown transaction type");
             }
 
-            /* Check producer. */
+            /* Check producer(s) */
             if(nVersion < 9)
             {
                 if(mapLast.count(producer.hashGenesis) && producer.hashPrevTx != mapLast[producer.hashGenesis])
@@ -636,6 +640,9 @@ namespace TAO
             }
             else
             {
+                /* All producers must have unique user genesis, no duplicates */
+                std::set<uint256_t> setGenesis;
+
                 for(const TAO::Ledger::Transaction& txProducer : vProducer)
                 {
                     if(mapLast.count(txProducer.hashGenesis) && txProducer.hashPrevTx != mapLast[txProducer.hashGenesis])
@@ -647,7 +654,11 @@ namespace TAO
                     /* Add producer to merkle tree list. */
                     vHashes.push_back(hashProducer);
                     setUnique.insert(hashProducer);
+                    setGenesis.insert(txProducer.hashGenesis);
                 }
+
+                if(setGenesis.size() != vProducer.size())
+                    return debug::error(FUNCTION, "duplicate user genesis in block producers");
             }
 
             /* Check for missing transactions. */
@@ -671,7 +682,7 @@ namespace TAO
             {
                 uint32_t nIndex = 0;
 
-                /* A different approach to handling producer and vProducer, so only needs one copy of the signature checking code */
+                /* Use this while loop to handle producer and vProducer, so only need one copy of the signature checking code */
                 while(true)
                 {
                     TAO::Ledger::Transaction txProducer;
@@ -847,7 +858,7 @@ namespace TAO
             }
 
             /* Add the producer transaction(s) */
-            if(nVersion > 9)
+            if(nVersion < 9)
             {
                 if(!LLD::Ledger->WriteTx(producer.GetHash(), producer))
                     return debug::error(FUNCTION, "failed to write producer to disk");
@@ -898,7 +909,7 @@ namespace TAO
             if(nVersion < 9)
                 txProducer = producer;
             else
-                txProducer = vProducer.at(vProducer.size() - 1);
+                txProducer = vProducer.back();
 
             /* Get previous block. Used for block age/coin age and pooled stake proof calculations */
             TAO::Ledger::BlockState statePrev;
@@ -915,6 +926,8 @@ namespace TAO
             /* Stake amount and stake change for threshold calculations */
             int64_t nStakeChange = 0;
             uint64_t nStake      = 0;
+
+            /* Block check verifies block finder is trust, genesis, or pooled trust. If pooled trust, it is pooled stake block */
 
             /* Solo staking */
             if(!txProducer.IsTrustPool())
@@ -988,11 +1001,11 @@ namespace TAO
                 }
 
                 else
-                    return debug::error(FUNCTION, "invalid stake operation");
+                    return debug::error(FUNCTION, "invalid solo stake operation");
             }
 
             /* Pooled staking */
-            else
+            else if(nVersion >= 9)
             {
                 /* Get the stake proofs */
                 uint256_t hashProof;
@@ -1001,7 +1014,10 @@ namespace TAO
 
                 GetStakeProofs(*this, statePrev, nTimeBegin, nTimeEnd, hashProof);
 
-                /* Weights and stake change value for thresholds are from the block finder only, which we know is a pooled trust */
+                /* Reset the block finder contract streams. */
+                txProducer[0].Reset();
+
+                /* Get weights and stake change for thresholds from block finder (pooled trust). */
                 txProducer[0].Seek(1, TAO::Operation::Contract::OPERATIONS);
 
                 /* Get last trust hash. */
@@ -1028,7 +1044,7 @@ namespace TAO
                 nTrustWeight = TrustWeight(nTrustScore);
                 nBlockWeight = BlockWeight(nBlockAge);
 
-                /* For all producers, total up balance and verify proofs */
+                /* For all stake pool producers, total up balance and verify proofs */
                 for(const TAO::Ledger::Transaction& txPool : vProducer)
                 {
                     /* Reset the coinstake contract streams. */
@@ -1087,9 +1103,13 @@ namespace TAO
                         return debug::error(FUNCTION, "invalid pooled stake proofs");
 
                 }
+
             }
 
-            /* If stake added, apply to threshold calculation. */
+            else
+                return debug::error(FUNCTION, "invalid stake operation");
+
+            /* If stake added in block finder, apply to threshold calculation. */
             uint64_t nStakeApplied = nStake;
             if(nStakeChange > 0)
                 nStakeApplied += nStakeChange;
