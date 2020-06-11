@@ -119,7 +119,7 @@ namespace TAO
 
             /** The condition variable to awaken sleeping notification thread. **/
             std::condition_variable CONDITION;
-
+            
 
             /** The sigchain notifications processing thread. **/
             std::thread NOTIFICATIONS_THREAD;

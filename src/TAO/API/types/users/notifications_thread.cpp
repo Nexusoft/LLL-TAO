@@ -33,7 +33,7 @@ namespace TAO
         , fEvent(false)
         , fShutdown(false)
         , NOTIFICATIONS_MUTEX()
-        , CONDITION()  
+        , CONDITION()
         , NOTIFICATIONS_THREAD(std::bind(&NotificationsThread::Thread, this))
         {
 
@@ -93,6 +93,9 @@ namespace TAO
         /*  Background thread to initiate user events . */
         void NotificationsThread::Thread()
         {
+            /** The interval between processing notifications in milliseconds, defaults to 5s if not specified in config **/
+            uint64_t nInterval = config::GetArg("-notificationsinterval", 5) * 1000;
+
             /* Loop the events processing thread until shutdown. */
             while(!fShutdown.load())
             {
@@ -106,7 +109,7 @@ namespace TAO
 
                 /* Wait for the events processing thread to be woken up (such as a login) */
                 std::unique_lock<std::mutex> lock(NOTIFICATIONS_MUTEX);
-                CONDITION.wait_for(lock, std::chrono::milliseconds(5000), [this]{ return fEvent.load() || fShutdown.load();});
+                CONDITION.wait_for(lock, std::chrono::milliseconds(nInterval), [this]{ return fEvent.load() || fShutdown.load();});
 
                 /* Check for a shutdown event. */
                 if(fShutdown.load())
