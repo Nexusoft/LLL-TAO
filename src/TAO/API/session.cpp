@@ -109,7 +109,6 @@ namespace TAO
         /* Returns the session ID for this session */
         uint256_t Session::ID() const
         {
-            LOCK(MUTEX);
             return nID;
         }
 
@@ -117,7 +116,6 @@ namespace TAO
         /* Returns the active PIN for this session. */
         const memory::encrypted_ptr<TAO::Ledger::PinUnlock>& Session::GetActivePIN() const
         {
-            LOCK(MUTEX);
             return pActivePIN;
         }
 
@@ -165,7 +163,6 @@ namespace TAO
         /* Returns the cached network private key. */
         uint512_t Session::GetNetworkKey() const
         {
-            LOCK(MUTEX);
             return nNetworkKey->DATA;
         }
 
@@ -181,7 +178,6 @@ namespace TAO
         /* Gets last active timestamp. */
         uint64_t Session::GetLastActive() const
         {
-            LOCK(MUTEX);
             return nLastActive;
         }
 
@@ -248,13 +244,9 @@ namespace TAO
         }
 
 
-
-
         /*  Returns the sigchain the account logged in. */
         const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& Session::GetAccount() const
         {
-            LOCK(MUTEX);
-
             return pSigChain;
         }
 
