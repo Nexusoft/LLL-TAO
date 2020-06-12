@@ -969,7 +969,7 @@ namespace TAO
                         return debug::error(FUNCTION, "last block not in database");
 
                     /* Calculate Block Age (time from last stake block until previous block) */
-                    uint64_t nBlockAge = statePrev.GetBlockTime() - stateLast.GetBlockTime();
+                    const uint64_t nBlockAge = statePrev.GetBlockTime() - stateLast.GetBlockTime();
 
                     /* Get expected trust and block weights. */
                     nTrustWeight = TrustWeight(nTrustScore);
@@ -1038,7 +1038,17 @@ namespace TAO
                     return debug::error(FUNCTION, "last stake block not in database");
 
                 /* Calculate Block Age (time from last stake block until previous block) */
-                uint64_t nBlockAge = statePrev.GetBlockTime() - stateLast.GetBlockTime();
+                const uint64_t nBlockAge = statePrev.GetBlockTime() - stateLast.GetBlockTime();
+
+                /* Validate maximum number of coinstakes in vProducer */
+                uint32_t nProducerSize = TAO::Ledger::POOL_MAX_TX_BASE;
+
+                /* After block age exceeds 2 hours, bump up allowed producer size by one every hour */
+                if(nBlockAge >= 7200)
+                    nProducerSize = std::min(nProducerSize + ((nBlockAge - 7200) /3600), TAO::Ledger::POOL_MAX_TX);
+
+                if(vProducer.size() > nProducerSize)
+                    return debug::error(FUNCTION, "too many producers in pooled stake block");
 
                 /* Get expected trust and block weights. */
                 nTrustWeight = TrustWeight(nTrustScore);
