@@ -62,9 +62,13 @@ namespace TAO
             if(config::fTestNet)
                 return TAO::Ledger::TESTNET_MINIMUM_INTERVAL;
 
-            /* Apply legacy interval for all versions prior to version 7 */
-            if(block.nVersion < 7)
+            /* Apply legacy interval for all versions prior to v7 */
+            else if(block.nVersion < 7)
                 return TAO::Ledger::MAINNET_MINIMUM_INTERVAL_LEGACY;
+
+            /* Apply original Tritium interval if prior to v9 when pooled staking implemented */
+            else if(block.nVersion < 9)
+                return TAO::Ledger::MAINNET_MINIMUM_INTERVAL_PREPOOL;
 
             return TAO::Ledger::MAINNET_MINIMUM_INTERVAL;
         }

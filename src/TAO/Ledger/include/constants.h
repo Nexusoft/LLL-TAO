@@ -153,8 +153,12 @@ namespace TAO
         const uint32_t MAINNET_MINIMUM_INTERVAL_LEGACY = 120;
 
 
+        /** Minimum span between trust blocks mainnet prior to v9 when pooled staking implemented. **/
+        const uint32_t MAINNET_MINIMUM_INTERVAL_PREPOOL = 250;
+
+
         /** Minimum span between trust blocks mainnet. **/
-        const uint32_t MAINNET_MINIMUM_INTERVAL = 250;
+        const uint32_t MAINNET_MINIMUM_INTERVAL = 60;
 
 
         /** NXS token default digits. **/
