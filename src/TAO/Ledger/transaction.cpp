@@ -627,7 +627,7 @@ namespace TAO
                     }
                     else
                     {
-                        nPoolFee = CalculatePoolStakeFee(nReward);
+                        nPoolFee = GetPoolStakeFee(nReward);
                         nPoolFeeTotal += nPoolFee; //accumulate pool fees from pooled coinstakes in the block
 
                         /* Pooled coinstake producer has fee subtracted from reward, to be added to block finder */
@@ -678,7 +678,7 @@ namespace TAO
                 /* Pooled genesis cannot be block finder, so must pay a fee */
                 if(fPool)
                 {
-                    nPoolFee = CalculatePoolStakeFee(nReward);
+                    nPoolFee = GetPoolStakeFee(nReward);
                     nPoolFeeTotal += nPoolFee; //accumulate pool fees from pooled coinstakes in the block
 
                     /* Pooled coinstake producer has fee subtracted from reward, to be added to block finder */

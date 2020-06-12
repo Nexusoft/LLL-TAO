@@ -807,7 +807,7 @@ namespace TAO
             }
             else
             {
-                TAO::Ledger::Transaction txProducer = block.vProducer.back();
+                const TAO::Ledger::Transaction& txProducer = block.vProducer.back();
 
                 user->Generate(txProducer.nSequence, strPIN).GetBytes();
                 nKeyType = txProducer.nKeyType;

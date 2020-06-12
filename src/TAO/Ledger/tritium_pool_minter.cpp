@@ -318,7 +318,7 @@ namespace TAO
             nStakeRate.store(StakeRate(nTrust, fGenesis));
 
             /* Adjust pool reward for fee */
-            nPoolReward = nPoolReward - CalculatePoolStakeFee(nPoolReward);
+            nPoolReward = nPoolReward - GetPoolStakeFee(nPoolReward);
 
             /* Setup the pool coinstake and sign */
             TAO::Ledger::Transaction txPool = txProducer;

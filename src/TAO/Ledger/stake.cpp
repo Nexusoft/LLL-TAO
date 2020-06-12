@@ -540,7 +540,7 @@ namespace TAO
 
 
         /*  Calculate the fee to be paid if a coinstake is mined by the stake pool */
-        uint64_t CalculatePoolStakeFee(const uint64_t& nReward)
+        uint64_t GetPoolStakeFee(const uint64_t& nReward)
         {
             return (TAO::Ledger::POOL_FEE_PCT * nReward) / 100;
         }

@@ -277,7 +277,7 @@ namespace TAO
                             uint64_t& nTimeBegin, uint64_t& nTimeEnd, uint256_t& hashProof);
 
 
-        /** CalculateStakePoolFee
+        /** GetPoolStakeFee
          *
          *  Calculate the fee to be paid if a coinstake is mined by the stake pool.
          *
@@ -286,7 +286,7 @@ namespace TAO
          *  @return the fee amount
          *
          **/
-        uint64_t CalculatePoolStakeFee(const uint64_t& nReward);
+        uint64_t GetPoolStakeFee(const uint64_t& nReward);
 
     }
 }
