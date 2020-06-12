@@ -963,7 +963,7 @@ namespace TAO
             }
             else
             {
-                txProducer = block.vProducer.at(block.vProducer.size() - 1);
+                txProducer = block.vProducer.back();
 
                 UpdateProducerTimestamp(txProducer);
 

@@ -533,6 +533,11 @@ namespace TAO
             if(account.Standard() != TAO::Register::OBJECTS::TRUST)
                 return debug::error(FUNCTION, "stake producer account is not a trust account");
 
+            /* Get previous block. Block time used for block age/coin age calculation */
+            TAO::Ledger::BlockState statePrev;
+            if(!LLD::Ledger->ReadBlock(pblock->hashPrevBlock, statePrev))
+                return debug::error(FUNCTION, "prev block not in database");
+
             /* Values for trust calculations. */
             uint64_t nTrust       = 0;
             uint64_t nTrustPrev   = 0;
@@ -578,11 +583,6 @@ namespace TAO
                 nTrustPrev = account.get<uint64_t>("trust");
                 nStake = account.get<uint64_t>("stake");
 
-                /* Get previous block. Block time used for block age/coin age calculation */
-                TAO::Ledger::BlockState statePrev;
-                if(!LLD::Ledger->ReadBlock(pblock->hashPrevBlock, statePrev))
-                    return debug::error(FUNCTION, "prev block not in database");
-
                 /* Get the last stake block. */
                 TAO::Ledger::BlockState stateLast;
                 if(!LLD::Ledger->ReadBlock(hashLastClaimed, stateLast))
@@ -608,8 +608,13 @@ namespace TAO
                 if(nInterval <= MinStakeInterval(*pblock))
                     return debug::error(FUNCTION, "stake block interval ", nInterval, " below minimum interval");
 
-                /* Calculate the coinstake reward */
-                const uint64_t nTime = pblock->GetBlockTime() - stateLast.GetBlockTime();
+                /* Calculate coinstake reward. Stake pool reward based on prior instead of current block time if not block finder */
+                uint64_t nTime;
+                if(fPool && !fBlockFinder)
+                    nTime = statePrev.GetBlockTime() - stateLast.GetBlockTime();
+                else
+                    nTime = pblock->GetBlockTime() - stateLast.GetBlockTime();
+
                 nReward = GetCoinstakeReward(nStake, nTime, nTrust, false);
 
                 /* Handle pool fee for pooled staking */
@@ -632,7 +637,6 @@ namespace TAO
                 else
                 {
                     /* Solo staking has no pool fee */
-                    nPoolFee = 0;
                     nPoolFeeTotal = 0;
                 }
 
@@ -661,8 +665,12 @@ namespace TAO
                 /* Get Genesis stake from the trust account pre-state balance. Genesis reward based on balance (that will move to stake) */
                 nStake = account.get<uint64_t>("balance");
 
-                /* Calculate the Coin Age. */
-                const uint64_t nAge = pblock->GetBlockTime() - account.nModified;
+                /* Calculate coin age. Stake pool genesis reward based on prior instead of current block time */
+                uint64_t nAge;
+                if(fPool)
+                    nAge = statePrev.GetBlockTime() - account.nModified;
+                else
+                    nAge = pblock->GetBlockTime() - account.nModified;
 
                 /* Calculate the coinstake reward */
                 nReward = GetCoinstakeReward(nStake, nAge, 0, true);
@@ -679,7 +687,6 @@ namespace TAO
                 else
                 {
                     /* Solo staking has no pool fee */
-                    nPoolFee = 0;
                     nPoolFeeTotal = 0;
                 }
 

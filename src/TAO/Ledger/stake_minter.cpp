@@ -623,7 +623,7 @@ namespace TAO
                 if(block.nVersion < 9)
                     nBlockTime = nTimeCurrent - block.producer.nTimestamp;
                 else
-                    nBlockTime = nTimeCurrent - block.vProducer.at(block.vProducer.size() - 1).nTimestamp;
+                    nBlockTime = nTimeCurrent - block.vProducer.back().nTimestamp;
 
                 /* Start the check interval on first loop iteration */
                 if(nTimeStart == 0)
@@ -695,7 +695,7 @@ namespace TAO
             if(block.nVersion < 9)
                 txProducer = block.producer;
             else
-                txProducer = block.vProducer.at(block.vProducer.size() - 1);
+                txProducer = block.vProducer.back();
 
             /* Add coinstake reward */
             txProducer[0] << nReward;
@@ -807,8 +807,10 @@ namespace TAO
             }
             else
             {
-                user->Generate(block.vProducer.at(block.vProducer.size() - 1).nSequence, strPIN).GetBytes();
-                nKeyType = block.vProducer.at(block.vProducer.size() - 1).nKeyType;
+                TAO::Ledger::Transaction txProducer = block.vProducer.back();
+
+                user->Generate(txProducer.nSequence, strPIN).GetBytes();
+                nKeyType = txProducer.nKeyType;
             }
 
             LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());

@@ -1077,8 +1077,8 @@ namespace TAO
                         /* Seek to proofs */
                         txPool[0].Seek(1, TAO::Operation::Contract::OPERATIONS);
 
-                        /* Calculate the Coin Age. */
-                        const uint64_t nAge = GetBlockTime() - account.nModified;
+                        /* Calculate coin age. Stake pool genesis reward based on prior instead of current block time */
+                        const uint64_t nAge = statePrev.GetBlockTime() - account.nModified;
 
                         /* Validate that Genesis coin age exceeds required minimum. */
                         if(nAge < MinCoinAge())
@@ -1183,7 +1183,7 @@ namespace TAO
                 return Block::StakeHash(producer.hashGenesis);
 
             else
-                return Block::StakeHash(vProducer.at(vProducer.size() - 1).hashGenesis); //last producer is block finder
+                return Block::StakeHash(vProducer.back().hashGenesis); //last producer is block finder
         }
     }
 }

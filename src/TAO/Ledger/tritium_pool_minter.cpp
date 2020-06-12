@@ -483,7 +483,7 @@ namespace TAO
             else
             {
                 /* Should never get here with genesis in pooled stake minter, as genesis does not hash */
-                debug::error(FUNCTION, "Invalid request for genesis reward calculation in pooled staking.");
+                debug::error(FUNCTION, "Invalid request for genesis block finder reward calculation in pooled staking.");
 
                 nReward = 0;
             }
