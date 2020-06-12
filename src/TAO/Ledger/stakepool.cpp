@@ -80,6 +80,9 @@ namespace TAO
             if(fTrust)
             {
                 /* trust */
+                if(!tx.IsTrustPool())
+                    return debug::error(FUNCTION, "Invalid operation for pooled trust");
+
                 uint512_t hashLast;
                 TAO::Ledger::BlockState stateLast;
 
@@ -97,8 +100,15 @@ namespace TAO
                 if(!LLD::Ledger->ReadBlock(hashLast, stateLast))
                     return debug::error(FUNCTION, "Failed to get last block for pooled coinstake account");
 
+                const TAO::Ledger::BlockState& stateBest = ChainState::stateBest.load();
+
+                /* Check interval */
+                const uint32_t nInterval = stateBest.nHeight - stateLast.nHeight + 1; //+1 because using prev block
+                if(nInterval <= MinStakeInterval(stateBest))
+                    return debug::error(FUNCTION, "pooled coinstake interval ", nInterval, " below minimum interval");
+
                 /* Calculate time since last stake block (block age = age of previous stake block at time of current stateBest). */
-                nBlockAge = ChainState::stateBest.load().GetBlockTime() - stateLast.GetBlockTime();
+                nBlockAge = stateBest.GetBlockTime() - stateLast.GetBlockTime();
 
                 nBalance = account.get<uint64_t>("stake");
 
@@ -121,6 +131,9 @@ namespace TAO
             else
             {
                 /* genesis */
+                if(!tx.IsGenesisPool())
+                    return debug::error(FUNCTION, "Invalid operation for pooled genesis");
+
                 nBlockAge = ChainState::stateBest.load().GetBlockTime() - account.nModified;
 
                 nBalance = account.get<uint64_t>("balance");
@@ -151,7 +164,7 @@ namespace TAO
             if(nBalance < TAO::Ledger::POOL_MIN_STAKE_BALANCE)
                 return debug::error(FUNCTION, "Pooled coinstake below minimum stake balance");
 
-            uint64_t nFee = CalculatePoolStakeFee(nReward);
+            uint64_t nFee = GetPoolStakeFee(nReward);
 
             if(nPoolReward != (nReward - nFee))
                 return debug::error(FUNCTION, "Pooled coinstake invalid reward");
