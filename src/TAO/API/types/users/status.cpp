@@ -13,7 +13,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
-#include <TAO/API/types/users.h>
+#include <TAO/API/include/global.h>
 #include <TAO/API/include/sessionmanager.h>
 
 #include <TAO/Ledger/types/transaction.h>
@@ -36,21 +36,56 @@ namespace TAO
         {
             /* JSON return value. */
             json::json ret;
-            
-            /* Restrict Unlock to sessionless API */
-            if(config::fMultiuser.load())
-                throw APIException(-287, "API method not supported in multiuser mode");
 
-            /* Check default session (unlock only supported in single user mode). */
-            if(!GetSessionManager().Has(0))
-                throw APIException(-11, "User not logged in.");
+            /* Get the session to be used for this API call */
+            Session& session = users->GetSession(params);
 
-            /* Get the session. */
-            Session& session = GetSessionManager().Get(0);
-
+            /* The callers genesis */
             uint256_t hashGenesis = session.GetAccount()->Genesis();
+
+            /* Flag indicating whether to include the username in the response. If this is in multiuser mode then we 
+               will only return the username if they have provided a valid pin */
+            bool fUsername = false;
+
+            if(config::fMultiuser.load() && params.find("pin") != params.end())
+            {
+                /* Get the pin */
+                SecureString strPIN = strPIN = params["pin"].get<std::string>().c_str();
+
+                
+                /* The last transaction in the sig chain. */
+                TAO::Ledger::Transaction txPrev;
+
+                /* Get the last transaction. */
+                uint512_t hashLast;
+                if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
+                    throw APIException(-138, "No previous transaction found");
+
+                /* Get previous transaction */
+                if(!LLD::Ledger->ReadTx(hashLast, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
+                    throw APIException(-138, "No previous transaction found");
+                
+                TAO::Ledger::Transaction tx;
+                tx.NextHash(session.GetAccount()->Generate(txPrev.nSequence + 1, strPIN, false), txPrev.nNextType);
+
+                /* Validate the credentials */
+                if(txPrev.hashNext != tx.hashNext)
+                    throw APIException(-139, "Invalid credentials");
+                
+                /* Pin is valid so include the username */
+                fUsername = true;
+            }
+            else if(!config::fMultiuser.load())
+            {
+                /* Always return the username in single user mode */
+                fUsername = true;
+            }
+
             /* populate response */
-            ret["username"] = session.GetAccount()->UserName().c_str();
+            if(fUsername)
+                ret["username"] = session.GetAccount()->UserName().c_str();
+            
+            /* Add the genesis */
             ret["genesis"] = hashGenesis.GetHex();
 
             /* sig chain transaction count */
@@ -75,7 +110,7 @@ namespace TAO
                 fRecovery = tx.hashRecovery != 0;
             }
 
-            /* populate fecovery flag */
+            /* populate recovery flag */
             ret["recovery"] = fRecovery;
 
             /* populate the transaction count */

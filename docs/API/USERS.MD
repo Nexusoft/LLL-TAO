@@ -362,7 +362,7 @@ The following example sets the initial recovery seed on the sig chain
 
 # `get/status`
 
-Only available in single-user API mode (multiuser=0), this method will return status information for the currently logged in user
+Return status information for the currently logged in user
 
 
 ### Endpoint:
@@ -372,9 +372,10 @@ Only available in single-user API mode (multiuser=0), this method will return st
 
 ### Parameters:
 
-````
-NONE
-````
+
+`session` : When using multi-user API mode the session parameter must be supplied to identify which user to return the status for.
+
+`pin` : The pin for the signature chain.  This should only be supplied in multi-user mode and only if the caller requires the `username` to be included in the response.  In single user mode the username is always returned  
 
 
 ### Return value JSON object:
@@ -397,7 +398,7 @@ NONE
 
 ### Return values:
 
-`username` : The username of the currently logged in user
+`username` : The username of the currently logged in user.  This is always included in single-user API mode, but is only included in multi-user mode if the caller provides the `pin` parameter. 
 
 `genesis` : The signature chain genesis hash for the currently logged in user.
 
