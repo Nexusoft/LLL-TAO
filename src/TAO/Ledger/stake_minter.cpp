@@ -778,7 +778,7 @@ namespace TAO
             if(fStakeChange)
             {
                 stakeChange.fProcessed = true;
-                stakeChange.hashTx = block.vProducer.at(block.vProducer.size() - 1).GetHash();
+                stakeChange.hashTx = block.vProducer.back().GetHash(); //this only runs if local nodes is block finder
 
                 if(!LLD::Local->WriteStakeChange(user->Genesis(), stakeChange))
                 {

@@ -422,6 +422,7 @@ namespace TAO
 
                 /* Check for trust coinstake. */
                 case OP::TRUST:
+                case OP::TRUSTPOOL:
                 {
                     /* Get last stake hash */
                     ssOperation >> hashPrev;

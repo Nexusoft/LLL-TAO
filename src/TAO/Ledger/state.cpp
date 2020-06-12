@@ -1138,16 +1138,20 @@ namespace TAO
                         if(!LLD::Ledger->WriteStake(tx.hashGenesis, hash))
                             return debug::error(FUNCTION, "failed to write last stake");
 
-                        /* If local database has a stake change request for this transaction not marked as processed, update it.
+                        /* If local database has a stake change request not marked as processed, update it.
+                         *
                          * This updates a request that was reset because coinstake was disconnected and now is reconnected, such
                          * as if execute a forkblocks and re-sync.
+                         *
+                         * It also handles marking stake changes in stake pool as processed, because the block is likely
+                         * mined by another node on the network, and stake change must be marked when that block is received.
                          */
                         StakeChange request;
-                        if(LLD::Local->ReadStakeChange(tx.hashGenesis, request)
-                        && !request.fProcessed && request.hashTx == tx.GetHash())
+                        if(LLD::Local->ReadStakeChange(tx.hashGenesis, request) && !request.fProcessed)
                         {
                             /* Mark as processed. */
                             request.fProcessed = true;
+                            request.hashTx = tx.GetHash();
 
                             /* Erase if we can't update it. */
                             if(!LLD::Local->WriteStakeChange(tx.hashGenesis, request))

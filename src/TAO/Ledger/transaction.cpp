@@ -1075,7 +1075,7 @@ namespace TAO
                 /* Revert last stake whan disconnect a coinstake tx */
                 if(IsCoinStake())
                 {
-                    if(IsTrust())
+                    if(IsTrust() || IsTrustPool())
                     {
                         /* Extract the last stake hash from the coinstake contract */
                         uint512_t hashLast = 0;
@@ -1086,22 +1086,23 @@ namespace TAO
                         if(!LLD::Ledger->WriteStake(hashGenesis, hashLast))
                             return debug::error(FUNCTION, "failed to write last stake");
 
-                        /* If local database has a stake change request for this transaction that marked as processed, update it.
-                         * This resets the request but keeps the tx hash, so if it is later reconnected it can be marked
-                         * as processed again. Otherwise, the stake minter can recognized that the original coinstake was
-                         * disconnected and implement the stake change request with the next stake block found.
+                        /* If local database has a stake change request for this transaction that is marked as processed, reset it.
+                         * If it is later reconnected it can be marked as processed again. Otherwise, the stake minter will
+                         * recognize that the stake change is reset and implement it with the next stake block.
                          */
                         StakeChange request;
                         if(LLD::Local->ReadStakeChange(hashGenesis, request) && request.fProcessed && request.hashTx == GetHash())
                         {
                             request.fProcessed = false;
+                            request.hashTx = 0;
 
                             if(!LLD::Local->WriteStakeChange(hashGenesis, request))
-                                debug::error(FUNCTION, "unable to reinstate disconnected stake change request"); //don't fail for this
+                                debug::error(FUNCTION, "unable to reinstate disconnected stake change request"); //don't fail
                         }
                     }
                     else
                     {
+                        /* Remove last stake indexing if disconnect a genesis transaction */
                         if(!LLD::Ledger->EraseStake(hashGenesis))
                             return debug::error(FUNCTION, "failed to erase last stake");
                     }
