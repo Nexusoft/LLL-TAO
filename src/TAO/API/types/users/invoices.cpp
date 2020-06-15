@@ -52,11 +52,11 @@ namespace TAO
             else if(params.find("username") != params.end())
                 hashGenesis = TAO::Ledger::SignatureChain::Genesis(params["username"].get<std::string>().c_str());
 
-            /* Check for default sessions. */
-            else if(!config::fMultiuser.load() && users->LoggedIn())
-                hashGenesis = users->GetGenesis(0);
+            /* Check for logged in user.  NOTE: we rely on the GetSession method to check for the existence of a valid session ID
+               in the parameters in multiuser mode, or that a user is logged in for single user mode. Otherwise the GetSession 
+               method will throw an appropriate error. */
             else
-                throw APIException(-111, "Missing genesis / username");
+                hashGenesis = users->GetSession(params).GetAccount()->Genesis();
 
             if(config::fClient.load() && hashGenesis != users->GetCallersGenesis(params))
                 throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");

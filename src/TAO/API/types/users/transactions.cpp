@@ -42,18 +42,19 @@ namespace TAO
             /* Get the Genesis ID. */
             uint256_t hashGenesis = 0;
 
-            /* Watch for destination genesis. */
+            /* Check to see if specific genesis has been supplied */
             if(params.find("genesis") != params.end())
                 hashGenesis.SetHex(params["genesis"].get<std::string>());
+
+            /* Check if username has been supplied instead. */
             else if(params.find("username") != params.end())
                 hashGenesis = TAO::Ledger::SignatureChain::Genesis(params["username"].get<std::string>().c_str());
-            else if(!config::fMultiuser.load() && GetSessionManager().Has(0))
-            {
-                /* If no specific genesis or username have been provided then fall back to the active sig chain */
-                hashGenesis = GetSessionManager().Get(0).GetAccount()->Genesis();
-            }
+            
+            /* Check for logged in user.  NOTE: we rely on the GetSession method to check for the existence of a valid session ID
+               in the parameters in multiuser mode, or that a user is logged in for single user mode. Otherwise the GetSession 
+               method will throw an appropriate error. */
             else
-                throw APIException(-111, "Missing genesis / username");
+                hashGenesis = users->GetSession(params).GetAccount()->Genesis();
 
             /* The genesis hash of the API caller, if logged in */
             uint256_t hashCaller = users->GetCallersGenesis(params);
