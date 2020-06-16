@@ -40,7 +40,12 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/merkle.h>
 #include <TAO/Ledger/types/client.h>
 
+#ifndef NO_WALLET
 #include <Legacy/wallet/wallet.h>
+#else
+#include <Legacy/types/merkle.h>
+#endif
+
 #include <Legacy/include/evaluate.h>
 
 #include <Util/include/runtime.h>
@@ -210,7 +215,7 @@ namespace LLP
                 /* Respond with version message if incoming connection. */
                 if(fOUTGOING)
                     PushMessage(ACTION::VERSION, PROTOCOL_VERSION, SESSION_ID, version::CLIENT_VERSION_BUILD_STRING);
-                    
+
 
                 break;
             }
@@ -282,7 +287,11 @@ namespace LLP
 
                     /* Rebroadcast transactions. */
                     if(!TAO::Ledger::ChainState::Synchronizing())
+                    {
+                        #ifndef NO_WALLET
                         Legacy::Wallet::GetInstance().ResendWalletTransactions();
+                        #endif
+                    }
                 }
 
 
@@ -520,7 +529,7 @@ namespace LLP
                 {
                     /* Lock session mutex to prevent other sessions from accessing thisAddress */
                     LOCK(SESSIONS_MUTEX);
-                    
+
                     if(!thisAddress.IsValid() && nProtocolVersion >= MIN_TRITIUM_VERSION)
                         PushMessage(ACTION::GET, uint8_t(TYPES::PEERADDRESS));
                 }
@@ -620,7 +629,7 @@ namespace LLP
                 std::vector<uint8_t> vchPubKey;
                 ssPacket >> vchPubKey;
 
-                
+
                 /* Build the byte stream from genesis+nonce in order to verify the signature */
                 DataStream ssCheck(SER_NETWORK, PROTOCOL_VERSION);
                 ssCheck << hashGenesis << nTimestamp << nNonce;
@@ -654,7 +663,7 @@ namespace LLP
                 debug::log(0, NODE, "ACTION::AUTH: ", hashGenesis.SubString(), " AUTHORIZATION ACCEPTED");
 
                 PushMessage(RESPONSE::AUTHORIZED, hashGenesis);
-                
+
 
                 break;
             }
@@ -2916,8 +2925,8 @@ namespace LLP
                                 }
 
                                 /* UTXO to Sig Chain support - The only reason we would be receiving a legacy transaction in client
-                                   mode is if we are being sent a legacy event.  The event would normally be written to the DB in 
-                                   Transaction::Connect, but we cannot connect legacy transactions in client mode as we will not 
+                                   mode is if we are being sent a legacy event.  The event would normally be written to the DB in
+                                   Transaction::Connect, but we cannot connect legacy transactions in client mode as we will not
                                    have all of the inputs.  Therefore, we need to check the outputs to see if any of them
                                    are to a register address we know about and, if so, write an event for the account holder */
                                 for(const auto txout : tx.vout )
@@ -3043,9 +3052,9 @@ namespace LLP
                 /* De-serialize the trigger nonce. */
                 uint64_t nNonce = 0;
                 ssPacket >> nNonce;
-                
+
                 TriggerEvent(INCOMING.MESSAGE, nNonce);
-                
+
                 break;
             }
 
@@ -3074,10 +3083,10 @@ namespace LLP
                         if(fValid)
                         {
                             /* Trigger event with this nonce. */
-                            TriggerEvent(INCOMING.MESSAGE, nNonce, fValid, hashTx);  
+                            TriggerEvent(INCOMING.MESSAGE, nNonce, fValid, hashTx);
                         }
                         else
-                        { 
+                        {
                             /* deserialize the contract ID */
                             uint32_t nContract;
                             ssPacket >> nContract;
@@ -3112,16 +3121,16 @@ namespace LLP
                         TAO::Ledger::Transaction tx;
                         ssPacket >> tx;
 
-                        /* Validating a transaction simply sanitizes the contracts within it.  If any of them fail then we stop 
+                        /* Validating a transaction simply sanitizes the contracts within it.  If any of them fail then we stop
                            sanitizing and return the contract ID that failed */
                         bool fSanitized = false;
-                        
+
                         /* Temporary map for pre-states to be passed into the sanitization Build() for each contract. */
                         std::map<uint256_t, TAO::Register::State> mapStates;
 
                         /* Loop through each contract in the transaction. */
                         for(uint32_t nContract = 0; nContract < tx.Size(); ++nContract)
-                        {   
+                        {
                             /* Get the contract. */
                             TAO::Operation::Contract& contract = tx[nContract];
 
@@ -3193,15 +3202,15 @@ namespace LLP
                         /* get the appid */
                         std::string strAppID;
                         ssPacket >> strAppID;
-                        
+
                         /* get the source genesis hash */
                         uint256_t hashFrom;
                         ssPacket >> hashFrom;
-                        
+
                         /* Get the destination genesis hash */
                         uint256_t hashTo;
                         ssPacket >> hashTo;
-                        
+
                         /* Get the nonce / session ID */
                         uint64_t nSession;
                         ssPacket >> nSession;
@@ -3240,12 +3249,12 @@ namespace LLP
                         /* Verify the signature */
                         if(!TAO::Ledger::SignatureChain::Verify(hashFrom, "network", ssCheck.Bytes(), vchPubKey, vchSig))
                             return debug::error(NODE, "ACTION::REQUEST::P2P: invalid transaction signature");
-                        
 
-                        /* See whether we have processed a P2P request from this user in the last 5 seconds.  
-                           If so then ignore the message. If not then relay the message to our peers.  
-                           NOTE: we relay the message regardless of whether the destination genesis is logged in on this node, 
-                           as the user may be logged in on multiple nodes and  might want to process the request on a 
+
+                        /* See whether we have processed a P2P request from this user in the last 5 seconds.
+                           If so then ignore the message. If not then relay the message to our peers.
+                           NOTE: we relay the message regardless of whether the destination genesis is logged in on this node,
+                           as the user may be logged in on multiple nodes and  might want to process the request on a
                            different node/device. */
                         {
                             LOCK(P2P_REQUESTS_MUTEX);
@@ -3290,11 +3299,11 @@ namespace LLP
                             /* Log this request */
                             mapP2PRequests[hashFrom] = nTimestamp;
 
-                                
+
                         }
 
                         break;
-                        
+
                     }
                     default:
                     {
@@ -3310,7 +3319,7 @@ namespace LLP
                 {
                     /* Lock session mutex to prevent other sessions from accessing thisAddress */
                     LOCK(SESSIONS_MUTEX);
-                    
+
                     /* Ignore the message if we have already obtained our IP address */
                     if(!thisAddress.IsValid())
                     {
@@ -3676,7 +3685,7 @@ namespace LLP
                 ssData >> nType;
 
                 /* Switch based on type. */
-                switch(nType)  
+                switch(nType)
                 {
                     case TYPES::P2PCONNECTION:
                     {
@@ -3915,7 +3924,7 @@ namespace LLP
                 break;
             }
         }
-        
+
 
         return ssRelay;
     }

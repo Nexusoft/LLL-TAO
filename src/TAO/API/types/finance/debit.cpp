@@ -250,9 +250,9 @@ namespace TAO
                             default :
                                 throw APIException(-209, "Recipient is not a valid account.");
                         }
-                    }  
+                    }
 
-                    /* If in client mode we won't have the recipient register, so we have to loosen the checks to only look at 
+                    /* If in client mode we won't have the recipient register, so we have to loosen the checks to only look at
                        the receiving register address type, rather than check that the account/asset exists */
                     else if(config::fClient.load())
                     {
@@ -261,12 +261,12 @@ namespace TAO
                         else if(!hashTo.IsAccount())
                             throw APIException(-209, "Recipient is not a valid account");
                     }
-                    
+
                     else
                     {
                         throw APIException(-209, "Recipient is not a valid account");
                     }
-                    
+
 
                     /* The optional payment reference */
                     uint64_t nReference = 0;
@@ -316,8 +316,12 @@ namespace TAO
             /* If this has a legacy transaction and not in client mode  then we need to make sure it shows in the legacy wallet */
             if(fHasLegacy && !config::fClient.load())
             {
-                TAO::Ledger::BlockState notUsed;
-                Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, notUsed, true);
+                #ifndef NO_WALLET
+
+                TAO::Ledger::BlockState state;
+                Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, state, true);
+
+                #endif
             }
             /* Build a JSON response object. */
             ret["txid"] = tx.GetHash().ToString();
