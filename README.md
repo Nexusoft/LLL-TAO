@@ -2,6 +2,10 @@
 
 Series of Templates for developing Crypto, Database, or Protocol. Base templates for the TAO framework, which will inherit these templates and create higher level functionality.
 
+## Branching
+
+We use a very strict branching logic for our development. The branch 'merging' is the main development branch, which contains the most up-to-date code. The branch 'master' is the stable branch, that contains releases. If you are compiling from source, ensure you use the 'master' branch or pull from a release tag. The branch 'staging' is for pre-releases, so if you would like to test out new features before full release, but want to ensure they are mostly stable, use 'staging'.
+
 
 ## TAO Framework
 
