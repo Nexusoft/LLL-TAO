@@ -107,17 +107,75 @@ namespace LLP
             SSL_set_fd(pSSL, fd);
             SSL_set_accept_state(pSSL);
 
-            int32_t nRet = SSL_accept(pSSL);
+            int32_t nStatus = -1;
 
-            if(nRet >= 0)
-                debug::log(2, FUNCTION, "SSL Connection using ", SSL_get_cipher(pSSL));
-            else
+            fd_set fdWriteSet;
+            fd_set fdReadSet;
+            struct timeval tv;
+
+            do            
             {
-                debug::error(FUNCTION, "SSL_accept failed with state: ", SSL_state_string_long(pSSL));
+                FD_ZERO(&fdWriteSet);
+                FD_ZERO(&fdReadSet);
+                tv.tv_sec = 2; // timeout after 2 seconds
+                tv.tv_usec = 0;
 
-                nError.store(SSL_get_error(pSSL, nRet));
-                debug::error(FUNCTION, "SSL_accept failed: ", ERR_reason_error_string(nError.load()));
+                nStatus = SSL_accept(pSSL);
+
+                switch (SSL_get_error(pSSL, nStatus))
+                {
+                case SSL_ERROR_WANT_READ:
+                    FD_SET(fd, &fdReadSet);
+                    nStatus = 1; // Wait for more activity
+                    break;
+                case SSL_ERROR_WANT_WRITE:
+                    FD_SET(fd, &fdWriteSet);
+                    nStatus = 1; // Wait for more activity
+                    break;
+                case SSL_ERROR_NONE:
+                    nStatus = 0; // success!
+                    break;
+                case SSL_ERROR_ZERO_RETURN:
+                case SSL_ERROR_SYSCALL:
+                    /* The peer has notified us that it is shutting down via the SSL "close_notify" message so we 
+                       need to shutdown, too. */
+                    debug::log(0, FUNCTION, "SSL handshake - Peer closed connection ");
+                    nStatus = -1;
+                    break;
+                default:
+                    /* Some other error so break out */
+                    nStatus = -1;
+                    break;
+                }
+
+                if (nStatus == 1)
+                {
+                    // Must have at least one handle to wait for at this point.
+                    nStatus = select(fd + 1, &fdReadSet, &fdWriteSet, NULL, &tv);
+
+                    // 0 is timeout, so we're done.
+                    // -1 is error, so we're done.
+                    // Could be both handles set (same handle in both masks) so
+                    // set to 1.
+                    if (nStatus >= 1)
+                    {
+                        nStatus = 1;
+                    }
+                    else // Timeout or failure
+                    {
+                        debug::log(0, FUNCTION, "SSL handshake - peer timeout or failure");
+                        nError.store(nStatus);
+                        nStatus = -1;
+                    }
+                }
             }
+            while (nStatus == 1 && !SSL_is_init_finished(pSSL));
+
+            if(nStatus >= 0)
+                debug::log(3, FUNCTION, "SSL Connection using ", SSL_get_cipher(pSSL));
+            else
+                debug::log(0, FUNCTION, "SSL Accept failed ",  addr.ToString(), " (", nError, " ", ERR_reason_error_string(nError), ")");
+
 
         }
 
@@ -259,15 +317,6 @@ namespace LLP
             fConnected = (connect(fd, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR);
         }
 
-        if(pSSL)
-        {
-
-            SSL_set_fd(pSSL, fd);
-            SSL_set_connect_state(pSSL);
-
-            fConnected = (SSL_connect(pSSL) != SOCKET_ERROR);
-        }
-
         /* Handle final socket checks if connection established with no errors. */
         if (fConnected)
         {
@@ -343,42 +392,81 @@ namespace LLP
             SSL_set_fd(pSSL, fd);
             SSL_set_connect_state(pSSL);
 
-            int nRet = SSL_connect(pSSL);
-            while (nRet == -1)
-            {
-                fd_set fds;
-                FD_ZERO(&fds);
-                FD_SET(fd, &fds);
+            int32_t nStatus = -1;
 
-                switch (SSL_get_error(pSSL, nRet))
+            fd_set fdWriteSet;
+            fd_set fdReadSet;
+            struct timeval tv;
+
+            do            
+            {
+                FD_ZERO(&fdWriteSet);
+                FD_ZERO(&fdReadSet);
+                tv.tv_sec = 2; // timeout after 2 seconds
+                tv.tv_usec = 0;
+
+                nStatus = SSL_connect(pSSL);
+
+                switch (SSL_get_error(pSSL, nStatus))
                 {
                 case SSL_ERROR_WANT_READ:
-                    select(fd + 1, &fds, NULL, NULL, NULL);
+                    FD_SET(fd, &fdReadSet);
+                    nStatus = 1; // Wait for more activity
                     break;
                 case SSL_ERROR_WANT_WRITE:
-                    select(fd + 1, NULL, &fds, NULL, NULL);
+                    FD_SET(fd, &fdWriteSet);
+                    nStatus = 1; // Wait for more activity
+                    break;
+                case SSL_ERROR_NONE:
+                    nStatus = 0; // success!
+                    break;
+                case SSL_ERROR_ZERO_RETURN:
+                case SSL_ERROR_SYSCALL:
+                    /* The peer has notified us that it is shutting down via the SSL "close_notify" message so we 
+                       need to shutdown, too. */
+                    debug::log(0, FUNCTION, "SSL handshake - Peer closed connection ");
+                    nStatus = -1;
                     break;
                 default:
-                    /* Some other error so break out */ 
+                    /* Some other error so break out */
+                    nStatus = -1;
                     break;
                 }
 
-                nRet = SSL_connect(pSSL);
+                if (nStatus == 1)
+                {
+                    // Must have at least one handle to wait for at this point.
+                    nStatus = select(fd + 1, &fdReadSet, &fdWriteSet, NULL, &tv);
 
-                //TODO handle timeout here
+                    // 0 is timeout, so we're done.
+                    // -1 is error, so we're done.
+                    // Could be both handles set (same handle in both masks) so
+                    // set to 1.
+                    if (nStatus >= 1)
+                    {
+                        nStatus = 1;
+                    }
+                    else // Timeout or failure
+                    {
+                        debug::log(0, FUNCTION, "SSL handshake - peer timeout or failure");
+                        nError.store(nStatus);
+                        nStatus = -1;
+                    }
+                }
             }
+            while (nStatus == 1);
 
-            fConnected = nRet != SOCKET_ERROR;
+            fConnected = nStatus >= 0;
 
-            if(!fConnected)
+            if(fConnected)
+                debug::log(3, FUNCTION, "SSL connected using ", SSL_get_cipher(pSSL));
+            else
             {
-                nError = SSL_get_error(pSSL, nRet);
-                debug::log(0, FUNCTION, "SSL_connect failed ",  addr.ToString(), " (", nError, " ", ERR_reason_error_string(nError), ")");
-
+                debug::log(0, FUNCTION, "SSL SSL_connect failed ",  addr.ToString(), " (", nError, " ", ERR_reason_error_string(nError), ")");
+                
                 return false;
             }
 
-            debug::log(0, FUNCTION, "SSL connected= ", fConnected);
         }
 
         /* Reset the internal timers. */
@@ -446,14 +534,11 @@ namespace LLP
 
             if(nRead > 0)
             {
-
                 /* Resize the vData vector to fit the data */
                 vData.resize(0);
 
                 /* copy the data in */
                 vData.insert(vData.end(), buf, buf + nRead);
-
-                debug::log(3, FUNCTION, "Received: ", nRead, "Data: ", std::string(vData.begin(), vData.end()));
             }
 
         }
@@ -514,7 +599,7 @@ namespace LLP
                         break;
                     }
                 }
-                debug::log(2, FUNCTION, "SSL_read failed ",  addr.ToString(), " (", nError, " ", ERR_reason_error_string(nError), ")");
+                debug::log(3, FUNCTION, "SSL_read failed ",  addr.ToString(), " (", nError, " ", ERR_reason_error_string(nError), ")");
              
             }
             else
@@ -548,14 +633,11 @@ namespace LLP
 
             if(nRead > 0)
             {
-
                 /* Resize the vData vector to fit the data */
                 vData.resize(0);
 
                 /* copy the data in */
                 vData.insert(vData.end(), buf, buf + nRead);
-
-                debug::log(3, FUNCTION, "Received: ", nRead, "Data: ", std::string(vData.begin(), vData.end()));
             }
 
         }
@@ -617,7 +699,7 @@ namespace LLP
                         break;
                     }
                 }
-                debug::log(2, FUNCTION, "SSL_read failed ",  addr.ToString(), " (", nError, " ", ERR_reason_error_string(nError), ")");
+                debug::log(3, FUNCTION, "SSL_read failed ",  addr.ToString(), " (", nError, " ", ERR_reason_error_string(nError), ")");
              
             }
             else
