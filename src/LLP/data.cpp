@@ -273,7 +273,7 @@ namespace LLP
                     {
                         /* Debug dump of message type. */
                         if(config::nVerbose.load() >= 4)
-                            debug::log(4, FUNCTION, "Recieved Message (", CONNECTION->INCOMING.GetBytes().size(), " bytes)");
+                            debug::log(4, FUNCTION, "Received Message (", CONNECTION->INCOMING.GetBytes().size(), " bytes)");
 
                         /* Debug dump of packet data. */
                         if(config::nVerbose.load() >= 5)
