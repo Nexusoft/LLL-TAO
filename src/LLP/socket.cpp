@@ -262,7 +262,7 @@ namespace LLP
         if(pSSL)
         {
 
-            SSL_set_fd(pSSL, nFile);
+            SSL_set_fd(pSSL, fd);
             SSL_set_connect_state(pSSL);
 
             fConnected = (SSL_connect(pSSL) != SOCKET_ERROR);
