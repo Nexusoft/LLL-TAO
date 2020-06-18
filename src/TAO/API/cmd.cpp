@@ -71,7 +71,7 @@ namespace TAO
                 }
 
                 /* Catch if the connection timed out. */
-                if(node.Timeout(120))
+                if(node.Timeout(120000))
                 {
                     debug::log(0, "Socket Timeout");
                     return 0;
@@ -79,9 +79,8 @@ namespace TAO
 
                 /* Read the response packet. */
                 node.ReadPacket();
-                runtime::sleep(10);
+                runtime::sleep(1);
 
-                debug::log(0, FUNCTION);
             }
 
             /* Disconnect node. */
@@ -181,43 +180,6 @@ namespace TAO
             /* Make connection, write packet, read response, and disconnect. */
             if(!WriteReadResponse<LLP::APINode>(apiNode, addr, vBuffer, "API"))
                 return 0;
-
-            /* Write the buffer to the socket. */
-            apiNode.Write(vBuffer, vBuffer.size());
-            apiNode.Flush();
-
-            /* Read the response packet. */
-            while(!apiNode.INCOMING.Complete() && !config::fShutdown.load())
-            {
-
-                /* Catch if the connection was closed. */
-                if(!apiNode.Connected())
-                {
-                    debug::log(0, "Connection Terminated");
-                    return 0;
-                }
-
-                /* Catch if the socket experienced errors. */
-                if(apiNode.Errors())
-                {
-                    debug::log(0, "Socket Error");
-                    return 0;
-                }
-
-                /* Catch if the connection timed out (120s). */
-                if(apiNode.Timeout(120000))
-                {
-                    debug::log(0, "Socket Timeout");
-                    return 0;
-                }
-
-                /* Read the response packet. */
-                apiNode.ReadPacket();
-                runtime::sleep(1);
-            }
-
-            /* Disconnect node. */
-            apiNode.Disconnect();
 
             /* Parse response JSON. */
             json::json ret = json::json::parse(apiNode.INCOMING.strContent);

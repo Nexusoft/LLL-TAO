@@ -215,7 +215,7 @@ namespace LLP
             DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
 
             /* Attempt the connection. */
-            if(!dt->AddConnection(addrConnect, DDOS_MAP[addrConnect], std::forward<Args>(args)...))
+            if(!dt->NewConnection(addrConnect, DDOS_MAP[addrConnect], fSSL.load(),  std::forward<Args>(args)...))
             {
                 /* Add the address to the address manager if it exists. */
                 if(pAddressManager)

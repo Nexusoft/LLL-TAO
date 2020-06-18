@@ -237,8 +237,8 @@ namespace LLP
             /* Get error from exception. */
             json::json jsonError = e.ToJSON();
 
-            /* Default error status code is 500. */
-            uint16_t nStatus = 500;
+            /* Default error status code is 400. */
+            uint16_t nStatus = 400;
             int32_t nError = jsonError["code"].get<int32_t>();
 
             /* Set status by error code. */
@@ -272,7 +272,7 @@ namespace LLP
             RESPONSE.strContent = ret.dump();
             this->WritePacket(RESPONSE);
 
-            return false;
+            return true;
         }
 
 

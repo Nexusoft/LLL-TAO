@@ -159,8 +159,17 @@ int main(int argc, char** argv)
             /* Flag to determine if server should allow remote connections. */
             config::GetBoolArg(std::string("-rpcremote"), false),
 
+            /* No meters */
             false,
-            false);
+
+            /* no manager */
+            false,
+            
+            /* Default sleep time */
+            1000,
+
+            /* Enable SSL if configured */
+            config::GetBoolArg(std::string("-rpcssl")));
     }
 
 
@@ -291,7 +300,13 @@ int main(int argc, char** argv)
                 false,
 
                 /* connection manager, always off, not required for API as connections are ephemeral */
-                false);
+                false,
+                
+                /* Default sleep time */
+                1000,
+                
+                /* Enable SSL based on config */
+                config::GetBoolArg(std::string("-apissl")));
         }
 
 

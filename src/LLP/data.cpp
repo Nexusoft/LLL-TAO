@@ -50,7 +50,6 @@ namespace LLP
     , DATA_THREAD     (std::bind(&DataThread::Thread, this))
     , FLUSH_CONDITION ( )
     , FLUSH_THREAD    (std::bind(&DataThread::Flush, this))
-    , fSSL(fSSL_)
     {
     }
 
@@ -225,7 +224,7 @@ namespace LLP
 
                     /* Disconnect if pollin signaled with no data (This happens on Linux). */
                     if((POLLFDS.at(nIndex).revents & POLLIN)
-                    && CONNECTION->Available() == 0)
+                    && CONNECTION->Available() == 0 && !CONNECTION->IsSSL())
                     {
                         disconnect_remove_event(nIndex, DISCONNECT::POLL_EMPTY);
                         continue;

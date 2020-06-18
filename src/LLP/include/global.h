@@ -140,7 +140,13 @@ namespace LLP
             config::GetBoolArg(std::string("-meters"), false),
 
             /* Flag to determine if the connection manager should try new connections. */
-            config::GetBoolArg(std::string("-manager"), true)
+            config::GetBoolArg(std::string("-manager"), true),
+            
+            /* Default sleep */
+            1000,
+            
+            /* Enable SSL if configured */
+            config::GetBoolArg(std::string("-ssl"), false)
 
         );
     }
@@ -192,7 +198,13 @@ namespace LLP
             config::GetBoolArg(std::string("-meters"), false),
 
             /* Never use connection manager */
-            false
+            false,
+
+            /* Default sleep */
+            1000,
+
+            /* Enable SSL if configured, on by default */
+            config::GetBoolArg(std::string("-p2pssl"), true)
 
         );
     }

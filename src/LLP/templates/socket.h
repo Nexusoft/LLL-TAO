@@ -105,7 +105,7 @@ namespace LLP
 
 
         /** The socket constructor. **/
-        Socket(int32_t nSocketIn, const BaseAddress &addrIn, bool fSSL = false);
+        Socket(int32_t nSocketIn, const BaseAddress &addrIn, const bool& fSSL = false);
 
 
         /** Constructor for socket
@@ -113,7 +113,7 @@ namespace LLP
          *  @param[in] addrConnect The address to connect socket to
          *
          **/
-        Socket(const BaseAddress &addrConnect, bool fSSL = false);
+        Socket(const BaseAddress &addrConnect, const bool& fSSL = false);
 
 
         /** Destructor for socket **/

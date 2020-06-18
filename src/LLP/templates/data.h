@@ -73,7 +73,6 @@ namespace LLP
         /* Variables to track Connection / Request Count. */
         bool fDDOS;
         bool fMETER;
-        bool fSSL;
 
         /* Destructor flag. */
         std::atomic<bool> fDestruct;
@@ -125,7 +124,7 @@ namespace LLP
 
         /** AddConnection
          *
-         *  Adds a new connection to current Data Thread.
+         *  Adds an existing socket connection to current Data Thread.
          *
          *  @param[in] SOCKET The socket for the connection.
          *  @param[in] DDOS The pointer to the DDOS filter to add to connection.
@@ -183,24 +182,28 @@ namespace LLP
         }
 
 
-        /** AddConnection
+        /** NewConnection
          *
-         *  Adds a new connection to current Data Thread
+         *  Establishes a new connection and adds it to current Data Thread
          *
          *  @param[in] addr TAddress class instnace containing the IP address and port for the connection.
          *  @param[in] DDOS The pointer to the DDOS filter to add to the connection.
+         *  @param[in] fSSL Flag indicating if this connection should use SSL
          *  @param[in] args variadic args to forward to the LLP protocol constructor
          *
          *  @return Returns true if successfully added, false otherwise.
          *
          **/
         template<typename... Args>
-        bool AddConnection(const BaseAddress &addr, DDOS_Filter* DDOS, Args&&... args)
+        bool NewConnection(const BaseAddress &addr, DDOS_Filter* DDOS, const bool& fSSL, Args&&... args)
         {
             try
             {
                 /* Create a new pointer on the heap. */
                 ProtocolType* pnode = new ProtocolType(nullptr, false, std::forward<Args>(args)...); //turn off DDOS for outgoing connections
+
+                /* Set the SSL flag */
+                pnode->SetSSL(fSSL);
 
                 /* Attempt to make the connection. */
                 if(!pnode->Connect(addr))

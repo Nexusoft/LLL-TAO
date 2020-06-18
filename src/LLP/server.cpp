@@ -34,6 +34,7 @@ ________________________________________________________________________________
 #include <numeric>
 
 #include <openssl/ssl.h>
+
 #ifdef USE_UPNP
 #include <miniupnpc/miniwget.h>
 #include <miniupnpc/miniupnpc.h>
@@ -58,26 +59,28 @@ namespace LLP
     template <class ProtocolType>
     Server<ProtocolType>::Server(uint16_t nPort, uint16_t nMaxThreads, uint32_t nTimeout, bool fDDOS_,
                          uint32_t cScore, uint32_t rScore, uint32_t nTimespan, bool fListen, bool fRemote,
-                         bool fMeter, bool fManager, uint32_t nSleepTimeIn)
+                         bool fMeter, bool fManager, uint32_t nSleepTimeIn, bool SSL)
     : DDOS_MAP        ( )
     , fDDOS           (fDDOS_)
+    , fSSL            (SSL)
+    , MANAGER         ( )
+    , LISTEN_THREAD   ( )
+    , METER_THREAD    ( )
+    , UPNP_THREAD     ( )
     , PORT            (nPort)
     , MAX_THREADS     (nMaxThreads)
     , DDOS_TIMESPAN   (nTimespan)
     , DATA_THREADS    ( )
+    , MANAGER_THREAD  ( )
     , pAddressManager (nullptr)
     , nSleepTime      (nSleepTimeIn)
     , hListenSocket   (-1, -1)
-    , fSSL(fSSL_)
-    , MANAGER()
-                         bool fMeter, bool fManager, uint32_t nSleepTimeIn, bool fSSL_)
     {
         for(uint16_t nIndex = 0; nIndex < MAX_THREADS; ++nIndex)
         {
             DATA_THREADS.push_back(new DataThread<ProtocolType>(
                 nIndex, fDDOS_, rScore, cScore, nTimeout, fMeter));
         }
-            DATA_THREADS.push_back(new DataThread<ProtocolType>(index, fDDOS_, rScore, cScore, nTimeout, fMeter, fSSL_));
 
         /* Initialize the address manager. */
         if(fManager)
@@ -546,6 +549,14 @@ namespace LLP
                     /* Add a new listening socket with SSL on or off according to server. */
                     Socket sockNew(hSocket, addr, fSSL.load());
 
+                    /* Check for SSL accept error */
+                    if(fSSL.load() && sockNew.Errors())
+                    {
+                        debug::log(3, FUNCTION, "SSL accept handshake failure ",  addr.ToString());
+                        sockNew.Close();
+
+                        continue;
+                    }
                     /* DDOS Operations: Only executed when DDOS is enabled. */
                     if((fDDOS && DDOS_MAP[addr]->Banned()))
                     {
@@ -558,7 +569,7 @@ namespace LLP
                     {
                         debug::log(3, FUNCTION, "Connection Request ",  addr.ToString(), " refused... Denied by allowip whitelist.");
 
-                        closesocket(hSocket);
+                        sockNew.Close();
 
                         continue;
                     }

@@ -125,7 +125,7 @@ In the event that an API call results in an error, a JSON object will be returne
     "error" :
     {
         "code" : -123,
-        "message" : An error has occurred"
+        "message" : "An error has occurred"
     }
 }
 ```
