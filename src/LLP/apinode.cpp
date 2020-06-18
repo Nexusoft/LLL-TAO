@@ -272,7 +272,11 @@ namespace LLP
             RESPONSE.strContent = ret.dump();
             this->WritePacket(RESPONSE);
 
-            return true;
+            /* Keep the connection alive if the caller has requested */
+            if(INCOMING.mapHeaders.count("connection") && INCOMING.mapHeaders["connection"] == "keep-alive")
+                return true;
+            else
+                return false; // returning false from ProcessPacket will close the connection
         }
 
 
@@ -281,11 +285,17 @@ namespace LLP
         if(INCOMING.mapHeaders.count("origin"))
             RESPONSE.mapHeaders["Access-Control-Allow-Origin"] = INCOMING.mapHeaders["origin"];
 
+        RESPONSE.mapHeaders["Connection"] = "close";
+
         /* Add content. */
         RESPONSE.strContent = ret.dump();
         this->WritePacket(RESPONSE);
 
-        return true;
+        /* Keep the connection alive if the caller has requested */
+        if(INCOMING.mapHeaders.count("connection") && INCOMING.mapHeaders["connection"] == "keep-alive")
+            return true;
+        else
+            return false; // returning false from ProcessPacket will close the connection
     }
 
 
