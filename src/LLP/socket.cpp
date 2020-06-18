@@ -164,7 +164,6 @@ namespace LLP
                     else // Timeout or failure
                     {
                         debug::log(0, FUNCTION, "SSL handshake - peer timeout or failure");
-                        nError.store(nStatus);
                         nStatus = -1;
                     }
                 }
@@ -174,8 +173,10 @@ namespace LLP
             if(nStatus >= 0)
                 debug::log(3, FUNCTION, "SSL Connection using ", SSL_get_cipher(pSSL));
             else
+            {
+                nError.store(nStatus);
                 debug::log(0, FUNCTION, "SSL Accept failed ",  addr.ToString(), " (", nError, " ", ERR_reason_error_string(nError), ")");
-
+            }
 
         }
 
