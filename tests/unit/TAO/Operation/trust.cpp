@@ -29,20 +29,19 @@ ________________________________________________________________________________
 
 #include <unit/catch2/catch.hpp>
 
-TEST_CASE( "Trust Operation Tests", "[operation]")
+TEST_CASE( "Trust Creation Tests", "[operation][stake]")
 {
     using namespace TAO::Register;
     using namespace TAO::Operation;
 
     /* Generate random genesis */
-    uint256_t hashGenesis  = LLC::GetRand256();
+    uint256_t hashGenesis = LLC::GetRand256();
 
     /* Generate trust address deterministically */
     uint256_t hashTrust = TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
 
-    uint512_t hashLastTrust;
 
-    /* Test failure case with invalid trust address */
+    /* Test failure case - create trust with invalid trust address */
     {
         //create the transaction object
         TAO::Ledger::Transaction tx;
@@ -51,14 +50,14 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
         tx.nTimestamp  = runtime::timestamp();
 
         /* generate random address */
-        uint256_t hashRandom  = LLC::GetRand256();
+        uint256_t hashRandom = LLC::GetRand256();
 
         //create object
-        Object object = CreateTrust();
-        object << std::string("testing") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << uint256_t(555);
+        Object trust = CreateTrust();
+        trust << std::string("testing") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << uint256_t(555);
 
         //payload
-        tx[0] << uint8_t(OP::CREATE) << hashRandom << uint8_t(REGISTER::OBJECT) << object.GetState();
+        tx[0] << uint8_t(OP::CREATE) << hashRandom << uint8_t(REGISTER::OBJECT) << trust.GetState();
 
         //generate the prestates and poststates
         REQUIRE(tx.Build());
@@ -70,7 +69,83 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
         REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
     }
 
-    //create a trust account register
+
+    /* Test failure case - create trust with existing balance */
+    {
+        //create the transaction object
+        TAO::Ledger::Transaction tx;
+        tx.hashGenesis = hashGenesis;
+        tx.nSequence   = 0;
+        tx.nTimestamp  = runtime::timestamp();
+
+        //create object
+        Object trust = CreateTrust();
+        trust << std::string("testing") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << uint256_t(555);
+
+        REQUIRE(trust.Parse());
+        REQUIRE(trust.Standard() == TAO::Register::OBJECTS::TRUST);
+        REQUIRE(trust.Write("balance", uint64_t(5000)));
+        trust.SetChecksum();
+
+        //payload
+        tx[0] << uint8_t(OP::CREATE) << hashTrust << uint8_t(REGISTER::OBJECT) << trust.GetState();
+
+        //generate the prestates and poststates
+        REQUIRE_FALSE(tx.Build());
+    }
+
+
+    /* Test failure case - create trust with existing trust score */
+    {
+        //create the transaction object
+        TAO::Ledger::Transaction tx;
+        tx.hashGenesis = hashGenesis;
+        tx.nSequence   = 0;
+        tx.nTimestamp  = runtime::timestamp();
+
+        //create object
+        Object trust = CreateTrust();
+        trust << std::string("testing") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << uint256_t(555);
+
+        REQUIRE(trust.Parse());
+        REQUIRE(trust.Standard() == TAO::Register::OBJECTS::TRUST);
+        REQUIRE(trust.Write("trust", uint64_t(5000)));
+        trust.SetChecksum();
+
+        //payload
+        tx[0] << uint8_t(OP::CREATE) << hashTrust << uint8_t(REGISTER::OBJECT) << trust.GetState();
+
+        //generate the prestates and poststates
+        REQUIRE_FALSE(tx.Build());
+    }
+
+
+    /* Test failure case - create trust with existing stake */
+    {
+        //create the transaction object
+        TAO::Ledger::Transaction tx;
+        tx.hashGenesis = hashGenesis;
+        tx.nSequence   = 0;
+        tx.nTimestamp  = runtime::timestamp();
+
+        //create object
+        Object trust = CreateTrust();
+        trust << std::string("testing") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << uint256_t(555);
+
+        REQUIRE(trust.Parse());
+        REQUIRE(trust.Standard() == TAO::Register::OBJECTS::TRUST);
+        REQUIRE(trust.Write("stake", uint64_t(5000)));
+        trust.SetChecksum();
+
+        //payload
+        tx[0] << uint8_t(OP::CREATE) << hashTrust << uint8_t(REGISTER::OBJECT) << trust.GetState();
+
+        //generate the prestates and poststates
+        REQUIRE_FALSE(tx.Build());
+    }
+
+
+    /* Create a valid trust account register */
     {
         {
             //create the transaction object
@@ -80,11 +155,11 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             tx.nTimestamp  = runtime::timestamp();
 
             //create object
-            Object object = CreateTrust();
-            object << std::string("testing") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << uint256_t(555);
+            Object trust = CreateTrust();
+            trust << std::string("testing") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << uint256_t(555);
 
             //payload
-            tx[0] << uint8_t(OP::CREATE) << hashTrust << uint8_t(REGISTER::OBJECT) << object.GetState();
+            tx[0] << uint8_t(OP::CREATE) << hashTrust << uint8_t(REGISTER::OBJECT) << trust.GetState();
 
             //generate the prestates and poststates
             REQUIRE(tx.Build());
@@ -96,6 +171,66 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
         }
 
+        {
+            //check the trust register
+            TAO::Register::Object trust;
+            REQUIRE(LLD::Register->ReadState(hashTrust, trust));
+
+            //parse
+            REQUIRE(trust.Parse());
+
+            //check standards
+            REQUIRE(trust.Standard() == OBJECTS::TRUST);
+            REQUIRE(trust.Base()     == OBJECTS::ACCOUNT);
+
+            //check values
+            REQUIRE(trust.get<uint64_t>("balance") == 0);
+            REQUIRE(trust.get<uint64_t>("trust")   == 0);
+            REQUIRE(trust.get<uint64_t>("stake")   == 0);
+            REQUIRE(trust.get<uint256_t>("token")  == 0);
+        }
+    }
+}
+
+
+TEST_CASE( "Solo Stake Operation Tests", "[operation][stake][solostake]")
+{
+    using namespace TAO::Register;
+    using namespace TAO::Operation;
+
+    /* Generate random genesis */
+    uint256_t hashGenesis = LLC::GetRand256();
+
+    /* Generate trust address deterministically */
+    uint256_t hashTrust = TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
+
+    uint512_t hashLastTrust;
+
+    /* Create trust account register to use for remaining tests */
+    {
+        {
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis;
+            tx.nSequence   = 0;
+            tx.nTimestamp  = runtime::timestamp();
+
+            //create object
+            Object trust = CreateTrust();
+            trust << std::string("testing") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << uint256_t(555);
+
+            //payload
+            tx[0] << uint8_t(OP::CREATE) << hashTrust << uint8_t(REGISTER::OBJECT) << trust.GetState();
+
+            //generate the prestates and poststates
+            REQUIRE(tx.Build());
+
+            //verify the prestates and poststates
+            REQUIRE(tx.Verify());
+
+            //commit to disk
+            REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+        }
 
         {
             //check the trust register
@@ -123,7 +258,6 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             REQUIRE(LLD::Register->WriteState(hashTrust, trust));
         }
 
-
         {
             //verify update
             TAO::Register::Object trust;
@@ -141,7 +275,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
     }
 
 
-    //test Trust w/o Genesis NOTE: intended failure
+    /* Test failure case - Trust w/o Genesis */
     {
         //create the transaction object
         TAO::Ledger::Transaction tx;
@@ -151,21 +285,22 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
 
         hashLastTrust = LLC::GetRand512();
 
-        //payload
-        tx[0] << uint8_t(OP::TRUST) << hashLastTrust << uint64_t(555) << uint64_t(6);
+        //payload: Trust op, last trust, new trust score, stake change, reward
+        tx[0] << uint8_t(OP::TRUST) << hashLastTrust << uint64_t(555) << uint64_t(0) << uint64_t(6);
 
         //generate the prestates and poststates (trust w/o genesis should fail)
         REQUIRE_FALSE(tx.Build());
 
-        //check trust indexed
+        //check trust not indexed
         REQUIRE_FALSE(LLD::Register->HasTrust(hashGenesis));
 
+        //check trust index not written
         TAO::Register::Object trust;
         REQUIRE_FALSE(LLD::Register->ReadTrust(hashGenesis, trust));
     }
 
 
-    //test Genesis
+    /* Test Genesis */
     {
         //create the transaction object
         TAO::Ledger::Transaction tx;
@@ -173,7 +308,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
         tx.nSequence   = 1;
         tx.nTimestamp  = runtime::timestamp();
 
-        //payload with coinstake reward
+        //payload: Genesis op, coinstake reward
         tx[0] << uint8_t(OP::GENESIS) << uint64_t(5);
 
         //generate the prestates and poststates
@@ -185,21 +320,22 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
         //commit to disk
         REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
 
-        //save last trust hash
+        //save last trust hash of genesis tx for use in trust test
         hashLastTrust = tx.GetHash();
 
-        //check register values
+        //check register values retrieved via ReadTrust
         {
             //check trust indexed
             REQUIRE(LLD::Register->HasTrust(hashGenesis));
 
+            //check trust index written
             TAO::Register::Object trust;
             REQUIRE(LLD::Register->ReadTrust(hashGenesis, trust));
 
             //parse register
             REQUIRE(trust.Parse());
 
-            //check values
+            //check values (genesis has moved seed balance to stake, paid reward to balance)
             REQUIRE(trust.get<uint64_t>("balance") == 5);
             REQUIRE(trust.get<uint64_t>("trust")   == 0);
             REQUIRE(trust.get<uint64_t>("stake")   == 5000);
@@ -212,9 +348,9 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             REQUIRE(trust == object);
         }
 
-
-        //check register values
+        //check register values retrieved using raw state address
         {
+            /* Get trust account address for contract caller */
             uint256_t hashAddress =
                 TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
 
@@ -224,7 +360,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             //parse register
             REQUIRE(trust.Parse());
 
-            //check values
+            //check values match those above
             REQUIRE(trust.get<uint64_t>("balance") == 5);
             REQUIRE(trust.get<uint64_t>("trust")   == 0);
             REQUIRE(trust.get<uint64_t>("stake")   == 5000);
@@ -233,7 +369,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
     }
 
 
-    //test duplicate Genesis NOTE: intended failure
+    /* Test failure case - Duplicate Genesis */
     {
         //create the transaction object
         TAO::Ledger::Transaction tx;
@@ -241,7 +377,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
         tx.nSequence   = 1;
         tx.nTimestamp  = runtime::timestamp();
 
-        //payload with coinstake reward
+        //payload: Genesis op, coinstake reward
         tx[0] << uint8_t(OP::GENESIS) << uint64_t(10);
 
         //generate the prestates and poststates
@@ -252,13 +388,14 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             //check trust indexed
             REQUIRE(LLD::Register->HasTrust(hashGenesis));
 
+            //check trust index written
             TAO::Register::Object trust;
             REQUIRE(LLD::Register->ReadTrust(hashGenesis, trust));
 
             //parse register
             REQUIRE(trust.Parse());
 
-            //check values
+            //check values unchanged
             REQUIRE(trust.get<uint64_t>("balance") == 5);
             REQUIRE(trust.get<uint64_t>("trust")   == 0);
             REQUIRE(trust.get<uint64_t>("stake")   == 5000);
@@ -271,9 +408,9 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             REQUIRE(trust == object);
         }
 
-
-        //check register values with raw state address
+        //check register values retrieved using raw state address
         {
+            /* Get trust account address for contract caller */
             uint256_t hashAddress =
                 TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
 
@@ -283,7 +420,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             //parse register
             REQUIRE(trust.Parse());
 
-            //check values
+            //check values match those above
             REQUIRE(trust.get<uint64_t>("balance") == 5);
             REQUIRE(trust.get<uint64_t>("trust")   == 0);
             REQUIRE(trust.get<uint64_t>("stake")   == 5000);
@@ -292,7 +429,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
     }
 
 
-    //test Trust
+    /* Test Trust */
     {
         //create the transaction object
         TAO::Ledger::Transaction tx;
@@ -300,7 +437,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
         tx.nSequence   = 2;
         tx.nTimestamp  = runtime::timestamp();
 
-        //payload with new trust score and coinstake reward
+        //payload: Trust op, last trust, new trust score, stake change, reward
         tx[0] << uint8_t(OP::TRUST) << hashLastTrust << uint64_t(720) << int64_t(0) << uint64_t(6);
 
         //generate the prestates and poststates
@@ -323,7 +460,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             //parse register
             REQUIRE(trust.Parse());
 
-            //check values
+            //check values - stake unchanged, new trust score assigned, reward paid to balance
             REQUIRE(trust.get<uint64_t>("balance") == 11);
             REQUIRE(trust.get<uint64_t>("trust")   == 720);
             REQUIRE(trust.get<uint64_t>("stake")   == 5000);
@@ -336,8 +473,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             REQUIRE(trust == object);
         }
 
-
-        //check register values
+        //check register values retrieved using raw state address
         {
             /* Get trust account address for contract caller */
             uint256_t hashAddress =
@@ -349,7 +485,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             //parse register
             REQUIRE(trust.Parse());
 
-            //check values
+            //check values match those above
             REQUIRE(trust.get<uint64_t>("balance") == 11);
             REQUIRE(trust.get<uint64_t>("trust")   == 720);
             REQUIRE(trust.get<uint64_t>("stake")   == 5000);
@@ -358,7 +494,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
     }
 
 
-    //test second Trust
+    /* Test second Trust */
     {
         //create the transaction object
         TAO::Ledger::Transaction tx;
@@ -366,7 +502,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
         tx.nSequence   = 3;
         tx.nTimestamp  = runtime::timestamp();
 
-        //payload with new trust score and coinstake reward
+        //payload: Trust op, last trust, new trust score, stake change, reward
         tx[0] << uint8_t(OP::TRUST) << hashLastTrust << uint64_t(2000) << int64_t(0) << uint64_t(7);
 
         //generate the prestates and poststates
@@ -389,7 +525,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             //parse register
             REQUIRE(trust.Parse());
 
-            //check values
+            //check values - stake unchanged, new trust score assigned, reward paid to balance
             REQUIRE(trust.get<uint64_t>("balance") == 18);
             REQUIRE(trust.get<uint64_t>("trust")   == 2000);
             REQUIRE(trust.get<uint64_t>("stake")   == 5000);
@@ -402,8 +538,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             REQUIRE(trust == object);
         }
 
-
-        //check register values
+        //check register values retrieved using raw state address
         {
             /* Get trust account address for contract caller */
             uint256_t hashAddress =
@@ -415,7 +550,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             //parse register
             REQUIRE(trust.Parse());
 
-            //check values
+            //check values match those above
             REQUIRE(trust.get<uint64_t>("balance") == 18);
             REQUIRE(trust.get<uint64_t>("trust")   == 2000);
             REQUIRE(trust.get<uint64_t>("stake")   == 5000);
@@ -424,7 +559,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
     }
 
 
-    //Test stake exceeds balance NOTE: intended failure
+    /* Test failure case - Add stake exceeds balance */
     {
         //create the transaction object
         TAO::Ledger::Transaction tx;
@@ -432,7 +567,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
         tx.nSequence   = 4;
         tx.nTimestamp  = runtime::timestamp();
 
-        //payload with added stake amount
+        //payload: Trust op, last trust, new trust score, stake change, reward
         tx[0] << uint8_t(OP::TRUST) << hashLastTrust << uint64_t(2500) << int64_t(1000) << uint64_t(5);
 
         //generate the prestates and poststates
@@ -446,7 +581,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             //parse register
             REQUIRE(trust.Parse());
 
-            //check values
+            //check values unchanged
             REQUIRE(trust.get<uint64_t>("balance") == 18);
             REQUIRE(trust.get<uint64_t>("trust")   == 2000);
             REQUIRE(trust.get<uint64_t>("stake")   == 5000);
@@ -459,8 +594,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             REQUIRE(trust == object);
         }
 
-
-        //check register values
+        //check register values retrieved using raw state address
         {
             /* Get trust account address for contract caller */
             uint256_t hashAddress =
@@ -472,7 +606,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             //parse register
             REQUIRE(trust.Parse());
 
-            //check values
+            //check values match those above
             REQUIRE(trust.get<uint64_t>("balance") == 18);
             REQUIRE(trust.get<uint64_t>("trust")   == 2000);
             REQUIRE(trust.get<uint64_t>("stake")   == 5000);
@@ -481,7 +615,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
     }
 
 
-    //Test unstake exceeds stake NOTE: intended failure
+    /* Test failure case - Remove stake exceeds stake */
     {
         //create the transaction object
         TAO::Ledger::Transaction tx;
@@ -489,7 +623,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
         tx.nSequence   = 4;
         tx.nTimestamp  = runtime::timestamp();
 
-        //payload with removed stake amount and trust penalty
+        //payload: Trust op, last trust, new trust score (with unstake cost), stake change, reward
         tx[0] << uint8_t(OP::TRUST) << hashLastTrust << uint64_t(2500) << int64_t(-15000) << uint64_t(5);
 
         //generate the prestates and poststates
@@ -503,7 +637,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             //parse register
             REQUIRE(trust.Parse());
 
-            //check values
+            //check values unchanged
             REQUIRE(trust.get<uint64_t>("balance") == 18);
             REQUIRE(trust.get<uint64_t>("trust")   == 2000);
             REQUIRE(trust.get<uint64_t>("stake")   == 5000);
@@ -516,8 +650,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             REQUIRE(trust == object);
         }
 
-
-        //check register values
+        //check register values retrieved using raw state address
         {
             /* Get trust account address for contract caller */
             uint256_t hashAddress =
@@ -529,7 +662,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             //parse register
             REQUIRE(trust.Parse());
 
-            //check values
+            //check values match those above
             REQUIRE(trust.get<uint64_t>("balance") == 18);
             REQUIRE(trust.get<uint64_t>("trust")   == 2000);
             REQUIRE(trust.get<uint64_t>("stake")   == 5000);
@@ -538,7 +671,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
     }
 
 
-    //Test unstake
+    /* Test unstake */
     {
         //create the transaction object
         TAO::Ledger::Transaction tx;
@@ -546,7 +679,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
         tx.nSequence   = 4;
         tx.nTimestamp  = runtime::timestamp();
 
-        //payload with removed stake amount and trust penalty
+        //payload: Trust op, last trust, new trust score (with unstake cost), stake change, reward
         tx[0] << uint8_t(OP::TRUST) << hashLastTrust << uint64_t(1200) << int64_t(-2000) << uint64_t(5);
 
         //generate the prestates and poststates
@@ -566,7 +699,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             //parse register
             REQUIRE(trust.Parse());
 
-            //check values
+            //check values - Unstaked amount moved from stake to balance, new trust score applied, reward paid to balance
             REQUIRE(trust.get<uint64_t>("balance") == 2023);
             REQUIRE(trust.get<uint64_t>("trust")   == 1200);
             REQUIRE(trust.get<uint64_t>("stake")   == 3000);
@@ -579,8 +712,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             REQUIRE(trust == object);
         }
 
-
-        //check register values
+        //check register values retrieved using raw state address
         {
             /* Get trust account address for contract caller */
             uint256_t hashAddress =
@@ -592,7 +724,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             //parse register
             REQUIRE(trust.Parse());
 
-            //check values
+            //check values match those above
             REQUIRE(trust.get<uint64_t>("balance") == 2023);
             REQUIRE(trust.get<uint64_t>("trust")   == 1200);
             REQUIRE(trust.get<uint64_t>("stake")   == 3000);
@@ -601,7 +733,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
     }
 
 
-    //Test add stake
+    /* Test add stake */
     {
         //create the transaction object
         TAO::Ledger::Transaction tx;
@@ -609,7 +741,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
         tx.nSequence   = 5;
         tx.nTimestamp  = runtime::timestamp();
 
-        //payload with added stake amount
+        //payload: Trust op, last trust, new trust score, stake change, reward
         tx[0] << uint8_t(OP::TRUST) << hashLastTrust << uint64_t(2200) << int64_t(20) << uint64_t(6);
 
         //generate the prestates and poststates
@@ -629,7 +761,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             //parse register
             REQUIRE(trust.Parse());
 
-            //check values
+            //check values - Added stake moved from balance to stake, new trust score applied, reward paid to balance
             REQUIRE(trust.get<uint64_t>("balance") == 2009);
             REQUIRE(trust.get<uint64_t>("trust")   == 2200);
             REQUIRE(trust.get<uint64_t>("stake")   == 3020);
@@ -642,8 +774,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             REQUIRE(trust == object);
         }
 
-
-        //check register values
+        //check register values retrieved using raw state address
         {
             /* Get trust account address for contract caller */
             uint256_t hashAddress =
@@ -664,7 +795,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
     }
 
 
-    //test Trust after stake/unstake
+    /* Test Trust after stake/unstake */
     {
         //create the transaction object
         TAO::Ledger::Transaction tx;
@@ -672,7 +803,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
         tx.nSequence   = 6;
         tx.nTimestamp  = runtime::timestamp();
 
-        //payload with new trust score and coinstake reward
+        //payload: Trust op, last trust, new trust score, stake change, reward
         tx[0] << uint8_t(OP::TRUST) << hashLastTrust << uint64_t(3000) << int64_t(0) << uint64_t(7);
 
         //generate the prestates and poststates
@@ -695,7 +826,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             //parse register
             REQUIRE(trust.Parse());
 
-            //check values
+            //check values - new trust score applied, stake unchanged, reward added to balance
             REQUIRE(trust.get<uint64_t>("balance") == 2016);
             REQUIRE(trust.get<uint64_t>("trust")   == 3000);
             REQUIRE(trust.get<uint64_t>("stake")   == 3020);
@@ -708,8 +839,622 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             REQUIRE(trust == object);
         }
 
+        //check register values retrieved using raw state address
+        {
+            /* Get trust account address for contract caller */
+            uint256_t hashAddress =
+                TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
+
+            TAO::Register::Object trust;
+            REQUIRE(LLD::Register->ReadState(hashAddress, trust));
+
+            //parse register
+            REQUIRE(trust.Parse());
+
+            //check values match those above
+            REQUIRE(trust.get<uint64_t>("balance") == 2016);
+            REQUIRE(trust.get<uint64_t>("trust")   == 3000);
+            REQUIRE(trust.get<uint64_t>("stake")   == 3020);
+            REQUIRE(trust.get<uint256_t>("token")  == 0);
+        }
+    }
+}
+
+
+TEST_CASE( "Pooled Stake Operation Tests", "[operation][stake][poolstake]")
+{
+    using namespace TAO::Register;
+    using namespace TAO::Operation;
+
+    /* Generate random genesis */
+    uint256_t hashGenesis  = LLC::GetRand256();
+
+    /* Generate trust address deterministically */
+    uint256_t hashTrust = TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
+
+    uint512_t hashLastTrust;
+
+    //Unit tests don't test proof validation, so just need to assign values
+    uint256_t hashProof = LLC::GetRand256();
+    uint64_t nTimeBegin = runtime::timestamp();
+    uint64_t nTimeEnd = nTimeBegin + 60;
+
+    /* Create trust account register to use for remaining tests */
+    {
+        {
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis;
+            tx.nSequence   = 0;
+            tx.nTimestamp  = runtime::timestamp();
+
+            //create object
+            Object trust = CreateTrust();
+            trust << std::string("testing") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << uint256_t(555);
+
+            //payload
+            tx[0] << uint8_t(OP::CREATE) << hashTrust << uint8_t(REGISTER::OBJECT) << trust.GetState();
+
+            //generate the prestates and poststates
+            REQUIRE(tx.Build());
+
+            //verify the prestates and poststates
+            REQUIRE(tx.Verify());
+
+            //commit to disk
+            REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+        }
+
+        {
+            //check the trust register
+            TAO::Register::Object trust;
+            REQUIRE(LLD::Register->ReadState(hashTrust, trust));
+
+            //parse
+            REQUIRE(trust.Parse());
+
+            //check standards
+            REQUIRE(trust.Standard() == OBJECTS::TRUST);
+            REQUIRE(trust.Base()     == OBJECTS::ACCOUNT);
+
+            //check values
+            REQUIRE(trust.get<uint64_t>("balance") == 0);
+            REQUIRE(trust.get<uint64_t>("trust")   == 0);
+            REQUIRE(trust.get<uint64_t>("stake")   == 0);
+            REQUIRE(trust.get<uint256_t>("token")  == 0);
+
+            //add balance to seed remaining tests
+            trust.Write("balance", uint64_t(5000));
+            REQUIRE(trust.get<uint64_t>("balance") == 5000);
+            trust.SetChecksum();
+
+            REQUIRE(LLD::Register->WriteState(hashTrust, trust));
+        }
+
+        {
+            //verify update
+            TAO::Register::Object trust;
+            REQUIRE(LLD::Register->ReadState(hashTrust, trust));
+
+            //parse
+            REQUIRE(trust.Parse());
+
+            //check values
+            REQUIRE(trust.get<uint64_t>("balance") == 5000);
+            REQUIRE(trust.get<uint64_t>("trust")   == 0);
+            REQUIRE(trust.get<uint64_t>("stake")   == 0);
+            REQUIRE(trust.get<uint256_t>("token")  == 0);
+        }
+    }
+
+
+    /* Test failure case - Pooled Trust w/o Genesis */
+    {
+        //create the transaction object
+        TAO::Ledger::Transaction tx;
+        tx.hashGenesis = hashGenesis;
+        tx.nSequence   = 1;
+        tx.nTimestamp  = runtime::timestamp();
+
+        hashLastTrust = LLC::GetRand512();
+
+        //payload: Trust op, last trust, proof, time start, time end, new trust score, stake change, reward
+        tx[0] << uint8_t(OP::TRUSTPOOL) << hashLastTrust << hashProof << nTimeBegin << nTimeEnd
+                                        << uint64_t(555) << uint64_t(0) << uint64_t(6);
+
+        //generate the prestates and poststates (trust w/o genesis should fail)
+        REQUIRE_FALSE(tx.Build());
+
+        //check trust not indexed
+        REQUIRE_FALSE(LLD::Register->HasTrust(hashGenesis));
+
+        //check trust index not written
+        TAO::Register::Object trust;
+        REQUIRE_FALSE(LLD::Register->ReadTrust(hashGenesis, trust));
+    }
+
+
+    /* Test Pooled Genesis */
+    {
+        //create the transaction object
+        TAO::Ledger::Transaction tx;
+        tx.hashGenesis = hashGenesis;
+        tx.nSequence   = 1;
+        tx.nTimestamp  = runtime::timestamp();
+
+        //payload: Genesis op, proof, time start, time end, coinstake reward
+        tx[0] << uint8_t(OP::GENESISPOOL) << hashProof << nTimeBegin << nTimeEnd << uint64_t(5);
+
+        //generate the prestates and poststates
+        REQUIRE(tx.Build());
+
+        //verify the prestates and poststates
+        REQUIRE(tx.Verify());
+
+        //commit to disk
+        REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+
+        //save last trust hash of genesis tx for use in trust test
+        hashLastTrust = tx.GetHash();
+
+        //check register values retrieved via ReadTrust
+        {
+            //check trust indexed
+            REQUIRE(LLD::Register->HasTrust(hashGenesis));
+
+            //check trust index written
+            TAO::Register::Object trust;
+            REQUIRE(LLD::Register->ReadTrust(hashGenesis, trust));
+
+            //parse register
+            REQUIRE(trust.Parse());
+
+            //check values (genesis has moved seed balance to stake, paid reward to balance)
+            REQUIRE(trust.get<uint64_t>("balance") == 5);
+            REQUIRE(trust.get<uint64_t>("trust")   == 0);
+            REQUIRE(trust.get<uint64_t>("stake")   == 5000);
+            REQUIRE(trust.get<uint256_t>("token")  == 0);
+
+            //verify ReadTrust and ReadState return same object
+            TAO::Register::Object object;
+            REQUIRE(LLD::Register->ReadState(hashTrust, object));
+
+            REQUIRE(trust == object);
+        }
+
+        //check register values retrieved using raw state address
+        {
+            /* Get trust account address for contract caller */
+            uint256_t hashAddress =
+                TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
+
+            TAO::Register::Object trust;
+            REQUIRE(LLD::Register->ReadState(hashAddress, trust));
+
+            //parse register
+            REQUIRE(trust.Parse());
+
+            //check values match those above
+            REQUIRE(trust.get<uint64_t>("balance") == 5);
+            REQUIRE(trust.get<uint64_t>("trust")   == 0);
+            REQUIRE(trust.get<uint64_t>("stake")   == 5000);
+            REQUIRE(trust.get<uint256_t>("token")  == 0);
+        }
+    }
+
+
+    /* Test failure case - Duplicate Pooled Genesis */
+    {
+        //create the transaction object
+        TAO::Ledger::Transaction tx;
+        tx.hashGenesis = hashGenesis;
+        tx.nSequence   = 1;
+        tx.nTimestamp  = runtime::timestamp();
+
+        //payload: Genesis op, proof, time start, time end, coinstake reward
+        tx[0] << uint8_t(OP::GENESISPOOL) << hashProof << nTimeBegin << nTimeEnd << uint64_t(10);
+
+        //generate the prestates and poststates
+        REQUIRE_FALSE(tx.Build());
+
+        //check register values with indexed trust
+        {
+            //check trust indexed
+            REQUIRE(LLD::Register->HasTrust(hashGenesis));
+
+            //check trust index written
+            TAO::Register::Object trust;
+            REQUIRE(LLD::Register->ReadTrust(hashGenesis, trust));
+
+            //parse register
+            REQUIRE(trust.Parse());
+
+            //check values unchanged
+            REQUIRE(trust.get<uint64_t>("balance") == 5);
+            REQUIRE(trust.get<uint64_t>("trust")   == 0);
+            REQUIRE(trust.get<uint64_t>("stake")   == 5000);
+            REQUIRE(trust.get<uint256_t>("token")  == 0);
+
+            //verify ReadTrust and ReadState return same object
+            TAO::Register::Object object;
+            REQUIRE(LLD::Register->ReadState(hashTrust, object));
+
+            REQUIRE(trust == object);
+        }
+
+        //check register values retrieved using raw state address
+        {
+            /* Get trust account address for contract caller */
+            uint256_t hashAddress =
+                TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
+
+            TAO::Register::Object trust;
+            REQUIRE(LLD::Register->ReadState(hashAddress, trust));
+
+            //parse register
+            REQUIRE(trust.Parse());
+
+            //check values match those above
+            REQUIRE(trust.get<uint64_t>("balance") == 5);
+            REQUIRE(trust.get<uint64_t>("trust")   == 0);
+            REQUIRE(trust.get<uint64_t>("stake")   == 5000);
+            REQUIRE(trust.get<uint256_t>("token")  == 0);
+        }
+    }
+
+
+    /* Test Pool Trust */
+    {
+        //create the transaction object
+        TAO::Ledger::Transaction tx;
+        tx.hashGenesis = hashGenesis;
+        tx.nSequence   = 2;
+        tx.nTimestamp  = runtime::timestamp();
+
+        //payload: Trust op, last trust, proof, time start, time end, new trust score, stake change, reward
+        tx[0] << uint8_t(OP::TRUSTPOOL) << hashLastTrust << hashProof << nTimeBegin << nTimeEnd
+                                        << uint64_t(720) << uint64_t(0) << uint64_t(6);
+
+        //generate the prestates and poststates
+        REQUIRE(tx.Build());
+
+        //verify the prestates and poststates
+        REQUIRE(tx.Verify());
+
+        //commit to disk
+        REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+
+        //save last trust hash
+        hashLastTrust = tx.GetHash();
 
         //check register values
+        {
+            TAO::Register::Object trust;
+            REQUIRE(LLD::Register->ReadTrust(hashGenesis, trust));
+
+            //parse register
+            REQUIRE(trust.Parse());
+
+            //check values - stake unchanged, new trust score assigned, reward paid to balance
+            REQUIRE(trust.get<uint64_t>("balance") == 11);
+            REQUIRE(trust.get<uint64_t>("trust")   == 720);
+            REQUIRE(trust.get<uint64_t>("stake")   == 5000);
+            REQUIRE(trust.get<uint256_t>("token")  == 0);
+
+            //verify ReadTrust and ReadState return same object
+            TAO::Register::Object object;
+            REQUIRE(LLD::Register->ReadState(hashTrust, object));
+
+            REQUIRE(trust == object);
+        }
+
+        //check register values retrieved using raw state address
+        {
+            /* Get trust account address for contract caller */
+            uint256_t hashAddress =
+                TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
+
+            TAO::Register::Object trust;
+            REQUIRE(LLD::Register->ReadState(hashAddress, trust));
+
+            //parse register
+            REQUIRE(trust.Parse());
+
+            //check values match those above
+            REQUIRE(trust.get<uint64_t>("balance") == 11);
+            REQUIRE(trust.get<uint64_t>("trust")   == 720);
+            REQUIRE(trust.get<uint64_t>("stake")   == 5000);
+            REQUIRE(trust.get<uint256_t>("token")  == 0);
+        }
+    }
+
+
+    /* Test second Pooled Trust */
+    {
+        //create the transaction object
+        TAO::Ledger::Transaction tx;
+        tx.hashGenesis = hashGenesis;
+        tx.nSequence   = 3;
+        tx.nTimestamp  = runtime::timestamp();
+
+        //payload: Trust op, last trust, proof, time start, time end, new trust score, stake change, reward
+        tx[0] << uint8_t(OP::TRUSTPOOL) << hashLastTrust << hashProof << nTimeBegin << nTimeEnd
+                                        << uint64_t(2000) << uint64_t(0) << uint64_t(7);
+
+        //generate the prestates and poststates
+        REQUIRE(tx.Build());
+
+        //verify the prestates and poststates
+        REQUIRE(tx.Verify());
+
+        //commit to disk
+        REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+
+        //save last trust hash
+        hashLastTrust = tx.GetHash();
+
+        //check register values
+        {
+            TAO::Register::Object trust;
+            REQUIRE(LLD::Register->ReadTrust(hashGenesis, trust));
+
+            //parse register
+            REQUIRE(trust.Parse());
+
+            //check values - stake unchanged, new trust score assigned, reward paid to balance
+            REQUIRE(trust.get<uint64_t>("balance") == 18);
+            REQUIRE(trust.get<uint64_t>("trust")   == 2000);
+            REQUIRE(trust.get<uint64_t>("stake")   == 5000);
+            REQUIRE(trust.get<uint256_t>("token")  == 0);
+
+            //verify ReadTrust and ReadState return same object
+            TAO::Register::Object object;
+            REQUIRE(LLD::Register->ReadState(hashTrust, object));
+
+            REQUIRE(trust == object);
+        }
+
+        //check register values retrieved using raw state address
+        {
+            /* Get trust account address for contract caller */
+            uint256_t hashAddress =
+                TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
+
+            TAO::Register::Object trust;
+            REQUIRE(LLD::Register->ReadState(hashAddress, trust));
+
+            //parse register
+            REQUIRE(trust.Parse());
+
+            //check values match those above
+            REQUIRE(trust.get<uint64_t>("balance") == 18);
+            REQUIRE(trust.get<uint64_t>("trust")   == 2000);
+            REQUIRE(trust.get<uint64_t>("stake")   == 5000);
+            REQUIRE(trust.get<uint256_t>("token")  == 0);
+        }
+    }
+
+
+    /* Test failure case - Add stake exceeds balance for pooled trust */
+    {
+        //create the transaction object
+        TAO::Ledger::Transaction tx;
+        tx.hashGenesis = hashGenesis;
+        tx.nSequence   = 4;
+        tx.nTimestamp  = runtime::timestamp();
+
+        //payload: Trust op, last trust, proof, time start, time end, new trust score, stake change, reward
+        tx[0] << uint8_t(OP::TRUSTPOOL) << hashLastTrust << hashProof << nTimeBegin << nTimeEnd
+                                        << uint64_t(2500) << uint64_t(1000) << uint64_t(5);
+
+        //generate the prestates and poststates
+        REQUIRE_FALSE(tx.Build());
+
+        //check register values
+        {
+            TAO::Register::Object trust;
+            REQUIRE(LLD::Register->ReadTrust(hashGenesis, trust));
+
+            //parse register
+            REQUIRE(trust.Parse());
+
+            //check values unchanged
+            REQUIRE(trust.get<uint64_t>("balance") == 18);
+            REQUIRE(trust.get<uint64_t>("trust")   == 2000);
+            REQUIRE(trust.get<uint64_t>("stake")   == 5000);
+            REQUIRE(trust.get<uint256_t>("token")  == 0);
+
+            //verify ReadTrust and ReadState return same object
+            TAO::Register::Object object;
+            REQUIRE(LLD::Register->ReadState(hashTrust, object));
+
+            REQUIRE(trust == object);
+        }
+
+        //check register values retrieved using raw state address
+        {
+            /* Get trust account address for contract caller */
+            uint256_t hashAddress =
+                TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
+
+            TAO::Register::Object trust;
+            REQUIRE(LLD::Register->ReadState(hashAddress, trust));
+
+            //parse register
+            REQUIRE(trust.Parse());
+
+            //check values match those above
+            REQUIRE(trust.get<uint64_t>("balance") == 18);
+            REQUIRE(trust.get<uint64_t>("trust")   == 2000);
+            REQUIRE(trust.get<uint64_t>("stake")   == 5000);
+            REQUIRE(trust.get<uint256_t>("token")  == 0);
+        }
+    }
+
+
+    /* Test failure case - Remove stake exceeds stake for pooled trust */
+    {
+        //create the transaction object
+        TAO::Ledger::Transaction tx;
+        tx.hashGenesis = hashGenesis;
+        tx.nSequence   = 4;
+        tx.nTimestamp  = runtime::timestamp();
+
+        //payload: Trust op, last trust, proof, time start, time end, new trust score, stake change, reward
+        tx[0] << uint8_t(OP::TRUSTPOOL) << hashLastTrust << hashProof << nTimeBegin << nTimeEnd
+                                        << uint64_t(2500) << uint64_t(-15000) << uint64_t(5);
+
+        //generate the prestates and poststates
+        REQUIRE_FALSE(tx.Build());
+
+        //check register values
+        {
+            TAO::Register::Object trust;
+            REQUIRE(LLD::Register->ReadTrust(hashGenesis, trust));
+
+            //parse register
+            REQUIRE(trust.Parse());
+
+            //check values unchanged
+            REQUIRE(trust.get<uint64_t>("balance") == 18);
+            REQUIRE(trust.get<uint64_t>("trust")   == 2000);
+            REQUIRE(trust.get<uint64_t>("stake")   == 5000);
+            REQUIRE(trust.get<uint256_t>("token")  == 0);
+
+            //verify ReadTrust and ReadState return same object
+            TAO::Register::Object object;
+            REQUIRE(LLD::Register->ReadState(hashTrust, object));
+
+            REQUIRE(trust == object);
+        }
+
+        //check register values retrieved using raw state address
+        {
+            /* Get trust account address for contract caller */
+            uint256_t hashAddress =
+                TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
+
+            TAO::Register::Object trust;
+            REQUIRE(LLD::Register->ReadState(hashAddress, trust));
+
+            //parse register
+            REQUIRE(trust.Parse());
+
+            //check values match those above
+            REQUIRE(trust.get<uint64_t>("balance") == 18);
+            REQUIRE(trust.get<uint64_t>("trust")   == 2000);
+            REQUIRE(trust.get<uint64_t>("stake")   == 5000);
+            REQUIRE(trust.get<uint256_t>("token")  == 0);
+        }
+    }
+
+
+    /* Test unstake with pooled trust */
+    {
+        //create the transaction object
+        TAO::Ledger::Transaction tx;
+        tx.hashGenesis = hashGenesis;
+        tx.nSequence   = 4;
+        tx.nTimestamp  = runtime::timestamp();
+
+        //payload: Trust op, last trust, proof, time start, time end, new trust score, stake change, reward
+        tx[0] << uint8_t(OP::TRUSTPOOL) << hashLastTrust << hashProof << nTimeBegin << nTimeEnd
+                                        << uint64_t(1200) << uint64_t(-2000) << uint64_t(5);
+
+        //generate the prestates and poststates
+        REQUIRE(tx.Build());
+
+        //verify the prestates and poststates
+        REQUIRE(tx.Verify());
+
+        //commit to disk
+        REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+
+        //check register values
+        {
+            TAO::Register::Object trust;
+            REQUIRE(LLD::Register->ReadTrust(hashGenesis, trust));
+
+            //parse register
+            REQUIRE(trust.Parse());
+
+            //check values - Unstaked amount moved from stake to balance, new trust score applied, reward paid to balance
+            REQUIRE(trust.get<uint64_t>("balance") == 2023);
+            REQUIRE(trust.get<uint64_t>("trust")   == 1200);
+            REQUIRE(trust.get<uint64_t>("stake")   == 3000);
+            REQUIRE(trust.get<uint256_t>("token")  == 0);
+
+            //verify ReadTrust and ReadState return same object
+            TAO::Register::Object object;
+            REQUIRE(LLD::Register->ReadState(hashTrust, object));
+
+            REQUIRE(trust == object);
+        }
+
+        //check register values retrieved using raw state address
+        {
+            /* Get trust account address for contract caller */
+            uint256_t hashAddress =
+                TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
+
+            TAO::Register::Object trust;
+            REQUIRE(LLD::Register->ReadState(hashAddress, trust));
+
+            //parse register
+            REQUIRE(trust.Parse());
+
+            //check values match those above
+            REQUIRE(trust.get<uint64_t>("balance") == 2023);
+            REQUIRE(trust.get<uint64_t>("trust")   == 1200);
+            REQUIRE(trust.get<uint64_t>("stake")   == 3000);
+            REQUIRE(trust.get<uint256_t>("token")  == 0);
+        }
+    }
+
+
+    /* Test add stake with pooled trust */
+    {
+        //create the transaction object
+        TAO::Ledger::Transaction tx;
+        tx.hashGenesis = hashGenesis;
+        tx.nSequence   = 5;
+        tx.nTimestamp  = runtime::timestamp();
+
+        //payload: Trust op, last trust, proof, time start, time end, new trust score, stake change, reward
+        tx[0] << uint8_t(OP::TRUSTPOOL) << hashLastTrust << hashProof << nTimeBegin << nTimeEnd
+                                        << uint64_t(2200) << uint64_t(20) << uint64_t(6);
+
+        //generate the prestates and poststates
+        REQUIRE(tx.Build());
+
+        //verify the prestates and poststates
+        REQUIRE(tx.Verify());
+
+        //commit to disk
+        REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+
+        //check register values
+        {
+            TAO::Register::Object trust;
+            REQUIRE(LLD::Register->ReadTrust(hashGenesis, trust));
+
+            //parse register
+            REQUIRE(trust.Parse());
+
+            //check values - Added stake moved from balance to stake, new trust score applied, reward paid to balance
+            REQUIRE(trust.get<uint64_t>("balance") == 2009);
+            REQUIRE(trust.get<uint64_t>("trust")   == 2200);
+            REQUIRE(trust.get<uint64_t>("stake")   == 3020);
+            REQUIRE(trust.get<uint256_t>("token")  == 0);
+
+            //verify ReadTrust and ReadState return same object
+            TAO::Register::Object object;
+            REQUIRE(LLD::Register->ReadState(hashTrust, object));
+
+            REQUIRE(trust == object);
+        }
+
+        //check register values retrieved using raw state address
         {
             /* Get trust account address for contract caller */
             uint256_t hashAddress =
@@ -722,6 +1467,72 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             REQUIRE(trust.Parse());
 
             //check values
+            REQUIRE(trust.get<uint64_t>("balance") == 2009);
+            REQUIRE(trust.get<uint64_t>("trust")   == 2200);
+            REQUIRE(trust.get<uint64_t>("stake")   == 3020);
+            REQUIRE(trust.get<uint256_t>("token")  == 0);
+        }
+    }
+
+
+    /* Test Pooled Trust after stake/unstake */
+    {
+        //create the transaction object
+        TAO::Ledger::Transaction tx;
+        tx.hashGenesis = hashGenesis;
+        tx.nSequence   = 6;
+        tx.nTimestamp  = runtime::timestamp();
+
+        //payload: Trust op, last trust, proof, time start, time end, new trust score, stake change, reward
+        tx[0] << uint8_t(OP::TRUSTPOOL) << hashLastTrust << hashProof << nTimeBegin << nTimeEnd
+                                        << uint64_t(3000) << uint64_t(0) << uint64_t(7);
+
+        //generate the prestates and poststates
+        REQUIRE(tx.Build());
+
+        //verify the prestates and poststates
+        REQUIRE(tx.Verify());
+
+        //commit to disk
+        REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+
+        //save last trust hash
+        hashLastTrust = tx.GetHash();
+
+        //check register values
+        {
+            TAO::Register::Object trust;
+            REQUIRE(LLD::Register->ReadTrust(hashGenesis, trust));
+
+            //parse register
+            REQUIRE(trust.Parse());
+
+            //check values - new trust score applied, stake unchanged, reward added to balance
+            REQUIRE(trust.get<uint64_t>("balance") == 2016);
+            REQUIRE(trust.get<uint64_t>("trust")   == 3000);
+            REQUIRE(trust.get<uint64_t>("stake")   == 3020);
+            REQUIRE(trust.get<uint256_t>("token")  == 0);
+
+            //verify ReadTrust and ReadState return same object
+            TAO::Register::Object object;
+            REQUIRE(LLD::Register->ReadState(hashTrust, object));
+
+            REQUIRE(trust == object);
+        }
+
+        //check register values retrieved using raw state address
+        {
+            /* Get trust account address for contract caller */
+            uint256_t hashAddress =
+                TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
+
+            TAO::Register::Object trust;
+            REQUIRE(LLD::Register->ReadState(hashAddress, trust));
+
+            //parse register
+            REQUIRE(trust.Parse());
+
+            //check values match those above
             REQUIRE(trust.get<uint64_t>("balance") == 2016);
             REQUIRE(trust.get<uint64_t>("trust")   == 3000);
             REQUIRE(trust.get<uint64_t>("stake")   == 3020);

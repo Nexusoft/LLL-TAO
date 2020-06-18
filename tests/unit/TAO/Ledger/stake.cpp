@@ -18,7 +18,7 @@ ________________________________________________________________________________
 
 #include <unit/catch2/catch.hpp>
 
-TEST_CASE( "Trust Score Tests", "[ledger]")
+TEST_CASE( "Trust Score Tests", "[ledger][stake]")
 {
     uint64_t nTrustScore;
     uint64_t nBlockAge;
@@ -31,7 +31,7 @@ TEST_CASE( "Trust Score Tests", "[ledger]")
         nTrustScore = 35000000;
         nBlockAge = 5000;
         nStakeChange = 0;
-        nVersion = 8;
+        nVersion = 9;
         uint64_t nTrustNew = TAO::Ledger::GetTrustScore(nTrustScore, nBlockAge, nStake, nStakeChange, nVersion);
 
         //Verify result
@@ -43,7 +43,7 @@ TEST_CASE( "Trust Score Tests", "[ledger]")
         nTrustScore = 35000000;
         nBlockAge = 100000 + TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET;
         nStakeChange = 0;
-        nVersion = 8;
+        nVersion = 9;
         uint64_t nTrustNew = TAO::Ledger::GetTrustScore(nTrustScore, nBlockAge, nStake, nStakeChange, nVersion);
 
         //Verify result
@@ -63,7 +63,7 @@ TEST_CASE( "Trust Score Tests", "[ledger]")
         REQUIRE_FALSE(nTrustNew == 31500000);
     }
 
-    /* Test overflow for unstake of v8 blocks, no decay */
+    /* Test overflow for unstake of v8+ blocks, no decay */
     {
         //Calculate trust score using v8 method
         nTrustScore = 34995000;
@@ -81,7 +81,7 @@ TEST_CASE( "Trust Score Tests", "[ledger]")
         nTrustScore = 35000000;
         nBlockAge = 100000 + TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET; //100000 seconds after timespan = 300000 trust score decay
         nStakeChange = -100000000000; //unstake 100000 NXS
-        nVersion = 8;
+        nVersion = 9;
         uint64_t nTrustNew = TAO::Ledger::GetTrustScore(nTrustScore, nBlockAge, nStake, nStakeChange, nVersion);
 
         //Verify result (decay 300000, then 10% trust cost)
@@ -90,10 +90,8 @@ TEST_CASE( "Trust Score Tests", "[ledger]")
 }
 
 
-TEST_CASE( "Stake Metrics Tests", "[ledger]")
+TEST_CASE( "Stake Metrics Tests", "[ledger][stake]")
 {
-    uint64_t nStake = 1000000000000; //1000000 NXS
-
     /* Test max block weight */
     {
         cv::softdouble nBlockWeight = TAO::Ledger::BlockWeight(TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET);
@@ -132,11 +130,6 @@ TEST_CASE( "Stake Metrics Tests", "[ledger]")
 
         //Verify result
         REQUIRE(nStakeRate == 0.005);
-
-        //Calculate net stake reward for one year at this rate
-        uint64_t nCoinstakeReward = TAO::Ledger::GetCoinstakeReward(nStake, TAO::Ledger::ONE_YEAR, 0, true);
-
-        REQUIRE(nCoinstakeReward == 5000000000); //5000 NXS
     }
 
     /* Stake Rate Max */
@@ -145,12 +138,6 @@ TEST_CASE( "Stake Metrics Tests", "[ledger]")
 
         //Verify result
         REQUIRE(nStakeRate == 0.03);
-
-        //Calculate net stake reward for one year at this rate
-        uint64_t nCoinstakeReward = TAO::Ledger::GetCoinstakeReward(nStake, TAO::Ledger::ONE_YEAR,
-                                                                    TAO::Ledger::TRUST_SCORE_MAX_TESTNET, false);
-
-        REQUIRE(nCoinstakeReward == 30000000000); //30000 NXS
     }
 
     /* Stake Rate - 50% trust weight */
@@ -164,16 +151,11 @@ TEST_CASE( "Stake Metrics Tests", "[ledger]")
         nStakeRate = nStakeRate * cv::softdouble(10000000);
         nStakeRate = cv::softdouble(cvRound64(nStakeRate)) / cv::softdouble(10000000);
         REQUIRE(nStakeRate == 0.0172029);
-
-        //Calculate net stake reward for one year at this rate
-        uint64_t nCoinstakeReward = TAO::Ledger::GetCoinstakeReward(nStake, TAO::Ledger::ONE_YEAR, nTestTrust, false);
-
-        REQUIRE(nCoinstakeReward == 17202915975);
     }
 }
 
 
-TEST_CASE( "Proof of Stake Tests", "[ledger]")
+TEST_CASE( "Coinstake Reward Tests", "[ledger][stake]")
 {
     uint64_t nStake = 1000000000000; //1000000 NXS
 
@@ -205,6 +187,12 @@ TEST_CASE( "Proof of Stake Tests", "[ledger]")
 
         REQUIRE(nCoinstakeReward == 17202915975);
     }
+}
+
+
+TEST_CASE( "Threshold Tests", "[ledger][stake]")
+{
+    uint64_t nStake = 1000000000000; //1000000 NXS
 
     /* Threshold */
     {
@@ -216,13 +204,11 @@ TEST_CASE( "Proof of Stake Tests", "[ledger]")
 
 
     nStake = 1000000000; //1000 NXS
-    cv::softdouble nBlockWeight;
+    cv::softdouble nBlockWeight = TAO::Ledger::BlockWeight(TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET);
 
     /* Required Threshold Genesis with one timespan block weight */
     {
         cv::softdouble nTrustWeight = TAO::Ledger::GenesisWeight(TAO::Ledger::TRUST_WEIGHT_BASE_TESTNET);
-
-        nBlockWeight = TAO::Ledger::BlockWeight(TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET);
 
         REQUIRE(nTrustWeight == 10.0);
         REQUIRE(nBlockWeight == 10.0);
@@ -256,4 +242,14 @@ TEST_CASE( "Proof of Stake Tests", "[ledger]")
         //Verify result
         REQUIRE(nRequired == 8.0);
     }
+}
+
+
+TEST_CASE( "Pool Stake Fee", "[ledger][stake][poolstake]")
+{
+    uint64_t nReward = 10000000; //10 NXS
+
+    uint64_t nFee = TAO::Ledger::GetPoolStakeFee(nReward);
+
+    REQUIRE(nFee == 1600000); //1.6 NXS
 }

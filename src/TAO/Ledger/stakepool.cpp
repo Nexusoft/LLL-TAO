@@ -227,7 +227,7 @@ namespace TAO
             /* Check memory and disk for previous transaction. */
             if(!LLD::Ledger->HasTx(tx.hashPrevTx, FLAGS::MEMPOOL))
             {
-                debug::error(0, FUNCTION, "Pooled stake tx ", hashTx.SubString(), " REJECTED:  missing previous tx ",
+                debug::error(FUNCTION, "Pooled stake tx ", hashTx.SubString(), " REJECTED:  missing previous tx ",
                              tx.hashPrevTx.SubString());
 
                 /* Increment consecutive orphans. */
@@ -287,6 +287,10 @@ namespace TAO
                 else
                     debug::log(3, FUNCTION, "Pooled stake tx ", hashTx.SubString(), " RELAYED");
             }
+
+            /* Pooled staking not enabled or stake minter not running. tx not processed into pool, but is relayed as appropriate */
+            else
+                debug::log(3, FUNCTION, "Pooled stake tx ", hashTx.SubString(), " RELAYED");
 
             return true;
         }
