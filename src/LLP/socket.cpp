@@ -259,8 +259,17 @@ namespace LLP
             fConnected = (connect(fd, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR);
         }
 
+        if(pSSL)
+        {
+
+            SSL_set_fd(pSSL, nFile);
+            SSL_set_connect_state(pSSL);
+
+            fConnected = (SSL_connect(pSSL) != SOCKET_ERROR);
+        }
+
         /* Handle final socket checks if connection established with no errors. */
-        if(fConnected)
+        if (fConnected)
         {
             /* Check for errors. */
             int32_t nError = WSAGetLastError();

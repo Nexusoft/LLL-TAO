@@ -73,6 +73,7 @@ namespace LLP
         /* Variables to track Connection / Request Count. */
         bool fDDOS;
         bool fMETER;
+        bool fSSL;
 
         /* Destructor flag. */
         std::atomic<bool> fDestruct;
