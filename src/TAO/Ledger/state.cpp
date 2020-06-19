@@ -367,19 +367,25 @@ namespace TAO
         , hashNextBlock    (0)
         , hashCheckpoint   (0)
         {
-            /* Set producer(s) to be last transaction(s). */
             if(nVersion < 9)
+            {
+                /* Set producer to be last transaction. */
                 vtx.push_back(std::make_pair(TRANSACTION::TRITIUM, block.producer.GetHash()));
+
+                /* Check that sizes are expected. */
+                if(vtx.size() != block.vtx.size() + 1)
+                   throw debug::exception(FUNCTION, "tritium block to state incorrect sizes");
+            }
             else
+            {
+                /* Set producers to be last transactions. */
                 for(const Transaction& txProducer : block.vProducer)
                     vtx.push_back(std::make_pair(TRANSACTION::TRITIUM, txProducer.GetHash()));
 
-            /* Check that sizes are expected. */
-            if(nVersion < 9 && vtx.size() != block.vtx.size() + 1)
-                throw debug::exception(FUNCTION, "tritium block to state incorrect sizes");
-
-            else if(vtx.size() != block.vtx.size() + block.vProducer.size())
-                throw debug::exception(FUNCTION, "tritium block to state incorrect sizes");
+                /* Check that sizes are expected. */
+                if(vtx.size() != block.vtx.size() + block.vProducer.size())
+                    throw debug::exception(FUNCTION, "tritium block to state incorrect sizes");
+            }
         }
 
 

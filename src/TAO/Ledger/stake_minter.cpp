@@ -630,7 +630,7 @@ namespace TAO
                     nTimeStart = nTimeCurrent;
 
                 /* After 5 second interval, check whether need to break for block updates. */
-                else if((nTimeCurrent - nTimeStart) >= 5000)
+                else if((nTimeCurrent - nTimeStart) >= 5)
                 {
                     if(CheckBreak())
                         return false;
@@ -795,23 +795,16 @@ namespace TAO
         /* Sign a candidate block after it is successfully mined. */
         bool StakeMinter::SignBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN)
         {
-            /* Get the sigchain and the PIN. */
             /* Sign the submitted block */
-            std::vector<uint8_t> vBytes;
-            uint8_t nKeyType;
+            TAO::Ledger::Transaction txProducer;
 
             if(block.nVersion < 9)
-            {
-                user->Generate(block.producer.nSequence, strPIN).GetBytes();
-                nKeyType = block.producer.nKeyType;
-            }
+                txProducer = block.producer;
             else
-            {
-                const TAO::Ledger::Transaction& txProducer = block.vProducer.back();
+                txProducer = block.vProducer.back();
 
-                user->Generate(txProducer.nSequence, strPIN).GetBytes();
-                nKeyType = txProducer.nKeyType;
-            }
+            std::vector<uint8_t> vBytes = user->Generate(txProducer.nSequence, strPIN).GetBytes();
+            uint8_t nKeyType = txProducer.nKeyType;
 
             LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 

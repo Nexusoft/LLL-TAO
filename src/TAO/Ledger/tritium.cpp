@@ -351,7 +351,8 @@ namespace TAO
                 VALUE("nNonce") " = ", nNonce, ", ",
                 VALUE("nTime") " = ", nTime, ", ",
                 VALUE("vchBlockSig") " = ", HexStr(vchBlockSig.begin(), vchBlockSig.end()).substr(0, 20), ", ",
-                VALUE("vtx.size()") " = ", vtx.size(), ")");
+                VALUE("vtx.size()") " = ", vtx.size(), ", ",
+                VALUE("vProducer.size()") " = ", vProducer.size(), ")");
         }
 
 

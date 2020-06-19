@@ -162,8 +162,12 @@ namespace TAO
             nTrust = 0;
             nBlockAge = 0;
 
-            /* Producer transaction for coinstake */
+            /* Get the appropriate producer transaction to build the coinstake */
             TAO::Ledger::Transaction txProducer;
+            if(block.nVersion < 9)
+                txProducer = block.producer;
+            else
+                txProducer = block.vProducer.back();
 
             if(!fGenesis)
             {
@@ -266,11 +270,14 @@ namespace TAO
 
             }
 
-            /* Add the producer transaction to the block */
+            /* Add the producer transaction back to the block */
             if(block.nVersion < 9)
                 block.producer = txProducer;
             else
+            {
+                block.vProducer.clear();
                 block.vProducer.push_back(txProducer);
+            }
 
             /* Do not sign producer transaction, yet. Coinstake reward must be added to operation first. */
 
