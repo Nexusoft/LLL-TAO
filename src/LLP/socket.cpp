@@ -122,7 +122,13 @@ namespace LLP
 
                 nStatus = SSL_accept(pSSL);
 
-                switch (SSL_get_error(pSSL, nStatus))
+                /* Check for successful accept */
+                if(nStatus == 1)
+                    break;
+
+                nError.store(SSL_get_error(pSSL, nStatus));
+
+                switch(nError.load())
                 {
                 case SSL_ERROR_WANT_READ:
                     FD_SET(fd, &fdReadSet);
@@ -140,10 +146,12 @@ namespace LLP
                     /* The peer has notified us that it is shutting down via the SSL "close_notify" message so we 
                        need to shutdown, too. */
                     debug::log(0, FUNCTION, "SSL handshake - Peer closed connection ");
+                    nError.store(ERR_get_error());
                     nStatus = -1;
                     break;
                 default:
                     /* Some other error so break out */
+                    nError.store(ERR_get_error());
                     nStatus = -1;
                     break;
                 }
@@ -174,7 +182,6 @@ namespace LLP
                 debug::log(3, FUNCTION, "SSL Connection using ", SSL_get_cipher(pSSL));
             else
             {
-                nError.store(nStatus);
                 debug::log(0, FUNCTION, "SSL Accept failed ",  addr.ToString(), " (", nError, " ", ERR_reason_error_string(nError), ")");
             }
 
@@ -426,10 +433,12 @@ namespace LLP
                     /* The peer has notified us that it is shutting down via the SSL "close_notify" message so we 
                        need to shutdown, too. */
                     debug::log(0, FUNCTION, "SSL handshake - Peer closed connection ");
+                    nError.store(ERR_get_error());
                     nStatus = -1;
                     break;
                 default:
                     /* Some other error so break out */
+                    nError.store(ERR_get_error());
                     nStatus = -1;
                     break;
                 }
@@ -570,7 +579,7 @@ namespace LLP
                     {
                         // peer disconnected...
                         debug::error(FUNCTION, "Peer disconnected." );
-                        nError = nSSLError;
+                        nError.store(ERR_get_error());
                         break; 
                     }   
 
@@ -578,7 +587,7 @@ namespace LLP
                     {
                         // peer disconnected...
                         debug::error(FUNCTION, "Peer disconnected." );
-                        nError = nSSLError;
+                        nError.store(ERR_get_error());
                         break;
                     }   
 
@@ -596,7 +605,7 @@ namespace LLP
 
                     default:
                     {
-                        debug::error(FUNCTION, "SSL Error: ", nSSLError );
+                        nError.store(ERR_get_error());
                         break;
                     }
                 }
@@ -670,7 +679,7 @@ namespace LLP
                     {
                         // peer disconnected...
                         debug::error(FUNCTION, "Peer disconnected." );
-                        nError = nSSLError;
+                        nError.store(ERR_get_error());
                         break; 
                     }   
 
@@ -678,7 +687,7 @@ namespace LLP
                     {
                         // peer disconnected...
                         debug::error(FUNCTION, "Peer disconnected." );
-                        nError = nSSLError;
+                        nError.store(ERR_get_error());
                         break;
                     }   
 
@@ -696,7 +705,7 @@ namespace LLP
 
                     default:
                     {
-                        debug::error(FUNCTION, "SSL Error: ", nSSLError );
+                        nError.store(ERR_get_error());
                         break;
                     }
                 }
@@ -925,7 +934,6 @@ namespace LLP
         if(fSSL && pSSL == nullptr)
         {
             pSSL = SSL_new(pSSL_CTX);
-
         }
         else if(pSSL)
         {
