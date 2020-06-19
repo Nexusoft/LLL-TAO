@@ -541,6 +541,9 @@ namespace LLP
     {
         LOCK(SOCKET_MUTEX);
 
+        /* Reset the error status */
+        nError.store(0);
+
         int32_t nRead = 0;
 
         if(pSSL)
@@ -617,7 +620,10 @@ namespace LLP
                         break;
                     }
                 }
-                debug::log(3, FUNCTION, "SSL_read failed ",  addr.ToString(), " (", nError, " ", ERR_reason_error_string(nError), ")");
+                
+                /* Check if an error occurred before logging */
+                if(nError.load() > 0)
+                    debug::log(3, FUNCTION, "SSL_read failed ",  addr.ToString(), " (", nError, " ", ERR_reason_error_string(nError), ")");
              
             }
             else
@@ -625,8 +631,6 @@ namespace LLP
                 nError = WSAGetLastError();
                 debug::log(3, FUNCTION, "read failed ", addr.ToString(), " (", nError, " ", strerror(nError), ")");
             }
-
-            return nError;
         }
         else if(nRead > 0)
             nLastRecv = runtime::timestamp(true);
@@ -639,6 +643,9 @@ namespace LLP
     int32_t Socket::Read(std::vector<int8_t> &vData, size_t nBytes)
     {
         LOCK(SOCKET_MUTEX);
+
+        /* Reset the error status */
+        nError.store(0);
 
         int32_t nRead = 0;
 
@@ -717,7 +724,10 @@ namespace LLP
                         break;
                     }
                 }
-                debug::log(3, FUNCTION, "SSL_read failed ",  addr.ToString(), " (", nError, " ", ERR_reason_error_string(nError), ")");
+
+                /* Check if an error occurred before logging */
+                if(nError.load() > 0)
+                    debug::log(3, FUNCTION, "SSL_read failed ",  addr.ToString(), " (", nError, " ", ERR_reason_error_string(nError), ")");
              
             }
             else
