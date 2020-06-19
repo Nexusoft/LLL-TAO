@@ -28,6 +28,7 @@ ________________________________________________________________________________
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
+#include <openssl/opensslv.h>
 
 namespace LLP
 {
@@ -72,7 +73,14 @@ namespace LLP
         {
             /* Assign the SSL struct and increment the reference count so that we don't destroy it twice */
             pSSL = socket.pSSL;
-            pSSL->references++;
+            
+            /* In OpenSSL 1.0 the reference count is accessed directly.  We use CRYPTO_add to increment it so that it is threadsafe.
+               From OpenSSL 1.1.0 onwards the SSL object has been made opaque so we need to incrememt it using SSL_up_ref */
+            #if OPENSSL_VERSION_NUMBER < 0x10100000L
+                CRYPTO_add(&pSSL->references, 1, CRYPTO_LOCK_SSL);
+            #else
+                SSL_up_ref(pSSL);
+            #endif
 
             /* Set the socket file descriptor on the SSL object to this socket */
             SSL_set_fd(pSSL, fd);
