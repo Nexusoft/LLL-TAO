@@ -83,6 +83,11 @@ namespace LLP
         /* Set the verification callback to always true. */
         SSL_CTX_set_verify(pSSL_CTX, SSL_VERIFY_PEER, LLC::always_true_callback);
 
+        /* Turn off session caching as this causes issues with some browsers if they establish a new connection when an existing
+           socket connection to the same host already exists. */
+        SSL_CTX_set_session_cache_mode(pSSL_CTX, SSL_SESS_CACHE_OFF);
+        SSL_CTX_set_options(pSSL_CTX, SSL_OP_NO_TICKET);
+
         /* Instantiate a certificate for use with SSL context */
         LLC::X509Cert cert;
 
