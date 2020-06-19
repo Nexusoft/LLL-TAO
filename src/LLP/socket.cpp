@@ -548,20 +548,7 @@ namespace LLP
 
         if(pSSL)
         {
-            /* Buffer to receive the data.  This is 16k which is the maximum SSL frame size */
-            char buf[1024 *16];
-
-            nRead = SSL_read(pSSL, buf, sizeof(buf));
-
-            if(nRead > 0)
-            {
-                /* Resize the vData vector to fit the data */
-                vData.resize(0);
-
-                /* copy the data in */
-                vData.insert(vData.end(), buf, buf + nRead);
-            }
-
+            nRead = SSL_read(pSSL, (int8_t*)&vData[0], nBytes);
         }
         else
         {
@@ -651,20 +638,7 @@ namespace LLP
 
         if(pSSL)
         {
-            /* Buffer to receive the data.  This is 16k which is the maximum SSL frame size */
-            char buf[1024 *16];
-
-            nRead = SSL_read(pSSL, buf, sizeof(buf));
-
-            if(nRead > 0)
-            {
-                /* Resize the vData vector to fit the data */
-                vData.resize(0);
-
-                /* copy the data in */
-                vData.insert(vData.end(), buf, buf + nRead);
-            }
-
+            nRead = SSL_read(pSSL, (int8_t*)&vData[0], nBytes);
         }
         else
         {
