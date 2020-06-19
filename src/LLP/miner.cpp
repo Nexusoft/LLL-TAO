@@ -66,7 +66,9 @@ namespace LLP
     , pMiningKey(nullptr)
     , nHashLast(0)
     {
+        #ifndef NO_WALLET
         pMiningKey = new Legacy::ReserveKey(&Legacy::Wallet::GetInstance());
+        #endif
     }
 
 
@@ -82,7 +84,9 @@ namespace LLP
     , pMiningKey(nullptr)
     , nHashLast(0)
     {
+        #ifndef NO_WALLET
         pMiningKey = new Legacy::ReserveKey(&Legacy::Wallet::GetInstance());
+        #endif
     }
 
 
@@ -98,7 +102,9 @@ namespace LLP
     , pMiningKey(nullptr)
     , nHashLast(0)
     {
+        #ifndef NO_WALLET
         pMiningKey = new Legacy::ReserveKey(&Legacy::Wallet::GetInstance());
+        #endif
     }
 
 
@@ -110,8 +116,10 @@ namespace LLP
 
         if(pMiningKey)
         {
+            #ifndef NO_WALLET
             pMiningKey->ReturnKey();
             delete pMiningKey;
+            #endif
         }
 
         /* Send a notification to wake up sleeping thread to finish shutdown process. */
@@ -729,13 +737,13 @@ namespace LLP
             nLastNotificationsHeight.store(nBestHeight);
 
             /* Wake up events processor and wait for a signal to guarantee added transactions won't orphan a mined block. */
-            if(TAO::API::users && TAO::API::users->NOTIFICATIONS_PROCESSOR 
-                && TAO::API::GetSessionManager().Has(0) 
+            if(TAO::API::users && TAO::API::users->NOTIFICATIONS_PROCESSOR
+                && TAO::API::GetSessionManager().Has(0)
                 && TAO::API::GetSessionManager().Get(0).CanProcessNotifications())
             {
                 /* Find the thread processing notifications for this user */
                 TAO::API::NotificationsThread* pThread = TAO::API::users->NOTIFICATIONS_PROCESSOR->FindThread(0);
-                
+
                 if(pThread)
                 {
                     pThread->NotifyEvent();
@@ -796,7 +804,7 @@ namespace LLP
 
        /* Get the session */
        TAO::API::Session& session = TAO::API::GetSessionManager().Get(0);
-       
+
        /* Attempt to unlock the account. */
        if(session.Locked())
        {
@@ -854,12 +862,16 @@ namespace LLP
           Legacy::LegacyBlock *pBlock = dynamic_cast<Legacy::LegacyBlock *>(pBaseBlock);
           if(pBlock)
           {
+              #ifndef NO_WALLET
+
               /* Update the block's timestamp. */
               pBlock->UpdateTime();
 
               /* Sign the block with a key from wallet. */
               if(!Legacy::SignBlock(*pBlock, Legacy::Wallet::GetInstance()))
                   return debug::error(FUNCTION, "Unable to Sign Legacy Block ", hashMerkleRoot.SubString());
+
+              #endif
 
               return true;
           }
@@ -957,12 +969,16 @@ namespace LLP
                debug::log(2, FUNCTION, "Legacy");
                pBlock->print();
 
+               #ifndef NO_WALLET
+
                /* Check the Proof of Work for submitted block. */
                if(!Legacy::CheckWork(*pBlock, Legacy::Wallet::GetInstance()))
                    return false;
 
                /* Block is valid - Tell the wallet to keep this key. */
                pMiningKey->KeepKey();
+
+               #endif
 
                return true;
            }
@@ -999,7 +1015,7 @@ namespace LLP
            if(!pSigChain)
                return debug::error(FUNCTION, "Couldn't get the unlocked sigchain");
 
-        
+
            /* Lock the sigchain that is being mined. */
            LOCK(session.CREATE_MUTEX);
 

@@ -412,6 +412,8 @@ namespace Legacy
     }
 
 
+#ifndef NO_WALLET
+
     /* Sign the block with the key that found the block. */
     bool SignBlock(LegacyBlock& block, const KeyStore& keystore)
     {
@@ -529,5 +531,7 @@ namespace Legacy
 
         return true;
     }
+
+#endif
 
 }

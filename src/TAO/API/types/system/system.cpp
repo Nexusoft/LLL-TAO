@@ -81,7 +81,9 @@ namespace TAO
             jsonRet["protocolversion"] = LLP::PROTOCOL_VERSION;
 
             /* Legacy wallet version*/
+            #ifndef NO_WALLET
             jsonRet["walletversion"] = Legacy::Wallet::GetInstance().GetVersion();
+            #endif
 
             /* Current unified time as reported by this node*/
             jsonRet["timestamp"] =  (int)runtime::unifiedtimestamp();

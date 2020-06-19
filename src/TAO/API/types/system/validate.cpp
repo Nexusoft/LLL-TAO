@@ -67,10 +67,12 @@ namespace TAO
                     /* Set type in response */
                     jsonRet["type"] = "LEGACY";
 
+                    #ifndef NO_WALLET
                     if(Legacy::Wallet::GetInstance().HaveKey(address) || Legacy::Wallet::GetInstance().HaveScript(address.GetHash256()))
                         jsonRet["is_mine"] = true;
                     else
                         jsonRet["is_mine"] = false;
+                    #endif
                 }
                 else
                 {

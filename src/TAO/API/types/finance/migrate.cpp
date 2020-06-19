@@ -53,6 +53,8 @@ namespace TAO
             /* Return value array */
             json::json ret = json::json::array();
 
+            #ifndef NO_WALLET
+
             Legacy::Wallet& wallet = Legacy::Wallet::GetInstance();
 
             /* Get the PIN to be used for this API call */
@@ -312,6 +314,8 @@ namespace TAO
              */
             if(wallet.IsCrypted() && (fLocked || fMintOnly))
                 wallet.Lock();
+
+            #endif
 
             return ret;
         }

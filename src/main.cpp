@@ -136,11 +136,13 @@ int main(int argc, char** argv)
         60000);
 
     /* Get the port for the Core API Server. */
+    #ifndef NO_WALLET
     nPort = static_cast<uint16_t>(config::GetArg(std::string("-rpcport"), config::fTestNet.load() ? TESTNET_RPC_PORT : MAINNET_RPC_PORT));
 
     /* Set up RPC server */
     if(!config::fClient.load())
     {
+
         LLP::RPC_SERVER = new LLP::Server<LLP::RPCNode>(
             nPort,
             static_cast<uint16_t>(config::GetArg(std::string("-rpcthreads"), 4)),
@@ -171,6 +173,7 @@ int main(int argc, char** argv)
             /* Enable SSL if configured */
             config::GetBoolArg(std::string("-rpcssl")));
     }
+    #endif
 
 
     /* Startup timer stats. */
@@ -187,11 +190,13 @@ int main(int argc, char** argv)
 
         /* Initialize ChainState. */
         TAO::Ledger::ChainState::Initialize();
-        
+
 
         /* We don't need the wallet in client mode. */
         if(!config::fClient.load())
         {
+            #ifndef NO_WALLET
+
             /* Load the Wallet Database. NOTE this needs to be done before ChainState::Initialize as that can disconnect blocks causing
                the wallet to be accessed if they contain any legacy stake transactions */
             bool fFirstRun;
@@ -229,6 +234,13 @@ int main(int argc, char** argv)
 
             /* Relay transactions. */
             Legacy::Wallet::GetInstance().ResendWalletTransactions();
+
+            #else
+
+            /* Initialize the scripts for legacy mode. */
+            Legacy::InitializeScripts();
+            
+            #endif
         }
 
 
@@ -387,11 +399,15 @@ int main(int argc, char** argv)
     /* Shutdown these subsystems if nothing failed. */
     if(!fFailed && !config::fClient.load())
     {
+        #ifndef NO_WALLET
+
         /* Shut down wallet database environment. */
         if (config::GetBoolArg(std::string("-flushwallet"), true))
             Legacy::WalletDB::ShutdownFlushThread();
 
         Legacy::BerkeleyDB::GetInstance().Shutdown();
+
+        #endif
     }
 
 

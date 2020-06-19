@@ -130,7 +130,6 @@ namespace LLP
     /** Main message handler once a packet is received. **/
     bool RPCNode::ProcessPacket()
     {
-
         /* Check HTTP authorization */
         if(!Authorized(INCOMING.mapHeaders))
         {
@@ -180,10 +179,12 @@ namespace LLP
                 throw APIException(-1, "Daemon is still initializing");
 
             /* Execute the RPC method. */
+            #ifndef NO_WALLET
             json::json jsonResult = TAO::API::RPCCommands->Execute(strMethod, jsonParams, false);
 
             /* Push the response data with json payload. */
             PushResponse(200, JSONReply(jsonResult, nullptr, jsonID).dump());
+            #endif
         }
 
         /* Handle for custom API exceptions. */

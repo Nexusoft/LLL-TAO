@@ -23,7 +23,11 @@ namespace TAO
         Assets*     assets;
         Ledger*     ledger;
         Register*   reg;
+
+        #ifndef NO_WALLET
         RPC*        RPCCommands;
+        #endif
+
         Supply*     supply;
         System*     system;
         Tokens*     tokens;
@@ -46,7 +50,11 @@ namespace TAO
             assets      = new Assets();
             ledger      = new Ledger();
             reg         = new Register();
+
+            #ifndef NO_WALLET
             RPCCommands = new RPC();
+            #endif
+
             supply      = new Supply();
             system      = new System();
             tokens      = new Tokens();
@@ -75,8 +83,10 @@ namespace TAO
             if(reg)
                 delete reg;
 
+            #ifndef NO_WALLET
             if(RPCCommands)
                 delete RPCCommands;
+            #endif
 
             if(supply)
                 delete supply;
