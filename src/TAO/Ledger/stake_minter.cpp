@@ -774,20 +774,6 @@ namespace TAO
             if(fGenesis)
                 fGenesis = false;
 
-            /* If stake change was applied, mark it as processed */
-            if(fStakeChange)
-            {
-                stakeChange.fProcessed = true;
-                stakeChange.hashTx = block.vProducer.back().GetHash(); //this only runs if local nodes is block finder
-
-                if(!LLD::Local->WriteStakeChange(user->Genesis(), stakeChange))
-                {
-                    /* If the write fails, log and attempt to erase it or it will be repeatedly processed */
-                    debug::error(FUNCTION, "Unable to update stake change request...attempting to remove");
-                    LLD::Local->EraseStakeChange(user->Genesis());
-                }
-            }
-
             return true;
         }
 
