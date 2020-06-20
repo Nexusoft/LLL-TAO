@@ -317,7 +317,10 @@ namespace TAO
                 if(block.nVersion < 9)
                     vHashes.push_back(block.producer.GetHash());
                 else
-                    vHashes.push_back(block.vProducer[0].GetHash()); //only one producer outside stake pool
+                {
+                    for(const TAO::Ledger::Transaction& txProducer : block.vProducer)
+                        vHashes.push_back(txProducer.GetHash());
+                }
 
                 /* Build the block's merkle root. */
                 block.hashMerkleRoot = block.BuildMerkleTree(vHashes);
@@ -373,7 +376,7 @@ namespace TAO
                 if(block.nVersion < 9)
                     txProducer = block.producer;
                 else
-                    txProducer = block.vProducer[0]; //outside of stake pool, only one producer
+                    txProducer = block.vProducer.back(); //outside of stake pool, only one producer
 
                 /* Check that the producer isn't going to orphan any transactions. */
                 TAO::Ledger::Transaction tx;
@@ -868,7 +871,7 @@ namespace TAO
                 if(block.nVersion < 9)
                     txProducer = block.producer;
                 else
-                    txProducer = block.vProducer[0]; //outside of stake pool, only one producer
+                    txProducer = block.vProducer.back();
 
                 /* Get the secret from new key. */
                 std::vector<uint8_t> vBytes = user->Generate(txProducer.nSequence, "1234").GetBytes();
@@ -950,7 +953,6 @@ namespace TAO
         /* Updates the producer timestamp, making sure it is not earlier than the previous block. */
         void UpdateProducerTimestamp(TAO::Ledger::TritiumBlock& block)
         {
-            /* This method only supports single producer blocks */
             TAO::Ledger::Transaction txProducer;
 
             if(block.nVersion < 9)
@@ -963,6 +965,7 @@ namespace TAO
             }
             else
             {
+                /* This only updates last producer (block finder) */
                 txProducer = block.vProducer.back();
 
                 UpdateProducerTimestamp(txProducer);

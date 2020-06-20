@@ -175,14 +175,20 @@ namespace TAO
         , ssSystem  (state.ssSystem)
         , vtx       ()
         {
-            /* Read the producer transaction(s) from disk. */
-            if(nVersion < 9 && !LLD::Ledger->ReadTx(state.vtx.back().second, producer))
-                throw debug::exception(FUNCTION, "failed to read producer");
-
-            else if(nVersion >= 9)
+            if(nVersion < 9)
             {
-                std::vector<std::pair<uint8_t, uint512_t> > vtxTemp;
+                /* Initialize a temp vector from state.vtx without the producer */
+                std::vector<std::pair<uint8_t, uint512_t>> vtxTemp(state.vtx.cbegin(), state.vtx.cend() - 1);
 
+                /* Move temp to the block vtx */
+                vtx = std::move(vtxTemp);
+
+                /* Read the producer transaction(s) from disk. */
+                if(!LLD::Ledger->ReadTx(state.vtx.back().second, producer))
+                    throw debug::exception(FUNCTION, "failed to read producer");
+            }
+            else
+            {
                 /* Copies state.vtx manually until it reaches producer(s), then copies them to vProducer */
                 for(const auto& item : state.vtx)
                 {
@@ -197,7 +203,7 @@ namespace TAO
                     if(!LLD::Ledger->ReadTx(item.second, tx))
                         throw debug::exception(FUNCTION, "failed to read producer");
 
-                    /* Non-producer still goes into vtx */
+                    /* Non-producer goes into vtx */
                     if(!tx.IsCoinBase() && !tx.IsCoinStake())
                     {
                         vtx.push_back(item);

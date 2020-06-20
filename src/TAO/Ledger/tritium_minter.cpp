@@ -443,6 +443,12 @@ namespace TAO
             /* Minting thread will continue repeating this loop until stop minter or shutdown */
             while(!StakeMinter::fStop.load() && !config::fShutdown.load())
             {
+                /* Sleep the appropriate amount of time before next iteration */
+                runtime::sleep(pTritiumMinter->nSleepTime);
+
+                /* Check status again after wake from sleep */
+                if(StakeMinter::fStop.load() || config::fShutdown.load())
+                    break;
 
                 /* Save the current best block hash immediately in case it changes while we do setup */
                 pTritiumMinter->hashLastBlock = TAO::Ledger::ChainState::hashBestChain.load();
@@ -475,8 +481,6 @@ namespace TAO
 
                 /* Attempt to mine the current proof of stake block */
                 pTritiumMinter->MintBlock(user, strPIN);
-
-                runtime::sleep(pTritiumMinter->nSleepTime);
             }
 
             /* If break because cannot continue (error retrieving user account or FindTrust failed), wait for stop or shutdown */
