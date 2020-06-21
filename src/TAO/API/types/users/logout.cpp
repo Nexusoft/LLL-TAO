@@ -56,11 +56,6 @@ namespace TAO
             /* The genesis of the user logging out */
             uint256_t hashGenesis = GetSessionManager().Get(nSession).GetAccount()->Genesis();
 
-            /* If stake minter is running when logout, stop it */
-            TAO::Ledger::StakeMinter& stakeMinter = TAO::Ledger::StakeMinter::GetInstance();
-            if(stakeMinter.IsStarted())
-                stakeMinter.Stop();
-
             /* Disconnect all P2P connections on logout */
             if(LLP::P2P_SERVER)
             {
@@ -91,7 +86,7 @@ namespace TAO
                     }
                 }
             }
-            
+
             /* If not using multi-user then we need to send a deauth message to all peers */
             if(!config::fMultiuser.load())
             {
@@ -107,6 +102,11 @@ namespace TAO
             /* Remove the session from the notifications processor */
             if(NOTIFICATIONS_PROCESSOR)
                 NOTIFICATIONS_PROCESSOR->Remove(nSession);
+
+            /* If this is session 0 and stake minter is running when logout, stop it */
+            TAO::Ledger::StakeMinter& stakeMinter = TAO::Ledger::StakeMinter::GetInstance();
+            if(nSession==0 && stakeMinter.IsStarted())
+                stakeMinter.Stop();
 
             /* Delete the sigchan. */
             {
