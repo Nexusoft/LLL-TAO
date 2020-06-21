@@ -208,8 +208,8 @@ namespace TAO
         /** Maximum number of coinstakes to include in candidate block **/
         uint32_t nProducerSize;
 
-        /** Last recorded count of entries in the stake pool. Tells when stake pool has received more tx. **/
-        uint32_t nPoolCount;
+        /** Last recorded size of the stake pool. Comparing to current pool size lets us know when pool has received more tx. **/
+        uint32_t nPoolSize;
 
         /** Net balance of coinstakes from pool included in the current block **/
         uint64_t nPoolStake;

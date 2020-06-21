@@ -62,7 +62,7 @@ namespace TAO
         TritiumPoolMinter::TritiumPoolMinter()
         : txProducer()
         , nProducerSize(0)
-        , nPoolCount(0)
+        , nPoolSize(0)
         , nPoolStake(0)
         , nPoolFee(0)
         {
@@ -177,8 +177,6 @@ namespace TAO
                                                 (int64_t)config::GetArg("-poolstakettl", POOL_MAX_TTL_COUNT)
                                                 ))
                                             ));
-
-
 
             /* Reset any prior value of trust score and block age */
             nTrust = 0;
@@ -317,40 +315,51 @@ namespace TAO
             /* Update display stake rate */
             nStakeRate.store(StakeRate(nTrust, fGenesis));
 
-            /* Adjust pool reward for fee */
-            nPoolReward = nPoolReward - GetPoolStakeFee(nPoolReward);
+            /* Check if ok to submit to pool. Actual age and interval checks come later, so metrics can be updated for display */
+            bool fSubmitToPool = false;
+            if(!fGenesis && (block.nHeight - stateLast.nHeight) > MinStakeInterval(block))
+                fSubmitToPool = true;
 
-            /* Setup the pool coinstake and sign */
-            TAO::Ledger::Transaction txPool = txProducer;
-            txPool[0] << nPoolReward;
+            else if(fGenesis && (block.GetBlockTime() - account.nModified) >= MinCoinAge())
+                fSubmitToPool = true;
 
-            /* Execute operation pre- and post-state. */
-            if(!txPool.Build())
-                return debug::error(FUNCTION, "Coinstake transaction failed to build");
-
-            /* Sign pool tx and submit to pool */
-            txPool.Sign(user->Generate(txPool.nSequence, strPIN));
-
-            /* If user is within minimum interval, skip pool setup and submission.*/
-            if(CheckInterval(user))
+            if(fSubmitToPool)
             {
+                /* Adjust pool reward for fee */
+                nPoolReward = nPoolReward - GetPoolStakeFee(nPoolReward);
+
+                /* Setup the pool coinstake and sign */
+                TAO::Ledger::Transaction txPool = txProducer;
+                txPool[0] << nPoolReward;
+
+                /* Execute operation pre- and post-state. */
+                if(!txPool.Build())
+                    return debug::error(FUNCTION, "Coinstake transaction failed to build");
+
+                /* Sign pool tx and submit to pool */
+                txPool.Sign(user->Generate(txPool.nSequence, strPIN));
+
                 /* Setup the pooled stake parameters for current mining round */
                 if(!SetupPool())
                     return false;
+
+                /* Record data for current block being worked on into the stake pool */
+                TAO::Ledger::stakepool.SetProofs(block.nHeight, hashProof, nTimeBegin, nTimeEnd);
 
                 /* Put local coinstake into pool (relay will get it from there) */
                 if(!TAO::Ledger::stakepool.Accept(txPool))
                     return false;
 
                 /* Relay this node's coinstake to the network for pooled staking */
-                LLP::TRITIUM_SERVER->Relay
-                (
-                    LLP::ACTION::NOTIFY,
-                    uint8_t(LLP::SPECIFIER::POOLSTAKE),
-                    uint8_t(LLP::TYPES::TRANSACTION),
-                    txPool.GetHash(),
-                    nTTL
-                );
+                if(!StakeMinter::fStop.load() && !config::fShutdown.load())
+                    LLP::TRITIUM_SERVER->Relay
+                    (
+                        LLP::ACTION::NOTIFY,
+                        uint8_t(LLP::SPECIFIER::POOLSTAKE),
+                        uint8_t(LLP::TYPES::TRANSACTION),
+                        txPool.GetHash(),
+                        nTTL
+                    );
             }
 
             return true;
@@ -387,7 +396,7 @@ namespace TAO
             else
             {
                 /* On initial iteration, start with pool state of zero (it will add coinstakes if any are present in pool) */
-                nPoolCount = 0;
+                nPoolSize = 0;
 
                 uint64_t nStake = account.get<uint64_t>("stake");
 
@@ -432,7 +441,8 @@ namespace TAO
         bool TritiumPoolMinter::CheckBreak()
         {
             /* Return true if stake pool size has increased by at least 10% */
-            if((TAO::Ledger::stakepool.Size() - nPoolCount) >= (nPoolCount / 10))
+            uint32_t nSize = TAO::Ledger::stakepool.Size();
+            if(nSize > 0 && (nSize - nPoolSize) >= (nPoolSize / 10))
                 return true;
 
             return false;
@@ -527,7 +537,7 @@ namespace TAO
             std::vector<uint512_t> vHashes;
 
             /* Save current pool size */
-            nPoolCount = TAO::Ledger::stakepool.Size();
+            nPoolSize = TAO::Ledger::stakepool.Size();
 
             block.vProducer.clear();
 
@@ -612,9 +622,17 @@ namespace TAO
             /* Minting thread will continue repeating this loop until stop minter or shutdown */
             while(!StakeMinter::fStop.load() && !config::fShutdown.load())
             {
+                /* Sleep the appropriate amount of time before next iteration */
+                runtime::sleep(pTritiumPoolMinter->nSleepTime);
+
+                /* Check status again after wake from sleep */
+                if(StakeMinter::fStop.load() || config::fShutdown.load())
+                    break;
+
                 /* Save the current best block hash immediately in case it changes while we do setup */
                 pTritiumPoolMinter->hashLastBlock = TAO::Ledger::ChainState::hashBestChain.load();
 
+                /* Reset the pool for new block */
                 TAO::Ledger::stakepool.Clear();
 
                 /* Check that user account still unlocked for minting (locking should stop minter, but still verify) */
@@ -645,8 +663,6 @@ namespace TAO
 
                 /* Attempt to mine the current proof of stake block */
                 pTritiumPoolMinter->MintBlock(user, strPIN);
-
-                runtime::sleep(pTritiumPoolMinter->nSleepTime);
             }
 
             /* If break because cannot continue (error retrieving user account or FindTrust failed), wait for stop or shutdown */

@@ -629,8 +629,8 @@ namespace TAO
                 if(nTimeStart == 0)
                     nTimeStart = nTimeCurrent;
 
-                /* After 5 second interval, check whether need to break for block updates. */
-                else if((nTimeCurrent - nTimeStart) >= 5)
+                /* After 4 second interval, check whether need to break for block updates. */
+                else if((nTimeCurrent - nTimeStart) >= 4)
                 {
                     if(CheckBreak())
                         return false;

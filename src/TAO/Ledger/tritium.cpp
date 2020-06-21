@@ -1011,8 +1011,8 @@ namespace TAO
                     return debug::error(FUNCTION, "invalid solo stake operation");
             }
 
-            /* Pooled staking */
-            else if(nVersion >= 9)
+            /* Pooled staking (block finder must be pooled trust)*/
+            else if(nVersion >= 9 && txProducer.IsTrustPool())
             {
                 /* Get the stake proofs */
                 uint256_t hashProof;
@@ -1116,9 +1116,8 @@ namespace TAO
                     txPool[0] >> txTimeBegin;
                     txPool[0] >> txTimeEnd;
 
-                    if(hashProof == txProof && nTimeBegin == txTimeBegin && nTimeEnd == txTimeEnd)
+                    if(hashProof != txProof || nTimeBegin != txTimeBegin || nTimeEnd != txTimeEnd)
                         return debug::error(FUNCTION, "invalid pooled stake proofs");
-
                 }
 
             }
