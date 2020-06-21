@@ -22,6 +22,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/include/global.h>
+#include <TAO/API/include/sessionmanager.h>
 
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/constants.h>
@@ -187,14 +188,14 @@ namespace TAO
         bool StakeMinter::CheckUser()
         {
             /* Check whether unlocked account available. */
-            if(TAO::API::users->Locked())
+            if(TAO::API::GetSessionManager().Get(0).Locked())
             {
                 debug::log(0, FUNCTION, "No unlocked account available for staking");
                 return false;
             }
 
             /* Check that the account is unlocked for staking */
-            if(!TAO::API::users->CanStake())
+            if(!TAO::API::GetSessionManager().Get(0).CanStake())
             {
                 debug::log(0, FUNCTION, "Account has not been unlocked for staking");
                 return false;
@@ -756,7 +757,7 @@ namespace TAO
             }
 
             /* Lock the sigchain that is being mined. */
-            LOCK(TAO::API::users->CREATE_MUTEX);
+            LOCK(TAO::API::GetSessionManager().Get(0).CREATE_MUTEX);
 
             /* Process the block and relay to network if it gets accepted into main chain.
              * This method will call TritiumBlock::Check() TritiumBlock::Accept() and BlockState::Index()
