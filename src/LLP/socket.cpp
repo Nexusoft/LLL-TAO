@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #include <vector>
 #include <stdio.h>
 
+#include <LLP/include/network.h>
 #include <LLP/templates/socket.h>
 
 #include <Util/include/runtime.h>
@@ -25,13 +26,18 @@ ________________________________________________________________________________
 #include <sys/ioctl.h>
 #endif
 
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+#include <openssl/opensslv.h>
+
 namespace LLP
 {
 
-    /** The default constructor. **/
+    /* The default constructor. */
     Socket::Socket()
     : pollfd             ( )
     , SOCKET_MUTEX       ( )
+    , pSSL(nullptr)
     , DATA_MUTEX         ( )
     , nLastSend          (0)
     , nLastRecv          (0)
@@ -49,10 +55,11 @@ namespace LLP
     }
 
 
-    /** Copy constructor. **/
+    /* Copy constructor. */
     Socket::Socket(const Socket& socket)
     : pollfd             (socket)
     , SOCKET_MUTEX       ( )
+    , pSSL(nullptr)
     , DATA_MUTEX         ( )
     , nLastSend          (socket.nLastSend.load())
     , nLastRecv          (socket.nLastRecv.load())
@@ -62,13 +69,31 @@ namespace LLP
     , nConsecutiveErrors (socket.nConsecutiveErrors.load())
     , addr               (socket.addr)
     {
+        if(socket.pSSL)
+        {
+            /* Assign the SSL struct and increment the reference count so that we don't destroy it twice */
+            pSSL = socket.pSSL;
+            
+            /* In OpenSSL 1.0 the reference count is accessed directly.  We use CRYPTO_add to increment it so that it is threadsafe.
+               From OpenSSL 1.1.0 onwards the SSL object has been made opaque so we need to incrememt it using SSL_up_ref */
+            #if OPENSSL_VERSION_NUMBER < 0x10100000L
+                CRYPTO_add(&pSSL->references, 1, CRYPTO_LOCK_SSL);
+            #else
+                SSL_up_ref(pSSL);
+            #endif
+
+            /* Set the socket file descriptor on the SSL object to this socket */
+            SSL_set_fd(pSSL, fd);
+        }
+
     }
 
 
     /** The socket constructor. **/
-    Socket::Socket(int32_t nSocketIn, const BaseAddress &addrIn)
+    Socket::Socket(int32_t nSocketIn, const BaseAddress &addrIn, const bool& fSSL)
     : pollfd             ( )
     , SOCKET_MUTEX       ( )
+    , pSSL(nullptr)
     , DATA_MUTEX         ( )
     , nLastSend          (0)
     , nLastRecv          (0)
@@ -81,15 +106,105 @@ namespace LLP
         fd = nSocketIn;
         events = POLLIN;
 
+        /* Determine if socket should use SSL. */
+        SetSSL(fSSL);
+
+        /* TCP connection is ready. Do server side SSL. */
+        if(fSSL)
+        {
+            SSL_set_fd(pSSL, fd);
+            SSL_set_accept_state(pSSL);
+
+            int32_t nStatus = -1;
+
+            fd_set fdWriteSet;
+            fd_set fdReadSet;
+            struct timeval tv;
+
+            do            
+            {
+                FD_ZERO(&fdWriteSet);
+                FD_ZERO(&fdReadSet);
+                tv.tv_sec = 2; // timeout after 2 seconds
+                tv.tv_usec = 0;
+
+                nStatus = SSL_accept(pSSL);
+
+                /* Check for successful accept */
+                if(nStatus == 1)
+                    break;
+
+                nError.store(SSL_get_error(pSSL, nStatus));
+
+                switch(nError.load())
+                {
+                case SSL_ERROR_WANT_READ:
+                    FD_SET(fd, &fdReadSet);
+                    nStatus = 1; // Wait for more activity
+                    break;
+                case SSL_ERROR_WANT_WRITE:
+                    FD_SET(fd, &fdWriteSet);
+                    nStatus = 1; // Wait for more activity
+                    break;
+                case SSL_ERROR_NONE:
+                    nStatus = 0; // success!
+                    break;
+                case SSL_ERROR_ZERO_RETURN:
+                case SSL_ERROR_SYSCALL:
+                    /* The peer has notified us that it is shutting down via the SSL "close_notify" message so we 
+                       need to shutdown, too. */
+                    debug::log(0, FUNCTION, "SSL handshake - Peer closed connection ");
+                    nError.store(ERR_get_error());
+                    nStatus = -1;
+                    break;
+                default:
+                    /* Some other error so break out */
+                    nError.store(ERR_get_error());
+                    nStatus = -1;
+                    break;
+                }
+
+                if (nStatus == 1)
+                {
+                    // Must have at least one handle to wait for at this point.
+                    nStatus = select(fd + 1, &fdReadSet, &fdWriteSet, NULL, &tv);
+
+                    // 0 is timeout, so we're done.
+                    // -1 is error, so we're done.
+                    // Could be both handles set (same handle in both masks) so
+                    // set to 1.
+                    if (nStatus >= 1)
+                    {
+                        nStatus = 1;
+                    }
+                    else // Timeout or failure
+                    {
+                        debug::log(0, FUNCTION, "SSL handshake - peer timeout or failure");
+                        nStatus = -1;
+                    }
+                }
+            }
+            while (nStatus == 1 && !SSL_is_init_finished(pSSL));
+
+            if(nStatus >= 0)
+                debug::log(3, FUNCTION, "SSL Connection using ", SSL_get_cipher(pSSL));
+            else
+            {
+                debug::log(0, FUNCTION, "SSL Accept failed ",  addr.ToString(), " (", nError, " ", ERR_reason_error_string(nError), ")");
+            }
+
+        }
+
         /* Reset the internal timers. */
         Reset();
     }
 
 
     /* Constructor for socket */
-    Socket::Socket(const BaseAddress &addrConnect)
+    Socket::Socket(const BaseAddress &addrConnect, const bool& fSSL)
     : pollfd             ( )
     , SOCKET_MUTEX       ( )
+    , pSSL(nullptr)
     , DATA_MUTEX         ( )
     , nLastSend          (0)
     , nLastRecv          (0)
@@ -105,6 +220,9 @@ namespace LLP
         /* Reset the internal timers. */
         Reset();
 
+        /* Determine if socket should use SSL. */
+        SetSSL(fSSL);
+
         /* Connect socket to external address. */
         Attempt(addrConnect);
     }
@@ -113,10 +231,12 @@ namespace LLP
     /* Destructor for socket */
     Socket::~Socket()
     {
+        /* Free the ssl object. */
+        SetSSL(false);
     }
 
 
-    /*  Returns the address of the socket. */
+    /* Returns the address of the socket. */
     BaseAddress Socket::GetAddress() const
     {
         LOCK(DATA_MUTEX);
@@ -125,7 +245,7 @@ namespace LLP
     }
 
 
-    /*  Resets the internal timers. */
+    /* Resets the internal timers. */
     void Socket::Reset()
     {
         /* Atomic data types, no need for lock */
@@ -152,7 +272,7 @@ namespace LLP
                 fd = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
 
             /* Catch failure if socket couldn't be initialized. */
-            if(fd == INVALID_SOCKET)
+            if (fd == INVALID_SOCKET)
                 return false;
         }
 
@@ -214,7 +334,7 @@ namespace LLP
         }
 
         /* Handle final socket checks if connection established with no errors. */
-        if(fConnected)
+        if (fConnected)
         {
             /* Check for errors. */
             int32_t nError = WSAGetLastError();
@@ -249,6 +369,9 @@ namespace LLP
                     {
                         debug::log(3, FUNCTION, "poll failed ", addrDest.ToString(), " (", nError, ")");
                         closesocket(fd);
+                        
+                        if(pSSL)
+                            SSL_shutdown(pSSL);
 
                         return false;
                     }
@@ -260,17 +383,108 @@ namespace LLP
                     debug::log(3, FUNCTION, "poll timeout ", addrDest.ToString(), " (", nError, ")");
                     closesocket(fd);
 
+                    if(pSSL)
+                        SSL_shutdown(pSSL);
+
                     return false;
                 }
             }
-            else if(nError != WSAEISCONN)
+            else if (nError != WSAEISCONN)
             {
                 debug::log(3, FUNCTION, "connect failed ", addrDest.ToString(), " (", nError, ")");
 
                 closesocket(fd);
 
+                if(pSSL)
+                    SSL_shutdown(pSSL);
+
                 return false;
             }
+        }
+
+        if(pSSL)
+        {
+
+            SSL_set_fd(pSSL, fd);
+            SSL_set_connect_state(pSSL);
+
+            int32_t nStatus = -1;
+
+            fd_set fdWriteSet;
+            fd_set fdReadSet;
+            struct timeval tv;
+
+            do            
+            {
+                FD_ZERO(&fdWriteSet);
+                FD_ZERO(&fdReadSet);
+                tv.tv_sec = 2; // timeout after 2 seconds
+                tv.tv_usec = 0;
+
+                nStatus = SSL_connect(pSSL);
+
+                switch (SSL_get_error(pSSL, nStatus))
+                {
+                case SSL_ERROR_WANT_READ:
+                    FD_SET(fd, &fdReadSet);
+                    nStatus = 1; // Wait for more activity
+                    break;
+                case SSL_ERROR_WANT_WRITE:
+                    FD_SET(fd, &fdWriteSet);
+                    nStatus = 1; // Wait for more activity
+                    break;
+                case SSL_ERROR_NONE:
+                    nStatus = 0; // success!
+                    break;
+                case SSL_ERROR_ZERO_RETURN:
+                case SSL_ERROR_SYSCALL:
+                    /* The peer has notified us that it is shutting down via the SSL "close_notify" message so we 
+                       need to shutdown, too. */
+                    debug::log(0, FUNCTION, "SSL handshake - Peer closed connection ");
+                    nError.store(ERR_get_error());
+                    nStatus = -1;
+                    break;
+                default:
+                    /* Some other error so break out */
+                    nError.store(ERR_get_error());
+                    nStatus = -1;
+                    break;
+                }
+
+                if (nStatus == 1)
+                {
+                    // Must have at least one handle to wait for at this point.
+                    nStatus = select(fd + 1, &fdReadSet, &fdWriteSet, NULL, &tv);
+
+                    // 0 is timeout, so we're done.
+                    // -1 is error, so we're done.
+                    // Could be both handles set (same handle in both masks) so
+                    // set to 1.
+                    if (nStatus >= 1)
+                    {
+                        nStatus = 1;
+                    }
+                    else // Timeout or failure
+                    {
+                        debug::log(0, FUNCTION, "SSL handshake - peer timeout or failure");
+                        nError.store(nStatus);
+                        nStatus = -1;
+                    }
+                }
+            }
+            while (nStatus == 1);
+
+            fConnected = nStatus >= 0;
+
+            if(fConnected)
+                debug::log(3, FUNCTION, "SSL connected using ", SSL_get_cipher(pSSL));
+            else
+            {
+                debug::log(0, FUNCTION, "SSL SSL_connect failed ",  addr.ToString(), " (", nError, " ", ERR_reason_error_string(nError), ")");
+                
+                return false;
+            }
+
         }
 
         /* Reset the internal timers. */
@@ -285,6 +499,7 @@ namespace LLP
     {
         LOCK(SOCKET_MUTEX);
 
+    
     #ifdef WIN32
         long unsigned int nAvailable = 0;
         ioctlsocket(fd, FIONREAD, &nAvailable);
@@ -292,6 +507,10 @@ namespace LLP
         uint32_t nAvailable = 0;
         ioctl(fd, FIONREAD, &nAvailable);
     #endif
+
+        /* If using SSL we must also include any bytes in the pending buffer that were not read in the last call to SSL_read . */
+        if(pSSL)
+            nAvailable += SSL_pending(pSSL);
 
         return nAvailable;
     }
@@ -303,9 +522,17 @@ namespace LLP
         LOCK(SOCKET_MUTEX);
 
         if(fd != INVALID_SOCKET)
+        {
+            /* Shut down a TLS/SSL connection by sending the "close notify" shutdown alert to the peer. */
+            if(pSSL)
+                SSL_shutdown(pSSL);
+
             closesocket(fd);
+        }
 
         fd = INVALID_SOCKET;
+
+        
     }
 
 
@@ -314,20 +541,83 @@ namespace LLP
     {
         LOCK(SOCKET_MUTEX);
 
+        /* Reset the error status */
+        nError.store(0);
+
         int32_t nRead = 0;
 
-    #ifdef WIN32
-        nRead = static_cast<int32_t>(recv(fd, (char*)&vData[0], nBytes, MSG_DONTWAIT));
-    #else
-        nRead = static_cast<int32_t>(recv(fd, (int8_t*)&vData[0], nBytes, MSG_DONTWAIT));
-    #endif
-
-        if(nRead < 0)
+        if(pSSL)
         {
-            nError = WSAGetLastError();
-            debug::log(3, FUNCTION, "read failed ", addr.ToString(), " (", nError, " ", strerror(nError), ")");
+            nRead = SSL_read(pSSL, (int8_t*)&vData[0], nBytes);
+        }
+        else
+        {
+        #ifdef WIN32
+            nRead = static_cast<int32_t>(recv(fd, (char*)&vData[0], nBytes, MSG_DONTWAIT));
+        #else
+            nRead = static_cast<int32_t>(recv(fd, (int8_t*)&vData[0], nBytes, MSG_DONTWAIT));
+        #endif
+        }
 
-            return nError;
+        if (nRead <= 0)
+        {
+            if(pSSL)
+            {
+                int nSSLError = SSL_get_error(pSSL, nRead);
+
+                switch (nSSLError)
+                {
+                    case SSL_ERROR_NONE:
+                    {
+                        // no real error, just try again...
+                        break;
+                    }
+
+                    case SSL_ERROR_SSL:
+                    {
+                        // peer disconnected...
+                        debug::error(FUNCTION, "Peer disconnected." );
+                        nError.store(ERR_get_error());
+                        break; 
+                    }   
+
+                    case SSL_ERROR_ZERO_RETURN: 
+                    {
+                        // peer disconnected...
+                        debug::error(FUNCTION, "Peer disconnected." );
+                        nError.store(ERR_get_error());
+                        break;
+                    }   
+
+                    case SSL_ERROR_WANT_READ: 
+                    {
+                        // no data available right now as it needs to read more from the underlying socket
+                        break;
+                    }
+
+                    case SSL_ERROR_WANT_WRITE: 
+                    {
+                        // socket not writable right now, wait and try again
+                        break;
+                    }
+
+                    default:
+                    {
+                        nError.store(ERR_get_error());
+                        break;
+                    }
+                }
+                
+                /* Check if an error occurred before logging */
+                if(nError.load() > 0)
+                    debug::log(3, FUNCTION, "SSL_read failed ",  addr.ToString(), " (", nError, " ", ERR_reason_error_string(nError), ")");
+             
+            }
+            else
+            {
+                nError = WSAGetLastError();
+                debug::log(3, FUNCTION, "read failed ", addr.ToString(), " (", nError, " ", strerror(nError), ")");
+            }
         }
         else if(nRead > 0)
             nLastRecv = runtime::timestamp(true);
@@ -335,25 +625,90 @@ namespace LLP
         return nRead;
     }
 
+
     /* Read data from the socket buffer non-blocking */
     int32_t Socket::Read(std::vector<int8_t> &vData, size_t nBytes)
     {
         LOCK(SOCKET_MUTEX);
 
+        /* Reset the error status */
+        nError.store(0);
+
         int32_t nRead = 0;
 
-    #ifdef WIN32
-        nRead = static_cast<int32_t>(recv(fd, (char*)&vData[0], nBytes, MSG_DONTWAIT));
-    #else
-        nRead = static_cast<int32_t>(recv(fd, (int8_t*)&vData[0], nBytes, MSG_DONTWAIT));
-    #endif
-
-        if(nRead < 0)
+        if(pSSL)
         {
-            nError = WSAGetLastError();
-            debug::log(3, FUNCTION, "read failed ",  addr.ToString(), " (", nError, " ", strerror(nError), ")");
+            nRead = SSL_read(pSSL, (int8_t*)&vData[0], nBytes);
+        }
+        else
+        {
+        #ifdef WIN32
+            nRead = static_cast<int32_t>(recv(fd, (char*)&vData[0], nBytes, MSG_DONTWAIT));
+        #else
+            nRead = static_cast<int32_t>(recv(fd, (int8_t*)&vData[0], nBytes, MSG_DONTWAIT));
+        #endif
+        }
 
-            return nError;
+
+        if (nRead < 0)
+        {
+            if(pSSL)
+            {
+                int nSSLError = SSL_get_error(pSSL, nRead);
+
+                switch (nSSLError)
+                {
+                    case SSL_ERROR_NONE:
+                    {
+                        // no real error, just try again...
+                        break;
+                    }
+
+                    case SSL_ERROR_SSL:
+                    {
+                        // peer disconnected...
+                        debug::error(FUNCTION, "Peer disconnected." );
+                        nError.store(ERR_get_error());
+                        break; 
+                    }   
+
+                    case SSL_ERROR_ZERO_RETURN: 
+                    {
+                        // peer disconnected...
+                        debug::error(FUNCTION, "Peer disconnected." );
+                        nError.store(ERR_get_error());
+                        break;
+                    }   
+
+                    case SSL_ERROR_WANT_READ: 
+                    {
+                        // no data available right now as it needs to read more from the underlying socket
+                        break;
+                    }
+
+                    case SSL_ERROR_WANT_WRITE: 
+                    {
+                        // socket not writable right now, wait and try again
+                        break;
+                    }
+
+                    default:
+                    {
+                        nError.store(ERR_get_error());
+                        break;
+                    }
+                }
+
+                /* Check if an error occurred before logging */
+                if(nError.load() > 0)
+                    debug::log(3, FUNCTION, "SSL_read failed ",  addr.ToString(), " (", nError, " ", ERR_reason_error_string(nError), ")");
+             
+            }
+            else
+            {
+                nError = WSAGetLastError();
+                debug::log(3, FUNCTION, "read failed ",  addr.ToString(), " (", nError, " ", strerror(nError), ")");
+            }
         }
         else if(nRead > 0)
             nLastRecv = runtime::timestamp(true);
@@ -373,27 +728,39 @@ namespace LLP
             /* Check overflow buffer. */
             if(vBuffer.size() > 0)
             {
+                debug::log(0, FUNCTION, "vBuffer ", vBuffer.size(), " bytes");
+
                 vBuffer.insert(vBuffer.end(), vData.begin(), vData.end());
 
                 return static_cast<int32_t>(nBytes);
             }
         }
 
-        /* If there were any errors, handle them gracefully. */
+        /* Write the packet. */
         {
             LOCK(SOCKET_MUTEX);
 
+            if(pSSL)
+                nSent = static_cast<int32_t>(SSL_write(pSSL, (int8_t*)&vData[0], nBytes));
+            else
+            {
             #ifdef WIN32
                 nSent = static_cast<int32_t>(send(fd, (char*)&vData[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT));
             #else
                 nSent = static_cast<int32_t>(send(fd, (int8_t*)&vData[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT));
             #endif
+            }
         }
 
 
         /* Handle for error state. */
         if(nSent < 0)
-            nError = WSAGetLastError();
+        {
+            if(pSSL)
+                nError = SSL_get_error(pSSL, nSent);
+            else
+                nError = WSAGetLastError();
+        }
 
         /* If not all data was sent non-blocking, recurse until it is complete. */
         else if(nSent != vData.size())
@@ -424,25 +791,38 @@ namespace LLP
         if(nSize == 0)
             return 0;
 
+        /* maximum transmission unit. */
+        const uint32_t MTU = 16384;
+
         /* Set the maximum bytes to flush to 2^16 or maximum socket buffers. */
-        nBytes = std::min(nSize, std::min((uint32_t)config::GetArg("-maxsendsize", 65535u), 65535u));
+        nBytes = std::min(nSize, std::min((uint32_t)config::GetArg("-maxsendsize", MTU), MTU));
 
         /* If there were any errors, handle them gracefully. */
         {
             LOCK2(DATA_MUTEX);
             LOCK(SOCKET_MUTEX);
 
+            if(pSSL)
+                nSent = static_cast<int32_t>(SSL_write(pSSL, (int8_t *)&vBuffer[0], nBytes));
+            else
+            {
             #ifdef WIN32
                 nSent = static_cast<int32_t>(send(fd, (char*)&vBuffer[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT));
             #else
                 nSent = static_cast<int32_t>(send(fd, (int8_t*)&vBuffer[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT));
             #endif
+            }
+
         }
 
         /* Handle errors on flush. */
         if(nSent < 0)
         {
-            nError = WSAGetLastError();
+            if(pSSL)
+                nError = SSL_get_error(pSSL, nSent);
+            else
+                nError = WSAGetLastError();
+
             ++nConsecutiveErrors;
         }
 
@@ -499,13 +879,20 @@ namespace LLP
     /*  Checks for any flags in the Error Handle. */
     bool Socket::Errors() const
     {
+        LOCK(DATA_MUTEX);
+
         return error_code() != 0;
     }
 
 
     /*  Give the message (c-string) of the error in the socket. */
-    char *Socket::Error() const
+    const char *Socket::Error() const
     {
+        LOCK(DATA_MUTEX);
+
+        if(pSSL)
+            return ERR_reason_error_string(error_code());
+
         return strerror(error_code());
     }
 
@@ -513,15 +900,50 @@ namespace LLP
     /* Returns the error of socket if any */
     int Socket::error_code() const
     {
+
+        if(pSSL)
+        {
+            /* Check for errors from reads or writes. */
+            if(nError == SSL_ERROR_WANT_READ || nError == SSL_ERROR_WANT_WRITE)
+                return 0;
+
+            return nError;
+        }
+
+
         /* Check for errors from reads or writes. */
-        if (nError == WSAEWOULDBLOCK ||
-            nError == WSAEMSGSIZE ||
-            nError == WSAEINTR ||
-            nError == WSAEINPROGRESS)
+        if(nError == WSAEWOULDBLOCK  || nError == WSAEMSGSIZE  || nError == WSAEINTR  || nError == WSAEINPROGRESS)
             return 0;
 
         return nError;
     }
 
+    /*  Creates or destroys the SSL object depending on the flag set. */
+    void Socket::SetSSL(bool fSSL)
+    {
+        LOCK(DATA_MUTEX);
+
+        if(fSSL && pSSL == nullptr)
+        {
+            pSSL = SSL_new(pSSL_CTX);
+        }
+        else if(pSSL)
+        {
+            SSL_free(pSSL);
+            pSSL = nullptr;
+        }
+    }
+
+
+    /* Determines if socket is using SSL encryption. */
+    bool Socket::IsSSL() const
+    {
+        LOCK(DATA_MUTEX);
+
+        if(pSSL != nullptr)
+            return true;
+
+        return false;
+    }
 
 }

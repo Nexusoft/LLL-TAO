@@ -81,7 +81,9 @@ namespace TAO
             jsonRet["protocolversion"] = LLP::PROTOCOL_VERSION;
 
             /* Legacy wallet version*/
+            #ifndef NO_WALLET
             jsonRet["walletversion"] = Legacy::Wallet::GetInstance().GetVersion();
+            #endif
 
             /* Current unified time as reported by this node*/
             jsonRet["timestamp"] =  (int)runtime::unifiedtimestamp();
@@ -90,6 +92,10 @@ namespace TAO
             char hostname[128];
             gethostname(hostname, sizeof(hostname));
             jsonRet["hostname"] = std::string(hostname);
+
+            /* The IP address, if known */
+            if(LLP::TritiumNode::thisAddress.IsValid())
+                jsonRet["ipaddress"] = LLP::TritiumNode::thisAddress.ToStringIP();
 
             /* If this node is running on the testnet then this shows the testnet number*/
             jsonRet["testnet"] = config::GetArg("-testnet", 0);

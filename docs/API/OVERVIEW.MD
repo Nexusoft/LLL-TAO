@@ -125,7 +125,7 @@ In the event that an API call results in an error, a JSON object will be returne
     "error" :
     {
         "code" : -123,
-        "message" : An error has occurred"
+        "message" : "An error has occurred"
     }
 }
 ```
@@ -392,5 +392,37 @@ Error Codes
 | -255 | Cannot process notifications until peers are connected |
 | -256 | Cannot process notifications whilst synchronizing |
 | -257 | Contract failed peer validation |
+| -258 | Unknown genesis |
+| -259 | Could not read crypto object register |
+| -260 | Invalid key name |
+| -261 | Key already exists |
+| -262 | Invalid scheme |
+| -263 | Private key can only be retrieved for app1, app2, app3, and other 3rd-party keys |
+| -264 | Key not yet created |
+| -265 | Missing public key |
+| -266 | Malformed public key |
+| -267 | Shared key encryption only supported for EC (Brainpool) keys |
+| -268 | Failed to generate shared key |
+| -269 | Malformed private key |
+| -270 | Failed to encrypt data |
+| -271 | Failed to decrypt data |
+| -272 | Unsupported key type |
+| -273 | Failed to generate signature |
+| -274 | Missing signature |
+| -275 | Missing scheme |
+| -276 | Error generating hash |
+| -277 | Invalid hash function |
+| -278 | Scheme already in use |
+| -279 | P2P request not found |
+| -280 | P2P server not enabled on this node |
+| -281 | Missing App ID |
+| -282 | Connection not found |
+| -283 | A connection to this peer already exists |
+| -284 | Failed to connect to peer |
+| -285 | No messages available |
+| -286 | Timeout waiting for peer to accept connection request |
+| -287 | API method not supported in multiuser mode |
+| -288 | Cannot unlock for mining in multiuser mode |
+| -289 | Cannot unlock for staking in multiuser mode |
 | -300 | API can only be used to lookup data for the currently logged in signature chain when running in client mode |
 

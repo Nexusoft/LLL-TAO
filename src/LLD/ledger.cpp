@@ -378,9 +378,16 @@ namespace LLD
         if(!ReadTx(hashTx, tx))
             return false;
 
+        return ReadMature(tx, pblock);
+    }
+
+
+    /* Read if a transaction is mature. */
+    bool LedgerDB::ReadMature(const TAO::Ledger::Transaction& tx, const TAO::Ledger::BlockState* pblock)
+    {
         /* Get the total confirmations. */
         uint32_t nConfirms = 0;
-        if(!ReadConfirmations(hashTx, nConfirms, pblock))
+        if(!ReadConfirmations(tx.GetHash(), nConfirms, pblock))
             return false;
 
         /* Switch for coinbase. */

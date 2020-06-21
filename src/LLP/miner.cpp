@@ -20,6 +20,7 @@ ________________________________________________________________________________
 
 
 #include <TAO/API/include/global.h>
+#include <TAO/API/include/sessionmanager.h>
 
 #include <TAO/Ledger/include/difficulty.h>
 #include <TAO/Ledger/include/create.h>
@@ -65,7 +66,9 @@ namespace LLP
     , pMiningKey(nullptr)
     , nHashLast(0)
     {
+        #ifndef NO_WALLET
         pMiningKey = new Legacy::ReserveKey(&Legacy::Wallet::GetInstance());
+        #endif
     }
 
 
@@ -81,7 +84,9 @@ namespace LLP
     , pMiningKey(nullptr)
     , nHashLast(0)
     {
+        #ifndef NO_WALLET
         pMiningKey = new Legacy::ReserveKey(&Legacy::Wallet::GetInstance());
+        #endif
     }
 
 
@@ -97,7 +102,9 @@ namespace LLP
     , pMiningKey(nullptr)
     , nHashLast(0)
     {
+        #ifndef NO_WALLET
         pMiningKey = new Legacy::ReserveKey(&Legacy::Wallet::GetInstance());
+        #endif
     }
 
 
@@ -109,8 +116,10 @@ namespace LLP
 
         if(pMiningKey)
         {
+            #ifndef NO_WALLET
             pMiningKey->ReturnKey();
             delete pMiningKey;
+            #endif
         }
 
         /* Send a notification to wake up sleeping thread to finish shutdown process. */
@@ -727,10 +736,18 @@ namespace LLP
             nLastNotificationsHeight.store(nBestHeight);
 
             /* Wake up events processor and wait for a signal to guarantee added transactions won't orphan a mined block. */
-            if(TAO::API::users && TAO::API::users->CanProcessNotifications())
+            if(TAO::API::users && TAO::API::users->NOTIFICATIONS_PROCESSOR
+                && TAO::API::GetSessionManager().Has(0)
+                && TAO::API::GetSessionManager().Get(0).CanProcessNotifications())
             {
-                TAO::API::users->NotifyEvent();
-                WaitEvent();
+                /* Find the thread processing notifications for this user */
+                TAO::API::NotificationsThread* pThread = TAO::API::users->NOTIFICATIONS_PROCESSOR->FindThread(0);
+
+                if(pThread)
+                {
+                    pThread->NotifyEvent();
+                    WaitEvent();
+                }
             }
 
             /* If we detected a block height change, update the cached last hash of the logged in sig chain.
@@ -784,18 +801,21 @@ namespace LLP
         /* If the primemod flag is set, take the hash proof down to 1017-bit to maximize prime ratio as much as possible. */
         uint32_t nBitMask = config::GetBoolArg(std::string("-primemod"), false) ? 0xFE000000 : 0x80000000;
 
+        /* Get the session */
+        TAO::API::Session& session = TAO::API::GetSessionManager().Get(0);
+
         /* Attempt to unlock the account. */
-        if(TAO::API::users->Locked())
+        if(session.Locked())
         {
             debug::error(FUNCTION, "No unlocked account available");
             return nullptr;
         }
 
         /* Get the sigchain and the PIN. */
-        SecureString PIN = TAO::API::users->GetActivePin();
+        SecureString PIN = session.GetActivePIN()->PIN();
 
         /* Attempt to get the sigchain. */
-        memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pSigChain = TAO::API::users->GetAccount(0);
+        const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pSigChain = session.GetAccount();
         if(!pSigChain)
         {
             debug::error(FUNCTION, "Couldn't get the unlocked sigchain");
@@ -803,7 +823,7 @@ namespace LLP
         }
 
         /* Check that the account is unlocked for mining */
-        if(!TAO::API::users->CanMine())
+        if(!session.CanMine())
         {
             debug::error(FUNCTION, "Account has not been unlocked for mining");
             return nullptr;
@@ -841,12 +861,16 @@ namespace LLP
             Legacy::LegacyBlock *pBlock = dynamic_cast<Legacy::LegacyBlock *>(pBaseBlock);
             if(pBlock)
             {
+                #ifndef NO_WALLET
+
                 /* Update the block's timestamp. */
                 pBlock->UpdateTime();
 
                 /* Sign the block with a key from wallet. */
                 if(!Legacy::SignBlock(*pBlock, Legacy::Wallet::GetInstance()))
                     return debug::error(FUNCTION, "Unable to Sign Legacy Block ", hashMerkleRoot.SubString());
+
+                #endif
 
                 return true;
             }
@@ -862,15 +886,18 @@ namespace LLP
             /* Calculate prime offsets before signing. */
             TAO::Ledger::GetOffsets(pBlock->GetPrime(), pBlock->vOffsets);
 
+            /* Get the session */
+            TAO::API::Session& session = TAO::API::GetSessionManager().Get(0);
+
             /* Check that the account is unlocked for minting */
-            if(!TAO::API::users->CanMine())
+            if(!session.CanMine())
                 return debug::error(FUNCTION, "Account has not been unlocked for mining");
 
             /* Get the sigchain and the PIN. */
-            SecureString PIN = TAO::API::users->GetActivePin();
+            SecureString PIN = session.GetActivePIN()->PIN();
 
             /* Attempt to get the sigchain. */
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pSigChain = TAO::API::users->GetAccount(0);
+            const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pSigChain = session.GetAccount();
             if(!pSigChain)
                 return debug::error(FUNCTION, "Couldn't get the unlocked sigchain");
 
@@ -946,12 +973,16 @@ namespace LLP
                 debug::log(2, FUNCTION, "Legacy");
                 pBlock->print();
 
+                #ifndef NO_WALLET
+
                 /* Check the Proof of Work for submitted block. */
                 if(!Legacy::CheckWork(*pBlock, Legacy::Wallet::GetInstance()))
                     return false;
 
                 /* Block is valid - Tell the wallet to keep this key. */
                 pMiningKey->KeepKey();
+
+                #endif
 
                 return true;
             }
@@ -980,13 +1011,17 @@ namespace LLP
             // if(pBlock->hashPrevBlock != TAO::Ledger::ChainState::hashBestChain.load())
             //   return false;
 
+            /* Get the session */
+            TAO::API::Session& session = TAO::API::GetSessionManager().Get(0);
+
             /* Attempt to get the sigchain. */
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pSigChain = TAO::API::users->GetAccount(0);
+            const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pSigChain = session.GetAccount();
             if(!pSigChain)
                 return debug::error(FUNCTION, "Couldn't get the unlocked sigchain");
 
+
             /* Lock the sigchain that is being mined. */
-            LOCK(TAO::API::users->CREATE_MUTEX);
+            LOCK(session.CREATE_MUTEX);
 
             /* Process the block and relay to network if it gets accepted into main chain. */
             uint8_t nStatus = 0;
@@ -1007,7 +1042,7 @@ namespace LLP
     /*  Determines if the mining wallet is unlocked. */
     bool Miner::is_locked()
     {
-        return TAO::API::users->Locked();
+        return TAO::API::GetSessionManager().Get(0).Locked() && !TAO::API::GetSessionManager().Get(0).CanMine();
     }
 
 

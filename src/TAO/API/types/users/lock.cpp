@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/types/users.h>
+#include <TAO/API/include/sessionmanager.h>
 #include <TAO/Ledger/types/stake_minter.h>
 
 /* Global TAO namespace. */
@@ -32,12 +33,15 @@ namespace TAO
             if(config::fMultiuser.load())
                 throw APIException(-131, "Lock not supported in multiuser mode");
 
+            /* Get the session */
+            Session& session = GetSessionManager().Get(0);
+
             /* Check if already unlocked. */
-            if(pActivePIN.IsNull() || (!pActivePIN.IsNull() && pActivePIN->PIN() == ""))
+            if(session.GetActivePIN().IsNull() || (!session.GetActivePIN().IsNull() && session.GetActivePIN()->PIN() == ""))
                 throw APIException(-132, "Account already locked");
 
             /* The current unlock actions */
-            uint8_t nUnlockedActions = pActivePIN->UnlockedActions();
+            uint8_t nUnlockedActions = session.GetActivePIN()->UnlockedActions();
 
             /* Check for mining flag. */
             if(params.find("mining") != params.end())
@@ -47,7 +51,7 @@ namespace TAO
                 if(strMint == "1" || strMint == "true")
                 {
                      /* Check if already locked. */
-                    if(!pActivePIN.IsNull() && !pActivePIN->CanMine())
+                    if(!session.GetActivePIN().IsNull() && !session.GetActivePIN()->CanMine())
                         throw APIException(-196, "Account already locked for mining");
                     else
                         nUnlockedActions &= ~TAO::Ledger::PinUnlock::UnlockActions::MINING;
@@ -62,7 +66,7 @@ namespace TAO
                 if(strMint == "1" || strMint == "true")
                 {
                      /* Check if already locked. */
-                    if(!pActivePIN.IsNull() && !pActivePIN->CanStake())
+                    if(!session.GetActivePIN().IsNull() && !session.GetActivePIN()->CanStake())
                         throw APIException(-197, "Account already locked for staking");
                     else
                         nUnlockedActions &= ~TAO::Ledger::PinUnlock::UnlockActions::STAKING;
@@ -77,7 +81,7 @@ namespace TAO
                 if(strTransactions == "1" || strTransactions == "true")
                 {
                      /* Check if already unlocked. */
-                    if(!pActivePIN.IsNull() && !pActivePIN->CanTransact())
+                    if(!session.GetActivePIN().IsNull() && !session.GetActivePIN()->CanTransact())
                         throw APIException(-198, "Account already locked for transactions");
                     else
                         nUnlockedActions &= ~TAO::Ledger::PinUnlock::UnlockActions::TRANSACTIONS;
@@ -92,7 +96,7 @@ namespace TAO
                 if(strNotifications == "1" || strNotifications == "true")
                 {
                      /* Check if already unlocked. */
-                    if(!pActivePIN.IsNull() && !pActivePIN->ProcessNotifications())
+                    if(!session.GetActivePIN().IsNull() && !session.GetActivePIN()->ProcessNotifications())
                         throw APIException(-199, "Account already locked for notifications");
                     else
                         nUnlockedActions &= ~TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS;
@@ -100,29 +104,25 @@ namespace TAO
             }
 
             /* Clear the pin */
-            LOCK(MUTEX);
+
 
             /* If we have changed specific unlocked actions them set them on the pin */
-            if(nUnlockedActions != pActivePIN->UnlockedActions())
+            if(nUnlockedActions != session.GetActivePIN()->UnlockedActions())
             {
                 /* Extract the PIN. */
-                SecureString strPin = pActivePIN->PIN();
-
-                /* Clean up current pin */
-                if(!pActivePIN.IsNull())
-                    pActivePIN.free();
+                SecureString strPin = session.GetActivePIN()->PIN();
 
                 /* Set new unlock options */
-                pActivePIN = new TAO::Ledger::PinUnlock(strPin, nUnlockedActions);
+                session.UpdatePIN(strPin, nUnlockedActions);
             }
             else
             {
                 /* If no unlock actions left then free the pin from cache */
-                pActivePIN.free();
+                session.ClearActivePIN();
             }
 
             /* Stop the stake minter if it is no longer unlocked for staking */
-            if(pActivePIN.IsNull() || (!(nUnlockedActions & TAO::Ledger::PinUnlock::UnlockActions::STAKING)))
+            if(session.GetActivePIN().IsNull() || (!(nUnlockedActions & TAO::Ledger::PinUnlock::UnlockActions::STAKING)))
             {
                 /* If stake minter is running, stop it */
                 TAO::Ledger::StakeMinter& stakeMinter = TAO::Ledger::StakeMinter::GetInstance();
@@ -133,10 +133,10 @@ namespace TAO
             /* populate unlocked status */
             json::json jsonUnlocked;
 
-            jsonUnlocked["mining"] = !pActivePIN.IsNull() && pActivePIN->CanMine();
-            jsonUnlocked["notifications"] = !pActivePIN.IsNull() && pActivePIN->ProcessNotifications();
-            jsonUnlocked["staking"] = !pActivePIN.IsNull() && pActivePIN->CanStake();
-            jsonUnlocked["transactions"] = !pActivePIN.IsNull() && pActivePIN->CanTransact();
+            jsonUnlocked["mining"] = !session.GetActivePIN().IsNull() && session.GetActivePIN()->CanMine();
+            jsonUnlocked["notifications"] = !session.GetActivePIN().IsNull() && session.GetActivePIN()->ProcessNotifications();
+            jsonUnlocked["staking"] = !session.GetActivePIN().IsNull() && session.GetActivePIN()->CanStake();
+            jsonUnlocked["transactions"] = !session.GetActivePIN().IsNull() && session.GetActivePIN()->CanTransact();
 
             ret["unlocked"] = jsonUnlocked;
             return ret;

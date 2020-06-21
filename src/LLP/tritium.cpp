@@ -22,6 +22,7 @@ ________________________________________________________________________________
 #include <LLP/templates/events.h>
 
 #include <TAO/API/include/global.h>
+#include <TAO/API/include/sessionmanager.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
@@ -34,7 +35,6 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/include/process.h>
 
-#include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/types/client.h>
 #include <TAO/Ledger/types/locator.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -42,8 +42,13 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/stakepool.h>
 #include <TAO/Ledger/types/syncblock.h>
 
-#include <Legacy/include/evaluate.h>
+#ifndef NO_WALLET
 #include <Legacy/wallet/wallet.h>
+#else
+#include <Legacy/types/merkle.h>
+#endif
+
+#include <Legacy/include/evaluate.h>
 
 #include <Util/include/args.h>
 #include <Util/include/debug.h>
@@ -63,6 +68,7 @@ ________________________________________________________________________________
 
 namespace LLP
 {
+    using namespace LLP::Tritium;
 
     /* Declaration of sessions mutex. (private). */
     std::mutex TritiumNode::SESSIONS_MUTEX;
@@ -92,13 +98,23 @@ namespace LLP
     std::atomic<uint64_t> TritiumNode::nRemainingTime(0);
 
 
+    /** This node's address, as seen by the peer **/
+    LLP::BaseAddress TritiumNode::thisAddress;
+
+
     /* The local relay inventory cache. */
     static LLD::KeyLRU cacheInventory = LLD::KeyLRU(1024 * 1024);
+
+    /** Mutex for controlling access to the p2p requests map. **/
+    std::mutex TritiumNode::P2P_REQUESTS_MUTEX;
+
+    /** map of P2P request timestamps by source genesis hash. **/
+    std::map<uint256_t, uint64_t> TritiumNode::mapP2PRequests;
 
 
     /** Default Constructor **/
     TritiumNode::TritiumNode()
-    : BaseConnection<TritiumPacket>()
+    : BaseConnection<MessagePacket>()
     , fLoggedIn(false)
     , fAuthorized(false)
     , fInitialized(false)
@@ -126,7 +142,7 @@ namespace LLP
 
     /** Constructor **/
     TritiumNode::TritiumNode(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool fDDOSIn)
-    : BaseConnection<TritiumPacket>(SOCKET_IN, DDOS_IN, fDDOSIn)
+    : BaseConnection<MessagePacket>(SOCKET_IN, DDOS_IN, fDDOSIn)
     , fLoggedIn(false)
     , fAuthorized(false)
     , fInitialized(false)
@@ -154,7 +170,7 @@ namespace LLP
 
     /** Constructor **/
     TritiumNode::TritiumNode(DDOS_Filter* DDOS_IN, bool fDDOSIn)
-    : BaseConnection<TritiumPacket>(DDOS_IN, fDDOSIn)
+    : BaseConnection<MessagePacket>(DDOS_IN, fDDOSIn)
     , fLoggedIn(false)
     , fAuthorized(false)
     , fInitialized(false)
@@ -272,7 +288,11 @@ namespace LLP
 
                     /* Rebroadcast transactions. */
                     if(!TAO::Ledger::ChainState::Synchronizing())
+                    {
+                        #ifndef NO_WALLET
                         Legacy::Wallet::GetInstance().ResendWalletTransactions();
+                        #endif
+                    }
                 }
 
 
@@ -505,6 +525,15 @@ namespace LLP
                 /* Send Auth immediately after version and before any other messages*/
                 //Auth(true);
 
+                /* If we dont yet know our IP address and the peer is on the newer protocol version then request the IP address */
+                {
+                    /* Lock session mutex to prevent other sessions from accessing thisAddress */
+                    LOCK(SESSIONS_MUTEX);
+
+                    if(!thisAddress.IsValid() && nProtocolVersion >= MIN_TRITIUM_VERSION)
+                        PushMessage(ACTION::GET, uint8_t(TYPES::PEERADDRESS));
+                }
+
                 #ifdef DEBUG_MISSING
                 fSynchronized.store(true);
                 #endif
@@ -580,116 +609,61 @@ namespace LLP
                 if(hashGenesis == 0)
                     return debug::drop(NODE, "ACTION::AUTH: cannot authorize with reserved genesis");
 
-                /* Derive the object register address. */
-                TAO::Register::Address hashCrypto =
-                    TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
+                /* Get the timestamp */
+                uint64_t nTimestamp;
+                ssPacket >> nTimestamp;
+
+                /* Check the timestamp. */
+                if(nTimestamp > runtime::unifiedtimestamp() || nTimestamp < runtime::unifiedtimestamp() - 10)
+                    return debug::drop(NODE, "ACTION::AUTH: timestamp out of rang (stale)");
+
+                /* Get the nonce */
+                uint64_t nNonce;
+                ssPacket >> nNonce;
+
+                /* Check the nNonce for expected values. */
+                if(nNonce != nCurrentSession)
+                    return debug::drop(NODE, "ACTION::AUTH: invalid session-id ", nNonce);
+
+                /* Get the public key. */
+                std::vector<uint8_t> vchPubKey;
+                ssPacket >> vchPubKey;
+
+
+                /* Build the byte stream from genesis+nonce in order to verify the signature */
+                DataStream ssCheck(SER_NETWORK, PROTOCOL_VERSION);
+                ssCheck << hashGenesis << nTimestamp << nNonce;
+
+                /* Get a hash of the data. */
+                uint256_t hashCheck = LLC::SK256(ssCheck.begin(), ssCheck.end());
+
+                /* Get the signature. */
+                std::vector<uint8_t> vchSig;
+                ssPacket >> vchSig;
+
+                /* Verify the signature */
+                if(!TAO::Ledger::SignatureChain::Verify(hashGenesis, "network", hashCheck.GetBytes(), vchPubKey, vchSig))
+                    return debug::drop(NODE, "ACTION::AUTH: invalid transaction signature");
 
                 /* Get the crypto register. */
-                TAO::Register::Object crypto;
-                if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::MEMPOOL))
-                    return debug::drop(NODE, "ACTION::AUTH: authorization failed, missing crypto register");
+                TAO::Register::Object trust;
+                if(!LLD::Register->ReadState(TAO::Register::Address(std::string("trust"),
+                    hashGenesis, TAO::Register::Address::TRUST), trust, TAO::Ledger::FLAGS::MEMPOOL))
+                    return debug::drop(NODE, "ACTION::AUTH: authorization failed, missing trust register");
 
                 /* Parse the object. */
-                if(!crypto.Parse())
-                    return debug::drop(NODE, "ACTION::AUTH: failed to parse crypto register");
+                if(!trust.Parse())
+                    return debug::drop(NODE, "ACTION::AUTH: failed to parse trust register");
 
-                /* Check the authorization hash. */
-                uint256_t hashCheck = crypto.get<uint256_t>("network");
-                if(hashCheck != 0) //a hash of 0 is a disabled authorization hash
-                {
-                    /* Get the timestamp */
-                    uint64_t nTimestamp;
-                    ssPacket >> nTimestamp;
+                /* Set the node's current trust score. */
+                nTrust = trust.get<uint64_t>("trust");
 
-                    /* Check the timestamp. */
-                    if(nTimestamp > runtime::unifiedtimestamp() || nTimestamp < runtime::unifiedtimestamp() - 10)
-                        return debug::drop(NODE, "ACTION::AUTH: timestamp out of rang (stale)");
+                /* Set to authorized node if passed all cryptographic checks. */
+                fAuthorized = true;
+                debug::log(0, NODE, "ACTION::AUTH: ", hashGenesis.SubString(), " AUTHORIZATION ACCEPTED");
 
-                    /* Get the nonce */
-                    uint64_t nNonce;
-                    ssPacket >> nNonce;
+                PushMessage(RESPONSE::AUTHORIZED, hashGenesis);
 
-                    /* Check the nNonce for expected values. */
-                    if(nNonce != nCurrentSession)
-                        return debug::drop(NODE, "ACTION::AUTH: invalid session-id ", nNonce);
-
-                    /* Get the public key. */
-                    std::vector<uint8_t> vchPubKey;
-                    ssPacket >> vchPubKey;
-
-                    /* Grab hash of pubkey and set its type. */
-                    uint256_t hashPubKey = LLC::SK256(vchPubKey);
-                    hashPubKey.SetType(hashCheck.GetType());
-
-                    /* Check the public key to expected authorization key. */
-                    if(hashPubKey != hashCheck)
-                        return debug::drop(NODE, "ACTION::AUTH: failed to authorize, invalid public key");
-
-                    /* Build the byte stream from genesis+nonce in order to verify the signature */
-                    DataStream ssCheck(SER_NETWORK, PROTOCOL_VERSION);
-                    ssCheck << hashGenesis << nTimestamp << nNonce;
-
-                    /* Get a hash of the data. */
-                    uint256_t hashCheck = LLC::SK256(ssCheck.begin(), ssCheck.end());
-
-                    /* Get the signature. */
-                    std::vector<uint8_t> vchSig;
-                    ssPacket >> vchSig;
-
-                    /* Switch based on signature type. */
-                    switch(hashPubKey.GetType())
-                    {
-                        /* Support for the FALCON signature scheeme. */
-                        case TAO::Ledger::SIGNATURE::FALCON:
-                        {
-                            /* Create the FL Key object. */
-                            LLC::FLKey key;
-
-                            /* Set the public key and verify. */
-                            key.SetPubKey(vchPubKey);
-                            if(!key.Verify(hashCheck.GetBytes(), vchSig))
-                                return debug::drop(NODE, "ACTION::AUTH: invalid transaction signature");
-
-                            break;
-                        }
-
-                        /* Support for the BRAINPOOL signature scheme. */
-                        case TAO::Ledger::SIGNATURE::BRAINPOOL:
-                        {
-                            /* Create EC Key object. */
-                            LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
-
-                            /* Set the public key and verify. */
-                            key.SetPubKey(vchPubKey);
-                            if(!key.Verify(hashCheck.GetBytes(), vchSig))
-                                return debug::drop(NODE, "ACTION::AUTH: invalid transaction signature");
-
-                            break;
-                        }
-
-                        default:
-                            return debug::drop(NODE, "ACTION::AUTH: invalid signature type");
-                    }
-
-                    /* Get the crypto register. */
-                    TAO::Register::Object trust;
-                    if(!LLD::Register->ReadState(TAO::Register::Address(std::string("trust"),
-                        hashGenesis, TAO::Register::Address::TRUST), trust, TAO::Ledger::FLAGS::MEMPOOL))
-                        return debug::drop(NODE, "ACTION::AUTH: authorization failed, missing trust register");
-
-                    /* Parse the object. */
-                    if(!trust.Parse())
-                        return debug::drop(NODE, "ACTION::AUTH: failed to parse trust register");
-
-                    /* Set the node's current trust score. */
-                    nTrust = trust.get<uint64_t>("trust");
-
-                    /* Set to authorized node if passed all cryptographic checks. */
-                    fAuthorized = true;
-                    debug::log(0, NODE, "ACTION::AUTH: ", hashGenesis.SubString(), " AUTHORIZATION ACCEPTED");
-
-                    PushMessage(RESPONSE::AUTHORIZED, hashGenesis);
-                }
 
                 break;
             }
@@ -2099,6 +2073,13 @@ namespace LLP
                             break;
                         }
 
+                        case TYPES::PEERADDRESS:
+                        {
+                            /* Send back the peer's own address from our connection */
+                            PushMessage(TYPES::PEERADDRESS, addr);
+                            break;
+                        }
+
                         /* Catch malformed notify binary streams. */
                         default:
                             return debug::drop(NODE, "ACTION::GET malformed binary stream");
@@ -3278,7 +3259,157 @@ namespace LLP
                     }
                     default:
                     {
-                        return debug::drop(NODE, "ACTION::VALIDATE invalidate type specified");
+                        return debug::drop(NODE, "ACTION::VALIDATE invalid type specified");
+                    }
+                }
+
+                break;
+            }
+
+            case ACTION::REQUEST:
+            {
+                /* deserialize the type */
+                uint8_t nType;
+                ssPacket >> nType;
+
+                switch(nType)
+                {
+                    /* Caller is requesting a peer to peer connection to communicate via the messaging LLP*/
+                    case TYPES::P2PCONNECTION:
+                    {
+                        /* Get the timestamp */
+                        uint64_t nTimestamp;
+                        ssPacket >> nTimestamp;
+
+                        /* get the appid */
+                        std::string strAppID;
+                        ssPacket >> strAppID;
+
+                        /* get the source genesis hash */
+                        uint256_t hashFrom;
+                        ssPacket >> hashFrom;
+
+                        /* Get the destination genesis hash */
+                        uint256_t hashTo;
+                        ssPacket >> hashTo;
+
+                        /* Get the nonce / session ID */
+                        uint64_t nSession;
+                        ssPacket >> nSession;
+
+                        /* get the source address / port*/
+                        BaseAddress address;
+                        ssPacket >> address;
+
+                        /* Get the public key. */
+                        std::vector<uint8_t> vchPubKey;
+                        ssPacket >> vchPubKey;
+
+                        /* Get the signature. */
+                        std::vector<uint8_t> vchSig;
+                        ssPacket >> vchSig;
+
+                        /* Check the timestamp. If the request is older than 30s then it is stale so ignore the message */
+                        if(nTimestamp > runtime::unifiedtimestamp() || nTimestamp < runtime::unifiedtimestamp() - 30)
+                        {
+                            debug::log(3, NODE, "ACTION::REQUEST::P2P: timestamp out of range (stale)");
+                            return true;
+                        }
+
+                        /* Check that the destination genesis exists */
+                        if(!LLD::Ledger->HasGenesis(hashFrom))
+                            return debug::drop(NODE, "ACTION::REQUEST::P2P: invalid destination genesis hash");
+
+                        /* Check that the source genesis exists */
+                        if(!LLD::Ledger->HasGenesis(hashTo))
+                            return debug::drop(NODE, "ACTION::REQUEST::P2P: invalid source genesis hash");
+
+                        /* Build the byte stream from the request data in order to verify the signature */
+                        DataStream ssCheck(SER_NETWORK, PROTOCOL_VERSION);
+                        ssCheck << nTimestamp << strAppID << hashFrom << hashTo << nSession << address;
+
+                        /* Verify the signature */
+                        if(!TAO::Ledger::SignatureChain::Verify(hashFrom, "network", ssCheck.Bytes(), vchPubKey, vchSig))
+                            return debug::error(NODE, "ACTION::REQUEST::P2P: invalid transaction signature");
+
+
+                        /* See whether we have processed a P2P request from this user in the last 5 seconds.
+                           If so then ignore the message. If not then relay the message to our peers.
+                           NOTE: we relay the message regardless of whether the destination genesis is logged in on this node,
+                           as the user may be logged in on multiple nodes and  might want to process the request on a
+                           different node/device. */
+                        {
+                            LOCK(P2P_REQUESTS_MUTEX);
+                            if(mapP2PRequests.count(hashFrom) == 0 || mapP2PRequests[hashFrom] < nTimestamp - 5)
+                            {
+                                /* Reset the packet data pointer */
+                                ssPacket.Reset();
+
+                                /* Relay the P2P request */
+                                TRITIUM_SERVER->Relay
+                                (
+                                    uint8_t(ACTION::REQUEST),
+                                    uint8_t(TYPES::P2PCONNECTION),
+                                    nTimestamp,
+                                    strAppID,
+                                    hashFrom,
+                                    hashTo,
+                                    nSession,
+                                    address,
+                                    vchPubKey,
+                                    vchSig
+                                );
+
+                                /* Check to see whether the destination genesis is logged in on this node */
+                                if(TAO::API::users->LoggedIn(hashTo))
+                                {
+                                    /* Get the users session */
+                                    TAO::API::Session& session = TAO::API::users->GetSession(hashTo);
+
+                                    /* If an incoming request already exists from this peer then remove it */
+                                    if(session.HasP2PRequest(strAppID, hashFrom, true))
+                                        session.DeleteP2PRequest(strAppID, hashFrom, true);
+
+                                    /* Add this incoming request to the P2P requests queue for this user */
+                                    LLP::P2P::ConnectionRequest request = { runtime::unifiedtimestamp(), strAppID, hashFrom, nSession, address };
+                                    session.AddP2PRequest(request, true);
+
+                                    debug::log(3, NODE, "P2P Request received from " , hashFrom.ToString(), " for appID ", strAppID );
+                                }
+                            }
+
+                            /* Log this request */
+                            mapP2PRequests[hashFrom] = nTimestamp;
+
+
+                        }
+
+                        break;
+
+                    }
+                    default:
+                    {
+                        return debug::drop(NODE, "ACTION::REQUEST invalid type specified");
+                    }
+                }
+
+                break;
+            }
+
+            case TYPES::PEERADDRESS:
+            {
+                {
+                    /* Lock session mutex to prevent other sessions from accessing thisAddress */
+                    LOCK(SESSIONS_MUTEX);
+
+                    /* Ignore the message if we have already obtained our IP address */
+                    if(!thisAddress.IsValid())
+                    {
+                        /* Deserialize the address */
+                        BaseAddress addr;
+                        ssPacket >> addr;
+
+                        thisAddress = addr;
                     }
                 }
 
@@ -3572,10 +3703,14 @@ namespace LLP
         DataStream ssMessage(SER_NETWORK, MIN_PROTO_VERSION);
 
         /* Only send auth messages if the auth key has been cached */
-        if(TAO::API::users->LoggedIn() && !TAO::API::users->GetAuthKey().IsNull())
+        if(TAO::API::users->LoggedIn() && !TAO::API::GetSessionManager().Get(0).GetNetworkKey() != 0)
         {
+            /* Get the Session */
+            TAO::API::Session& session = TAO::API::GetSessionManager().Get(0);
+
             /* The genesis of the currently logged in user */
-            uint256_t hashSigchain = TAO::API::users->GetGenesis(0);
+            uint256_t hashSigchain = session.GetAccount()->Genesis();
+
             uint64_t nTimestamp = runtime::unifiedtimestamp();
 
             /* Add the basic auth data to the message */
@@ -3588,8 +3723,9 @@ namespace LLP
             std::vector<uint8_t> vchPubKey;
             std::vector<uint8_t> vchSig;
 
+
             /* Generate the public key and signature for the message data */
-            TAO::API::users->GetAccount(0)->Sign("network", hashCheck.GetBytes(), TAO::API::users->GetAuthKey()->DATA, vchPubKey, vchSig);
+            session.GetAccount()->Sign("network", hashCheck.GetBytes(), session.GetNetworkKey(), vchPubKey, vchSig);
 
             /* Add the public key to the message */
             ssMessage << vchPubKey;
@@ -3615,219 +3751,262 @@ namespace LLP
 
 
     /* Checks if a node is subscribed to receive a notification. */
-    const DataStream TritiumNode::Notifications(const uint16_t nMsg, const DataStream& ssData) const
+    const DataStream TritiumNode::RelayFilter(const uint16_t nMsg, const DataStream& ssData) const
     {
-        /* Only filter relays when message is notify. */
-        if(nMsg != ACTION::NOTIFY)
-            return ssData;
-
-        /* Build a response data stream. */
+        /* The data stream to relay*/
         DataStream ssRelay(SER_NETWORK, MIN_PROTO_VERSION);
-        while(!ssData.End())
+
+        /* Switch based on message type */
+        switch(nMsg)
         {
-            /* Get the first notify type. */
-            uint8_t nType = 0;
-            ssData >> nType;
-
-            /* Skip over legacy. */
-            bool fLegacy = false;
-            if(nType == SPECIFIER::LEGACY)
+            /* Filter out request messages so that we don't send them to peers on older protocol versions */
+            case ACTION::REQUEST :
             {
-                /* Set legacy specifier. */
-                fLegacy = true;
-
-                /* Go to next type in stream. */
+                /* Get the request type */
+                uint8_t nType = 0;
                 ssData >> nType;
+
+                /* Switch based on type. */
+                switch(nType)
+                {
+                    case TYPES::P2PCONNECTION:
+                    {
+                        /* Ensure the peer is on a high enough version to receive the P2PCONNECTION message */
+                        if(nProtocolVersion >= MIN_TRITIUM_VERSION)
+                            ssRelay = ssData;
+                        break;
+                    }
+                    default:
+                    {
+                        /* Default to letting the message be relayed */
+                        ssRelay = ssData;
+                        break;
+                    }
+                }
+
+                break;
             }
 
-            /* Switch based on type. */
-            switch(nType)
+            /* Filter notifications. */
+            case ACTION::NOTIFY:
             {
-                /* Check for block subscription. */
-                case TYPES::BLOCK:
+                /* Build a response data stream. */
+                while(!ssData.End())
                 {
-                    /* Get the index. */
-                    uint1024_t hashBlock;
-                    ssData >> hashBlock;
+                    /* Get the first notify type. */
+                    uint8_t nType = 0;
+                    ssData >> nType;
 
-                    /* Check subscription. */
-                    if(nNotifications & SUBSCRIPTION::BLOCK)
+                    /* Skip over legacy. */
+                    bool fLegacy = false;
+                    if(nType == SPECIFIER::LEGACY)
                     {
-                        /* Write block to stream. */
-                        ssRelay << uint8_t(TYPES::BLOCK);
-                        ssRelay << hashBlock;
+                        /* Set legacy specifier. */
+                        fLegacy = true;
+
+                        /* Go to next type in stream. */
+                        ssData >> nType;
                     }
 
-                    break;
-                }
-
-
-                /* Check for transaction subscription. */
-                case TYPES::TRANSACTION:
-                {
-                    /* Get the index. */
-                    uint512_t hashTx;
-                    ssData >> hashTx;
-
-                    /* Check subscription. */
-                    if(nNotifications & SUBSCRIPTION::TRANSACTION)
+                    /* Switch based on type. */
+                    switch(nType)
                     {
-                        /* Check for legacy. */
-                        if(fLegacy)
-                            ssRelay << uint8_t(SPECIFIER::LEGACY);
+                        /* Check for block subscription. */
+                        case TYPES::BLOCK:
+                        {
+                            /* Get the index. */
+                            uint1024_t hashBlock;
+                            ssData >> hashBlock;
 
-                        /* Write transaction to stream. */
-                        ssRelay << uint8_t(TYPES::TRANSACTION);
-                        ssRelay << hashTx;
-                    }
+                            /* Check subscription. */
+                            if(nNotifications & SUBSCRIPTION::BLOCK)
+                            {
+                                /* Write block to stream. */
+                                ssRelay << uint8_t(TYPES::BLOCK);
+                                ssRelay << hashBlock;
+                            }
 
-                    break;
-                }
-
-
-                /* Check for height subscription. */
-                case TYPES::BESTHEIGHT:
-                {
-                    /* Get the index. */
-                    uint32_t nHeight;
-                    ssData >> nHeight;
-
-                    /* Check for legacy. */
-                    if(fLegacy)
-                    {
-                        debug::error(FUNCTION, "BESTHEIGHT cannot have legacy specifier");
-                        continue;
-                    }
-
-                    /* Check subscription. */
-                    if(nNotifications & SUBSCRIPTION::BESTHEIGHT)
-                    {
-                        /* Write transaction to stream. */
-                        ssRelay << uint8_t(TYPES::BESTHEIGHT);
-                        ssRelay << nHeight;
-                    }
-
-                    break;
-                }
-
-
-                /* Check for checkpoint subscription. */
-                case TYPES::CHECKPOINT:
-                {
-                    /* Get the index. */
-                    uint1024_t hashCheck;
-                    ssData >> hashCheck;
-
-                    /* Check for legacy. */
-                    if(fLegacy)
-                    {
-                        debug::error(FUNCTION, "CHECKPOINT cannot have legacy specifier");
-                        continue;
-                    }
-
-                    /* Check subscription. */
-                    if(nNotifications & SUBSCRIPTION::CHECKPOINT)
-                    {
-                        /* Write transaction to stream. */
-                        ssRelay << uint8_t(TYPES::CHECKPOINT);
-                        ssRelay << hashCheck;
-                    }
-
-                    break;
-                }
-
-
-                /* Check for best chain subscription. */
-                case TYPES::BESTCHAIN:
-                {
-                    /* Get the index. */
-                    uint1024_t hashBest;
-                    ssData >> hashBest;
-
-                    /* Check for legacy. */
-                    if(fLegacy)
-                    {
-                        debug::error(FUNCTION, "BESTCHAIN cannot have legacy specifier");
-                        continue;
-                    }
-
-                    /* Check subscription. */
-                    if(nNotifications & SUBSCRIPTION::BESTCHAIN)
-                    {
-                        /* Write transaction to stream. */
-                        ssRelay << uint8_t(TYPES::BESTCHAIN);
-                        ssRelay << hashBest;
-                    }
-
-                    break;
-                }
-
-
-                /* Check for address subscription. */
-                case TYPES::ADDRESS:
-                {
-                    /* Get the index. */
-                    BaseAddress addr;
-                    ssData >> addr;
-
-                    /* Check for legacy. */
-                    if(fLegacy)
-                    {
-                        debug::error(FUNCTION, "ADDRESS cannot have legacy specifier");
-                        continue;
-                    }
-
-                    /* Check subscription. */
-                    if(nNotifications & SUBSCRIPTION::ADDRESS)
-                    {
-                        /* Write transaction to stream. */
-                        ssRelay << uint8_t(TYPES::ADDRESS);
-                        ssRelay << addr;
-                    }
-
-                    break;
-                }
-
-
-                /* Check for sigchain subscription. */
-                case TYPES::SIGCHAIN:
-                {
-                    /* Get the index. */
-                    uint256_t hashSigchain = 0;
-                    ssData >> hashSigchain;
-
-                    /* Get the txid. */
-                    uint512_t hashTx = 0;
-                    ssData >> hashTx;
-
-                    /* Check subscription. */
-                    if(nNotifications & SUBSCRIPTION::SIGCHAIN)
-                    {
-                        /* Check for matching sigchain-id. */
-                        if(hashSigchain != hashGenesis)
                             break;
+                        }
 
-                        /* Check for legacy. */
-                        if(fLegacy)
-                            ssRelay << uint8_t(SPECIFIER::LEGACY);
 
-                        /* Write transaction to stream. */
-                        ssRelay << uint8_t(TYPES::SIGCHAIN);
-                        ssRelay << hashSigchain;
-                        ssRelay << hashTx;
+                        /* Check for transaction subscription. */
+                        case TYPES::TRANSACTION:
+                        {
+                            /* Get the index. */
+                            uint512_t hashTx;
+                            ssData >> hashTx;
+
+                            /* Check subscription. */
+                            if(nNotifications & SUBSCRIPTION::TRANSACTION)
+                            {
+                                /* Check for legacy. */
+                                if(fLegacy)
+                                    ssRelay << uint8_t(SPECIFIER::LEGACY);
+
+                                /* Write transaction to stream. */
+                                ssRelay << uint8_t(TYPES::TRANSACTION);
+                                ssRelay << hashTx;
+                            }
+
+                            break;
+                        }
+
+
+                        /* Check for height subscription. */
+                        case TYPES::BESTHEIGHT:
+                        {
+                            /* Get the index. */
+                            uint32_t nHeight;
+                            ssData >> nHeight;
+
+                            /* Check for legacy. */
+                            if(fLegacy)
+                            {
+                                debug::error(FUNCTION, "BESTHEIGHT cannot have legacy specifier");
+                                continue;
+                            }
+
+                            /* Check subscription. */
+                            if(nNotifications & SUBSCRIPTION::BESTHEIGHT)
+                            {
+                                /* Write transaction to stream. */
+                                ssRelay << uint8_t(TYPES::BESTHEIGHT);
+                                ssRelay << nHeight;
+                            }
+
+                            break;
+                        }
+
+
+                        /* Check for checkpoint subscription. */
+                        case TYPES::CHECKPOINT:
+                        {
+                            /* Get the index. */
+                            uint1024_t hashCheck;
+                            ssData >> hashCheck;
+
+                            /* Check for legacy. */
+                            if(fLegacy)
+                            {
+                                debug::error(FUNCTION, "CHECKPOINT cannot have legacy specifier");
+                                continue;
+                            }
+
+                            /* Check subscription. */
+                            if(nNotifications & SUBSCRIPTION::CHECKPOINT)
+                            {
+                                /* Write transaction to stream. */
+                                ssRelay << uint8_t(TYPES::CHECKPOINT);
+                                ssRelay << hashCheck;
+                            }
+
+                            break;
+                        }
+
+
+                        /* Check for best chain subscription. */
+                        case TYPES::BESTCHAIN:
+                        {
+                            /* Get the index. */
+                            uint1024_t hashBest;
+                            ssData >> hashBest;
+
+                            /* Check for legacy. */
+                            if(fLegacy)
+                            {
+                                debug::error(FUNCTION, "BESTCHAIN cannot have legacy specifier");
+                                continue;
+                            }
+
+                            /* Check subscription. */
+                            if(nNotifications & SUBSCRIPTION::BESTCHAIN)
+                            {
+                                /* Write transaction to stream. */
+                                ssRelay << uint8_t(TYPES::BESTCHAIN);
+                                ssRelay << hashBest;
+                            }
+
+                            break;
+                        }
+
+
+                        /* Check for address subscription. */
+                        case TYPES::ADDRESS:
+                        {
+                            /* Get the index. */
+                            BaseAddress addr;
+                            ssData >> addr;
+
+                            /* Check for legacy. */
+                            if(fLegacy)
+                            {
+                                debug::error(FUNCTION, "ADDRESS cannot have legacy specifier");
+                                continue;
+                            }
+
+                            /* Check subscription. */
+                            if(nNotifications & SUBSCRIPTION::ADDRESS)
+                            {
+                                /* Write transaction to stream. */
+                                ssRelay << uint8_t(TYPES::ADDRESS);
+                                ssRelay << addr;
+                            }
+
+                            break;
+                        }
+
+
+                        /* Check for sigchain subscription. */
+                        case TYPES::SIGCHAIN:
+                        {
+                            /* Get the index. */
+                            uint256_t hashSigchain = 0;
+                            ssData >> hashSigchain;
+
+                            /* Get the txid. */
+                            uint512_t hashTx = 0;
+                            ssData >> hashTx;
+
+                            /* Check subscription. */
+                            if(nNotifications & SUBSCRIPTION::SIGCHAIN)
+                            {
+                                /* Check for matching sigchain-id. */
+                                if(hashSigchain != hashGenesis)
+                                    break;
+
+                                /* Check for legacy. */
+                                if(fLegacy)
+                                    ssRelay << uint8_t(SPECIFIER::LEGACY);
+
+                                /* Write transaction to stream. */
+                                ssRelay << uint8_t(TYPES::SIGCHAIN);
+                                ssRelay << hashSigchain;
+                                ssRelay << hashTx;
+                            }
+
+                            break;
+                        }
+
+                        /* Default catch (relay up to this point) */
+                        default:
+                        {
+                            debug::error(FUNCTION, "Malformed binary stream");
+                            return ssRelay;
+                        }
                     }
-
-                    break;
                 }
 
-                /* Default catch (relay up to this point) */
-                default:
-                {
-                    debug::error(FUNCTION, "Malformed binary stream");
-                    return ssRelay;
-                }
+                break;
+            }
+            default:
+            {
+                /* default behaviour is to let the message be relayed */
+                ssRelay = ssData;
+                break;
             }
         }
+
 
         return ssRelay;
     }

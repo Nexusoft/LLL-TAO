@@ -196,10 +196,10 @@ namespace TAO
             /* First check the callers local namespace to see if it exists */
             /* Get the session to be used for this API call.  Note we pass in false for fThrow here so that we can check the
                other namespaces after */
-            uint256_t nSession = users->GetSession(params, false);
+            Session& session = users->GetSession(params, false);
 
             /* Get the account. */
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
+            const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = session.GetAccount();
             if(!user.IsNull())
             {
                 /* Set the namespace name to be the user's genesis ID */

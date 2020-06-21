@@ -176,6 +176,20 @@ namespace TAO
             uint512_t Generate(const SecureString& strSecret) const;
 
 
+            /** Key
+             *
+             *  This function generates a public key generated from random seed phrase.
+             *
+             *  @param[in] strType The type of signing key used.
+             *  @param[in] nKeyID The key number in the keychian
+             *  @param[in] strSecret The secret phrase to use
+             *  @param[in] nType The key type to use.
+             *
+             *  @return The vector of bytes representing this public key.
+             **/
+            std::vector<uint8_t> Key(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret, const uint8_t nType) const;
+
+
             /** KeyHash
              *
              *  This function generates a hash of a public key generated from random seed phrase.
@@ -221,9 +235,9 @@ namespace TAO
 
             /** Sign
             *
-            *  Generates a signature for the data, using the specified crypto key type
+            *  Generates a signature for the data, using the specified crypto key from the crypto object register
             *
-            *  @param[in] strType The type of signing key to use
+            *  @param[in] strKey The name of the signing key from the crypto object register
             *  @param[in] vchData The data to base the signature off
             *  @param[in] hashSecret The private key to use for the signature
             *  @param[out] vchPubKey The public key generated from the private key
@@ -232,8 +246,44 @@ namespace TAO
             *  @return True if successful
             *
             **/
-            bool Sign(const std::string& strType, const std::vector<uint8_t>& vchData, const uint512_t& hashSecret,
+            bool Sign(const std::string& strKey, const std::vector<uint8_t>& vchData, const uint512_t& hashSecret,
                                       std::vector<uint8_t>& vchPubKey, std::vector<uint8_t>& vchSig) const;
+
+
+            /** Sign
+            *
+            *  Generates a signature for the data, using the specified crypto key type
+            *
+            *  @param[in] nKeyType The type of signing key to use
+            *  @param[in] vchData The data to base the signature off
+            *  @param[in] hashSecret The private key to use for the signature
+            *  @param[out] vchPubKey The public key generated from the private key
+            *  @param[out] vchSig The signature bytes
+            *
+            *  @return True if successful
+            *
+            **/
+            bool Sign(const uint8_t& nKeyType, const std::vector<uint8_t>& vchData, const uint512_t& hashSecret,
+                                      std::vector<uint8_t>& vchPubKey, std::vector<uint8_t>& vchSig) const;
+
+
+            /** Verify
+            *
+            *  Verifies a signature for the data, as well as verifying that the hashed public key matches the 
+            *  specified key from the crypto object register
+            *
+            *  @param[in] hashGenesis The genesis hash of the sig chain to read the crypto object register for
+            *  @param[in] strKey The name of the signing key from the crypto object register
+            *  @param[in] vchData The data to base the verification from 
+            *  @param[in] vchPubKey The public key of the private key used to sign the data
+            *  @param[in] vchSig The signature bytes
+            *
+            *  @return True if the signature is successfully verified
+            *
+            **/
+            static bool Verify(const uint256_t hashGenesis, const std::string& strKey, const std::vector<uint8_t>& vchData, 
+                        const std::vector<uint8_t>& vchPubKey, const std::vector<uint8_t>& vchSig);
+
 
         };
     }

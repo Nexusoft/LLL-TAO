@@ -18,6 +18,8 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/utils.h>
+#include <TAO/API/include/sessionmanager.h>
+#include <TAO/API/types/notifications_thread.h>
 
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/constants.h>
@@ -37,28 +39,22 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
-        /* Returns the sigchain the account logged in. */
-        static memory::encrypted_ptr<TAO::Ledger::SignatureChain> null_ptr;
-
-
         /* Default Constructor. */
         Users::Users()
         : Base()
-        , mapSessions()
-        , pActivePIN()
-        , MUTEX()
-        , EVENTS_MUTEX()
-        , EVENTS_THREAD()
-        , CONDITION()
-        , fEvent(false)
         , fShutdown(false)
-        , CREATE_MUTEX()
+        , LOGIN_THREAD()
+        , NOTIFICATIONS_PROCESSOR(nullptr)
         {
             Initialize();
 
-            /* Events processor only if multi-user session is disabled. */
-            if(config::fMultiuser.load() == false)
-                EVENTS_THREAD = std::thread(std::bind(&Users::EventsThread, this));
+            /* Auto login thread only if enabled and not in multiuser mode */
+            if(!config::fMultiuser.load() && config::GetBoolArg("-autologin"))
+                LOGIN_THREAD = std::thread(std::bind(&Users::LoginThread, this));
+
+            /* Initialize the notifications processor if configured */
+            if(config::fProcessNotifications)
+                NOTIFICATIONS_PROCESSOR = new NotificationsProcessor(config::GetArg("-notificationsthreads", 1));
         }
 
 
@@ -68,137 +64,49 @@ namespace TAO
             /* Set the shutdown flag and join events processing thread. */
             fShutdown = true;
 
-            /* Events processor only enabled if multi-user session is disabled. */
-            if(EVENTS_THREAD.joinable())
+            /* Destroy the notifications processor */
+            if(NOTIFICATIONS_PROCESSOR)
+                delete NOTIFICATIONS_PROCESSOR;
+
+            /* Clear all sessions */
+            GetSessionManager().Clear();
+
+        }
+
+
+        /*  Background thread to auto login user once connections are established. */
+        void Users::LoginThread()
+        {
+            /* Mutex for this thread's condition variable */
+            std::mutex LOGIN_MUTEX;
+
+            /* The condition variable to wait on */
+            std::condition_variable LOGIN_CONDITION;
+
+            /* Loop the events processing thread until shutdown. */
+            while(!fShutdown.load())
             {
-                NotifyEvent();
-                EVENTS_THREAD.join();
-            }
+                /* retry every 5s if not logged in */
+                std::unique_lock<std::mutex> lock(LOGIN_MUTEX);
+                LOGIN_CONDITION.wait_for(lock, std::chrono::milliseconds(5000), [this]{return fShutdown.load();});
 
-            /* Iterate through the sessions map and delete any sig chains that are still active */
-            for(auto& session : mapSessions)
-            {
-                /* Check that is hasn't already been destroyed before freeing it*/
-                if(!session.second.IsNull())
-                    session.second.free();
-            }
+                /* Check for a shutdown event. */
+                if(fShutdown.load())
+                    return;
 
-            /* Clear the sessions map of all entries */
-            mapSessions.clear();
-
-            if(!pActivePIN.IsNull())
-                pActivePIN.free();
-        }
-
-
-        /* Determine if a sessionless user is logged in. */
-        bool Users::LoggedIn() const
-        {
-            LOCK(MUTEX);
-
-            return !config::fMultiuser.load() && mapSessions.count(0);
-        }
-
-
-        /* Determine if the Users are locked. */
-        bool Users::Locked() const
-        {
-            if(config::fMultiuser.load() || pActivePIN.IsNull() || pActivePIN->PIN().empty())
-                return true;
-
-            return false;
-        }
-
-
-        /* In sessionless API mode this method checks that the active sig chain has
-         * been unlocked to allow transactions.  If the account has not been specifically
-         * unlocked then we assume that they ARE allowed to transact, since the PIN would
-         * need to be provided in each API call */
-        bool Users::CanTransact() const
-        {
-            if(config::fMultiuser.load() || pActivePIN.IsNull() || pActivePIN->CanTransact())
-                return true;
-
-            return false;
-        }
-
-
-        /* In sessionless API mode this method checks that the active sig chain has
-         *  been unlocked to allow mining */
-        bool Users::CanMine() const
-        {
-            if(config::fMultiuser.load() || (!pActivePIN.IsNull() && pActivePIN->CanMine()))
-                return true;
-
-            return false;
-        }
-
-
-        /* In sessionless API mode this method checks that the active sig chain has
-         *  been unlocked to allow staking */
-        bool Users::CanStake() const
-        {
-            if(config::fMultiuser.load() || (!pActivePIN.IsNull() && pActivePIN->CanStake()))
-                return true;
-
-            return false;
-        }
-
-        /* In sessionless API mode this method checks that the active sig chain has
-         *  been unlocked to allow notifications to be processed */
-        bool Users::CanProcessNotifications() const
-        {
-            if(config::fMultiuser.load() || (!pActivePIN.IsNull() && pActivePIN->ProcessNotifications()))
-                return true;
-
-            return false;
-        }
-
-
-        /* Returns a key from the account logged in. */
-        uint512_t Users::GetKey(uint32_t nKey, SecureString strSecret, uint256_t nSession) const
-        {
-            LOCK(MUTEX);
-
-            /* For sessionless API use the active sig chain which is stored in session 0 */
-            uint256_t nSessionToUse = config::fMultiuser.load() ? nSession : 0;
-
-            if(!mapSessions.count(nSessionToUse))
-            {
-                if(config::fMultiuser.load())
-                    throw APIException(-9, debug::safe_printstr("Session ", nSessionToUse.ToString(), " doesn't exist"));
-                else
-                    throw APIException(-11, "User not logged in");
-            }
-
-            return mapSessions[nSessionToUse]->Generate(nKey, strSecret);
-        }
-
-
-        /* Returns the genesis ID from the account logged in. */
-        uint256_t Users::GetGenesis(uint256_t nSession, bool fThrow) const
-        {
-            LOCK(MUTEX);
-
-            /* For sessionless API use the active sig chain which is stored in session 0 */
-            uint256_t nSessionToUse = config::fMultiuser.load() ? nSession : 0;
-
-            if(!mapSessions.count(nSessionToUse))
-            {
-                if(fThrow)
+                try
                 {
-                    if(config::fMultiuser.load())
-                        throw APIException(-9, debug::safe_printstr("Session ", nSessionToUse.ToString(), " doesn't exist"));
-                    else
-                        throw APIException(-11, "User not logged in");
+                    /* Auto-login if not already logged in. */
+                    if(!LoggedIn())
+                        auto_login();
+
                 }
-                else
+                catch(const std::exception& e)
                 {
-                    return uint256_t(0);
+                    /* Log the error and attempt to continue processing */
+                    debug::error(FUNCTION, e.what());
                 }
             }
-
-            return mapSessions[nSessionToUse]->Genesis(); //TODO: Assess the security of being able to generate genesis. Most likely this should be a localDB thing.
         }
 
 
@@ -215,26 +123,29 @@ namespace TAO
         }
 
 
-        /*  Returns the sigchain the account logged in. */
-        memory::encrypted_ptr<TAO::Ledger::SignatureChain>& Users::GetAccount(uint256_t nSession) const
+        /* Returns the genesis ID from the account logged in. */
+        uint256_t Users::GetGenesis(uint256_t nSession, bool fThrow) const
         {
-            LOCK(MUTEX);
 
             /* For sessionless API use the active sig chain which is stored in session 0 */
-            uint256_t nUse = config::fMultiuser.load() ? nSession : 0;
+            uint256_t nSessionToUse = config::fMultiuser.load() ? nSession : 0;
 
-            /* Check if you are logged in. */
-            if(!mapSessions.count(nUse))
-                return null_ptr;
+            if(!GetSessionManager().Has(nSessionToUse))
+            {
+                if(fThrow)
+                {
+                    if(config::fMultiuser.load())
+                        throw APIException(-9, debug::safe_printstr("Session ", nSessionToUse.ToString(), " doesn't exist"));
+                    else
+                        throw APIException(-11, "User not logged in");
+                }
+                else
+                {
+                    return uint256_t(0);
+                }
+            }
 
-            return mapSessions[nUse];
-        }
-
-
-        /* Returns the pin number for the currently logged in account. */
-        SecureString Users::GetActivePin() const
-        {
-            return SecureString(pActivePIN->PIN().c_str());
+            return GetSessionManager().Get(nSessionToUse).GetAccount()->Genesis(); //TODO: Assess the security of being able to generate genesis. Most likely this should be a localDB thing.
         }
 
 
@@ -248,8 +159,11 @@ namespace TAO
             /* Check for pin parameter. */
             SecureString strPIN;
 
+            /* Get the active session */
+            Session& session = GetSession(params);
+
             /* If we have a pin already, check we are allowed to use it for the requested action */
-            bool fNeedPin = pActivePIN.IsNull() || pActivePIN->PIN().empty() || !(pActivePIN->UnlockedActions() & nUnlockAction);
+            bool fNeedPin = session.GetActivePIN().IsNull() || session.GetActivePIN()->PIN().empty() || !(session.GetActivePIN()->UnlockedActions() & nUnlockAction);
             if(fNeedPin)
             {
                 /* If we need a pin then check it is in the params */
@@ -260,7 +174,7 @@ namespace TAO
             }
             else
                 /* If we don't need the pin then use the current active one */
-                strPIN = users->GetActivePin();
+                strPIN = session.GetActivePIN()->PIN();
 
             return strPIN;
         }
@@ -271,39 +185,92 @@ namespace TAO
          * logged in than an APIException is thrown, if fThrow is true.
          * If not in sessionless mode then the method will return the session from the params.
          * If the session is not is available in the params then an APIException is thrown, if fThrow is true. */
-        uint256_t Users::GetSession(const json::json params, bool fThrow) const
+        Session& Users::GetSession(const json::json params, bool fThrow) const
         {
             /* Check for session parameter. */
             uint256_t nSession = 0; // ID 0 is used for sessionless API
 
-            if(!config::fMultiuser.load() && !users->LoggedIn())
-            {
-                if(fThrow)
-                    throw APIException(-11, "User not logged in");
-                else
-                    return -1;
-            }
-            else if(config::fMultiuser.load())
+            if(config::fMultiuser.load())
             {
                 if(params.find("session") == params.end())
                 {
                     if(fThrow)
                         throw APIException(-12, "Missing Session ID");
-                    else
-                        return -1;
                 }
                 else
                     nSession.SetHex(params["session"].get<std::string>());
+                
+                /* Check that the session ID is valid */
+                if(fThrow && !GetSessionManager().Has(nSession))
+                    throw APIException(-10, "Invalid session ID");
             }
 
-            return nSession;
+            /* Calling SessionManager.Get() with an invalid session ID will throw an exception.  Therefore if the caller has
+               specified not to throw an exception we have to check whether the session exists first. */
+            if(!fThrow && !GetSessionManager().Has(nSession))
+                return null_session;
+
+            return GetSessionManager().Get(nSession);
         }
 
 
-        /* Returns the private key for the auth public key */
-        memory::encrypted_ptr<memory::encrypted_type<uint512_t>>& Users::GetAuthKey() const
+        /*Gets the session ID for a given genesis, if it is logged in on this node. */
+        Session& Users::GetSession(const uint256_t& hashGenesis) const
         {
-            return pAuthKey;
+            if(!config::fMultiuser.load())
+            {
+                if(GetSessionManager().mapSessions.count(0) > 0 && GetSessionManager().mapSessions[0].GetAccount()->Genesis() == hashGenesis)
+                    return GetSessionManager().Get(0);
+            }
+            else
+            {
+                auto session = GetSessionManager().mapSessions.begin();
+                while(session != GetSessionManager().mapSessions.end())
+                {
+                    if(session->second.GetAccount()->Genesis() == hashGenesis)
+                        return session->second;
+                    /* increment iterator */
+                    ++session;
+                }
+            }
+
+            throw APIException(-11, "User not logged in"); 
+        }
+
+
+        /* Determine if a sessionless user is logged in. */
+        bool Users::LoggedIn() const
+        {
+            return !config::fMultiuser.load() && GetSessionManager().Has(0);
+        }
+
+        /* Determine if a particular genesis is logged in on this node. */
+        bool Users::LoggedIn(const uint256_t& hashGenesis) const
+        {
+            if(!config::fMultiuser.load())
+            {
+                return GetSessionManager().Has(0) > 0 && GetSessionManager().Get(0).GetAccount()->Genesis() == hashGenesis;
+            }
+            else
+            {
+                auto session = GetSessionManager().mapSessions.begin();
+                while(session != GetSessionManager().mapSessions.end())
+                {
+                    if(session->second.GetAccount()->Genesis() == hashGenesis)
+                        return true;
+                    /* increment iterator */
+                    ++session;
+                }
+            }
+
+            return false;
+        }
+
+
+        /* Returns a key from the account logged in. */
+        uint512_t Users::GetKey(uint32_t nKey, SecureString strSecret, const Session& session) const
+        {
+            return session.GetAccount()->Generate(nKey, strSecret);
         }
 
 

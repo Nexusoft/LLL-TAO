@@ -21,8 +21,8 @@ ________________________________________________________________________________
 #include <LLP/types/apinode.h>
 #include <LLP/types/rpcnode.h>
 #include <LLP/types/miner.h>
+#include <LLP/types/p2p.h>
 
-#include <LLP/include/manager.h>
 #include <LLP/include/trust_address.h>
 
 #include <Util/include/args.h>
@@ -32,6 +32,8 @@ ________________________________________________________________________________
 #include <LLP/include/permissions.h>
 #include <functional>
 #include <numeric>
+
+#include <openssl/ssl.h>
 
 #ifdef USE_UPNP
 #include <miniupnpc/miniwget.h>
@@ -57,13 +59,19 @@ namespace LLP
     template <class ProtocolType>
     Server<ProtocolType>::Server(uint16_t nPort, uint16_t nMaxThreads, uint32_t nTimeout, bool fDDOS_,
                          uint32_t cScore, uint32_t rScore, uint32_t nTimespan, bool fListen, bool fRemote,
-                         bool fMeter, bool fManager, uint32_t nSleepTimeIn)
+                         bool fMeter, bool fManager, uint32_t nSleepTimeIn, bool SSL)
     : DDOS_MAP        ( )
     , fDDOS           (fDDOS_)
+    , fSSL            (SSL)
+    , MANAGER         ( )
+    , LISTEN_THREAD   ( )
+    , METER_THREAD    ( )
+    , UPNP_THREAD     ( )
     , PORT            (nPort)
     , MAX_THREADS     (nMaxThreads)
     , DDOS_TIMESPAN   (nTimespan)
     , DATA_THREADS    ( )
+    , MANAGER_THREAD  ( )
     , pAddressManager (nullptr)
     , nSleepTime      (nSleepTimeIn)
     , hListenSocket   (-1, -1)
@@ -153,7 +161,6 @@ namespace LLP
             delete pAddressManager;
             pAddressManager = nullptr;
         }
-
     }
 
 
@@ -169,9 +176,6 @@ namespace LLP
     template <class ProtocolType>
     void Server<ProtocolType>::Shutdown()
     {
-        /* DEPRECATED. address write to database on update, not shutdown. */
-        //if(pAddressManager)
-        //  pAddressManager->WriteDatabase();
     }
 
 
@@ -189,61 +193,6 @@ namespace LLP
        /* Add the address to the address manager if it exists. */
        if(pAddressManager)
           pAddressManager->AddAddress(addr, ConnectState::NEW);
-    }
-
-
-    /*  Public Wraper to Add a Connection Manually. */
-    template <class ProtocolType>
-    bool Server<ProtocolType>::AddConnection(std::string strAddress, uint16_t nPort, bool fLookup)
-    {
-       /* Initialize DDOS Protection for Incoming IP Address. */
-       BaseAddress addrConnect(strAddress, nPort, fLookup);
-
-       /* Make sure address is valid. */
-       if(!addrConnect.IsValid())
-       {
-           /* Ban the address. */
-           if(pAddressManager)
-              pAddressManager->Ban(addrConnect);
-
-           return false;
-       }
-
-
-       /* Create new DDOS Filter if Needed. */
-       if(fDDOS.load())
-       {
-           if(!DDOS_MAP.count(addrConnect))
-               DDOS_MAP[addrConnect] = new DDOS_Filter(DDOS_TIMESPAN);
-
-           /* DDOS Operations: Only executed when DDOS is enabled. */
-           if(DDOS_MAP[addrConnect]->Banned())
-               return false;
-       }
-
-       /* Find a balanced Data Thread to Add Connection to. */
-       int32_t nThread = FindThread();
-       if(nThread < 0)
-           return false;
-
-       /* Select the proper data thread. */
-       DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
-
-       /* Attempt the connection. */
-       if(!dt->AddConnection(addrConnect, DDOS_MAP[addrConnect]))
-       {
-           /* Add the address to the address manager if it exists. */
-           if(pAddressManager)
-              pAddressManager->AddAddress(addrConnect, ConnectState::FAILED);
-
-           return false;
-       }
-
-       /* Add the address to the address manager if it exists. */
-       if(pAddressManager)
-          pAddressManager->AddAddress(addrConnect, ConnectState::CONNECTED);
-
-       return true;
     }
 
 
@@ -468,7 +417,7 @@ namespace LLP
 
                 /* Attempt the connection. */
                 debug::log(3, FUNCTION, ProtocolType::Name(), " Attempting Connection ", addr.ToString());
-                if(AddConnection(addr.ToStringIP(), addr.GetPort()))
+                if(AddConnection(addr.ToStringIP(), addr.GetPort(), false))
                 {
                     /* If address is DNS, log message on connection. */
                     std::string strDNS;
@@ -585,6 +534,7 @@ namespace LLP
                     if(GetConnectionCount(FLAGS::INCOMING) >= nMaxIncoming
                     || GetConnectionCount(FLAGS::ALL) >= nMaxConnections)
                     {
+                        debug::log(3, FUNCTION, "Incoming Connection Request ",  addr.ToString(), " refused... Max connection count exceeded.");
                         closesocket(hSocket);
                         runtime::sleep(500);
 
@@ -595,8 +545,18 @@ namespace LLP
                     if(!DDOS_MAP.count(addr))
                         DDOS_MAP[addr] = new DDOS_Filter(DDOS_TIMESPAN);
 
-                    Socket sockNew(hSocket, addr);
 
+                    /* Add a new listening socket with SSL on or off according to server. */
+                    Socket sockNew(hSocket, addr, fSSL.load());
+
+                    /* Check for SSL accept error */
+                    if(fSSL.load() && sockNew.Errors())
+                    {
+                        debug::log(3, FUNCTION, "SSL accept handshake failure ",  addr.ToString());
+                        sockNew.Close();
+
+                        continue;
+                    }
                     /* DDOS Operations: Only executed when DDOS is enabled. */
                     if((fDDOS && DDOS_MAP[addr]->Banned()))
                     {
@@ -609,7 +569,7 @@ namespace LLP
                     {
                         debug::log(3, FUNCTION, "Connection Request ",  addr.ToString(), " refused... Denied by allowip whitelist.");
 
-                        closesocket(hSocket);
+                        sockNew.Close();
 
                         continue;
                     }
@@ -908,4 +868,5 @@ namespace LLP
     template class Server<APINode>;
     template class Server<RPCNode>;
     template class Server<Miner>;
+    template class Server<P2PNode>;
 }

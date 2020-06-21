@@ -1128,7 +1128,9 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to connect transaction");
 
                     /* Add legacy transactions to the wallet where appropriate */
+                    #ifndef NO_WALLET
                     Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, *this, true);
+                    #endif
 
                     /* Accumulate the fees. */
                     nFees += tx.Fees();
@@ -1196,7 +1198,9 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to connect inputs");
 
                     /* Add legacy transactions to the wallet where appropriate */
+                    #ifndef NO_WALLET
                     Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, *this, true);
+                    #endif
 
                     /* Keep track of total inputs proceessed. */
                     nTotalInputs += tx.vin.size();
@@ -1287,8 +1291,10 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to connect inputs");
 
                     /* Wallets need to refund inputs when disonnecting coinstake */
+                    #ifndef NO_WALLET
                     if(tx.IsCoinStake() && Legacy::Wallet::GetInstance().IsFromMe(tx))
                        Legacy::Wallet::GetInstance().DisableTransaction(tx);
+                    #endif
                 }
 
                 /* Write the indexing entries. */

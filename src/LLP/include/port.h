@@ -48,6 +48,10 @@ ________________________________________________________________________________
 #define MAINNET_MINING_LLP_PORT 9325
 #endif
 
+#ifndef MAINNET_P2P_PORT
+#define MAINNET_P2P_PORT 9326
+#endif
+
 
 /* Testnet */
 #ifndef LEGACY_TESTNET_PORT
@@ -72,6 +76,10 @@ ________________________________________________________________________________
 
 #ifndef TESTNET_MINING_LLP_PORT
 #define TESTNET_MINING_LLP_PORT 8325
+#endif
+
+#ifndef TESTNET_P2P_PORT
+#define TESTNET_P2P_PORT 8326
 #endif
 
 

@@ -117,10 +117,6 @@ namespace TAO
                     throw APIException(-138, "No previous transaction found");  
             }
 
-
-            /* Lock the signature chain in case another process attempts to create a transaction . */
-            LOCK(CREATE_MUTEX);
-
             /* Create sig chain based on the new credentials */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain> user = new TAO::Ledger::SignatureChain(strUsername, strPassword); 
 

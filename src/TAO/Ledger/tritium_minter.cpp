@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <LLP/include/global.h>
 
 #include <TAO/API/include/global.h>
+#include <TAO/API/include/sessionmanager.h>
 
 #include <TAO/Operation/include/enum.h>
 
@@ -457,22 +458,17 @@ namespace TAO
                 if(!pTritiumMinter->CheckUser())
                     break;
 
-                /* Get the active, unlocked sigchain. Requires session 0 */
-                memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = TAO::API::users->GetAccount(0);
-                if(!user)
-                {
-                    debug::error(0, FUNCTION, "Stake minter could not retrieve the unlocked signature chain.");
-                    break;
-                }
+                /* Get the session */
+                TAO::API::Session& session = TAO::API::GetSessionManager().Get(0);
 
-                SecureString strPIN = TAO::API::users->GetActivePin();
+                SecureString strPIN = session.GetActivePIN()->PIN();
 
                 /* Retrieve the latest trust account data */
-                if(!pTritiumMinter->FindTrustAccount(user->Genesis()))
+                if(!pTritiumMinter->FindTrustAccount(session.GetAccount()->Genesis()))
                     break;
 
                 /* Set up the candidate block the minter is attempting to mine */
-                if(!pTritiumMinter->CreateCandidateBlock(user, strPIN))
+                if(!pTritiumMinter->CreateCandidateBlock(session.GetAccount(), strPIN))
                     continue;
 
                 /* Updates weights for new candidate block */
@@ -480,7 +476,7 @@ namespace TAO
                     continue;
 
                 /* Attempt to mine the current proof of stake block */
-                pTritiumMinter->MintBlock(user, strPIN);
+                pTritiumMinter->MintBlock(session.GetAccount(), strPIN);
             }
 
             /* If break because cannot continue (error retrieving user account or FindTrust failed), wait for stop or shutdown */

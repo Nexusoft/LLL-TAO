@@ -17,6 +17,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/users.h>
 #include <TAO/API/include/utils.h>
+#include <TAO/API/include/sessionmanager.h>
 
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -38,12 +39,7 @@ namespace TAO
             json::json jsonRet;
 
             /* Get the session to be used for this API call */
-            uint256_t nSession = GetSession(params);
-
-            /* Get the account. */
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = GetAccount(nSession);
-            if(!user)
-                throw APIException(-10, "Invalid session ID");
+            Session& session = GetSession(params);
 
             /* Check for password parameter. */
             if(params.find("password") == params.end())
@@ -105,7 +101,7 @@ namespace TAO
 
             /* Validate the existing credentials again */
             /* Get the genesis ID. */
-            uint256_t hashGenesis = user->Genesis();
+            uint256_t hashGenesis = session.GetAccount()->Genesis();
 
             /* Check for duplicates in ledger db. */
             TAO::Ledger::Transaction txPrev;
@@ -115,7 +111,6 @@ namespace TAO
                 if(!TAO::Ledger::mempool.Has(hashGenesis))
                 {
                     /* Account doesn't exist returns invalid credentials */
-                    user.free();
                     throw APIException(-139, "Invalid credentials");
                 }
 
@@ -155,10 +150,10 @@ namespace TAO
             
 
             /* Lock the signature chain in case another process attempts to create a transaction . */
-            LOCK(CREATE_MUTEX);
+            LOCK(session.CREATE_MUTEX);
 
             /* Create a temp sig chain to check the credentials again */
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain> userUpdated = new TAO::Ledger::SignatureChain(user->UserName(), strPassword); 
+            memory::encrypted_ptr<TAO::Ledger::SignatureChain> userUpdated = new TAO::Ledger::SignatureChain(session.GetAccount()->UserName(), strPassword); 
 
             /* Create temp Transaction to check credentials. */
             TAO::Ledger::Transaction tx;
@@ -169,7 +164,7 @@ namespace TAO
                 throw APIException(-139, "Invalid credentials");
 
             /* Create the update transaction */
-            if(!Users::CreateTransaction(user, strPin, tx))
+            if(!Users::CreateTransaction(session.GetAccount(), strPin, tx))
                 throw APIException(-17, "Failed to create transaction");
 
             /* Now set the new credentials */
@@ -183,7 +178,7 @@ namespace TAO
             if(strNewPassword != strPassword)
             {
                 userUpdated.free();
-                userUpdated = new TAO::Ledger::SignatureChain(user->UserName(), strNewPassword); 
+                userUpdated = new TAO::Ledger::SignatureChain(session.GetAccount()->UserName(), strNewPassword); 
             }
 
             /* Update the Crypto keys with the new pin */
@@ -231,7 +226,7 @@ namespace TAO
             else
             {
                 /* If we are not using the recovery seed then generate the private key based on the pin / last sequence */
-                hashSecret = GetKey(tx.nSequence, strPin, nSession);
+                hashSecret = GetKey(tx.nSequence, strPin, session);
             }
 
             /* Sign the transaction . */
@@ -250,25 +245,17 @@ namespace TAO
             }
 
             {
-                LOCK(MUTEX);
+ 
+                /* Update the Password */
+                session.UpdatePassword(strNewPassword);
 
-                /* Free the existing sigchain. */
-                user.free();
-
-                /* Update the sig chain in session with the new password. */
-                mapSessions[nSession] = new TAO::Ledger::SignatureChain(userUpdated->UserName(), strNewPassword);
-                
                 /* Update the cached pin in memory with the new pin */
-                if(!pActivePIN.IsNull() && !pActivePIN->PIN().empty())
+                if(!session.GetActivePIN().IsNull() && !session.GetActivePIN()->PIN().empty())
                 {
                     /* Get the existing unlocked actions so that we can maintain them */
-                    uint8_t nUnlockedActions = pActivePIN->UnlockedActions();
+                    uint8_t nUnlockedActions = session.GetActivePIN()->UnlockedActions();
 
-                    /* delete the existing PinUnlock */
-                    pActivePIN.free();
-
-                    /* Create a new pin unlock with the new pin and existing unlocked actions */
-                    pActivePIN = new TAO::Ledger::PinUnlock(strNewPin, nUnlockedActions);
+                    session.UpdatePIN(strNewPin, nUnlockedActions);
                 }
 
                 /* free the temp sig chain we used for updating */

@@ -99,8 +99,16 @@ namespace LLP
         /* Extract the method to invoke. */
         std::string METHOD = INCOMING.strRequest.substr(npos + 1);
 
-        /* Extract the parameters. */
+        /* The JSON response */
         json::json ret;
+
+        /* The HTTP response status code, default to 200 unless an error is encountered */
+        uint16_t nStatus = 200;
+
+        /* Flag indicating that the connection should be kept alive */
+        bool fKeepAlive = false;
+
+        /* Extract the parameters. */
         try
         {
             json::json params;
@@ -223,6 +231,10 @@ namespace LLP
                 ret = { {"result", TAO::API::voting->Execute(METHOD, params) } };
             else if(strAPI == "invoices")
                 ret = { {"result", TAO::API::invoices->Execute(METHOD, params) } };
+            else if(strAPI == "crypto")
+                ret = { {"result", TAO::API::crypto->Execute(METHOD, params) } };
+            else if(strAPI == "p2p")
+                ret = { {"result", TAO::API::p2p->Execute(METHOD, params) } };
             else
                 throw TAO::API::APIException(-4, debug::safe_printstr("API not found: ", strAPI));
         }
@@ -233,8 +245,8 @@ namespace LLP
             /* Get error from exception. */
             json::json jsonError = e.ToJSON();
 
-            /* Default error status code is 500. */
-            uint16_t nStatus = 500;
+            /* Default error status code is 400. */
+            nStatus = 400;
             int32_t nError = jsonError["code"].get<int32_t>();
 
             /* Set status by error code. */
@@ -256,32 +268,38 @@ namespace LLP
                     break;
             }
 
-            /* Send the response packet. */
-            json::json ret = { { "error", jsonError } };
+            /* Populate the return JSON to the error */
+            ret = { { "error", jsonError } };
 
-            /* Build packet. */
-            HTTPPacket RESPONSE(nStatus);
-            if(INCOMING.mapHeaders.count("origin"))
-                RESPONSE.mapHeaders["Access-Control-Allow-Origin"] = INCOMING.mapHeaders["origin"];
-
-            /* Add content. */
-            RESPONSE.strContent = ret.dump();
-            this->WritePacket(RESPONSE);
-
-            return false;
         }
 
 
         /* Build packet. */
-        HTTPPacket RESPONSE(200);
+        HTTPPacket RESPONSE(nStatus);
+
+        /* Add the origin header if supplied in the request */
         if(INCOMING.mapHeaders.count("origin"))
             RESPONSE.mapHeaders["Access-Control-Allow-Origin"] = INCOMING.mapHeaders["origin"];
 
+        /* Add the connection header */
+        if(INCOMING.mapHeaders.count("connection") && INCOMING.mapHeaders["connection"] == "keep-alive")
+        {
+            RESPONSE.mapHeaders["Connection"] = "keep-alive";
+            fKeepAlive = true;
+        }
+        else
+        {
+            RESPONSE.mapHeaders["Connection"] = "close";
+            fKeepAlive = true;
+        }
+
         /* Add content. */
         RESPONSE.strContent = ret.dump();
+            
+        /* Write the response */
         this->WritePacket(RESPONSE);
 
-        return true;
+        return fKeepAlive;
     }
 
 

@@ -42,6 +42,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/API/include/global.h> //for CREATE_MUTEX
+#include <TAO/API/include/sessionmanager.h> 
 
 #include <Util/include/convert.h>
 #include <Util/include/debug.h>
@@ -72,17 +73,6 @@ namespace TAO
             /* Last sigchain transaction. */
             uint512_t hashLast = 0;
 
-            /* Set default signature types. */
-            tx.nKeyType  = SIGNATURE::BRAINPOOL;
-            tx.nNextType = SIGNATURE::BRAINPOOL;
-
-            /* Check for configuration options. */
-            if(config::GetBoolArg("-falcon"))
-            {
-                tx.nNextType = SIGNATURE::FALCON;
-                tx.nKeyType  = SIGNATURE::FALCON;
-            }
-
             /* Check mempool for other transactions. */
             TAO::Ledger::Transaction txPrev;
             if(mempool.Get(hashGenesis, txPrev))
@@ -111,6 +101,42 @@ namespace TAO
                 tx.hashRecovery = txPrev.hashRecovery;
                 tx.nTimestamp  = std::max(runtime::unifiedtimestamp(), txPrev.nTimestamp);
             }
+
+            /* Set the initial and next key type for genesis transactions */
+            if(tx.IsFirst())
+            {
+                /* Set the initial key type for the genesis based on the config */
+                if(config::GetBoolArg("-falcon"))
+                    tx.nKeyType = SIGNATURE::FALCON;
+                else if(config::GetBoolArg("-brainpool"))
+                    tx.nKeyType = SIGNATURE::BRAINPOOL;
+                else 
+                    tx.nKeyType = SIGNATURE::BRAINPOOL;
+
+                /* Set the next key type for the genesis transaction */
+                tx.nNextType = tx.nKeyType;
+            }
+            else
+            {
+                /* If in single user mode use the node config to set the next key type. If a specific key type has not been configured 
+                then default to using the key type from the previous transaction */
+                if(!config::fMultiuser.load())
+                {
+                    if(config::GetBoolArg("-falcon"))
+                        tx.nNextType = SIGNATURE::FALCON;
+                    else if(config::GetBoolArg("-brainpool"))
+                        tx.nNextType = SIGNATURE::BRAINPOOL;
+                    else if(!tx.IsFirst())
+                        tx.nNextType = txPrev.nNextType;
+                }
+                /* In multiuser mode we just set the next keytype based on the previous tx */
+                else
+                {
+                    tx.nNextType = txPrev.nNextType;
+                }
+            }
+            
+            
 
             /* Set the transaction version based on the timestamp. The transaction version is current version
                unless an activation is pending */
@@ -341,9 +367,12 @@ namespace TAO
             const uint32_t nChannel, TAO::Ledger::TritiumBlock& block, const uint64_t nExtraNonce,
             Legacy::Coinbase *pCoinbaseRecipients)
         {
+            /* Get the session */
+            uint256_t hashGenesis = user->Genesis();
+            TAO::API::Session& session = TAO::API::users->GetSession(hashGenesis);
 
             /* Lock this user's sigchain. */
-            LOCK(TAO::API::users->CREATE_MUTEX);
+            LOCK(session.CREATE_MUTEX);
 
             /* Only allow prime, hash, and private channels. */
             if (nChannel < 1 || nChannel > 3)
@@ -687,7 +716,7 @@ namespace TAO
                               TAO::Ledger::TritiumBlock& block, const bool fGenesis)
         {
             /* Lock this user's sigchain. */
-            LOCK(TAO::API::users->CREATE_MUTEX);
+            LOCK(TAO::API::users->GetSession(user->Genesis()).CREATE_MUTEX);
 
             /* Proof of stake has channel-id of 0. */
             const uint32_t nChannel = 0;

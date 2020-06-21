@@ -134,7 +134,7 @@ namespace TAO
 
                     /* Ask for the missing transaction. */
                     if(pnode)
-                        pnode->PushMessage(LLP::ACTION::GET, uint8_t(LLP::TYPES::TRANSACTION), tx.hashPrevTx);
+                        pnode->PushMessage(LLP::Tritium::ACTION::GET, uint8_t(LLP::Tritium::TYPES::TRANSACTION), tx.hashPrevTx);
 
                     return false;
                 }
@@ -201,8 +201,8 @@ namespace TAO
                 /* Relay the transaction notification. */
                 LLP::TRITIUM_SERVER->Relay
                 (
-                    LLP::ACTION::NOTIFY,
-                    uint8_t(LLP::TYPES::TRANSACTION),
+                    LLP::Tritium::ACTION::NOTIFY,
+                    uint8_t(LLP::Tritium::TYPES::TRANSACTION),
                     hashTx
                 );
             }

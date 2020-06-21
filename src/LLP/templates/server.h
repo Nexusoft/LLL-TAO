@@ -18,6 +18,7 @@ ________________________________________________________________________________
 
 #include <LLP/templates/data.h>
 #include <LLP/include/legacy_address.h>
+#include <LLP/include/manager.h>
 
 #include <map>
 #include <condition_variable>
@@ -33,6 +34,7 @@ namespace LLP
     class AddressManager;
     class DDOS_Filter;
     class InfoAddress;
+    typedef struct ssl_st SSL;
 
 
     /** Server
@@ -57,6 +59,11 @@ namespace LLP
         /** DDOS flag for off or on. **/
         std::atomic<bool> fDDOS;
 
+        /* Determine if Server should use an SSL connection. */
+        std::atomic<bool> fSSL;
+
+        /* condition variable for manager thread. */
+        std::condition_variable MANAGER;
 
         /** Listener Thread for accepting incoming connections. **/
         std::thread          LISTEN_THREAD;
@@ -124,7 +131,8 @@ namespace LLP
                              bool fRemote = false,
                              bool fMeter = false,
                              bool fManager = false,
-                             uint32_t nSleepTimeIn = 1000);
+                             uint32_t nSleepTimeIn = 1000,
+                             bool fSSL_ = false);
 
 
         /** Default Destructor **/
@@ -164,11 +172,64 @@ namespace LLP
          *
          *  @param[in] strAddress	IPv4 Address of outgoing connection
          *  @param[in] strPort		Port of outgoing connection
+         *  @param[in] fLookup		Flag indicating whether address lookup should occur
+         *  @param[in] args variadic args to forward to the data thread constructor
          *
          *  @return	Returns 1 If successful, 0 if unsuccessful, -1 on errors.
          *
          **/
-        bool AddConnection(std::string strAddress, uint16_t nPort, bool fLookup = false);
+        template<typename... Args>
+        bool AddConnection(std::string strAddress, uint16_t nPort, bool fLookup, Args&&... args)
+        {
+            /* Initialize DDOS Protection for Incoming IP Address. */
+            BaseAddress addrConnect(strAddress, nPort, fLookup);
+
+            /* Make sure address is valid. */
+            if(!addrConnect.IsValid())
+            {
+                /* Ban the address. */
+                if(pAddressManager)
+                    pAddressManager->Ban(addrConnect);
+
+                return false;
+            }
+
+
+            /* Create new DDOS Filter if Needed. */
+            if(fDDOS.load())
+            {
+                if(!DDOS_MAP.count(addrConnect))
+                    DDOS_MAP[addrConnect] = new DDOS_Filter(DDOS_TIMESPAN);
+
+                /* DDOS Operations: Only executed when DDOS is enabled. */
+                if(DDOS_MAP[addrConnect]->Banned())
+                    return false;
+            }
+
+            /* Find a balanced Data Thread to Add Connection to. */
+            int32_t nThread = FindThread();
+            if(nThread < 0)
+                return false;
+
+            /* Select the proper data thread. */
+            DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
+
+            /* Attempt the connection. */
+            if(!dt->NewConnection(addrConnect, DDOS_MAP[addrConnect], fSSL.load(),  std::forward<Args>(args)...))
+            {
+                /* Add the address to the address manager if it exists. */
+                if(pAddressManager)
+                    pAddressManager->AddAddress(addrConnect, ConnectState::FAILED);
+
+                return false;
+            }
+
+            /* Add the address to the address manager if it exists. */
+            if(pAddressManager)
+                pAddressManager->AddAddress(addrConnect, ConnectState::CONNECTED);
+
+            return true;
+            }
 
 
         /** GetConnectionCount
@@ -205,6 +266,64 @@ namespace LLP
          *
          **/
         memory::atomic_ptr<ProtocolType>& GetConnection(const uint32_t nDataThread, const uint32_t nDataIndex);
+
+
+        /** GetSpecificConnection
+         *
+         *  Get connection matching variable args, which are passed on to the ProtocolType instance.
+         *
+         **/
+        template<typename... Args>
+        memory::atomic_ptr<ProtocolType>& GetSpecificConnection(Args&&... args)
+        {
+            /* Thread ID and index of the matchingconnection */
+            int16_t nRetThread = -1;
+            int16_t nRetIndex  = -1;
+
+            /* Loop through all threads */
+            for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
+            {
+                /* Loop through connections in data thread. */
+                uint16_t nSize = static_cast<uint16_t>(DATA_THREADS[nThread]->CONNECTIONS->size());
+                for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
+                {
+                    try
+                    {
+                        /* Get the current atomic_ptr. */
+                        memory::atomic_ptr<ProtocolType>& CONNECTION = DATA_THREADS[nThread]->CONNECTIONS->at(nIndex);
+                        if(!CONNECTION)
+                            continue;
+
+                        /* check the details */
+                        if(CONNECTION->Matches(std::forward<Args>(args)...))
+                        {
+
+                            nRetThread = nThread;
+                            nRetIndex  = nIndex;
+
+                            /* Break out as we have found a match */
+                            break;
+                        }
+                    }
+                    catch(const std::exception& e)
+                    {
+                        //debug::error(FUNCTION, e.what());
+                    }
+                }
+
+                /* break if we have a match */
+                if(nRetThread != -1 && nRetIndex != -1)
+                    break;
+
+            }
+
+            /* Handle if no connections were found. */
+            static memory::atomic_ptr<ProtocolType> pNULL;
+            if(nRetThread == -1 || nRetIndex == -1)
+                return pNULL;
+
+            return DATA_THREADS[nRetThread]->CONNECTIONS->at(nRetIndex);
+        }
 
 
         /** Relay

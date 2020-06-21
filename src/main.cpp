@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <LLP/types/apinode.h>
 #include <LLP/types/rpcnode.h>
 #include <LLP/types/miner.h>
+#include <LLP/types/p2p.h>
 #include <LLP/include/lisp.h>
 #include <LLP/include/port.h>
 
@@ -135,11 +136,13 @@ int main(int argc, char** argv)
         60000);
 
     /* Get the port for the Core API Server. */
+    #ifndef NO_WALLET
     nPort = static_cast<uint16_t>(config::GetArg(std::string("-rpcport"), config::fTestNet.load() ? TESTNET_RPC_PORT : MAINNET_RPC_PORT));
 
     /* Set up RPC server */
     if(!config::fClient.load())
     {
+
         LLP::RPC_SERVER = new LLP::Server<LLP::RPCNode>(
             nPort,
             static_cast<uint16_t>(config::GetArg(std::string("-rpcthreads"), 4)),
@@ -158,9 +161,19 @@ int main(int argc, char** argv)
             /* Flag to determine if server should allow remote connections. */
             config::GetBoolArg(std::string("-rpcremote"), false),
 
+            /* No meters */
             false,
-            false);
+
+            /* no manager */
+            false,
+            
+            /* Default sleep time */
+            1000,
+
+            /* Enable SSL if configured */
+            config::GetBoolArg(std::string("-rpcssl")));
     }
+    #endif
 
 
     /* Startup timer stats. */
@@ -177,11 +190,13 @@ int main(int argc, char** argv)
 
         /* Initialize ChainState. */
         TAO::Ledger::ChainState::Initialize();
-        
+
 
         /* We don't need the wallet in client mode. */
         if(!config::fClient.load())
         {
+            #ifndef NO_WALLET
+
             /* Load the Wallet Database. NOTE this needs to be done before ChainState::Initialize as that can disconnect blocks causing
                the wallet to be accessed if they contain any legacy stake transactions */
             bool fFirstRun;
@@ -219,6 +234,13 @@ int main(int argc, char** argv)
 
             /* Relay transactions. */
             Legacy::Wallet::GetInstance().ResendWalletTransactions();
+
+            #else
+
+            /* Initialize the scripts for legacy mode. */
+            Legacy::InitializeScripts();
+            
+            #endif
         }
 
 
@@ -228,6 +250,13 @@ int main(int argc, char** argv)
 
         /* Initialize the Tritium Server. */
         LLP::TRITIUM_SERVER = LLP::CreateTAOServer<LLP::TritiumNode>(nPort);
+
+
+        /* Get the port for the P2P server. */
+        nPort = static_cast<uint16_t>(config::GetArg(std::string("-p2pport"), config::fTestNet.load() ? TESTNET_P2P_PORT : MAINNET_P2P_PORT));
+
+        /* Initialize the P2P Server */
+        LLP::P2P_SERVER = LLP::CreateP2PServer<LLP::P2PNode>(nPort);
 
 
         /* Initialize API Pointers. */
@@ -283,7 +312,13 @@ int main(int argc, char** argv)
                 false,
 
                 /* connection manager, always off, not required for API as connections are ephemeral */
-                false);
+                false,
+                
+                /* Default sleep time */
+                1000,
+                
+                /* Enable SSL based on config */
+                config::GetBoolArg(std::string("-apissl")));
         }
 
 
@@ -364,11 +399,15 @@ int main(int argc, char** argv)
     /* Shutdown these subsystems if nothing failed. */
     if(!fFailed && !config::fClient.load())
     {
+        #ifndef NO_WALLET
+
         /* Shut down wallet database environment. */
         if (config::GetBoolArg(std::string("-flushwallet"), true))
             Legacy::WalletDB::ShutdownFlushThread();
 
         Legacy::BerkeleyDB::GetInstance().Shutdown();
+
+        #endif
     }
 
 

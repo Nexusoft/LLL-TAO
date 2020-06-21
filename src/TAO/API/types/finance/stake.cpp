@@ -48,10 +48,10 @@ namespace TAO
                 throw APIException(-135, "Zero-length PIN");
 
             /* Get the session to be used for this API call */
-            uint256_t nSession = users->GetSession(params);
+            Session& session = users->GetSession(params);;
 
             /* Get the user account. */
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
+            const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = session.GetAccount();
             if(!user)
                 throw APIException(-10, "Invalid session ID");
 
@@ -96,7 +96,7 @@ namespace TAO
                 throw APIException(-204, "Cannot set stake to a negative amount");
 
             /* Lock the signature chain. */
-            LOCK(users->CREATE_MUTEX);
+            LOCK(session.CREATE_MUTEX);
 
             /* Check that the sig chain is mature after the last coinbase/coinstake transaction in the chain. */
             CheckMature(hashGenesis);
@@ -208,8 +208,27 @@ namespace TAO
                 /* The stake change request signature */
                 std::vector<uint8_t> vchSig;
 
+                /* The crypto register object */
+                TAO::Register::Object crypto;
+
+                /* Get the crypto register. This is needed so that we can determine the key type used to generate the public key */
+                TAO::Register::Address hashCrypto = TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
+                if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::MEMPOOL))
+                    throw debug::exception(FUNCTION, "Could not sign - missing crypto register");
+
+                /* Parse the object. */
+                if(!crypto.Parse())
+                    throw debug::exception(FUNCTION, "failed to parse crypto register");
+
+                /* Check that the requested key is in the crypto register */
+                if(!crypto.CheckName("auth"))
+                    throw debug::exception(FUNCTION, "Key type not found in crypto register: ", "auth");
+
+                /* Get the encryption key type from the hash of the public key */
+                uint8_t nType = crypto.get<uint256_t>("auth").GetType();
+
                 /* Generate the public key and signature */
-                user->Sign("auth", request.GetHash().GetBytes(), hashSecret, vchPubKey, vchSig);
+                user->Sign(nType, request.GetHash().GetBytes(), hashSecret, vchPubKey, vchSig);
 
                 request.vchPubKey = vchPubKey;
                 request.vchSig = vchSig;

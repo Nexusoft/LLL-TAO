@@ -22,6 +22,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/utils.h>
 #include <TAO/API/include/json.h>
+#include <TAO/API/include/sessionmanager.h>
 
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/chainstate.h>
@@ -32,10 +33,12 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/sigchain.h>
 
 #include <TAO/Operation/include/enum.h>
+#include <TAO/Operation/include/execute.h>
 #include <TAO/Operation/types/condition.h>
 
 #include <TAO/Register/include/constants.h>
 #include <TAO/Register/include/unpack.h>
+#include <TAO/Register/include/build.h>
 #include <TAO/Register/include/names.h>
 #include <TAO/Register/types/object.h>
 
@@ -48,6 +51,7 @@ ________________________________________________________________________________
 #include <Legacy/include/evaluate.h>
 
 #include <queue>
+#include <unordered_set>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -56,6 +60,18 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
+        /* Helper struct to allow a std::pair to be used as the type in an unordered_set */
+        struct pair_hash
+        {
+            template <class T1, class T2>
+            std::size_t operator () (std::pair<T1, T2> const &pair) const
+            {
+                std::size_t h1 = std::hash<T1>()(pair.first);
+                std::size_t h2 = std::hash<T2>()(pair.second);
+
+                return h1 ^ h2;
+            }
+        };
 
         /*  Gets the currently outstanding contracts that have not been matched with a credit or claim. */
         bool Users::GetOutstanding(const uint256_t& hashGenesis,
@@ -118,7 +134,7 @@ namespace TAO
             if(LLD::Ledger->ReadLast(hashGenesis, hashLast))
             {
                 /* Get any expired debit and transfer transactions we made */
-                get_expired(hashGenesis, hashLast, vContracts);
+               get_expired(hashGenesis, hashLast, vContracts);
             }
 
             /* Remove any suppressed if flagged to do so */
@@ -539,7 +555,7 @@ namespace TAO
         bool Users::get_coinbases(const uint256_t& hashGenesis,
                 uint512_t hashLast, std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> &vContracts)
         {
-            /* Counter of consecutive claimed coinbases.  If this reaches 10 then assume there are none older to process */
+            /* Counter of consecutive claimed coinbases.  If this reaches -coinbasedepth then assume there are none older to process */
             uint32_t nConsecutive = 0;
 
             /* Reverse iterate until genesis (newest to oldest). */
@@ -549,9 +565,9 @@ namespace TAO
                 TAO::Ledger::Transaction tx;
                 if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
                     return debug::error(FUNCTION, "Failed to read transaction");
-
-                /* Skip this transaction if it is immature. */
-                if(!LLD::Ledger->ReadMature(hashLast))
+                    
+                /* Skip this transaction if it not a coinbase or is immature. */
+                if(!tx.IsCoinBase() || !LLD::Ledger->ReadMature(tx))
                 {
                     /* Set the next last. */
                     hashLast = !tx.IsFirst() ? tx.hashPrevTx : 0;
@@ -740,6 +756,11 @@ namespace TAO
                already claimed / credited */
             if(config::fClient.load())
                 return false;
+
+            /* Cache of contracts by genesis hash for all contracts that we have already determined either do not have 
+               any conditions or have already been claimed/credited.  If any contract is already in this vector then we can skip
+               it for all future invocations of the get_expired method. */
+            static std::unordered_set<std::pair<uint512_t, uint32_t>, pair_hash> cacheProcessed(256);
                 
             /* Temporary transaction to use to evaluate the conditions */
             TAO::Ledger::Transaction voidTx;
@@ -766,16 +787,28 @@ namespace TAO
                 uint32_t nContracts = tx.Size();
                 for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
                 {
+                    /* Check to see whether this contract has already been processed */
+                    if(cacheProcessed.find(std::make_pair(hashLast, nContract)) != cacheProcessed.end() )
+                        continue;
+
                     /* Reference to contract to check */
                     TAO::Operation::Contract& contract = tx[nContract];
 
                     /* First check to see if there are any conditions.  If not then they can't have expired! */
                     if(contract.Empty(TAO::Operation::Contract::CONDITIONS))
+                    {
+                        /* Add this contract to the processed list so we don't ever process it again and continue */
+                        cacheProcessed.insert(std::make_pair(hashLast, nContract));
                         continue;
+                    }
 
                     /* Next check to see if there is an expiration condition */
                     if(!HasExpires(contract))
+                    {
+                        /* Add this contract to the processed list so we don't ever process it again and continue */
+                        cacheProcessed.insert(std::make_pair(hashLast, nContract));
                         continue;
+                    }
 
                     /* The proof to check for this contract */
                     TAO::Register::Address hashProof;
@@ -803,7 +836,11 @@ namespace TAO
 
                         /* Check to see if this debit has already been sent */
                         if(LLD::Ledger->HasProof(hashProof, hashLast, nContract, TAO::Ledger::FLAGS::MEMPOOL))
+                        {
+                            /* Add this contract to the processed list so we don't ever process it again and continue */
+                            cacheProcessed.insert(std::make_pair(hashLast, nContract));
                             continue;
+                        }
 
                          /* Check to see whether there are any partial credits already claimed against the debit */
                         uint64_t nClaimed = 0;
@@ -812,7 +849,11 @@ namespace TAO
 
                         /* Check that there is something to be claimed */
                         if(nClaimed == nAmount)
+                        {
+                            /* Add this contract to the processed list so we don't ever process it again and continue */
+                            cacheProcessed.insert(std::make_pair(hashLast, nContract));
                             continue;
+                        }
 
                         /* Reduce the amount to credit by the amount already claimed */
                         nAmount -= nClaimed;
@@ -836,20 +877,36 @@ namespace TAO
 
                         /* Ensure this wasn't a forced transfer (which requires no Claim) */
                         if(nType == TAO::Operation::TRANSFER::FORCE)
+                        {
+                            /* Add this contract to the processed list so we don't ever process it again and continue */
+                            cacheProcessed.insert(std::make_pair(hashLast, nContract));
                             continue;
+                        }
 
                         /* Check that the sender has not claimed it back (voided) */
                         TAO::Register::State state;
                         if(!LLD::Register->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
+                        {
+                            /* Add this contract to the processed list so we don't ever process it again and continue */
+                            cacheProcessed.insert(std::make_pair(hashLast, nContract));
                             continue;
+                        }
 
                         /* Make sure the register claim is in SYSTEM pending from a transfer.  */
                         if(state.hashOwner.GetType() != TAO::Ledger::GENESIS::SYSTEM)
+                        {
+                            /* Add this contract to the processed list so we don't ever process it again and continue */
+                            cacheProcessed.insert(std::make_pair(hashLast, nContract));
                             continue;
+                        }
 
                         /* Check to see if this transfer has already been claimed by the recipient or us */
                         if(LLD::Ledger->HasProof(hashRegister, tx.GetHash(), nContract, TAO::Ledger::FLAGS::MEMPOOL))
+                        {
+                            /* Add this contract to the processed list so we don't ever process it again and continue */
+                            cacheProcessed.insert(std::make_pair(hashLast, nContract));
                             continue;
+                        }
 
                         /* Populate the temp void contract */
                         voidContract.Clear();
@@ -892,13 +949,11 @@ namespace TAO
             else if(params.find("username") != params.end())
                 hashGenesis = TAO::Ledger::SignatureChain::Genesis(params["username"].get<std::string>().c_str());
 
-            /* Get genesis by session. */
-            else if(!config::fMultiuser.load() && mapSessions.count(0))
-                hashGenesis = mapSessions[0]->Genesis();
-
-            /* Handle for no genesis. */
+            /* Check for logged in user.  NOTE: we rely on the GetSession method to check for the existence of a valid session ID
+               in the parameters in multiuser mode, or that a user is logged in for single user mode. Otherwise the GetSession 
+               method will throw an appropriate error. */
             else
-                throw APIException(-111, "Missing genesis / username");
+                hashGenesis = users->GetSession(params).GetAccount()->Genesis();
 
             /* The genesis hash of the API caller, if logged in */
             uint256_t hashCaller = users->GetCallersGenesis(params);
@@ -1118,10 +1173,10 @@ namespace TAO
                 throw APIException(-256, "Cannot process notifications whilst synchronizing");
 
             /* Get the session to be used for this API call */
-            uint256_t nSession = users->GetSession(params);
+            Session& session = users->GetSession(params);;
 
             /* Get the account. */
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
+            const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = session.GetAccount();
             if(!user)
                 throw APIException(-10, "Invalid session ID");
 
@@ -1616,7 +1671,7 @@ namespace TAO
             while(!vProcessQueue.empty())
             {
                 /* Lock the signature chain. */
-                LOCK(users->CREATE_MUTEX);
+                LOCK(session.CREATE_MUTEX);
 
                 /* Create the transaction output. */
                 TAO::Ledger::Transaction txout;
@@ -1702,6 +1757,113 @@ namespace TAO
 
             return ret;
 
+        }
+
+        /* Checks that the contract passes both Build() and Execute() */
+        bool Users::sanitize_contract(TAO::Operation::Contract& contract, std::map<uint256_t, TAO::Register::State> &mapStates)
+        {
+            /* Return flag */
+            bool fSanitized = false;
+
+            /* Lock the mempool at this point so that we can build and execute inside a mempool transaction */
+            RLOCK(TAO::Ledger::mempool.MUTEX);
+
+            try
+            {
+                /* Start a ACID transaction (to be disposed). */
+                LLD::TxnBegin(TAO::Ledger::FLAGS::MEMPOOL);
+
+                fSanitized = TAO::Register::Build(contract, mapStates, TAO::Ledger::FLAGS::MEMPOOL)
+                             && TAO::Operation::Execute(contract, TAO::Ledger::FLAGS::MEMPOOL);
+
+                /* Abort the mempool ACID transaction once the contract is sanitized */
+                LLD::TxnAbort(TAO::Ledger::FLAGS::MEMPOOL);
+
+            }
+            catch(const std::exception& e)
+            {
+                /* Abort the mempool ACID transaction */
+                LLD::TxnAbort(TAO::Ledger::FLAGS::MEMPOOL);
+
+                /* Log the error and attempt to continue processing */
+                debug::error(FUNCTION, e.what());
+            }
+
+            return fSanitized;
+        }
+
+
+        /* Used when in client mode, this method will send the transaction to a peer to validate it.  This will in turn check 
+        *  each contract in the transaction to verify that the conditions are met, the contract can be built, and executed.
+        *  If any of the contracts in the transaction fail then the method will return the index of the failed contract.
+        */
+        bool Users::validate_transaction(const TAO::Ledger::Transaction& tx, uint32_t& nContract)
+        {
+            bool fValid = false;
+
+            /* Check tritium server enabled. */
+            if(LLP::TRITIUM_SERVER)
+            {
+                memory::atomic_ptr<LLP::TritiumNode>& pNode = LLP::TRITIUM_SERVER->GetConnection();
+                if(pNode != nullptr)
+                {
+                    debug::log(1, FUNCTION, "CLIENT MODE: Validating transaction");
+
+                    /* Create our trigger nonce. */
+                    uint64_t nNonce = LLC::GetRand();
+                    pNode->PushMessage(LLP::Tritium::TYPES::TRIGGER, nNonce);
+
+                    /* Request the transaction validation */
+                    pNode->PushMessage(LLP::Tritium::ACTION::VALIDATE, uint8_t(LLP::Tritium::TYPES::TRANSACTION), tx);
+
+                    /* Create the condition variable trigger. */
+                    LLP::Trigger REQUEST_TRIGGER;
+                    pNode->AddTrigger(LLP::Tritium::RESPONSE::VALIDATED, &REQUEST_TRIGGER);
+
+                    /* Process the event. */
+                    REQUEST_TRIGGER.wait_for_nonce(nNonce, 10000);
+
+                    /* Cleanup our event trigger. */
+                    pNode->Release(LLP::Tritium::RESPONSE::VALIDATED);
+
+                    debug::log(1, FUNCTION, "CLIENT MODE: RESPONSE::VALIDATED received");
+
+                    /* Check the response args to see if it was valid */
+                    if(REQUEST_TRIGGER.HasArgs())
+                    {
+                        REQUEST_TRIGGER >> fValid;
+
+                        /* If it was not valid then deserialize the failing contract ID from the response */
+                        if(!fValid)
+                        {
+                            /* Deserialize the failing hash (which should be the one we sent) */
+                            uint512_t hashTx;
+                            REQUEST_TRIGGER >> hashTx;
+
+                            /* Deserialize the failing contract ID */
+                            REQUEST_TRIGGER >> nContract;
+
+                            /* Check the hash is valid */
+                            if(hashTx != tx.GetHash())
+                                throw APIException(0, "Invalid transaction ID received from RESPONSE::VALIDATED");
+
+                            /* Check the contract ID is valid */
+                            if(nContract > tx.Size() -1)
+                                throw APIException(0, "Invalid contract ID received from RESPONSE::VALIDATED");
+                        }
+                    }
+                    else
+                    {
+                        throw APIException(0, "CLIENT MODE: timeout waiting for RESPONSE::VALIDATED");
+                    }
+                    
+                }
+                else
+                    debug::error(FUNCTION, "no connections available...");
+            }
+        
+            /* return the valid flag */
+            return fValid;
         }
     }
 }

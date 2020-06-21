@@ -53,16 +53,18 @@ namespace TAO
             /* Return value array */
             json::json ret = json::json::array();
 
+            #ifndef NO_WALLET
+
             Legacy::Wallet& wallet = Legacy::Wallet::GetInstance();
 
             /* Get the PIN to be used for this API call */
             SecureString strPIN = users->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
 
             /* Get the session to be used for this API call */
-            uint256_t nSession = users->GetSession(params);
+            Session& session = users->GetSession(params);;
 
             /* Get the user signature chain. */
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
+            const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = session.GetAccount();
             if(!user)
                 throw APIException(-10, "Invalid session ID");
 
@@ -143,7 +145,7 @@ namespace TAO
             std::map<std::string, TAO::Register::Address> mapAccountRegisters;
 
             /* Lock the signature chain. */
-            LOCK(users->CREATE_MUTEX);
+            LOCK(session.CREATE_MUTEX);
 
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
@@ -208,7 +210,7 @@ namespace TAO
                             throw APIException(-44, "Transaction failed to build");
 
                         /* Sign the transaction. */
-                        if(!tx.Sign(users->GetKey(tx.nSequence, strPIN, nSession)))
+                        if(!tx.Sign(users->GetKey(tx.nSequence, strPIN, session)))
                             throw APIException(-31, "Ledger failed to sign transaction");
 
                         /* Execute the operations layer. */
@@ -256,7 +258,7 @@ namespace TAO
                     throw APIException(-44, "Transaction failed to build");
 
                 /* Sign the transaction. */
-                if(!tx.Sign(users->GetKey(tx.nSequence, strPIN, nSession)))
+                if(!tx.Sign(users->GetKey(tx.nSequence, strPIN, session)))
                     throw APIException(-31, "Ledger failed to sign transaction");
 
                 /* Execute the operations layer. */
@@ -312,6 +314,8 @@ namespace TAO
              */
             if(wallet.IsCrypted() && (fLocked || fMintOnly))
                 wallet.Lock();
+
+            #endif
 
             return ret;
         }

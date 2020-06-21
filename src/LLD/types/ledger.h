@@ -257,12 +257,24 @@ namespace LLD
          *
          *  Read if a transaction is mature.
          *
-         *  @param[in] hashTx The transaction to determine if it is mature.
+         *  @param[in] hashTx The hash of the transaction to determine if it is mature.
          *
          *  @return True if txid was successfully read.
          *
          **/
         bool ReadMature(const uint512_t &hashTx, const TAO::Ledger::BlockState* pblock = nullptr);
+
+
+        /** ReadMature
+         *
+         *  Read if a transaction is mature.
+         *
+         *  @param[in] tx The transaction to determine if it is mature.
+         *
+         *  @return True if txid was successfully read.
+         *
+         **/
+        bool ReadMature(const TAO::Ledger::Transaction& tx, const TAO::Ledger::BlockState* pblock = nullptr);
 
 
         /** ReadConfirmations

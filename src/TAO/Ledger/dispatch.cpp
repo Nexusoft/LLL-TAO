@@ -123,18 +123,18 @@ namespace TAO
                 /* Relay the block and bestchain. */
                 LLP::TRITIUM_SERVER->Relay
                 (
-                    LLP::ACTION::NOTIFY,
+                    LLP::Tritium::ACTION::NOTIFY,
 
                     /* Relay BLOCK notification. */
-                    uint8_t(LLP::TYPES::BLOCK),
+                    uint8_t(LLP::Tritium::TYPES::BLOCK),
                     hashBlock,
 
                     /* Relay BESTCHAIN notification. */
-                    uint8_t(LLP::TYPES::BESTCHAIN),
+                    uint8_t(LLP::Tritium::TYPES::BESTCHAIN),
                     hashBlock,
 
                     /* Relay BESTHEIGHT notification. */
-                    uint8_t(LLP::TYPES::BESTHEIGHT),
+                    uint8_t(LLP::Tritium::TYPES::BESTHEIGHT),
                     block.nHeight
                 );
 
@@ -180,7 +180,7 @@ namespace TAO
                                         continue;
 
                                     /* Fire off our event. */
-                                    ssRelay << uint8_t(LLP::TYPES::SIGCHAIN) << state.hashOwner << hash;
+                                    ssRelay << uint8_t(LLP::Tritium::TYPES::SIGCHAIN) << state.hashOwner << hash;
                                     ++nTotalEvents;
 
                                     debug::log(0, FUNCTION, (nOP == TAO::Operation::OP::TRANSFER ? "TRANSFER: " : "DEBIT: "),
@@ -199,7 +199,7 @@ namespace TAO
                                     if(tx[n].Caller() != hashGenesis)
                                     {
                                         /* Fire off our event. */
-                                        ssRelay << uint8_t(LLP::TYPES::SIGCHAIN) << hashGenesis << hash;
+                                        ssRelay << uint8_t(LLP::Tritium::TYPES::SIGCHAIN) << hashGenesis << hash;
                                         ++nTotalEvents;
 
                                         debug::log(0, FUNCTION, "COINBASE: ", hash.SubString(), " for genesis ", hashGenesis.SubString());
@@ -211,7 +211,7 @@ namespace TAO
                         }
 
                         /* Notify the sender as well. */
-                        ssRelay << uint8_t(LLP::TYPES::SIGCHAIN) << tx.hashGenesis << hash;
+                        ssRelay << uint8_t(LLP::Tritium::TYPES::SIGCHAIN) << tx.hashGenesis << hash;
                         ++nTotalEvents;
                     }
                     else if(proof.first == TRANSACTION::LEGACY)
@@ -237,7 +237,7 @@ namespace TAO
                                     continue;
 
                                 /* Fire off our event. */
-                                ssRelay << uint8_t(LLP::SPECIFIER::LEGACY) << uint8_t(LLP::TYPES::SIGCHAIN) << state.hashOwner << hash;
+                                ssRelay << uint8_t(LLP::Tritium::SPECIFIER::LEGACY) << uint8_t(LLP::Tritium::TYPES::SIGCHAIN) << state.hashOwner << hash;
                                 ++nTotalEvents;
 
                                 debug::log(0, FUNCTION, "LEGACY: ", hash.SubString(), " for genesis ", state.hashOwner.SubString());
@@ -247,7 +247,7 @@ namespace TAO
                 }
 
                 /* Relay all of our SIGCHAIN events. */
-                LLP::TRITIUM_SERVER->_Relay(LLP::ACTION::NOTIFY, ssRelay);
+                LLP::TRITIUM_SERVER->_Relay(LLP::Tritium::ACTION::NOTIFY, ssRelay);
 
                 /* Report status once complete. */
                 debug::log(0, FUNCTION, "Relay for ", hashBlock.SubString(), " completed in ", swTimer.ElapsedMilliseconds(), " ms [", (nTotalEvents * 1000000) / (swTimer.ElapsedMicroseconds() + 1), " events/s]");

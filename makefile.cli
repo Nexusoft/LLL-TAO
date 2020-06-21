@@ -131,25 +131,41 @@ ifeq (${USE_UPNP}, 1)
 	DEFS+= -DMINIUPNP_STATICLIB -DUSE_UPNP=1
 endif
 
+
+#Handle compiling with no wallet enabled
+ifdef NO_WALLET
+DEFS    += -DNO_WALLET
+else
+
+ifneq ($(detected_OS),Windows)
+    INCLUDEPATHS+= -I$(BDB_INCLUDE_PATH)
+endif
+ifeq ($(detected_OS),Windows)
+    INCLUDEPATHS+= -I$(BDB_INCLUDE_PATH)
+endif
+ifneq ($(detected_OS),OSX)
+LIBS+=-ldb_cxx
+endif
+
+LIBPATHS+= -L$(BDB_LIB_PATH)
+endif
+
 #Configure Build Environment
 ifneq ($(detected_OS),Windows)
-INCLUDEPATHS+= $(addprefix -I, $(CURDIR) $(CURDIR)/build $(CURDIR)/src $(CURDIR)/tests)\
-	-I$(BDB_INCLUDE_PATH) \
+    INCLUDEPATHS+= $(addprefix -I, $(CURDIR) $(CURDIR)/build $(CURDIR)/src $(CURDIR)/tests)\
 	-I$(OPENSSL_INCLUDE_PATH)
 endif
 ifeq ($(detected_OS),Windows)
-INCLUDEPATHS+= -I"$(CURDIR)" -I"$(CURDIR)/build" -I"$(CURDIR)/src" -I"$(CURDIR)/tests" \
-	-I$(BDB_INCLUDE_PATH) \
+    INCLUDEPATHS+= -I"$(CURDIR)" -I"$(CURDIR)/build" -I"$(CURDIR)/src" -I"$(CURDIR)/tests" \
 	-I$(OPENSSL_INCLUDE_PATH)
 endif
-LIBPATHS+= -L$(BDB_LIB_PATH) \
-	-L$(OPENSSL_LIB_PATH)
 ifneq ($(detected_OS),OSX)
-LIBS+=-ldb_cxx \
-	-lssl \
-	-lcrypto
+LIBS+= -lssl \
+	   -lcrypto
 endif
-DEFS+=  -D$(BUILD_ARCH)
+
+LIBPATHS +=  -L$(OPENSSL_LIB_PATH)
+DEFS     +=  -D$(BUILD_ARCH)
 
 #Fail on warnings
 ifdef WARNINGS_FAIL
@@ -232,6 +248,7 @@ ifdef UNIT_TESTS
 		   build/Tests_Legacy_mempool.o \
 		   build/Tests_LLC_aes.o \
 		   build/Tests_TAO_API_assets.o \
+		   build/Tests_TAO_API_crypto.o \
 		   build/Tests_TAO_API_finance.o \
 		   build/Tests_TAO_API_names.o \
 		   build/Tests_TAO_API_supply.o \
@@ -306,6 +323,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLC_aes.o \
 		build/LLC_codec.o \
 		build/LLC_common.o \
+		build/LLC_encrypt.o \
 		build/LLC_falcon.o \
 		build/LLC_fft.o \
 		build/LLC_fpr.o \
@@ -350,6 +368,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLP_lisp.o \
 		build/LLP_manager.o \
 		build/LLP_network.o \
+		build/LLP_p2p.o \
 		build/LLP_permissions.o \
 		build/LLP_rpcnode.o \
 		build/LLP_seeds.o \
@@ -367,6 +386,16 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_assets_tokenize.o \
 		build/API_types_assets_transfer.o \
 		build/API_types_assets_update.o \
+		build/API_types_crypto_change.o \
+		build/API_types_crypto_create.o \
+		build/API_types_crypto_crypto.o \
+		build/API_types_crypto_decrypt.o \
+		build/API_types_crypto_encrypt.o \
+		build/API_types_crypto_get.o \
+		build/API_types_crypto_initialize.o \
+		build/API_types_crypto_list.o \
+		build/API_types_crypto_sign.o \
+		build/API_types_crypto_verify.o \
 		build/API_types_dex_buy.o \
 		build/API_types_dex_sell.o \
 		build/API_types_dex_initialize.o \
@@ -405,12 +434,17 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_objects_list.o \
 		build/API_types_objects_transactions.o \
 		build/API_types_objects_transfer.o \
-		build/API_types_RPC_account.o \
-		build/API_types_RPC_daemon.o \
-		build/API_types_RPC_info.o \
-		build/API_types_RPC_network.o \
-		build/API_types_RPC_rpc.o \
-		build/API_types_RPC_wallet.o \
+		build/API_types_p2p_accept.o \
+		build/API_types_p2p_ignore.o \
+		build/API_types_p2p_initialize.o \
+		build/API_types_p2p_get.o \
+		build/API_types_p2p_list.o \
+		build/API_types_p2p_p2p.o \
+		build/API_types_p2p_peek.o \
+		build/API_types_p2p_pop.o \
+		build/API_types_p2p_request.o \
+		build/API_types_p2p_send.o \
+		build/API_types_p2p_terminate.o \
 		build/API_types_supply_claim.o \
 		build/API_types_supply_createitem.o \
 		build/API_types_supply_getitem.o \
@@ -431,7 +465,6 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_users_accounts.o \
 		build/API_types_users_assets.o \
 		build/API_types_users_create.o \
-		build/API_types_users_events.o \
         build/API_types_users_initialize.o \
 		build/API_types_users_items.o \
 		build/API_types_users_invoices.o \
@@ -441,6 +474,8 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_users_names.o \
 		build/API_types_users_namespaces.o \
 		build/API_types_users_notifications.o \
+		build/API_types_users_notifications_processor.o \
+		build/API_types_users_notifications_thread.o \
 		build/API_types_users_recover.o \
 		build/API_types_users_status.o \
 		build/API_types_users_tokens.o \
@@ -456,6 +491,8 @@ OBJS+=  build/LLC_base_uint.o \
         build/API_global.o \
         build/API_cmd.o \
 		build/API_conditions.o \
+		build/API_session.o \
+		build/API_sessionmanager.o \
 		build/Operation_append.o \
 		build/Operation_claim.o \
 		build/Operation_coinbase.o \
@@ -529,27 +566,17 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Util_softfloat.o \
         build/Util_string.o \
 		build/Util_version.o \
-		build/Legacy_account.o \
 		build/Legacy_address.o \
-		build/Legacy_addressbook.o \
 		build/Legacy_ambassador.o \
-		build/Legacy_basickeystore.o \
-        build/Legacy_coinbase.o \
+		build/Legacy_coinbase.o \
 		build/Legacy_create.o \
-		build/Legacy_crypter.o \
-		build/Legacy_cryptokeystore.o \
-		build/Legacy_db.o \
 		build/Legacy_enum.o \
 		build/Legacy_evaluate.o \
-		build/Legacy_keypool.o \
-		build/Legacy_keypoolentry.o \
-		build/Legacy_keystore.o \
 		build/Legacy_legacy.o \
 		build/Legacy_masterkey.o \
 		build/Legacy_mempool.o \
 		build/Legacy_merkle.o \
 		build/Legacy_outpoint.o \
-		build/Legacy_output.o \
 		build/Legacy_reservekey.o \
 		build/Legacy_script.o \
 		build/Legacy_secret.o \
@@ -559,10 +586,31 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Legacy_trustkey.o \
 		build/Legacy_txin.o \
 		build/Legacy_txout.o \
-		build/Legacy_wallet.o \
-		build/Legacy_walletdb.o \
-		build/Legacy_walletkey.o \
-		build/Legacy_wallettx.o
+
+
+ifndef NO_WALLET
+	OBJS+= 	build/API_types_RPC_account.o \
+			build/API_types_RPC_daemon.o \
+			build/API_types_RPC_info.o \
+			build/API_types_RPC_network.o \
+			build/API_types_RPC_rpc.o \
+			build/API_types_RPC_wallet.o \
+			build/Legacy_account.o \
+			build/Legacy_addressbook.o \
+			build/Legacy_basickeystore.o \
+			build/Legacy_crypter.o \
+			build/Legacy_cryptokeystore.o \
+			build/Legacy_db.o \
+			build/Legacy_keypool.o \
+			build/Legacy_keypoolentry.o \
+			build/Legacy_keystore.o \
+			build/Legacy_output.o \
+			build/Legacy_wallet.o \
+			build/Legacy_walletdb.o \
+			build/Legacy_walletkey.o \
+			build/Legacy_wallettx.o
+
+endif
 
 ###############################################################################
 ifeq ($(detected_OS),Windows)
@@ -669,6 +717,9 @@ build/API_%.o: ./src/TAO/API/%.cpp $(HEADERS)
 build/API_types_assets_%.o: ./src/TAO/API/types/assets/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
+build/API_types_crypto_%.o: ./src/TAO/API/types/crypto/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
 build/API_types_dex_%.o: ./src/TAO/API/types/dex/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
@@ -685,6 +736,9 @@ build/API_types_names_%.o: ./src/TAO/API/types/names/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_types_objects_%.o: ./src/TAO/API/types/objects/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/API_types_p2p_%.o: ./src/TAO/API/types/p2p/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_types_RPC_%.o: ./src/TAO/API/types/RPC/%.cpp $(HEADERS)
@@ -945,6 +999,13 @@ build/API_types_assets_%.o: src/TAO/API/types/assets/%.cpp $(HEADERS)
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
+build/API_types_crypto_%.o: src/TAO/API/types/crypto/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
 build/API_types_dex_%.o: src/TAO/API/types/dex/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
@@ -981,6 +1042,13 @@ build/API_types_names_%.o: src/TAO/API/types/names/%.cpp $(HEADERS)
 	rm -f $(@:%.o=%.d)
 
 build/API_types_objects_%.o: src/TAO/API/types/objects/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/API_types_p2p_%.o: src/TAO/API/types/p2p/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -1373,6 +1441,13 @@ build/API_types_assets_%.o: src/TAO/API/types/assets/%.cpp
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
+build/API_types_crypto_%.o: src/TAO/API/types/crypto/%.cpp
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
 build/API_types_dex_%.o: src/TAO/API/types/dex/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
@@ -1410,6 +1485,13 @@ build/API_types_names_%.o: src/TAO/API/types/names/%.cpp
 	rm -f $(@:%.o=%.d)
 
 build/API_types_objects_%.o: src/TAO/API/types/objects/%.cpp
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/API_types_p2p_%.o: src/TAO/API/types/p2p/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \

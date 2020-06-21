@@ -180,9 +180,13 @@ namespace TAO
                     /* Add the transaction to the memory pool. */
                     if(TAO::Ledger::mempool.Accept(tx))
                     {
+                        #ifndef NO_WALLET
+
                         /* Add tx to legacy wallet */
                         TAO::Ledger::BlockState notUsed;
                         Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, notUsed, true);
+
+                        #endif
 
                         ret["hash"] = tx.GetHash().ToString();
                     }
