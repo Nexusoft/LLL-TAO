@@ -53,6 +53,11 @@ namespace TAO
                the sig chain to avoid a deadlock, as the GetAuth method also takes a lock */
             DataStream ssMessage = LLP::TritiumNode::GetAuth(false);
 
+            /* If stake minter is running when logout, stop it */
+            TAO::Ledger::StakeMinter& stakeMinter = TAO::Ledger::StakeMinter::GetInstance();
+            if(stakeMinter.IsStarted())
+                stakeMinter.Stop();
+
             /* Delete the sigchan. */
             {
                 LOCK(MUTEX);
@@ -86,11 +91,6 @@ namespace TAO
                 /* Free up the Auth private key */
                 pAuthKey.free();
             }
-
-            /* If stake minter is running when logout, stop it */
-            TAO::Ledger::StakeMinter& stakeMinter = TAO::Ledger::StakeMinter::GetInstance();
-            if(stakeMinter.IsStarted())
-                stakeMinter.Stop();
 
             ret["success"] = true;
             return ret;
