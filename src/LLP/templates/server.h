@@ -111,6 +111,14 @@ namespace LLP
         /** The sleep time of address manager. **/
         uint32_t nSleepTime;
 
+        
+        /** Max number of outgoing connections this server can make. **/
+        uint32_t nMaxOutgoing;
+
+
+        /** Maximum number connections in total that this server can handle.  Must be greater than nMaxOutgoing **/
+        uint32_t nMaxConnections;
+
 
     public:
 

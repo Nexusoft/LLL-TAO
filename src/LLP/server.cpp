@@ -72,6 +72,8 @@ namespace LLP
     , MANAGER_THREAD  ( )
     , pAddressManager (nullptr)
     , nSleepTime      (config.nManagerInterval)
+    , nMaxOutgoing    (config.nMaxOutgoing)
+    , nMaxConnections (config.nMaxConnections)
     {
         for(uint16_t nIndex = 0; nIndex < MAX_THREADS; ++nIndex)
         {
@@ -424,10 +426,6 @@ namespace LLP
 
         /* Set the port. */
         pAddressManager->SetPort(PORT);
-
-        /* Get the max connections. Default is 16 if maxconnections isn't specified. */
-        uint32_t nMaxOutgoing    = static_cast<uint32_t>(config::GetArg(std::string("-maxoutgoing"), 16));
-        uint32_t nMaxConnections = static_cast<uint32_t>(config::GetArg(std::string("-maxconnections"), 100));
 
         /* Loop connections. */
         while(!config::fShutdown.load())
