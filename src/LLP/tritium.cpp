@@ -416,8 +416,8 @@ namespace LLP
                     " Disconnected (", strReason, ")");
 
                 /* Update address status. */
-                if(TRITIUM_SERVER->pAddressManager)
-                    TRITIUM_SERVER->pAddressManager->AddAddress(GetAddress(), ConnectState::DROPPED);
+                if(TRITIUM_SERVER->GetAddressManager())
+                    TRITIUM_SERVER->GetAddressManager()->AddAddress(GetAddress(), ConnectState::DROPPED);
 
                 /* Handle if sync node is disconnected. */
                 if(nCurrentSession == TAO::Ledger::nSyncSession.load())
@@ -484,8 +484,8 @@ namespace LLP
                 if(nCurrentSession == SESSION_ID)
                 {
                     /* Cache self-address in the banned list of the Address Manager. */
-                    if(TRITIUM_SERVER->pAddressManager)
-                        TRITIUM_SERVER->pAddressManager->Ban(GetAddress());
+                    if(TRITIUM_SERVER->GetAddressManager())
+                        TRITIUM_SERVER->GetAddressManager()->Ban(GetAddress());
 
                     return debug::drop(NODE, "connected to self");
                 }
@@ -518,8 +518,8 @@ namespace LLP
                         version::CLIENT_VERSION_BUILD_STRING);
 
                     /* Add to address manager. */
-                    if(TRITIUM_SERVER->pAddressManager)
-                        TRITIUM_SERVER->pAddressManager->AddAddress(GetAddress(), ConnectState::CONNECTED);
+                    if(TRITIUM_SERVER->GetAddressManager())
+                        TRITIUM_SERVER->GetAddressManager()->AddAddress(GetAddress(), ConnectState::CONNECTED);
                 }
 
                 /* Send Auth immediately after version and before any other messages*/
@@ -1385,8 +1385,8 @@ namespace LLP
 
                             /* Get addresses from manager. */
                             std::vector<BaseAddress> vAddr;
-                            if(TRITIUM_SERVER->pAddressManager)
-                                TRITIUM_SERVER->pAddressManager->GetAddresses(vAddr);
+                            if(TRITIUM_SERVER->GetAddressManager())
+                                TRITIUM_SERVER->GetAddressManager()->GetAddresses(vAddr);
 
                             /* Add the best 1000 (or less) addresses. */
                             const uint32_t nCount = std::min((uint32_t)vAddr.size(), nTotal);
@@ -2431,8 +2431,8 @@ namespace LLP
                             ssPacket >> addr;
 
                             /* Add addresses to manager.. */
-                            if(TRITIUM_SERVER->pAddressManager)
-                                TRITIUM_SERVER->pAddressManager->AddAddress(addr);
+                            if(TRITIUM_SERVER->GetAddressManager())
+                                TRITIUM_SERVER->GetAddressManager()->AddAddress(addr);
 
                             /* Debug output. */
                             debug::log(0, NODE, "ACTION::NOTIFY: ADDRESS ", addr.ToStringIP());
@@ -2494,8 +2494,8 @@ namespace LLP
                 mapLatencyTracker.erase(nNonce);
 
                 /* Set the latency used for address manager within server */
-                if(TRITIUM_SERVER->pAddressManager)
-                    TRITIUM_SERVER->pAddressManager->SetLatency(nLatency, GetAddress());
+                if(TRITIUM_SERVER->GetAddressManager())
+                    TRITIUM_SERVER->GetAddressManager()->SetLatency(nLatency, GetAddress());
 
                 /* Debug Level 3: output Node Latencies. */
                 debug::log(3, NODE, "Latency (Nonce ", std::hex, nNonce, " - ", std::dec, nLatency, " ms)");
@@ -2542,8 +2542,8 @@ namespace LLP
                 ssPacket >> addr;
 
                 /* Add addresses to manager.. */
-                if(TRITIUM_SERVER->pAddressManager)
-                    TRITIUM_SERVER->pAddressManager->AddAddress(addr);
+                if(TRITIUM_SERVER->GetAddressManager())
+                    TRITIUM_SERVER->GetAddressManager()->AddAddress(addr);
 
                 break;
             }

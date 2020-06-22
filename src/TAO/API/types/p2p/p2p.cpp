@@ -36,38 +36,19 @@ namespace TAO
                                 const uint256_t& hashPeer,
                                 memory::atomic_ptr<LLP::P2PNode>& connection)
         {
-            for(uint16_t nThread = 0; nThread < LLP::P2P_SERVER->MAX_THREADS; ++nThread)
+            /* GEt the matching connection from the server */
+            memory::atomic_ptr<LLP::P2PNode>& pConnection = LLP::P2P_SERVER->GetSpecificConnection(strAppID, hashGenesis, hashPeer);
+
+            /* Check it is valid */
+            if(!pConnection)
+                return false;
+
+            else
             {
-                /* Get the data threads. */
-                LLP::DataThread<LLP::P2PNode>* dt = LLP::P2P_SERVER->DATA_THREADS[nThread];
-
-                /* Lock the data thread. */
-                uint16_t nSize = static_cast<uint16_t>(dt->CONNECTIONS->size());
-
-                /* Loop through connections in data thread. */
-                for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
-                {
-                    /* Get the connection */
-                    auto& conn = dt->CONNECTIONS->at(nIndex);
-
-                    /* Skip over inactive connections. */
-                    if(conn != nullptr && conn->Connected())
-                    {
-                        /* Check that the connection matches th criteria  */
-                        if(conn->Matches(strAppID, hashGenesis, hashPeer))
-                        {
-                            /* Copy the internal pointer to the atomic to return */
-                            connection.store(conn.load());
-                            return true;
-
-                        }
-                    }
-                }
+                /* Copy the internal pointer to the atomic to return */
+                connection.store(pConnection.load());
+                return true;
             }
-
-            /* Not found */
-            return false;
         }
-
     }
 }

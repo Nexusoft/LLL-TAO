@@ -151,92 +151,76 @@ namespace TAO
             /* Declare the JSON response object*/
             json::json jsonRet = json::json::array();
 
-            /* Iterate the connections to the tritium server */
-            for(uint16_t nThread = 0; nThread < LLP::TRITIUM_SERVER->MAX_THREADS; ++nThread)
+            /* Get the connections from the tritium server */
+            std::vector<memory::atomic_ptr<LLP::TritiumNode>*> vConnections = LLP::TRITIUM_SERVER->GetConnections();
+
+            /* Iterate the connections*/
+            for(const auto& connection : vConnections)
             {
-                /* Get the data threads. */
-                LLP::DataThread<LLP::TritiumNode>* dt = LLP::TRITIUM_SERVER->DATA_THREADS[nThread];
+                /* Skip over inactive connections. */
+                if(!connection->load())
+                    continue;
 
-                /* Lock the data thread. */
-                uint16_t nSize = static_cast<uint16_t>(dt->CONNECTIONS->size());
-
-                /* Loop through connections in data thread. */
-                for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
+                /* Push the active connection. */
+                if(connection->load()->Connected())
                 {
-                    try
+                    json::json obj;
+
+                    /* The IPV4/V6 address */
+                    obj["address"]  = connection->load()->addr.ToString();
+
+                    /* The version string of the connected peer */
+                    obj["type"]     = connection->load()->strFullVersion;
+
+                    /* The protocol version being used to communicate */
+                    obj["version"]  = connection->load()->nProtocolVersion;
+
+                    /* Session ID for the current connection */
+                    obj["session"]  = connection->load()->nCurrentSession;
+
+                    /* Flag indicating whether this was an outgoing connection or incoming */
+                    obj["outgoing"] = connection->load()->fOUTGOING.load();
+
+                    /* The current height of the peer */
+                    obj["height"]   = connection->load()->nCurrentHeight;
+
+                    /* block hash of the peer's best chain */
+                    obj["best"]     = connection->load()->hashBestChain.SubString();
+
+                    /* block hash of the peer's best chain */
+                    if(connection->load()->hashGenesis != 0)
+                        obj["genesis"] = connection->load()->hashGenesis.SubString();
+
+                    /* The calculated network latency between this node and the peer */
+                    obj["latency"]  = connection->load()->nLatency.load();
+
+                    /* Unix timestamp of the last time this node had any communications with the peer */
+                    obj["lastseen"] = connection->load()->nLastPing.load();
+
+                    /* See if the connection is in the address manager */
+                    if(LLP::TRITIUM_SERVER->GetAddressManager() != nullptr
+                    && LLP::TRITIUM_SERVER->GetAddressManager()->Has(connection->load()->addr))
                     {
-                        /* Get reference to the connection */
-                        const auto connection = dt->CONNECTIONS->at(nIndex).load();
+                        /* Get the trust address from the address manager */
+                        const LLP::TrustAddress& trustAddress = LLP::TRITIUM_SERVER->GetAddressManager()->Get(connection->load()->addr);
 
-                        /* Skip over inactive connections. */
-                        if(!connection)
-                            continue;
+                        /* The number of connections successfully established with this peer since this node started */
+                        obj["connects"] = trustAddress.nConnected;
 
-                        /* Push the active connection. */
-                        if(connection->Connected())
-                        {
-                            json::json obj;
+                        /* The number of connections dropped with this peer since this node started */
+                        obj["drops"]    = trustAddress.nDropped;
 
-                            /* The IPV4/V6 address */
-                            obj["address"]  = connection->addr.ToString();
+                        /* The number of failed connection attempts to this peer since this node started */
+                        obj["fails"]    = trustAddress.nFailed;
 
-                            /* The version string of the connected peer */
-                            obj["type"]     = connection->strFullVersion;
-
-                            /* The protocol version being used to communicate */
-                            obj["version"]  = connection->nProtocolVersion;
-
-                            /* Session ID for the current connection */
-                            obj["session"]  = connection->nCurrentSession;
-
-                            /* Flag indicating whether this was an outgoing connection or incoming */
-                            obj["outgoing"] = connection->fOUTGOING.load();
-
-                            /* The current height of the peer */
-                            obj["height"]   = connection->nCurrentHeight;
-
-                            /* block hash of the peer's best chain */
-                            obj["best"]     = connection->hashBestChain.SubString();
-
-                            /* block hash of the peer's best chain */
-                            if(connection->hashGenesis != 0)
-                                obj["genesis"] = connection->hashGenesis.SubString();
-
-                            /* The calculated network latency between this node and the peer */
-                            obj["latency"]  = connection->nLatency.load();
-
-                            /* Unix timestamp of the last time this node had any communications with the peer */
-                            obj["lastseen"] = connection->nLastPing.load();
-
-                            /* See if the connection is in the address manager */
-                            if(LLP::TRITIUM_SERVER->pAddressManager != nullptr
-                            && LLP::TRITIUM_SERVER->pAddressManager->Has(connection->addr))
-                            {
-                                /* Get the trust address from the address manager */
-                                const LLP::TrustAddress& trustAddress = LLP::TRITIUM_SERVER->pAddressManager->Get(connection->addr);
-
-                                /* The number of connections successfully established with this peer since this node started */
-                                obj["connects"] = trustAddress.nConnected;
-
-                                /* The number of connections dropped with this peer since this node started */
-                                obj["drops"]    = trustAddress.nDropped;
-
-                                /* The number of failed connection attempts to this peer since this node started */
-                                obj["fails"]    = trustAddress.nFailed;
-
-                                /* The score value assigned to this peer based on latency and other connection statistics.   */
-                                obj["score"]    = trustAddress.Score();
-                            }
-
-                            jsonRet.push_back(obj);
-                        }
+                        /* The score value assigned to this peer based on latency and other connection statistics.   */
+                        obj["score"]    = trustAddress.Score();
                     }
-                    catch(const std::exception& e)
-                    {
-                        //debug::error(FUNCTION, e.what());
-                    }
+
+                    jsonRet.push_back(obj);
                 }
             }
+
 
             return jsonRet;
         }

@@ -130,50 +130,34 @@ namespace TAO
                     return std::string(
                         "getpeerinfo - Returns data about each connected network node.");
 
-            /* Check for legacy server */
-            if(LLP::TRITIUM_SERVER)
+            /* Get the connections from the tritium server */
+            std::vector<memory::atomic_ptr<LLP::TritiumNode>*> vConnections = LLP::TRITIUM_SERVER->GetConnections();
+
+            /* Iterate the connections*/
+            for(const auto& connection : vConnections)
             {
-                for(uint16_t nThread = 0; nThread < LLP::TRITIUM_SERVER->MAX_THREADS; ++nThread)
+                /* Skip over inactive connections. */
+                if(!connection->load())
+                    continue;
+
+                /* Push the active connection. */
+                if(connection->load()->Connected())
                 {
-                    /* Get the data threads. */
-                    LLP::DataThread<LLP::TritiumNode>* dt = LLP::TRITIUM_SERVER->DATA_THREADS[nThread];
+                    json::json obj;
 
-                    /* Lock the data thread. */
-                    uint16_t nSize = static_cast<uint16_t>(dt->CONNECTIONS->size());
+                    obj["addr"]     = connection->load()->addr.ToString();
+                    obj["type"]     = connection->load()->strFullVersion;
+                    obj["version"]  = connection->load()->nProtocolVersion;
+                    obj["session"]  = connection->load()->nCurrentSession;
+                    obj["height"]   = connection->load()->nCurrentHeight;
+                    obj["best"]     = connection->load()->hashBestChain.SubString();
+                    obj["latency"]  = connection->load()->nLatency.load();
+                    obj["lastseen"] = connection->load()->nLastPing.load();
+                    obj["session"]  = connection->load()->nCurrentSession;
+                    obj["outgoing"] = connection->load()->fOUTGOING.load();
 
-                    /* Loop through connections in data thread. */
-                    for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
-                    {
-                        try
-                        {
-                            /* Skip over inactive connections. */
-                            if(!dt->CONNECTIONS->at(nIndex))
-                                continue;
-
-                            /* Push the active connection. */
-                            if(dt->CONNECTIONS->at(nIndex)->Connected())
-                            {
-                                json::json obj;
-
-                                obj["addr"]     = dt->CONNECTIONS->at(nIndex)->addr.ToString();
-                                obj["type"]     = dt->CONNECTIONS->at(nIndex)->strFullVersion;
-                                obj["version"]  = dt->CONNECTIONS->at(nIndex)->nProtocolVersion;
-                                obj["session"]  = dt->CONNECTIONS->at(nIndex)->nCurrentSession;
-                                obj["height"]   = dt->CONNECTIONS->at(nIndex)->nCurrentHeight;
-                                obj["best"]     = dt->CONNECTIONS->at(nIndex)->hashBestChain.SubString();
-                                obj["latency"]  = dt->CONNECTIONS->at(nIndex)->nLatency.load();
-                                obj["lastseen"] = dt->CONNECTIONS->at(nIndex)->nLastPing.load();
-                                obj["session"]  = dt->CONNECTIONS->at(nIndex)->nCurrentSession;
-                                obj["outgoing"] = dt->CONNECTIONS->at(nIndex)->fOUTGOING.load();
-
-                                response.push_back(obj);
-                            }
-                        }
-                        catch(const std::exception& e)
-                        {
-                            //debug::error(FUNCTION, e.what());
-                        }
-                    }
+                    response.push_back(obj);
+       
                 }
             }
 

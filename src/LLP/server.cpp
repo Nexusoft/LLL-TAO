@@ -46,7 +46,6 @@ ________________________________________________________________________________
 namespace LLP
 {
 
-
     /*  Returns the name of the protocol type of this server. */
     template <class ProtocolType>
     std::string Server<ProtocolType>::Name()
@@ -57,46 +56,44 @@ namespace LLP
 
     /** Constructor **/
     template <class ProtocolType>
-    Server<ProtocolType>::Server(uint16_t nPort, uint16_t nMaxThreads, uint32_t nTimeout, bool fDDOS_,
-                         uint32_t cScore, uint32_t rScore, uint32_t nTimespan, bool fListen, bool fRemote,
-                         bool fMeter, bool fManager, uint32_t nSleepTimeIn, bool SSL)
-    : DDOS_MAP        ( )
-    , fDDOS           (fDDOS_)
-    , fSSL            (SSL)
+    Server<ProtocolType>::Server(const ServerConfig& config)
+    : PORT            (config.nPort)
+    , hListenSocket   (-1, -1)
+    , fSSL            (config.fSSL)
+    , DDOS_MAP        ( )
+    , fDDOS           (config.fDDOS)
+    , DDOS_TIMESPAN   (config.nDDOSTimespan)
+    , MAX_THREADS     (config.nMaxThreads)
+    , DATA_THREADS    ( )
     , MANAGER         ( )
     , LISTEN_THREAD   ( )
     , METER_THREAD    ( )
     , UPNP_THREAD     ( )
-    , PORT            (nPort)
-    , MAX_THREADS     (nMaxThreads)
-    , DDOS_TIMESPAN   (nTimespan)
-    , DATA_THREADS    ( )
     , MANAGER_THREAD  ( )
     , pAddressManager (nullptr)
-    , nSleepTime      (nSleepTimeIn)
-    , hListenSocket   (-1, -1)
+    , nSleepTime      (config.nManagerInterval)
     {
         for(uint16_t nIndex = 0; nIndex < MAX_THREADS; ++nIndex)
         {
             DATA_THREADS.push_back(new DataThread<ProtocolType>(
-                nIndex, fDDOS_, rScore, cScore, nTimeout, fMeter));
+                nIndex, config.fDDOS, config.nDDOSRScore, config.nDDOSCScore, config.nTimeout, config.fMeter));
         }
 
         /* Initialize the address manager. */
-        if(fManager)
+        if(config.fManager)
         {
-            pAddressManager = new AddressManager(nPort);
+            pAddressManager = new AddressManager(PORT);
             if(!pAddressManager)
-                debug::error(FUNCTION, "Failed to allocate memory for address manager on port ", nPort);
+                debug::error(FUNCTION, "Failed to allocate memory for address manager on port ", PORT);
 
             MANAGER_THREAD = std::thread((std::bind(&Server::Manager, this)));
         }
 
         /* Initialize the listeners. */
-        if(fListen)
+        if(config.fListen)
         {
             /* Bind the Listener. */
-            if(!BindListenPort(hListenSocket.first, true, fRemote))
+            if(!BindListenPort(hListenSocket.first, true, config.fRemote))
             {
                 ::Shutdown();
                 return;
@@ -105,13 +102,13 @@ namespace LLP
             LISTEN_THREAD = std::thread(std::bind(&Server::ListeningThread, this, true));  //IPv4 Listener
 
             /* Initialize the UPnP thread if remote connections are allowed. */
-            if(fRemote && config::GetBoolArg(std::string("-upnp"), true))
+            if(config.fRemote && config::GetBoolArg(std::string("-upnp"), true))
                 UPNP_THREAD = std::thread(std::bind(&Server::UPnP, this));
 
         }
 
         /* Initialize the meter. */
-        if(fMeter)
+        if(config.fMeter)
             METER_THREAD = std::thread(std::bind(&Server::Meter, this));
 
     }
@@ -172,6 +169,14 @@ namespace LLP
     }
 
 
+    /*Returns the address manager instance for this server. */
+    template <class ProtocolType>
+    AddressManager* Server<ProtocolType>::GetAddressManager() const
+    {
+        return pAddressManager;
+    }
+
+
      /*  Cleanup and shutdown subsystems */
     template <class ProtocolType>
     void Server<ProtocolType>::Shutdown()
@@ -193,6 +198,35 @@ namespace LLP
        /* Add the address to the address manager if it exists. */
        if(pAddressManager)
           pAddressManager->AddAddress(addr, ConnectState::NEW);
+    }
+
+
+    /* Constructs a vector of all active connections across all threads */
+    template <class ProtocolType>
+    std::vector<memory::atomic_ptr<ProtocolType>*> Server<ProtocolType>::GetConnections() const
+    {
+        std::vector<memory::atomic_ptr<ProtocolType>*> vConnections;
+
+        /* Iterate through threads */
+        for(uint16_t nThread = 0; nThread < DATA_THREADS.size(); ++nThread)
+        {
+            /* Loop through connections in data thread. */
+            uint16_t nSize = static_cast<uint16_t>(DATA_THREADS[nThread]->CONNECTIONS->size());
+            for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
+            {
+                /* Get the current atomic_ptr. */
+                memory::atomic_ptr<ProtocolType>& pConnection = DATA_THREADS[nThread]->CONNECTIONS->at(nIndex);
+                
+                /* Check to see if it is null */
+                if(!pConnection)
+                    continue;
+
+                /* Add it to the return vector */
+                vConnections.push_back(&pConnection);
+            }
+        }
+
+        return vConnections;
     }
 
 

@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <LLP/templates/data.h>
 #include <LLP/include/legacy_address.h>
 #include <LLP/include/manager.h>
+#include <LLP/include/server_config.h>
 
 #include <map>
 #include <condition_variable>
@@ -51,6 +52,17 @@ namespace LLP
     {
     private:
 
+        /** Server's listenting port. **/
+        uint16_t PORT;
+
+
+        /** The listener socket instance. **/
+        std::pair<int32_t, int32_t> hListenSocket;
+
+
+        /** Determine if Server should use an SSL connection. **/
+        std::atomic<bool> fSSL;
+
 
         /** The DDOS variables. **/
         std::map<BaseAddress, DDOS_Filter *> DDOS_MAP;
@@ -59,11 +71,22 @@ namespace LLP
         /** DDOS flag for off or on. **/
         std::atomic<bool> fDDOS;
 
-        /* Determine if Server should use an SSL connection. */
-        std::atomic<bool> fSSL;
 
-        /* condition variable for manager thread. */
+        /** The moving average timespan for DDOS throttling. **/
+        uint32_t DDOS_TIMESPAN;
+
+
+        /** Maximum number of data threads for this server. **/
+        uint16_t MAX_THREADS;
+
+
+        /** The data type to keep track of current running threads. **/
+        std::vector<DataThread<ProtocolType> *> DATA_THREADS;
+
+
+        /** condition variable for manager thread. **/
         std::condition_variable MANAGER;
+
 
         /** Listener Thread for accepting incoming connections. **/
         std::thread          LISTEN_THREAD;
@@ -77,24 +100,6 @@ namespace LLP
         std::thread          UPNP_THREAD;
 
 
-        /** Server's listenting port. **/
-        uint16_t PORT;
-
-
-    public:
-
-        /** Maximum number of data threads for this server. **/
-        uint16_t MAX_THREADS;
-
-
-        /** The moving average timespan for DDOS throttling. **/
-        uint32_t DDOS_TIMESPAN;
-
-
-        /** The data type to keep track of current running threads. **/
-        std::vector<DataThread<ProtocolType> *> DATA_THREADS;
-
-
         /** Connection Manager thread. **/
         std::thread MANAGER_THREAD;
 
@@ -103,13 +108,13 @@ namespace LLP
         AddressManager *pAddressManager;
 
 
-        /** The sleep time of address manager. */
+        /** The sleep time of address manager. **/
         uint32_t nSleepTime;
 
 
-        /** The listener socket instance. **/
-        std::pair<int32_t, int32_t> hListenSocket;
+    public:
 
+    
 
         /** Name
          *
@@ -120,19 +125,7 @@ namespace LLP
 
 
         /** Constructor **/
-        Server<ProtocolType>(uint16_t nPort,
-                             uint16_t nMaxThreads,
-                             uint32_t nTimeout = 30,
-                             bool fDDOS_ = false,
-                             uint32_t cScore = 0,
-                             uint32_t rScore = 0,
-                             uint32_t nTimespan = 60,
-                             bool fListen = true,
-                             bool fRemote = false,
-                             bool fMeter = false,
-                             bool fManager = false,
-                             uint32_t nSleepTimeIn = 1000,
-                             bool fSSL_ = false);
+        Server<ProtocolType>(const ServerConfig& config);
 
 
         /** Default Destructor **/
@@ -145,6 +138,14 @@ namespace LLP
          *
          **/
         uint16_t GetPort() const;
+
+
+        /** GetAddressManager
+         *
+         *  Returns the address manager instance for this server.
+         *
+         **/
+        AddressManager* GetAddressManager() const;
 
 
         /** Shutdown
@@ -229,7 +230,16 @@ namespace LLP
                 pAddressManager->AddAddress(addrConnect, ConnectState::CONNECTED);
 
             return true;
-            }
+        }
+
+
+        /** GetConnections
+         *
+         *  Constructs a vector of all active connections across all threads
+         *
+         *  @return Returns a vector of active connections
+         **/
+        std::vector<memory::atomic_ptr<ProtocolType>*> GetConnections() const;
 
 
         /** GetConnectionCount
