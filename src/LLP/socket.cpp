@@ -153,7 +153,7 @@ namespace LLP
                 case SSL_ERROR_SYSCALL:
                     /* The peer has notified us that it is shutting down via the SSL "close_notify" message so we 
                        need to shutdown, too. */
-                    debug::log(0, FUNCTION, "SSL handshake - Peer closed connection ");
+                    debug::log(3, FUNCTION, "SSL handshake - Peer closed connection ");
                     nError.store(ERR_get_error());
                     nStatus = -1;
                     break;
@@ -179,7 +179,7 @@ namespace LLP
                     }
                     else // Timeout or failure
                     {
-                        debug::log(0, FUNCTION, "SSL handshake - peer timeout or failure");
+                        debug::log(3, FUNCTION, "SSL handshake - peer timeout or failure");
                         nStatus = -1;
                     }
                 }
@@ -190,7 +190,10 @@ namespace LLP
                 debug::log(3, FUNCTION, "SSL Connection using ", SSL_get_cipher(pSSL));
             else
             {
-                debug::log(0, FUNCTION, "SSL Accept failed ",  addr.ToString(), " (", nError, " ", ERR_reason_error_string(nError), ")");
+                if(nError)
+                    debug::log(3, FUNCTION, "SSL Accept failed ",  addr.ToString(), " (", nError, " ", ERR_reason_error_string(nError), ")");
+                else
+                    debug::log(3, FUNCTION, "SSL Accept failed ",  addr.ToString());
             }
 
         }
@@ -368,11 +371,17 @@ namespace LLP
                     if(nPoll < 0)
                     {
                         debug::log(3, FUNCTION, "poll failed ", addrDest.ToString(), " (", nError, ")");
+
+                        /* No point sending the close notify to the peer as the connection was never established, so just clean up the SSL */
+                        if(pSSL)
+                        {
+                            /* Free the SSL resources */
+                            SSL_free(pSSL);
+                            pSSL = nullptr;
+                        }
+
                         closesocket(fd);
                         
-                        if(pSSL)
-                            SSL_shutdown(pSSL);
-
                         return false;
                     }
                 }
@@ -381,10 +390,18 @@ namespace LLP
                 if(nPoll == 0)
                 {
                     debug::log(3, FUNCTION, "poll timeout ", addrDest.ToString(), " (", nError, ")");
+                    
+                    /* No point sending the close notify to the peer as the connection was never established, so just clean up the SSL */
+                    if(pSSL)
+                    {
+                        /* Free the SSL resources */
+                        SSL_free(pSSL);
+                        pSSL = nullptr;
+                    }
+                    
                     closesocket(fd);
 
-                    if(pSSL)
-                        SSL_shutdown(pSSL);
+                    
 
                     return false;
                 }
@@ -393,10 +410,16 @@ namespace LLP
             {
                 debug::log(3, FUNCTION, "connect failed ", addrDest.ToString(), " (", nError, ")");
 
-                closesocket(fd);
-
+                /* No point sending the close notify to the peer as the connection was never established, so just clean up the SSL */
                 if(pSSL)
-                    SSL_shutdown(pSSL);
+                {
+                    /* Free the SSL resources */
+                    SSL_free(pSSL);
+                    pSSL = nullptr;
+                }
+                
+                /* Attempt to close the socket our side to clean up resources */
+                closesocket(fd);
 
                 return false;
             }
@@ -418,7 +441,7 @@ namespace LLP
             {
                 FD_ZERO(&fdWriteSet);
                 FD_ZERO(&fdReadSet);
-                tv.tv_sec = 2; // timeout after 2 seconds
+                tv.tv_sec = 5; // timeout after 5 seconds
                 tv.tv_usec = 0;
 
                 nStatus = SSL_connect(pSSL);
@@ -440,7 +463,7 @@ namespace LLP
                 case SSL_ERROR_SYSCALL:
                     /* The peer has notified us that it is shutting down via the SSL "close_notify" message so we 
                        need to shutdown, too. */
-                    debug::log(0, FUNCTION, "SSL handshake - Peer closed connection ");
+                    debug::log(3, FUNCTION, "SSL handshake - Peer closed connection ");
                     nError.store(ERR_get_error());
                     nStatus = -1;
                     break;
@@ -466,7 +489,7 @@ namespace LLP
                     }
                     else // Timeout or failure
                     {
-                        debug::log(0, FUNCTION, "SSL handshake - peer timeout or failure");
+                        debug::log(3, FUNCTION, "SSL handshake - peer timeout or failure");
                         nError.store(nStatus);
                         nStatus = -1;
                     }
@@ -480,7 +503,10 @@ namespace LLP
                 debug::log(3, FUNCTION, "SSL connected using ", SSL_get_cipher(pSSL));
             else
             {
-                debug::log(0, FUNCTION, "SSL SSL_connect failed ",  addr.ToString(), " (", nError, " ", ERR_reason_error_string(nError), ")");
+                if(nError)
+                    debug::log(3, FUNCTION, "SSL Accept failed ",  addr.ToString(), " (", nError, " ", ERR_reason_error_string(nError), ")");
+                else
+                    debug::log(3, FUNCTION, "SSL Accept failed ",  addr.ToString());
                 
                 return false;
             }
@@ -523,9 +549,15 @@ namespace LLP
 
         if(fd != INVALID_SOCKET)
         {
-            /* Shut down a TLS/SSL connection by sending the "close notify" shutdown alert to the peer. */
             if(pSSL)
+            {
+                /* Shut down a TLS/SSL connection by sending the "close notify" shutdown alert to the peer. */
                 SSL_shutdown(pSSL);
+
+                /* Clean up the SSL object */
+                SSL_free(pSSL);
+                pSSL = nullptr;
+            }
 
             closesocket(fd);
         }
@@ -547,9 +579,7 @@ namespace LLP
         int32_t nRead = 0;
 
         if(pSSL)
-        {
             nRead = SSL_read(pSSL, (int8_t*)&vData[0], nBytes);
-        }
         else
         {
         #ifdef WIN32
@@ -637,9 +667,7 @@ namespace LLP
         int32_t nRead = 0;
 
         if(pSSL)
-        {
             nRead = SSL_read(pSSL, (int8_t*)&vData[0], nBytes);
-        }
         else
         {
         #ifdef WIN32
@@ -728,7 +756,7 @@ namespace LLP
             /* Check overflow buffer. */
             if(vBuffer.size() > 0)
             {
-                debug::log(0, FUNCTION, "vBuffer ", vBuffer.size(), " bytes");
+                debug::log(3, FUNCTION, "vBuffer ", vBuffer.size(), " bytes");
 
                 vBuffer.insert(vBuffer.end(), vData.begin(), vData.end());
 
