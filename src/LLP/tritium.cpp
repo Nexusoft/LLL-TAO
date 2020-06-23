@@ -3797,12 +3797,14 @@ namespace LLP
                     uint8_t nType = 0;
                     ssData >> nType;
 
-                    /* Skip over legacy. */
+                    /* Check for legacy or poolstake specifier. */
                     bool fLegacy = false;
-                    if(nType == SPECIFIER::LEGACY)
+                    bool fPoolstake = false;
+                    if(nType == SPECIFIER::LEGACY || nType == SPECIFIER::POOLSTAKE)
                     {
-                        /* Set legacy specifier. */
-                        fLegacy = true;
+                        /* Set specifiers. */
+                        fLegacy    = (nType == SPECIFIER::LEGACY);
+                        fPoolstake = (nType == SPECIFIER::POOLSTAKE);
 
                         /* Go to next type in stream. */
                         ssData >> nType;
@@ -3844,9 +3846,22 @@ namespace LLP
                                 if(fLegacy)
                                     ssRelay << uint8_t(SPECIFIER::LEGACY);
 
+                                /* Check for pool stake. */
+                                else if(fPoolstake)
+                                    ssRelay << uint8_t(SPECIFIER::POOLSTAKE);
+
                                 /* Write transaction to stream. */
                                 ssRelay << uint8_t(TYPES::TRANSACTION);
                                 ssRelay << hashTx;
+
+                                /* Add TTL for poolstake */
+                                if(fPoolstake)
+                                {
+                                    uint8_t nTTL;
+                                    ssData >> nTTL;
+
+                                    ssRelay << nTTL;
+                                }
                             }
 
                             break;
