@@ -66,10 +66,11 @@ namespace TAO
             std::map<uint256_t, uint512_t> mapGenesis;
 
 
-            /** The chain height for the current mining round. Current proof values (hashProof, nTimeBegin, nTimeEnd) apply
-             *  for this height. If the chain best height changes and no longer matches this value, proof values are stale.
+            /** The hash of the best block for the current mining round.
+             *  Current proof values (hashProof, nTimeBegin, nTimeEnd) apply only for this hash.
+             *  If the global hash best chain changes and no longer matches this value, proof values are stale.
              **/
-            uint32_t nHeight;
+            uint1024_t hashLastBlock;
 
 
             /** The coinstake produced by the local node. This transaction will not be included in Select results. **/
@@ -242,13 +243,13 @@ namespace TAO
              *  Updates the stake pool with data for the current mining round. The pool will only accept coinstakes that
              *  contain matching values.
              *
-             *  @param[in] nHeight Chain height for the current mining round.
+             *  @param[in] hashLastBlock Hash of the current best block at the start of the mining round.
              *  @param[in] hashProof Pooled coinstake proof value.
              *  @param[in] nTimeBegin Begin time for coinstake proof.
              *  @param[in] nTimeEnd  End time for coinstake proof.
              *
              **/
-            void SetProofs(const uint32_t nHeight, const uint256_t hashProof,
+            void SetProofs(const uint1024_t hashLastBlock, const uint256_t hashProof,
                            const uint64_t nTimeBegin, const uint64_t nTimeEnd);
 
 

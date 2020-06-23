@@ -345,7 +345,7 @@ namespace TAO
                     return false;
 
                 /* Record data for current block being worked on into the stake pool */
-                TAO::Ledger::stakepool.SetProofs(block.nHeight, hashProof, nTimeBegin, nTimeEnd);
+                TAO::Ledger::stakepool.SetProofs(hashLastBlock, hashProof, nTimeBegin, nTimeEnd);
 
                 /* Put local coinstake into pool (relay will get it from there) */
                 if(!TAO::Ledger::stakepool.Accept(txPool))

@@ -45,7 +45,7 @@ namespace TAO
         , mapPool( )
         , mapPending()
         , mapGenesis()
-        , nHeight(0)
+        , hashLastBlock(0)
         , hashProof(0)
         , nTimeBegin(0)
         , nTimeEnd(0)
@@ -258,8 +258,8 @@ namespace TAO
             /* Stake pool will only save tx when pooled staking is enabled and started */
             if(config::fPoolStaking.load() && StakeMinter::GetInstance().IsStarted())
             {
-                /* When current pool height is stale, save tx as pending */
-                if(nHeight != TAO::Ledger::ChainState::nBestHeight)
+                /* When current pool proofs are stale, save tx as pending */
+                if(hashLastBlock != TAO::Ledger::ChainState::hashBestChain.load())
                 {
                     mapPending[hashTx] = tx;
 
@@ -370,7 +370,7 @@ namespace TAO
             mapPending.clear();
 
             /* Reset proofs */
-            nHeight = 0;
+            hashLastBlock = 0;
             hashProof = 0;
             nTimeBegin = 0;
             nTimeEnd = 0;
@@ -508,13 +508,13 @@ namespace TAO
 
 
         /*  Updates the stake pool with data for the current mining round. */
-        void Stakepool::SetProofs(const uint32_t nHeight, const uint256_t hashProof,
+        void Stakepool::SetProofs(const uint1024_t hashLastBlock, const uint256_t hashProof,
                                   const uint64_t nTimeBegin, const uint64_t nTimeEnd)
         {
             RLOCK(MUTEX);
 
             /* Assign stake pool values */
-            this->nHeight = nHeight;
+            this->hashLastBlock = hashLastBlock;
             this->hashProof = hashProof;
             this->nTimeBegin = nTimeBegin;
             this->nTimeEnd = nTimeEnd;
