@@ -732,7 +732,7 @@ namespace TAO
                         "block age=", nBlockAge, ", ",
                         "stake=", nStake, ", ",
                         "stake reward=", (nReward + nPoolFee), ", ",
-                        "pool fee paid=", (0 - nPoolFee), ", ",
+                        "pool fee paid=", int64_t(0 - nPoolFee), ", ",
                         "net reward=", nReward, ", ",
                         "add stake=", ((nStakeChange > 0) ? nStakeChange : 0), ", ",
                         "unstake=", ((nStakeChange < 0) ? (0 - nStakeChange) : 0));
