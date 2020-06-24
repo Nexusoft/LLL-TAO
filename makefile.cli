@@ -373,6 +373,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLP_rpcnode.o \
 		build/LLP_seeds.o \
 		build/LLP_server.o \
+		build/LLP_server_config.o \
 		build/LLP_socket.o \
 		build/LLP_time.o \
 		build/LLP_tritium.o \

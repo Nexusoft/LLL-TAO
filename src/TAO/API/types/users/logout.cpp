@@ -56,34 +56,25 @@ namespace TAO
             /* The genesis of the user logging out */
             uint256_t hashGenesis = GetSessionManager().Get(nSession).GetAccount()->Genesis();
 
-            /* Disconnect all P2P connections on logout */
-            if(LLP::P2P_SERVER)
+            /* Get the connections from the P2P server */
+            std::vector<memory::atomic_ptr<LLP::P2PNode>*> vConnections = LLP::P2P_SERVER->GetConnections();
+
+            /* Iterate the connections*/
+            for(const auto& connection : vConnections)
             {
-                for(uint16_t nThread = 0; nThread < LLP::P2P_SERVER->MAX_THREADS; ++nThread)
+                /* Skip over inactive connections. */
+                if(!connection->load())
+                    continue;
+
+                /* Push the active connection. */
+                if(connection->load()->Connected())
                 {
-                    /* Get the data threads. */
-                    LLP::DataThread<LLP::P2PNode>* dt = LLP::P2P_SERVER->DATA_THREADS[nThread];
+                    /* Check that the connection is from this genesis hash  */
+                    if(connection->load()->hashGenesis != hashGenesis)
+                        continue;
 
-                    /* Lock the data thread. */
-                    uint16_t nSize = static_cast<uint16_t>(dt->CONNECTIONS->size());
-
-                    /* Loop through connections in data thread. */
-                    for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
-                    {
-                        /* Get the connection */
-                        auto& connection = dt->CONNECTIONS->at(nIndex);
-
-                        /* Skip over inactive connections. */
-                        if(connection != nullptr && connection->Connected())
-                        {
-                            /* Check that the connection is from this genesis hash  */
-                            if(connection->hashGenesis != hashGenesis)
-                                continue;
-
-                            /* Send the terminate message to peer for graceful termination */
-                            connection->PushMessage(LLP::P2P::ACTION::TERMINATE, connection->nSession);
-                        }
-                    }
+                    /* Send the terminate message to peer for graceful termination */
+                    connection->load()->PushMessage(LLP::P2P::ACTION::TERMINATE, connection->load()->nSession);
                 }
             }
 

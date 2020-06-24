@@ -51,53 +51,37 @@ namespace TAO
             /* Check to see if P2P is enabled */
             if(!LLP::P2P_SERVER)
                 throw APIException(-280, "P2P server not enabled on this node");
-            
-            for(uint16_t nThread = 0; nThread < LLP::P2P_SERVER->MAX_THREADS; ++nThread)
+
+            /* Get the connections from the P2P server */
+            std::vector<memory::atomic_ptr<LLP::P2PNode>*> vConnections = LLP::P2P_SERVER->GetConnections();
+
+            /* Iterate the connections*/
+            for(const auto& connection : vConnections)
             {
-                /* Get the data threads. */
-                LLP::DataThread<LLP::P2PNode>* dt = LLP::P2P_SERVER->DATA_THREADS[nThread];
+                /* Skip over inactive connections. */
+                if(!connection->load())
+                    continue;
 
-                /* Lock the data thread. */
-                uint16_t nSize = static_cast<uint16_t>(dt->CONNECTIONS->size());
-
-                /* Loop through connections in data thread. */
-                for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
+                /* Push the active connection. */
+                if(connection->load()->Connected())
                 {
-                    try
-                    {
-                        /* Get the connection */
-                        auto& connection = dt->CONNECTIONS->at(nIndex);
+                    /* Check the appID filter, if specified */
+                    if(!strAppID.empty() && connection->load()->strAppID != strAppID)
+                        continue;
 
-                        /* Skip over inactive connections. */
-                        if(connection != nullptr && connection->Connected())
-                        {
-                            /* Check that the connection is from this genesis hash  */
-                            if(connection->hashGenesis != hashGenesis)
-                                continue;
+                    json::json jsonConnection;
 
-                            /* Check the appID filter, if specified */
-                            if(!strAppID.empty() && connection->strAppID != strAppID)
-                                continue;
+                    /* Populate the response JSON */
+                    jsonConnection["appid"]    = connection->load()->strAppID;
+                    jsonConnection["genesis"]  = connection->load()->hashPeer.ToString();
+                    jsonConnection["session"]  = connection->load()->nSession;
+                    jsonConnection["messages"] = connection->load()->MessageCount();
+                    jsonConnection["address"]  = connection->load()->addr.ToStringIP();
+                    jsonConnection["port"]     = connection->load()->addr.ToStringPort();
+                    jsonConnection["latency"]  = connection->load()->nLatency.load() == std::numeric_limits<uint32_t>::max() ? 0 : connection->load()->nLatency.load();
+                    jsonConnection["lastseen"] = connection->load()->nLastPing.load();
 
-                            json::json jsonConnection;
-
-                            /* Populate the response JSON */
-                            jsonConnection["appid"]    = connection->strAppID;
-                            jsonConnection["genesis"]  = connection->hashPeer.ToString();
-                            jsonConnection["session"]  = connection->nSession;
-                            jsonConnection["messages"] = connection->MessageCount();
-                            jsonConnection["address"]  = connection->addr.ToStringIP();
-                            jsonConnection["port"]     = connection->addr.ToStringPort();
-                            jsonConnection["latency"]  = connection->nLatency.load() == std::numeric_limits<uint32_t>::max() ? 0 : connection->nLatency.load();
-                            jsonConnection["lastseen"] = connection->nLastPing.load();
-
-                            response.push_back(jsonConnection);
-                        }
-                    }
-                    catch(const std::exception& e)
-                    {
-                        //debug::error(FUNCTION, e.what());
-                    }
+                    response.push_back(jsonConnection);
                 }
             }
 

@@ -117,61 +117,16 @@ int main(int argc, char** argv)
         debug::log(0, FUNCTION, "Generated Path ", config::GetDataDir());
     }
 
-    /* Handle the beta server. */
-    uint16_t nPort = static_cast<uint16_t>(config::fTestNet.load() ? TESTNET_CORE_LLP_PORT : MAINNET_CORE_LLP_PORT);
+    /* Startup the time server. */    
+    LLP::TIME_SERVER = LLP::CreateTimeServer();
 
-    /* Startup the time server. */
-    LLP::TIME_SERVER = new LLP::Server<LLP::TimeNode>(
-        nPort,
-        10,
-        10, //Timeout set to 10s
-        true,
-        1,
-        10,
-        10,
-        config::fClient.load() ? false : config::GetBoolArg(std::string("-unified"), false),
-        true,
-        config::GetBoolArg(std::string("-meters"), false),
-        true,
-        60000);
-
-    /* Get the port for the Core API Server. */
+    
     #ifndef NO_WALLET
-    nPort = static_cast<uint16_t>(config::GetArg(std::string("-rpcport"), config::fTestNet.load() ? TESTNET_RPC_PORT : MAINNET_RPC_PORT));
-
     /* Set up RPC server */
     if(!config::fClient.load())
     {
-
-        LLP::RPC_SERVER = new LLP::Server<LLP::RPCNode>(
-            nPort,
-            static_cast<uint16_t>(config::GetArg(std::string("-rpcthreads"), 4)),
-            30,
-            true,
-            /* The connection score (total connections per second, default 5). */
-            static_cast<uint32_t>(config::GetArg(std::string("-rpccscore"), 5)),
-
-            /* The request score (total requests per second, default 5.) */
-            static_cast<uint32_t>(config::GetArg(std::string("-rpcrscore"), 5)),
-
-            /* The DDOS moving average timespan (default: 60 seconds). */
-            static_cast<uint32_t>(config::GetArg(std::string("-rpctimespan"), 60)),
-            true,
-
-            /* Flag to determine if server should allow remote connections. */
-            config::GetBoolArg(std::string("-rpcremote"), false),
-
-            /* No meters */
-            false,
-
-            /* no manager */
-            false,
-            
-            /* Default sleep time */
-            1000,
-
-            /* Enable SSL if configured */
-            config::GetBoolArg(std::string("-rpcssl")));
+        /* Instantiate the RPC server */
+        LLP::RPC_SERVER = LLP::CreateRPCServer();
     }
     #endif
 
@@ -245,7 +200,7 @@ int main(int argc, char** argv)
 
 
         /* Get the port for Tritium Server. */
-        nPort = static_cast<uint16_t>(config::GetArg(std::string("-serverport"), config::fTestNet.load() ? (TRITIUM_TESTNET_PORT + (config::GetArg("-testnet", 0) - 1)) : TRITIUM_MAINNET_PORT));
+        uint16_t nPort = static_cast<uint16_t>(config::GetArg(std::string("-serverport"), config::fTestNet.load() ? (TRITIUM_TESTNET_PORT + (config::GetArg("-testnet", 0) - 1)) : TRITIUM_MAINNET_PORT));
 
 
         /* Initialize the Tritium Server. */
@@ -263,10 +218,6 @@ int main(int argc, char** argv)
         TAO::API::Initialize();
 
 
-        /* Get the port for the Core API Server. */
-        nPort = static_cast<uint16_t>(config::GetArg(std::string("-apiport"), config::fTestNet.load() ? TESTNET_API_PORT : MAINNET_API_PORT));
-
-
         /* ensure that apiuser / apipassword has been configured */
         if((config::mapArgs.find("-apiuser") == config::mapArgs.end()
         || config::mapArgs.find("-apipassword") == config::mapArgs.end())
@@ -280,45 +231,7 @@ int main(int argc, char** argv)
         else
         {
             /* Create the Core API Server. */
-            LLP::API_SERVER = new LLP::Server<LLP::APINode>(
-                /* The port this server listens on. */
-                nPort,
-
-                /* The total data I/O threads. */
-                static_cast<uint16_t>(config::GetArg(std::string("-apithreads"), 10)),
-
-                /* The timeout value (default: 30 seconds). */
-                static_cast<uint32_t>(config::GetArg(std::string("-apitimeout"), 30)),
-
-                /* Enable DDOS protection, always on */
-                false,
-
-                /* The connection score (total connections per second, default 5). */
-                static_cast<uint32_t>(config::GetArg(std::string("-apicscore"), 5)),
-
-                /* The request score (total requests per second, default 5.) */
-                static_cast<uint32_t>(config::GetArg(std::string("-apirscore"), 5)),
-
-                /* The DDOS moving average timespan (default: 60 seconds). */
-                static_cast<uint32_t>(config::GetArg(std::string("-apitimespan"), 60)),
-
-                /* listen, always on */
-                true,
-
-                /* Flag to determine if server should allow remote connections. */
-                config::GetBoolArg(std::string("-apiremote"), false),
-
-                /* meters, always off */
-                false,
-
-                /* connection manager, always off, not required for API as connections are ephemeral */
-                false,
-                
-                /* Default sleep time */
-                1000,
-                
-                /* Enable SSL based on config */
-                config::GetBoolArg(std::string("-apissl")));
+            LLP::API_SERVER = LLP::CreateAPIServer();
         }
 
 

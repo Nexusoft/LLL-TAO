@@ -148,8 +148,8 @@ namespace LLP
         if(EVENT == EVENTS::DISCONNECT)
         {
             /* Add address to time server as dropped. */
-            if(!Incoming() && TIME_SERVER->pAddressManager)
-                TIME_SERVER->pAddressManager->AddAddress(GetAddress(), ConnectState::DROPPED);
+            if(!Incoming() && TIME_SERVER->GetAddressManager())
+                TIME_SERVER->GetAddressManager()->AddAddress(GetAddress(), ConnectState::DROPPED);
 
             return;
         }
