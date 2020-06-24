@@ -909,9 +909,6 @@ namespace TAO
             if(!LLD::Ledger->ReadBlock(hashPrevBlock, statePrev))
                 return debug::error(FUNCTION, "prev block not in database");
 
-            /* The trust object register. */
-            TAO::Register::Object account;
-
             /* Weights for threshold calculations */
             cv::softdouble nTrustWeight = cv::softdouble(0.0);
             cv::softdouble nBlockWeight = cv::softdouble(0.0);
@@ -930,6 +927,8 @@ namespace TAO
 
                 /* Deserialize from the stream. */
                 uint8_t nState = 0;
+                TAO::Register::Object account;
+
                 txProducer[0] >>= nState;
                 txProducer[0] >>= account;
 
@@ -1055,6 +1054,8 @@ namespace TAO
 
                     /* Deserialize from the stream. */
                     uint8_t nState = 0;
+                    TAO::Register::Object account;
+
                     txPool[0] >>= nState;
                     txPool[0] >>= account;
 
@@ -1075,7 +1076,7 @@ namespace TAO
                         nStake += account.get<uint64_t>("stake");
                     }
 
-                    else if(txProducer.IsGenesisPool())
+                    else if(txPool.IsGenesisPool())
                     {
                         /* Seek to proofs */
                         txPool[0].Seek(1, TAO::Operation::Contract::OPERATIONS);
