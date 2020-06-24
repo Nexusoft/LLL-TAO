@@ -687,64 +687,50 @@ namespace TAO
             /* Verify producer signature(s) (if not synchronizing) */
             if(!TAO::Ledger::ChainState::Synchronizing())
             {
-                uint32_t nIndex = 0;
+                TAO::Ledger::Transaction txProducer;
 
-                /* Use this while loop to handle producer and vProducer, so only need one copy of the signature checking code */
-                while(true)
+                if(nVersion < 9)
+                    txProducer = producer;
+                else
+                    txProducer = vProducer.back(); ///block signed by block finder which is last producer
+
+                /* Switch based on signature type. */
+                switch(txProducer.nKeyType)
                 {
-                    TAO::Ledger::Transaction txProducer;
-
-                    if(nVersion < 9)
-                        txProducer = producer;
-                    else
-                        txProducer = vProducer[nIndex];
-
-                    /* Switch based on signature type. */
-                    switch(txProducer.nKeyType)
+                    /* Support for the FALCON signature scheeme. */
+                    case SIGNATURE::FALCON:
                     {
-                        /* Support for the FALCON signature scheeme. */
-                        case SIGNATURE::FALCON:
-                        {
-                            /* Create the FL Key object. */
-                            LLC::FLKey key;
+                        /* Create the FL Key object. */
+                        LLC::FLKey key;
 
-                            /* Set the public key and verify. */
-                            key.SetPubKey(txProducer.vchPubKey);
+                        /* Set the public key and verify. */
+                        key.SetPubKey(txProducer.vchPubKey);
 
-                            /* Check the Block Signature. */
-                            if(!VerifySignature(key))
-                                return debug::error(FUNCTION, "bad block signature");
+                        /* Check the Block Signature. */
+                        if(!VerifySignature(key))
+                            return debug::error(FUNCTION, "bad block signature");
 
-                            break;
-                        }
-
-                        /* Support for the BRAINPOOL signature scheme. */
-                        case SIGNATURE::BRAINPOOL:
-                        {
-                            /* Create EC Key object. */
-                            LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
-
-                            /* Set the public key and verify. */
-                            key.SetPubKey(txProducer.vchPubKey);
-
-                            /* Check the Block Signature. */
-                            if(!VerifySignature(key))
-                                return debug::error(FUNCTION, "bad block signature");
-
-                            break;
-                        }
-
-                        default:
-                            return debug::error(FUNCTION, "unknown signature type");
+                        break;
                     }
 
-                    if(nVersion < 9) //only one iteration if prior to version 9
-                        break;
+                    /* Support for the BRAINPOOL signature scheme. */
+                    case SIGNATURE::BRAINPOOL:
+                    {
+                        /* Create EC Key object. */
+                        LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
 
-                    else if(nIndex == (vProducer.size() - 1))
-                        break;
+                        /* Set the public key and verify. */
+                        key.SetPubKey(txProducer.vchPubKey);
 
-                    ++nIndex;
+                        /* Check the Block Signature. */
+                        if(!VerifySignature(key))
+                            return debug::error(FUNCTION, "bad block signature");
+
+                        break;
+                    }
+
+                    default:
+                        return debug::error(FUNCTION, "unknown signature type");
                 }
             }
 
