@@ -104,7 +104,7 @@ namespace TAO
             if(!fConnected && !LLP::P2P_SERVER->SSLRequired() && request.nPort > 0)
                 /* Establish the connection */
                 fConnected = LLP::P2P_SERVER->AddConnection(request.address.ToStringIP(), 
-                                               request.nSSLPort,
+                                               request.nPort,
                                                false, 
                                                false, 
                                                strAppID, 
@@ -116,7 +116,8 @@ namespace TAO
                 throw APIException(-284, "Failed to connect to peer");
             
             /* Get the actual connection data thread */
-            if(get_connection(strAppID, hashGenesis, hashPeer, connection))
+            if(get_connection(strAppID, hashGenesis, hashPeer, connection)
+                && connection->Connected())
             {
                 /* Populate the response JSON */
                 response["appid"]    = connection->strAppID;
