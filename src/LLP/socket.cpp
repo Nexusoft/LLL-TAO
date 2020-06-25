@@ -340,7 +340,7 @@ namespace LLP
         }
 
         /* Handle final socket checks if connection established with no errors. */
-        if (fConnected)
+        if(fConnected)
         {
             /* Check for errors. */
             int32_t nError = WSAGetLastError();
@@ -356,13 +356,10 @@ namespace LLP
                 /* Get the total sleeps to cycle. */
                 uint32_t nIterators = (nTimeout / 100) - 1;
 
-#ifdef WIN32
-                int32_t nPoll = WSAPoll(&fds[0], 1, 100);
-#else
-                int32_t nPoll = poll(&fds[0], 1, 100);
-#endif
+                /* The poll result */
+                int32_t nPoll = 0;
 
-                for(uint32_t nSeconds = 0; nSeconds < nIterators && !config::fShutdown.load(); ++nSeconds)
+                for(uint32_t nSeconds = 0; nSeconds < nIterators && !config::fShutdown.load() && nPoll <= 0; ++nSeconds)
                 {
 #ifdef WIN32
                     nPoll = WSAPoll(&fds[0], 1, 100);
@@ -374,63 +371,48 @@ namespace LLP
                     if(nPoll < 0)
                     {
                         debug::log(3, FUNCTION, "poll failed ", addrDest.ToString(), " (", nError, ")");
-
-                        /* No point sending the close notify to the peer as the connection was never established, so just clean up the SSL */
-                        if(pSSL)
-                        {
-                            /* Free the SSL resources */
-                            SSL_free(pSSL);
-                            pSSL = nullptr;
-                        }
-
-                        closesocket(fd);
-                        
-                        return false;
+                        fConnected = false;
                     }
                 }
 
                 /* Check for timeout. */
                 if(nPoll == 0)
                 {
+                    fConnected = false;
                     debug::log(3, FUNCTION, "poll timeout ", addrDest.ToString(), " (", nError, ")");
-                    
-                    /* No point sending the close notify to the peer as the connection was never established, so just clean up the SSL */
-                    if(pSSL)
-                    {
-                        /* Free the SSL resources */
-                        SSL_free(pSSL);
-                        pSSL = nullptr;
-                    }
-                    
-                    closesocket(fd);
-
-                    
-
-                    return false;
+                }
+                else if((fds[0].revents & POLLERR) || (fds[0].revents & POLLHUP))
+                {
+                    fConnected = false;
+                    debug::log(3, FUNCTION, "Connection failed ", addrDest.ToString());
                 }
             }
             else if (nError != WSAEISCONN)
             {
-                debug::log(3, FUNCTION, "connect failed ", addrDest.ToString(), " (", nError, ")");
-
-                /* No point sending the close notify to the peer as the connection was never established, so just clean up the SSL */
-                if(pSSL)
-                {
-                    /* Free the SSL resources */
-                    SSL_free(pSSL);
-                    pSSL = nullptr;
-                }
-                
-                /* Attempt to close the socket our side to clean up resources */
-                closesocket(fd);
-
-                return false;
+                fConnected = false;
+                debug::log(3, FUNCTION, "Connection failed ", addrDest.ToString(), " (", nError, ")");
             }
         }
 
-        if(pSSL)
+        if(!fConnected)
         {
+            /* No point sending the close notify to the peer as the connection was never established, so just clean up the SSL */
+            if(pSSL)
+            {
+                /* Free the SSL resources */
+                SSL_free(pSSL);
+                pSSL = nullptr;
+            }
+            
+            /* Attempt to close the socket our side to clean up resources */
+            closesocket(fd);
 
+            return false;
+        }
+        /* If the socket connection is established and SSL is enabled then initiate the SSL handshake */
+        else if(fConnected && pSSL)
+        {
+            /* Set up the SSL object for connecting */
             SSL_set_fd(pSSL, fd);
             SSL_set_connect_state(pSSL);
 
@@ -519,7 +501,7 @@ namespace LLP
         /* Reset the internal timers. */
         Reset();
 
-        return true;
+        return fConnected;
     }
 
 
@@ -552,11 +534,11 @@ namespace LLP
 
         if(fd != INVALID_SOCKET)
         {
-            if(pSSL)
+            if(IsSSL())
             {
                 /* Shut down a TLS/SSL connection by sending the "close notify" shutdown alert to the peer. */
                 SSL_shutdown(pSSL);
-
+                
                 /* Clean up the SSL object */
                 SSL_free(pSSL);
                 pSSL = nullptr;
