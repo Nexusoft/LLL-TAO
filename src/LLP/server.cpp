@@ -892,7 +892,7 @@ namespace LLP
             if(nResult != UPNPCOMMAND_SUCCESS)
                 debug::error(FUNCTION, "AddPortMapping(", port, ", ", port, ", ", lanaddr, ") failed with code ", nResult, " (", strupnperror(nResult), ")");
             else
-                debug::log(1, "UPnP Port Mapping successful.");
+                debug::log(1, "UPnP Port Mapping successful for port: ", nPort);
 
             runtime::timer TIMER;
             TIMER.Start();
@@ -916,7 +916,7 @@ namespace LLP
                     if(nResult != UPNPCOMMAND_SUCCESS)
                         debug::error(FUNCTION, "AddPortMapping(", port, ", ", port, ", ", lanaddr, ") failed with code ", nResult, " (", strupnperror(nResult), ")");
                     else
-                        debug::log(1, "UPnP Port Mapping successful.");
+                        debug::log(1, "UPnP Port Mapping successful for port: ", nPort);
                 }
                 runtime::sleep(2000);
             }
