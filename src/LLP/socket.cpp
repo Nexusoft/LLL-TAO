@@ -536,8 +536,24 @@ namespace LLP
         {
             if(IsSSL())
             {
-                /* Shut down a TLS/SSL connection by sending the "close notify" shutdown alert to the peer. */
-                SSL_shutdown(pSSL);
+                /* Before we can send the SSL_shutdown message we need to determine if the socket is still connected.  If we don't
+                   check this, then SSL_shutdown throws an exception when writing to the FD.  The easiest way to check that the
+                   non-blocking socket is still connected is to poll it and check for POLLERR / POLLHUP errors */
+                
+                pollfd fds[1];
+                fds[0].events = POLLIN;
+                fds[0].fd = fd;
+
+                /* Poll the socket with 100ms timeout. */
+#ifdef WIN32
+                WSAPoll(&fds[0], 1, 100);
+#else
+                poll(&fds[0], 1, 100);
+#endif
+                /* Check for errors to be certain the socket is still connected */
+                if(!(fds[0].revents & POLLERR || fds[0].revents & POLLHUP) )
+                    /* Shut down a TLS/SSL connection by sending the "close notify" shutdown alert to the peer. */
+                    SSL_shutdown(pSSL);
                 
                 /* Clean up the SSL object */
                 SSL_free(pSSL);
