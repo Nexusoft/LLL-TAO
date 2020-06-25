@@ -30,6 +30,10 @@ namespace LLP
         uint16_t nPort;
 
 
+        /** Port the server should listen on for SSL connections **/
+        uint16_t nSSLPort;
+
+
         /** Whether this server should listen for new connections **/
         bool fListen;
 
@@ -43,14 +47,14 @@ namespace LLP
 
 
         /** Indicates that SSL is required for connections and should not fall back to non-SSL **/
-        bool fRequireSSL;
+        bool fSSLRequired;
 
 
         /** Max number of outgoing connections this server can make. **/
-        uint32_t nMaxOutgoing;
+        uint32_t nMaxIncoming;
 
 
-        /** Maximum number connections in total that this server can handle.  Must be greater than nMaxOutgoing **/
+        /** Maximum number connections in total that this server can handle.  Must be greater than nMaxIncoming **/
         uint32_t nMaxConnections;
         
 

@@ -56,12 +56,24 @@ namespace LLP
         uint16_t PORT;
 
 
+        /** Server's listenting port for SSL connections. **/
+        uint16_t SSL_PORT;
+
+
         /** The listener socket instance. **/
         std::pair<int32_t, int32_t> hListenSocket;
 
 
-        /** Determine if Server should use an SSL connection. **/
+        /** The SSL listener socket instance. **/
+        std::pair<int32_t, int32_t> hSSLListenSocket;
+
+
+        /** Determine if Server should make / accept SSL connections. **/
         std::atomic<bool> fSSL;
+
+
+        /** Determine if Server should only make / accept SSL connections. **/
+        std::atomic<bool> fSSLRequired;
 
 
         /** The DDOS variables. **/
@@ -89,15 +101,23 @@ namespace LLP
 
 
         /** Listener Thread for accepting incoming connections. **/
-        std::thread          LISTEN_THREAD;
+        std::thread LISTEN_THREAD;
+
+
+        /** Listener Thread for accepting incoming SSL connections. **/
+        std::thread SSL_LISTEN_THREAD;
 
 
         /** Meter Thread for tracking incoming and outgoing packet counts. **/
-        std::thread          METER_THREAD;
+        std::thread METER_THREAD;
 
 
         /** Port mapping thread for opening port in router. **/
-        std::thread          UPNP_THREAD;
+        std::thread UPNP_THREAD;
+
+
+        /** Port mapping thread for opening the SSL port in router. **/
+        std::thread SSL_UPNP_THREAD;
 
 
         /** Connection Manager thread. **/
@@ -112,11 +132,11 @@ namespace LLP
         uint32_t nSleepTime;
 
         
-        /** Max number of outgoing connections this server can make. **/
-        uint32_t nMaxOutgoing;
+        /** Max number of incoming connections this server can make. **/
+        uint32_t nMaxIncoming;
 
 
-        /** Maximum number connections in total that this server can handle.  Must be greater than nMaxOutgoing **/
+        /** Maximum number connections in total that this server can handle.  Must be greater than nMaxIncoming **/
         uint32_t nMaxConnections;
 
 
@@ -143,9 +163,11 @@ namespace LLP
         /** GetPort
          *
          *  Returns the port number for this Server.
+         * 
+         *  @param[in] fSSL.  Flag indicating whether to return the SSL port or not
          *
          **/
-        uint16_t GetPort() const;
+        uint16_t GetPort(bool fSSL = false) const;
 
 
         /** GetAddressManager
@@ -169,10 +191,9 @@ namespace LLP
          *  Add a node address to the internal address manager
          *
          *  @param[in] strAddress	IPv4 Address of outgoing connection
-         *  @param[in] strPort		Port of outgoing connection
          *
          **/
-        void AddNode(std::string strAddress, uint16_t nPort, bool fLookup = false);
+        void AddNode(std::string strAddress, bool fLookup = false);
 
 
         /** AddConnection
@@ -181,6 +202,7 @@ namespace LLP
          *
          *  @param[in] strAddress	IPv4 Address of outgoing connection
          *  @param[in] strPort		Port of outgoing connection
+         *  @param[in] fSSL         Flag indicating SSL should be used for this connection
          *  @param[in] fLookup		Flag indicating whether address lookup should occur
          *  @param[in] args variadic args to forward to the data thread constructor
          *
@@ -188,7 +210,7 @@ namespace LLP
          *
          **/
         template<typename... Args>
-        bool AddConnection(std::string strAddress, uint16_t nPort, bool fLookup, Args&&... args)
+        bool AddConnection(std::string strAddress, uint16_t nPort, bool fSSL, bool fLookup, Args&&... args)
         {
             /* Initialize DDOS Protection for Incoming IP Address. */
             BaseAddress addrConnect(strAddress, nPort, fLookup);
@@ -224,7 +246,7 @@ namespace LLP
             DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
 
             /* Attempt the connection. */
-            if(!dt->NewConnection(addrConnect, DDOS_MAP[addrConnect], fSSL.load(),  std::forward<Args>(args)...))
+            if(!dt->NewConnection(addrConnect, DDOS_MAP[addrConnect], fSSL, std::forward<Args>(args)...))
             {
                 /* Add the address to the address manager if it exists. */
                 if(pAddressManager)
@@ -399,6 +421,22 @@ namespace LLP
         void NotifyEvent();
 
 
+        /** SSLEnabled
+         *
+         *  Returns true if SSL is enabled for this server
+         *
+         **/
+        bool SSLEnabled();
+
+
+        /** SSLRequired
+         *
+         *  Returns true if SSL is required for this server
+         *
+         **/
+        bool SSLRequired();
+
+
     private:
 
 
@@ -426,24 +464,26 @@ namespace LLP
          *  Main Listening Thread of LLP Server. Handles new Connections and
          *  DDOS associated with Connection if enabled.
          *
-         *  @param[in] fIPv4
+         *  @param[in] fIPv4 Flag indicating to listen on the IPv4 interface
+         *  @param[in] fSSL Flag indicating that connections should use SSL
          *
          **/
-        void ListeningThread(bool fIPv4);
+        void ListeningThread(bool fIPv4, bool fSSL);
 
 
         /** BindListenPort
          *
          *  Bind connection to a listening port.
          *
-         *  @param[in] hListenSocket
+         *  @param[in] hListenSocket The socket to bind to
+         *  @param[in] nPort The port to listen on
          *  @param[in] fIPv4 Flag indicating the connection is IPv4
          *  @param[in] fRemote Flag indicating that the socket should listen on all interfaced (true) or local only (false)
          *
          *  @return
          *
          **/
-        bool BindListenPort(int32_t & hListenSocket, bool fIPv4 = true, bool fRemote = false);
+        bool BindListenPort(int32_t & hListenSocket, uint16_t nPort, bool fIPv4, bool fRemote);
 
 
         /** Meter
@@ -458,8 +498,23 @@ namespace LLP
          *
          *  UPnP Thread. If UPnP is enabled then this thread will set up the required port forwarding.
          *
+         *  @param[in] nPort The port to forward
+         * 
          **/
-        void UPnP();
+        void UPnP(uint16_t nPort);
+
+        
+        /** get_listening_socket
+         *
+         *  Gets the listening socket handle
+         *
+         *  @param[in] nPort The port to listen on
+         *  @param[in] fIPv4 Flag indicating the connection is IPv4
+         *
+         *  @return the listening socket handle
+         *
+         **/
+        SOCKET get_listening_socket(bool fIPv4, bool fSSL);
 
     };
 

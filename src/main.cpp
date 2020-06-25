@@ -199,19 +199,21 @@ int main(int argc, char** argv)
         }
 
 
-        /* Get the port for Tritium Server. */
-        uint16_t nPort = static_cast<uint16_t>(config::GetArg(std::string("-serverport"), config::fTestNet.load() ? (TRITIUM_TESTNET_PORT + (config::GetArg("-testnet", 0) - 1)) : TRITIUM_MAINNET_PORT));
+        /* Get the port for Tritium Server. Allow serverport or port params to be used (serverport takes preference)*/
+        uint16_t nPort = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet.load() ? (TRITIUM_TESTNET_PORT + (config::GetArg("-testnet", 0) - 1)) : TRITIUM_MAINNET_PORT)); 
+        nPort = static_cast<uint16_t>(config::GetArg(std::string("-serverport"), nPort));
 
+        uint16_t nSSLPort = static_cast<uint16_t>(config::GetArg(std::string("-sslport"), config::fTestNet.load() ? (TRITIUM_TESTNET_SSL_PORT + (config::GetArg("-testnet", 0) - 1)) : TRITIUM_MAINNET_SSL_PORT));
 
         /* Initialize the Tritium Server. */
-        LLP::TRITIUM_SERVER = LLP::CreateTAOServer<LLP::TritiumNode>(nPort);
+        LLP::TRITIUM_SERVER = LLP::CreateTAOServer<LLP::TritiumNode>(nPort, nSSLPort);
 
 
         /* Get the port for the P2P server. */
         nPort = static_cast<uint16_t>(config::GetArg(std::string("-p2pport"), config::fTestNet.load() ? TESTNET_P2P_PORT : MAINNET_P2P_PORT));
-
+        nSSLPort = static_cast<uint16_t>(config::GetArg(std::string("-p2psslport"), config::fTestNet.load() ? TESTNET_P2P_SSL_PORT : MAINNET_P2P_SSL_PORT));
         /* Initialize the P2P Server */
-        LLP::P2P_SERVER = LLP::CreateP2PServer<LLP::P2PNode>(nPort);
+        LLP::P2P_SERVER = LLP::CreateP2PServer<LLP::P2PNode>(nPort, nSSLPort);
 
 
         /* Initialize API Pointers. */

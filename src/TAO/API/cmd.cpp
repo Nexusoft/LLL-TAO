@@ -167,22 +167,58 @@ namespace TAO
             std::vector<uint8_t> vBuffer(strReply.begin(), strReply.end());
 
             /* Make the connection to the API server. */
-            LLP::APINode apiNode;
-
-            /* Determine if connection should use SSL encryption. */
-            apiNode.SetSSL(config::GetBoolArg(std::string("-apissl")));
+            
 
             std::string strAddr = config::GetArg("-apiconnect", "127.0.0.1");
             uint16_t nPort = static_cast<uint16_t>(config::GetArg(std::string("-apiport"), config::fTestNet.load() ? TESTNET_API_PORT : MAINNET_API_PORT));
+            uint16_t nSSLPort = static_cast<uint16_t>(config::GetArg(std::string("-apisslport"), config::fTestNet.load() ? TESTNET_API_SSL_PORT : MAINNET_API_SSL_PORT));
 
-            LLP::BaseAddress addr(strAddr, nPort);
+            bool fSSL = config::GetBoolArg(std::string("-apissl")) || config::GetBoolArg(std::string("-apisslrequired"));
+            bool fSSLRequired = config::GetBoolArg(std::string("-apisslrequired"));
 
-            /* Make connection, write packet, read response, and disconnect. */
-            if(!WriteReadResponse<LLP::APINode>(apiNode, addr, vBuffer, "API"))
+            std::string strResponse;
+            bool fSuccess = false;
+
+            /* If SSL is enabled then attempt the connection using SSL */
+            if(fSSL)
+            {
+                LLP::APINode apiNode;
+                apiNode.SetSSL(true);
+                
+                LLP::BaseAddress addr(strAddr, nSSLPort);
+
+                /* Make connection, write packet, read response, and disconnect. */
+                if(WriteReadResponse<LLP::APINode>(apiNode, addr, vBuffer, "API"))
+                {
+                    /* If successful read the response */
+                    strResponse = apiNode.INCOMING.strContent;
+                    fSuccess = true;
+                }
+            }
+
+            /* If SSL wasn't successful or enabled and is not required, try insecure connection  */
+            if(!fSuccess && !fSSLRequired)
+            {
+                LLP::APINode apiNode;
+                apiNode.SetSSL(false);
+                
+                LLP::BaseAddress addr(strAddr, nPort);
+
+                /* Make connection, write packet, read response, and disconnect. */
+                if(WriteReadResponse<LLP::APINode>(apiNode, addr, vBuffer, "API"))
+                {
+                    /* If successful read the response */
+                    strResponse = apiNode.INCOMING.strContent;
+                    fSuccess = true;
+                }
+            }
+
+            /* Break out if we couldn't establish a connection */
+            if(!fSuccess)
                 return 0;
 
             /* Parse response JSON. */
-            json::json ret = json::json::parse(apiNode.INCOMING.strContent);
+            json::json ret = json::json::parse(strResponse);
 
             /* Check for errors. */
             std::string strPrint = "";
@@ -254,27 +290,64 @@ namespace TAO
             /* Convert the content into a byte buffer. */
             std::vector<uint8_t> vBuffer(strReply.begin(), strReply.end());
 
-            /* Make the connection to the API server. */
-            LLP::RPCNode rpcNode;
-
-            /* Determine if connection should use SSL encryption. */
-            rpcNode.SetSSL(config::GetBoolArg(std::string("-rpcssl")));
-
             std::string strAddr = config::GetArg("-rpcconnect", "127.0.0.1");
             uint16_t nPort = static_cast<uint16_t>(config::GetArg(std::string("-rpcport"), config::fTestNet.load() ? TESTNET_RPC_PORT : MAINNET_RPC_PORT));
+            uint16_t nSSLPort = static_cast<uint16_t>(config::GetArg(std::string("-rpcsslport"), config::fTestNet.load() ? TESTNET_RPC_SSL_PORT : MAINNET_RPC_SSL_PORT));
 
-            LLP::BaseAddress addr(strAddr, nPort);
+            bool fSSL = config::GetBoolArg(std::string("-rpcssl")) || config::GetBoolArg(std::string("-rpcsslrequired"));
+            bool fSSLRequired = config::GetBoolArg(std::string("-rpcsslrequired"));
 
-            /* Make connection, write packet, read response, and disconnect. */
-            if(!WriteReadResponse<LLP::RPCNode>(rpcNode, addr, vBuffer, "RPC"))
+            std::string strRequest;
+            std::string strResponse;
+            bool fSuccess = false;
+
+            /* If SSL is enabled then attempt the connection using SSL */
+            if(fSSL)
+            {
+                LLP::RPCNode rpcNode;
+                rpcNode.SetSSL(true);
+                
+                LLP::BaseAddress addr(strAddr, nSSLPort);
+
+                /* Make connection, write packet, read response, and disconnect. */
+                if(WriteReadResponse<LLP::RPCNode>(rpcNode, addr, vBuffer, "RPC"))
+                {
+                    /* If successful read the response */
+                    strResponse = rpcNode.INCOMING.strContent;
+                    strRequest = rpcNode.INCOMING.strRequest;
+                    fSuccess = true;
+                }
+            }
+
+            /* If SSL wasn't successful or enabled and is not required, try insecure connection  */
+            if(!fSuccess && !fSSLRequired)
+            {
+                LLP::RPCNode rpcNode;
+                rpcNode.SetSSL(false);
+                
+                LLP::BaseAddress addr(strAddr, nPort);
+
+                /* Make connection, write packet, read response, and disconnect. */
+                if(WriteReadResponse<LLP::RPCNode>(rpcNode, addr, vBuffer, "RPC"))
+                {
+                    /* If successful read the response */
+                    strResponse = rpcNode.INCOMING.strContent;
+                    strRequest = rpcNode.INCOMING.strRequest;
+                    fSuccess = true;
+                }
+            }
+
+            /* Break out if we couldn't establish a connection */
+            if(!fSuccess)
                 return 0;
+
 
             /* Dump the response to the console. */
             int nRet = 0;
             std::string strPrint = "";
-            if(rpcNode.INCOMING.strContent.length() > 0)
+            if(strResponse.length() > 0)
             {
-                json::json ret = json::json::parse(rpcNode.INCOMING.strContent);
+                json::json ret = json::json::parse(strResponse);
 
                 if(!ret["error"].is_null())
                 {
@@ -292,7 +365,7 @@ namespace TAO
             else
             {
                 // If the server returned no content then just output the packet header type, which will include any HTTP error code
-                strPrint = rpcNode.INCOMING.strRequest;
+                strPrint = strRequest;
             }
 
             // output to console

@@ -3277,29 +3277,14 @@ namespace LLP
                     /* Caller is requesting a peer to peer connection to communicate via the messaging LLP*/
                     case TYPES::P2PCONNECTION:
                     {
-                        /* Get the timestamp */
-                        uint64_t nTimestamp;
-                        ssPacket >> nTimestamp;
-
-                        /* get the appid */
-                        std::string strAppID;
-                        ssPacket >> strAppID;
-
                         /* get the source genesis hash */
                         uint256_t hashFrom;
                         ssPacket >> hashFrom;
 
-                        /* Get the destination genesis hash */
-                        uint256_t hashTo;
-                        ssPacket >> hashTo;
+                        /* Get the connection request */
+                        LLP::P2P::ConnectionRequest request;
+                        ssPacket >> request;
 
-                        /* Get the nonce / session ID */
-                        uint64_t nSession;
-                        ssPacket >> nSession;
-
-                        /* get the source address / port*/
-                        BaseAddress address;
-                        ssPacket >> address;
 
                         /* Get the public key. */
                         std::vector<uint8_t> vchPubKey;
@@ -3310,23 +3295,23 @@ namespace LLP
                         ssPacket >> vchSig;
 
                         /* Check the timestamp. If the request is older than 30s then it is stale so ignore the message */
-                        if(nTimestamp > runtime::unifiedtimestamp() || nTimestamp < runtime::unifiedtimestamp() - 30)
+                        if(request.nTimestamp > runtime::unifiedtimestamp() || request.nTimestamp < runtime::unifiedtimestamp() - 30)
                         {
                             debug::log(3, NODE, "ACTION::REQUEST::P2P: timestamp out of range (stale)");
                             return true;
                         }
 
                         /* Check that the destination genesis exists */
-                        if(!LLD::Ledger->HasGenesis(hashFrom))
+                        if(!LLD::Ledger->HasGenesis(request.hashPeer))
                             return debug::drop(NODE, "ACTION::REQUEST::P2P: invalid destination genesis hash");
 
                         /* Check that the source genesis exists */
-                        if(!LLD::Ledger->HasGenesis(hashTo))
+                        if(!LLD::Ledger->HasGenesis(hashFrom))
                             return debug::drop(NODE, "ACTION::REQUEST::P2P: invalid source genesis hash");
 
                         /* Build the byte stream from the request data in order to verify the signature */
                         DataStream ssCheck(SER_NETWORK, PROTOCOL_VERSION);
-                        ssCheck << nTimestamp << strAppID << hashFrom << hashTo << nSession << address;
+                        ssCheck << hashFrom << request;
 
                         /* Verify the signature */
                         if(!TAO::Ledger::SignatureChain::Verify(hashFrom, "network", ssCheck.Bytes(), vchPubKey, vchSig))
@@ -3340,7 +3325,7 @@ namespace LLP
                            different node/device. */
                         {
                             LOCK(P2P_REQUESTS_MUTEX);
-                            if(mapP2PRequests.count(hashFrom) == 0 || mapP2PRequests[hashFrom] < nTimestamp - 5)
+                            if(mapP2PRequests.count(hashFrom) == 0 || mapP2PRequests[hashFrom] < request.nTimestamp - 5)
                             {
                                 /* Reset the packet data pointer */
                                 ssPacket.Reset();
@@ -3350,36 +3335,32 @@ namespace LLP
                                 (
                                     uint8_t(ACTION::REQUEST),
                                     uint8_t(TYPES::P2PCONNECTION),
-                                    nTimestamp,
-                                    strAppID,
                                     hashFrom,
-                                    hashTo,
-                                    nSession,
-                                    address,
+                                    request,
                                     vchPubKey,
                                     vchSig
                                 );
 
                                 /* Check to see whether the destination genesis is logged in on this node */
-                                if(TAO::API::users->LoggedIn(hashTo))
+                                if(TAO::API::users->LoggedIn(request.hashPeer))
                                 {
                                     /* Get the users session */
-                                    TAO::API::Session& session = TAO::API::users->GetSession(hashTo);
+                                    TAO::API::Session& session = TAO::API::users->GetSession(request.hashPeer);
 
                                     /* If an incoming request already exists from this peer then remove it */
-                                    if(session.HasP2PRequest(strAppID, hashFrom, true))
-                                        session.DeleteP2PRequest(strAppID, hashFrom, true);
+                                    if(session.HasP2PRequest(request.strAppID, hashFrom, true))
+                                        session.DeleteP2PRequest(request.strAppID, hashFrom, true);
 
                                     /* Add this incoming request to the P2P requests queue for this user */
-                                    LLP::P2P::ConnectionRequest request = { runtime::unifiedtimestamp(), strAppID, hashFrom, nSession, address };
-                                    session.AddP2PRequest(request, true);
+                                    LLP::P2P::ConnectionRequest requestIncoming = { runtime::unifiedtimestamp(), request.strAppID, hashFrom, request.nSession, request.address, request.nPort, request.nSSLPort };
+                                    session.AddP2PRequest(requestIncoming, true);
 
-                                    debug::log(3, NODE, "P2P Request received from " , hashFrom.ToString(), " for appID ", strAppID );
+                                    debug::log(3, NODE, "P2P Request received from " , hashFrom.ToString(), " for appID ", request.strAppID );
                                 }
                             }
 
                             /* Log this request */
-                            mapP2PRequests[hashFrom] = nTimestamp;
+                            mapP2PRequests[hashFrom] = request.nTimestamp;
 
 
                         }

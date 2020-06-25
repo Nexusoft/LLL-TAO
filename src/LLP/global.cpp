@@ -74,7 +74,7 @@ namespace LLP
         LLP::ServerConfig config;
 
         /* The port this server listens on. */
-        config.nPort = static_cast<uint16_t>(config::GetArg(std::string("-miningport"), config::fTestNet.load() ? TESTNET_MINING_LLP_PORT : MAINNET_MINING_LLP_PORT));
+        config.nPort = static_cast<uint16_t>(GetMiningPort());
 
         /* The total data I/O threads. */
         config.nMaxThreads = static_cast<uint16_t>(config::GetArg(std::string("-miningthreads"), 4));
@@ -118,7 +118,7 @@ namespace LLP
         LLP::ServerConfig config;
         
         /* Time server port */
-        config.nPort = static_cast<uint16_t>(config::fTestNet.load() ? TESTNET_CORE_LLP_PORT : MAINNET_CORE_LLP_PORT);
+        config.nPort = GetTimePort();
         
         /* Always use 10 threads */
         config.nMaxThreads = 10;
@@ -153,8 +153,8 @@ namespace LLP
         /* Make new connections every 60s */
         config.nManagerInterval = 60000;
 
-        /* Max outgoing connections */
-        config.nMaxOutgoing = static_cast<uint32_t>(config::GetArg(std::string("-maxoutgoing"), 16));
+        /* Max incoming connections */
+        config.nMaxIncoming = static_cast<uint32_t>(config::GetArg(std::string("-maxincoming"), 84));
 
         /* Max connections */
         config.nMaxConnections = static_cast<uint32_t>(config::GetArg(std::string("-maxconnections"), 100));
@@ -170,6 +170,9 @@ namespace LLP
         
         /* Port for the RPC server */
         config.nPort = static_cast<uint16_t>(config::GetArg(std::string("-rpcport"), config::fTestNet.load() ? TESTNET_RPC_PORT : MAINNET_RPC_PORT));
+
+        /* SSL port for RPC server */
+        config.nSSLPort = static_cast<uint16_t>(config::GetArg(std::string("-rpcsslport"), config::fTestNet.load() ? TESTNET_RPC_SSL_PORT : MAINNET_RPC_SSL_PORT));
         
         /* Max threads based on config */
         config.nMaxThreads = static_cast<uint16_t>(config::GetArg(std::string("-rpcthreads"), 4));
@@ -202,7 +205,10 @@ namespace LLP
         config.fManager = false;
         
         /* Enable SSL if configured */
-        config.fSSL = config::GetBoolArg(std::string("-rpcssl"));
+        config.fSSL = config::GetBoolArg(std::string("-rpcssl")) || config::GetBoolArg(std::string("-rpcsslrequired"), false);
+
+        /* Require SSL if configured */
+        config.fSSLRequired = config::GetBoolArg(std::string("-rpcsslrequired"), false);
 
         /* Instantiate the RPC server */
         return new LLP::Server<LLP::RPCNode>(config);
@@ -216,6 +222,9 @@ namespace LLP
         
         /* Port for the API server */
         config.nPort = static_cast<uint16_t>(config::GetArg(std::string("-apiport"), config::fTestNet.load() ? TESTNET_API_PORT : MAINNET_API_PORT));
+        
+        /* SSL port for API server */
+        config.nSSLPort = static_cast<uint16_t>(config::GetArg(std::string("-apisslport"), config::fTestNet.load() ? TESTNET_API_SSL_PORT : MAINNET_API_SSL_PORT));
         
         /* Max threads based on config */
         config.nMaxThreads = static_cast<uint16_t>(config::GetArg(std::string("-apithreads"), 10));
@@ -248,7 +257,10 @@ namespace LLP
         config.fManager = false;
         
         /* Enable SSL if configured */
-        config.fSSL = config::GetBoolArg(std::string("-apissl"));
+        config.fSSL = config::GetBoolArg(std::string("-apissl")) || config::GetBoolArg(std::string("-apisslrequired"), false);
+
+        /* Require SSL if configured */
+        config.fSSLRequired = config::GetBoolArg(std::string("-apisslrequired"), false);
 
         /* Instantiate the API server */
         return new LLP::Server<LLP::APINode>(config);

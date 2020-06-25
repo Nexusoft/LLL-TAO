@@ -129,7 +129,8 @@ namespace TAO
                 jsonConnection["genesis"]   = connection.hashPeer.ToString();
                 jsonConnection["session"]   = connection.nSession;
                 jsonConnection["address"]   = connection.address.ToStringIP();
-                jsonConnection["port"]   = connection.address.ToStringPort();    
+                jsonConnection["port"]      = connection.nPort;
+                jsonConnection["sslport"]   = connection.nSSLPort;    
                 jsonConnection["timestamp"] = connection.nTimestamp;
 
                 response.push_back(jsonConnection);

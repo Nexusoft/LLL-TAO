@@ -99,8 +99,14 @@ namespace TAO
             /* Get this nodes IP address from the tritium server as that is the most reliable way to obtain it*/
             request.address.SetIP(LLP::TritiumNode::thisAddress);
             
-            /* Set the port to be contacted on, which is the port for the P2P server  */
-            request.address.SetPort(LLP::P2P_SERVER->GetPort());
+            /* Set the port to be contacted on, which is the port for the P2P server */
+            /* If SSL enabled then set the SSL port */
+            if(LLP::P2P_SERVER->SSLEnabled())
+                request.nSSLPort = LLP::P2P_SERVER->GetPort(true);
+            
+            /* If the server allows non-ssl connections then set the standard port */
+            if(!LLP::P2P_SERVER->SSLRequired())
+                request.nPort = LLP::P2P_SERVER->GetPort(false);
 
             /* Generate a new random session ID */
             request.nSession = LLC::GetRand();
@@ -118,7 +124,7 @@ namespace TAO
 
             /* Build the byte stream from the request data in order to generate the signature */
             DataStream ssMsgData(SER_NETWORK, LLP::P2P::PROTOCOL_VERSION);
-            ssMsgData << request.nTimestamp << strAppID << hashGenesis << hashPeer << request.nSession << request.address;
+            ssMsgData << hashGenesis << request;
 
             /* Generate signature */
             session.GetAccount()->Sign("network", ssMsgData.Bytes(), session.GetNetworkKey(), vchPubKey, vchSig);
@@ -129,12 +135,8 @@ namespace TAO
             LLP::TRITIUM_SERVER->Relay(
                 uint8_t(LLP::Tritium::ACTION::REQUEST),
                 uint8_t(LLP::Tritium::TYPES::P2PCONNECTION),
-                request.nTimestamp,
-                strAppID,
-                hashGenesis,
-                hashPeer,
-                request.nSession,
-                request.address,
+                hashGenesis,                
+                request,
                 vchPubKey,
                 vchSig);
 

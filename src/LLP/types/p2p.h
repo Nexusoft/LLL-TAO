@@ -84,8 +84,10 @@ namespace LLP
 
 
         /* Struct encapsulating a P2P connection request */
-        struct ConnectionRequest
+        class ConnectionRequest
         {
+        
+        public:
             /* Time the request was received */
             uint64_t nTimestamp;
 
@@ -98,8 +100,25 @@ namespace LLP
             /* The P2P session ID */
             uint64_t nSession;
             
-            /* The address / port to connect to*/
+            /* The address to connect to*/
             BaseAddress address;
+
+            /* The insecure port to connect to */
+            uint16_t nPort;
+
+            /* The SSL port to connect to */
+            uint16_t nSSLPort;
+
+            IMPLEMENT_SERIALIZE
+            (
+                READWRITE(nTimestamp);
+                READWRITE(strAppID);
+                READWRITE(hashPeer);
+                READWRITE(nSession);
+                READWRITE(address);
+                READWRITE(nPort);
+                READWRITE(nSSLPort);
+            )
         };
 
 

@@ -194,6 +194,9 @@ namespace LLP
                     debug::log(3, FUNCTION, "SSL Accept failed ",  addr.ToString(), " (", nError, " ", ERR_reason_error_string(nError), ")");
                 else
                     debug::log(3, FUNCTION, "SSL Accept failed ",  addr.ToString());
+                /* Free the SSL resources */
+                SSL_free(pSSL);
+                pSSL = nullptr;
             }
 
         }
@@ -441,7 +444,7 @@ namespace LLP
             {
                 FD_ZERO(&fdWriteSet);
                 FD_ZERO(&fdReadSet);
-                tv.tv_sec = 5; // timeout after 5 seconds
+                tv.tv_sec = nTimeout / 1000; // convert timeout to seconds
                 tv.tv_usec = 0;
 
                 nStatus = SSL_connect(pSSL);
@@ -969,7 +972,7 @@ namespace LLP
         LOCK(DATA_MUTEX);
 
         if(pSSL != nullptr)
-            return true;
+            return SSL_is_init_finished(pSSL);
 
         return false;
     }

@@ -58,8 +58,11 @@ namespace LLP
     template <class ProtocolType>
     Server<ProtocolType>::Server(const ServerConfig& config)
     : PORT            (config.nPort)
+    , SSL_PORT        (config.nSSLPort)
     , hListenSocket   (-1, -1)
+    , hSSLListenSocket(-1, -1)
     , fSSL            (config.fSSL)
+    , fSSLRequired    (config.fSSLRequired)
     , DDOS_MAP        ( )
     , fDDOS           (config.fDDOS)
     , DDOS_TIMESPAN   (config.nDDOSTimespan)
@@ -67,12 +70,14 @@ namespace LLP
     , DATA_THREADS    ( )
     , MANAGER         ( )
     , LISTEN_THREAD   ( )
+    , SSL_LISTEN_THREAD   ( )
     , METER_THREAD    ( )
     , UPNP_THREAD     ( )
+    , SSL_UPNP_THREAD ( )
     , MANAGER_THREAD  ( )
     , pAddressManager (nullptr)
     , nSleepTime      (config.nManagerInterval)
-    , nMaxOutgoing    (config.nMaxOutgoing)
+    , nMaxIncoming    (config.nMaxIncoming)
     , nMaxConnections (config.nMaxConnections)
     {
         for(uint16_t nIndex = 0; nIndex < MAX_THREADS; ++nIndex)
@@ -94,18 +99,39 @@ namespace LLP
         /* Initialize the listeners. */
         if(config.fListen)
         {
-            /* Bind the Listener. */
-            if(!BindListenPort(hListenSocket.first, true, config.fRemote))
+            /* If SSL is required then don't listen on the standard port */
+            if(!fSSLRequired)
             {
-                ::Shutdown();
-                return;
+                /* Bind the Listener. */
+                if(!BindListenPort(hListenSocket.first, PORT, true, config.fRemote))
+                {
+                    ::Shutdown();
+                    return;
+                }
+
+                
+                LISTEN_THREAD = std::thread(std::bind(&Server::ListeningThread, this, true, false));  //IPv4 Listener
             }
 
-            LISTEN_THREAD = std::thread(std::bind(&Server::ListeningThread, this, true));  //IPv4 Listener
+            if(fSSL)
+            {
+                if(!BindListenPort(hSSLListenSocket.first, SSL_PORT, true, config.fRemote))
+                {
+                    ::Shutdown();
+                    return;
+                }
+                SSL_LISTEN_THREAD = std::thread(std::bind(&Server::ListeningThread, this, true, true));  //IPv4 SSL Listener
+            }
 
             /* Initialize the UPnP thread if remote connections are allowed. */
             if(config.fRemote && config::GetBoolArg(std::string("-upnp"), true))
-                UPNP_THREAD = std::thread(std::bind(&Server::UPnP, this));
+            {
+                if(!fSSLRequired)
+                    UPNP_THREAD = std::thread(std::bind(&Server::UPnP, this, PORT));
+
+                if(fSSL)
+                    SSL_UPNP_THREAD = std::thread(std::bind(&Server::UPnP, this, SSL_PORT));
+            }
 
         }
 
@@ -134,9 +160,17 @@ namespace LLP
         if(UPNP_THREAD.joinable())
             UPNP_THREAD.join();
 
-        /* Wait for listeners. */
+        /* Wait for SSL UPnP thread */
+        if(SSL_UPNP_THREAD.joinable())
+            SSL_UPNP_THREAD.join();
+
+        /* Wait for listener thread. */
         if(LISTEN_THREAD.joinable())
             LISTEN_THREAD.join();
+
+        /* Wait for SSLlistener thread. */
+        if(SSL_LISTEN_THREAD.joinable())
+            SSL_LISTEN_THREAD.join();
 
         /* Delete the data threads. */
         for(uint16_t nIndex = 0; nIndex < MAX_THREADS; ++nIndex)
@@ -165,9 +199,9 @@ namespace LLP
 
     /*  Returns the port number for this Server. */
     template <class ProtocolType>
-    uint16_t Server<ProtocolType>::GetPort() const
+    uint16_t Server<ProtocolType>::GetPort(bool fSSL) const
     {
-        return PORT;
+        return fSSL ? SSL_PORT : PORT;
     }
 
 
@@ -188,10 +222,10 @@ namespace LLP
 
     /*  Add a node address to the internal address manager */
     template <class ProtocolType>
-    void Server<ProtocolType>::AddNode(std::string strAddress, uint16_t nPort, bool fLookup)
+    void Server<ProtocolType>::AddNode(std::string strAddress, bool fLookup)
     {
        /* Assemble the address from input parameters. */
-       BaseAddress addr(strAddress, nPort, fLookup);
+       BaseAddress addr(strAddress, PORT, fLookup);
 
        /* Make sure address is valid. */
        if(!addr.IsValid())
@@ -408,6 +442,22 @@ namespace LLP
     }
 
 
+    /* Returns true if SSL is enabled for this server */
+    template <class ProtocolType>
+    bool Server<ProtocolType>::SSLEnabled()
+    {
+        return fSSL;
+    }
+
+
+    /* Returns true if SSL is required for this server */
+    template <class ProtocolType>
+    bool Server<ProtocolType>::SSLRequired()
+    {
+        return fSSLRequired;
+    }
+
+
      /*  Address Manager Thread. */
     template <class ProtocolType>
     void Server<ProtocolType>::Manager()
@@ -434,7 +484,7 @@ namespace LLP
             runtime::sleep(5000);
 
             /* Pick a weighted random priority from a sorted list of addresses. */
-            if(GetConnectionCount(FLAGS::OUTGOING) < nMaxOutgoing
+            if(GetConnectionCount(FLAGS::INCOMING) < nMaxIncoming
             && GetConnectionCount(FLAGS::ALL) < nMaxConnections
             && pAddressManager->StochasticSelect(addr))
             {
@@ -449,7 +499,19 @@ namespace LLP
 
                 /* Attempt the connection. */
                 debug::log(3, FUNCTION, ProtocolType::Name(), " Attempting Connection ", addr.ToString());
-                if(AddConnection(addr.ToStringIP(), addr.GetPort(), false))
+
+                /* Flag indicating connection was successful */
+                bool fConnected = false;
+                
+                /* First attempt SSL if configured */
+                if(fSSL)
+                   fConnected = AddConnection(addr.ToStringIP(), GetPort(true), true, false);
+
+                /* If SSL connection failed or was not attempted and SSL is not required, attempt on the non-SSL port */
+                if(!fConnected && !fSSLRequired)
+                    fConnected = AddConnection(addr.ToStringIP(), GetPort(false), false, false);
+
+                if(fConnected)
                 {
                     /* If address is DNS, log message on connection. */
                     std::string strDNS;
@@ -493,26 +555,23 @@ namespace LLP
     /*  Main Listening Thread of LLP Server. Handles new Connections and
      *  DDOS associated with Connection if enabled. */
     template <class ProtocolType>
-    void Server<ProtocolType>::ListeningThread(bool fIPv4)
+    void Server<ProtocolType>::ListeningThread(bool fIPv4, bool fSSL)
     {
         SOCKET hSocket;
         BaseAddress addr;
         socklen_t len_v4 = sizeof(struct sockaddr_in);
         socklen_t len_v6 = sizeof(struct sockaddr_in6);
 
+
         /* Setup poll objects. */
         pollfd fds[1];
         fds[0].events = POLLIN;
-        fds[0].fd     = (fIPv4 ? hListenSocket.first : hListenSocket.second);
-
-        /* Get the max connections. Default is 16 if maxconnections isn't specified. */
-        uint32_t nMaxIncoming    = static_cast<uint32_t>(config::GetArg(std::string("-maxincoming"), 84));
-        uint32_t nMaxConnections = static_cast<uint32_t>(config::GetArg(std::string("-maxconnections"), 100));
+        fds[0].fd = get_listening_socket(fIPv4, fSSL);
 
         /* Main listener loop. */
         while(!config::fShutdown.load())
         {
-            if ((fIPv4 ? hListenSocket.first : hListenSocket.second) != INVALID_SOCKET)
+            if (get_listening_socket(fIPv4, fSSL) != INVALID_SOCKET)
             {
                 /* Poll the sockets. */
                 fds[0].revents = 0;
@@ -537,22 +596,11 @@ namespace LLP
                     continue;
                 }
 
-                if(fIPv4)
-                {
-                    struct sockaddr_in sockaddr;
-
-                    hSocket = accept(hListenSocket.first, (struct sockaddr*)&sockaddr, &len_v4);
-                    if (hSocket != INVALID_SOCKET)
-                        addr = BaseAddress(sockaddr);
-                }
-                else
-                {
-                    struct sockaddr_in6 sockaddr;
-
-                    hSocket = accept(hListenSocket.second, (struct sockaddr*)&sockaddr, &len_v6);
-                    if (hSocket != INVALID_SOCKET)
-                        addr = BaseAddress(sockaddr);
-                }
+                /* Attempt to accept the socket connection */
+                struct sockaddr_in sockaddr;
+                hSocket = accept(get_listening_socket(fIPv4, fSSL), (struct sockaddr*)&sockaddr, fIPv4 ? &len_v4 : &len_v6);
+                if (hSocket != INVALID_SOCKET)
+                    addr = BaseAddress(sockaddr);
 
 
                 if(hSocket == INVALID_SOCKET)
@@ -578,17 +626,18 @@ namespace LLP
                         DDOS_MAP[addr] = new DDOS_Filter(DDOS_TIMESPAN);
 
 
-                    /* Add a new listening socket with SSL on or off according to server. */
-                    Socket sockNew(hSocket, addr, fSSL.load());
+                    /* Establish a new socket with SSL on or off according to server. */
+                    Socket sockNew(hSocket, addr, fSSL);
 
-                    /* Check for SSL accept error */
-                    if(fSSL.load() && sockNew.Errors())
+                    /* Check for errors accepting the connection */
+                    if(sockNew.Errors())
                     {
-                        debug::log(3, FUNCTION, "SSL accept handshake failure ",  addr.ToString());
+                        debug::log(3, FUNCTION, "Incoming Connection Request ",  addr.ToString(), " failed.");
                         sockNew.Close();
 
                         continue;
                     }
+
                     /* DDOS Operations: Only executed when DDOS is enabled. */
                     if((fDDOS && DDOS_MAP[addr]->Banned()))
                     {
@@ -597,7 +646,7 @@ namespace LLP
 
                         continue;
                     }
-                    else if(!CheckPermissions(addr.ToStringIP(), PORT))
+                    else if(!CheckPermissions(addr.ToStringIP(), fSSL ? SSL_PORT : PORT))
                     {
                         debug::log(3, FUNCTION, "Connection Request ",  addr.ToString(), " refused... Denied by allowip whitelist.");
 
@@ -627,13 +676,14 @@ namespace LLP
             }
         }
 
-        closesocket(fIPv4 ? hListenSocket.first : hListenSocket.second);
+        /* Thread exiting so close the listening socket */
+        closesocket(get_listening_socket(fIPv4, fSSL));
     }
 
 
     /*  Bind connection to a listening port. */
     template <class ProtocolType>
-    bool Server<ProtocolType>::BindListenPort(int32_t & hListenSocket, bool fIPv4, bool fRemote)
+    bool Server<ProtocolType>::BindListenPort(int32_t & hListenSocket, uint16_t nPort, bool fIPv4, bool fRemote)
     {
         std::string strError = "";
         /* Conditional declaration to avoid "unused variable" */
@@ -682,7 +732,7 @@ namespace LLP
             /* Bind to all interfaces if fRemote has been specified, otherwise only use local interface */
             sockaddr.sin_addr.s_addr = fRemote ? INADDR_ANY : htonl(INADDR_LOOPBACK);
 
-            sockaddr.sin_port = htons(PORT);
+            sockaddr.sin_port = htons(nPort);
             if(::bind(hListenSocket, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR)
             {
                 int32_t nErr = WSAGetLastError();
@@ -784,7 +834,7 @@ namespace LLP
 
     /* UPnP Thread. If UPnP is enabled then this thread will set up the required port forwarding. */
     template <class ProtocolType>
-    void Server<ProtocolType>::UPnP()
+    void Server<ProtocolType>::UPnP(uint16_t nPort)
     {
 #ifndef USE_UPNP
         return;
@@ -794,7 +844,7 @@ namespace LLP
             return;
 
         char port[6];
-        sprintf(port, "%d", PORT);
+        sprintf(port, "%d", nPort);
 
         const char * multicastif = 0;
         const char * minissdpdpath = 0;
@@ -889,6 +939,21 @@ namespace LLP
 
        debug::log(0, "UPnP closed.");
 #endif
+    }
+
+
+    /* Gets the listening socket handle */
+    template <class ProtocolType>
+    SOCKET Server<ProtocolType>::get_listening_socket(bool fIPv4, bool fSSL)
+    {
+        SOCKET hListen;
+
+        if(fSSL)
+            hListen = (fIPv4 ? hSSLListenSocket.first : hSSLListenSocket.second);
+        else
+            hListen = (fIPv4 ? hListenSocket.first : hListenSocket.second);
+
+        return hListen;
     }
 
 

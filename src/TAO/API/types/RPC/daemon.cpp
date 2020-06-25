@@ -65,14 +65,23 @@ namespace TAO
             {
                 LLP::TRITIUM_SERVER->DisconnectAll();
 
-                uint16_t nPort = static_cast<uint16_t>(config::GetArg(
-                    "-serverport", config::fTestNet.load() ? TRITIUM_TESTNET_PORT : TRITIUM_MAINNET_PORT));
+                /* Add connections and resolve potential DNS lookups. */
+                for(const auto& address : config::mapMultiArgs["-connect"])
+                {
+                    /* Flag indicating connection was successful */
+                    bool fConnected = false;
+                    
+                    /* First attempt SSL if configured */
+                    if(LLP::TRITIUM_SERVER->SSLEnabled())
+                    fConnected = LLP::TRITIUM_SERVER->AddConnection(address, LLP::TRITIUM_SERVER->GetPort(true), true, true);
 
-                for(const auto& node : config::mapMultiArgs["-connect"])
-                    LLP::TRITIUM_SERVER->AddConnection(node, nPort, false);
+                    /* If SSL connection failed or was not attempted and SSL is not required, attempt on the non-SSL port */
+                    if(!fConnected && !LLP::TRITIUM_SERVER->SSLRequired())
+                        fConnected = LLP::TRITIUM_SERVER->AddConnection(address, LLP::TRITIUM_SERVER->GetPort(false), false, true);
+                }
 
                 for(const auto& node : config::mapMultiArgs["-addnode"])
-                    LLP::TRITIUM_SERVER->AddNode(node, nPort);
+                    LLP::TRITIUM_SERVER->AddNode(node);
 
             }
 

@@ -84,18 +84,36 @@ namespace TAO
             LLP::P2P::ConnectionRequest request = session.GetP2PRequest(strAppID, hashPeer, true);
 
             /* TODO check timestamp of request to see if it has expired? */
+        
+            /* Flag indicating the connection was established */
+            bool fConnected = false;
 
-            /* Establish the connection */
-            if(!LLP::P2P_SERVER->AddConnection(request.address.ToStringIP(), 
-                                               request.address.GetPort(), 
+            /* If this node has SSL enabled and so does the peer then attempt the connection on the SSL port first */
+            if(LLP::P2P_SERVER->SSLEnabled() && request.nSSLPort > 0)
+                /* Establish the connection */
+                fConnected = LLP::P2P_SERVER->AddConnection(request.address.ToStringIP(), 
+                                               request.nSSLPort,
+                                               true, 
                                                false, 
                                                strAppID, 
                                                hashGenesis, 
                                                hashPeer, 
-                                               request.nSession))
-            {
+                                               request.nSession);
+            
+            /* If the SSL connection as not attempted or not successful then try the non-SSL connection */
+            if(!fConnected && !LLP::P2P_SERVER->SSLRequired() && request.nPort > 0)
+                /* Establish the connection */
+                fConnected = LLP::P2P_SERVER->AddConnection(request.address.ToStringIP(), 
+                                               request.nSSLPort,
+                                               false, 
+                                               false, 
+                                               strAppID, 
+                                               hashGenesis, 
+                                               hashPeer, 
+                                               request.nSession);
+
+            if(!fConnected)
                 throw APIException(-284, "Failed to connect to peer");
-            }
             
             /* Get the actual connection data thread */
             if(get_connection(strAppID, hashGenesis, hashPeer, connection))
