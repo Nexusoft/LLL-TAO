@@ -624,17 +624,27 @@ namespace LLP
 
             /** Handle Reading Packet Data. **/
             uint32_t nAvailable = Available();
-            if(nAvailable > 0 && !INCOMING.IsNull() && INCOMING.DATA.size() < INCOMING.LENGTH)
+            if(INCOMING.Header() && nAvailable > 0 && !INCOMING.IsNull() && INCOMING.DATA.size() < INCOMING.LENGTH)
             {
-                /* Create the packet data object. */
-                std::vector<uint8_t> DATA(std::min(nAvailable, (uint32_t)(INCOMING.LENGTH - INCOMING.DATA.size())), 0);
+                /* The maximum number of bytes to read is th number of bytes specified in the message length, 
+                   minus any already read on previous reads*/
+                uint32_t nMaxRead = (uint32_t)(INCOMING.LENGTH - INCOMING.DATA.size());
+                
+                /* Vector to receve the read bytes. This should be the smaller of the number of bytes currently available or the
+                   maximum amount to read */
+                std::vector<uint8_t> DATA(std::min(nAvailable, nMaxRead), 0);
 
-                /* Read up to 512 bytes of data. */
-                if(Read(DATA, DATA.size()) == DATA.size())
-                {
-                    INCOMING.DATA.insert(INCOMING.DATA.end(), DATA.begin(), DATA.end());
+                /* Read up to the buffer size. */
+                int32_t nRead = Read(DATA, DATA.size()); 
+                
+                /* If something was read, insert it into the packet data.  NOTE: that due to SSL packet framing we could end up 
+                   reading less bytes than appear available.  Therefore we only copy the number of bytes actually read */
+                if(nRead > 0)
+                    INCOMING.DATA.insert(INCOMING.DATA.end(), DATA.begin(), DATA.begin() + nRead);
+                    
+                /* If the packet is now considered complete, fire the packet complete event */
+                if(INCOMING.Complete())
                     Event(EVENTS::PACKET, static_cast<uint32_t>(DATA.size()));
-                }
             }
         }
     }
