@@ -832,6 +832,9 @@ namespace LLP
         /* Allocate memory for the new block. */
         TAO::Ledger::TritiumBlock *pBlock = new TAO::Ledger::TritiumBlock();
 
+        /* Lock this user's sigchain. */
+        LOCK(session.CREATE_MUTEX);
+
         /* Create a new block and loop for prime channel if minimum bit target length isn't met */
         while(TAO::Ledger::CreateBlock(pSigChain, PIN, nChannel.load(), *pBlock, ++nBlockIterator, &CoinbaseTx))
         {
