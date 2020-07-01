@@ -34,7 +34,7 @@ namespace TAO
         bool P2P::get_connection(const std::string& strAppID, 
                                 const uint256_t& hashGenesis, 
                                 const uint256_t& hashPeer,
-                                memory::atomic_ptr<LLP::P2PNode>& connection)
+                                memory::atomic_ptr<LLP::P2PNode> &connection)
         {
             /* GEt the matching connection from the server */
             memory::atomic_ptr<LLP::P2PNode>& pConnection = LLP::P2P_SERVER->GetSpecificConnection(strAppID, hashGenesis, hashPeer);

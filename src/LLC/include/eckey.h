@@ -326,7 +326,7 @@ namespace LLC
          *  @return True if the key was created successfully.
          *
          **/
-        static bool MakeShared(const ECKey& privateKey, const ECKey& publicKey, std::vector<uint8_t>& vchShared);
+        static bool MakeShared(const ECKey& privateKey, const ECKey& publicKey, std::vector<uint8_t> &vchShared);
 
 
     };

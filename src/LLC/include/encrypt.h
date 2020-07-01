@@ -31,7 +31,7 @@ namespace LLC
      *  @return True if the data was encrypted successfully.
      *
      **/
-    bool EncryptAES256(std::vector<uint8_t>& vchKey, const std::vector<uint8_t>& vchPlainText, std::vector<uint8_t>& vchEncrypted);
+    bool EncryptAES256(const std::vector<uint8_t>& vchKey, const std::vector<uint8_t>& vchPlainText, std::vector<uint8_t> &vchEncrypted);
 
 
     /** Decrypt
@@ -45,7 +45,7 @@ namespace LLC
      *  @return True if the data was decrypted successfully.
      *
      **/
-    bool DecryptAES256(std::vector<uint8_t>& vchKey, const std::vector<uint8_t>& vchEncrypted, std::vector<uint8_t>& vchPlainText);
+    bool DecryptAES256(const std::vector<uint8_t>& vchKey, const std::vector<uint8_t>& vchEncrypted, std::vector<uint8_t> &vchPlainText);
         
 
 

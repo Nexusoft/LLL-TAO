@@ -216,7 +216,7 @@ namespace TAO
             bool get_connection(const std::string& strAppID, 
                                 const uint256_t& hashGenesis, 
                                 const uint256_t& hashPeer,
-                                memory::atomic_ptr<LLP::P2PNode>& connection);
+                                memory::atomic_ptr<LLP::P2PNode> &connection);
         };
     }
 }

@@ -85,7 +85,7 @@ namespace TAO
         }
 
         /* Initializes the session from username / password / pin */
-        void Session::Initialize(const SecureString& strUsername, const SecureString& strPassword, const SecureString& strPin, const uint256_t nSessionID)
+        void Session::Initialize(const SecureString& strUsername, const SecureString& strPassword, const SecureString& strPin, const uint256_t& nSessionID)
         {
             LOCK(MUTEX);
 
@@ -266,7 +266,7 @@ namespace TAO
 
 
         /* Gets P2P Request matching the app id / hashPeer criteria. */
-        LLP::P2P::ConnectionRequest Session::GetP2PRequest(const std::string& strAppID, const uint256_t hashPeer, bool fIncoming) const
+        LLP::P2P::ConnectionRequest Session::GetP2PRequest(const std::string& strAppID, const uint256_t& hashPeer, bool fIncoming) const
         {
             /* Lock mutex so p2p request vector can't be accessed by another thread */
             LOCK(MUTEX);
@@ -289,7 +289,7 @@ namespace TAO
 
 
         /* Checks to see if a P2P Request matching the app id / hashPeer criteria exists. */
-        bool Session::HasP2PRequest(const std::string& strAppID, const uint256_t hashPeer, bool fIncoming) const
+        bool Session::HasP2PRequest(const std::string& strAppID, const uint256_t& hashPeer, bool fIncoming) const
         {
             /* Lock mutex so p2p request vector can't be accessed by another thread */
             LOCK(MUTEX);
@@ -311,7 +311,7 @@ namespace TAO
 
 
         /* Deletes the P2P Request matching the app id / hashPeer criteria exists. */
-        void Session::DeleteP2PRequest(const std::string& strAppID, const uint256_t hashPeer, bool fIncoming)
+        void Session::DeleteP2PRequest(const std::string& strAppID, const uint256_t& hashPeer, bool fIncoming)
         {
             /* Lock mutex so p2p request vector can't be accessed by another thread */
             LOCK(MUTEX);

@@ -807,7 +807,7 @@ namespace LLC
 
 
     /* Uses ECDH to generate a shared key from the private and public keys of two different EC keypairs */
-    bool ECKey::MakeShared(const ECKey& privateKey, const ECKey& publicKey, std::vector<uint8_t>& vchShared)
+    bool ECKey::MakeShared(const ECKey& privateKey, const ECKey& publicKey, std::vector<uint8_t> &vchShared)
     {
         /* Generate the shared secret */
         EVP_PKEY_CTX *ctx;

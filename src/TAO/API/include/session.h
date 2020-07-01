@@ -85,7 +85,7 @@ namespace TAO
                 void Initialize(const SecureString& strUsername, 
                         const SecureString& strPassword, 
                         const SecureString& strPin,
-                        const uint256_t nSessionID);
+                        const uint256_t& nSessionID);
 
 
                 /** ID
@@ -218,7 +218,7 @@ namespace TAO
                 *  @return the private key for the auth public key
                 *
                 **/
-                memory::encrypted_ptr<memory::encrypted_type<uint512_t>>& GetNetworkKey(uint256_t nSession) const;
+                memory::encrypted_ptr<memory::encrypted_type<uint512_t>>& GetNetworkKey(const uint256_t& nSession) const;
 
 
                 /** AddP2PRequest
@@ -243,7 +243,7 @@ namespace TAO
                 *  @return The connection request.  
                 *
                 **/
-                LLP::P2P::ConnectionRequest GetP2PRequest(const std::string& strAppID, const uint256_t hashPeer, bool fIncoming) const;
+                LLP::P2P::ConnectionRequest GetP2PRequest(const std::string& strAppID, const uint256_t& hashPeer, bool fIncoming) const;
 
 
                 /** HasP2PRequest
@@ -257,7 +257,7 @@ namespace TAO
                 *  @return True if a matching connection exists.  
                 *
                 **/
-                bool HasP2PRequest(const std::string& strAppID, const uint256_t hashPeer, bool fIncoming) const;
+                bool HasP2PRequest(const std::string& strAppID, const uint256_t& hashPeer, bool fIncoming) const;
 
 
                 /** DeleteP2PRequest
@@ -269,7 +269,7 @@ namespace TAO
                 *  @param[in] fIncoming Flag indicating whether this is an incoming or outgoing request .
                 *
                 **/
-                void DeleteP2PRequest(const std::string& strAppID, const uint256_t hashPeer, bool fIncoming);
+                void DeleteP2PRequest(const std::string& strAppID, const uint256_t& hashPeer, bool fIncoming);
 
 
                 /** GetP2PRequests

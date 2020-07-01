@@ -24,7 +24,7 @@ namespace LLC
 {
 
     /* Encrypts the data using the AES 256 function and the specified symmetric key. */
-    bool EncryptAES256(std::vector<uint8_t>& vchKey, const std::vector<uint8_t>& vchPlainText, std::vector<uint8_t>& vchEncrypted)
+    bool EncryptAES256(const std::vector<uint8_t>& vchKey, const std::vector<uint8_t>& vchPlainText, std::vector<uint8_t> &vchEncrypted)
     {
         /* Check the key length.  NOTE that this should be double AES_KEYLEN as the incoming key is in hex */
         if(vchKey.size() != AES_KEYLEN)
@@ -87,7 +87,7 @@ namespace LLC
 
     
     /* Decrypts the data using the AES 256 function and the specified symmetric key. */
-    bool DecryptAES256(std::vector<uint8_t>& vchKey, const std::vector<uint8_t>& vEncrypted, std::vector<uint8_t>& vPlainText)
+    bool DecryptAES256(const std::vector<uint8_t>& vchKey, const std::vector<uint8_t>& vEncrypted, std::vector<uint8_t> &vPlainText)
     {
         /* Check the key length.  NOTE that this should be double AES_KEYLEN as the incoming key is in hex */
         if(vchKey.size() != AES_KEYLEN)
