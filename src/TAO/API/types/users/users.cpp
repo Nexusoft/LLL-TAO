@@ -119,7 +119,7 @@ namespace TAO
             if(config::fMultiuser.load() && params.find("session") != params.end())
                 nSession.SetHex(params["session"].get<std::string>());
 
-            return GetGenesis(nSession, false);
+            return GetGenesis(nSession);
         }
 
 
@@ -145,7 +145,7 @@ namespace TAO
                 }
             }
 
-            return GetSessionManager().Get(nSessionToUse).GetAccount()->Genesis(); //TODO: Assess the security of being able to generate genesis. Most likely this should be a localDB thing.
+            return GetSessionManager().Get(nSessionToUse, false).GetAccount()->Genesis(); //TODO: Assess the security of being able to generate genesis. Most likely this should be a localDB thing.
         }
 
 
@@ -160,7 +160,7 @@ namespace TAO
             SecureString strPIN;
 
             /* Get the active session */
-            Session& session = GetSession(params);
+            Session& session = GetSession(params, true, false);
 
             /* If we have a pin already, check we are allowed to use it for the requested action */
             bool fNeedPin = session.GetActivePIN().IsNull() || session.GetActivePIN()->PIN().empty() || !(session.GetActivePIN()->UnlockedActions() & nUnlockAction);
@@ -185,7 +185,7 @@ namespace TAO
          * logged in than an APIException is thrown, if fThrow is true.
          * If not in sessionless mode then the method will return the session from the params.
          * If the session is not is available in the params then an APIException is thrown, if fThrow is true. */
-        Session& Users::GetSession(const json::json params, bool fThrow) const
+        Session& Users::GetSession(const json::json params, bool fThrow, bool fLogActivity) const
         {
             /* Check for session parameter. */
             uint256_t nSession = 0; // ID 0 is used for sessionless API
@@ -210,17 +210,17 @@ namespace TAO
             if(!fThrow && !GetSessionManager().Has(nSession))
                 return null_session;
 
-            return GetSessionManager().Get(nSession);
+            return GetSessionManager().Get(nSession, fLogActivity);
         }
 
 
         /*Gets the session ID for a given genesis, if it is logged in on this node. */
-        Session& Users::GetSession(const uint256_t& hashGenesis) const
+        Session& Users::GetSession(const uint256_t& hashGenesis, bool fLogActivity) const
         {
             if(!config::fMultiuser.load())
             {
                 if(GetSessionManager().mapSessions.count(0) > 0 && GetSessionManager().mapSessions[0].GetAccount()->Genesis() == hashGenesis)
-                    return GetSessionManager().Get(0);
+                    return GetSessionManager().Get(0, fLogActivity);
             }
             else
             {
@@ -228,7 +228,8 @@ namespace TAO
                 while(session != GetSessionManager().mapSessions.end())
                 {
                     if(session->second.GetAccount()->Genesis() == hashGenesis)
-                        return session->second;
+                        return GetSessionManager().Get(session->first, fLogActivity);
+                    
                     /* increment iterator */
                     ++session;
                 }
@@ -249,7 +250,7 @@ namespace TAO
         {
             if(!config::fMultiuser.load())
             {
-                return GetSessionManager().Has(0) > 0 && GetSessionManager().Get(0).GetAccount()->Genesis() == hashGenesis;
+                return GetSessionManager().Has(0) > 0 && GetSessionManager().Get(0, false).GetAccount()->Genesis() == hashGenesis;
             }
             else
             {

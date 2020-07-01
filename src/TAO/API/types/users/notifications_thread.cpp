@@ -127,7 +127,7 @@ namespace TAO
                         /* Ensure that the user is logged, in, wallet unlocked, and unlocked for notifications. */
                         if(GetSessionManager().Has(nSession))
                         { 
-                            Session& session = GetSessionManager().Get(nSession);
+                            Session& session = GetSessionManager().Get(nSession, false);
                             if(!session.Locked() && session.CanProcessNotifications())
                                 auto_process_notifications(session.ID());
                         }
@@ -156,6 +156,9 @@ namespace TAO
 
             /* Set the session ID in the params */
             params["session"] = nSession.ToString();
+
+            /* Set flag to not reset the session activity, since this is an automated process */
+            params["logactivity"] = false;
 
             /* Flag indicating the process should immediately retry upon failure.  This is flagged by certain exception codes */
             bool fRetry = false;

@@ -38,7 +38,7 @@ namespace TAO
             json::json ret;
 
             /* Get the session to be used for this API call */
-            Session& session = users->GetSession(params);
+            Session& session = users->GetSession(params, true, false);
 
             /* The callers genesis */
             uint256_t hashGenesis = session.GetAccount()->Genesis();
@@ -87,6 +87,9 @@ namespace TAO
             
             /* Add the genesis */
             ret["genesis"] = hashGenesis.GetHex();
+
+            /* Add the last active timestamp */
+            ret["lastactive"] = session.GetLastActive();
 
             /* sig chain transaction count */
             uint32_t nTransactions = 0;

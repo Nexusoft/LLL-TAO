@@ -641,7 +641,7 @@ namespace TAO
                     break;
 
                 /* Get the session */
-                TAO::API::Session& session = TAO::API::GetSessionManager().Get(0);
+                TAO::API::Session& session = TAO::API::GetSessionManager().Get(0, false);
 
                 SecureString strPIN = session.GetActivePIN()->PIN();
 

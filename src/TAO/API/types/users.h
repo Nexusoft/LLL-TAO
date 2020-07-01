@@ -137,11 +137,12 @@ namespace TAO
              *  @param[in] jsonParams The json array of parameters being passed to this method.
              *  @param[in] fThrow Flag to indicate whether this method should throw an exception
              *             if a valid session ID cannot be found.
+             *  @param[in] fLogActivity Flag indicating that this call should update the session activity timestamp
              *
              *  @return the session id.
              *
              **/
-            Session& GetSession(const json::json params, bool fThrow = true) const;
+            Session& GetSession(const json::json params, bool fThrow = true, bool fLogActivity = true) const;
 
 
             /** GetSession
@@ -149,10 +150,11 @@ namespace TAO
              *  Gets the session ID for a given genesis, if it is logged in on this node.
              *
              *  @param[in] hashGenesis The genesis hash to search for.
+             *  @param[in] fLogActivity Flag indicating that this call should update the session activity timestamp
              * 
              *  @return The session if the genesis is logged in, otherwise throws an exception
              **/
-            Session& GetSession(const uint256_t& hashGenesis) const;
+            Session& GetSession(const uint256_t& hashGenesis, bool fLogActivity = true) const;
 
 
             /** LoggedIn

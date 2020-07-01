@@ -98,7 +98,7 @@ namespace TAO
         }
 
         /* Returns a session instance by session id */
-        Session& SessionManager::Get(const uint256_t& sessionID)
+        Session& SessionManager::Get(const uint256_t& sessionID, bool fLogActivity)
         {
             /* Lock the mutex before checking that it exists and then updating the last active time  */
             {
@@ -107,8 +107,9 @@ namespace TAO
                 if(mapSessions.count(sessionID) == 0)
                     throw APIException(-11, "User not logged in");
 
-                /* Update the activity */
-                mapSessions[sessionID].SetLastActive();
+                /* Update the activity if requested */
+                if(fLogActivity)
+                    mapSessions[sessionID].SetLastActive();
             }
 
             /* Return the session.  NOTE: we do this outside of the braces where the mutex is locked as we need to guarantee that

@@ -1172,8 +1172,13 @@ namespace TAO
             if(TAO::Ledger::ChainState::Synchronizing())
                 throw APIException(-256, "Cannot process notifications whilst synchronizing");
 
+            /* Flag indicating that this call should log this call in the session activity */
+            bool fLogActivity = true;
+            if(params.find("logactivity") != params.end())
+                fLogActivity = params["logactivity"].get<std::string>() == "true" || params["logactivity"].get<std::string>() == "1";
+            
             /* Get the session to be used for this API call */
-            Session& session = users->GetSession(params);;
+            Session& session = users->GetSession(params, true, fLogActivity);
 
             /* Get the account. */
             const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = session.GetAccount();
@@ -1733,7 +1738,7 @@ namespace TAO
                     throw APIException(-30, "Failed to build register pre-states");
 
                 /* Sign the transaction. */
-                if(!txout.Sign(users->GetKey(txout.nSequence, strPIN, users->GetSession(params))))
+                if(!txout.Sign(users->GetKey(txout.nSequence, strPIN, session)))
                     throw APIException(-31, "Ledger failed to sign transaction");
 
                 /* Execute the operations layer. */

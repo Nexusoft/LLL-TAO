@@ -34,7 +34,7 @@ namespace TAO
                 throw APIException(-131, "Lock not supported in multiuser mode");
 
             /* Get the session */
-            Session& session = GetSessionManager().Get(0);
+            Session& session = GetSession(params);
 
             /* Check if already unlocked. */
             if(session.GetActivePIN().IsNull() || (!session.GetActivePIN().IsNull() && session.GetActivePIN()->PIN() == ""))

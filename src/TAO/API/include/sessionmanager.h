@@ -54,9 +54,7 @@ namespace TAO
                  *  @return The newly created session instance
                  * 
                  **/
-                Session& Add(const SecureString& strUsername, 
-                        const SecureString& strPassword, 
-                        const SecureString& strPin);
+                Session& Add(const SecureString& strUsername, const SecureString& strPassword, const SecureString& strPin);
 
 
                 /** Remove
@@ -64,6 +62,7 @@ namespace TAO
                  *  Remove a session from the manager
                  * 
                  *  @param[in] sessionID The session id to remove
+                 * 
                  *  @return The newly created session instance
                  * 
                  **/
@@ -75,10 +74,12 @@ namespace TAO
                  *  Returns a session instance by session id
                  * 
                  *  @param[in] sessionID The session id to search for
+                 *  @param[in] fLogActivity Flag indicating that this call should update the session activity timestamp
+                 *  
                  *  @return The session instance
                  * 
                  **/
-                Session& Get(const uint256_t& sessionID);
+                Session& Get(const uint256_t& sessionID, bool fLogActivity = true);
 
 
                 /** Has
@@ -86,6 +87,7 @@ namespace TAO
                  *  Checks to see if the session ID exists in session map
                  * 
                  *  @param[in] sessionID The session id to search for
+                 * 
                  *  @return True if the session ID exists
                  * 
                  **/

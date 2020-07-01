@@ -738,7 +738,7 @@ namespace LLP
             /* Wake up events processor and wait for a signal to guarantee added transactions won't orphan a mined block. */
             if(TAO::API::users && TAO::API::users->NOTIFICATIONS_PROCESSOR
                 && TAO::API::GetSessionManager().Has(0)
-                && TAO::API::GetSessionManager().Get(0).CanProcessNotifications())
+                && TAO::API::GetSessionManager().Get(0, false).CanProcessNotifications())
             {
                 /* Find the thread processing notifications for this user */
                 TAO::API::NotificationsThread* pThread = TAO::API::users->NOTIFICATIONS_PROCESSOR->FindThread(0);
@@ -802,7 +802,7 @@ namespace LLP
         uint32_t nBitMask = config::GetBoolArg(std::string("-primemod"), false) ? 0xFE000000 : 0x80000000;
 
         /* Get the session */
-        TAO::API::Session& session = TAO::API::GetSessionManager().Get(0);
+        TAO::API::Session& session = TAO::API::GetSessionManager().Get(0, false);
 
         /* Attempt to unlock the account. */
         if(session.Locked())
@@ -890,7 +890,7 @@ namespace LLP
             TAO::Ledger::GetOffsets(pBlock->GetPrime(), pBlock->vOffsets);
 
             /* Get the session */
-            TAO::API::Session& session = TAO::API::GetSessionManager().Get(0);
+            TAO::API::Session& session = TAO::API::GetSessionManager().Get(0, false);
 
             /* Check that the account is unlocked for minting */
             if(!session.CanMine())
@@ -1015,7 +1015,7 @@ namespace LLP
             //   return false;
 
             /* Get the session */
-            TAO::API::Session& session = TAO::API::GetSessionManager().Get(0);
+            TAO::API::Session& session = TAO::API::GetSessionManager().Get(0, false);
 
             /* Attempt to get the sigchain. */
             const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pSigChain = session.GetAccount();
@@ -1045,7 +1045,8 @@ namespace LLP
     /*  Determines if the mining wallet is unlocked. */
     bool Miner::is_locked()
     {
-        return TAO::API::GetSessionManager().Get(0).Locked() && !TAO::API::GetSessionManager().Get(0).CanMine();
+        TAO::API::Session& session = TAO::API::GetSessionManager().Get(0, false);
+        return session.Locked() && !session.CanMine();
     }
 
 

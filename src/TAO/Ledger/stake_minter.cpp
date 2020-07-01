@@ -187,15 +187,17 @@ namespace TAO
         /* Verify user account unlocked for minting. */
         bool StakeMinter::CheckUser()
         {
+            TAO::API::Session& session = TAO::API::GetSessionManager().Get(0, false);
+
             /* Check whether unlocked account available. */
-            if(TAO::API::GetSessionManager().Get(0).Locked())
+            if(session.Locked())
             {
                 debug::log(0, FUNCTION, "No unlocked account available for staking");
                 return false;
             }
 
             /* Check that the account is unlocked for staking */
-            if(!TAO::API::GetSessionManager().Get(0).CanStake())
+            if(!session.CanStake())
             {
                 debug::log(0, FUNCTION, "Account has not been unlocked for staking");
                 return false;
