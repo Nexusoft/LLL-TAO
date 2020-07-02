@@ -15,6 +15,8 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/session.h>
 
+#include <thread>
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -114,6 +116,20 @@ namespace TAO
 
                 /** Default Constructor made private as access should be via singleton. **/
                 SessionManager();
+
+
+                /** PurgeInactive
+                 *
+                 *  Removes any sessions that have been inactive for longer than the session timeout.
+                 *
+                 *  @param[in] nTimeout The timeout in minutes to determine if sessions are inactive 
+                 *  
+                 **/
+                void PurgeInactive(uint32_t nTimeout);
+
+
+                /* Thread to purge inactive sessions */
+                std::thread PURGE_THREAD;
 
 
         };

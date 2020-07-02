@@ -51,12 +51,24 @@ namespace TAO
         SessionManager::SessionManager()
         : mapSessions()
         , MUTEX()
+        , PURGE_THREAD()
         {
+            /* Check to see if session timeout has been configured.  This value is in minutes */
+            uint32_t nTimeout = config::GetArg("-sessiontimeout", 0);
+
+            /* If a timeout has been set then start the Purge thread */
+            if(nTimeout > 0)
+                PURGE_THREAD = std::thread(std::bind(&SessionManager::PurgeInactive, this, nTimeout));
         }
 
         /* Default Destructor. */
         SessionManager::~SessionManager()
         {
+            /* Wait for PURGE thread to complete */
+            if(PURGE_THREAD.joinable())
+                PURGE_THREAD.join();
+
+            /* Lock session mutex one last time before clearing the sessions */
             LOCK(MUTEX);
 
             /* Clear all sessions */
@@ -132,6 +144,52 @@ namespace TAO
         {
             LOCK(MUTEX);
             mapSessions.clear();
+        }
+
+
+        /* Destroys all sessions and removes them */
+        void SessionManager::PurgeInactive(uint32_t nTimeout)
+        {
+            /* mutex and condition variable for the thread loop */
+            std::mutex PURGE_MUTEX;
+            std::condition_variable PURGE_CONDITION;
+
+            while(!config::fShutdown.load())
+            {
+                std::unique_lock<std::mutex> lock(PURGE_MUTEX);
+                
+                /* Check the sessions every 10 seconds */
+                PURGE_CONDITION.wait_for(lock, std::chrono::seconds(10), [this]{ return config::fShutdown.load();});
+
+                /* Check for shutdown. */
+                if(config::fShutdown.load())
+                    return;
+
+                /* Timestamp to determine if the session should be purged.  This is nTimeout minutes in the past from current time */
+                uint64_t nPurgeTime = runtime::unifiedtimestamp() - nTimeout * 60;
+
+                {
+                    /* lock the session mutex so that we can check the timeout state of each */
+                    LOCK(MUTEX);
+
+                    /* Delete any sessions where the last activity time is earlier than nTimeout minutes ago */
+                    auto session = mapSessions.begin();
+                    while(session != mapSessions.end())
+                    {
+                        /* Check to see if the session last active timestamp is earlier than the purge time */
+                        if(session->second.GetLastActive() < nPurgeTime)
+                        {
+                            debug::log(3, FUNCTION, "Removing inactive API session: ", session->first.ToString() );
+
+                            /* Erase the session and capture the iterator to the next element */
+                            session = mapSessions.erase(session);
+                        }
+                        else
+                            /* increment iterator */
+                            ++session;
+                    }
+                }
+            }
         }
 
     }
