@@ -578,6 +578,16 @@ namespace TAO
                                TAO::Ledger::Transaction& tx);
 
 
+            /** TerminateSession
+             *
+             *  Gracefully closes down a users session
+             *
+             *  @param[in] nSession The parameters from the API call.
+             *  
+             *
+             **/
+            void TerminateSession(const uint256_t& nSession);
+
           private:
 
 

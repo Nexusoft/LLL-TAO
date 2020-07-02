@@ -25,6 +25,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/stake_minter.h>
 #include <TAO/Ledger/types/transaction.h>
 
 #include <Util/include/hex.h>
@@ -337,6 +338,68 @@ namespace TAO
 
             /* Create the transaction and return */
             return TAO::Ledger::CreateTransaction(user, pin, tx);
+        }
+
+        /* Gracefully closes down a users session */
+        void Users::TerminateSession(const uint256_t& nSession)
+        {
+            /* Check that the session exists */
+            if(!GetSessionManager().Has(nSession))
+                throw APIException(-141, "Already logged out");
+
+            /* The genesis of the user logging out */
+            uint256_t hashGenesis = GetSessionManager().Get(nSession).GetAccount()->Genesis();
+
+            /* Get the connections from the P2P server */
+            std::vector<memory::atomic_ptr<LLP::P2PNode>*> vConnections = LLP::P2P_SERVER->GetConnections();
+
+            /* Iterate the connections*/
+            for(const auto& connection : vConnections)
+            {
+                /* Skip over inactive connections. */
+                if(!connection->load())
+                    continue;
+
+                /* Push the active connection. */
+                if(connection->load()->Connected())
+                {
+                    /* Check that the connection is from this genesis hash  */
+                    if(connection->load()->hashGenesis != hashGenesis)
+                        continue;
+
+                    /* Send the terminate message to peer for graceful termination */
+                    connection->load()->PushMessage(LLP::P2P::ACTION::TERMINATE, connection->load()->nSession);
+                }
+            }
+
+            /* If not using multi-user then we need to send a deauth message to all peers */
+            if(!config::fMultiuser.load())
+            {
+                /* Generate an DEAUTH message to send to all peers */
+                DataStream ssMessage = LLP::TritiumNode::GetAuth(false);
+
+                /* Check whether it is valid before relaying it to all peers */
+                if(ssMessage.size() > 0)
+                    LLP::TRITIUM_SERVER->_Relay(uint8_t(LLP::Tritium::ACTION::DEAUTH), ssMessage);
+            }
+
+
+            /* Remove the session from the notifications processor */
+            if(NOTIFICATIONS_PROCESSOR)
+                NOTIFICATIONS_PROCESSOR->Remove(nSession);
+
+            /* If this is session 0 and stake minter is running when logout, stop it */
+            TAO::Ledger::StakeMinter& stakeMinter = TAO::Ledger::StakeMinter::GetInstance();
+            if(nSession == 0 && stakeMinter.IsStarted())
+                stakeMinter.Stop();
+
+            {
+                /* Lock the signature chain in case another process attempts to create a transaction . */
+                LOCK(GetSessionManager().Get(nSession).CREATE_MUTEX);
+
+                /* Finally remove the session from the session manager */
+                GetSessionManager().Remove(nSession);
+            }
         }
     }
 }
