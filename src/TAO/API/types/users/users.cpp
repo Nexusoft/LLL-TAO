@@ -64,6 +64,9 @@ namespace TAO
             /* Set the shutdown flag and join events processing thread. */
             fShutdown = true;
 
+            if(LOGIN_THREAD.joinable())
+                LOGIN_THREAD.join();
+
             /* Destroy the notifications processor */
             if(NOTIFICATIONS_PROCESSOR)
                 delete NOTIFICATIONS_PROCESSOR;
