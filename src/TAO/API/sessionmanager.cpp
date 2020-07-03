@@ -168,6 +168,10 @@ namespace TAO
                 /* Timestamp to determine if the session should be purged.  This is nTimeout minutes in the past from current time */
                 uint64_t nPurgeTime = runtime::unifiedtimestamp() - nTimeout * 60;
 
+                /* Vector of session ID's to purge.  First we identify those that are inactive and add them to this list, then we
+                   gracefully log out each of the sessions */
+                std::vector<uint256_t> vPurge;
+
                 {
                     /* lock the session mutex so that we can check the timeout state of each */
                     LOCK(MUTEX);
@@ -178,16 +182,20 @@ namespace TAO
                     {
                         /* Check to see if the session last active timestamp is earlier than the purge time */
                         if(session->second.GetLastActive() < nPurgeTime)
-                        {
-                            debug::log(3, FUNCTION, "Removing inactive API session: ", session->first.ToString() );
-
-                            /* Erase the session and capture the iterator to the next element */
-                            session = mapSessions.erase(session);
-                        }
-                        else
-                            /* increment iterator */
-                            ++session;
+                            /* Add the session ID to the purge list */
+                            vPurge.push_back(session->first);
+                        
+                        /* increment iterator */
+                        ++session;
                     }
+                }
+
+                /* Now iterate the purge lust and gracefully log out each session */
+                for(const auto& nSession : vPurge)
+                {
+                    debug::log(3, FUNCTION, "Removing inactive API session: ", nSession.ToString() );
+
+                    users->TerminateSession(nSession);
                 }
             }
         }
