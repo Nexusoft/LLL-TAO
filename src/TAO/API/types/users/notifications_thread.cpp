@@ -117,7 +117,7 @@ namespace TAO
 
                 /* Check we're not synchronizing */
                 if(TAO::Ledger::ChainState::Synchronizing())
-                    return;
+                    continue;
 
                 /* Iterate through all sessions */
                 for(const auto nSession : SESSIONS)
