@@ -340,7 +340,8 @@ namespace LLD
             pstream->seekg(nFilePos, std::ios::beg);
 
             /* Read the bucket binary data from file stream */
-            pstream->read((char*) &vBucket[0], vBucket.size());
+            if(!pstream->read((char*) &vBucket[0], vBucket.size()))
+                return debug::error(FUNCTION, "only ", pstream->gcount(), "/", vBucket.size(), " bytes read");
 
             /* Check if this bucket has the key */
             if(std::equal(vBucket.begin() + 13, vBucket.begin() + 13 + vKeyCompressed.size(), vKeyCompressed.begin()))
@@ -544,7 +545,9 @@ namespace LLD
 
         /* Flush the key file to disk. */
         pstream->seekp (nFilePos, std::ios::beg);
-        pstream->write((char*)&ssKey.Bytes()[0], ssKey.size());
+        if(!pstream->write((char*)&ssKey.Bytes()[0], ssKey.size()))
+            return debug::error(FUNCTION, "only ", pstream->gcount(), "/", ssKey.size(), " bytes written");
+
         pstream->flush();
 
         /* Seek to the index position. */
@@ -557,7 +560,9 @@ namespace LLD
         std::vector<uint8_t> vBucket((uint8_t*)&nIndex, (uint8_t*)&nIndex + 2);
 
         /* Write the index into hashmap. */
-        pindex->write((char*)&vBucket[0], vBucket.size());
+        if(!pindex->write((char*)&vBucket[0], vBucket.size()))
+            return debug::error(FUNCTION, "only ", pindex->gcount(), "/", vBucket.size(), " bytes written");
+
         pindex->flush();
 
         /* Debug Output of Sector Key Information. */

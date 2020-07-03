@@ -143,12 +143,12 @@ const uint256_t hashSeed = 55;
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
-    config::mapArgs["-datadir"] = "/public/LIVE";
+    config::mapArgs["-datadir"] = "/database/LIVE";
 
     TestDB* bloom = new TestDB();
 
     std::vector<uint1024_t> vKeys;
-    for(int i = 0; i < 10000; ++i)
+    for(int i = 0; i < 100000; ++i)
         vKeys.push_back(LLC::GetRand1024());
 
 
