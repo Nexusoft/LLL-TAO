@@ -161,7 +161,24 @@ namespace TAO
 
             /* Check for consistency. */
             if(txPrev.hashNext != tx.hashNext)
+            {
+                /* Increment the failed auth attempts counter */
+                session.IncrementAuthAttempts();
+
+                /* If the number of failed auth attempts exceeds the configured allowed number then log this user out */
+                if(session.GetAuthAttempts() >= config::GetArg("-authattempts", 3))
+                {
+                    debug::log(0, FUNCTION, "Too many invalid password / pin attempts. Logging out user session:", session.ID().ToString() );
+                    
+                    /* Log the user out.  NOTE this also closes down the stake minter, removes this session from the notifications 
+                       processor, terminates any P2P connections, and removes the session from the session manager */
+                    TerminateSession(session.ID());
+
+                    throw APIException(-290, "Invalid credentials.  User logged out due to too many password / pin attempts");
+                }
+
                 throw APIException(-139, "Invalid credentials");
+            }
 
             /* Create the update transaction */
             if(!Users::CreateTransaction(session.GetAccount(), strPin, tx))

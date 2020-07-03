@@ -45,16 +45,15 @@ namespace TAO
 
             json::json ret;
 
+            /* Authenticate the users credentials */
+            if(!users->Authenticate(params))
+                throw APIException(-139, "Invalid credentials");
+
             /* Get the PIN to be used for this API call */
             SecureString strPIN = users->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
 
             /* Get the session to be used for this API call */
-            Session& session = users->GetSession(params);;
-
-            /* Get the account. */
-            const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = session.GetAccount();
-            if(!user)
-                throw APIException(-10, "Invalid session ID.");
+            Session& session = users->GetSession(params);
 
             /* Get the Register ID. */
             TAO::Register::Address hashRegister ;
@@ -101,7 +100,7 @@ namespace TAO
             hashRecipient.SetHex(invoice["recipient"].get<std::string>());
 
             /* Ensure the caller is the recipient */
-            if(hashRecipient != user->Genesis())
+            if(hashRecipient != session.GetAccount()->Genesis())
                 throw APIException(-250, "Invoice is not yours to pay");
 
             /* Get the invoice status so that we can validate that we are allowed to cancel it */
@@ -181,7 +180,7 @@ namespace TAO
 
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
-            if(!Users::CreateTransaction(user, strPIN, tx))
+            if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
                 throw APIException(-17, "Failed to create transaction");
         
             /* Add the DEBIT contract with the OP::VALIDATE */
@@ -199,7 +198,7 @@ namespace TAO
                 throw APIException(-44, "Transaction failed to build");
 
             /* Sign the transaction. */
-            if(!tx.Sign(users->GetKey(tx.nSequence, strPIN, session)))
+            if(!tx.Sign(session.GetAccount()->Generate(tx.nSequence, strPIN)))
                 throw APIException(-31, "Ledger failed to sign transaction.");
 
             /* Execute the operations layer. */

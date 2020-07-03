@@ -40,16 +40,15 @@ namespace TAO
             /* JSON return value. */
             json::json ret;
 
+            /* Authenticate the users credentials */
+            if(!users->Authenticate(params))
+                throw APIException(-139, "Invalid credentials");
+
             /* Get the PIN to be used for this API call */
             SecureString strPIN = users->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
 
             /* Get the session to be used for this API call */
-            Session& session = users->GetSession(params);;
-
-            /* Get the account. */
-            const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = session.GetAccount();
-            if(!user)
-                throw APIException(-10, "Invalid session ID");
+            Session& session = users->GetSession(params);
 
             /* Check the caller included the key name */
             if(params.find("name") == params.end() || params["name"].get<std::string>().empty())
@@ -57,27 +56,6 @@ namespace TAO
             
             /* Get the requested key name */
             std::string strName = params["name"].get<std::string>();
-
-            /* The logged in sig chain genesis hash */
-            uint256_t hashGenesis = user->Genesis();
-
-            /* Get the last transaction. */
-            uint512_t hashLast;
-            if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-138, "No previous transaction found");
-
-            /* Get previous transaction */
-            TAO::Ledger::Transaction txPrev;
-            if(!LLD::Ledger->ReadTx(hashLast, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-138, "No previous transaction found");
-
-            /* Generate a new transaction hash next using the current credentials so that we can verify them. */
-            TAO::Ledger::Transaction tx;
-            tx.NextHash(user->Generate(txPrev.nSequence + 1, strPIN, false), txPrev.nNextType);
-
-            /* Check the calculated next hash matches the one on the last transaction in the sig chain. */
-            if(txPrev.hashNext != tx.hashNext)
-                throw APIException(-139, "Invalid credentials");
             
             /* Check the caller included the data */
             if(params.find("data") == params.end() || params["data"].get<std::string>().empty())
@@ -88,7 +66,7 @@ namespace TAO
             std::vector<uint8_t> vchData(strData.begin(), strData.end());
             
             /* Get the private key. */
-            uint512_t hashSecret = user->Generate(strName, 0, strPIN);
+            uint512_t hashSecret = session.GetAccount()->Generate(strName, 0, strPIN);
 
             /* Buffer to receive the signature */
             std::vector<uint8_t> vchSig;
@@ -100,7 +78,7 @@ namespace TAO
             uint8_t nScheme = get_scheme(params);
 
             /* Generate the signature */
-            if(!user->Sign(nScheme, vchData, hashSecret, vchPubKey, vchSig))
+            if(!session.GetAccount()->Sign(nScheme, vchData, hashSecret, vchPubKey, vchSig))
                 throw APIException(-273, "Failed to generate signature");
 
             ret["publickey"] = encoding::EncodeBase58(vchPubKey);

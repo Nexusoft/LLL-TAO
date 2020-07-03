@@ -285,6 +285,22 @@ namespace TAO
                 const std::vector<LLP::P2P::ConnectionRequest> GetP2PRequests(bool fIncoming) const;
 
 
+                /** GetAuthAttempts
+                 *
+                 *  Returns the number of incorrect authentication attempts made in this session
+                 *
+                 **/
+                uint8_t GetAuthAttempts() const;
+
+
+                /** IncrementAuthAttempts
+                 *
+                 *  Increments the number of incorrect authentication attempts made in this session
+                 *
+                 **/
+                void IncrementAuthAttempts() ;
+
+
 
             private:
 
@@ -301,6 +317,10 @@ namespace TAO
 
                 /** Timstamp when the session was last active **/
                 uint64_t nLastActive;
+
+
+                /** Number of incorrect authentication attempts recorded for this session **/
+                uint8_t nAuthAttempts;
                 
 
                 /** Encrypted pointer of signature chain **/

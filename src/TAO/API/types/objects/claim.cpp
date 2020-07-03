@@ -38,27 +38,26 @@ namespace TAO
         {
             json::json ret;
 
+            /* Authenticate the users credentials */
+            if(!users->Authenticate(params))
+                throw APIException(-139, "Invalid credentials");
+
             /* Get the PIN to be used for this API call */
             SecureString strPIN = users->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
 
             /* Get the session to be used for this API call */
-            Session& session = users->GetSession(params);;
+            Session& session = users->GetSession(params);
 
             /* Check for txid parameter. */
             if(params.find("txid") == params.end())
                 throw APIException(-50, "Missing txid.");
-
-            /* Get the account. */
-            const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = session.GetAccount();
-            if(!user)
-                throw APIException(-10, "Invalid session ID.");
 
             /* Lock the signature chain. */
             LOCK(session.CREATE_MUTEX);
 
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
-            if(!Users::CreateTransaction(user, strPIN, tx))
+            if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
                 throw APIException(-17, "Failed to create transaction");
 
             /* Get the transaction id. */
@@ -148,11 +147,11 @@ namespace TAO
 
                     /* If the caller has passed in a name then create a name record using the new name */
                     if(!strName.empty())
-                        nameContract = Names::CreateName(user->Genesis(), strName, "", hashAddress);
+                        nameContract = Names::CreateName(session.GetAccount()->Genesis(), strName, "", hashAddress);
 
                     /* Otherwise create a new name from the previous owners name */
                     else
-                        nameContract = Names::CreateName(user->Genesis(), hashTx);
+                        nameContract = Names::CreateName(session.GetAccount()->Genesis(), hashTx);
 
                     /* If the Name contract operation was created then add it to the transaction */
                     if(!nameContract.Empty())
@@ -172,7 +171,7 @@ namespace TAO
                 throw APIException(-30, "Operations failed to execute");
 
             /* Sign the transaction. */
-            if(!tx.Sign(users->GetKey(tx.nSequence, strPIN, session)))
+            if(!tx.Sign(session.GetAccount()->Generate(tx.nSequence, strPIN)))
                 throw APIException(-31, "Ledger failed to sign transaction");
 
             /* Execute the operations layer. */

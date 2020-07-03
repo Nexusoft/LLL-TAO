@@ -39,11 +39,15 @@ namespace TAO
         {
             json::json ret;
 
+            /* Authenticate the users credentials */
+            if(!users->Authenticate(params))
+                throw APIException(-139, "Invalid credentials");
+
             /* Get the PIN to be used for this API call */
             SecureString strPIN = users->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
 
             /* Get the session to be used for this API call */
-            Session& session = users->GetSession(params);;
+            Session& session = users->GetSession(params);
 
             /* Watch for destination genesis. */
             uint256_t hashTo = 0;
@@ -108,17 +112,12 @@ namespace TAO
             if(nType == TAO::Register::OBJECTS::NAME && object.get<std::string>("namespace").empty())
                 throw APIException(-116, "Cannot transfer names created without a namespace");
 
-            /* Get the account. */
-            const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = session.GetAccount();
-            if(!user)
-                throw APIException(-10, "Invalid session ID");
-
             /* Lock the signature chain. */
             LOCK(session.CREATE_MUTEX);
 
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
-            if(!Users::CreateTransaction(user, strPIN, tx))
+            if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
                 throw APIException(-17, "Failed to create transaction");
 
             /* Submit the payload object.
@@ -126,7 +125,7 @@ namespace TAO
             tx[0] << (uint8_t)TAO::Operation::OP::TRANSFER << hashRegister << hashTo << uint8_t(TAO::Operation::TRANSFER::CLAIM);
 
             /* Add expiration condition. */
-            AddExpires(params, user->Genesis(), tx[0], false);
+            AddExpires(params, session.GetAccount()->Genesis(), tx[0], false);
 
             /* Add the fee */
             AddFee(tx);
@@ -136,7 +135,7 @@ namespace TAO
                 throw APIException(-30, "Operations failed to execute");
 
             /* Sign the transaction. */
-            if(!tx.Sign(users->GetKey(tx.nSequence, strPIN, session)))
+            if(!tx.Sign(session.GetAccount()->Generate(tx.nSequence, strPIN)))
                 throw APIException(-31, "Ledger failed to sign transaction");
 
             /* Execute the operations layer. */

@@ -1738,7 +1738,7 @@ namespace TAO
                     throw APIException(-30, "Failed to build register pre-states");
 
                 /* Sign the transaction. */
-                if(!txout.Sign(users->GetKey(txout.nSequence, strPIN, session)))
+                if(!txout.Sign(session.GetAccount()->Generate(txout.nSequence, strPIN)))
                     throw APIException(-31, "Ledger failed to sign transaction");
 
                 /* Execute the operations layer. */

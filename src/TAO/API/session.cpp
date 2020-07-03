@@ -32,6 +32,7 @@ namespace TAO
         , nID                   (0)
         , nStarted              (0)
         , nLastActive           (0)
+        , nAuthAttempts          (0)
         , pSigChain             ()
         , pActivePIN            ()
         , nNetworkKey           (0)
@@ -46,6 +47,7 @@ namespace TAO
         : nID                   (std::move(session.nID))
         , nStarted              (std::move(session.nStarted))
         , nLastActive           (std::move(session.nLastActive))
+        , nAuthAttempts          (std::move(session.nAuthAttempts))
         , pSigChain             (std::move(session.pSigChain))
         , pActivePIN            (std::move(session.pActivePIN))
         , nNetworkKey           (std::move(session.nNetworkKey))
@@ -61,6 +63,7 @@ namespace TAO
             nID =               (std::move(session.nID));
             nStarted =          (std::move(session.nStarted));
             nLastActive =       (std::move(session.nLastActive));
+            nAuthAttempts =      (std::move(session.nAuthAttempts));
             pSigChain =         (std::move(session.pSigChain));
             pActivePIN =        (std::move(session.pActivePIN));
             nNetworkKey =       (std::move(session.nNetworkKey));
@@ -345,6 +348,23 @@ namespace TAO
 
             /* Return the required vector. */
             return vP2PRequests;
+        }
+
+
+        /*  Returns the number of incorrect authentication attempts made in this session */
+        uint8_t Session::GetAuthAttempts() const
+        {
+            return nAuthAttempts;
+        }
+
+
+        /*  Increments the number of incorrect authentication attempts made in this session */
+        void Session::IncrementAuthAttempts() 
+        {
+            /* Lock mutex so two threads can't increment at the same time */
+            LOCK(MUTEX);
+
+            nAuthAttempts++;
         }
         
 

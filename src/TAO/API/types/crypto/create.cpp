@@ -43,16 +43,15 @@ namespace TAO
             /* JSON return value. */
             json::json ret;
 
+            /* Authenticate the users credentials */
+            if(!users->Authenticate(params))
+                throw APIException(-139, "Invalid credentials");
+
             /* Get the PIN to be used for this API call */
             SecureString strPIN = users->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
 
             /* Get the session to be used for this API call */
-            Session& session = users->GetSession(params);;
-
-            /* Get the account. */
-            const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = session.GetAccount();
-            if(!user)
-                throw APIException(-10, "Invalid session ID");
+            Session& session = users->GetSession(params);
 
             /* Check the caller included the key name */
             if(params.find("name") == params.end() || params["name"].get<std::string>().empty())
@@ -62,7 +61,7 @@ namespace TAO
             std::string strName = params["name"].get<std::string>();
 
             /* The logged in sig chain genesis hash */
-            uint256_t hashGenesis = user->Genesis();
+            uint256_t hashGenesis = session.GetAccount()->Genesis();
 
             /* The address of the crypto object register, which is deterministic based on the genesis */
             TAO::Register::Address hashCrypto = TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
@@ -89,7 +88,7 @@ namespace TAO
 
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
-            if(!Users::CreateTransaction(user, strPIN, tx))
+            if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
                 throw APIException(-17, "Failed to create transaction");
 
             /* The scheme to use to generate the key. If no specific scheme paramater has been passed in then this defaults to 
@@ -110,7 +109,7 @@ namespace TAO
             }
             
             /* Generate the new public key */
-            uint256_t hashPublic = user->KeyHash(strName, 0, strPIN, nKeyType);
+            uint256_t hashPublic = session.GetAccount()->KeyHash(strName, 0, strPIN, nKeyType);
 
             /* Declare operation stream to serialize all of the field updates*/
             TAO::Operation::Stream ssOperationStream;
@@ -129,7 +128,7 @@ namespace TAO
                 throw APIException(-44, "Transaction failed to build");
 
             /* Sign the transaction. */
-            if(!tx.Sign(users->GetKey(tx.nSequence, strPIN, session)))
+            if(!tx.Sign(session.GetAccount()->Generate(tx.nSequence, strPIN)))
                 throw APIException(-31, "Ledger failed to sign transaction");
 
             /* Execute the operations layer. */

@@ -43,23 +43,22 @@ namespace TAO
         {
             json::json ret;
 
+            /* Authenticate the users credentials */
+            if(!users->Authenticate(params))
+                throw APIException(-139, "Invalid credentials");
+
             /* Get the PIN to be used for this API call */
             SecureString strPIN = users->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
 
             /* Get the session to be used for this API call */
-            Session& session = users->GetSession(params);;
-
-            /* Get the account. */
-            const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = session.GetAccount();
-            if(!user)
-                throw APIException(-10, "Invalid session ID");
+            Session& session = users->GetSession(params);
 
             /* Lock the signature chain. */
             LOCK(session.CREATE_MUTEX);
 
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
-            if(!Users::CreateTransaction(user, strPIN, tx))
+            if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
                 throw APIException(-17, "Failed to create transaction");
 
             /* Generate a random hash for this objects register address */
@@ -83,7 +82,7 @@ namespace TAO
 
             /* Check for name parameter. If one is supplied then we need to create a Name Object register for it. */
             if(params.find("name") != params.end())
-                tx[1] = Names::CreateName(user->Genesis(), params["name"].get<std::string>(), "", hashRegister);
+                tx[1] = Names::CreateName(session.GetAccount()->Genesis(), params["name"].get<std::string>(), "", hashRegister);
 
             /* Add the fee */
             AddFee(tx);
@@ -93,7 +92,7 @@ namespace TAO
                 throw APIException(-44, "Transaction failed to build");
 
             /* Sign the transaction. */
-            if(!tx.Sign(users->GetKey(tx.nSequence, strPIN, session)))
+            if(!tx.Sign(session.GetAccount()->Generate(tx.nSequence, strPIN)))
                 throw APIException(-31, "Ledger failed to sign transaction");
 
             /* Execute the operations layer. */

@@ -43,7 +43,7 @@ namespace TAO
             json::json ret;
 
             /* Get the session to be used for this API call */
-            Session& session = users->GetSession(params);;
+            Session& session = users->GetSession(params);
 
             /* Get the account. */
             const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = session.GetAccount();

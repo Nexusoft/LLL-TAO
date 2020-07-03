@@ -54,6 +54,10 @@ namespace TAO
             /* The response JSON */
             json::json ret;
 
+            /* Authenticate the users credentials */
+            if(!users->Authenticate(params))
+                throw APIException(-139, "Invalid credentials");
+
             /* The JSON representation of the invoice that we store in the register */
             json::json invoice;
 
@@ -70,12 +74,7 @@ namespace TAO
             SecureString strPIN = users->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
 
             /* Get the session to be used for this API call */
-            Session& session = users->GetSession(params);;
-
-            /* Get the account. */
-            const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = session.GetAccount();
-            if(!user)
-                throw APIException(-10, "Invalid session ID");
+            Session& session = users->GetSession(params);
 
             /* Check whether the caller has provided the account name parameter. */
             if(params.find("account_name") != params.end())
@@ -144,7 +143,7 @@ namespace TAO
             }
 
             /* Check that the recipient isn't the sender */
-            if(hashRecipient == user->Genesis())
+            if(hashRecipient == session.GetAccount()->Genesis())
                 throw APIException(-244, "Cannot send invoice to self");
 
             /* Add the mandatroy invoice fields to the invoice JSON */
@@ -264,7 +263,7 @@ namespace TAO
 
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
-            if(!Users::CreateTransaction(user, strPIN, tx))
+            if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
                 throw APIException(-17, "Failed to create transaction");
 
             /* Generate a random hash for this objects register address */
@@ -294,7 +293,7 @@ namespace TAO
 
             /* Check for name parameter. If one is supplied then we need to create a Name Object register for it. */
             if(params.find("name") != params.end())
-                tx[nContract++] = Names::CreateName(user->Genesis(), params["name"].get<std::string>(), "", hashRegister);
+                tx[nContract++] = Names::CreateName(session.GetAccount()->Genesis(), params["name"].get<std::string>(), "", hashRegister);
 
             /* Add the transfer contract */
             tx[nContract] << uint8_t(TAO::Operation::OP::CONDITION) << (uint8_t)TAO::Operation::OP::TRANSFER << hashRegister << hashRecipient << uint8_t(TAO::Operation::TRANSFER::CLAIM);
@@ -330,7 +329,7 @@ namespace TAO
                 throw APIException(-30, "Operations failed to execute");
 
             /* Sign the transaction. */
-            if(!tx.Sign(users->GetKey(tx.nSequence, strPIN, session)))
+            if(!tx.Sign(session.GetAccount()->Generate(tx.nSequence, strPIN)))
                 throw APIException(-31, "Ledger failed to sign transaction");
 
             /* Execute the operations layer. */

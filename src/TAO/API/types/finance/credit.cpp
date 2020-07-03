@@ -51,27 +51,29 @@ namespace TAO
         {
             json::json ret;
 
+            /* Authenticate the users credentials */
+            if(!users->Authenticate(params))
+                throw APIException(-139, "Invalid credentials");
+
             /* Get the PIN to be used for this API call */
             SecureString strPIN = users->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
 
             /* Get the session to be used for this API call */
-            Session& session = users->GetSession(params);;
+            Session& session = users->GetSession(params);
+
+            /* Genesis hash of the user */
+            uint256_t hashGenesis = session.GetAccount()->Genesis();
 
             /* Check for txid parameter. */
             if(params.find("txid") == params.end())
                 throw APIException(-50, "Missing txid.");
-
-            /* Get the account. */
-            const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = session.GetAccount();
-            if(!user)
-                throw APIException(-10, "Invalid session ID.");
 
             /* Lock the signature chain. */
             LOCK(session.CREATE_MUTEX);
 
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
-            if(!Users::CreateTransaction(user, strPIN, tx))
+            if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
                 throw APIException(-17, "Failed to create transaction");
 
             /* Submit the transaction payload. */
@@ -164,7 +166,7 @@ namespace TAO
                         if(debit.Base() == TAO::Register::OBJECTS::ACCOUNT)
                         {
                             /* Check that the debit was made to an account that we own */
-                            if(debit.hashOwner == user->Genesis())
+                            if(debit.hashOwner == hashGenesis)
                             {
                                 /* If the user requested a particular object type then check it is that type */
                                 std::string strType = params.find("type") != params.end() ? params["type"].get<std::string>() : "";
@@ -270,11 +272,11 @@ namespace TAO
                     else if(nType == TAO::Operation::OP::COINBASE)
                     {
                         /* Get the genesisHash of the user who mined the coinbase*/
-                        uint256_t hashGenesis = 0;
-                        contract >> hashGenesis;
+                        uint256_t hashMiner = 0;
+                        contract >> hashMiner;
 
                         /* Check that the coinbase was mined by the caller */
-                        if(hashGenesis != user->Genesis())
+                        if(hashMiner != hashGenesis)
                             continue;
 
                         /* Get the amount from the coinbase transaction. */
@@ -286,7 +288,7 @@ namespace TAO
                         {
                             TAO::Register::Object defaultNameRegister;
 
-                            if(!TAO::Register::GetNameRegister(user->Genesis(), std::string("default"), defaultNameRegister))
+                            if(!TAO::Register::GetNameRegister(hashGenesis, std::string("default"), defaultNameRegister))
                                 throw APIException(-63, "Could not retrieve default NXS account to credit.");
 
                             /* Get the address that this name register is pointing to */
@@ -309,7 +311,7 @@ namespace TAO
 
 
                         /* if we passed all of these checks then insert the credit contract into the tx */
-                        tx[++nCurrent] << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract) << hashAccountTo <<  user->Genesis() << nAmount;
+                        tx[++nCurrent] << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract) << hashAccountTo << hashGenesis << nAmount;
 
                     }
 
@@ -343,7 +345,7 @@ namespace TAO
                     uint8_t nStandard = debit.Base();
 
                     /* Check for the owner to make sure this was a send to the current users account */
-                    if(debit.hashOwner == user->Genesis())
+                    if(debit.hashOwner == hashGenesis)
                     {
                         /* Identify trust migration to create OP::MIGRATE instead of OP::CREDIT */
 
@@ -371,7 +373,7 @@ namespace TAO
                                     break;
 
                                 /* Trust account must be new (not indexed) */
-                                if(LLD::Register->HasTrust(user->Genesis()))
+                                if(LLD::Register->HasTrust(hashGenesis))
                                     break;
 
                                 /* Retrieve the trust key being converted */
@@ -489,7 +491,7 @@ namespace TAO
                 throw APIException(-44, "Transaction failed to build");
 
             /* Sign the transaction. */
-            if(!tx.Sign(users->GetKey(tx.nSequence, strPIN, session)))
+            if(!tx.Sign(session.GetAccount()->Generate(tx.nSequence, strPIN)))
                 throw APIException(-31, "Ledger failed to sign transaction.");
 
             /* Execute the operations layer. */

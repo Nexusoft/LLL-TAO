@@ -578,6 +578,20 @@ namespace TAO
                                TAO::Ledger::Transaction& tx);
 
 
+            /** Authenticate
+            *
+            *  Checks that the session/password/pin parameters have been provided (where necessary) and then verifies that the 
+            *  password and pin are correct.  
+            *  If authentication fails then the AuthAttempts counter in the callers session is incremented
+            *
+            *  @param[in] params The JSON request parameters
+            *
+            *  @return True if the request contains the required authentication parameters and that they are correct 
+            *
+            **/
+            bool Authenticate(const json::json& params);
+
+
             /** TerminateSession
              *
              *  Gracefully closes down a users session

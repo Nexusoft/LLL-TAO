@@ -424,5 +424,6 @@ Error Codes
 | -287 | API method not supported in multiuser mode |
 | -288 | Cannot unlock for mining in multiuser mode |
 | -289 | Cannot unlock for staking in multiuser mode |
+| -290 | Invalid credentials.  User logged out due to too many password / pin attempts |
 | -300 | API can only be used to lookup data for the currently logged in signature chain when running in client mode |
 

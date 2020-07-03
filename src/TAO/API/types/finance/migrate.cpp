@@ -57,16 +57,16 @@ namespace TAO
 
             Legacy::Wallet& wallet = Legacy::Wallet::GetInstance();
 
+            /* Authenticate the users credentials */
+            if(!users->Authenticate(params))
+                throw APIException(-139, "Invalid credentials");
+
             /* Get the PIN to be used for this API call */
             SecureString strPIN = users->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
 
             /* Get the session to be used for this API call */
-            Session& session = users->GetSession(params);;
+            Session& session = users->GetSession(params);
 
-            /* Get the user signature chain. */
-            const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = session.GetAccount();
-            if(!user)
-                throw APIException(-10, "Invalid session ID");
 
             /* Check for walletpassphrase parameter. */
             SecureString strWalletPass;
@@ -149,7 +149,7 @@ namespace TAO
 
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
-            if(!Users::CreateTransaction(user, strPIN, tx))
+            if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
                 throw APIException(-17, "Failed to create transaction");
 
             /* tracks how many contracts we have added to the current transaction */
@@ -171,7 +171,7 @@ namespace TAO
                 if(!hashAccount.IsValid())
                 {
                     std::vector<TAO::Register::Address> vAccounts;
-                    if(ListAccounts(user->Genesis(), vAccounts, false, false))
+                    if(ListAccounts(session.GetAccount()->Genesis(), vAccounts, false, false))
                     {
                         for(const auto& hashRegister : vAccounts)
                         {
@@ -210,7 +210,7 @@ namespace TAO
                             throw APIException(-44, "Transaction failed to build");
 
                         /* Sign the transaction. */
-                        if(!tx.Sign(users->GetKey(tx.nSequence, strPIN, session)))
+                        if(!tx.Sign(session.GetAccount()->Generate(tx.nSequence, strPIN)))
                             throw APIException(-31, "Ledger failed to sign transaction");
 
                         /* Execute the operations layer. */
@@ -219,7 +219,7 @@ namespace TAO
 
                         /* Create the next transaction and reset the counter */
                         tx = TAO::Ledger::Transaction();
-                        if(!Users::CreateTransaction(user, strPIN, tx))
+                        if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
                             throw APIException(-17, "Failed to create transaction");
 
 
@@ -240,7 +240,7 @@ namespace TAO
 
                     /* If user has not explicitly indicated not to create a name then create a Name Object register for it. */
                     if(fCreateName)
-                        tx[nContracts++] = Names::CreateName(user->Genesis(), strAccount, "", hashAccount);
+                        tx[nContracts++] = Names::CreateName(session.GetAccount()->Genesis(), strAccount, "", hashAccount);
                 }
 
                 /* Add this to the map */
@@ -258,7 +258,7 @@ namespace TAO
                     throw APIException(-44, "Transaction failed to build");
 
                 /* Sign the transaction. */
-                if(!tx.Sign(users->GetKey(tx.nSequence, strPIN, session)))
+                if(!tx.Sign(session.GetAccount()->Generate(tx.nSequence, strPIN)))
                     throw APIException(-31, "Ledger failed to sign transaction");
 
                 /* Execute the operations layer. */

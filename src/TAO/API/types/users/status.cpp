@@ -49,27 +49,8 @@ namespace TAO
 
             if(config::fMultiuser.load() && params.find("pin") != params.end())
             {
-                /* Get the pin */
-                SecureString strPIN = strPIN = params["pin"].get<std::string>().c_str();
-
-                
-                /* The last transaction in the sig chain. */
-                TAO::Ledger::Transaction txPrev;
-
-                /* Get the last transaction. */
-                uint512_t hashLast;
-                if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-138, "No previous transaction found");
-
-                /* Get previous transaction */
-                if(!LLD::Ledger->ReadTx(hashLast, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-138, "No previous transaction found");
-                
-                TAO::Ledger::Transaction tx;
-                tx.NextHash(session.GetAccount()->Generate(txPrev.nSequence + 1, strPIN, false), txPrev.nNextType);
-
-                /* Validate the credentials */
-                if(txPrev.hashNext != tx.hashNext)
+                /* Authenticate the users credentials */
+                if(!users->Authenticate(params))
                     throw APIException(-139, "Invalid credentials");
                 
                 /* Pin is valid so include the username */
