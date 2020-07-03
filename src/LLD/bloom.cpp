@@ -13,7 +13,7 @@ ________________________________________________________________________________
 
 #include <functional>
 
-#include <LLD/hash/xxh3.h>
+#include <LLD/hash/xxhash.h>
 #include <LLD/templates/bloom.h>
 
 #include <Util/include/filesystem.h>

@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #include <LLD/keychain/shard_hashmap.h>
 #include <LLD/include/enum.h>
 #include <LLD/include/version.h>
-#include <LLD/hash/xxh3.h>
+#include <LLD/hash/xxhash.h>
 
 #include <Util/templates/datastream.h>
 #include <Util/include/filesystem.h>

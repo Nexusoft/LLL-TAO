@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLD_CACHE_TEMPLATE_LRU_H
 #define NEXUS_LLD_CACHE_TEMPLATE_LRU_H
 
-#include <LLD/hash/xxh3.h>
+#include <LLD/hash/xxhash.h>
 
 #include <Util/include/mutex.h>
 
