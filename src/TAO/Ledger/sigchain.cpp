@@ -44,7 +44,7 @@ namespace TAO
         : strUsername (sigchain.strUsername.c_str())
         , strPassword (sigchain.strPassword.c_str())
         , MUTEX       ( )
-        , pairCache   (sigchain.pairCache)
+        , cacheKeys   (5)
         , hashGenesis (sigchain.hashGenesis)
         {
         }
@@ -55,7 +55,7 @@ namespace TAO
         : strUsername (std::move(sigchain.strUsername.c_str()))
         , strPassword (std::move(sigchain.strPassword.c_str()))
         , MUTEX       ( )
-        , pairCache   (std::move(sigchain.pairCache))
+        , cacheKeys   (5)
         , hashGenesis (std::move(sigchain.hashGenesis))
         {
         }
@@ -72,7 +72,7 @@ namespace TAO
         : strUsername (strUsernameIn.c_str())
         , strPassword (strPasswordIn.c_str())
         , MUTEX       ( )
-        , pairCache   (std::make_pair(std::numeric_limits<uint32_t>::max(), ""))
+        , cacheKeys   (5)
         , hashGenesis (SignatureChain::Genesis(strUsernameIn))
         {
         }
@@ -155,17 +155,27 @@ namespace TAO
          */
         uint512_t SignatureChain::Generate(const uint32_t nKeyID, const SecureString& strSecret, bool fCache) const
         {
+            /* key used to identify this private key in the key cache */
+            std::tuple<SecureString, SecureString, uint32_t> cacheKey = std::make_tuple(strPassword, strSecret, nKeyID);
+
+            /* If caching is requested, check to see if we have already cached this private key, to stop exhaustive 
+               hash key generation */
+            if(fCache)
             {
                 LOCK(MUTEX);
-
-                /* Handle cache to stop exhaustive hash key generation. */
-                if(fCache && nKeyID == pairCache.first)
+                
+                /* Check the cache */
+                if(cacheKeys.Has(cacheKey))
                 {
+                    /* Retreive the private key hash from the cache */
+                    SecureString strKey;
+                    cacheKeys.Get(cacheKey, strKey);
+
                     /* Create the hash key object. */
                     uint512_t hashKey;
 
                     /* Get the bytes from secure allocator. */
-                    std::vector<uint8_t> vBytes(pairCache.second.begin(), pairCache.second.end());
+                    std::vector<uint8_t> vBytes(strKey.begin(), strKey.end());
 
                     /* Set the bytes of return value. */
                     hashKey.SetBytes(vBytes);
@@ -239,15 +249,12 @@ namespace TAO
             if(nRet != ARGON2_OK)
                 throw std::runtime_error(debug::safe_printstr(FUNCTION, "Argon2 failed with code ", nRet));
 
-            /* Set the cache items. */
+            /* Add the private key to the cache. */
+            if(fCache)
             {
                 LOCK(MUTEX);
 
-                if(fCache)
-                {
-                    pairCache.first  = nKeyID;
-                    pairCache.second = SecureString(hash.begin(), hash.end());
-                }
+                cacheKeys.Put(cacheKey, SecureString(hash.begin(), hash.end()));
             }
 
             /* Set the bytes for the key. */
@@ -630,8 +637,7 @@ namespace TAO
         {
             encrypt(strUsername);
             encrypt(strPassword);
-            encrypt(pairCache.first);
-            encrypt(pairCache.second);
+            encrypt(cacheKeys);
             encrypt(hashGenesis);
         }
 

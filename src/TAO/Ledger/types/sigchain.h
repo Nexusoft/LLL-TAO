@@ -18,6 +18,8 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
+#include <LLD/cache/template_lru.h>
+
 #include <Util/include/allocators.h>
 #include <Util/include/mutex.h>
 #include <Util/include/memory.h>
@@ -57,7 +59,7 @@ namespace TAO
 
 
             /** Internal sigchain cache (to not exhaust ourselves regenerating the same key). **/
-            mutable std::pair<uint32_t, SecureString> pairCache;
+            mutable LLD::TemplateLRU<std::tuple<SecureString, SecureString, uint32_t>, SecureString> cacheKeys;
 
 
             /** Internal genesis hash. **/
