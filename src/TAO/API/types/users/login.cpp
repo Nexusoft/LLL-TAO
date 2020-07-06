@@ -181,7 +181,7 @@ namespace TAO
 
             /* Genesis Transaction. */
             TAO::Ledger::Transaction tx;
-            tx.NextHash(user.Generate(txPrev.nSequence + 1, strPin, false), txPrev.nNextType);
+            tx.NextHash(user.Generate(txPrev.nSequence + 1, strPin), txPrev.nNextType);
 
             /* Check for consistency. */
             if(txPrev.hashNext != tx.hashNext)
@@ -352,9 +352,9 @@ namespace TAO
 
                     /* Genesis Transaction. */
                     TAO::Ledger::Transaction tx;
-                    tx.NextHash(session.GetAccount()->Generate(txPrev.nSequence + 1, config::GetArg("-pin", "").c_str(), false), txPrev.nNextType);
+                    tx.NextHash(session.GetAccount()->Generate(txPrev.nSequence + 1, config::GetArg("-pin", "").c_str()), txPrev.nNextType);
 
-                    /* Check for consistency. */
+                    /* Check the credentials match the previous tx. */
                     if(txPrev.hashNext != tx.hashNext)
                     {
                         throw APIException(-139, "Invalid credentials");

@@ -370,7 +370,7 @@ namespace TAO
 
             /* Generate a temporary transaction with the next hash based on the current password/pin */
             TAO::Ledger::Transaction tx;
-            tx.NextHash(session.GetAccount()->Generate(txPrev.nSequence + 1, strPIN, true), txPrev.nNextType);
+            tx.NextHash(session.GetAccount()->Generate(txPrev.nSequence + 1, strPIN), txPrev.nNextType);
 
             /* Validate the credentials */
             if(txPrev.hashNext != tx.hashNext)

@@ -157,7 +157,7 @@ namespace TAO
 
             /* Create temp Transaction to check credentials. */
             TAO::Ledger::Transaction tx;
-            tx.NextHash(userUpdated->Generate(txPrev.nSequence + 1, strPin, false), txPrev.nNextType);
+            tx.NextHash(userUpdated->Generate(txPrev.nSequence + 1, strPin), txPrev.nNextType);
 
             /* Check for consistency. */
             if(txPrev.hashNext != tx.hashNext)
