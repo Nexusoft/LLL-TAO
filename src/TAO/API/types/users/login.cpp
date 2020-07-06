@@ -397,7 +397,12 @@ namespace TAO
             }
             catch(const APIException& e)
             {
+                /* Log the error */
                 debug::error(FUNCTION, e.what());
+
+                /* Any exception is a login failure so remove the session if it exists */
+                if(GetSessionManager().Has(0))
+                    GetSessionManager().Remove(0);
             }
 
         }
