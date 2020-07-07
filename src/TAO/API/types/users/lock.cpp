@@ -29,10 +29,6 @@ namespace TAO
             /* JSON return value. */
             json::json ret;
 
-            /* Restrict Unlock / Lock to sessionless API */
-            if(config::fMultiuser.load())
-                throw APIException(-131, "Lock not supported in multiuser mode");
-
             /* Get the session */
             Session& session = GetSession(params);
 
