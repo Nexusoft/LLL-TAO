@@ -122,11 +122,25 @@ namespace LLD
 
 
         /** Copy Constructor. **/
-        TemplateLRU(const TemplateLRU& cache)            = delete;
+        TemplateLRU(const TemplateLRU& cacheIn)
+        : MAX_CACHE_ELEMENTS (cacheIn.MAX_CACHE_ELEMENTS)
+        , MUTEX              ( )
+        , cache              (cacheIn.cache)
+        , pfirst             (cacheIn.pfirst)
+        , plast              (cacheIn.plast)
+        {
+        }
 
 
         /** Move Constructor. **/
-        TemplateLRU(TemplateLRU&& cache)                 = delete;
+        TemplateLRU(TemplateLRU&& cacheIn)
+        : MAX_CACHE_ELEMENTS (std::move(cacheIn.MAX_CACHE_ELEMENTS))
+        , MUTEX              ( )
+        , cache              (std::move(cacheIn.cache))
+        , pfirst             (std::move(cacheIn.pfirst))
+        , plast              (std::move(cacheIn.plast))
+        {
+        }
 
 
         /** Copy assignment. **/

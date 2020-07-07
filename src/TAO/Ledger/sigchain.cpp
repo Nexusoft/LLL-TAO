@@ -44,7 +44,7 @@ namespace TAO
         : strUsername (sigchain.strUsername.c_str())
         , strPassword (sigchain.strPassword.c_str())
         , MUTEX       ( )
-        , cacheKeys   (5)
+        , cacheKeys   (sigchain.cacheKeys)
         , hashGenesis (sigchain.hashGenesis)
         {
         }
@@ -55,7 +55,7 @@ namespace TAO
         : strUsername (std::move(sigchain.strUsername.c_str()))
         , strPassword (std::move(sigchain.strPassword.c_str()))
         , MUTEX       ( )
-        , cacheKeys   (5)
+        , cacheKeys   (std::move(sigchain.cacheKeys))
         , hashGenesis (std::move(sigchain.hashGenesis))
         {
         }
