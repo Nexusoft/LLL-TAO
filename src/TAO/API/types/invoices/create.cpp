@@ -115,7 +115,7 @@ namespace TAO
             else
                 throw APIException(-229, "Missing recipient");
 
-            /* Check that the recipient genesis hash exists. If not, in client mode and we should ask a peer for the genesis */
+            /* If in client mode and the recipient genesis does not exist in our DB we should ask a peer for the genesis */
             if(config::fClient.load() && !LLD::Ledger->HasGenesis(hashRecipient))
             {
                  /* Check tritium server enabled. */
@@ -133,11 +133,10 @@ namespace TAO
                     }
                 }
 
-                /* Now check again after asking the peer for the genesis */
-                if(!LLD::Ledger->HasGenesis(hashRecipient)) 
-                    throw APIException(-230, "Recipient user does not exist");
             }
-            else if(!LLD::Ledger->HasGenesis(hashRecipient))
+            
+            /* Check that the recipient genesis hash exists */
+            if(!LLD::Ledger->HasGenesis(hashRecipient))
             { 
                 throw APIException(-230, "Recipient user does not exist");
             }
