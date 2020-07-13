@@ -3301,22 +3301,6 @@ namespace LLP
                             return true;
                         }
 
-                        /* Check that the destination genesis exists */
-                        if(!LLD::Ledger->HasGenesis(request.hashPeer))
-                            return debug::drop(NODE, "ACTION::REQUEST::P2P: invalid destination genesis hash");
-
-                        /* Check that the source genesis exists */
-                        if(!LLD::Ledger->HasGenesis(hashFrom))
-                            return debug::drop(NODE, "ACTION::REQUEST::P2P: invalid source genesis hash");
-
-                        /* Build the byte stream from the request data in order to verify the signature */
-                        DataStream ssCheck(SER_NETWORK, PROTOCOL_VERSION);
-                        ssCheck << hashFrom << request;
-
-                        /* Verify the signature */
-                        if(!TAO::Ledger::SignatureChain::Verify(hashFrom, "network", ssCheck.Bytes(), vchPubKey, vchSig))
-                            return debug::error(NODE, "ACTION::REQUEST::P2P: invalid transaction signature");
-
 
                         /* See whether we have processed a P2P request from this user in the last 5 seconds.
                            If so then ignore the message. If not then relay the message to our peers.
@@ -3327,19 +3311,46 @@ namespace LLP
                             LOCK(P2P_REQUESTS_MUTEX);
                             if(mapP2PRequests.count(hashFrom) == 0 || mapP2PRequests[hashFrom] < request.nTimestamp - 5)
                             {
-                                /* Reset the packet data pointer */
-                                ssPacket.Reset();
+                                /* Check that the source and destination genesis exists before relaying.  NOTE: We skip this 
+                                   in client mode as we will only have local scope and not know about all genesis hashes 
+                                   on the network.  Therefore relaying is limited to full nodes only */
+                                if(!config::fClient)
+                                {
+                                    /* Check that the source genesis exists. */
+                                    if(!LLD::Ledger->HasGenesis(request.hashPeer))
+                                        return debug::drop(NODE, "ACTION::REQUEST::P2P: invalid destination genesis hash");
 
-                                /* Relay the P2P request */
-                                TRITIUM_SERVER->Relay
-                                (
-                                    uint8_t(ACTION::REQUEST),
-                                    uint8_t(TYPES::P2PCONNECTION),
-                                    hashFrom,
-                                    request,
-                                    vchPubKey,
-                                    vchSig
-                                );
+                                    /* Check that the source genesis exists. */
+                                    if(!LLD::Ledger->HasGenesis(hashFrom))
+                                        return debug::drop(NODE, "ACTION::REQUEST::P2P: invalid source genesis hash");
+                                }
+
+                                /* Verify the signature before relaying.  Again we don't do this in client mode as we only have
+                                   local scope and won't be able to access the crypto object register of the hashFrom */
+                                if(!config::fClient)
+                                { 
+                                    /* Build the byte stream from the request data in order to verify the signature */
+                                    DataStream ssCheck(SER_NETWORK, PROTOCOL_VERSION);
+                                    ssCheck << hashFrom << request;
+
+                                    /* Verify the signature */
+                                    if(!TAO::Ledger::SignatureChain::Verify(hashFrom, "network", ssCheck.Bytes(), vchPubKey, vchSig))
+                                        return debug::error(NODE, "ACTION::REQUEST::P2P: invalid transaction signature");
+                                     
+                                    /* Reset the packet data pointer */
+                                    ssPacket.Reset();
+
+                                    /* Relay the P2P request */
+                                    TRITIUM_SERVER->Relay
+                                    (
+                                        uint8_t(ACTION::REQUEST),
+                                        uint8_t(TYPES::P2PCONNECTION),
+                                        hashFrom,
+                                        request,
+                                        vchPubKey,
+                                        vchSig
+                                    );
+                                }
 
                                 /* Check to see whether the destination genesis is logged in on this node */
                                 if(TAO::API::users->LoggedIn(request.hashPeer))
