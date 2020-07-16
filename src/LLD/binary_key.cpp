@@ -130,7 +130,7 @@ namespace LLD
     uint32_t KeyLRU::Bucket(const std::vector<uint8_t>& vKey) const
     {
         /* Get an xxHash. */
-        uint64_t nBucket = XXH64(&vKey[0], vKey.size(), 0);
+        uint64_t nBucket = XXH3_64bits_withSeed(&vKey[0], vKey.size(), 0);
 
         return static_cast<uint32_t>(nBucket % static_cast<uint64_t>(MAX_CACHE_BUCKETS));
     }

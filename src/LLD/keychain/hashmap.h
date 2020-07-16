@@ -56,12 +56,7 @@ namespace LLD
         TemplateLRU<uint16_t, std::fstream*>* pFileStreams;
 
 
-        /** Bloom filter stream objects. **/
-        TemplateLRU<uint16_t, std::fstream*>* pBloomStreams;
-
-
-        /** Keychain index stream. **/
-        std::fstream* pindex;
+        TemplateLRU<uint16_t, std::fstream*>* pIndexStreams;
 
 
         /** Total elements in hashmap for quick inserts. **/
@@ -72,28 +67,12 @@ namespace LLD
         uint32_t HASHMAP_TOTAL_BUCKETS;
 
 
-        /** The Maximum key size for static key sectors. **/
-        uint16_t HASHMAP_MAX_KEY_SIZE;
-
-
-        /** The total space that a key consumes. */
-        uint16_t HASHMAP_KEY_ALLOCATION;
-
-
         /** The keychain flags. **/
         uint8_t nFlags;
 
 
         /* The key level locking hashmap. */
         mutable std::vector<std::mutex> RECORD_MUTEX;
-
-
-        /** Set of BLOOM filters for each hashmap. **/
-        std::vector<BloomFilter> vBloom;
-
-
-        /** Set for current bloom filter updates. **/
-        std::set<uint32_t> setUpdated;
 
 
         /** compress_key
@@ -117,7 +96,22 @@ namespace LLD
          *  @return The bucket assigned to the key.
          *
          **/
-        uint32_t get_bucket(const std::vector<uint8_t>& vKey);
+        uint64_t get_bucket(const std::vector<uint8_t>& vKey);
+
+
+        uint16_t get_index_file(const uint64_t nBucket);
+
+        uint16_t get_hashmap_file(const uint64_t nBucket);
+
+
+        void set_bloom(const std::vector<uint8_t>& vKey, uint8_t &nBloom);
+
+        bool check_bloom(const std::vector<uint8_t>& vKey, const uint8_t nBloom);
+
+
+        void set_bloom(const std::vector<uint8_t>& vKey, std::vector<uint8_t> &vBloom, const uint64_t nOffset);
+
+        bool check_bloom(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vBloom, const uint64_t nOffset);
 
 
     public:
@@ -172,6 +166,18 @@ namespace LLD
         bool Get(const std::vector<uint8_t>& vKey, SectorKey &cKey);
 
 
+        /** Modify
+         *
+         *  Modifies a key in the disk hashmaps.
+         *
+         *  @param[in] cKey The key object to write.
+         *
+         *  @return True if the key was written, false otherwise.
+         *
+         **/
+        bool Modify(const SectorKey& cKey);
+
+
         /** Put
          *
          *  Write a key to the disk hashmaps.
@@ -182,14 +188,6 @@ namespace LLD
          *
          **/
         bool Put(const SectorKey& cKey);
-
-
-        /** Flush
-         *
-         *  Flush all buffers to disk if using ACID transaction.
-         *
-         **/
-        void Flush();
 
 
         /** Restore

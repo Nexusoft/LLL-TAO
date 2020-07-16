@@ -21,12 +21,15 @@ ________________________________________________________________________________
 
 namespace LLD
 {
+    /** Constant to determine maximum number of k-hashes for the secondary bloom filters. **/
+    const uint32_t MAX_BLOOM_HASHES = 1;
+
 
     /* Get the bucket for given value k and key. */
     uint64_t BloomFilter::get_bucket(const std::vector<uint8_t>& vKey, const uint32_t nK) const
     {
         /* Get an xxHash. */
-        uint64_t nBucket = XXH64(&vKey[0], vKey.size(), nK);
+        uint64_t nBucket = XXH3_64bits_withSeed(&vKey[0], vKey.size(), nK);
 
         return static_cast<uint64_t>(nBucket % HASHMAP_TOTAL_BUCKETS);
     }
@@ -53,8 +56,8 @@ namespace LLD
     /* Copy assignment. */
     BloomFilter& BloomFilter::operator=(const BloomFilter& filter)
     {
-        HASHMAP_TOTAL_BUCKETS      = filter.HASHMAP_TOTAL_BUCKETS;
-        vRegisters                 = filter.vRegisters;
+        HASHMAP_TOTAL_BUCKETS       = filter.HASHMAP_TOTAL_BUCKETS;
+        vRegisters                  = filter.vRegisters;
 
         return *this;
     }
@@ -63,8 +66,8 @@ namespace LLD
     /* Move assignment. */
     BloomFilter& BloomFilter::operator=(BloomFilter&& filter)
     {
-        HASHMAP_TOTAL_BUCKETS      = std::move(filter.HASHMAP_TOTAL_BUCKETS);
-        vRegisters                 = std::move(filter.vRegisters);
+        HASHMAP_TOTAL_BUCKETS       = std::move(filter.HASHMAP_TOTAL_BUCKETS);
+        vRegisters                  = std::move(filter.vRegisters);
 
         return *this;
     }
@@ -72,8 +75,8 @@ namespace LLD
 
     /* Create bloom filter with given number of buckets. */
     BloomFilter::BloomFilter  (const uint64_t nBuckets)
-    : BitArray              ((nBuckets * 3) / 0.693147)
-    , HASHMAP_TOTAL_BUCKETS ((nBuckets * 3) / 0.693147) //n * k / ln(2) = m
+    : BitArray              (nBuckets * 2)
+    , HASHMAP_TOTAL_BUCKETS (nBuckets * 2) //we give 2 bits per bucket
     , MUTEX                 ( )
     {
     }
@@ -88,10 +91,12 @@ namespace LLD
     /* Add a new key to the bloom filter. */
     void BloomFilter::Insert(const std::vector<uint8_t>& vKey)
     {
-        /* Run over k hashes. */
-        for(uint16_t nK = 0; nK < 3; ++nK)
+        LOCK(MUTEX);
+
+        /* Set the internal bit from the bitarray. */
+        for(int i = 0; i < MAX_BLOOM_HASHES; ++i)
         {
-            uint64_t nBucket = get_bucket(vKey, nK);
+            uint64_t nBucket = get_bucket(vKey, i);
             set_bit(nBucket);
         }
     }
@@ -100,10 +105,12 @@ namespace LLD
     /* Checks if a key exists in the bloom filter. */
     bool BloomFilter::Has(const std::vector<uint8_t>& vKey) const
     {
-        /* Run over k hashes. */
-        for(uint16_t nK = 0; nK < 3; ++nK)
+        LOCK(MUTEX);
+
+        /* Set the internal bit from the bitarray. */
+        for(int i = 0; i < MAX_BLOOM_HASHES; ++i)
         {
-            uint64_t nBucket = get_bucket(vKey, nK);
+            uint64_t nBucket = get_bucket(vKey, i);
             if(!is_set(nBucket))
                 return false;
         }

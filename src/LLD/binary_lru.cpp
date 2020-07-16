@@ -39,7 +39,7 @@ namespace LLD
         BinaryNode(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vDataIn)
         : pprev   (nullptr)
         , pnext   (nullptr)
-        , hashKey (XXH64(&vKey[0], vKey.size(), 0))
+        , hashKey (XXH3_64bits_withSeed(&vKey[0], vKey.size(), 0))
         , vData   (vDataIn)
         {
         }
@@ -123,7 +123,7 @@ namespace LLD
             return false;
 
         /* Check the data is expected. */
-        return (pthis->hashKey == XXH64(&vKey[0], vKey.size(), 0));
+        return (pthis->hashKey == XXH3_64bits_withSeed(&vKey[0], vKey.size(), 0));
     }
 
 
@@ -131,7 +131,7 @@ namespace LLD
     uint32_t BinaryLRU::bucket(const std::vector<uint8_t>& vKey) const
     {
         /* Get an xxHash. */
-        uint64_t nBucket = XXH64(&vKey[0], vKey.size(), 0);
+        uint64_t nBucket = XXH3_64bits_withSeed(&vKey[0], vKey.size(), 0);
 
         return static_cast<uint32_t>(nBucket % static_cast<uint64_t>(MAX_CACHE_BUCKETS));
     }
@@ -163,7 +163,7 @@ namespace LLD
         }
 
         /* Check the keys are correct. */
-        if(pthis->hashKey != XXH64(&vKey[0], vKey.size(), 0))
+        if(pthis->hashKey != XXH3_64bits_withSeed(&vKey[0], vKey.size(), 0))
             return false;
 
         /* Get the data. */
@@ -217,7 +217,7 @@ namespace LLD
             }
 
             /* Set new values. */
-            hashmap[nSlot]->hashKey = XXH64(&vKey[0], vKey.size(), 0);
+            hashmap[nSlot]->hashKey = XXH3_64bits_withSeed(&vKey[0], vKey.size(), 0);
             hashmap[nSlot]->vData   = vData;
 
             /* Move to front of list. */

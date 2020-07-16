@@ -31,7 +31,6 @@ namespace LLD
     /* For global ACID transaction. */
     std::recursive_mutex ACID_MUTEX;
 
-
     /*  Initialize the global LLD instances. */
     void Initialize()
     {

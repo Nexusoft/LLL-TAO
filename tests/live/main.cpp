@@ -74,8 +74,8 @@ public:
     TestDB()
     : SectorDatabase("testdb"
     , LLD::FLAGS::CREATE | LLD::FLAGS::FORCE
-    , 256 * 256 * 64
-    , 1024 * 1024 * 8)
+    , 256 * 256
+    , 256)
     {
     }
 
@@ -93,6 +93,11 @@ public:
     bool ReadKey(const uint1024_t& key, uint1024_t &value)
     {
         return Read(std::make_pair(std::string("key"), key), value);
+    }
+
+    bool HasKey(const uint1024_t& key)
+    {
+        return Exists(std::make_pair(std::string("key"), key));
     }
 
 
@@ -170,6 +175,241 @@ void set_secondary_bloom(const std::vector<uint8_t>& vKey, std::vector<uint8_t> 
     }
 }
 
+#include <LLD/hash/xxhash.h>
+
+
+class LinkedNode
+{
+public:
+
+    uint64_t nHash;
+
+    std::vector<LinkedNode*> vChild;
+
+    LinkedNode() = delete;
+
+    LinkedNode(const uint16_t nNodes)
+    : nHash (0)
+    , vChild(nNodes, nullptr)
+    {
+    }
+};
+
+
+class ModulusLinkedList
+{
+    uint64_t get_hash(const std::vector<uint8_t>& vKey)
+    {
+        return XXH3_64bits_withSeed(&vKey[0], vKey.size(), 0);
+    }
+
+public:
+
+    std::vector<LinkedNode*> vLast;
+
+    uint16_t nModulus;
+
+    ModulusLinkedList() = delete;
+
+    ModulusLinkedList(const uint16_t nModulusIn)
+    : vLast    (nModulusIn, nullptr)
+    , nModulus (nModulusIn)
+    {
+    }
+
+    template<typename KeyType>
+    bool Has(const KeyType& key)
+    {
+        DataStream ssKey(SER_LLD, LLD::DATABASE_VERSION);
+        ssKey << key;
+
+        uint64_t nHash = get_hash(ssKey.Bytes());
+        uint32_t nBranch = (nHash % nModulus);
+
+        uint32_t nTotal = 1;
+
+        /* Check the last indexes. */
+        LinkedNode* pnode = vLast[nBranch];
+        while(pnode)
+        {
+            ++nTotal;
+
+            if(pnode->nHash == nHash)
+            {
+                debug::log(0, "Key found after ", nTotal, " Iterations ", nHash);
+                return true;
+            }
+
+            pnode = pnode->vChild[nBranch];
+        }
+
+        return false;
+    }
+
+
+    template<typename KeyType>
+    void Insert(const KeyType& key)
+    {
+        DataStream ssKey(SER_LLD, LLD::DATABASE_VERSION);
+        ssKey << key;
+
+        uint64_t nHash = get_hash(ssKey.Bytes());
+        uint32_t nBranch = (nHash % nModulus);
+
+        /* Check the last indexes. */
+        LinkedNode* pnode = new LinkedNode(nModulus);
+        pnode->vChild = vLast;
+        pnode->nHash = nHash;
+
+        /* Set this as the new last pointer. */
+        vLast[nBranch] = pnode;
+    }
+};
+
+
+class TrieNode
+{
+public:
+
+    uint64_t nHash;
+
+    //std::vector<LinkedNode*> vChild;
+    TrieNode* pleft;
+    TrieNode* pright;
+
+    TrieNode(const uint64_t nHashIn)
+    : nHash  (nHashIn)
+    , pleft  (nullptr)
+    , pright (nullptr)
+    {
+    }
+};
+
+class ModulusSearchTree
+{
+    uint64_t get_hash(const std::vector<uint8_t>& vKey)
+    {
+        return XXH3_64bits_withSeed(&vKey[0], vKey.size(), 0);
+    }
+
+public:
+
+    TrieNode* proot;
+
+    ModulusSearchTree()
+    : proot    (nullptr)
+    {
+    }
+
+    template<typename KeyType>
+    bool Has(const KeyType& key)
+    {
+        DataStream ssKey(SER_LLD, LLD::DATABASE_VERSION);
+        ssKey << key;
+
+        uint64_t nHash = get_hash(ssKey.Bytes());
+        //uint32_t nBranch = (nHash % 2);
+
+        uint32_t nTotal = 1;
+
+        /* Check for root node. */
+        if(!proot)
+            return false;
+
+        TrieNode* pnode = proot;
+        while(pnode)
+        {
+            ++nTotal;
+
+            if(pnode->nHash == nHash)
+            {
+                debug::log(0, "Modulus Tree index found after ", nTotal, " iterations");
+                return true;
+            }
+
+            bool fRight = pnode->nHash > nHash;//((nHash % 2) != (pnode->nHash % 2));
+
+            //if(pnode->nHash > nHash)
+            //if(nBranch == 1)
+            if(fRight)
+                pnode = pnode->pright;
+
+            //if(pnode->nHash < nHash)
+            //if(nBranch == 0)
+            else
+                pnode = pnode->pleft;
+
+
+        }
+
+        return false;
+    }
+
+
+    template<typename KeyType>
+    void Insert(const KeyType& key)
+    {
+        DataStream ssKey(SER_LLD, LLD::DATABASE_VERSION);
+        ssKey << key;
+
+        uint64_t nHash = get_hash(ssKey.Bytes());
+        //uint32_t nBranch = (nHash % 2);
+
+        /* Check for root. */
+        if(!proot)
+        {
+            proot = new TrieNode(nHash);
+
+            return;
+        }
+
+        uint32_t nTotal = 1;
+
+        TrieNode* pnode = proot;
+        while(true)
+        {
+            ++nTotal;
+
+            if(pnode->nHash == nHash)
+                break;
+
+            bool fRight = pnode->nHash > nHash;//((nHash % 2) != (pnode->nHash % 2));
+            //if(pnode->nHash > nHash)
+            //if(nBranch == 1)
+
+            if(fRight)
+            {
+                if(pnode->pright)
+                    pnode = pnode->pright;
+                else
+                {
+                    debug::log(0, "Modulus RH Tree index created after ", nTotal, " iterations");
+                    pnode->pright = new TrieNode(nHash);
+                    break;
+                }
+            }
+
+
+            //if(pnode->nHash < nHash)
+            //if(nBranch == 0)
+            else
+            {
+                if(pnode->pleft)
+                    pnode = pnode->pleft;
+                else
+                {
+                    debug::log(0, "Modulus LH Tree index created after ", nTotal, " iterations");
+                    pnode->pleft = new TrieNode(nHash);
+                    break;
+                }
+            }
+
+
+
+        }
+    }
+};
+
 
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
@@ -177,6 +417,22 @@ int main(int argc, char** argv)
     config::mapArgs["-datadir"] = "/database/LIVE";
 
     TestDB* bloom = new TestDB();
+
+    uint1024_t hashData = 0;
+    if(!bloom->HasKey(hashBlock))
+        bloom->WriteKey(hashBlock, hashBlock);
+
+    runtime::stopwatch swReader;
+    swReader.start();
+
+
+    for(int i = 0; i < nTotalTests; ++i)
+        if(!bloom->ReadKey(hashBlock, hashData))
+            debug::error("Failed to read ", hashBlock.SubString());
+
+    swReader.stop();
+
+    debug::log(0, "Oldest record read in ", swReader.ElapsedMicroseconds(), " (", std::fixed, (1000000.0 * nTotalTests) / swReader.ElapsedMicroseconds(), " op/s)");
 
     std::vector<uint1024_t> vKeys;
     for(int i = 0; i < 1000000; ++i)
@@ -218,13 +474,16 @@ int main(int argc, char** argv)
 
     runtime::stopwatch swTimer;
     swTimer.start();
+
+    uint32_t nCount = 0;
     for(const auto& nBucket : vKeys)
     {
-        bloom->WriteKey(nBucket, nBucket);
+        if(!bloom->WriteKey(nBucket, nBucket))
+            return debug::error("Failed on ", ++nCount, " to write ", nBucket.SubString());
     }
     swTimer.stop();
 
-    debug::log(0, "100k records written in ", swTimer.ElapsedMicroseconds());
+    debug::log(0, nTotalTests, " records written in ", swTimer.ElapsedMicroseconds(), " (", std::fixed, (1000000.0 * nTotalTests) / swTimer.ElapsedMicroseconds(), " op/s)");
 
     uint1024_t hashKey = 0;
 
@@ -232,11 +491,28 @@ int main(int argc, char** argv)
     swTimer.start();
     for(const auto& nBucket : vKeys)
     {
-        bloom->ReadKey(nBucket, hashKey);
+        if(!bloom->ReadKey(nBucket, hashKey))
+            return debug::error("Failed to read ", nBucket.SubString());
     }
     swTimer.stop();
 
-    debug::log(0, "100k records read in ", swTimer.ElapsedMicroseconds());
+    debug::log(0, nTotalTests, " records read in ", swTimer.ElapsedMicroseconds(), " (", std::fixed, (1000000.0 * nTotalTests) / swTimer.ElapsedMicroseconds(), " op/s)");
+
+
+    std::vector<uint1024_t> vKeys2;
+    for(int i = 0; i < nTotalTests; ++i)
+        vKeys2.push_back(LLC::GetRand1024());
+
+    swTimer.reset();
+    swTimer.start();
+    for(const auto& nBucket : vKeys2)
+    {
+        if(bloom->HasKey(nBucket))
+            return debug::error("KEY EXISTS!!! ", nBucket.ToString());
+    }
+    swTimer.stop();
+
+    debug::log(0, nTotalTests, " records checked in ", swTimer.ElapsedMicroseconds(), " (", std::fixed, (1000000.0 * nTotalTests) / swTimer.ElapsedMicroseconds(), " op/s)");
 
     delete bloom;
 

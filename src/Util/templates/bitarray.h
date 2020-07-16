@@ -109,7 +109,7 @@ public:
 
     /** Create bit array with given number of elements. **/
     BitArray  (const uint64_t nElements)
-    : vRegisters ((nElements / 64) + 1, 0)
+    : vRegisters ((nElements / 64) + (nElements % 64 == 0 ? 0 : 1), 0)
     {
     }
 

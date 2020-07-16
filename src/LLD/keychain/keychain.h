@@ -59,14 +59,6 @@ namespace LLD
         virtual bool Put(const SectorKey& cKey) = 0;
 
 
-        /** Flush
-         *
-         *  Flush all buffers to disk if using ACID transaction.
-         *
-         **/
-        virtual void Flush() = 0;
-
-
         /** Restore
          *
          *  Restore an erased key from keychain.
