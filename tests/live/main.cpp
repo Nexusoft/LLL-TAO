@@ -108,36 +108,67 @@ public:
 
 };
 
-
-/*
-Hash Tables:
-
-Set max tables per timestamp.
-
-Keep disk index of all timestamps in memory.
-
-Keep caches of Disk Index files (LRU) for low memory footprint
-
-Check the timestamp range of bucket whether to iterate forwards or backwards
-
-
-_hashmap.000.0000
-_name.shard.file
-  t0 t1 t2
-  |  |  |
-
-  timestamp each hashmap file if specified
-  keep indexes in TemplateLRU
-
-  search from nTimestamp < timestamp[nShard][nHashmap]
-
-*/
-
 #include <TAO/Ledger/include/genesis_block.h>
 
 const uint256_t hashSeed = 55;
 
 #include <bitset>
+
+
+const uint32_t MAX_PRIMARY_K_HASHES = 7;
+const uint32_t MAX_BITS_PER_BLOOM   = 12;
+
+bool check_hashmap_available(const uint32_t nHashmap, const std::vector<uint8_t>& vBuffer)
+{
+    uint32_t nBeginIndex  = (nHashmap * MAX_BITS_PER_BLOOM) / 8;
+    uint32_t nBeginOffset = (nHashmap * MAX_BITS_PER_BLOOM) % 8;
+
+    for(uint32_t n = 0; n < MAX_BITS_PER_BLOOM; ++n)
+    {
+        uint32_t nIndex  = nBeginIndex + ((nBeginOffset + n) / 8);
+        uint32_t nOffset = (nBeginOffset + n) % 8;
+
+        if(vBuffer[nIndex] & (1 << nOffset))
+            return false;
+    }
+
+    return true;
+}
+
+bool check_secondary_bloom(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vBuffer, const uint32_t nHashmap = 0)
+{
+    uint32_t nBeginIndex  = (nHashmap * MAX_BITS_PER_BLOOM) / 8;
+    uint32_t nBeginOffset = (nHashmap * MAX_BITS_PER_BLOOM) % 8;
+
+    for(uint32_t k = 0; k < MAX_PRIMARY_K_HASHES; ++k)
+    {
+        uint64_t nBucket = XXH3_64bits_withSeed((uint8_t*)&vKey[0], vKey.size(), k) % MAX_BITS_PER_BLOOM;
+
+        uint32_t nIndex  = nBeginIndex + (nBeginOffset + nBucket) / 8;
+        uint32_t nBit    = (nBeginOffset + nBucket) % 8;
+
+        if(!(vBuffer[nIndex] & (1 << nBit)))
+            return false;
+    }
+
+    return true;
+}
+
+void set_secondary_bloom(const std::vector<uint8_t>& vKey, std::vector<uint8_t> &vBuffer, const uint32_t nHashmap = 0)
+{
+    uint32_t nBeginIndex  = (nHashmap * MAX_BITS_PER_BLOOM) / 8;
+    uint32_t nBeginOffset = (nHashmap * MAX_BITS_PER_BLOOM) % 8;
+
+    for(uint32_t k = 0; k < MAX_PRIMARY_K_HASHES; ++k)
+    {
+        uint64_t nBucket = XXH3_64bits_withSeed((uint8_t*)&vKey[0], vKey.size(), k) % MAX_BITS_PER_BLOOM;
+
+        uint32_t nIndex  = nBeginIndex + (nBeginOffset + nBucket) / 8;
+        uint32_t nBit    = (nBeginOffset + nBucket) % 8;
+
+        vBuffer[nIndex] |= (1 << nBit);
+    }
+}
 
 
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
@@ -148,9 +179,42 @@ int main(int argc, char** argv)
     TestDB* bloom = new TestDB();
 
     std::vector<uint1024_t> vKeys;
-    for(int i = 0; i < 100000; ++i)
+    for(int i = 0; i < 1000000; ++i)
         vKeys.push_back(LLC::GetRand1024());
 
+    uint32_t nDuplicates = 0;
+
+
+    std::vector<uint8_t> vBuffer((vKeys.size() * MAX_BITS_PER_BLOOM) / 8, 0);
+
+    debug::log(0, "Allocating a buffer of size ", vBuffer.size(), " for ", vKeys.size(), " files");
+
+    DataStream ssKey(SER_LLD, LLD::DATABASE_VERSION);
+    ssKey << vKeys[0];
+
+    std::vector<uint8_t> vKey = ssKey.Bytes();
+    set_secondary_bloom(vKey, vBuffer, 0);
+
+    for(uint32_t n = 1; n < vKeys.size(); ++n)
+    {
+        DataStream ssData(SER_LLD, LLD::DATABASE_VERSION);
+        ssData << vKeys[n];
+
+        if(!check_hashmap_available(n, vBuffer))
+            return debug::error("FILE ", n, " IS NOT EMPTY");
+
+        set_secondary_bloom(ssData.Bytes(), vBuffer, n);
+        if(check_secondary_bloom(ssData.Bytes(), vBuffer, 0))
+            ++nDuplicates;
+
+        if(check_hashmap_available(n, vBuffer))
+            return debug::error("FILE ", n, " EMPTY");
+    }
+
+    debug::log(0, "Created ", vKeys.size(), " Bloom filters with ",
+        nDuplicates, " duplicates [", std::fixed, (nDuplicates * 100.0) / vKeys.size(), " %]");
+
+    return 0;
 
     runtime::stopwatch swTimer;
     swTimer.start();

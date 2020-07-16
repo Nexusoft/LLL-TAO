@@ -75,6 +75,9 @@ XXH32        6.8 GB/s            6.0 GB/s
 extern "C" {
 #endif
 
+//for XXH3
+#define XXH_STATIC_LINKING_ONLY
+
 /* ****************************
  *  INLINE mode
  ******************************/

@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #include <LLD/keychain/hashmap.h>
 #include <LLD/include/enum.h>
 #include <LLD/include/version.h>
-#include <LLD/hash/xxh3.h>
+#include <LLD/hash/xxhash.h>
 #include <LLD/templates/bloom.h>
 
 #include <Util/templates/datastream.h>
@@ -324,7 +324,6 @@ namespace LLD
             {
                 /* Set the new stream pointer. */
                 std::string filename = debug::safe_printstr(strBaseLocation, "_hashmap.", std::setfill('0'), std::setw(5), i);
-
                 pstream = new std::fstream(filename, std::ios::in | std::ios::out | std::ios::binary);
                 if(!pstream->is_open())
                 {
