@@ -75,10 +75,8 @@ namespace LLP
         SSL_load_error_strings();
         OpenSSL_add_ssl_algorithms();
 
-        /* Create the global network SSL object.
-         * If using a generic method (i.e) *_method() and not *_server_method or *_client_method,
-         * then SSl objects will need SSL_set_accept_state() or SSL_set_connect_state() before connecting */
-        pSSL_CTX = SSL_CTX_new(SSLv23_method());
+        /* Create the global network SSL object.  NOTE we only support TLS 1.0 and greater, not previous versions of SSL */
+        pSSL_CTX = SSL_CTX_new(TLS_method());
 
         /* Set the verification callback to always true. */
         SSL_CTX_set_verify(pSSL_CTX, SSL_VERIFY_PEER, LLC::always_true_callback);
