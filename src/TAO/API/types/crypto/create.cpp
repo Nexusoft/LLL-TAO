@@ -60,6 +60,10 @@ namespace TAO
             /* Get the requested key name */
             std::string strName = params["name"].get<std::string>();
 
+            /* Check they have not requested cert, as this requires a separate API method */
+            if(strName == "cert")
+                throw APIException(-291, "The cert key cannot be used to create a key pair as it is reserved for a TLS certificate.  Please use the create/certificate API method instead.");
+
             /* The logged in sig chain genesis hash */
             uint256_t hashGenesis = session.GetAccount()->Genesis();
 

@@ -56,6 +56,10 @@ namespace TAO
             
             /* Get the requested key name */
             std::string strName = params["name"].get<std::string>();
+
+            /* Check they have not requested cert, as this is a TLS certificate and not intended for signature verification  */
+            if(strName == "cert")
+                throw APIException(-292, "The cert key cannot be used to sign data as it is reserved for a TLS certificate.");
             
             /* Check the caller included the data */
             if(params.find("data") == params.end() || params["data"].get<std::string>().empty())
