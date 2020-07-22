@@ -76,6 +76,12 @@ namespace TAO
                 /* Get the requested key name */
                 std::string strName = params["name"].get<std::string>();
 
+                /* Ensure the user has not requested to encrypt using one of the default keys 
+                    as these are for signature verification only */
+                std::set<std::string> setDefaults{"auth", "lisp", "network", "sign", "verify", "cert", "app1", "app2", "app3"};
+                if(setDefaults.find(strName) != setDefaults.end())
+                    throw APIException(-293, "Invalid key name.  Keys in the crypto register cannot be used for encryption, only signature generation and verification");
+
                 /* Authenticate the users credentials */
                 if(!users->Authenticate(params))
                     throw APIException(-139, "Invalid credentials");

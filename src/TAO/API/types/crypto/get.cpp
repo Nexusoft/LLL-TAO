@@ -201,10 +201,11 @@ namespace TAO
             /* Get the requested key name */
             std::string strName = params["name"].get<std::string>();
 
-            /* Ensure the user has not requested the private key for one of the default keys, only the app or additional 3rd party keys */
-            std::set<std::string> setDefaults{"auth", "lisp", "network", "sign", "verify", "cert"};
+            /* Ensure the user has not requested the private key for one of the default keys 
+               as these are for signature verification only */
+            std::set<std::string> setDefaults{"auth", "lisp", "network", "sign", "verify", "cert", "app1", "app2", "app3"};
             if(setDefaults.find(strName) != setDefaults.end())
-                throw APIException(-263, "Private key can only be retrieved for app1, app2, app3, and other 3rd-party keys");
+                throw APIException(-263, "Private keys cannot only be retrieved for keys in the crypto register");
      
             /* Generate the private key */
             uint512_t hashPrivate = session.GetAccount()->Generate(strName, 0, strPIN);
