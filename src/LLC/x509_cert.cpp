@@ -12,14 +12,17 @@
 ____________________________________________________________________________________________*/
 
 #include <LLC/include/x509_cert.h>
+#include <LLC/include/eckey.h>
 #include <LLC/include/key_error.h>
 
 #include <Util/include/debug.h>
 #include <Util/include/filesystem.h>
+#include <openssl/ec.h> 
 #include <openssl/pem.h>
 #include <openssl/x509v3.h>
 #include <openssl/bn.h>
 #include <openssl/ssl.h>
+#include <openssl/bio.h>
 
 #include <cstdio>
 
@@ -118,6 +121,7 @@ namespace LLC
         if(!pFile)
             return debug::error(FUNCTION, "X509Cert : Unable to open cert file.");
         ret = PEM_write_X509(pFile, px509);
+        
         fclose(pFile);
         if(!ret)
             return debug::error(FUNCTION, "X509Cert : Unable to write cert file.");
@@ -126,8 +130,9 @@ namespace LLC
     }
 
 
-    /*  Generate the private key and certificate. */
-    bool X509Cert::Generate()
+    /* Generate an RSA keypair and correspoding certificate signed with the key.  This method is useful for creating
+       ad-hoc one-off self-signed certificates where the private key is ephemeral.  The certificate validity is set to 1 year . */
+    bool X509Cert::GenerateRSA(const std::string& strCN, const uint64_t nValidFrom)
     {
         int32_t ret = 0;
 
@@ -160,8 +165,10 @@ namespace LLC
         ASN1_INTEGER_set(X509_get_serialNumber(px509), 1);
 
         /* Set the notBefore property to the current time and notAfter property to current time plus 365 days.*/
-        X509_gmtime_adj(X509_get_notBefore(px509), 0);
-        X509_gmtime_adj(X509_get_notAfter(px509), 31536000L);
+        X509_set_notBefore(px509, ASN1_TIME_set( nullptr, nValidFrom));
+        X509_set_notAfter(px509, ASN1_TIME_set( nullptr, nValidFrom +  31536000L));
+        //X509_gmtime_adj(X509_get_notBefore(px509), 0);
+        //X509_gmtime_adj(X509_get_notAfter(px509), 31536000L);
 
         /*Set the public key for the certificate. */
         X509_set_pubkey(px509, pkey);
@@ -170,9 +177,61 @@ namespace LLC
         X509_NAME *name = X509_get_subject_name(px509);
 
         /* Provide country code "C", organization "O", and common name "CN" */
-        X509_NAME_add_entry_by_txt(name, "C", MBSTRING_ASC, (uint8_t *)"US", -1, -1, 0);
+        X509_NAME_add_entry_by_txt(name, "C", MBSTRING_ASC, (uint8_t *)"ORG", -1, -1, 0);
         X509_NAME_add_entry_by_txt(name, "O", MBSTRING_ASC, (uint8_t *)"Nexus", -1, -1, 0);
-        X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC, (uint8_t *)"localhost", -1, -1, 0);
+        X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC, (uint8_t *)strCN.c_str(), -1, -1, 0);
+
+        /* Set the issuer name. */
+        X509_set_issuer_name(px509, name);
+
+        /* Peform the sign. */
+        X509_sign(px509, pkey, EVP_sha1());
+
+
+        return true;
+    }
+
+
+    /* Generate a certificate using EC signature scheme, signed with the specified prigate key.  This method is useful when
+       creating and regenerating self-signed certificates where the private key is persistant. 
+       The certificate validity is set to 1 year. */
+    bool X509Cert::GenerateEC(const uint512_t& hashSecret, const std::string& strCN, const uint64_t nValidFrom)
+    {
+        /* Generate CSecret from the hashSecret */
+        std::vector<uint8_t> vBytes = hashSecret.GetBytes();
+        LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
+
+        /* The EC key wrapper class */
+        ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
+
+        /* Set the secret key. */
+        if(!key.SetSecret(vchSecret, true))
+            return debug::error(FUNCTION, "failed to set brainpool secret key");
+
+        /* Assign EC key to the EVP key. */
+        if(!EVP_PKEY_set1_EC_KEY(pkey, key.GetEC()))
+            return debug::error(FUNCTION, "Unable to assign EC key.");
+
+        /* Set the serial number of certificate to '1'. Some open-source HTTP servers refuse to accept a certificate with a
+           serial number of '0', which is the default. */
+        ASN1_INTEGER_set(X509_get_serialNumber(px509), 1);
+
+        /* Set the notBefore property to the current time and notAfter property to current time plus 365 days.*/
+        X509_set_notBefore(px509, ASN1_TIME_set( nullptr, nValidFrom));
+        X509_set_notAfter(px509, ASN1_TIME_set( nullptr, nValidFrom +  31536000L));
+        //X509_gmtime_adj(X509_get_notBefore(px509), 0);
+        //X509_gmtime_adj(X509_get_notAfter(px509), 31536000L);
+
+        /*Set the public key for the certificate. */
+        X509_set_pubkey(px509, pkey);
+
+        /* Self-signed certificate, set the name of issuer to the name of the subject. */
+        X509_NAME *name = X509_get_subject_name(px509);
+
+        /* Provide country code "C", organization "O", and common name "CN" */
+        X509_NAME_add_entry_by_txt(name, "C", MBSTRING_ASC, (uint8_t *)"ORG", -1, -1, 0);
+        X509_NAME_add_entry_by_txt(name, "O", MBSTRING_ASC, (uint8_t *)"Nexus", -1, -1, 0);
+        X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC, (uint8_t *)strCN.c_str(), -1, -1, 0);
 
         /* Set the issuer name. */
         X509_set_issuer_name(px509, name);
@@ -368,5 +427,41 @@ namespace LLC
     }
 
 
+    /* Gets the x509 certificate binary data in base64 encoded PEM format. */
+    bool X509Cert::GetPEM(std::vector<uint8_t>& vCertificate) const
+    {
+        /* The io memory stream to help us access the certificate data */
+        BIO *bio;
+        
+        /* instantiate the BIO memory steam */
+        bio = BIO_new(BIO_s_mem());
+
+        if(bio == NULL) 
+            return debug::error("BIO_new failed..");
+        
+        /* Write the x509 certificate data to the BIO stream in PEM format */
+        if(PEM_write_bio_X509(bio, px509) == 0) 
+        {
+            BIO_free(bio);
+            return debug::error("PEM_write_bio_x509() failed..");
+        }
+
+        /* Determine the buffer size needed by getting the BIO internal memory pointer */
+        BUF_MEM *bptr;
+        BIO_get_mem_ptr(bio, &bptr);
+
+        /* Get the buffer size */
+        int nSize = bptr->length;
+
+        /* Set the return vector buffer size */
+        vCertificate.resize(nSize);
+
+        /* Read the PEM data from the BIO memory stream into the return vector */
+        BIO_read(bio, &vCertificate[0], nSize);
+
+        /* Clean up and return */
+        BIO_free(bio);
+        return true;
+    }
 
 }

@@ -15,7 +15,13 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLC_INCLUDE_X509_CERT_H
 #define NEXUS_LLC_INCLUDE_X509_CERT_H
 
+#include <Util/include/runtime.h>
+
+#include <LLC/types/uint1024.h>
+
 #include <cstdint>
+#include <string>
+#include <vector>
 
 /** Forward declarations. **/
 typedef struct ssl_ctx_st SSL_CTX;
@@ -132,14 +138,46 @@ namespace LLC
         void Print();
 
 
-        /** Generate
+        /** GenerateRSA
          *
-         *  Generate the private key and certificate.
+         *  Generate an RSA keypair and correspoding certificate signed with the key.  This method is useful for creating
+         *  ad-hoc one-off self-signed certificates where the private key is ephemeral.  The certificate validity is set to 1 year 
+         * 
+         *  @param[in] strCN The common name to set.
+         *  @param[in] nValidFrom The timestamp to set the certificate validity from.
          *
          *  @return Returns true if successful, false otherwise.
          *
          **/
-        bool Generate();
+        bool GenerateRSA(const std::string& strCN, const uint64_t nValidFrom = runtime::unifiedtimestamp());
+
+
+        /** GenerateEC
+         *
+         *  Generate a certificate using EC signature scheme, signed with the specified prigate key.  This method is useful when
+         *  creating and regenerating self-signed certificates where the private key is persistant. 
+         *  The certificate validity is set to 1 year 
+         * 
+         *  @param[in] hashSecret The private key to use .
+         *  @param[in] strCN The common name to set.
+         *  @param[in] nValidFrom The timestamp to set the certificate validity from.
+         *
+         *  @return Returns true if successful, false otherwise.
+         *
+         **/
+        bool GenerateEC(const uint512_t& hashSecret, const std::string& strCN, const uint64_t nValidFrom = runtime::unifiedtimestamp());
+
+
+        /** GetPEM
+         *
+         *  Gets the x509 certificate binary data in base64 encoded PEM format.
+         * 
+         *  @param[out] vCertificate Vector to be populated with the certificate bytes .
+         *
+         *  @return Returns true if successful, false otherwise.
+         *
+         **/
+        bool GetPEM(std::vector<uint8_t>& vCertificate) const;
 
 
     private:

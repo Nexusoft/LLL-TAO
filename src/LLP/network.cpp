@@ -89,7 +89,8 @@ namespace LLP
         /* Instantiate a certificate for use with SSL context */
         LLC::X509Cert cert;
 
-        cert.Generate();
+        /* Generate the certificate, using localhost as the Common Name */
+        cert.GenerateRSA("localhost");
         cert.Verify();
 
         if(!cert.Init_SSL(pSSL_CTX))
