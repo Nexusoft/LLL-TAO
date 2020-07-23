@@ -21,10 +21,12 @@ Each key stored in the crypto register is a 256-bit hash of the public key of an
 The following methods are currently supported by this API
 
 [`list/keys`](#listkeys)  
-[`create/key`](#createkey)   
+[`create/key`](#createkey)  
+[`create/certificate`](#createcertificate)   
 [`get/key`](#getkey)   
 [`get/publickey`](#getpublickey)   
 [`get/privatekey`](#getprivatekey)   
+[`get/certificate`](#getcertificate)   
 [`change/scheme`](#changescheme)   
 [`encrypt/data`](#encryptdata)  
 [`decrypt/data`](#decryptdata)   
@@ -61,17 +63,17 @@ Returns a list of all hashed public keys in the crypto object register for the s
     {
         "name": "auth",
         "scheme": "FALCON",
-        "hashkey": "37wdeKaudAnBQrtrUTvWxnDtDjvYGWf6ttXp6QNsvf5t"
+        "hashkey": "017c682bd04e4f96f6d5988e7de205ea47a53ee0de21ab938bf2ff1bccb0ad2a"
     },
     {
         "name": "network",
         "scheme": "FALCON",
-        "hashkey": "AQXVkTMaDtncHW3pA7HR8bL5BfRqumW29JaAYn9QEWkV"
+        "hashkey": "0198306717f228037301b63c3de29f4e0865ccd3ec81c4a3c6a329b8131cf1b1"
     },
     {
         "name": "app1",
         "scheme": "BRAINPOOL",
-        "hashkey": "CbXyKRQbGTj7NaQHqhxDri5himo52L1vZT3rHerp6eBP"
+        "hashkey": "0231012604f483de2ba4e5c901563e0cfb2e0e6da69a220c407e5951ac49529d"
     },
   
 ]
@@ -84,7 +86,7 @@ Returns a list of all hashed public keys in the crypto object register for the s
 
 `scheme` : The cryptographic scheme used to generate the key pair.  This can be `FALCON` or `BRAINPOOL`.
 
-`hashkey` : The public key, hashed (using Skein-Keccak 256), and then base58 encoded.
+`hashkey` : The public key, hashed (using Skein-Keccak 256).
 
 
 
@@ -103,7 +105,7 @@ Generates a new public-private key pair and stores the hashed public key in the 
 
 ### Parameters:
 
-`name` : The name of the key to create.  If a key already exists in the crypto object register for this key name then the method will return an error.  Accepted values are `auth`, `lisp`, `network`, `sign`, `verify`, `cert`, `app1`, `app2`, and `app3`
+`name` : The name of the key to create.  If a key already exists in the crypto object register for this key name then the method will return an error.  Accepted values are `auth`, `lisp`, `network`, `sign`, `verify`, `app1`, `app2`, and `app3`. **NOTE** The `cert` key can not be generated using this method - use `create/certificate` instead.
 
 `pin` : The PIN for this signature chain.
 
@@ -117,7 +119,7 @@ Generates a new public-private key pair and stores the hashed public key in the 
 {
     "name": "app1",
     "scheme": "BRAINPOOL",
-    "hashkey": "CbXyKRQbGTj7NaQHqhxDri5himo52L1vZT3rHerp6eBP"
+    "hashkey": "0231012604f483de2ba4e5c901563e0cfb2e0e6da69a220c407e5951ac49529d"
 }
 
 ```
@@ -128,7 +130,47 @@ Generates a new public-private key pair and stores the hashed public key in the 
 
 `scheme` : The cryptographic scheme used to generate the key pair.  This can be `FALCON` or `BRAINPOOL`.
 
-`hashkey` : The newly created public key, hashed (using Skein-Keccak 256), and then base58 encoded.
+`hashkey` : The newly created public key, hashed (using Skein-Keccak 256).
+
+
+****
+
+# `create/certificate`
+
+Generates a new self-signed x509 certificate for this signature chain and stores a hash of the certificate data in the `cert` field of the crypto object register.  Users must be logged in to create a certificate.  
+
+This method can be called repeatedly to create an updated certificate, valid for 365 days from the date/time the method is called.
+
+The certificate includes the owners genesis hash in the CN field, allowing calling applications to easily identify the certificate owners signature chain. The certificate is signed using ECDSA with the private key being generated deterministically from the callers signature chain credentials.
+
+
+### Endpoint:
+
+`/crypto/create/certificate`
+
+
+### Parameters:
+
+`pin` : The PIN for this signature chain. 
+
+
+### Return value JSON object:
+```    
+{
+    "txid": "01e470379959256e2ab84feed314c6bded92766e44e0bac21ace006d2e742f4b2862493f290cc014219c2be881d288ea34780a42d50bbfbb3983ff62a57a2b0e",
+    "cert": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUIzakNDQVVRQ0FRRXdDUVlIS29aSXpqMEVBVEJiTVE0d0RBWURWUVFLREFWT1pYaDFjekZKTUVjR0ExVUUKQXd4QVlUSmxOVEZsWkdOa05ERmhPREUxTW1KbVpXUmlNalJsTTJNeU1tVmxOV0UyTldRMlpEZGtOVEkwTVRRMgpZak01T1RFME5XSmpaV1F5TmpsaFpXWm1NREFlRncweU1EQTNNak13TURVM05EaGFGdzB5TVRBM01qTXdNRFUzCk5EaGFNRnN4RGpBTUJnTlZCQW9NQlU1bGVIVnpNVWt3UndZRFZRUURERUJoTW1VMU1XVmtZMlEwTVdFNE1UVXkKWW1abFpHSXlOR1V6WXpJeVpXVTFZVFkxWkRaa04yUTFNalF4TkRaaU16azVNVFExWW1ObFpESTJPV0ZsWm1ZdwpNRm93RkFZSEtvWkl6ajBDQVFZSkt5UURBd0lJQVFFT0EwSUFBZ3hsY0J5Y3QxVno0NHloQkF6ZGVQdDdaY29GCnNLRTVvUzBJcUlVd1NyQlc2YlIwRXUwY3dNNVBjOGlERDlHMC84N3haay9EV091TFZ3UzdxLytjMXVVd0NRWUgKS29aSXpqMEVBUU9CaUFBd2dZUUNRR1BTZmx5WVUvdGp4N0xZYzhUQzhlNXpLNjl6V1pZTnJJeHpyZGVOZGdvcgpQOXZ1azRnWkJ6SFJrNEJKZkdlVGIzSk1FbUVzSmw5bG1UWkU3eUFDRVMwQ1FBcDdVMEYvSGJtQWNBcnNya3lrCkovTGdnQU5rUWc1cHpGT3oxdFV1WWxJWUN2aHJRT3hFVit2SHE1Qk5vUUIzWUpiemxuS1BSWHRxYmYyRUprdXUKQ2dJPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==",
+    "hashcert": "98511ae65afb84b5ea0b10745b97634b673a0833e1cb350a23ee6a0c86d23c32"
+}
+
+```
+
+### Return values:
+
+`txid` : The ID (hash) of the transaction that includes the update to the crypto object register.
+
+`cert` : The certificate data.  This is returned in PEM format, and base64 encoded.  Calling applications should base64 decode the data before using/parsing the certificate. 
+
+`hashcert` : The SK256 hash of the certificate data that is written to the `cert` field in the crypto register.  This hash can be used to prove that the certificate data has not been tampered with by comparing to the value in the crypto register of the certificate owners signature chain.
 
 
 ****
@@ -159,7 +201,7 @@ Returns the hashed public key from the crypto object register for the specified 
 {
     "name": "auth",
     "scheme": "FALCON",
-    "hashkey": "CbXyKRQbGTj7NaQHqhxDri5himo52L1vZT3rHerp6eBP"
+    "hashkey": "0231012604f483de2ba4e5c901563e0cfb2e0e6da69a220c407e5951ac49529d"
 }
 
 ```
@@ -170,7 +212,7 @@ Returns the hashed public key from the crypto object register for the specified 
 
 `scheme` : The cryptographic scheme used to generate the key pair.  This can be `FALCON` or `BRAINPOOL`.
 
-`hashkey` : The public key, hashed (using Skein-Keccak 256), and then base58 encoded.
+`hashkey` : The public key, hashed (using Skein-Keccak 256).
 
 
 ****
@@ -217,7 +259,7 @@ Returns the public key (as opposed to the hashed public key that is returned by 
 
 # `get/privatekey`
 
-Returns the private key for a key pair. This method can only be used to obtain the private key for the `app1`, `app2`, or `app3` keys or any other key name that is NOT stored in the crypto object register. **`Cannot be used to obtain the private key for the six default keys (`auth`, `lisp`, `network`, `sign`, `verify`, and `cert`).`**  
+Returns the private key for a key pair. This method can only be used to obtain the private key for keys NOT stored in the crypto object register, as those are intended for signature verification only. **`Cannot be used to obtain the private key for the nine default keys (`auth`, `lisp`, `network`, `sign`, `verify`, `cert`, `app1`, `app2`, and `app3`).`**  
 
 
 ### Endpoint:
@@ -251,11 +293,45 @@ Returns the private key for a key pair. This method can only be used to obtain t
 
 ****
 
+
+# `get/certificate`
+
+Returns the previously created self-signed x509 certificate for this signature chain.  Users must be logged in to retrieve a certificate.  
+
+
+### Endpoint:
+
+`/crypto/get/certificate`
+
+
+### Parameters:
+
+`pin` : The PIN for this signature chain. 
+
+
+### Return value JSON object:
+```    
+{
+    "cert": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUIzakNDQVVRQ0FRRXdDUVlIS29aSXpqMEVBVEJiTVE0d0RBWURWUVFLREFWT1pYaDFjekZKTUVjR0ExVUUKQXd4QVlUSmxOVEZsWkdOa05ERmhPREUxTW1KbVpXUmlNalJsTTJNeU1tVmxOV0UyTldRMlpEZGtOVEkwTVRRMgpZak01T1RFME5XSmpaV1F5TmpsaFpXWm1NREFlRncweU1EQTNNak13TURVM05EaGFGdzB5TVRBM01qTXdNRFUzCk5EaGFNRnN4RGpBTUJnTlZCQW9NQlU1bGVIVnpNVWt3UndZRFZRUURERUJoTW1VMU1XVmtZMlEwTVdFNE1UVXkKWW1abFpHSXlOR1V6WXpJeVpXVTFZVFkxWkRaa04yUTFNalF4TkRaaU16azVNVFExWW1ObFpESTJPV0ZsWm1ZdwpNRm93RkFZSEtvWkl6ajBDQVFZSkt5UURBd0lJQVFFT0EwSUFBZ3hsY0J5Y3QxVno0NHloQkF6ZGVQdDdaY29GCnNLRTVvUzBJcUlVd1NyQlc2YlIwRXUwY3dNNVBjOGlERDlHMC84N3haay9EV091TFZ3UzdxLytjMXVVd0NRWUgKS29aSXpqMEVBUU9CaUFBd2dZUUNRR1BTZmx5WVUvdGp4N0xZYzhUQzhlNXpLNjl6V1pZTnJJeHpyZGVOZGdvcgpQOXZ1azRnWkJ6SFJrNEJKZkdlVGIzSk1FbUVzSmw5bG1UWkU3eUFDRVMwQ1FBcDdVMEYvSGJtQWNBcnNya3lrCkovTGdnQU5rUWc1cHpGT3oxdFV1WWxJWUN2aHJRT3hFVit2SHE1Qk5vUUIzWUpiemxuS1BSWHRxYmYyRUprdXUKQ2dJPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==",
+    "hashcert": "98511ae65afb84b5ea0b10745b97634b673a0833e1cb350a23ee6a0c86d23c32"
+}
+
+```
+
+### Return values:
+
+`cert` : The certificate data.  This is returned in PEM format, and base64 encoded.  Calling applications should base64 decode the data before using/parsing the certificate. 
+
+`hashcert` : The SK256 hash of the certificate data that is written to the `cert` field in the crypto register.  This hash can be used to prove that the certificate data has not been tampered with by comparing to the value in the crypto register of the certificate owners signature chain.
+
+
+****
+
 # `change/scheme`
 
 Change the signature scheme used to generate the public-private keys for the users signature chain as well as keys stored in the crypto object register.  Users must be logged in to create a new key.
 
-**NOTE** Changing the cryptographic scheme will also regenerate the six default keys (`auth`, `lisp`, `network`, `sign`, `verify`, and `cert`) stored the crypto object register.  The `app1`, `app2`, `app3` keys are `not` modified. 
+**NOTE** Changing the cryptographic scheme will also regenerate the five default keys (`auth`, `lisp`, `network`, `sign`, and `verify`) stored the crypto object register.  The `app1`, `app2`, `app3` keys are `not` modified. 
 
 
 ### Endpoint:
@@ -312,7 +388,7 @@ If the `peerkey` parameter is supplied then a shared symmetric key is generated 
 
 `key` : A 256-bit (32 character) symmetric key to use to encrypt the data.  Should only be provided if an external encryption key is known.  
 
-`name` : The name of the private key to use to generate the encryption key. Not required if `key` is provided.
+`name` : The name of the private key to use to generate the encryption key. Not required if `key` is provided.  **`The name parameter can not be one of the nine default keys (`auth`, `lisp`, `network`, `sign`, `verify`, `cert`, `app1`, `app2`, and `app3`).`**
 
 `pin` : The PIN for this signature chain. Not required if `key` is provided.
 
@@ -326,7 +402,7 @@ If the `peerkey` parameter is supplied then a shared symmetric key is generated 
 ```    
 {
     "publickey": "Dd4Cb9gTgsT5wk6e1eCw9tTPMKSyCa9e7p2mxAggSRBWHY2cWBxExRMrjGk7PXY6TiysmvRoBvSSKsyybNdGPXFm",
-    "hashkey": "CbXyKRQbGTj7NaQHqhxDri5himo52L1vZT3rHerp6eBP",
+    "hashkey": "cd3555b6f2a7d86a0cd8c239ff0c4d0e872fc26f44fab1b77ff40f52a1a1159b",
     "data": "vQVmV1FXoKwSLRS3IDq8ZRuaQMjqtlG0zvGob64a6EY="
 }
 
@@ -340,7 +416,7 @@ If the `peerkey` parameter is supplied then a shared symmetric key is generated 
 
 `scheme` : The cryptographic scheme used to generate the key.  This can be `FALCON` or `BRAINPOOL`.
 
-`hashkey` : The public key, hashed (using Skein-Keccak 256), and then base58 encoded. This is not returned if the caller provided an external `key` to use for encryption.
+`hashkey` : The public key, hashed (using Skein-Keccak 256). This is not returned if the caller provided an external `key` to use for encryption.
 
 `data` : The AES256 encrypted data, base64 encoded.
 
@@ -501,7 +577,7 @@ The `data` must be supplied as a base64 encoded string.  This will be decoded in
 ### Return value JSON object:
 ```    
 {
-    "hash": ""
+    "hash": "73cc74e67a8b840039d992c0ec7d6637f67c3ed0ac78e8f375b292fbb23cc6c7"
 }
 
 ```

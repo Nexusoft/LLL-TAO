@@ -428,5 +428,7 @@ Error Codes
 | -291 | The cert key cannot be used to create a key pair as it is reserved for a TLS certificate.  Please use the create/certificate API method instead. |
 | -292 | The cert key cannot be used to sign data as it is reserved for a TLS certificate |
 | -293 | Invalid key name.  Keys in the crypto register cannot be used for encryption, only signature generation and verification |
+| -294 | Certificate has not yet been created |
+| -295 | Unable to generate certificate |
 | -300 | API can only be used to lookup data for the currently logged in signature chain when running in client mode |
 

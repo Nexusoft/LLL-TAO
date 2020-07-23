@@ -11,7 +11,12 @@
 
 ____________________________________________________________________________________________*/
 
+
+#include <LLC/include/x509_cert.h>
+
 #include <LLD/include/global.h>
+
+#include <LLP/include/network.h>
 
 #include <TAO/API/types/objects.h>
 #include <TAO/API/include/global.h>
@@ -24,10 +29,12 @@ ________________________________________________________________________________
 
 #include <TAO/Register/types/object.h>
 
+#include <Util/include/base64.h>
 #include <Util/include/debug.h>
 #include <Util/include/encoding.h>
 #include <Util/include/string.h>
 
+#include <openssl/ssl.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -161,6 +168,106 @@ namespace TAO
             
             /* Populate the key, base58 encoded */
             ret["hashkey"] = hashPublic.ToString();
+
+            return ret;
+        }
+
+
+        /* Generates an x509 certificate and stores a hash of the certificate data in the "cert" slot in the crypto register. */
+        json::json Crypto::CreateCertificate(const json::json& params, bool fHelp)
+        {
+            /* JSON return value. */
+            json::json ret;
+
+            /* Authenticate the users credentials */
+            if(!users->Authenticate(params))
+                throw APIException(-139, "Invalid credentials");
+
+            /* Get the PIN to be used for this API call */
+            SecureString strPIN = users->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
+
+            /* Get the session to be used for this API call */
+            Session& session = users->GetSession(params);
+
+            /* The logged in sig chain genesis hash */
+            uint256_t hashGenesis = session.GetAccount()->Genesis();
+
+            /* The address of the crypto object register, which is deterministic based on the genesis */
+            TAO::Register::Address hashCrypto = TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
+            
+            /* Read the crypto object register */
+            TAO::Register::Object crypto;
+            if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::MEMPOOL))
+                throw APIException(-259, "Could not read crypto object register");
+
+            /* Parse the object. */
+            if(!crypto.Parse())
+                throw APIException(-36, "Failed to parse object register");
+            
+            /* Lock the signature chain. */
+            LOCK(session.CREATE_MUTEX);
+
+            /* Create the transaction. */
+            TAO::Ledger::Transaction tx;
+            if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
+                throw APIException(-17, "Failed to create transaction");            
+
+            /* X509 certificate instance*/
+            LLC::X509Cert cert;
+
+            /* Generate private key for the  */
+            uint256_t hashSecret = session.GetAccount()->Generate("cert", 0, strPIN);
+
+            /* Generate a new certificate using the sig chains genesis hash as the common name (CN) and the transaction timestamp 
+               as the valid from.  By using the transaction timestamp as the valid from time, we can reconstruct this exact 
+               certificate with identical hash at any time */
+            cert.GenerateEC(hashSecret, hashGenesis.ToString(), tx.nTimestamp);
+
+            /* Verify that it generated correctly */
+            cert.Verify();
+
+            /* The x509 certificate data in PEM format */
+            std::vector<uint8_t> vCertificate;
+
+            /* Convert certificate to PEM-encoded bytes */
+            cert.GetPEM(vCertificate);
+
+            /* Obtain a 256-bit hash of this certificate data to store in the crypto register */
+            uint256_t hashCert = LLC::SK256(vCertificate);  
+
+            /* Declare operation stream to serialize all of the field updates*/
+            TAO::Operation::Stream ssOperationStream;
+
+            /* Generate the new key */
+            ssOperationStream << std::string("cert") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T) << hashCert;
+             
+            /* Add the crypto update contract. */
+            tx[0] << uint8_t(TAO::Operation::OP::WRITE) << hashCrypto << ssOperationStream.Bytes();
+        
+            /* Add the fee */
+            AddFee(tx);
+
+            /* Execute the operations layer. */
+            if(!tx.Build())
+                throw APIException(-44, "Transaction failed to build");
+
+            /* Sign the transaction. */
+            if(!tx.Sign(session.GetAccount()->Generate(tx.nSequence, strPIN)))
+                throw APIException(-31, "Ledger failed to sign transaction");
+
+            /* Execute the operations layer. */
+            if(!TAO::Ledger::mempool.Accept(tx))
+                throw APIException(-32, "Failed to accept");
+
+            /* Build a JSON response object. */
+            ret["txid"]  = tx.GetHash().ToString();
+
+            /* Include the certificate data. This is a multiline string containing base64-encoded data, therefore we must base64
+               encode it again in order to write it into a single JSON field*/
+            ret["cert"] = encoding::EncodeBase64(&vCertificate[0], vCertificate.size());
+            
+            /* Return the hash of the certificate*/
+            ret["hashcert"] = hashCert.ToString();
 
             return ret;
         }
