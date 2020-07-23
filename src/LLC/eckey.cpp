@@ -852,4 +852,11 @@ namespace LLC
         return true;
     }
 
+
+    /* Accessor to the internal EC_KEY pointer */
+    EC_KEY* ECKey::GetEC() const
+    {
+        return pkey;
+    }
+
 }

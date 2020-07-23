@@ -329,6 +329,16 @@ namespace LLC
         static bool MakeShared(const ECKey& privateKey, const ECKey& publicKey, std::vector<uint8_t> &vchShared);
 
 
+        /** GetEC
+         *
+         *  Accessor to the internal EC_KEY pointer
+         *
+         *  @return the secret phrase in the secure allocator.
+         *
+         **/
+        EC_KEY* GetEC() const;
+
+
     };
 }
 #endif
