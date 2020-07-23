@@ -160,7 +160,7 @@ namespace TAO
             }
             
             /* Populate the key, base58 encoded */
-            ret["hashkey"] = encoding::EncodeBase58(hashPublic.GetBytes());
+            ret["hashkey"] = hashPublic.ToString();
 
             return ret;
         }

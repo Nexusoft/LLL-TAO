@@ -189,7 +189,7 @@ namespace TAO
                 }
                 
                 /* add the hash key */
-                ret["hashkey"] = encoding::EncodeBase58(LLC::SK256(vchPubKey).GetBytes());
+                ret["hashkey"] = LLC::SK256(vchPubKey).ToString();
 
                 /* For added security the actual private key is not directly used as the symmetric key.  Therefore we hash
                    the private key. NOTE: the AES256 function requires a 32-byte key, so we reduce the length if necessary by using
