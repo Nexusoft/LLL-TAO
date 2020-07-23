@@ -234,6 +234,20 @@ namespace TAO
              **/
             json::json CreateCertificate(const json::json& params, bool fHelp);
 
+
+            /** GetCertificate
+             *
+             *  Returns the last generated x509 certificate for this sig chain
+             * 
+             *  @param[in] params The parameters from the API call
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json GetCertificate(const json::json& params, bool fHelp);
+
+
         /* private helper methods */
         private:
 

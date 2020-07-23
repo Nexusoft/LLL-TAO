@@ -33,6 +33,7 @@ namespace TAO
             mapFunctions["get/key"]             = Function(std::bind(&Crypto::Get, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["get/publickey"]       = Function(std::bind(&Crypto::GetPublic, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["get/privatekey"]      = Function(std::bind(&Crypto::GetPrivate, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["get/certificate"]      = Function(std::bind(&Crypto::GetCertificate, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["change/scheme"]       = Function(std::bind(&Crypto::ChangeScheme,this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["encrypt/data"]        = Function(std::bind(&Crypto::Encrypt,this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["decrypt/data"]        = Function(std::bind(&Crypto::Decrypt,this, std::placeholders::_1, std::placeholders::_2));
