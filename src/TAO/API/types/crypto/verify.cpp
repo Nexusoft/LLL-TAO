@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <LLC/include/eckey.h>
 #include <LLC/include/flkey.h>
+#include <LLC/include/x509_cert.h>
 
 #include <TAO/API/types/objects.h>
 #include <TAO/API/include/global.h>
@@ -129,6 +130,47 @@ namespace TAO
                     break;
                 }
             }
+
+            /* Set the flag in the json to return */
+            ret["verified"] = fVerified;
+
+            return ret;
+        }
+
+
+        /* Verifies the x509 certificate. */
+        json::json Crypto::VerifyCertificate(const json::json& params, bool fHelp)
+        {
+            /* JSON return value. */
+            json::json ret;
+
+            /* Check the caller included the certificate cert */
+            if(params.find("certificate") == params.end() || params["certificate"].get<std::string>().empty())
+                throw APIException(-296, "Missing certificate");
+
+            /* Decode the certificate data into a vector of bytes */
+            std::vector<uint8_t> vchCert;
+            try
+            {
+                vchCert = encoding::DecodeBase64(params["certificate"].get<std::string>().c_str());
+            }
+            catch(const std::exception& e)
+            {
+                throw APIException(-27, "Malformed base64 encoding");
+            }
+
+            /* flag indicating the certificate is verified */
+            bool fVerified = false;
+
+            /* X509 certificate to load with the pem data and verify */
+            LLC::X509Cert x509;
+
+            /* Load the certificate data */
+            if(!x509.Load(vchCert))
+                throw APIException(-296, "Invalid certificate data");
+
+            /* Verify the certificate */
+            fVerified = x509.Verify(false);
 
             /* Set the flag in the json to return */
             ret["verified"] = fVerified;

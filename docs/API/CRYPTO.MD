@@ -105,7 +105,7 @@ Generates a new public-private key pair and stores the hashed public key in the 
 
 ### Parameters:
 
-`name` : The name of the key to create.  If a key already exists in the crypto object register for this key name then the method will return an error.  Accepted values are `auth`, `lisp`, `network`, `sign`, `verify`, `app1`, `app2`, and `app3`. **NOTE** The `cert` key can not be generated using this method - use `create/certificate` instead.
+`name` : The name of the key to create.  If a key already exists in the crypto object register for this key name then the method will return an error.  Accepted values are `auth`, `lisp`, `network`, `sign`, `verify`, `cert`, `app1`, `app2`, and `app3`. 
 
 `pin` : The PIN for this signature chain.
 
@@ -128,49 +128,9 @@ Generates a new public-private key pair and stores the hashed public key in the 
 
 `name` : The name of the key entry.
 
-`scheme` : The cryptographic scheme used to generate the key pair.  This can be `FALCON` or `BRAINPOOL`.
+`scheme` : The cryptographic scheme used to generate the key pair.  This can be `FALCON` or `BRAINPOOL`.  **NOTE** The scheme is ignored if creating the `cert` key as this requires the use of BRAINPOOL.
 
 `hashkey` : The newly created public key, hashed (using Skein-Keccak 256).
-
-
-****
-
-# `create/certificate`
-
-Generates a new self-signed x509 certificate for this signature chain and stores a hash of the certificate data in the `cert` field of the crypto object register.  Users must be logged in to create a certificate.  
-
-This method can be called repeatedly to create an updated certificate, valid for 365 days from the date/time the method is called.
-
-The certificate includes the owners genesis hash in the CN field, allowing calling applications to easily identify the certificate owners signature chain. The certificate is signed using ECDSA with the private key being generated deterministically from the callers signature chain credentials.
-
-
-### Endpoint:
-
-`/crypto/create/certificate`
-
-
-### Parameters:
-
-`pin` : The PIN for this signature chain. 
-
-
-### Return value JSON object:
-```    
-{
-    "txid": "01e470379959256e2ab84feed314c6bded92766e44e0bac21ace006d2e742f4b2862493f290cc014219c2be881d288ea34780a42d50bbfbb3983ff62a57a2b0e",
-    "cert": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUIzakNDQVVRQ0FRRXdDUVlIS29aSXpqMEVBVEJiTVE0d0RBWURWUVFLREFWT1pYaDFjekZKTUVjR0ExVUUKQXd4QVlUSmxOVEZsWkdOa05ERmhPREUxTW1KbVpXUmlNalJsTTJNeU1tVmxOV0UyTldRMlpEZGtOVEkwTVRRMgpZak01T1RFME5XSmpaV1F5TmpsaFpXWm1NREFlRncweU1EQTNNak13TURVM05EaGFGdzB5TVRBM01qTXdNRFUzCk5EaGFNRnN4RGpBTUJnTlZCQW9NQlU1bGVIVnpNVWt3UndZRFZRUURERUJoTW1VMU1XVmtZMlEwTVdFNE1UVXkKWW1abFpHSXlOR1V6WXpJeVpXVTFZVFkxWkRaa04yUTFNalF4TkRaaU16azVNVFExWW1ObFpESTJPV0ZsWm1ZdwpNRm93RkFZSEtvWkl6ajBDQVFZSkt5UURBd0lJQVFFT0EwSUFBZ3hsY0J5Y3QxVno0NHloQkF6ZGVQdDdaY29GCnNLRTVvUzBJcUlVd1NyQlc2YlIwRXUwY3dNNVBjOGlERDlHMC84N3haay9EV091TFZ3UzdxLytjMXVVd0NRWUgKS29aSXpqMEVBUU9CaUFBd2dZUUNRR1BTZmx5WVUvdGp4N0xZYzhUQzhlNXpLNjl6V1pZTnJJeHpyZGVOZGdvcgpQOXZ1azRnWkJ6SFJrNEJKZkdlVGIzSk1FbUVzSmw5bG1UWkU3eUFDRVMwQ1FBcDdVMEYvSGJtQWNBcnNya3lrCkovTGdnQU5rUWc1cHpGT3oxdFV1WWxJWUN2aHJRT3hFVit2SHE1Qk5vUUIzWUpiemxuS1BSWHRxYmYyRUprdXUKQ2dJPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==",
-    "hashcert": "98511ae65afb84b5ea0b10745b97634b673a0833e1cb350a23ee6a0c86d23c32"
-}
-
-```
-
-### Return values:
-
-`txid` : The ID (hash) of the transaction that includes the update to the crypto object register.
-
-`cert` : The certificate data.  This is returned in PEM format, and base64 encoded.  Calling applications should base64 decode the data before using/parsing the certificate. 
-
-`hashcert` : The SK256 hash of the certificate data that is written to the `cert` field in the crypto register.  This hash can be used to prove that the certificate data has not been tampered with by comparing to the value in the crypto register of the certificate owners signature chain.
 
 
 ****
@@ -296,7 +256,7 @@ Returns the private key for a key pair. This method can only be used to obtain t
 
 # `get/certificate`
 
-Returns the previously created self-signed x509 certificate for this signature chain.  Users must be logged in to retrieve a certificate.  
+Returns a self-signed x509 certificate for this signature chain valid for 365 days from the time the method is called.  The certificate is signed using the `cert` key from the crypto object register.  Users must be logged in to retrieve a certificate.  
 
 
 ### Endpoint:
@@ -312,18 +272,14 @@ Returns the previously created self-signed x509 certificate for this signature c
 ### Return value JSON object:
 ```    
 {
-    "cert": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUIzakNDQVVRQ0FRRXdDUVlIS29aSXpqMEVBVEJiTVE0d0RBWURWUVFLREFWT1pYaDFjekZKTUVjR0ExVUUKQXd4QVlUSmxOVEZsWkdOa05ERmhPREUxTW1KbVpXUmlNalJsTTJNeU1tVmxOV0UyTldRMlpEZGtOVEkwTVRRMgpZak01T1RFME5XSmpaV1F5TmpsaFpXWm1NREFlRncweU1EQTNNak13TURVM05EaGFGdzB5TVRBM01qTXdNRFUzCk5EaGFNRnN4RGpBTUJnTlZCQW9NQlU1bGVIVnpNVWt3UndZRFZRUURERUJoTW1VMU1XVmtZMlEwTVdFNE1UVXkKWW1abFpHSXlOR1V6WXpJeVpXVTFZVFkxWkRaa04yUTFNalF4TkRaaU16azVNVFExWW1ObFpESTJPV0ZsWm1ZdwpNRm93RkFZSEtvWkl6ajBDQVFZSkt5UURBd0lJQVFFT0EwSUFBZ3hsY0J5Y3QxVno0NHloQkF6ZGVQdDdaY29GCnNLRTVvUzBJcUlVd1NyQlc2YlIwRXUwY3dNNVBjOGlERDlHMC84N3haay9EV091TFZ3UzdxLytjMXVVd0NRWUgKS29aSXpqMEVBUU9CaUFBd2dZUUNRR1BTZmx5WVUvdGp4N0xZYzhUQzhlNXpLNjl6V1pZTnJJeHpyZGVOZGdvcgpQOXZ1azRnWkJ6SFJrNEJKZkdlVGIzSk1FbUVzSmw5bG1UWkU3eUFDRVMwQ1FBcDdVMEYvSGJtQWNBcnNya3lrCkovTGdnQU5rUWc1cHpGT3oxdFV1WWxJWUN2aHJRT3hFVit2SHE1Qk5vUUIzWUpiemxuS1BSWHRxYmYyRUprdXUKQ2dJPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==",
-    "hashcert": "98511ae65afb84b5ea0b10745b97634b673a0833e1cb350a23ee6a0c86d23c32"
+    "certificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUIzakNDQVVRQ0FRRXdDUVlIS29aSXpqMEVBVEJiTVE0d0RBWURWUVFLREFWT1pYaDFjekZKTUVjR0ExVUUKQXd4QVlUSmxOVEZsWkdOa05ERmhPREUxTW1KbVpXUmlNalJsTTJNeU1tVmxOV0UyTldRMlpEZGtOVEkwTVRRMgpZak01T1RFME5XSmpaV1F5TmpsaFpXWm1NREFlRncweU1EQTNNak13TURVM05EaGFGdzB5TVRBM01qTXdNRFUzCk5EaGFNRnN4RGpBTUJnTlZCQW9NQlU1bGVIVnpNVWt3UndZRFZRUURERUJoTW1VMU1XVmtZMlEwTVdFNE1UVXkKWW1abFpHSXlOR1V6WXpJeVpXVTFZVFkxWkRaa04yUTFNalF4TkRaaU16azVNVFExWW1ObFpESTJPV0ZsWm1ZdwpNRm93RkFZSEtvWkl6ajBDQVFZSkt5UURBd0lJQVFFT0EwSUFBZ3hsY0J5Y3QxVno0NHloQkF6ZGVQdDdaY29GCnNLRTVvUzBJcUlVd1NyQlc2YlIwRXUwY3dNNVBjOGlERDlHMC84N3haay9EV091TFZ3UzdxLytjMXVVd0NRWUgKS29aSXpqMEVBUU9CaUFBd2dZUUNRR1BTZmx5WVUvdGp4N0xZYzhUQzhlNXpLNjl6V1pZTnJJeHpyZGVOZGdvcgpQOXZ1azRnWkJ6SFJrNEJKZkdlVGIzSk1FbUVzSmw5bG1UWkU3eUFDRVMwQ1FBcDdVMEYvSGJtQWNBcnNya3lrCkovTGdnQU5rUWc1cHpGT3oxdFV1WWxJWUN2aHJRT3hFVit2SHE1Qk5vUUIzWUpiemxuS1BSWHRxYmYyRUprdXUKQ2dJPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg=="
 }
 
 ```
 
 ### Return values:
 
-`cert` : The certificate data.  This is returned in PEM format, and base64 encoded.  Calling applications should base64 decode the data before using/parsing the certificate. 
-
-`hashcert` : The SK256 hash of the certificate data that is written to the `cert` field in the crypto register.  This hash can be used to prove that the certificate data has not been tampered with by comparing to the value in the crypto register of the certificate owners signature chain.
-
+`certificate` : The certificate data.  This is returned in PEM format, and base64 encoded.  Calling applications should base64 decode the data before using/parsing the certificate. 
 
 ****
 
