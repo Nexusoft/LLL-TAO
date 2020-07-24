@@ -64,7 +64,7 @@ namespace LLC
 
         ECKey();
         ECKey(const ECKey& b);
-        ECKey(const uint32_t nID, const uint32_t nKeySizeIn = 72);
+        ECKey(const uint32_t nID, const uint32_t nKeySizeIn = 72, EC_KEY* key = nullptr);
         ~ECKey();
 
 

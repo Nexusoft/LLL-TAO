@@ -282,8 +282,8 @@ namespace LLC
 
 
     /* Constructor from a new curve type. */
-    ECKey::ECKey(const uint32_t nID, const uint32_t nKeySizeIn)
-    : pkey(nullptr)
+    ECKey::ECKey(const uint32_t nID, const uint32_t nKeySizeIn, EC_KEY* key)
+    : pkey(key)
     , fSet(false)
     , fCompressedPubKey(false)
     , nCurveID(nID)
@@ -303,8 +303,9 @@ namespace LLC
             throw key_error("ECKey::ECKey() : Unrecognized EC Type");
         }
 
-        /* Create a new key from the curve type. */
-        pkey = EC_KEY_new_by_curve_name(nCurveID);
+        /* Create a new key from the curve type, if one has not been passed in */
+        if(pkey == nullptr)
+            pkey = EC_KEY_new_by_curve_name(nCurveID);
 
         /* Check for failure. */
         if(pkey == nullptr)
