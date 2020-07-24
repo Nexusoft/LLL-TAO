@@ -324,8 +324,9 @@ namespace TAO
             if(crypto.get<uint256_t>("verify") != 0)
                 ssOperationStream << std::string("verify") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T) << user->KeyHash("verify", 0, strPin, tx.nKeyType);
 
-            //if(crypto.get<uint256_t>("cert") != 0)
-            //    ssOperationStream << std::string("cert") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T) << user->KeyHash("cert", 0, strPin, tx.nKeyType);
+            /* Update the cert key.  NOTE This can only use brainpool */
+            if(crypto.get<uint256_t>("cert") != 0)
+                ssOperationStream << std::string("cert") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T) << user->KeyHash("cert", 0, strPin, TAO::Ledger::SIGNATURE::BRAINPOOL);
 
             /* Add the crypto update contract. */
             tx[tx.Size()] << uint8_t(TAO::Operation::OP::WRITE) << hashCrypto << ssOperationStream.Bytes();
