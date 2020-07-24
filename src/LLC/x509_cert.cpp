@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <LLC/include/x509_cert.h>
 #include <LLC/include/eckey.h>
 #include <LLC/include/key_error.h>
+#include <LLC/hash/SK.h>
 
 #include <Util/include/debug.h>
 #include <Util/include/filesystem.h>
@@ -239,7 +240,6 @@ namespace LLC
         /* Peform the sign. */
         X509_sign(px509, pkey, EVP_sha1());
 
-
         return true;
     }
 
@@ -290,30 +290,39 @@ namespace LLC
 
 
     /*  Check that the private key matches the public key in the x509 certificate. */
-    bool X509Cert::Verify()
+    bool X509Cert::Verify(bool fCheckPrivate)
     {
-        if(X509_check_private_key(px509, pkey) != 1)
+        if(fCheckPrivate && X509_check_private_key(px509, pkey) != 1)
             return debug::error(FUNCTION, "X509_check_private_key() : Private key does not match the certificate public key.");
 
+        if(!verify())
+            return debug::error(FUNCTION, "X509 certificate is not valid.");
+
         return true;
     }
 
 
     /* Check the authenticity of the public key in the certificate and the private key paired with it. */
-    bool X509Cert::Verify(SSL *ssl)
+    bool X509Cert::Verify(SSL *ssl, bool fCheckPrivate)
     {
-        if(SSL_check_private_key(ssl) != 1)
+        if(fCheckPrivate && SSL_check_private_key(ssl) != 1)
             return debug::error(FUNCTION, "SSL_check_private_key() : Private key does not match the certificate public key.");
 
+        if(!verify())
+            return debug::error(FUNCTION, "X509 certificate is not valid.");
+
         return true;
     }
 
 
     /* Check the authenticity of the public key in the certificate and the private key paired with it. */
-    bool X509Cert::Verify(SSL_CTX *ssl_ctx)
+    bool X509Cert::Verify(SSL_CTX *ssl_ctx, bool fCheckPrivate)
     {
-        if(SSL_CTX_check_private_key(ssl_ctx) != 1)
+        if(fCheckPrivate && SSL_CTX_check_private_key(ssl_ctx) != 1)
             return debug::error(FUNCTION, "SSL_CTX_check_private_key() : Private key does not match the certificate public key.");
+
+        if(!verify())
+            return debug::error(FUNCTION, "X509 certificate is not valid.");
 
         return true;
     }
@@ -428,7 +437,7 @@ namespace LLC
 
 
     /* Gets the x509 certificate binary data in base64 encoded PEM format. */
-    bool X509Cert::GetPEM(std::vector<uint8_t>& vCertificate) const
+    bool X509Cert::GetPEM(std::vector<uint8_t>& vchCertificate) const
     {
         /* The io memory stream to help us access the certificate data */
         BIO *bio;
@@ -454,13 +463,102 @@ namespace LLC
         int nSize = bptr->length;
 
         /* Set the return vector buffer size */
-        vCertificate.resize(nSize);
+        vchCertificate.resize(nSize);
 
         /* Read the PEM data from the BIO memory stream into the return vector */
-        BIO_read(bio, &vCertificate[0], nSize);
+        BIO_read(bio, &vchCertificate[0], nSize);
 
         /* Clean up and return */
         BIO_free(bio);
+        return true;
+    }
+
+
+    /* Loads the certificate data, which is passed to the method in base64 encoded PEM format*/
+    bool X509Cert::Load(const std::vector<uint8_t>& vchCertificate)
+    {
+        /* Flag indicating load was successful  */
+        bool fSuccess = false;
+
+        /* IO memory stream to load with the certificate data */
+        BIO *bio;
+        
+        /* instantiate the BIO memory steam */
+        bio = BIO_new(BIO_s_mem());
+
+        if(bio == NULL) 
+            fSuccess = debug::error("BIO_new failed..");
+
+        /* Write the certificate bytes into the BIO */
+        BIO_write(bio, &vchCertificate[0], vchCertificate.size());
+        
+        /* Write the x509 certificate data to the BIO stream in PEM format */
+        if(PEM_read_bio_X509(bio, &px509, nullptr, nullptr) == 0) 
+            fSuccess = debug::error("PEM_read_bio_X509() failed..");
+        
+        /* PEM successfully read */
+        fSuccess = true;
+
+        /* Clean up and return */
+        BIO_free(bio);
+        
+        return fSuccess;
+
+    }
+
+
+    /* Verify the data and signature of the x509 certificate */
+    bool X509Cert::verify()
+    {
+        /* Flag indicating it is valid */
+        bool fValid = false;
+
+        /* Create certificate store containing the x509 certificate to verify */
+        X509_STORE_CTX *ctx;
+        ctx = X509_STORE_CTX_new();
+        X509_STORE *store = X509_STORE_new();
+
+        X509_STORE_add_cert(store, px509);
+
+        X509_STORE_CTX_init(ctx, store, px509, NULL);
+
+        /* Verify the cert */
+        fValid = X509_verify_cert(ctx) == 1; 
+
+        /* Log verification failure message*/
+        if(!fValid)
+            debug::log(3, "Certificate verification failed: ", X509_verify_cert_error_string(X509_STORE_CTX_get_error(ctx)));
+
+        /* Clean up and return */
+        X509_STORE_free(store);
+        X509_STORE_CTX_free(ctx);
+        
+        return fValid;
+    }
+
+
+    /* Gets the pub;ic key used to sign this certificate. */
+    bool X509Cert::GetPublicKey(std::vector<uint8_t>& vchKey) const
+    {
+        if(EVP_PKEY_base_id(pkey) != EVP_PKEY_EC)
+            return debug::error("GetPublicKey only supported for EC keys");
+
+        /* Get EC key from the EVP key. */
+        EC_KEY* ecKey = EVP_PKEY_get1_EC_KEY(pkey);
+
+        /* Check the EC key was obtained */
+        if(ecKey == nullptr)
+            return debug::error(FUNCTION, "Unable to obtain EC key.");
+        
+        /* The EC key wrapper class */
+        ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64, ecKey);
+
+        /* Get the public key bytes */
+        std::vector<uint8_t> vchKeyBytes = key.GetPubKey();
+
+        /* Copy the bytes into the return vector */
+        vchKey.insert(vchKey.begin(), vchKeyBytes.begin(), vchKeyBytes.end());
+
         return true;
     }
 

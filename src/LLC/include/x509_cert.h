@@ -98,36 +98,40 @@ namespace LLC
 
         /** Verify
          *
-         *  Check that the private key matches the public key in the x509 certificate.
+         *  Check that the private key matches the public key in the x509 certificate and then checks the signature
          *
+         *  @param[in] fCheckPrivate Flag indicating the private key should be checked
+         * 
          *  @return Returns true if public and private key are consistent, false otherwise.
          *
          **/
-        bool Verify();
+        bool Verify(bool fCheckPrivate = true);
 
 
         /** Verify
          *
-         *  Check the authenticity of the public key in the certificate and the private key paired with it.
+         *  Check that the private key matches the public key in the x509 certificate and then checks the signature
          *
          *  @param[in] ssl The ssl object to check.
+         *  @param[in] fCheckPrivate Flag indicating the private key should be checked
          *
          *  @return Returns true if verified, false otherwise.
          *
          **/
-        bool Verify(SSL *ssl);
+        bool Verify(SSL *ssl, bool fCheckPrivate = true);
 
 
         /** Verify
          *
-         *  Check the authenticity of the public key in the certificate and the private key paired with it.
+         *  Check that the private key matches the public key in the x509 certificate and then checks the signature
          *
          *  @param[in] ssl_ctx The ssl context object to check.
+         *  @param[in] fCheckPrivate Flag indicating the private key should be checked
          *
          *  @return Returns true if verified, false otherwise.
          *
          **/
-        bool Verify(SSL_CTX *ssl_ctx);
+        bool Verify(SSL_CTX *ssl_ctx, bool fCheckPrivate = true);
 
 
         /** Print
@@ -172,12 +176,36 @@ namespace LLC
          *
          *  Gets the x509 certificate binary data in base64 encoded PEM format.
          * 
-         *  @param[out] vCertificate Vector to be populated with the certificate bytes .
+         *  @param[out] vchCertificate Vector to be populated with the certificate bytes .
          *
          *  @return Returns true if successful, false otherwise.
          *
          **/
-        bool GetPEM(std::vector<uint8_t>& vCertificate) const;
+        bool GetPEM(std::vector<uint8_t>& vchCertificate) const;
+
+
+        /** GetPublicKey
+         *
+         *  Gets the pub;ic key used to sign this certificate.
+         * 
+         *  @param[out] vchKey Vector to be populated with the public key bytes .
+         *
+         *  @return Returns true if successful, false otherwise.
+         *
+         **/
+        bool GetPublicKey(std::vector<uint8_t>& vchKey) const;
+
+
+        /** Load
+         *
+         *  Loads the certificate data, which is passed to the method in base64 encoded PEM format.
+         * 
+         *  @param[in] vchCertificate Vector of bytes containing the PEM data .
+         *
+         *  @return Returns true if successful, false otherwise.
+         *
+         **/
+        bool Load(const std::vector<uint8_t>& vchCertificate);
 
 
     private:
@@ -196,6 +224,16 @@ namespace LLC
          *
          **/
         void shutdown();
+
+
+        /** verify
+         *
+         *  Verify the data and signature of the x509 certificate.
+         *
+         *  @return Returns true if verification, false otherwise.
+         *
+         **/
+        bool verify();
 
 
         /* The OpenSSL x509 certificate object. */
