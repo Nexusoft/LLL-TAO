@@ -1778,8 +1778,14 @@ namespace TAO
                 /* Start a ACID transaction (to be disposed). */
                 LLD::TxnBegin(TAO::Ledger::FLAGS::MEMPOOL);
 
+                /* Temporarily disable error logging so that we don't log errors for contracts that fail to execute. */
+                debug::fLogError = false;
+
                 fSanitized = TAO::Register::Build(contract, mapStates, TAO::Ledger::FLAGS::MEMPOOL)
                              && TAO::Operation::Execute(contract, TAO::Ledger::FLAGS::MEMPOOL);
+
+                /* Reenable error logging. */
+                debug::fLogError = true;
 
                 /* Abort the mempool ACID transaction once the contract is sanitized */
                 LLD::TxnAbort(TAO::Ledger::FLAGS::MEMPOOL);
@@ -1787,6 +1793,9 @@ namespace TAO
             }
             catch(const std::exception& e)
             {
+                /* Just in case we encountered an exception whilst error logging was off, reenable error logging. */
+                debug::fLogError = true;
+
                 /* Abort the mempool ACID transaction */
                 LLD::TxnAbort(TAO::Ledger::FLAGS::MEMPOOL);
 
