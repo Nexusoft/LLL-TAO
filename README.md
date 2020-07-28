@@ -138,10 +138,14 @@ information or see https://opensource.org/licenses/MIT.
 ## Contributing
 If you would like to contribute as always submit a pull request. This library development is expected to be on-going, with new higher level templates created for any types of use in the web.
 
+All code contributions should follow the comments and style guides. The latest versions are in the contrib folder.
+
+
 ## L5 Stack
 L5 stands for 'Linux Lower Level Library & LISP' which is the stack that the TAO framework is built on top of.
 We envision this becoming a new standard for component based web design, which has the potential to decentralize web services.
 It is also a very useful and scale-able stack for Cryptocurrency and Blockchain designs.
+
 
 ## Why?
 A lot of software that we use today for databases, or protocols, or cryptography was created back in the 1990's as open source software. Since then the industry has expanded and bloated this code causing performance degradation. The aim of these templates is performance in simplicity. Include only what is needed, no more, and no less. This allows extremely high performance and scaleability necessary for the new distributed systems that will continue to evolve over the next few decades.
