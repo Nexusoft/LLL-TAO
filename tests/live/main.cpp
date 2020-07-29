@@ -114,16 +114,29 @@ const uint256_t hashSeed = 55;
 
 #include <bitset>
 
+const uint32_t MAX_HASHMAP_FILES    = 1024;
 
-const uint32_t MAX_PRIMARY_K_HASHES = 7;
-const uint32_t MAX_BITS_PER_BLOOM   = 12;
+const uint32_t PRIMARY_BLOOM_HASHES   = 7;
+const uint32_t PRIMARY_BLOOM_BITS     = MAX_HASHMAP_FILES * 1.44 * PRIMARY_BLOOM_HASHES;
+
+const uint32_t SECONDARY_BLOOM_HASHES = 7;
+const uint32_t SECONDARY_BLOOM_BITS   = 13;
+
+
+
+
+uint32_t secondary_bloom_size()
+{
+    return ((MAX_HASHMAP_FILES * SECONDARY_BLOOM_BITS) / 8) + 1; //we want 1 byte padding here for bits that overflow
+}
+
 
 bool check_hashmap_available(const uint32_t nHashmap, const std::vector<uint8_t>& vBuffer)
 {
-    uint32_t nBeginIndex  = (nHashmap * MAX_BITS_PER_BLOOM) / 8;
-    uint32_t nBeginOffset = (nHashmap * MAX_BITS_PER_BLOOM) % 8;
+    uint32_t nBeginIndex  = (nHashmap * SECONDARY_BLOOM_BITS) / 8;
+    uint32_t nBeginOffset = (nHashmap * SECONDARY_BLOOM_BITS) % 8;
 
-    for(uint32_t n = 0; n < MAX_BITS_PER_BLOOM; ++n)
+    for(uint32_t n = 0; n < SECONDARY_BLOOM_BITS; ++n)
     {
         uint32_t nIndex  = nBeginIndex + ((nBeginOffset + n) / 8);
         uint32_t nOffset = (nBeginOffset + n) % 8;
@@ -135,39 +148,80 @@ bool check_hashmap_available(const uint32_t nHashmap, const std::vector<uint8_t>
     return true;
 }
 
-bool check_secondary_bloom(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vBuffer, const uint32_t nHashmap = 0)
+bool check_secondary_bloom(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vBuffer, const uint32_t nHashmap, const uint32_t nOffset = 0)
 {
-    uint32_t nBeginIndex  = (nHashmap * MAX_BITS_PER_BLOOM) / 8;
-    uint32_t nBeginOffset = (nHashmap * MAX_BITS_PER_BLOOM) % 8;
+    uint32_t nBeginIndex  = (nHashmap * SECONDARY_BLOOM_BITS) / 8;
+    uint32_t nBeginOffset = (nHashmap * SECONDARY_BLOOM_BITS) % 8;
 
-    for(uint32_t k = 0; k < MAX_PRIMARY_K_HASHES; ++k)
+    for(uint32_t k = 0; k < SECONDARY_BLOOM_HASHES; ++k)
     {
-        uint64_t nBucket = XXH3_64bits_withSeed((uint8_t*)&vKey[0], vKey.size(), k) % MAX_BITS_PER_BLOOM;
+        uint64_t nBucket = XXH3_64bits_withSeed((uint8_t*)&vKey[0], vKey.size(), k) % SECONDARY_BLOOM_BITS;
 
         uint32_t nIndex  = nBeginIndex + (nBeginOffset + nBucket) / 8;
         uint32_t nBit    = (nBeginOffset + nBucket) % 8;
 
-        if(!(vBuffer[nIndex] & (1 << nBit)))
+        if(!(vBuffer[nIndex + nOffset] & (1 << nBit)))
             return false;
     }
 
     return true;
 }
 
-void set_secondary_bloom(const std::vector<uint8_t>& vKey, std::vector<uint8_t> &vBuffer, const uint32_t nHashmap = 0)
+void set_secondary_bloom(const std::vector<uint8_t>& vKey, std::vector<uint8_t> &vBuffer, const uint32_t nHashmap, const uint32_t nOffset = 0)
 {
-    uint32_t nBeginIndex  = (nHashmap * MAX_BITS_PER_BLOOM) / 8;
-    uint32_t nBeginOffset = (nHashmap * MAX_BITS_PER_BLOOM) % 8;
+    uint32_t nBeginIndex  = (nHashmap * SECONDARY_BLOOM_BITS) / 8;
+    uint32_t nBeginOffset = (nHashmap * SECONDARY_BLOOM_BITS) % 8;
 
-    for(uint32_t k = 0; k < MAX_PRIMARY_K_HASHES; ++k)
+    for(uint32_t k = 0; k < SECONDARY_BLOOM_HASHES; ++k)
     {
-        uint64_t nBucket = XXH3_64bits_withSeed((uint8_t*)&vKey[0], vKey.size(), k) % MAX_BITS_PER_BLOOM;
+        uint64_t nBucket = XXH3_64bits_withSeed((uint8_t*)&vKey[0], vKey.size(), k) % SECONDARY_BLOOM_BITS;
 
         uint32_t nIndex  = nBeginIndex + (nBeginOffset + nBucket) / 8;
         uint32_t nBit    = (nBeginOffset + nBucket) % 8;
 
-        vBuffer[nIndex] |= (1 << nBit);
+        vBuffer[nIndex + nOffset] |= (1 << nBit);
     }
+}
+
+
+uint32_t primary_bloom_size()
+{
+    return (PRIMARY_BLOOM_BITS / 8) + 1; //we want 1 byte padding here for bits that overflow
+}
+
+
+void set_primary_bloom(const std::vector<uint8_t>& vKey, std::vector<uint8_t> &vBuffer, const uint32_t nOffset = 0)
+{
+    for(uint32_t k = 0; k < PRIMARY_BLOOM_HASHES; ++k)
+    {
+        uint64_t nBucket = XXH3_64bits_withSeed((uint8_t*)&vKey[0], vKey.size(), k) % PRIMARY_BLOOM_BITS;
+
+        uint32_t nIndex  = (nBucket / 8);
+        uint32_t nBit    = (nBucket % 8);
+
+        if(nIndex + nOffset >= vBuffer.size())
+            debug::error("OUT OF RANGE ", nIndex + nOffset, " SIZE ", vBuffer.size());
+
+        vBuffer[nIndex + nOffset] |= (1 << nBit);
+    }
+}
+
+
+bool check_primary_bloom(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vBuffer, const uint32_t nOffset = 0)
+{
+    for(uint32_t k = 0; k < PRIMARY_BLOOM_HASHES; ++k)
+    {
+        uint64_t nBucket = XXH3_64bits_withSeed((uint8_t*)&vKey[0], vKey.size(), k) % PRIMARY_BLOOM_BITS;
+
+        uint32_t nIndex  = (nBucket / 8);
+        uint32_t nBit    = (nBucket % 8);
+
+        /* Check the bitset for bloom value. */
+        if(!(vBuffer[nIndex + nOffset] & (1 << nBit)))
+            return false;
+    }
+
+    return true;
 }
 
 
@@ -179,13 +233,12 @@ int main(int argc, char** argv)
     TestDB* bloom = new TestDB();
 
     std::vector<uint1024_t> vKeys;
-    for(int i = 0; i < 1000000; ++i)
+    for(int i = 0; i < MAX_HASHMAP_FILES; ++i)
         vKeys.push_back(LLC::GetRand1024());
 
     uint32_t nDuplicates = 0;
 
-
-    std::vector<uint8_t> vBuffer((vKeys.size() * MAX_BITS_PER_BLOOM) / 8, 0);
+    std::vector<uint8_t> vBuffer(primary_bloom_size() + secondary_bloom_size(), 0);
 
     debug::log(0, "Allocating a buffer of size ", vBuffer.size(), " for ", vKeys.size(), " files");
 
@@ -195,6 +248,7 @@ int main(int argc, char** argv)
     std::vector<uint8_t> vKey = ssKey.Bytes();
     set_secondary_bloom(vKey, vBuffer, 0);
 
+    uint32_t nSize = secondary_bloom_size();
     for(uint32_t n = 1; n < vKeys.size(); ++n)
     {
         DataStream ssData(SER_LLD, LLD::DATABASE_VERSION);
@@ -209,10 +263,31 @@ int main(int argc, char** argv)
 
         if(check_hashmap_available(n, vBuffer))
             return debug::error("FILE ", n, " EMPTY");
+
+        set_primary_bloom(ssData.Bytes(), vBuffer, nSize);
+        if(!check_primary_bloom(ssData.Bytes(), vBuffer, nSize))
+            return debug::error("PRIMARY BLOOM FAILED AT ", HexStr(ssData.begin(), ssData.end()));
     }
 
     debug::log(0, "Created ", vKeys.size(), " Bloom filters with ",
         nDuplicates, " duplicates [", std::fixed, (nDuplicates * 100.0) / vKeys.size(), " %]");
+
+
+    std::vector<uint1024_t> vKeys2;
+    for(int i = 0; i < MAX_HASHMAP_FILES; ++i)
+        vKeys2.push_back(LLC::GetRand1024());
+
+    uint32_t nFalsePositives = 0;
+    for(uint32_t n = 0; n < vKeys2.size(); ++n)
+    {
+        DataStream ssData(SER_LLD, LLD::DATABASE_VERSION);
+        ssData << vKeys2[n];
+
+        if(check_primary_bloom(ssData.Bytes(), vBuffer, nSize))
+            ++nFalsePositives;
+    }
+
+    debug::log(0, nFalsePositives, " False Positives [", nFalsePositives * 100.0 / vKeys2.size(), " %]");
 
     return 0;
 
