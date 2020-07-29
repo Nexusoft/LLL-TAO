@@ -23,6 +23,7 @@ The following methods are currently supported by this API
 [`debit/token`](#debittoken)      
 [`credit/token`](#credittoken)    
 [`get/token`](#gettoken)  
+[`burn/token`](#burntoken) 
 [`list/token/transactions`](#listtokentransactions)   
 [`create/account`](#createaccount)   
 [`debit/account`](#debitaccount)   
@@ -287,6 +288,59 @@ Additionally the API supports passing a field name in the URL after the token na
 `decimals` : The maximum number of decimal places that can be applied to token amounts.  For example decimals=2 will allow a token amount to be given to 2 decimal places.
 
 `count` : Only returned if the caller requested `count` : true.  This is the number of transactions made to/from the token.
+
+
+***
+
+# `burn/token`
+
+This method can be used to take tokens permanently out of the current supply, a process commonly known as burning.  The method will debit a token account and send the tokens back to the token address.  However the transaction contains a condition that will always evaluate to false, guaranteeing that the debit can not be credited by the token issuer nor the sender.  The result is that the amount burned will always appear in the "pending" balance of the token.
+
+
+### Endpoint:
+
+`/tokens/burn/token`
+
+
+### Parameters:
+
+`pin` : The PIN for this signature chain.
+
+`session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) the token owner. For single-user API mode the session should not be supplied.
+
+`name` : The name identifying the account to debit the tokens from to be burnt. This is optional if the address is provided.  The name should be in the format username:name (for local names) or namespace::name (for names in a namespace).  However, if the token was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
+
+`address` : The register address of the account to debit the tokens from the be burnt. This is optional if the name is provided.
+
+`amount` : The amount of tokens to burn.
+
+`reference` : This optional field allows callers to provide a reference, which the recipient can then use to relate the transaction to an order number, invoice number etc.  The reference is be a 64-bit unsigned integer in the range of 0 to 18446744073709551615
+
+
+### Example:
+
+The following example shows the json payload for a burn of 100 tokens from an account called "main" (that itself was created by the sig chain logged into session "5e9d8aa625a1838f60f30e12058089169e32c968389f365428f7b0c878bb47f8")
+```
+{
+    "pin": "1234",
+    "session": "5e9d8aa625a1838f60f30e12058089169e32c968389f365428f7b0c878bb47f8",
+    "name": "main",
+    "amount": 100
+}
+```
+
+
+### Return value JSON object:
+```    
+{
+    "txid": "f9dcd28bce2563ab288fab76cf3ee5149ea938c735894ce4833b55e474e08e8a519e8005e09e2fc19623577a8839a280ca72b6430ee0bdf13b3d9f785bc7397d"
+}
+```   
+
+### Return values:
+
+`txid` : The ID (hash) of the transaction that includes the token burn.
+
 
 ****
 

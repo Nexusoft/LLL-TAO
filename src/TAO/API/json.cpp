@@ -1219,7 +1219,7 @@ namespace TAO
 
                         ret["maxsupply"]        = (double) object.get<uint64_t>("supply") / pow(10, nDecimals);
                         ret["currentsupply"]    = (double) (object.get<uint64_t>("supply")
-                                                - object.get<uint64_t>("balance")) / pow(10, nDecimals); // current supply is based on unconfirmed balance
+                                                - object.get<uint64_t>("balance") - nPending) / pow(10, nDecimals); // current supply is based on unconfirmed balance
                         ret["decimals"]         = nDecimals;
 
                         /* Add tx count if requested by the caller*/
