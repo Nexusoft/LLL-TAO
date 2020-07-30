@@ -186,7 +186,7 @@ namespace LLC
 
         /** GetPublicKey
          *
-         *  Gets the pub;ic key used to sign this certificate.
+         *  Gets the public key used to sign this certificate.
          * 
          *  @param[out] vchKey Vector to be populated with the public key bytes .
          *
@@ -207,6 +207,15 @@ namespace LLC
          **/
         bool Load(const std::vector<uint8_t>& vchCertificate);
 
+
+        /** Hash()
+         *
+         *  Returns a 256-bit hash of the certificate data, with the exception of the signature. 
+         * 
+         *  @return The 256-bit hash of the certificate data.
+         *
+         **/
+        uint256_t Hash();
 
 
         /** GetCN()

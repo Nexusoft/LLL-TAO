@@ -18,6 +18,8 @@ ________________________________________________________________________________
 
 #include <Util/include/debug.h>
 #include <Util/include/filesystem.h>
+#include <Util/templates/datastream.h>
+
 #include <openssl/ec.h> 
 #include <openssl/pem.h>
 #include <openssl/x509v3.h>
@@ -495,6 +497,9 @@ namespace LLC
         /* Write the x509 certificate data to the BIO stream in PEM format */
         if(PEM_read_bio_X509(bio, &px509, nullptr, nullptr) == 0) 
             fSuccess = debug::error("PEM_read_bio_X509() failed..");
+
+        /* Get the EVP_PKEY from the certificate */
+        pkey = X509_get_pubkey(px509);
         
         /* PEM successfully read */
         fSuccess = true;
@@ -537,9 +542,10 @@ namespace LLC
     }
 
 
-    /* Gets the pub;ic key used to sign this certificate. */
+    /* Gets the public key used to sign this certificate. */
     bool X509Cert::GetPublicKey(std::vector<uint8_t>& vchKey) const
     {
+
         if(EVP_PKEY_base_id(pkey) != EVP_PKEY_EC)
             return debug::error("GetPublicKey only supported for EC keys");
 
@@ -560,6 +566,51 @@ namespace LLC
         vchKey.insert(vchKey.begin(), vchKeyBytes.begin(), vchKeyBytes.end());
 
         return true;
+    }
+
+    /* Returns a 256-bit hash of the certificate data, with the exception of the signature. */
+    uint256_t X509Cert::Hash()
+    {
+        
+        /* Cert version */
+        uint8_t nVersion = X509_get_version(px509);
+
+        /* Get the certificate serial number */
+        uint8_t nSerial = *X509_get_serialNumber(px509)->data;
+
+        /* Get the subject line */
+        char *str = X509_NAME_oneline(X509_get_subject_name(px509), 0, 0);
+        std::string strSubject(str);
+        OPENSSL_free(str);
+        
+        /* Get the issuer */
+        str = X509_NAME_oneline(X509_get_issuer_name(px509), 0, 0);
+        std::string strIssuer(str);
+        OPENSSL_free(str);
+
+        /* Signature scheme */
+        uint8_t nSigScheme = X509_get_signature_nid(px509);
+       
+        /* Not before time */
+        std::string strNotBefore((char*)X509_get_notBefore(px509)->data);
+
+        /* Not after time */
+        std::string strNotAfter((char*)X509_get_notAfter(px509)->data);
+
+        /* Public key */
+        std::vector<uint8_t> vchKey;
+        GetPublicKey(vchKey);
+
+        /* Data stream used to help serialize the certificate data ready for hashing. */
+        DataStream ssData(SER_GETHASH, 1);
+
+        /* Serialize the data */
+        ssData << nVersion << nSerial << strSubject << strIssuer << strNotBefore << strNotAfter << nSigScheme << vchKey;
+
+        /* Generate the hash */
+        uint256_t hashCert = LLC::SK256(ssData.Bytes());
+
+        return hashCert;
     }
 
 
