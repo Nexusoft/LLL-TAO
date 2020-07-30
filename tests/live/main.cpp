@@ -114,10 +114,10 @@ const uint256_t hashSeed = 55;
 
 #include <bitset>
 
-const uint32_t MAX_HASHMAP_FILES    = 1024;
+const uint32_t MAX_HASHMAP_FILES    = 128;
 
 const uint32_t PRIMARY_BLOOM_HASHES   = 7;
-const uint32_t PRIMARY_BLOOM_BITS     = MAX_HASHMAP_FILES * 1.44 * PRIMARY_BLOOM_HASHES;
+const uint32_t PRIMARY_BLOOM_BITS     = 1.44 * MAX_HASHMAP_FILES * PRIMARY_BLOOM_HASHES;
 
 const uint32_t SECONDARY_BLOOM_HASHES = 7;
 const uint32_t SECONDARY_BLOOM_BITS   = 13;
@@ -131,7 +131,7 @@ uint32_t secondary_bloom_size()
 }
 
 
-bool check_hashmap_available(const uint32_t nHashmap, const std::vector<uint8_t>& vBuffer)
+bool check_hashmap_available(const uint32_t nHashmap, const std::vector<uint8_t>& vBuffer, const uint32_t nOffset = 0)
 {
     uint32_t nBeginIndex  = (nHashmap * SECONDARY_BLOOM_BITS) / 8;
     uint32_t nBeginOffset = (nHashmap * SECONDARY_BLOOM_BITS) % 8;
@@ -139,9 +139,9 @@ bool check_hashmap_available(const uint32_t nHashmap, const std::vector<uint8_t>
     for(uint32_t n = 0; n < SECONDARY_BLOOM_BITS; ++n)
     {
         uint32_t nIndex  = nBeginIndex + ((nBeginOffset + n) / 8);
-        uint32_t nOffset = (nBeginOffset + n) % 8;
+        uint32_t nBit    = (nBeginOffset + n) % 8;
 
-        if(vBuffer[nIndex] & (1 << nOffset))
+        if(vBuffer[nIndex + nOffset] & (1 << nBit))
             return false;
     }
 
@@ -245,28 +245,31 @@ int main(int argc, char** argv)
     DataStream ssKey(SER_LLD, LLD::DATABASE_VERSION);
     ssKey << vKeys[0];
 
-    std::vector<uint8_t> vKey = ssKey.Bytes();
-    set_secondary_bloom(vKey, vBuffer, 0);
+    uint32_t nOffset = primary_bloom_size();
 
-    uint32_t nSize = secondary_bloom_size();
+    std::vector<uint8_t> vKey = ssKey.Bytes();
+    set_secondary_bloom(vKey, vBuffer, 0, nOffset);
+
     for(uint32_t n = 1; n < vKeys.size(); ++n)
     {
         DataStream ssData(SER_LLD, LLD::DATABASE_VERSION);
         ssData << vKeys[n];
 
-        if(!check_hashmap_available(n, vBuffer))
+        set_primary_bloom(ssData.Bytes(), vBuffer);
+        if(!check_primary_bloom(ssData.Bytes(), vBuffer))
+            return debug::error("PRIMARY BLOOM FAILED AT ", HexStr(ssData.begin(), ssData.end()));
+
+        if(!check_hashmap_available(n, vBuffer, nOffset))
             return debug::error("FILE ", n, " IS NOT EMPTY");
 
-        set_secondary_bloom(ssData.Bytes(), vBuffer, n);
-        if(check_secondary_bloom(ssData.Bytes(), vBuffer, 0))
+        set_secondary_bloom(ssData.Bytes(), vBuffer, n, nOffset);
+        if(check_secondary_bloom(ssData.Bytes(), vBuffer, 0, nOffset))
             ++nDuplicates;
 
-        if(check_hashmap_available(n, vBuffer))
+        if(check_hashmap_available(n, vBuffer, nOffset))
             return debug::error("FILE ", n, " EMPTY");
 
-        set_primary_bloom(ssData.Bytes(), vBuffer, nSize);
-        if(!check_primary_bloom(ssData.Bytes(), vBuffer, nSize))
-            return debug::error("PRIMARY BLOOM FAILED AT ", HexStr(ssData.begin(), ssData.end()));
+
     }
 
     debug::log(0, "Created ", vKeys.size(), " Bloom filters with ",
@@ -283,7 +286,7 @@ int main(int argc, char** argv)
         DataStream ssData(SER_LLD, LLD::DATABASE_VERSION);
         ssData << vKeys2[n];
 
-        if(check_primary_bloom(ssData.Bytes(), vBuffer, nSize))
+        if(check_primary_bloom(ssData.Bytes(), vBuffer))
             ++nFalsePositives;
     }
 
