@@ -9,7 +9,9 @@ The crypto object register contains nine named keys: `auth`, `lisp`, `network`, 
 
 Each key stored in the crypto register is a 256-bit hash of the public key of an asymmetric (public-private) key pair. The cryptographic scheme used to generate the key pairs is configurable via the `crypto/change/scheme` API method. Nexus currently supports both Brainpool (ECDSA-based) and FALCON (Lattice-based) schemes.
 
-**NOTE** All key pairs generated via the crypto API are based on the username, password, and pin of the users signature chain.  The **`private keys are NOT stored on-chain`**, but instead re-constructed as necessary based on the username, password, and pin of the logged in user.  This is important, as changing the password and pin of a signature chain (including recovering an account) will invalidate any existing keys held in the crypto object register.  Therefore, when a user changes their password/pin or uses their recovery seed to set a new password/pin, we will **`automatically regenerate`** new public key hashes for the following keys, if they have been previously set: `auth`, `lisp`, `network`, `sign`, `verify`, and `cert`.   
+**NOTE** All key pairs generated via the crypto API are based on the username, password, and pin of the users signature chain.  The **`private keys are NOT stored on-chain`**, but instead re-constructed as necessary based on the username, password, and pin of the logged in user.  This is important, as changing the password and pin of a signature chain (including recovering an account) will invalidate any existing keys held in the crypto object register.  Therefore, when a user changes their password/pin or uses their recovery seed to set a new password/pin, we will **`automatically regenerate`** new public key hashes for the following keys, if they have been previously set: `auth`, `lisp`, `network`, `sign`, and `verify`.   
+
+**NOTE** The `cert` key contains a hash of the certificate data used to create a x509 self-signed certificate via `crypto/create/certificate`.  As such it is also NOT regenerated when the user changes their password/pin.   
 
 **NOTE** The `app1`, `app2`, and `app3` keys are `not` updated when a user changes their password/pin.  This is intentional as any 3rd party application using these keys to encrypt data would be left unable to decrypt them again.  To help 3rd party applications manage this situation, the API includes a method to retrieve the private key for the app1, app2, and app3 keys, allowing them to be stored off-chain and later used to decrypt data in the event that the user changes their password/pin. 
 
@@ -32,6 +34,7 @@ The following methods are currently supported by this API
 [`decrypt/data`](#decryptdata)   
 [`sign/data`](#signdata)   
 [`verify/signature`](#verifysignature)   
+[`verify/certificate`](#verifycertificate)   
 [`get/hash`](#gethash)   
 
 
@@ -105,7 +108,7 @@ Generates a new public-private key pair and stores the hashed public key in the 
 
 ### Parameters:
 
-`name` : The name of the key to create.  If a key already exists in the crypto object register for this key name then the method will return an error.  Accepted values are `auth`, `lisp`, `network`, `sign`, `verify`, `cert`, `app1`, `app2`, and `app3`. 
+`name` : The name of the key to create.  If a key already exists in the crypto object register for this key name then the method will return an error.  Accepted values are `auth`, `lisp`, `network`, `sign`, `verify`, `app1`, `app2`, and `app3`. 
 
 `pin` : The PIN for this signature chain.
 
@@ -132,6 +135,46 @@ Generates a new public-private key pair and stores the hashed public key in the 
 
 `hashkey` : The newly created public key, hashed (using Skein-Keccak 256).
 
+
+****
+
+
+# `create/certificate`
+
+Generates a new self-signed x509 certificate for this signature chain and stores a hash of the certificate data in the `cert` field of the crypto object register.  Users must be logged in to create a certificate.  
+
+This method can be called repeatedly to create an updated certificate, valid for 365 days from the date/time the method is called.
+
+The certificate includes the owners genesis hash in the CN field, allowing calling applications to easily identify the certificate owners signature chain. The certificate is signed using ECDSA with the private key being generated deterministically from the callers signature chain credentials.
+
+
+### Endpoint:
+
+`/crypto/create/certificate`
+
+
+### Parameters:
+
+`pin` : The PIN for this signature chain. 
+
+
+### Return value JSON object:
+```    
+{
+    "txid": "01e470379959256e2ab84feed314c6bded92766e44e0bac21ace006d2e742f4b2862493f290cc014219c2be881d288ea34780a42d50bbfbb3983ff62a57a2b0e",
+    "certificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUIzakNDQVVRQ0FRRXdDUVlIS29aSXpqMEVBVEJiTVE0d0RBWURWUVFLREFWT1pYaDFjekZKTUVjR0ExVUUKQXd4QVlUSmxOVEZsWkdOa05ERmhPREUxTW1KbVpXUmlNalJsTTJNeU1tVmxOV0UyTldRMlpEZGtOVEkwTVRRMgpZak01T1RFME5XSmpaV1F5TmpsaFpXWm1NREFlRncweU1EQTNNak13TURVM05EaGFGdzB5TVRBM01qTXdNRFUzCk5EaGFNRnN4RGpBTUJnTlZCQW9NQlU1bGVIVnpNVWt3UndZRFZRUURERUJoTW1VMU1XVmtZMlEwTVdFNE1UVXkKWW1abFpHSXlOR1V6WXpJeVpXVTFZVFkxWkRaa04yUTFNalF4TkRaaU16azVNVFExWW1ObFpESTJPV0ZsWm1ZdwpNRm93RkFZSEtvWkl6ajBDQVFZSkt5UURBd0lJQVFFT0EwSUFBZ3hsY0J5Y3QxVno0NHloQkF6ZGVQdDdaY29GCnNLRTVvUzBJcUlVd1NyQlc2YlIwRXUwY3dNNVBjOGlERDlHMC84N3haay9EV091TFZ3UzdxLytjMXVVd0NRWUgKS29aSXpqMEVBUU9CaUFBd2dZUUNRR1BTZmx5WVUvdGp4N0xZYzhUQzhlNXpLNjl6V1pZTnJJeHpyZGVOZGdvcgpQOXZ1azRnWkJ6SFJrNEJKZkdlVGIzSk1FbUVzSmw5bG1UWkU3eUFDRVMwQ1FBcDdVMEYvSGJtQWNBcnNya3lrCkovTGdnQU5rUWc1cHpGT3oxdFV1WWxJWUN2aHJRT3hFVit2SHE1Qk5vUUIzWUpiemxuS1BSWHRxYmYyRUprdXUKQ2dJPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==",
+    "hashcert": "98511ae65afb84b5ea0b10745b97634b673a0833e1cb350a23ee6a0c86d23c32"
+}
+
+```
+
+### Return values:
+
+`txid` : The ID (hash) of the transaction that includes the update to the crypto object register.
+
+`certificate` : The certificate data.  This is returned in PEM format, and base64 encoded.  Calling applications should base64 decode the data before using/parsing the certificate. 
+
+`hashcert` : The SK256 hash of the certificate data that is written to the `cert` field in the crypto register.  This hash can be used to prove that the certificate data has not been tampered with by comparing to the value in the crypto register of the certificate owners signature chain.
 
 ****
 
@@ -507,6 +550,35 @@ Verifies the signature is correct for the specified public key and data.  This m
 ### Return values:
 
 `verified` : Boolean flag indicating whether the signature was successfully verified or not.
+
+****
+
+
+# `verify/certificate`
+
+Verifies the x509 certificate that was previously obtained from the `crypto/get/certificate` method.  In addition to verifying the certificate signature, this method will extract the owners genesis hash from the certificate data and use this to check that the hash of the certificate data matches the value of the `cert` key in the owners crypto register. 
+
+
+### Endpoint:
+
+`/crypto/verify/certificate`
+
+
+### Parameters:
+ 
+`certificate` : The certificate data in PEM format, and base64 encoded. 
+
+### Return value JSON object:
+```    
+{
+    "verified": "true"
+}
+
+```
+
+### Return values:
+
+`verified` : Boolean flag indicating whether the certificate was successfully verified or not.
 
 ****
 

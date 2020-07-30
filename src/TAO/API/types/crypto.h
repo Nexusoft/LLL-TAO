@@ -222,6 +222,18 @@ namespace TAO
             json::json ChangeScheme(const json::json& params, bool fHelp);
 
 
+            /** CreateCertificate
+             *
+             *  Generates an x509 certificate and stores a hash of the certificate data in the "cert" slot in the crypto register
+             *
+             *  @param[in] params The parameters from the API call
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json CreateCertificate(const json::json& params, bool fHelp);
+            
 
             /** GetCertificate
              *

@@ -355,45 +355,136 @@ namespace TAO
 
             /* Check that the certificate has been created */
             if(hashCert == 0)
-                throw APIException(-294, "'cert' key has not yet been created.  Please use crypto/create/key to create the cert key before generating a certificate");
+                throw APIException(-294, "Certificate has not yet been created for this signature chain.  Please use crypto/create/key to create the certificate first.");
 
+            /* The vertificate valid from timestamp, which is taken from the transaction time when the cert was last updated*/
+            uint64_t nCertValid = 0;
             
+            /* Scan the sig chain to find the transaction that created the certificate */
+            /* Get the last transaction. */
+            uint512_t hashLast = 0;
+
+            /* Get the last transaction for this genesis.  NOTE that we include the mempool here as there may be registers that
+               have been created recently but not yet included in a block*/
+            LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL);
+
+            /* The previous hash in the chain */
+            uint512_t hashPrev = hashLast;
+
+            /* Loop until genesis. */
+            while(hashPrev != 0 && nCertValid == 0)
+            {
+                /* Get the transaction from disk. */
+                TAO::Ledger::Transaction tx;
+                if(!LLD::Ledger->ReadTx(hashPrev, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                    throw APIException(-108, "Failed to read transaction");
+
+                /* Set the next last. */
+                hashPrev = !tx.IsFirst() ? tx.hashPrevTx : 0;
+
+                /* Iterate through all contracts. */
+                for(uint32_t nContract = 0; nContract < tx.Size(); ++nContract)
+                {
+                    /* Get the contract output. */
+                    const TAO::Operation::Contract& contract = tx[nContract];
+
+                    /* Reset all streams */
+                    contract.Reset();
+
+                    /* Seek the contract operation stream to the position of the primitive. */
+                    contract.SeekToPrimitive();
+
+                    /* Deserialize the OP. */
+                    uint8_t nOP = 0;
+                    contract >> nOP;
+
+                    /* Check the current opcode. */
+                    switch(nOP)
+                    {
+
+                        /* These are the register-based operations that prove ownership if encountered before a transfer*/
+                        case TAO::Operation::OP::WRITE:
+                        {
+                            /* Extract the address from the contract. */
+                            TAO::Register::Address hashAddress;
+                            contract >> hashAddress;
+
+                            /* If the address is the crypto register then check which fields were updated */
+                            if(hashAddress == hashCrypto)
+                            {
+                                /* The operation data */
+                                std::vector<uint8_t> vchData;
+
+                                /* Deserialize the operation stream data */
+                                contract >> vchData;
+
+                                /* Stream to allow parsing of the operation data */
+                                TAO::Operation::Stream ssOperation(vchData);
+
+                                /* The field within the crypto register that was updated by this contract. */
+                                std::string strField;
+
+                                /* Check te entire stream as there may be multiple fields updated in one contract */
+                                while(!ssOperation.end())
+                                {
+                                    /*  */
+                                    /* Deserialize the field being written */
+                                    ssOperation >> strField;
+
+                                    /* Check if it is the cert field */
+                                    if(strField == "cert")
+                                    {
+                                        /* If so then use thus as the cert timestamp and break out */
+                                        nCertValid = tx.nTimestamp;
+                                        break;
+                                    }
+                                    else
+                                        /* seek to next op */
+                                        ssOperation.seek(33);
+                                }
+                            }
+
+                            break;
+                        }
+
+                    }
+                }
+
+            }
+
+
             /* X509 certificate instance*/
             LLC::X509Cert cert;
 
             /* Generate private key for the  */
-            uint512_t hashSecret = session.GetAccount()->Generate("cert", 0, strPIN);
+            uint256_t hashSecret = session.GetAccount()->Generate("cert", 0, strPIN);
 
-            /* Generate a new certificate using the sig chains genesis hash as the common name (CN) */
-            cert.GenerateEC(hashSecret, hashGenesis.ToString());
+            /* Generate a new certificate using the sig chains genesis hash as the common name (CN) and the transaction timestamp 
+               as the valid from.  By using the transaction timestamp as the valid from time, we can reconstruct this exact 
+               certificate with identical hash at any time */
+            cert.GenerateEC(hashSecret, hashGenesis.ToString(), nCertValid);
 
             /* Verify that it generated correctly */
             cert.Verify();
 
             /* The x509 certificate data in PEM format */
-            std::vector<uint8_t> vchCertificate;
+            std::vector<uint8_t> vCertificate;
 
             /* Convert certificate to PEM-encoded bytes */
-            cert.GetPEM(vchCertificate);
+            cert.GetPEM(vCertificate);
 
-            /* The certificate public key bytes */
-            std::vector<uint8_t> vchPublic;
-
-            /* Get the public key bytes from the certificate */
-            cert.GetPublicKey(vchPublic);
-
-            /* Obtain a 256-bit hash of this public key check against crypto register */
-            uint256_t hashCertCheck = LLC::SK256(vchPublic);  
-
-            /* Set the key type leading byte so that we can compare it to the keyhash in the crypto register */
-            hashCertCheck.SetType(TAO::Ledger::SIGNATURE::BRAINPOOL);
+            /* Obtain a 256-bit hash of this certificate data to check against crypto register */
+            uint256_t hashCertCheck = cert.Hash();  
 
             if(hashCertCheck != hashCert)
-               throw APIException(-295, "Public key mismatch. Unable to generate certificate");
+                throw APIException(-295, "Unable to generate certificate");
             
             /* Include the certificate data. This is a multiline string containing base64-encoded data, therefore we must base64
                encode it again in order to write it into a single JSON field*/
-            ret["certificate"] = encoding::EncodeBase64(&vchCertificate[0], vchCertificate.size());
+            ret["certificate"] = encoding::EncodeBase64(&vCertificate[0], vCertificate.size());
+            
+            /* Return the hash of the certificate data */
+            ret["hashcert"] = hashCert.ToString();
 
             return ret;
         }
