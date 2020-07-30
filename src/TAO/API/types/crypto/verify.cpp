@@ -169,8 +169,35 @@ namespace TAO
             if(!x509.Load(vchCert))
                 throw APIException(-296, "Invalid certificate data");
 
-            /* Verify the certificate */
-            fVerified = x509.Verify(false);
+            /* Verify the certificate signature*/
+            if(x509.Verify(false))
+            {
+                /* Get the genesis hash of the certificate owner */
+                uint256_t hashGenesis = 0;
+                hashGenesis.SetHex(x509.GetCN());
+
+                /* The address of the crypto object register, which is deterministic based on the genesis */
+                TAO::Register::Address hashCrypto = TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
+                
+                /* Read the crypto object register */
+                TAO::Register::Object crypto;
+                if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::MEMPOOL))
+                    throw APIException(-259, "Could not read crypto object register");
+
+                /* Parse the object. */
+                if(!crypto.Parse())
+                    throw APIException(-36, "Failed to parse object register");
+
+                /* Get the cert key from their crypto register */
+                uint256_t hashCert = crypto.get<uint256_t>("cert");
+
+                /* Check that the certificate has been created */
+                if(hashCert == 0)
+                    throw APIException(-294, "Certificate has not yet been created for this signature chain.  Please use crypto/create/key to create the certificate first.");
+
+                /* Compare this to a hash of the cert */
+                fVerified = hashCert == x509.Hash();
+            }
 
             /* Set the flag in the json to return */
             ret["verified"] = fVerified;
