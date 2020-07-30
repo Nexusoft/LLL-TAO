@@ -208,6 +208,17 @@ namespace LLC
         bool Load(const std::vector<uint8_t>& vchCertificate);
 
 
+
+        /** GetCN()
+         *
+         *  Returns the content of the Common Name (CN) field from the certificate. 
+         * 
+         *  @return The content of the Common Name (CN) field from the certificate.
+         *
+         **/
+        std::string GetCN();
+
+
     private:
 
         /** init

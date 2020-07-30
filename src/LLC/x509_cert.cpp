@@ -562,4 +562,18 @@ namespace LLC
         return true;
     }
 
+
+    /* Returns the content of the Common Name (CN) field from the certificate. */
+    std::string X509Cert::GetCN()
+    {
+        /* Temp buffer to receive the data */
+        char strCN[256];
+
+        /* Get the common name from the subject */
+        X509_NAME_get_text_by_NID(X509_get_subject_name(px509), NID_commonName, strCN, 256);
+
+        return std::string(strCN);
+
+    }
+
 }
