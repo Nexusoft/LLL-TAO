@@ -507,23 +507,31 @@ namespace TAO
         bool TritiumPoolMinter::SetupPool()
         {
             /* Determine the maximum number of coinstakes to include based on block age */
-            nProducerSize = TAO::Ledger::POOL_MAX_TX_BASE;
+            const uint32_t nBaseSize = config::fTestNet.load() ? TAO::Ledger::POOL_MAX_TX_BASE_TESTNET
+                                                               : TAO::Ledger::POOL_MAX_TX_BASE;
 
-            /* After block age exceeds 2 hours, start bumping up producer size by one every hour */
-            if(nBlockAge >= 7200)
-                nProducerSize = std::min(nProducerSize + ((nBlockAge - 7200) /3600), TAO::Ledger::POOL_MAX_TX);
+            nProducerSize = nBaseSize;
+
+            /* After block age exceeds 2 hours (15 min for testnet), start bumping up producer size by one every hour (15 min) */
+            if(config::fTestNet.load() && nBlockAge >= 900)
+                nProducerSize = std::min(nProducerSize + (nBlockAge / 900), TAO::Ledger::POOL_MAX_TX);
+
+            else if(nBlockAge >= 7200)
+                nProducerSize = std::min(nProducerSize + ((nBlockAge - 3600) / 3600), TAO::Ledger::POOL_MAX_TX);
 
             /* Determine the maximum stake pool size for current producer requirements */
             uint32_t nSizeMax = TAO::Ledger::stakepool.GetMaxSize();
 
-            /* On pool startup or after find a block and reset producer size, then set the pool size to base */
-            if(nSizeMax == 0 || nProducerSize == TAO::Ledger::POOL_MAX_TX_BASE)
-                TAO::Ledger::stakepool.SetMaxSize(TAO::Ledger::POOL_MAX_SIZE_BASE);
+            /* On pool startup or if using base producer size, set the pool size to base */
+            if(nSizeMax == 0 || nProducerSize == nBaseSize)
+                TAO::Ledger::stakepool.SetMaxSize(config::fTestNet.load() ? TAO::Ledger::POOL_MAX_SIZE_BASE_TESTNET
+                                                                          : TAO::Ledger::POOL_MAX_SIZE_BASE);
 
             /* If current producer size exceeds 60% of current pool size, bump up the pool size */
             else if((nProducerSize * 10 / 6) > nSizeMax)
             {
-                nSizeMax += TAO::Ledger::POOL_MAX_SIZE_INCREMENT;
+                nSizeMax += config::fTestNet.load() ? TAO::Ledger::POOL_MAX_SIZE_INCREMENT_TESTNET
+                                                    : TAO::Ledger::POOL_MAX_SIZE_INCREMENT;
 
                 TAO::Ledger::stakepool.SetMaxSize(nSizeMax);
             }

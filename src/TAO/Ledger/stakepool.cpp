@@ -51,7 +51,7 @@ namespace TAO
         , nTimeEnd(0)
         , nSizeMax(0)
         {
-            nSizeMax = TAO::Ledger::POOL_MAX_SIZE_BASE;
+            nSizeMax = config::fTestNet.load() ? TAO::Ledger::POOL_MAX_SIZE_BASE_TESTNET : TAO::Ledger::POOL_MAX_SIZE_BASE;
         }
 
 

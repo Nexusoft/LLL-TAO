@@ -1033,7 +1033,8 @@ namespace TAO
                 const uint64_t nBlockAge = statePrev.GetBlockTime() - stateLast.GetBlockTime();
 
                 /* Validate maximum number of coinstakes in vProducer */
-                uint32_t nProducerSize = TAO::Ledger::POOL_MAX_TX_BASE;
+                uint32_t nProducerSize = config::fTestNet.load() ? TAO::Ledger::POOL_MAX_TX_BASE_TESTNET
+                                                                 : TAO::Ledger::POOL_MAX_TX_BASE;
 
                 /* After block age exceeds 2 hours, bump up allowed producer size by one every hour */
                 if(nBlockAge >= 7200)
