@@ -186,10 +186,12 @@ namespace TAO
 
             tx[0].Reset();
 
-            if(IsTrust(tx.GetHash()))
-                tx[0].Seek(65, TAO::Operation::Contract::OPERATIONS);
+            if(tx.IsTrustPool())
+                tx[0].Seek(65);
+            else if(tx.IsGenesisPool())
+                tx[0].Seek(1);
             else
-                tx[0].Seek(1, TAO::Operation::Contract::OPERATIONS);
+                return debug::error(FUNCTION, "Invalid pooled coinstake transaction");
 
             tx[0] >> txProof;
             tx[0] >> txTimeBegin;
@@ -399,7 +401,7 @@ namespace TAO
 
 
         /* Select a list of coinstake transactions to use from the stake pool. */
-        bool Stakepool::Select(std::vector<uint512_t> &vHashes, uint64_t& nBalanceTotal, uint64_t& nFeeTotal, const uint32_t nCount)
+        bool Stakepool::Select(std::vector<uint512_t> &vHashes, uint64_t &nBalanceTotal, uint64_t &nFeeTotal, const uint32_t nCount)
         {
             RLOCK(MUTEX);
 
@@ -471,7 +473,7 @@ namespace TAO
             /* Set up the random generator */
             std::mt19937 g(runtime::timestamp());
 
-            /* It is possible to run out of available tx if skip over multiple genesis coinstakes */
+            /* It is possible to run out of available tx if skip over multiple genesis coinstakes, so need vAvailable size check */
             while((vHashes.size() < nCount) && (vHashes.size() < mapPool.size()) && (vAvailable.size() > 0))
             {
                 /* Randomly select from the weighted list, with each weight defining the relative probability it is chosen.
@@ -508,8 +510,8 @@ namespace TAO
 
 
         /*  Updates the stake pool with data for the current mining round. */
-        void Stakepool::SetProofs(const uint1024_t hashLastBlock, const uint256_t hashProof,
-                                  const uint64_t nTimeBegin, const uint64_t nTimeEnd)
+        void Stakepool::SetProofs(const uint1024_t& hashLastBlock, const uint256_t& hashProof,
+                                  const uint64_t& nTimeBegin, const uint64_t& nTimeEnd)
         {
             RLOCK(MUTEX);
 
@@ -533,6 +535,9 @@ namespace TAO
                     mapGenesis[tx.hashGenesis] = tx.GetHash();
                 }
             }
+
+            debug::log(2, FUNCTION, "Setting hashProof = ", hashProof.SubString(),
+                                    " nTimeBegin = ", nTimeBegin, " nTimeEnd = ", nTimeEnd);
 
             mapPending.clear();
 
