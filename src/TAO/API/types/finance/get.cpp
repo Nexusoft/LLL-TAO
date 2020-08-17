@@ -41,7 +41,7 @@ namespace TAO
             TAO::Register::Address hashRegister;
 
             /* Attempt to deduce the register address from name. */
-            if(params.find("name") != params.end())
+            if(params.find("name") != params.end() && !params["name"].get<std::string>().empty())
                 hashRegister = Names::ResolveAddress(params, params["name"].get<std::string>());
 
             /* Get the RAW address from hex. */

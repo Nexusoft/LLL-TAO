@@ -42,7 +42,7 @@ namespace TAO
             TAO::Register::Address hashNameRegister;
 
             /* If the caller has provided a name parameter then retrieve it by name */
-            if(params.find("name") != params.end())
+            if(params.find("name") != params.end() && !params["name"].get<std::string>().empty())
                 name = Names::GetName(params, params["name"].get<std::string>(), hashNameRegister);
 
             /* Otherwise try to find the name record based on the register address. */

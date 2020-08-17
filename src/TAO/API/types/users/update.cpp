@@ -65,7 +65,7 @@ namespace TAO
             SecureString strNewRecovery = "";
 
             /* Check for new password parameter. */
-            if(params.find("new_password") != params.end())
+            if(params.find("new_password") != params.end() && !params["new_password"].get<std::string>().empty())
             {
                 strNewPassword = SecureString(params["new_password"].get<std::string>().c_str());
 
@@ -75,7 +75,7 @@ namespace TAO
             }
 
             /* Check for new pin parameter. */
-            if(params.find("new_pin") != params.end())
+            if(params.find("new_pin") != params.end() && !params["new_pin"].get<std::string>().empty())
             {
                 strNewPin = SecureString(params["new_pin"].get<std::string>().c_str());
 
@@ -85,7 +85,7 @@ namespace TAO
             }
 
             /* Check for recovery seed parameter. */
-            if(params.find("new_recovery") != params.end())
+            if(params.find("new_recovery") != params.end() && !params["new_recovery"].get<std::string>().empty())
             {
                 strNewRecovery = params["new_recovery"].get<std::string>().c_str();
 

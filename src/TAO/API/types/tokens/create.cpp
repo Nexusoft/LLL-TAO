@@ -81,7 +81,7 @@ namespace TAO
                 std::string strTokenIdentifier = "";
 
                 /* Check for token name/address parameter. */
-                if(params.find("token") != params.end())
+                if(params.find("token") != params.end() && !params["token"].get<std::string>().empty())
                     strTokenIdentifier = params["token"].get<std::string>();
                 else if(params.find("token_name") != params.end())
                     strTokenIdentifier = params["token_name"].get<std::string>();

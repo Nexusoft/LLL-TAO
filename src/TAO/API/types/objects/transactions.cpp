@@ -67,7 +67,7 @@ namespace TAO
 
             /* If name is provided then use this to deduce the register address,
              * otherwise try to find the raw hex encoded address. */
-            if(params.find("name") != params.end())
+            if(params.find("name") != params.end() && !params["name"].get<std::string>().empty())
                 hashRegister = Names::ResolveAddress(params, params["name"].get<std::string>());
             else if(params.find("address") != params.end())
                 hashRegister.SetBase58(params["address"].get<std::string>());

@@ -43,11 +43,11 @@ namespace TAO
             uint256_t hashGenesis = 0;
 
             /* Check to see if specific genesis has been supplied */
-            if(params.find("genesis") != params.end())
+            if(params.find("genesis") != params.end() && !params["genesis"].get<std::string>().empty())
                 hashGenesis.SetHex(params["genesis"].get<std::string>());
 
             /* Check if username has been supplied instead. */
-            else if(params.find("username") != params.end())
+            else if(params.find("username") != params.end() && !params["username"].get<std::string>().empty())
                 hashGenesis = TAO::Ledger::SignatureChain::Genesis(params["username"].get<std::string>().c_str());
             
             /* Check for logged in user.  NOTE: we rely on the GetSession method to check for the existence of a valid session ID
