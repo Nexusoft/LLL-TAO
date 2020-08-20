@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <LLD/templates/sector.h>
 #include <LLD/cache/binary_lru.h>
 #include <LLD/keychain/hashmap.h>
+#include <LLD/config/hashmap.h>
 
 #include <Legacy/types/transaction.h>
 
@@ -33,14 +34,13 @@ namespace LLD
      *  Database class for storing legacy transactions.
      *
      **/
-    class LegacyDB : public SectorDatabase<BinaryHashMap, BinaryLRU>
+    class LegacyDB : public SectorDatabase<BinaryHashMap, BinaryLRU, Config::Hashmap>
     {
     public:
 
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        LegacyDB(const uint8_t nFlagsIn = FLAGS::CREATE | FLAGS::WRITE,
-            const uint32_t nBucketsIn = 77773, const uint32_t nCacheIn = 1024 * 1024);
+        LegacyDB(const Config::Hashmap& config);
 
 
         /** Default Destructor **/

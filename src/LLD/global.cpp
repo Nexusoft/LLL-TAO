@@ -37,49 +37,136 @@ namespace LLD
     {
         debug::log(0, FUNCTION, "Initializing LLD");
 
-        /* Create the contract database instance. */
-        Contract = new ContractDB(
-                        FLAGS::CREATE | FLAGS::FORCE);
+        /* _CONTRACT database instance. */
+        {
+            /* Create the ContractDB configuration object. */
+            Config::Hashmap Config =
+                Config::Hashmap("_CONTRACT", FLAGS::CREATE | FLAGS::FORCE);
 
-        /* Create the contract database instance. */
-        uint32_t nRegisterCacheSize = config::GetArg("-registercache", 2);
-        Register = new RegisterDB(
-                        FLAGS::CREATE | FLAGS::FORCE,
-                        77773,
-                        nRegisterCacheSize * 1024 * 1024);
+            /* Set the ContractDB database internal settings. */
+            Config.HASHMAP_TOTAL_BUCKETS   = 77773;
+            Config.MAX_HASHMAP_FILES       = 256;
+            Config.MAX_SECTOR_FILE_STREAMS = 16;
+            Config.MAX_SECTOR_BUFFER_SIZE  = 0; //0 bytes, since we are in force mode this won't be used at all
+            Config.MAX_SECTOR_CACHE_SIZE   = 1024 * 1024; //1 MB of cache available
 
-        /* Create the ledger database instance. */
-        uint32_t nLedgerCacheSize = config::GetArg("-ledgercache", 2);
-        Ledger    = new LedgerDB(
-                        FLAGS::CREATE | FLAGS::FORCE,
-                        config::fClient.load() ? 77773 : (256 * 256 * 64),
-                        nLedgerCacheSize * 1024 * 1024);
-
-
-        /* Create the legacy database instance. */
-        uint32_t nLegacyCacheSize = config::GetArg("-legacycache", 1);
-        Legacy = new LegacyDB(
-                        FLAGS::CREATE | FLAGS::FORCE,
-                        config::fClient.load() ? 77773 : 256 * 256 * 64,
-                        nLegacyCacheSize * 1024 * 1024);
+            /* Create the ContractDB database instance. */
+            Contract = new ContractDB(Config);
+        }
 
 
-        /* Create the trust database instance. */
-        Trust  = new TrustDB(
-                        FLAGS::CREATE | FLAGS::FORCE);
+        /* _REGISTER database instance. */
+        {
+            /* Create the RegisterDB configuration object. */
+            Config::Hashmap Config =
+                Config::Hashmap("_REGISTER", FLAGS::CREATE | FLAGS::FORCE);
+
+            /* Set the RegisterDB database internal settings. */
+            Config.HASHMAP_TOTAL_BUCKETS   = 77773;
+            Config.MAX_HASHMAP_FILES       = 256;
+            Config.MAX_SECTOR_FILE_STREAMS = 16;
+            Config.MAX_LINEAR_PROBES       = 2;
+            Config.MAX_SECTOR_BUFFER_SIZE  = 0; //0 bytes, since we are in force mode this won't be used at all
+            Config.MAX_SECTOR_CACHE_SIZE   = config::GetArg("-registercache", 2) * 1024 * 1024; //2 MB of cache by default
+
+            /* Create the RegisterDB database instance. */
+            Register = new RegisterDB(Config);
+        }
 
 
-        /* Create the local database instance. */
-        Local    = new LocalDB(
-                        FLAGS::CREATE | FLAGS::FORCE);
+        /* _LEDGER database instance. */
+        {
+            /* Create the LedgerDB configuration object. */
+            Config::Hashmap Config =
+                Config::Hashmap("_LEDGER", FLAGS::CREATE | FLAGS::FORCE);
+
+            /* Set the LedgerDB database internal settings. */
+            Config.HASHMAP_TOTAL_BUCKETS   = config::fClient.load() ? 77773 : (256 * 256 * 64);
+            Config.MAX_HASHMAP_FILES       = 256;
+            Config.MAX_SECTOR_FILE_STREAMS = 16;
+            Config.MAX_LINEAR_PROBES       = 2;
+            Config.MAX_SECTOR_BUFFER_SIZE  = 0; //0 bytes, since we are in force mode this won't be used at all
+            Config.MAX_SECTOR_CACHE_SIZE   = config::GetArg("-ledgercache", 2) * 1024 * 1024; //2 MB of cache by default
+
+            /* Create the LedgerDB database instance. */
+            Ledger = new LedgerDB(Config);
+        }
 
 
+        /* _LEGACY database instance. */
+        {
+            /* Create the LegacyDB configuration object. */
+            Config::Hashmap Config =
+                Config::Hashmap("_LEGACY", FLAGS::CREATE | FLAGS::FORCE);
+
+            /* Set the LegacyDB database internal settings. */
+            Config.HASHMAP_TOTAL_BUCKETS   = config::fClient.load() ? 77773 : (256 * 256 * 64);
+            Config.MAX_HASHMAP_FILES       = 256;
+            Config.MAX_SECTOR_FILE_STREAMS = 16;
+            Config.MAX_LINEAR_PROBES       = 2;
+            Config.MAX_SECTOR_BUFFER_SIZE  = 0; //0 bytes, since we are in force mode this won't be used at all
+            Config.MAX_SECTOR_CACHE_SIZE   = config::GetArg("-legacycache", 1) * 1024 * 1024; //1 MB of cache by default
+
+            /* Create the LegacyDB database instance. */
+            Legacy = new LegacyDB(Config);
+        }
+
+
+        /* _TRUST database instance. */
+        {
+            /* Create the TrustDB configuration object. */
+            Config::Hashmap Config =
+                Config::Hashmap("_TRUST", FLAGS::CREATE | FLAGS::FORCE);
+
+            /* Set the TrustDB database internal settings. */
+            Config.HASHMAP_TOTAL_BUCKETS   = 77773;
+            Config.MAX_HASHMAP_FILES       = 4; //TODO: make sure this doesn't break anything :D
+            Config.MAX_SECTOR_FILE_STREAMS = 4;
+            Config.MAX_LINEAR_PROBES       = 2;
+            Config.MAX_SECTOR_BUFFER_SIZE  = 0; //0 bytes, since we are in force mode this won't be used at all
+            Config.MAX_SECTOR_CACHE_SIZE   = 1024 * 1024; //1 MB of cache by default
+
+            /* Create the TrustDB database instance. */
+            Trust = new TrustDB(Config);
+        }
+
+
+        /* _LOCAL database instance. */
+        {
+            /* Create the LocalDB configuration object. */
+            Config::Hashmap Config =
+                Config::Hashmap("_LOCAL", FLAGS::CREATE | FLAGS::FORCE);
+
+            /* Set the LocalDB database internal settings. */
+            Config.HASHMAP_TOTAL_BUCKETS   = 77773;
+            Config.MAX_HASHMAP_FILES       = 4; //TODO: make sure this doesn't break anything :D
+            Config.MAX_SECTOR_FILE_STREAMS = 4;
+            Config.MAX_LINEAR_PROBES       = 2;
+            Config.MAX_SECTOR_BUFFER_SIZE  = 0; //0 bytes, since we are in force mode this won't be used at all
+            Config.MAX_SECTOR_CACHE_SIZE   = 1024 * 1024; //1 MB of cache by default
+
+            /* Create the LocalDB database instance. */
+            Local = new LocalDB(Config);
+        }
+
+
+        /* _CLIENT database instance. */
         if(config::fClient.load())
         {
+            /* Create the ClientDB configuration object. */
+            Config::Hashmap Config =
+                Config::Hashmap("_CLIENT", FLAGS::CREATE | FLAGS::FORCE);
+
+            /* Set the ClientDB database internal settings. */
+            Config.HASHMAP_TOTAL_BUCKETS   = 77773;
+            Config.MAX_HASHMAP_FILES       = 8;
+            Config.MAX_SECTOR_FILE_STREAMS = 4;
+            Config.MAX_LINEAR_PROBES       = 2;
+            Config.MAX_SECTOR_BUFFER_SIZE  = 0; //0 bytes, since we are in force mode this won't be used at all
+            Config.MAX_SECTOR_CACHE_SIZE   = 1024 * 1024; //1 MB of cache by default
+
             /* Create new client database if enabled. */
-            Client    = new ClientDB(
-                            FLAGS::CREATE | FLAGS::FORCE,
-                            77773);
+            Client    = new ClientDB(Config);
         }
 
         /* Handle database recovery mode. */

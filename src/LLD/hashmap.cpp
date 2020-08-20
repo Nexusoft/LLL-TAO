@@ -51,27 +51,200 @@ namespace LLD
     uint32_t BinaryHashMap::get_bucket(const std::vector<uint8_t>& vKey)
     {
         /* Get an xxHash. */
-        uint64_t nBucket = XXH64(&vKey[0], vKey.size(), 0) / 7;
+        uint64_t nBucket = XXH3_64bits_withSeed(&vKey[0], vKey.size(), 0);
+        return static_cast<uint32_t>(nBucket % CONFIG.HASHMAP_TOTAL_BUCKETS);
+    }
 
-        return static_cast<uint32_t>(nBucket % HASHMAP_TOTAL_BUCKETS);
+
+    /* Helper method to grab the current file from the input buffer. */
+    uint16_t BinaryHashMap::get_current_file(const std::vector<uint8_t>& vBuffer, const uint32_t nOffset)
+    {
+        /* Check for buffer overflow. */
+        if(nOffset + 2 >= vBuffer.size())
+            return 0;
+
+        /* Copy from the buffer at current offset. */
+        uint16_t nRet = 0;
+        std::copy((uint8_t*)&vBuffer[nOffset], (uint8_t*)&vBuffer[nOffset] + 2, (uint8_t*)&nRet);
+
+        return nRet;
+    }
+
+
+    /* Helper method to set the current file in the input buffer. */
+    void BinaryHashMap::set_current_file(const uint16_t nCurrent, std::vector<uint8_t> &vBuffer, const uint32_t nOffset)
+    {
+        /* Check for buffer overflow. */
+        if(nOffset + 2 >= vBuffer.size())
+            return;
+
+        /* Copy to the buffer at current offset. */
+        std::copy((uint8_t*)&nCurrent, (uint8_t*)&nCurrent + 2, (uint8_t*)&vBuffer[nOffset]);
+    }
+
+
+    /* Helper method to check if a file is unoccupied in input buffer. */
+    bool BinaryHashMap::check_hashmap_available(const uint32_t nHashmap, const std::vector<uint8_t>& vBuffer, const uint32_t nOffset)
+    {
+        /* Calculate initial hashmap index and bit offset. */
+        uint32_t nBeginIndex  = (nHashmap * CONFIG.SECONDARY_BLOOM_BITS) / 8;
+        uint32_t nBeginBit    = (nHashmap * CONFIG.SECONDARY_BLOOM_BITS) % 8;
+
+        /* Loop through all bits in a secondary bloom filter. */
+        for(uint32_t n = 0; n < CONFIG.SECONDARY_BLOOM_BITS; ++n)
+        {
+            /* Calculate our offsets based on current bit iterated. */
+            uint32_t nIndex  = nBeginIndex + ((nBeginBit + n) / 8);
+            uint32_t nBit    = (nBeginBit + n) % 8;
+
+            /* Check for buffer overflow. */
+            if(nIndex + nOffset >= vBuffer.size())
+                return true;
+
+            /* Check that any bits within the range of this hashmap bitset are not set. */
+            if(vBuffer[nIndex + nOffset] & (1 << nBit))
+                return false;
+        }
+
+        return true;
+    }
+
+
+    /* Helper method to get the total bytes in the secondary bloom filter. */
+    uint32_t BinaryHashMap::secondary_bloom_size()
+    {
+        /* Cache the total bits to calculate size. */
+        uint64_t nBits = CONFIG.MAX_HASHMAP_FILES * CONFIG.SECONDARY_BLOOM_BITS;
+        return (nBits / 8) + ((nBits % 8 == 0) ? 0 : 1); //we want 1 byte padding here for bits that overflow
+    }
+
+
+    /* Check if a given key is within a secondary bloom filter. */
+    bool BinaryHashMap::check_secondary_bloom(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vBuffer,
+        const uint32_t nHashmap, const uint32_t nOffset)
+    {
+        /* Find the starting index and bit offset. */
+        uint32_t nBeginIndex  = (nHashmap * CONFIG.SECONDARY_BLOOM_BITS) / 8;
+        uint32_t nBeginBit    = (nHashmap * CONFIG.SECONDARY_BLOOM_BITS) % 8;
+
+        /* Loop through the total k-hashes for this bloom filter. */
+        for(uint32_t k = 0; k < CONFIG.SECONDARY_BLOOM_HASHES; ++k)
+        {
+            /* Find the bucket that correlates to this k-hash. */
+            uint64_t nBucket = XXH3_64bits_withSeed((uint8_t*)&vKey[0], vKey.size(), k) % CONFIG.SECONDARY_BLOOM_BITS;
+
+            /* Calculate our local bit and index in the buffer. */
+            uint32_t nIndex  = nBeginIndex + (nBeginBit + nBucket) / 8;
+            uint32_t nBit    = (nBeginBit + nBucket) % 8;
+
+            /* Check for buffer overflow, if triggered flag as false positive so we don't create more cascading errors
+             * due to a false negative when bloom filters need to guarantee no false negatives.
+             */
+            if(nIndex + nOffset >= vBuffer.size())
+                return true;
+
+            /* Check this k-hash value bit is not set. */
+            if(!(vBuffer[nIndex + nOffset] & (1 << nBit)))
+                return false;
+        }
+
+        return true;
+    }
+
+
+    /* Set a given key is within a secondary bloom filter. */
+    void BinaryHashMap::set_secondary_bloom(const std::vector<uint8_t>& vKey, std::vector<uint8_t> &vBuffer,
+        const uint32_t nHashmap, const uint32_t nOffset)
+    {
+        /* Find the starting index and bit offset. */
+        uint32_t nBeginIndex  = (nHashmap * CONFIG.SECONDARY_BLOOM_BITS) / 8;
+        uint32_t nBeginOffset = (nHashmap * CONFIG.SECONDARY_BLOOM_BITS) % 8;
+
+        /* Loop through the total k-hashes for this bloom filter. */
+        for(uint32_t k = 0; k < CONFIG.SECONDARY_BLOOM_HASHES; ++k)
+        {
+            /* Find the bucket that correlates to this k-hash. */
+            uint64_t nBucket = XXH3_64bits_withSeed((uint8_t*)&vKey[0], vKey.size(), k) % CONFIG.SECONDARY_BLOOM_BITS;
+
+            /* Calculate our local bit and index in the buffer. */
+            uint32_t nIndex  = nBeginIndex + (nBeginOffset + nBucket) / 8;
+            uint32_t nBit    = (nBeginOffset + nBucket) % 8;
+
+            /* Check for buffer overflow. */
+            if(nIndex + nOffset >= vBuffer.size())
+                return;
+
+            /* Set the bit for this k-hash value. */
+            vBuffer[nIndex + nOffset] |= (1 << nBit);
+        }
+    }
+
+
+    /* Helper method to get the total bytes in the primary bloom filter. */
+    uint32_t BinaryHashMap::primary_bloom_size()
+    {
+        return (CONFIG.PRIMARY_BLOOM_BITS / 8) + ((CONFIG.PRIMARY_BLOOM_BITS % 8 == 0) ? 0 : 1); //we want 1 byte padding here for bits that overflow
+    }
+
+
+    /* Set a given key is within a primary bloom filter. */
+    void BinaryHashMap::set_primary_bloom(const std::vector<uint8_t>& vKey, std::vector<uint8_t> &vBuffer, const uint32_t nOffset)
+    {
+        /* Loop through the total k-hashes for this bloom filter. */
+        for(uint32_t k = 0; k < CONFIG.PRIMARY_BLOOM_HASHES; ++k)
+        {
+            /* Find the bucket that correlates to this k-hash. */
+            uint64_t nBucket = XXH3_64bits_withSeed((uint8_t*)&vKey[0], vKey.size(), k) % CONFIG.PRIMARY_BLOOM_BITS;
+
+            /* Calculate our local bit and index in the buffer. */
+            uint32_t nIndex  = (nBucket / 8);
+            uint32_t nBit    = (nBucket % 8);
+
+            /* Check for buffer overflow. */
+            if(nIndex + nOffset >= vBuffer.size())
+                return;
+
+            /* Set the bit for this k-hash value. */
+            vBuffer[nIndex + nOffset] |= (1 << nBit);
+        }
+    }
+
+
+    /* Check if a given key is within a primary bloom filter. */
+    bool BinaryHashMap::check_primary_bloom(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vBuffer, const uint32_t nOffset)
+    {
+        /* Loop through the total k-hashes for this bloom filter. */
+        for(uint32_t k = 0; k < CONFIG.PRIMARY_BLOOM_HASHES; ++k)
+        {
+            /* Find the bucket that correlates to this k-hash. */
+            uint64_t nBucket = XXH3_64bits_withSeed((uint8_t*)&vKey[0], vKey.size(), k) % CONFIG.PRIMARY_BLOOM_BITS;
+
+            /* Calculate our local bit and index in the buffer. */
+            uint32_t nIndex  = (nBucket / 8);
+            uint32_t nBit    = (nBucket % 8);
+
+            /* Check for buffer overflow, if triggered flag as false positive so we don't create more cascading errors
+             * due to a false negative when bloom filters need to guarantee no false negatives.
+             */
+            if(nIndex + nOffset >= vBuffer.size())
+                return true;
+
+            /* Check this k-hash value bit is not set. */
+            if(!(vBuffer[nIndex + nOffset] & (1 << nBit)))
+                return false;
+        }
+
+        return true;
     }
 
 
     /* The Database Constructor. To determine file location and the Bytes per Record. */
-    BinaryHashMap::BinaryHashMap(const std::string& strBaseLocationIn, const uint8_t nFlagsIn, const uint64_t nBucketsIn)
-    : KEY_MUTEX              ( )
-    , strBaseLocation        (strBaseLocationIn)
-    , pFileStreams           (new TemplateLRU<uint16_t, std::fstream*>(8))
-    , pBloomStreams          (new TemplateLRU<uint16_t, std::fstream*>(8))
-    , pindex                 (nullptr)
-    , hashmap                (nBucketsIn)
-    , HASHMAP_TOTAL_BUCKETS  (nBucketsIn)
-    , HASHMAP_MAX_KEY_SIZE   (32)
-    , HASHMAP_KEY_ALLOCATION (static_cast<uint16_t>(HASHMAP_MAX_KEY_SIZE + 13))
-    , nFlags                 (nFlagsIn)
-    , RECORD_MUTEX           (1024)
-    , vBloom                 ( )
-    , setUpdated             ( )
+    BinaryHashMap::BinaryHashMap(const Config::Hashmap& config)
+    : KEY_MUTEX             ( )
+    , CONFIG                (config)
+    , INDEX_FILTER_SIZE     (primary_bloom_size() + secondary_bloom_size() + 2)
+    , pFileStreams          (new TemplateLRU<uint16_t, std::fstream*>(CONFIG.MAX_HASHMAP_FILE_STREAMS))
+    , pindex                (nullptr)
     {
         Initialize();
     }
@@ -80,18 +253,10 @@ namespace LLD
     /* Copy Constructor */
     BinaryHashMap::BinaryHashMap(const BinaryHashMap& map)
     : KEY_MUTEX              ( )
-    , strBaseLocation        (map.strBaseLocation)
+    , CONFIG                 (map.CONFIG)
+    , INDEX_FILTER_SIZE      (map.INDEX_FILTER_SIZE)
     , pFileStreams           (map.pFileStreams)
-    , pBloomStreams          (map.pBloomStreams)
     , pindex                 (map.pindex)
-    , hashmap                (map.hashmap)
-    , HASHMAP_TOTAL_BUCKETS  (map.HASHMAP_TOTAL_BUCKETS)
-    , HASHMAP_MAX_KEY_SIZE   (map.HASHMAP_MAX_KEY_SIZE)
-    , HASHMAP_KEY_ALLOCATION (map.HASHMAP_KEY_ALLOCATION)
-    , nFlags                 (map.nFlags)
-    , RECORD_MUTEX           (map.RECORD_MUTEX.size())
-    , vBloom                 (map.vBloom)
-    , setUpdated             (map.setUpdated)
     {
         Initialize();
     }
@@ -100,18 +265,10 @@ namespace LLD
     /* Move Constructor */
     BinaryHashMap::BinaryHashMap(BinaryHashMap&& map)
     : KEY_MUTEX              ( )
-    , strBaseLocation        (std::move(map.strBaseLocation))
+    , CONFIG                 (std::move(map.CONFIG))
+    , INDEX_FILTER_SIZE      (std::move(map.INDEX_FILTER_SIZE))
     , pFileStreams           (std::move(map.pFileStreams))
-    , pBloomStreams          (std::move(map.pBloomStreams))
     , pindex                 (std::move(map.pindex))
-    , hashmap                (std::move(map.hashmap))
-    , HASHMAP_TOTAL_BUCKETS  (std::move(map.HASHMAP_TOTAL_BUCKETS))
-    , HASHMAP_MAX_KEY_SIZE   (std::move(map.HASHMAP_MAX_KEY_SIZE))
-    , HASHMAP_KEY_ALLOCATION (std::move(map.HASHMAP_KEY_ALLOCATION))
-    , nFlags                 (std::move(map.nFlags))
-    , RECORD_MUTEX           (map.RECORD_MUTEX.size())
-    , vBloom                 (std::move(map.vBloom))
-    , setUpdated             (std::move(map.setUpdated))
     {
         Initialize();
     }
@@ -120,18 +277,8 @@ namespace LLD
     /* Copy Assignment Operator */
     BinaryHashMap& BinaryHashMap::operator=(const BinaryHashMap& map)
     {
-        strBaseLocation        = map.strBaseLocation;
-        pFileStreams           = map.pFileStreams;
-        pBloomStreams          = map.pBloomStreams;
-        pindex                 = map.pindex;
-        hashmap                = map.hashmap;
-        HASHMAP_TOTAL_BUCKETS  = map.HASHMAP_TOTAL_BUCKETS;
-        HASHMAP_MAX_KEY_SIZE   = map.HASHMAP_MAX_KEY_SIZE;
-        HASHMAP_KEY_ALLOCATION = map.HASHMAP_KEY_ALLOCATION;
-        nFlags                 = map.nFlags;
-
-        vBloom                 = map.vBloom;
-        setUpdated             = map.setUpdated;
+        pFileStreams   = map.pFileStreams;
+        pindex         = map.pindex;
 
         Initialize();
 
@@ -142,18 +289,8 @@ namespace LLD
     /* Move Assignment Operator */
     BinaryHashMap& BinaryHashMap::operator=(BinaryHashMap&& map)
     {
-        strBaseLocation        = std::move(map.strBaseLocation);
-        pFileStreams           = std::move(map.pFileStreams);
-        pBloomStreams          = std::move(map.pBloomStreams);
-        pindex                 = std::move(map.pindex);
-        hashmap                = std::move(map.hashmap);
-        HASHMAP_TOTAL_BUCKETS  = std::move(map.HASHMAP_TOTAL_BUCKETS);
-        HASHMAP_MAX_KEY_SIZE   = std::move(map.HASHMAP_MAX_KEY_SIZE);
-        HASHMAP_KEY_ALLOCATION = std::move(map.HASHMAP_KEY_ALLOCATION);
-        nFlags                 = std::move(map.nFlags);
-
-        vBloom                 = std::move(map.vBloom);
-        setUpdated             = std::move(map.setUpdated);
+        pFileStreams   = std::move(map.pFileStreams);
+        pindex         = std::move(map.pindex);
 
         Initialize();
 
@@ -167,9 +304,6 @@ namespace LLD
         if(pFileStreams)
             delete pFileStreams;
 
-        if(pBloomStreams)
-            delete pBloomStreams;
-
         if(pindex)
             delete pindex;
     }
@@ -182,31 +316,15 @@ namespace LLD
         uint32_t nTotalHashmaps = 0;
 
         /* Create directories if they don't exist yet. */
-        if(!filesystem::exists(strBaseLocation) && filesystem::create_directories(strBaseLocation))
-            debug::log(0, FUNCTION, "Generated Path ", strBaseLocation);
-
-        /* Set the new stream pointer. */
-        std::string filename = debug::safe_printstr(strBaseLocation, "_bloom.", std::setfill('0'), std::setw(5), 0u);
-        if(!filesystem::exists(filename))
-        {
-            /* Read bloom filter into memory. */
-            vBloom.emplace_back(BloomFilter(HASHMAP_TOTAL_BUCKETS));
-
-            /* Write the new disk index .*/
-            std::fstream bloom(filename, std::ios::out | std::ios::binary | std::ios::trunc);
-            bloom.write((char*)vBloom[0].Bytes(), vBloom[0].Size());
-            bloom.close();
-
-            /* Debug output showing generating of the hashmap file. */
-            debug::log(0, FUNCTION, "Generated Bloom Filter 0 of ", vBloom[0].Size(), " bytes");
-        }
+        if(!filesystem::exists(CONFIG.BASE_DIRECTORY) && filesystem::create_directories(CONFIG.BASE_DIRECTORY))
+            debug::log(0, FUNCTION, "Generated Path ", CONFIG.BASE_DIRECTORY);
 
         /* Build the hashmap indexes. */
-        std::string index = debug::safe_printstr(strBaseLocation, "_hashmap.index");
+        std::string index = debug::safe_printstr(CONFIG.BASE_DIRECTORY, "/keychain/_hashmap.index");
         if(!filesystem::exists(index))
         {
             /* Generate empty space for new file. */
-            std::vector<uint8_t> vSpace(HASHMAP_TOTAL_BUCKETS * 2, 0);
+            std::vector<uint8_t> vSpace(CONFIG.HASHMAP_TOTAL_BUCKETS * 2, 0);
 
             /* Write the new disk index .*/
             std::fstream stream(index, std::ios::out | std::ios::binary | std::ios::trunc);
@@ -218,62 +336,24 @@ namespace LLD
         }
 
         /* Read the hashmap indexes. */
-        else
+        else if(!CONFIG.QUICK_INIT)
         {
-            /* Build a vector to read the disk index. */
-            std::vector<uint8_t> vIndex(HASHMAP_TOTAL_BUCKETS * 2, 0);
-
-            /* Read the disk index bytes. */
-            std::fstream stream(index, std::ios::in | std::ios::binary);
-            stream.read((char*)&hashmap[0], hashmap.size() * 2);
-            stream.close();
-
             /* Deserialize the values into memory index. */
             uint32_t nTotalKeys = 0;
-            for(uint32_t nBucket = 0; nBucket < HASHMAP_TOTAL_BUCKETS; ++nBucket)
-            {
-                nTotalKeys += hashmap[nBucket];
-                nTotalHashmaps = std::max(nTotalHashmaps, uint32_t(hashmap[nBucket]));
-            }
 
-            /* Load the bloom filter disk images. */
-            for(uint32_t nBloom = 0; nBloom < nTotalHashmaps; ++nBloom)
-            {
-                /* Find the file stream for LRU cache. */
-                std::fstream *pstream;
-                if(!pBloomStreams->Get(nBloom, pstream))
-                {
-                    /* Set the new stream pointer. */
-                    std::string filename = debug::safe_printstr(strBaseLocation, "_bloom.", std::setfill('0'), std::setw(5), nBloom);
-                    pstream = new std::fstream(filename, std::ios::in | std::ios::out | std::ios::binary);
-                    if(!pstream->is_open())
-                    {
-                        delete pstream;
-                        continue;
-                    }
-
-                    /* If file not found add to LRU cache. */
-                    pBloomStreams->Put(nBloom, pstream);
-                }
-
-                /* Read bloom filter into memory. */
-                vBloom.emplace_back(BloomFilter(HASHMAP_TOTAL_BUCKETS));
-
-                /* Read data into bloom filter. */
-                pstream->seekg(0, std::ios::beg);
-                pstream->read((char*)vBloom[nBloom].Bytes(), vBloom[nBloom].Size());
-            }
+            //TODO: finish this to calculate total number of keys
+            std::vector<uint8_t> vIndex(512, 0);
 
             /* Debug output showing loading of disk index. */
             debug::log(0, FUNCTION, "Loaded Disk Index | ", vIndex.size(), " bytes | ", nTotalKeys, " keys | ", nTotalHashmaps, " hashmaps");
         }
 
         /* Build the first hashmap index file if it doesn't exist. */
-        std::string file = debug::safe_printstr(strBaseLocation, "_hashmap.", std::setfill('0'), std::setw(5), 0u);
+        std::string file = debug::safe_printstr(CONFIG.BASE_DIRECTORY, "/keychain/_hashmap.", std::setfill('0'), std::setw(5), 0u);
         if(!filesystem::exists(file))
         {
             /* Build a vector with empty bytes to flush to disk. */
-            std::vector<uint8_t> vSpace(HASHMAP_TOTAL_BUCKETS * HASHMAP_KEY_ALLOCATION, 0);
+            std::vector<uint8_t> vSpace(CONFIG.HASHMAP_TOTAL_BUCKETS * CONFIG.HASHMAP_KEY_ALLOCATION, 0);
 
             /* Flush the empty keychain file to disk. */
             std::fstream stream(file, std::ios::out | std::ios::binary | std::ios::trunc);
@@ -301,21 +381,35 @@ namespace LLD
         uint32_t nBucket = get_bucket(vKey);
 
         /* Get the file binary position. */
-        uint32_t nFilePos = nBucket * HASHMAP_KEY_ALLOCATION;
+        uint32_t nFilePos = nBucket * CONFIG.HASHMAP_KEY_ALLOCATION;
 
         /* Set the cKey return value non compressed. */
         cKey.vKey = vKey;
 
         /* Compress any keys larger than max size. */
         std::vector<uint8_t> vKeyCompressed = vKey;
-        compress_key(vKeyCompressed, HASHMAP_MAX_KEY_SIZE);
+        compress_key(vKeyCompressed);
+
+        /* Build our buffer based on total linear probes. */
+        std::vector<uint8_t> vBuffer(INDEX_FILTER_SIZE * CONFIG.MAX_LINEAR_PROBES, 0);
+
+        /* Read the index file information. */
+        pindex->seekg(INDEX_FILTER_SIZE * nBucket, std::ios::beg);
+        pindex->read((char*)&vBuffer[0], vBuffer.size());
+
+        /* Check the primary bloom filter. */
+        if(!check_primary_bloom(vKey, vBuffer, 2))
+            return false;
+
+        /* Grab the current hashmap file from the buffer. */
+        uint16_t nHashmap = get_current_file(vBuffer, 0);
 
         /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
-        std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
-        for(int16_t i = hashmap[nBucket] - 1; i >= 0; --i)
+        std::vector<uint8_t> vBucket(CONFIG.HASHMAP_KEY_ALLOCATION, 0);
+        for(int16_t i = nHashmap - 1; i >= 0; --i)
         {
-            /* Check the bloom filters for keys. */
-            if(!vBloom[i].Has(vKey))
+            /* Check the secondary bloom filter. */
+            if(!check_secondary_bloom(vKey, vBuffer, nHashmap, primary_bloom_size() + 2))
                 continue;
 
             /* Find the file stream for LRU cache. */
@@ -323,7 +417,7 @@ namespace LLD
             if(!pFileStreams->Get(i, pstream))
             {
                 /* Set the new stream pointer. */
-                std::string filename = debug::safe_printstr(strBaseLocation, "_hashmap.", std::setfill('0'), std::setw(5), i);
+                std::string filename = debug::safe_printstr(CONFIG.BASE_DIRECTORY, "/keychain/_hashmap.", std::setfill('0'), std::setw(5), i);
                 pstream = new std::fstream(filename, std::ios::in | std::ios::out | std::ios::binary);
                 if(!pstream->is_open())
                 {
@@ -359,7 +453,7 @@ namespace LLD
                         " | Length: ", cKey.nLength,
                         " | Bucket ", nBucket,
                         " | Location: ", nFilePos,
-                        " | File: ", hashmap[nBucket] - 1,
+                        " | File: ", nHashmap - 1,
                         " | Sector File: ", cKey.nSectorFile,
                         " | Sector Size: ", cKey.nSectorSize,
                         " | Sector Start: ", cKey.nSectorStart, "\n",
@@ -382,63 +476,41 @@ namespace LLD
         uint32_t nBucket = get_bucket(cKey.vKey);
 
         /* Get the file binary position. */
-        uint32_t nFilePos = nBucket * HASHMAP_KEY_ALLOCATION;
+        uint32_t nFilePos = nBucket * CONFIG.HASHMAP_KEY_ALLOCATION;
 
         /* Compress any keys larger than max size. */
         std::vector<uint8_t> vKeyCompressed = cKey.vKey;
-        compress_key(vKeyCompressed, HASHMAP_MAX_KEY_SIZE);
+        compress_key(vKeyCompressed);
+
+        /* Build our buffer based on total linear probes. */
+        std::vector<uint8_t> vBuffer(INDEX_FILTER_SIZE * CONFIG.MAX_LINEAR_PROBES, 0);
+
+        /* Read the index file information. */
+        pindex->seekg(INDEX_FILTER_SIZE * nBucket, std::ios::beg);
+        pindex->read((char*)&vBuffer[0], vBuffer.size());
+
+        /* Grab the current hashmap file from the buffer. */
+        uint16_t nHashmap = get_current_file(vBuffer, 0);
 
         /* Handle if not in append mode which will update the key. */
-        if(!(nFlags & FLAGS::APPEND))
+        if(!(CONFIG.FLAGS & FLAGS::APPEND))
         {
-            /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
-            std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
-            for(int16_t i = hashmap[nBucket] - 1; i >= 0; --i)
+            /* Check the primary bloom filter. */
+            if(check_primary_bloom(cKey.vKey, vBuffer, 2))
             {
-                /* Check the bloom filters for keys. */
-                if(!vBloom[i].Has(cKey.vKey))
-                    continue;
-
-                /* Find the file stream for LRU cache. */
-                std::fstream* pstream;
-                if(!pFileStreams->Get(i, pstream))
+                /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
+                std::vector<uint8_t> vBucket(CONFIG.HASHMAP_KEY_ALLOCATION, 0);
+                for(int16_t i = nHashmap - 1; i >= 0; --i)
                 {
-                    std::string filename = debug::safe_printstr(strBaseLocation, "_hashmap.", std::setfill('0'), std::setw(5), i);
-
-                    /* Set the new stream pointer. */
-                    pstream = new std::fstream(filename, std::ios::in | std::ios::out | std::ios::binary);
-                    if(!pstream->is_open())
-                    {
-                        delete pstream;
-                        return debug::error(FUNCTION, "couldn't create hashmap object at: ",
-                            filename, " (", strerror(errno), ")");
-                    }
-
-                    /* If file not found add to LRU cache. */
-                    pFileStreams->Put(i, pstream);
-                }
-
-                /* Seek to the hashmap index in file. */
-                pstream->seekg (nFilePos, std::ios::beg);
-
-                /* Read the bucket binary data from file stream */
-                pstream->read((char*) &vBucket[0], vBucket.size());
-
-                /* Check if this bucket has the key or is in an empty state. */
-                if(vBucket[0] == STATE::EMPTY || std::equal(vBucket.begin() + 13, vBucket.begin() + 13 + vKeyCompressed.size(), vKeyCompressed.begin()))
-                {
-                    /* Serialize the key and return if found. */
-                    DataStream ssKey(SER_LLD, DATABASE_VERSION);
-                    ssKey << cKey;
-
-                    /* Serialize the key into the end of the vector. */
-                    ssKey.write((char*)&vKeyCompressed[0], vKeyCompressed.size());
+                    /* Check the secondary bloom filter. */
+                    if(!check_secondary_bloom(cKey.vKey, vBuffer, nHashmap, primary_bloom_size() + 2))
+                        continue;
 
                     /* Find the file stream for LRU cache. */
                     std::fstream* pstream;
                     if(!pFileStreams->Get(i, pstream))
                     {
-                        std::string filename = debug::safe_printstr(strBaseLocation, "_hashmap.", std::setfill('0'), std::setw(5), i);
+                        std::string filename = debug::safe_printstr(CONFIG.BASE_DIRECTORY, "/keychain/_hashmap.", std::setfill('0'), std::setw(5), i);
 
                         /* Set the new stream pointer. */
                         pstream = new std::fstream(filename, std::ios::in | std::ios::out | std::ios::binary);
@@ -453,78 +525,86 @@ namespace LLD
                         pFileStreams->Put(i, pstream);
                     }
 
-                    /* Update the bloom filter with new key. */
-                    vBloom[i].Insert(cKey.vKey);
-                    setUpdated.insert(i);
+                    /* Seek to the hashmap index in file. */
+                    pstream->seekg (nFilePos, std::ios::beg);
 
-                    /* Handle the disk writing operations. */
-                    pstream->seekp (nFilePos, std::ios::beg);
-                    pstream->write((char*)&ssKey.Bytes()[0], ssKey.size());
-                    pstream->flush();
+                    /* Read the bucket binary data from file stream */
+                    pstream->read((char*) &vBucket[0], vBucket.size());
 
-                    /* Debug Output of Sector Key Information. */
-                    if(config::nVerbose >= 4)
-                        debug::log(4, FUNCTION, "State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
-                            " | Length: ", cKey.nLength,
-                            " | Bucket ", nBucket,
-                            " | Location: ", nFilePos,
-                            " | File: ", hashmap[nBucket] - 1,
-                            " | Sector File: ", cKey.nSectorFile,
-                            " | Sector Size: ", cKey.nSectorSize,
-                            " | Sector Start: ", cKey.nSectorStart, "\n",
-                            HexStr(vKeyCompressed.begin(), vKeyCompressed.end(), true));
+                    /* Check if this bucket has the key or is in an empty state. */
+                    if(vBucket[0] == STATE::EMPTY || std::equal(vBucket.begin() + 13, vBucket.begin() + 13 + vKeyCompressed.size(), vKeyCompressed.begin()))
+                    {
+                        /* Serialize the key and return if found. */
+                        DataStream ssKey(SER_LLD, DATABASE_VERSION);
+                        ssKey << cKey;
 
-                    return true;
+                        /* Serialize the key into the end of the vector. */
+                        ssKey.write((char*)&vKeyCompressed[0], vKeyCompressed.size());
+
+                        /* Find the file stream for LRU cache. */
+                        std::fstream* pstream;
+                        if(!pFileStreams->Get(i, pstream))
+                        {
+                            std::string filename = debug::safe_printstr(CONFIG.BASE_DIRECTORY, "/keychain/_hashmap.", std::setfill('0'), std::setw(5), i);
+
+                            /* Set the new stream pointer. */
+                            pstream = new std::fstream(filename, std::ios::in | std::ios::out | std::ios::binary);
+                            if(!pstream->is_open())
+                            {
+                                delete pstream;
+                                return debug::error(FUNCTION, "couldn't create hashmap object at: ",
+                                    filename, " (", strerror(errno), ")");
+                            }
+
+                            /* If file not found add to LRU cache. */
+                            pFileStreams->Put(i, pstream);
+                        }
+
+                        /* Handle the disk writing operations. */
+                        pstream->seekp (nFilePos, std::ios::beg);
+                        pstream->write((char*)&ssKey.Bytes()[0], ssKey.size());
+                        pstream->flush();
+
+                        /* Debug Output of Sector Key Information. */
+                        if(config::nVerbose >= 4)
+                            debug::log(4, FUNCTION, "State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
+                                " | Length: ", cKey.nLength,
+                                " | Bucket ", nBucket,
+                                " | Location: ", nFilePos,
+                                " | File: ", nHashmap - 1,
+                                " | Sector File: ", cKey.nSectorFile,
+                                " | Sector Size: ", cKey.nSectorSize,
+                                " | Sector Start: ", cKey.nSectorStart, "\n",
+                                HexStr(vKeyCompressed.begin(), vKeyCompressed.end(), true));
+
+                        return true;
+                    }
                 }
             }
         }
 
         /* Create a new disk hashmap object in linked list if it doesn't exist. */
-        std::string strHashmap = debug::safe_printstr(strBaseLocation, "_hashmap.", std::setfill('0'), std::setw(5), hashmap[nBucket]);
+        std::string strHashmap = debug::safe_printstr(CONFIG.BASE_DIRECTORY, "/keychain/_hashmap.", std::setfill('0'), std::setw(5), nHashmap);
         if(!filesystem::exists(strHashmap))
         {
             /* Blank vector to write empty space in new disk file. */
-            std::vector<uint8_t> vSpace(HASHMAP_KEY_ALLOCATION, 0);
+            std::vector<uint8_t> vSpace(CONFIG.HASHMAP_KEY_ALLOCATION, 0);
 
             /* Write the blank data to the new file handle. */
             std::ofstream stream(strHashmap, std::ios::out | std::ios::binary | std::ios::app);
             if(!stream)
                 return debug::error(FUNCTION, strerror(errno));
 
-            for(uint32_t i = 0; i < HASHMAP_TOTAL_BUCKETS; ++i)
+            for(uint32_t i = 0; i < CONFIG.HASHMAP_TOTAL_BUCKETS; ++i)
                 stream.write((char*)&vSpace[0], vSpace.size());
 
             //stream.flush();
             stream.close();
         }
 
-        /* Set the new stream pointer. */
-        std::string strBloom = debug::safe_printstr(strBaseLocation, "_bloom.", std::setfill('0'), std::setw(5), hashmap[nBucket]);
-        if(!filesystem::exists(strBloom))
-        {
-            /* Read bloom filter into memory. */
-            vBloom.emplace_back(BloomFilter(HASHMAP_TOTAL_BUCKETS));
-
-            /* Write the new disk index .*/
-            std::ofstream stream(strBloom, std::ios::out | std::ios::binary | std::ios::trunc);
-            if(!stream)
-                return debug::error(FUNCTION, strerror(errno));
-
-            /* Write a blank bloom filter to the disk. */
-            stream.write((char*)vBloom[0].Bytes(), vBloom[0].Size());
-            stream.close();
-        }
-
-        /* Read the State and Size of Sector Header. */
-        DataStream ssKey(SER_LLD, DATABASE_VERSION);
-        ssKey << cKey;
-
-        /* Serialize the key into the end of the vector. */
-        ssKey.write((char*)&vKeyCompressed[0], vKeyCompressed.size());
-
         /* Find the file stream for LRU cache. */
         std::fstream* pstream;
-        if(!pFileStreams->Get(hashmap[nBucket], pstream))
+        if(!pFileStreams->Get(nHashmap, pstream))
         {
             /* Set the new stream pointer. */
             pstream = new std::fstream(strHashmap, std::ios::in | std::ios::out | std::ios::binary);
@@ -535,43 +615,44 @@ namespace LLD
             }
 
             /* If not in cache, add to the LRU. */
-            pFileStreams->Put(hashmap[nBucket], pstream);
+            pFileStreams->Put(nHashmap, pstream);
         }
 
-        /* Update the bloom filter with new key. */
-        vBloom[hashmap[nBucket]].Insert(cKey.vKey);
-        setUpdated.insert(hashmap[nBucket]);
+        /* Read the State and Size of Sector Header. */
+        DataStream ssKey(SER_LLD, DATABASE_VERSION);
+        ssKey << cKey;
+
+        /* Serialize the key into the end of the vector. */
+        ssKey.write((char*)&vKeyCompressed[0], vKeyCompressed.size());
 
         /* Flush the key file to disk. */
         pstream->seekp (nFilePos, std::ios::beg);
         if(!pstream->write((char*)&ssKey.Bytes()[0], ssKey.size()))
             return debug::error(FUNCTION, "only ", pstream->gcount(), "/", ssKey.size(), " bytes written");
 
-        pstream->flush();
+        /* Update the primary and secondary bloom filters. */
+        set_primary_bloom(cKey.vKey, vBuffer, 2);
+        set_secondary_bloom(cKey.vKey, vBuffer, nHashmap, primary_bloom_size() + 2);
 
-        /* Seek to the index position. */
-        pindex->seekp((nBucket * 2), std::ios::beg);
+        /* Update the hashmap file. */
+        set_current_file(++nHashmap, vBuffer, 0);
 
-        /* Write the index to disk. */
-        uint16_t nIndex = ++hashmap[nBucket];
+        /* Write updated filters to the index position. */
+        pindex->seekp(INDEX_FILTER_SIZE * nBucket, std::ios::beg);
+        if(!pindex->write((char*)&vBuffer[0], vBuffer.size()))
+            return debug::error(FUNCTION, "only ", pindex->gcount(), "/", vBuffer.size(), " bytes written");
 
-        /* Get the bucket data. */
-        std::vector<uint8_t> vBucket((uint8_t*)&nIndex, (uint8_t*)&nIndex + 2);
-
-        /* Write the index into hashmap. */
-        if(!pindex->write((char*)&vBucket[0], vBucket.size()))
-            return debug::error(FUNCTION, "only ", pindex->gcount(), "/", vBucket.size(), " bytes written");
-
+        /* Flush the buffers to disk. */
         pindex->flush();
+        pstream->flush();
 
         /* Debug Output of Sector Key Information. */
         if(config::nVerbose >= 4)
             debug::log(4, FUNCTION, "State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
                 " | Length: ", cKey.nLength,
                 " | Bucket ", nBucket,
-                " | Hashmap ", hashmap[nBucket],
                 " | Location: ", nFilePos,
-                " | File: ", hashmap[nBucket] - 1,
+                " | File: ", nHashmap - 1,
                 " | Sector File: ", cKey.nSectorFile,
                 " | Sector Size: ", cKey.nSectorSize,
                 " | Sector Start: ", cKey.nSectorStart,
@@ -584,42 +665,12 @@ namespace LLD
     /* Flush all buffers to disk if using ACID transaction. */
     void BinaryHashMap::Flush()
     {
-        LOCK(KEY_MUTEX);
-
-        /* Flush the bloom filters to disk. */
-        for(const auto& nBloom : setUpdated)
-        {
-            /* Find the file stream for LRU cache. */
-            std::fstream *pstream;
-            if(!pBloomStreams->Get(nBloom, pstream))
-            {
-                /* Set the new stream pointer. */
-                std::string filename = debug::safe_printstr(strBaseLocation, "_bloom.", std::setfill('0'), std::setw(5), nBloom);
-                pstream = new std::fstream(filename, std::ios::in | std::ios::out | std::ios::binary);
-                if(!pstream->is_open())
-                {
-                    delete pstream;
-                    continue;
-                }
-
-                /* If file not found add to LRU cache. */
-                pBloomStreams->Put(nBloom, pstream);
-            }
-
-            /* Read data into bloom filter. */
-            pstream->seekg(0, std::ios::beg);
-            pstream->write((char*)vBloom[nBloom].Bytes(), vBloom[nBloom].Size());
-            pstream->flush();
-        }
-
-        /* Cleanup updated set. */
-        setUpdated.clear();
     }
 
 
     /*  Erase a key from the disk hashmaps.
      *  TODO: This should be optimized further. */
-    bool BinaryHashMap::Erase(const std::vector<uint8_t> &vKey)
+    bool BinaryHashMap::Erase(const std::vector<uint8_t>& vKey)
     {
         LOCK(KEY_MUTEX);
 
@@ -627,18 +678,32 @@ namespace LLD
         uint32_t nBucket = get_bucket(vKey);
 
         /* Get the file binary position. */
-        uint32_t nFilePos = nBucket * HASHMAP_KEY_ALLOCATION;
+        uint32_t nFilePos = nBucket * CONFIG.HASHMAP_KEY_ALLOCATION;
 
         /* Compress any keys larger than max size. */
         std::vector<uint8_t> vKeyCompressed = vKey;
-        compress_key(vKeyCompressed, HASHMAP_MAX_KEY_SIZE);
+        compress_key(vKeyCompressed);
+
+        /* Build our buffer based on total linear probes. */
+        std::vector<uint8_t> vBuffer(INDEX_FILTER_SIZE * CONFIG.MAX_LINEAR_PROBES, 0);
+
+        /* Read the index file information. */
+        pindex->seekg(INDEX_FILTER_SIZE * nBucket, std::ios::beg);
+        pindex->read((char*)&vBuffer[0], vBuffer.size());
+
+        /* Grab the current hashmap file from the buffer. */
+        uint16_t nHashmap = get_current_file(vBuffer, 0);
+
+        /* Check the primary bloom filter. */
+        if(!check_primary_bloom(vKey, vBuffer, 2))
+            return false;
 
         /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
-        std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
-        for(int16_t i = hashmap[nBucket] - 1; i >= 0; --i)
+        std::vector<uint8_t> vBucket(CONFIG.HASHMAP_KEY_ALLOCATION, 0);
+        for(int16_t i = nHashmap - 1; i >= 0; --i)
         {
-            /* Check the bloom filters for keys. */
-            if(!vBloom[i].Has(vKey))
+            /* Check the secondary bloom filter. */
+            if(!check_secondary_bloom(vKey, vBuffer, nHashmap, primary_bloom_size() + 2))
                 continue;
 
             /* Find the file stream for LRU cache. */
@@ -647,7 +712,7 @@ namespace LLD
             {
                 /* Set the new stream pointer. */
                 pstream = new std::fstream(
-                  debug::safe_printstr(strBaseLocation, "_hashmap.", std::setfill('0'), std::setw(5), i),
+                  debug::safe_printstr(CONFIG.BASE_DIRECTORY, "/keychain/_hashmap.", std::setfill('0'), std::setw(5), i),
                   std::ios::in | std::ios::out | std::ios::binary);
 
                 /* If file not found add to LRU cache. */
@@ -672,7 +737,7 @@ namespace LLD
                 pstream->seekp (nFilePos, std::ios::beg);
 
                 /* Read the bucket binary data from file stream */
-                std::vector<uint8_t> vEmpty(HASHMAP_KEY_ALLOCATION, 0);
+                std::vector<uint8_t> vEmpty(CONFIG.HASHMAP_KEY_ALLOCATION, 0);
                 pstream->write((char*) &vEmpty[0], vEmpty.size());
                 pstream->flush();
 
@@ -682,7 +747,7 @@ namespace LLD
                         " | Length: ", cKey.nLength,
                         " | Bucket ", nBucket,
                         " | Location: ", nFilePos,
-                        " | File: ", hashmap[nBucket] - 1,
+                        " | File: ", nHashmap - 1,
                         " | Sector File: ", cKey.nSectorFile,
                         " | Sector Size: ", cKey.nSectorSize,
                         " | Sector Start: ", cKey.nSectorStart,
@@ -705,23 +770,41 @@ namespace LLD
         uint32_t nBucket = get_bucket(vKey);
 
         /* Get the file binary position. */
-        uint32_t nFilePos = nBucket * HASHMAP_KEY_ALLOCATION;
+        uint32_t nFilePos = nBucket * CONFIG.HASHMAP_KEY_ALLOCATION;
 
         /* Compress any keys larger than max size. */
         std::vector<uint8_t> vKeyCompressed = vKey;
-        compress_key(vKeyCompressed, HASHMAP_MAX_KEY_SIZE);
+        compress_key(vKeyCompressed);
+
+        /* Build our buffer based on total linear probes. */
+        std::vector<uint8_t> vBuffer(INDEX_FILTER_SIZE * CONFIG.MAX_LINEAR_PROBES, 0);
+
+        /* Read the index file information. */
+        pindex->seekg(INDEX_FILTER_SIZE * nBucket, std::ios::beg);
+        pindex->read((char*)&vBuffer[0], vBuffer.size());
+
+        /* Grab the current hashmap file from the buffer. */
+        uint16_t nHashmap = get_current_file(vBuffer, 0);
+
+        /* Check the primary bloom filter. */
+        if(!check_primary_bloom(vKey, vBuffer, 2))
+            return false;
 
         /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
-        std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
-        for(int16_t i = hashmap[nBucket] - 1; i >= 0; --i)
+        std::vector<uint8_t> vBucket(CONFIG.HASHMAP_KEY_ALLOCATION, 0);
+        for(int16_t i = nHashmap - 1; i >= 0; --i)
         {
+            /* Check the secondary bloom filter. */
+            if(!check_secondary_bloom(vKey, vBuffer, nHashmap, primary_bloom_size() + 2))
+                continue;
+
             /* Find the file stream for LRU cache. */
             std::fstream* pstream;
             if(!pFileStreams->Get(i, pstream))
             {
                 /* Set the new stream pointer. */
                 pstream = new std::fstream(
-                  debug::safe_printstr(strBaseLocation, "_hashmap.", std::setfill('0'), std::setw(5), i),
+                  debug::safe_printstr(CONFIG.BASE_DIRECTORY, "/keychain/_hashmap.", std::setfill('0'), std::setw(5), i),
                   std::ios::in | std::ios::out | std::ios::binary);
 
                 /* If file not found add to LRU cache. */
@@ -760,7 +843,7 @@ namespace LLD
                         " | Length: ", cKey.nLength,
                         " | Bucket ", nBucket,
                         " | Location: ", nFilePos,
-                        " | File: ", hashmap[nBucket] - 1,
+                        " | File: ", nHashmap - 1,
                         " | Sector File: ", cKey.nSectorFile,
                         " | Sector Size: ", cKey.nSectorSize,
                         " | Sector Start: ", cKey.nSectorStart,

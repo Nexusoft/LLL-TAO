@@ -44,9 +44,89 @@ This section involves how to format the code due to carriage return
 
 There are certain types that cause more problems than they solve. Following is a list of types to be warned of using.
 
-* Avoid floating points in objects when possible to avoid floating point precision errors that can occur on certain hardware. One can easily convert from an integer into float by setting the significant figures. ex. unsigned int n = 1000000; printf("%f", n / 1000000.0);
+* NEVER USE 'double' or 'float' in consensus critical code, only for outputting to the console ex. debug::log(0, "The value is ", double(dValue));
+
+* ALWAYS USE 'cv::softdouble' or 'cv::softfloat' which conform to the IEEE 754 standards using integer arithmetic if floating points
+are necessary. These include math functions 'cv::log', 'cv::abs', among others that operate only using integers for hardware portability.
 
 
 ## Security Precautions
 
 * memcpy - this is known to have buffer overflow attack vulnerabilities. Use std::copy instead of memcpy in all instances.
+
+
+## Pass by Reference
+
+When passing values into functions, ALWAYS pass by reference if the datatype is over 8 bytes long. The reference symbol '&' must
+always be on the LEFT HAND SIDE for Pass By Reference, and must ALWAYS use a const specifier.
+
+```
+/** Function
+ *
+ *  This function is responsible for...
+ *
+ *  @param[in] data The input parameter
+ *
+ **/
+void Function(const Type& data)
+{
+
+}
+```
+
+## Return by Reference
+
+When returning values by reference, always put the reference symbol '&' on the RIGHT HAND SIDE. This way it is easy to deduce the
+intended use of the function parameter. The return by references must NEVER use a const specifier.
+
+```
+/** Function
+ *
+ *  This function is responsible for...
+ *
+ *  @param[in] data The input parameter
+ *  @param[out] return The return value
+ *
+ **/
+void Function(const Type& data, Type &return)
+{
+
+}
+```
+
+
+## Public and Private methods
+
+Public methods must always follow 'CamelCase' with the first letter ALWAYS capitalized.
+
+```
+class Test
+{
+public:
+
+    void MethodIsPublic()
+    {
+    }
+}
+```
+
+Private and Protected methods must always be lowercase and use underscores between words:
+
+```
+class Test
+{
+private:
+
+    void method_is_private()
+    {
+    }
+
+protected:
+
+    void method_is_protected()
+    {
+    }
+}
+```
+
+This way any developer reading your code will know by the method name whether it is public or private.

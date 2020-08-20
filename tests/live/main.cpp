@@ -114,115 +114,8 @@ const uint256_t hashSeed = 55;
 
 #include <bitset>
 
-const uint32_t MAX_HASHMAP_FILES    = 128;
-
-const uint32_t PRIMARY_BLOOM_HASHES   = 7;
-const uint32_t PRIMARY_BLOOM_BITS     = 1.44 * MAX_HASHMAP_FILES * PRIMARY_BLOOM_HASHES;
-
-const uint32_t SECONDARY_BLOOM_HASHES = 7;
-const uint32_t SECONDARY_BLOOM_BITS   = 13;
 
 
-
-
-uint32_t secondary_bloom_size()
-{
-    return ((MAX_HASHMAP_FILES * SECONDARY_BLOOM_BITS) / 8) + 1; //we want 1 byte padding here for bits that overflow
-}
-
-
-bool check_hashmap_available(const uint32_t nHashmap, const std::vector<uint8_t>& vBuffer, const uint32_t nOffset = 0)
-{
-    uint32_t nBeginIndex  = (nHashmap * SECONDARY_BLOOM_BITS) / 8;
-    uint32_t nBeginOffset = (nHashmap * SECONDARY_BLOOM_BITS) % 8;
-
-    for(uint32_t n = 0; n < SECONDARY_BLOOM_BITS; ++n)
-    {
-        uint32_t nIndex  = nBeginIndex + ((nBeginOffset + n) / 8);
-        uint32_t nBit    = (nBeginOffset + n) % 8;
-
-        if(vBuffer[nIndex + nOffset] & (1 << nBit))
-            return false;
-    }
-
-    return true;
-}
-
-bool check_secondary_bloom(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vBuffer, const uint32_t nHashmap, const uint32_t nOffset = 0)
-{
-    uint32_t nBeginIndex  = (nHashmap * SECONDARY_BLOOM_BITS) / 8;
-    uint32_t nBeginOffset = (nHashmap * SECONDARY_BLOOM_BITS) % 8;
-
-    for(uint32_t k = 0; k < SECONDARY_BLOOM_HASHES; ++k)
-    {
-        uint64_t nBucket = XXH3_64bits_withSeed((uint8_t*)&vKey[0], vKey.size(), k) % SECONDARY_BLOOM_BITS;
-
-        uint32_t nIndex  = nBeginIndex + (nBeginOffset + nBucket) / 8;
-        uint32_t nBit    = (nBeginOffset + nBucket) % 8;
-
-        if(!(vBuffer[nIndex + nOffset] & (1 << nBit)))
-            return false;
-    }
-
-    return true;
-}
-
-void set_secondary_bloom(const std::vector<uint8_t>& vKey, std::vector<uint8_t> &vBuffer, const uint32_t nHashmap, const uint32_t nOffset = 0)
-{
-    uint32_t nBeginIndex  = (nHashmap * SECONDARY_BLOOM_BITS) / 8;
-    uint32_t nBeginOffset = (nHashmap * SECONDARY_BLOOM_BITS) % 8;
-
-    for(uint32_t k = 0; k < SECONDARY_BLOOM_HASHES; ++k)
-    {
-        uint64_t nBucket = XXH3_64bits_withSeed((uint8_t*)&vKey[0], vKey.size(), k) % SECONDARY_BLOOM_BITS;
-
-        uint32_t nIndex  = nBeginIndex + (nBeginOffset + nBucket) / 8;
-        uint32_t nBit    = (nBeginOffset + nBucket) % 8;
-
-        vBuffer[nIndex + nOffset] |= (1 << nBit);
-    }
-}
-
-
-uint32_t primary_bloom_size()
-{
-    return (PRIMARY_BLOOM_BITS / 8) + 1; //we want 1 byte padding here for bits that overflow
-}
-
-
-void set_primary_bloom(const std::vector<uint8_t>& vKey, std::vector<uint8_t> &vBuffer, const uint32_t nOffset = 0)
-{
-    for(uint32_t k = 0; k < PRIMARY_BLOOM_HASHES; ++k)
-    {
-        uint64_t nBucket = XXH3_64bits_withSeed((uint8_t*)&vKey[0], vKey.size(), k) % PRIMARY_BLOOM_BITS;
-
-        uint32_t nIndex  = (nBucket / 8);
-        uint32_t nBit    = (nBucket % 8);
-
-        if(nIndex + nOffset >= vBuffer.size())
-            debug::error("OUT OF RANGE ", nIndex + nOffset, " SIZE ", vBuffer.size());
-
-        vBuffer[nIndex + nOffset] |= (1 << nBit);
-    }
-}
-
-
-bool check_primary_bloom(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vBuffer, const uint32_t nOffset = 0)
-{
-    for(uint32_t k = 0; k < PRIMARY_BLOOM_HASHES; ++k)
-    {
-        uint64_t nBucket = XXH3_64bits_withSeed((uint8_t*)&vKey[0], vKey.size(), k) % PRIMARY_BLOOM_BITS;
-
-        uint32_t nIndex  = (nBucket / 8);
-        uint32_t nBit    = (nBucket % 8);
-
-        /* Check the bitset for bloom value. */
-        if(!(vBuffer[nIndex + nOffset] & (1 << nBit)))
-            return false;
-    }
-
-    return true;
-}
 
 
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
@@ -238,25 +131,27 @@ int main(int argc, char** argv)
 
     uint32_t nDuplicates = 0;
 
-    std::vector<uint8_t> vBuffer(primary_bloom_size() + secondary_bloom_size(), 0);
+    std::vector<uint8_t> vBuffer(primary_bloom_size() + secondary_bloom_size() + 2, 0);
 
     debug::log(0, "Allocating a buffer of size ", vBuffer.size(), " for ", vKeys.size(), " files");
 
     DataStream ssKey(SER_LLD, LLD::DATABASE_VERSION);
     ssKey << vKeys[0];
 
-    uint32_t nOffset = primary_bloom_size();
+    uint32_t nOffset = primary_bloom_size() + 2;
 
     std::vector<uint8_t> vKey = ssKey.Bytes();
     set_secondary_bloom(vKey, vBuffer, 0, nOffset);
 
     for(uint32_t n = 1; n < vKeys.size(); ++n)
     {
+        set_current_file(n, vBuffer);
+
         DataStream ssData(SER_LLD, LLD::DATABASE_VERSION);
         ssData << vKeys[n];
 
-        set_primary_bloom(ssData.Bytes(), vBuffer);
-        if(!check_primary_bloom(ssData.Bytes(), vBuffer))
+        set_primary_bloom(ssData.Bytes(), vBuffer, 2);
+        if(!check_primary_bloom(ssData.Bytes(), vBuffer, 2))
             return debug::error("PRIMARY BLOOM FAILED AT ", HexStr(ssData.begin(), ssData.end()));
 
         if(!check_hashmap_available(n, vBuffer, nOffset))
@@ -269,7 +164,8 @@ int main(int argc, char** argv)
         if(check_hashmap_available(n, vBuffer, nOffset))
             return debug::error("FILE ", n, " EMPTY");
 
-
+        if(get_current_file(vBuffer) != n)
+            return debug::error("CURRENT FILE INCONSISTENT ", n);
     }
 
     debug::log(0, "Created ", vKeys.size(), " Bloom filters with ",

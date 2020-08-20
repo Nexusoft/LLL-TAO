@@ -23,13 +23,16 @@ namespace LLD
      *  Database flags for keychains and sector.
      *
      **/
-    enum FLAGS
+    struct FLAGS
     {
-        APPEND        = (1 << 1),
-        READONLY      = (1 << 2),
-        CREATE        = (1 << 3),
-        WRITE         = (1 << 4),
-        FORCE         = (1 << 5)
+        enum
+        {
+            APPEND        = (1 << 1),
+            READONLY      = (1 << 2),
+            CREATE        = (1 << 3),
+            WRITE         = (1 << 4),
+            FORCE         = (1 << 5)
+        };
     };
 
 
@@ -38,11 +41,14 @@ namespace LLD
      *  Database states in the keychains.
      *
      **/
-    enum STATE
+    struct STATE
     {
-        EMPTY 			= 0,
-        READY 			= 1,
-        TRANSACTION     = 2
+        enum
+        {
+            EMPTY 			= 0,
+            READY 			= 1,
+            TRANSACTION     = 2
+        };
     };
 
 }

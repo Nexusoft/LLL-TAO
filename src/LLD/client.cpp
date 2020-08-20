@@ -22,11 +22,8 @@ namespace LLD
 {
 
     /** The Database Constructor. To determine file location and the Bytes per Record. **/
-    ClientDB::ClientDB(const uint8_t nFlagsIn, const uint32_t nBucketsIn, const uint32_t nCacheIn)
-    : SectorDatabase(std::string("_CLIENT")
-    , nFlagsIn
-    , nBucketsIn
-    , nCacheIn)
+    ClientDB::ClientDB(const Config::Hashmap& config)
+    : SectorDatabase(config)
     {
     }
 

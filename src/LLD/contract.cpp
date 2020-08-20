@@ -29,12 +29,8 @@ namespace LLD
 
 
     /** The Database Constructor.  **/
-    ContractDB::ContractDB(const uint8_t nFlagsIn, const uint32_t nBucketsIn, const uint32_t nCacheIn)
-    : SectorDatabase(std::string("_CONTRACT")
-    , nFlagsIn
-    , nBucketsIn
-    , nCacheIn)
-
+    ContractDB::ContractDB(const Config::Hashmap& config)
+    : SectorDatabase(config)
     , MEMORY_MUTEX()
     , pCommit(new ContractTransaction())
     {

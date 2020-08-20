@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <LLD/keychain/keychain.h>
 #include <LLD/cache/template_lru.h>
 #include <LLD/include/enum.h>
+#include <LLD/config/hashmap.h>
 
 #include <cstdint>
 #include <string>
@@ -48,52 +49,20 @@ namespace LLD
         mutable std::mutex KEY_MUTEX;
 
 
-        /** The string to hold the database location. **/
-        std::string strBaseLocation;
+        /** Internal Hashmap Config Object. **/
+        const Config::Hashmap& CONFIG;
+
+
+        /** Internal pre-calculated index size. **/
+        const uint16_t INDEX_FILTER_SIZE;
 
 
         /** Keychain stream object. **/
         TemplateLRU<uint16_t, std::fstream*>* pFileStreams;
 
 
-        /** Bloom filter stream objects. **/
-        TemplateLRU<uint16_t, std::fstream*>* pBloomStreams;
-
-
         /** Keychain index stream. **/
         std::fstream* pindex;
-
-
-        /** Total elements in hashmap for quick inserts. **/
-        std::vector<uint16_t> hashmap;
-
-
-        /** The Maximum buckets allowed in the hashmap. */
-        uint32_t HASHMAP_TOTAL_BUCKETS;
-
-
-        /** The Maximum key size for static key sectors. **/
-        uint16_t HASHMAP_MAX_KEY_SIZE;
-
-
-        /** The total space that a key consumes. */
-        uint16_t HASHMAP_KEY_ALLOCATION;
-
-
-        /** The keychain flags. **/
-        uint8_t nFlags;
-
-
-        /* The key level locking hashmap. */
-        mutable std::vector<std::mutex> RECORD_MUTEX;
-
-
-        /** Set of BLOOM filters for each hashmap. **/
-        std::vector<BloomFilter> vBloom;
-
-
-        /** Set for current bloom filter updates. **/
-        std::set<uint32_t> setUpdated;
 
 
         /** compress_key
@@ -105,7 +74,7 @@ namespace LLD
          *  @param[in] nSize The desired size of key after compression.
          *
          **/
-        void compress_key(std::vector<uint8_t>& vData, uint16_t nSize = 32);
+        void compress_key(std::vector<uint8_t>& vData, uint16_t nSize = 16);
 
 
         /** get_bucket
@@ -120,6 +89,119 @@ namespace LLD
         uint32_t get_bucket(const std::vector<uint8_t>& vKey);
 
 
+        /** get_current_file
+         *
+         *  Helper method to grab the current file from the input buffer.
+         *
+         *  @param[in] vBuffer The byte stream of input data
+         *  @param[in] nOffset The starting offset in the stream.
+         *
+         *  @return The current hashmap file for given key index.
+         *
+         **/
+        uint16_t get_current_file(const std::vector<uint8_t>& vBuffer, const uint32_t nOffset = 0);
+
+
+        /** set_current_file
+         *
+         *  Helper method to set the current file in the input buffer.
+         *
+         *  @param[in] nCurrent The current file to set
+         *  @param[out] vBuffer The byte stream of output data
+         *  @param[in] nOffset The starting offset in the stream.
+         *
+         **/
+        void set_current_file(const uint16_t nCurrent, std::vector<uint8_t> &vBuffer, const uint32_t nOffset = 0);
+
+
+        /** check_hashmap_available
+         *
+         *  Helper method to check if a file is unoccupied in input buffer.
+         *
+         *  @param[in] nHashmap The current file to set
+         *  @param[in] vBuffer The byte stream of input data
+         *  @param[in] nOffset The starting offset in the stream.
+         *
+         **/
+        bool check_hashmap_available(const uint32_t nHashmap, const std::vector<uint8_t>& vBuffer, const uint32_t nOffset = 0);
+
+
+        /** secondary_bloom_size
+         *
+         *  Helper method to get the total bytes in the secondary bloom filter.
+         *
+         *  @return The total bytes in secondary bloom filter.
+         *
+         **/
+        uint32_t secondary_bloom_size();
+
+
+        /** set_secondary_bloom
+         *
+         *  Set a given key is within a secondary bloom filter.
+         *
+         *  @param[in] vKey The key level data in bytes
+         *  @param[out] vBuffer The buffer to write bloom filter into
+         *  @param[in] nHashmap The hashmap file that we are writing for
+         *  @param[in] nOffset The starting offset in the stream
+         *
+         *
+         **/
+        void set_secondary_bloom(const std::vector<uint8_t>& vKey, std::vector<uint8_t> &vBuffer, const uint32_t nHashmap, const uint32_t nOffset = 0);
+
+
+        /** check_secondary_bloom
+         *
+         *  Check if a given key is within a secondary bloom filter.
+         *
+         *  @param[in] vKey The key level data in bytes
+         *  @param[in] vBuffer The buffer to check bloom filter within
+         *  @param[in] nHashmap The hashmap file that we are checking for
+         *  @param[in] nOffset The starting offset in the stream
+         *
+         *  @return True if given key is in secondary bloom, false otherwise.
+         *
+         **/
+        bool check_secondary_bloom(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vBuffer, const uint32_t nHashmap, const uint32_t nOffset = 0);
+
+
+        /** primary_bloom_size
+         *
+         *  Helper method to get the total bytes in the primary bloom filter.
+         *
+         *  @return The total bytes in primary bloom filter.
+         *
+         **/
+        uint32_t primary_bloom_size();
+
+
+        /** set_primary_bloom
+         *
+         *  Set a given key is within a primary bloom filter.
+         *
+         *  @param[in] vKey The key level data in bytes
+         *  @param[out] vBuffer The buffer to write bloom filter into
+         *  @param[in] nOffset The starting offset in the stream
+         *
+         *
+         **/
+        void set_primary_bloom(const std::vector<uint8_t>& vKey, std::vector<uint8_t> &vBuffer, const uint32_t nOffset = 0);
+
+
+        /** check_primary_bloom
+         *
+         *  Check if a given key is within a primary bloom filter.
+         *
+         *  @param[in] vKey The key level data in bytes
+         *  @param[in] vBuffer The buffer to check bloom filter within
+         *  @param[in] nOffset The starting offset in the stream
+         *
+         *  @return True if given key is in secondary bloom, false otherwise.
+         *
+         **/
+        bool check_primary_bloom(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vBuffer, const uint32_t nOffset = 0);
+
+
     public:
 
 
@@ -128,7 +210,7 @@ namespace LLD
 
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        BinaryHashMap(const std::string& strBaseLocationIn, const uint8_t nFlagsIn = FLAGS::APPEND, const uint64_t nBucketsIn = 256 * 256 * 64);
+        BinaryHashMap(const Config::Hashmap& config);
 
 
         /** Copy Constructor **/
@@ -201,7 +283,7 @@ namespace LLD
          *  @return True if the key was restored.
          *
          **/
-        bool Restore(const std::vector<uint8_t> &vKey);
+        bool Restore(const std::vector<uint8_t>& vKey);
 
 
         /** Erase
@@ -214,7 +296,7 @@ namespace LLD
          *  @return True if the key was erased, false otherwise.
          *
          **/
-        bool Erase(const std::vector<uint8_t> &vKey);
+        bool Erase(const std::vector<uint8_t>& vKey);
     };
 }
 
