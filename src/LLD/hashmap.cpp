@@ -26,218 +26,6 @@ ________________________________________________________________________________
 
 namespace LLD
 {
-    /*  Compresses a given key until it matches size criteria. */
-    void BinaryHashMap::compress_key(std::vector<uint8_t>& vData, uint16_t nSize)
-    {
-        /* Loop until key is of desired size. */
-        while(vData.size() > nSize)
-        {
-            /* Loop half of the key to XOR elements. */
-            uint64_t nSize2 = (vData.size() >> 1);
-            for(uint64_t i = 0; i < nSize2; ++i)
-            {
-                uint64_t i2 = (i << 1);
-                if(i2 < (nSize2 << 1))
-                    vData[i] = vData[i] ^ vData[i2];
-            }
-
-            /* Resize the container to half its size. */
-            vData.resize(std::max(uint16_t(nSize2), nSize));
-        }
-    }
-
-
-    /* Calculates a bucket to be used for the hashmap allocation. */
-    uint32_t BinaryHashMap::get_bucket(const std::vector<uint8_t>& vKey)
-    {
-        /* Get an xxHash. */
-        uint64_t nBucket = XXH3_64bits_withSeed(&vKey[0], vKey.size(), 0);
-        return static_cast<uint32_t>(nBucket % CONFIG.HASHMAP_TOTAL_BUCKETS);
-    }
-
-
-    /* Helper method to grab the current file from the input buffer. */
-    uint16_t BinaryHashMap::get_current_file(const std::vector<uint8_t>& vBuffer, const uint32_t nOffset)
-    {
-        /* Check for buffer overflow. */
-        if(nOffset + 2 >= vBuffer.size())
-            return 0;
-
-        /* Copy from the buffer at current offset. */
-        uint16_t nRet = 0;
-        std::copy((uint8_t*)&vBuffer[nOffset], (uint8_t*)&vBuffer[nOffset] + 2, (uint8_t*)&nRet);
-
-        return nRet;
-    }
-
-
-    /* Helper method to set the current file in the input buffer. */
-    void BinaryHashMap::set_current_file(const uint16_t nCurrent, std::vector<uint8_t> &vBuffer, const uint32_t nOffset)
-    {
-        /* Check for buffer overflow. */
-        if(nOffset + 2 >= vBuffer.size())
-            return;
-
-        /* Copy to the buffer at current offset. */
-        std::copy((uint8_t*)&nCurrent, (uint8_t*)&nCurrent + 2, (uint8_t*)&vBuffer[nOffset]);
-    }
-
-
-    /* Helper method to check if a file is unoccupied in input buffer. */
-    bool BinaryHashMap::check_hashmap_available(const uint32_t nHashmap, const std::vector<uint8_t>& vBuffer, const uint32_t nOffset)
-    {
-        /* Calculate initial hashmap index and bit offset. */
-        uint32_t nBeginIndex  = (nHashmap * CONFIG.SECONDARY_BLOOM_BITS) / 8;
-        uint32_t nBeginBit    = (nHashmap * CONFIG.SECONDARY_BLOOM_BITS) % 8;
-
-        /* Loop through all bits in a secondary bloom filter. */
-        for(uint32_t n = 0; n < CONFIG.SECONDARY_BLOOM_BITS; ++n)
-        {
-            /* Calculate our offsets based on current bit iterated. */
-            uint32_t nIndex  = nBeginIndex + ((nBeginBit + n) / 8);
-            uint32_t nBit    = (nBeginBit + n) % 8;
-
-            /* Check for buffer overflow. */
-            if(nIndex + nOffset >= vBuffer.size())
-                return true;
-
-            /* Check that any bits within the range of this hashmap bitset are not set. */
-            if(vBuffer[nIndex + nOffset] & (1 << nBit))
-                return false;
-        }
-
-        return true;
-    }
-
-
-    /* Helper method to get the total bytes in the secondary bloom filter. */
-    uint32_t BinaryHashMap::secondary_bloom_size()
-    {
-        /* Cache the total bits to calculate size. */
-        uint64_t nBits = CONFIG.MAX_HASHMAP_FILES * CONFIG.SECONDARY_BLOOM_BITS;
-        return (nBits / 8) + ((nBits % 8 == 0) ? 0 : 1); //we want 1 byte padding here for bits that overflow
-    }
-
-
-    /* Check if a given key is within a secondary bloom filter. */
-    bool BinaryHashMap::check_secondary_bloom(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vBuffer,
-        const uint32_t nHashmap, const uint32_t nOffset)
-    {
-        /* Find the starting index and bit offset. */
-        uint32_t nBeginIndex  = (nHashmap * CONFIG.SECONDARY_BLOOM_BITS) / 8;
-        uint32_t nBeginBit    = (nHashmap * CONFIG.SECONDARY_BLOOM_BITS) % 8;
-
-        /* Loop through the total k-hashes for this bloom filter. */
-        for(uint32_t k = 0; k < CONFIG.SECONDARY_BLOOM_HASHES; ++k)
-        {
-            /* Find the bucket that correlates to this k-hash. */
-            uint64_t nBucket = XXH3_64bits_withSeed((uint8_t*)&vKey[0], vKey.size(), k) % CONFIG.SECONDARY_BLOOM_BITS;
-
-            /* Calculate our local bit and index in the buffer. */
-            uint32_t nIndex  = nBeginIndex + (nBeginBit + nBucket) / 8;
-            uint32_t nBit    = (nBeginBit + nBucket) % 8;
-
-            /* Check for buffer overflow, if triggered flag as false positive so we don't create more cascading errors
-             * due to a false negative when bloom filters need to guarantee no false negatives.
-             */
-            if(nIndex + nOffset >= vBuffer.size())
-                return true;
-
-            /* Check this k-hash value bit is not set. */
-            if(!(vBuffer[nIndex + nOffset] & (1 << nBit)))
-                return false;
-        }
-
-        return true;
-    }
-
-
-    /* Set a given key is within a secondary bloom filter. */
-    void BinaryHashMap::set_secondary_bloom(const std::vector<uint8_t>& vKey, std::vector<uint8_t> &vBuffer,
-        const uint32_t nHashmap, const uint32_t nOffset)
-    {
-        /* Find the starting index and bit offset. */
-        uint32_t nBeginIndex  = (nHashmap * CONFIG.SECONDARY_BLOOM_BITS) / 8;
-        uint32_t nBeginOffset = (nHashmap * CONFIG.SECONDARY_BLOOM_BITS) % 8;
-
-        /* Loop through the total k-hashes for this bloom filter. */
-        for(uint32_t k = 0; k < CONFIG.SECONDARY_BLOOM_HASHES; ++k)
-        {
-            /* Find the bucket that correlates to this k-hash. */
-            uint64_t nBucket = XXH3_64bits_withSeed((uint8_t*)&vKey[0], vKey.size(), k) % CONFIG.SECONDARY_BLOOM_BITS;
-
-            /* Calculate our local bit and index in the buffer. */
-            uint32_t nIndex  = nBeginIndex + (nBeginOffset + nBucket) / 8;
-            uint32_t nBit    = (nBeginOffset + nBucket) % 8;
-
-            /* Check for buffer overflow. */
-            if(nIndex + nOffset >= vBuffer.size())
-                return;
-
-            /* Set the bit for this k-hash value. */
-            vBuffer[nIndex + nOffset] |= (1 << nBit);
-        }
-    }
-
-
-    /* Helper method to get the total bytes in the primary bloom filter. */
-    uint32_t BinaryHashMap::primary_bloom_size()
-    {
-        return (CONFIG.PRIMARY_BLOOM_BITS / 8) + ((CONFIG.PRIMARY_BLOOM_BITS % 8 == 0) ? 0 : 1); //we want 1 byte padding here for bits that overflow
-    }
-
-
-    /* Set a given key is within a primary bloom filter. */
-    void BinaryHashMap::set_primary_bloom(const std::vector<uint8_t>& vKey, std::vector<uint8_t> &vBuffer, const uint32_t nOffset)
-    {
-        /* Loop through the total k-hashes for this bloom filter. */
-        for(uint32_t k = 0; k < CONFIG.PRIMARY_BLOOM_HASHES; ++k)
-        {
-            /* Find the bucket that correlates to this k-hash. */
-            uint64_t nBucket = XXH3_64bits_withSeed((uint8_t*)&vKey[0], vKey.size(), k) % CONFIG.PRIMARY_BLOOM_BITS;
-
-            /* Calculate our local bit and index in the buffer. */
-            uint32_t nIndex  = (nBucket / 8);
-            uint32_t nBit    = (nBucket % 8);
-
-            /* Check for buffer overflow. */
-            if(nIndex + nOffset >= vBuffer.size())
-                return;
-
-            /* Set the bit for this k-hash value. */
-            vBuffer[nIndex + nOffset] |= (1 << nBit);
-        }
-    }
-
-
-    /* Check if a given key is within a primary bloom filter. */
-    bool BinaryHashMap::check_primary_bloom(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vBuffer, const uint32_t nOffset)
-    {
-        /* Loop through the total k-hashes for this bloom filter. */
-        for(uint32_t k = 0; k < CONFIG.PRIMARY_BLOOM_HASHES; ++k)
-        {
-            /* Find the bucket that correlates to this k-hash. */
-            uint64_t nBucket = XXH3_64bits_withSeed((uint8_t*)&vKey[0], vKey.size(), k) % CONFIG.PRIMARY_BLOOM_BITS;
-
-            /* Calculate our local bit and index in the buffer. */
-            uint32_t nIndex  = (nBucket / 8);
-            uint32_t nBit    = (nBucket % 8);
-
-            /* Check for buffer overflow, if triggered flag as false positive so we don't create more cascading errors
-             * due to a false negative when bloom filters need to guarantee no false negatives.
-             */
-            if(nIndex + nOffset >= vBuffer.size())
-                return true;
-
-            /* Check this k-hash value bit is not set. */
-            if(!(vBuffer[nIndex + nOffset] & (1 << nBit)))
-                return false;
-        }
-
-        return true;
-    }
-
-
     /* The Database Constructor. To determine file location and the Bytes per Record. */
     BinaryHashMap::BinaryHashMap(const Config::Hashmap& config)
     : KEY_MUTEX             ( )
@@ -854,5 +642,217 @@ namespace LLD
         }
 
         return false;
+    }
+
+
+    /*  Compresses a given key until it matches size criteria. */
+    void BinaryHashMap::compress_key(std::vector<uint8_t>& vData, uint16_t nSize)
+    {
+        /* Loop until key is of desired size. */
+        while(vData.size() > nSize)
+        {
+            /* Loop half of the key to XOR elements. */
+            uint64_t nSize2 = (vData.size() >> 1);
+            for(uint64_t i = 0; i < nSize2; ++i)
+            {
+                uint64_t i2 = (i << 1);
+                if(i2 < (nSize2 << 1))
+                    vData[i] = vData[i] ^ vData[i2];
+            }
+
+            /* Resize the container to half its size. */
+            vData.resize(std::max(uint16_t(nSize2), nSize));
+        }
+    }
+
+
+    /* Calculates a bucket to be used for the hashmap allocation. */
+    uint32_t BinaryHashMap::get_bucket(const std::vector<uint8_t>& vKey)
+    {
+        /* Get an xxHash. */
+        uint64_t nBucket = XXH3_64bits_withSeed(&vKey[0], vKey.size(), 0);
+        return static_cast<uint32_t>(nBucket % CONFIG.HASHMAP_TOTAL_BUCKETS);
+    }
+
+
+    /* Helper method to grab the current file from the input buffer. */
+    uint16_t BinaryHashMap::get_current_file(const std::vector<uint8_t>& vBuffer, const uint32_t nOffset)
+    {
+        /* Check for buffer overflow. */
+        if(nOffset + 2 >= vBuffer.size())
+            return 0;
+
+        /* Copy from the buffer at current offset. */
+        uint16_t nRet = 0;
+        std::copy((uint8_t*)&vBuffer[nOffset], (uint8_t*)&vBuffer[nOffset] + 2, (uint8_t*)&nRet);
+
+        return nRet;
+    }
+
+
+    /* Helper method to set the current file in the input buffer. */
+    void BinaryHashMap::set_current_file(const uint16_t nCurrent, std::vector<uint8_t> &vBuffer, const uint32_t nOffset)
+    {
+        /* Check for buffer overflow. */
+        if(nOffset + 2 >= vBuffer.size())
+            return;
+
+        /* Copy to the buffer at current offset. */
+        std::copy((uint8_t*)&nCurrent, (uint8_t*)&nCurrent + 2, (uint8_t*)&vBuffer[nOffset]);
+    }
+
+
+    /* Helper method to check if a file is unoccupied in input buffer. */
+    bool BinaryHashMap::check_hashmap_available(const uint32_t nHashmap, const std::vector<uint8_t>& vBuffer, const uint32_t nOffset)
+    {
+        /* Calculate initial hashmap index and bit offset. */
+        uint32_t nBeginIndex  = (nHashmap * CONFIG.SECONDARY_BLOOM_BITS) / 8;
+        uint32_t nBeginBit    = (nHashmap * CONFIG.SECONDARY_BLOOM_BITS) % 8;
+
+        /* Loop through all bits in a secondary bloom filter. */
+        for(uint32_t n = 0; n < CONFIG.SECONDARY_BLOOM_BITS; ++n)
+        {
+            /* Calculate our offsets based on current bit iterated. */
+            uint32_t nIndex  = nBeginIndex + ((nBeginBit + n) / 8);
+            uint32_t nBit    = (nBeginBit + n) % 8;
+
+            /* Check for buffer overflow. */
+            if(nIndex + nOffset >= vBuffer.size())
+                return true;
+
+            /* Check that any bits within the range of this hashmap bitset are not set. */
+            if(vBuffer[nIndex + nOffset] & (1 << nBit))
+                return false;
+        }
+
+        return true;
+    }
+
+
+    /* Helper method to get the total bytes in the secondary bloom filter. */
+    uint32_t BinaryHashMap::secondary_bloom_size()
+    {
+        /* Cache the total bits to calculate size. */
+        uint64_t nBits = CONFIG.MAX_HASHMAP_FILES * CONFIG.SECONDARY_BLOOM_BITS;
+        return (nBits / 8) + ((nBits % 8 == 0) ? 0 : 1); //we want 1 byte padding here for bits that overflow
+    }
+
+
+    /* Check if a given key is within a secondary bloom filter. */
+    bool BinaryHashMap::check_secondary_bloom(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vBuffer,
+        const uint32_t nHashmap, const uint32_t nOffset)
+    {
+        /* Find the starting index and bit offset. */
+        uint32_t nBeginIndex  = (nHashmap * CONFIG.SECONDARY_BLOOM_BITS) / 8;
+        uint32_t nBeginBit    = (nHashmap * CONFIG.SECONDARY_BLOOM_BITS) % 8;
+
+        /* Loop through the total k-hashes for this bloom filter. */
+        for(uint32_t k = 0; k < CONFIG.SECONDARY_BLOOM_HASHES; ++k)
+        {
+            /* Find the bucket that correlates to this k-hash. */
+            uint64_t nBucket = XXH3_64bits_withSeed((uint8_t*)&vKey[0], vKey.size(), k) % CONFIG.SECONDARY_BLOOM_BITS;
+
+            /* Calculate our local bit and index in the buffer. */
+            uint32_t nIndex  = nBeginIndex + (nBeginBit + nBucket) / 8;
+            uint32_t nBit    = (nBeginBit + nBucket) % 8;
+
+            /* Check for buffer overflow, if triggered flag as false positive so we don't create more cascading errors
+             * due to a false negative when bloom filters need to guarantee no false negatives.
+             */
+            if(nIndex + nOffset >= vBuffer.size())
+                return true;
+
+            /* Check this k-hash value bit is not set. */
+            if(!(vBuffer[nIndex + nOffset] & (1 << nBit)))
+                return false;
+        }
+
+        return true;
+    }
+
+
+    /* Set a given key is within a secondary bloom filter. */
+    void BinaryHashMap::set_secondary_bloom(const std::vector<uint8_t>& vKey, std::vector<uint8_t> &vBuffer,
+        const uint32_t nHashmap, const uint32_t nOffset)
+    {
+        /* Find the starting index and bit offset. */
+        uint32_t nBeginIndex  = (nHashmap * CONFIG.SECONDARY_BLOOM_BITS) / 8;
+        uint32_t nBeginOffset = (nHashmap * CONFIG.SECONDARY_BLOOM_BITS) % 8;
+
+        /* Loop through the total k-hashes for this bloom filter. */
+        for(uint32_t k = 0; k < CONFIG.SECONDARY_BLOOM_HASHES; ++k)
+        {
+            /* Find the bucket that correlates to this k-hash. */
+            uint64_t nBucket = XXH3_64bits_withSeed((uint8_t*)&vKey[0], vKey.size(), k) % CONFIG.SECONDARY_BLOOM_BITS;
+
+            /* Calculate our local bit and index in the buffer. */
+            uint32_t nIndex  = nBeginIndex + (nBeginOffset + nBucket) / 8;
+            uint32_t nBit    = (nBeginOffset + nBucket) % 8;
+
+            /* Check for buffer overflow. */
+            if(nIndex + nOffset >= vBuffer.size())
+                return;
+
+            /* Set the bit for this k-hash value. */
+            vBuffer[nIndex + nOffset] |= (1 << nBit);
+        }
+    }
+
+
+    /* Helper method to get the total bytes in the primary bloom filter. */
+    uint32_t BinaryHashMap::primary_bloom_size()
+    {
+        return (CONFIG.PRIMARY_BLOOM_BITS / 8) + ((CONFIG.PRIMARY_BLOOM_BITS % 8 == 0) ? 0 : 1); //we want 1 byte padding here for bits that overflow
+    }
+
+
+    /* Set a given key is within a primary bloom filter. */
+    void BinaryHashMap::set_primary_bloom(const std::vector<uint8_t>& vKey, std::vector<uint8_t> &vBuffer, const uint32_t nOffset)
+    {
+        /* Loop through the total k-hashes for this bloom filter. */
+        for(uint32_t k = 0; k < CONFIG.PRIMARY_BLOOM_HASHES; ++k)
+        {
+            /* Find the bucket that correlates to this k-hash. */
+            uint64_t nBucket = XXH3_64bits_withSeed((uint8_t*)&vKey[0], vKey.size(), k) % CONFIG.PRIMARY_BLOOM_BITS;
+
+            /* Calculate our local bit and index in the buffer. */
+            uint32_t nIndex  = (nBucket / 8);
+            uint32_t nBit    = (nBucket % 8);
+
+            /* Check for buffer overflow. */
+            if(nIndex + nOffset >= vBuffer.size())
+                return;
+
+            /* Set the bit for this k-hash value. */
+            vBuffer[nIndex + nOffset] |= (1 << nBit);
+        }
+    }
+
+
+    /* Check if a given key is within a primary bloom filter. */
+    bool BinaryHashMap::check_primary_bloom(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vBuffer, const uint32_t nOffset)
+    {
+        /* Loop through the total k-hashes for this bloom filter. */
+        for(uint32_t k = 0; k < CONFIG.PRIMARY_BLOOM_HASHES; ++k)
+        {
+            /* Find the bucket that correlates to this k-hash. */
+            uint64_t nBucket = XXH3_64bits_withSeed((uint8_t*)&vKey[0], vKey.size(), k) % CONFIG.PRIMARY_BLOOM_BITS;
+
+            /* Calculate our local bit and index in the buffer. */
+            uint32_t nIndex  = (nBucket / 8);
+            uint32_t nBit    = (nBucket % 8);
+
+            /* Check for buffer overflow, if triggered flag as false positive so we don't create more cascading errors
+             * due to a false negative when bloom filters need to guarantee no false negatives.
+             */
+            if(nIndex + nOffset >= vBuffer.size())
+                return true;
+
+            /* Check this k-hash value bit is not set. */
+            if(!(vBuffer[nIndex + nOffset] & (1 << nBit)))
+                return false;
+        }
+
+        return true;
     }
 }

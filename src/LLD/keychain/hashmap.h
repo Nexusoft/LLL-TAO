@@ -65,6 +65,105 @@ namespace LLD
         std::fstream* pindex;
 
 
+    public:
+
+
+        /** Default Constructor. **/
+        BinaryHashMap() = delete;
+
+
+        /** The Database Constructor. To determine file location and the Bytes per Record. **/
+        BinaryHashMap(const Config::Hashmap& config);
+
+
+        /** Copy Constructor **/
+        BinaryHashMap(const BinaryHashMap& map);
+
+
+        /** Move Constructor **/
+        BinaryHashMap(BinaryHashMap&& map);
+
+
+        /** Copy Assignment Operator **/
+        BinaryHashMap& operator=(const BinaryHashMap& map);
+
+
+        /** Move Assignment Operator **/
+        BinaryHashMap& operator=(BinaryHashMap&& map);
+
+
+        /** Default Destructor **/
+        virtual ~BinaryHashMap();
+
+
+        /** Initialize
+         *
+         *  Initialize the binary hash map keychain.
+         *
+         **/
+        void Initialize();
+
+
+        /** Get
+         *
+         *  Read a key index from the disk hashmaps.
+         *
+         *  @param[in] vKey The binary data of key.
+         *  @param[out] cKey The key object to return.
+         *
+         *  @return True if the key was found, false otherwise.
+         *
+         **/
+        bool Get(const std::vector<uint8_t>& vKey, SectorKey &cKey);
+
+
+        /** Put
+         *
+         *  Write a key to the disk hashmaps.
+         *
+         *  @param[in] cKey The key object to write.
+         *
+         *  @return True if the key was written, false otherwise.
+         *
+         **/
+        bool Put(const SectorKey& cKey);
+
+
+        /** Flush
+         *
+         *  Flush all buffers to disk if using ACID transaction.
+         *
+         **/
+        void Flush();
+
+
+        /** Restore
+         *
+         *  Restore an erased key from keychain.
+         *
+         *  @param[in] vKey the key to restore.
+         *
+         *  @return True if the key was restored.
+         *
+         **/
+        bool Restore(const std::vector<uint8_t>& vKey);
+
+
+        /** Erase
+         *
+         *  Erase a key from the disk hashmaps.
+         *  TODO: This should be optimized further.
+         *
+         *  @param[in] vKey the key to erase.
+         *
+         *  @return True if the key was erased, false otherwise.
+         *
+         **/
+        bool Erase(const std::vector<uint8_t>& vKey);
+
+
+    private:
+
         /** compress_key
          *
          *  Compresses a given key until it matches size criteria.
@@ -200,103 +299,6 @@ namespace LLD
          *
          **/
         bool check_primary_bloom(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vBuffer, const uint32_t nOffset = 0);
-
-
-    public:
-
-
-        /** Default Constructor. **/
-        BinaryHashMap() = delete;
-
-
-        /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        BinaryHashMap(const Config::Hashmap& config);
-
-
-        /** Copy Constructor **/
-        BinaryHashMap(const BinaryHashMap& map);
-
-
-        /** Move Constructor **/
-        BinaryHashMap(BinaryHashMap&& map);
-
-
-        /** Copy Assignment Operator **/
-        BinaryHashMap& operator=(const BinaryHashMap& map);
-
-
-        /** Move Assignment Operator **/
-        BinaryHashMap& operator=(BinaryHashMap&& map);
-
-
-        /** Default Destructor **/
-        virtual ~BinaryHashMap();
-
-
-        /** Initialize
-         *
-         *  Initialize the binary hash map keychain.
-         *
-         **/
-        void Initialize();
-
-
-        /** Get
-         *
-         *  Read a key index from the disk hashmaps.
-         *
-         *  @param[in] vKey The binary data of key.
-         *  @param[out] cKey The key object to return.
-         *
-         *  @return True if the key was found, false otherwise.
-         *
-         **/
-        bool Get(const std::vector<uint8_t>& vKey, SectorKey &cKey);
-
-
-        /** Put
-         *
-         *  Write a key to the disk hashmaps.
-         *
-         *  @param[in] cKey The key object to write.
-         *
-         *  @return True if the key was written, false otherwise.
-         *
-         **/
-        bool Put(const SectorKey& cKey);
-
-
-        /** Flush
-         *
-         *  Flush all buffers to disk if using ACID transaction.
-         *
-         **/
-        void Flush();
-
-
-        /** Restore
-         *
-         *  Restore an erased key from keychain.
-         *
-         *  @param[in] vKey the key to restore.
-         *
-         *  @return True if the key was restored.
-         *
-         **/
-        bool Restore(const std::vector<uint8_t>& vKey);
-
-
-        /** Erase
-         *
-         *  Erase a key from the disk hashmaps.
-         *  TODO: This should be optimized further.
-         *
-         *  @param[in] vKey the key to erase.
-         *
-         *  @return True if the key was erased, false otherwise.
-         *
-         **/
-        bool Erase(const std::vector<uint8_t>& vKey);
     };
 }
 
