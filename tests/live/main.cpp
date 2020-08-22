@@ -112,33 +112,27 @@ const uint256_t hashSeed = 55;
 #include <bitset>
 
 
-
-
-
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
-    config::mapArgs["-datadir"] = "/Users/colincantrell/Library/Application Support/Nexus/LIVE";
-
-    /* Create the ContractDB configuration object. */
-    LLD::Config::Hashmap Config =
-        LLD::Config::Hashmap("testdb", LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
+    LLD::Config::Hashmap CONFIG =
+        LLD::Config::Hashmap("testdb", LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
 
     /* Set the ContractDB database internal settings. */
-    Config.HASHMAP_TOTAL_BUCKETS   = 256 * 256 * 64;
-    Config.MAX_HASHMAP_FILES       = 64;
-    Config.MAX_LINEAR_PROBES       = 2;
-    Config.SECONDARY_BLOOM_BITS    = 8;
-    Config.SECONDARY_BLOOM_HASHES  = 5;
-    Config.QUICK_INIT              = false;
-    Config.MAX_SECTOR_FILE_STREAMS = 16;
-    Config.MAX_SECTOR_BUFFER_SIZE  = 1024 * 1024 * 4; //4 MB write buffer
-    Config.MAX_SECTOR_CACHE_SIZE   = 1024 * 1024 * 8; //1 MB of cache available
+    CONFIG.HASHMAP_TOTAL_BUCKETS   = 256 * 256 * 64;
+    CONFIG.MAX_HASHMAP_FILES       = 64;
+    CONFIG.MAX_LINEAR_PROBES       = 2;
+    CONFIG.SECONDARY_BLOOM_BITS    = 13;
+    CONFIG.SECONDARY_BLOOM_HASHES  = 7;
+    CONFIG.QUICK_INIT              = false;
+    CONFIG.MAX_SECTOR_FILE_STREAMS = 16;
+    CONFIG.MAX_SECTOR_BUFFER_SIZE  = 1024 * 1024 * 4; //4 MB write buffer
+    CONFIG.MAX_SECTOR_CACHE_SIZE   = 256; //1 MB of cache available
 
-    TestDB* bloom = new TestDB(Config);
+    TestDB* bloom = new TestDB(CONFIG);
 
     std::vector<uint1024_t> vKeys;
-    for(int i = 0; i < 10000; ++i)
+    for(int i = 0; i < 100000; ++i)
         vKeys.push_back(LLC::GetRand1024());
 
     runtime::stopwatch swTimer;
@@ -150,7 +144,7 @@ int main(int argc, char** argv)
     swTimer.stop();
 
     uint64_t nElapsed = swTimer.ElapsedMicroseconds();
-    debug::log(0, "10k records written in ", nElapsed, " (", 10000000000 / nElapsed, " writes/s)");
+    debug::log(0, "10k records written in ", nElapsed, " (", (1000000.0 * vKeys.size()) / nElapsed, " writes/s)");
 
     uint1024_t hashKey = 0;
 
@@ -168,7 +162,7 @@ int main(int argc, char** argv)
     swTimer.stop();
 
     nElapsed = swTimer.ElapsedMicroseconds();
-    debug::log(0, "10k records read in ", nElapsed, " (", 10000000000 / nElapsed, " read/s)");
+    debug::log(0, "10k records read in ", nElapsed, " (", (1000000.0 * vKeys.size()) / nElapsed, " read/s)");
 
     delete bloom;
 

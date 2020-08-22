@@ -140,10 +140,10 @@ namespace LLD
             stream.read((char*)&vIndex[0], vIndex.size());
             stream.close();
 
-            for(uint32_t i = 0; i < CONFIG.HASHMAP_TOTAL_BUCKETS; ++i)
+            for(uint32_t nFile = 0; nFile < CONFIG.HASHMAP_TOTAL_BUCKETS; ++nFile)
             {
                 /* Grab the current file from the stream. */
-                uint16_t nCurrentFile = get_current_file(vIndex, i * INDEX_FILTER_SIZE);
+                uint16_t nCurrentFile = get_current_file(vIndex, nFile * INDEX_FILTER_SIZE);
 
                 /* Calculate total keys from hashmaps. */
                 nTotalKeys +=  nCurrentFile;
@@ -210,8 +210,6 @@ namespace LLD
 
         /* Grab the current hashmap file from the buffer. */
         uint16_t nHashmap = get_current_file(vBuffer, 0);
-        //if(!check_hashmap_available(nHashmap, vBuffer, 0))
-        //    return debug::error("Hashmap ", nHashmap, " is available, should be blank");
 
         /* Check the primary bloom filter. */
         if(!check_primary_bloom(vKey, vBuffer, 2))
@@ -219,18 +217,18 @@ namespace LLD
 
         /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
         std::vector<uint8_t> vBucket(CONFIG.HASHMAP_KEY_ALLOCATION, 0);
-        for(int16_t i = nHashmap - 1; i >= 0; --i)
+        for(int16_t nFile = nHashmap - 1; nFile >= 0; --nFile)
         {
             /* Check the secondary bloom filter. */
-            //if(!check_secondary_bloom(vKey, vBuffer, nHashmap, primary_bloom_size() + 2))
-            //    continue;
+            if(!check_secondary_bloom(vKey, vBuffer, nFile, primary_bloom_size() + 2))
+                continue;
 
             /* Find the file stream for LRU cache. */
             std::fstream *pstream;
-            if(!pFileStreams->Get(i, pstream))
+            if(!pFileStreams->Get(nFile, pstream))
             {
                 /* Set the new stream pointer. */
-                std::string filename = debug::safe_printstr(CONFIG.BASE_DIRECTORY, "keychain/_hashmap.", std::setfill('0'), std::setw(5), i);
+                std::string filename = debug::safe_printstr(CONFIG.BASE_DIRECTORY, "keychain/_hashmap.", std::setfill('0'), std::setw(5), nFile);
                 pstream = new std::fstream(filename, std::ios::in | std::ios::out | std::ios::binary);
                 if(!pstream->is_open())
                 {
@@ -239,7 +237,7 @@ namespace LLD
                 }
 
                 /* If file not found add to LRU cache. */
-                pFileStreams->Put(i, pstream);
+                pFileStreams->Put(nFile, pstream);
             }
 
             /* Seek to the hashmap index in file. */
@@ -313,17 +311,17 @@ namespace LLD
             {
                 /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
                 std::vector<uint8_t> vBucket(CONFIG.HASHMAP_KEY_ALLOCATION, 0);
-                for(int16_t i = nHashmap - 1; i >= 0; --i)
+                for(int16_t nFile = nHashmap - 1; nFile >= 0; --nFile)
                 {
                     /* Check the secondary bloom filter. */
-                    //if(!check_secondary_bloom(cKey.vKey, vBuffer, nHashmap, primary_bloom_size() + 2))
-                    //    continue;
+                    if(!check_secondary_bloom(cKey.vKey, vBuffer, nFile, primary_bloom_size() + 2))
+                        continue;
 
                     /* Find the file stream for LRU cache. */
                     std::fstream* pstream;
-                    if(!pFileStreams->Get(i, pstream))
+                    if(!pFileStreams->Get(nFile, pstream))
                     {
-                        std::string filename = debug::safe_printstr(CONFIG.BASE_DIRECTORY, "keychain/_hashmap.", std::setfill('0'), std::setw(5), i);
+                        std::string filename = debug::safe_printstr(CONFIG.BASE_DIRECTORY, "keychain/_hashmap.", std::setfill('0'), std::setw(5), nFile);
 
                         /* Set the new stream pointer. */
                         pstream = new std::fstream(filename, std::ios::in | std::ios::out | std::ios::binary);
@@ -335,7 +333,7 @@ namespace LLD
                         }
 
                         /* If file not found add to LRU cache. */
-                        pFileStreams->Put(i, pstream);
+                        pFileStreams->Put(nFile, pstream);
                     }
 
                     /* Seek to the hashmap index in file. */
@@ -356,9 +354,9 @@ namespace LLD
 
                         /* Find the file stream for LRU cache. */
                         std::fstream* pstream;
-                        if(!pFileStreams->Get(i, pstream))
+                        if(!pFileStreams->Get(nFile, pstream))
                         {
-                            std::string filename = debug::safe_printstr(CONFIG.BASE_DIRECTORY, "keychain/_hashmap.", std::setfill('0'), std::setw(5), i);
+                            std::string filename = debug::safe_printstr(CONFIG.BASE_DIRECTORY, "keychain/_hashmap.", std::setfill('0'), std::setw(5), nFile);
 
                             /* Set the new stream pointer. */
                             pstream = new std::fstream(filename, std::ios::in | std::ios::out | std::ios::binary);
@@ -370,7 +368,7 @@ namespace LLD
                             }
 
                             /* If file not found add to LRU cache. */
-                            pFileStreams->Put(i, pstream);
+                            pFileStreams->Put(nFile, pstream);
                         }
 
                         /* Handle the disk writing operations. */
@@ -408,7 +406,7 @@ namespace LLD
             if(!stream)
                 return debug::error(FUNCTION, strerror(errno));
 
-            for(uint32_t i = 0; i < CONFIG.HASHMAP_TOTAL_BUCKETS; ++i)
+            for(uint32_t nFile = 0; nFile < CONFIG.HASHMAP_TOTAL_BUCKETS; ++nFile)
                 stream.write((char*)&vSpace[0], vSpace.size());
 
             //stream.flush();
@@ -438,13 +436,12 @@ namespace LLD
         ssKey << cKey;
         ssKey.write((char*)&vKeyCompressed[0], vKeyCompressed.size());
 
+        /* Update the total files iterator. */
+        set_current_file(++nHashmap, vBuffer, 0);
+
         /* Update the primary and secondary bloom filters. */
         set_primary_bloom  (cKey.vKey, vBuffer, 2);
-        set_secondary_bloom(cKey.vKey, vBuffer, nHashmap, primary_bloom_size() + 2);
-
-        /* Update the total files iterator. */
-        ++nHashmap;
-        set_current_file(nHashmap, vBuffer, 0);
+        set_secondary_bloom(cKey.vKey, vBuffer, nHashmap - 1, primary_bloom_size() + 2);
 
         /* Flush the key file to disk. */
         pstream->seekp (nFilePos, std::ios::beg);
@@ -514,23 +511,23 @@ namespace LLD
 
         /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
         std::vector<uint8_t> vBucket(CONFIG.HASHMAP_KEY_ALLOCATION, 0);
-        for(int16_t i = nHashmap - 1; i >= 0; --i)
+        for(int16_t nFile = nHashmap - 1; nFile >= 0; --nFile)
         {
             /* Check the secondary bloom filter. */
-            if(!check_secondary_bloom(vKey, vBuffer, nHashmap, primary_bloom_size() + 2))
+            if(!check_secondary_bloom(vKey, vBuffer, nFile, primary_bloom_size() + 2))
                 continue;
 
             /* Find the file stream for LRU cache. */
             std::fstream* pstream;
-            if(!pFileStreams->Get(i, pstream))
+            if(!pFileStreams->Get(nFile, pstream))
             {
                 /* Set the new stream pointer. */
                 pstream = new std::fstream(
-                  debug::safe_printstr(CONFIG.BASE_DIRECTORY, "keychain/_hashmap.", std::setfill('0'), std::setw(5), i),
+                  debug::safe_printstr(CONFIG.BASE_DIRECTORY, "keychain/_hashmap.", std::setfill('0'), std::setw(5), nFile),
                   std::ios::in | std::ios::out | std::ios::binary);
 
                 /* If file not found add to LRU cache. */
-                pFileStreams->Put(i, pstream);
+                pFileStreams->Put(nFile, pstream);
             }
 
             /* Seek to the hashmap index in file. */
@@ -606,23 +603,23 @@ namespace LLD
 
         /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
         std::vector<uint8_t> vBucket(CONFIG.HASHMAP_KEY_ALLOCATION, 0);
-        for(int16_t i = nHashmap - 1; i >= 0; --i)
+        for(int16_t nFile = nHashmap - 1; nFile >= 0; --nFile)
         {
             /* Check the secondary bloom filter. */
-            if(!check_secondary_bloom(vKey, vBuffer, nHashmap, primary_bloom_size() + 2))
+            if(!check_secondary_bloom(vKey, vBuffer, nFile, primary_bloom_size() + 2))
                 continue;
 
             /* Find the file stream for LRU cache. */
             std::fstream* pstream;
-            if(!pFileStreams->Get(i, pstream))
+            if(!pFileStreams->Get(nFile, pstream))
             {
                 /* Set the new stream pointer. */
                 pstream = new std::fstream(
-                  debug::safe_printstr(CONFIG.BASE_DIRECTORY, "/keychain/_hashmap.", std::setfill('0'), std::setw(5), i),
+                  debug::safe_printstr(CONFIG.BASE_DIRECTORY, "/keychain/_hashmap.", std::setfill('0'), std::setw(5), nFile),
                   std::ios::in | std::ios::out | std::ios::binary);
 
                 /* If file not found add to LRU cache. */
-                pFileStreams->Put(i, pstream);
+                pFileStreams->Put(nFile, pstream);
             }
 
             /* Seek to the hashmap index in file. */
