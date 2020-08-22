@@ -68,10 +68,10 @@ namespace LLD
 
             /** The total space that a key consumes. **/
             const uint16_t HASHMAP_KEY_ALLOCATION;
-            
+
 
             /** Flag to determine if initialization should be fast or slow. **/
-            const bool QUICK_INIT;
+            bool QUICK_INIT;
 
 
             /** No default constructor **/

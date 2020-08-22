@@ -127,7 +127,11 @@ int main(int argc, char** argv)
 
     /* Set the ContractDB database internal settings. */
     Config.HASHMAP_TOTAL_BUCKETS   = 256 * 256 * 64;
-    Config.MAX_HASHMAP_FILES       = 128;
+    Config.MAX_HASHMAP_FILES       = 64;
+    Config.MAX_LINEAR_PROBES       = 2;
+    Config.SECONDARY_BLOOM_BITS    = 8;
+    Config.SECONDARY_BLOOM_HASHES  = 5;
+    Config.QUICK_INIT              = false;
     Config.MAX_SECTOR_FILE_STREAMS = 16;
     Config.MAX_SECTOR_BUFFER_SIZE  = 1024 * 1024 * 4; //4 MB write buffer
     Config.MAX_SECTOR_CACHE_SIZE   = 1024 * 1024 * 8; //1 MB of cache available
