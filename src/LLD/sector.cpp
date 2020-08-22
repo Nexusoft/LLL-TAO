@@ -106,7 +106,7 @@ namespace LLD
     void SectorDatabase<KeychainType, CacheType, ConfigType>::Initialize()
     {
         /* Create directories if they don't exist yet. */
-        if(CONFIG.FLAGS & FLAGS::CREATE && !filesystem::exists(CONFIG.BASE_DIRECTORY) && filesystem::create_directories(CONFIG.BASE_DIRECTORY))
+        if(CONFIG.FLAGS & FLAGS::CREATE && !filesystem::exists(CONFIG.BASE_DIRECTORY + "datachain/") && filesystem::create_directories(CONFIG.BASE_DIRECTORY + "datachain/"))
             debug::log(0, FUNCTION, "Generated Path ", CONFIG.BASE_DIRECTORY);
 
         /* Find the most recent append file. */
@@ -114,7 +114,7 @@ namespace LLD
         {
 
             /* Find our current sector file we are on. */
-            std::fstream stream(debug::safe_printstr(CONFIG.BASE_DIRECTORY, "/datachain/_block.", std::setfill('0'), std::setw(5), nCurrentFile), std::ios::in | std::ios::binary);
+            std::fstream stream(debug::safe_printstr(CONFIG.BASE_DIRECTORY, "datachain/_block.", std::setfill('0'), std::setw(5), nCurrentFile), std::ios::in | std::ios::binary);
             if(!stream)
             {
 
@@ -124,7 +124,7 @@ namespace LLD
                 else
                 {
                     /* Create a new file if it doesn't exist. */
-                    std::ofstream cStream(debug::safe_printstr(CONFIG.BASE_DIRECTORY, "/datachain/_block.", std::setfill('0'), std::setw(5), nCurrentFile), std::ios::binary | std::ios::out | std::ios::trunc);
+                    std::ofstream cStream(debug::safe_printstr(CONFIG.BASE_DIRECTORY, "datachain/_block.", std::setfill('0'), std::setw(5), nCurrentFile), std::ios::binary | std::ios::out | std::ios::trunc);
                     cStream.close();
                 }
 
@@ -168,7 +168,7 @@ namespace LLD
                 if(!fileCache->Get(cKey.nSectorFile, pstream))
                 {
                     /* Set the new stream pointer. */
-                    pstream = new std::fstream(debug::safe_printstr(CONFIG.BASE_DIRECTORY, "/datachain/_block.", std::setfill('0'), std::setw(5), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
+                    pstream = new std::fstream(debug::safe_printstr(CONFIG.BASE_DIRECTORY, "datachain/_block.", std::setfill('0'), std::setw(5), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
                     if(!pstream->is_open())
                     {
                         delete pstream;
@@ -228,7 +228,7 @@ namespace LLD
             if(!fileCache->Get(cKey.nSectorFile, pstream))
             {
                 /* Set the new stream pointer. */
-                pstream = new std::fstream(debug::safe_printstr(CONFIG.BASE_DIRECTORY, "/datachain/_block.", std::setfill('0'), std::setw(5), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
+                pstream = new std::fstream(debug::safe_printstr(CONFIG.BASE_DIRECTORY, "datachain/_block.", std::setfill('0'), std::setw(5), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
                 if(!pstream->is_open())
                 {
                     delete pstream;
@@ -289,7 +289,7 @@ namespace LLD
             if(!fileCache->Get(key.nSectorFile, pstream))
             {
                 /* Set the new stream pointer. */
-                pstream = new std::fstream(debug::safe_printstr(CONFIG.BASE_DIRECTORY, "/datachain/_block.", std::setfill('0'), std::setw(5), key.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
+                pstream = new std::fstream(debug::safe_printstr(CONFIG.BASE_DIRECTORY, "datachain/_block.", std::setfill('0'), std::setw(5), key.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
                 if(!pstream->is_open())
                 {
                     delete pstream;
@@ -346,7 +346,7 @@ namespace LLD
 
                     std::ofstream stream
                     (
-                        debug::safe_printstr(CONFIG.BASE_DIRECTORY, "/datachain/_block.", std::setfill('0'), std::setw(5), nCurrentFile),
+                        debug::safe_printstr(CONFIG.BASE_DIRECTORY, "datachain/_block.", std::setfill('0'), std::setw(5), nCurrentFile),
                         std::ios::out | std::ios::binary | std::ios::trunc
                     );
                     stream.close();
@@ -357,7 +357,7 @@ namespace LLD
                 if(!fileCache->Get(nCurrentFile, pstream))
                 {
                     /* Set the new stream pointer. */
-                    pstream = new std::fstream(debug::safe_printstr(CONFIG.BASE_DIRECTORY, "/datachain/_block.", std::setfill('0'), std::setw(5), nCurrentFile), std::ios::in | std::ios::out | std::ios::binary);
+                    pstream = new std::fstream(debug::safe_printstr(CONFIG.BASE_DIRECTORY, "datachain/_block.", std::setfill('0'), std::setw(5), nCurrentFile), std::ios::in | std::ios::out | std::ios::binary);
                     if(!pstream->is_open())
                     {
                         delete pstream;
@@ -467,7 +467,7 @@ namespace LLD
             if(!fileCache->Get(key.nSectorFile, pstream))
             {
                 /* Set the new stream pointer. */
-                pstream = new std::fstream(debug::safe_printstr(CONFIG.BASE_DIRECTORY, "/datachain/_block.", std::setfill('0'), std::setw(5), key.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
+                pstream = new std::fstream(debug::safe_printstr(CONFIG.BASE_DIRECTORY, "datachain/_block.", std::setfill('0'), std::setw(5), key.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
                 if(!pstream->is_open())
                 {
                     delete pstream;
@@ -567,7 +567,7 @@ namespace LLD
                 nCurrentFileSize = 0;
 
                 /* Create a new file for next writes. */
-                std::fstream stream(debug::safe_printstr(CONFIG.BASE_DIRECTORY, "/datachain/_block.", std::setfill('0'), std::setw(5), nCurrentFile), std::ios::out | std::ios::binary | std::ios::trunc);
+                std::fstream stream(debug::safe_printstr(CONFIG.BASE_DIRECTORY, "datachain/_block.", std::setfill('0'), std::setw(5), nCurrentFile), std::ios::out | std::ios::binary | std::ios::trunc);
                 stream.close();
             }
 
@@ -666,7 +666,7 @@ namespace LLD
         pTransaction->ssJournal << std::string("commit");
 
         /* Create an append only stream. */
-        std::ofstream stream = std::ofstream(debug::safe_printstr(CONFIG.BASE_DIRECTORY, "/journal.dat"), std::ios::app | std::ios::binary);
+        std::ofstream stream = std::ofstream(debug::safe_printstr(CONFIG.BASE_DIRECTORY, "journal.dat"), std::ios::app | std::ios::binary);
         if(!stream.is_open())
             return debug::error(FUNCTION, "failed to open journal file");
 
@@ -693,7 +693,7 @@ namespace LLD
         pTransaction = nullptr;
 
         /* Delete the transaction journal file. */
-        std::ofstream stream(debug::safe_printstr(CONFIG.BASE_DIRECTORY, "/journal.dat"), std::ios::trunc);
+        std::ofstream stream(debug::safe_printstr(CONFIG.BASE_DIRECTORY, "journal.dat"), std::ios::trunc);
         stream.close();
     }
 
@@ -764,7 +764,7 @@ namespace LLD
     bool SectorDatabase<KeychainType, CacheType, ConfigType>::TxnRecovery()
     {
         /* Create an append only stream. */
-        std::ifstream stream(debug::safe_printstr(CONFIG.BASE_DIRECTORY, "/journal.dat"), std::ios::in | std::ios::out | std::ios::binary);
+        std::ifstream stream(debug::safe_printstr(CONFIG.BASE_DIRECTORY, "journal.dat"), std::ios::in | std::ios::out | std::ios::binary);
         if(!stream.is_open())
             return false;
 

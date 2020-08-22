@@ -142,7 +142,7 @@ namespace LLD
             , MAX_SECTOR_CACHE_SIZE   (1024 * 1024)       //1 MB of cache default
             , MAX_SECTOR_FILE_SIZE    (1024 * 1024 * 512) //512 MB max per sector file
             , MAX_SECTOR_BUFFER_SIZE  (1024 * 1024 * 4)   //4 MB max disk buffer
-            , BASE_DIRECTORY          (config::GetDataDir() + strName)
+            , BASE_DIRECTORY          (config::GetDataDir() + strName + "/")
             , DB_NAME                 (strName)
             , FLAGS                   (nFlags)
             , SECTOR_LOCKS            (1024)

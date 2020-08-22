@@ -67,15 +67,13 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/locator.h>
 
 #include <LLD/templates/bloom.h>
+#include <LLD/config/hashmap.h>
 
-class TestDB : public LLD::SectorDatabase<LLD::BinaryHashMap, LLD::BinaryLRU>
+class TestDB : public LLD::SectorDatabase<LLD::BinaryHashMap, LLD::BinaryLRU, LLD::Config::Hashmap>
 {
 public:
-    TestDB()
-    : SectorDatabase("testdb"
-    , LLD::FLAGS::CREATE | LLD::FLAGS::FORCE
-    , 256 * 256 * 64
-    , 1024 * 1024 * 8)
+    TestDB(const LLD::Config::Hashmap& config)
+    : SectorDatabase(config)
     {
     }
 
@@ -123,72 +121,22 @@ int main(int argc, char** argv)
 {
     config::mapArgs["-datadir"] = "/database/LIVE";
 
-    TestDB* bloom = new TestDB();
+    /* Create the ContractDB configuration object. */
+    LLD::Config::Hashmap Config =
+        LLD::Config::Hashmap("testdb", LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+
+    /* Set the ContractDB database internal settings. */
+    Config.HASHMAP_TOTAL_BUCKETS   = 256 * 256 * 64;
+    Config.MAX_HASHMAP_FILES       = 128;
+    Config.MAX_SECTOR_FILE_STREAMS = 16;
+    Config.MAX_SECTOR_BUFFER_SIZE  = 1024 * 1024 * 4; //4 MB write buffer
+    Config.MAX_SECTOR_CACHE_SIZE   = 1024 * 1024 * 8; //1 MB of cache available
+
+    TestDB* bloom = new TestDB(Config);
 
     std::vector<uint1024_t> vKeys;
-    for(int i = 0; i < MAX_HASHMAP_FILES; ++i)
+    for(int i = 0; i < 10000; ++i)
         vKeys.push_back(LLC::GetRand1024());
-
-    uint32_t nDuplicates = 0;
-
-    std::vector<uint8_t> vBuffer(primary_bloom_size() + secondary_bloom_size() + 2, 0);
-
-    debug::log(0, "Allocating a buffer of size ", vBuffer.size(), " for ", vKeys.size(), " files");
-
-    DataStream ssKey(SER_LLD, LLD::DATABASE_VERSION);
-    ssKey << vKeys[0];
-
-    uint32_t nOffset = primary_bloom_size() + 2;
-
-    std::vector<uint8_t> vKey = ssKey.Bytes();
-    set_secondary_bloom(vKey, vBuffer, 0, nOffset);
-
-    for(uint32_t n = 1; n < vKeys.size(); ++n)
-    {
-        set_current_file(n, vBuffer);
-
-        DataStream ssData(SER_LLD, LLD::DATABASE_VERSION);
-        ssData << vKeys[n];
-
-        set_primary_bloom(ssData.Bytes(), vBuffer, 2);
-        if(!check_primary_bloom(ssData.Bytes(), vBuffer, 2))
-            return debug::error("PRIMARY BLOOM FAILED AT ", HexStr(ssData.begin(), ssData.end()));
-
-        if(!check_hashmap_available(n, vBuffer, nOffset))
-            return debug::error("FILE ", n, " IS NOT EMPTY");
-
-        set_secondary_bloom(ssData.Bytes(), vBuffer, n, nOffset);
-        if(check_secondary_bloom(ssData.Bytes(), vBuffer, 0, nOffset))
-            ++nDuplicates;
-
-        if(check_hashmap_available(n, vBuffer, nOffset))
-            return debug::error("FILE ", n, " EMPTY");
-
-        if(get_current_file(vBuffer) != n)
-            return debug::error("CURRENT FILE INCONSISTENT ", n);
-    }
-
-    debug::log(0, "Created ", vKeys.size(), " Bloom filters with ",
-        nDuplicates, " duplicates [", std::fixed, (nDuplicates * 100.0) / vKeys.size(), " %]");
-
-
-    std::vector<uint1024_t> vKeys2;
-    for(int i = 0; i < MAX_HASHMAP_FILES; ++i)
-        vKeys2.push_back(LLC::GetRand1024());
-
-    uint32_t nFalsePositives = 0;
-    for(uint32_t n = 0; n < vKeys2.size(); ++n)
-    {
-        DataStream ssData(SER_LLD, LLD::DATABASE_VERSION);
-        ssData << vKeys2[n];
-
-        if(check_primary_bloom(ssData.Bytes(), vBuffer))
-            ++nFalsePositives;
-    }
-
-    debug::log(0, nFalsePositives, " False Positives [", nFalsePositives * 100.0 / vKeys2.size(), " %]");
-
-    return 0;
 
     runtime::stopwatch swTimer;
     swTimer.start();
@@ -198,19 +146,26 @@ int main(int argc, char** argv)
     }
     swTimer.stop();
 
-    debug::log(0, "100k records written in ", swTimer.ElapsedMicroseconds());
+    uint64_t nElapsed = swTimer.ElapsedMicroseconds();
+    debug::log(0, "10k records written in ", nElapsed, " (", 10000000000 / nElapsed, " writes/s)");
 
     uint1024_t hashKey = 0;
 
     swTimer.reset();
     swTimer.start();
+
+    uint32_t nTotal = 0;
     for(const auto& nBucket : vKeys)
     {
-        bloom->ReadKey(nBucket, hashKey);
+        ++nTotal;
+
+        if(!bloom->ReadKey(nBucket, hashKey))
+            return debug::error("Failed to read ", nBucket.SubString(), " total ", nTotal);
     }
     swTimer.stop();
 
-    debug::log(0, "100k records read in ", swTimer.ElapsedMicroseconds());
+    nElapsed = swTimer.ElapsedMicroseconds();
+    debug::log(0, "10k records read in ", nElapsed, " (", 10000000000 / nElapsed, " read/s)");
 
     delete bloom;
 

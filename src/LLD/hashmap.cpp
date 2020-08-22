@@ -104,18 +104,18 @@ namespace LLD
         uint32_t nTotalHashmaps = 0;
 
         /* Create directories if they don't exist yet. */
-        if(!filesystem::exists(CONFIG.BASE_DIRECTORY) && filesystem::create_directories(CONFIG.BASE_DIRECTORY))
+        if(!filesystem::exists(CONFIG.BASE_DIRECTORY + "keychain/") && filesystem::create_directories(CONFIG.BASE_DIRECTORY + "keychain/"))
             debug::log(0, FUNCTION, "Generated Path ", CONFIG.BASE_DIRECTORY);
 
         /* Build the hashmap indexes. */
-        std::string index = debug::safe_printstr(CONFIG.BASE_DIRECTORY, "/keychain/_hashmap.index");
-        if(!filesystem::exists(index))
+        std::string strIndex = debug::safe_printstr(CONFIG.BASE_DIRECTORY, "keychain/_hashmap.index");
+        if(!filesystem::exists(strIndex))
         {
             /* Generate empty space for new file. */
-            std::vector<uint8_t> vSpace(CONFIG.HASHMAP_TOTAL_BUCKETS * 2, 0);
+            std::vector<uint8_t> vSpace(CONFIG.HASHMAP_TOTAL_BUCKETS * INDEX_FILTER_SIZE, 0);
 
             /* Write the new disk index .*/
-            std::fstream stream(index, std::ios::out | std::ios::binary | std::ios::trunc);
+            std::fstream stream(strIndex, std::ios::out | std::ios::binary | std::ios::trunc);
             stream.write((char*)&vSpace[0], vSpace.size());
             stream.close();
 
@@ -137,7 +137,7 @@ namespace LLD
         }
 
         /* Build the first hashmap index file if it doesn't exist. */
-        std::string file = debug::safe_printstr(CONFIG.BASE_DIRECTORY, "/keychain/_hashmap.", std::setfill('0'), std::setw(5), 0u);
+        std::string file = debug::safe_printstr(CONFIG.BASE_DIRECTORY, "keychain/_hashmap.", std::setfill('0'), std::setw(5), 0u);
         if(!filesystem::exists(file))
         {
             /* Build a vector with empty bytes to flush to disk. */
@@ -153,7 +153,7 @@ namespace LLD
         }
 
         /* Create the stream index object. */
-        pindex = new std::fstream(index, std::ios::in | std::ios::out | std::ios::binary);
+        pindex = new std::fstream(strIndex, std::ios::in | std::ios::out | std::ios::binary);
 
         /* Load the stream object into the stream LRU cache. */
         pFileStreams->Put(0, new std::fstream(file, std::ios::in | std::ios::out | std::ios::binary));
@@ -179,18 +179,21 @@ namespace LLD
         compress_key(vKeyCompressed);
 
         /* Build our buffer based on total linear probes. */
-        std::vector<uint8_t> vBuffer(INDEX_FILTER_SIZE * CONFIG.MAX_LINEAR_PROBES, 0);
+        const uint32_t MAX_LINEAR_PROBES = std::min(CONFIG.HASHMAP_TOTAL_BUCKETS - nBucket, CONFIG.MAX_LINEAR_PROBES);
+        std::vector<uint8_t> vBuffer(INDEX_FILTER_SIZE * MAX_LINEAR_PROBES, 0);
 
         /* Read the index file information. */
         pindex->seekg(INDEX_FILTER_SIZE * nBucket, std::ios::beg);
         pindex->read((char*)&vBuffer[0], vBuffer.size());
 
+        /* Grab the current hashmap file from the buffer. */
+        uint16_t nHashmap = get_current_file(vBuffer, 0);
+        //if(!check_hashmap_available(nHashmap, vBuffer, 0))
+        //    return debug::error("Hashmap ", nHashmap, " is available, should be blank");
+
         /* Check the primary bloom filter. */
         if(!check_primary_bloom(vKey, vBuffer, 2))
             return false;
-
-        /* Grab the current hashmap file from the buffer. */
-        uint16_t nHashmap = get_current_file(vBuffer, 0);
 
         /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
         std::vector<uint8_t> vBucket(CONFIG.HASHMAP_KEY_ALLOCATION, 0);
@@ -205,7 +208,7 @@ namespace LLD
             if(!pFileStreams->Get(i, pstream))
             {
                 /* Set the new stream pointer. */
-                std::string filename = debug::safe_printstr(CONFIG.BASE_DIRECTORY, "/keychain/_hashmap.", std::setfill('0'), std::setw(5), i);
+                std::string filename = debug::safe_printstr(CONFIG.BASE_DIRECTORY, "keychain/_hashmap.", std::setfill('0'), std::setw(5), i);
                 pstream = new std::fstream(filename, std::ios::in | std::ios::out | std::ios::binary);
                 if(!pstream->is_open())
                 {
@@ -237,7 +240,7 @@ namespace LLD
 
                 /* Debug Output of Sector Key Information. */
                 if(config::nVerbose >= 4)
-                    debug::log(4, FUNCTION, "State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
+                    debug::log(0, FUNCTION, "State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
                         " | Length: ", cKey.nLength,
                         " | Bucket ", nBucket,
                         " | Location: ", nFilePos,
@@ -251,7 +254,7 @@ namespace LLD
             }
         }
 
-        return false;
+        return debug::error(FUNCTION, "doesn't exist from hashmap ", nHashmap);
     }
 
 
@@ -298,7 +301,7 @@ namespace LLD
                     std::fstream* pstream;
                     if(!pFileStreams->Get(i, pstream))
                     {
-                        std::string filename = debug::safe_printstr(CONFIG.BASE_DIRECTORY, "/keychain/_hashmap.", std::setfill('0'), std::setw(5), i);
+                        std::string filename = debug::safe_printstr(CONFIG.BASE_DIRECTORY, "keychain/_hashmap.", std::setfill('0'), std::setw(5), i);
 
                         /* Set the new stream pointer. */
                         pstream = new std::fstream(filename, std::ios::in | std::ios::out | std::ios::binary);
@@ -333,7 +336,7 @@ namespace LLD
                         std::fstream* pstream;
                         if(!pFileStreams->Get(i, pstream))
                         {
-                            std::string filename = debug::safe_printstr(CONFIG.BASE_DIRECTORY, "/keychain/_hashmap.", std::setfill('0'), std::setw(5), i);
+                            std::string filename = debug::safe_printstr(CONFIG.BASE_DIRECTORY, "keychain/_hashmap.", std::setfill('0'), std::setw(5), i);
 
                             /* Set the new stream pointer. */
                             pstream = new std::fstream(filename, std::ios::in | std::ios::out | std::ios::binary);
@@ -372,7 +375,7 @@ namespace LLD
         }
 
         /* Create a new disk hashmap object in linked list if it doesn't exist. */
-        std::string strHashmap = debug::safe_printstr(CONFIG.BASE_DIRECTORY, "/keychain/_hashmap.", std::setfill('0'), std::setw(5), nHashmap);
+        std::string strHashmap = debug::safe_printstr(CONFIG.BASE_DIRECTORY, "keychain/_hashmap.", std::setfill('0'), std::setw(5), nHashmap);
         if(!filesystem::exists(strHashmap))
         {
             /* Blank vector to write empty space in new disk file. */
@@ -406,29 +409,28 @@ namespace LLD
             pFileStreams->Put(nHashmap, pstream);
         }
 
-        /* Read the State and Size of Sector Header. */
+        /* Serialize the key into the end of the vector. */
         DataStream ssKey(SER_LLD, DATABASE_VERSION);
         ssKey << cKey;
-
-        /* Serialize the key into the end of the vector. */
         ssKey.write((char*)&vKeyCompressed[0], vKeyCompressed.size());
+
+        /* Update the total files iterator. */
+        ++nHashmap;
+        set_current_file(nHashmap, vBuffer, 0);
 
         /* Flush the key file to disk. */
         pstream->seekp (nFilePos, std::ios::beg);
         if(!pstream->write((char*)&ssKey.Bytes()[0], ssKey.size()))
-            return debug::error(FUNCTION, "only ", pstream->gcount(), "/", ssKey.size(), " bytes written");
+            return debug::error(FUNCTION, "KEYCHAIN: only ", pstream->gcount(), "/", ssKey.size(), " bytes written");
 
         /* Update the primary and secondary bloom filters. */
         set_primary_bloom(cKey.vKey, vBuffer, 2);
         set_secondary_bloom(cKey.vKey, vBuffer, nHashmap, primary_bloom_size() + 2);
 
-        /* Update the hashmap file. */
-        set_current_file(++nHashmap, vBuffer, 0);
-
         /* Write updated filters to the index position. */
         pindex->seekp(INDEX_FILTER_SIZE * nBucket, std::ios::beg);
         if(!pindex->write((char*)&vBuffer[0], vBuffer.size()))
-            return debug::error(FUNCTION, "only ", pindex->gcount(), "/", vBuffer.size(), " bytes written");
+            return debug::error(FUNCTION, "INDEX: only ", pindex->gcount(), "/", vBuffer.size(), " bytes written");
 
         /* Flush the buffers to disk. */
         pindex->flush();
@@ -500,7 +502,7 @@ namespace LLD
             {
                 /* Set the new stream pointer. */
                 pstream = new std::fstream(
-                  debug::safe_printstr(CONFIG.BASE_DIRECTORY, "/keychain/_hashmap.", std::setfill('0'), std::setw(5), i),
+                  debug::safe_printstr(CONFIG.BASE_DIRECTORY, "keychain/_hashmap.", std::setfill('0'), std::setw(5), i),
                   std::ios::in | std::ios::out | std::ios::binary);
 
                 /* If file not found add to LRU cache. */

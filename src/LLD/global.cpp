@@ -53,6 +53,7 @@ namespace LLD
             /* Create the ContractDB database instance. */
             Contract = new ContractDB(Config);
         }
+        
 
 
         /* _REGISTER database instance. */
