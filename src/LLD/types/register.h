@@ -53,7 +53,7 @@ namespace LLD
      *  The database class for the Register Layer.
      *
      **/
-    class RegisterDB : public SectorDatabase<BinaryHashMap, BinaryLRU, Config::Hashmap>
+    class RegisterDB : public Templates::SectorDatabase<BinaryHashMap, BinaryLRU, Config::Hashmap>
     {
 
         /** Memory mutex to lock when accessing internal memory states. **/

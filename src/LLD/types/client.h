@@ -46,7 +46,7 @@ namespace LLD
    *  Database class for storing local wallet transactions.
    *
    **/
-    class ClientDB : public SectorDatabase<BinaryHashMap, BinaryLRU, Config::Hashmap>
+    class ClientDB : public Templates::SectorDatabase<BinaryHashMap, BinaryLRU, Config::Hashmap>
     {
     public:
 

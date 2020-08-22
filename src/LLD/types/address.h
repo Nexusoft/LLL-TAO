@@ -30,7 +30,7 @@ namespace LLD
      *  The database class for peer addresses to determine trust relationships.
      *
      **/
-    class AddressDB : public SectorDatabase<BinaryHashMap, BinaryLRU, Config::Hashmap>
+    class AddressDB : public Templates::SectorDatabase<BinaryHashMap, BinaryLRU, Config::Hashmap>
     {
     public:
 

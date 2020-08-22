@@ -27,7 +27,7 @@ ________________________________________________________________________________
 
 #include <functional>
 
-namespace LLD
+namespace LLD::Templates
 {
 
     /* The Database Constructor. To determine file location and the Bytes per Record. */

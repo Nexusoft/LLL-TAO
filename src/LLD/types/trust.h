@@ -33,7 +33,7 @@ namespace LLD
      *  The database class for trust keys for both Legacy and Tritium.
      *
      **/
-    class TrustDB : public SectorDatabase<BinaryHashMap, BinaryLRU, Config::Hashmap>
+    class TrustDB : public Templates::SectorDatabase<BinaryHashMap, BinaryLRU, Config::Hashmap>
     {
 
     public:

@@ -69,7 +69,7 @@ ________________________________________________________________________________
 #include <LLD/templates/bloom.h>
 #include <LLD/config/hashmap.h>
 
-class TestDB : public LLD::SectorDatabase<LLD::BinaryHashMap, LLD::BinaryLRU, LLD::Config::Hashmap>
+class TestDB : public LLD::Templates::SectorDatabase<LLD::BinaryHashMap, LLD::BinaryLRU, LLD::Config::Hashmap>
 {
 public:
     TestDB(const LLD::Config::Hashmap& config)
@@ -123,7 +123,7 @@ int main(int argc, char** argv)
 
     /* Create the ContractDB configuration object. */
     LLD::Config::Hashmap Config =
-        LLD::Config::Hashmap("testdb", LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+        LLD::Config::Hashmap("testdb", LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
 
     /* Set the ContractDB database internal settings. */
     Config.HASHMAP_TOTAL_BUCKETS   = 256 * 256 * 64;

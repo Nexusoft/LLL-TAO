@@ -34,7 +34,7 @@ ________________________________________________________________________________
 #include <mutex>
 #include <condition_variable>
 
-namespace LLD
+namespace LLD::Templates
 {
     /** SectorDatabase
      *

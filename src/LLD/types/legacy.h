@@ -34,7 +34,7 @@ namespace LLD
      *  Database class for storing legacy transactions.
      *
      **/
-    class LegacyDB : public SectorDatabase<BinaryHashMap, BinaryLRU, Config::Hashmap>
+    class LegacyDB : public Templates::SectorDatabase<BinaryHashMap, BinaryLRU, Config::Hashmap>
     {
     public:
 

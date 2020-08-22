@@ -51,7 +51,7 @@ namespace LLD
      *  Database class for storing local wallet transactions.
      *
      **/
-    class ContractDB : public SectorDatabase<BinaryHashMap, BinaryLRU, Config::Hashmap>
+    class ContractDB : public Templates::SectorDatabase<BinaryHashMap, BinaryLRU, Config::Hashmap>
     {
         /** Internal mutex for MEMPOOL mode. **/
         std::mutex MEMORY_MUTEX;
