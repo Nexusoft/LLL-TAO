@@ -119,7 +119,7 @@ const uint256_t hashSeed = 55;
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
-    config::mapArgs["-datadir"] = "/database/LIVE";
+    config::mapArgs["-datadir"] = "/Users/colincantrell/Library/Application Support/Nexus/LIVE";
 
     /* Create the ContractDB configuration object. */
     LLD::Config::Hashmap Config =

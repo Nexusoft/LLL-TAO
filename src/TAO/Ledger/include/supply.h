@@ -17,7 +17,7 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
-namespace cv { class softdouble; }
+namespace cv { struct softdouble; }
 
 /* Global TAO namespace. */
 namespace TAO

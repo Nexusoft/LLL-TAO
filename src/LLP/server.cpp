@@ -44,7 +44,6 @@ ________________________________________________________________________________
 namespace LLP
 {
 
-
     /*  Returns the name of the protocol type of this server. */
     template <class ProtocolType>
     std::string Server<ProtocolType>::Name()

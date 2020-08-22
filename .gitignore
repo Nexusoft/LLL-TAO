@@ -11,7 +11,9 @@
 *.vscode
 *.qm
 *.log
+*.tmp
+*.dat
 nexus
-.cproject
-.project
+*.cproject
+*.project
 /.settings/
