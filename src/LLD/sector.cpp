@@ -161,7 +161,8 @@ namespace LLD::Templates
         if(pSectorKeys->Get(vKey, cKey))
         {
             {
-                LOCK(SECTOR_MUTEX);
+                //LOCK(SECTOR_MUTEX);
+                LOCK(CONFIG.SECTOR(cKey));
 
                 /* Find the file stream for LRU cache. */
                 std::fstream* pstream;
@@ -215,7 +216,8 @@ namespace LLD::Templates
     bool SectorDatabase<KeychainType, CacheType, ConfigType>::Get(const SectorKey& cKey, std::vector<uint8_t>& vData)
     {
         {
-            LOCK(SECTOR_MUTEX);
+            //LOCK(SECTOR_MUTEX);
+            LOCK(CONFIG.SECTOR(cKey));
 
             nBytesRead += static_cast<uint32_t>(cKey.vKey.size() + vData.size());
 
@@ -282,7 +284,8 @@ namespace LLD::Templates
         cachePool->Put(key, vKey, vData, false);
 
         {
-            LOCK(SECTOR_MUTEX);
+            //LOCK(SECTOR_MUTEX);
+            LOCK(CONFIG.SECTOR(key));
 
             /* Find the file stream for LRU cache. */
             std::fstream* pstream;
@@ -333,8 +336,16 @@ namespace LLD::Templates
         if(CONFIG.FLAGS & FLAGS::APPEND || !Update(vKey, vData))
         {
 
+            /* Get current size */
+            uint64_t nSize = vData.size() + GetSizeOfCompactSize(vData.size());
+
+            /* Create a new Sector Key. */
+            SectorKey key(STATE::READY, vKey, static_cast<uint16_t>(nCurrentFile),
+                            nCurrentFileSize, static_cast<uint32_t>(nSize));
+
             {
-                LOCK(SECTOR_MUTEX);
+                //LOCK(SECTOR_MUTEX);
+                LOCK(CONFIG.SECTOR(key));
 
                 /* Create new file if above current file size. */
                 if(nCurrentFileSize > CONFIG.MAX_SECTOR_FILE_SIZE)
@@ -380,13 +391,6 @@ namespace LLD::Templates
 
                 pstream->flush();
             }
-
-            /* Get current size */
-            uint64_t nSize = vData.size() + GetSizeOfCompactSize(vData.size());
-
-            /* Create a new Sector Key. */
-            SectorKey key(STATE::READY, vKey, static_cast<uint16_t>(nCurrentFile),
-                            nCurrentFileSize, static_cast<uint32_t>(nSize));
 
             /* Increment the current filesize */
             nCurrentFileSize += static_cast<uint32_t>(nSize);

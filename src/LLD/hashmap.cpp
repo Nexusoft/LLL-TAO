@@ -185,7 +185,8 @@ namespace LLD
     /* Read a key index from the disk hashmaps. */
     bool BinaryHashMap::Get(const std::vector<uint8_t>& vKey, SectorKey &cKey)
     {
-        LOCK(KEY_MUTEX);
+        //LOCK(KEY_MUTEX);
+        LOCK(CONFIG.KEYCHAIN(vKey));
 
         /* Get the assigned bucket for the hashmap. */
         uint32_t nBucket = get_bucket(vKey);
@@ -281,7 +282,8 @@ namespace LLD
     /* Write a key to the disk hashmaps. */
     bool BinaryHashMap::Put(const SectorKey& cKey)
     {
-        LOCK(KEY_MUTEX);
+        //LOCK(KEY_MUTEX);
+        LOCK(CONFIG.KEYCHAIN(cKey.vKey));
 
         /* Get the assigned bucket for the hashmap. */
         uint32_t nBucket = get_bucket(cKey.vKey);
@@ -437,6 +439,9 @@ namespace LLD
         ssKey.write((char*)&vKeyCompressed[0], vKeyCompressed.size());
 
         /* Update the total files iterator. */
+        if(!check_hashmap_available(nHashmap, vBuffer, primary_bloom_size() + 2))
+            debug::error(FUNCTION, "hashmap slot is unavailable ", nHashmap, " | bucket ", nBucket);
+
         set_current_file(++nHashmap, vBuffer, 0);
 
         /* Update the primary and secondary bloom filters. */
@@ -483,7 +488,8 @@ namespace LLD
      *  TODO: This should be optimized further. */
     bool BinaryHashMap::Erase(const std::vector<uint8_t>& vKey)
     {
-        LOCK(KEY_MUTEX);
+        //LOCK(KEY_MUTEX);
+        LOCK(CONFIG.KEYCHAIN(vKey));
 
         /* Get the assigned bucket for the hashmap. */
         uint32_t nBucket = get_bucket(vKey);
@@ -728,6 +734,8 @@ namespace LLD
     /* Helper method to check if a file is unoccupied in input buffer. */
     bool BinaryHashMap::check_hashmap_available(const uint32_t nHashmap, const std::vector<uint8_t>& vBuffer, const uint32_t nOffset)
     {
+        bool fFound = false;
+
         /* Calculate initial hashmap index and bit offset. */
         uint32_t nBeginIndex  = (nHashmap * CONFIG.SECONDARY_BLOOM_BITS) / 8;
         uint32_t nBeginBit    = (nHashmap * CONFIG.SECONDARY_BLOOM_BITS) % 8;
@@ -741,14 +749,18 @@ namespace LLD
 
             /* Check for buffer overflow. */
             if(nIndex + nOffset >= vBuffer.size())
-                return true;
+                return false;
 
             /* Check that any bits within the range of this hashmap bitset are not set. */
             if(vBuffer[nIndex + nOffset] & (1 << nBit))
-                return false;
+            {
+                debug::log(0, "Index ", nIndex + nOffset, " | ", std::bitset<8>(vBuffer[nIndex + nOffset]));
+
+                fFound = true;
+            }
         }
 
-        return true;
+        return !fFound;
     }
 
 

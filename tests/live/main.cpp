@@ -124,7 +124,7 @@ int main(int argc, char** argv)
     CONFIG.MAX_LINEAR_PROBES       = 2;
     CONFIG.SECONDARY_BLOOM_BITS    = 13;
     CONFIG.SECONDARY_BLOOM_HASHES  = 7;
-    CONFIG.QUICK_INIT              = false;
+    CONFIG.QUICK_INIT              = true;
     CONFIG.MAX_SECTOR_FILE_STREAMS = 16;
     CONFIG.MAX_SECTOR_BUFFER_SIZE  = 1024 * 1024 * 4; //4 MB write buffer
     CONFIG.MAX_SECTOR_CACHE_SIZE   = 256; //1 MB of cache available
@@ -132,7 +132,7 @@ int main(int argc, char** argv)
     TestDB* bloom = new TestDB(CONFIG);
 
     std::vector<uint1024_t> vKeys;
-    for(int i = 0; i < 100000; ++i)
+    for(int i = 0; i < 10000; ++i)
         vKeys.push_back(LLC::GetRand1024());
 
     runtime::stopwatch swTimer;

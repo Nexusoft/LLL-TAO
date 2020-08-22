@@ -156,7 +156,7 @@ namespace LLD::Config
          *  @return a reference of the lock object.
          *
          **/
-        std::mutex& KeychainLock(const std::vector<uint8_t>& vKey)
+        std::mutex& KEYCHAIN(const std::vector<uint8_t>& vKey) const
         {
             /* Calculate the lock that will be obtained by the given key. */
             uint64_t nLock = XXH3_64bits((uint8_t*)&vKey[0], vKey.size()) % KEYCHAIN_LOCKS.size();
@@ -173,7 +173,7 @@ namespace LLD::Config
          *  @return a reference of the lock object.
          *
          **/
-        std::mutex& SectorLock(const SectorKey& key)
+        std::mutex& SECTOR(const SectorKey& key) const
         {
             /* Calculate the lock that will be obtained by the given key. */
             uint64_t nLock = ((key.nSectorFile + 1) * (key.nSectorStart + 1)) % SECTOR_LOCKS.size();
