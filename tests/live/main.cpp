@@ -66,7 +66,6 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/types/locator.h>
 
-#include <LLD/templates/bloom.h>
 #include <LLD/config/hashmap.h>
 
 class TestDB : public LLD::Templates::SectorDatabase<LLD::BinaryHashMap, LLD::BinaryLRU, LLD::Config::Hashmap>

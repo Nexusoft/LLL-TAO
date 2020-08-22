@@ -15,7 +15,6 @@ ________________________________________________________________________________
 #include <LLD/include/enum.h>
 #include <LLD/include/version.h>
 #include <LLD/hash/xxhash.h>
-#include <LLD/templates/bloom.h>
 
 #include <Util/templates/datastream.h>
 #include <Util/include/filesystem.h>

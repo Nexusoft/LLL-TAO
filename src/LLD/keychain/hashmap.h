@@ -28,10 +28,6 @@ ________________________________________________________________________________
 
 namespace LLD
 {
-    //forward declaration
-    class BloomFilter;
-
-
     /** BinaryHashMap
      *
      *  This class is responsible for managing the keys to the sector database.
