@@ -171,6 +171,20 @@ namespace TAO
              **/
             json::json Burn(const json::json& params, bool fHelp);
 
+
+
+            /** ListTokenAccounts
+             *
+             *  Lists all accounts that have been created for a particular token
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json ListTokenAccounts(const json::json& params, bool fHelp);
+
         };
     }
 }

@@ -22,9 +22,10 @@ The following methods are currently supported by this API
 [`create/token`](#createtoken)   
 [`debit/token`](#debittoken)      
 [`credit/token`](#credittoken)    
-[`get/token`](#gettoken)  
-[`burn/token`](#burntoken) 
-[`list/token/transactions`](#listtokentransactions)   
+[`get/token`](#gettoken)   
+[`burn/token`](#burntoken)   
+[`list/token/transactions`](#listtokentransactions)    
+[`list/token/accounts`](#listtokenaccounts)   
 [`create/account`](#createaccount)   
 [`debit/account`](#debitaccount)   
 [`credit/account`](#creditaccount)   
@@ -469,6 +470,65 @@ This will list off all of the transactions related to a given token. You DO NOT 
 &nbsp;&nbsp;&nbsp;`reference` : For `DEBIT` and `CREDIT` transactions this is the user supplied reference used by the recipient to relate the transaction to an order or invoice number.
 
 }
+
+
+# `list/token/accounts`
+
+This will list all accounts (globally) that have been created for a particular token.
+
+
+### Endpoint:
+
+`/tokens/list/token/accounts`
+
+
+### Parameters:
+
+`session` : For multi-user API mode, (configured with multiuser=1) the session can be provided in conjunction with the token name in order to deduce the register address of the token.  The `session` parameter is only required when a name parameter is also provided without a namespace in the name string.  For single-user API mode the session should not be supplied.
+
+`name` : The name identifying the token to list accounts for. This is optional if the address is provided. The name should be in the format username:name (for local names) or namespace::name (for names in a namespace).  However, if the object was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
+
+`address` : The register address of the token to list transactions for. This is optional if the name is provided.
+
+`page` : Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) transactions. The default value is 0 if not supplied.
+
+`limit` : The number of accounts to return for the current page. The default is 100.
+
+
+
+### Return value JSON object:
+```
+[
+    {
+        "owner": "a1f94d55f41aba2f75b020d0582c8b607b72f4f2742e4cde6135558adc44583d",
+        "created": 1576709402,
+        "modified": 1576718254,
+        "address": "8CsmdG4rP5J2RRY5M9ibTxKEpnZiJoGu5RzmGyxxy726sv6Nc76",
+        "balance": 32930.0
+    },
+    {
+        "owner": "a1fc3f7264e53dba1e1043e29e4087f57f5a30a2008fdc8483be7e6cd3d7ff97",
+        "created": 1576655433,
+        "modified": 1576673358,
+        "address": "8BjpdTPJthrBDQan2mABjbYhs2FPKAih6Vq5oxELiXqXGVq1Mqt",
+        "balance": 6586.0
+    }
+]
+
+```
+
+### Return values:
+
+`owner` : The genesis hash of the signature chain that owns this account.
+
+`created` : The UNIX timestamp when the account was created.
+
+`modified` : The UNIX timestamp when the account was last modified.
+
+`address` : The register address of the account.    
+
+`balance` : The available balance of this account.  This is the last confirmed balance for the account, and does not reflect and any new debits that have been made since the last block.
+
 
 ***
 
