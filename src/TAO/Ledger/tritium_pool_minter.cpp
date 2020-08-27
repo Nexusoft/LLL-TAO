@@ -83,6 +83,13 @@ namespace TAO
                 return false;
             }
 
+            /* Disable stake minter in client mode. */
+            if(config::fClient.load())
+            {
+                debug::log(0, FUNCTION, "Pooled stake minter disabled in client mode.");
+                return false;
+            }
+
             /* Check that stake minter is configured to run. */
             if(!config::fPoolStaking.load())
             {
@@ -377,9 +384,9 @@ namespace TAO
              */
 
             /* Check whether this is a non-hashing node */
-            if(fGenesis || config::fClient.load())
+            if(fGenesis)
             {
-                /* When staking genesis via pool or in client mode, local node will not hash. Wait until next block. */
+                /* When staking genesis via pool, local node will not hash. Wait until next block. */
                 while(!StakeMinter::fStop.load() && !config::fShutdown.load()
                       && hashLastBlock == TAO::Ledger::ChainState::hashBestChain.load())
                 {
@@ -458,7 +465,7 @@ namespace TAO
             {
                 TAO::Ledger::Transaction tx;
 
-                bool fTrust = TAO::Ledger::stakepool.IsTrust(producer.GetHash());
+                bool fTrust = producer.IsTrustPool();
 
                 /* Trust tx allowed to have tx in mempool if it won't be orphaned */
                 if(fTrust && TAO::Ledger::mempool.Get(producer.hashGenesis, tx) && producer.hashPrevTx != tx.GetHash())
@@ -524,8 +531,12 @@ namespace TAO
 
             /* On pool startup or if using base producer size, set the pool size to base */
             if(nSizeMax == 0 || nProducerSize == nBaseSize)
-                TAO::Ledger::stakepool.SetMaxSize(config::fTestNet.load() ? TAO::Ledger::POOL_MAX_SIZE_BASE_TESTNET
-                                                                          : TAO::Ledger::POOL_MAX_SIZE_BASE);
+            {
+                nSizeMax = config::fTestNet.load() ? TAO::Ledger::POOL_MAX_SIZE_BASE_TESTNET
+                                                    : TAO::Ledger::POOL_MAX_SIZE_BASE_TESTNET;
+
+                TAO::Ledger::stakepool.SetMaxSize(nSizeMax);
+            }
 
             /* If current producer size exceeds 60% of current pool size, bump up the pool size */
             else if((nProducerSize * 10 / 6) > nSizeMax)
@@ -535,6 +546,8 @@ namespace TAO
 
                 TAO::Ledger::stakepool.SetMaxSize(nSizeMax);
             }
+
+            debug::log(2, FUNCTION, "Stake pool size set to ", nSizeMax, ", producer size set to ", nProducerSize);
 
             return true;
         }
