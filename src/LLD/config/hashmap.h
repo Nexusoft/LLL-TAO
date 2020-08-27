@@ -176,7 +176,7 @@ namespace LLD::Config
         , MAX_HASHMAP_FILES        (256)
         , MAX_LINEAR_PROBES        (3) //default of 3 linear probes before moving to next hashmap file
         , MAX_HASHMAP_FILE_SIZE    (1024 * 1024 * 512) //512 MB filesize by default
-        , MAX_HASHMAP_FILE_STREAMS (8) //default of 8 active filestreams
+        , MAX_HASHMAP_FILE_STREAMS (MAX_HASHMAP_FILES) //default of maximum hashmap files, otherwise you will degrade performance
         , PRIMARY_BLOOM_HASHES     (7)
         , PRIMARY_BLOOM_BITS       (1.44 * MAX_HASHMAP_FILES * PRIMARY_BLOOM_HASHES)
         , SECONDARY_BLOOM_HASHES   (7)
