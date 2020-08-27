@@ -105,24 +105,24 @@ namespace LLD
          *  Read a key index from the disk hashmaps.
          *
          *  @param[in] vKey The binary data of key.
-         *  @param[out] cKey The key object to return.
+         *  @param[out] key The key object to return.
          *
          *  @return True if the key was found, false otherwise.
          *
          **/
-        bool Get(const std::vector<uint8_t>& vKey, SectorKey &cKey);
+        bool Get(const std::vector<uint8_t>& vKey, SectorKey &key);
 
 
         /** Put
          *
          *  Write a key to the disk hashmaps.
          *
-         *  @param[in] cKey The key object to write.
+         *  @param[in] key The key object to write.
          *
          *  @return True if the key was written, false otherwise.
          *
          **/
-        bool Put(const SectorKey& cKey);
+        bool Put(const SectorKey& key);
 
 
         /** Flush
@@ -165,11 +165,10 @@ namespace LLD
          *  Compresses a given key until it matches size criteria.
          *  This function is one way and efficient for reducing key sizes.
          *
-         *  @param[out] vData The binary data of key to compress.
-         *  @param[in] nSize The desired size of key after compression.
+         *  @param[out] vKey The binary data of key to compress.
          *
          **/
-        void compress_key(std::vector<uint8_t>& vData, uint16_t nSize = 16);
+        std::vector<uint8_t> compress_key(const std::vector<uint8_t>& vKey);
 
 
         /** get_bucket
@@ -182,6 +181,18 @@ namespace LLD
          *
          **/
         uint32_t get_bucket(const std::vector<uint8_t>& vKey);
+
+
+        /** get_file_stream
+         *
+         *  Find a file stream from the local LRU cache.
+         *
+         *  @param[in] nHashmap The file identifier we are searching for.
+         *
+         *  @return the file stream from the cache.
+         *
+         **/
+        std::fstream* get_file_stream(const uint32_t nHashmap);
 
 
         /** get_current_file
