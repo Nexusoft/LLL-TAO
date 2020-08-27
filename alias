@@ -1,3 +1,0 @@
-export HISTCONTROL=ignoreboth:erasedups;
-alias build='make -j 6 -f makefile.cli ENABLE_WARNINGS=1 WARNINGS_FAIL=1';
-echo 'Done';
