@@ -62,10 +62,14 @@ NONE
     "version": "0.3.0.0 Tritium CLI [LLD][ECC][x64] Beta",
     "protocolversion": 20000,
     "walletversion": 10000,
-    "timestamp": 1557884743,
-    "testnet": 11,
+    "hostname": "myhost",
+    "ipaddress": "121.155.32.70",
+    "testnet": 100,
     "private": false,
-    "multiuser": false,
+    "multiuser": true,
+    "sessions": 1,
+    "clientmode": true,
+    "legacywallet": true,
     "blocks": 380,
     "synchronizing": true,
     "synccomplete": 31,
@@ -91,11 +95,19 @@ NONE
 
 `hostname` : The local machine host name.
 
+`ipaddress` : The public IP address of the local machine, as seen by peers that you are connected to.  This will be blank until you have at least one peer connection.
+
 `testnet` : If this node is running on the testnet then this shows the testnet number.
 
 `private` : Whether this node is running in private mode.
 
 `multiuser` : Whether this node is running in multiuser mode.
+
+`sessions` : Only returned in multiuser mode.  This shows the number of user sessions currently logged in to the node.
+
+`clientmode` : Flag indicating whether this node is running in client mode. 
+
+`legacywallet` : Flag indicating whether this node has been compiled with support for the legacy UTxO wallet.  If it has not then all of the legacy wallet functions (available via the legacy RPC) are not available.  
 
 `blocks` : The current block height of this node.
 
