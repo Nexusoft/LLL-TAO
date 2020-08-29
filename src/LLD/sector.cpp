@@ -191,7 +191,12 @@ namespace LLD::Templates
 
                 /* Read the State and Size of Sector Header. */
                 if(!pstream->read((char*) &vData[0], vData.size()))
+                {
+                    debug::log(0, "SECTOR STREAM: ", pstream->eof() ? "EOF" : pstream->bad() ? "BAD" : pstream->fail() ? "FAIL" : "UNKNOWN");
+                    debug::log(0, "Current File: ", cKey.nSectorFile, " | Current File Size: ", cKey.nSectorStart);
+
                     return debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes read");
+                }
 
             }
 
@@ -348,16 +353,17 @@ namespace LLD::Templates
                             nCurrentFileSize, static_cast<uint32_t>(nSize));
 
             {
-                //LOCK(SECTOR_MUTEX);
-                LOCK(CONFIG.SECTOR(key));
 
                 /* Create new file if above current file size. */
                 if(nCurrentFileSize > CONFIG.MAX_SECTOR_FILE_SIZE)
                 {
                     debug::log(4, FUNCTION, "allocating new sector file ", nCurrentFile + 1);
 
-                    ++nCurrentFile;
+                    //++nCurrentFile;
                     nCurrentFileSize = 0;
+
+                    key.nSectorFile  = ++nCurrentFile;
+                    key.nSectorStart = 0;
 
                     std::ofstream stream
                     (
@@ -366,6 +372,9 @@ namespace LLD::Templates
                     );
                     stream.close();
                 }
+
+                //LOCK(SECTOR_MUTEX);
+                LOCK(CONFIG.SECTOR(key));
 
                 /* Find the file stream for LRU cache. */
                 std::fstream* pstream;

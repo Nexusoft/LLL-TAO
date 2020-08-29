@@ -111,61 +111,75 @@ const uint256_t hashSeed = 55;
 
 #include <bitset>
 
+#include <LLP/include/global.h>
 
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
+    config::ParseParameters(argc, argv);
+
+    LLP::Initialize();
+
     //config::nVerbose.store(4);
 
     LLD::Config::Hashmap CONFIG =
         LLD::Config::Hashmap("testdb", LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
 
     /* Set the ContractDB database internal settings. */
-    CONFIG.HASHMAP_TOTAL_BUCKETS    = 256 * 256;
-    CONFIG.MAX_HASHMAP_FILES        = 256;
-    CONFIG.MAX_LINEAR_PROBES        = 5;
-    CONFIG.MAX_HASHMAP_FILE_STREAMS = 128;
+    CONFIG.HASHMAP_TOTAL_BUCKETS    = 1024;
+    CONFIG.MAX_HASHMAP_FILES        = 1024;
+    CONFIG.MAX_LINEAR_PROBES        = 2;
+    CONFIG.MAX_HASHMAP_FILE_STREAMS = 256;
+    CONFIG.PRIMARY_BLOOM_HASHES     = 9;
+    CONFIG.PRIMARY_BLOOM_BITS       = 1.44 * CONFIG.MAX_HASHMAP_FILES * CONFIG.PRIMARY_BLOOM_HASHES;
     CONFIG.SECONDARY_BLOOM_BITS     = 13;
-    CONFIG.SECONDARY_BLOOM_HASHES   = 7;
-    CONFIG.QUICK_INIT               = false;
+    CONFIG.SECONDARY_BLOOM_HASHES   = 9;
+    CONFIG.QUICK_INIT               = true;
     CONFIG.MAX_SECTOR_FILE_STREAMS  = 16;
     CONFIG.MAX_SECTOR_BUFFER_SIZE   = 1024 * 1024 * 4; //4 MB write buffer
     CONFIG.MAX_SECTOR_CACHE_SIZE    = 256; //1 MB of cache available
 
     TestDB* bloom = new TestDB(CONFIG);
 
-    std::vector<uint1024_t> vKeys;
-    for(int i = 0; i < 100000; ++i)
-        vKeys.push_back(LLC::GetRand1024());
-
-    runtime::stopwatch swTimer;
-    swTimer.start();
-    for(const auto& nBucket : vKeys)
+    for(int n = 0; n < config::GetArg("-tests", 1); ++n)
     {
-        bloom->WriteKey(nBucket, nBucket);
+        debug::log(0, "Generating Keys +++++++");
+
+            std::vector<uint1024_t> vKeys;
+            for(int i = 0; i < config::GetArg("-total", 10000); ++i)
+                vKeys.push_back(LLC::GetRand1024());
+
+        debug::log(0, "------- Running Tests...");
+
+            runtime::stopwatch swTimer;
+            swTimer.start();
+            for(const auto& nBucket : vKeys)
+            {
+                bloom->WriteKey(nBucket, nBucket);
+            }
+            swTimer.stop();
+
+            uint64_t nElapsed = swTimer.ElapsedMicroseconds();
+            debug::log(0, vKeys.size() / 1000, "k records written in ", nElapsed, " (", (1000000.0 * vKeys.size()) / nElapsed, " writes/s)");
+
+            uint1024_t hashKey = 0;
+
+            swTimer.reset();
+            swTimer.start();
+
+            uint32_t nTotal = 0;
+            for(const auto& nBucket : vKeys)
+            {
+                ++nTotal;
+
+                if(!bloom->ReadKey(nBucket, hashKey))
+                    return debug::error("Failed to read ", nBucket.SubString(), " total ", nTotal);
+            }
+            swTimer.stop();
+
+            nElapsed = swTimer.ElapsedMicroseconds();
+            debug::log(0, vKeys.size() / 1000, "k records read in ", nElapsed, " (", (1000000.0 * vKeys.size()) / nElapsed, " read/s)");
     }
-    swTimer.stop();
-
-    uint64_t nElapsed = swTimer.ElapsedMicroseconds();
-    debug::log(0, vKeys.size() / 1000, "k records written in ", nElapsed, " (", (1000000.0 * vKeys.size()) / nElapsed, " writes/s)");
-
-    uint1024_t hashKey = 0;
-
-    swTimer.reset();
-    swTimer.start();
-
-    uint32_t nTotal = 0;
-    for(const auto& nBucket : vKeys)
-    {
-        ++nTotal;
-
-        if(!bloom->ReadKey(nBucket, hashKey))
-            return debug::error("Failed to read ", nBucket.SubString(), " total ", nTotal);
-    }
-    swTimer.stop();
-
-    nElapsed = swTimer.ElapsedMicroseconds();
-    debug::log(0, vKeys.size() / 1000, "k records read in ", nElapsed, " (", (1000000.0 * vKeys.size()) / nElapsed, " read/s)");
 
     delete bloom;
 
