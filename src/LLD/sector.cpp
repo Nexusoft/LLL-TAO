@@ -252,7 +252,11 @@ namespace LLD::Templates
 
             /* Read the State and Size of Sector Header. */
             if(!pstream->read((char*) &vData[0], vData.size()))
+            {
+                debug::log(0, "SECTOR STREAM: ", pstream->eof() ? "EOF" : pstream->bad() ? "BAD" : pstream->fail() ? "FAIL" : "UNKNOWN");
                 return debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes read");
+            }
+
 
             /* Verboe output. */
             if(config::nVerbose >= 5)

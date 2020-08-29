@@ -232,6 +232,18 @@ namespace LLD
         bool check_hashmap_available(const uint32_t nHashmap, const std::vector<uint8_t>& vBuffer, const uint32_t nOffset = 0);
 
 
+        /** set_hashmap_available
+         *
+         *  Helper method to set a file index as unoccupied.
+         *
+         *  @param[in] nHashmap The current file to set
+         *  @param[out] vBuffer The byte stream of input data
+         *  @param[in] nOffset The starting offset in the stream.
+         *
+         **/
+        void set_hashmap_available(const uint32_t nHashmap, std::vector<uint8_t> &vBuffer, const uint32_t nOffset = 0);
+
+
         /** secondary_bloom_size
          *
          *  Helper method to get the total bytes in the secondary bloom filter.

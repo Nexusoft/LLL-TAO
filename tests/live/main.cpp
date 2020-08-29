@@ -115,14 +115,16 @@ const uint256_t hashSeed = 55;
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
+    //config::nVerbose.store(4);
+
     LLD::Config::Hashmap CONFIG =
         LLD::Config::Hashmap("testdb", LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
 
     /* Set the ContractDB database internal settings. */
     CONFIG.HASHMAP_TOTAL_BUCKETS    = 256 * 256;
     CONFIG.MAX_HASHMAP_FILES        = 256;
-    CONFIG.MAX_LINEAR_PROBES        = 3;
-    CONFIG.MAX_HASHMAP_FILE_STREAMS = 256;
+    CONFIG.MAX_LINEAR_PROBES        = 5;
+    CONFIG.MAX_HASHMAP_FILE_STREAMS = 128;
     CONFIG.SECONDARY_BLOOM_BITS     = 13;
     CONFIG.SECONDARY_BLOOM_HASHES   = 7;
     CONFIG.QUICK_INIT               = false;
@@ -133,7 +135,7 @@ int main(int argc, char** argv)
     TestDB* bloom = new TestDB(CONFIG);
 
     std::vector<uint1024_t> vKeys;
-    for(int i = 0; i < 10000; ++i)
+    for(int i = 0; i < 100000; ++i)
         vKeys.push_back(LLC::GetRand1024());
 
     runtime::stopwatch swTimer;
@@ -145,7 +147,7 @@ int main(int argc, char** argv)
     swTimer.stop();
 
     uint64_t nElapsed = swTimer.ElapsedMicroseconds();
-    debug::log(0, "10k records written in ", nElapsed, " (", (1000000.0 * vKeys.size()) / nElapsed, " writes/s)");
+    debug::log(0, vKeys.size() / 1000, "k records written in ", nElapsed, " (", (1000000.0 * vKeys.size()) / nElapsed, " writes/s)");
 
     uint1024_t hashKey = 0;
 
@@ -163,7 +165,7 @@ int main(int argc, char** argv)
     swTimer.stop();
 
     nElapsed = swTimer.ElapsedMicroseconds();
-    debug::log(0, "10k records read in ", nElapsed, " (", (1000000.0 * vKeys.size()) / nElapsed, " read/s)");
+    debug::log(0, vKeys.size() / 1000, "k records read in ", nElapsed, " (", (1000000.0 * vKeys.size()) / nElapsed, " read/s)");
 
     delete bloom;
 
