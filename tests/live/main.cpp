@@ -126,15 +126,15 @@ int main(int argc, char** argv)
         LLD::Config::Hashmap("testdb", LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
 
     /* Set the ContractDB database internal settings. */
-    CONFIG.HASHMAP_TOTAL_BUCKETS    = 1024;
-    CONFIG.MAX_HASHMAP_FILES        = 1024;
-    CONFIG.MAX_LINEAR_PROBES        = 2;
-    CONFIG.MAX_HASHMAP_FILE_STREAMS = 256;
+    CONFIG.HASHMAP_TOTAL_BUCKETS    = 64 * 64;
+    CONFIG.MAX_HASHMAP_FILES        = 32;
+    CONFIG.MAX_LINEAR_PROBES        = 3;
+    CONFIG.MAX_HASHMAP_FILE_STREAMS = 64;
     CONFIG.PRIMARY_BLOOM_HASHES     = 9;
     CONFIG.PRIMARY_BLOOM_BITS       = 1.44 * CONFIG.MAX_HASHMAP_FILES * CONFIG.PRIMARY_BLOOM_HASHES;
     CONFIG.SECONDARY_BLOOM_BITS     = 13;
     CONFIG.SECONDARY_BLOOM_HASHES   = 9;
-    CONFIG.QUICK_INIT               = true;
+    CONFIG.QUICK_INIT               = false;
     CONFIG.MAX_SECTOR_FILE_STREAMS  = 16;
     CONFIG.MAX_SECTOR_BUFFER_SIZE   = 1024 * 1024 * 4; //4 MB write buffer
     CONFIG.MAX_SECTOR_CACHE_SIZE    = 256; //1 MB of cache available

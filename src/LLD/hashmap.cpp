@@ -130,23 +130,32 @@ namespace LLD
             swTimer.start();
 
             /* Deserialize the values into memory index. */
-            uint32_t nTotalKeys = 0;
+            uint64_t nTotalKeys = 0;
 
             /* Generate empty space for new file. */
-            std::vector<uint8_t> vIndex(CONFIG.HASHMAP_TOTAL_BUCKETS * INDEX_FILTER_SIZE, 0);
+            std::vector<uint8_t> vBuffer(CONFIG.HASHMAP_TOTAL_BUCKETS * INDEX_FILTER_SIZE, 0);
 
             /* Write the new disk index .*/
             std::fstream stream(strIndex, std::ios::in | std::ios::out | std::ios::binary);
-            stream.read((char*)&vIndex[0], vIndex.size());
+            stream.read((char*)&vBuffer[0], vBuffer.size());
             stream.close();
 
-            for(uint32_t nFile = 0; nFile < CONFIG.HASHMAP_TOTAL_BUCKETS; ++nFile)
+            /* Loop through each bucket and account for the number of active keys. */
+            for(uint32_t nBucket = 0; nBucket < CONFIG.HASHMAP_TOTAL_BUCKETS; ++nBucket)
             {
+                /* Get the binary offset within the current probe. */
+                uint64_t nOffset = nBucket * INDEX_FILTER_SIZE;
+
                 /* Grab the current file from the stream. */
-                uint16_t nCurrentFile = get_current_file(vIndex, nFile * INDEX_FILTER_SIZE);
+                uint16_t nCurrentFile = get_current_file(vBuffer, nOffset);
+                for(int16_t nHashmap = 0; nHashmap < CONFIG.MAX_HASHMAP_FILES; ++nHashmap)
+                {
+                    /* Check for an available hashmap slot. */
+                    if(!check_hashmap_available(nHashmap, vBuffer, nOffset + primary_bloom_size() + 2))
+                        ++nTotalKeys;
+                }
 
                 /* Calculate total keys from hashmaps. */
-                nTotalKeys +=  nCurrentFile;
                 nTotalHashmaps = std::max(uint32_t(nCurrentFile), nTotalHashmaps);
             }
 
@@ -155,7 +164,16 @@ namespace LLD
             uint64_t nElapsed = swTimer.ElapsedMilliseconds();
 
             /* Debug output showing loading of disk index. */
-            debug::log(0, FUNCTION, "Loaded in ", nElapsed, " ms | ", vIndex.size(), " bytes | ", nTotalKeys, " keys | ", nTotalHashmaps, " hashmaps");
+            const uint64_t nMaxKeys = (CONFIG.HASHMAP_TOTAL_BUCKETS * CONFIG.MAX_HASHMAP_FILES);
+            debug::log(0, FUNCTION,
+                "Loaded in ",
+
+                 nElapsed, " ms | ",
+                vBuffer.size(), " bytes | ",
+                nTotalKeys, "/", nMaxKeys, " keys [",
+                ANSI_COLOR_CYAN, (nTotalKeys * 100.0) / nMaxKeys, " %", ANSI_COLOR_RESET, "] | ",
+                nTotalHashmaps, " hashmaps"
+            );
         }
 
         /* Build the first hashmap index file if it doesn't exist. */
@@ -325,8 +343,14 @@ namespace LLD
 
         /* Grab the current hashmap file from the buffer. */
         uint16_t nHashmap = get_current_file(vBuffer, 0);
-        for( ; nHashmap < nHashmap + 2; ++nHashmap)
+
+        /* Loop through hashmap indexes. */
+        for( ; ; ++nHashmap)
         {
+            /* Check for the maximum hashmaps allowed. */
+            if(nHashmap >= CONFIG.MAX_HASHMAP_FILES)
+                return debug::error(FUNCTION, "no hashmaps available ", nHashmap);
+
             /* Loop through the adjacent linear hashmap slots. */
             for(uint16_t nProbe = 0; nProbe < MAX_LINEAR_PROBES; ++nProbe)
             {
