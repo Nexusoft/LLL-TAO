@@ -34,6 +34,10 @@ namespace LLD::Config
         uint32_t MAX_LINEAR_PROBES;
 
 
+        /** The maximum number of cycles allowed to expand in probing. **/
+        uint32_t MAX_PROBE_EXPANSIONS;
+
+
         /** Maximum size a file can be in the keychain. **/
         uint64_t MAX_HASHMAP_FILE_SIZE;
 
@@ -79,6 +83,7 @@ namespace LLD::Config
         : Sector                   (map)
         , MAX_HASHMAP_FILES        (map.MAX_HASHMAP_FILES)
         , MAX_LINEAR_PROBES        (map.MAX_LINEAR_PROBES)
+        , MAX_PROBE_EXPANSIONS     (map.MAX_PROBE_EXPANSIONS)
         , MAX_HASHMAP_FILE_SIZE    (map.MAX_HASHMAP_FILE_SIZE)
         , MAX_HASHMAP_FILE_STREAMS (map.MAX_HASHMAP_FILE_STREAMS)
         , PRIMARY_BLOOM_HASHES     (map.PRIMARY_BLOOM_HASHES)
@@ -97,6 +102,7 @@ namespace LLD::Config
         : Sector                   (std::move(map))
         , MAX_HASHMAP_FILES        (std::move(map.MAX_HASHMAP_FILES))
         , MAX_LINEAR_PROBES        (std::move(map.MAX_LINEAR_PROBES))
+        , MAX_PROBE_EXPANSIONS     (std::move(map.MAX_PROBE_EXPANSIONS))
         , MAX_HASHMAP_FILE_SIZE    (std::move(map.MAX_HASHMAP_FILE_SIZE))
         , MAX_HASHMAP_FILE_STREAMS (std::move(map.MAX_HASHMAP_FILE_STREAMS))
         , PRIMARY_BLOOM_HASHES     (std::move(map.PRIMARY_BLOOM_HASHES))
@@ -125,6 +131,7 @@ namespace LLD::Config
             /* Hashmap configuration. */
             MAX_HASHMAP_FILES        = map.MAX_HASHMAP_FILES;
             MAX_LINEAR_PROBES        = map.MAX_LINEAR_PROBES;
+            MAX_PROBE_EXPANSIONS     = map.MAX_PROBE_EXPANSIONS;
             MAX_HASHMAP_FILE_SIZE    = map.MAX_HASHMAP_FILE_SIZE;
             MAX_HASHMAP_FILE_STREAMS = map.MAX_HASHMAP_FILE_STREAMS;
             PRIMARY_BLOOM_HASHES     = map.PRIMARY_BLOOM_HASHES;
@@ -152,6 +159,7 @@ namespace LLD::Config
             /* Hashmap configuration. */
             MAX_HASHMAP_FILES        = std::move(map.MAX_HASHMAP_FILES);
             MAX_LINEAR_PROBES        = std::move(map.MAX_LINEAR_PROBES);
+            MAX_PROBE_EXPANSIONS     = std::move(map.MAX_PROBE_EXPANSIONS);
             MAX_HASHMAP_FILE_SIZE    = std::move(map.MAX_HASHMAP_FILE_SIZE);
             MAX_HASHMAP_FILE_STREAMS = std::move(map.MAX_HASHMAP_FILE_STREAMS);
             PRIMARY_BLOOM_HASHES     = std::move(map.PRIMARY_BLOOM_HASHES);
@@ -175,6 +183,7 @@ namespace LLD::Config
         : Sector                   (strName, nFlags)
         , MAX_HASHMAP_FILES        (256)
         , MAX_LINEAR_PROBES        (3) //default of 3 linear probes before moving to next hashmap file
+        , MAX_PROBE_EXPANSIONS     (3) //default of 3 fibanacci probing cycles before exhausting bucket
         , MAX_HASHMAP_FILE_SIZE    (1024 * 1024 * 512) //512 MB filesize by default
         , MAX_HASHMAP_FILE_STREAMS (MAX_HASHMAP_FILES) //default of maximum hashmap files, otherwise you will degrade performance
         , PRIMARY_BLOOM_HASHES     (7)

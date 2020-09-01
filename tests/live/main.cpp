@@ -127,8 +127,9 @@ int main(int argc, char** argv)
 
     /* Set the ContractDB database internal settings. */
     CONFIG.HASHMAP_TOTAL_BUCKETS    = 64 * 64;
-    CONFIG.MAX_HASHMAP_FILES        = 32;
+    CONFIG.MAX_HASHMAP_FILES        = 4;
     CONFIG.MAX_LINEAR_PROBES        = 3;
+    CONFIG.MAX_PROBE_EXPANSIONS     = 5;
     CONFIG.MAX_HASHMAP_FILE_STREAMS = 64;
     CONFIG.PRIMARY_BLOOM_HASHES     = 9;
     CONFIG.PRIMARY_BLOOM_BITS       = 1.44 * CONFIG.MAX_HASHMAP_FILES * CONFIG.PRIMARY_BLOOM_HASHES;

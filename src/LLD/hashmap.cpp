@@ -176,27 +176,11 @@ namespace LLD
             );
         }
 
-        /* Build the first hashmap index file if it doesn't exist. */
-        std::string strFile = debug::safe_printstr(CONFIG.BASE_DIRECTORY, "keychain/_hashmap.", std::setfill('0'), std::setw(5), 0u);
-        if(!filesystem::exists(strFile))
-        {
-            /* Build a vector with empty bytes to flush to disk. */
-            std::vector<uint8_t> vSpace(CONFIG.HASHMAP_TOTAL_BUCKETS * CONFIG.HASHMAP_KEY_ALLOCATION, 0);
-
-            /* Flush the empty keychain file to disk. */
-            std::fstream stream(strFile, std::ios::out | std::ios::binary | std::ios::trunc);
-            stream.write((char*)&vSpace[0], vSpace.size());
-            stream.close();
-
-            /* Debug output showing generating of the hashmap file. */
-            debug::log(0, FUNCTION, "Generated Disk Hash Map 0 of ", vSpace.size(), " bytes");
-        }
-
         /* Create the stream index object. */
         pindex = new std::fstream(strIndex, std::ios::in | std::ios::out | std::ios::binary);
 
         /* Load the stream object into the stream LRU cache. */
-        pFileStreams->Put(0, new std::fstream(strFile, std::ios::in | std::ios::out | std::ios::binary));
+        //pFileStreams->Put(0, new std::fstream(strFile, std::ios::in | std::ios::out | std::ios::binary));
     }
 
 
@@ -233,8 +217,48 @@ namespace LLD
         /* Grab the current hashmap file from the buffer. */
         uint16_t nHashmap = get_current_file(vBuffer, 0);
 
+        /* Check if we are in a probe expansion cycle. */
+        uint32_t nEndProbeExpansion   = MAX_LINEAR_PROBES;
+        if(nHashmap > CONFIG.MAX_HASHMAP_FILES)
+        {
+            /* Find the total cycles to probe. */
+            int64_t nProbeCycles     = std::min(CONFIG.MAX_PROBE_EXPANSIONS, uint32_t(nHashmap - CONFIG.MAX_HASHMAP_FILES));
+
+            /* Iterate through our probe cycles. */
+            uint32_t nLastProbeBegin = MAX_LINEAR_PROBES;
+
+            /* Calculate the new begin and end. */
+            for(uint16_t n = 0; n < nProbeCycles; ++n)
+                nEndProbeExpansion = std::min(nLastProbeBegin + nEndProbeExpansion, //fibanacci
+                                            CONFIG.HASHMAP_TOTAL_BUCKETS - nBucket);
+
+            /* Calculate the new probing distance. */
+            uint32_t nNewProbes = nEndProbeExpansion - MAX_LINEAR_PROBES;
+            if(nNewProbes > 0)
+            {
+                /* Resize the index buffer for new data. */
+                uint32_t nPrevSize = vBuffer.size();
+                vBuffer.resize(nPrevSize + (INDEX_FILTER_SIZE * nNewProbes));
+
+                /* Read the new index data. */
+                uint32_t nReadSize = vBuffer.size() - nPrevSize;
+                if(!pindex->read((char*)&vBuffer[nPrevSize], nReadSize))
+                {
+                    debug::log(0, "PROBE INDEX: ", pindex->eof() ? "EOF" : pindex->bad() ? "BAD" : pindex->fail() ? "FAIL" : "UNKNOWN");
+                    return debug::error(FUNCTION, "INDEX: only ", pindex->gcount(), "/", vBuffer.size(), " bytes read");
+                }
+
+                /* Debug output . */
+                debug::log(0, FUNCTION, ANSI_COLOR_FUNCTION, "Expansion", ANSI_COLOR_RESET,
+                    " | end=", nEndProbeExpansion,
+                    " | probes=", nNewProbes,
+                    " | cycles=", nProbeCycles
+                );
+            }
+        }
+
         /* Loop through the adjacent linear hashmap slots. */
-        for(uint16_t nProbe = 0; nProbe < MAX_LINEAR_PROBES; ++nProbe)
+        for(uint16_t nProbe = 0; nProbe < nEndProbeExpansion; ++nProbe)
         {
             /* Get the binary offset within the current probe. */
             uint64_t nOffset = nProbe * INDEX_FILTER_SIZE;
@@ -244,8 +268,8 @@ namespace LLD
                 continue;
 
             /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
-            std::vector<uint8_t> vBucket(CONFIG.HASHMAP_KEY_ALLOCATION, 0);
-            for(int16_t nFile = nHashmap - 1; nFile >= 0; --nFile)
+            uint16_t nBucketIterator = std::min(uint16_t(CONFIG.MAX_HASHMAP_FILES - 1), uint16_t(nHashmap - 1));
+            for(int16_t nFile = nBucketIterator; nFile >= 0; --nFile)
             {
                 /* Check the secondary bloom filter. */
                 if(!check_secondary_bloom(vKey, vBuffer, nFile, nOffset + primary_bloom_size() + 2))
@@ -272,6 +296,7 @@ namespace LLD
                 pstream->seekg(nFilePos + (nProbe * CONFIG.HASHMAP_KEY_ALLOCATION), std::ios::beg);
 
                 /* Read the bucket binary data from file stream */
+                std::vector<uint8_t> vBucket(CONFIG.HASHMAP_KEY_ALLOCATION, 0);
                 if(!pstream->read((char*) &vBucket[0], vBucket.size()))
                 {
                     debug::log(0, "FILE STREAM: ", pstream->eof() ? "EOF" : pstream->bad() ? "BAD" : pstream->fail() ? "FAIL" : "UNKNOWN");
@@ -296,7 +321,7 @@ namespace LLD
                             " | Bucket ", nBucket,
                             " | Probe ", nProbe,
                             " | Location: ", nFilePos,
-                            " | File: ", nHashmap - 1,
+                            " | File: ", nHashmap,
                             " | Sector File: ", key.nSectorFile,
                             " | Sector Size: ", key.nSectorSize,
                             " | Sector Start: ", key.nSectorStart, "\n",
@@ -341,24 +366,103 @@ namespace LLD
             return debug::error(FUNCTION, "INDEX: only ", pindex->gcount(), "/", vBuffer.size(), " bytes read");
         }
 
+        /* Start our probe expansion cycle with default cycles. */
+        uint32_t nBeginProbeExpansion = 0;
+        uint32_t nEndProbeExpansion   = MAX_LINEAR_PROBES;
+
         /* Grab the current hashmap file from the buffer. */
         uint16_t nHashmap = get_current_file(vBuffer, 0);
 
         /* Loop through hashmap indexes. */
-        for( ; ; ++nHashmap)
+        while(nHashmap < CONFIG.MAX_HASHMAP_FILES + CONFIG.MAX_PROBE_EXPANSIONS)
         {
-            /* Check for the maximum hashmaps allowed. */
-            if(nHashmap >= CONFIG.MAX_HASHMAP_FILES)
-                return debug::error(FUNCTION, "no hashmaps available ", nHashmap);
+            /* Check if we are in a probe expansion cycle. */
+            if(nHashmap > CONFIG.MAX_HASHMAP_FILES)
+            {
+                /* Find the total cycles to probe. */
+                int64_t nProbeCycles     = (nHashmap - CONFIG.MAX_HASHMAP_FILES);
+
+                /* Iterate through our probe cycles. */
+                uint32_t nLastProbeBegin = (nBeginProbeExpansion == 0) ? nEndProbeExpansion : nBeginProbeExpansion;
+
+                /* Calculate the new begin and end. */
+                nBeginProbeExpansion     = nEndProbeExpansion;
+                nEndProbeExpansion       = std::min(nLastProbeBegin + nBeginProbeExpansion, //fibanacci
+                                                    CONFIG.HASHMAP_TOTAL_BUCKETS - nBucket);
+
+                /* Calculate the new probing distance. */
+                uint32_t nNewProbes = nEndProbeExpansion - nBeginProbeExpansion;
+                if(nNewProbes > 0)
+                {
+                    /* Resize the index buffer for new data. */
+                    uint32_t nPrevSize = vBuffer.size();
+                    vBuffer.resize(nPrevSize + (INDEX_FILTER_SIZE * nNewProbes));
+
+                    /* Read the new index data. */
+                    uint32_t nReadSize = vBuffer.size() - nPrevSize;
+                    if(!pindex->read((char*)&vBuffer[nPrevSize], nReadSize))
+                    {
+                        debug::log(0, "PROBE INDEX: ", pindex->eof() ? "EOF" : pindex->bad() ? "BAD" : pindex->fail() ? "FAIL" : "UNKNOWN");
+                        return debug::error(FUNCTION, "INDEX: only ", pindex->gcount(), "/", vBuffer.size(), " bytes read");
+                    }
+
+                    /* Debug output . */
+                    debug::log(0, FUNCTION, ANSI_COLOR_FUNCTION, "Expansion", ANSI_COLOR_RESET,
+                        " | begin=", nBeginProbeExpansion,
+                        " | end=", nEndProbeExpansion,
+                        " | probes=", nNewProbes,
+                        " | cycles=", nProbeCycles
+                    );
+                }
+                else
+                {
+                    /* Debug output . */
+                    return debug::error(FUNCTION, ANSI_COLOR_FUNCTION, "Expansion", ANSI_COLOR_RESET,
+                        " | begin=", nBeginProbeExpansion,
+                        " | end=", nEndProbeExpansion,
+                        " | probes=", nNewProbes,
+                        " | cycles=", nProbeCycles,
+                        " | bucket=", nBucket, "/", CONFIG.HASHMAP_TOTAL_BUCKETS
+                    );
+                }
+            }
+            else if(nHashmap < CONFIG.MAX_HASHMAP_FILES)
+            {
+                /* Create a new disk hashmap object in linked list if it doesn't exist. */
+                std::string strHashmap = debug::safe_printstr(CONFIG.BASE_DIRECTORY, "keychain/_hashmap.", std::setfill('0'), std::setw(5), nHashmap);
+                if(!filesystem::exists(strHashmap))
+                {
+                    /* Blank vector to write empty space in new disk file. */
+                    std::vector<uint8_t> vSpace(CONFIG.HASHMAP_KEY_ALLOCATION, 0);
+
+                    /* Write the blank data to the new file handle. */
+                    std::ofstream stream(strHashmap, std::ios::out | std::ios::binary | std::ios::app);
+                    if(!stream)
+                        return debug::error(FUNCTION, strerror(errno));
+
+                    /* Write the new hashmap in smaller chunks to not overwhelm the buffers. */
+                    for(uint32_t nFile = 0; nFile < CONFIG.HASHMAP_TOTAL_BUCKETS; ++nFile)
+                        stream.write((char*)&vSpace[0], vSpace.size());
+                    stream.close();
+
+                    /* Debug output signifying new hashmap. */
+                    debug::log(0, FUNCTION, "Created"
+                        " | bucket=", nBucket, "/", CONFIG.HASHMAP_TOTAL_BUCKETS,
+                        " | hashmap=", nHashmap,
+                        " | size=", CONFIG.HASHMAP_TOTAL_BUCKETS * CONFIG.HASHMAP_KEY_ALLOCATION / 1024.0, " Kb"
+                    );
+                }
+            }
 
             /* Loop through the adjacent linear hashmap slots. */
-            for(uint16_t nProbe = 0; nProbe < MAX_LINEAR_PROBES; ++nProbe)
+            for(uint16_t nProbe = nBeginProbeExpansion; nProbe < nEndProbeExpansion; ++nProbe)
             {
                 /* Get the binary offset within the current probe. */
                 uint64_t nOffset = nProbe * INDEX_FILTER_SIZE;
 
                 /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
-                for(int16_t nFile = nHashmap - 1; nFile >= 0; --nFile)
+                uint16_t nBucketIterator = std::min(uint16_t(CONFIG.MAX_HASHMAP_FILES - 1), nHashmap);
+                for(int16_t nFile = nBucketIterator; nFile >= 0; --nFile)
                 {
                     /* Check for an available hashmap slot. */
                     if(check_hashmap_available(nFile, vBuffer, nOffset + primary_bloom_size() + 2))
@@ -366,6 +470,10 @@ namespace LLD
                         /* Update the primary and secondary bloom filters. */
                         set_primary_bloom  (key.vKey, vBuffer, nOffset + 2);
                         set_secondary_bloom(key.vKey, vBuffer, nFile, nOffset + primary_bloom_size() + 2);
+
+                        /* If we found an open slot we need to increment the total hashmaps. */
+                        if(nFile == nHashmap)
+                            set_current_file(nFile + 1, vBuffer, 0);
 
                         /* Grab the current file stream from LRU cache. */
                         std::fstream* pstream = get_file_stream(nFile);
@@ -393,7 +501,7 @@ namespace LLD
                                 " | Bucket ", nBucket,
                                 " | Probe ", nProbe,
                                 " | Location: ", nFilePos,
-                                " | File: ", nHashmap - 1,
+                                " | File: ", nHashmap,
                                 " | Sector File: ", key.nSectorFile,
                                 " | Sector Size: ", key.nSectorSize,
                                 " | Sector Start: ", key.nSectorStart,
@@ -404,31 +512,11 @@ namespace LLD
                 }
             }
 
-            /* Create a new disk hashmap object in linked list if it doesn't exist. */
-            std::string strHashmap = debug::safe_printstr(CONFIG.BASE_DIRECTORY, "keychain/_hashmap.", std::setfill('0'), std::setw(5), nHashmap);
-            if(!filesystem::exists(strHashmap))
-            {
-                /* Blank vector to write empty space in new disk file. */
-                std::vector<uint8_t> vSpace(CONFIG.HASHMAP_KEY_ALLOCATION, 0);
-
-                /* Write the blank data to the new file handle. */
-                std::ofstream stream(strHashmap, std::ios::out | std::ios::binary | std::ios::app);
-                if(!stream)
-                    return debug::error(FUNCTION, strerror(errno));
-
-                for(uint32_t nFile = 0; nFile < CONFIG.HASHMAP_TOTAL_BUCKETS; ++nFile)
-                    stream.write((char*)&vSpace[0], vSpace.size());
-
-                stream.close();
-
-                debug::log(0, FUNCTION, "Created new Hashmap File ", nHashmap, " of ", CONFIG.HASHMAP_TOTAL_BUCKETS * CONFIG.HASHMAP_KEY_ALLOCATION / 1024.0, " Kb");
-            }
-
             /* If we got this far we need to iterate the total hashmaps. */
-            set_current_file(nHashmap + 1, vBuffer, 0);
+            set_current_file(++nHashmap, vBuffer, 0);
         }
 
-        return false;
+        return debug::error(FUNCTION, "probing reached termination point");
     }
 
 
