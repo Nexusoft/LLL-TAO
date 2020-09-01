@@ -107,7 +107,7 @@ NONE
 
 `clientmode` : Flag indicating whether this node is running in client mode. 
 
-`legacywallet` : Flag indicating whether this node has been compiled with support for the legacy UTxO wallet.  If it has not then all of the legacy wallet functions (available via the legacy RPC) are not available.  
+`legacy_unsupported` : Flag indicating whether this node has been compiled with support for the legacy UTxO wallet.  If it has not then all of the legacy wallet functions (available via the legacy RPC) are not available.  This flag is currently omitted from the response if it has been compiled with legacy support, hence it will only be included if it is true.   
 
 `blocks` : The current block height of this node.
 
