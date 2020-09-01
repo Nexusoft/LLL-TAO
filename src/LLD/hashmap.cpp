@@ -225,12 +225,18 @@ namespace LLD
             int64_t nProbeCycles     = std::min(CONFIG.MAX_PROBE_EXPANSIONS, uint32_t(nHashmap - CONFIG.MAX_HASHMAP_FILES));
 
             /* Iterate through our probe cycles. */
-            uint32_t nLastProbeBegin = MAX_LINEAR_PROBES;
+            uint32_t nBeginProbeExpansion = 0;
+            for(uint16_t n = 0; n < nProbeCycles; ++n) //we need to capture the ending fibanacci value with the +1
+            {
+                /* Iterate through our probe cycles. */
+                uint32_t nLastProbeBegin = (nBeginProbeExpansion == 0) ? nEndProbeExpansion : nBeginProbeExpansion;
 
-            /* Calculate the new begin and end. */
-            for(uint16_t n = 0; n < nProbeCycles; ++n)
-                nEndProbeExpansion = std::min(nLastProbeBegin + nEndProbeExpansion, //fibanacci
+                /* Cache previous value for fibanacci calcaultion. */
+                nBeginProbeExpansion   = nEndProbeExpansion;
+                nEndProbeExpansion     = std::min(nEndProbeExpansion + nLastProbeBegin, //fibanacci
                                             CONFIG.HASHMAP_TOTAL_BUCKETS - nBucket);
+            }
+
 
             /* Calculate the new probing distance. */
             uint32_t nNewProbes = nEndProbeExpansion - MAX_LINEAR_PROBES;
@@ -252,7 +258,9 @@ namespace LLD
                 debug::log(0, FUNCTION, ANSI_COLOR_FUNCTION, "Expansion", ANSI_COLOR_RESET,
                     " | end=", nEndProbeExpansion,
                     " | probes=", nNewProbes,
-                    " | cycles=", nProbeCycles
+                    " | cycles=", nProbeCycles,
+                    " | bucket=", nBucket, "/", CONFIG.HASHMAP_TOTAL_BUCKETS,
+                    " | file=", nHashmap
                 );
             }
         }
@@ -411,7 +419,9 @@ namespace LLD
                         " | begin=", nBeginProbeExpansion,
                         " | end=", nEndProbeExpansion,
                         " | probes=", nNewProbes,
-                        " | cycles=", nProbeCycles
+                        " | cycles=", nProbeCycles,
+                        " | bucket=", nBucket, "/", CONFIG.HASHMAP_TOTAL_BUCKETS,
+                        " | file=", nHashmap
                     );
                 }
                 else
