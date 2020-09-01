@@ -172,15 +172,12 @@ namespace LLD
                 vBuffer.size(), " bytes | ",
                 nTotalKeys, "/", nMaxKeys, " keys [",
                 ANSI_COLOR_CYAN, (nTotalKeys * 100.0) / nMaxKeys, " %", ANSI_COLOR_RESET, "] | ",
-                nTotalHashmaps, " hashmaps"
+                std::min(CONFIG.MAX_HASHMAP_FILES, nTotalHashmaps), " hashmaps"
             );
         }
 
         /* Create the stream index object. */
         pindex = new std::fstream(strIndex, std::ios::in | std::ios::out | std::ios::binary);
-
-        /* Load the stream object into the stream LRU cache. */
-        //pFileStreams->Put(0, new std::fstream(strFile, std::ios::in | std::ios::out | std::ios::binary));
     }
 
 
