@@ -115,10 +115,8 @@ namespace TAO
             jsonRet["clientmode"] = config::fClient.load();
 
             /* Whether this node is running the legacy wallet */
-#ifndef NO_WALLET
-            jsonRet["legacywallet"] = true;
-#else
-            jsonRet["legacywallet"] = false;
+#ifdef NO_WALLET
+            jsonRet["legacy_unsupported"] = true;
 #endif
 
             /* The current block height of this node */
