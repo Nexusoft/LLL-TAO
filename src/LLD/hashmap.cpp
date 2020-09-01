@@ -237,7 +237,6 @@ namespace LLD
                                             CONFIG.HASHMAP_TOTAL_BUCKETS - nBucket);
             }
 
-
             /* Calculate the new probing distance. */
             uint32_t nNewProbes = nEndProbeExpansion - MAX_LINEAR_PROBES;
             if(nNewProbes > 0)
@@ -255,7 +254,7 @@ namespace LLD
                 }
 
                 /* Debug output . */
-                debug::log(0, FUNCTION, ANSI_COLOR_FUNCTION, "Expansion", ANSI_COLOR_RESET,
+                debug::log(4, FUNCTION, ANSI_COLOR_FUNCTION, "Expansion", ANSI_COLOR_RESET,
                     " | end=", nEndProbeExpansion,
                     " | probes=", nNewProbes,
                     " | cycles=", nProbeCycles,
@@ -415,24 +414,13 @@ namespace LLD
                     }
 
                     /* Debug output . */
-                    debug::log(0, FUNCTION, ANSI_COLOR_FUNCTION, "Expansion", ANSI_COLOR_RESET,
+                    debug::log(4, FUNCTION, ANSI_COLOR_FUNCTION, "Expansion", ANSI_COLOR_RESET,
                         " | begin=", nBeginProbeExpansion,
                         " | end=", nEndProbeExpansion,
                         " | probes=", nNewProbes,
                         " | cycles=", nProbeCycles,
                         " | bucket=", nBucket, "/", CONFIG.HASHMAP_TOTAL_BUCKETS,
                         " | file=", nHashmap
-                    );
-                }
-                else
-                {
-                    /* Debug output . */
-                    return debug::error(FUNCTION, ANSI_COLOR_FUNCTION, "Expansion", ANSI_COLOR_RESET,
-                        " | begin=", nBeginProbeExpansion,
-                        " | end=", nEndProbeExpansion,
-                        " | probes=", nNewProbes,
-                        " | cycles=", nProbeCycles,
-                        " | bucket=", nBucket, "/", CONFIG.HASHMAP_TOTAL_BUCKETS
                     );
                 }
             }
