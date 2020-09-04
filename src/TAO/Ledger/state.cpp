@@ -36,6 +36,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/difficulty.h>
 #include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/include/prime.h>
+#include <TAO/Ledger/include/process.h>
 #include <TAO/Ledger/include/stake_change.h>
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/include/timelocks.h>
@@ -1091,7 +1092,7 @@ namespace TAO
                         tx.print();
 
                     /* Keep track of total payload. */
-                    nBytes += tx.GetSerializeSize(SER_LLD, tx.nVersion);
+                    nBytesProcessed += tx.GetSerializeSize(SER_LLD, tx.nVersion);
 
                     /* Check the ledger rules for sigchain at end. */
                     if(!tx.IsFirst())
@@ -1175,7 +1176,7 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to connect inputs");
 
                     /* Keep track of total payload. */
-                    nBytes += tx.GetSerializeSize(SER_LLD, tx.nVersion);
+                    nBytesProcessed += tx.GetSerializeSize(SER_LLD, tx.nVersion);
 
                     /* Add legacy transactions to the wallet where appropriate */
                     Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, *this, true);

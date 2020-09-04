@@ -493,6 +493,7 @@ namespace TAO
 
 
         /* Check the trust score that is claimed is correct. */
+        static const uint256_t hashConsistencyCheck = uint256_t("0xa15efdcd1969a9a645eda0296b52678f1ef3d9e91ec9f54a4f82f9ab7ce65a6c");
         bool Transaction::CheckTrust(BlockState* pblock) const
         {
             /* Check for proof of stake. */
@@ -573,7 +574,8 @@ namespace TAO
 
                 /* Check for previous version 7 and current version 8. */
                 uint64_t nTrustRet = 0;
-                if(pblock->nVersion == 8 && stateLast.nVersion == 7 && !CheckConsistency(hashLast, nTrustRet))
+                if(pblock->nVersion == 8 && stateLast.nVersion == 7
+                && hashGenesis == hashConsistencyCheck &&!CheckConsistency(hashLast, nTrustRet))
                     nTrust = GetTrustScore(nTrustRet, nBlockAge, nStake, nStakeChange, pblock->nVersion);
                 else //when consistency is correct, calculate like normal
                     nTrust = GetTrustScore(nTrustPrev, nBlockAge, nStake, nStakeChange, pblock->nVersion);

@@ -192,7 +192,7 @@ namespace LLD::Config
         , SECONDARY_BLOOM_BITS     (13)
         , HASHMAP_TOTAL_BUCKETS    (77773)
         , HASHMAP_KEY_ALLOCATION   (16 + 13) //16 bytes for key checksum, 13 bytes for ckey class
-        , QUICK_INIT               (false)   //this only really gives us total keys output and makes startup a little slower
+        , QUICK_INIT               (true)   //this only really gives us total keys output and makes startup a little slower
         {
         }
 

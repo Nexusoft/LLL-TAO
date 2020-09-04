@@ -335,7 +335,7 @@ namespace TAO
 
                             /* Push the stake change to value. */
                             vChanges.push_back(nCheck - nTrustPrev);
-                            debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_GREEN, "Inconsistent ", nTrust, " value ", nCheck, " for user ", hashGenesis.SubString(), "... FIXED", ANSI_COLOR_RESET);
+                            debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_GREEN, "Inconsistent ", nTrust, " value ", nCheck, " for user ", tx.hashGenesis.ToString(), "... FIXED", ANSI_COLOR_RESET);
                         }
                         else
                             vChanges.push_back(nTrust - nTrustPrev);

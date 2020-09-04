@@ -111,11 +111,16 @@ namespace LLD
         if(!filesystem::exists(strIndex))
         {
             /* Generate empty space for new file. */
-            std::vector<uint8_t> vSpace(CONFIG.HASHMAP_TOTAL_BUCKETS * INDEX_FILTER_SIZE, 0);
+            std::vector<uint8_t> vSpace(INDEX_FILTER_SIZE, 0);
 
             /* Write the new disk index .*/
             std::fstream stream(strIndex, std::ios::out | std::ios::binary | std::ios::trunc);
-            stream.write((char*)&vSpace[0], vSpace.size());
+
+            /* Write the index file bit by bit. */
+            for(uint32_t nBucket = 0; nBucket < CONFIG.HASHMAP_TOTAL_BUCKETS; ++nBucket)
+                stream.write((char*)&vSpace[0], vSpace.size());
+
+            /* Cleanup. */
             stream.close();
 
             /* Debug output showing generation of disk index. */
@@ -262,7 +267,7 @@ namespace LLD
         }
 
         /* Loop through the adjacent linear hashmap slots. */
-        for(uint16_t nProbe = 0; nProbe < nEndProbeExpansion; ++nProbe)
+        for(uint32_t nProbe = 0; nProbe < nEndProbeExpansion; ++nProbe)
         {
             /* Get the binary offset within the current probe. */
             uint64_t nOffset = nProbe * INDEX_FILTER_SIZE;
@@ -450,7 +455,7 @@ namespace LLD
             }
 
             /* Loop through the adjacent linear hashmap slots. */
-            for(uint16_t nProbe = nBeginProbeExpansion; nProbe < nEndProbeExpansion; ++nProbe)
+            for(uint32_t nProbe = nBeginProbeExpansion; nProbe < nEndProbeExpansion; ++nProbe)
             {
                 /* Get the binary offset within the current probe. */
                 uint64_t nOffset = nProbe * INDEX_FILTER_SIZE;
