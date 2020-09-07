@@ -91,14 +91,14 @@ namespace LLP
 
 
         /* Check to see if an external certficate is configured */
-        std::string strCert = config::GetArg("sslcertificate", "");
+        std::string strCert = config::GetArg("-sslcertificate", "");
         if(!strCert.empty())
         {
             /* Get the certificate key path */
-            std::string strKey = config::GetArg("sslcertificatekey", "");
+            std::string strKey = config::GetArg("-sslcertificatekey", "");
 
             /* Get the CA bundle path */
-            std::string strCABundle = config::GetArg("sslcabundle", "");
+            std::string strCABundle = config::GetArg("-sslcabundle", "");
 
             /* Read the external certificate file and key */
             cert.Read(strCert, strKey, strCABundle);

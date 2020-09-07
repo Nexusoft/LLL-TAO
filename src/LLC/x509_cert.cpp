@@ -67,6 +67,8 @@ namespace LLC
         //if(!ret)
         //    return debug::error(FUNCTION, "X509Cert : Unable to read key file.");
 
+        debug::log(0, "Loading external SSL certificate: ", strCert);
+
         /* Read the certificate PEM file from the certificate path. */
         pFile = fopen(strCert.c_str(), "rb");
         if(!pFile)
@@ -274,9 +276,13 @@ namespace LLC
 
         /* Add ca-bundle if configured */
         if(!strCertBundle.empty())
+        {
+            debug::log(0, "Loading external SSL CA certificate bundle: ", strCertBundle);
+
             if(!SSL_CTX_load_verify_locations(ssl_ctx, strCertBundle.c_str(), NULL)) // cafile: CA PEM certs file
                 return debug::error(FUNCTION, "SSL_CTX_load_verify_locations failed to load CA bundle file: ", strCertBundle);
-
+        }
+        
         /* Assign the certificate to the SSL object. */
         if(SSL_CTX_use_certificate(ssl_ctx, px509) != 1)
             return debug::error(FUNCTION, "Failed to initialize SSL Context with certificate.");
@@ -525,9 +531,13 @@ namespace LLC
 
         /* If a CA bundle has been provided then load it before verification */
         if(!strCertBundle.empty())
+        {
+            debug::log(0, "Loading external SSL CA certificate bundle: ", strCertBundle);
+
             if(!X509_STORE_load_locations(store, strCertBundle.c_str(), NULL))
                 debug::log(3, "Certificate verification failed: ", X509_verify_cert_error_string(X509_STORE_CTX_get_error(ctx)));
-            
+        }
+
         X509_STORE_add_cert(store, px509);
         
         X509_STORE_CTX_init(ctx, store, px509, NULL);
