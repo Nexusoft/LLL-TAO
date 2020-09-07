@@ -48,25 +48,17 @@ namespace LLC
         shutdown();
     }
 
-    bool X509Cert::Read()
+    bool X509Cert::Read(const std::string& strCert, const std::string& strKey, const std::string& strCABundle)
     {
         //bool ret = 0;
 
-        /* Identify the ssl subfolder. */
-        std::string strFolder = config::GetDataDir() + "ssl/";
-
-        /* Check if the ssl subfolder exists. */
-        if(!filesystem::exists(strFolder))
-            return debug::error(FUNCTION, "Folder doesn't exist: ", strFolder);
-
-
-        /* Identify the certificate and key paths. */
-        std::string strCertPath = strFolder + "cert.pem";
+        /* Store the CA Bundle path as this is only used for verification */
+        strCertBundle = strCABundle;
 
         /* Read the private key PEM file from the key path. */
-        FILE *pFile = fopen(strCertPath.c_str(), "rb");
+        FILE *pFile = fopen(strKey.c_str(), "rb");
         if(!pFile)
-            return debug::error(FUNCTION, "X509Cert : Unable to open key file.");
+            return debug::error(FUNCTION, "X509Cert : Unable to open certificate key file: ", strKey);
 
         PEM_read_PrivateKey(pFile, &pkey, nullptr, nullptr);
 
@@ -75,9 +67,9 @@ namespace LLC
         //    return debug::error(FUNCTION, "X509Cert : Unable to read key file.");
 
         /* Read the certificate PEM file from the certificate path. */
-        pFile = fopen(strCertPath.c_str(), "rb");
+        pFile = fopen(strCert.c_str(), "rb");
         if(!pFile)
-            return debug::error(FUNCTION, "X509Cert : Unable to open cert file.");
+            return debug::error(FUNCTION, "X509Cert : Unable to open cert file: ", strCert);
 
         PEM_read_X509(pFile, &px509, nullptr, nullptr);
 
@@ -279,9 +271,13 @@ namespace LLC
         if(pkey == nullptr)
             return debug::error(FUNCTION, "private key is null.");
 
+        if(!SSL_CTX_load_verify_locations(ssl_ctx, "/home/paul/Downloads/SectigoRSADomainValidationSecureServerCA.crt", NULL)) // cafile: CA PEM certs file
+            return debug::error(FUNCTION, "SSL_CTX_load_verify_locations failed");
+
         /* Assign the certificate to the SSL object. */
         if(SSL_CTX_use_certificate(ssl_ctx, px509) != 1)
             return debug::error(FUNCTION, "Failed to initialize SSL Context with certificate.");
+        
 
         /* Assign the private key to the SSL object. */
         if(SSL_CTX_use_PrivateKey(ssl_ctx, pkey) != 1)
@@ -523,9 +519,16 @@ namespace LLC
         ctx = X509_STORE_CTX_new();
         X509_STORE *store = X509_STORE_new();
 
-        X509_STORE_add_cert(store, px509);
 
+        /* If a CA bundle has been provided then load it before verification */
+        if(!strCertBundle.empty())
+            if(!X509_STORE_load_locations(store, strCertBundle.c_str(), NULL))
+                debug::log(3, "Certificate verification failed: ", X509_verify_cert_error_string(X509_STORE_CTX_get_error(ctx)));
+            
+        X509_STORE_add_cert(store, px509);
+        
         X509_STORE_CTX_init(ctx, store, px509, NULL);
+
 
         /* Verify the cert */
         fValid = X509_verify_cert(ctx) == 1; 
