@@ -37,6 +37,7 @@ namespace LLC
     : px509(nullptr)
     , pkey(nullptr)
     , nBits(bits)
+    , strCertBundle()
     {
         init();
     }
