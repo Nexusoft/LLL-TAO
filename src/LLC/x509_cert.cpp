@@ -272,8 +272,10 @@ namespace LLC
         if(pkey == nullptr)
             return debug::error(FUNCTION, "private key is null.");
 
-        if(!SSL_CTX_load_verify_locations(ssl_ctx, "/home/paul/Downloads/SectigoRSADomainValidationSecureServerCA.crt", NULL)) // cafile: CA PEM certs file
-            return debug::error(FUNCTION, "SSL_CTX_load_verify_locations failed");
+        /* Add ca-bundle if configured */
+        if(!strCertBundle.empty())
+            if(!SSL_CTX_load_verify_locations(ssl_ctx, strCertBundle.c_str(), NULL)) // cafile: CA PEM certs file
+                return debug::error(FUNCTION, "SSL_CTX_load_verify_locations failed to load CA bundle file: ", strCertBundle);
 
         /* Assign the certificate to the SSL object. */
         if(SSL_CTX_use_certificate(ssl_ctx, px509) != 1)
