@@ -312,10 +312,12 @@ namespace runtime
      **/
     inline int command(const std::string& strCommand)
     {
+        /*
         try { return std::system(strCommand.c_str()); }
         catch(const std::exception& e){ }
-
+*/
         return 0;
+        
     }
 }
 

@@ -26,7 +26,6 @@ ________________________________________________________________________________
 
 #include <Util/include/string.h>
 
-#include <Legacy/wallet/wallet.h>
 
 
 /* Global TAO namespace. */

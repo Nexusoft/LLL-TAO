@@ -84,11 +84,11 @@ namespace debug
 
     extern std::mutex DEBUG_MUTEX;
     extern std::ofstream ssFile;
-    extern thread_local std::string strLastError;
+    //extern thread_local std::string strLastError;
 
     /* Flag indicating that errors should be logged for this thread (defaults to true). This allows calling code to temporarily 
        disable error logging for a given thread. */
-    extern thread_local bool fLogError;
+    //extern thread_local bool fLogError;
 
     /** Block debug output flags. **/
     struct flags
@@ -232,12 +232,12 @@ namespace debug
     template<class... Args>
     bool error(Args&&... args)
     {
-        if(fLogError)
-        {
-            strLastError = safe_printstr(args...);
+        //if(fLogError)
+        //{
+            //strLastError = safe_printstr(args...);
 
             log(0, ANSI_COLOR_BRIGHT_RED, "ERROR: ", ANSI_COLOR_RESET, args...);
-        }
+        //}
         return false;
     }
 

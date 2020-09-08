@@ -16,7 +16,6 @@ ________________________________________________________________________________
 #include <Legacy/types/keypoolentry.h>
 #include <Legacy/types/reservekey.h>
 
-#include <Legacy/wallet/wallet.h>
 
 #include <Util/include/debug.h>
 

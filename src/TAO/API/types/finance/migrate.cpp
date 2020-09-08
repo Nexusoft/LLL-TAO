@@ -33,7 +33,6 @@ ________________________________________________________________________________
 #include <Legacy/include/money.h>
 #include <Legacy/types/address.h>
 #include <Legacy/types/script.h>
-#include <Legacy/wallet/wallet.h>
 #include <Legacy/types/wallettx.h>
 
 #include <map>

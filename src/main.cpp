@@ -11,6 +11,9 @@
 
 ____________________________________________________________________________________________*/
 
+#define NO_WALLET
+#define STATIC
+#define ARM64
 
 #include <LLP/include/global.h>
 #include <LLP/include/port.h>
@@ -36,13 +39,28 @@ ________________________________________________________________________________
 #include <Util/include/daemon.h>
 
 #include <Legacy/include/ambassador.h>
-#include <Legacy/wallet/wallet.h>
 
 #ifndef WIN32
 #include <sys/resource.h>
 #endif
 
+#include <testHeaders.h>
+
+
+int main_new(int argc, char** argv)
+{
+    printf("MAIN NEW");
+    return 1;
+}
+
 int main(int argc, char** argv)
+{
+    printf("MAIN");
+    calcSqrt(10);
+    return 1;
+}
+
+int main_old(int argc, char** argv)
 {
     /* Setup the timer timer. */
     runtime::timer timer;

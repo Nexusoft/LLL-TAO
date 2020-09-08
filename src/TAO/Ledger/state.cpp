@@ -20,7 +20,6 @@ ________________________________________________________________________________
 #include <LLP/include/inv.h>
 
 #include <Legacy/types/legacy.h>
-#include <Legacy/wallet/wallet.h>
 
 #include <TAO/Operation/include/enum.h>
 
@@ -1054,9 +1053,9 @@ namespace TAO
                     if(!strCmd.empty())
                     {
                         ReplaceAll(strCmd, "%s", ChainState::hashBestChain.load().GetHex());
-                        int32_t nRet = std::system(strCmd.c_str());
+                        //int32_t nRet = std::system(strCmd.c_str());
 
-                        debug::log(0, FUNCTION, "Block Notify Executed with code ", nRet);
+                        //debug::log(0, FUNCTION, "Block Notify Executed with code ", nRet);
                     }
 
                     /* Dispatch block to dispatch thread. */
