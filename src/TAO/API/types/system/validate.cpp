@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #include <Util/include/debug.h>
 
 #include <Legacy/types/script.h>
+#include <Legacy/wallet/wallet.h>
 
 #include <LLD/include/global.h>
 

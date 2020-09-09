@@ -32,6 +32,7 @@ ________________________________________________________________________________
 #include <Util/include/version.h>
 #include <Util/include/signals.h>
 
+#include <Legacy/wallet/wallet.h>
 
 /* Global TAO namespace. */
 namespace TAO

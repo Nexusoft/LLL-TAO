@@ -32,6 +32,8 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/chainstate.h>
 
+#include <Legacy/wallet/wallet.h>
+
 #include <Util/templates/datastream.h>
 #include <Util/include/string.h>
 

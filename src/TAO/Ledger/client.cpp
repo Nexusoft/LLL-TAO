@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <Legacy/types/legacy.h>
+#include <Legacy/wallet/wallet.h>
 
 #include <TAO/Operation/include/enum.h>
 

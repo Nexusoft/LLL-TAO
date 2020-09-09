@@ -37,6 +37,7 @@ ________________________________________________________________________________
 
 #include <Legacy/include/create.h>
 #include <Legacy/types/legacy.h>
+#include <Legacy/wallet/wallet.h>
 #include <Legacy/types/reservekey.h>
 
 #include <Util/include/config.h>
