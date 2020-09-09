@@ -1,7 +1,13 @@
+
 ifeq ($(OS),Windows_NT)
 detected_OS:= Windows
 else ifeq ($(shell uname -s),Darwin)
-	detected_OS:= OSX
+### You can only build iPhone on OSX
+	ifeq (${IPHONE}, 1)
+		detected_OS:= iPhone
+	else
+		detected_OS:= OSX
+	endif
 else
 	detected_OS:= Linux
 endif
@@ -44,6 +50,9 @@ ifndef OPENSSL_LIB_PATH
 	ifeq ($(detected_OS),OSX)
 		OPENSSL_LIB_PATH= /usr/local/Cellar/openssl@iphones/lib
 	endif
+	ifeq ($(detected_OS),iPhone)
+		OPENSSL_LIB_PATH= /usr/local/Cellar/openssl@iphones/lib
+	endif
 	ifeq ($(detected_OS),Linux)
 		#Arch Linux Fix
 		ifeq ($(shell uname -r | grep -o ....$), ARCH)
@@ -58,6 +67,9 @@ ifndef OPENSSL_INCLUDE_PATH
 		OPENSSL_INCLUDE_PATH= "C:\deps\include"
 	endif
 	ifeq ($(detected_OS),OSX)
+		OPENSSL_INCLUDE_PATH= /usr/local/Cellar/openssl@iphones/include
+	endif
+	ifeq ($(detected_OS),iPhone)
 		OPENSSL_INCLUDE_PATH= /usr/local/Cellar/openssl@iphones/include
 	endif
 	ifeq ($(detected_OS),Linux)
@@ -588,7 +600,6 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Legacy_trustkey.o \
 		build/Legacy_txin.o \
 		build/Legacy_txout.o \
-		build/testsource.o\
 
 
 ifndef NO_WALLET
@@ -616,7 +627,7 @@ ifndef NO_WALLET
 endif
 
 ###############################################################################
-ifeq ($(detected_OS),OSX)
+ifeq ($(detected_OS),iPhone)
 
 #Configure OS Specific Compiler Output
 ifndef VERBOSE
@@ -646,7 +657,7 @@ CXXFLAGS+= -O3 \
 	-L/usr/local/Cellar/openssl@iphones/lib \
 	-I/usr/local/Cellar/openssl@iphones/include 
 
-ifdef SIMULATOR
+ifeq ($(SIMULATOR),1)
 $(info sim)
 	CXXFLAGS+= -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator13.2.sdk \
 		-arch x86_64 \
@@ -1054,13 +1065,14 @@ build/Live_%.o: tests/live/%.cpp $(HEADERS)
 
 nexus.a: $(OBJS:build/%=build/%)
 	$(CXX) $(CXXFLAGS) -dead_strip -o $@ $(LIBPATHS) $^ $(LIBS)
+	cd build && ar rc nexus.a **.o
 	@echo ' '
 	@echo $(info SIMULATOR)
 	@echo Finished building nexus
 	@echo ' '
 
 clean:
-	-rm -f nexus
+	-rm -f nexus.a
 	-rm -f build/*.o
 	-rm -f build/*.P
 	-rm -f src/build.h
