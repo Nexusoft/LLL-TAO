@@ -50,7 +50,7 @@ namespace LLP
         Config.HASHMAP_TOTAL_BUCKETS   = 77773;
         Config.MAX_HASHMAP_FILES       = 4; //TODO: make sure this doesn't break anything :D
         Config.MAX_SECTOR_FILE_STREAMS = 4;
-        Config.MAX_LINEAR_PROBES       = 2;
+        Config.MIN_LINEAR_PROBES       = 2;
         Config.MAX_SECTOR_BUFFER_SIZE  = 0; //0 bytes, since we are in force mode this won't be used at all
         Config.MAX_SECTOR_CACHE_SIZE   = 1024; //1 KB of cache by default
 

@@ -205,8 +205,8 @@ namespace LLD
         std::vector<uint8_t> vKeyCompressed = compress_key(vKey);
 
         /* Build our buffer based on total linear probes. */
-        const uint32_t MAX_LINEAR_PROBES = std::min(CONFIG.HASHMAP_TOTAL_BUCKETS - nBucket, CONFIG.MAX_LINEAR_PROBES);
-        std::vector<uint8_t> vBuffer(INDEX_FILTER_SIZE * MAX_LINEAR_PROBES, 0);
+        const uint32_t MIN_LINEAR_PROBES = std::min(CONFIG.HASHMAP_TOTAL_BUCKETS - nBucket, CONFIG.MIN_LINEAR_PROBES);
+        std::vector<uint8_t> vBuffer(INDEX_FILTER_SIZE * MIN_LINEAR_PROBES, 0);
 
         /* Read the index file information. */
         pindex->seekg(uint64_t(INDEX_FILTER_SIZE * nBucket), std::ios::beg);
@@ -220,11 +220,11 @@ namespace LLD
         uint16_t nHashmap = get_current_file(vBuffer, 0);
 
         /* Check if we are in a probe expansion cycle. */
-        uint32_t nEndProbeExpansion   = MAX_LINEAR_PROBES;
+        uint32_t nEndProbeExpansion   = MIN_LINEAR_PROBES;
         if(nHashmap > CONFIG.MAX_HASHMAP_FILES)
         {
             /* Find the total cycles to probe. */
-            int64_t nProbeCycles     = std::min(CONFIG.MAX_PROBE_EXPANSIONS, uint32_t(nHashmap - CONFIG.MAX_HASHMAP_FILES));
+            int64_t nProbeCycles     = std::min(CONFIG.MAX_LINEAR_PROBES, uint32_t(nHashmap - CONFIG.MAX_HASHMAP_FILES));
 
             /* Iterate through our probe cycles. */
             uint32_t nBeginProbeExpansion = 0;
@@ -240,7 +240,7 @@ namespace LLD
             }
 
             /* Calculate the new probing distance. */
-            uint32_t nNewProbes = nEndProbeExpansion - MAX_LINEAR_PROBES;
+            uint32_t nNewProbes = nEndProbeExpansion - MIN_LINEAR_PROBES;
             if(nNewProbes > 0)
             {
                 /* Resize the index buffer for new data. */
@@ -364,8 +364,8 @@ namespace LLD
         ssKey.write((char*)&vKeyCompressed[0], vKeyCompressed.size());
 
         /* Build our buffer based on total linear probes. */
-        const uint32_t MAX_LINEAR_PROBES = std::min(CONFIG.HASHMAP_TOTAL_BUCKETS - nBucket, CONFIG.MAX_LINEAR_PROBES);
-        std::vector<uint8_t> vBuffer(INDEX_FILTER_SIZE * MAX_LINEAR_PROBES, 0);
+        const uint32_t MIN_LINEAR_PROBES = std::min(CONFIG.HASHMAP_TOTAL_BUCKETS - nBucket, CONFIG.MIN_LINEAR_PROBES);
+        std::vector<uint8_t> vBuffer(INDEX_FILTER_SIZE * MIN_LINEAR_PROBES, 0);
 
         /* Read the index file information. */
         pindex->seekg(uint64_t(INDEX_FILTER_SIZE * nBucket), std::ios::beg);
@@ -377,13 +377,13 @@ namespace LLD
 
         /* Start our probe expansion cycle with default cycles. */
         uint32_t nBeginProbeExpansion = 0;
-        uint32_t nEndProbeExpansion   = MAX_LINEAR_PROBES;
+        uint32_t nEndProbeExpansion   = MIN_LINEAR_PROBES;
 
         /* Grab the current hashmap file from the buffer. */
         uint16_t nHashmap = get_current_file(vBuffer, 0);
 
         /* Loop through hashmap indexes. */
-        while(nHashmap < CONFIG.MAX_HASHMAP_FILES + CONFIG.MAX_PROBE_EXPANSIONS)
+        while(nHashmap < CONFIG.MAX_HASHMAP_FILES + CONFIG.MAX_LINEAR_PROBES)
         {
             /* Check if we are in a probe expansion cycle. */
             if(nHashmap > CONFIG.MAX_HASHMAP_FILES)
@@ -543,7 +543,7 @@ namespace LLD
         std::vector<uint8_t> vKeyCompressed = compress_key(vKey);
 
         /* Build our buffer based on total linear probes. */
-        std::vector<uint8_t> vBuffer(INDEX_FILTER_SIZE * CONFIG.MAX_LINEAR_PROBES, 0);
+        std::vector<uint8_t> vBuffer(INDEX_FILTER_SIZE * CONFIG.MIN_LINEAR_PROBES, 0);
 
         /* Read the index file information. */
         pindex->seekg(INDEX_FILTER_SIZE * nBucket, std::ios::beg);
@@ -638,7 +638,7 @@ namespace LLD
         std::vector<uint8_t> vKeyCompressed = compress_key(vKey);
 
         /* Build our buffer based on total linear probes. */
-        std::vector<uint8_t> vBuffer(INDEX_FILTER_SIZE * CONFIG.MAX_LINEAR_PROBES, 0);
+        std::vector<uint8_t> vBuffer(INDEX_FILTER_SIZE * CONFIG.MIN_LINEAR_PROBES, 0);
 
         /* Read the index file information. */
         pindex->seekg(INDEX_FILTER_SIZE * nBucket, std::ios::beg);
