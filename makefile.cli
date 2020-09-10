@@ -1772,7 +1772,7 @@ ifeq ($(SIMULATOR),1)
 $(info sim)
 	CXXFLAGS+= -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator13.2.sdk \
 		-arch x86_64 \
-		-mios-simulator-version-min=8.0
+		-mios-simulator-version-min=9.0
 else
 $(info phone)
 	CXXFLAGS+= -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS13.2.sdk \
@@ -1785,7 +1785,6 @@ endif
 #Set CFLAGS and Warnings
 CFLAGS:= $(CXXFLAGS)
 CFLAGS+= $(CWARNINGS)
-CFLAGS+=-m64
 
 #set -std=c++ for all but c compiling
 CXXFLAGS+=-std=c++11
