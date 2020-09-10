@@ -1758,7 +1758,7 @@ DEFS+= -DMSG_NOSIGNAL=0
 LIBS+= $(OPENSSL_LIB_PATH)/libssl.a \
 	$(OPENSSL_LIB_PATH)/libcrypto.a
 
-
+DEFS+= -DIPHONE
 
 #OS Specific Compiler Flags
 CXXFLAGS+= -O3 \
