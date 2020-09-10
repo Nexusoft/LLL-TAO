@@ -197,8 +197,7 @@ namespace TAO
                     if(session->second.GetAccount()->Genesis() == hashGenesis)
                     {
                         ret["genesis"] = hashGenesis.ToString();
-                        if(config::fMultiuser.load())
-                            ret["session"] = session->first.ToString();
+                        ret["session"] = session->first.ToString();
 
                         return ret;
                     }
@@ -225,8 +224,7 @@ namespace TAO
 
             ret["genesis"] = hashGenesis.ToString();
 
-            if(config::fMultiuser.load())
-                ret["session"] = session.ID().ToString();
+            ret["session"] = session.ID().ToString();
 
             /* If not using Multiuser then send an AUTH message to our peers */
             if(!config::fMultiuser.load())

@@ -688,11 +688,19 @@ namespace TAO
 
                 /* Loop through all events for the token (split payments). */
                 TAO::Ledger::Transaction tx;
+
                 uint32_t nSequence = 0;
+
+                    /* Get the last event for the token*/
+                LLD::Ledger->ReadSequence(hashToken, nSequence);
+
+                /* Decrement the current sequence number to get the last event sequence number */
+                --nSequence;
+                
                 while(LLD::Ledger->ReadEvent(hashToken, nSequence, tx))
                 {
-                    /* Iterate sequence forward. */
-                    ++nSequence;
+                    /* Iterate sequence backwards. */
+                    nSequence--;
 
                     /* We can break out if an event occurred before our token account was last modified, as only
                        the balance at the time of the transaction can be used as proof */

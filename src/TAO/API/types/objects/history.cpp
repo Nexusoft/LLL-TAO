@@ -45,7 +45,7 @@ namespace TAO
             TAO::Register::State state;
 
             /* Check whether the caller has provided the name parameter. */
-            if(params.find("name") != params.end())
+            if(params.find("name") != params.end() && !params["name"].get<std::string>().empty())
             {
                 /* Edge case for name objects as these do not need to be resolved to an address */
                 if(nType == TAO::Register::OBJECTS::NAME)

@@ -139,6 +139,14 @@ namespace TAO
         }
 
 
+        /* Returns the number of active sessions in the session map */
+        uint32_t SessionManager::Size()
+        {
+            LOCK(MUTEX);
+            return mapSessions.size();
+        }
+
+
         /* Destroys all sessions and removes them */
         void SessionManager::Clear()
         {

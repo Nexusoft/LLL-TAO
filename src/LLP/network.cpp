@@ -93,8 +93,28 @@ namespace LLP
         /* Instantiate a certificate for use with SSL context */
         LLC::X509Cert cert;
 
-        /* Generate the certificate, using localhost as the Common Name */
-        cert.GenerateRSA("localhost");
+
+        /* Check to see if an external certficate is configured */
+        std::string strCert = config::GetArg("-sslcertificate", "");
+        if(!strCert.empty())
+        {
+            /* Get the certificate key path */
+            std::string strKey = config::GetArg("-sslcertificatekey", "");
+
+            /* Get the CA bundle path */
+            std::string strCABundle = config::GetArg("-sslcabundle", "");
+
+            /* Read the external certificate file and key */
+            cert.Read(strCert, strKey, strCABundle);
+        }
+        else
+        {
+            /* Generate an ephemeral RSA based certificate for this session */
+            cert.GenerateRSA("localhost");
+        }
+        
+        
+        
         cert.Verify();
 
         if(!cert.Init_SSL(pSSL_CTX))

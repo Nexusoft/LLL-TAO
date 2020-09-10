@@ -30,7 +30,7 @@ The following methods are currently supported by this API
 [`transfer/asset`](#transferasset)   
 [`claim/asset`](#claimasset)   
 [`list/asset/history`](#listassethistory)   
-[`tokenize/asset`](#tokenizeasset)
+[`tokenize/asset`](#tokenizeasset)    
 [`get/schema`](#getschema)
 
 -----------------------------------

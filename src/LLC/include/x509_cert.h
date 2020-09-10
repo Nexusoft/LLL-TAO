@@ -65,10 +65,14 @@ namespace LLC
          *
          *  Reads the certificate and private key PEM files from an ssl folder located in the default data path
          *
+         *  @param[in] strPEM Path and filename of the certificate to load (in PEM format)
+         *  @param[in] strKey Path and filename of the private key file
+         *  @param[in] strCABundle Path and filename of the certificate bundle for the Certificate Authority
+         * 
          *  @return Returns true if loaded successfully, false otherwise.
          *
          **/
-        bool Read();
+        bool Read(const std::string& strCert, const std::string& strKey, const std::string& strCABundle);
 
 
         /** Init_SSL
@@ -265,6 +269,9 @@ namespace LLC
 
         /* The number of bits for the RSA key generation. */
         uint32_t nBits;
+
+        /* The path to the Certificate Authority cert bundle */
+        std::string strCertBundle;
 
     };
 

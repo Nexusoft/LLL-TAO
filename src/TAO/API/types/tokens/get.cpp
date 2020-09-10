@@ -38,7 +38,7 @@ namespace TAO
             /* If name is provided then use this to deduce the register address,
              * otherwise try to find the raw hex encoded address.
              * Fail if no required parameters supplied. */
-            if(params.find("name") != params.end())
+            if(params.find("name") != params.end() && !params["name"].get<std::string>().empty())
                 hashRegister = Names::ResolveAddress(params, params["name"].get<std::string>());
             else if(params.find("address") != params.end())
                 hashRegister.SetBase58(params["address"].get<std::string>());
@@ -49,9 +49,6 @@ namespace TAO
             TAO::Register::Object object;
             if(!LLD::Register->ReadState(hashRegister, object, TAO::Ledger::FLAGS::LOOKUP))
                 throw APIException(-122, "Token/account not found");
-
-            if(config::fClient.load() && object.hashOwner != users->GetCallersGenesis(params))
-                throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
 
             /* Parse the object register. */
             if(!object.Parse())

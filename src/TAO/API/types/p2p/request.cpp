@@ -62,7 +62,7 @@ namespace TAO
             strAppID = params["appid"].get<std::string>();
 
             /* Get the peer hash  */
-            if(params.find("genesis") != params.end())
+            if(params.find("genesis") != params.end() && !params["genesis"].get<std::string>().empty())
                 hashPeer.SetHex(params["genesis"].get<std::string>());
             /* Check for username. */
             else if(params.find("username") != params.end())

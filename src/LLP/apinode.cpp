@@ -245,8 +245,13 @@ namespace LLP
             /* Get error from exception. */
             json::json jsonError = e.ToJSON();
 
-            /* Default error status code is 400. */
-            nStatus = 400;
+            /* Check to see if the caller has specified an error code to use for general API errors */
+            if(INCOMING.mapHeaders.count("api-error-code"))
+                nStatus = std::stoi(INCOMING.mapHeaders["api-error-code"]);
+            else
+                /* Default error status code is 400. */
+                nStatus = 400;
+            
             int32_t nError = jsonError["code"].get<int32_t>();
 
             /* Set status by error code. */

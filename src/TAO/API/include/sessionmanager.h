@@ -95,6 +95,16 @@ namespace TAO
                  **/
                 bool Has(const uint256_t& sessionID);
 
+                
+                /** Size
+                 *
+                 *  Returns the number of active sessions in the session map
+                 * 
+                 *  @return True if the session ID exists
+                 * 
+                 **/
+                uint32_t Size();
+
 
                 /** Clear
                  *

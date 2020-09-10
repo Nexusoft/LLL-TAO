@@ -51,7 +51,7 @@ namespace TAO
 
             /* Watch for destination genesis. */
             uint256_t hashTo = 0;
-            if(params.find("destination") != params.end())
+            if(params.find("destination") != params.end() && !params["destination"].get<std::string>().empty())
                 hashTo.SetHex(params["destination"].get<std::string>());
             else if(params.find("username") != params.end())
                 hashTo = TAO::Ledger::SignatureChain::Genesis(params["username"].get<std::string>().c_str());
@@ -69,7 +69,7 @@ namespace TAO
             TAO::Register::Object object;
 
             /* Check whether the caller has provided the name parameter. */
-            if(params.find("name") != params.end())
+            if(params.find("name") != params.end() && !params["name"].get<std::string>().empty())
             {
                 /* Edge case for NAME objects as these do not need to be resolved to an address */
                 if(nType == TAO::Register::OBJECTS::NAME)

@@ -59,7 +59,7 @@ namespace TAO
             TAO::Register::Address hashRegister ;
 
             /* Check whether the caller has provided the asset name parameter. */
-            if(params.find("name") != params.end())
+            if(params.find("name") != params.end() && !params["name"].get<std::string>().empty())
             {
                 /* If name is provided then use this to deduce the register address */
                 hashRegister = Names::ResolveAddress(params, params["name"].get<std::string>());
