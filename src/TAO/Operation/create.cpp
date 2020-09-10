@@ -67,13 +67,18 @@ namespace TAO
                             /* Get the identifier. */
                             TAO::Register::Address hashToken = object.get<uint256_t>("token");
 
-                            /* Check that the register doesn't exist yet. */
-                            if(hashToken != 0 && !LLD::Register->HasState(hashToken, nFlags))
-                                return debug::error(FUNCTION, "cannot create account without token identifier");
+                            /* Validate token accounts */
+                            if(hashToken != 0)
+                            {
+                                /* Check that the token register exists. NOTE we can't make this check in client mode as the
+                                   token could be foreign. */
+                                if(!config::fClient.load() && !LLD::Register->HasState(hashToken, nFlags))
+                                    return debug::error(FUNCTION, "cannot create account without token identifier");
 
-                            /* Check that the token identifier is for a token */
-                            if(hashToken != 0 && !hashToken.IsToken())
-                                return debug::error(FUNCTION, "token identifier is not for a token register");
+                                /* Check that the token identifier is for a token */
+                                if(!hashToken.IsToken())
+                                    return debug::error(FUNCTION, "token identifier is not for a token register");
+                            }
 
                             break;
                         }
