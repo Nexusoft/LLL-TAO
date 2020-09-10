@@ -117,14 +117,16 @@ namespace filesystem
         return true;
 
     #elif defined(MAC_OSX)
-        //debug::log(2, FUNCTION, "Removing directory ", path);
-        //if(system(debug::safe_printstr("sudo rm -rf '", path, "'").c_str()) == 0) //OSX requires sudo and special chars for path
-        //   return true;
+        debug::log(2, FUNCTION, "Removing directory ", path);
+        if(system(debug::safe_printstr("sudo rm -rf '", path, "'").c_str()) == 0) //OSX requires sudo and special chars for path
+           return true;
 
+    #elif defined(IPHONE)
+        return false;  
     #else
-        //debug::log(2, FUNCTION, "Removing directory ", path);
-        //if(system(debug::safe_printstr("rm -rf '", path, "'").c_str()) == 0)
-        //    return true;
+        debug::log(2, FUNCTION, "Removing directory ", path);
+        if(system(debug::safe_printstr("rm -rf '", path, "'").c_str()) == 0)
+            return true;
 
     #endif
 
