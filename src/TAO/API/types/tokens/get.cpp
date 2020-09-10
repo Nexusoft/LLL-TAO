@@ -50,9 +50,6 @@ namespace TAO
             if(!LLD::Register->ReadState(hashRegister, object, TAO::Ledger::FLAGS::LOOKUP))
                 throw APIException(-122, "Token/account not found");
 
-            if(config::fClient.load() && object.hashOwner != users->GetCallersGenesis(params))
-                throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
-
             /* Parse the object register. */
             if(!object.Parse())
                 throw APIException(-14, "Object failed to parse");
