@@ -312,7 +312,7 @@ namespace runtime
      **/
     inline int command(const std::string& strCommand)
     {
-        #if defined(IPHONE)
+        #ifdef IPHONE
             // Not allowed on iOS
             return 0;
         #else
