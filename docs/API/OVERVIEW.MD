@@ -431,5 +431,6 @@ Error Codes
 | -294 | Certificate has not yet been created for this signature chain.  Please use crypto/create/key to create the certificate first |
 | -295 | Public key mismatch. Unable to generate certificate |
 | -296 | Missing certificate |
+| -297 | Cannot log in while synchronizing |
 | -300 | API can only be used to lookup data for the currently logged in signature chain when running in client mode |
 

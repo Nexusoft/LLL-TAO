@@ -3101,6 +3101,7 @@ namespace LLP
                             }
                             else
                             {
+                                debug::log(0, "No merkle branch for tx ", hashTx.SubString());
                                 TAO::Ledger::mempool.Accept(tx, this);
                             }
 
