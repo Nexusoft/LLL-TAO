@@ -179,8 +179,17 @@ namespace TAO
                                     if(!LLD::Register->ReadState(hashTo, state))
                                         continue;
 
-                                    /* Fire off our event. */
-                                    ssRelay << uint8_t(LLP::Tritium::TYPES::SIGCHAIN) << state.hashOwner << hash;
+                                    /* Fire off our event for client mode peers. For debits to assets and transfers to tokens the 
+                                       event will be a notification to the token itself, otherwise this will be a sig chain 
+                                       transaction to the register owner */
+                                    if((nOP == TAO::Operation::OP::DEBIT && hashTo.GetType() == TAO::Register::Address::OBJECT)
+                                     || (nOP == TAO::Operation::OP::TRANSFER && hashTo.GetType() == TAO::Register::Address::TOKEN))
+                                    {
+                                        ssRelay << uint8_t(LLP::Tritium::TYPES::NOTIFICATION) << hashTo << hash;
+                                    }
+                                    else
+                                        ssRelay << uint8_t(LLP::Tritium::TYPES::SIGCHAIN) << state.hashOwner << hash;
+
                                     ++nTotalEvents;
 
                                     debug::log(0, FUNCTION, (nOP == TAO::Operation::OP::TRANSFER ? "TRANSFER: " : "DEBIT: "),
