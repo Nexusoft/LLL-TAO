@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <LLC/include/eckey.h>
 #include <LLC/include/flkey.h>
+#include <LLC/include/x509_cert.h>
 
 #include <TAO/API/types/objects.h>
 #include <TAO/API/include/global.h>
@@ -128,6 +129,74 @@ namespace TAO
 
                     break;
                 }
+            }
+
+            /* Set the flag in the json to return */
+            ret["verified"] = fVerified;
+
+            return ret;
+        }
+
+
+        /* Verifies the x509 certificate. */
+        json::json Crypto::VerifyCertificate(const json::json& params, bool fHelp)
+        {
+            /* JSON return value. */
+            json::json ret;
+
+            /* Check the caller included the certificate cert */
+            if(params.find("certificate") == params.end() || params["certificate"].get<std::string>().empty())
+                throw APIException(-296, "Missing certificate");
+
+            /* Decode the certificate data into a vector of bytes */
+            std::vector<uint8_t> vchCert;
+            try
+            {
+                vchCert = encoding::DecodeBase64(params["certificate"].get<std::string>().c_str());
+            }
+            catch(const std::exception& e)
+            {
+                throw APIException(-27, "Malformed base64 encoding");
+            }
+
+            /* flag indicating the certificate is verified */
+            bool fVerified = false;
+
+            /* X509 certificate to load with the pem data and verify */
+            LLC::X509Cert x509;
+
+            /* Load the certificate data */
+            if(!x509.Load(vchCert))
+                throw APIException(-296, "Invalid certificate data");
+
+            /* Verify the certificate signature*/
+            if(x509.Verify(false))
+            {
+                /* Get the genesis hash of the certificate owner */
+                uint256_t hashGenesis = 0;
+                hashGenesis.SetHex(x509.GetCN());
+
+                /* The address of the crypto object register, which is deterministic based on the genesis */
+                TAO::Register::Address hashCrypto = TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
+                
+                /* Read the crypto object register */
+                TAO::Register::Object crypto;
+                if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::MEMPOOL))
+                    throw APIException(-259, "Could not read crypto object register");
+
+                /* Parse the object. */
+                if(!crypto.Parse())
+                    throw APIException(-36, "Failed to parse object register");
+
+                /* Get the cert key from their crypto register */
+                uint256_t hashCert = crypto.get<uint256_t>("cert");
+
+                /* Check that the certificate has been created */
+                if(hashCert == 0)
+                    throw APIException(-294, "Certificate has not yet been created for this signature chain.  Please use crypto/create/key to create the certificate first.");
+
+                /* Compare this to a hash of the cert */
+                fVerified = hashCert == x509.Hash();
             }
 
             /* Set the flag in the json to return */

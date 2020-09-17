@@ -69,7 +69,7 @@ namespace TAO
             TAO::Register::Object name;
 
             /* Check whether the caller has provided the asset name parameter. */
-            if(params.find("name") != params.end())
+            if(params.find("name") != params.end() && !params["name"].get<std::string>().empty())
                 /* If name is provided then use this to retrieve the name object */
                 name = Names::GetName(params,params["name"].get<std::string>(), hashRegister);
             /* Otherwise try to find the raw hex encoded address. */

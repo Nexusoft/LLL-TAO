@@ -96,6 +96,9 @@ namespace TAO
             /* Return whether stake minter is started and actively running. */
             ret["staking"] = (bool)(stakeMinter.IsStarted() && trust.hashOwner == user->Genesis());
 
+            /* Flag indicating whether pooled staking is enabled */
+            ret["pooled"] = config::fPoolStaking.load();
+
             /* Need the stake minter running for accessing current staking metrics.
              * Verifying current user ownership of trust account is a sanity check.
              */

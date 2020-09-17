@@ -129,9 +129,6 @@ namespace TAO
             if(crypto.get<uint256_t>("verify") != 0)
                 ssOperationStream << std::string("verify") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T) << user->KeyHash("verify", 0, strPIN, tx.nNextType);
 
-            if(crypto.get<uint256_t>("cert") != 0)
-                ssOperationStream << std::string("cert") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T) << user->KeyHash("cert", 0, strPIN, tx.nNextType);
-
             /* Add the crypto update contract. */
             tx[tx.Size()] << uint8_t(TAO::Operation::OP::WRITE) << hashCrypto << ssOperationStream.Bytes();
         

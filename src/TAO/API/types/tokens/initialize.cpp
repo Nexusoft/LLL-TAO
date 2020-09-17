@@ -31,6 +31,8 @@ namespace TAO
             mapFunctions["get"]    = Function(std::bind(&Tokens::Get,    this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/accounts"]   = Function(std::bind(&Tokens::ListAccounts, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list"]  = Function(std::bind(&Tokens::ListTransactions, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["burn"]  = Function(std::bind(&Tokens::Burn,  this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["list/token/accounts"]   = Function(std::bind(&Tokens::ListTokenAccounts, this, std::placeholders::_1, std::placeholders::_2));
         }
 
         /* Allows derived API's to handle custom/dynamic URL's where the strMethod does not
@@ -53,6 +55,7 @@ namespace TAO
 
                 return strMethodRewritten;
             }
+            
 
             /* Edge case for list/account/transactions and list/token/transactions */
             if(strMethod.find("/transactions") != std::string::npos )
@@ -78,6 +81,32 @@ namespace TAO
 
                 /* Set the type parameter to token or account*/
                 jsonParams["type"] = strMethod.find("token") != std::string::npos ? "token" : "account";
+
+                return strMethodRewritten;
+            }
+
+
+            /* Edge case for list/token/accounts  */
+            if(strMethod.find("list/token/accounts") != std::string::npos )
+            {
+                /* set the method name */
+                strMethodRewritten = "list/token/accounts";
+
+                /* Check to see whether there is a name after the /accounts/ name, i.e. list/token/accounts/mytoken */
+                std::size_t nPos = strMethod.find("/accounts/");
+
+                if(nPos != std::string::npos)
+                {
+                    /* Get the name or address that comes after the /accounts/ part */
+                    std::string strNameOrAddress = strMethod.substr(nPos +10);
+
+                    /* Determine whether the name/address is a valid register address and set the name or address parameter accordingly */
+                    if(IsRegisterAddress(strNameOrAddress))
+                        jsonParams["address"] = strNameOrAddress;
+                    else
+                        jsonParams["name"] = strNameOrAddress;
+
+                }
 
                 return strMethodRewritten;
             }

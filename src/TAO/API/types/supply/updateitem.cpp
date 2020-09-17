@@ -74,7 +74,7 @@ namespace TAO
             std::string strName = "";
 
             /* Check whether the caller has provided the asset name parameter. */
-            if(params.find("name") != params.end())
+            if(params.find("name") != params.end() && !params["name"].get<std::string>().empty())
             {
                 /* Get the called-supplied name */
                 strName = params["name"].get<std::string>();

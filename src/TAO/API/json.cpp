@@ -559,8 +559,11 @@ namespace TAO
                         uint64_t nReward = 0;
                         contract >> nReward;
 
+                        TAO::Register::Address address("trust", contract.Caller(), TAO::Register::Address::TRUST);
+
                         /* Output the json information. */
                         ret["OP"]     = "TRUST";
+                        ret["address"] = address.ToString();
                         ret["last"]   = hashLastTrust.ToString();
                         ret["score"]  = nScore;
                         ret["amount"] = (double) nReward / TAO::Ledger::NXS_COIN;
@@ -582,8 +585,11 @@ namespace TAO
                         uint64_t nReward = 0;
                         contract >> nReward;
 
+                        TAO::Register::Address address("trust", contract.Caller(), TAO::Register::Address::TRUST);
+
                         /* Output the json information. */
                         ret["OP"]        = "GENESIS";
+                        ret["address"]   = address.ToString();
                         ret["amount"]    = (double) nReward / TAO::Ledger::NXS_COIN;;
 
                         break;
@@ -619,8 +625,11 @@ namespace TAO
                         uint64_t nReward = 0;
                         contract >> nReward;
 
+                        TAO::Register::Address address("trust", contract.Caller(), TAO::Register::Address::TRUST);
+
                         /* Output the json information. */
                         ret["OP"]        = "TRUSTPOOL";
+                        ret["address"] = address.ToString();
                         ret["last"]      = hashLastTrust.ToString();
                         ret["score"]     = nScore;
                         ret["amount"]    = (double) nReward / TAO::Ledger::NXS_COIN;
@@ -656,10 +665,13 @@ namespace TAO
                         uint64_t nReward = 0;
                         contract >> nReward;
 
+                        TAO::Register::Address address("trust", contract.Caller(), TAO::Register::Address::TRUST);
+
                         /* Output the json information. */
-                        ret["OP"]        = "GENESISPOOL";
-                        ret["amount"]    = (double) nReward / TAO::Ledger::NXS_COIN;;
-                        ret["proof"]     = hashProof.ToString();
+                        ret["OP"]         = "GENESISPOOL";
+                        ret["address"]    = address.ToString();
+                        ret["amount"]     = (double) nReward / TAO::Ledger::NXS_COIN;;
+                        ret["proof"]      = hashProof.ToString();
                         ret["proofbegin"] = nTimeBegin;
                         ret["proofend"]   = nTimeEnd;
 
@@ -1207,7 +1219,7 @@ namespace TAO
 
                         ret["maxsupply"]        = (double) object.get<uint64_t>("supply") / pow(10, nDecimals);
                         ret["currentsupply"]    = (double) (object.get<uint64_t>("supply")
-                                                - object.get<uint64_t>("balance")) / pow(10, nDecimals); // current supply is based on unconfirmed balance
+                                                - object.get<uint64_t>("balance") - nPending) / pow(10, nDecimals); // current supply is based on unconfirmed balance
                         ret["decimals"]         = nDecimals;
 
                         /* Add tx count if requested by the caller*/
