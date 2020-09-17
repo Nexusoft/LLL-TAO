@@ -59,7 +59,7 @@ namespace TAO
 
             /* Check for from parameter. */
             TAO::Register::Address hashFrom;
-            if(params.find("name_from") != params.end())
+            if(params.find("name_from") != params.end() && !params["name_from"].get<std::string>().empty())
                 hashFrom = Names::ResolveAddress(params, params["name_from"].get<std::string>());
             else if(params.find("address_from") != params.end())
                 hashFrom.SetBase58(params["address_from"].get<std::string>());

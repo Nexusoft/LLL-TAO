@@ -209,13 +209,14 @@ namespace TAO
          *
          *  Finds all objects that have been tokenized and therefore owned by hashToken
          *
+         *  @param[in] hashGenesis The genesis hash for the sig chain owner.
          *  @param[in] hashToken The token to find objects for
          *  @param[out] vObjects The list of object register addresses owned by the token.
          *
          *  @return A vector of register addresses owned by the token
          *
          **/
-        bool ListTokenizedObjects(const TAO::Register::Address& hashToken, 
+        bool ListTokenizedObjects(const uint256_t hashGenesis, const TAO::Register::Address& hashToken, 
                                   std::vector<TAO::Register::Address>& vObjects);
 
 
@@ -259,7 +260,7 @@ namespace TAO
         bool VoidContract(const TAO::Operation::Contract& contract, const uint32_t nContract, TAO::Operation::Contract &voidContract);
 
 
-         /** GetTxCount
+        /** GetTxCount
         *
         *  Get the number of transactions in the sig chain relating to the register
         *
@@ -271,6 +272,20 @@ namespace TAO
         *
         **/
         uint32_t GetTxCount(const uint256_t& hashGenesis, const TAO::Register::Object& object, const TAO::Register::Address& hashRegister);
+
+
+        /** DownloadSigChain
+        *
+        *  Used for client mode, this method will download the signature chain transactions and events for a given genesis  
+        *
+        *  @param[in] hashGenesis The genesis hash of the sig chain to synchronize for 
+        *  @param[in] nTimeout  Length of time to wait for the download before failing
+        *  @param[in] bSyncEvents Flag indicating whether or not to also download events for the sig chain
+        * 
+        *  @return Boolean indicating whether the download was successful
+        *
+        **/
+        bool DownloadSigChain(const uint256_t& hashGenesis, uint32_t nTimeout, bool bSyncEvents);
 
     }
 }

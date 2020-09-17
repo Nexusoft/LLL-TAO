@@ -688,11 +688,19 @@ namespace TAO
 
                 /* Loop through all events for the token (split payments). */
                 TAO::Ledger::Transaction tx;
+
                 uint32_t nSequence = 0;
+
+                    /* Get the last event for the token*/
+                LLD::Ledger->ReadSequence(hashToken, nSequence);
+
+                /* Decrement the current sequence number to get the last event sequence number */
+                --nSequence;
+                
                 while(LLD::Ledger->ReadEvent(hashToken, nSequence, tx))
                 {
-                    /* Iterate sequence forward. */
-                    ++nSequence;
+                    /* Iterate sequence backwards. */
+                    nSequence--;
 
                     /* We can break out if an event occurred before our token account was last modified, as only
                        the balance at the time of the transaction can be used as proof */
@@ -1778,8 +1786,14 @@ namespace TAO
                 /* Start a ACID transaction (to be disposed). */
                 LLD::TxnBegin(TAO::Ledger::FLAGS::MEMPOOL);
 
+                /* Temporarily disable error logging so that we don't log errors for contracts that fail to execute. */
+                debug::fLogError = false;
+
                 fSanitized = TAO::Register::Build(contract, mapStates, TAO::Ledger::FLAGS::MEMPOOL)
                              && TAO::Operation::Execute(contract, TAO::Ledger::FLAGS::MEMPOOL);
+
+                /* Reenable error logging. */
+                debug::fLogError = true;
 
                 /* Abort the mempool ACID transaction once the contract is sanitized */
                 LLD::TxnAbort(TAO::Ledger::FLAGS::MEMPOOL);
@@ -1787,6 +1801,9 @@ namespace TAO
             }
             catch(const std::exception& e)
             {
+                /* Just in case we encountered an exception whilst error logging was off, reenable error logging. */
+                debug::fLogError = true;
+
                 /* Abort the mempool ACID transaction */
                 LLD::TxnAbort(TAO::Ledger::FLAGS::MEMPOOL);
 

@@ -15,7 +15,13 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLC_INCLUDE_X509_CERT_H
 #define NEXUS_LLC_INCLUDE_X509_CERT_H
 
+#include <Util/include/runtime.h>
+
+#include <LLC/types/uint1024.h>
+
 #include <cstdint>
+#include <string>
+#include <vector>
 
 /** Forward declarations. **/
 typedef struct ssl_ctx_st SSL_CTX;
@@ -59,10 +65,14 @@ namespace LLC
          *
          *  Reads the certificate and private key PEM files from an ssl folder located in the default data path
          *
+         *  @param[in] strPEM Path and filename of the certificate to load (in PEM format)
+         *  @param[in] strKey Path and filename of the private key file
+         *  @param[in] strCABundle Path and filename of the certificate bundle for the Certificate Authority
+         * 
          *  @return Returns true if loaded successfully, false otherwise.
          *
          **/
-        bool Read();
+        bool Read(const std::string& strCert, const std::string& strKey, const std::string& strCABundle);
 
 
         /** Init_SSL
@@ -92,36 +102,40 @@ namespace LLC
 
         /** Verify
          *
-         *  Check that the private key matches the public key in the x509 certificate.
+         *  Check that the private key matches the public key in the x509 certificate and then checks the signature
          *
+         *  @param[in] fCheckPrivate Flag indicating the private key should be checked
+         * 
          *  @return Returns true if public and private key are consistent, false otherwise.
          *
          **/
-        bool Verify();
+        bool Verify(bool fCheckPrivate = true);
 
 
         /** Verify
          *
-         *  Check the authenticity of the public key in the certificate and the private key paired with it.
+         *  Check that the private key matches the public key in the x509 certificate and then checks the signature
          *
          *  @param[in] ssl The ssl object to check.
+         *  @param[in] fCheckPrivate Flag indicating the private key should be checked
          *
          *  @return Returns true if verified, false otherwise.
          *
          **/
-        bool Verify(SSL *ssl);
+        bool Verify(SSL *ssl, bool fCheckPrivate = true);
 
 
         /** Verify
          *
-         *  Check the authenticity of the public key in the certificate and the private key paired with it.
+         *  Check that the private key matches the public key in the x509 certificate and then checks the signature
          *
          *  @param[in] ssl_ctx The ssl context object to check.
+         *  @param[in] fCheckPrivate Flag indicating the private key should be checked
          *
          *  @return Returns true if verified, false otherwise.
          *
          **/
-        bool Verify(SSL_CTX *ssl_ctx);
+        bool Verify(SSL_CTX *ssl_ctx, bool fCheckPrivate = true);
 
 
         /** Print
@@ -132,14 +146,90 @@ namespace LLC
         void Print();
 
 
-        /** Generate
+        /** GenerateRSA
          *
-         *  Generate the private key and certificate.
+         *  Generate an RSA keypair and correspoding certificate signed with the key.  This method is useful for creating
+         *  ad-hoc one-off self-signed certificates where the private key is ephemeral.  The certificate validity is set to 1 year 
+         * 
+         *  @param[in] strCN The common name to set.
+         *  @param[in] nValidFrom The timestamp to set the certificate validity from.
          *
          *  @return Returns true if successful, false otherwise.
          *
          **/
-        bool Generate();
+        bool GenerateRSA(const std::string& strCN, const uint64_t nValidFrom = runtime::unifiedtimestamp());
+
+
+        /** GenerateEC
+         *
+         *  Generate a certificate using EC signature scheme, signed with the specified prigate key.  This method is useful when
+         *  creating and regenerating self-signed certificates where the private key is persistant. 
+         *  The certificate validity is set to 1 year 
+         * 
+         *  @param[in] hashSecret The private key to use .
+         *  @param[in] strCN The common name to set.
+         *  @param[in] nValidFrom The timestamp to set the certificate validity from.
+         *
+         *  @return Returns true if successful, false otherwise.
+         *
+         **/
+        bool GenerateEC(const uint512_t& hashSecret, const std::string& strCN, const uint64_t nValidFrom = runtime::unifiedtimestamp());
+
+
+        /** GetPEM
+         *
+         *  Gets the x509 certificate binary data in base64 encoded PEM format.
+         * 
+         *  @param[out] vchCertificate Vector to be populated with the certificate bytes .
+         *
+         *  @return Returns true if successful, false otherwise.
+         *
+         **/
+        bool GetPEM(std::vector<uint8_t>& vchCertificate) const;
+
+
+        /** GetPublicKey
+         *
+         *  Gets the public key used to sign this certificate.
+         * 
+         *  @param[out] vchKey Vector to be populated with the public key bytes .
+         *
+         *  @return Returns true if successful, false otherwise.
+         *
+         **/
+        bool GetPublicKey(std::vector<uint8_t>& vchKey) const;
+
+
+        /** Load
+         *
+         *  Loads the certificate data, which is passed to the method in base64 encoded PEM format.
+         * 
+         *  @param[in] vchCertificate Vector of bytes containing the PEM data .
+         *
+         *  @return Returns true if successful, false otherwise.
+         *
+         **/
+        bool Load(const std::vector<uint8_t>& vchCertificate);
+
+
+        /** Hash()
+         *
+         *  Returns a 256-bit hash of the certificate data, with the exception of the signature. 
+         * 
+         *  @return The 256-bit hash of the certificate data.
+         *
+         **/
+        uint256_t Hash();
+
+
+        /** GetCN()
+         *
+         *  Returns the content of the Common Name (CN) field from the certificate. 
+         * 
+         *  @return The content of the Common Name (CN) field from the certificate.
+         *
+         **/
+        std::string GetCN();
 
 
     private:
@@ -160,6 +250,16 @@ namespace LLC
         void shutdown();
 
 
+        /** verify
+         *
+         *  Verify the data and signature of the x509 certificate.
+         *
+         *  @return Returns true if verification, false otherwise.
+         *
+         **/
+        bool verify();
+
+
         /* The OpenSSL x509 certificate object. */
         X509 *px509;
 
@@ -169,6 +269,9 @@ namespace LLC
 
         /* The number of bits for the RSA key generation. */
         uint32_t nBits;
+
+        /* The path to the Certificate Authority cert bundle */
+        std::string strCertBundle;
 
     };
 

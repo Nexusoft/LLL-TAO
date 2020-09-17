@@ -74,7 +74,7 @@ namespace TAO
 
             /* If name is provided then use this to deduce the register address,
              * otherwise try to find the raw hex encoded address. */
-            if(params.find("name") != params.end())
+            if(params.find("name") != params.end() && !params["name"].get<std::string>().empty())
                 hashFrom = Names::ResolveAddress(params, params["name"].get<std::string>());
             else if(params.find("address") != params.end())
                 hashFrom.SetBase58(params["address"].get<std::string>());
@@ -109,7 +109,7 @@ namespace TAO
             std::vector<json::json> vRecipients;
 
             /* Check for the existence of recipients array */
-            if( params.find("recipients") != params.end())
+            if( params.find("recipients") != params.end() && !params["recipients"].is_null())
             {
                 if(!params["recipients"].is_array())
                     throw APIException(-216, "recipients field must be an array.");

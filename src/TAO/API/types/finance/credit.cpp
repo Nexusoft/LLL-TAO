@@ -80,7 +80,7 @@ namespace TAO
             TAO::Register::Address hashAccountTo;
 
             /* If name_to is provided then use this to deduce the register address */
-            if(params.find("name") != params.end())
+            if(params.find("name") != params.end() && !params["name"].get<std::string>().empty())
                 hashAccountTo = Names::ResolveAddress(params, params["name"].get<std::string>());
 
             /* Otherwise try to find the raw hex encoded address. */
@@ -93,7 +93,7 @@ namespace TAO
 
             /* Check for the proof parameter parameter. */
             TAO::Register::Address hashProof;
-            if(params.find("name_proof") != params.end())
+            if(params.find("name_proof") != params.end() && !params["name_proof"].get<std::string>().empty())
             {
                 /* If name_proof is provided then use this to deduce the register address */
                 hashProof = Names::ResolveAddress(params, params["name_proof"].get<std::string>());

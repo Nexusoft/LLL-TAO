@@ -744,7 +744,7 @@ namespace TAO
 
             /* Get the crypto register. */
             TAO::Register::Object crypto;
-            if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::MEMPOOL))
+            if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::LOOKUP))
                 return debug::error(FUNCTION, "Missing crypto register");
 
             /* Parse the object. */

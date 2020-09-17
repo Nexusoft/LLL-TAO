@@ -397,7 +397,7 @@ Error Codes
 | -260 | Invalid key name |
 | -261 | Key already exists |
 | -262 | Invalid scheme |
-| -263 | Private key can only be retrieved for app1, app2, app3, and other 3rd-party keys |
+| -263 | Private keys cannot only be retrieved for keys in the crypto register |
 | -264 | Key not yet created |
 | -265 | Missing public key |
 | -266 | Malformed public key |
@@ -425,5 +425,12 @@ Error Codes
 | -288 | Cannot unlock for mining in multiuser mode |
 | -289 | Cannot unlock for staking in multiuser mode |
 | -290 | Invalid credentials.  User logged out due to too many password / pin attempts |
+| -291 | The cert key cannot be used to create a key pair as it is reserved for a TLS certificate.  Please use the create/certificate API method instead. |
+| -292 | The cert key cannot be used to sign data as it is reserved for a TLS certificate |
+| -293 | Invalid key name.  Keys in the crypto register cannot be used for encryption, only signature generation and verification |
+| -294 | Certificate has not yet been created for this signature chain.  Please use crypto/create/key to create the certificate first |
+| -295 | Public key mismatch. Unable to generate certificate |
+| -296 | Missing certificate |
+| -297 | Cannot log in while synchronizing |
 | -300 | API can only be used to lookup data for the currently logged in signature chain when running in client mode |
 

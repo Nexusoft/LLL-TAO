@@ -15,6 +15,10 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 #include <LLD/cache/template_lru.h>
 
+#include <LLP/include/global.h>
+#include <LLP/types/tritium.h>
+#include <LLP/templates/trigger.h>
+
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/utils.h>
 #include <TAO/API/types/exception.h>
@@ -181,7 +185,7 @@ namespace TAO
                 /* Get the transaction from disk. */
                 TAO::Ledger::Transaction tx;
                 if(!LLD::Ledger->ReadTx(hashPrev, tx, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-108, "Failed to read transaction");
+                    break; //throw APIException(-108, "Failed to read transaction");
 
                 /* Set the next last. */
                 hashPrev = !tx.IsFirst() ? tx.hashPrevTx : 0;
@@ -274,22 +278,11 @@ namespace TAO
                             uint8_t nType = 0;
                             contract >> nType;
 
-                            /* If we have transferred to a token that we own then we ignore the transfer as we still
-                               technically own the register */
-                            if(nType == TAO::Operation::TRANSFER::FORCE)
-                            {
-                                TAO::Register::Object newOwner;
-                                if(!LLD::Register->ReadState(hashTransfer, newOwner))
-                                    throw APIException(-153, "Transfer recipient object not found");
-
-                                if(newOwner.hashOwner == hashGenesis)
-                                    break;
-                            }
-                            /* We need to retrieve the object so we can see whether it has been claimed or not.  If it has not been
-                               claimed then we ignore the transfer operation and still show it as ours.  However we need to skip
-                               this check in light mode because we will not have the register state available in order to determine
-                               if it has been claimed or not */
-                            else if(!config::fClient.load())
+                            /* IF this is not a forced transfer, we need to retrieve the object so we can see whether it has been 
+                               claimed or not.  If it has not been claimed then we ignore the transfer operation and still show 
+                               it as ours.  However we need to skip this check in light mode because we will not have the 
+                               register state available in order to determine if it has been claimed or not */
+                            if(nType != TAO::Operation::TRANSFER::FORCE && !config::fClient.load())
                             {
                                 /* Retrieve the object so we can see whether it has been claimed or not */
                                 TAO::Register::Object object;
@@ -1181,7 +1174,7 @@ namespace TAO
 
                 /* Get all objects owned by this token */
                 std::vector<TAO::Register::Address> vTokenizedObjects;
-                ListTokenizedObjects(hashToken, vTokenizedObjects);
+                ListTokenizedObjects(hashGenesis, hashToken, vTokenizedObjects);
 
                 /* Add them to the list if they are not already in there */
                 for(const auto& address : vTokenizedObjects)
@@ -1196,11 +1189,45 @@ namespace TAO
 
 
         /* Finds all objects that have been tokenized and therefore owned by hashToken */
-        bool ListTokenizedObjects(const TAO::Register::Address& hashToken,
+        bool ListTokenizedObjects(const uint256_t hashGenesis, const TAO::Register::Address& hashToken,
                                   std::vector<TAO::Register::Address>& vObjects)
         {
             /* There is no index of the assets owned by a token.  Therefore, to determine which assets the token owns, we can scan
                through the events for the token itself to find all object transfers where the new owner is the token. */
+
+
+            /* If we are in client mode we need to first check whether we own the token or not.  If we don't then we have to 
+               download the sig chain of the token owner so that we have access to all of the token's events. */
+            if(config::fClient)
+            {
+                /* First grab the token object */
+                TAO::Register::Object token;
+                if(!LLD::Register->ReadState(hashToken, token, TAO::Ledger::FLAGS::LOOKUP))
+                    throw APIException(-125, "Token not found");
+
+                /* Now check the owner.  We should already be subscribed to events for any tokens that the caller owns, so if this 
+                   token owner is not the caller then we need to synchronize to the events of the token */
+                if(token.hashOwner != hashGenesis)
+                { 
+                    if(LLP::TRITIUM_SERVER)
+                    {
+                        memory::atomic_ptr<LLP::TritiumNode>& pNode = LLP::TRITIUM_SERVER->GetConnection();
+                        if(pNode != nullptr)
+                        {
+                            debug::log(1, FUNCTION, "CLIENT MODE: Synchronizing events for foreign token");
+
+                            /* Request the sig chain. */
+                            debug::log(1, FUNCTION, "CLIENT MODE: Requesting LIST::NOTIFICATION for ", hashToken.SubString());
+
+                            LLP::TritiumNode::BlockingMessage(30000, pNode, LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashToken);
+
+                            debug::log(1, FUNCTION, "CLIENT MODE: LIST::NOTIFICATION received for ", hashToken.SubString());
+                        }
+                        else
+                            debug::error(FUNCTION, "no connections available...");
+                    }
+                }
+            }
 
             /* Transaction for the event. */
             TAO::Ledger::Transaction tx;
@@ -1529,6 +1556,42 @@ namespace TAO
         }
 
 
+        /*Used for client mode, this method will download the signature chain transactions and events for a given genesis */
+        bool DownloadSigChain(const uint256_t& hashGenesis, uint32_t nTimeout, bool bSyncEvents)
+        {
+            if(LLP::TRITIUM_SERVER)
+            {
+                memory::atomic_ptr<LLP::TritiumNode>& pNode = LLP::TRITIUM_SERVER->GetConnection();
+                if(pNode != nullptr)
+                {
+                    debug::log(1, FUNCTION, "CLIENT MODE: Synchronizing Signatiure Chain");
+
+                    /* Get the last txid in sigchain. */
+                    uint512_t hashLast;
+                    LLD::Ledger->ReadLast(hashGenesis, hashLast); //NOTE: we don't care if it fails here, because zero means begin
+
+                    /* Request the sig chain. */
+                    debug::log(1, FUNCTION, "CLIENT MODE: Requesting LIST::SIGCHAIN for ", hashGenesis.SubString());
+
+                    LLP::TritiumNode::BlockingMessage(nTimeout, pNode, LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::SIGCHAIN), hashGenesis, hashLast);
+
+                    debug::log(1, FUNCTION, "CLIENT MODE: LIST::SIGCHAIN received for ", hashGenesis.SubString());
+
+                    /* Grab list of notifications. */
+                    if(bSyncEvents)
+                    {
+                        pNode->PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashGenesis);
+                        pNode->PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::SPECIFIER::LEGACY), uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashGenesis);
+                    }
+
+                    return true;
+                }
+                else
+                    return debug::error(FUNCTION, "no connections available...");
+            }
+            else
+                return debug::error(FUNCTION, "Tritium server not initialized...");
+        }
 
 
     } // End API namespace

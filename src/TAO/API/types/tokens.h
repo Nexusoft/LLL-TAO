@@ -157,6 +157,34 @@ namespace TAO
              **/
             json::json ListTransactions(const json::json& params, bool fHelp);
 
+
+            /** Burn
+             *
+             *  Burn tokens. This debits the account to send the coins back to the token address, but does so with a contract 
+             *  condition that always evaluates to false.  Hence the debit can never be credited, burning the tokens.
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json Burn(const json::json& params, bool fHelp);
+
+
+
+            /** ListTokenAccounts
+             *
+             *  Lists all accounts that have been created for a particular token
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json ListTokenAccounts(const json::json& params, bool fHelp);
+
         };
     }
 }

@@ -23,6 +23,7 @@ ________________________________________________________________________________
 #include <LLP/include/trust_address.h>
 
 #include <TAO/API/types/system.h>
+#include <TAO/API/include/sessionmanager.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/types/mempool.h>
 
@@ -105,6 +106,18 @@ namespace TAO
 
             /* Whether this node is running in multiuser mode */
             jsonRet["multiuser"] = config::fMultiuser.load();
+
+            /* Number of logged in sessions */
+            if(config::fMultiuser.load())
+                jsonRet["sessions"] = TAO::API::GetSessionManager().Size();
+
+            /* Whether this node is running in client mode */
+            jsonRet["clientmode"] = config::fClient.load();
+
+            /* Whether this node is running the legacy wallet */
+#ifdef NO_WALLET
+            jsonRet["legacy_unsupported"] = true;
+#endif
 
             /* The current block height of this node */
             jsonRet["blocks"] = (int)TAO::Ledger::ChainState::nBestHeight.load();

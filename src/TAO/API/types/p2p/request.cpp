@@ -15,6 +15,8 @@ ________________________________________________________________________________
 #include <TAO/API/include/utils.h>
 #include <TAO/API/include/json.h>
 
+#include <LLD/include/global.h>
+
 #include <LLP/include/global.h>
 
 #include <Util/include/debug.h>
@@ -60,7 +62,7 @@ namespace TAO
             strAppID = params["appid"].get<std::string>();
 
             /* Get the peer hash  */
-            if(params.find("genesis") != params.end())
+            if(params.find("genesis") != params.end() && !params["genesis"].get<std::string>().empty())
                 hashPeer.SetHex(params["genesis"].get<std::string>());
             /* Check for username. */
             else if(params.find("username") != params.end())
@@ -76,6 +78,33 @@ namespace TAO
             /* Check to see if P2P is enabled */
             if(!LLP::P2P_SERVER)
                 throw APIException(-280, "P2P server not enabled on this node");
+
+
+            /* If in client mode and the peer genesis does not exist in our DB we should ask a peer for it */
+            if(config::fClient.load() && !LLD::Ledger->HasGenesis(hashPeer))
+            {
+                 /* Check tritium server enabled. */
+                if(LLP::TRITIUM_SERVER)
+                {
+                    memory::atomic_ptr<LLP::TritiumNode>& pNode = LLP::TRITIUM_SERVER->GetConnection();
+                    if(pNode != nullptr)
+                    {
+                        /* Request the genesis hash from the peer. */
+                        debug::log(1, FUNCTION, "CLIENT MODE: Requesting GET::GENESIS for ", hashPeer.SubString());
+
+                        LLP::TritiumNode::BlockingMessage(10000, pNode, LLP::Tritium::ACTION::GET, uint8_t(LLP::Tritium::TYPES::GENESIS), hashPeer);
+
+                        debug::log(1, FUNCTION, "CLIENT MODE: GET::GENESIS received for ", hashPeer.SubString());
+                    }
+                }
+
+            }
+            
+            /* Check that the peer genesis hash exists */
+            if(!LLD::Ledger->HasGenesis(hashPeer))
+            { 
+                throw APIException(-230, "Recipient user does not exist");
+            }
 
             /* The new connection request */
             LLP::P2P::ConnectionRequest request;

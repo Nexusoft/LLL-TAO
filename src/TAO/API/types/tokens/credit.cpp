@@ -70,7 +70,7 @@ namespace TAO
             TAO::Register::Address hashAccountTo;
 
             /* Check for data parameter. */
-            if(params.find("name") != params.end())
+            if(params.find("name") != params.end() && !params["name"].get<std::string>().empty())
             {
                 /* If name_to is provided then use this to deduce the register address */
                 hashAccountTo = Names::ResolveAddress(params, params["name"].get<std::string>());

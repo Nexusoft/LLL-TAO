@@ -57,7 +57,7 @@ namespace TAO
 
             /* Check for from parameter. */
             TAO::Register::Address hashFrom;
-            if(params.find("name_from") != params.end())
+            if(params.find("name_from") != params.end() && !params["name_from"].get<std::string>().empty())
                 hashFrom = Names::ResolveAddress(params, params["name_from"].get<std::string>());
             else if(params.find("address_from") != params.end())
                 hashFrom.SetHex(params["address_from"].get<std::string>());
@@ -66,7 +66,7 @@ namespace TAO
 
             /* Check for from parameter. */
             TAO::Register::Address hashTo;
-            if(params.find("name_to") != params.end())
+            if(params.find("name_to") != params.end() && !params["name_to"].get<std::string>().empty())
                 hashTo = Names::ResolveAddress(params, params["name_to"].get<std::string>());
             else if(params.find("address_to") != params.end())
                 hashTo.SetHex(params["address_to"].get<std::string>());

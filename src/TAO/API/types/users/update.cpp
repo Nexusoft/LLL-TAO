@@ -65,7 +65,7 @@ namespace TAO
             SecureString strNewRecovery = "";
 
             /* Check for new password parameter. */
-            if(params.find("new_password") != params.end())
+            if(params.find("new_password") != params.end() && !params["new_password"].get<std::string>().empty())
             {
                 strNewPassword = SecureString(params["new_password"].get<std::string>().c_str());
 
@@ -75,7 +75,7 @@ namespace TAO
             }
 
             /* Check for new pin parameter. */
-            if(params.find("new_pin") != params.end())
+            if(params.find("new_pin") != params.end() && !params["new_pin"].get<std::string>().empty())
             {
                 strNewPin = SecureString(params["new_pin"].get<std::string>().c_str());
 
@@ -85,7 +85,7 @@ namespace TAO
             }
 
             /* Check for recovery seed parameter. */
-            if(params.find("new_recovery") != params.end())
+            if(params.find("new_recovery") != params.end() && !params["new_recovery"].get<std::string>().empty())
             {
                 strNewRecovery = params["new_recovery"].get<std::string>().c_str();
 
@@ -323,9 +323,6 @@ namespace TAO
 
             if(crypto.get<uint256_t>("verify") != 0)
                 ssOperationStream << std::string("verify") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T) << user->KeyHash("verify", 0, strPin, tx.nKeyType);
-
-            if(crypto.get<uint256_t>("cert") != 0)
-                ssOperationStream << std::string("cert") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T) << user->KeyHash("cert", 0, strPin, tx.nKeyType);
 
             /* Add the crypto update contract. */
             tx[tx.Size()] << uint8_t(TAO::Operation::OP::WRITE) << hashCrypto << ssOperationStream.Bytes();

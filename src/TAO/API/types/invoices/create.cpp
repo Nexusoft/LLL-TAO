@@ -77,7 +77,7 @@ namespace TAO
             Session& session = users->GetSession(params);
 
             /* Check whether the caller has provided the account name parameter. */
-            if(params.find("account_name") != params.end())
+            if(params.find("account_name") != params.end() && !params["account_name"].get<std::string>().empty())
                 /* If name is provided then use this to deduce the register address */
                 hashAccount = Names::ResolveAddress(params, params["account_name"].get<std::string>());
             /* Otherwise try to find the raw hex encoded address. */
@@ -108,14 +108,14 @@ namespace TAO
             uint8_t nDecimals = GetDecimals(account);
             
             /* Check for recipient parameter. */
-            if(params.find("recipient") != params.end())
-                hashRecipient.SetHex(params["recipient"].get<std::string>());
-            else if(params.find("recipient_username") != params.end())
+            if(params.find("recipient_username") != params.end() && !params["recipient_username"].get<std::string>().empty())
                 hashRecipient = TAO::Ledger::SignatureChain::Genesis(params["recipient_username"].get<std::string>().c_str());
+            else if(params.find("recipient") != params.end())
+                hashRecipient.SetHex(params["recipient"].get<std::string>());
             else
                 throw APIException(-229, "Missing recipient");
 
-            /* Check that the recipient genesis hash exists. If not, in client mode and we should ask a peer for the genesis */
+            /* If in client mode and the recipient genesis does not exist in our DB we should ask a peer for the genesis */
             if(config::fClient.load() && !LLD::Ledger->HasGenesis(hashRecipient))
             {
                  /* Check tritium server enabled. */
@@ -133,11 +133,10 @@ namespace TAO
                     }
                 }
 
-                /* Now check again after asking the peer for the genesis */
-                if(!LLD::Ledger->HasGenesis(hashRecipient)) 
-                    throw APIException(-230, "Recipient user does not exist");
             }
-            else if(!LLD::Ledger->HasGenesis(hashRecipient))
+            
+            /* Check that the recipient genesis hash exists */
+            if(!LLD::Ledger->HasGenesis(hashRecipient))
             { 
                 throw APIException(-230, "Recipient user does not exist");
             }
