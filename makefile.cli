@@ -1776,8 +1776,6 @@ $(info sim)
 else
 $(info phone)
 	CXXFLAGS+= -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS13.2.sdk \
-		-arch armv7 \
-		-arch armv7s \
 		-arch arm64 \
 		-miphoneos-version-min=10 
 endif
@@ -2175,7 +2173,7 @@ build/Live_%.o: tests/live/%.cpp $(HEADERS)
 
 nexus.a: $(OBJS:build/%=build/%)
 	$(CXX) $(CXXFLAGS) -dead_strip -o $@ $(LIBPATHS) $^ $(LIBS)
-	cd build && ar rc nexus.a **.o
+	cd build && ar rc obj/simulator.a **.o
 	@echo ' '
 	@echo $(info SIMULATOR)
 	@echo Finished building nexus
