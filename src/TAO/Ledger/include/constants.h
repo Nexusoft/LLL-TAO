@@ -1,3 +1,4 @@
+
 /*__________________________________________________________________________________________
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
@@ -233,14 +234,10 @@ namespace TAO
 
         /* Initial maximum number of coinstakes in a pool stake block (this can be increased based on block age) */
         const uint64_t POOL_MAX_TX_BASE = 20;
+        const uint64_t POOL_MAX_TX_BASE_TESTNET = 3;
 
         /* Hard maximum for number of coinstakes in a pool block */
         const uint64_t POOL_MAX_TX = 200;
-
-        /* Minimum net balance of coinstakes in a pool stake block
-         * Number of coinstakes can exceed current max (up to hard max) to reach this amount
-         */
-        const uint64_t POOL_MIN_STAKE = 10000 * NXS_COIN;
 
         /* Minimum trust account balance to participate in the stake pool */
         const uint64_t POOL_MIN_STAKE_BALANCE = 1 * NXS_COIN;
@@ -250,9 +247,11 @@ namespace TAO
 
         /* Starting maximum number of transactions accepted into the stake pool */
         const uint64_t POOL_MAX_SIZE_BASE = 50;
+        const uint64_t POOL_MAX_SIZE_BASE_TESTNET = 8;
 
         /* Amount the maximum pool size is incremented if more transactions are needed */
         const uint64_t POOL_MAX_SIZE_INCREMENT = 50;
+        const uint64_t POOL_MAX_SIZE_INCREMENT_TESTNET = 10;
 
 
 

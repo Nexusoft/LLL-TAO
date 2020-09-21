@@ -368,7 +368,7 @@ namespace TAO
 
 
         /*  Gets the trust account for a signature chain */
-        bool FindTrustAccount(const uint256_t& hashGenesis, TAO::Register::Object& account, bool& fIndexed)
+        bool FindTrustAccount(const uint256_t& hashGenesis, TAO::Register::Object &account, bool &fIndexed)
         {
 
             /* Reset trust account data */
@@ -430,7 +430,7 @@ namespace TAO
 
 
         /** Retrieves the most recent stake transaction for a user account. */
-        bool FindLastStake(const uint256_t& hashGenesis, Transaction& tx)
+        bool FindLastStake(const uint256_t& hashGenesis, Transaction &tx)
         {
             /* Start with most recent signature chain transaction. */
             uint512_t hashLast = 0;
@@ -464,7 +464,7 @@ namespace TAO
 
         /* Retrieve the coinstake proofs for a given pool stake block */
         bool GetStakeProofs(const TritiumBlock& blockCurrent, const BlockState& statePrev,
-                            uint64_t& nTimeBegin, uint64_t& nTimeEnd, uint256_t& hashProof)
+                            uint64_t &nTimeBegin, uint64_t &nTimeEnd, uint256_t &hashProof)
         {
             nTimeEnd = statePrev.GetBlockTime();
             nTimeBegin = nTimeEnd;
@@ -480,14 +480,6 @@ namespace TAO
                     if(!LLD::Ledger->ReadTx(proof.second, tx, TAO::Ledger::FLAGS::MEMPOOL))
                         return debug::error(FUNCTION, "Unable to read transaction");
 
-                    /* Skip any transactions more recent than prev block time */
-                    if(tx.nTimestamp >= nTimeEnd)
-                        continue;
-
-                    /* Save beginning time from oldest tx */
-                    if(tx.nTimestamp < nTimeBegin)
-                        nTimeBegin = tx.nTimestamp;
-
                     ss.clear();
 
                     /* After first tx, chain the tx hashes by hashing current tx hash with the current hashProof */
@@ -498,20 +490,20 @@ namespace TAO
 
                     hashProof = LLC::SK256(ss.begin(), ss.end());
 
+                    /* Skip timestamp of any transactions more recent than prev block time */
+                    if(tx.nTimestamp >= nTimeEnd)
+                        continue;
+
+                    /* Save beginning time from oldest tx */
+                    if(tx.nTimestamp < nTimeBegin)
+                        nTimeBegin = tx.nTimestamp;
+
                 }
                 else if(proof.first == TRANSACTION::LEGACY)
                 {
                     Legacy::Transaction tx;
                     if(!LLD::Legacy->ReadTx(proof.second, tx, TAO::Ledger::FLAGS::MEMPOOL))
                         return debug::error(FUNCTION, "Unable to read legacy transaction");
-
-                    /* Skip transactions more recent than prev block time */
-                    if(tx.nTime >= nTimeEnd)
-                        continue;
-
-                    /* Save beginning time from oldest tx */
-                    if(tx.nTime < nTimeBegin)
-                        nTimeBegin = tx.nTime;
 
                     ss.clear();
 
@@ -522,6 +514,14 @@ namespace TAO
                     ss << tx.GetHash();
 
                     hashProof = LLC::SK256(ss.begin(), ss.end());
+
+                    /* Skip timestamp of any transactions more recent than prev block time */
+                    if(tx.nTime >= nTimeEnd)
+                        continue;
+
+                    /* Save beginning time from oldest tx */
+                    if(tx.nTime < nTimeBegin)
+                        nTimeBegin = tx.nTime;
 
                 }
                 else
