@@ -60,8 +60,8 @@ namespace TAO
         {
             static bool fPool = false;
 
-            /* When set to pool stake or for light client, use the pool stake minter */
-            if(config::fPoolStaking.load() || config::fClient.load())
+            /* When set to pool stake, use the pool stake minter */
+            if(config::fPoolStaking.load())
             {
                 if(!fPool) //checks if previously set for solo
                 {
