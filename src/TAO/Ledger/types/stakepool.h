@@ -234,7 +234,7 @@ namespace TAO
              *  @return true if list is not empty.
              *
              **/
-            bool Select(std::vector<uint512_t> &vHashes, uint64_t& nBalanceTotal, uint64_t& nFeeTotal,
+            bool Select(std::vector<uint512_t> &vHashes, uint64_t &nBalanceTotal, uint64_t &nFeeTotal,
                         const uint32_t nCount = std::numeric_limits<uint32_t>::max());
 
 
@@ -249,8 +249,8 @@ namespace TAO
              *  @param[in] nTimeEnd  End time for coinstake proof.
              *
              **/
-            void SetProofs(const uint1024_t hashLastBlock, const uint256_t hashProof,
-                           const uint64_t nTimeBegin, const uint64_t nTimeEnd);
+            void SetProofs(const uint1024_t& hashLastBlock, const uint256_t& hashProof,
+                           const uint64_t& nTimeBegin, const uint64_t& nTimeEnd);
 
 
             /** GetMaxSize

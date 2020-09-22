@@ -42,7 +42,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/API/include/global.h> //for CREATE_MUTEX
-#include <TAO/API/include/sessionmanager.h> 
+#include <TAO/API/include/sessionmanager.h>
 
 #include <Util/include/convert.h>
 #include <Util/include/debug.h>
@@ -110,7 +110,7 @@ namespace TAO
                     tx.nKeyType = SIGNATURE::FALCON;
                 else if(config::GetBoolArg("-brainpool"))
                     tx.nKeyType = SIGNATURE::BRAINPOOL;
-                else 
+                else
                     tx.nKeyType = SIGNATURE::BRAINPOOL;
 
                 /* Set the next key type for the genesis transaction */
@@ -118,7 +118,7 @@ namespace TAO
             }
             else
             {
-                /* If in single user mode use the node config to set the next key type. If a specific key type has not been configured 
+                /* If in single user mode use the node config to set the next key type. If a specific key type has not been configured
                 then default to using the key type from the previous transaction */
                 if(!config::fMultiuser.load())
                 {
@@ -135,8 +135,8 @@ namespace TAO
                     tx.nNextType = txPrev.nNextType;
                 }
             }
-            
-            
+
+
 
             /* Set the transaction version based on the timestamp. The transaction version is current version
                unless an activation is pending */
@@ -387,21 +387,27 @@ namespace TAO
 
             /* Handle the producer outside the block, then add it manually to support multiple block structures by version */
             TAO::Ledger::Transaction txProducer;
+            TAO::Ledger::Transaction txCached;
 
-            /* Handle if the block is cached. */
-            if(ChainState::stateBest.load().GetHash() == blockCache[nChannel].load().hashPrevBlock)
+            /* Retrieve currently cached block */
+            TAO::Ledger::TritiumBlock blockCached = blockCache[nChannel].load();
+
+            /* Retrieve block producer from cached block */
+            if(blockCached.nVersion < 9)
+                txCached = blockCached.producer;
+
+            else if(blockCached.vProducer.size() > 0)
+                txCached = blockCached.vProducer.back(); //outside of stake pool, only one producer
+
+            /* Handle if the block is cached (if stateBest or user change, cache is invalid). */
+            if((ChainState::stateBest.load().GetHash() == blockCached.hashPrevBlock) && (hashGenesis == txCached.hashGenesis))
             {
                 /* Set the block to cached block. */
-                block = blockCache[nChannel].load();
+                block = blockCached;
+                txProducer = txCached;
 
                 /* Add new transactions. */
                 AddTransactions(block);
-
-                /* Retrieve block producer from cached block */
-                if(block.nVersion < 9)
-                    txProducer = block.producer;
-                else
-                    txProducer = block.vProducer.back(); //outside of stake pool, only one producer
 
                 /* Check that the producer isn't going to orphan any transactions. */
                 TAO::Ledger::Transaction tx;
@@ -411,11 +417,11 @@ namespace TAO
                     debug::log(0, FUNCTION, "Producer is stale, rebuilding...");
 
                     /* Setup a new producer transaction. */
+                    TAO::Ledger::Transaction txNew;
+                    txProducer = txNew; //Resets any producer data retrieved from cache
+
                     if(!CreateTransaction(user, pin, txProducer))
                         return debug::error(FUNCTION, "Failed to create producer transactions.");
-
-                    /* Update the producer timestamp */
-                    UpdateProducerTimestamp(txProducer);
 
                     /* Update block producer to store back into cache */
                     if(block.nVersion < 9)
@@ -508,6 +514,9 @@ namespace TAO
                     /* Set the genesis operation. */
                     txProducer[0] << txProducer.hashGenesis;
                 }
+
+                /* Update the producer timestamp */
+                UpdateProducerTimestamp(txProducer);
 
                 /* Sign the producer transaction. */
                 txProducer.Sign(user->Generate(txProducer.nSequence, pin));

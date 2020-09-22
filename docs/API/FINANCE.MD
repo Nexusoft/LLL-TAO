@@ -533,8 +533,9 @@ This will retrieve account values and staking metrics for the trust account belo
     "stake": 5000,
     "trust": 54322,
     "new": false,
-    "staking": true
-    "onhold": false
+    "staking": true,
+    "pooled": false,
+    "onhold": false,
     "stakerate": 1.97,
     "trustweight": 58.97,
     "blockweight": 47.62,
@@ -557,6 +558,8 @@ This will retrieve account values and staking metrics for the trust account belo
 `new` : Indicates whether trust account is new (true, staking Genesis) or established (false, staking Trust).
 
 `staking` : Indicates whether staking is actively running for user account (when false, weight metrics will be 0).
+
+`pooled` : Flag indicating whether pooled staking is enabled or not
 
 `onhold` : When trust account is new, any change to balance requires a minimum wait period before staking begins. During this period, staking is on hold and this field returns true. "staking" field will still be true when on hold.
 

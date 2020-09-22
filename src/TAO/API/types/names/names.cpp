@@ -2,7 +2,12 @@
 
 #include <LLD/include/global.h>
 
+#include <LLP/include/global.h>
+#include <LLP/types/tritium.h>
+#include <LLP/templates/trigger.h>
+
 #include <TAO/API/include/global.h>
+#include <TAO/API/include/sessionmanager.h>
 #include <TAO/API/include/utils.h>
 #include <TAO/API/types/exception.h>
 
@@ -428,7 +433,18 @@ namespace TAO
 
             /* Look up the Name object for the register address in the specified sig chain, if one has been provided */
             if(hashGenesis != 0)
-                name =Names::GetName(hashGenesis, hashRegister, hashNameObject);
+            {
+                /* If we are in client mode then if the hashGenesis is not for the logged in user we need to make sure we 
+                   have downloaded their sig chain so that we have access to it */
+                if(config::fClient.load() && hashGenesis != GetSessionManager().Get(0).GetAccount()->Genesis() )
+                {
+                    /* Download the users signature chain transactions, but we do not need events */
+                    TAO::API::DownloadSigChain(hashGenesis, 30000, false);  
+                }
+
+                /* Now lookup the name in this sig chain */
+                name = Names::GetName(hashGenesis, hashRegister, hashNameObject);
+            }
 
             /* Check to see if we resolved the name using the specified sig chain */
             if(!name.IsNull())

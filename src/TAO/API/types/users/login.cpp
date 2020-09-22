@@ -17,11 +17,11 @@ ________________________________________________________________________________
 
 #include <LLP/include/global.h>
 #include <LLP/types/tritium.h>
-#include <LLP/templates/trigger.h>
 
 #include <TAO/API/types/users.h>
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/sessionmanager.h>
+#include <TAO/API/include/utils.h>
 
 #include <TAO/Register/types/object.h>
 
@@ -110,32 +110,12 @@ namespace TAO
                     return ret;
                 }
 
-                /* Check for genesis. */
-                if(LLP::TRITIUM_SERVER)
-                {
-                    memory::atomic_ptr<LLP::TritiumNode>& pNode = LLP::TRITIUM_SERVER->GetConnection();
-                    if(pNode != nullptr)
-                    {
-                        debug::log(1, FUNCTION, "CLIENT MODE: Synchronizing client");
+                if(TAO::Ledger::ChainState::Synchronizing())
+                    throw APIException(-297, "Cannot log in while synchronizing");
 
-                        /* Get the last txid in sigchain. */
-                        uint512_t hashLast;
-                        LLD::Ledger->ReadLast(hashGenesis, hashLast); //NOTE: we don't care if it fails here, because zero means begin
-
-                        /* Request the sig chain. */
-                        debug::log(1, FUNCTION, "CLIENT MODE: Requesting LIST::SIGCHAIN for ", hashGenesis.SubString());
-
-                        LLP::TritiumNode::BlockingMessage(30000, pNode, LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::SIGCHAIN), hashGenesis, hashLast);
-
-                        debug::log(1, FUNCTION, "CLIENT MODE: LIST::SIGCHAIN received for ", hashGenesis.SubString());
-
-                        /* Grab list of notifications. */
-                        pNode->PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashGenesis);
-                        pNode->PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::SPECIFIER::LEGACY), uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashGenesis);
-                    }
-                    else
-                        debug::error(FUNCTION, "no connections available...");
-                }
+                /* Download the users signature chain transactions. */
+                TAO::API::DownloadSigChain(hashGenesis, 30000, true);
+                
             }
 
             /* Check for duplicates in ledger db. */
@@ -271,33 +251,12 @@ namespace TAO
                     /* Check for -client mode. */
                     if(config::fClient.load())
                     {
-                        /* Check tritium server enabled. */
-                        if(LLP::TRITIUM_SERVER)
-                        {
-                            memory::atomic_ptr<LLP::TritiumNode>& pNode = LLP::TRITIUM_SERVER->GetConnection();
-                            if(pNode != nullptr)
-                            {
-                                debug::log(1, FUNCTION, "CLIENT MODE: Synchronizing client");
+                        /* In client mode, wait until we are synchronized before logging in */
+                        if(TAO::Ledger::ChainState::Synchronizing())
+                            throw APIException(-297, "Cannot log in while synchronizing");
 
-                                /* Get the last txid in sigchain. */
-                                uint512_t hashLast;
-                                LLD::Ledger->ReadLast(hashGenesis, hashLast); //NOTE: we don't care if it fails here, because zero means begin
-
-                                /* Request the sig chain. */
-                                debug::log(1, FUNCTION, "CLIENT MODE: Requesting LIST::SIGCHAIN for ", hashGenesis.SubString());
-
-                                LLP::TritiumNode::BlockingMessage(30000, pNode, LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::SIGCHAIN), hashGenesis, hashLast);
-
-                                debug::log(1, FUNCTION, "CLIENT MODE: LIST::SIGCHAIN received for ", hashGenesis.SubString());
-
-                                /* Grab list of notifications. */
-                                pNode->PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashGenesis);
-                                pNode->PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::SPECIFIER::LEGACY), uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashGenesis);
-                                
-                            }
-                            else
-                                return; //don't error if no connections as we will try again later
-                        }
+                        /* Download the users signature chain transactions. */
+                        TAO::API::DownloadSigChain(hashGenesis, 30000, true);                        
                     }
 
                     /* See if the sig chain exists */

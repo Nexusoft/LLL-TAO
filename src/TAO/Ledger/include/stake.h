@@ -228,7 +228,7 @@ namespace TAO
          *  @return true if the trust account was successfully retrieved
          *
          **/
-        bool FindTrustAccount(const uint256_t& hashGenesis, TAO::Register::Object& account, bool& fIndexed);
+        bool FindTrustAccount(const uint256_t& hashGenesis, TAO::Register::Object &account, bool &fIndexed);
 
 
         /** FindLastStake
@@ -241,7 +241,7 @@ namespace TAO
          *  @return True if last stake found, false otherwise
          *
          **/
-        bool FindLastStake(const uint256_t& hashGenesis, Transaction& tx);
+        bool FindLastStake(const uint256_t& hashGenesis, Transaction &tx);
 
 
         /** GetStakeProofs
@@ -274,7 +274,7 @@ namespace TAO
          *
          **/
         bool GetStakeProofs(const TritiumBlock& blockCurrent, const BlockState& statePrev,
-                            uint64_t& nTimeBegin, uint64_t& nTimeEnd, uint256_t& hashProof);
+                            uint64_t &nTimeBegin, uint64_t &nTimeEnd, uint256_t &hashProof);
 
 
         /** GetPoolStakeFee
