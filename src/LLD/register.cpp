@@ -252,7 +252,7 @@ namespace LLD
                         debug::log(1, FUNCTION, "CLIENT MODE: TYPES::REGISTER received for ", hashRegister.SubString());
                     }
                     else
-                        debug::error(FUNCTION, "no connections available...");
+                        return debug::error(FUNCTION, "no connections available...");
                 }
             }
         }
