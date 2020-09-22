@@ -629,11 +629,6 @@ namespace TAO
         bool Users::get_tokenized_debits(const uint256_t& hashGenesis,
                 std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> &vContracts)
         {
-            /* Don't process tokenized debits in client mode (yet). */
-            /* TODO: obtain token events list via LLP in client mode */
-            if(config::fClient.load())
-                return false;
-
             /* Get the list of registers owned by this sig chain */
             std::vector<TAO::Register::Address> vRegisters;
             if(!ListRegisters(hashGenesis, vRegisters))
