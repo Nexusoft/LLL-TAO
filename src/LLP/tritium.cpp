@@ -3888,7 +3888,7 @@ namespace LLP
         DataStream ssMessage(SER_NETWORK, MIN_PROTO_VERSION);
 
         /* Only send auth messages if the auth key has been cached */
-        if(TAO::API::users->LoggedIn() && !TAO::API::GetSessionManager().Get(0, false).GetNetworkKey() != 0)
+        if(TAO::API::users->LoggedIn() && TAO::API::GetSessionManager().Get(0, false).GetNetworkKey() != 0)
         {
             /* Get the Session */
             TAO::API::Session& session = TAO::API::GetSessionManager().Get(0, false);
