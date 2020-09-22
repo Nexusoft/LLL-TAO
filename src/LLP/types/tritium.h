@@ -132,15 +132,16 @@ namespace LLP
         {
             enum
             {
-                BLOCK       = (1 << 1),
-                TRANSACTION = (1 << 2),
-                TIMESEED    = (1 << 3),
-                BESTHEIGHT  = (1 << 4),
-                CHECKPOINT  = (1 << 5),
-                ADDRESS     = (1 << 6),
-                LASTINDEX   = (1 << 7),
-                BESTCHAIN   = (1 << 8),
-                SIGCHAIN    = (1 << 9),
+                BLOCK           = (1 << 1),
+                TRANSACTION     = (1 << 2),
+                TIMESEED        = (1 << 3),
+                BESTHEIGHT      = (1 << 4),
+                CHECKPOINT      = (1 << 5),
+                ADDRESS         = (1 << 6),
+                LASTINDEX       = (1 << 7),
+                BESTCHAIN       = (1 << 8),
+                SIGCHAIN        = (1 << 9),
+                NOTIFICATION    = (1 << 10),
             };
         }
 
@@ -197,6 +198,11 @@ namespace LLP
 
         /** The current notifications. **/
         uint16_t nNotifications;
+
+
+        /** Sig chain genesis hashes / register addresses that the peer has subscribed to notifications for **/
+        std::vector<uint256_t> vNotifications;
+        
 
 
     public:
@@ -372,7 +378,28 @@ namespace LLP
         void Subscribe(const uint16_t nFlags, bool fSubscribe = true);
 
 
-        /** Notifications
+        /** Unsubscribe
+         *
+         *  Unsubscribe from another node for notifications.
+         *
+         *  @param[in] hashAddress The address to unsubscribe notifications for.
+         *
+         **/
+        void UnsubscribeNotification(const uint256_t& hashAddress);
+
+
+        /** Subscribe
+         *
+         *  Subscribe to another node for notifications.
+         *
+         *  @param[in] hashAddress The address to unsubscribe notifications for..
+         *  @param[in] fSubscribe Flag to determine whether subscibing or unsubscribing
+         *
+         **/
+        void SubscribeNotification(const uint256_t& hashAddress, bool fSubscribe = true);
+
+
+        /** RelayFilter
          *
          *  Checks if a node is subscribed to receive a notification.
          *
