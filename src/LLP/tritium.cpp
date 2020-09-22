@@ -1082,7 +1082,7 @@ namespace LLP
                                 vNotifications.push_back(hashAddress);
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "ACTION::SUBSCRIBE::SIGCHAIN: ", std::bitset<16>(nNotifications));
+                                debug::log(3, NODE, "ACTION::SUBSCRIBE::NOTIFICATION: ", hashAddress.ToString());
                             }
                             else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
                             {
@@ -1097,7 +1097,7 @@ namespace LLP
                                 vNotifications.erase(std::find(vNotifications.begin(), vNotifications.end(), hashAddress));
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE::NOTIFICATION: " , std::bitset<16>(nNotifications));
+                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE::NOTIFICATION: " , hashAddress.ToString());
                             }
                             else
                             {
@@ -1105,7 +1105,7 @@ namespace LLP
                                 nSubscriptions &= ~SUBSCRIPTION::NOTIFICATION;
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED::NOTIFICATION: ", std::bitset<16>(nSubscriptions));
+                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED::NOTIFICATION: ", hashAddress.ToString());
                             }
 
                             break;
