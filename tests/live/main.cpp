@@ -120,16 +120,17 @@ int main(int argc, char** argv)
 
     LLP::Initialize();
 
-    //config::nVerbose.store(4);
+    config::nVerbose.store(4);
+    config::mapArgs["-datadir"] = "/database/testdb";
 
     LLD::Config::Hashmap CONFIG =
         LLD::Config::Hashmap("testdb", LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
 
     /* Set the ContractDB database internal settings. */
-    CONFIG.HASHMAP_TOTAL_BUCKETS    = 256 * 256;
-    CONFIG.MAX_HASHMAP_FILES        = 64;
-    CONFIG.MIN_LINEAR_PROBES        = 5;
-    CONFIG.MAX_LINEAR_PROBES     = 256;
+    CONFIG.HASHMAP_TOTAL_BUCKETS    = 64;
+    CONFIG.MAX_HASHMAP_FILES        = 1;
+    CONFIG.MIN_LINEAR_PROBES        = 1;
+    CONFIG.MAX_LINEAR_PROBES        = 64;
     CONFIG.MAX_HASHMAP_FILE_STREAMS = 64;
     CONFIG.PRIMARY_BLOOM_HASHES     = 9;
     CONFIG.PRIMARY_BLOOM_BITS       = 1.44 * CONFIG.MAX_HASHMAP_FILES * CONFIG.PRIMARY_BLOOM_HASHES;
@@ -146,40 +147,42 @@ int main(int argc, char** argv)
     {
         debug::log(0, "Generating Keys +++++++");
 
-            std::vector<uint1024_t> vKeys;
-            for(int i = 0; i < config::GetArg("-total", 10000); ++i)
-                vKeys.push_back(LLC::GetRand1024());
+        std::vector<uint1024_t> vKeys;
+        for(int i = 0; i < config::GetArg("-total", 10000); ++i)
+            vKeys.push_back(LLC::GetRand1024());
 
-        debug::log(0, "------- Running Tests...");
+        debug::log(0, "------- Writing Tests...");
 
-            runtime::stopwatch swTimer;
-            swTimer.start();
-            for(const auto& nBucket : vKeys)
-            {
-                bloom->WriteKey(nBucket, nBucket);
-            }
-            swTimer.stop();
+        runtime::stopwatch swTimer;
+        swTimer.start();
+        for(const auto& nBucket : vKeys)
+        {
+            bloom->WriteKey(nBucket, nBucket);
+        }
+        swTimer.stop();
 
-            uint64_t nElapsed = swTimer.ElapsedMicroseconds();
-            debug::log(0, vKeys.size() / 1000, "k records written in ", nElapsed, " (", (1000000.0 * vKeys.size()) / nElapsed, " writes/s)");
+        uint64_t nElapsed = swTimer.ElapsedMicroseconds();
+        debug::log(0, vKeys.size() / 1000, "k records written in ", nElapsed, " (", (1000000.0 * vKeys.size()) / nElapsed, " writes/s)");
 
-            uint1024_t hashKey = 0;
+        uint1024_t hashKey = 0;
 
-            swTimer.reset();
-            swTimer.start();
+        swTimer.reset();
+        swTimer.start();
 
-            uint32_t nTotal = 0;
-            for(const auto& nBucket : vKeys)
-            {
-                ++nTotal;
+        debug::log(0, "------- Reading Tests...");
 
-                if(!bloom->ReadKey(nBucket, hashKey))
-                    return debug::error("Failed to read ", nBucket.SubString(), " total ", nTotal);
-            }
-            swTimer.stop();
+        uint32_t nTotal = 0;
+        for(const auto& nBucket : vKeys)
+        {
+            ++nTotal;
 
-            nElapsed = swTimer.ElapsedMicroseconds();
-            debug::log(0, vKeys.size() / 1000, "k records read in ", nElapsed, " (", (1000000.0 * vKeys.size()) / nElapsed, " read/s)");
+            if(!bloom->ReadKey(nBucket, hashKey))
+                return debug::error("Failed to read ", nBucket.SubString(), " total ", nTotal);
+        }
+        swTimer.stop();
+
+        nElapsed = swTimer.ElapsedMicroseconds();
+        debug::log(0, vKeys.size() / 1000, "k records read in ", nElapsed, " (", (1000000.0 * vKeys.size()) / nElapsed, " read/s)");
     }
 
     delete bloom;

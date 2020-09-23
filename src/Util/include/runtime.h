@@ -269,7 +269,7 @@ namespace runtime
 
             /* Grab the current elapsed time. */
             uint64_t nTime =
-                std::chrono::duration_cast<std::chrono::microseconds>
+                std::chrono::duration_cast<std::chrono::nanoseconds>
                 (
                     std::chrono::high_resolution_clock::now() - tStart
                 ).count();
@@ -289,18 +289,25 @@ namespace runtime
 
         uint64_t ElapsedMicroseconds()
         {
-            return nElapsed;
+            return nElapsed / 1000;
         }
 
 
         uint64_t ElapsedSeconds() const
         {
-            return nElapsed / 1000000;
+            return nElapsed / 1000000000;
         }
+
 
         uint64_t ElapsedMilliseconds() const
         {
-            return nElapsed / 1000;
+            return nElapsed / 1000000;
+        }
+
+
+        uint64_t ElapsedNanoseconds() const
+        {
+            return nElapsed;
         }
     };
 

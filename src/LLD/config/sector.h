@@ -164,6 +164,23 @@ namespace LLD::Config
         }
 
 
+        /** File
+         *
+         *  Grabs a lock from the set of keychain locks by file handle.
+         *
+         *  @param[in] nFile The binary data of key to lock for.
+         *
+         *  @return a reference of the lock object.
+         *
+         **/
+        std::mutex& FILE(const uint32_t nFile) const
+        {
+            /* Calculate the lock that will be obtained by the given key. */
+            uint64_t nLock = XXH3_64bits((uint8_t*)&nFile, 4) % KEYCHAIN_LOCKS.size();
+            return KEYCHAIN_LOCKS[nLock];
+        }
+
+
         /** SectorLock
          *
          *  Grabs a lock from the set of sector locks by sector position.
