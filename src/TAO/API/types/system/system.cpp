@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <Legacy/include/money.h>
+#include <Legacy/wallet/wallet.h>
 
 #include <LLP/types/apinode.h>
 #include <LLP/include/network.h>
@@ -33,7 +34,6 @@ ________________________________________________________________________________
 #include <Util/include/version.h>
 #include <Util/include/signals.h>
 
-#include <Legacy/wallet/wallet.h>
 
 /* Global TAO namespace. */
 namespace TAO
