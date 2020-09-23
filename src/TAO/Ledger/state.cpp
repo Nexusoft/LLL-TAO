@@ -1049,15 +1049,16 @@ namespace TAO
                 /* Broadcast the block to nodes if not synchronizing. */
                 if(!ChainState::Synchronizing())
                 {
+                   #ifndef IPHONE
                     /* Block notify. */
                     std::string strCmd = config::GetArg("-blocknotify", "");
                     if(!strCmd.empty())
                     {
                         ReplaceAll(strCmd, "%s", ChainState::hashBestChain.load().GetHex());
-                        //int32_t nRet = std::system(strCmd.c_str());
-
-                        //debug::log(0, FUNCTION, "Block Notify Executed with code ", nRet);
+                        int32_t nRet = std::system(strCmd.c_str());
+                        debug::log(0, FUNCTION, "Block Notify Executed with code ", nRet);
                     }
+                    #endif
 
                     /* Dispatch block to dispatch thread. */
                     Dispatch::GetInstance().PushRelay(ChainState::hashBestChain.load());
