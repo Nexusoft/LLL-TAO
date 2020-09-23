@@ -1791,6 +1791,27 @@ CXXFLAGS+= $(CXXWARNINGS)
 #OS Specific Targets and instructions
 all: nexus.a
 
+buildall: 
+	mkdir build/obj
+	echo MAKING DEVICE
+	make -f makefile.cli -j 8 STATIC=1 NO_WALLET=1 IPHONE=1 SIMULATOR=0
+	mv build/obj/simulator.a build/obj/device.a
+	echo CLEANING
+	make -f makefile.cli -j 8 STATIC=1 NO_WALLET=1 IPHONE=1 SIMULATOR=0 clean
+	echo MAKING SIM
+	make -f makefile.cli -j 8 STATIC=1 NO_WALLET=1 IPHONE=1 SIMULATOR=1
+	mkdir build/tempdir
+	echo MOVING HEADERS
+	find ./src -name '*.h' -print | cpio -pvdumB ./build/tempdir
+	cp ./src/LLD/hash/xxhash.c ./build/tempdir/src/LLD/hash/xxhash.c
+	mkdir build/obj/nexus-mobile-library.framework
+	mv build/tempdir/src build/obj/nexus-mobile-library.framework/Headers
+	rmdir build/tempdir
+	echo BUILDING FRAMEWORK
+	cd build/obj && LIPO -create -arch arm64 "device.a" -arch x86_64 "simulator.a" -o "nexus-mobile-library.a"
+	cd build/obj && mv nexus-mobile-library.a nexus-mobile-library.framework/nexus-mobile-library
+
+
 $(info $(CFLAGS))
 
 build/%.o: src/%.cpp $(HEADERS)
