@@ -11,8 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
-#include <Legacy/wallet/wallet.h>
 #include <Legacy/include/money.h>
+#include <Legacy/wallet/wallet.h>
 
 #include <LLP/types/apinode.h>
 #include <LLP/include/network.h>

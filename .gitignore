@@ -5,6 +5,7 @@
 *.bat
 *.exe
 *.Debug
+*.a
 *.Release
 *.kate-swp
 *.db

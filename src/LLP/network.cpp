@@ -76,7 +76,11 @@ namespace LLP
         OpenSSL_add_ssl_algorithms();
 
         /* Create the global network SSL object.  NOTE we only support TLS 1.0 and greater, not previous versions of SSL */
-        pSSL_CTX = SSL_CTX_new(TLS_method());
+        #ifdef IPHONE
+            pSSL_CTX = SSL_CTX_new(DTLS_method());
+        #else
+            pSSL_CTX = SSL_CTX_new(TLS_method());
+        #endif
 
         /* Set the verification callback to always true. */
         SSL_CTX_set_verify(pSSL_CTX, SSL_VERIFY_PEER, LLC::always_true_callback);
