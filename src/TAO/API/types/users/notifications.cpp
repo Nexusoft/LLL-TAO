@@ -1304,55 +1304,9 @@ namespace TAO
                                 }
                                 else
                                 {
-                                    /* We search for the first account of the specified token type.  NOTE that the owner my not 
-                                       have an account for the token at this stage, in which case we can just skip the notification
-                                       for now until they do have one */
-                                    
-                                    /* Get the list of registers owned by this sig chain */
-                                    std::vector<TAO::Register::Address> vAccounts;
-                                    if(!ListAccounts(user->Genesis(), vAccounts, false, false))
-                                        throw APIException(-74, "No registers found");
-
-                                    /* Read all the registers to that they are sorted by creation time */
-                                    std::vector<std::pair<TAO::Register::Address, TAO::Register::State>> vRegisters;
-                                    GetRegisters(vAccounts, vRegisters);
-
-                                    /* Iterate all registers to find the first for the token being credited */
-                                    for(const auto& state : vRegisters)
-                                    {
-                                        /* Double check that it is an object before we cast it */
-                                        if(state.second.nType != TAO::Register::REGISTER::OBJECT)
-                                            continue;
-
-                                        /* Cast the state to an Object register */
-                                        TAO::Register::Object object(state.second);
-
-                                        /* Check that this is a non-standard object type so that we can parse it and check the type*/
-                                        if(object.nType != TAO::Register::REGISTER::OBJECT)
-                                            continue;
-
-                                        /* parse object so that the data fields can be accessed */
-                                        if(!object.Parse())
-                                            throw APIException(-36, "Failed to parse object register");
-
-                                        /* Check that this is an account */
-                                        uint8_t nStandard = object.Standard();
-                                        if(nStandard != TAO::Register::OBJECTS::ACCOUNT)
-                                            continue;
-
-                                        /* Check the account is for the specified token */
-                                        if(object.get<uint256_t>("token") != hashToken)
-                                            continue;
-                                        else
-                                        {
-                                            /* Stop on the first one we find */
-                                            hashTo = state.first;
-                                            break;
-                                        }
-                                    }
-
+                                    /* Search for an account to credit the tokens to */
+                                    if(!GetAccountByToken(user->Genesis(), hashToken, hashTo))
                                     /* If no account has been found for the token credit then skip the notification */
-                                    if(hashTo == 0)
                                         continue;
                                 }
 

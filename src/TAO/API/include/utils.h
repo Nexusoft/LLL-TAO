@@ -287,5 +287,19 @@ namespace TAO
         **/
         bool DownloadSigChain(const uint256_t& hashGenesis, uint32_t nTimeout, bool bSyncEvents);
 
+
+        /** GetAccountByToken
+        *
+        *  Searches the sig chain for the first account for the given token type 
+        *
+        *  @param[in] hashGenesis The genesis hash of the sig chain to search  
+        *  @param[in] hashToken The token type to search for
+        *  @param[out] hashAccount Populated with the address of the account, if found
+        * 
+        *  @return Boolean indicating whether an account was found or not
+        *
+        **/
+        bool GetAccountByToken(const uint256_t& hashGenesis, const uint256_t& hashToken, TAO::Register::Address& hashAccount);
+
     }
 }
