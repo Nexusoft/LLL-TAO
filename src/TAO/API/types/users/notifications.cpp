@@ -657,10 +657,6 @@ namespace TAO
                 /* Get the token address */
                 TAO::Register::Address hashToken = object.get<uint256_t>("token");
 
-                /* Check the account is a not NXS account */
-                if(hashToken == 0)
-                    continue;
-
                 /* Get the balance  */
                 uint64_t nBalance = object.get<uint64_t>("balance");
 
@@ -1250,6 +1246,9 @@ namespace TAO
             
                 for(const auto& contract : vContracts)
                 {
+                    /* Reset the receiving address */
+                    hashTo = uint256_t(0);
+
                     /* Get a reference to the contract */
                     const TAO::Operation::Contract& refContract = std::get<0>(contract);
 
@@ -1295,15 +1294,67 @@ namespace TAO
                                 if(!from.Parse())
                                     continue;
 
-                                /* Check the token type */
-                                if(from.get<uint256_t>("token") != 0)
-                                {
-                                    debug::log(2, FUNCTION, "Skipping split dividend DEBIT as token is not NXS");
-                                    continue;
-                                }
+                                /* Get the token type */
+                                uint256_t hashToken = from.get<uint256_t>("token");
 
                                 /* If this is a NXS debit then process the credit to the default account */
-                                hashTo = defaultAccount.get<uint256_t>("address");
+                                if(hashToken == 0)
+                                {
+                                    hashTo = defaultAccount.get<uint256_t>("address");
+                                }
+                                else
+                                {
+                                    /* We search for the first account of the specified token type.  NOTE that the owner my not 
+                                       have an account for the token at this stage, in which case we can just skip the notification
+                                       for now until they do have one */
+                                    
+                                    /* Get the list of registers owned by this sig chain */
+                                    std::vector<TAO::Register::Address> vAccounts;
+                                    if(!ListAccounts(user->Genesis(), vAccounts, false, false))
+                                        throw APIException(-74, "No registers found");
+
+                                    /* Read all the registers to that they are sorted by creation time */
+                                    std::vector<std::pair<TAO::Register::Address, TAO::Register::State>> vRegisters;
+                                    GetRegisters(vAccounts, vRegisters);
+
+                                    /* Iterate all registers to find the first for the token being credited */
+                                    for(const auto& state : vRegisters)
+                                    {
+                                        /* Double check that it is an object before we cast it */
+                                        if(state.second.nType != TAO::Register::REGISTER::OBJECT)
+                                            continue;
+
+                                        /* Cast the state to an Object register */
+                                        TAO::Register::Object object(state.second);
+
+                                        /* Check that this is a non-standard object type so that we can parse it and check the type*/
+                                        if(object.nType != TAO::Register::REGISTER::OBJECT)
+                                            continue;
+
+                                        /* parse object so that the data fields can be accessed */
+                                        if(!object.Parse())
+                                            throw APIException(-36, "Failed to parse object register");
+
+                                        /* Check that this is an account */
+                                        uint8_t nStandard = object.Standard();
+                                        if(nStandard != TAO::Register::OBJECTS::ACCOUNT)
+                                            continue;
+
+                                        /* Check the account is for the specified token */
+                                        if(object.get<uint256_t>("token") != hashToken)
+                                            continue;
+                                        else
+                                        {
+                                            /* Stop on the first one we find */
+                                            hashTo = state.first;
+                                            break;
+                                        }
+                                    }
+
+                                    /* If no account has been found for the token credit then skip the notification */
+                                    if(hashTo == 0)
+                                        continue;
+                                }
 
                                 /* Read the object register, which is the proof account . */
                                 TAO::Register::Object account;
@@ -1318,12 +1369,12 @@ namespace TAO
                                 if(account.Standard() != TAO::Register::OBJECTS::ACCOUNT )
                                     continue;
 
-                                /* Get the token address */
-                                TAO::Register::Address hashToken = account.get<uint256_t>("token");
+                                /* Get the token address of for the proof account*/
+                                TAO::Register::Address hashProofToken = account.get<uint256_t>("token");
 
                                 /* Read the token register. */
                                 TAO::Register::Object token;
-                                if(!LLD::Register->ReadState(hashToken, token, TAO::Ledger::FLAGS::MEMPOOL))
+                                if(!LLD::Register->ReadState(hashProofToken, token, TAO::Ledger::FLAGS::MEMPOOL))
                                     continue;
 
                                 /* Parse the object register. */
