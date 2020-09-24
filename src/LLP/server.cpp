@@ -671,7 +671,7 @@ namespace LLP
                     dt->AddConnection(sockNew, DDOS_MAP[addr]);
 
                     /* Verbose output. */
-                    debug::log(3, FUNCTION, "Accepted Connection ", addr.ToString(), " on port ",  PORT);
+                    debug::log(3, FUNCTION, "Accepted Connection ", addr.ToString(), " on port ", fSSL ? SSL_PORT : PORT);
                 }
             }
         }
