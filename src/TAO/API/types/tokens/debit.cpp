@@ -197,12 +197,39 @@ namespace TAO
                 if(!recipient.Parse())
                     throw APIException(-14, "Object failed to parse");
 
+                /* flag indicating if the contract is a debit to a tokenized asset  */
+                bool fTokenizedDebit = false;
+
+                /* flag indicating that this is a send to self */
+                bool fSendToSelf = false;
+
                 /* Check recipient account type */
                 nStandard = recipient.Base();
-                if(nStandard != TAO::Register::OBJECTS::ACCOUNT
-                || (recipient.get<uint256_t>("token") != object.get<uint256_t>("token")))
+
+                /* Check recipient account type */
+                switch(nStandard)
                 {
-                    throw APIException(-209, "Recipient is not a valid account.");
+                    case TAO::Register::OBJECTS::ACCOUNT:
+                    {
+                        if(recipient.get<uint256_t>("token") != object.get<uint256_t>("token"))
+                            throw APIException(-209, "Recipient account is for a different token.");
+
+                        fSendToSelf = recipient.hashOwner == object.hashOwner;
+
+                        break;
+                    }
+                    case TAO::Register::OBJECTS::NONSTANDARD :
+                    {
+                        fTokenizedDebit = true;
+
+                        /* For payments to objects, they must be owned by a token */
+                        if(recipient.hashOwner.GetType() != TAO::Register::Address::TOKEN)
+                            throw APIException(-211, "Recipient object has not been tokenized.");
+
+                        break;
+                    }
+                    default :
+                        throw APIException(-209, "Recipient is not a valid account.");
                 }
 
                 /* The optional payment reference */
@@ -214,8 +241,8 @@ namespace TAO
                 tx[nContract] << (uint8_t)TAO::Operation::OP::DEBIT << hashFrom << hashTo << nAmount << nReference;
 
                 /* Add expiration condition unless sending to self */
-                if(recipient.hashOwner != object.hashOwner)
-                    AddExpires( jsonRecipient, session.GetAccount()->Genesis(), tx[nContract], false);
+                if(!fSendToSelf)
+                    AddExpires( jsonRecipient, session.GetAccount()->Genesis(), tx[nContract], fTokenizedDebit);
 
                 /* Increment the contract ID */
                 nContract++;
