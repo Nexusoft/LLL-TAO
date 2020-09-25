@@ -2,6 +2,7 @@
 *.o
 *.P
 *.d
+*.D
 *.bat
 *.exe
 *.Debug
