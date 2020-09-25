@@ -112,17 +112,17 @@ namespace LLP
             /* Generate an ephemeral RSA based certificate for this session */
             cert.GenerateRSA("localhost");
         }
-        
-        
-        
-        cert.Verify();
 
+
+        /* Initialize the new SSL context. */
         if(!cert.Init_SSL(pSSL_CTX))
             return debug::error(FUNCTION, "Certificate Init Failed for SSL Context");
+
+        /* Verify that certificate chain is valid. */
         if(!cert.Verify(pSSL_CTX))
             return debug::error(FUNCTION, "Certificate Verify Failed for SSL Context");
 
-
+        /* Debug logging. */
         debug::log(3, FUNCTION, "SSL context and certificate creation complete.");
         debug::log(2, FUNCTION, "Network resource initialization complete");
 

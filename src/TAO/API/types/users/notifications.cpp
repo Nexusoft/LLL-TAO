@@ -657,10 +657,6 @@ namespace TAO
                 /* Get the token address */
                 TAO::Register::Address hashToken = object.get<uint256_t>("token");
 
-                /* Check the account is a not NXS account */
-                if(hashToken == 0)
-                    continue;
-
                 /* Get the balance  */
                 uint64_t nBalance = object.get<uint64_t>("balance");
 
@@ -1250,6 +1246,9 @@ namespace TAO
             
                 for(const auto& contract : vContracts)
                 {
+                    /* Reset the receiving address */
+                    hashTo = uint256_t(0);
+
                     /* Get a reference to the contract */
                     const TAO::Operation::Contract& refContract = std::get<0>(contract);
 
@@ -1295,15 +1294,21 @@ namespace TAO
                                 if(!from.Parse())
                                     continue;
 
-                                /* Check the token type */
-                                if(from.get<uint256_t>("token") != 0)
-                                {
-                                    debug::log(2, FUNCTION, "Skipping split dividend DEBIT as token is not NXS");
-                                    continue;
-                                }
+                                /* Get the token type */
+                                uint256_t hashToken = from.get<uint256_t>("token");
 
                                 /* If this is a NXS debit then process the credit to the default account */
-                                hashTo = defaultAccount.get<uint256_t>("address");
+                                if(hashToken == 0)
+                                {
+                                    hashTo = defaultAccount.get<uint256_t>("address");
+                                }
+                                else
+                                {
+                                    /* Search for an account to credit the tokens to */
+                                    if(!GetAccountByToken(user->Genesis(), hashToken, hashTo))
+                                    /* If no account has been found for the token credit then skip the notification */
+                                        continue;
+                                }
 
                                 /* Read the object register, which is the proof account . */
                                 TAO::Register::Object account;
@@ -1318,12 +1323,12 @@ namespace TAO
                                 if(account.Standard() != TAO::Register::OBJECTS::ACCOUNT )
                                     continue;
 
-                                /* Get the token address */
-                                TAO::Register::Address hashToken = account.get<uint256_t>("token");
+                                /* Get the token address of for the proof account*/
+                                TAO::Register::Address hashProofToken = account.get<uint256_t>("token");
 
                                 /* Read the token register. */
                                 TAO::Register::Object token;
-                                if(!LLD::Register->ReadState(hashToken, token, TAO::Ledger::FLAGS::MEMPOOL))
+                                if(!LLD::Register->ReadState(hashProofToken, token, TAO::Ledger::FLAGS::MEMPOOL))
                                     continue;
 
                                 /* Parse the object register. */
