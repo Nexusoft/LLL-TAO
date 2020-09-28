@@ -195,6 +195,36 @@ namespace LLD
         std::fstream* get_file_stream(const uint32_t nHashmap);
 
 
+        /** flush_index
+         *
+         *  Flush the current buffer to disk.
+         *
+         *  @param[in] vBuffer The buffer to write to disk
+         *  @param[in] nBucket The current bucket to flush.
+         *
+         *  @return true if the index was flushed successfully
+         *
+         **/
+        bool flush_index(const std::vector<uint8_t>& vBuffer, const uint32_t nBucket);
+
+
+        /** find_and_write
+         *
+         *  Finds an available hashmap slot within the probing range and writes it to disk.
+         *
+         *  @param[in] key The current sector key to write
+         *  @param[out] vBuffer The current index buffer to check and pass back by reference
+         *  @param[out] nHashmap The file to start searching from.
+         *  @param[out] nBucket The bucket we are writing for.
+         *  @param[in] nProbes The total adjacent buckets to probe for.
+         *
+         *  @return true if the key was written
+         *
+         **/
+        bool find_and_write(const SectorKey& key, std::vector<uint8_t> &vBuffer,
+            uint16_t &nHashmap, uint32_t &nBucket, const uint32_t nProbes = 1);
+
+
         /** get_current_file
          *
          *  Helper method to grab the current file from the input buffer.
@@ -318,6 +348,18 @@ namespace LLD
          *
          **/
         bool check_primary_bloom(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vBuffer, const uint32_t nOffset = 0);
+
+
+        /** fibanacci_expansion
+         *
+         *  Expand a beginning and ending iterator based on fibanacci sequence.
+         *
+         *  @param[out] nBeginProbeExpansion The starting iterator of the fibanacci cycle.
+         *  @param[out] nEndProbeExpansion The ending iterator of the fibanacci cycle.
+         *  @param[in] nExpansionCycle The total number of fibanacci expansion cycles to calculate.
+         *
+         **/
+        void fibanacci_expansion(uint32_t &nBeginProbeExpansion, uint32_t &nEndProbeExpansion, const uint32_t nExpansionCycles);
     };
 }
 

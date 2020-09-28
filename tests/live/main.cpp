@@ -147,42 +147,42 @@ int main(int argc, char** argv)
     {
         debug::log(0, "Generating Keys +++++++");
 
-        std::vector<uint1024_t> vKeys;
-        for(int i = 0; i < config::GetArg("-total", 10000); ++i)
-            vKeys.push_back(LLC::GetRand1024());
+            std::vector<uint1024_t> vKeys;
+            for(int i = 0; i < config::GetArg("-total", 10000); ++i)
+                vKeys.push_back(LLC::GetRand1024());
 
-        debug::log(0, "------- Writing Tests...");
+            debug::log(0, "------- Writing Tests...");
 
-        runtime::stopwatch swTimer;
-        swTimer.start();
-        for(const auto& nBucket : vKeys)
-        {
-            bloom->WriteKey(nBucket, nBucket);
-        }
-        swTimer.stop();
+            runtime::stopwatch swTimer;
+            swTimer.start();
+            for(const auto& nBucket : vKeys)
+            {
+                bloom->WriteKey(nBucket, nBucket);
+            }
+            swTimer.stop();
 
-        uint64_t nElapsed = swTimer.ElapsedMicroseconds();
-        debug::log(0, vKeys.size() / 1000, "k records written in ", nElapsed, " (", (1000000.0 * vKeys.size()) / nElapsed, " writes/s)");
+            uint64_t nElapsed = swTimer.ElapsedMicroseconds();
+            debug::log(0, vKeys.size() / 1000, "k records written in ", nElapsed, " (", (1000000.0 * vKeys.size()) / nElapsed, " writes/s)");
 
-        uint1024_t hashKey = 0;
+            uint1024_t hashKey = 0;
 
-        swTimer.reset();
-        swTimer.start();
+            swTimer.reset();
+            swTimer.start();
 
-        debug::log(0, "------- Reading Tests...");
+            debug::log(0, "------- Reading Tests...");
 
-        uint32_t nTotal = 0;
-        for(const auto& nBucket : vKeys)
-        {
-            ++nTotal;
+            uint32_t nTotal = 0;
+            for(const auto& nBucket : vKeys)
+            {
+                ++nTotal;
 
-            if(!bloom->ReadKey(nBucket, hashKey))
-                return debug::error("Failed to read ", nBucket.SubString(), " total ", nTotal);
-        }
-        swTimer.stop();
+                if(!bloom->ReadKey(nBucket, hashKey))
+                    return debug::error("Failed to read ", nBucket.SubString(), " total ", nTotal);
+            }
+            swTimer.stop();
 
-        nElapsed = swTimer.ElapsedMicroseconds();
-        debug::log(0, vKeys.size() / 1000, "k records read in ", nElapsed, " (", (1000000.0 * vKeys.size()) / nElapsed, " read/s)");
+            nElapsed = swTimer.ElapsedMicroseconds();
+            debug::log(0, vKeys.size() / 1000, "k records read in ", nElapsed, " (", (1000000.0 * vKeys.size()) / nElapsed, " read/s)");
     }
 
     delete bloom;

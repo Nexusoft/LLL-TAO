@@ -394,140 +394,122 @@ namespace LLD
     /* Write a key to the disk hashmaps. */
     bool BinaryHashMap::Put(const SectorKey& key)
     {
-        //LOCK(KEY_MUTEX);
         LOCK(CONFIG.KEYCHAIN(key.vKey));
 
         /* Get the assigned bucket for the hashmap. */
-        uint32_t nBucket  = get_bucket(key.vKey);
-        uint64_t nFilePos = nBucket * CONFIG.HASHMAP_KEY_ALLOCATION;
-
-        /* Compress any keys larger than max size. */
-        std::vector<uint8_t> vKeyCompressed = compress_key(key.vKey);
-
-        /* Serialize the key into the end of the vector. */
-        DataStream ssKey(SER_LLD, DATABASE_VERSION);
-        ssKey << key;
-        ssKey.write((char*)&vKeyCompressed[0], vKeyCompressed.size());
+        uint32_t nBucket       = get_bucket(key.vKey);
 
         /* Build our buffer based on total linear probes. */
         const uint32_t MIN_LINEAR_PROBES = std::min(CONFIG.HASHMAP_TOTAL_BUCKETS - nBucket, CONFIG.MIN_LINEAR_PROBES);
-        std::vector<uint8_t> vBuffer(INDEX_FILTER_SIZE * MIN_LINEAR_PROBES, 0);
+        std::vector<uint8_t> vBase(INDEX_FILTER_SIZE * MIN_LINEAR_PROBES, 0);
 
         /* Read the index file information. */
         pindex->seekg(uint64_t(INDEX_FILTER_SIZE * nBucket), std::ios::beg);
-        if(!pindex->read((char*)&vBuffer[0], vBuffer.size()))
+        if(!pindex->read((char*)&vBase[0], vBase.size()))
         {
-            debug::log(0, "FILE INDEX: ", pindex->eof() ? "EOF" : pindex->bad() ? "BAD" : pindex->fail() ? "FAIL" : "UNKNOWN");
-            return debug::error(FUNCTION, "INDEX: only ", pindex->gcount(), "/", vBuffer.size(), " bytes read");
+            return debug::error(FUNCTION, "BASE INDEX: ", pindex->eof() ? "EOF" : pindex->bad() ? "BAD" : pindex->fail() ? "FAIL" : "UNKNOWN",
+                " only ", pindex->gcount(), "/", vBase.size(), " bytes read"
+            );
         }
 
-        /* Start our probe expansion cycle with default cycles. */
-        uint32_t nBeginProbeExpansion = 0;
-        uint32_t nEndProbeExpansion   = MIN_LINEAR_PROBES;
-
         /* Grab the current hashmap file from the buffer. */
-        uint16_t nHashmap = get_current_file(vBuffer, 0);
-        uint32_t nBucketOffset = 0; //if we reverse probe, this value will maintain the original bucket
-
-        /* Loop through hashmap indexes. */
+        uint16_t nHashmap = get_current_file(vBase, 0);
         while(nHashmap < CONFIG.MAX_HASHMAP_FILES + CONFIG.MAX_LINEAR_PROBES)
         {
             /* Check if we are in a probe expansion cycle. */
             if(nHashmap > CONFIG.MAX_HASHMAP_FILES)
             {
                 /* Find the total cycles to probe. */
-                int64_t nProbeCycles     = (nHashmap - CONFIG.MAX_HASHMAP_FILES);
+                uint64_t nExpansionCycles = (nHashmap - CONFIG.MAX_HASHMAP_FILES);
 
-                /* Iterate through our probe cycles. */
-                uint32_t nLastProbeBegin = (nBeginProbeExpansion == 0) ? nEndProbeExpansion : nBeginProbeExpansion;
+                /* Start our probe expansion cycle with default cycles. */
+                uint32_t nBeginProbeExpansion = MIN_LINEAR_PROBES;
+                uint32_t nEndProbeExpansion   = MIN_LINEAR_PROBES;
 
-                /* Calculate the new begin and end. */
-                nBeginProbeExpansion     = nEndProbeExpansion;
-                nEndProbeExpansion       = nLastProbeBegin + nBeginProbeExpansion; //fibanacci
+                /* Calculate our current probing range. */
+                fibanacci_expansion(nBeginProbeExpansion, nEndProbeExpansion, nExpansionCycles);
 
-                /* Calculate the new probing distance. */
-                int64_t nNewProbes = int64_t(nEndProbeExpansion) - nBeginProbeExpansion; //we use signed int here to prevent underflow
-                if(nBucket + nEndProbeExpansion >= CONFIG.HASHMAP_TOTAL_BUCKETS)
-                    nNewProbes = (int64_t(CONFIG.HASHMAP_TOTAL_BUCKETS) - nBucket - nBeginProbeExpansion);
+                /* Cache our adjustment values. */
+                uint32_t nAdjustedBucket = 0;
+                uint64_t nIndexPos       = 0;
 
-                /* Read more index data into the forward buffer. */
-                if(nNewProbes > 0)
+                /* Check if we are in a forward or reverse probing cycle. */
+                int64_t nOverflow = int64_t(nBucket + nEndProbeExpansion) - CONFIG.HASHMAP_TOTAL_BUCKETS;
+                if(nOverflow > 0)
                 {
-                    /* Resize the index buffer for new data. */
-                    uint32_t nPrevSize = vBuffer.size();
-                    vBuffer.resize(nPrevSize + (INDEX_FILTER_SIZE * nNewProbes));
-
-                    /* Debug output . */
-                    if(config::nVerbose >= 4)
-                        debug::log(4, FUNCTION, ANSI_COLOR_FUNCTION, "Forward Expansion", ANSI_COLOR_RESET,
-                        " | begin=", nBeginProbeExpansion,
-                        " | end=", nEndProbeExpansion,
-                        " | probes=", nNewProbes,
-                        " | cycles=", nProbeCycles,
-                        " | bucket=", nBucket, "/", CONFIG.HASHMAP_TOTAL_BUCKETS,
-                        " | adjust=", nBucket + nEndProbeExpansion,
-                        " | file=", nHashmap
-                    );
-
-                    /* Read the new index data. */
-                    uint32_t nReadSize = vBuffer.size() - nPrevSize;
-                    if(!pindex->read((char*)&vBuffer[nPrevSize], nReadSize))
-                    {
-                        debug::log(0, "FORWARD INDEX: ", pindex->eof() ? "EOF" : pindex->bad() ? "BAD" : pindex->fail() ? "FAIL" : "UNKNOWN");
-                        return debug::error(FUNCTION, "INDEX: only ", pindex->gcount(), "/", vBuffer.size(), " bytes read");
-                    }
-                }
-
-                /* Check if we need to add reverse probe slots. */
-                int64_t nAdjust = int64_t(nBucket + nEndProbeExpansion) - CONFIG.HASHMAP_TOTAL_BUCKETS - (nNewProbes > 0 ? nNewProbes : 0);;
-                if(nAdjust > 0)
-                {
-                    /* Check our ranges on bucket adjustments. */
-                    if(nAdjust > nBucket)  //make sure we don't underflow
-                        nAdjust = nBucket;
-
-                    /* Set our new reverse probe offset. */
-                    nBucketOffset += nAdjust;
-
-                    /* Adjust our bucket and file position to be within range of hashmap. */
-                    nBucket  = nBucket - nAdjust;
-                    nFilePos = nBucket * CONFIG.HASHMAP_KEY_ALLOCATION;
-
-                    /* Check for end of file termination. */
-                    if(nBucket + nEndProbeExpansion >= CONFIG.HASHMAP_TOTAL_BUCKETS)
-                        nEndProbeExpansion = (CONFIG.HASHMAP_TOTAL_BUCKETS - nBucket);
+                    /* Calculate our adjusted bucket and index position. */
+                    nAdjustedBucket = (nBucket - nOverflow);
+                    nIndexPos       = (INDEX_FILTER_SIZE * nAdjustedBucket);
 
                     /* Debug output . */
                     if(config::nVerbose >= 4)
                         debug::log(4, FUNCTION, ANSI_COLOR_FUNCTION, "Reverse Expansion", ANSI_COLOR_RESET,
                         " | begin=", nBeginProbeExpansion,
                         " | end=", nEndProbeExpansion,
-                        " | adjust=", nAdjust,
-                        " | probes=", nNewProbes,
-                        " | cycles=", nProbeCycles,
-                        " | offset=", nBucketOffset,
+                        " | overflow=", nOverflow,
                         " | bucket=", nBucket, "/", CONFIG.HASHMAP_TOTAL_BUCKETS,
                         " | adjust=", nBucket + nEndProbeExpansion,
-                        " | pos=", nBucket * INDEX_FILTER_SIZE, "/", CONFIG.HASHMAP_TOTAL_BUCKETS * INDEX_FILTER_SIZE,
+                        " | pos=", nIndexPos, "/", CONFIG.HASHMAP_TOTAL_BUCKETS * INDEX_FILTER_SIZE,
                         " | file=", nHashmap
                     );
+                }
+                else
+                {
+                    /* Check if we need to seek to read in our buffer. */
+                    nAdjustedBucket = (nBucket + nBeginProbeExpansion);
+                    nIndexPos       = (INDEX_FILTER_SIZE * nAdjustedBucket);
 
-                    /* Allocate a new buffer to push to the front of the buffer. */
-                    std::vector<uint8_t> vIndex(INDEX_FILTER_SIZE * nAdjust, 0);
+                    /* Debug output . */
+                    if(config::nVerbose >= 4)
+                        debug::log(4, FUNCTION, ANSI_COLOR_FUNCTION, "Forward Expansion", ANSI_COLOR_RESET,
+                        " | begin=", nBeginProbeExpansion,
+                        " | end=", nEndProbeExpansion,
+                        " | overflow=", nOverflow,
+                        " | bucket=", nBucket, "/", CONFIG.HASHMAP_TOTAL_BUCKETS,
+                        " | adjust=", nBucket + nEndProbeExpansion,
+                        " | pos=", nIndexPos, "/", CONFIG.HASHMAP_TOTAL_BUCKETS * INDEX_FILTER_SIZE,
+                        " | file=", nHashmap
+                    );
+                }
 
-                    /* Read the new index data. */
-                    pindex->seekg(uint64_t(INDEX_FILTER_SIZE * nBucket), std::ios::beg);
-                    if(!pindex->read((char*)&vIndex[0], vIndex.size()))
-                    {
-                        debug::log(0, "REVERSE INDEX: ", pindex->eof() ? "EOF" : pindex->bad() ? "BAD" : pindex->fail() ? "FAIL" : "UNKNOWN");
-                        return debug::error(FUNCTION, "INDEX: only ", pindex->gcount(), "/", vBuffer.size(), " bytes read");
-                    }
+                /* Seek if we aren't at the correct file position. */
+                uint32_t nTotalBuckets = (nEndProbeExpansion - nBeginProbeExpansion);
+                if(pindex->tellg() != nIndexPos)
+                {
+                    pindex->seekg(nIndexPos, std::ios::beg);
+                    debug::log(0, FUNCTION, "seek to pos ", nIndexPos);
+                }
 
-                    /* Push the new probe data to the front of the buffer. */
-                    vBuffer.insert(vBuffer.begin(), vIndex.begin(), vIndex.end());
+                /* Read data into our buffer object. */
+                std::vector<uint8_t> vIndex(nTotalBuckets * INDEX_FILTER_SIZE, 0);
+                if(!pindex->read((char*)&vIndex[0], vIndex.size()))
+                {
+                    return debug::error(FUNCTION,
+                        "REVERSE INDEX: ", pindex->eof() ? "EOF" : pindex->bad() ? "BAD" : pindex->fail() ? "FAIL" : "UNKNOWN",
+                        " only ", pindex->gcount(), "/", vBase.size(), " bytes read"
+                    );
+                }
+
+                /* Handle our key writing without probing adjacent buckets. */
+                uint16_t nFile = nHashmap; //we make a copy here to prevent return by reference related bugs
+                if(find_and_write(key, vIndex, nFile, nAdjustedBucket, nTotalBuckets))
+                {
+                    /* Check if file needs to be incremented. */
+                    if(nHashmap != get_current_file(vBase, 0))
+                        set_current_file(nHashmap, vBase, 0);
+
+                    /* Flush our base index file to disk (file iterator) */
+                    if(!flush_index(vBase, nBucket)) //TODO: benchmark if writing 2 bytes vs whole base index is faster
+                        return false;
+
+                    /* Flush our probing index file to disk (fibanacci expansion) */
+                    if(!flush_index(vIndex, nAdjustedBucket)) //TODO: flush_index support nOffset and nSize to flush smaller buffer
+                        return false;
+
+                    return true;
                 }
             }
-            else if(nHashmap < CONFIG.MAX_HASHMAP_FILES)
+            else
             {
                 /* Create a new disk hashmap object in linked list if it doesn't exist. */
                 std::string strHashmap = debug::safe_printstr(CONFIG.BASE_DIRECTORY, "keychain/_hashmap.", std::setfill('0'), std::setw(5), nHashmap);
@@ -553,93 +535,35 @@ namespace LLD
                         " | size=", CONFIG.HASHMAP_TOTAL_BUCKETS * CONFIG.HASHMAP_KEY_ALLOCATION / 1024.0, " Kb"
                     );
                 }
-            }
 
-            /* Loop through the adjacent linear hashmap slots. */
-            for(uint32_t nProbe = nBeginProbeExpansion; nProbe < nEndProbeExpansion; ++nProbe)
-            {
-                /* We need to keep a pointer to our reverse probing sequence. */
-                uint64_t nReverse = (nEndProbeExpansion - nProbe - 1);
+                /* Cache our adjusted bucket so we can check what probe slot was occupied. */
+                uint32_t nAdjustedBucket = nBucket; //we make a copy here to prevent return by reference related bugs
+                uint16_t nFile = nHashmap + 1; //we increment by +1 here because this routine is only activated when creating new file
 
-                /* Get the binary offset within the current probe. */
-                uint64_t nOffset = (nBucketOffset == 0 ? nProbe : nReverse) * INDEX_FILTER_SIZE;
-
-                /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
-                uint16_t nBucketIterator = std::min(uint16_t(CONFIG.MAX_HASHMAP_FILES - 1), nHashmap);
-                for(int16_t nFile = nBucketIterator; nFile >= 0; --nFile)
+                /* Handle our key writing without probing adjacent buckets. */
+                if(find_and_write(key, vBase, nFile, nAdjustedBucket, MIN_LINEAR_PROBES))
                 {
-                    /* Check for an available hashmap slot. */
-                    if(check_hashmap_available(nFile, vBuffer, nOffset + primary_bloom_size() + 2))
-                    {
-                        /* Update the primary and secondary bloom filters. */
-                        set_primary_bloom  (key.vKey, vBuffer, nOffset + 2);
-                        set_secondary_bloom(key.vKey, vBuffer, nFile, nOffset + primary_bloom_size() + 2);
+                    /* Check if file needs to be incremented. */
+                    if(nFile == nHashmap)
+                        set_current_file(++nHashmap, vBase, 0);
 
-                        /* If we found an open slot we need to increment the total hashmaps. */
-                        if(nFile == nHashmap)
-                            set_current_file(nFile + 1, vBuffer, INDEX_FILTER_SIZE * nBucketOffset);
+                    /* Flush our index files to disk. */
+                    if(!flush_index(vBase, nBucket))
+                        return false;
 
-                        /* Write our new hashmap entry into the file's bucket. */
-                        {
-                            LOCK(CONFIG.FILE(nFile));
-
-                            /* Grab the current file stream from LRU cache. */
-                            std::fstream* pstream = get_file_stream(nFile);
-                            if(!pstream)
-                                continue; //TODO; we need to detect if file exists
-
-                            /* Flush the key file to disk. */
-                            pstream->seekp (nFilePos + (nProbe * CONFIG.HASHMAP_KEY_ALLOCATION), std::ios::beg);
-                            if(!pstream->write((char*)&ssKey.Bytes()[0], ssKey.size()))
-                                return debug::error(FUNCTION, "KEYCHAIN: only ", pstream->gcount(), "/", ssKey.size(), " bytes written");
-
-                            /* Flush the buffers to disk. */
-                            pstream->flush();
-                        }
-
-                        /* Write our new hashmap indexes into the index file. */
-                        {   //CRITICAL SECITON
-                            //LOCK(); TODO: need multiple index file streams allocated like locks are configured
-                            //get_index_stream(key.vKey); //to get stream by bucket allowing us to lock with the same hash
-
-                            /* Write updated filters to the index position. */
-                            pindex->seekp(uint64_t(INDEX_FILTER_SIZE * nBucket), std::ios::beg);
-                            if(!pindex->write((char*)&vBuffer[0], vBuffer.size()))
-                                return debug::error(FUNCTION, "INDEX: only ", pindex->gcount(), "/", vBuffer.size(), " bytes written");
-
-                            /* Flush the buffers to disk. */
-                            pindex->flush();
-                        }
-
-                        /* Debug Output of Sector Key Information. */
-                        if(config::nVerbose >= 4)
-                            debug::log(4, FUNCTION, "State: ", key.nState == STATE::READY ? "Valid" : "Invalid",
-                                " | Length: ", key.nLength,
-                                " | Bucket ", nBucket,
-                                " | Probe ", nProbe,
-                                " | Location: ", nFilePos,
-                                " | File: ", nHashmap,
-                                " | Sector File: ", key.nSectorFile,
-                                " | Sector Size: ", key.nSectorSize,
-                                " | Sector Start: ", key.nSectorStart,
-                                " | Key: ",  HexStr(vKeyCompressed.begin(), vKeyCompressed.end()));
-
-                        return true;
-                    }
+                    return true;
                 }
             }
 
-            /* Check if we have reached a reverse probing termination point. */
-            if(nBeginProbeExpansion == nEndProbeExpansion)
-                return debug::error(FUNCTION, "probing cycles terminated ", nBucket + nBucketOffset, "/", CONFIG.HASHMAP_TOTAL_BUCKETS);
-
-            /* If we got this far we need to iterate the total hashmaps. */
-            debug::log(0, FUNCTION, "Iterating File at ORIGIN ", uint64_t(INDEX_FILTER_SIZE * nBucket) + INDEX_FILTER_SIZE * nBucketOffset);
-            set_current_file(++nHashmap, vBuffer, INDEX_FILTER_SIZE * nBucketOffset);
+            /* Bump our current file number now. */
+            set_current_file(++nHashmap, vBase, 0);
         }
 
-        return debug::error(FUNCTION, "probing reached maximum point ", nBucket, "/", CONFIG.HASHMAP_TOTAL_BUCKETS,
-            " | expansion=", nEndProbeExpansion);
+        /* Flush our index file to disk to indicate that search space is exhausted. */
+        if(!flush_index(vBase, nBucket))
+            return debug::error(FUNCTION, "probe(s) exhausted: failed to flush index");
+
+        return debug::error(FUNCTION, "probe(s) exhausted: ", nHashmap, " at end of search space");
     }
 
 
@@ -894,6 +818,109 @@ namespace LLD
     }
 
 
+    /* Flush the current buffer to disk. */
+    bool BinaryHashMap::flush_index(const std::vector<uint8_t>& vBuffer, const uint32_t nBucket)
+    {
+        //CRITICAL SECITON
+        //LOCK(); TODO: need multiple index file streams allocated like locks are configured
+        //get_index_stream(nBucket); //to get stream by bucket allowing us to lock with the same hash
+
+        /* Seek to position if we are not already there. */
+        uint64_t nFilePos = (INDEX_FILTER_SIZE * nBucket);
+        if(pindex->tellp() != nFilePos)
+            pindex->seekp(nFilePos, std::ios::beg);
+
+        /* Write updated filters to the index position. */
+        if(!pindex->write((char*)&vBuffer[0], vBuffer.size()))
+            return debug::error(FUNCTION, "INDEX: only ", pindex->gcount(), "/", vBuffer.size(), " bytes written");
+
+        /* Flush the buffers to disk. */
+        pindex->flush();
+
+        return true;
+    }
+
+
+    /* Finds an available hashmap slot within the probing range and writes it to disk. */
+    bool BinaryHashMap::find_and_write(const SectorKey& key, std::vector<uint8_t> &vBuffer,
+        uint16_t &nHashmap, uint32_t &nBucket, const uint32_t nProbes)
+    {
+        /* Loop through the adjacent linear hashmap slots in a linear ordering resptive to the buffer object. */
+        for(uint32_t nProbe = 0; nProbe < nProbes; ++nProbe)
+        {
+            /* Get the binary offset within the current probe. */
+            uint64_t nOffset = nProbe * INDEX_FILTER_SIZE;
+
+            /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
+            uint16_t nBucketIterator = std::min(uint16_t(CONFIG.MAX_HASHMAP_FILES - 1), nHashmap);
+            for(int32_t nFile = nBucketIterator; nFile >= 0; --nFile)
+            {
+                /* Check for an available hashmap slot. */
+                if(check_hashmap_available(nFile, vBuffer, nOffset + primary_bloom_size() + 2))
+                {
+                    /* Compress any keys larger than max size. */
+                    std::vector<uint8_t> vKeyCompressed = compress_key(key.vKey);
+
+                    /* Serialize the key into the end of the vector. */
+                    DataStream ssKey(SER_LLD, DATABASE_VERSION);
+                    ssKey << key;
+                    ssKey.write((char*)&vKeyCompressed[0], vKeyCompressed.size());
+
+                    /* Update the primary and secondary bloom filters. */
+                    set_primary_bloom  (key.vKey, vBuffer, nOffset + 2);
+                    set_secondary_bloom(key.vKey, vBuffer, nFile, nOffset + primary_bloom_size() + 2);
+
+                    /* Write our new hashmap entry into the file's bucket. */
+                    uint64_t nFilePos = ((nBucket + nProbe) * CONFIG.HASHMAP_KEY_ALLOCATION);
+                    {
+                        LOCK(CONFIG.FILE(nFile));
+
+                        /* Grab the current file stream from LRU cache. */
+                        std::fstream* pstream = get_file_stream(nFile);
+                        if(!pstream)
+                            continue; //TODO; we need to detect if file exists
+
+                        /* Seek if we are not at position. */
+                        if(pstream->tellp() != nFilePos)
+                            pstream->seekp(nFilePos, std::ios::beg);
+
+                        /* Flush the key file to disk. */
+                        if(!pstream->write((char*)&ssKey.Bytes()[0], ssKey.size()))
+                        {
+                            //TODO: we should recover or at least reset our streams here
+                            return debug::error(FUNCTION, "KEYCHAIN: only ", pstream->gcount(), "/", ssKey.size(), " bytes written");
+                        }
+
+                        /* Flush the buffers to disk. */
+                        pstream->flush();
+                    }
+
+                    /* Debug Output of Sector Key Information. */
+                    if(config::nVerbose >= 4)
+                        debug::log(4, FUNCTION, "State: ", key.nState == STATE::READY ? "Valid" : "Invalid",
+                            " | Length: ", key.nLength,
+                            " | Bucket ", nBucket,
+                            " | Probe ", nProbe,
+                            " | Location: ", nFilePos,
+                            " | File: ", nFile,
+                            " | Sector File: ", key.nSectorFile,
+                            " | Sector Size: ", key.nSectorSize,
+                            " | Sector Start: ", key.nSectorStart,
+                            " | Key: ",  HexStr(vKeyCompressed.begin(), vKeyCompressed.end()));
+
+                    /* Set our return values. */
+                    nBucket += nProbe;
+                    nHashmap = uint16_t(nFile);
+
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+
     /* Helper method to grab the current file from the input buffer. */
     uint16_t BinaryHashMap::get_current_file(const std::vector<uint8_t>& vBuffer, const uint32_t nOffset)
     {
@@ -1097,5 +1124,21 @@ namespace LLD
         }
 
         return true;
+    }
+
+
+    /* Expand a beginning and ending iterator based on fibanacci sequence. */
+    void BinaryHashMap::fibanacci_expansion(uint32_t &nBeginProbeExpansion, uint32_t &nEndProbeExpansion, const uint32_t nExpansionCycles)
+    {
+        /* Calculate our current probing range. */
+        for(uint32_t n = 0; n < nExpansionCycles; ++n)
+        {
+            /* Cache our previous probe begin. */
+            uint32_t nLastProbeBegin = nBeginProbeExpansion;
+
+            /* Calculate our fibanacci expansion value. */
+            nBeginProbeExpansion = nEndProbeExpansion;
+            nEndProbeExpansion  += nLastProbeBegin;
+        }
     }
 }
