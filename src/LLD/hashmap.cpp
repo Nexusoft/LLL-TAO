@@ -400,8 +400,7 @@ namespace LLD
         uint32_t nBucket       = get_bucket(key.vKey);
 
         /* Build our buffer based on total linear probes. */
-        const uint32_t MIN_LINEAR_PROBES = std::min(CONFIG.HASHMAP_TOTAL_BUCKETS - nBucket, CONFIG.MIN_LINEAR_PROBES);
-        std::vector<uint8_t> vBase(INDEX_FILTER_SIZE * MIN_LINEAR_PROBES, 0);
+        std::vector<uint8_t> vBase(INDEX_FILTER_SIZE * CONFIG.MIN_LINEAR_PROBES, 0);
 
         /* Read the index file information. */
         pindex->seekg(uint64_t(INDEX_FILTER_SIZE * nBucket), std::ios::beg);
@@ -423,8 +422,8 @@ namespace LLD
                 uint64_t nExpansionCycles = (nHashmap - CONFIG.MAX_HASHMAP_FILES);
 
                 /* Start our probe expansion cycle with default cycles. */
-                uint32_t nBeginProbeExpansion = MIN_LINEAR_PROBES;
-                uint32_t nEndProbeExpansion   = MIN_LINEAR_PROBES;
+                uint32_t nBeginProbeExpansion = CONFIG.MIN_LINEAR_PROBES;
+                uint32_t nEndProbeExpansion   = CONFIG.MIN_LINEAR_PROBES;
 
                 /* Calculate our current probing range. */
                 fibanacci_expansion(nBeginProbeExpansion, nEndProbeExpansion, nExpansionCycles);
@@ -490,9 +489,11 @@ namespace LLD
                     );
                 }
 
-                /* Handle our key writing without probing adjacent buckets. */
-                uint16_t nFileRet   = nHashmap; //we make a copy here to prevent return by reference related bugs
+                /* We make a copy here to prevent return by reference related bugs */
+                uint16_t nFileRet   = nHashmap;
                 uint32_t nBucketRet = nAdjustedBucket;
+
+                /* Attempt to find and write key into keychain */
                 if(find_and_write(key, vIndex, nFileRet, nBucketRet, nTotalBuckets))
                 {
                     /* Check if file needs to be incremented. */
@@ -500,7 +501,7 @@ namespace LLD
                         set_current_file(nHashmap, vBase, 0);
 
                     /* Flush our base index file to disk (file iterator) */
-                    if(!flush_index(vBase, nBucket)) //TODO: benchmark if writing 2 bytes vs whole base index is faster
+                    if(!flush_index(vBase, nBucket))
                         return false;
 
                     /* Flush our probing index file to disk (fibanacci expansion) */
@@ -537,18 +538,18 @@ namespace LLD
                     );
                 }
 
-                /* Cache our adjusted bucket so we can check what probe slot was occupied. */
-                uint32_t nAdjustedBucket = nBucket; //we make a copy here to prevent return by reference related bugs
-                uint16_t nFile = nHashmap + 1; //we increment by +1 here because this routine is only activated when creating new file
+                /* We make a copy here to prevent return by reference related bugs */
+                uint16_t nFileRet   = nHashmap + 1;
+                uint32_t nBucketRet = nBucket;
 
                 /* Handle our key writing without probing adjacent buckets. */
-                if(find_and_write(key, vBase, nFile, nAdjustedBucket, MIN_LINEAR_PROBES))
+                if(find_and_write(key, vBase, nFileRet, nBucketRet, CONFIG.MIN_LINEAR_PROBES))
                 {
                     /* Check if file needs to be incremented. */
-                    if(nFile == nHashmap)
-                        set_current_file(++nHashmap, vBase, 0);
+                    if(nFileRet == nHashmap)
+                        set_current_file(++nHashmap, vBase);
 
-                    /* Flush our index files to disk. */
+                    /* Flush our index file to disk. */
                     if(!flush_index(vBase, nBucket))
                         return false;
 
@@ -557,7 +558,7 @@ namespace LLD
             }
 
             /* Bump our current file number now. */
-            set_current_file(++nHashmap, vBase, 0);
+            set_current_file(++nHashmap, vBase);
         }
 
         /* Flush our index file to disk to indicate that search space is exhausted. */
@@ -826,6 +827,11 @@ namespace LLD
         //LOCK(); TODO: need multiple index file streams allocated like locks are configured
         //get_index_stream(nBucket); //to get stream by bucket allowing us to lock with the same hash
 
+        /* Grab our binary offset. */
+        uint32_t nBufferPos = (nOffset * INDEX_FILTER_SIZE);
+        if(nBufferPos + INDEX_FILTER_SIZE >= vBuffer.size())
+            return debug::error(FUNCTION, "buffer overflow protection ", nBufferPos, "/", vBuffer.size()); //TODO" remove on production
+
         /* Seek to position if we are not already there. */
         uint64_t nFilePos = (INDEX_FILTER_SIZE * (nBucket + nOffset));
         if(pindex->tellp() != nFilePos)
@@ -849,6 +855,10 @@ namespace LLD
         /* Loop through the adjacent linear hashmap slots in a linear ordering resptive to the buffer object. */
         for(uint32_t nProbe = 0; nProbe < nProbes; ++nProbe)
         {
+            /* Check our ranges here and break early if exhausting hashmap buckets. */
+            if(nProbe + nBucket >= CONFIG.HASHMAP_TOTAL_BUCKETS) //TODO: remove debug::error when moving to production
+                return debug::error(FUNCTION, "out of buckets ", nProbe + nBucket, "/", CONFIG.HASHMAP_TOTAL_BUCKETS);
+
             /* Get the binary offset within the current probe. */
             uint64_t nOffset = nProbe * INDEX_FILTER_SIZE;
 
