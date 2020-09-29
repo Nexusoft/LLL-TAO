@@ -485,17 +485,18 @@ namespace LLD
                 if(!pindex->read((char*)&vIndex[0], vIndex.size()))
                 {
                     return debug::error(FUNCTION,
-                        "REVERSE INDEX: ", pindex->eof() ? "EOF" : pindex->bad() ? "BAD" : pindex->fail() ? "FAIL" : "UNKNOWN",
+                        "INDEX: ", pindex->eof() ? "EOF" : pindex->bad() ? "BAD" : pindex->fail() ? "FAIL" : "UNKNOWN",
                         " only ", pindex->gcount(), "/", vBase.size(), " bytes read"
                     );
                 }
 
                 /* Handle our key writing without probing adjacent buckets. */
-                uint16_t nFile = nHashmap; //we make a copy here to prevent return by reference related bugs
-                if(find_and_write(key, vIndex, nFile, nAdjustedBucket, nTotalBuckets))
+                uint16_t nFileRet   = nHashmap; //we make a copy here to prevent return by reference related bugs
+                uint32_t nBucketRet = nAdjustedBucket;
+                if(find_and_write(key, vIndex, nFileRet, nBucketRet, nTotalBuckets))
                 {
                     /* Check if file needs to be incremented. */
-                    if(nHashmap != get_current_file(vBase, 0))
+                    if(nFileRet != get_current_file(vBase, 0))
                         set_current_file(nHashmap, vBase, 0);
 
                     /* Flush our base index file to disk (file iterator) */
@@ -503,7 +504,7 @@ namespace LLD
                         return false;
 
                     /* Flush our probing index file to disk (fibanacci expansion) */
-                    if(!flush_index(vIndex, nAdjustedBucket)) //TODO: flush_index support nOffset and nSize to flush smaller buffer
+                    if(!flush_index(vIndex, nAdjustedBucket, nBucketRet - nAdjustedBucket))
                         return false;
 
                     return true;
@@ -819,19 +820,19 @@ namespace LLD
 
 
     /* Flush the current buffer to disk. */
-    bool BinaryHashMap::flush_index(const std::vector<uint8_t>& vBuffer, const uint32_t nBucket)
+    bool BinaryHashMap::flush_index(const std::vector<uint8_t>& vBuffer, const uint32_t nBucket, const uint32_t nOffset)
     {
         //CRITICAL SECITON
         //LOCK(); TODO: need multiple index file streams allocated like locks are configured
         //get_index_stream(nBucket); //to get stream by bucket allowing us to lock with the same hash
 
         /* Seek to position if we are not already there. */
-        uint64_t nFilePos = (INDEX_FILTER_SIZE * nBucket);
+        uint64_t nFilePos = (INDEX_FILTER_SIZE * (nBucket + nOffset));
         if(pindex->tellp() != nFilePos)
             pindex->seekp(nFilePos, std::ios::beg);
 
         /* Write updated filters to the index position. */
-        if(!pindex->write((char*)&vBuffer[0], vBuffer.size()))
+        if(!pindex->write((char*)&vBuffer[nOffset * INDEX_FILTER_SIZE], INDEX_FILTER_SIZE))
             return debug::error(FUNCTION, "INDEX: only ", pindex->gcount(), "/", vBuffer.size(), " bytes written");
 
         /* Flush the buffers to disk. */

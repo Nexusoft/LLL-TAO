@@ -201,11 +201,12 @@ namespace LLD
          *
          *  @param[in] vBuffer The buffer to write to disk
          *  @param[in] nBucket The current bucket to flush.
+         *  @param[in] nOffset The current bucket offset to flush
          *
          *  @return true if the index was flushed successfully
          *
          **/
-        bool flush_index(const std::vector<uint8_t>& vBuffer, const uint32_t nBucket);
+        bool flush_index(const std::vector<uint8_t>& vBuffer, const uint32_t nBucket, const uint32_t nOffset = 0);
 
 
         /** find_and_write
