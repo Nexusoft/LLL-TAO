@@ -122,6 +122,8 @@ namespace filesystem
             return true;
 
     #elif defined(IPHONE)
+        return false;
+    #elif defined(ANDROID)
         return false;  
     #else
         debug::log(2, FUNCTION, "Removing directory ", path);

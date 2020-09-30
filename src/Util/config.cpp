@@ -122,7 +122,8 @@ namespace config
         /* Windows: C:\Documents and Settings\username\Application Data\Nexus
          * Mac: ~/Library/Application Support/Nexus
          * Unix: ~/.Nexus 
-         * iPhone: ~{App}/Documents/Nexus */
+         * iPhone: ~{App}/Documents/Nexus
+         * Android: ~{App}Files/Documents/Nexus */
     std::string pathRet;
     #ifdef WIN32
         // Windows
@@ -140,6 +141,8 @@ namespace config
         filesystem::create_directories(pathRet);
         pathRet.append("/" + strName + "/");
     #elif defined(IPHONE)
+        pathRet.append("/Documents/" + strName + "/");
+    #elif defined(ANDROID)
         pathRet.append("/Documents/" + strName + "/");
     #else
         // Unix

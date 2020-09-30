@@ -2219,9 +2219,11 @@ endif
 ###############################################################################
 ifeq ($(detected_OS),Android)
 
+android_api := 29
+
 #Configure OS Specific Compiler Output
 ifndef VERBOSE
-	CXX= @echo Compiling $< && /usr/local/Caskroom/android-ndk/21/android-ndk-r21/toolchains/llvm/prebuilt/darwin-x86_64/bin/x86_64-linux-android29-clang++
+	CXX= @echo Compiling $< && /usr/local/Caskroom/android-sdk/4333796/ndk/21.3.6528147/toolchains/llvm/prebuilt/darwin-x86_64/bin/$(ANDROID_ARCH)-linux-android$(android_api)-clang++
 else
 	CXX= llvm-libc++
 endif
@@ -2247,6 +2249,12 @@ CXXFLAGS+= -O3 \
 	-L/usr/local/Cellar/openssl@android/$(ANDROID_ARCH)/lib \
 	-I/usr/local/Cellar/openssl@android/$(ANDROID_ARCH)/include 
 
+CXXFLAGS += -isysroot /usr/local/Caskroom/android-sdk/4333796/platforms/android-29 \
+	-target x86_64-linux-android29 \
+	-arch x86_64 \
+	-static-libstdc++ \
+	-fPIC
+	
 
 #Set CFLAGS and Warnings
 CFLAGS:= $(CXXFLAGS)
@@ -2262,6 +2270,7 @@ all: nexus.a
 
 $(info ANDROID)
 $(info $(CXX))
+$(info $(CFLAGS))
 $(info $(CXXFLAGS))
 $(info $(OPENSSL_INCLUDE_PATH))
 $(info $(OPENSSL_LIB_PATH))
@@ -2646,7 +2655,7 @@ build/Live_%.o: tests/live/%.cpp $(HEADERS)
 
 nexus.a: $(OBJS:build/%=build/%)
 	$(CXX) -v $(CXXFLAGS) -v -dead_strip -o $@ $(LIBPATHS) $^ $(LIBS)
-	cd build && ar rc obj/android.a **.o
+	cd build && /usr/local/Caskroom/android-sdk/4333796/ndk/21.3.6528147/toolchains/x86_64-4.9/prebuilt/darwin-x86_64/x86_64-linux-android/bin/ar rc obj/android.so **.o
 	@echo ' '
 	@echo $(info ANDROID)
 	@echo Finished building nexus
