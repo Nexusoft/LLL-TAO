@@ -225,6 +225,22 @@ namespace LLD
         bool find_and_write(const SectorKey& key, std::vector<uint8_t> &vBuffer,
             uint16_t &nHashmap, uint32_t &nBucket, const uint32_t nProbes = 1);
 
+        /** find_and_read
+         *
+         *  Finds a key within a hashmap with given probing ranges
+         *
+         *  @param[out] key The current sector key to write
+         *  @param[in] vBuffer The current index buffer to check and pass back by reference
+         *  @param[out] nHashmap The file to start searching from.
+         *  @param[out] nBucket The bucket we are reading for.
+         *  @param[in] nProbes The total adjacent buckets to probe for.
+         *
+         *  @return true if the key was found
+         *
+         **/
+        bool find_and_read(SectorKey &key, const std::vector<uint8_t>& vBuffer,
+            uint16_t &nHashmap, uint32_t &nBucket, const uint32_t nProbes = 1);
+
 
         /** get_current_file
          *
