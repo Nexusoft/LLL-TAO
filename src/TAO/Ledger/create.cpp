@@ -840,6 +840,8 @@ namespace TAO
                 ChainState::hashBestChain = hashGenesis;
                 ChainState::stateBest     = ChainState::stateGenesis;
             }
+            else if(config::fHybrid.load())
+                hashGenesisHybrid = hashGenesis; //we need to set our new genesis hash here
 
             return true;
         }

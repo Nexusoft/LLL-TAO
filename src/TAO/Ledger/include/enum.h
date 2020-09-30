@@ -67,6 +67,9 @@ namespace TAO
 
                 /** a testnet genesis has to be pre-pended with byte 0xa2. **/
                 TESTNET     = 0xa2,
+
+                /** A hybrid genesis has to be pre-pended with byte 0xa3 **/
+                HYBRID      = 0xa3,
             };
         }
 
