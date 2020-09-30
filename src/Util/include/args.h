@@ -44,6 +44,7 @@ namespace config
     extern std::atomic<bool> fInitialized;
     extern std::atomic<bool> fPoolStaking;
     extern std::atomic<bool> fStaking;
+    extern std::atomic<bool> fHybrid;
     extern std::atomic<int32_t> nVerbose;
 
 

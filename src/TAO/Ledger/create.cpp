@@ -776,7 +776,13 @@ namespace TAO
         bool CreateGenesis()
         {
             /* Get the genesis hash. */
-            uint1024_t hashGenesis = TAO::Ledger::ChainState::Genesis();
+            uint1024_t hashGenesis = 0;
+
+            /* Check the ledger database for hybrid genesis. */
+            if(config::fHybrid.load())
+                LLD::Ledger->ReadHybridGenesis(hashGenesis);
+            else
+                hashGenesis = TAO::Ledger::ChainState::Genesis();
 
             /* Check for genesis from disk. */
             if(!LLD::Ledger->ReadBlock(hashGenesis, ChainState::stateGenesis))
@@ -803,7 +809,16 @@ namespace TAO
                 else
                 {
                     /* Create the genesis block. */
-                    state = LegacyGenesis();
+                    if(config::fHybrid.load())
+                    {
+                        /* Create the new block state. */
+                        state = HybridGenesis();
+
+                        /* Assign current genesis hash to newly minted block. */
+                        hashGenesis = hashGenesisHybrid;
+                    }
+                    else
+                        state = LegacyGenesis();
 
                     /* Write the block to disk. */
                     if(!LLD::Ledger->WriteBlock(hashGenesis, state))

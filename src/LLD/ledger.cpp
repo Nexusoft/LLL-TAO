@@ -86,6 +86,20 @@ namespace LLD
     }
 
 
+    /* Writes the hybrid chain pointer to the ledger DB. */
+    bool LedgerDB::WriteHybridGenesis(const uint1024_t& hashBest)
+    {
+        return Write(std::string("hybrid"), hashBest);
+    }
+
+
+    /* Reads the hybrid chain pointer from the ledger DB. */
+    bool LedgerDB::ReadHybridGenesis(uint1024_t &hashBest)
+    {
+        return Read(std::string("hybrid"), hashBest);
+    }
+
+
     /* Reads the best chain pointer from the ledger DB. */
     bool LedgerDB::ReadBestChain(memory::atomic<uint1024_t> &atomicBest)
     {

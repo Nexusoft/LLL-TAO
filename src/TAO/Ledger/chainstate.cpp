@@ -270,7 +270,7 @@ namespace TAO
         /* Get the hash of the genesis block. */
         uint1024_t ChainState::Genesis()
         {
-            return config::fTestNet.load() ? TAO::Ledger::hashGenesisTestnet : (config::fClient.load() ? TAO::Ledger::hashTritium : TAO::Ledger::hashGenesis);
+            return (config::fHybrid.load() ? TAO::Ledger::hashGenesisHybrid : config::fTestNet.load() ? TAO::Ledger::hashGenesisTestnet : (config::fClient.load() ? TAO::Ledger::hashTritium : TAO::Ledger::hashGenesis));
         }
     }
 }
