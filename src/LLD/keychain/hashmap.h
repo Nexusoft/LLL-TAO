@@ -377,6 +377,23 @@ namespace LLD
          *
          **/
         void fibanacci_expansion(uint32_t &nBeginProbeExpansion, uint32_t &nEndProbeExpansion, const uint32_t nExpansionCycles);
+
+
+        /** fibanacci_index
+         *
+         *  Reads the indexing entries based on fibanacci expansion sequence.
+         *
+         *  @param[in] nHashmap The current probe sequence hashmp
+         *  @param[in] nBucket The current bucket we are indexing for
+         *  @param[out] vIndex The index buffer to read into
+         *  @param[out] nTotalBuckets The total buckets in this index sequence
+         *  @param[out] nAdjustedBucket The new bucket that is adjusted for index sequence.
+         *
+         *  @return true if the fibanacci indexing sequence read correctly
+         *
+         **/
+        bool fibanacci_index(const uint16_t nHashmap, const uint32_t nBucket,
+            std::vector<uint8_t> &vIndex, uint32_t &nTotalBuckets, uint32_t &nAdjustedBucket);
     };
 }
 
