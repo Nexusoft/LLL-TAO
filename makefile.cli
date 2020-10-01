@@ -3,6 +3,11 @@ ifeq ($(OS),Windows_NT)
 detected_OS:= Windows
 else ifeq (${ANDROID}, 1)
 	detected_OS:= Android
+	openssl_arch:= x86_64
+
+	ifeq ($(ANDROID_ARCH),aarch64)
+		openssl_arch= arm64-v8a
+	endif
 else ifeq ($(shell uname -s),Darwin)
 ### You can only build iPhone on OSX
 	ifeq (${IPHONE}, 1)
@@ -56,7 +61,7 @@ ifndef OPENSSL_LIB_PATH
 		OPENSSL_LIB_PATH= /usr/local/Cellar/openssl@iphones/lib
 	endif
 	ifeq ($(detected_OS),Android)
-		OPENSSL_LIB_PATH= /usr/local/Cellar/openssl@android/$(ANDROID_ARCH)/lib
+		OPENSSL_LIB_PATH= /usr/local/Cellar/openssl@android/$(openssl_arch)/lib
 	endif
 	ifeq ($(detected_OS),Linux)
 		#Arch Linux Fix
@@ -78,7 +83,7 @@ ifndef OPENSSL_INCLUDE_PATH
 		OPENSSL_INCLUDE_PATH= /usr/local/Cellar/openssl@iphones/include
 	endif
 	ifeq ($(detected_OS),Android)
-		OPENSSL_INCLUDE_PATH= /usr/local/Cellar/openssl@android/$(ANDROID_ARCH)/include
+		OPENSSL_INCLUDE_PATH= /usr/local/Cellar/openssl@android/$(openssl_arch)/include
 	endif
 	ifeq ($(detected_OS),Linux)
 		#Arch Linux Fix
@@ -2241,19 +2246,20 @@ LIBS+= $(OPENSSL_LIB_PATH)/libssl.a \
 
 DEFS+= -DANDROID
 
+
 #OS Specific Compiler Flags
 CXXFLAGS+= -O3 \
 	$(DEFS) \
 	$(DEBUG) \
 	$(INCLUDEPATHS) \
-	-L/usr/local/Cellar/openssl@android/$(ANDROID_ARCH)/lib \
-	-I/usr/local/Cellar/openssl@android/$(ANDROID_ARCH)/include 
+	-L/usr/local/Cellar/openssl@android/$(openssl_arch)/lib \
+	-I/usr/local/Cellar/openssl@android/$(openssl_arch)/include 
+	
 
 CXXFLAGS += -isysroot /usr/local/Caskroom/android-sdk/4333796/platforms/android-29 \
-	-target x86_64-linux-android29 \
-	-arch x86_64 \
-	-static-libstdc++ \
-	-fPIC
+	-target $(ANDROID_ARCH)-linux-android29 \
+	-arch $(ANDROID_ARCH) \
+	-static-libstdc++ 
 	
 
 #Set CFLAGS and Warnings
@@ -2655,7 +2661,7 @@ build/Live_%.o: tests/live/%.cpp $(HEADERS)
 
 nexus.a: $(OBJS:build/%=build/%)
 	$(CXX) -v $(CXXFLAGS) -v -dead_strip -o $@ $(LIBPATHS) $^ $(LIBS)
-	cd build && /usr/local/Caskroom/android-sdk/4333796/ndk/21.3.6528147/toolchains/x86_64-4.9/prebuilt/darwin-x86_64/x86_64-linux-android/bin/ar rc obj/android.so **.o
+	cd build && /usr/local/Caskroom/android-sdk/4333796/ndk/21.3.6528147/toolchains/llvm/prebuilt/darwin-x86_64/$(ANDROID_ARCH)-linux-android/bin/ar rc obj/android.so **.o
 	@echo ' '
 	@echo $(info ANDROID)
 	@echo Finished building nexus
