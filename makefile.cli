@@ -2259,7 +2259,8 @@ CXXFLAGS+= -O3 \
 CXXFLAGS += -isysroot /usr/local/Caskroom/android-sdk/4333796/platforms/android-29 \
 	-target $(ANDROID_ARCH)-linux-android29 \
 	-arch $(ANDROID_ARCH) \
-	-static-libstdc++ 
+	-static-libstdc++ \
+	-fPIC
 	
 
 #Set CFLAGS and Warnings
@@ -2658,6 +2659,20 @@ build/Live_%.o: tests/live/%.cpp $(HEADERS)
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
+
+
+buildall: 
+	mkdir build/obj
+	@echo Making x86_64
+	make -f makefile.cli -j 8 STATIC=0 NO_WALLET=1 ANDROID=1 ANDROID_ARCH="x86_64"
+	mv build/obj/android.so build/obj/x86_64-android-nexuslib.so
+	@echo Cleaning
+	make -f makefile.cli -j 8 STATIC=0 NO_WALLET=1 ANDROID=1 clean
+	@echo Making aarch64
+	make -f makefile.cli -j 8 STATIC=0 NO_WALLET=1 ANDROID=1 ANDROID_ARCH="aarch64"
+	mv build/obj/android.so build/obj/aarch64-android-nexuslib.so
+	cd build/obj && LIPO -create -arch arm64v8 "aarch64-android-nexuslib.so" -arch x86_64 "x86_64-android-nexuslib.so" -o "nexus-mobile-library.so"
+
 
 nexus.a: $(OBJS:build/%=build/%)
 	$(CXX) -v $(CXXFLAGS) -v -dead_strip -o $@ $(LIBPATHS) $^ $(LIBS)
