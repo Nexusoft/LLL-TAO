@@ -1753,12 +1753,22 @@ endif
 ###############################################################################
 ifeq ($(detected_OS),iPhone)
 
-#Configure OS Specific Compiler Output
-ifndef VERBOSE
-	CXX= @echo Compiling $< && llvm-g++
+ifeq ($(SIMULATOR),1)
+	CXXFLAGS+= -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator$(IOS_SDK_VER).sdk \
 else
-	CXX= clang++
+	CXXFLAGS+= -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS$(IOS_SDK_VER).sdk \
+	IOS_TYPE= iphoneos
 endif
+
+IOS_ARCH ?= x86_64
+IOS_TYPE ?= ios-simulator
+IOS_SDK_VER ?= 13.2
+MIN_OS_VER ?= 10
+
+
+#Configure OS Specific Compiler Output
+CXX= @echo Compiling $< && llvm-g++
+
 
 #Handle for no ansi
 ifdef NO_ANSI
@@ -1766,34 +1776,20 @@ ifdef NO_ANSI
 endif
 
 
-IOS_SDK_VER ?= 13.2
-
 #Configure OS Specific Build Environment
-DEFS+= -DMSG_NOSIGNAL=0
+DEFS+= -DMSG_NOSIGNAL=0 -DIPHONE
 LIBS+= $(OPENSSL_LIB_PATH)/libssl.a \
 	$(OPENSSL_LIB_PATH)/libcrypto.a
 
-DEFS+= -DIPHONE
 
 #OS Specific Compiler Flags
 CXXFLAGS+= -O3 \
 	$(DEFS) \
 	$(DEBUG) \
 	$(INCLUDEPATHS) \
-	-L/usr/local/Cellar/openssl@iphones/lib \
-	-I/usr/local/Cellar/openssl@iphones/include 
+	-arch $(IOS_ARCH) \
+	-m$(IOS_TYPE)-version-min=$(MIN_OS_VER)
 
-ifeq ($(SIMULATOR),1)
-$(info sim)
-	CXXFLAGS+= -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator13.2.sdk \
-		-arch x86_64 \
-		-mios-simulator-version-min=9.0
-else
-$(info phone)
-	CXXFLAGS+= -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS13.2.sdk \
-		-arch arm64 \
-		-miphoneos-version-min=10 
-endif
 
 #Set CFLAGS and Warnings
 CFLAGS:= $(CXXFLAGS)
@@ -1804,17 +1800,18 @@ CXXFLAGS+=-std=c++11
 CXXFLAGS+= $(CXXWARNINGS)
 
 #OS Specific Targets and instructions
-all: nexus.a
+all: iphone.a
+
+.PHONY: buildall iphone.a
 
 buildall: 
-	mkdir build/obj
+	mkdir -p build/obj
 	echo MAKING DEVICE
-	make -f makefile.cli -j 8 STATIC=1 NO_WALLET=1 IPHONE=1 SIMULATOR=0
-	mv build/obj/simulator.a build/obj/device.a
+	make -f makefile.cli STATIC=1 NO_WALLET=1 IPHONE=1 SIMULATOR=0
 	echo CLEANING
-	make -f makefile.cli -j 8 STATIC=1 NO_WALLET=1 IPHONE=1 SIMULATOR=0 clean
+	make -f makefile.cli IPHONE=1 SIMULATOR=0 clean
 	echo MAKING SIM
-	make -f makefile.cli -j 8 STATIC=1 NO_WALLET=1 IPHONE=1 SIMULATOR=1
+	make -f makefile.cli STATIC=1 NO_WALLET=1 IPHONE=1 SIMULATOR=1
 	mkdir build/tempdir
 	echo MOVING HEADERS
 	find ./src -name '*.h' -print | cpio -pvdumB ./build/tempdir
@@ -1823,11 +1820,9 @@ buildall:
 	mv build/tempdir/src build/obj/nexus-mobile-library.framework/Headers
 	rmdir build/tempdir
 	echo BUILDING FRAMEWORK
-	cd build/obj && LIPO -create -arch arm64 "device.a" -arch x86_64 "simulator.a" -o "nexus-mobile-library.a"
+	cd build/obj && LIPO -create -arch arm64 "iphoneos.a" -arch x86_64 "ios-simulator.a" -o "nexus-mobile-library.a"
 	cd build/obj && mv nexus-mobile-library.a nexus-mobile-library.framework/nexus-mobile-library
 
-
-$(info $(CFLAGS))
 
 build/%.o: src/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
@@ -2207,19 +2202,15 @@ build/Live_%.o: tests/live/%.cpp $(HEADERS)
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-nexus.a: $(OBJS:build/%=build/%)
-	$(CXX) $(CXXFLAGS) -dead_strip -o $@ $(LIBPATHS) $^ $(LIBS)
-	cd build && ar rc obj/simulator.a **.o
+iphone.a: $(OBJS:build/%=build/%)
+	cd build && ar rc obj/$(IOS_TYPE).a **.o
 	@echo ' '
-	@echo $(info SIMULATOR)
 	@echo Finished building nexus
 	@echo ' '
 
 clean:
-	-rm -f nexus.a
 	-rm -f build/*.o
 	-rm -f build/*.P
-	-rm -f src/build.h
 
 endif
 ###############################################################################
