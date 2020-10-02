@@ -1766,6 +1766,8 @@ ifdef NO_ANSI
 endif
 
 
+IOS_SDK_VER ?= 13.2
+
 #Configure OS Specific Build Environment
 DEFS+= -DMSG_NOSIGNAL=0
 LIBS+= $(OPENSSL_LIB_PATH)/libssl.a \
@@ -2224,14 +2226,17 @@ endif
 ###############################################################################
 ifeq ($(detected_OS),Android)
 
-android_api := 29
+ANDROID_API ?= 29
+SDK_LOCATION ?= /usr/local/Caskroom/android-sdk/4333796/
+NDK_LOCATION ?= /usr/local/Caskroom/android-sdk/4333796/ndk/21.3.6528147/
+HOST_ARCH ?= darwin-x86_64
+ANDROID_TARGET ?= $(ANDROID_ARCH)-linux-android$(ANDROID_API)
+
+llvm_prebuild_dir = $(NDK_LOCATION)toolchains/llvm/prebuilt/$(HOST_ARCH)
 
 #Configure OS Specific Compiler Output
-ifndef VERBOSE
-	CXX= @echo Compiling $< && /usr/local/Caskroom/android-sdk/4333796/ndk/21.3.6528147/toolchains/llvm/prebuilt/darwin-x86_64/bin/$(ANDROID_ARCH)-linux-android$(android_api)-clang++
-else
-	CXX= llvm-libc++
-endif
+CXX= @echo Compiling $< && $(llvm_prebuild_dir)/bin/$(ANDROID_ARCH)-linux-android$(ANDROID_API)-clang++
+
 
 #Handle for no ansi
 ifdef NO_ANSI
@@ -2240,11 +2245,9 @@ endif
 
 
 #Configure OS Specific Build Environment
-DEFS+= -DMSG_NOSIGNAL=0
+DEFS+= -DMSG_NOSIGNAL=0 -DANDROID
 LIBS+= $(OPENSSL_LIB_PATH)/libssl.a \
 	$(OPENSSL_LIB_PATH)/libcrypto.a
-
-DEFS+= -DANDROID
 
 
 #OS Specific Compiler Flags
@@ -2252,17 +2255,13 @@ CXXFLAGS+= -O3 \
 	$(DEFS) \
 	$(DEBUG) \
 	$(INCLUDEPATHS) \
-	-L/usr/local/Cellar/openssl@android/$(openssl_arch)/lib \
-	-I/usr/local/Cellar/openssl@android/$(openssl_arch)/include 
-	
-
-CXXFLAGS += -isysroot /usr/local/Caskroom/android-sdk/4333796/platforms/android-29 \
-	-target $(ANDROID_ARCH)-linux-android29 \
+	-isysroot $(SDK_LOCATION)platforms/android-$(ANDROID_API) \
+	-target $(ANDROID_TARGET) \
 	-arch $(ANDROID_ARCH) \
 	-static-libstdc++ \
 	-fPIC
 	
-
+	
 #Set CFLAGS and Warnings
 CFLAGS:= $(CXXFLAGS)
 CFLAGS+= $(CWARNINGS)
@@ -2271,16 +2270,16 @@ CFLAGS+= $(CWARNINGS)
 CXXFLAGS+=-std=c++11
 CXXFLAGS+= $(CXXWARNINGS)
 
-#OS Specific Targets and instructions
-all: nexus.a
 
+all: android.so
 
-$(info ANDROID)
-$(info $(CXX))
-$(info $(CFLAGS))
-$(info $(CXXFLAGS))
-$(info $(OPENSSL_INCLUDE_PATH))
-$(info $(OPENSSL_LIB_PATH))
+### Print Info
+#$(info ANDROID)
+#$(info $(CXX))
+#$(info $(CFLAGS))
+#$(info $(CXXFLAGS))
+#$(info $(OPENSSL_INCLUDE_PATH))
+#$(info $(OPENSSL_LIB_PATH))
 
 build/%.o: src/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
@@ -2660,33 +2659,31 @@ build/Live_%.o: tests/live/%.cpp $(HEADERS)
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
+.PHONY: buildall android.so
 
+#OS Specific Targets and instructions
 buildall: 
-	mkdir build/obj
+	mkdir -p build/obj
 	@echo Making x86_64
-	make -f makefile.cli -j 8 STATIC=0 NO_WALLET=1 ANDROID=1 ANDROID_ARCH="x86_64"
-	mv build/obj/android.so build/obj/x86_64-android-nexuslib.so
+	make -f makefile.cli STATIC=0 NO_WALLET=1 ANDROID=1 ANDROID_ARCH="x86_64"
 	@echo Cleaning
-	make -f makefile.cli -j 8 STATIC=0 NO_WALLET=1 ANDROID=1 clean
+	make -f makefile.cli STATIC=0 NO_WALLET=1 ANDROID=1 clean
 	@echo Making aarch64
-	make -f makefile.cli -j 8 STATIC=0 NO_WALLET=1 ANDROID=1 ANDROID_ARCH="aarch64"
-	mv build/obj/android.so build/obj/aarch64-android-nexuslib.so
-	cd build/obj && LIPO -create -arch arm64v8 "aarch64-android-nexuslib.so" -arch x86_64 "x86_64-android-nexuslib.so" -o "nexus-mobile-library.so"
+	make -f makefile.cli STATIC=0 NO_WALLET=1 ANDROID=1 ANDROID_ARCH="aarch64"
+	#cd build/obj && LIPO -create -arch arm64v8 "aarch64-android-nexuslib.so" -arch x86_64 "x86_64-android-nexuslib.so" -o "nexus-mobile-library.so"
 
 
-nexus.a: $(OBJS:build/%=build/%)
-	$(CXX) -v $(CXXFLAGS) -v -dead_strip -o $@ $(LIBPATHS) $^ $(LIBS)
-	cd build && /usr/local/Caskroom/android-sdk/4333796/ndk/21.3.6528147/toolchains/llvm/prebuilt/darwin-x86_64/$(ANDROID_ARCH)-linux-android/bin/ar rc obj/android.so **.o
+android.so: $(OBJS:build/%=build/%)
+	cd build && $(llvm_prebuild_dir)/$(ANDROID_ARCH)-linux-android/bin/ar rc obj/$(openssl_arch)-android-nexuslib.so **.o
 	@echo ' '
 	@echo $(info ANDROID)
 	@echo Finished building nexus
 	@echo ' '
 
+
 clean:
-	-rm -f nexus.a
 	-rm -f build/*.o
 	-rm -f build/*.P
-	-rm -f src/build.h
 
 endif
 ##
