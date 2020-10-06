@@ -41,7 +41,7 @@ ARM64=1
 
 #### OPENSSL LIBRARY PATH
 
-Set path to installed OpenSSL Library folder
+Set path to installed OpenSSL Library folder.
 
 Example:
 
@@ -51,7 +51,7 @@ OPENSSL_LIB_PATH="\usr\foo\bar\openssl\lib"
 
 #### OPENSSL INCLUDE PATH
 
-Set path to installed OpenSSL Include folder
+Set path to installed OpenSSL Include folder.
 
 Example:
 
@@ -61,9 +61,33 @@ OPENSSL_INCLUDE_PATH="\usr\foo\bar\openssl\include"
 
 #### BERKLEY DATABASE LIBRARY PATH
 
+Set path to installed Berkley Library folder.
+
+Example:
+
+```
+OPENSSL_LIB_PATH="\usr\foo\bar\bdb\lib"
+```
+
 #### BERKLEY DATABASE INCLUDE PATH
 
+Set path to installed Berkley Database Include folder.
+
+Example:
+
+```
+OPENSSL_INCLUDE_PATH="\usr\foo\bar\bdb\include"
+```
+
 #### MINIUPNPC LIBRARY PATH
+
+Set path to installed Mini UPNP C Library folder.
+
+Example:
+
+```
+OPENSSL_LIB_PATH="\usr\foo\bar\miniupnpc\lib"
+```
 
 #### ORACLE
 
