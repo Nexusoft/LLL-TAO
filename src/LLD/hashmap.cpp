@@ -360,7 +360,7 @@ namespace LLD
                 if(find_and_write(key, vBase, nFileRet, nBucketRet, CONFIG.MIN_LINEAR_PROBES))
                 {
                     /* Check if file needs to be incremented. */
-                    if(nFileRet >= nHashmap + 1)
+                    if(nFileRet >= nHashmap)
                     {
                         set_current_file(nFileRet + 1, vBase);
                         debug::log(0, FUNCTION, "regular incrementing file handle to ", nHashmap + 1);
@@ -748,6 +748,7 @@ namespace LLD
                         debug::log(4, FUNCTION, ANSI_COLOR_BRIGHT_CYAN, "State: ", key.nState == STATE::READY ? "Valid" : "Invalid",
                             " | Length: ", key.nLength,
                             " | Bucket ", nBucket,
+                            " | Pos ", nFilePos,
                             " | Probe ", nProbe,
                             " | Location: ", nFilePos,
                             " | File: ", nFile,
@@ -842,6 +843,7 @@ namespace LLD
                         debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_CYAN, "State: ", key.nState == STATE::READY ? "Valid" : "Invalid",
                         " | Length: ", key.nLength,
                         " | Bucket ", nBucket,
+                        " | Pos ", nFilePos,
                         " | Probe ", nProbe,
                         " | Location: ", nFilePos,
                         " | File: ", nHashmap,

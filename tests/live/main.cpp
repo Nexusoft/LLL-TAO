@@ -127,8 +127,8 @@ int main(int argc, char** argv)
         LLD::Config::Hashmap("testdb", LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
 
     /* Set the ContractDB database internal settings. */
-    CONFIG.HASHMAP_TOTAL_BUCKETS    = 64;
-    CONFIG.MAX_HASHMAP_FILES        = 1;
+    CONFIG.HASHMAP_TOTAL_BUCKETS    = 32;
+    CONFIG.MAX_HASHMAP_FILES        = 3;
     CONFIG.MIN_LINEAR_PROBES        = 1;
     CONFIG.MAX_LINEAR_PROBES        = 64;
     CONFIG.MAX_HASHMAP_FILE_STREAMS = 64;
@@ -157,6 +157,7 @@ int main(int argc, char** argv)
             swTimer.start();
             for(const auto& nBucket : vKeys)
             {
+                debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "+++++++++++++++++++++++++++++++++", ANSI_COLOR_RESET);
                 bloom->WriteKey(nBucket, nBucket);
             }
             swTimer.stop();
@@ -176,6 +177,7 @@ int main(int argc, char** argv)
             {
                 ++nTotal;
 
+                debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "+++++++++++++++++++++++++++++++++", ANSI_COLOR_RESET);
                 if(!bloom->ReadKey(nBucket, hashKey))
                     return debug::error("Failed to read ", nBucket.SubString(), " total ", nTotal);
             }
