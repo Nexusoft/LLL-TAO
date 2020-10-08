@@ -99,7 +99,12 @@ namespace TAO
                                 return debug::error(FUNCTION, "token identifier must be token address");
 
                             /* Check for reserved native token. */
-                            if(hashIdentifier == 0 || LLD::Register->HasState(hashIdentifier, nFlags))
+                            if(hashIdentifier == 0)
+                                return debug::error(FUNCTION, "token can't use reserved identifier ", hashIdentifier.SubString());
+
+                            /* Check that the token address hasn't already been used.  NOTE we cannot do this check in client mode
+                               as it is possible the register may have previously been retrieved from another signature chain. */
+                            if(!config::fClient.load() && LLD::Register->HasState(hashIdentifier, nFlags))
                                 return debug::error(FUNCTION, "token can't use reserved identifier ", hashIdentifier.SubString());
 
                             /* Check that the current supply and max supply are the same. */
@@ -253,8 +258,9 @@ namespace TAO
                 }
             }
 
-            /* Check that the register doesn't exist yet. */
-            if(LLD::Register->HasState(address, nFlags))
+            /* Check that the register doesn't exist yet. NOTE we cannot do this check in client mode as it is possible the register
+               may have previously been retrieved from another signature chain and therefore the latest state could already exist. */
+            if(!config::fClient.load() && LLD::Register->HasState(address, nFlags))
                 return debug::error(FUNCTION, "cannot allocate register of same memory address ", address.SubString());
 
             /* Attempt to write new state to disk. */
