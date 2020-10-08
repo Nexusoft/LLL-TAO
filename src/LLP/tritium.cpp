@@ -3167,7 +3167,8 @@ namespace LLP
                                 LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
                                 TAO::Ledger::mempool.Remove(hashTx);
 
-                                tx.print();
+                                if(config::nVerbose >= 3)
+                                    tx.print();
 
                                 debug::log(0, hashTx.SubString(), " ACCEPTED");
                             }
@@ -3200,7 +3201,8 @@ namespace LLP
                                     if(!tx.CheckMerkleBranch(block.hashMerkleRoot))
                                         return debug::error(FUNCTION, "merkle transaction has invalid path");
 
-                                    tx.print();
+                                    if(config::nVerbose >= 3)
+                                        tx.print();
 
                                     /* Commit transaction to disk. */
                                     LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK);
