@@ -76,7 +76,11 @@ namespace LLP
         OpenSSL_add_ssl_algorithms();
 
         /* Create the global network SSL object.  NOTE we only support TLS 1.0 and greater, not previous versions of SSL */
-        pSSL_CTX = SSL_CTX_new(TLS_method());
+        #ifdef IPHONE
+            pSSL_CTX = SSL_CTX_new(DTLS_method());
+        #else
+            pSSL_CTX = SSL_CTX_new(TLS_method());
+        #endif
 
         /* Set the verification callback to always true. */
         SSL_CTX_set_verify(pSSL_CTX, SSL_VERIFY_PEER, LLC::always_true_callback);
@@ -108,17 +112,17 @@ namespace LLP
             /* Generate an ephemeral RSA based certificate for this session */
             cert.GenerateRSA("localhost");
         }
-        
-        
-        
-        cert.Verify();
 
+
+        /* Initialize the new SSL context. */
         if(!cert.Init_SSL(pSSL_CTX))
             return debug::error(FUNCTION, "Certificate Init Failed for SSL Context");
+
+        /* Verify that certificate chain is valid. */
         if(!cert.Verify(pSSL_CTX))
             return debug::error(FUNCTION, "Certificate Verify Failed for SSL Context");
 
-
+        /* Debug logging. */
         debug::log(3, FUNCTION, "SSL context and certificate creation complete.");
         debug::log(2, FUNCTION, "Network resource initialization complete");
 

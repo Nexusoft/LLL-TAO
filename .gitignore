@@ -2,9 +2,11 @@
 *.o
 *.P
 *.d
+*.D
 *.bat
 *.exe
 *.Debug
+*.a
 *.Release
 *.kate-swp
 *.db

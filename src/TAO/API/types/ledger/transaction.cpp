@@ -28,7 +28,6 @@ ________________________________________________________________________________
 
 #include <Legacy/wallet/wallet.h>
 
-
 /* Global TAO namespace. */
 namespace TAO
 {
