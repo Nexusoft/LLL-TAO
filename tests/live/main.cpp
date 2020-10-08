@@ -155,9 +155,13 @@ int main(int argc, char** argv)
 
             runtime::stopwatch swTimer;
             swTimer.start();
+
+            uint32_t nTotal = 0;
             for(const auto& nBucket : vKeys)
             {
-                debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "+++++++++++++++++++++++++++++++++", ANSI_COLOR_RESET);
+                ++nTotal;
+
+                debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, nTotal, ":: +++++++++++++++++++++++++++++++++", ANSI_COLOR_RESET);
                 bloom->WriteKey(nBucket, nBucket);
             }
             swTimer.stop();
@@ -172,12 +176,12 @@ int main(int argc, char** argv)
 
             debug::log(0, "------- Reading Tests...");
 
-            uint32_t nTotal = 0;
+            nTotal = 0;
             for(const auto& nBucket : vKeys)
             {
                 ++nTotal;
 
-                debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "+++++++++++++++++++++++++++++++++", ANSI_COLOR_RESET);
+                debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, nTotal, ":: +++++++++++++++++++++++++++++++++", ANSI_COLOR_RESET);
                 if(!bloom->ReadKey(nBucket, hashKey))
                     return debug::error("Failed to read ", nBucket.SubString(), " total ", nTotal);
             }

@@ -215,12 +215,11 @@ namespace LLD
 
         /* Grab the current hashmap file from the buffer. */
         uint16_t nHashmap = get_current_file(vBase);
-
-        debug::log(0, FUNCTION, "reading from hashmap ", nHashmap);
-
-        PrintHex(vBase.begin(), vBase.end());
         if(nHashmap >= CONFIG.MAX_HASHMAP_FILES)
         {
+            /* Create our cached values to detect when no more useful work is being completed. */
+            uint32_t nBucketCache  = 0, nTotalCache = 0;
+
             /* Loop all probe expansion cycles to ensure we check all locations a key could have been written. */
             for(uint32_t nCycle = 0; nCycle < (nHashmap - CONFIG.MAX_HASHMAP_FILES); ++nCycle)
             {
@@ -243,6 +242,14 @@ namespace LLD
                 /* Check our hashmaps for given key. */
                 if(find_and_read(key, vIndex, nFileRet, nBucketRet, nTotalBuckets))
                     return true;
+
+                /* Check that our cached bucket and total are different (signifying useful work was completed). */
+                if(nBucketCache == nAdjustedBucket && nTotalCache == nTotalBuckets)
+                    return debug::error(FUNCTION, "probe(s) exhausted: ", nBucketCache, " | ", nTotalCache, " at end of fibanacci search space");
+
+                /* Update our cached value if it passed. */
+                nBucketCache = nAdjustedBucket;
+                nTotalCache  = nTotalBuckets;
             }
         }
 
@@ -282,10 +289,11 @@ namespace LLD
             debug::log(0, "read base index at pos ", uint64_t(INDEX_FILTER_SIZE * nBucket), " for bucket=", nBucket);
         }
 
-        /* Grab the current hashmap file from the buffer. */
+        /* Create our cached values to detect when no more useful work is being completed. */
+        uint32_t nBucketCache  = 0, nTotalCache = 0;
         uint16_t nHashmap = get_current_file(vBase, 0);
 
-        debug::log(0, FUNCTION, "writing from hashmap ", nHashmap);
+        /* Loop through our potential linear probe cycles. */
         while(nHashmap < CONFIG.MAX_HASHMAP_FILES + CONFIG.MAX_LINEAR_PROBES)
         {
             /* Check if we are in a probe expansion cycle. */
@@ -321,9 +329,13 @@ namespace LLD
                     return true;
                 }
 
-                /* Check if we are at the end of our probing sequences. */ //TODO: this is buggy, we need to make more solid
-                //if(nAdjustedBucket == 0 || nAdjustedBucket + nTotalBuckets == CONFIG.HASHMAP_TOTAL_BUCKETS)
-                //    return debug::error(FUNCTION, "probe(s) exhausted: ", nHashmap, " at end of fibanacci search space");
+                /* Check that our cached bucket is different (signifying useful work was completed). */
+                if(nBucketCache == nAdjustedBucket && nTotalCache == nTotalBuckets)
+                    return debug::error(FUNCTION, "probe(s) exhausted: ", nBucketCache, " | ", nTotalCache, " at end of fibanacci search space");
+
+                /* Update our cached values if it passed. */
+                nBucketCache = nAdjustedBucket;
+                nTotalCache  = nTotalBuckets;
             }
             else
             {
@@ -361,15 +373,7 @@ namespace LLD
                 {
                     /* Check if file needs to be incremented. */
                     if(nFileRet >= nHashmap)
-                    {
                         set_current_file(nFileRet + 1, vBase);
-                        debug::log(0, FUNCTION, "regular incrementing file handle to ", nHashmap + 1);
-                    }
-                    else
-                    {
-                        debug::log(0, FUNCTION, "not incrementing ", nFileRet, " and ", get_current_file(vBase));
-                    }
-
 
                     /* Flush our index file to disk. */
                     if(!flush_index(vBase, nBucket))
@@ -380,7 +384,6 @@ namespace LLD
             }
 
             /* Bump our current file number now. */
-            debug::log(0, FUNCTION, "incrementing hashmap loop ", nHashmap + 1);
             set_current_file(++nHashmap, vBase);
         }
 
@@ -659,8 +662,8 @@ namespace LLD
             return debug::error(FUNCTION, "buffer overflow protection ", nBufferPos, "/", vBuffer.size()); //TODO" remove on production
 
         /* Seek to position if we are not already there. */
-        //uint64_t nFilePos = (INDEX_FILTER_SIZE * (nBucket + nOffset));
-        uint64_t nFilePos = (INDEX_FILTER_SIZE * nBucket);
+        uint64_t nFilePos = (INDEX_FILTER_SIZE * (nBucket + nOffset));
+        //uint64_t nFilePos = (INDEX_FILTER_SIZE * nBucket);
         if(pindex->tellp() != nFilePos)
         {
             debug::log(0, FUNCTION, "seek to pos ", nFilePos);
@@ -670,12 +673,12 @@ namespace LLD
             debug::log(0, FUNCTION, "already at pos ", nFilePos);
 
         /* Check our file number. */
-        uint16_t nFile = get_current_file(vBuffer, 0);
+        uint16_t nFile = get_current_file(vBuffer, nOffset * INDEX_FILTER_SIZE);
         debug::log(0, FUNCTION, "flushing for file ", nFile);
 
         /* Write updated filters to the index position. */
-        if(!pindex->write((char*)&vBuffer[0], vBuffer.size()))
-        //if(!pindex->write((char*)&vBuffer[nOffset * INDEX_FILTER_SIZE], INDEX_FILTER_SIZE))
+        //if(!pindex->write((char*)&vBuffer[0], vBuffer.size()))
+        if(!pindex->write((char*)&vBuffer[nOffset * INDEX_FILTER_SIZE], INDEX_FILTER_SIZE))
             return debug::error(FUNCTION, "INDEX: only ", pindex->gcount(), "/", vBuffer.size(), " bytes written");
 
         /* Flush the buffers to disk. */
@@ -1122,7 +1125,7 @@ namespace LLD
         /* Find the total cycles to probe. */
         uint64_t nExpansionCycles = (nHashmap - CONFIG.MAX_HASHMAP_FILES);
 
-        /* Start our probe expansion cycle with default cycles. */
+        /* Start our probe expansion cycle with default values. */
         uint32_t nBeginProbeExpansion = CONFIG.MIN_LINEAR_PROBES;
         uint32_t nEndProbeExpansion   = CONFIG.MIN_LINEAR_PROBES;
 
