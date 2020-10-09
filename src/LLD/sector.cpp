@@ -342,7 +342,7 @@ namespace LLD::Templates
     template<class KeychainType, class CacheType, class ConfigType>
     bool SectorDatabase<KeychainType, CacheType, ConfigType>::Force(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vData)
     {
-        if(CONFIG.FLAGS & FLAGS::APPEND || !Update(vKey, vData))
+        //if(CONFIG.FLAGS & FLAGS::APPEND || !Update(vKey, vData))
         {
 
             /* Get current size */

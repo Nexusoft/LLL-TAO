@@ -22,6 +22,7 @@ ________________________________________________________________________________
 #include <Util/include/hex.h>
 
 #include <iomanip>
+#include <bitset>
 
 namespace LLD
 {
@@ -148,6 +149,8 @@ namespace LLD
             /* Loop through each bucket and account for the number of active keys. */
             for(uint32_t nBucket = 0; nBucket < CONFIG.HASHMAP_TOTAL_BUCKETS; ++nBucket)
             {
+                debug::log(0, ANSI_COLOR_BRIGHT_CYAN, nBucket, "::", ANSI_COLOR_RESET);
+
                 /* Get the binary offset within the current probe. */
                 uint64_t nOffset = nBucket * INDEX_FILTER_SIZE;
 
@@ -224,7 +227,7 @@ namespace LLD
             for(uint32_t nCycle = 0; nCycle < (nHashmap - CONFIG.MAX_HASHMAP_FILES); ++nCycle)
             {
                 /* Create an adjusted iterator to search through expansion cycles. */
-                uint16_t nAdjustedHashmap = (CONFIG.MAX_HASHMAP_FILES + nCycle);
+                uint16_t nAdjustedHashmap = (CONFIG.MAX_HASHMAP_FILES + nCycle + 1); //we need +1 here to derive correct fibanacci zone
 
                 /* Create our return values from fibanacci_index. */
                 uint32_t nAdjustedBucket  = 0;
@@ -316,7 +319,7 @@ namespace LLD
                 if(find_and_write(key, vIndex, nFileRet, nBucketRet, nTotalBuckets))
                 {
                     /* If we found a slot, signify expansion cycle is complete with a +1 value for searching. */
-                    set_current_file(++nHashmap, vBase);
+                    set_current_file(nHashmap, vBase); //we set to current fibanacci zone so we can keep writing to it for next key
 
                     /* Flush our base index file to disk (file iterator) */
                     if(!flush_index(vBase, nBucket))
@@ -365,7 +368,7 @@ namespace LLD
                 }
 
                 /* We make a copy here to prevent return by reference related bugs */
-                uint16_t nFileRet   = nHashmap + 1; //when we get to this point, we have created a new hashmap so require a +1
+                uint16_t nFileRet   = nHashmap;
                 uint32_t nBucketRet = nBucket;
 
                 /* Handle our key writing without probing adjacent buckets. */
@@ -724,7 +727,7 @@ namespace LLD
                     /* Write our new hashmap entry into the file's bucket. */
                     const uint64_t nFilePos = ((nBucket + nProbe) * CONFIG.HASHMAP_KEY_ALLOCATION);
                     {
-                        LOCK(CONFIG.FILE(nFile));
+                        //LOCK(CONFIG.FILE(nFile)); NOTE: there is a deadlock here
 
                         /* Grab the current file stream from LRU cache. */
                         std::fstream* pstream = get_file_stream(nFile);
@@ -757,17 +760,12 @@ namespace LLD
                             " | File: ", nFile,
                             " | Sector File: ", key.nSectorFile,
                             " | Sector Size: ", key.nSectorSize,
-                            " | Sector Start: ", key.nSectorStart, ANSI_COLOR_RESET,
-                            " | Key: ",  HexStr(vKeyCompressed.begin(), vKeyCompressed.end()));
+                            " | Sector Start: ", key.nSectorStart, "\n", ANSI_COLOR_RESET,
+                            HexStr(vKeyCompressed.begin(), vKeyCompressed.end(), true));
 
                     /* Set our return values. */
                     nBucket += nProbe;
                     nHashmap = uint16_t(nFile);
-
-                    //std::vector<uint8_t> vBucket = ssKey.Bytes();
-
-                    //debug::log(0, FUNCTION, "Bucket binary data is at ", nFilePos, " | probe=", nProbe, "/", nProbes, " | file=", nFile);
-                    //PrintHex(vBucket.begin(), vBucket.end());
 
                     return true;
                 }
@@ -798,24 +796,24 @@ namespace LLD
                 return debug::error(FUNCTION, "out of buckets ", nProbe + nBucket, "/", CONFIG.HASHMAP_TOTAL_BUCKETS);
 
             /* Get the binary offset within the current probe. */
-            //const uint64_t nOffset = (nProbe * INDEX_FILTER_SIZE);
+            const uint64_t nOffset = (nProbe * INDEX_FILTER_SIZE);
 
             /* Check the primary bloom filter. */
-            //if(!check_primary_bloom(key.vKey, vBuffer, nOffset + 2))
-            //    continue;
+            if(!check_primary_bloom(key.vKey, vBuffer, nOffset + 2))
+                continue;
 
             /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
             const uint16_t nBucketIterator = std::min(uint16_t(CONFIG.MAX_HASHMAP_FILES - 1), uint16_t(nHashmap - 1));
             for(int32_t nFile = nBucketIterator; nFile >= 0; --nFile)
             {
                 /* Check the secondary bloom filter. */
-                //if(!check_secondary_bloom(key.vKey, vBuffer, nFile, nOffset + primary_bloom_size() + 2))
-                //    continue;
+                if(!check_secondary_bloom(key.vKey, vBuffer, nFile, nOffset + primary_bloom_size() + 2))
+                    continue;
 
                 /* Read our bucket level data from the hashmap. */
-                const uint64_t nFilePos = ((nBucket + nProbe) * CONFIG.HASHMAP_KEY_ALLOCATION);
+                const uint64_t nFilePos = (nBucket + nProbe) * CONFIG.HASHMAP_KEY_ALLOCATION;
                 {
-                    LOCK(CONFIG.FILE(nFile));
+                    //LOCK(CONFIG.FILE(nFile)); NOTE: there is a deadlock here
 
                     /* Find the file stream for LRU cache. */
                     std::fstream* pstream = get_file_stream(nFile);
@@ -824,7 +822,7 @@ namespace LLD
 
                     /* Seek here if our cursor is not at the correct position, but take advantage of linear access when possible */
                     if(pstream->tellg() != nFilePos)
-                        pstream->seekg(nFilePos + (nProbe * CONFIG.HASHMAP_KEY_ALLOCATION), std::ios::beg);
+                        pstream->seekg(nFilePos, std::ios::beg);
 
                     /* Read the bucket binary data from file stream */
                     if(!pstream->read((char*) &vBucket[0], vBucket.size()))
@@ -863,8 +861,11 @@ namespace LLD
                 }
                 else
                 {
-                    //debug::log(0, FUNCTION, "Bucket binary data is at ", nFilePos, " | probe=", nProbe, "/", nProbes, " | file=", nFile);
-                    //PrintHex(vBucket.begin(), vBucket.end());
+                    debug::log(0, FUNCTION, "Bucket binary data is at ", nFilePos, " | probe=", nProbe, "/", nProbes, " | file=", nFile);
+                    PrintHex(vBucket.begin(), vBucket.end(), true);
+
+                    debug::log(0, FUNCTION, "Compressed Key binary data:");
+                    PrintHex(vKeyCompressed.begin(), vKeyCompressed.end(), true);
                 }
 
             }
@@ -913,7 +914,10 @@ namespace LLD
         uint32_t nBeginIndex  = (nHashmap * CONFIG.SECONDARY_BLOOM_BITS) / 8;
         uint32_t nBeginBit    = (nHashmap * CONFIG.SECONDARY_BLOOM_BITS) % 8;
 
+        debug::log(0, "MAP:: hashmap=", nHashmap, " | index=", nBeginIndex, " | bit=", nBeginBit, " | ", std::bitset<8>(vBuffer[nBeginIndex + nOffset]));
+
         /* Loop through all bits in a secondary bloom filter. */
+        bool fRet = true;
         for(uint32_t n = 0; n < CONFIG.SECONDARY_BLOOM_BITS; ++n)
         {
             /* Calculate our offsets based on current bit iterated. */
@@ -928,11 +932,13 @@ namespace LLD
             }
 
             /* Check that any bits within the range of this hashmap bitset are not set. */
+            printf("%s", vBuffer[nIndex + nOffset] & (1 << nBit) ? "1" : "0");
             if(vBuffer[nIndex + nOffset] & (1 << nBit))
-                return false;
+                fRet = false;
         }
+        printf("\n");
 
-        return true;
+        return fRet;
     }
 
 
@@ -980,7 +986,13 @@ namespace LLD
         uint32_t nBeginIndex  = (nHashmap * CONFIG.SECONDARY_BLOOM_BITS) / 8;
         uint32_t nBeginBit    = (nHashmap * CONFIG.SECONDARY_BLOOM_BITS) % 8;
 
+        std::set<uint8_t> setBad;
+        std::set<uint8_t> setGood;
+
+        debug::log(0, "CHECK:: hashmap=", nHashmap, " | index=", nBeginIndex, " | bit=", nBeginBit, " | ", std::bitset<8>(vBuffer[nBeginIndex + nOffset]));
+
         /* Loop through the total k-hashes for this bloom filter. */
+        bool fRet = true;
         for(uint32_t k = 0; k < CONFIG.SECONDARY_BLOOM_HASHES; ++k)
         {
             /* Find the bucket that correlates to this k-hash. */
@@ -1001,10 +1013,38 @@ namespace LLD
 
             /* Check this k-hash value bit is not set. */
             if(!(vBuffer[nIndex + nOffset] & (1 << nBit)))
-                return false;
+            {
+                setBad.insert(nBucket);
+                fRet = false;
+            }
+            else
+                setGood.insert(nBucket);
+
         }
 
-        return true;
+        for(uint32_t n = 0; n < CONFIG.SECONDARY_BLOOM_BITS; ++n)
+        {
+            /* Calculate our offsets based on current bit iterated. */
+            uint32_t nIndex  = nBeginIndex + ((nBeginBit + n) / 8);
+            uint32_t nBit    = (nBeginBit + n) % 8;
+
+            /* Check that any bits within the range of this hashmap bitset are not set. */
+            if(setBad.count(n))
+                printf(ANSI_COLOR_BRIGHT_RED);
+            else if(setGood.count(n))
+                printf(ANSI_COLOR_BRIGHT_GREEN);
+            else
+                printf(ANSI_COLOR_BRIGHT_WHITE);
+
+            printf("%s", vBuffer[nIndex + nOffset] & (1 << nBit) ? "1" : "0");
+
+            //if(setBad.count(n) || setGood.count(n))
+                printf(ANSI_COLOR_RESET);
+        }
+
+        printf("\n");
+
+        return fRet;
     }
 
 
@@ -1014,7 +1054,9 @@ namespace LLD
     {
         /* Find the starting index and bit offset. */
         uint32_t nBeginIndex  = (nHashmap * CONFIG.SECONDARY_BLOOM_BITS) / 8;
-        uint32_t nBeginOffset = (nHashmap * CONFIG.SECONDARY_BLOOM_BITS) % 8;
+        uint32_t nBeginBit = (nHashmap * CONFIG.SECONDARY_BLOOM_BITS) % 8;
+
+        debug::log(0, "SET:: hashmap=", nHashmap, " | index=", nBeginIndex, " | bit=", nBeginBit, " | ", std::bitset<8>(vBuffer[nBeginIndex + nOffset]));
 
         /* Loop through the total k-hashes for this bloom filter. */
         for(uint32_t k = 0; k < CONFIG.SECONDARY_BLOOM_HASHES; ++k)
@@ -1023,8 +1065,8 @@ namespace LLD
             uint64_t nBucket = XXH3_64bits_withSeed((uint8_t*)&vKey[0], vKey.size(), k) % CONFIG.SECONDARY_BLOOM_BITS;
 
             /* Calculate our local bit and index in the buffer. */
-            uint32_t nIndex  = nBeginIndex + (nBeginOffset + nBucket) / 8;
-            uint32_t nBit    = (nBeginOffset + nBucket) % 8;
+            uint32_t nIndex  = nBeginIndex + (nBeginBit + nBucket) / 8;
+            uint32_t nBit    = (nBeginBit + nBucket) % 8;
 
             /* Check for buffer overflow. */
             if(nIndex + nOffset >= vBuffer.size())
@@ -1036,6 +1078,18 @@ namespace LLD
             /* Set the bit for this k-hash value. */
             vBuffer[nIndex + nOffset] |= (1 << nBit);
         }
+
+        for(uint32_t n = 0; n < CONFIG.SECONDARY_BLOOM_BITS; ++n)
+        {
+            /* Calculate our offsets based on current bit iterated. */
+            uint32_t nIndex  = nBeginIndex + ((nBeginBit + n) / 8);
+            uint32_t nBit    = (nBeginBit + n) % 8;
+
+            /* Check that any bits within the range of this hashmap bitset are not set. */
+            printf("%s", vBuffer[nIndex + nOffset] & (1 << nBit) ? "1" : "0");
+        }
+
+        printf("\n");
     }
 
 
@@ -1158,7 +1212,7 @@ namespace LLD
         else
         {
             /* Check if we need to seek to read in our buffer. */
-            nAdjustedBucket = (nBucket + nBeginProbeExpansion);
+            nAdjustedBucket = std::min(nBucket + nBeginProbeExpansion, CONFIG.HASHMAP_TOTAL_BUCKETS);
             nIndexPos       = (INDEX_FILTER_SIZE * nAdjustedBucket);
 
             /* Debug output . */
@@ -1176,7 +1230,7 @@ namespace LLD
         /* Find our total number of buckets to probe this cycle and check our range. */
         nTotalBuckets = (nEndProbeExpansion - nBeginProbeExpansion);
         if(nTotalBuckets + nAdjustedBucket > CONFIG.HASHMAP_TOTAL_BUCKETS)
-            nTotalBuckets = (CONFIG.HASHMAP_TOTAL_BUCKETS - nAdjustedBucket);
+            nTotalBuckets = (CONFIG.HASHMAP_TOTAL_BUCKETS - std::min(CONFIG.HASHMAP_TOTAL_BUCKETS, nAdjustedBucket));
 
         /* Seek if we aren't at the correct file position. */
         if(pindex->tellg() != nIndexPos)

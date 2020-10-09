@@ -58,10 +58,6 @@ namespace LLD
         std::vector<uint8_t> vKey;
 
 
-        /** MEMORY ONLY: The timestamp for timestamped hash tables. **/
-        mutable uint64_t nTimestamp;
-
-
         /* Serialization Macro. */
         IMPLEMENT_SERIALIZE
         (

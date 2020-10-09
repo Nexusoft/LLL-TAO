@@ -121,21 +121,29 @@ int main(int argc, char** argv)
     LLP::Initialize();
 
     config::nVerbose.store(4);
-    config::mapArgs["-datadir"] = "/database/testdb";
+    config::mapArgs["-datadir"] = "/database";
+
+    if(config::GetBoolArg("-reset", false))
+    {
+        std::string strPath = config::mapArgs["-datadir"] + "/testdb";
+
+        debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "Deleting data directory ", strPath, ANSI_COLOR_RESET);
+        filesystem::remove_directories(strPath);
+    }
 
     LLD::Config::Hashmap CONFIG =
         LLD::Config::Hashmap("testdb", LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
 
     /* Set the ContractDB database internal settings. */
-    CONFIG.HASHMAP_TOTAL_BUCKETS    = 32;
-    CONFIG.MAX_HASHMAP_FILES        = 3;
+    CONFIG.HASHMAP_TOTAL_BUCKETS    = 8;
+    CONFIG.MAX_HASHMAP_FILES        = 2;
     CONFIG.MIN_LINEAR_PROBES        = 1;
     CONFIG.MAX_LINEAR_PROBES        = 64;
     CONFIG.MAX_HASHMAP_FILE_STREAMS = 64;
     CONFIG.PRIMARY_BLOOM_HASHES     = 9;
     CONFIG.PRIMARY_BLOOM_BITS       = 1.44 * CONFIG.MAX_HASHMAP_FILES * CONFIG.PRIMARY_BLOOM_HASHES;
-    CONFIG.SECONDARY_BLOOM_BITS     = 16;
-    CONFIG.SECONDARY_BLOOM_HASHES   = 12;
+    CONFIG.SECONDARY_BLOOM_BITS     = 13;
+    CONFIG.SECONDARY_BLOOM_HASHES   = 9;
     CONFIG.QUICK_INIT               = false;
     CONFIG.MAX_SECTOR_FILE_STREAMS  = 16;
     CONFIG.MAX_SECTOR_BUFFER_SIZE   = 1024 * 1024 * 4; //4 MB write buffer
