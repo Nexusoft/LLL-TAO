@@ -81,7 +81,7 @@ namespace TAO
             tx[0] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << account.GetState();
 
             /* Check for name parameter. If one is supplied then we need to create a Name Object register for it. */
-            if(params.find("name") != params.end())
+            if(params.find("name") != params.end() && !params["name"].is_null() && !params["name"].get<std::string>().empty())
                 tx[1] = Names::CreateName(session.GetAccount()->Genesis(), params["name"].get<std::string>(), "", hashRegister);
 
             /* Add the fee */
