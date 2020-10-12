@@ -9,10 +9,15 @@ We use a very strict branching logic for our development. The branch 'merging' i
 ## Building
 
 We use Make to build our project to multiple platforms. Please read out build documentation for instructions and options.
+
 [Build Options](docs/build-params-reference.md)
+
 [Linux](docs/build-linux.md)
+
 [Windows](docs/build-win.md)
+
 [OSX](docs/build-osx.md)
+
 [iPhone OS / Android OS](docs/build-mobile.md)
 
 ## TAO Framework
