@@ -123,7 +123,7 @@ namespace config
          * Mac: ~/Library/Application Support/Nexus
          * Unix: ~/.Nexus 
          * iPhone: ~{App}/Documents/Nexus
-         * Android: ~{App}Files/Documents/Nexus */
+         * Android: ~{App}Files/Nexus */
     std::string pathRet;
     #ifdef WIN32
         // Windows
@@ -143,7 +143,7 @@ namespace config
     #elif defined(IPHONE)
         pathRet.append("/Documents/" + strName + "/");
     #elif defined(ANDROID)
-        pathRet.append("/Documents/" + strName + "/");
+        pathRet.append("/" + strName + "/");
     #else
         // Unix
         pathRet.append("/." + strName + "/");
