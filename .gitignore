@@ -13,6 +13,7 @@
 *.vscode
 *.qm
 *.log
+*.so
 nexus
 .cproject
 .project
