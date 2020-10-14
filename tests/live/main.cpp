@@ -93,6 +93,12 @@ public:
     }
 
 
+    bool EraseKey(const uint1024_t& key)
+    {
+        return Erase(std::make_pair(std::string("key"), key));
+    }
+
+
     bool WriteLast(const uint1024_t& last)
     {
         return Write(std::string("last"), last);
@@ -112,6 +118,21 @@ const uint256_t hashSeed = 55;
 #include <bitset>
 
 #include <LLP/include/global.h>
+
+
+/** PolyStream
+ *
+ *  Class to manage multiple files as a single aggregated stream object.
+ *
+ **/
+class PolyStream
+{
+
+    PolyStream()
+    {
+    }
+
+};
 
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
@@ -143,7 +164,7 @@ int main(int argc, char** argv)
     CONFIG.PRIMARY_BLOOM_HASHES     = 9;
     CONFIG.PRIMARY_BLOOM_BITS       = 1.44 * CONFIG.MAX_HASHMAP_FILES * CONFIG.PRIMARY_BLOOM_HASHES;
     CONFIG.SECONDARY_BLOOM_BITS     = 13;
-    CONFIG.SECONDARY_BLOOM_HASHES   = 9;
+    CONFIG.SECONDARY_BLOOM_HASHES   = 7;
     CONFIG.QUICK_INIT               = false;
     CONFIG.MAX_SECTOR_FILE_STREAMS  = 16;
     CONFIG.MAX_SECTOR_BUFFER_SIZE   = 1024 * 1024 * 4; //4 MB write buffer
@@ -197,6 +218,17 @@ int main(int argc, char** argv)
 
             nElapsed = swTimer.ElapsedMicroseconds();
             debug::log(0, vKeys.size() / 1000, "k records read in ", nElapsed, " (", (1000000.0 * vKeys.size()) / nElapsed, " read/s)");
+
+
+            //test erase
+            debug::log(0, "------- Erase Tests...");
+
+            if(!bloom->EraseKey(vKeys[0]))
+                return debug::error("failed to erase ", vKeys[0].SubString());
+
+            if(bloom->ReadKey(vKeys[0], hashKey))
+                return debug::error("Failed to erase ", vKeys[0].SubString());
+
     }
 
     delete bloom;
