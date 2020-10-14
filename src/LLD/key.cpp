@@ -25,7 +25,6 @@ namespace LLD
     , nSectorSize  (0)
     , nSectorStart (0)
     , vKey         ( )
-    , nTimestamp   (0)
     {
     }
 
@@ -38,7 +37,6 @@ namespace LLD
     , nSectorSize  (key.nSectorSize)
     , nSectorStart (key.nSectorStart)
     , vKey         (key.vKey)
-    , nTimestamp   (key.nTimestamp)
     {
     }
 
@@ -51,7 +49,6 @@ namespace LLD
     , nSectorSize  (std::move(key.nSectorSize))
     , nSectorStart (std::move(key.nSectorStart))
     , vKey         (std::move(key.vKey))
-    , nTimestamp   (std::move(key.nTimestamp))
     {
     }
 
@@ -65,7 +62,6 @@ namespace LLD
         nSectorSize     = key.nSectorSize;
         nSectorStart    = key.nSectorStart;
         vKey            = key.vKey;
-        nTimestamp      = key.nTimestamp;
 
         return *this;
     }
@@ -80,7 +76,6 @@ namespace LLD
         nSectorSize     = std::move(key.nSectorSize);
         nSectorStart    = std::move(key.nSectorStart);
         vKey            = std::move(key.vKey);
-        nTimestamp      = std::move(key.nTimestamp);
 
         return *this;
     }
@@ -101,7 +96,6 @@ namespace LLD
     , nSectorSize(nSectorSizeIn)
     , nSectorStart(nSectorStartIn)
     , vKey(vKeyIn)
-    , nTimestamp(0)
     {
     }
 
