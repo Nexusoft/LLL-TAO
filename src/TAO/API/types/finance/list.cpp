@@ -59,6 +59,17 @@ namespace TAO
             if(params.find("limit") != params.end())
                 nLimit = std::stoul(params["limit"].get<std::string>());
 
+            /* The token to filter on.  Default to 0 (NXS) */
+            TAO::Register::Address hashToken;
+
+            /* Check for data parameter. */
+            if(params.find("token_name") != params.end() && !params["token_name"].get<std::string>().empty())
+                /* If name is provided then use this to deduce the register address */
+                hashToken = Names::ResolveAddress(params, params["token_name"].get<std::string>());
+            /* Otherwise try to find the raw hex encoded address. */
+            else if(params.find("token") != params.end() && IsRegisterAddress(params["token"]))
+                hashToken.SetBase58(params["token"]);
+
             /* Get the list of registers owned by this sig chain */
             std::vector<TAO::Register::Address> vAccounts;
             if(!ListAccounts(user->Genesis(), vAccounts, false, true))
@@ -92,8 +103,8 @@ namespace TAO
                 if(nStandard != TAO::Register::OBJECTS::ACCOUNT && nStandard != TAO::Register::OBJECTS::TRUST)
                     continue;
 
-                /* Check the account is a NXS account */
-                if(object.get<uint256_t>("token") != 0)
+                /* Check the account matches the filter */
+                if(object.get<uint256_t>("token") != hashToken)
                     continue;
 
                 /* Get the current page. */

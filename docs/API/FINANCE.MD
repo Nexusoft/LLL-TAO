@@ -1,7 +1,7 @@
 # Finance API
 -----------------------------------
 
-The Finance API provides methods for sending and receiving NXS coins (tokens) between users / accounts, creating accounts, and managing staking.
+The Finance API provides methods for sending and receiving NXS coins or other tokens between users / accounts, creating accounts, and managing staking.
 
 
 ## `Named Shortcuts`
@@ -29,6 +29,7 @@ The following methods are currently supported by this API
 [`set/stake`](#setstake)    
 [`migrate/accounts`](#migrateaccounts)    
 [`get/balances`](#getbalances)    
+[`get/allbalances`](#getallbalances)    
 [`list/trustaccounts`](#listtrustaccounts)
 
 -----------------------------------
@@ -50,6 +51,10 @@ Create a new account for receiving NXS. The API supports an alternative endpoint
 
 `session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) the account should be created with. For single-user API mode the session should not be supplied.
 
+`token_name` : Optional name of a token to create the account for.  `token` can be supplied as an alternative to `token_name`.  Defaults to `NXS`.
+
+`token` : Optional token address to create the account for. `token_name` can be supplied as an alternative to `token`.  Defaults to `0` (`NXS`)
+
 `name` : An optional name to identify the account. If provided a Name object will also be created in the users local namespace, allowing the account to be accessed/retrieved by name. If no name is provided the account will need to be accessed/retrieved by its 256-bit register address.
 
 `data` : This optional field allows callers to add arbitrary data to an account register.  
@@ -57,7 +62,7 @@ Create a new account for receiving NXS. The API supports an alternative endpoint
 
 ### Example:
 
-This example creates an account called "main".
+This example creates a NXS account called "main".
 
 ```
 {
@@ -682,7 +687,8 @@ The method uses the arbitrary `data` field in the account object register to tra
 
 # `get/balances`
 
-This will retrieve a summary of balance information for all NXS accounts belonging to the currently logged in signature chain.
+This will retrieve a summary of balance information across all accounts belonging to the currently logged in signature chain
+for a particular token type.
 
 
 ### Endpoint:
@@ -692,12 +698,18 @@ This will retrieve a summary of balance information for all NXS accounts belongi
 
 ### Parameters:
 
-`session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) owns the trust account. For single-user API mode the session should not be supplied.
+`session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) to return data for. For single-user API mode the session should not be supplied.
+
+`token_name` : Optional name of a token to return the balances for.  `token` can be supplied as an alternative to `token_name`.  Defaults to `NXS`.
+
+`token` : Optional token address to return balances for. `token_name` can be supplied as an alternative to `token`.  Defaults to `0` (`NXS`)
 
 
 ### Return value JSON object:
 ```
 {
+    "token_name": "NXS",
+    "token": "0000000000000000000000000000000000000000000000000000000000000000",
     "available": 1000,
     "pending": 50,
     "unconfirmed": 5,
@@ -709,18 +721,81 @@ This will retrieve a summary of balance information for all NXS accounts belongi
 
 ### Return values:
 
-`available` : The current balance across all NXS accounts that is available to be spent.
+`token_name` : The name of the token that these balances are for, if known.  
 
-`pending` : The sum of all debit and coinbase transactions made to your NXS accounts that are confirmed but have not yet been credited.  This does NOT include immature and unconfirmed amounts
+`token` : The register address of the token that these balances are for.
 
-`unconfirmed` : The sum of all debit transactions made to your NXS accounts that are not confirmed, or credits you have made to your accounts that are not yet confirmed (not yet included in a block)
+`available` : The current balance across all  accounts that is available to be spent.
 
-`immature`  The sum of all coinbase transactions that have not yet reached maturity.   
+`pending` : The sum of all debit and coinbase transactions made to your accounts that are confirmed but have not yet been credited.  This does NOT include immature and unconfirmed amounts.
 
-`stake` : The amount of NXS currently staked in the trust account.
+`unconfirmed` : The sum of all debit transactions made to your accounts that are not confirmed, or credits you have made to your accounts that are not yet confirmed (not yet included in a block).
+
+`immature`  The sum of all coinbase transactions that have not yet reached maturity.  Only included when returning NXS balances. 
+
+`stake` : The amount of NXS currently staked in the trust account.  Only included when returning NXS balances.
 
 
 ***
+
+# `get/allbalances`
+
+This will retrieve a summary of balance information across all accounts for each coin/token type owned, belonging to the currently logged in signature chain.
+
+
+### Endpoint:
+
+`/finance/get/allbalances`
+
+
+### Parameters:
+
+`session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) to return data for. For single-user API mode the session should not be supplied.
+
+
+
+### Return value JSON object:
+```
+[
+     {
+        "token_name": "NXS",
+        "token": "0000000000000000000000000000000000000000000000000000000000000000",
+        "available": 17002.095753,
+        "pending": 1.0,
+        "unconfirmed": 0.0,
+        "stake": 9000.0,
+        "immature": 0.0
+    },
+    {
+        "token_name": "ABC",
+        "token": "d7885b8ce210375377ee23d6b54f922ddb64c9c8e70fabd392753337331bf29a",
+        "available": 250.0,
+        "pending": 0.0,
+        "unconfirmed": 0.0
+    }
+]
+```
+
+
+### Return values:
+
+`token_name` : The name of the token that these balances are for, if known.  
+
+`token` : The register address of the token that these balances are for.
+
+`available` : The current balance across all  accounts that is available to be spent.
+
+`pending` : The sum of all debit and coinbase transactions made to your accounts that are confirmed but have not yet been credited.  This does NOT include immature and unconfirmed amounts.
+
+`unconfirmed` : The sum of all debit transactions made to your accounts that are not confirmed, or credits you have made to your accounts that are not yet confirmed (not yet included in a block).
+
+`immature`  The sum of all coinbase transactions that have not yet reached maturity.  Only included when returning NXS balances. 
+
+`stake` : The amount of NXS currently staked in the trust account.  Only included when returning NXS balances.
+
+
+***
+
 
 # `list/trustaccounts`
 
