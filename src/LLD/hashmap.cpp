@@ -128,7 +128,7 @@ namespace LLD
             debug::log(0, FUNCTION, "Generated Disk Index of ", vSpace.size(), " bytes");
         }
 
-        /* Read the hashmap indexes. */
+        /* Read the hashmap indexes and calculate our total keys in this database instance. */
         else if(!CONFIG.QUICK_INIT)
         {
             /* Create a stopwatch to keep track of init time. */
