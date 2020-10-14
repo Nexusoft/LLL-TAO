@@ -73,7 +73,7 @@ The Users API can be found in the following repo path:
 
 ## Finance API
 
-The Finance API provides methods for sending and receiving NXS coins (tokens) between users / accounts, creating accounts, and managing staking.
+The Finance API provides methods for sending and receiving NXS coins or other tokens between users / accounts, creating accounts, and managing staking.
 
 The Finance API can be found in the following repo path:
 

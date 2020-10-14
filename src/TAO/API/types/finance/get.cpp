@@ -67,11 +67,6 @@ namespace TAO
             if(nStandard != TAO::Register::OBJECTS::ACCOUNT && nStandard != TAO::Register::OBJECTS::TRUST)
                 throw APIException(-65, "Object is not an account");
 
-            /* Check the account is a NXS account */
-            if(object.get<uint256_t>("token") != 0)
-                throw APIException(-67, "Account is not a NXS account.  Please use the tokens API for accessing non-NXS token accounts.");
-
-
             /* Populate the response JSON */
             ret["owner"]    = TAO::Register::Address(object.hashOwner).ToString();
             ret["created"]  = object.nCreated;
@@ -83,7 +78,6 @@ namespace TAO
             ret.insert(data.begin(), data.end());
 
 
-            /* If the caller has requested to filter on a fieldname then filter out the json response to only include that field */
             /* If the caller has requested to filter on a fieldname then filter out the json response to only include that field */
             FilterResponse(params, ret);
 

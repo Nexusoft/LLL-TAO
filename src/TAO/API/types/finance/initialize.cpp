@@ -30,6 +30,7 @@ namespace TAO
             mapFunctions["debit/account"]   = Function(std::bind(&Finance::Debit, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["get/account"]     = Function(std::bind(&Finance::Get, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["get/balances"]   = Function(std::bind(&Finance::GetBalances, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["get/allbalances"]   = Function(std::bind(&Finance::GetAllBalances, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["get/stakeinfo"]   = Function(std::bind(&Finance::Info, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/accounts"]   = Function(std::bind(&Finance::List, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/account/transactions"]  = Function(std::bind(&Finance::ListTransactions, this, std::placeholders::_1, std::placeholders::_2));
