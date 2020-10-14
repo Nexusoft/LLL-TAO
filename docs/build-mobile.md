@@ -1,4 +1,8 @@
-## Mobile Build Guide
+## Build Instructions for Mobile (iOS / Android)
+
+-----------------------------------
+<br />
+
 
 [How to build Android](#Android)
 
@@ -7,7 +11,9 @@
 Please see param reference to learn about some additional options
 [Build Params Reference](build-params-reference.md)
 
-### Prerequisites
+<br />
+
+### `Prerequisites`
 
 Besides the prerequisites needed by the desktop version, some mobile specific items are needed.
 You will need a version of OpenSSL that is compatible with not only your device but also the arch that you are building.
@@ -19,11 +25,12 @@ By default we have them referenced in a UNIX style folder path `/usr/local/Cella
 
 Depending on your device set up your development environment. This includes downloading xcode and iOS SDKS, or android studio with SDKs and NDKs
 
-### Android
+<br />
 
-Basic command
+### `Android`
 
-```
+
+```sh
 make -f makefile.cli -j 8 ANDROID=1 buildall
 ```
 
@@ -35,11 +42,13 @@ If you do not want to build both Device and Simulator remove the `buildall` keyw
 
 Unlike iOS, Android is not built statically and must be baked into your project. See CMAKE examples on android or our own nexus-mobile repo for an example.
 
-### iOS
+<br />
 
-Basic command
+### `iOS`
 
-```
+
+
+```sh
 make -f makefile.cli -j 8 IPHONE=1 buildall
 ```
 
