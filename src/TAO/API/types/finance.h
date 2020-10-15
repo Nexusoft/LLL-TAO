@@ -145,7 +145,7 @@ namespace TAO
             json::json GetBalances(const json::json& params, bool fHelp);
 
 
-            /** GetAllBalances
+            /** ListBalances
              *
              *  Get a summary of balance information across all accounts belonging to the currently logged in signature chain
              *
@@ -155,7 +155,7 @@ namespace TAO
              *  @return The return object in JSON.
              *
              **/
-            json::json GetAllBalances(const json::json& params, bool fHelp);
+            json::json ListBalances(const json::json& params, bool fHelp);
 
 
             /** Info
