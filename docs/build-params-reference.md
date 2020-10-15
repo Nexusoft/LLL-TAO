@@ -1,4 +1,8 @@
-### FILE
+## Optional Parameters for Compiling With Make
+-----------------------------------
+<br />
+
+#### `FILE`
 
 Sets the makefile param for Make.
 
@@ -8,7 +12,7 @@ Example:
 -f makefile.cli
 ```
 
-### JOBS
+#### `JOBS`
 
 Sets the number of jobs make will use to compile the core. Should be set to the number of useable cores of your cpu.
 This param is apart of Make
@@ -19,7 +23,7 @@ Example:
 -j 8
 ```
 
-#### 32BIT
+#### `32BIT`
 
 Set to build Nexus as an 32bit application, you must also have the appropriate versions of Nexus dependencies
 
@@ -29,7 +33,7 @@ Example:
 32BIT=1
 ```
 
-#### ARM64
+#### `ARM64`
 
 Set to build for ARM64 arch type.
 
@@ -39,7 +43,7 @@ Example:
 ARM64=1
 ```
 
-#### OPENSSL LIBRARY PATH
+#### `OPENSSL LIBRARY PATH`
 
 Set path to installed OpenSSL Library folder.
 
@@ -49,7 +53,7 @@ Example:
 OPENSSL_LIB_PATH="\usr\foo\bar\openssl\lib"
 ```
 
-#### OPENSSL INCLUDE PATH
+#### `OPENSSL INCLUDE PATH`
 
 Set path to installed OpenSSL Include folder.
 
@@ -59,7 +63,7 @@ Example:
 OPENSSL_INCLUDE_PATH="\usr\foo\bar\openssl\include"
 ```
 
-#### BERKLEY DATABASE LIBRARY PATH
+#### `BERKLEY DATABASE LIBRARY PATH`
 
 Set path to installed Berkley Library folder.
 
@@ -69,7 +73,7 @@ Example:
 OPENSSL_LIB_PATH="\usr\foo\bar\bdb\lib"
 ```
 
-#### BERKLEY DATABASE INCLUDE PATH
+#### `BERKLEY DATABASE INCLUDE PATH`
 
 Set path to installed Berkley Database Include folder.
 
@@ -79,7 +83,7 @@ Example:
 OPENSSL_INCLUDE_PATH="\usr\foo\bar\bdb\include"
 ```
 
-#### MINIUPNPC LIBRARY PATH
+#### `MINIUPNPC LIBRARY PATH`
 
 Set path to installed Mini UPNP C Library folder.
 
@@ -89,33 +93,59 @@ Example:
 OPENSSL_LIB_PATH="\usr\foo\bar\miniupnpc\lib"
 ```
 
-#### ORACLE
+#### `ORACLE`
 
-#### USE_UPNP
+TBD
 
-#### WARNINGS_FAIL
+#### `USE_UPNP`
 
-#### RACE_CHECK
+TBD
 
-#### LEAK_CHECK
+#### `WARNINGS_FAIL`
 
-#### ADDRESS_CHECK
+TBD
 
-#### UNDEFINED_CHECK
+#### `RACE_CHECK`
 
-#### ENABLE_DEBUG
+TBD
 
-#### ENABLE_WARNINGS
+#### `LEAK_CHECK`
 
-#### UNIT_TESTS
+TBD
 
-#### BENCHMARKS
+#### `ADDRESS_CHECK`
 
-#### LIVE_TESTS
+TBD
 
-#### NO_ANSI
+#### `UNDEFINED_CHECK`
 
-#### STATIC
+TBD
+
+#### `ENABLE_DEBUG`
+
+TBD
+
+#### `ENABLE_WARNINGS`
+
+TBD
+
+#### `UNIT_TESTS`
+
+TBD
+
+#### `BENCHMARKS`
+
+TBD
+
+#### `LIVE_TESTS`
+
+TBD
+
+#### `NO_ANSI`
+
+TBD
+
+#### `STATIC`
 
 Build Nexus core using Static c/c++ libraries. Useful to make a core that is independent of the host's environment
 
@@ -125,7 +155,7 @@ Example:
 STATIC=1
 ```
 
-#### NO WALLET
+#### `NO WALLET`
 
 Do not include the legacy Nexus that used Databases
 
@@ -135,7 +165,7 @@ Example:
 NO_WALLET=1
 ```
 
-#### IPHONE
+#### `IPHONE`
 
 Used to run the iPhone portion of the makefile.
 
@@ -145,7 +175,7 @@ Example:
 IPHONE=1
 ```
 
-#### IPHONE MINIMUM VERSION
+#### `IPHONE MINIMUM VERSION`
 
 Sets the min iOS version needed to run Nexus. This can not go lower than 10 and you will lose support for some c++ methods.
 
@@ -157,7 +187,7 @@ Example:
 IPHONE IOS_MIN_VER="10"
 ```
 
-#### ANDROID
+#### `ANDROID`
 
 Used to run the Android portion of the makefile.
 
@@ -167,7 +197,7 @@ Example:
 ANDROID=1
 ```
 
-#### ANDROID ARCH
+#### `ANDROID ARCH`
 
 Set the arch that the core will be built to for Android
 Acceptable archs are: `x86_64` and `aarch64`
@@ -179,7 +209,7 @@ Example:
 ANDROID=1 ANDROID_ARCH="x84_64"
 ```
 
-#### ANDROID API
+#### `ANDROID API`
 
 Set the Android API that NDK will use to compile the Android libraries
 
@@ -191,7 +221,7 @@ Example:
 ANDROID=1 ANDROID=29
 ```
 
-#### ANDROID SDK LOCATION
+#### `ANDROID SDK LOCATION`
 
 Location to the installed Android SDK. Since multiple SDKs can be installed, this path should be to the specific SDK version.
 
@@ -203,7 +233,7 @@ Example:
 ANDROID=1 SDK_LOCATION="/usr/local/Caskroom/android-sdk/4333796/"
 ```
 
-#### ANDROID NDK LOCATION
+#### `ANDROID NDK LOCATION`
 
 Location to the installed Android NDK. Since multiple NDKs can be installed, this path should be to the specific NDK version.
 
@@ -215,7 +245,7 @@ Example:
 ANDROID NDK_LOCATION="/usr/local/Caskroom/android-sdk/4333796/ndk/21.3.6528147/"
 ```
 
-#### ANDROID HOST ARCH
+#### `ANDROID HOST ARCH`
 
 The arch for the host computer, ie the one performing the build.
 
@@ -227,7 +257,7 @@ Example:
 ANDROID=1 HOST_ARCH="darwin-x86_64"
 ```
 
-#### ANDROID TARGET
+#### `ANDROID TARGET`
 
 When building the Nexus Core for Android you must specifically the target. By default it will use the ARCH and API to build this.
 
