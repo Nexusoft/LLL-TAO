@@ -29,7 +29,7 @@ The following methods are currently supported by this API
 [`set/stake`](#setstake)    
 [`migrate/accounts`](#migrateaccounts)    
 [`get/balances`](#getbalances)    
-[`get/allbalances`](#getallbalances)    
+[`list/balances`](#listbalances)    
 [`list/trustaccounts`](#listtrustaccounts)
 
 -----------------------------------
@@ -738,14 +738,14 @@ for a particular token type.
 
 ***
 
-# `get/allbalances`
+# `list/balances`
 
 This will retrieve a summary of balance information across all accounts for each coin/token type owned, belonging to the currently logged in signature chain.
 
 
 ### Endpoint:
 
-`/finance/get/allbalances`
+`/finance/list/balances`
 
 
 ### Parameters:

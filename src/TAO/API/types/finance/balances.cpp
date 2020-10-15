@@ -188,7 +188,7 @@ namespace TAO
 
 
         /* Get a summary of balance information across all accounts belonging to the currently logged in signature chain */
-        json::json Finance::GetAllBalances(const json::json& params, bool fHelp)
+        json::json Finance::ListBalances(const json::json& params, bool fHelp)
         {
             json::json ret = json::json::array();
 
