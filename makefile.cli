@@ -1164,22 +1164,22 @@ all: android.so
 
 #OS Specific Targets and instructions
 buildall: 
-	mkdir -p build/obj
+	mkdir -p build/Nexus.androidframework
 	@echo Making x86_64
 	make -f makefile.cli STATIC=0 NO_WALLET=1 ANDROID=1 ANDROID_ARCH="x86_64"
 	@echo Cleaning
-	make -f makefile.cli STATIC=0 NO_WALLET=1 ANDROID=1 clean
+	make -f makefile.cli ANDROID=1 clean
 	@echo Making aarch64
 	make -f makefile.cli STATIC=0 NO_WALLET=1 ANDROID=1 ANDROID_ARCH="aarch64"
 	mkdir build/tempdir
 	find ./src -name '*.h' -print | cpio -pvdumB ./build/tempdir
 	cp ./src/LLD/hash/xxhash.c ./build/tempdir/src/LLD/hash/xxhash.c
-	mv build/tempdir/src build/obj/Headers
+	mv build/tempdir/src build/Nexus.androidframework/Headers
 	rmdir build/tempdir
 
 
 android.so: $(OBJS:build/%=build/%)
-	cd build && $(llvm_prebuild_dir)/$(ANDROID_ARCH)-linux-android/bin/ar rc obj/$(openssl_arch)-android-nexuslib.so **.o
+	cd build && $(llvm_prebuild_dir)/$(ANDROID_ARCH)-linux-android/bin/ar rc Nexus.androidframework/$(openssl_arch)-android-nexuslib.so **.o
 	@echo ' '
 	@echo $(info ANDROID)
 	@echo Finished building nexus
