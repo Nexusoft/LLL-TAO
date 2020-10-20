@@ -82,28 +82,28 @@ namespace TAO
                 throw APIException(-33, "Missing name or address");
 
             /* Get the account object. */
-            TAO::Register::Object object;
-            if(!LLD::Register->ReadState(hashFrom, object))
+            TAO::Register::Object accountFrom;
+            if(!LLD::Register->ReadState(hashFrom, accountFrom))
                 throw APIException(-13, "Account not found");
 
             /* Parse the object register. */
-            if(!object.Parse())
+            if(!accountFrom.Parse())
                 throw APIException(-14, "Object failed to parse");
 
             /* Get the object standard. */
-            uint8_t nStandard = object.Standard();
+            uint8_t nStandard = accountFrom.Standard();
 
             /* Check the object standard. */
             if(nStandard != TAO::Register::OBJECTS::ACCOUNT && nStandard != TAO::Register::OBJECTS::TRUST)
                 throw APIException(-65, "Object is not an account");
 
             /* Check the account is a NXS account */
-            if(object.get<uint256_t>("token") != 0)
-                throw APIException(-66, "Account is not a NXS account.  Please use the tokens API for debiting non-NXS token accounts.");
+            //if(accountFrom.get<uint256_t>("token") != 0)
+            //    throw APIException(-66, "Account is not a NXS account.  Please use the tokens API for debiting non-NXS token accounts.");
 
             /* Get current balance and significant figures. */
-            uint8_t nDecimals = TAO::Ledger::NXS_DIGITS;
-            uint64_t nCurrentBalance = object.get<uint64_t>("balance");
+            uint8_t nDecimals = GetDecimals(accountFrom);
+            uint64_t nCurrentBalance = accountFrom.get<uint64_t>("balance");
 
             /* vector of recipient addresses and amounts */
             std::vector<json::json> vRecipients;
@@ -229,10 +229,10 @@ namespace TAO
                         {
                             case TAO::Register::OBJECTS::ACCOUNT:
                             {
-                                if(recipient.get<uint256_t>("token") != object.get<uint256_t>("token"))
+                                if(recipient.get<uint256_t>("token") != accountFrom.get<uint256_t>("token"))
                                     throw APIException(-209, "Recipient account is for a different token.");
 
-                                fSendToSelf = recipient.hashOwner == object.hashOwner;
+                                fSendToSelf = recipient.hashOwner == accountFrom.hashOwner;
 
                                 break;
                             }
@@ -297,8 +297,12 @@ namespace TAO
                 }
             }
 
-            /* Add the fee, taking it from the sending account */
-            AddFee(tx, hashFrom);
+            /* Add the fee. If the sending account is a NXS account then we take the fee from that, otherwise we will leave it 
+            to the AddFee method to take the fee from the default NXS account */
+            if(accountFrom.get<uint256_t>("token") == 0)
+                AddFee(tx, hashFrom);
+            else
+                AddFee(tx);
 
             /* Execute the operations layer. */
             if(!tx.Build())

@@ -291,7 +291,7 @@ namespace TAO
             tx[nContract++] << (uint8_t)TAO::Operation::OP::CREATE << hashRegister << (uint8_t)TAO::Register::REGISTER::READONLY << ssData.Bytes();
 
             /* Check for name parameter. If one is supplied then we need to create a Name Object register for it. */
-            if(params.find("name") != params.end())
+            if(params.find("name") != params.end() && !params["name"].is_null() && !params["name"].get<std::string>().empty())
                 tx[nContract++] = Names::CreateName(session.GetAccount()->Genesis(), params["name"].get<std::string>(), "", hashRegister);
 
             /* Add the transfer contract */
