@@ -1015,10 +1015,11 @@ endif
 ifeq ($(detected_OS),iPhone)
 
 ifeq ($(SIMULATOR),1)
-	CXXFLAGS+= -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator$(IOS_SDK_VER).sdk \
+	CXXFLAGS+= -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator$(IOS_SDK_VER).sdk 
 else
-	CXXFLAGS+= -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS$(IOS_SDK_VER).sdk \
-	IOS_TYPE= iphoneos
+	CXXFLAGS+= -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS$(IOS_SDK_VER).sdk
+	IOS_TYPE?= iphoneos
+	IOS_ARCH?= arm64
 endif
 
 IOS_ARCH ?= x86_64
