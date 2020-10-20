@@ -160,11 +160,6 @@ namespace TAO
             if(nStandard != TAO::Register::OBJECTS::ACCOUNT && nStandard != TAO::Register::OBJECTS::TRUST)
                 throw APIException(-65, "Object is not an account");
 
-            /* Check the account is a NXS account */
-            if(object.get<uint256_t>("token") != 0)
-                throw APIException(-66, "Account is not a NXS account.  Please use the tokens API for debiting non-NXS token accounts.");
-
-
             return Objects::ListTransactions(params, fHelp);
         }
     }
