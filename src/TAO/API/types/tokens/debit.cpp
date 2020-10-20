@@ -251,7 +251,7 @@ namespace TAO
                 nCurrentBalance -= nAmount;
             }
 
-            /* Add the fee */
+            /* Add the fee. */
             AddFee(tx);
 
             /* Execute the operations layer. */

@@ -13,6 +13,8 @@ ________________________________________________________________________________
 
 #include <LLC/hash/SK.h>
 
+#include <LLD/include/global.h>
+
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/utils.h>
 
@@ -67,11 +69,38 @@ namespace TAO
             /* name of the object, default to blank */
             std::string strName = "";
 
-            /* Hash identifier is 0 for NXS tokens */
-            TAO::Register::Address hashIdentifier;
+            /* The token to create the account for. Default to 0 (NXS) */
+            TAO::Register::Address hashToken;
+
+            /* See if the caller has requested a particular token type */
+            if(params.find("token_name") != params.end() && !params["token_name"].get<std::string>().empty() && params["token_name"].get<std::string>() != "NXS")
+                /* If name is provided then use this to deduce the register address */
+                hashToken = Names::ResolveAddress(params, params["token_name"].get<std::string>());
+            /* Otherwise try to find the raw hex encoded address. */
+            else if(params.find("token") != params.end() && IsRegisterAddress(params["token"]))
+                hashToken.SetBase58(params["token"]);
+
+            /* If this is not a NXS token account, verify that the token identifier is for a valid token */
+            if(hashToken != 0)
+            {
+                if(hashToken.GetType() != TAO::Register::Address::TOKEN)
+                    throw APIException(-212, "Invalid token");
+
+                TAO::Register::Object token;
+                if(!LLD::Register->ReadState(hashToken, token, TAO::Ledger::FLAGS::MEMPOOL))
+                    throw APIException(-125, "Token not found");
+
+                /* Parse the object register. */
+                if(!token.Parse())
+                    throw APIException(-14, "Object failed to parse");
+
+                /* Check the standard */
+                if(token.Standard() != TAO::Register::OBJECTS::TOKEN)
+                    throw APIException(-212, "Invalid token");
+            }
 
             /* Create an account object register. */
-            TAO::Register::Object account = TAO::Register::CreateAccount(hashIdentifier);
+            TAO::Register::Object account = TAO::Register::CreateAccount(hashToken);
 
             /* If the user has supplied the data parameter than add this to the account register */
             if(params.find("data") != params.end())
@@ -81,7 +110,7 @@ namespace TAO
             tx[0] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << account.GetState();
 
             /* Check for name parameter. If one is supplied then we need to create a Name Object register for it. */
-            if(params.find("name") != params.end())
+            if(params.find("name") != params.end() && !params["name"].is_null() && !params["name"].get<std::string>().empty())
                 tx[1] = Names::CreateName(session.GetAccount()->Genesis(), params["name"].get<std::string>(), "", hashRegister);
 
             /* Add the fee */
