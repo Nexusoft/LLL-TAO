@@ -77,7 +77,7 @@ namespace LLP
 
         /* Create the global network SSL object.  NOTE we only support TLS 1.0 and greater, not previous versions of SSL */
         #if defined(IPHONE) || defined(ANDROID)
-            pSSL_CTX = SSL_CTX_new(DTLS_method());
+            pSSL_CTX = SSL_CTX_new(SSLv23_method());
         #else
             pSSL_CTX = SSL_CTX_new(TLS_method());
         #endif
