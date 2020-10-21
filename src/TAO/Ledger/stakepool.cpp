@@ -401,7 +401,8 @@ namespace TAO
 
 
         /* Select a list of coinstake transactions to use from the stake pool. */
-        bool Stakepool::Select(std::vector<uint512_t> &vHashes, uint64_t &nBalanceTotal, uint64_t &nFeeTotal, const uint32_t nCount)
+        bool Stakepool::Select(std::vector<uint512_t> &vHashes, uint64_t &nStakeTotal, uint64_t &nFeeTotal,
+                               const uint64_t& nStake, const uint32_t& nCount)
         {
             RLOCK(MUTEX);
 
@@ -409,7 +410,7 @@ namespace TAO
                                                                : TAO::Ledger::TRUST_KEY_TIMESPAN;
 
             vHashes.clear();
-            nBalanceTotal = 0;
+            nStakeTotal = 0;
             nFeeTotal = 0;
             bool fGenesisAdded = false;
 
@@ -428,7 +429,9 @@ namespace TAO
                     {
                         vHashes.push_back(item.first);
 
-                        nBalanceTotal += std::get<2>(item.second);
+                        /* Add selected stake amount to total, capped to local stake amount */
+                        nStakeTotal += std::min(std::get<2>(item.second), nStake);
+
                         nFeeTotal += std::get<3>(item.second);
 
                         /* Only select at most one genesis for addition to the block */
@@ -443,7 +446,7 @@ namespace TAO
             std::vector<uint512_t> vAvailable;
             std::vector<double> vWeights;
 
-            /* Loop through all the transactions to build available hash list and corresponding weights. */
+            /* Loop through all the transactions to build available hash list and corresponding selection weight list. */
             for(const auto& item : mapPool)
             {
                 /* Skip the coinstake created by the local node */
@@ -452,20 +455,22 @@ namespace TAO
 
                 vAvailable.push_back(item.first);
 
+                /* Get block age and stake balance for coinstake in pool */
                 uint64_t nBlockAge = std::get<1>(item.second);
-                uint64_t nBalance = std::get<2>(item.second);
+                uint64_t nStakeBalance = std::get<2>(item.second);
 
                 /* Genesis stake gets reduced priority for selection */
                 if(!IsTrust(item.first))
                 {
                     nBlockAge = std::max(nBlockAge / 10, (uint64_t)1);
-                    nBalance = std::max(nBalance / 10, TAO::Ledger::NXS_COIN);
+                    nStakeBalance = std::max(nStakeBalance / 10, TAO::Ledger::NXS_COIN);
                 }
 
+                /* Calculate selection weight from block age and stake balance */
                 double nWeightAge = log((double)nBlockAge) * (double)nBlockAge / (double)nTimespan;
-                double nWeightBalance = log((double)nBalance / (double)TAO::Ledger::NXS_COIN);
+                double nWeightStake = log((double)nStakeBalance / (double)TAO::Ledger::NXS_COIN);
 
-                double nWeight = nWeightAge + nWeightBalance;
+                double nWeight = nWeightAge + nWeightStake;
 
                 vWeights.push_back(nWeight);
             }
@@ -473,7 +478,9 @@ namespace TAO
             /* Set up the random generator */
             std::mt19937 g(runtime::timestamp());
 
-            /* It is possible to run out of available tx if skip over multiple genesis coinstakes, so need vAvailable size check */
+            /* It is possible to run out of available tx before reach nCount if skip over multiple genesis coinstakes,
+             * so need to include vAvailable size check.
+             */
             while((vHashes.size() < nCount) && (vHashes.size() < mapPool.size()) && (vAvailable.size() > 0))
             {
                 /* Randomly select from the weighted list, with each weight defining the relative probability it is chosen.
@@ -492,7 +499,9 @@ namespace TAO
                 {
                     vHashes.push_back(hashSelected);
 
-                    nBalanceTotal += std::get<2>(mapPool[hashSelected]);
+                    /* Add selected stake amount to total, capped to local stake amount */
+                    nStakeTotal += std::min(std::get<2>(mapPool[hashSelected]), nStake);
+
                     nFeeTotal += std::get<3>(mapPool[hashSelected]);
 
                     /* Only select at most one genesis for addition to the block */

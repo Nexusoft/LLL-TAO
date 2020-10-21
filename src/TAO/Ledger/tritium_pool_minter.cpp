@@ -419,7 +419,7 @@ namespace TAO
                 while(true)
                 {
                     /* Each iteration will add coinstakes from pool into current block and update nPoolStake, as appropriate. */
-                    if(!AddPoolCoinstakes())
+                    if(!AddPoolCoinstakes(nStake))
                         return;
 
                     /* Calculate the minimum Required Energy Efficiency Threshold.
@@ -554,7 +554,7 @@ namespace TAO
 
 
         /* Add coinstake transactions from the stake pool to the current candidate block */
-        bool TritiumPoolMinter::AddPoolCoinstakes()
+        bool TritiumPoolMinter::AddPoolCoinstakes(const uint64_t& nStake)
         {
             std::vector<uint512_t> vHashes;
 
@@ -566,7 +566,7 @@ namespace TAO
             /* Perform coinstake selection on pool to choose which coinstakes to use.
              * This is repeated every time new coinstakes are processed.
              */
-            if(TAO::Ledger::stakepool.Select(vHashes, nPoolStake, nPoolFee, nProducerSize))
+            if(TAO::Ledger::stakepool.Select(vHashes, nPoolStake, nPoolFee, nStake, nProducerSize))
             {
                 for(const uint512_t& hashTx : vHashes)
                 {

@@ -226,16 +226,20 @@ namespace TAO
              *  If nCount asks for the entire pool (or more), this method simply returns a list of all transactions currently
              *  in the stake pool. In this case, the number in the results may be fewer than requested.
              *
+             *  The value for nStakeTotal is determined from selected coinstakes. Usable stake balance for each pool
+             *  transaction is capped to the amount of the local stake amount (nStake), then added to the total.
+             *
              *  @param[out] vHashes List of transaction hashes.
-             *  @param[out] nBalanceTotal Net stake balance of user accounts producing the coinstakes in the results.
+             *  @param[out] nStakeTotal Net stake balance of selected coinstakes available to use.
              *  @param[out] nFeeTotal Net fees paid by the coinstakes in the results.
+             *  @param[in] nStake Stake balance of local account.
              *  @param[in] nCount The number of transactions to select.
              *
              *  @return true if list is not empty.
              *
              **/
-            bool Select(std::vector<uint512_t> &vHashes, uint64_t &nBalanceTotal, uint64_t &nFeeTotal,
-                        const uint32_t nCount = std::numeric_limits<uint32_t>::max());
+            bool Select(std::vector<uint512_t> &vHashes, uint64_t &nStakeTotal, uint64_t &nFeeTotal, const uint64_t& nStake,
+                        const uint32_t& nCount = std::numeric_limits<uint32_t>::max());
 
 
             /** SetProofs

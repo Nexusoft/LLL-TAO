@@ -211,7 +211,7 @@ namespace TAO
         /** Last recorded size of the stake pool. Comparing to current pool size lets us know when pool has received more tx. **/
         uint32_t nPoolSize;
 
-        /** Net balance of coinstakes from pool included in the current block **/
+        /** Net balance of coinstakes from pool to be used for hashing the current block **/
         uint64_t nPoolStake;
 
         /** Net fees paid by coinstakes from pool included in the current block **/
@@ -236,10 +236,15 @@ namespace TAO
          *
          *  Add coinstake transactions from the stake pool to the current candidate block.
          *
+         *  This method will also populate nPooledStake with the available balance total of added transactions that can be
+         *  used for hashing calculations. nStake is used in determining this amount.
+         *
+         *  @param[in] nStake Stake balance of local account.
+         *
          *  @return true if process completed successfully
          *
          **/
-        bool AddPoolCoinstakes();
+        bool AddPoolCoinstakes(const uint64_t& nStake);
 
 
         /** StakeMinterThread
@@ -255,7 +260,7 @@ namespace TAO
          **/
         static void StakeMinterThread(TritiumPoolMinter* pTritiumPoolMinter);
 
-        };
+    };
 
     }
 }
