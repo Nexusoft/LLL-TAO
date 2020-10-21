@@ -125,6 +125,10 @@ namespace debug
     #else
         #ifdef MAC_OSX
         log(0, "Mac OSX Build (created ", version::CLIENT_DATE, ")");
+        #elif defined(IPHONE)
+        log(0, "Apple iPhone OS Build (created ", version::CLIENT_DATE, ")");
+        #elif defined(ANDROID)
+        log(0, "Android Build (created ", version::CLIENT_DATE, ")");
         #else
         log(0, "Linux Build (created ", version::CLIENT_DATE, ")");
         #endif
