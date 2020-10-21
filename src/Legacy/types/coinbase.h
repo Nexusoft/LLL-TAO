@@ -17,6 +17,7 @@ ________________________________________________________________________________
 
 #include <map>
 #include <cstdint>
+#include <string>
 
 namespace Legacy
 {
