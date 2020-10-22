@@ -67,12 +67,14 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/locator.h>
 
 #include <LLD/config/hashmap.h>
+#include <LLD/config/db.h>
+#include <LLD/config/sector.h>
 
 class TestDB : public LLD::Templates::SectorDatabase<LLD::BinaryHashMap, LLD::BinaryLRU, LLD::Config::Hashmap>
 {
 public:
-    TestDB(const LLD::Config::Hashmap& config)
-    : SectorDatabase(config)
+    TestDB(const LLD::Config::DB& db, const LLD::Config::Sector& sector, const LLD::Config::Hashmap& keychain)
+    : SectorDatabase(db, sector, keychain)
     {
     }
 
@@ -152,25 +154,32 @@ int main(int argc, char** argv)
         filesystem::remove_directories(strPath);
     }
 
-    LLD::Config::Hashmap CONFIG =
-        LLD::Config::Hashmap("testdb", LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+    //build our base configuration
+    LLD::Config::DB BASE =
+        LLD::Config::DB("testdb", LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
 
-    /* Set the ContractDB database internal settings. */
-    CONFIG.HASHMAP_TOTAL_BUCKETS    = 8;
-    CONFIG.MAX_HASHMAP_FILES        = 2;
-    CONFIG.MIN_LINEAR_PROBES        = 1;
-    CONFIG.MAX_LINEAR_PROBES        = 64;
-    CONFIG.MAX_HASHMAP_FILE_STREAMS = 64;
-    CONFIG.PRIMARY_BLOOM_HASHES     = 9;
-    CONFIG.PRIMARY_BLOOM_BITS       = 1.44 * CONFIG.MAX_HASHMAP_FILES * CONFIG.PRIMARY_BLOOM_HASHES;
-    CONFIG.SECONDARY_BLOOM_BITS     = 13;
-    CONFIG.SECONDARY_BLOOM_HASHES   = 7;
-    CONFIG.QUICK_INIT               = false;
-    CONFIG.MAX_SECTOR_FILE_STREAMS  = 16;
-    CONFIG.MAX_SECTOR_BUFFER_SIZE   = 1024 * 1024 * 4; //4 MB write buffer
-    CONFIG.MAX_SECTOR_CACHE_SIZE    = 256; //1 MB of cache available
+    //build our sector configuration
+    LLD::Config::Sector SECTOR      = LLD::Config::Sector();
+    SECTOR.MAX_SECTOR_FILE_STREAMS  = 16;
+    SECTOR.MAX_SECTOR_BUFFER_SIZE   = 1024 * 1024 * 4; //4 MB write buffer
+    SECTOR.MAX_SECTOR_CACHE_SIZE    = 256; //1 MB of cache available
 
-    TestDB* bloom = new TestDB(CONFIG);
+    //build our hashmap configuration
+    LLD::Config::Hashmap KEYCHAIN     = LLD::Config::Hashmap();
+    KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = 8;
+    KEYCHAIN.MAX_HASHMAP_FILES        = 2;
+    KEYCHAIN.MIN_LINEAR_PROBES        = 1;
+    KEYCHAIN.MAX_LINEAR_PROBES        = 64;
+    KEYCHAIN.MAX_HASHMAP_FILE_STREAMS = 64;
+    KEYCHAIN.PRIMARY_BLOOM_HASHES     = 9;
+    KEYCHAIN.PRIMARY_BLOOM_BITS       = 1.44 * KEYCHAIN.MAX_HASHMAP_FILES * KEYCHAIN.PRIMARY_BLOOM_HASHES;
+    KEYCHAIN.SECONDARY_BLOOM_BITS     = 13;
+    KEYCHAIN.SECONDARY_BLOOM_HASHES   = 7;
+    KEYCHAIN.QUICK_INIT               = false;
+
+
+    TestDB* bloom = new TestDB(BASE, SECTOR, KEYCHAIN);
+
 
     for(int n = 0; n < config::GetArg("-tests", 1); ++n)
     {

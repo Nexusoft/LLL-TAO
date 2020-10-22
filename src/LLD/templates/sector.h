@@ -18,6 +18,10 @@ ________________________________________________________________________________
 
 #include <LLD/include/enum.h>
 #include <LLD/include/version.h>
+
+#include <LLD/config/db.h>
+#include <LLD/config/sector.h>
+
 #include <LLD/templates/key.h>
 #include <LLD/templates/transaction.h>
 
@@ -83,7 +87,11 @@ namespace LLD::Templates
 
 
         /* Configuration Object. */
-        ConfigType CONFIG;
+        const LLD::Config::Sector CONFIG;
+
+
+        /* Database Configuration. */
+        const LLD::Config::DB DB;
 
 
         /* timer for Runtime Calculations. */
@@ -143,7 +151,7 @@ namespace LLD::Templates
 
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        SectorDatabase(const ConfigType& config);
+        SectorDatabase(const LLD::Config::DB& dbIn, const LLD::Config::Sector& sectorIn, const ConfigType& keychainIn);
 
 
         /** Default Destructor **/
@@ -223,7 +231,7 @@ namespace LLD::Templates
         template<typename Key>
         bool Erase(const Key& key)
         {
-            if(CONFIG.FLAGS & FLAGS::READONLY)
+            if(DB.FLAGS & FLAGS::READONLY)
                 return debug::error("Erase called on database in read-only mode");
 
             /* Serialize Key into Bytes. */
@@ -326,7 +334,7 @@ namespace LLD::Templates
             while(nLimit == -1 || nLimit > 0)
             {
                 /* Get filestream object. */
-                std::ifstream stream = std::ifstream(debug::safe_printstr(CONFIG.BASE_DIRECTORY, "/datachain/_block.", std::setfill('0'), std::setw(5), nFile), std::ios::in | std::ios::binary);
+                std::ifstream stream = std::ifstream(debug::safe_printstr(DB.DIRECTORY, "/datachain/_block.", std::setfill('0'), std::setw(5), nFile), std::ios::in | std::ios::binary);
                 if(!stream)
                     break;
 
@@ -565,7 +573,7 @@ namespace LLD::Templates
         template<typename Key>
         bool Write(const Key& key)
         {
-            if(CONFIG.FLAGS & FLAGS::READONLY)
+            if(DB.FLAGS & FLAGS::READONLY)
                 return debug::error(FUNCTION, "Write called on database in read-only mode");
 
             /* Serialize Key into Bytes. */
@@ -613,7 +621,7 @@ namespace LLD::Templates
         template<typename Key, typename Type>
         bool Write(const Key& key, const Type& value, const std::string& strType = "NONE")
         {
-            if(CONFIG.FLAGS & FLAGS::READONLY)
+            if(DB.FLAGS & FLAGS::READONLY)
                 return debug::error(FUNCTION, "Write called on database in read-only mode");
 
             /* Serialize the Key. */

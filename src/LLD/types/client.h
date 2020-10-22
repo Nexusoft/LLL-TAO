@@ -51,7 +51,7 @@ namespace LLD
     public:
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        ClientDB(const Config::Hashmap& config);
+        ClientDB(const Config::DB& db, const Config::Sector& sector, const Config::Hashmap& keychain);
 
 
         /** Default Destructor **/

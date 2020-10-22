@@ -16,13 +16,14 @@ ________________________________________________________________________________
 #define NEXUS_LLD_CONFIG_HASHMAP_H
 
 #include <cstdint>
+#include <mutex>
 
-#include <LLD/config/sector.h>
+#include <LLD/hash/xxhash.h>
 
 namespace LLD::Config
 {
     /** Structure to contain the configuration variables for a BinaryHashMap Keychain. **/
-    class Hashmap : public Sector
+    class Hashmap
     {
     public:
 
@@ -74,14 +75,29 @@ namespace LLD::Config
         bool QUICK_INIT;
 
 
-        /** No default constructor **/
-        Hashmap() = delete;
+        /** Default constructor uses optimum values for bloom filters. **/
+        Hashmap()
+        : MAX_HASHMAP_FILES        (256)
+        , MIN_LINEAR_PROBES        (3) //default of 3 linear probes before moving to next hashmap file
+        , MAX_LINEAR_PROBES        (3) //default of 3 fibanacci probing cycles before exhausting bucket
+        , MAX_HASHMAP_FILE_SIZE    (1024 * 1024 * 512) //512 MB filesize by default
+        , MAX_HASHMAP_FILE_STREAMS (MAX_HASHMAP_FILES) //default of maximum hashmap files, otherwise you will degrade performance
+        , PRIMARY_BLOOM_HASHES     (7)
+        , PRIMARY_BLOOM_BITS       (1.44 * MAX_HASHMAP_FILES * PRIMARY_BLOOM_HASHES)
+        , SECONDARY_BLOOM_HASHES   (7)
+        , SECONDARY_BLOOM_BITS     (13)
+        , HASHMAP_TOTAL_BUCKETS    (77773)
+        , HASHMAP_KEY_ALLOCATION   (16 + 13) //16 bytes for key checksum, 13 bytes for ckey class
+        , QUICK_INIT               (true)   //this only really gives us total keys output and makes startup a little slower
+        , KEYCHAIN_LOCKS           (1024)
+        , FILESYSTEM_LOCKS         (MAX_HASHMAP_FILE_STREAMS)
+        {
+        }
 
 
         /** Copy Constructor. **/
         Hashmap(const Hashmap& map)
-        : Sector                   (map)
-        , MAX_HASHMAP_FILES        (map.MAX_HASHMAP_FILES)
+        : MAX_HASHMAP_FILES        (map.MAX_HASHMAP_FILES)
         , MIN_LINEAR_PROBES        (map.MIN_LINEAR_PROBES)
         , MAX_LINEAR_PROBES        (map.MAX_LINEAR_PROBES)
         , MAX_HASHMAP_FILE_SIZE    (map.MAX_HASHMAP_FILE_SIZE)
@@ -93,14 +109,15 @@ namespace LLD::Config
         , HASHMAP_TOTAL_BUCKETS    (map.HASHMAP_TOTAL_BUCKETS)
         , HASHMAP_KEY_ALLOCATION   (map.HASHMAP_KEY_ALLOCATION)
         , QUICK_INIT               (map.QUICK_INIT)
+        , KEYCHAIN_LOCKS           (map.KEYCHAIN_LOCKS.size())
+        , FILESYSTEM_LOCKS         (map.FILESYSTEM_LOCKS.size())
         {
         }
 
 
         /** Move Constructor. **/
         Hashmap(Hashmap&& map)
-        : Sector                   (std::move(map))
-        , MAX_HASHMAP_FILES        (std::move(map.MAX_HASHMAP_FILES))
+        : MAX_HASHMAP_FILES        (std::move(map.MAX_HASHMAP_FILES))
         , MIN_LINEAR_PROBES        (std::move(map.MIN_LINEAR_PROBES))
         , MAX_LINEAR_PROBES        (std::move(map.MAX_LINEAR_PROBES))
         , MAX_HASHMAP_FILE_SIZE    (std::move(map.MAX_HASHMAP_FILE_SIZE))
@@ -112,6 +129,8 @@ namespace LLD::Config
         , HASHMAP_TOTAL_BUCKETS    (std::move(map.HASHMAP_TOTAL_BUCKETS))
         , HASHMAP_KEY_ALLOCATION   (std::move(map.HASHMAP_KEY_ALLOCATION))
         , QUICK_INIT               (std::move(map.QUICK_INIT))
+        , KEYCHAIN_LOCKS           (map.KEYCHAIN_LOCKS.size())
+        , FILESYSTEM_LOCKS         (map.FILESYSTEM_LOCKS.size())
         {
         }
 
@@ -119,15 +138,6 @@ namespace LLD::Config
         /** Copy Assignment **/
         Hashmap& operator=(const Hashmap& map)
         {
-            /* Sector configuration. */
-            MAX_SECTOR_FILE_STREAMS = map.MAX_SECTOR_FILE_STREAMS;
-            MAX_SECTOR_CACHE_SIZE   = map.MAX_SECTOR_CACHE_SIZE;
-            MAX_SECTOR_FILE_SIZE    = map.MAX_SECTOR_FILE_SIZE;
-            MAX_SECTOR_BUFFER_SIZE  = map.MAX_SECTOR_BUFFER_SIZE;
-            BASE_DIRECTORY          = map.BASE_DIRECTORY;
-            DB_NAME                 = map.DB_NAME;
-            FLAGS                   = map.FLAGS;
-
             /* Hashmap configuration. */
             MAX_HASHMAP_FILES        = map.MAX_HASHMAP_FILES;
             MIN_LINEAR_PROBES        = map.MIN_LINEAR_PROBES;
@@ -147,15 +157,6 @@ namespace LLD::Config
         /** Move Assignment **/
         Hashmap& operator=(Hashmap&& map)
         {
-            /* Sector configuration. */
-            MAX_SECTOR_FILE_STREAMS = std::move(map.MAX_SECTOR_FILE_STREAMS);
-            MAX_SECTOR_CACHE_SIZE   = std::move(map.MAX_SECTOR_CACHE_SIZE);
-            MAX_SECTOR_FILE_SIZE    = std::move(map.MAX_SECTOR_FILE_SIZE);
-            MAX_SECTOR_BUFFER_SIZE  = std::move(map.MAX_SECTOR_BUFFER_SIZE);
-            BASE_DIRECTORY          = std::move(map.BASE_DIRECTORY);
-            DB_NAME                 = std::move(map.DB_NAME);
-            FLAGS                   = std::move(map.FLAGS);
-
             /* Hashmap configuration. */
             MAX_HASHMAP_FILES        = std::move(map.MAX_HASHMAP_FILES);
             MIN_LINEAR_PROBES        = std::move(map.MIN_LINEAR_PROBES);
@@ -178,23 +179,48 @@ namespace LLD::Config
         }
 
 
-        /** Default constructor uses optimum values for bloom filters. **/
-        Hashmap(const std::string& strName, const uint8_t nFlags)
-        : Sector                   (strName, nFlags)
-        , MAX_HASHMAP_FILES        (256)
-        , MIN_LINEAR_PROBES        (3) //default of 3 linear probes before moving to next hashmap file
-        , MAX_LINEAR_PROBES        (3) //default of 3 fibanacci probing cycles before exhausting bucket
-        , MAX_HASHMAP_FILE_SIZE    (1024 * 1024 * 512) //512 MB filesize by default
-        , MAX_HASHMAP_FILE_STREAMS (MAX_HASHMAP_FILES) //default of maximum hashmap files, otherwise you will degrade performance
-        , PRIMARY_BLOOM_HASHES     (7)
-        , PRIMARY_BLOOM_BITS       (1.44 * MAX_HASHMAP_FILES * PRIMARY_BLOOM_HASHES)
-        , SECONDARY_BLOOM_HASHES   (7)
-        , SECONDARY_BLOOM_BITS     (13)
-        , HASHMAP_TOTAL_BUCKETS    (77773)
-        , HASHMAP_KEY_ALLOCATION   (16 + 13) //16 bytes for key checksum, 13 bytes for ckey class
-        , QUICK_INIT               (true)   //this only really gives us total keys output and makes startup a little slower
+        /** KeychainLock
+         *
+         *  Grabs a lock from the set of keychain locks by key data.
+         *
+         *  @param[in] vKey The binary data of key to lock for.
+         *
+         *  @return a reference of the lock object.
+         *
+         **/
+        std::mutex& KEYCHAIN(const std::vector<uint8_t>& vKey) const
         {
+            /* Calculate the lock that will be obtained by the given key. */
+            uint64_t nLock = XXH3_64bits((uint8_t*)&vKey[0], vKey.size()) % KEYCHAIN_LOCKS.size();
+            return KEYCHAIN_LOCKS[nLock];
         }
+
+
+        /** File
+         *
+         *  Grabs a lock from the set of keychain locks by file handle.
+         *
+         *  @param[in] nFile The binary data of key to lock for.
+         *
+         *  @return a reference of the lock object.
+         *
+         **/
+        std::mutex& FILE(const uint32_t nFile) const
+        {
+            /* Calculate the lock that will be obtained by the given key. */
+            uint64_t nLock = XXH3_64bits((uint8_t*)&nFile, 4) % FILESYSTEM_LOCKS.size();
+            return FILESYSTEM_LOCKS[nLock];
+        }
+
+    private:
+
+
+        /** The keychain level locking hashmap. **/
+        mutable std::vector<std::mutex> KEYCHAIN_LOCKS;
+
+
+        /** The keychain level locking hashmap. **/
+        mutable std::vector<std::mutex> FILESYSTEM_LOCKS;
 
     };
 }

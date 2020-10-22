@@ -18,7 +18,9 @@ ________________________________________________________________________________
 #include <LLD/keychain/keychain.h>
 #include <LLD/cache/template_lru.h>
 #include <LLD/include/enum.h>
+
 #include <LLD/config/hashmap.h>
+#include <LLD/config/db.h>
 
 #include <cstdint>
 #include <string>
@@ -46,7 +48,11 @@ namespace LLD
 
 
         /** Internal Hashmap Config Object. **/
-        const Config::Hashmap& CONFIG;
+        const Config::Hashmap CONFIG;
+
+
+        /** Database Configuration. **/
+        const LLD::Config::DB& DB;
 
 
         /** Internal pre-calculated index size. **/
@@ -69,7 +75,7 @@ namespace LLD
 
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        BinaryHashMap(const Config::Hashmap& config);
+        BinaryHashMap(const LLD::Config::DB& dbIn, const Config::Hashmap& configIn);
 
 
         /** Copy Constructor **/

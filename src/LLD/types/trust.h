@@ -39,7 +39,7 @@ namespace LLD
     public:
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        TrustDB(const Config::Hashmap& config);
+        TrustDB(const Config::DB& db, const Config::Sector& sector, const Config::Hashmap& keychain);
 
 
         /** Default Destructor **/

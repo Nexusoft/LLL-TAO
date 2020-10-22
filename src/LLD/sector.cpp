@@ -32,16 +32,19 @@ namespace LLD::Templates
 
     /* The Database Constructor. To determine file location and the Bytes per Record. */
     template<class KeychainType, class CacheType, class ConfigType>
-    SectorDatabase<KeychainType, CacheType, ConfigType>::SectorDatabase(const ConfigType& config)
+    SectorDatabase<KeychainType, CacheType, ConfigType>::SectorDatabase(const LLD::Config::DB& dbIn,
+                                                                        const LLD::Config::Sector& sectorIn,
+                                                                        const ConfigType& keychainIn)
     : CONDITION_MUTEX   ( )
     , CONDITION         ( )
     , SECTOR_MUTEX      ( )
     , BUFFER_MUTEX      ( )
     , TRANSACTION_MUTEX ( )
-    , CONFIG            (config)
+    , CONFIG            (sectorIn)
+    , DB                (dbIn)
     , runtime           ( )
     , pTransaction      (nullptr)
-    , pSectorKeys       (new KeychainType(CONFIG))
+    , pSectorKeys       (new KeychainType(dbIn, keychainIn))
     , cachePool         (new CacheType(CONFIG.MAX_SECTOR_CACHE_SIZE))
     , fileCache         (new TemplateLRU<uint32_t, std::fstream*>(CONFIG.MAX_SECTOR_FILE_STREAMS))
     , nCurrentFile      (0)
@@ -56,10 +59,6 @@ namespace LLD::Templates
     , fDestruct         (false)
     , fInitialized      (false)
     {
-        /* Set readonly flag if write or append are not specified. */
-        if(!(CONFIG.FLAGS & FLAGS::FORCE) && !(CONFIG.FLAGS & FLAGS::WRITE) && !(CONFIG.FLAGS & FLAGS::APPEND))
-            CONFIG.FLAGS |= FLAGS::READONLY;
-
         /* Initialize the Database. */
         Initialize();
 
@@ -106,15 +105,15 @@ namespace LLD::Templates
     void SectorDatabase<KeychainType, CacheType, ConfigType>::Initialize()
     {
         /* Create directories if they don't exist yet. */
-        if(CONFIG.FLAGS & FLAGS::CREATE && !filesystem::exists(CONFIG.BASE_DIRECTORY + "datachain/") && filesystem::create_directories(CONFIG.BASE_DIRECTORY + "datachain/"))
-            debug::log(0, FUNCTION, "Generated Path ", CONFIG.BASE_DIRECTORY);
+        if(DB.FLAGS & FLAGS::CREATE && !filesystem::exists(DB.DIRECTORY + "datachain/") && filesystem::create_directories(DB.DIRECTORY + "datachain/"))
+            debug::log(0, FUNCTION, "Generated Path ", DB.DIRECTORY);
 
         /* Find the most recent append file. */
         while(true)
         {
 
             /* Find our current sector file we are on. */
-            std::fstream stream(debug::safe_printstr(CONFIG.BASE_DIRECTORY, "datachain/_block.", std::setfill('0'), std::setw(5), nCurrentFile), std::ios::in | std::ios::binary);
+            std::fstream stream(debug::safe_printstr(DB.DIRECTORY, "datachain/_block.", std::setfill('0'), std::setw(5), nCurrentFile), std::ios::in | std::ios::binary);
             if(!stream)
             {
 
@@ -124,7 +123,7 @@ namespace LLD::Templates
                 else
                 {
                     /* Create a new file if it doesn't exist. */
-                    std::ofstream cStream(debug::safe_printstr(CONFIG.BASE_DIRECTORY, "datachain/_block.", std::setfill('0'), std::setw(5), nCurrentFile), std::ios::binary | std::ios::out | std::ios::trunc);
+                    std::ofstream cStream(debug::safe_printstr(DB.DIRECTORY, "datachain/_block.", std::setfill('0'), std::setw(5), nCurrentFile), std::ios::binary | std::ios::out | std::ios::trunc);
                     cStream.close();
                 }
 
@@ -169,7 +168,7 @@ namespace LLD::Templates
                 if(!fileCache->Get(cKey.nSectorFile, pstream))
                 {
                     /* Set the new stream pointer. */
-                    pstream = new std::fstream(debug::safe_printstr(CONFIG.BASE_DIRECTORY, "datachain/_block.", std::setfill('0'), std::setw(5), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
+                    pstream = new std::fstream(debug::safe_printstr(DB.DIRECTORY, "datachain/_block.", std::setfill('0'), std::setw(5), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
                     if(!pstream->is_open())
                     {
                         delete pstream;
@@ -235,7 +234,7 @@ namespace LLD::Templates
             if(!fileCache->Get(cKey.nSectorFile, pstream))
             {
                 /* Set the new stream pointer. */
-                pstream = new std::fstream(debug::safe_printstr(CONFIG.BASE_DIRECTORY, "datachain/_block.", std::setfill('0'), std::setw(5), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
+                pstream = new std::fstream(debug::safe_printstr(DB.DIRECTORY, "datachain/_block.", std::setfill('0'), std::setw(5), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
                 if(!pstream->is_open())
                 {
                     delete pstream;
@@ -301,7 +300,7 @@ namespace LLD::Templates
             if(!fileCache->Get(key.nSectorFile, pstream))
             {
                 /* Set the new stream pointer. */
-                pstream = new std::fstream(debug::safe_printstr(CONFIG.BASE_DIRECTORY, "datachain/_block.", std::setfill('0'), std::setw(5), key.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
+                pstream = new std::fstream(debug::safe_printstr(DB.DIRECTORY, "datachain/_block.", std::setfill('0'), std::setw(5), key.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
                 if(!pstream->is_open())
                 {
                     delete pstream;
@@ -342,7 +341,7 @@ namespace LLD::Templates
     template<class KeychainType, class CacheType, class ConfigType>
     bool SectorDatabase<KeychainType, CacheType, ConfigType>::Force(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vData)
     {
-        if(CONFIG.FLAGS & FLAGS::APPEND || !Update(vKey, vData))
+        if(DB.FLAGS & FLAGS::APPEND || !Update(vKey, vData))
         {
 
             /* Get current size */
@@ -367,7 +366,7 @@ namespace LLD::Templates
 
                     std::ofstream stream
                     (
-                        debug::safe_printstr(CONFIG.BASE_DIRECTORY, "datachain/_block.", std::setfill('0'), std::setw(5), nCurrentFile),
+                        debug::safe_printstr(DB.DIRECTORY, "datachain/_block.", std::setfill('0'), std::setw(5), nCurrentFile),
                         std::ios::out | std::ios::binary | std::ios::trunc
                     );
                     stream.close();
@@ -381,7 +380,7 @@ namespace LLD::Templates
                 if(!fileCache->Get(nCurrentFile, pstream))
                 {
                     /* Set the new stream pointer. */
-                    pstream = new std::fstream(debug::safe_printstr(CONFIG.BASE_DIRECTORY, "datachain/_block.", std::setfill('0'), std::setw(5), nCurrentFile), std::ios::in | std::ios::out | std::ios::binary);
+                    pstream = new std::fstream(debug::safe_printstr(DB.DIRECTORY, "datachain/_block.", std::setfill('0'), std::setw(5), nCurrentFile), std::ios::in | std::ios::out | std::ios::binary);
                     if(!pstream->is_open())
                     {
                         delete pstream;
@@ -434,7 +433,7 @@ namespace LLD::Templates
     bool SectorDatabase<KeychainType, CacheType, ConfigType>::Put(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vData)
     {
         /* Handle force write mode. */
-        if(CONFIG.FLAGS & FLAGS::FORCE)
+        if(DB.FLAGS & FLAGS::FORCE)
             return Force(vKey, vData);
 
         /* Wait if the buffer is full. */
@@ -484,7 +483,7 @@ namespace LLD::Templates
             if(!fileCache->Get(key.nSectorFile, pstream))
             {
                 /* Set the new stream pointer. */
-                pstream = new std::fstream(debug::safe_printstr(CONFIG.BASE_DIRECTORY, "datachain/_block.", std::setfill('0'), std::setw(5), key.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
+                pstream = new std::fstream(debug::safe_printstr(DB.DIRECTORY, "datachain/_block.", std::setfill('0'), std::setw(5), key.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
                 if(!pstream->is_open())
                 {
                     delete pstream;
@@ -529,7 +528,7 @@ namespace LLD::Templates
             runtime::sleep(100);
 
         /* Check if writing is enabled. */
-        if(!(CONFIG.FLAGS & FLAGS::WRITE) && !(CONFIG.FLAGS & FLAGS::APPEND) && !(CONFIG.FLAGS & FLAGS::FORCE))
+        if(!(DB.FLAGS & FLAGS::WRITE) && !(DB.FLAGS & FLAGS::APPEND) && !(DB.FLAGS & FLAGS::FORCE))
         {
             debug::log(0, FUNCTION, "Cache Writer is Closing...");
             return;
@@ -584,7 +583,7 @@ namespace LLD::Templates
                 nCurrentFileSize = 0;
 
                 /* Create a new file for next writes. */
-                std::fstream stream(debug::safe_printstr(CONFIG.BASE_DIRECTORY, "datachain/_block.", std::setfill('0'), std::setw(5), nCurrentFile), std::ios::out | std::ios::binary | std::ios::trunc);
+                std::fstream stream(debug::safe_printstr(DB.DIRECTORY, "datachain/_block.", std::setfill('0'), std::setw(5), nCurrentFile), std::ios::out | std::ios::binary | std::ios::trunc);
                 stream.close();
             }
 
@@ -641,7 +640,7 @@ namespace LLD::Templates
 
             /* Debug output. */
             debug::log(0,
-                ANSI_COLOR_FUNCTION, CONFIG.DB_NAME, " LLD : ", ANSI_COLOR_RESET,
+                ANSI_COLOR_FUNCTION, DB.NAME, " LLD : ", ANSI_COLOR_RESET,
                 "Writing ", WPS, " Kb/s | ",
                 "Reading ", RPS, " Kb/s | ",
                 "Records ", nRecordsFlushed.load());
@@ -683,7 +682,7 @@ namespace LLD::Templates
         pTransaction->ssJournal << std::string("commit");
 
         /* Create an append only stream. */
-        std::ofstream stream = std::ofstream(debug::safe_printstr(CONFIG.BASE_DIRECTORY, "journal.dat"), std::ios::app | std::ios::binary);
+        std::ofstream stream = std::ofstream(debug::safe_printstr(DB.DIRECTORY, "journal.dat"), std::ios::app | std::ios::binary);
         if(!stream.is_open())
             return debug::error(FUNCTION, "failed to open journal file");
 
@@ -710,7 +709,7 @@ namespace LLD::Templates
         pTransaction = nullptr;
 
         /* Delete the transaction journal file. */
-        std::ofstream stream(debug::safe_printstr(CONFIG.BASE_DIRECTORY, "journal.dat"), std::ios::trunc);
+        std::ofstream stream(debug::safe_printstr(DB.DIRECTORY, "journal.dat"), std::ios::trunc);
         stream.close();
     }
 
@@ -781,7 +780,7 @@ namespace LLD::Templates
     bool SectorDatabase<KeychainType, CacheType, ConfigType>::TxnRecovery()
     {
         /* Create an append only stream. */
-        std::ifstream stream(debug::safe_printstr(CONFIG.BASE_DIRECTORY, "journal.dat"), std::ios::in | std::ios::out | std::ios::binary);
+        std::ifstream stream(debug::safe_printstr(DB.DIRECTORY, "journal.dat"), std::ios::in | std::ios::out | std::ios::binary);
         if(!stream.is_open())
             return false;
 
@@ -803,7 +802,7 @@ namespace LLD::Templates
         stream.read((char*) &vBuffer[0], vBuffer.size());
         stream.close();
 
-        debug::log(0, FUNCTION, CONFIG.DB_NAME, " transaction journal detected of ", nSize, " bytes");
+        debug::log(0, FUNCTION, DB.NAME, " transaction journal detected of ", nSize, " bytes");
 
         /* Create the transaction object. */
         TxnBegin();
@@ -875,13 +874,13 @@ namespace LLD::Templates
             }
             if(strType == "commit")
             {
-                debug::log(0, FUNCTION, CONFIG.DB_NAME, " transaction journal ready to be restored");
+                debug::log(0, FUNCTION, DB.NAME, " transaction journal ready to be restored");
 
                 return true;
             }
         }
 
-        return debug::error(FUNCTION, CONFIG.DB_NAME, " transaction journal never reached commit");
+        return debug::error(FUNCTION, DB.NAME, " transaction journal never reached commit");
     }
 
 

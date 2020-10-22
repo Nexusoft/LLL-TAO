@@ -43,19 +43,23 @@ namespace LLP
     , nPort(nPortIn)
     {
         /* Create the AddressDB configuration object. */
-        LLD::Config::Hashmap Config =
-            LLD::Config::Hashmap(std::string("_ADDR/") + std::to_string(nPort), LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+        LLD::Config::DB Base =
+            LLD::Config::DB(std::string("_ADDR/") + std::to_string(nPort), LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
 
-        /* Set the register database internal settings. */
-        Config.HASHMAP_TOTAL_BUCKETS   = 77773;
-        Config.MAX_HASHMAP_FILES       = 4; //TODO: make sure this doesn't break anything :D
-        Config.MAX_SECTOR_FILE_STREAMS = 4;
-        Config.MIN_LINEAR_PROBES       = 2;
-        Config.MAX_SECTOR_BUFFER_SIZE  = 0; //0 bytes, since we are in force mode this won't be used at all
-        Config.MAX_SECTOR_CACHE_SIZE   = 1024; //1 KB of cache by default
+        /* Create the AddressDB sector configuration object. */
+        LLD::Config::Sector Sector             = LLD::Config::Sector();
+        Sector.MAX_SECTOR_FILE_STREAMS         = 4;
+        Sector.MAX_SECTOR_BUFFER_SIZE          = 0; //0 bytes, since we are in force mode this won't be used at all
+        Sector.MAX_SECTOR_CACHE_SIZE           = 1024; //1 KB of cache by default
+
+        /* Create the AddressDB keychain configuration object. */
+        LLD::Config::Hashmap Keychain         = LLD::Config::Hashmap();
+        Keychain.HASHMAP_TOTAL_BUCKETS        = 77773;
+        Keychain.MAX_HASHMAP_FILES            = 4; //TODO: make sure this doesn't break anything :D
+        Keychain.MIN_LINEAR_PROBES            = 1;
 
         /* Create the database instance. */
-        pDatabase = new LLD::AddressDB(Config);
+        pDatabase = new LLD::AddressDB(Base, Sector, Keychain);
         if(!pDatabase)
             throw debug::exception(FUNCTION, "Failed to allocate memory for AddressManager");
     }

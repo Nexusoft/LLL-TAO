@@ -16,6 +16,10 @@ ________________________________________________________________________________
 #define NEXUS_LLD_CONFIG_SECTOR_H
 
 #include <cstdint>
+#include <mutex>
+
+#include <LLD/hash/xxhash.h>
+#include <LLD/templates/key.h>
 
 namespace LLD::Config
 {
@@ -40,28 +44,16 @@ namespace LLD::Config
         uint64_t MAX_SECTOR_BUFFER_SIZE;
 
 
-        /** The string to hold the database location. **/
-        std::string BASE_DIRECTORY;
-
-
-        /** The string to hold the database name. **/
-        std::string DB_NAME;
-
-
-        /** The keychain level flags. **/
-        uint8_t FLAGS;
-
-
-        /** The sector level locking hashmap. **/
-        mutable std::vector<std::mutex> SECTOR_LOCKS;
-
-
-        /** The keychain level locking hashmap. **/
-        mutable std::vector<std::mutex> KEYCHAIN_LOCKS;
-
-
-        /** No default constructor. **/
-        Sector() = delete;
+        /** Required Constructor. **/
+        Sector()
+        : MAX_SECTOR_FILE_STREAMS (8)
+        , MAX_SECTOR_CACHE_SIZE   (1024 * 1024)       //1 MB of cache default
+        , MAX_SECTOR_FILE_SIZE    (1024 * 1024 * 512) //512 MB max per sector file
+        , MAX_SECTOR_BUFFER_SIZE  (1024 * 1024 * 4)   //4 MB max disk buffer
+        , SECTOR_LOCKS            (1024)
+        , FILESYSTEM_LOCKS        (MAX_SECTOR_FILE_STREAMS)
+        {
+        }
 
 
         /** Copy Constructor. **/
@@ -70,11 +62,8 @@ namespace LLD::Config
         , MAX_SECTOR_CACHE_SIZE   (map.MAX_SECTOR_CACHE_SIZE)
         , MAX_SECTOR_FILE_SIZE    (map.MAX_SECTOR_FILE_SIZE)
         , MAX_SECTOR_BUFFER_SIZE  (map.MAX_SECTOR_BUFFER_SIZE)
-        , BASE_DIRECTORY          (map.BASE_DIRECTORY)
-        , DB_NAME                 (map.DB_NAME)
-        , FLAGS                   (map.FLAGS)
         , SECTOR_LOCKS            (map.SECTOR_LOCKS.size())
-        , KEYCHAIN_LOCKS          (map.KEYCHAIN_LOCKS.size())
+        , FILESYSTEM_LOCKS        (map.FILESYSTEM_LOCKS.size())
         {
         }
 
@@ -85,11 +74,8 @@ namespace LLD::Config
         , MAX_SECTOR_CACHE_SIZE   (std::move(map.MAX_SECTOR_CACHE_SIZE))
         , MAX_SECTOR_FILE_SIZE    (std::move(map.MAX_SECTOR_FILE_SIZE))
         , MAX_SECTOR_BUFFER_SIZE  (std::move(map.MAX_SECTOR_BUFFER_SIZE))
-        , BASE_DIRECTORY          (std::move(map.BASE_DIRECTORY))
-        , DB_NAME                 (std::move(map.DB_NAME))
-        , FLAGS                   (std::move(map.FLAGS))
-        , SECTOR_LOCKS            (std::move(map.SECTOR_LOCKS.size()))
-        , KEYCHAIN_LOCKS          (map.KEYCHAIN_LOCKS.size())
+        , SECTOR_LOCKS            (map.SECTOR_LOCKS.size())
+        , FILESYSTEM_LOCKS        (map.FILESYSTEM_LOCKS.size())
         {
         }
 
@@ -101,10 +87,6 @@ namespace LLD::Config
             MAX_SECTOR_CACHE_SIZE   = map.MAX_SECTOR_CACHE_SIZE;
             MAX_SECTOR_FILE_SIZE    = map.MAX_SECTOR_FILE_SIZE;
             MAX_SECTOR_BUFFER_SIZE  = map.MAX_SECTOR_BUFFER_SIZE;
-
-            BASE_DIRECTORY          = map.BASE_DIRECTORY;
-            DB_NAME                 = map.DB_NAME;
-            FLAGS                   = map.FLAGS;
 
             return *this;
         }
@@ -118,10 +100,6 @@ namespace LLD::Config
             MAX_SECTOR_FILE_SIZE    = std::move(map.MAX_SECTOR_FILE_SIZE);
             MAX_SECTOR_BUFFER_SIZE  = std::move(map.MAX_SECTOR_BUFFER_SIZE);
 
-            BASE_DIRECTORY          = std::move(map.BASE_DIRECTORY);
-            DB_NAME                 = std::move(map.DB_NAME);
-            FLAGS                   = std::move(map.FLAGS);
-
             return *this;
         }
 
@@ -129,55 +107,6 @@ namespace LLD::Config
         /** Destructor. **/
         ~Sector()
         {
-        }
-
-
-        /** Required Constructor. **/
-        Sector(const std::string& strName, const uint8_t nFlags)
-        : MAX_SECTOR_FILE_STREAMS (8)
-        , MAX_SECTOR_CACHE_SIZE   (1024 * 1024)       //1 MB of cache default
-        , MAX_SECTOR_FILE_SIZE    (1024 * 1024 * 512) //512 MB max per sector file
-        , MAX_SECTOR_BUFFER_SIZE  (1024 * 1024 * 4)   //4 MB max disk buffer
-        , BASE_DIRECTORY          (config::GetDataDir() + strName + "/")
-        , DB_NAME                 (strName)
-        , FLAGS                   (nFlags)
-        , SECTOR_LOCKS            (1024)
-        , KEYCHAIN_LOCKS          (1024)
-        {
-        }
-
-
-        /** KeychainLock
-         *
-         *  Grabs a lock from the set of keychain locks by key data.
-         *
-         *  @param[in] vKey The binary data of key to lock for.
-         *
-         *  @return a reference of the lock object.
-         *
-         **/
-        std::mutex& KEYCHAIN(const std::vector<uint8_t>& vKey) const
-        {
-            /* Calculate the lock that will be obtained by the given key. */
-            uint64_t nLock = XXH3_64bits((uint8_t*)&vKey[0], vKey.size()) % KEYCHAIN_LOCKS.size();
-            return KEYCHAIN_LOCKS[nLock];
-        }
-
-
-        /** File
-         *
-         *  Grabs a lock from the set of keychain locks by file handle.
-         *
-         *  @param[in] nFile The binary data of key to lock for.
-         *
-         *  @return a reference of the lock object.
-         *
-         **/
-        std::mutex& FILE(const uint32_t nFile) const
-        {
-            /* Calculate the lock that will be obtained by the given key. */
-            uint64_t nLock = XXH3_64bits((uint8_t*)&nFile, 4) % KEYCHAIN_LOCKS.size();
-            return KEYCHAIN_LOCKS[nLock];
         }
 
 
@@ -194,8 +123,35 @@ namespace LLD::Config
         {
             /* Calculate the lock that will be obtained by the given key. */
             uint64_t nLock = ((key.nSectorFile + 1) * (key.nSectorStart + 1)) % SECTOR_LOCKS.size();
-            return KEYCHAIN_LOCKS[nLock];
+            return SECTOR_LOCKS[nLock];
         }
+
+
+        /** File
+         *
+         *  Grabs a lock from the set of sector locks by file handle.
+         *
+         *  @param[in] nFile The binary data of key to lock for.
+         *
+         *  @return a reference of the lock object.
+         *
+         **/
+        std::mutex& FILE(const uint32_t nFile) const
+        {
+            /* Calculate the lock that will be obtained by the given key. */
+            uint64_t nLock = XXH3_64bits((uint8_t*)&nFile, 4) % FILESYSTEM_LOCKS.size();
+            return FILESYSTEM_LOCKS[nLock];
+        }
+
+    private:
+
+
+        /** The sector level locking hashmap. **/
+        mutable std::vector<std::mutex> SECTOR_LOCKS;
+
+
+        /** The keychain level locking hashmap. **/
+        mutable std::vector<std::mutex> FILESYSTEM_LOCKS;
     };
 }
 
