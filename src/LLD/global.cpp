@@ -35,8 +35,11 @@ namespace LLD
         debug::log(0, FUNCTION, "Initializing LLD");
 
         /* Create the contract database instance. */
+        uint32_t nContractCacheSize = config::GetArg("-contractcache", 1);
         Contract = new ContractDB(
-                        FLAGS::CREATE | FLAGS::FORCE);
+                        FLAGS::CREATE | FLAGS::FORCE,
+                        77773,
+                        nContractCacheSize * 1024 * 1024);
 
         /* Create the contract database instance. */
         uint32_t nRegisterCacheSize = config::GetArg("-registercache", 2);
