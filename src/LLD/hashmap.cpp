@@ -153,7 +153,7 @@ namespace LLD
 
                 /* Grab the current file from the stream. */
                 uint16_t nCurrentFile = get_current_file(vBuffer, nOffset);
-                for(int16_t nHashmap = 0; nHashmap < CONFIG.MAX_HASHMAP_FILES; ++nHashmap)
+                for(int16_t nHashmap = 0; nHashmap < CONFIG.MAX_HASHMAPS; ++nHashmap)
                 {
                     /* Check for an available hashmap slot. */
                     if(!check_hashmap_available(nHashmap, vBuffer, nOffset + primary_bloom_size() + 2))
@@ -169,7 +169,7 @@ namespace LLD
             uint64_t nElapsed = swTimer.ElapsedMilliseconds();
 
             /* Debug output showing loading of disk index. */
-            const uint64_t nMaxKeys = (CONFIG.HASHMAP_TOTAL_BUCKETS * CONFIG.MAX_HASHMAP_FILES);
+            const uint64_t nMaxKeys = (CONFIG.HASHMAP_TOTAL_BUCKETS * CONFIG.MAX_HASHMAPS);
             debug::log(0, FUNCTION,
                 "Loaded in ",
 
@@ -177,7 +177,7 @@ namespace LLD
                 vBuffer.size(), " bytes | ",
                 nTotalKeys, "/", nMaxKeys, " keys [",
                 ANSI_COLOR_CYAN, (nTotalKeys * 100.0) / nMaxKeys, " %", ANSI_COLOR_RESET, "] | ",
-                std::min(CONFIG.MAX_HASHMAP_FILES, nTotalHashmaps), " hashmaps"
+                std::min(CONFIG.MAX_HASHMAPS, nTotalHashmaps), " hashmaps"
             );
         }
 
@@ -213,16 +213,16 @@ namespace LLD
 
         /* Grab the current hashmap file from the buffer. */
         uint16_t nHashmap = get_current_file(vBase);
-        if(nHashmap >= CONFIG.MAX_HASHMAP_FILES)
+        if(nHashmap >= CONFIG.MAX_HASHMAPS)
         {
             /* Create our cached values to detect when no more useful work is being completed. */
             uint32_t nBucketCache  = 0, nTotalCache = 0;
 
             /* Loop all probe expansion cycles to ensure we check all locations a key could have been written. */
-            for(uint32_t nCycle = 0; nCycle < (nHashmap - CONFIG.MAX_HASHMAP_FILES); ++nCycle)
+            for(uint32_t nCycle = 0; nCycle < (nHashmap - CONFIG.MAX_HASHMAPS); ++nCycle)
             {
                 /* Create an adjusted iterator to search through expansion cycles. */
-                uint16_t nAdjustedHashmap = (CONFIG.MAX_HASHMAP_FILES + nCycle + 1); //we need +1 here to derive correct fibanacci zone
+                uint16_t nAdjustedHashmap = (CONFIG.MAX_HASHMAPS + nCycle + 1); //we need +1 here to derive correct fibanacci zone
 
                 /* Create our return values from fibanacci_index. */
                 uint32_t nAdjustedBucket  = 0;
@@ -292,10 +292,10 @@ namespace LLD
         uint16_t nHashmap = get_current_file(vBase, 0);
 
         /* Loop through our potential linear probe cycles. */
-        while(nHashmap < CONFIG.MAX_HASHMAP_FILES + CONFIG.MAX_LINEAR_PROBES)
+        while(nHashmap < CONFIG.MAX_HASHMAPS + CONFIG.MAX_LINEAR_PROBES)
         {
             /* Check if we are in a probe expansion cycle. */
-            if(nHashmap >= CONFIG.MAX_HASHMAP_FILES)
+            if(nHashmap >= CONFIG.MAX_HASHMAPS)
             {
                 /* Create our return values from fibanacci_index. */
                 uint32_t nAdjustedBucket = 0;
@@ -425,13 +425,13 @@ namespace LLD
 
         /* Grab the current hashmap file from the buffer. */
         uint16_t nHashmap = get_current_file(vBase);
-        if(nHashmap >= CONFIG.MAX_HASHMAP_FILES)
+        if(nHashmap >= CONFIG.MAX_HASHMAPS)
         {
             /* Loop all probe expansion cycles to ensure we check all locations a key could have been written. */
-            for(uint32_t nCycle = 0; nCycle < (nHashmap - CONFIG.MAX_HASHMAP_FILES); ++nCycle)
+            for(uint32_t nCycle = 0; nCycle < (nHashmap - CONFIG.MAX_HASHMAPS); ++nCycle)
             {
                 /* Create an adjusted iterator to search through expansion cycles. */
-                uint16_t nAdjustedHashmap = (CONFIG.MAX_HASHMAP_FILES + nCycle + 1); //we need +1 here to derive correct fibanacci zone
+                uint16_t nAdjustedHashmap = (CONFIG.MAX_HASHMAPS + nCycle + 1); //we need +1 here to derive correct fibanacci zone
 
                 /* Create our return values from fibanacci_index. */
                 uint32_t nAdjustedBucket  = 0;
@@ -678,7 +678,7 @@ namespace LLD
             const uint64_t nOffset = (nProbe * INDEX_FILTER_SIZE);
 
             /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
-            const uint16_t nBucketIterator = std::min(uint16_t(CONFIG.MAX_HASHMAP_FILES - 1), uint16_t(nHashmap));
+            const uint16_t nBucketIterator = std::min(uint16_t(CONFIG.MAX_HASHMAPS - 1), uint16_t(nHashmap));
             for(int32_t nFile = nBucketIterator; nFile >= 0; --nFile)
             {
                 /* Check for an available hashmap slot. */
@@ -772,7 +772,7 @@ namespace LLD
                 continue;
 
             /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
-            const uint16_t nBucketIterator = std::min(uint16_t(CONFIG.MAX_HASHMAP_FILES - 1), uint16_t(nHashmap - 1));
+            const uint16_t nBucketIterator = std::min(uint16_t(CONFIG.MAX_HASHMAPS - 1), uint16_t(nHashmap - 1));
             for(int32_t nFile = nBucketIterator; nFile >= 0; --nFile)
             {
                 /* Check the secondary bloom filter. */
@@ -933,7 +933,7 @@ namespace LLD
     uint32_t BinaryHashMap::secondary_bloom_size()
     {
         /* Cache the total bits to calculate size. */
-        uint64_t nBits = CONFIG.MAX_HASHMAP_FILES * CONFIG.SECONDARY_BLOOM_BITS;
+        uint64_t nBits = CONFIG.MAX_HASHMAPS * CONFIG.SECONDARY_BLOOM_BITS;
         return (nBits / 8) + ((nBits % 8 == 0) ? 0 : 1); //we want 1 byte padding here for bits that overflow
     }
 
@@ -1137,7 +1137,7 @@ namespace LLD
         std::vector<uint8_t> &vIndex, uint32_t &nTotalBuckets, uint32_t &nAdjustedBucket)
     {
         /* Find the total cycles to probe. */
-        uint64_t nExpansionCycles = (nHashmap - CONFIG.MAX_HASHMAP_FILES);
+        uint64_t nExpansionCycles = (nHashmap - CONFIG.MAX_HASHMAPS);
 
         /* Start our probe expansion cycle with default values. */
         uint32_t nBeginProbeExpansion = CONFIG.MIN_LINEAR_PROBES;

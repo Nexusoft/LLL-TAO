@@ -29,7 +29,7 @@ namespace LLD::Config
     public:
 
         /** The maximum number of hashmap files per shard. **/
-        uint32_t MAX_HASHMAP_FILES;
+        uint32_t MAX_HASHMAPS;
 
 
         /** The maximum number of linear probes per key. **/
@@ -40,12 +40,20 @@ namespace LLD::Config
         uint32_t MAX_LINEAR_PROBES;
 
 
-        /** Maximum size a file can be in the keychain. **/
-        uint64_t MAX_HASHMAP_FILE_SIZE;
+        /** Total number of files for each hashmap. **/
+        uint64_t MAX_FILES_PER_HASHMAP;
 
 
         /** Maximum number of open file streams. **/
         uint16_t MAX_HASHMAP_FILE_STREAMS;
+
+
+        /** Total number of files for each hashmap. **/
+        uint64_t MAX_FILES_PER_INDEX;
+
+
+        /** Maximum number of open file streams. **/
+        uint16_t MAX_INDEX_FILE_STREAMS;
 
 
         /** The number of k-hashes for the primary bloom filter. **/
@@ -83,13 +91,15 @@ namespace LLD::Config
         /** Default constructor uses optimum values for bloom filters. **/
         Hashmap(const Base& base)
         : Base                     (base)
-        , MAX_HASHMAP_FILES        (256)
+        , MAX_HASHMAPS             (256)
         , MIN_LINEAR_PROBES        (3) //default of 3 linear probes before moving to next hashmap file
         , MAX_LINEAR_PROBES        (3) //default of 3 fibanacci probing cycles before exhausting bucket
-        , MAX_HASHMAP_FILE_SIZE    (1024 * 1024 * 512) //512 MB filesize by default
-        , MAX_HASHMAP_FILE_STREAMS (MAX_HASHMAP_FILES) //default of maximum hashmap files, otherwise you will degrade performance
+        , MAX_FILES_PER_HASHMAP    (4) //4 files per hashmap
+        , MAX_HASHMAP_FILE_STREAMS (MAX_HASHMAPS) //default of maximum hashmap files, otherwise you will degrade performance
+        , MAX_FILES_PER_INDEX      (4) //4 files per index
+        , MAX_INDEX_FILE_STREAMS   (MAX_FILES_PER_INDEX) //default of 1:1 for best performance
         , PRIMARY_BLOOM_HASHES     (7)
-        , PRIMARY_BLOOM_BITS       (1.44 * MAX_HASHMAP_FILES * PRIMARY_BLOOM_HASHES)
+        , PRIMARY_BLOOM_BITS       (1.44 * MAX_HASHMAPS * PRIMARY_BLOOM_HASHES)
         , SECONDARY_BLOOM_HASHES   (7)
         , SECONDARY_BLOOM_BITS     (13)
         , HASHMAP_TOTAL_BUCKETS    (77773)
@@ -104,11 +114,13 @@ namespace LLD::Config
         /** Copy Constructor. **/
         Hashmap(const Hashmap& map)
         : Base                     (map)
-        , MAX_HASHMAP_FILES        (map.MAX_HASHMAP_FILES)
+        , MAX_HASHMAPS             (map.MAX_HASHMAPS)
         , MIN_LINEAR_PROBES        (map.MIN_LINEAR_PROBES)
         , MAX_LINEAR_PROBES        (map.MAX_LINEAR_PROBES)
-        , MAX_HASHMAP_FILE_SIZE    (map.MAX_HASHMAP_FILE_SIZE)
+        , MAX_FILES_PER_HASHMAP    (map.MAX_FILES_PER_HASHMAP)
         , MAX_HASHMAP_FILE_STREAMS (map.MAX_HASHMAP_FILE_STREAMS)
+        , MAX_FILES_PER_INDEX      (map.MAX_FILES_PER_INDEX)
+        , MAX_INDEX_FILE_STREAMS   (map.MAX_INDEX_FILE_STREAMS)
         , PRIMARY_BLOOM_HASHES     (map.PRIMARY_BLOOM_HASHES)
         , PRIMARY_BLOOM_BITS       (map.PRIMARY_BLOOM_BITS)
         , SECONDARY_BLOOM_HASHES   (map.SECONDARY_BLOOM_HASHES)
@@ -125,11 +137,13 @@ namespace LLD::Config
         /** Move Constructor. **/
         Hashmap(Hashmap&& map)
         : Base                     (std::move(map))
-        , MAX_HASHMAP_FILES        (std::move(map.MAX_HASHMAP_FILES))
+        , MAX_HASHMAPS             (std::move(map.MAX_HASHMAPS))
         , MIN_LINEAR_PROBES        (std::move(map.MIN_LINEAR_PROBES))
         , MAX_LINEAR_PROBES        (std::move(map.MAX_LINEAR_PROBES))
-        , MAX_HASHMAP_FILE_SIZE    (std::move(map.MAX_HASHMAP_FILE_SIZE))
+        , MAX_FILES_PER_HASHMAP    (std::move(map.MAX_FILES_PER_HASHMAP))
         , MAX_HASHMAP_FILE_STREAMS (std::move(map.MAX_HASHMAP_FILE_STREAMS))
+        , MAX_FILES_PER_INDEX      (std::move(map.MAX_FILES_PER_INDEX))
+        , MAX_INDEX_FILE_STREAMS   (std::move(map.MAX_INDEX_FILE_STREAMS))
         , PRIMARY_BLOOM_HASHES     (std::move(map.PRIMARY_BLOOM_HASHES))
         , PRIMARY_BLOOM_BITS       (std::move(map.PRIMARY_BLOOM_BITS))
         , SECONDARY_BLOOM_HASHES   (std::move(map.SECONDARY_BLOOM_HASHES))
@@ -152,11 +166,13 @@ namespace LLD::Config
             FLAGS                    = map.FLAGS;
 
             /* Hashmap configuration. */
-            MAX_HASHMAP_FILES        = map.MAX_HASHMAP_FILES;
+            MAX_HASHMAPS             = map.MAX_HASHMAPS;
             MIN_LINEAR_PROBES        = map.MIN_LINEAR_PROBES;
             MAX_LINEAR_PROBES        = map.MAX_LINEAR_PROBES;
-            MAX_HASHMAP_FILE_SIZE    = map.MAX_HASHMAP_FILE_SIZE;
+            MAX_FILES_PER_HASHMAP    = map.MAX_FILES_PER_HASHMAP;
             MAX_HASHMAP_FILE_STREAMS = map.MAX_HASHMAP_FILE_STREAMS;
+            MAX_FILES_PER_INDEX      = map.MAX_FILES_PER_INDEX;
+            MAX_INDEX_FILE_STREAMS   = map.MAX_INDEX_FILE_STREAMS;
             PRIMARY_BLOOM_HASHES     = map.PRIMARY_BLOOM_HASHES;
             PRIMARY_BLOOM_BITS       = map.PRIMARY_BLOOM_BITS;
             SECONDARY_BLOOM_HASHES   = map.SECONDARY_BLOOM_HASHES;
@@ -176,11 +192,13 @@ namespace LLD::Config
             FLAGS                    = std::move(map.FLAGS);
 
             /* Hashmap configuration. */
-            MAX_HASHMAP_FILES        = std::move(map.MAX_HASHMAP_FILES);
+            MAX_HASHMAPS             = std::move(map.MAX_HASHMAPS);
             MIN_LINEAR_PROBES        = std::move(map.MIN_LINEAR_PROBES);
             MAX_LINEAR_PROBES        = std::move(map.MAX_LINEAR_PROBES);
-            MAX_HASHMAP_FILE_SIZE    = std::move(map.MAX_HASHMAP_FILE_SIZE);
+            MAX_FILES_PER_HASHMAP    = std::move(map.MAX_FILES_PER_HASHMAP);
             MAX_HASHMAP_FILE_STREAMS = std::move(map.MAX_HASHMAP_FILE_STREAMS);
+            MAX_FILES_PER_INDEX      = std::move(map.MAX_FILES_PER_INDEX);
+            MAX_INDEX_FILE_STREAMS   = std::move(map.MAX_INDEX_FILE_STREAMS);
             PRIMARY_BLOOM_HASHES     = std::move(map.PRIMARY_BLOOM_HASHES);
             PRIMARY_BLOOM_BITS       = std::move(map.PRIMARY_BLOOM_BITS);
             SECONDARY_BLOOM_HASHES   = std::move(map.SECONDARY_BLOOM_HASHES);

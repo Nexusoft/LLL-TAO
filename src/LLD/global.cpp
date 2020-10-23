@@ -55,7 +55,7 @@ namespace LLD
             /* Create the ContractDB keychain configuration object. */
             Config::Hashmap KEYCHAIN          = Config::Hashmap(BASE);
             KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = 77773;
-            KEYCHAIN.MAX_HASHMAP_FILES        = 256;
+            KEYCHAIN.MAX_HASHMAPS        = 256;
             KEYCHAIN.MAX_HASHMAP_FILE_STREAMS = 64;
 
             /* Create the ContractDB database instance. */
@@ -79,7 +79,7 @@ namespace LLD
             /* Create the RegisterDB keychain configuration object. */
             Config::Hashmap KEYCHAIN          = Config::Hashmap(BASE);
             KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = 77773;
-            KEYCHAIN.MAX_HASHMAP_FILES        = 256;
+            KEYCHAIN.MAX_HASHMAPS        = 256;
             KEYCHAIN.MAX_HASHMAP_FILE_STREAMS = 64;
             KEYCHAIN.MIN_LINEAR_PROBES        = 1;
 
@@ -103,7 +103,7 @@ namespace LLD
             /* Create the LedgerDB keychain configuration object. */
             Config::Hashmap KEYCHAIN          = Config::Hashmap(BASE);
             KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = config::fClient.load() ? 77773 : (256 * 256 * 64);
-            KEYCHAIN.MAX_HASHMAP_FILES        = 512;
+            KEYCHAIN.MAX_HASHMAPS        = 512;
             KEYCHAIN.MAX_HASHMAP_FILE_STREAMS = 128;
             KEYCHAIN.MIN_LINEAR_PROBES        = 1;
 
@@ -127,7 +127,7 @@ namespace LLD
             /* Create the LegacyDB keychain configuration object. */
             Config::Hashmap KEYCHAIN          = Config::Hashmap(BASE);
             KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = config::fClient.load() ? 77773 : (256 * 256 * 64);
-            KEYCHAIN.MAX_HASHMAP_FILES        = 128;
+            KEYCHAIN.MAX_HASHMAPS        = 128;
             KEYCHAIN.MAX_HASHMAP_FILE_STREAMS = 128;
             KEYCHAIN.MIN_LINEAR_PROBES        = 1;
 
@@ -151,7 +151,7 @@ namespace LLD
             /* Create the TrustDB keychain configuration object. */
             Config::Hashmap KEYCHAIN          = Config::Hashmap(BASE);
             KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = 77773;
-            KEYCHAIN.MAX_HASHMAP_FILES        = 4; //TODO: make sure this doesn't break anything :D
+            KEYCHAIN.MAX_HASHMAPS        = 4; //TODO: make sure this doesn't break anything :D
             KEYCHAIN.MAX_HASHMAP_FILE_STREAMS = 4;
             KEYCHAIN.MIN_LINEAR_PROBES        = 2;
 
@@ -175,7 +175,7 @@ namespace LLD
             /* Create the LocalDB keychain configuration object. */
             Config::Hashmap KEYCHAIN            = Config::Hashmap(BASE);
             KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = 77773;
-            KEYCHAIN.MAX_HASHMAP_FILES        = 4; //TODO: make sure this doesn't break anything :D
+            KEYCHAIN.MAX_HASHMAPS        = 4; //TODO: make sure this doesn't break anything :D
             KEYCHAIN.MAX_HASHMAP_FILE_STREAMS = 4;
             KEYCHAIN.MIN_LINEAR_PROBES        = 2;
 
@@ -200,7 +200,7 @@ namespace LLD
             /* Set the ClientDB database internal settings. */
             Config::Hashmap KEYCHAIN          = Config::Hashmap(BASE);
             KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = 77773;
-            KEYCHAIN.MAX_HASHMAP_FILES        = 8;
+            KEYCHAIN.MAX_HASHMAPS        = 8;
             KEYCHAIN.MAX_HASHMAP_FILE_STREAMS = 4;
             KEYCHAIN.MIN_LINEAR_PROBES        = 2;
 

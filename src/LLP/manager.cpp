@@ -55,7 +55,7 @@ namespace LLP
         /* Create the AddressDB keychain configuration object. */
         LLD::Config::Hashmap KEYCHAIN         = LLD::Config::Hashmap(BASE);
         KEYCHAIN.HASHMAP_TOTAL_BUCKETS        = 77773;
-        KEYCHAIN.MAX_HASHMAP_FILES            = 4; //TODO: make sure this doesn't break anything :D
+        KEYCHAIN.MAX_HASHMAPS            = 4; //TODO: make sure this doesn't break anything :D
         KEYCHAIN.MIN_LINEAR_PROBES            = 1;
 
         /* Create the database instance. */
