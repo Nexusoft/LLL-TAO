@@ -19,11 +19,12 @@ ________________________________________________________________________________
 #include <mutex>
 
 #include <LLD/hash/xxhash.h>
+#include <LLD/config/base.h>
 
 namespace LLD::Config
 {
     /** Structure to contain the configuration variables for a BinaryHashMap Keychain. **/
-    class Hashmap
+    class Hashmap : public Base
     {
     public:
 
@@ -75,9 +76,14 @@ namespace LLD::Config
         bool QUICK_INIT;
 
 
+        /** No empty constructor. **/
+        Hashmap() = delete;
+
+
         /** Default constructor uses optimum values for bloom filters. **/
-        Hashmap()
-        : MAX_HASHMAP_FILES        (256)
+        Hashmap(const Base& base)
+        : Base                     (base)
+        , MAX_HASHMAP_FILES        (256)
         , MIN_LINEAR_PROBES        (3) //default of 3 linear probes before moving to next hashmap file
         , MAX_LINEAR_PROBES        (3) //default of 3 fibanacci probing cycles before exhausting bucket
         , MAX_HASHMAP_FILE_SIZE    (1024 * 1024 * 512) //512 MB filesize by default
@@ -97,7 +103,8 @@ namespace LLD::Config
 
         /** Copy Constructor. **/
         Hashmap(const Hashmap& map)
-        : MAX_HASHMAP_FILES        (map.MAX_HASHMAP_FILES)
+        : Base                     (map)
+        , MAX_HASHMAP_FILES        (map.MAX_HASHMAP_FILES)
         , MIN_LINEAR_PROBES        (map.MIN_LINEAR_PROBES)
         , MAX_LINEAR_PROBES        (map.MAX_LINEAR_PROBES)
         , MAX_HASHMAP_FILE_SIZE    (map.MAX_HASHMAP_FILE_SIZE)
@@ -117,7 +124,8 @@ namespace LLD::Config
 
         /** Move Constructor. **/
         Hashmap(Hashmap&& map)
-        : MAX_HASHMAP_FILES        (std::move(map.MAX_HASHMAP_FILES))
+        : Base                     (std::move(map))
+        , MAX_HASHMAP_FILES        (std::move(map.MAX_HASHMAP_FILES))
         , MIN_LINEAR_PROBES        (std::move(map.MIN_LINEAR_PROBES))
         , MAX_LINEAR_PROBES        (std::move(map.MAX_LINEAR_PROBES))
         , MAX_HASHMAP_FILE_SIZE    (std::move(map.MAX_HASHMAP_FILE_SIZE))
@@ -138,6 +146,11 @@ namespace LLD::Config
         /** Copy Assignment **/
         Hashmap& operator=(const Hashmap& map)
         {
+            /* Database configuration. */
+            DIRECTORY                = map.DIRECTORY;
+            NAME                     = map.NAME;
+            FLAGS                    = map.FLAGS;
+
             /* Hashmap configuration. */
             MAX_HASHMAP_FILES        = map.MAX_HASHMAP_FILES;
             MIN_LINEAR_PROBES        = map.MIN_LINEAR_PROBES;
@@ -157,6 +170,11 @@ namespace LLD::Config
         /** Move Assignment **/
         Hashmap& operator=(Hashmap&& map)
         {
+            /* Database configuration. */
+            DIRECTORY                = std::move(map.DIRECTORY);
+            NAME                     = std::move(map.NAME);
+            FLAGS                    = std::move(map.FLAGS);
+
             /* Hashmap configuration. */
             MAX_HASHMAP_FILES        = std::move(map.MAX_HASHMAP_FILES);
             MIN_LINEAR_PROBES        = std::move(map.MIN_LINEAR_PROBES);

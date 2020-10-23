@@ -67,14 +67,13 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/locator.h>
 
 #include <LLD/config/hashmap.h>
-#include <LLD/config/db.h>
 #include <LLD/config/sector.h>
 
 class TestDB : public LLD::Templates::SectorDatabase<LLD::BinaryHashMap, LLD::BinaryLRU, LLD::Config::Hashmap>
 {
 public:
-    TestDB(const LLD::Config::DB& db, const LLD::Config::Sector& sector, const LLD::Config::Hashmap& keychain)
-    : SectorDatabase(db, sector, keychain)
+    TestDB(const LLD::Config::Sector& sector, const LLD::Config::Hashmap& keychain)
+    : SectorDatabase(sector, keychain)
     {
     }
 
@@ -155,17 +154,17 @@ int main(int argc, char** argv)
     }
 
     //build our base configuration
-    LLD::Config::DB BASE =
-        LLD::Config::DB("testdb", LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+    LLD::Config::Base BASE =
+        LLD::Config::Base("testdb", LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
 
     //build our sector configuration
-    LLD::Config::Sector SECTOR      = LLD::Config::Sector();
+    LLD::Config::Sector SECTOR      = LLD::Config::Sector(BASE);
     SECTOR.MAX_SECTOR_FILE_STREAMS  = 16;
     SECTOR.MAX_SECTOR_BUFFER_SIZE   = 1024 * 1024 * 4; //4 MB write buffer
     SECTOR.MAX_SECTOR_CACHE_SIZE    = 256; //1 MB of cache available
 
     //build our hashmap configuration
-    LLD::Config::Hashmap KEYCHAIN     = LLD::Config::Hashmap();
+    LLD::Config::Hashmap KEYCHAIN     = LLD::Config::Hashmap(BASE);
     KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = 8;
     KEYCHAIN.MAX_HASHMAP_FILES        = 2;
     KEYCHAIN.MIN_LINEAR_PROBES        = 1;
@@ -178,7 +177,7 @@ int main(int argc, char** argv)
     KEYCHAIN.QUICK_INIT               = false;
 
 
-    TestDB* bloom = new TestDB(BASE, SECTOR, KEYCHAIN);
+    TestDB* bloom = new TestDB(SECTOR, KEYCHAIN);
 
 
     for(int n = 0; n < config::GetArg("-tests", 1); ++n)

@@ -72,7 +72,7 @@ namespace LLD
     public:
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        ContractDB(const Config::DB& db, const Config::Sector& sector, const Config::Hashmap& keychain);
+        ContractDB(const Config::Sector& sector, const Config::Hashmap& keychain);
 
 
         /** Default Destructor **/

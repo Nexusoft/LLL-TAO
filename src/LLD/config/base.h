@@ -21,7 +21,7 @@ ________________________________________________________________________________
 namespace LLD::Config
 {
     /** Structure to contain the configuration variables for a generic database object. **/
-    class DB
+    class Base
     {
     public:
 
@@ -38,11 +38,11 @@ namespace LLD::Config
 
 
         /** No default constructor. **/
-        DB() = delete;
+        Base() = delete;
 
 
         /** Copy Constructor. **/
-        DB(const DB& map)
+        Base(const Base& map)
         : DIRECTORY               (map.DIRECTORY)
         , NAME                    (map.NAME)
         , FLAGS                   (map.FLAGS)
@@ -51,7 +51,7 @@ namespace LLD::Config
 
 
         /** Move Constructor. **/
-        DB(DB&& map)
+        Base(Base&& map)
         : DIRECTORY               (std::move(map.DIRECTORY))
         , NAME                    (std::move(map.NAME))
         , FLAGS                   (std::move(map.FLAGS))
@@ -60,7 +60,7 @@ namespace LLD::Config
 
 
         /** Copy Assignment **/
-        DB& operator=(const DB& map)
+        Base& operator=(const Base& map)
         {
             DIRECTORY               = map.DIRECTORY;
             NAME                    = map.NAME;
@@ -71,7 +71,7 @@ namespace LLD::Config
 
 
         /** Move Assignment **/
-        DB& operator=(DB&& map)
+        Base& operator=(Base&& map)
         {
             DIRECTORY               = std::move(map.DIRECTORY);
             NAME                    = std::move(map.NAME);
@@ -82,13 +82,13 @@ namespace LLD::Config
 
 
         /** Destructor. **/
-        ~DB()
+        ~Base()
         {
         }
 
 
         /** Required Constructor. **/
-        DB(const std::string& strName, const uint8_t nFlags)
+        Base(const std::string& strName, const uint8_t nFlags)
         : DIRECTORY               (config::GetDataDir() + strName + "/")
         , NAME                    (strName)
         , FLAGS                   (nFlags)

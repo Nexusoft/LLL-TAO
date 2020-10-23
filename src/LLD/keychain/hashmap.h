@@ -20,7 +20,6 @@ ________________________________________________________________________________
 #include <LLD/include/enum.h>
 
 #include <LLD/config/hashmap.h>
-#include <LLD/config/db.h>
 
 #include <cstdint>
 #include <string>
@@ -51,10 +50,6 @@ namespace LLD
         const Config::Hashmap CONFIG;
 
 
-        /** Database Configuration. **/
-        const LLD::Config::DB& DB;
-
-
         /** Internal pre-calculated index size. **/
         const uint16_t INDEX_FILTER_SIZE;
 
@@ -75,7 +70,7 @@ namespace LLD
 
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        BinaryHashMap(const LLD::Config::DB& dbIn, const Config::Hashmap& configIn);
+        BinaryHashMap(const Config::Hashmap& configIn);
 
 
         /** Copy Constructor **/

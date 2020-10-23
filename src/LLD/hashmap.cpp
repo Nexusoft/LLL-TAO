@@ -27,9 +27,8 @@ ________________________________________________________________________________
 namespace LLD
 {
     /* The Database Constructor. To determine file location and the Bytes per Record. */
-    BinaryHashMap::BinaryHashMap(const LLD::Config::DB& dbIn, const Config::Hashmap& configIn)
+    BinaryHashMap::BinaryHashMap(const Config::Hashmap& configIn)
     : CONFIG                (configIn)
-    , DB                    (dbIn)
     , INDEX_FILTER_SIZE     (primary_bloom_size() + secondary_bloom_size() + 2)
     , pFileStreams          (new TemplateLRU<uint16_t, std::fstream*>(CONFIG.MAX_HASHMAP_FILE_STREAMS))
     , pindex                (nullptr)
@@ -41,7 +40,6 @@ namespace LLD
     /* Copy Constructor */
     BinaryHashMap::BinaryHashMap(const BinaryHashMap& map)
     : CONFIG                 (map.CONFIG)
-    , DB                     (map.DB)
     , INDEX_FILTER_SIZE      (map.INDEX_FILTER_SIZE)
     , pFileStreams           (map.pFileStreams)
     , pindex                 (map.pindex)
@@ -53,7 +51,6 @@ namespace LLD
     /* Move Constructor */
     BinaryHashMap::BinaryHashMap(BinaryHashMap&& map)
     : CONFIG                 (std::move(map.CONFIG))
-    , DB                     (std::move(map.DB))
     , INDEX_FILTER_SIZE      (std::move(map.INDEX_FILTER_SIZE))
     , pFileStreams           (std::move(map.pFileStreams))
     , pindex                 (std::move(map.pindex))
@@ -104,11 +101,11 @@ namespace LLD
         uint32_t nTotalHashmaps = 0;
 
         /* Create directories if they don't exist yet. */
-        if(!filesystem::exists(DB.DIRECTORY + "keychain/") && filesystem::create_directories(DB.DIRECTORY + "keychain/"))
-            debug::log(0, FUNCTION, "Generated Path ", DB.DIRECTORY);
+        if(!filesystem::exists(CONFIG.DIRECTORY + "keychain/") && filesystem::create_directories(CONFIG.DIRECTORY + "keychain/"))
+            debug::log(0, FUNCTION, "Generated Path ", CONFIG.DIRECTORY);
 
         /* Build the hashmap indexes. */
-        std::string strIndex = debug::safe_printstr(DB.DIRECTORY, "keychain/_hashmap.index");
+        std::string strIndex = debug::safe_printstr(CONFIG.DIRECTORY, "keychain/_hashmap.index");
         if(!filesystem::exists(strIndex))
         {
             /* Generate empty space for new file. */
@@ -341,7 +338,7 @@ namespace LLD
             else
             {
                 /* Create a new disk hashmap object in linked list if it doesn't exist. */
-                std::string strHashmap = debug::safe_printstr(DB.DIRECTORY, "keychain/_hashmap.", std::setfill('0'), std::setw(5), nHashmap);
+                std::string strHashmap = debug::safe_printstr(CONFIG.DIRECTORY, "keychain/_hashmap.", std::setfill('0'), std::setw(5), nHashmap);
                 if(!filesystem::exists(strHashmap))
                 {
                     /* Blank vector to write empty space in new disk file. */
@@ -526,7 +523,7 @@ namespace LLD
             {
                 /* Set the new stream pointer. */
                 pstream = new std::fstream(
-                  debug::safe_printstr(DB.DIRECTORY, "/keychain/_hashmap.", std::setfill('0'), std::setw(5), nFile),
+                  debug::safe_printstr(CONFIG.DIRECTORY, "/keychain/_hashmap.", std::setfill('0'), std::setw(5), nFile),
                   std::ios::in | std::ios::out | std::ios::binary);
 
                 /* If file not found add to LRU cache. */
@@ -614,7 +611,7 @@ namespace LLD
         if(pstream == nullptr)
         {
             /* The absolute path to the file we are opening. */
-            std::string strHashmap = debug::safe_printstr(DB.DIRECTORY, "keychain/_hashmap.", std::setfill('0'), std::setw(5), nHashmap);
+            std::string strHashmap = debug::safe_printstr(CONFIG.DIRECTORY, "keychain/_hashmap.", std::setfill('0'), std::setw(5), nHashmap);
 
             /* Set the new stream pointer. */
             pstream = new std::fstream(strHashmap, std::ios::in | std::ios::out | std::ios::binary);

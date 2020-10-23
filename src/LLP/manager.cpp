@@ -43,23 +43,23 @@ namespace LLP
     , nPort(nPortIn)
     {
         /* Create the AddressDB configuration object. */
-        LLD::Config::DB Base =
-            LLD::Config::DB(std::string("_ADDR/") + std::to_string(nPort), LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+        LLD::Config::Base BASE =
+            LLD::Config::Base(std::string("_ADDR/") + std::to_string(nPort), LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
 
         /* Create the AddressDB sector configuration object. */
-        LLD::Config::Sector Sector             = LLD::Config::Sector();
-        Sector.MAX_SECTOR_FILE_STREAMS         = 4;
-        Sector.MAX_SECTOR_BUFFER_SIZE          = 0; //0 bytes, since we are in force mode this won't be used at all
-        Sector.MAX_SECTOR_CACHE_SIZE           = 1024; //1 KB of cache by default
+        LLD::Config::Sector SECTOR             = LLD::Config::Sector(BASE);
+        SECTOR.MAX_SECTOR_FILE_STREAMS         = 4;
+        SECTOR.MAX_SECTOR_BUFFER_SIZE          = 0; //0 bytes, since we are in force mode this won't be used at all
+        SECTOR.MAX_SECTOR_CACHE_SIZE           = 1024; //1 KB of cache by default
 
         /* Create the AddressDB keychain configuration object. */
-        LLD::Config::Hashmap Keychain         = LLD::Config::Hashmap();
-        Keychain.HASHMAP_TOTAL_BUCKETS        = 77773;
-        Keychain.MAX_HASHMAP_FILES            = 4; //TODO: make sure this doesn't break anything :D
-        Keychain.MIN_LINEAR_PROBES            = 1;
+        LLD::Config::Hashmap KEYCHAIN         = LLD::Config::Hashmap(BASE);
+        KEYCHAIN.HASHMAP_TOTAL_BUCKETS        = 77773;
+        KEYCHAIN.MAX_HASHMAP_FILES            = 4; //TODO: make sure this doesn't break anything :D
+        KEYCHAIN.MIN_LINEAR_PROBES            = 1;
 
         /* Create the database instance. */
-        pDatabase = new LLD::AddressDB(Base, Sector, Keychain);
+        pDatabase = new LLD::AddressDB(SECTOR, KEYCHAIN);
         if(!pDatabase)
             throw debug::exception(FUNCTION, "Failed to allocate memory for AddressManager");
     }

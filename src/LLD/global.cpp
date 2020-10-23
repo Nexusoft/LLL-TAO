@@ -13,7 +13,6 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
-#include <LLD/config/db.h>
 #include <LLD/config/sector.h>
 #include <LLD/config/hashmap.h>
 
@@ -44,23 +43,23 @@ namespace LLD
         /* _CONTRACT database instance. */
         {
             /* Create the ContractDB configuration object. */
-            Config::DB Base =
-                Config::DB("_CONTRACT", FLAGS::CREATE | FLAGS::FORCE);
+            Config::Base BASE =
+                Config::Base("_CONTRACT", FLAGS::CREATE | FLAGS::FORCE);
 
             /* Create the ContractDB sector configuration object. */
-            Config::Sector Sector             = Config::Sector();
-            Sector.MAX_SECTOR_FILE_STREAMS    = 16;
-            Sector.MAX_SECTOR_BUFFER_SIZE     = 0; //0 bytes, since we are in force mode this won't be used at all
-            Sector.MAX_SECTOR_CACHE_SIZE      = 1024 * 1024; //1 MB of cache available
+            Config::Sector SECTOR             = Config::Sector(BASE);
+            SECTOR.MAX_SECTOR_FILE_STREAMS    = 16;
+            SECTOR.MAX_SECTOR_BUFFER_SIZE     = 0; //0 bytes, since we are in force mode this won't be used at all
+            SECTOR.MAX_SECTOR_CACHE_SIZE      = 1024 * 1024; //1 MB of cache available
 
             /* Create the ContractDB keychain configuration object. */
-            Config::Hashmap Keychain          = Config::Hashmap();
-            Keychain.HASHMAP_TOTAL_BUCKETS    = 77773;
-            Keychain.MAX_HASHMAP_FILES        = 256;
-            Keychain.MAX_HASHMAP_FILE_STREAMS = 64;
+            Config::Hashmap KEYCHAIN          = Config::Hashmap(BASE);
+            KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = 77773;
+            KEYCHAIN.MAX_HASHMAP_FILES        = 256;
+            KEYCHAIN.MAX_HASHMAP_FILE_STREAMS = 64;
 
             /* Create the ContractDB database instance. */
-            Contract = new ContractDB(Base, Sector, Keychain);
+            Contract = new ContractDB(SECTOR, KEYCHAIN);
         }
 
 
@@ -68,120 +67,120 @@ namespace LLD
         /* _REGISTER database instance. */
         {
             /* Create the RegisterDB configuration object. */
-            Config::DB Base =
-                Config::DB("_REGISTER", FLAGS::CREATE | FLAGS::FORCE);
+            Config::Base BASE =
+                Config::Base("_REGISTER", FLAGS::CREATE | FLAGS::FORCE);
 
             /* Create the RegisterDB sector configuration object. */
-            Config::Sector Sector             = Config::Sector();
-            Sector.MAX_SECTOR_FILE_STREAMS    = 16;
-            Sector.MAX_SECTOR_BUFFER_SIZE     = 0; //0 bytes, since we are in force mode this won't be used at all
-            Sector.MAX_SECTOR_CACHE_SIZE      = config::GetArg("-registercache", 2) * 1024 * 1024; //2 MB of cache by default
+            Config::Sector SECTOR             = Config::Sector(BASE);
+            SECTOR.MAX_SECTOR_FILE_STREAMS    = 16;
+            SECTOR.MAX_SECTOR_BUFFER_SIZE     = 0; //0 bytes, since we are in force mode this won't be used at all
+            SECTOR.MAX_SECTOR_CACHE_SIZE      = config::GetArg("-registercache", 2) * 1024 * 1024; //2 MB of cache by default
 
             /* Create the RegisterDB keychain configuration object. */
-            Config::Hashmap Keychain          = Config::Hashmap();
-            Keychain.HASHMAP_TOTAL_BUCKETS    = 77773;
-            Keychain.MAX_HASHMAP_FILES        = 256;
-            Keychain.MAX_HASHMAP_FILE_STREAMS = 64;
-            Keychain.MIN_LINEAR_PROBES        = 1;
+            Config::Hashmap KEYCHAIN          = Config::Hashmap(BASE);
+            KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = 77773;
+            KEYCHAIN.MAX_HASHMAP_FILES        = 256;
+            KEYCHAIN.MAX_HASHMAP_FILE_STREAMS = 64;
+            KEYCHAIN.MIN_LINEAR_PROBES        = 1;
 
             /* Create the RegisterDB database instance. */
-            Register = new RegisterDB(Base, Sector, Keychain);
+            Register = new RegisterDB(SECTOR, KEYCHAIN);
         }
 
 
         /* _LEDGER database instance. */
         {
             /* Create the LedgerDB configuration object. */
-            Config::DB Base =
-                Config::DB("_LEDGER", FLAGS::CREATE | FLAGS::FORCE);
+            Config::Base BASE =
+                Config::Base("_LEDGER", FLAGS::CREATE | FLAGS::FORCE);
 
             /* Create the LedgerDB sector configuration object. */
-            Config::Sector Sector             = Config::Sector();
-            Sector.MAX_SECTOR_FILE_STREAMS    = 16;
-            Sector.MAX_SECTOR_BUFFER_SIZE     = 0; //0 bytes, since we are in force mode this won't be used at all
-            Sector.MAX_SECTOR_CACHE_SIZE      = config::GetArg("-ledgercache", 2) * 1024 * 1024; //2 MB of cache by default
+            Config::Sector SECTOR             = Config::Sector(BASE);
+            SECTOR.MAX_SECTOR_FILE_STREAMS    = 16;
+            SECTOR.MAX_SECTOR_BUFFER_SIZE     = 0; //0 bytes, since we are in force mode this won't be used at all
+            SECTOR.MAX_SECTOR_CACHE_SIZE      = config::GetArg("-ledgercache", 2) * 1024 * 1024; //2 MB of cache by default
 
             /* Create the LedgerDB keychain configuration object. */
-            Config::Hashmap Keychain          = Config::Hashmap();
-            Keychain.HASHMAP_TOTAL_BUCKETS    = config::fClient.load() ? 77773 : (256 * 256 * 64);
-            Keychain.MAX_HASHMAP_FILES        = 512;
-            Keychain.MAX_HASHMAP_FILE_STREAMS = 128;
-            Keychain.MIN_LINEAR_PROBES        = 1;
+            Config::Hashmap KEYCHAIN          = Config::Hashmap(BASE);
+            KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = config::fClient.load() ? 77773 : (256 * 256 * 64);
+            KEYCHAIN.MAX_HASHMAP_FILES        = 512;
+            KEYCHAIN.MAX_HASHMAP_FILE_STREAMS = 128;
+            KEYCHAIN.MIN_LINEAR_PROBES        = 1;
 
             /* Create the LedgerDB database instance. */
-            Ledger = new LedgerDB(Base, Sector, Keychain);
+            Ledger = new LedgerDB(SECTOR, KEYCHAIN);
         }
 
 
         /* _LEGACY database instance. */
         {
             /* Create the LegacyDB configuration object. */
-            Config::DB Base =
-                Config::DB("_LEGACY", FLAGS::CREATE | FLAGS::FORCE);
+            Config::Base BASE =
+                Config::Base("_LEGACY", FLAGS::CREATE | FLAGS::FORCE);
 
             /* Create the LegacyDB sector configuration object. */
-            Config::Sector Sector             = Config::Sector();
-            Sector.MAX_SECTOR_FILE_STREAMS    = 16;
-            Sector.MAX_SECTOR_BUFFER_SIZE     = 0; //0 bytes, since we are in force mode this won't be used at all
-            Sector.MAX_SECTOR_CACHE_SIZE      = config::GetArg("-legacycache", 1) * 1024 * 1024; //1 MB of cache by default
+            Config::Sector SECTOR             = Config::Sector(BASE);
+            SECTOR.MAX_SECTOR_FILE_STREAMS    = 16;
+            SECTOR.MAX_SECTOR_BUFFER_SIZE     = 0; //0 bytes, since we are in force mode this won't be used at all
+            SECTOR.MAX_SECTOR_CACHE_SIZE      = config::GetArg("-legacycache", 1) * 1024 * 1024; //1 MB of cache by default
 
             /* Create the LegacyDB keychain configuration object. */
-            Config::Hashmap Keychain          = Config::Hashmap();
-            Keychain.HASHMAP_TOTAL_BUCKETS    = config::fClient.load() ? 77773 : (256 * 256 * 64);
-            Keychain.MAX_HASHMAP_FILES        = 128;
-            Keychain.MAX_HASHMAP_FILE_STREAMS = 128;
-            Keychain.MIN_LINEAR_PROBES        = 1;
+            Config::Hashmap KEYCHAIN          = Config::Hashmap(BASE);
+            KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = config::fClient.load() ? 77773 : (256 * 256 * 64);
+            KEYCHAIN.MAX_HASHMAP_FILES        = 128;
+            KEYCHAIN.MAX_HASHMAP_FILE_STREAMS = 128;
+            KEYCHAIN.MIN_LINEAR_PROBES        = 1;
 
             /* Create the LegacyDB database instance. */
-            Legacy = new LegacyDB(Base, Sector, Keychain);
+            Legacy = new LegacyDB(SECTOR, KEYCHAIN);
         }
 
 
         /* _TRUST database instance. */
         {
             /* Create the TrustDB configuration object. */
-            Config::DB Base =
-                Config::DB("_TRUST", FLAGS::CREATE | FLAGS::FORCE);
+            Config::Base BASE =
+                Config::Base("_TRUST", FLAGS::CREATE | FLAGS::FORCE);
 
             /* Create the TrustDB sector configuration object. */
-            Config::Sector Sector             = Config::Sector();
-            Sector.MAX_SECTOR_FILE_STREAMS    = 4;
-            Sector.MAX_SECTOR_BUFFER_SIZE     = 0; //0 bytes, since we are in force mode this won't be used at all
-            Sector.MAX_SECTOR_CACHE_SIZE      = 1024 * 1024; //1 MB of cache by default
+            Config::Sector SECTOR             = Config::Sector(BASE);
+            SECTOR.MAX_SECTOR_FILE_STREAMS    = 4;
+            SECTOR.MAX_SECTOR_BUFFER_SIZE     = 0; //0 bytes, since we are in force mode this won't be used at all
+            SECTOR.MAX_SECTOR_CACHE_SIZE      = 1024 * 1024; //1 MB of cache by default
 
             /* Create the TrustDB keychain configuration object. */
-            Config::Hashmap Keychain          = Config::Hashmap();
-            Keychain.HASHMAP_TOTAL_BUCKETS    = 77773;
-            Keychain.MAX_HASHMAP_FILES        = 4; //TODO: make sure this doesn't break anything :D
-            Keychain.MAX_HASHMAP_FILE_STREAMS = 4;
-            Keychain.MIN_LINEAR_PROBES        = 2;
+            Config::Hashmap KEYCHAIN          = Config::Hashmap(BASE);
+            KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = 77773;
+            KEYCHAIN.MAX_HASHMAP_FILES        = 4; //TODO: make sure this doesn't break anything :D
+            KEYCHAIN.MAX_HASHMAP_FILE_STREAMS = 4;
+            KEYCHAIN.MIN_LINEAR_PROBES        = 2;
 
             /* Create the TrustDB database instance. */
-            Trust = new TrustDB(Base, Sector, Keychain);
+            Trust = new TrustDB(SECTOR, KEYCHAIN);
         }
 
 
         /* _LOCAL database instance. */
         {
             /* Create the LocalDB configuration object. */
-            Config::DB Base =
-                Config::DB("_LOCAL", FLAGS::CREATE | FLAGS::FORCE);
+            Config::Base BASE =
+                Config::Base("_LOCAL", FLAGS::CREATE | FLAGS::FORCE);
 
             /* Create the LocalDB sector configuration object. */
-            Config::Sector Sector             = Config::Sector();
-            Sector.MAX_SECTOR_FILE_STREAMS    = 4;
-            Sector.MAX_SECTOR_BUFFER_SIZE     = 0; //0 bytes, since we are in force mode this won't be used at all
-            Sector.MAX_SECTOR_CACHE_SIZE      = 1024 * 1024; //1 MB of cache by default
+            Config::Sector SECTOR             = Config::Sector(BASE);
+            SECTOR.MAX_SECTOR_FILE_STREAMS    = 4;
+            SECTOR.MAX_SECTOR_BUFFER_SIZE     = 0; //0 bytes, since we are in force mode this won't be used at all
+            SECTOR.MAX_SECTOR_CACHE_SIZE      = 1024 * 1024; //1 MB of cache by default
 
             /* Create the LocalDB keychain configuration object. */
-            Config::Hashmap Keychain            = Config::Hashmap();
-            Keychain.HASHMAP_TOTAL_BUCKETS    = 77773;
-            Keychain.MAX_HASHMAP_FILES        = 4; //TODO: make sure this doesn't break anything :D
-            Keychain.MAX_HASHMAP_FILE_STREAMS = 4;
-            Keychain.MIN_LINEAR_PROBES        = 2;
+            Config::Hashmap KEYCHAIN            = Config::Hashmap(BASE);
+            KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = 77773;
+            KEYCHAIN.MAX_HASHMAP_FILES        = 4; //TODO: make sure this doesn't break anything :D
+            KEYCHAIN.MAX_HASHMAP_FILE_STREAMS = 4;
+            KEYCHAIN.MIN_LINEAR_PROBES        = 2;
 
             /* Create the LocalDB database instance. */
-            Local = new LocalDB(Base, Sector, Keychain);
+            Local = new LocalDB(SECTOR, KEYCHAIN);
         }
 
 
@@ -189,24 +188,24 @@ namespace LLD
         if(config::fClient.load())
         {
             /* Create the ClientDB configuration object. */
-            Config::DB Base =
-                Config::DB("_CLIENT", FLAGS::CREATE | FLAGS::FORCE);
+            Config::Base BASE =
+                Config::Base("_CLIENT", FLAGS::CREATE | FLAGS::FORCE);
 
             /* Create the ClientDB sector configuration object. */
-            Config::Sector Sector             = Config::Sector();
-            Sector.MAX_SECTOR_FILE_STREAMS    = 4;
-            Sector.MAX_SECTOR_BUFFER_SIZE     = 0; //0 bytes, since we are in force mode this won't be used at all
-            Sector.MAX_SECTOR_CACHE_SIZE      = 1024 * 1024; //1 MB of cache by default
+            Config::Sector SECTOR             = Config::Sector(BASE);
+            SECTOR.MAX_SECTOR_FILE_STREAMS    = 4;
+            SECTOR.MAX_SECTOR_BUFFER_SIZE     = 0; //0 bytes, since we are in force mode this won't be used at all
+            SECTOR.MAX_SECTOR_CACHE_SIZE      = 1024 * 1024; //1 MB of cache by default
 
             /* Set the ClientDB database internal settings. */
-            Config::Hashmap Keychain          = Config::Hashmap();
-            Keychain.HASHMAP_TOTAL_BUCKETS    = 77773;
-            Keychain.MAX_HASHMAP_FILES        = 8;
-            Keychain.MAX_HASHMAP_FILE_STREAMS = 4;
-            Keychain.MIN_LINEAR_PROBES        = 2;
+            Config::Hashmap KEYCHAIN          = Config::Hashmap(BASE);
+            KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = 77773;
+            KEYCHAIN.MAX_HASHMAP_FILES        = 8;
+            KEYCHAIN.MAX_HASHMAP_FILE_STREAMS = 4;
+            KEYCHAIN.MIN_LINEAR_PROBES        = 2;
 
             /* Create new client database if enabled. */
-            Client    = new ClientDB(Base, Sector, Keychain);
+            Client    = new ClientDB(SECTOR, KEYCHAIN);
         }
 
 

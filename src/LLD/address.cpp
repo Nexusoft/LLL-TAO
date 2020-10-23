@@ -17,8 +17,8 @@ namespace LLD
 {
 
     /** The Database Constructor. To determine file location and the Bytes per Record. **/
-    AddressDB::AddressDB(const Config::DB& db, const Config::Sector& sector, const Config::Hashmap& keychain)
-    : SectorDatabase(db, sector, keychain)
+    AddressDB::AddressDB(const Config::Sector& sector, const Config::Hashmap& keychain)
+    : SectorDatabase(sector, keychain)
     {
     }
 
