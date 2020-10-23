@@ -128,18 +128,6 @@ namespace LLD
         bool Put(const SectorKey &cKey) const;
 
 
-        /** Restore
-         *
-         *  Restore an erased key from keychain.
-         *
-         *  @param[in] vKey the key to restore.
-         *
-         *  @return True if the key was restored.
-         *
-         **/
-        bool Restore(const std::vector<uint8_t>& vKey);
-
-
         /** Erase
          *
          *  Simple Erase for now, not efficient in Data Usage of HD but quick

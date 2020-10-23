@@ -536,10 +536,7 @@ namespace LLD::Templates
         {
             /* Wait for buffer to empty before shutting down. */
             if((fDestruct.load()) && nBufferBytes.load() == 0)
-            {
-                pSectorKeys->Flush();
                 return;
-            }
 
             /* Check for data to be written. */
             runtime::timer timer;
@@ -553,9 +550,6 @@ namespace LLD::Templates
                     return fDestruct.load() || nBufferBytes.load() > 0 || timer.ElapsedMilliseconds() >= 100;
                 }
             );
-
-            /* Flush the keychain. */
-            pSectorKeys->Flush();
 
             /* Check for buffered bytes. */
             if(nBufferBytes.load() == 0)
@@ -760,9 +754,6 @@ namespace LLD::Templates
             if(!pSectorKeys->Put(cKey))
                 return debug::error(FUNCTION, "failed to write indexing entry");
         }
-
-        /* Flush the keychains. */
-        pSectorKeys->Flush();
 
         /* Cleanup the transaction object. */
         delete pTransaction;

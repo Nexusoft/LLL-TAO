@@ -166,7 +166,7 @@ int main(int argc, char** argv)
     //build our hashmap configuration
     LLD::Config::Hashmap KEYCHAIN     = LLD::Config::Hashmap(BASE);
     KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = 8;
-    KEYCHAIN.MAX_HASHMAPS        = 2;
+    KEYCHAIN.MAX_HASHMAPS             = 2;
     KEYCHAIN.MIN_LINEAR_PROBES        = 1;
     KEYCHAIN.MAX_LINEAR_PROBES        = 64;
     KEYCHAIN.MAX_HASHMAP_FILE_STREAMS = 64;

@@ -55,7 +55,7 @@ namespace LLD
 
 
         /** Keychain stream object. **/
-        TemplateLRU<uint16_t, std::fstream*>* pFileStreams;
+        TemplateLRU<std::pair<uint16_t, uint16_t>, std::fstream*>* pFileStreams;
 
 
         /** Keychain index stream. **/
@@ -126,30 +126,9 @@ namespace LLD
         bool Put(const SectorKey& key);
 
 
-        /** Flush
-         *
-         *  Flush all buffers to disk if using ACID transaction.
-         *
-         **/
-        void Flush();
-
-
-        /** Restore
-         *
-         *  Restore an erased key from keychain.
-         *
-         *  @param[in] vKey the key to restore.
-         *
-         *  @return True if the key was restored.
-         *
-         **/
-        bool Restore(const std::vector<uint8_t>& vKey);
-
-
         /** Erase
          *
          *  Erase a key from the disk hashmaps.
-         *  TODO: This should be optimized further.
          *
          *  @param[in] vKey the key to erase.
          *
@@ -189,11 +168,12 @@ namespace LLD
          *  Find a file stream from the local LRU cache.
          *
          *  @param[in] nHashmap The file identifier we are searching for.
+         *  @param[in] nBucket The bucket that we are getting a stream for.
          *
          *  @return the file stream from the cache.
          *
          **/
-        std::fstream* get_file_stream(const uint32_t nHashmap);
+        std::fstream* get_file_stream(const uint32_t nHashmap, const uint32_t nBucket);
 
 
         /** flush_index
