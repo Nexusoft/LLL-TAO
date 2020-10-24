@@ -23,6 +23,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/sessionmanager.h>
+#include <TAO/API/include/utils.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
@@ -120,6 +121,7 @@ namespace LLP
     , fInitialized(false)
     , nSubscriptions(0)
     , nNotifications(0)
+    , vNotifications()
     , nLastPing(0)
     , nLastSamples(0)
     , mapLatencyTracker()
@@ -148,6 +150,7 @@ namespace LLP
     , fInitialized(false)
     , nSubscriptions(0)
     , nNotifications(0)
+    , vNotifications()
     , nLastPing(0)
     , nLastSamples(0)
     , mapLatencyTracker()
@@ -176,6 +179,7 @@ namespace LLP
     , fInitialized(false)
     , nSubscriptions(0)
     , nNotifications(0)
+    , vNotifications()
     , nLastPing(0)
     , nLastSamples(0)
     , mapLatencyTracker()
@@ -676,11 +680,48 @@ namespace LLP
                 uint256_t hashGenesis;
                 ssPacket >> hashGenesis;
 
-                /* Subscribe to notifications. */
+                debug::log(0, NODE, "RESPONSE::AUTHORIZED: ", hashGenesis.SubString(), " AUTHORIZATION ACCEPTED");
+
                 if(config::fClient.load())
+                {
+                    /* Subscribe to sig chain transactions */
                     Subscribe(SUBSCRIPTION::SIGCHAIN);
 
-                debug::log(0, NODE, "RESPONSE::AUTHORIZED: ", hashGenesis.SubString(), " AUTHORIZATION ACCEPTED");
+                    /* Subscribe to notifications for this genesis */
+                    SubscribeNotification(hashGenesis);
+
+                    /* Subscribe to notifications for any tokens we own, or any tokens that we have accounts for */
+                    
+                    /* Get the list of accounts and tokens owned by this sig chain */
+                    std::vector<TAO::Register::Address> vAddresses;
+                    TAO::API::ListAccounts(hashGenesis, vAddresses, true, false);
+
+                    /* Now iterate through and find all tokens and token accounts */
+                    for(const auto& hashAddress : vAddresses)
+                    {
+                        /* For tokens just subscribe to it */
+                        if(hashAddress.IsToken())
+                            SubscribeNotification(hashAddress);
+                        else if(hashAddress.IsAccount())
+                        {
+                           /* Get the token account object. */
+                            TAO::Register::Object account;
+                            if(!LLD::Register->ReadState(hashAddress, account, TAO::Ledger::FLAGS::LOOKUP))
+                                return debug::drop(NODE, "Token/account not found");
+
+                            /* Parse the object register. */
+                            if(!account.Parse())
+                                return debug::drop(NODE, "Object failed to parse"); 
+
+                            /* Get the token */
+                            uint256_t hashToken = account.get<uint256_t>("token");
+
+                            /* If it is not a NXS account, and we have not already subscribed to it, subscribe to it */
+                            if(hashToken != 0 && std::find(vNotifications.begin(), vNotifications.end(), hashAddress) == vNotifications.end())
+                                SubscribeNotification(hashAddress);
+                        }
+                    }
+                }
 
                 break;
             }
@@ -1003,6 +1044,68 @@ namespace LLP
 
                                 /* Debug output. */
                                 debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED::SIGCHAIN: ", std::bitset<16>(nSubscriptions));
+                            }
+
+                            break;
+                        }
+
+                        /* Subscribe to getting event transcations. */
+                        case TYPES::NOTIFICATION:
+                        {
+                            /* Check for available protocol version. */
+                            if(nProtocolVersion < MIN_TRITIUM_VERSION)
+                                return true;
+
+                            /* Check that node is logged in. */
+                            if(!fAuthorized || hashGenesis == 0)
+                                return debug::drop(NODE, "ACTION::SUBSCRIBE::NOTIFICATION: Access Denied");
+
+                            /* Deserialize the address for the event subscription */
+                            uint256_t hashAddress;
+                            ssPacket >> hashAddress;
+
+                            /* Subscribe. */
+                            if(INCOMING.MESSAGE == ACTION::SUBSCRIBE)
+                            {
+                                /* Check for client mode since this method should never be called except by a client. */
+                                if(config::fClient.load())
+                                    return debug::drop(NODE, "ACTION::SUBSCRIBE::NOTIFICATION disabled in -client mode");
+
+                                /* Set the best chain flag. */
+                                nNotifications |= SUBSCRIPTION::NOTIFICATION;
+
+                                /* Check that peer hasn't already subscribed to too many addresses, for overflow protection */
+                                if(vNotifications.size() == 10000)
+                                    return debug::drop(NODE, "ACTION::SUBSCRIBE::NOTIFICATION exceeded max subscriptions");
+
+                                /* Add the address to the notifications vector for this peer */
+                                vNotifications.push_back(hashAddress);
+
+                                /* Debug output. */
+                                debug::log(3, NODE, "ACTION::SUBSCRIBE::NOTIFICATION: ", hashAddress.ToString());
+                            }
+                            else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
+                            {
+                                /* Check for client mode since this method should never be called except by a client. */
+                                if(config::fClient.load())
+                                    return debug::drop(NODE, "ACTION::UNSUBSCRIBE::NOTIFICATION disabled in -client mode");
+
+                                /* Unset the bestchain flag. */
+                                nNotifications &= ~SUBSCRIPTION::NOTIFICATION;
+
+                                /* Remove the address from the notifications vector for this peer */
+                                vNotifications.erase(std::find(vNotifications.begin(), vNotifications.end(), hashAddress));
+
+                                /* Debug output. */
+                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE::NOTIFICATION: " , hashAddress.ToString());
+                            }
+                            else
+                            {
+                                /* Unset the bestchain flag. */
+                                nSubscriptions &= ~SUBSCRIPTION::NOTIFICATION;
+
+                                /* Debug output. */
+                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED::NOTIFICATION: ", hashAddress.ToString());
                             }
 
                             break;
@@ -1518,7 +1621,7 @@ namespace LLP
                             ssPacket >> hashSigchain;
 
                             /* Get the last event */
-                            debug::log(0, "ACTION::LIST: ", fLegacy ? "LEGACY " : "", "NOTIFICATION for ", hashSigchain.SubString());
+                            debug::log(1, "ACTION::LIST: ", fLegacy ? "LEGACY " : "", "NOTIFICATION for ", hashSigchain.SubString());
 
                             /* Check for legacy. */
                             uint32_t nSequence = 0;
@@ -2169,6 +2272,7 @@ namespace LLP
                         /* Standard type for a block. */
                         case TYPES::TRANSACTION:
                         case TYPES::SIGCHAIN:
+                        case TYPES::NOTIFICATION:
                         {
                             /* Check for active subscriptions. */
                             if(nType == TYPES::TRANSACTION && !(nSubscriptions & SUBSCRIPTION::TRANSACTION))
@@ -2193,6 +2297,38 @@ namespace LLP
                                 uint256_t hashLogin = TAO::API::users->GetGenesis(0);
                                 if(hashSigchain != hashLogin)
                                     return debug::drop(NODE, "ACTION::NOTIFY::SIGCHAIN: unexpected genesis-id ", hashLogin.SubString());
+                            }
+                            /* Notification validation */
+                            else if(nType == TYPES::NOTIFICATION)
+                            {
+                                /* Check for available protocol version. */
+                                if(nProtocolVersion < MIN_TRITIUM_VERSION)
+                                    return true;
+
+                                /* Check for subscription. */
+                                if(!(nSubscriptions & SUBSCRIPTION::NOTIFICATION))
+                                    return debug::drop(NODE, "ACTION::NOTIFY::NOTIFICATION: unsolicited notification");
+
+                                /* Get the  address . */
+                                uint256_t hashAddress = 0;
+                                ssPacket >> hashAddress;
+
+                                /* Get the genesis hash of the logged in user */
+                                uint256_t hashLogin = TAO::API::users->GetGenesis(0);
+
+                                /* If the address is a genesis hash, then make sure that it is for the currently logged in user */
+                                if(hashAddress.GetType() == TAO::Ledger::GenesisType())
+                                {
+                                    /* Check for expected genesis. */
+                                    if(hashAddress != hashLogin)
+                                        return debug::drop(NODE, "ACTION::NOTIFY::NOTIFICATION: unexpected genesis-id ", hashAddress.SubString());
+                                }
+                                /* Otherwise check that it is for a register that the logged in user has subscribed to */
+                                else if(std::find(vNotifications.begin(), vNotifications.end(), hashAddress) == vNotifications.end())
+                                {
+                                    return debug::drop(NODE, "ACTION::NOTIFY::NOTIFICATION: unexpected register address ", hashAddress.SubString());
+                                }
+
                             }
 
                             /* Get the index of transaction. */
@@ -3031,7 +3167,8 @@ namespace LLP
                                 LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
                                 TAO::Ledger::mempool.Remove(hashTx);
 
-                                tx.print();
+                                if(config::nVerbose >= 3)
+                                    tx.print();
 
                                 debug::log(0, hashTx.SubString(), " ACCEPTED");
                             }
@@ -3064,7 +3201,8 @@ namespace LLP
                                     if(!tx.CheckMerkleBranch(block.hashMerkleRoot))
                                         return debug::error(FUNCTION, "merkle transaction has invalid path");
 
-                                    tx.print();
+                                    if(config::nVerbose >= 3)
+                                        tx.print();
 
                                     /* Commit transaction to disk. */
                                     LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK);
@@ -3699,6 +3837,52 @@ namespace LLP
         WritePacket(NewMessage((fSubscribe ? ACTION::SUBSCRIBE : ACTION::UNSUBSCRIBE), ssMessage));
     }
 
+
+    /* Unsubscribe from another node for notifications. */
+    void TritiumNode::UnsubscribeNotification(const uint256_t& hashAddress)
+    {
+        /* Set the timestamp that we unsubscribed at. */
+        nUnsubscribed = runtime::timestamp();
+
+        /* Unsubscribe over the network. */
+        SubscribeNotification(hashAddress, false);
+    }
+
+
+    /* Subscribe to another node for notifications. */
+    void TritiumNode::SubscribeNotification(const uint256_t& hashAddress, bool fSubscribe)
+    {
+        /* Build subscription message. */
+        DataStream ssMessage(SER_NETWORK, MIN_PROTO_VERSION);
+
+        /* Build the message. */
+        ssMessage << uint8_t(TYPES::NOTIFICATION) << hashAddress;
+
+        /* Check for subscription. */
+        if(fSubscribe)
+        {
+            /* Set the flag. */
+            nSubscriptions |=  SUBSCRIPTION::NOTIFICATION;
+
+            /* Store the address subscribed to so that we can validate when the peer sends us notifications */
+            vNotifications.push_back(hashAddress);
+
+            /* Debug output. */
+            debug::log(3, NODE, "SUBSCRIBING TO NOTIFICATION ", std::bitset<16>(nSubscriptions));
+        }
+        else
+        {
+            /* Remove the address from the notifications vector for this user */
+            vNotifications.erase(std::find(vNotifications.begin(), vNotifications.end(), hashAddress));
+
+            /* Debug output. */
+            debug::log(3, NODE, "UNSUBSCRIBING FROM NOTIFICATION ", std::bitset<16>(nSubscriptions));
+        }
+
+        /* Write the subscription packet. */
+        WritePacket(NewMessage((fSubscribe ? ACTION::SUBSCRIBE : ACTION::UNSUBSCRIBE), ssMessage));
+    }
+
     /* Builds an Auth message for this node.*/
     DataStream TritiumNode::GetAuth(bool fAuth)
     {
@@ -3706,7 +3890,7 @@ namespace LLP
         DataStream ssMessage(SER_NETWORK, MIN_PROTO_VERSION);
 
         /* Only send auth messages if the auth key has been cached */
-        if(TAO::API::users->LoggedIn() && !TAO::API::GetSessionManager().Get(0, false).GetNetworkKey() != 0)
+        if(TAO::API::users->LoggedIn() && TAO::API::GetSessionManager().Get(0, false).GetNetworkKey() != 0)
         {
             /* Get the Session */
             TAO::API::Session& session = TAO::API::GetSessionManager().Get(0, false);
@@ -4000,6 +4184,38 @@ namespace LLP
                                 /* Write transaction to stream. */
                                 ssRelay << uint8_t(TYPES::SIGCHAIN);
                                 ssRelay << hashSigchain;
+                                ssRelay << hashTx;
+                            }
+
+                            break;
+                        }
+
+
+                        /* Check for notification subscription. */
+                        case TYPES::NOTIFICATION:
+                        {
+                            /* Get the sig chain / register that the transaction relates to. */
+                            uint256_t hashAddress = 0;
+                            ssData >> hashAddress;
+
+                            /* Get the txid. */
+                            uint512_t hashTx = 0;
+                            ssData >> hashTx;
+
+                            /* Check subscription. */
+                            if(nNotifications & SUBSCRIPTION::NOTIFICATION)
+                            {
+                                /* Check that the address is one that has been subscribed to */
+                                if(std::find(vNotifications.begin(), vNotifications.end(), hashAddress) == vNotifications.end())
+                                    break;
+
+                                /* Check for legacy. */
+                                if(fLegacy)
+                                    ssRelay << uint8_t(SPECIFIER::LEGACY);
+
+                                /* Write transaction to stream. */
+                                ssRelay << uint8_t(TYPES::NOTIFICATION);
+                                ssRelay << hashAddress;
                                 ssRelay << hashTx;
                             }
 

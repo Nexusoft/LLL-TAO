@@ -176,9 +176,6 @@ namespace TAO
                                 else if(strType == "account" && nStandard == TAO::Register::OBJECTS::TOKEN)
                                     continue;
 
-                                if(debit.get<uint256_t>("token") != 0)
-                                    throw APIException(-51, "Debit transaction is not for a NXS account.  Please use the tokens API for crediting token accounts.");
-
                                 /* if we passed these checks then insert the credit contract into the tx */
                                 tx[++nCurrent] << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract) << hashTo <<  hashFrom << nAmount;
 
@@ -234,11 +231,8 @@ namespace TAO
 
                                     /* Check that the account being debited from is the same token type as as the account being
                                     credited to*/
-                                    if(debitFromObject.get<uint256_t>("token") != 0)
-                                        throw APIException(-58, "Debit transaction is not from a NXS account");
-
-                                    if(accountToCredit.get<uint256_t>("token") != 0)
-                                        throw APIException(-59, "Account to credit is not a NXS account");
+                                    if(debitFromObject.get<uint256_t>("token") != accountToCredit.get<uint256_t>("token"))
+                                        throw APIException(-209, "Recipient account is for a different token.");
 
                                     /* Retrieve the hash proof account and check that it is the same token type as the asset owner */
                                     TAO::Register::Object proofObject;
