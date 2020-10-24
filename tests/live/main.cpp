@@ -168,18 +168,16 @@ int main(int argc, char** argv)
     KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = 8;
     KEYCHAIN.MAX_HASHMAPS             = 2;
     KEYCHAIN.MIN_LINEAR_PROBES        = 1;
-    KEYCHAIN.MAX_LINEAR_PROBES        = 64;
+    KEYCHAIN.MAX_LINEAR_PROBES        = 77;
     KEYCHAIN.MAX_HASHMAP_FILE_STREAMS = 64;
     KEYCHAIN.PRIMARY_BLOOM_HASHES     = 9;
-    KEYCHAIN.PRIMARY_BLOOM_BITS       = 1.44 * KEYCHAIN.MAX_HASHMAPS * KEYCHAIN.PRIMARY_BLOOM_HASHES;
+    KEYCHAIN.PRIMARY_BLOOM_ACCURACY   = 144;
     KEYCHAIN.SECONDARY_BLOOM_BITS     = 13;
     KEYCHAIN.SECONDARY_BLOOM_HASHES   = 7;
     KEYCHAIN.QUICK_INIT               = false;
 
 
     TestDB* bloom = new TestDB(SECTOR, KEYCHAIN);
-
-
     for(int n = 0; n < config::GetArg("-tests", 1); ++n)
     {
         debug::log(0, "Generating Keys +++++++");

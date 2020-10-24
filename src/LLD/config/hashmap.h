@@ -32,12 +32,16 @@ namespace LLD::Config
         uint32_t MAX_HASHMAPS;
 
 
-        /** The maximum number of linear probes per key. **/
+        /** The mininum number of buckets to probe per key. **/
         uint32_t MIN_LINEAR_PROBES;
 
 
-        /** The maximum number of cycles allowed to expand in probing. **/
+        /** The maximum number of buckets to probe per key. **/
         uint32_t MAX_LINEAR_PROBES;
+
+
+        /** Value used to break from potentially large looping if anything significant fails (never happened, but here as a breaker). **/
+        uint32_t MAX_LINEAR_PROBE_CYCLES;
 
 
         /** Total number of files for each hashmap. **/
@@ -54,6 +58,10 @@ namespace LLD::Config
 
         /** Maximum number of open file streams. **/
         uint16_t MAX_INDEX_FILE_STREAMS;
+
+
+        /** The number of bits per k-hash, higher value is more accurate filter. **/
+        uint32_t PRIMARY_BLOOM_ACCURACY;
 
 
         /** The number of k-hashes for the primary bloom filter. **/
@@ -92,19 +100,21 @@ namespace LLD::Config
         Hashmap(const Base& base)
         : Base                     (base)
         , MAX_HASHMAPS             (256)
-        , MIN_LINEAR_PROBES        (3) //default of 3 linear probes before moving to next hashmap file
-        , MAX_LINEAR_PROBES        (3) //default of 3 fibanacci probing cycles before exhausting bucket
-        , MAX_FILES_PER_HASHMAP    (4) //4 files per hashmap
-        , MAX_HASHMAP_FILE_STREAMS (MAX_HASHMAPS) //default of maximum hashmap files, otherwise you will degrade performance
-        , MAX_FILES_PER_INDEX      (4) //4 files per index
-        , MAX_INDEX_FILE_STREAMS   (MAX_FILES_PER_INDEX) //default of 1:1 for best performance
+        , MIN_LINEAR_PROBES        (1)   //default: of 1 linear probes before moving to next hashmap file
+        , MAX_LINEAR_PROBES        (144) //default: of 144 linear probes before moving to next hashmap file
+        , MAX_LINEAR_PROBE_CYCLES  (0)   //default: automatically derived from our min/max probing ranges as a safety
+        , MAX_FILES_PER_HASHMAP    (4)   //default: 4 files per hashmap
+        , MAX_HASHMAP_FILE_STREAMS (MAX_HASHMAPS) //default: maximum hashmap files, otherwise you will degrade performance
+        , MAX_FILES_PER_INDEX      (4)   //default: 4 files per index
+        , MAX_INDEX_FILE_STREAMS   (MAX_FILES_PER_INDEX) //default: of 1:1 for best performance
+        , PRIMARY_BLOOM_ACCURACY   (144) //default: this results in a multiplier of 1.44 bits per k-hash
         , PRIMARY_BLOOM_HASHES     (7)
-        , PRIMARY_BLOOM_BITS       (1.44 * MAX_HASHMAPS * PRIMARY_BLOOM_HASHES)
+        , PRIMARY_BLOOM_BITS       ((PRIMARY_BLOOM_ACCURACY / 100.0) * MAX_HASHMAPS * PRIMARY_BLOOM_HASHES)
         , SECONDARY_BLOOM_HASHES   (7)
         , SECONDARY_BLOOM_BITS     (13)
         , HASHMAP_TOTAL_BUCKETS    (77773)
-        , HASHMAP_KEY_ALLOCATION   (16 + 13) //16 bytes for key checksum, 13 bytes for ckey class
-        , QUICK_INIT               (true)   //this only really gives us total keys output and makes startup a little slower
+        , HASHMAP_KEY_ALLOCATION   (16 + 13) //constant: 16 bytes for key checksum, 13 bytes for ckey class
+        , QUICK_INIT               (true)    //default: this only really gives us total keys output and makes startup a lot slower
         , KEYCHAIN_LOCKS           (1024)
         , FILESYSTEM_LOCKS         (MAX_HASHMAP_FILE_STREAMS)
         {
@@ -117,10 +127,12 @@ namespace LLD::Config
         , MAX_HASHMAPS             (map.MAX_HASHMAPS)
         , MIN_LINEAR_PROBES        (map.MIN_LINEAR_PROBES)
         , MAX_LINEAR_PROBES        (map.MAX_LINEAR_PROBES)
+        , MAX_LINEAR_PROBE_CYCLES  (map.MAX_LINEAR_PROBE_CYCLES)
         , MAX_FILES_PER_HASHMAP    (map.MAX_FILES_PER_HASHMAP)
         , MAX_HASHMAP_FILE_STREAMS (map.MAX_HASHMAP_FILE_STREAMS)
         , MAX_FILES_PER_INDEX      (map.MAX_FILES_PER_INDEX)
         , MAX_INDEX_FILE_STREAMS   (map.MAX_INDEX_FILE_STREAMS)
+        , PRIMARY_BLOOM_ACCURACY   (map.PRIMARY_BLOOM_ACCURACY)
         , PRIMARY_BLOOM_HASHES     (map.PRIMARY_BLOOM_HASHES)
         , PRIMARY_BLOOM_BITS       (map.PRIMARY_BLOOM_BITS)
         , SECONDARY_BLOOM_HASHES   (map.SECONDARY_BLOOM_HASHES)
@@ -131,6 +143,8 @@ namespace LLD::Config
         , KEYCHAIN_LOCKS           (map.KEYCHAIN_LOCKS.size())
         , FILESYSTEM_LOCKS         (map.FILESYSTEM_LOCKS.size())
         {
+
+            auto_config();
         }
 
 
@@ -140,10 +154,12 @@ namespace LLD::Config
         , MAX_HASHMAPS             (std::move(map.MAX_HASHMAPS))
         , MIN_LINEAR_PROBES        (std::move(map.MIN_LINEAR_PROBES))
         , MAX_LINEAR_PROBES        (std::move(map.MAX_LINEAR_PROBES))
+        , MAX_LINEAR_PROBE_CYCLES  (std::move(map.MAX_LINEAR_PROBE_CYCLES))
         , MAX_FILES_PER_HASHMAP    (std::move(map.MAX_FILES_PER_HASHMAP))
         , MAX_HASHMAP_FILE_STREAMS (std::move(map.MAX_HASHMAP_FILE_STREAMS))
         , MAX_FILES_PER_INDEX      (std::move(map.MAX_FILES_PER_INDEX))
         , MAX_INDEX_FILE_STREAMS   (std::move(map.MAX_INDEX_FILE_STREAMS))
+        , PRIMARY_BLOOM_ACCURACY   (std::move(map.PRIMARY_BLOOM_ACCURACY))
         , PRIMARY_BLOOM_HASHES     (std::move(map.PRIMARY_BLOOM_HASHES))
         , PRIMARY_BLOOM_BITS       (std::move(map.PRIMARY_BLOOM_BITS))
         , SECONDARY_BLOOM_HASHES   (std::move(map.SECONDARY_BLOOM_HASHES))
@@ -154,6 +170,8 @@ namespace LLD::Config
         , KEYCHAIN_LOCKS           (map.KEYCHAIN_LOCKS.size())
         , FILESYSTEM_LOCKS         (map.FILESYSTEM_LOCKS.size())
         {
+            /* Refresh our configuration values. */
+            auto_config();
         }
 
 
@@ -169,15 +187,20 @@ namespace LLD::Config
             MAX_HASHMAPS             = map.MAX_HASHMAPS;
             MIN_LINEAR_PROBES        = map.MIN_LINEAR_PROBES;
             MAX_LINEAR_PROBES        = map.MAX_LINEAR_PROBES;
+            MAX_LINEAR_PROBE_CYCLES  = map.MAX_LINEAR_PROBE_CYCLES;
             MAX_FILES_PER_HASHMAP    = map.MAX_FILES_PER_HASHMAP;
             MAX_HASHMAP_FILE_STREAMS = map.MAX_HASHMAP_FILE_STREAMS;
             MAX_FILES_PER_INDEX      = map.MAX_FILES_PER_INDEX;
             MAX_INDEX_FILE_STREAMS   = map.MAX_INDEX_FILE_STREAMS;
+            PRIMARY_BLOOM_ACCURACY   = map.PRIMARY_BLOOM_ACCURACY;
             PRIMARY_BLOOM_HASHES     = map.PRIMARY_BLOOM_HASHES;
             PRIMARY_BLOOM_BITS       = map.PRIMARY_BLOOM_BITS;
             SECONDARY_BLOOM_HASHES   = map.SECONDARY_BLOOM_HASHES;
             SECONDARY_BLOOM_BITS     = map.SECONDARY_BLOOM_BITS;
             HASHMAP_TOTAL_BUCKETS    = map.HASHMAP_TOTAL_BUCKETS;
+
+            /* Refresh our configuration values. */
+            auto_config();
 
             return *this;
         }
@@ -195,15 +218,20 @@ namespace LLD::Config
             MAX_HASHMAPS             = std::move(map.MAX_HASHMAPS);
             MIN_LINEAR_PROBES        = std::move(map.MIN_LINEAR_PROBES);
             MAX_LINEAR_PROBES        = std::move(map.MAX_LINEAR_PROBES);
+            MAX_LINEAR_PROBE_CYCLES  = std::move(map.MAX_LINEAR_PROBE_CYCLES);
             MAX_FILES_PER_HASHMAP    = std::move(map.MAX_FILES_PER_HASHMAP);
             MAX_HASHMAP_FILE_STREAMS = std::move(map.MAX_HASHMAP_FILE_STREAMS);
             MAX_FILES_PER_INDEX      = std::move(map.MAX_FILES_PER_INDEX);
             MAX_INDEX_FILE_STREAMS   = std::move(map.MAX_INDEX_FILE_STREAMS);
+            PRIMARY_BLOOM_ACCURACY   = std::move(map.PRIMARY_BLOOM_ACCURACY);
             PRIMARY_BLOOM_HASHES     = std::move(map.PRIMARY_BLOOM_HASHES);
             PRIMARY_BLOOM_BITS       = std::move(map.PRIMARY_BLOOM_BITS);
             SECONDARY_BLOOM_HASHES   = std::move(map.SECONDARY_BLOOM_HASHES);
             SECONDARY_BLOOM_BITS     = std::move(map.SECONDARY_BLOOM_BITS);
             HASHMAP_TOTAL_BUCKETS    = std::move(map.HASHMAP_TOTAL_BUCKETS);
+
+            /* Refresh our configuration values. */
+            auto_config();
 
             return *this;
         }
@@ -249,6 +277,40 @@ namespace LLD::Config
         }
 
     private:
+
+        /** auto_config
+         *
+         *  Updates the automatic configuration values for the hashmap object.
+         *
+         *  We can guarentee that when this config is either moved or copied, that it is in the
+         *  constructor of the LLD, and thus in its final form before being consumed. This allows us
+         *  to auto-configure some dynamic states that require previous static configurations.
+         *
+         **/
+        void auto_config()
+        {
+            /* Calculate our current probing range. */
+            uint32_t nBeginProbeExpansion = MIN_LINEAR_PROBES, nEndProbeExpansion = MIN_LINEAR_PROBES;
+            while(nEndProbeExpansion < MAX_LINEAR_PROBES)
+            {
+                /* Cache our previous probe begin. */
+                const uint32_t nLastProbeBegin = nBeginProbeExpansion;
+
+                /* Calculate our fibanacci expansion value. */
+                nBeginProbeExpansion = nEndProbeExpansion;
+                nEndProbeExpansion  += nLastProbeBegin;
+
+                /* Increment our probing cycle. */
+                ++MAX_LINEAR_PROBE_CYCLES;
+            }
+
+            /* Calculate our primary bloom filter number of bits. */
+            PRIMARY_BLOOM_BITS = (PRIMARY_BLOOM_ACCURACY / 100.0) * MAX_HASHMAPS * PRIMARY_BLOOM_HASHES;
+
+            /* Logging for debugging the auto_config. */
+            debug::log(4, ANSI_COLOR_FUNCTION, NAME, "::", FUNCTION, "Max Probing Cycles set to ",
+                MAX_LINEAR_PROBE_CYCLES, " for range ", nBeginProbeExpansion, " - ", nEndProbeExpansion);
+        }
 
 
         /** The keychain level locking hashmap. **/

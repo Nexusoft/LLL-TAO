@@ -238,27 +238,22 @@ namespace LLD
             nCurrentFileSize += cKey.Size();
         }
 
-
         /* Establish the Outgoing Stream. */
         std::fstream ssFile(debug::safe_printstr(strBaseLocation, "_filemap.", std::setfill('0'), std::setw(5), mapKeys[cKey.vKey].first), std::ios::in | std::ios::out | std::ios::binary);
 
-
         /* Seek File Pointer */
         ssFile.seekp(mapKeys[cKey.vKey].second, std::ios::beg);
-
 
         /* Handle the Sector Key Serialization. */
         DataStream ssKey(SER_LLD, DATABASE_VERSION);
         ssKey.reserve(cKey.Size());
         ssKey << cKey;
 
-
         /* Write to Disk. */
         std::vector<uint8_t> vData(ssKey.begin(), ssKey.end());
         vData.insert(vData.end(), cKey.vKey.begin(), cKey.vKey.end());
         ssFile.write((char*) &vData[0], vData.size());
         ssFile.flush();
-
 
         /* Debug Output of Sector Key Information. */
         if(config::nVerbose >= 4)
@@ -268,7 +263,6 @@ namespace LLD
                 " | Sector Size: ", cKey.nSectorSize, " | Sector Start: ", cKey.nSectorStart,
                 " | Key: ", HexStr(cKey.vKey.begin(), cKey.vKey.end()),
                 " | Current File: ", nCurrentFile, " | Current File Size: ", nCurrentFileSize);
-
 
         return true;
     }
@@ -284,51 +278,14 @@ namespace LLD
         if(mapKeys.find(vKey) == mapKeys.end())
             return debug::error(FUNCTION, "Key doesn't Exist");
 
-
         /* Establish the Outgoing Stream. */
         std::fstream ssFile(debug::safe_printstr(strBaseLocation, "_filemap.", std::setfill('0'), std::setw(5), mapKeys[vKey].first), std::ios::in | std::ios::out | std::ios::binary);
 
-
         /* Set to put at the right file and sector position. */
         ssFile.seekp(mapKeys[vKey].second, std::ios::beg);
-
 
         /* Establish the Sector State as Empty. */
         std::vector<uint8_t> vData(STATE::EMPTY);
-        ssFile.write((char*) &vData[0], vData.size());
-        ssFile.flush();
-
-
-        /* Remove the Sector Key from the Memory Map. */
-        mapKeys.erase(vKey);
-
-
-        return true;
-    }
-
-
-    /*  Simple Erase for now, not efficient in Data Usage of HD but quick
-     *  to get erase function working. */
-    bool BinaryFileMap::Restore(const std::vector<uint8_t> &vKey)
-    {
-        LOCK(KEY_MUTEX);
-
-        /* Check for the Key. */
-        if(mapKeys.find(vKey) == mapKeys.end())
-            return debug::error(FUNCTION, "Key doesn't Exist");
-
-
-        /* Establish the Outgoing Stream. */
-        std::string strFilename = debug::safe_printstr(strBaseLocation, "_filemap.", std::setfill('0'), std::setw(5), mapKeys[vKey].first);
-        std::fstream ssFile(strFilename.c_str(), std::ios::in | std::ios::out | std::ios::binary);
-
-
-        /* Set to put at the right file and sector position. */
-        ssFile.seekp(mapKeys[vKey].second, std::ios::beg);
-
-
-        /* Establish the Sector State as Empty. */
-        std::vector<uint8_t> vData(STATE::READY);
         ssFile.write((char*) &vData[0], vData.size());
         ssFile.flush();
 
@@ -353,20 +310,16 @@ namespace LLD
             std::string strFilename = debug::safe_printstr(strBaseLocation, "_filemap.", std::setfill('0'), std::setw(5), mapKeys[vKey].first);
             std::ifstream ssFile(strFilename.c_str(), std::ios::in | std::ios::binary);
 
-
             /* Seek to the Sector Position on Disk. */
             ssFile.seekg(mapKeys[vKey].second, std::ios::beg);
-
 
             /* Read the State and Size of Sector Header. */
             std::vector<uint8_t> vData(13, 0);
             ssFile.read((char*) &vData[0], 13);
 
-
             /* De-serialize the Header. */
             DataStream ssHeader(vData, SER_LLD, DATABASE_VERSION);
             ssHeader >> cKey;
-
 
             /* Debug Output of Sector Key Information. */
             if(config::nVerbose >= 4)
@@ -376,11 +329,9 @@ namespace LLD
                     " | Sector Size: ", cKey.nSectorSize, " | Sector Start: ", cKey.nSectorStart,
                     " | Key: ",  HexStr(vKey.begin(), vKey.end()));
 
-
             /* Skip Empty Sectors for Now. (TODO: Expand to Reads / Writes) */
             if(cKey.Ready() || cKey.IsTxn())
             {
-
                 /* Read the Key Data. */
                 std::vector<uint8_t> vKeyIn(cKey.nLength, 0);
                 ssFile.read((char*) &vKeyIn[0], vKeyIn.size());

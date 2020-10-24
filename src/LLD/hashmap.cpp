@@ -292,7 +292,7 @@ namespace LLD
         uint16_t nHashmap = get_current_file(vBase, 0);
 
         /* Loop through our potential linear probe cycles. */
-        while(nHashmap < CONFIG.MAX_HASHMAPS + CONFIG.MAX_LINEAR_PROBES)
+        while(nHashmap <= CONFIG.MAX_HASHMAPS + 64)
         {
             /* Check if we are in a probe expansion cycle. */
             if(nHashmap >= CONFIG.MAX_HASHMAPS)
@@ -1047,14 +1047,15 @@ namespace LLD
         }
     }
 
+
     /* Reads the indexing entries based on fibanacci expansion sequence. */
     bool BinaryHashMap::fibanacci_index(const uint16_t nHashmap, const uint32_t nBucket,
         std::vector<uint8_t> &vIndex, uint32_t &nTotalBuckets, uint32_t &nAdjustedBucket)
     {
         /* Find the total cycles to probe. */
-        uint64_t nExpansionCycles = (nHashmap - CONFIG.MAX_HASHMAPS);
+        uint64_t nExpansionCycles = std::min(nHashmap - CONFIG.MAX_HASHMAPS, CONFIG.MAX_LINEAR_PROBE_CYCLES);
 
-        /* Start our probe expansion cycle with default values. */
+        /* Start our probe expansion cycle with default values (our fibinacci expansion will use base MIN_LINEAR_PROBES). */
         uint32_t nBeginProbeExpansion = CONFIG.MIN_LINEAR_PROBES;
         uint32_t nEndProbeExpansion   = CONFIG.MIN_LINEAR_PROBES;
 
@@ -1101,6 +1102,18 @@ namespace LLD
                 " | file=", nHashmap
             );
         }
+
+        /* Check our probing ranges and adjust where necessary. */
+        if(nEndProbeExpansion > CONFIG.MAX_LINEAR_PROBES)
+        {
+            /* Make sure we haven't expanded to a range beyond our probing configuration. */
+            if(nBeginProbeExpansion > CONFIG.MAX_LINEAR_PROBES)
+                nBeginProbeExpansion = CONFIG.MAX_LINEAR_PROBES;
+
+            /* Adjust the end of the probing range to set as our maximum value probe from the origin (eg. nBucket). */
+            nEndProbeExpansion = CONFIG.MAX_LINEAR_PROBES;
+        } //this will default to a total of 0 buckets if outside of range, and then be cleaned up with the cache check in Put()
+
 
         /* Find our total number of buckets to probe this cycle and check our range. */
         nTotalBuckets = (nEndProbeExpansion - nBeginProbeExpansion);
