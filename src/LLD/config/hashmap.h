@@ -45,7 +45,7 @@ namespace LLD::Config
 
 
         /** Total number of files for each hashmap. **/
-        uint64_t MAX_FILES_PER_HASHMAP;
+        uint16_t MAX_FILES_PER_HASHMAP;
 
 
         /** Maximum number of open file streams. **/
@@ -53,7 +53,7 @@ namespace LLD::Config
 
 
         /** Total number of files for each hashmap. **/
-        uint64_t MAX_FILES_PER_INDEX;
+        uint16_t MAX_FILES_PER_INDEX;
 
 
         /** Maximum number of open file streams. **/
@@ -69,7 +69,7 @@ namespace LLD::Config
 
 
         /** The number of bits in the primary bloom filter. **/
-        uint32_t PRIMARY_BLOOM_BITS;
+        uint64_t PRIMARY_BLOOM_BITS;
 
 
         /** The number of k-hashes for the secondary bloom filter. **/
@@ -81,7 +81,7 @@ namespace LLD::Config
 
 
         /** The Maximum buckets allowed in the hashmap. **/
-        uint32_t HASHMAP_TOTAL_BUCKETS;
+        uint64_t HASHMAP_TOTAL_BUCKETS;
 
 
         /** The total space that a key consumes. **/
@@ -310,6 +310,28 @@ namespace LLD::Config
             /* Logging for debugging the auto_config. */
             debug::log(4, ANSI_COLOR_FUNCTION, NAME, "::", FUNCTION, "Max Probing Cycles set to ",
                 MAX_LINEAR_PROBE_CYCLES, " for range ", nBeginProbeExpansion, " - ", nEndProbeExpansion);
+
+            /* Check for maximum limits. */
+            check_limits<uint16_t>(PARAMS(MAX_HASHMAPS));
+            check_limits<uint32_t>(PARAMS(MIN_LINEAR_PROBES));
+            check_limits<uint32_t>(PARAMS(MAX_LINEAR_PROBES));
+            check_limits<uint16_t>(PARAMS(MAX_LINEAR_PROBE_CYCLES));
+            check_limits<uint32_t>(PARAMS(PRIMARY_BLOOM_BITS));   //primary bloom shouldn't exceed our range of 32-bits
+            check_limits<uint16_t>(PARAMS(SECONDARY_BLOOM_BITS)); //a secondary bloom filter shouldn't ever have 65k bits
+            check_limits<uint32_t>(PARAMS(HASHMAP_TOTAL_BUCKETS));
+
+            /* Check for maximum ranges. */
+            check_ranges<uint16_t>(PARAMS(MAX_FILES_PER_HASHMAP),    999); //we only provide 3 digits in the filenames, so 999 is max
+            check_ranges<uint16_t>(PARAMS(MAX_HASHMAP_FILE_STREAMS), 999);
+            check_ranges<uint16_t>(PARAMS(MAX_FILES_PER_INDEX),      999); //we only provide 3 digits in the filenames, so 999 is max
+            check_ranges<uint16_t>(PARAMS(MAX_INDEX_FILE_STREAMS),   999);
+            check_ranges<uint32_t>(PARAMS(PRIMARY_BLOOM_ACCURACY),  1000); //this is a maximum of 10 bits per key
+            check_ranges<uint16_t>(PARAMS(PRIMARY_BLOOM_HASHES),     128); //128 k-hashes should be enough
+            check_ranges<uint16_t>(PARAMS(SECONDARY_BLOOM_HASHES),   128); //128 k-hashes is really excessive, but alas you can go that far
+
+            /* Give a warning if quick init is not enabled. */
+            if(!QUICK_INIT)
+                debug::warning(FUNCTION, "Quick Initialization Disabled, startup may take some time");
         }
 
 

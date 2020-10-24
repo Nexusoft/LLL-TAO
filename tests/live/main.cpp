@@ -135,6 +135,9 @@ class PolyStream
 
 };
 
+
+
+
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
@@ -153,9 +156,11 @@ int main(int argc, char** argv)
         filesystem::remove_directories(strPath);
     }
 
+
     //build our base configuration
     LLD::Config::Base BASE =
         LLD::Config::Base("testdb", LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+
 
     //build our sector configuration
     LLD::Config::Sector SECTOR      = LLD::Config::Sector(BASE);
@@ -165,7 +170,7 @@ int main(int argc, char** argv)
 
     //build our hashmap configuration
     LLD::Config::Hashmap KEYCHAIN     = LLD::Config::Hashmap(BASE);
-    KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = 8;
+    KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = 55;
     KEYCHAIN.MAX_HASHMAPS             = 2;
     KEYCHAIN.MIN_LINEAR_PROBES        = 1;
     KEYCHAIN.MAX_LINEAR_PROBES        = 77;

@@ -94,5 +94,49 @@ namespace LLD::Config
         , FLAGS                   (nFlags)
         {
         }
+
+    protected:
+
+        /** check_limits
+         *
+         *  Checks the limits on a specific data type and resets it's value to maximum if out of range.
+         *
+         *  @param[in] strName The name of the variable.
+         *  @param[out] nType The type range is being checked for.
+         *
+         **/
+        template<typename Limits, typename TypeName>
+        void check_limits(const std::string& strName, TypeName &nType)
+        {
+            /* Check our ranges. */
+            if(nType > std::numeric_limits<Limits>::max())
+            {
+                /* Adjust range to maximum. */
+                nType = std::numeric_limits<Limits>::max();
+                debug::warning(FUNCTION, strName, " exceeded limits, adjusted to: ", nType);
+            }
+        }
+
+
+        /** check_ranges
+         *
+         *  Checks the range on a specific data type and resets it's value to limits
+         *
+         *  @param[in] strName The name of the variable.
+         *  @param[out] nType The type range is being checked for.
+         *  @param[in] nMaximum The maximum range of the value
+         *
+         **/
+        template<typename Limits, typename TypeName>
+        void check_ranges(const std::string& strName, TypeName &nType, const Limits& nMaximum)
+        {
+            /* Check our ranges. */
+            if(nType > nMaximum)
+            {
+                /* Adjust range to maximum. */
+                nType = nMaximum;
+                debug::warning(FUNCTION, strName, " exceeded range, adjusted to: ", nType);
+            }
+        }
     };
 }

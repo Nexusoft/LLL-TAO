@@ -1053,7 +1053,7 @@ namespace LLD
         std::vector<uint8_t> &vIndex, uint32_t &nTotalBuckets, uint32_t &nAdjustedBucket)
     {
         /* Find the total cycles to probe. */
-        uint64_t nExpansionCycles = std::min(nHashmap - CONFIG.MAX_HASHMAPS, CONFIG.MAX_LINEAR_PROBE_CYCLES);
+        uint32_t nExpansionCycles = std::min(nHashmap - CONFIG.MAX_HASHMAPS, CONFIG.MAX_LINEAR_PROBE_CYCLES);
 
         /* Start our probe expansion cycle with default values (our fibinacci expansion will use base MIN_LINEAR_PROBES). */
         uint32_t nBeginProbeExpansion = CONFIG.MIN_LINEAR_PROBES;
@@ -1066,7 +1066,7 @@ namespace LLD
         uint64_t nIndexPos       = 0;
 
         /* Check if we are in a forward or reverse probing cycle. */
-        int64_t nOverflow = std::min(int64_t(nBucket), int64_t(nBucket + nEndProbeExpansion) - CONFIG.HASHMAP_TOTAL_BUCKETS);
+        int64_t nOverflow = std::min(int64_t(nBucket), int64_t(nBucket + nEndProbeExpansion) - int64_t(CONFIG.HASHMAP_TOTAL_BUCKETS));
         if(nOverflow > 0)
         {
             /* Calculate our adjusted bucket and index position. */
@@ -1088,7 +1088,7 @@ namespace LLD
         else
         {
             /* Check if we need to seek to read in our buffer. */
-            nAdjustedBucket = std::min(nBucket + nBeginProbeExpansion, CONFIG.HASHMAP_TOTAL_BUCKETS);
+            nAdjustedBucket = std::min(nBucket + nBeginProbeExpansion, uint32_t(CONFIG.HASHMAP_TOTAL_BUCKETS));
             nIndexPos       = (INDEX_FILTER_SIZE * nAdjustedBucket);
 
             /* Debug output . */
@@ -1118,7 +1118,7 @@ namespace LLD
         /* Find our total number of buckets to probe this cycle and check our range. */
         nTotalBuckets = (nEndProbeExpansion - nBeginProbeExpansion);
         if(nTotalBuckets + nAdjustedBucket > CONFIG.HASHMAP_TOTAL_BUCKETS)
-            nTotalBuckets = (CONFIG.HASHMAP_TOTAL_BUCKETS - std::min(CONFIG.HASHMAP_TOTAL_BUCKETS, nAdjustedBucket));
+            nTotalBuckets = (CONFIG.HASHMAP_TOTAL_BUCKETS - std::min(uint32_t(CONFIG.HASHMAP_TOTAL_BUCKETS), nAdjustedBucket));
 
         /* Seek if we aren't at the correct file position. */
         if(pindex->tellg() != nIndexPos)

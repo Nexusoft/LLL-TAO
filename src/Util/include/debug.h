@@ -68,8 +68,18 @@ ________________________________________________________________________________
 #define STRONG(data) "\u001b[1m" data "\x1b[0m"
 #endif
 
+//this macro is for creating nice formatting on console logs
 #define VALUE(data) data
 
+//this macro will dump a variable name to a string for use in debugging
+#define VAR_NAME(a) \
+    debug::safe_printstr(#a)
+
+//this macro is used for the check_limits function
+#define PARAMS(a) \
+    VAR_NAME(a), a
+
+//this macro will dump node related information to the console
 #define NODE debug::print_node(this)
 
 //ANSI_COLOR_FUNCTION, " Node", ANSI_COLOR_RESET " : ", "\u001b[1m", GetAddress().ToStringIP(), ANSI_COLOR_RESET, " "
@@ -235,6 +245,23 @@ namespace debug
         log(0, ANSI_COLOR_BRIGHT_RED, "ERROR: ", ANSI_COLOR_RESET, args...);
 
         return false;
+    }
+
+
+    /** warning
+     *
+     *  Safe constant format debugging warning logs.
+     *  Dumps to console or to log file.
+     *
+     *  @param[in] args The variadic template arguments in.
+     *
+     *  @return Returns false always. (Assumed to return an error.)
+     *
+     **/
+    template<class... Args>
+    void warning(Args&&... args)
+    {
+        log(0, ANSI_COLOR_BRIGHT_YELLOW, "WARNING: ", ANSI_COLOR_RESET, args...);
     }
 
 
