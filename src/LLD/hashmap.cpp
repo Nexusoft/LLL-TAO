@@ -245,7 +245,7 @@ namespace LLD
 
         /* Read our index information. */
         if(!read_index(vBase, nBucket, 1))
-            return debug::error(FUNCTION, "failed to read BASE INDEX");
+            return false;
 
         /* Create our cached values to detect when no more useful work is being completed. */
         uint32_t nBucketCache  = 0, nTotalCache = 0;
@@ -297,38 +297,6 @@ namespace LLD
             }
             else
             {
-                /* Find the index of our stream based on configuration. */
-                const uint32_t nFile = (nBucket * CONFIG.MAX_FILES_PER_HASHMAP) / CONFIG.HASHMAP_TOTAL_BUCKETS;
-
-                /* The absolute path to the file we are opening. (ex. _hashmap.001.00001) */
-                std::string strHashmap = debug::safe_printstr(CONFIG.DIRECTORY, "keychain/_hashmap.",
-                    std::setfill('0'), std::setw(3), nFile, ".", std::setfill('0'), std::setw(5), nHashmap);
-
-                /* Create a new file if it doesn't exist yet. */
-                if(!filesystem::exists(strHashmap))
-                {
-                    /* Blank vector to write empty space in new disk file. */
-                    std::vector<uint8_t> vSpace(CONFIG.HASHMAP_KEY_ALLOCATION, 0);
-
-                    /* Write the blank data to the new file handle. */
-                    std::ofstream stream(strHashmap, std::ios::out | std::ios::binary | std::ios::app);
-                    if(!stream)
-                        return debug::error(FUNCTION, strerror(errno));
-
-                    /* Write the new hashmap in smaller chunks to not overwhelm the buffers. */
-                    for(uint32_t n = 0; n < CONFIG.HASHMAP_TOTAL_BUCKETS; ++n)
-                        stream.write((char*)&vSpace[0], vSpace.size());
-                    stream.close();
-
-                    /* Debug output signifying new hashmap. */
-                    debug::log(0, FUNCTION, "Created"
-                        " | bucket=", nBucket, "/", CONFIG.HASHMAP_TOTAL_BUCKETS,
-                        " | file=",   nFile, "/", CONFIG.MAX_FILES_PER_HASHMAP,
-                        " | hashmap=", nHashmap,
-                        " | size=", (CONFIG.HASHMAP_TOTAL_BUCKETS * CONFIG.HASHMAP_KEY_ALLOCATION) / 1024.0, " Kb"
-                    );
-                }
-
                 /* We make a copy here to prevent return by reference related bugs */
                 uint16_t nFileRet   = nHashmap;
                 uint32_t nBucketRet = nBucket;
@@ -480,8 +448,32 @@ namespace LLD
         if(pstream == nullptr)
         {
             /* The absolute path to the file we are opening. (ex. _hashmap.001.00001) */
-            std::string strHashmap = debug::safe_printstr(CONFIG.DIRECTORY, "keychain/_hashmap.",
+            const std::string strHashmap = debug::safe_printstr(CONFIG.DIRECTORY, "keychain/_hashmap.",
                 std::setfill('0'), std::setw(3), pairIndex.first, ".", std::setfill('0'), std::setw(5), pairIndex.second);
+
+            /* Create a new file if it doesn't exist yet. */
+            if(!filesystem::exists(strHashmap))
+            {
+                /* Blank vector to write empty space in new disk file. */
+                std::vector<uint8_t> vSpace(CONFIG.HASHMAP_KEY_ALLOCATION, 0);
+
+                /* Write the blank data to the new file handle. */
+                std::ofstream stream(strHashmap, std::ios::out | std::ios::binary | std::ios::app);
+                if(!stream)
+                    return nullptr;
+
+                /* Write the new hashmap in smaller chunks to not overwhelm the buffers. */
+                for(uint32_t n = 0; n < CONFIG.HASHMAP_TOTAL_BUCKETS; ++n)
+                    stream.write((char*)&vSpace[0], vSpace.size());
+                stream.close();
+
+                /* Debug output signifying new hashmap. */
+                debug::log(0, FUNCTION, "Created Hashmap",
+                    " | file=",   nFile, "/", CONFIG.MAX_FILES_PER_HASHMAP,
+                    " | hashmap=", nHashmap, "/", CONFIG.MAX_HASHMAPS,
+                    " | size=", (CONFIG.HASHMAP_TOTAL_BUCKETS * CONFIG.HASHMAP_KEY_ALLOCATION) / 1024.0, " Kb"
+                );
+            }
 
             /* Set the new stream pointer. */
             pstream = new std::fstream(strHashmap, std::ios::in | std::ios::out | std::ios::binary);
@@ -538,7 +530,7 @@ namespace LLD
 
                 /* Debug output signifying new hashmap. */
                 debug::log(0, FUNCTION, "Created Index"
-                    " | file=",   nFile, "/", CONFIG.MAX_FILES_PER_HASHMAP,
+                    " | file=", nFile, "/", CONFIG.MAX_FILES_PER_INDEX,
                     " | size=", (INDEX_FILTER_SIZE * nTotalBuckets) / 1024.0, " Kb"
                 );
             }
@@ -578,8 +570,12 @@ namespace LLD
         const uint64_t nFilePos = (INDEX_FILTER_SIZE * (nBucket + nOffset -
             ((nFile * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_INDEX)));
 
-        /* Seek to position if we are not already there. */
+        /* Grab our file stream. */
         std::fstream* pindex = get_index_stream(nFile);
+        if(!pindex)
+            return debug::error(FUNCTION, "INDEX: failed to open index stream");
+
+        /* Seek to position if we are not already there. */
         if(pindex->tellp() != nFilePos)
             pindex->seekp(nFilePos, std::ios::beg);
 
@@ -617,8 +613,12 @@ namespace LLD
             const uint64_t nFilePos      = (INDEX_FILTER_SIZE * (nIterator -
                 ((nFile * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_INDEX)));
 
-            /* Seek to position if we are not already there. */
+            /* Grab our file stream. */
             std::fstream* pindex = get_index_stream(nFile);
+            if(!pindex)
+                return debug::error(FUNCTION, "INDEX: failed to open index stream");
+
+            /* Seek to position if we are not already there. */
             if(pindex->tellg() != nFilePos)
                 pindex->seekg(nFilePos, std::ios::beg);
 
@@ -1146,23 +1146,23 @@ namespace LLD
                 " | begin=", nBeginProbeExpansion,
                 " | end=", nEndProbeExpansion,
                 " | overflow=", nOverflow,
-                " | bucket=", nBucket, "/", CONFIG.HASHMAP_TOTAL_BUCKETS,
-                " | adjust=", nAdjustedBucket,
+                " | bucket=", nBucket + 1, "/", CONFIG.HASHMAP_TOTAL_BUCKETS,
+                " | adjust=", nAdjustedBucket + 1,
                 " | file=", nHashmap
             );
         }
         else
         {
             /* Check if we need to seek to read in our buffer. */
-            nAdjustedBucket = std::min(nBucket + nBeginProbeExpansion, uint32_t(CONFIG.HASHMAP_TOTAL_BUCKETS));
+            nAdjustedBucket = std::min(nBucket + nBeginProbeExpansion, uint32_t(CONFIG.HASHMAP_TOTAL_BUCKETS - 1));
 
             /* Debug output . */
             if(config::nVerbose >= 4)
                 debug::log(4, FUNCTION, ANSI_COLOR_FUNCTION, "Forward Expansion", ANSI_COLOR_RESET,
                 " | begin=", nBeginProbeExpansion,
                 " | end=", nEndProbeExpansion,
-                " | bucket=", nBucket, "/", CONFIG.HASHMAP_TOTAL_BUCKETS,
-                " | adjust=", nAdjustedBucket,
+                " | bucket=", nBucket + 1, "/", CONFIG.HASHMAP_TOTAL_BUCKETS,
+                " | adjust=", nAdjustedBucket + 1,
                 " | file=", nHashmap
             );
         }
@@ -1181,12 +1181,12 @@ namespace LLD
 
         /* Find our total number of buckets to probe this cycle and check our range. */
         nTotalBuckets = (nEndProbeExpansion - nBeginProbeExpansion);
-        if(nTotalBuckets + nAdjustedBucket > CONFIG.HASHMAP_TOTAL_BUCKETS)
-            nTotalBuckets = (CONFIG.HASHMAP_TOTAL_BUCKETS - std::min(uint32_t(CONFIG.HASHMAP_TOTAL_BUCKETS), nAdjustedBucket));
+        if(nAdjustedBucket + nTotalBuckets >= CONFIG.HASHMAP_TOTAL_BUCKETS)
+            nTotalBuckets = (CONFIG.HASHMAP_TOTAL_BUCKETS - std::min(uint32_t(CONFIG.HASHMAP_TOTAL_BUCKETS - 1), nAdjustedBucket) - 1);
 
         /* Read our index information. */
         if(!read_index(vIndex, nAdjustedBucket, nTotalBuckets))
-            return debug::error(FUNCTION, "failed to read index ", VARIABLE(nAdjustedBucket), " | ", VARIABLE(nTotalBuckets));
+            return false;
 
         return true;
     }

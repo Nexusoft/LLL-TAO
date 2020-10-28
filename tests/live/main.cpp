@@ -162,7 +162,6 @@ int main(int argc, char** argv)
     CONFIG.SECONDARY_BLOOM_HASHES   = 7;
     CONFIG.QUICK_INIT               = false;
 
-
     TestDB* bloom = new TestDB(SECTOR, CONFIG);
     for(int n = 0; n < config::GetArg("-tests", 1); ++n)
     {
