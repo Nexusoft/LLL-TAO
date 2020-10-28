@@ -121,23 +121,6 @@ const uint256_t hashSeed = 55;
 #include <LLP/include/global.h>
 
 
-/** PolyStream
- *
- *  Class to manage multiple files as a single aggregated stream object.
- *
- **/
-class PolyStream
-{
-
-    PolyStream()
-    {
-    }
-
-};
-
-
-
-
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
@@ -156,11 +139,9 @@ int main(int argc, char** argv)
         filesystem::remove_directories(strPath);
     }
 
-
     //build our base configuration
     LLD::Config::Base BASE =
         LLD::Config::Base("testdb", LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
-
 
     //build our sector configuration
     LLD::Config::Sector SECTOR      = LLD::Config::Sector(BASE);
@@ -169,20 +150,20 @@ int main(int argc, char** argv)
     SECTOR.MAX_SECTOR_CACHE_SIZE    = 256; //1 MB of cache available
 
     //build our hashmap configuration
-    LLD::Config::Hashmap KEYCHAIN     = LLD::Config::Hashmap(BASE);
-    KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = 55;
-    KEYCHAIN.MAX_HASHMAPS             = 2;
-    KEYCHAIN.MIN_LINEAR_PROBES        = 1;
-    KEYCHAIN.MAX_LINEAR_PROBES        = 77;
-    KEYCHAIN.MAX_HASHMAP_FILE_STREAMS = 64;
-    KEYCHAIN.PRIMARY_BLOOM_HASHES     = 9;
-    KEYCHAIN.PRIMARY_BLOOM_ACCURACY   = 144;
-    KEYCHAIN.SECONDARY_BLOOM_BITS     = 13;
-    KEYCHAIN.SECONDARY_BLOOM_HASHES   = 7;
-    KEYCHAIN.QUICK_INIT               = false;
+    LLD::Config::Hashmap CONFIG     = LLD::Config::Hashmap(BASE);
+    CONFIG.HASHMAP_TOTAL_BUCKETS    = 20;
+    CONFIG.MAX_HASHMAPS             = 2;
+    CONFIG.MIN_LINEAR_PROBES        = 1;
+    CONFIG.MAX_LINEAR_PROBES        = 77;
+    CONFIG.MAX_HASHMAP_FILE_STREAMS = 64;
+    CONFIG.PRIMARY_BLOOM_HASHES     = 9;
+    CONFIG.PRIMARY_BLOOM_ACCURACY   = 144;
+    CONFIG.SECONDARY_BLOOM_BITS     = 13;
+    CONFIG.SECONDARY_BLOOM_HASHES   = 7;
+    CONFIG.QUICK_INIT               = false;
 
 
-    TestDB* bloom = new TestDB(SECTOR, KEYCHAIN);
+    TestDB* bloom = new TestDB(SECTOR, CONFIG);
     for(int n = 0; n < config::GetArg("-tests", 1); ++n)
     {
         debug::log(0, "Generating Keys +++++++");

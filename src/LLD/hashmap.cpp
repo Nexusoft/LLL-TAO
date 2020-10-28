@@ -31,7 +31,7 @@ namespace LLD
     : CONFIG                (configIn)
     , INDEX_FILTER_SIZE     (primary_bloom_size() + secondary_bloom_size() + 2)
     , pFileStreams          (new TemplateLRU<std::pair<uint16_t, uint16_t>, std::fstream*>(CONFIG.MAX_HASHMAP_FILE_STREAMS))
-    , pindex                (nullptr)
+    , pIndexStreams         (new TemplateLRU<uint16_t, std::fstream*>(CONFIG.MAX_INDEX_FILE_STREAMS))
     {
         Initialize();
     }
@@ -42,7 +42,7 @@ namespace LLD
     : CONFIG                 (map.CONFIG)
     , INDEX_FILTER_SIZE      (map.INDEX_FILTER_SIZE)
     , pFileStreams           (map.pFileStreams)
-    , pindex                 (map.pindex)
+    , pIndexStreams          (map.pIndexStreams)
     {
         Initialize();
     }
@@ -53,7 +53,7 @@ namespace LLD
     : CONFIG                 (std::move(map.CONFIG))
     , INDEX_FILTER_SIZE      (std::move(map.INDEX_FILTER_SIZE))
     , pFileStreams           (std::move(map.pFileStreams))
-    , pindex                 (std::move(map.pindex))
+    , pIndexStreams          (std::move(map.pIndexStreams))
     {
         Initialize();
     }
@@ -63,7 +63,7 @@ namespace LLD
     BinaryHashMap& BinaryHashMap::operator=(const BinaryHashMap& map)
     {
         pFileStreams   = map.pFileStreams;
-        pindex         = map.pindex;
+        pIndexStreams  = map.pIndexStreams;
 
         Initialize();
 
@@ -75,7 +75,7 @@ namespace LLD
     BinaryHashMap& BinaryHashMap::operator=(BinaryHashMap&& map)
     {
         pFileStreams   = std::move(map.pFileStreams);
-        pindex         = std::move(map.pindex);
+        pIndexStreams  = std::move(map.pIndexStreams);
 
         Initialize();
 
@@ -89,8 +89,8 @@ namespace LLD
         if(pFileStreams)
             delete pFileStreams;
 
-        if(pindex)
-            delete pindex;
+        if(pIndexStreams)
+            delete pIndexStreams;
     }
 
 
@@ -104,29 +104,8 @@ namespace LLD
         if(!filesystem::exists(CONFIG.DIRECTORY + "keychain/") && filesystem::create_directories(CONFIG.DIRECTORY + "keychain/"))
             debug::log(0, FUNCTION, "Generated Path ", CONFIG.DIRECTORY);
 
-        /* Build the hashmap indexes. */
-        std::string strIndex = debug::safe_printstr(CONFIG.DIRECTORY, "keychain/_hashmap.index");
-        if(!filesystem::exists(strIndex))
-        {
-            /* Generate empty space for new file. */
-            std::vector<uint8_t> vSpace(INDEX_FILTER_SIZE, 0);
-
-            /* Write the new disk index .*/
-            std::fstream stream(strIndex, std::ios::out | std::ios::binary | std::ios::trunc);
-
-            /* Write the index file bit by bit. */
-            for(uint32_t nBucket = 0; nBucket < CONFIG.HASHMAP_TOTAL_BUCKETS; ++nBucket)
-                stream.write((char*)&vSpace[0], vSpace.size());
-
-            /* Cleanup. */
-            stream.close();
-
-            /* Debug output showing generation of disk index. */
-            debug::log(0, FUNCTION, "Generated Disk Index of ", vSpace.size(), " bytes");
-        }
-
         /* Read the hashmap indexes and calculate our total keys in this database instance. */
-        else if(!CONFIG.QUICK_INIT)
+        if(!CONFIG.QUICK_INIT)
         {
             /* Create a stopwatch to keep track of init time. */
             runtime::stopwatch swTimer;
@@ -139,9 +118,9 @@ namespace LLD
             std::vector<uint8_t> vBuffer(CONFIG.HASHMAP_TOTAL_BUCKETS * INDEX_FILTER_SIZE, 0);
 
             /* Write the new disk index .*/
-            std::fstream stream(strIndex, std::ios::in | std::ios::out | std::ios::binary);
-            stream.read((char*)&vBuffer[0], vBuffer.size());
-            stream.close();
+            //std::fstream stream(strIndex, std::ios::in | std::ios::out | std::ios::binary);
+            //stream.read((char*)&vBuffer[0], vBuffer.size());
+            //stream.close();
 
             /* Loop through each bucket and account for the number of active keys. */
             for(uint32_t nBucket = 0; nBucket < CONFIG.HASHMAP_TOTAL_BUCKETS; ++nBucket)
@@ -180,9 +159,6 @@ namespace LLD
                 std::min(CONFIG.MAX_HASHMAPS, nTotalHashmaps), " hashmaps"
             );
         }
-
-        /* Create the stream index object. */
-        pindex = new std::fstream(strIndex, std::ios::in | std::ios::out | std::ios::binary);
     }
 
 
@@ -200,16 +176,9 @@ namespace LLD
         /* Build our buffer based on total linear probes. */
         std::vector<uint8_t> vBase(INDEX_FILTER_SIZE * CONFIG.MIN_LINEAR_PROBES, 0);
 
-        /* Read the index file information. */
-        pindex->seekg(uint64_t(INDEX_FILTER_SIZE * nBucket), std::ios::beg);
-        if(!pindex->read((char*)&vBase[0], vBase.size()))
-        {
-            return debug::error(FUNCTION, "BASE INDEX: ", pindex->eof() ? "EOF" : pindex->bad() ? "BAD" : pindex->fail() ? "FAIL" : "UNKNOWN",
-                " only ", pindex->gcount(), "/", vBase.size(), " bytes read"
-            );
-        }
-
-        PrintHex(vBase.begin(), vBase.end());
+        /* Read our index information. */
+        if(!read_index(vBase, nBucket, 1))
+            return debug::error(FUNCTION, "failed to read BASE INDEX");
 
         /* Grab the current hashmap file from the buffer. */
         uint16_t nHashmap = get_current_file(vBase);
@@ -274,18 +243,9 @@ namespace LLD
         /* Build our buffer based on total linear probes. */
         std::vector<uint8_t> vBase(INDEX_FILTER_SIZE * CONFIG.MIN_LINEAR_PROBES, 0);
 
-        /* Read the index file information. */
-        pindex->seekg(uint64_t(INDEX_FILTER_SIZE * nBucket), std::ios::beg);
-        if(!pindex->read((char*)&vBase[0], vBase.size()))
-        {
-            return debug::error(FUNCTION, "BASE INDEX: ", pindex->eof() ? "EOF" : pindex->bad() ? "BAD" : pindex->fail() ? "FAIL" : "UNKNOWN",
-                " only ", pindex->gcount(), "/", vBase.size(), " bytes read"
-            );
-        }
-        else
-        {
-            debug::log(0, "read base index at pos ", uint64_t(INDEX_FILTER_SIZE * nBucket), " for bucket=", nBucket);
-        }
+        /* Read our index information. */
+        if(!read_index(vBase, nBucket, 1))
+            return debug::error(FUNCTION, "failed to read BASE INDEX");
 
         /* Create our cached values to detect when no more useful work is being completed. */
         uint32_t nBucketCache  = 0, nTotalCache = 0;
@@ -415,14 +375,9 @@ namespace LLD
         /* Build our buffer based on total linear probes. */
         std::vector<uint8_t> vBase(INDEX_FILTER_SIZE * CONFIG.MIN_LINEAR_PROBES, 0);
 
-        /* Read the index file information. */
-        pindex->seekg(uint64_t(INDEX_FILTER_SIZE * nBucket), std::ios::beg);
-        if(!pindex->read((char*)&vBase[0], vBase.size()))
-        {
-            return debug::error(FUNCTION, "BASE INDEX: ", pindex->eof() ? "EOF" : pindex->bad() ? "BAD" : pindex->fail() ? "FAIL" : "UNKNOWN",
-                " only ", pindex->gcount(), "/", vBase.size(), " bytes read"
-            );
-        }
+        /* Read our index information. */
+        if(!read_index(vBase, nBucket, 1))
+            return debug::error(FUNCTION, "failed to read BASE INDEX");
 
         /* Grab the current hashmap file from the buffer. */
         uint16_t nHashmap = get_current_file(vBase);
@@ -544,23 +499,87 @@ namespace LLD
     }
 
 
+
+    /* Get a corresponding index stream from the LRU, if it doesn't exist create the file with std::ofstream. */
+    std::fstream* BinaryHashMap::get_index_stream(const uint32_t nFile)
+    {
+        /* Find the file stream for LRU cache. */
+        std::fstream* pindex = nullptr;
+        if(pIndexStreams->Get(nFile, pindex) && !pindex)
+        {
+            /* Delete stream from the cache. */
+            pIndexStreams->Remove(nFile);
+            pindex = nullptr;
+        }
+
+        /* Check for null file handle to see if we need to load it again. */
+        if(pindex == nullptr)
+        {
+            /* Build the filesystem path */
+            std::string strHashmap = debug::safe_printstr(CONFIG.DIRECTORY, "keychain/_index.", std::setfill('0'), std::setw(5), nFile);
+
+            /* Create a new file if it doesn't exist yet. */
+            if(!filesystem::exists(strHashmap))
+            {
+                /* Calculate the number of bukcets per index file. */
+                const uint32_t nTotalBuckets = CONFIG.HASHMAP_TOTAL_BUCKETS / CONFIG.MAX_FILES_PER_INDEX;
+
+                /* Blank vector to write empty space in new disk file. */
+                std::vector<uint8_t> vSpace(INDEX_FILTER_SIZE * nTotalBuckets, 0);
+
+                /* Write the blank data to the new file handle. */
+                std::ofstream stream(strHashmap, std::ios::out | std::ios::binary | std::ios::app);
+                if(!stream)
+                    return nullptr;
+
+                /* Write the new index file to disk. */
+                stream.write((char*)&vSpace[0], vSpace.size());
+                stream.close();
+
+                /* Debug output signifying new hashmap. */
+                debug::log(0, FUNCTION, "Created Index"
+                    " | file=",   nFile, "/", CONFIG.MAX_FILES_PER_HASHMAP,
+                    " | size=", (INDEX_FILTER_SIZE * nTotalBuckets) / 1024.0, " Kb"
+                );
+            }
+
+            /* Set the new stream pointer. */
+            pindex = new std::fstream(strHashmap, std::ios::in | std::ios::out | std::ios::binary);
+            if(!pindex->is_open())
+            {
+                delete pindex;
+                return nullptr;
+            }
+
+            /* If not in cache, add to the LRU. */
+            pIndexStreams->Put(nFile, pindex);
+        }
+
+        return pindex;
+    }
+
+
     /* Flush the current buffer to disk. */
     bool BinaryHashMap::flush_index(const std::vector<uint8_t>& vBuffer, const uint32_t nBucket, const uint32_t nOffset)
     {
-        //CRITICAL SECITON
-        //LOCK(); TODO: need multiple index file streams allocated like locks are configured
-        //get_index_stream(nBucket); //to get stream by bucket allowing us to lock with the same hash
+        /* Check we are flushing within range of the hashmap indexes. */
+        if(nBucket >= CONFIG.HASHMAP_TOTAL_BUCKETS)
+            return debug::error(FUNCTION, "out of range ", VARIABLE(nBucket));
 
-        debug::log(0, FUNCTION, "flushing ", nBucket, "/", CONFIG.HASHMAP_TOTAL_BUCKETS, " | offset=", nOffset);
-        PrintHex(vBuffer.begin(), vBuffer.end());
+        /* Calculate the current file designated by the bucket. */
+        const uint32_t nFile = ((nBucket + nOffset) * CONFIG.MAX_FILES_PER_INDEX) / CONFIG.HASHMAP_TOTAL_BUCKETS;
 
         /* Grab our binary offset. */
-        uint32_t nBufferPos = (nOffset * INDEX_FILTER_SIZE);
+        const uint64_t nBufferPos = (nOffset * INDEX_FILTER_SIZE);
         if(nBufferPos + INDEX_FILTER_SIZE > vBuffer.size())
             return debug::error(FUNCTION, "buffer overflow protection ", nBufferPos, "/", vBuffer.size()); //TODO" remove on production
 
+        /* Find our new file position from current bucket and offset. */
+        const uint64_t nFilePos = (INDEX_FILTER_SIZE * (nBucket + nOffset -
+            ((nFile * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_INDEX)));
+
         /* Seek to position if we are not already there. */
-        uint64_t nFilePos = (INDEX_FILTER_SIZE * (nBucket + nOffset));
+        std::fstream* pindex = get_index_stream(nFile);
         if(pindex->tellp() != nFilePos)
             pindex->seekp(nFilePos, std::ios::beg);
 
@@ -570,6 +589,58 @@ namespace LLD
 
         /* Flush the buffers to disk. */
         pindex->flush();
+
+        return true;
+    }
+
+    /* Read an index entry at given bucket crossing file boundaries. */
+    bool BinaryHashMap::read_index(std::vector<uint8_t> &vBuffer, const uint32_t nBucket, const uint32_t nTotal)
+    {
+        /* Check we are flushing within range of the hashmap indexes. */
+        if(nBucket >= CONFIG.HASHMAP_TOTAL_BUCKETS)
+            return debug::error(FUNCTION, "out of range ", VARIABLE(nBucket));
+
+        /* Keep track of how many buckets and bytes we have remaining in this read cycle. */
+        uint32_t nRemaining = nTotal;
+        uint32_t nIterator  = nBucket;
+        uint64_t nBufferPos = 0;
+
+        /* Adjust our buffer size to fit the total buckets. */
+        vBuffer.resize(INDEX_FILTER_SIZE * nTotal);
+        do
+        {
+            /* Calculate the file and boundaries we are on with current bucket. */
+            const uint32_t nFile = (nIterator * CONFIG.MAX_FILES_PER_INDEX) / CONFIG.HASHMAP_TOTAL_BUCKETS;
+            const uint32_t nEnd  = ((nFile + 1) * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_INDEX;
+
+            /* Find our new file position from current bucket and offset. */
+            const uint64_t nFilePos      = (INDEX_FILTER_SIZE * (nIterator -
+                ((nFile * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_INDEX)));
+
+            /* Seek to position if we are not already there. */
+            std::fstream* pindex = get_index_stream(nFile);
+            if(pindex->tellg() != nFilePos)
+                pindex->seekg(nFilePos, std::ios::beg);
+
+            /* Find the range (in bytes) we want to read for this index range. */
+            const uint32_t nMaxBuckets = std::min(nRemaining, (nEnd - nIterator));
+            const uint64_t nReadSize = nMaxBuckets * INDEX_FILTER_SIZE;
+
+            /* Read our index data into the buffer. */
+            if(!pindex->read((char*)&vBuffer[nBufferPos], nReadSize))
+            {
+                debug::warning(FUNCTION, VARIABLE(nFilePos), " | ", VARIABLE(nFile), " | ", VARIABLE(nMaxBuckets), " | ", VARIABLE(nBufferPos), " | ", VARIABLE(nReadSize));
+                return debug::error(FUNCTION, "BASE INDEX: ", pindex->eof() ? "EOF" : pindex->bad() ? "BAD" : pindex->fail() ? "FAIL" : "UNKNOWN",
+                    " only ", pindex->gcount(), "/", vBuffer.size(), " bytes read"
+                );
+            }
+
+            /* Track our current binary position, remaining buckets to read, and current bucket iterator. */
+            nRemaining -= nMaxBuckets;
+            nBufferPos += nReadSize;
+            nIterator  += nMaxBuckets;
+        }
+        while(nRemaining > 0); //continue reading into the buffer, with one loop per file adjusting to each boundary
 
         return true;
     }
@@ -1062,16 +1133,12 @@ namespace LLD
         /* Calculate our current probing range. */
         fibanacci_expansion(nBeginProbeExpansion, nEndProbeExpansion, nExpansionCycles);
 
-        /* Cache our adjustment values. */
-        uint64_t nIndexPos       = 0;
-
         /* Check if we are in a forward or reverse probing cycle. */
         int64_t nOverflow = std::min(int64_t(nBucket), int64_t(nBucket + nEndProbeExpansion) - int64_t(CONFIG.HASHMAP_TOTAL_BUCKETS));
         if(nOverflow > 0)
         {
             /* Calculate our adjusted bucket and index position. */
             nAdjustedBucket = (nBucket - nOverflow);
-            nIndexPos       = (INDEX_FILTER_SIZE * nAdjustedBucket);
 
             /* Debug output . */
             if(config::nVerbose >= 4)
@@ -1081,7 +1148,6 @@ namespace LLD
                 " | overflow=", nOverflow,
                 " | bucket=", nBucket, "/", CONFIG.HASHMAP_TOTAL_BUCKETS,
                 " | adjust=", nAdjustedBucket,
-                " | pos=", nIndexPos, "/", CONFIG.HASHMAP_TOTAL_BUCKETS * INDEX_FILTER_SIZE,
                 " | file=", nHashmap
             );
         }
@@ -1089,7 +1155,6 @@ namespace LLD
         {
             /* Check if we need to seek to read in our buffer. */
             nAdjustedBucket = std::min(nBucket + nBeginProbeExpansion, uint32_t(CONFIG.HASHMAP_TOTAL_BUCKETS));
-            nIndexPos       = (INDEX_FILTER_SIZE * nAdjustedBucket);
 
             /* Debug output . */
             if(config::nVerbose >= 4)
@@ -1098,7 +1163,6 @@ namespace LLD
                 " | end=", nEndProbeExpansion,
                 " | bucket=", nBucket, "/", CONFIG.HASHMAP_TOTAL_BUCKETS,
                 " | adjust=", nAdjustedBucket,
-                " | pos=", nIndexPos, "/", CONFIG.HASHMAP_TOTAL_BUCKETS * INDEX_FILTER_SIZE,
                 " | file=", nHashmap
             );
         }
@@ -1120,28 +1184,9 @@ namespace LLD
         if(nTotalBuckets + nAdjustedBucket > CONFIG.HASHMAP_TOTAL_BUCKETS)
             nTotalBuckets = (CONFIG.HASHMAP_TOTAL_BUCKETS - std::min(uint32_t(CONFIG.HASHMAP_TOTAL_BUCKETS), nAdjustedBucket));
 
-        /* Seek if we aren't at the correct file position. */
-        if(pindex->tellg() != nIndexPos)
-        {
-            pindex->seekg(nIndexPos, std::ios::beg);
-            debug::log(0, FUNCTION, "seek to pos ", nIndexPos, " | probes=", nTotalBuckets);
-        }
-        else
-            debug::log(0, FUNCTION, "already at pos ", nIndexPos, " | probes=", nTotalBuckets);
-
-        /* Read data into our buffer object. */
-        vIndex.resize(nTotalBuckets * INDEX_FILTER_SIZE);
-        if(!pindex->read((char*)&vIndex[0], vIndex.size()))
-        {
-            return debug::error(FUNCTION,
-                "INDEX: ", pindex->eof() ? "EOF" : pindex->bad() ? "BAD" : pindex->fail() ? "FAIL" : "UNKNOWN",
-                " only ", pindex->gcount(), "/", vIndex.size(), " bytes read"
-            );
-        }
-        else
-        {
-            PrintHex(vIndex.begin(), vIndex.end());
-        }
+        /* Read our index information. */
+        if(!read_index(vIndex, nAdjustedBucket, nTotalBuckets))
+            return debug::error(FUNCTION, "failed to read index ", VARIABLE(nAdjustedBucket), " | ", VARIABLE(nTotalBuckets));
 
         return true;
     }

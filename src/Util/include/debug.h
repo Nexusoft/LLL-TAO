@@ -79,6 +79,10 @@ ________________________________________________________________________________
 #define PARAMS(a) \
     VAR_NAME(a), a
 
+//this macro is used for dumping data structures
+#define VARIABLE(a) \
+    ANSI_COLOR_FUNCTION, VAR_NAME(a), ANSI_COLOR_RESET, " = ", a
+
 //this macro will dump node related information to the console
 #define NODE debug::print_node(this)
 

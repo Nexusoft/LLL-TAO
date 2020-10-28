@@ -41,11 +41,7 @@ namespace LLD
     class BinaryHashMap : public Keychain
     {
     protected:
-
-        /** Mutex for Thread Synchronization. **/
-        mutable std::mutex KEY_MUTEX;
-
-
+        
         /** Internal Hashmap Config Object. **/
         const Config::Hashmap CONFIG;
 
@@ -59,7 +55,7 @@ namespace LLD
 
 
         /** Keychain index stream. **/
-        std::fstream* pindex;
+        TemplateLRU<uint16_t, std::fstream*>* pIndexStreams;
 
 
     public:
@@ -176,6 +172,18 @@ namespace LLD
         std::fstream* get_file_stream(const uint32_t nHashmap, const uint32_t nBucket);
 
 
+        /** get_index_stream
+         *
+         *  Get a corresponding index stream from the LRU, if it doesn't exist create the file with std::ofstream.
+         *
+         *  @param[in] nFile The file index for the stream.
+         *
+         *  @return the stream object selected.
+         *
+         **/
+        std::fstream* get_index_stream(const uint32_t nFile);
+
+
         /** flush_index
          *
          *  Flush the current buffer to disk.
@@ -188,6 +196,20 @@ namespace LLD
          *
          **/
         bool flush_index(const std::vector<uint8_t>& vBuffer, const uint32_t nBucket, const uint32_t nOffset = 0);
+
+
+        /** read_index
+         *
+         *  Read an index entry at given bucket crossing file boundaries.
+         *
+         *  @param[out] vBuffer The buffer read from filesystem.
+         *  @param[in] nBucket The bucket to read index for.
+         *  @param[in] nTotal The total number of buckets to read into index.
+         *
+         *  @return true if success, false otherwise
+         *
+         **/
+        bool read_index(std::vector<uint8_t> &vBuffer, const uint32_t nBucket, const uint32_t nTotal);
 
 
         /** find_and_write

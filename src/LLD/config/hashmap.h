@@ -307,10 +307,6 @@ namespace LLD::Config
             /* Calculate our primary bloom filter number of bits. */
             PRIMARY_BLOOM_BITS = (PRIMARY_BLOOM_ACCURACY / 100.0) * MAX_HASHMAPS * PRIMARY_BLOOM_HASHES;
 
-            /* Logging for debugging the auto_config. */
-            debug::log(4, ANSI_COLOR_FUNCTION, NAME, "::", FUNCTION, "Max Probing Cycles set to ",
-                MAX_LINEAR_PROBE_CYCLES, " for range ", nBeginProbeExpansion, " - ", nEndProbeExpansion);
-
             /* Check for maximum limits. */
             check_limits<uint16_t>(PARAMS(MAX_HASHMAPS));
             check_limits<uint32_t>(PARAMS(MIN_LINEAR_PROBES));
