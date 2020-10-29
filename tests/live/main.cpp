@@ -120,6 +120,8 @@ const uint256_t hashSeed = 55;
 
 #include <LLP/include/global.h>
 
+#include <LLD/cache/template_lru.h>
+
 
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
@@ -161,6 +163,7 @@ int main(int argc, char** argv)
     CONFIG.SECONDARY_BLOOM_BITS     = 13;
     CONFIG.SECONDARY_BLOOM_HASHES   = 7;
     CONFIG.QUICK_INIT               = false;
+
 
     TestDB* bloom = new TestDB(SECTOR, CONFIG);
     for(int n = 0; n < config::GetArg("-tests", 1); ++n)

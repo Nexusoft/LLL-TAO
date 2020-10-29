@@ -115,32 +115,38 @@ namespace LLD
             uint64_t nTotalKeys = 0;
 
             /* Generate empty space for new file. */
-            std::vector<uint8_t> vBuffer(CONFIG.HASHMAP_TOTAL_BUCKETS * INDEX_FILTER_SIZE, 0);
-
-            /* Write the new disk index .*/
-            //std::fstream stream(strIndex, std::ios::in | std::ios::out | std::ios::binary);
-            //stream.read((char*)&vBuffer[0], vBuffer.size());
-            //stream.close();
+            std::vector<uint8_t> vBuffer((CONFIG.HASHMAP_TOTAL_BUCKETS * INDEX_FILTER_SIZE) / CONFIG.MAX_FILES_PER_INDEX, 0);
 
             /* Loop through each bucket and account for the number of active keys. */
-            for(uint32_t nBucket = 0; nBucket < CONFIG.HASHMAP_TOTAL_BUCKETS; ++nBucket)
+            for(uint32_t nFile = 0; nFile < CONFIG.MAX_FILES_PER_INDEX; ++nFile)
             {
-                debug::log(0, ANSI_COLOR_BRIGHT_CYAN, nBucket, "::", ANSI_COLOR_RESET);
+                /* Read the new disk index .*/
+                std::fstream* pindex = get_index_stream(nFile);
+                if(!pindex)
+                    continue;
 
-                /* Get the binary offset within the current probe. */
-                uint64_t nOffset = nBucket * INDEX_FILTER_SIZE;
+                /* Read our index data into our buffer. */
+                if(!pindex->read((char*)&vBuffer[0], vBuffer.size()))
+                    continue;
 
-                /* Grab the current file from the stream. */
-                uint16_t nCurrentFile = get_current_file(vBuffer, nOffset);
-                for(int16_t nHashmap = 0; nHashmap < CONFIG.MAX_HASHMAPS; ++nHashmap)
+                //TODO: we should probably keep a const value of buckets per index so we don't have to calculate it all the time
+                for(uint32_t nBucket = 0; nBucket < CONFIG.HASHMAP_TOTAL_BUCKETS / CONFIG.MAX_FILES_PER_INDEX; ++nBucket)
                 {
-                    /* Check for an available hashmap slot. */
-                    if(!check_hashmap_available(nHashmap, vBuffer, nOffset + primary_bloom_size() + 2))
-                        ++nTotalKeys;
-                }
+                    /* Get the binary offset within the current probe. */
+                    uint64_t nOffset = nBucket * INDEX_FILTER_SIZE;
 
-                /* Calculate total keys from hashmaps. */
-                nTotalHashmaps = std::max(uint32_t(nCurrentFile), nTotalHashmaps);
+                    /* Grab the current file from the stream. */
+                    uint16_t nCurrentFile = get_current_file(vBuffer, nOffset);
+                    for(int16_t nHashmap = 0; nHashmap < CONFIG.MAX_HASHMAPS; ++nHashmap)
+                    {
+                        /* Check for an available hashmap slot. */
+                        if(!check_hashmap_available(nHashmap, vBuffer, nOffset + primary_bloom_size() + 2))
+                            ++nTotalKeys;
+                    }
+
+                    /* Calculate total keys from hashmaps. */
+                    nTotalHashmaps = std::max(uint32_t(nCurrentFile), nTotalHashmaps);
+                }
             }
 
             /* Get our total runtime. */
@@ -846,8 +852,6 @@ namespace LLD
             return;
         }
 
-        debug::log(0, FUNCTION, "setting current file to ", nCurrent);
-
         /* Copy to the buffer at current offset. */
         std::copy((uint8_t*)&nCurrent, (uint8_t*)&nCurrent + 2, (uint8_t*)&vBuffer[nOffset]);
     }
@@ -1147,7 +1151,7 @@ namespace LLD
                 " | end=", nEndProbeExpansion,
                 " | overflow=", nOverflow,
                 " | bucket=", nBucket + 1, "/", CONFIG.HASHMAP_TOTAL_BUCKETS,
-                " | adjust=", nAdjustedBucket + 1,
+                " | adjusted=", nAdjustedBucket + 1, "/", CONFIG.HASHMAP_TOTAL_BUCKETS,
                 " | file=", nHashmap
             );
         }
@@ -1162,7 +1166,7 @@ namespace LLD
                 " | begin=", nBeginProbeExpansion,
                 " | end=", nEndProbeExpansion,
                 " | bucket=", nBucket + 1, "/", CONFIG.HASHMAP_TOTAL_BUCKETS,
-                " | adjust=", nAdjustedBucket + 1,
+                " | adjusted=", nAdjustedBucket + 1, "/", CONFIG.HASHMAP_TOTAL_BUCKETS,
                 " | file=", nHashmap
             );
         }
@@ -1182,7 +1186,7 @@ namespace LLD
         /* Find our total number of buckets to probe this cycle and check our range. */
         nTotalBuckets = (nEndProbeExpansion - nBeginProbeExpansion);
         if(nAdjustedBucket + nTotalBuckets >= CONFIG.HASHMAP_TOTAL_BUCKETS)
-            nTotalBuckets = (CONFIG.HASHMAP_TOTAL_BUCKETS - std::min(uint32_t(CONFIG.HASHMAP_TOTAL_BUCKETS - 1), nAdjustedBucket) - 1);
+            nTotalBuckets = (CONFIG.HASHMAP_TOTAL_BUCKETS - std::min(uint32_t(CONFIG.HASHMAP_TOTAL_BUCKETS), nAdjustedBucket));
 
         /* Read our index information. */
         if(!read_index(vIndex, nAdjustedBucket, nTotalBuckets))
