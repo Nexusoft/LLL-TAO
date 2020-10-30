@@ -100,7 +100,6 @@ namespace TAO
                     ssTx << (uint8_t)LLP::MSG_TX_TRITIUM << txTritium;
                     ret["data"] = HexStr(ssTx.begin(), ssTx.end());
                 }
-
             }
 
             /* If it is not a tritium transaction then see if it is a legacy tx in the legacy DB */

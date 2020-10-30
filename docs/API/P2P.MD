@@ -92,6 +92,14 @@ Returns an array of all pending connection requests, either outgoing (you have m
 
 `incoming` : Optional boolean parameter indicating wether to return incoming (default) or outgoing requests.
 
+`limit` : The number of records to return for the current page. The default is 100.
+
+`page` : Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) records. The default value is 0 if not supplied.
+
+`offset` : An alternative to `page`, offset can be used to return a set of (limit) results from a particular index.
+
+`where` : An array of clauses to filter the JSON results.  More information on filtering the results from /list/xxx API methods can be found here [Filtering Results](filtering-results.md)
+
 
 ### Return value JSON object:
 ```    
@@ -139,7 +147,13 @@ Returns a list of all active P2P connections for the logged in user.
 
 `appid` : The application ID identifying the calling application to return connections for.  
 
+`limit` : The number of records to return for the current page. The default is 100.
 
+`page` : Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) records. The default value is 0 if not supplied.
+
+`offset` : An alternative to `page`, offset can be used to return a set of (limit) results from a particular index.
+
+`where` : An array of clauses to filter the JSON results.  More information on filtering the results from /list/xxx API methods can be found here [Filtering Results](filtering-results.md)
 
 ### Return value JSON object:
 ```    

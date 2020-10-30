@@ -44,16 +44,18 @@ The following list of verbs are used throughout the Nexus APIs.  While the actio
 
 * `list`
    - Retrieves a sorted list of objects or data
-   - Sorting is always newest to oldest
+   - Sorting is based on transaction/object age, by default is always newest to oldest.  Some list methods support additional sort fields. 
    - Supported parameters:
-     - `page` + `limit` (where the start point is known) *or* `index` + `limit`
-     - `verbose` to indicate the verbosity of the data returned.  Values can be `default`, `summary`, or `detail`
-     - `format` indicates the format of the returned data (where applicable). Values can be `raw`, `JSON`, `XML`   
+     - `order` : The order of the results.  Values can be `desc` (default) or `asc`
+     - `limit` : The number of records to return, default 100.  
+     - `page`: Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) transactions. The default value is 0 if not supplied. 
+     - `offset` : An alternative to `page`, offset can be used to return a set of (limit) results from a particular index.
+     - `verbose` : to indicate the verbosity of the data returned.  Values can be `default`, `summary`, or `detail`   
 
 * `get`
    - Retrieves a single object or piece of data
    - Supported parameters:
-     - `format` indicates the format of the returned data (where applicable). Values can be `raw`, `JSON`, `XML`
+     - (No common parameters)
 
 * `create`
    - Creates a single resource / object
@@ -433,4 +435,8 @@ Error Codes
 | -296 | Missing certificate |
 | -297 | Cannot log in while synchronizing |
 | -300 | API can only be used to lookup data for the currently logged in signature chain when running in client mode |
-
+| -301 | where field must be an array |
+| -302 | Missing field in where clause |
+| -303 | Missing op in where clause |
+| -304 | Missing value in where clause |
+| -305 | Unknown operand in where clause |

@@ -63,15 +63,23 @@ namespace TAO
             if(config::fClient.load() && hashGenesis != users->GetCallersGenesis(params))
                 throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
 
-            /* Check for paged parameter. */
-            uint32_t nPage = 0;
-            if(params.find("page") != params.end())
-                nPage = std::stoul(params["page"].get<std::string>());
-
-            /* Check for username parameter. */
+            /* Number of results to return. */
             uint32_t nLimit = 100;
-            if(params.find("limit") != params.end())
-                nLimit = std::stoul(params["limit"].get<std::string>());
+
+            /* Offset into the result set to return results from */
+            uint32_t nOffset = 0;
+
+            /* Sort order to apply */
+            std::string strOrder = "desc";
+
+            /* Vector of where clauses to apply to filter the results */
+            std::map<std::string, std::vector<Clause>> vWhere;
+
+            /* Get the params to apply to the response. */
+            GetListParams(params, strOrder, nLimit, nOffset, vWhere);
+
+            /* Flag indicating there are top level filters  */
+            bool fHasFilter = vWhere.count("") > 0;
 
             /* Get the list of registers owned by this sig chain */
             std::vector<TAO::Register::Address> vAddresses;
@@ -113,22 +121,6 @@ namespace TAO
                         continue;
                 }
 
-                /* Get the current page. */
-                uint32_t nCurrentPage = (nTotal / nLimit) ;
-
-                /* Increment the counter */
-                ++nTotal;
-
-                /* Check the paged data. */
-                if(nCurrentPage < nPage)
-                    continue;
-
-                if(nCurrentPage > nPage)
-                    break;
-
-                if(nTotal - (nPage * nLimit) > nLimit)
-                    break;
-
                 /* Populate the response JSON */
                 json::json json;
                 json["created"]  = state.second.nCreated;
@@ -138,6 +130,28 @@ namespace TAO
 
                 /* Copy the data in to the response after the  */
                 json.insert(data.begin(), data.end());
+
+                /* Check to see whether the transaction has had all children filtered out */
+                if(data.empty())
+                    continue;
+
+                /* Check to see that it matches the where clauses */
+                if(fHasFilter)
+                {
+                    /* Skip this top level record if not all of the filters were matched */
+                    if(!MatchesWhere(data, vWhere[""]))
+                        continue;
+                }
+
+                ++nTotal;
+
+                /* Check the offset. */
+                if(nTotal <= nOffset)
+                    continue;
+                
+                /* Check the limit */
+                if(nTotal - nOffset > nLimit)
+                    break;
 
                 /* Add this objects json to the response */
                 ret.push_back(json);

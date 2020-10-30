@@ -36,6 +36,21 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
+        /* Simple class to encapsulate a filter clause */
+        class Clause
+        {
+        public:
+
+            /* The field to filter on */
+            std::string strField;
+
+            /* The operation code */
+            uint8_t nOP;
+
+            /* The value to filter on */
+            std::string strValue;
+
+        };
 
         /** BlockToJSON
          *
@@ -47,7 +62,8 @@ namespace TAO
          *  @return the formatted JSON object
          *
          **/
-        json::json BlockToJSON(const TAO::Ledger::BlockState& block, uint32_t nVerbosity);
+        json::json BlockToJSON(const TAO::Ledger::BlockState& block, uint32_t nVerbosity,
+                               const std::map<std::string, std::vector<Clause>>& vWhere = std::map<std::string, std::vector<Clause>>());
 
 
         /** TransactionToJSON
@@ -65,7 +81,8 @@ namespace TAO
          **/
         json::json TransactionToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction& tx,
                                      const TAO::Ledger::BlockState& block, uint32_t nVerbosity,
-                                     const uint256_t& hashCoinbase = 0 );
+                                     const uint256_t& hashCoinbase = 0,
+                                     const std::map<std::string, std::vector<Clause>>& vWhere = std::map<std::string, std::vector<Clause>>());
 
 
         /** TransactionToJSON
@@ -79,7 +96,8 @@ namespace TAO
          *  @return the formatted JSON object
          *
          **/
-        json::json TransactionToJSON(const Legacy::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nVerbosity);
+        json::json TransactionToJSON(const Legacy::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nVerbosity,
+                                     const std::map<std::string, std::vector<Clause>>& vWhere = std::map<std::string, std::vector<Clause>>());
 
 
         /** ContractsToJSON
@@ -95,7 +113,8 @@ namespace TAO
          *
          **/
         json::json ContractsToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction& tx,
-                                   uint32_t nVerbosity = 0, const uint256_t& hashCoinbase = 0);
+                                   uint32_t nVerbosity = 0, const uint256_t& hashCoinbase = 0,
+                                   const std::map<std::string, std::vector<Clause>>& vWhere = std::map<std::string, std::vector<Clause>>());
 
 
         /** ContractToJSON
@@ -144,5 +163,35 @@ namespace TAO
         **/
         void FilterResponse(const json::json& params, json::json& response);
 
+
+        /** GetListParams
+        *
+        *  Extracts the paramers applicable to a List API call in order to apply a filter/offset/limit to the result 
+        *
+        *  @param[in] params The parameters passed into the request
+        *  @param[out] strOrder The sort order to apply
+        *  @param[out] nLimit The number of results to return
+        *  @param[out] nOffset The offset to apply to the results
+        *  @param[out] vWhere Vector of clauses to apply to filter the results 
+        *
+        *  @return The filtered response
+        *
+        **/
+        void GetListParams(const json::json& params, std::string& strOrder, uint32_t& nLimit, uint32_t& nOffset, std::map<std::string, std::vector<Clause>>& vWhere);
+
+
+        /** MatchesWhere
+        *
+        *  Checks to see if the json response matches the where clauses 
+        *
+        *  @param[in] obj The JSON to be filtered
+        *  @param[in] vWhere Vector of clauses to apply to filter the results
+        *  @param[in] vIgnore Vector of fieldnames to ignore in the vWhere list.  This is useful for those /list/xxx methods that 
+        *             require non-standard params but do not want them interpreted as a where clause.  
+        *
+        *  @return True if the json response meets all of the clauses
+        *
+        **/
+        bool MatchesWhere(const json::json& obj, const std::vector<Clause>& vWhere, const std::vector<std::string>& vIgnore = std::vector<std::string>());
     }
 }

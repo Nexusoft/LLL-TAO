@@ -87,15 +87,20 @@ namespace TAO
             if(object.Parse() && object.Standard() == TAO::Register::OBJECTS::TRUST)
                 fTrust = true;
 
-            /* Check for paged parameter. */
-            uint32_t nPage = 0;
-            if(params.find("page") != params.end())
-                nPage = std::stoul(params["page"].get<std::string>());
-
-            /* Check for username parameter. */
+            /* Number of results to return. */
             uint32_t nLimit = 100;
-            if(params.find("limit") != params.end())
-                nLimit = std::stoul(params["limit"].get<std::string>());
+
+            /* Offset into the result set to return results from */
+            uint32_t nOffset = 0;
+
+            /* Sort order to apply */
+            std::string strOrder = "desc";
+
+            /* Vector of where clauses to apply to filter the results */
+            std::map<std::string, std::vector<Clause>> vWhere;
+
+            /* Get the params to apply to the response. */
+            GetListParams(params, strOrder, nLimit, nOffset, vWhere);
 
             /* Get verbose levels. */
             std::string strVerbose = "default";
@@ -115,13 +120,20 @@ namespace TAO
             if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-144, "No transactions found");
 
+            /* Flag indicating there are top level filters  */
+            bool fHasFilter = vWhere.count("") > 0;
+
+            /* Flag indicating there are contract level filters  */
+            bool fHasContractsFilter = vWhere.count("contracts") > 0;
+
+            /* fields to ignore in the where clause.  This is necessary so that name and address params are not treated as 
+               standard where clauses to filter the json */
+            std::vector<std::string> vIgnore = {"name", "address"};
+
             /* Loop until genesis. */
             uint32_t nTotal = 0;
             while(hashLast != 0)
             {
-                /* Get the current page. */
-                uint32_t nCurrentPage = nTotal / nLimit;
-
                 /* Get the transaction from disk. */
                 TAO::Ledger::Transaction tx;
                 if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
@@ -226,17 +238,6 @@ namespace TAO
                 if(vContracts.size() == 0)
                     continue;
 
-                ++nTotal;
-
-                /* Check the paged data. */
-                if(nCurrentPage < nPage)
-                    continue;
-
-                if(nCurrentPage > nPage)
-                    break;
-
-                if(nTotal - (nPage * nLimit) > nLimit)
-                    break;
 
                 /* Read the block state from the the ledger DB using the transaction hash index */
                 TAO::Ledger::BlockState blockState;
@@ -282,14 +283,51 @@ namespace TAO
                     /* Add all relevant contracts to the response. */
                     for(const auto& contract : vContracts)
                     {
+                        /* JSONify the contract */
+                        json::json contractJSON = ContractToJSON(hashCaller, contract.first, contract.second, nVerbose);
+
+                        /* Check to see that it matches the where clauses */
+                        if(fHasContractsFilter)
+                        {
+                            /* Skip this top level record if not all of the filters were matched */
+                            if(!MatchesWhere(contractJSON, vWhere.at("contracts")))
+                                continue;
+                        }
+                        
                         /* add the contract to the array */
-                        jsonContracts.push_back(ContractToJSON(hashCaller, contract.first, contract.second, nVerbose));
+                        jsonContracts.push_back(contractJSON);
 
                     }
 
-                    jsonTx["contracts"] = jsonContracts;
+                    /* Check to see if any contracts were returned.  If not then return an empty transaction */
+                    if(!jsonContracts.empty())
+                        jsonTx["contracts"] = jsonContracts;
+                    else
+                        jsonTx = json::json();
                 }
 
+                /* Check to see whether the contracts were filtered out */
+                if(jsonTx.empty())
+                    continue;
+
+                /* Check to see that it matches the where clauses */
+                if(fHasFilter)
+                {
+                    /* Skip this top level record if not all of the filters were matched */
+                    if(!MatchesWhere(jsonTx, vWhere[""]))
+                        continue;
+                }
+
+                ++nTotal;
+
+                /* Check the offset. */
+                if(nTotal <= nOffset)
+                    continue;
+                
+                /* Check the limit */
+                if(nTotal - nOffset > nLimit)
+                    break;
+                
                 ret.push_back(jsonTx);
             }
 

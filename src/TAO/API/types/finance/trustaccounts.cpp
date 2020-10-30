@@ -39,17 +39,22 @@ namespace TAO
             /* The return json array */
             json::json jsonRet = json::json::array();
 
-            /* Check for page parameter. */
-            uint32_t nPage = 0;
-            if(params.find("page") != params.end())
-                nPage = std::stoul(params["page"].get<std::string>());
-
-            /* Get the limit parameter, default to 100. */
+            /* Number of results to return. */
             uint32_t nLimit = 100;
-            if(params.find("limit") != params.end())
-                nLimit = std::stoul(params["limit"].get<std::string>());
 
-            /* Get the sort parameter, default to sort by trust */
+            /* Offset into the result set to return results from */
+            uint32_t nOffset = 0;
+
+            /* Order to apply */
+            std::string strOrder = "desc";
+
+            /* Vector of where clauses to apply to filter the results */
+            std::map<std::string, std::vector<Clause>> vWhere;
+
+            /* Get the params to apply to the response. */
+            GetListParams(params, strOrder, nLimit, nOffset, vWhere);
+
+            /* Sort order to apply */
             std::string strSort = "trust";
             if(params.find("sort") != params.end())
                 strSort = params["sort"].get<std::string>();
@@ -60,12 +65,12 @@ namespace TAO
             /* Timestamp of 30 days ago, to use to include active accounts */
             uint64_t nActive = runtime::unifiedtimestamp() - (60 * 60 * 24 * 30);
 
-            /* Batch read up to 100,000 */
+            /* The vector of active accounts */
+            std::vector<TAO::Register::Object> vActive;
+
+            /* Batch read up to 100,000 at a time*/
             if(LLD::Register->BatchRead("trust", vAccounts, 100000))
             {
-                /* The vector of active accounts */
-                std::vector<TAO::Register::Object> vActive;
-
                 /* Make sure they are all parsed so that we can sort them */
                 for(auto& account : vAccounts)
                 {
@@ -83,58 +88,66 @@ namespace TAO
                     /* Add the account to our active list */
                     vActive.push_back(account);
                 }
+            }
 
-                /* Sort the list */
-                if(strSort == "stake" || strSort == "balance" || strSort == "trust")
-                    std::sort(vActive.begin(), vActive.end(), [strSort]
-                            (const TAO::Register::Object &a, const TAO::Register::Object &b)
-                    {
-                        /* Sort in decending order */
-                        return ( a.get<uint64_t>(strSort) > b.get<uint64_t>(strSort) );
-                    });
-
-                /* Iterate the list and build the response */
-                uint32_t nTotal = 0;
-                for(auto& account : vActive)
+            /* Sort the list */
+            bool fDesc = strOrder == "desc";
+            if(strSort == "stake" || strSort == "balance" || strSort == "trust")
+                std::sort(vActive.begin(), vActive.end(), [strSort, fDesc]
+                        (const TAO::Register::Object &a, const TAO::Register::Object &b)
                 {
-                    /* Get the current page. */
-                    uint32_t nCurrentPage = (nTotal / nLimit) ;
+                    /* Sort in decending/ascending order based on order param */
+                    if(fDesc)
+                        return ( a.get<uint64_t>(strSort) > b.get<uint64_t>(strSort) );
+                    else
+                        return ( a.get<uint64_t>(strSort) < b.get<uint64_t>(strSort) );
+                });
 
-                    /* Increment the counter */
-                    ++nTotal;
+            /* Flag indicating there are top level filters  */
+            bool fHasFilter = vWhere.count("") > 0;
 
-                    /* Check the paged data. */
-                    if(nCurrentPage < nPage)
+            /* Iterate the list and build the response */
+            uint32_t nTotal = 0;
+            for(auto& account : vActive)
+            {
+                /* The JSON for this account */
+                json::json jsonAccount;
+
+                /* The register address */
+                TAO::Register::Address address("trust", account.hashOwner, TAO::Register::Address::TRUST);
+
+                /* Populate the response */
+                jsonAccount["address"] = address.ToString();
+                jsonAccount["owner"] = account.hashOwner.ToString();
+                jsonAccount["created"] = account.nCreated;
+                jsonAccount["modified"] = account.nModified;
+                jsonAccount["balance"] = (double) account.get<uint64_t>("balance") / pow(10, TAO::Ledger::NXS_DIGITS);
+                jsonAccount["stake"] = (double) account.get<uint64_t>("stake") / pow(10, TAO::Ledger::NXS_DIGITS);
+
+                /* Calculate and add the stake rate */
+                uint64_t nTrust = account.get<uint64_t>("trust");
+                jsonAccount["trust"] = nTrust;
+                jsonAccount["stakerate"] = TAO::Ledger::StakeRate(nTrust, (nTrust == 0)) * 100.0;
+
+                /* Check to see that it matches the where clauses */
+                if(fHasFilter)
+                {
+                    /* Skip this top level record if not all of the filters were matched */
+                    if(!MatchesWhere(jsonAccount, vWhere[""]))
                         continue;
-
-                    if(nCurrentPage > nPage)
-                        break;
-
-                    /* The JSON for this account */
-                    json::json jsonAccount;
-
-                    /* The register address */
-                    TAO::Register::Address address("trust", account.hashOwner, TAO::Register::Address::TRUST);
-
-                    /* Populate the response */
-                    jsonAccount["address"] = address.ToString();
-                    jsonAccount["owner"] = account.hashOwner.ToString();
-                    jsonAccount["created"] = account.nCreated;
-                    jsonAccount["modified"] = account.nModified;
-                    jsonAccount["balance"] = (double) account.get<uint64_t>("balance") / pow(10, TAO::Ledger::NXS_DIGITS);
-                    jsonAccount["stake"] = (double) account.get<uint64_t>("stake") / pow(10, TAO::Ledger::NXS_DIGITS);
-
-                    /* Calculate and add the stake rate */
-                    uint64_t nTrust = account.get<uint64_t>("trust");
-                    jsonAccount["trust"] = nTrust;
-                    jsonAccount["stakerate"] = TAO::Ledger::StakeRate(nTrust, (nTrust == 0)) * 100.0;
-
-                    jsonRet.push_back(jsonAccount);
-
-                    if(nTotal - (nPage * nLimit) > nLimit)
-                        break;
                 }
 
+                ++nTotal;
+
+                /* Check the offset. */
+                if(nTotal <= nOffset)
+                    continue;
+                
+                /* Check the limit */
+                if(nTotal - nOffset > nLimit)
+                    break;
+
+                jsonRet.push_back(jsonAccount);
 
             }
 

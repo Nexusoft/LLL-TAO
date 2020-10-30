@@ -115,24 +115,50 @@ namespace TAO
                 return 0;
             }
 
+            /* Flag indicating that this is a list API call, in which case we need to parse the params differently */
+            bool fIsList = endpoint.find("/list/") != endpoint.npos;
+
+            std::vector<std::string> strListKeywords = {"genesis", "username", "name", "verbose", "page", "limit", "sort", "order", "where"};
+
             /* Build the JSON request object. */
             json::json parameters;
 
             /* Keep track of previous parameter. */
             std::string prev;
+
+            /* flag indicating the parameter is a where clause  */
+            bool fWhere = false;
             for(int i = argn + 1; i < argc; ++i)
             {
                 /* Parse out the key / values. */
                 std::string arg = std::string(argv[i]);
-                std::string::size_type pos = arg.find('=', 0);
+                std::string::size_type pos = std::string::npos;
+
+                if(fIsList)
+                    pos = arg.find_first_of("><=", 0);
+                else
+                    pos = arg.find('=', 0);
 
                 /* Watch for missing delimiter. */
                 if(pos == arg.npos)
                 {
-                    /* Append this data with URL encoding. */
-                    std::string value = parameters[prev];
-                    value.append(" " + arg);
-                    parameters[prev] = value;
+                    if(fWhere)
+                    {
+                        /* Get the last added clause */
+                        json::json jsonClause = parameters["where"].back();
+
+                        /* Append the next piece of data to it */
+                        std::string strValue = jsonClause["value"];
+                        strValue.append(" " + arg);
+                        jsonClause["value"] = strValue;
+                    }
+                    else
+                    {
+                        /* Append this data to the previously stored parameter. */
+                        std::string value = parameters[prev];
+                        value.append(" " + arg);
+                        parameters[prev] = value;
+                    }
 
                     continue;
                 }
@@ -140,12 +166,44 @@ namespace TAO
                 /* Set the previous argument. */
                 prev = arg.substr(0, pos);
 
+                /* If this is a list command, check to see if this is a where clause (not a keyword parameter supported by list)*/
+                if(fIsList && std::find(strListKeywords.begin(), strListKeywords.end(), prev) == strListKeywords.end())
+                {
+                    fWhere = true;
 
-                // if the paramter is a JSON list or array then we need to parse it
-                if(arg.compare(pos + 1,1,"{") == 0 || arg.compare(pos + 1,1,"[") == 0)
-                    parameters[prev]=json::json::parse(arg.substr(pos + 1));
+                    /* add the where clause */
+                    json::json jsonClause;
+                    jsonClause["field"] = prev;
+
+                    /* Check to see if the parameter delimter is a two-character operand */
+                    if(arg.find_first_of("><=", pos+1) != arg.npos)
+                    {
+                        /* Extract the operand */
+                        jsonClause["op"] = arg.substr(pos, 2);
+                        pos++;
+                    }
+                    else
+                    {
+                        /* Extract the operand */
+                        jsonClause["op"] = arg.substr(pos, 1);
+                    }
+
+                    /* Extract the value */
+                    jsonClause["value"] = arg.substr(pos + 1);
+
+                    /* Add it to the where params*/
+                    parameters["where"].push_back(jsonClause);
+                }
                 else
-                    parameters[prev] = arg.substr(pos + 1);
+                {
+                    fWhere = false;
+
+                    // if the paramter is a JSON list or array then we need to parse it
+                    if(arg.compare(pos + 1,1,"{") == 0 || arg.compare(pos + 1,1,"[") == 0)
+                        parameters[prev]=json::json::parse(arg.substr(pos + 1));
+                    else
+                        parameters[prev] = arg.substr(pos + 1);
+                }
             }
 
 

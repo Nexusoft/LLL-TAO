@@ -49,15 +49,27 @@ namespace TAO
             if(!user)
                 throw APIException(-10, "Invalid session ID");
 
-            /* Check for paged parameter. */
-            uint32_t nPage = 0;
-            if(params.find("page") != params.end())
-                nPage = std::stoul(params["page"].get<std::string>());
-
-            /* Check for limit parameter. */
+            /* Number of results to return. */
             uint32_t nLimit = 100;
-            if(params.find("limit") != params.end())
-                nLimit = std::stoul(params["limit"].get<std::string>());
+
+            /* Offset into the result set to return results from */
+            uint32_t nOffset = 0;
+
+            /* Sort order to apply */
+            std::string strOrder = "desc";
+
+            /* Vector of where clauses to apply to filter the results */
+            std::map<std::string, std::vector<Clause>> vWhere;
+
+            /* Get the params to apply to the response. */
+            GetListParams(params, strOrder, nLimit, nOffset, vWhere);
+
+            /* Flag indicating there are top level filters  */
+            bool fHasFilter = vWhere.count("") > 0;
+
+            /* Fields to ignore in the where clause.  This is necessary so that the count param is not treated as 
+               standard where clauses to filter the json */
+            std::vector<std::string> vIgnore = {"count"};
 
             /* The token to filter on.  Default to 0 (NXS) */
             TAO::Register::Address hashToken;
@@ -107,23 +119,31 @@ namespace TAO
                 if(object.get<uint256_t>("token") != hashToken)
                     continue;
 
-                /* Get the current page. */
-                uint32_t nCurrentPage = nTotal / nLimit;
+                json::json obj = TAO::API::ObjectToJSON(params, object, state.first);
+
+                /* Check to see whether the transaction has had all children filtered out */
+                if(obj.empty())
+                    continue;
+
+                /* Check to see that it matches the where clauses */
+                if(fHasFilter)
+                {
+                    /* Skip this top level record if not all of the filters were matched */
+                    if(!MatchesWhere(obj, vWhere[""], vIgnore))
+                        continue;
+                }
 
                 ++nTotal;
 
-                /* Check the paged data. */
-                if(nCurrentPage < nPage)
+                /* Check the offset. */
+                if(nTotal <= nOffset)
                     continue;
-
-                if(nCurrentPage > nPage)
+                
+                /* Check the limit */
+                if(nTotal - nOffset > nLimit)
                     break;
 
-                if(nTotal - (nPage * nLimit) > nLimit)
-                    break;
-
-                /* Convert the object to JSON */
-                ret.push_back(TAO::API::ObjectToJSON(params, object, state.first));
+                ret.push_back(obj);
             }
 
             return ret;

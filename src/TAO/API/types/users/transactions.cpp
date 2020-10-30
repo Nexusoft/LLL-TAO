@@ -24,6 +24,9 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/sigchain.h>
 
 #include <Util/include/hex.h>
+#include <Util/include/string.h>
+
+#include <TAO/Operation/include/enum.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -32,7 +35,6 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
-
         /* Get a user's account. */
         json::json Users::Transactions(const json::json& params, bool fHelp)
         {
@@ -62,25 +64,11 @@ namespace TAO
             if(config::fClient.load() && hashGenesis != hashCaller)
                 throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
 
-            /* Check for paged parameter. */
-            uint32_t nPage = 0;
-            if(params.find("page") != params.end())
-                nPage = std::stoul(params["page"].get<std::string>());
-
-            /* Check for username parameter. */
-            uint32_t nLimit = 100;
-            if(params.find("limit") != params.end())
-                nLimit = std::stoul(params["limit"].get<std::string>());
 
             /* Get verbose levels. */
             std::string strVerbose = "default";
             if(params.find("verbose") != params.end())
                 strVerbose = params["verbose"].get<std::string>();
-
-            /* Get verbose levels. */
-            std::string strOrder = "desc";
-            if(params.find("order") != params.end())
-                strOrder = params["order"].get<std::string>();
 
             uint32_t nVerbose = 1;
             if(strVerbose == "default")
@@ -89,6 +77,22 @@ namespace TAO
                 nVerbose = 2;
             else if(strVerbose == "detail")
                 nVerbose = 3;
+
+
+            /* Number of results to return. */
+            uint32_t nLimit = 100;
+
+            /* Offset into the result set to return results from */
+            uint32_t nOffset = 0;
+
+            /* Sort order to apply */
+            std::string strOrder = "desc";
+
+            /* Vector of where clauses to apply to filter the results */
+            std::map<std::string, std::vector<Clause>> vWhere;
+
+            /* Get the params to apply to the response. */
+            GetListParams(params, strOrder, nLimit, nOffset, vWhere);
 
             /* Get the last transaction. */
             uint512_t hashLast = 0;
@@ -117,29 +121,39 @@ namespace TAO
 
             uint32_t nTotal = 0;
 
+            /* Flag indicating there are top level filters  */
+            bool fHasFilter = vWhere.count("") > 0;
+
             for(auto tx : vtx)
             {
-                /* Get the current page. */
-                uint32_t nCurrentPage = nTotal / nLimit;
-
-                ++nTotal;
-
-                /* Check the paged data. */
-                if(nCurrentPage < nPage)
-                    continue;
-
-                if(nCurrentPage > nPage)
-                    break;
-
-                if(nTotal - (nPage * nLimit) > nLimit)
-                    break;
-
                 /* Read the block state from the the ledger DB using the transaction hash index */
                 TAO::Ledger::BlockState blockState;
                 LLD::Ledger->ReadBlock(tx.GetHash(), blockState);
 
                 /* Get the transaction JSON. */
-                json::json obj = TAO::API::TransactionToJSON(hashCaller, tx, blockState, nVerbose, hashGenesis);
+                json::json obj = TAO::API::TransactionToJSON(hashCaller, tx, blockState, nVerbose, hashGenesis, vWhere);
+
+                /* Check to see whether the transaction has had all children filtered out */
+                if(obj.empty())
+                    continue;
+
+                /* Check to see that it matches the where clauses */
+                if(fHasFilter)
+                {
+                    /* Skip this top level record if not all of the filters were matched */
+                    if(!MatchesWhere(obj, vWhere[""]))
+                        continue;
+                }
+
+                ++nTotal;
+
+                /* Check the offset. */
+                if(nTotal <= nOffset)
+                    continue;
+                
+                /* Check the limit */
+                if(nTotal - nOffset > nLimit)
+                    break;
 
                 ret.push_back(obj);
             }

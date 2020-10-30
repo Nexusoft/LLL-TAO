@@ -960,15 +960,27 @@ namespace TAO
             if(config::fClient.load() && hashGenesis != hashCaller)
                 throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
 
-            /* Check for paged parameter. */
-            uint32_t nPage = 0;
-            if(params.find("page") != params.end())
-                nPage = std::stoul(params["page"].get<std::string>());
-
-            /* Check for username parameter. */
+            /* Number of results to return. */
             uint32_t nLimit = 100;
-            if(params.find("limit") != params.end())
-                nLimit = std::stoul(params["limit"].get<std::string>());
+
+            /* Offset into the result set to return results from */
+            uint32_t nOffset = 0;
+
+            /* Sort order to apply */
+            std::string strOrder = "desc";
+
+            /* Vector of where clauses to apply to filter the results */
+            std::map<std::string, std::vector<Clause>> vWhere;
+
+            /* Get the params to apply to the response. */
+            GetListParams(params, strOrder, nLimit, nOffset, vWhere);
+
+            /* Flag indicating there are top level filters  */
+            bool fHasFilter = vWhere.count("") > 0;
+
+            /* fields to ignore in the where clause.  This is necessary so that the suppressed param is not treated as 
+               standard where clauses to filter the json */
+            std::vector<std::string> vIgnore = {"suppressed"};
 
             /* Check for suppressed parameter. */
             bool fIncludeSuppressed = false;
@@ -990,20 +1002,6 @@ namespace TAO
             {
                 /* Get a reference to the contract */
                 const TAO::Operation::Contract& refContract = std::get<0>(contract);
-
-                /* LOOP: Get the current page. */
-                uint32_t nCurrentPage = nTotal / nLimit;
-
-                /* Increment the total number of notifications. */
-                ++nTotal;
-
-                /* Check the paged data. */
-                if(nCurrentPage < nPage)
-                    continue;
-                if(nCurrentPage > nPage)
-                    break;
-                if(nTotal - (nPage * nLimit) > nLimit)
-                    break;
 
                 /* Get contract JSON data. */
                 json::json obj = ContractToJSON(hashCaller, refContract, std::get<1>(contract), 1);
@@ -1091,6 +1089,24 @@ namespace TAO
 
                 }
 
+                /* Check to see that it matches the where clauses */
+                if(fHasFilter)
+                {
+                    /* Skip this top level record if not all of the filters were matched */
+                    if(!MatchesWhere(obj, vWhere[""], vIgnore))
+                        continue;
+                }
+
+                ++nTotal;
+
+                /* Check the offset. */
+                if(nTotal <= nOffset)
+                    continue;
+                
+                /* Check the limit */
+                if(nTotal - nOffset > nLimit)
+                    break;
+
                 /* Add to return object. */
                 ret.push_back(obj);
 
@@ -1104,20 +1120,7 @@ namespace TAO
             /* Get notifications for foreign token registers. */
             for(const auto& tx : vLegacy)
             {
-                /* LOOP: Get the current page. */
-                uint32_t nCurrentPage = nTotal / nLimit;
-
-                /* Increment the total number of notifications. */
-                ++nTotal;
-
-                /* Check the paged data. */
-                if(nCurrentPage < nPage)
-                    continue;
-                if(nCurrentPage > nPage)
-                    break;
-                if(nTotal - (nPage * nLimit) > nLimit)
-                    break;
-
+    
                 /* The register address of the recipient account */
                 TAO::Register::Address hashTo;
                 Legacy::ExtractRegister(tx.first->vout[tx.second].scriptPubKey, hashTo);
@@ -1135,6 +1138,25 @@ namespace TAO
                 obj["amount"]   = (double)tx.first->vout[tx.second].nValue / TAO::Ledger::NXS_COIN;
                 obj["txid"]     = tx.first->GetHash().GetHex();
                 obj["time"]     = tx.first->nTime;
+
+
+                /* Check to see that it matches the where clauses */
+                if(fHasFilter)
+                {
+                    /* Skip this top level record if not all of the filters were matched */
+                    if(!MatchesWhere(obj, vWhere[""], vIgnore))
+                        continue;
+                }
+
+                ++nTotal;
+
+                /* Check the offset. */
+                if(nTotal <= nOffset)
+                    continue;
+                
+                /* Check the limit */
+                if(nTotal - nOffset > nLimit)
+                    break;
 
                 /* Add to return object. */
                 ret.push_back(obj);

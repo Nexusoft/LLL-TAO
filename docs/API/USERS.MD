@@ -441,9 +441,13 @@ This will list off all of the assets owned by a signature chain.
 
 `username` : The username identifying the signature chain (optional if genesis is supplied).
 
-`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) results.  The default value is 0 if not supplied.
+`limit` : The number of records to return for the current page. The default is 100.
 
-`limit` : The number of results to return for the current page.  Default is 100
+`page` : Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) records. The default value is 0 if not supplied.
+
+`offset` : An alternative to `page`, offset can be used to return a set of (limit) results from a particular index.
+
+`where` : An array of clauses to filter the JSON results.  More information on filtering the results from /list/xxx API methods can be found here [Filtering Results](filtering-results.md)
 
 
 ### Return value JSON object:
@@ -509,11 +513,15 @@ This will list off all of the token accounts belonging to a particular signature
 
 `username` : The username identifying the signature chain (optional if genesis is supplied).
 
-`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) results.  The default value is 0 if not supplied.
-
-`limit` : The number of results to return for the current page.  Default is 100
-
 `count` : Optional boolean field that determines whether the response includes the transaction `count` field.  This defaults to false, as including the transaction count can slow the response time of the method considerably.   
+
+`limit` : The number of records to return for the current page. The default is 100.
+
+`page` : Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) records. The default value is 0 if not supplied.
+
+`offset` : An alternative to `page`, offset can be used to return a set of (limit) results from a particular index.
+
+`where` : An array of clauses to filter the JSON results.  More information on filtering the results from /list/xxx API methods can be found here [Filtering Results](filtering-results.md)
 
 
 
@@ -588,11 +596,15 @@ This will list all invoices issued or received by the signature chain.
 
 `username` : The username identifying the signature chain (optional if genesis is supplied).
 
-`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) results.  The default value is 0 if not supplied.
-
-`limit` : The number of results to return for the current page.  Default is 100
-
 `status` : Optional filter by invoice status.  Values can be `OUTSTANDING` (the invoice has been issued but not paid), `PAID` (the invoice has been paid by the recipient), or `CANCELLED` (the invoice was cancelled by the issuer before payment)
+
+`limit` : The number of records to return for the current page. The default is 100.
+
+`page` : Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) records. The default value is 0 if not supplied.
+
+`offset` : An alternative to `page`, offset can be used to return a set of (limit) results from a particular index.
+
+`where` : An array of clauses to filter the JSON results.  More information on filtering the results from /list/xxx API methods can be found here [Filtering Results](filtering-results.md)
 
 
 ### Return value JSON object:
@@ -685,9 +697,13 @@ This will list off all of the supply chain items (append registers) owned by a s
 
 `username` : The username identifying the signature chain (optional if genesis is supplied).
 
-`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) results.  The default value is 0 if not supplied.
+`limit` : The number of records to return for the current page. The default is 100.
 
-`limit` : The number of results to return for the current page.  Default is 100
+`page` : Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) records. The default value is 0 if not supplied.
+
+`offset` : An alternative to `page`, offset can be used to return a set of (limit) results from a particular index.
+
+`where` : An array of clauses to filter the JSON results.  More information on filtering the results from /list/xxx API methods can be found here [Filtering Results](filtering-results.md)
 
 
 ### Return value JSON object:
@@ -738,9 +754,13 @@ This will list off all of the names owned by the signature chain.  For privacy r
 
 `session` : For multi-user API mode (configured with multiuser=1), the session is required to identify  which signature chain should be used to return the Names for. For single-user API mode the session should not be supplied an the currently logged in users signature chain is used.
 
-`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) results.  The default value is 0 if not supplied.
+`limit` : The number of records to return for the current page. The default is 100.
 
-`limit` : The number of results to return for the current page.  Default is 100
+`page` : Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) records. The default value is 0 if not supplied.
+
+`offset` : An alternative to `page`, offset can be used to return a set of (limit) results from a particular index.
+
+`where` : An array of clauses to filter the JSON results.  More information on filtering the results from /list/xxx API methods can be found here [Filtering Results](filtering-results.md)
 
 
 
@@ -791,9 +811,13 @@ This will list off all of the namespaces owned by the signature chain.
 
 `username` : The username identifying the signature chain (optional if genesis is supplied).
 
-`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) results.  The default value is 0 if not supplied.
+`limit` : The number of records to return for the current page. The default is 100.
 
-`limit` : The number of results to return for the current page.  Default is 100
+`page` : Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) records. The default value is 0 if not supplied.
+
+`offset` : An alternative to `page`, offset can be used to return a set of (limit) results from a particular index.
+
+`where` : An array of clauses to filter the JSON results.  More information on filtering the results from /list/xxx API methods can be found here [Filtering Results](filtering-results.md)
 
 
 
@@ -844,11 +868,15 @@ This will list off all of the transactions sent to a particular genesis or usern
 
 `username` : The username identifying the signature chain (optional if genesis is supplied).
 
-`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) notifications.  The default value is 0 if not supplied.
-
-`limit` : The number of notifications to return for the current page.  Default is 100
-
 `suppressed`: Optional boolean flag indicating that suppressed notifications should be included in the list. 
+
+`limit` : The number of records to return for the current page. The default is 100.
+
+`page` : Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) records. The default value is 0 if not supplied.
+
+`offset` : An alternative to `page`, offset can be used to return a set of (limit) results from a particular index.
+
+`where` : An array of clauses to filter the JSON results.  More information on filtering the results from /list/xxx API methods can be found here [Filtering Results](filtering-results.md)
 
 
 ### Return value JSON object:
@@ -979,11 +1007,16 @@ This will list off all of the tokens that were created by a particular signature
 
 `username` : The username identifying the signature chain (optional if genesis is supplied).
 
-`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) results.  The default value is 0 if not supplied.
-
-`limit` : The number of results to return for the current page.  Default is 100
-
 `count` : Optional boolean field that determines whether the response includes the transaction `count` field.  This defaults to false, as including the transaction count can slow the response time of the method considerably.   
+
+
+`limit` : The number of records to return for the current page. The default is 100.
+
+`page` : Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) records. The default value is 0 if not supplied.
+
+`offset` : An alternative to `page`, offset can be used to return a set of (limit) results from a particular index.
+
+`where` : An array of clauses to filter the JSON results.  More information on filtering the results from /list/xxx API methods can be found here [Filtering Results](filtering-results.md)
 
 
 
@@ -1057,16 +1090,20 @@ This will list off all of the transactions for the requested signature chain gen
 
 `username` : The username identifying the signature chain (optional if genesis is supplied).
 
-`page` : Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) transactions. The default value is 0 if not supplied.
-
-`limit` : The number of transactions to return for the current page. The default is 100.
-
-`order` : The transaction order, based on signature chain sequence. 'asc' for oldest first, 'desc' for most recent first. The default is 'desc'.
-
 `verbose` : Optional, determines how much transaction data to include in the response. Supported values are :
  - `default` : hash
  - `summary` : type, version, sequence, timestamp, operation, and confirmations.
  - `detail` : genesis, nexthash, prevhash, pubkey and signature.
+
+`order` : The transaction order, based on signature chain sequence. 'asc' for oldest first, 'desc' for most recent first. The default is 'desc'.
+
+`limit` : The number of records to return for the current page. The default is 100.
+
+`page` : Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) records. The default value is 0 if not supplied.
+
+`offset` : An alternative to `page`, offset can be used to return a set of (limit) results from a particular index.
+
+`where` : An array of clauses to filter the JSON results.  More information on filtering the results from /list/xxx API methods can be found here [Filtering Results](filtering-results.md)
 
 
 

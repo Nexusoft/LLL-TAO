@@ -203,6 +203,24 @@ namespace TAO
             /* The user genesis hash */
             uint256_t hashGenesis = user->Genesis();
 
+            /* Number of results to return. */
+            uint32_t nLimit = 100;
+
+            /* Offset into the result set to return results from */
+            uint32_t nOffset = 0;
+
+            /* Sort order to apply */
+            std::string strOrder = "desc";
+
+            /* Vector of where clauses to apply to filter the results */
+            std::map<std::string, std::vector<Clause>> vWhere;
+
+            /* Get the params to apply to the response. */
+            GetListParams(params, strOrder, nLimit, nOffset, vWhere);
+
+            /* Flag indicating there are top level filters  */
+            bool fHasFilter = vWhere.count("") > 0;
+
             /* token register hash */
             uint256_t hashToken;
 
@@ -256,6 +274,7 @@ namespace TAO
             }
 
             /* Iterate through each token and get the pending/unconfirmed etc  */
+            uint32_t nTotal = 0;
             for(const auto& token : vTokenBalances)
             {
                 /* Get the token hash for this token */
@@ -302,6 +321,24 @@ namespace TAO
                     jsonBalances["stake"] = (double)(vTokenBalances[hashToken].nStake / pow(10, vTokenBalances[hashToken].nDecimals));
                     jsonBalances["immature"] = (double)(vTokenBalances[hashToken].nImmature / pow(10, vTokenBalances[hashToken].nDecimals));
                 }
+
+                /* Check to see that it matches the where clauses */
+                if(fHasFilter)
+                {
+                    /* Skip this top level record if not all of the filters were matched */
+                    if(!MatchesWhere(jsonBalances, vWhere[""]))
+                        continue;
+                }
+
+                ++nTotal;
+
+                /* Check the offset. */
+                if(nTotal <= nOffset)
+                    continue;
+                
+                /* Check the limit */
+                if(nTotal - nOffset > nLimit)
+                    break;
 
                 ret.push_back(jsonBalances);
             }

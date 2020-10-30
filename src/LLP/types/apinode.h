@@ -94,6 +94,19 @@ namespace LLP
          **/
         bool Authorized(std::map<std::string, std::string>& mapHeaders);
 
+
+        /** QuerystringToJSON
+         *
+         *  Parses the querystring and coverts it to a json object of key=value pairs
+         *
+         *  @param[in] strQuerystring The querystring to parse.
+         *  @param[in] strMethod The API method being called.
+         *
+         *  @return The json object of parameters
+         *
+         **/
+        json::json QuerystringToJSON(const std::string& strQuerystring, const std::string& strMethod);
+
     };
 }
 

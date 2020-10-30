@@ -47,6 +47,28 @@ namespace TAO
             std::string strAppID = "";
             if(params.find("appid") != params.end())
                 strAppID = params["appid"].get<std::string>();
+
+            /* Number of results to return. */
+            uint32_t nLimit = 100;
+
+            /* Offset into the result set to return results from */
+            uint32_t nOffset = 0;
+
+            /* Sort order to apply */
+            std::string strOrder = "desc";
+
+            /* Vector of where clauses to apply to filter the results */
+            std::map<std::string, std::vector<Clause>> vWhere;
+
+            /* Get the params to apply to the response. */
+            GetListParams(params, strOrder, nLimit, nOffset, vWhere);
+
+            /* Flag indicating there are top level filters  */
+            bool fHasFilter = vWhere.count("") > 0;
+
+            /* Fields to ignore in the where clause.  This is necessary so that the appid param is not treated as 
+               standard where clauses to filter the json */
+            std::vector<std::string> vIgnore = {"appid"};
            
             /* Check to see if P2P is enabled */
             if(!LLP::P2P_SERVER)
@@ -56,6 +78,7 @@ namespace TAO
             std::vector<memory::atomic_ptr<LLP::P2PNode>*> vConnections = LLP::P2P_SERVER->GetConnections();
 
             /* Iterate the connections*/
+            uint32_t nTotal = 0;
             for(const auto& connection : vConnections)
             {
                 /* Skip over inactive connections. */
@@ -80,6 +103,24 @@ namespace TAO
                     jsonConnection["port"]     = connection->load()->addr.ToStringPort();
                     jsonConnection["latency"]  = connection->load()->nLatency.load() == std::numeric_limits<uint32_t>::max() ? 0 : connection->load()->nLatency.load();
                     jsonConnection["lastseen"] = connection->load()->nLastPing.load();
+
+                    /* Check to see that it matches the where clauses */
+                    if(fHasFilter)
+                    {
+                        /* Skip this top level record if not all of the filters were matched */
+                        if(!MatchesWhere(jsonConnection, vWhere[""], vIgnore))
+                            continue;
+                    }
+
+                    ++nTotal;
+
+                    /* Check the offset. */
+                    if(nTotal <= nOffset)
+                        continue;
+                    
+                    /* Check the limit */
+                    if(nTotal - nOffset > nLimit)
+                        break;
 
                     response.push_back(jsonConnection);
                 }
@@ -110,6 +151,28 @@ namespace TAO
             bool fIncoming = true;
             if(params.find("incoming") != params.end())
                 fIncoming = params["incoming"].get<std::string>() == "1" || params["incoming"].get<std::string>() == "true";
+
+            /* Number of results to return. */
+            uint32_t nLimit = 100;
+
+            /* Offset into the result set to return results from */
+            uint32_t nOffset = 0;
+
+            /* Sort order to apply */
+            std::string strOrder = "desc";
+
+            /* Vector of where clauses to apply to filter the results */
+            std::map<std::string, std::vector<Clause>> vWhere;
+
+            /* Get the params to apply to the response. */
+            GetListParams(params, strOrder, nLimit, nOffset, vWhere);
+
+            /* Flag indicating there are top level filters  */
+            bool fHasFilter = vWhere.count("") > 0;
+
+            /* Fields to ignore in the where clause.  This is necessary so that the appid param is not treated as 
+               standard where clauses to filter the json */
+            std::vector<std::string> vIgnore = {"appid", "incoming"};
            
             /* Check to see if P2P is enabled */
             if(!LLP::P2P_SERVER)
@@ -120,6 +183,7 @@ namespace TAO
             const std::vector<LLP::P2P::ConnectionRequest> requests = session.GetP2PRequests(fIncoming);
 
             /* Loop through the connection requests */
+            uint32_t nTotal = 0;
             for(const auto& connection : requests)
             {
                 json::json jsonConnection;
@@ -132,6 +196,24 @@ namespace TAO
                 jsonConnection["port"]      = connection.nPort;
                 jsonConnection["sslport"]   = connection.nSSLPort;    
                 jsonConnection["timestamp"] = connection.nTimestamp;
+
+                /* Check to see that it matches the where clauses */
+                if(fHasFilter)
+                {
+                    /* Skip this top level record if not all of the filters were matched */
+                    if(!MatchesWhere(jsonConnection, vWhere[""], vIgnore))
+                        continue;
+                }
+
+                ++nTotal;
+
+                /* Check the offset. */
+                if(nTotal <= nOffset)
+                    continue;
+                
+                /* Check the limit */
+                if(nTotal - nOffset > nLimit)
+                    break;
 
                 response.push_back(jsonConnection);
             }

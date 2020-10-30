@@ -157,15 +157,20 @@ namespace TAO
             /* Declare the BlockState to load from the DB */
             TAO::Ledger::BlockState blockState;
 
-            /* Check for page parameter. */
-            uint32_t nPage = 0;
-            if(params.find("page") != params.end())
-                nPage = std::stoul(params["page"].get<std::string>());
-
-            /* Get the limit parameter, default to 10. */
+            /* Number of results to return. */
             uint32_t nLimit = 10;
-            if(params.find("limit") != params.end())
-                nLimit = std::stoul(params["limit"].get<std::string>());
+
+            /* Offset into the result set to return results from */
+            uint32_t nOffset = 0;
+
+            /* Sort order to apply */
+            std::string strOrder = "desc";
+
+            /* Vector of where clauses to apply to filter the results */
+            std::map<std::string, std::vector<Clause>> vWhere;
+
+            /* Get the params to apply to the response. */
+            GetListParams(params, strOrder, nLimit, nOffset, vWhere);
 
             /* look up by height*/
             if(params.find("height") != params.end())
@@ -221,36 +226,51 @@ namespace TAO
             /* Declare the JSON array to return */
             json::json ret = json::json::array();
 
+            /* Flag indicating there are top level filters  */
+            bool fHasFilter = vWhere.count("") > 0;
+
+            /* fields to ignore in the where clause.  This is necessary so that height and hash params are not treated as 
+               standard where clauses to filter the json */
+            std::vector<std::string> vIgnore = {"height", "hash"};
+
             /* Iterate through blocks until we hit the limit or no more blocks*/
             uint32_t nTotal = 0;
             while(!blockState.IsNull())
             {
-                /* Get the current page. */
-                uint32_t nCurrentPage = nTotal / nLimit;
-
-                /* Increment the counter */
-                ++nTotal;
-
                 TAO::Ledger::BlockState blockToAdd = blockState;
 
                 /* Move on to the next block in the sequence*/
                 blockState = blockState.Next();
 
-                /* Check the paged data. */
-                if(nCurrentPage < nPage)
+
+                /* Convert the block to JSON data */
+                json::json jsonBlock = TAO::API::BlockToJSON(blockToAdd, nVerbose, vWhere);
+
+                /* Check to see whether the block has had all children filtered out */
+                if(jsonBlock.empty())
                     continue;
 
-                if(nCurrentPage > nPage)
+                /* Check to see that it matches the where clauses */
+                if(fHasFilter)
+                {
+                    /* Skip this top level record if not all of the filters were matched */
+                    if(!MatchesWhere(jsonBlock, vWhere[""], vIgnore))
+                        continue;
+                }
+
+                ++nTotal;
+
+                /* Check the offset. */
+                if(nTotal <= nOffset)
+                    continue;
+                
+                /* Check the limit */
+                if(nTotal - nOffset > nLimit)
                     break;
 
-                if(nTotal - (nPage * nLimit) > nLimit)
-                    break;
+                /* Add it to the return JSON array */
+                ret.push_back(jsonBlock);
 
-
-                /* convert the block to JSON data and add it to the return JSON array*/
-                ret.push_back(TAO::API::BlockToJSON(blockToAdd, nVerbose));
-
-                ;
 
             }
             return ret;

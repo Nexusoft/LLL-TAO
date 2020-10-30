@@ -41,7 +41,7 @@ namespace TAO
         json::json Tokens::ListAccounts(const json::json& params, bool fHelp)
         {
             /* JSON return value. */
-            json::json ret;// = json::json::array();
+            json::json ret = json::json::array();
 
             /* Get the session to be used for this API call */
             Session& session = users->GetSession(params);
@@ -51,15 +51,23 @@ namespace TAO
             if(!user)
                 throw APIException(-10, "Invalid session ID");
 
-            /* Check for paged parameter. */
-            uint32_t nPage = 0;
-            if(params.find("page") != params.end())
-                nPage = std::stoul(params["page"].get<std::string>());
-
-            /* Check for limit parameter. */
+             /* Number of results to return. */
             uint32_t nLimit = 100;
-            if(params.find("limit") != params.end())
-                nLimit = std::stoul(params["limit"].get<std::string>());
+
+            /* Offset into the result set to return results from */
+            uint32_t nOffset = 0;
+
+            /* Sort order to apply */
+            std::string strOrder = "desc";
+
+            /* Vector of where clauses to apply to filter the results */
+            std::map<std::string, std::vector<Clause>> vWhere;
+
+            /* Get the params to apply to the response. */
+            GetListParams(params, strOrder, nLimit, nOffset, vWhere);
+
+            /* Flag indicating there are top level filters  */
+            bool fHasFilter = vWhere.count("") > 0;
 
             /* Get the list of registers owned by this sig chain */
             std::vector<TAO::Register::Address> vAddresses;
@@ -98,23 +106,29 @@ namespace TAO
                 if(object.get<uint256_t>("token") == 0)
                     continue;
 
-                /* Get the current page. */
-                uint32_t nCurrentPage = nTotal / nLimit;
+                /* Convert the account to JSON */
+                json::json jsonAccount = TAO::API::ObjectToJSON(params, object, state.first);
+
+                /* Check to see that it matches the where clauses */
+                if(fHasFilter)
+                {
+                    /* Skip this top level record if not all of the filters were matched */
+                    if(!MatchesWhere(jsonAccount, vWhere[""]))
+                        continue;
+                }
 
                 ++nTotal;
 
-                /* Check the paged data. */
-                if(nCurrentPage < nPage)
+                /* Check the offset. */
+                if(nTotal <= nOffset)
                     continue;
-
-                if(nCurrentPage > nPage)
-                    break;
-
-                if(nTotal - (nPage * nLimit) > nLimit)
+                
+                /* Check the limit */
+                if(nTotal - nOffset > nLimit)
                     break;
 
                 /* Convert the object to JSON */
-                ret.push_back(TAO::API::ObjectToJSON(params, object, state.first));
+                ret.push_back(jsonAccount);
             }
 
             return ret;
@@ -222,15 +236,27 @@ namespace TAO
             if(nStandard != TAO::Register::OBJECTS::TOKEN)
                 throw APIException(-123, "Object is not a token");
 
-            /* Check for page parameter. */
-            uint32_t nPage = 0;
-            if(params.find("page") != params.end())
-                nPage = std::stoul(params["page"].get<std::string>());
-
-            /* Get the limit parameter, default to 100. */
+            /* Number of results to return. */
             uint32_t nLimit = 100;
-            if(params.find("limit") != params.end())
-                nLimit = std::stoul(params["limit"].get<std::string>());
+
+            /* Offset into the result set to return results from */
+            uint32_t nOffset = 0;
+
+            /* Sort order to apply */
+            std::string strOrder = "desc";
+
+            /* Vector of where clauses to apply to filter the results */
+            std::map<std::string, std::vector<Clause>> vWhere;
+
+            /* Get the params to apply to the response. */
+            GetListParams(params, strOrder, nLimit, nOffset, vWhere);
+
+            /* Flag indicating there are top level filters  */
+            bool fHasFilter = vWhere.count("") > 0;
+
+            /* fields to ignore in the where clause.  This is necessary so that name and address params are not treated as 
+               standard where clauses to filter the json */
+            std::vector<std::string> vIgnore = {"name", "address"};
 
 
             /* The process below for building up the list of token accounts might seem convoluted but there is a reason for the 
@@ -379,23 +405,32 @@ namespace TAO
                 }  
             }
 
+            /* Sort order to apply */
+            std::string strSort = "trust";
+            if(params.find("sort") != params.end())
+                strSort = params["sort"].get<std::string>();
+
+            /* Sort the list */
+            bool fDesc = strOrder == "desc";
+            if( strSort == "balance" || strSort == "created" || strSort == "modified")
+                std::sort(vTokenAccounts.begin(), vTokenAccounts.end(), [strSort, fDesc]
+                        (const std::pair<TAO::Register::Address, TAO::Register::Object> &a, const std::pair<TAO::Register::Address, TAO::Register::Object> &b)
+                {
+                    /* Sort in decending/ascending order based on order param */
+                    if(strSort == "balance")
+                        return ( a.second.get<uint64_t>(strSort) > b.second.get<uint64_t>(strSort) ) ? fDesc : !fDesc;
+                    else if(strSort == "created")
+                        return ( a.second.nCreated > b.second.nCreated ) ? fDesc : !fDesc;
+                    else if(strSort == "modified")
+                        return ( a.second.nModified > b.second.nModified ) ? fDesc : !fDesc;
+                    else
+                        return false;
+                });
+
             /* Iterate the list and build the response */
             uint32_t nTotal = 0;
             for(const auto& account : vTokenAccounts)
             {
-                /* Get the current page. */
-                uint32_t nCurrentPage = (nTotal / nLimit) ;
-
-                /* Increment the counter */
-                ++nTotal;
-
-                /* Check the paged data. */
-                if(nCurrentPage < nPage)
-                    continue;
-
-                if(nCurrentPage > nPage)
-                    break;
-
                 /* The JSON for this account */
                 json::json jsonAccount;
                 jsonAccount["owner"]    = account.second.hashOwner.ToString();
@@ -410,10 +445,26 @@ namespace TAO
                    unconfirmed outgoing debits. */
                 jsonAccount["balance"] = account.second.get<uint64_t>("balance") / pow(10, nDecimals);
 
+                /* Check to see that it matches the where clauses */
+                if(fHasFilter)
+                {
+                    /* Skip this top level record if not all of the filters were matched */
+                    if(!MatchesWhere(jsonAccount, vWhere[""], vIgnore))
+                        continue;
+                }
+
+                ++nTotal;
+
+                /* Check the offset. */
+                if(nTotal <= nOffset)
+                    continue;
+                
+                /* Check the limit */
+                if(nTotal - nOffset > nLimit)
+                    break;
+
                 jsonRet.push_back(jsonAccount);
 
-                if(nTotal - (nPage * nLimit) > nLimit)
-                    break;
             }
 
             return jsonRet;

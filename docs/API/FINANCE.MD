@@ -326,7 +326,15 @@ This will list off all of the NXS accounts belonging to the currently logged in 
 
 `session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) owns the account. For single-user API mode the session should not be supplied.
 
-`count` : Optional boolean field that determines whether the response includes the transaction `count` field.  This defaults to false, as including the transaction count can slow the response time of the method considerably.   
+`count` : Optional boolean field that determines whether the response includes the transaction `count` field.  This defaults to false, as including the transaction count can slow the response time of the method considerably.
+
+`limit` : The number of records to return for the current page. The default is 100.
+
+`page` : Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) records. The default value is 0 if not supplied.
+
+`offset` : An alternative to `page`, offset can be used to return a set of (limit) results from a particular index.
+
+`where` : An array of clauses to filter the JSON results.  More information on filtering the results from /list/xxx API methods can be found here [Filtering Results](filtering-results.md)
 
 ### Return value JSON object:
 ```
@@ -413,14 +421,20 @@ This will list off all of the transactions related to a given account. You DO NO
 
 `address` : The register address of the NXS account to list transactions for. This is optional if the name is provided.
 
-`page` : Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) transactions. The default value is 0 if not supplied.
-
-`limit` : The number of transactions to return for the current page. The default is 100.
-
 `verbose` : Optional, determines how much transaction data to include in the response. Supported values are :
  - `default` : hash, contracts
  - `summary` : type, version, sequence, timestamp, operation, and confirmations.
  - `detail` : genesis, nexthash, prevhash, pubkey and signature.
+
+`limit` : The number of records to return for the current page. The default is 100.
+
+`page` : Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) records. The default value is 0 if not supplied.
+
+`offset` : An alternative to `page`, offset can be used to return a set of (limit) results from a particular index.
+
+`where` : An array of clauses to filter the JSON results.  More information on filtering the results from /list/xxx API methods can be found here [Filtering Results](filtering-results.md)
+
+
 
 
 
@@ -755,7 +769,13 @@ This will retrieve a summary of balance information across all accounts for each
 
 `session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) to return data for. For single-user API mode the session should not be supplied.
 
+`limit` : The number of records to return for the current page. The default is 100.
 
+`page` : Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) records. The default value is 0 if not supplied.
+
+`offset` : An alternative to `page`, offset can be used to return a set of (limit) results from a particular index.
+
+`where` : An array of clauses to filter the JSON results.  More information on filtering the results from /list/xxx API methods can be found here [Filtering Results](filtering-results.md)
 
 ### Return value JSON object:
 ```
@@ -811,11 +831,18 @@ This will list all known trust accounts
 
 ### Parameters:
 
-`page` : Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) transactions. The default value is 0 if not supplied.
 
-`limit` : The number of transactions to return for the current page. The default is 100.
+`sort` : Determines which field the results should be sorted on.  Values can be `balance`, `stake`, or `trust`.  Default is `trust`
 
-`sort` : Determines the sort order of the results.  Values can be `balance`, `stake`, or `trust`.  Default is `trust`
+`order` : Determines the order of the sort.  Values can be `desc` for descending (the default) or `asc` for ascending.
+
+`limit` : The number of records to return for the current page. The default is 100.
+
+`page` : Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) records. The default value is 0 if not supplied.
+
+`offset` : An alternative to `page`, offset can be used to return a set of (limit) results from a particular index.
+
+`where` : An array of clauses to filter the JSON results.  More information on filtering the results from /list/xxx API methods can be found here [Filtering Results](filtering-results.md)
 
 
 ### Return value JSON object:

@@ -44,6 +44,7 @@ ________________________________________________________________________________
 #include <Util/include/hex.h>
 #include <Util/include/json.h>
 #include <Util/include/base64.h>
+#include <Util/include/string.h>
 
 
 
@@ -56,7 +57,8 @@ namespace TAO
     {
 
         /* Converts the block to formatted JSON */
-        json::json BlockToJSON(const TAO::Ledger::BlockState& block, uint32_t nVerbosity)
+        json::json BlockToJSON(const TAO::Ledger::BlockState& block, uint32_t nVerbosity, 
+                               const std::map<std::string, std::vector<Clause>>& vWhere)
         {
             /* Decalre the response object*/
             json::json result;
@@ -104,9 +106,11 @@ namespace TAO
                         if(LLD::Ledger->ReadTx(vtx.second, tx))
                         {
                             /* add the transaction JSON.  */
-                            json::json ret = TransactionToJSON(0, tx, block, nVerbosity);
+                            json::json ret = TransactionToJSON(0, tx, block, nVerbosity, 0, vWhere);
 
-                            txinfo.push_back(ret);
+                            /* Only add the transaction if it has not been filtered out */
+                            if(!ret.empty())
+                                txinfo.push_back(ret);
                         }
                     }
                     else if(vtx.first == TAO::Ledger::TRANSACTION::LEGACY)
@@ -116,14 +120,21 @@ namespace TAO
                         if(LLD::Legacy->ReadTx(vtx.second, tx))
                         {
                             /* add the transaction JSON.  */
-                            json::json ret = TransactionToJSON(tx, block, nVerbosity);
+                            json::json ret = TransactionToJSON(tx, block, nVerbosity, vWhere);
 
-                            txinfo.push_back(ret);
+                            /* Only add the transaction if it has not been filtered out */
+                            if(!ret.empty())
+                                txinfo.push_back(ret);
                         }
                     }
                 }
-                /* Add the transaction data to the response */
-                result["tx"] = txinfo;
+
+                /* Check to see if any transactions were returned.  If not then return an empty tx array */
+                if(!txinfo.empty())
+                    result["tx"] = txinfo;
+                else
+                    result = json::json();
+
             }
 
             return result;
@@ -131,7 +142,8 @@ namespace TAO
 
         /* Converts the transaction to formatted JSON */
         json::json TransactionToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction& tx,
-                                     const TAO::Ledger::BlockState& block, uint32_t nVerbosity, const uint256_t& hashCoinbase)
+                                     const TAO::Ledger::BlockState& block, uint32_t nVerbosity, const uint256_t& hashCoinbase,
+                                     const std::map<std::string, std::vector<Clause>>& vWhere)
         {
             /* Declare JSON object to return */
             json::json ret;
@@ -166,13 +178,22 @@ namespace TAO
 
             /* Always add the contracts if level 2 and up */
             if(nVerbosity >= 2)
-                ret["contracts"] = ContractsToJSON(hashCaller, tx, nVerbosity, hashCoinbase);
+            {
+                json::json jsonContracts = ContractsToJSON(hashCaller, tx, nVerbosity, hashCoinbase, vWhere);
+
+                /* Check to see if any contracts were returned.  If not then return an empty transaction */
+                if(!jsonContracts.empty())
+                    ret["contracts"] = jsonContracts;
+                else
+                    ret = json::json();
+            }
 
             return ret;
         }
 
         /* Converts the transaction to formatted JSON */
-        json::json TransactionToJSON(const Legacy::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nVerbosity)
+        json::json TransactionToJSON(const Legacy::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nVerbosity,
+                                     const std::map<std::string, std::vector<Clause>>& vWhere)
         {
             /* Declare JSON object to return */
             json::json ret;
@@ -292,10 +313,14 @@ namespace TAO
 
 
         /* Converts a transaction object into a formatted JSON list of contracts bound to the transaction. */
-        json::json ContractsToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction &tx, uint32_t nVerbosity, const uint256_t& hashCoinbase)
+        json::json ContractsToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction &tx, uint32_t nVerbosity, 
+                                   const uint256_t& hashCoinbase, const std::map<std::string, std::vector<Clause>>& vWhere)
         {
             /* Declare the return JSON object*/
             json::json ret = json::json::array();
+
+            /* Flag indicating there are contract filters  */
+            bool fHasFilter = vWhere.count("contracts") > 0;
 
             /* Add a contract to the list of contracts. */
             uint32_t nContracts = tx.Size();
@@ -321,6 +346,14 @@ namespace TAO
 
                 /* JSONify the contract */
                 json::json contractJSON = ContractToJSON(hashCaller, contract, nContract, nVerbosity);
+
+                /* Check to see that it matches the where clauses */
+                if(fHasFilter)
+                {
+                    /* Skip this top level record if not all of the filters were matched */
+                    if(!MatchesWhere(contractJSON, vWhere.at("contracts")))
+                        continue;
+                }
 
                 /* add the contract to the array */
                 ret.push_back(contractJSON);
@@ -1424,5 +1457,222 @@ namespace TAO
                         response.erase(it);
             }
         }
+
+
+        /* Extracts the paramers applicable to a List API call in order to apply a filter/offset/limit to the result */
+        void GetListParams(const json::json& params, std::string& strOrder, uint32_t& nLimit, 
+                           uint32_t& nOffset, std::map<std::string, std::vector<Clause>>& vWhere)
+        {
+            /* Check for page parameter. */
+            uint32_t nPage = 0;
+            if(params.find("page") != params.end())
+                nPage = std::stoul(params["page"].get<std::string>());
+
+            /* Check for offset parameter. */
+            nOffset = 0;
+            if(params.find("offset") != params.end())
+                nOffset = std::stoul(params["offset"].get<std::string>());
+
+            /* Check for limit and offset parameter. */
+            nLimit = 100;
+            if(params.find("limit") != params.end())
+            {
+                std::string strLimit = params["limit"].get<std::string>();
+
+                /* Check to see whether the limit includes an offset comma separated */
+                if(IsAllDigit(strLimit))
+                {
+                    /* No offset so set the limit and calculate the offset from the limit + page */
+                    nLimit = std::stoul(strLimit);
+
+                    nOffset = nLimit * nPage;
+                }
+                else if(strLimit.find(","))
+                {
+                    /* Parse the limit and offset */
+                    std::vector<std::string> vParts = Split(strLimit, ",");
+
+                    /* Get the limit */
+                    nLimit = std::stoul(trim(vParts[0]));
+
+                    /* Get the offset */
+                    nOffset = std::stoul(trim(vParts[1]));
+                }
+                else
+                {
+                    /* Invalid limit */
+                }
+            }
+            else
+            {
+                /* No limit or offset specified so calculate offset from page */
+                nOffset = nLimit * nPage; 
+            }
+
+
+            /* Get sort order*/
+            if(params.find("order") != params.end())
+                strOrder = params["order"].get<std::string>();
+
+            /* Get where clauses */
+            if(params.find("where") != params.end())
+            {
+                if(!params["where"].is_array())
+                    throw APIException(-301, "where field must be an array.");
+
+                json::json jsonWhere = params["where"];
+
+                /* Iterate through each field definition */
+                for(auto it = jsonWhere.begin(); it != jsonWhere.end(); ++it)
+                {
+                    /* Check that the required fields have been provided*/
+                    if(it->find("field") == it->end())
+                        throw APIException(-302, "Missing field in where clause.");
+
+                    if(it->find("op") == it->end())
+                        throw APIException(-303, "Missing op in where clause.");
+
+                    if(it->find("value") == it->end())
+                        throw APIException(-304, "Missing value in where clause.");
+
+                    /* Parse the values out of the where clause json and add to Filter object*/
+                    Clause clause;
+
+                    std::string strField =  (*it)["field"].get<std::string>();
+                    std::string strOP = (*it)["op"].get<std::string>();
+                    std::string strValue = (*it)["value"].get<std::string>();
+                    std::string strObject = "";
+                    
+                    /* See if the field name contains an object name in the format object.field */
+                    std::size_t nPos = strField.find(".");
+                    if(nPos != std::string::npos)
+                    {
+                        strObject = strField.substr(0, nPos);
+                        strField = strField.substr(nPos+1);
+                    }
+
+                    clause.strField = strField;
+    
+                    /* operand */
+                    if(strOP == "=" || strOP == "==")
+                        clause.nOP = TAO::Operation::OP::EQUALS;
+                    else if(strOP == ">")
+                        clause.nOP = TAO::Operation::OP::GREATERTHAN;
+                    else if(strOP == "<")
+                        clause.nOP = TAO::Operation::OP::LESSTHAN;
+                    else if(strOP == "<>")
+                        clause.nOP = TAO::Operation::OP::NOTEQUALS;
+                    else if(strOP == ">=")
+                        clause.nOP = TAO::Operation::OP::GREATEREQUALS;
+                    else if(strOP == "<=")
+                        clause.nOP = TAO::Operation::OP::LESSEQUALS;
+                    else    
+                        /* Unknown operand */
+                        throw APIException(-305, "Unknown operand in where clause" );
+
+                    /* Get the value */
+                    clause.strValue = (*it)["value"].get<std::string>();
+
+                    /* Add the clause to our vWhere vector */
+                    vWhere[strObject].push_back(clause);
+                }
+
+            }
+        }
+
+
+        /* Checks to see if the json response matches the where clauses  */
+        bool MatchesWhere(const json::json& obj, const std::vector<Clause>& vWhere, const std::vector<std::string>& vIgnore)
+        {
+            bool fMatchesAll = true;
+            for(const auto& clause : vWhere)
+            {
+                /* Skip the clause if the field is on the ignore list */
+                if(std::find(vIgnore.begin(), vIgnore.end(), clause.strField) != vIgnore.end())
+                    continue;
+
+                /* Check that the field exists in the JSON.  If it doesn't then remove skip the record */
+                if(obj.find(clause.strField) != obj.end())
+                {
+                    /* Check the value */
+                    switch(clause.nOP)
+                    {
+                        case TAO::Operation::OP::EQUALS :
+                        {
+                            if(obj[clause.strField].is_number_float())
+                                fMatchesAll = obj[clause.strField] == std::stof(clause.strValue);
+                            else if(obj[clause.strField].is_number_unsigned())
+                                fMatchesAll = obj[clause.strField] == std::stoul(clause.strValue);
+                            else if(obj[clause.strField].is_boolean())
+                                fMatchesAll = obj[clause.strField] == (clause.strValue == "true");
+                            else
+                                fMatchesAll = obj[clause.strField] == clause.strValue;
+                            break;
+                        }
+                        case TAO::Operation::OP::NOTEQUALS :
+                        {
+                            if(obj[clause.strField].is_number_float())
+                                fMatchesAll = obj[clause.strField] != std::stof(clause.strValue);
+                            else if(obj[clause.strField].is_number_unsigned())
+                                fMatchesAll = obj[clause.strField] != std::stoul(clause.strValue);
+                            else if(obj[clause.strField].is_boolean())
+                                fMatchesAll = obj[clause.strField] != (clause.strValue == "true");
+                            else
+                                fMatchesAll = obj[clause.strField] != clause.strValue;
+                            break;
+                        }
+                        case TAO::Operation::OP::LESSTHAN :
+                        {
+                            if(obj[clause.strField].is_number_float())
+                                fMatchesAll = obj[clause.strField] < std::stof(clause.strValue);
+                            else if(obj[clause.strField].is_number_unsigned())
+                                fMatchesAll = obj[clause.strField] < std::stoul(clause.strValue);
+                            else
+                                fMatchesAll = obj[clause.strField] < clause.strValue;
+                            break;
+                        }
+                        case TAO::Operation::OP::LESSEQUALS :
+                        {
+                            if(obj[clause.strField].is_number_float())
+                                fMatchesAll = obj[clause.strField] <= std::stof(clause.strValue);
+                            else if(obj[clause.strField].is_number_unsigned())
+                                fMatchesAll = obj[clause.strField] <= std::stoul(clause.strValue);
+                            else
+                                fMatchesAll = obj[clause.strField] <= clause.strValue;
+                            break;
+                        }
+                        case TAO::Operation::OP::GREATERTHAN :
+                        {
+                            if(obj[clause.strField].is_number_float())
+                                fMatchesAll = obj[clause.strField] > std::stof(clause.strValue);
+                            else if(obj[clause.strField].is_number_unsigned())
+                                fMatchesAll = obj[clause.strField] > std::stoul(clause.strValue);
+                            else
+                                fMatchesAll = obj[clause.strField] > clause.strValue;
+                            break;
+                        }
+                        case TAO::Operation::OP::GREATEREQUALS :
+                        {
+                            if(obj[clause.strField].is_number_float())
+                                fMatchesAll = obj[clause.strField] >= std::stof(clause.strValue);
+                            else if(obj[clause.strField].is_number_unsigned())
+                                fMatchesAll = obj[clause.strField] >= std::stoul(clause.strValue);
+                            else
+                                fMatchesAll = obj[clause.strField] >= clause.strValue;
+                            break;
+                        }
+                    }
+                }
+                else
+                    fMatchesAll = false;
+                
+                if(!fMatchesAll)
+                    break;
+
+            }
+
+            return fMatchesAll;
+        }
+
     }
 }

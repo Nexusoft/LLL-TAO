@@ -61,20 +61,23 @@ namespace TAO
             if(config::fClient.load() && hashGenesis != users->GetCallersGenesis(params))
                 throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
 
-            /* Check for paged parameter. */
-            uint32_t nPage = 0;
-            if(params.find("page") != params.end())
-                nPage = std::stoul(params["page"].get<std::string>());
-
-            /* Check for limit parameter. */
+            /* Number of results to return. */
             uint32_t nLimit = 100;
-            if(params.find("limit") != params.end())
-                nLimit = std::stoul(params["limit"].get<std::string>());
 
-            /* Check for status parameter. */
-            std::string strStatus = "";
-            if(params.find("status") != params.end())
-                strStatus = params["status"].get<std::string>();
+            /* Offset into the result set to return results from */
+            uint32_t nOffset = 0;
+
+            /* Sort order to apply */
+            std::string strOrder = "desc";
+
+            /* Vector of where clauses to apply to filter the results */
+            std::map<std::string, std::vector<Clause>> vWhere;
+
+            /* Get the params to apply to the response. */
+            GetListParams(params, strOrder, nLimit, nOffset, vWhere);
+
+            /* Flag indicating there are top level filters  */
+            bool fHasFilter = vWhere.count("") > 0;
 
             /* Get the list of registers owned by this sig chain */
             std::vector<TAO::Register::Address> vAddresses;
@@ -101,9 +104,7 @@ namespace TAO
             uint32_t nTotal = 0;
             for(const auto& state : vRegisters)
             {
-                /* The invoice JSON data */
-                json::json invoice;
-
+                
                 /* Only include read only register type */
                 if(state.second.nType != TAO::Register::REGISTER::READONLY)
                     continue;
@@ -114,38 +115,27 @@ namespace TAO
 
                 if(type != TAO::API::USER_TYPES::INVOICE)
                     continue;
-
                 
-                /* check status filter */
-                if(!strStatus.empty())
-                {
-                    /* deserialize the invoice data */
-                    invoice = Invoices::InvoiceToJSON(params, state.second, state.first);
+                /* The invoice JSON data */
+                json::json invoice = Invoices::InvoiceToJSON(params, state.second, state.first);
 
-                    /* Get the invoice status and skip if it doesn't match the filter */
-                    if( invoice["status"].get<std::string>() != strStatus )
+                /* Check to see that it matches the where clauses */
+                if(fHasFilter)
+                {
+                    /* Skip this top level record if not all of the filters were matched */
+                    if(!MatchesWhere(invoice, vWhere[""]))
                         continue;
                 }
 
-                /* Get the current page. */
-                uint32_t nCurrentPage = (nTotal / nLimit) ;
-
-                /* Increment the counter */
                 ++nTotal;
 
-                /* Check the paged data. */
-                if(nCurrentPage < nPage)
+                /* Check the offset. */
+                if(nTotal <= nOffset)
                     continue;
-
-                if(nCurrentPage > nPage)
+                
+                /* Check the limit */
+                if(nTotal - nOffset > nLimit)
                     break;
-
-                if(nTotal - (nPage * nLimit) > nLimit)
-                    break;
-
-                /* deserialize the invoice data if we haven't already */
-                if(invoice.empty())
-                    invoice = Invoices::InvoiceToJSON(params, state.second, state.first);
             
                 /* Add the invoice json to the response */
                 ret.push_back(invoice);

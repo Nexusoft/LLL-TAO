@@ -126,22 +126,8 @@ namespace LLP
                             /* Decode if url-form-encoded. */
                             INCOMING.strContent = encoding::urldecode(INCOMING.strContent);
 
-                            /* Split by delimiter. */
-                            std::vector<std::string> vParams;
-                            ParseString(INCOMING.strContent, '&', vParams);
-
-                            /* Get the parameters. */
-                            for(std::string strParam : vParams)
-                            {
-                                std::string::size_type pos2 = strParam.find("=");
-                                if(pos2 == strParam.npos)
-                                    break;
-
-                                std::string key   = strParam.substr(0, pos2);
-                                std::string value = strParam.substr(pos2 + 1);
-
-                                params[key] = value;
-                            }
+                            /* parse the querystring */
+                            params = QuerystringToJSON(INCOMING.strContent, METHOD);
                         }
 
                         /* JSON encoding. */
@@ -160,25 +146,11 @@ namespace LLP
                 std::string::size_type pos = METHOD.find("?");
                 if(pos != METHOD.npos)
                 {
-                    /* Parse out the form entries by char '&' */
-                    std::vector<std::string> vParams;
-                    ParseString(encoding::urldecode(METHOD.substr(pos + 1)), '&', vParams);
-
                     /* Parse the form from the end of method. */
                     METHOD = METHOD.substr(0, pos);
 
-                    /* Check each form entry. */
-                    for(std::string strParam : vParams)
-                    {
-                        std::string::size_type pos2 = strParam.find("=");
-                        if(pos2 == strParam.npos)
-                            break;
-
-                        std::string key   = strParam.substr(0, pos2);
-                        std::string value = strParam.substr(pos2 + 1);
-
-                        params[key] = value;
-                    }
+                    /* parse the querystring */
+                    params = QuerystringToJSON(encoding::urldecode(METHOD.substr(pos + 1)), METHOD);
                 }
             }
             else if(INCOMING.strType == "OPTIONS")
@@ -333,5 +305,70 @@ namespace LLP
 
         return strUserPass == strAPIUserColonPass;
     }
+
+
+    /* Parses the querystring and coverts it to a json object of key=value pairs */
+    json::json APINode::QuerystringToJSON(const std::string& strQuerystring, const std::string& strMethod)
+    {
+        /* The json params to return */
+        json::json params;
+
+        /* Flag indicating that this is a list API call, in which case we need to parse the params differently */
+        bool fIsList = strMethod.find("list/") != strMethod.npos;
+
+        std::vector<std::string> strListKeywords = {"genesis", "username", "name", "verbose", "page", "limit", "sort", "order", "where"};
+
+        /* Parse out the form entries by char '&' */
+        std::vector<std::string> vParams;
+        ParseString(strQuerystring, '&', vParams);
+        
+        /* Check each form entry. */
+        for(std::string strParam : vParams)
+        {
+            std::string::size_type pos2 = std::string::npos;
+
+            if(fIsList)
+                pos2 = strParam.find_first_of("><=", 0);
+            else
+                pos2 = strParam.find('=', 0);
+
+            if(pos2 == strParam.npos)
+                break;
+            
+            /* Get the parameter key */
+            std::string key = strParam.substr(0, pos2);
+
+            /* If this is a list command, check to see if this is a where clause (not a keyword parameter supported by list)*/
+            if(fIsList && std::find(strListKeywords.begin(), strListKeywords.end(), key) == strListKeywords.end())
+            {
+                /* add the where clause */
+                json::json jsonClause;
+                jsonClause["field"] = key;
+
+                /* Check to see if the parameter delimter is a two-character operand */
+                if(strParam.find_first_of("><=", pos2+1) != strParam.npos)
+                {
+                    /* Extract the operand */
+                    jsonClause["op"] = strParam.substr(pos2, 2);
+                    pos2++;
+                }
+                else
+                {
+                    /* Extract the operand */
+                    jsonClause["op"] = strParam.substr(pos2, 1);
+                }
+
+                /* Extract the value */
+                jsonClause["value"] = strParam.substr(pos2 + 1);
+
+                /* Add it to the where params*/
+                params["where"].push_back(jsonClause);
+            }
+            else
+                params[key] =  strParam.substr(pos2 + 1);
+        }
+
+        return params;
+    } 
 
 }
