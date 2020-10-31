@@ -364,7 +364,7 @@ Error Codes
 | -227 | Missing payment account name / address |
 | -228 | Missing sender detail |
 | -229 | Missing recipient |
-| -230 | Recipient user does not exist | 
+| -230 | Recipient user does not exist |
 | -231 | Missing recipient detail |
 | -232 | Missing items |
 | -233 | Invoice must include at least one item |
@@ -433,4 +433,3 @@ Error Codes
 | -296 | Missing certificate |
 | -297 | Cannot log in while synchronizing |
 | -300 | API can only be used to lookup data for the currently logged in signature chain when running in client mode |
-

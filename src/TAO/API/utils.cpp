@@ -278,11 +278,30 @@ namespace TAO
                             uint8_t nType = 0;
                             contract >> nType;
 
+<<<<<<< HEAD
                             /* IF this is not a forced transfer, we need to retrieve the object so we can see whether it has been 
                                claimed or not.  If it has not been claimed then we ignore the transfer operation and still show 
                                it as ours.  However we need to skip this check in light mode because we will not have the 
                                register state available in order to determine if it has been claimed or not */
                             if(nType != TAO::Operation::TRANSFER::FORCE && !config::fClient.load())
+=======
+                            /* If we have transferred to a token that we own then we ignore the transfer as we still
+                               technically own the register */
+                            if(nType == TAO::Operation::TRANSFER::FORCE)
+                            {
+                                TAO::Register::Object newOwner;
+                                if(!LLD::Register->ReadState(hashTransfer, newOwner))
+                                    throw APIException(-153, "Transfer recipient object not found");
+
+                                if(newOwner.hashOwner == hashGenesis)
+                                    break;
+                            }
+                            /* We need to retrieve the object so we can see whether it has been claimed or not.  If it has not been
+                               claimed then we ignore the transfer operation and still show it as ours.  However we need to skip
+                               this check in light mode because we will not have the register state available in order to determine
+                               if it has been claimed or not */
+                            else if(!config::fClient.load())
+>>>>>>> viz
                             {
                                 /* Retrieve the object so we can see whether it has been claimed or not */
                                 TAO::Register::Object object;
@@ -1556,6 +1575,7 @@ namespace TAO
         }
 
 
+<<<<<<< HEAD
         /*Used for client mode, this method will download the signature chain transactions and events for a given genesis */
         bool DownloadSigChain(const uint256_t& hashGenesis, uint32_t nTimeout, bool bSyncEvents)
         {
@@ -1649,6 +1669,30 @@ namespace TAO
             }
 
             return fFound;
+=======
+        /* Utility method that builds and accepts a transaction into the mempool under the same ACID memory lock. */
+        void BuildAndAccept(TAO::Ledger::Transaction &tx, const uint512_t& hashSecret)
+        {
+            {
+                RLOCK(LLD::ACID_MUTEX);
+
+                /* Add the fee */
+                AddFee(tx);
+
+                /* Execute the operations layer. */
+                if(!tx.Build())
+                    throw APIException(-30, "Operations failed to execute");
+            }
+
+            /* Sign the transaction. */
+            if(!tx.Sign(hashSecret))
+                throw APIException(-31, "Ledger failed to sign transaction");
+
+            /* Execute the operations layer. */
+            if(!TAO::Ledger::mempool.Accept(tx))
+                throw APIException(-32, "Failed to accept");
+
+>>>>>>> viz
         }
 
 

@@ -182,7 +182,7 @@ namespace TAO
             TAO::Ledger::Transaction tx;
             if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
                 throw APIException(-17, "Failed to create transaction");
-        
+
             /* Add the DEBIT contract with the OP::VALIDATE */
             tx[0] << uint8_t(TAO::Operation::OP::VALIDATE) << hashTx << nContract;
             tx[0] << uint8_t(TAO::Operation::OP::DEBIT) << hashFrom << hashTo << nAmount << uint64_t(0);
@@ -190,6 +190,7 @@ namespace TAO
             /* Add the CLAIM contract to claim the invoice */
             tx[1] << (uint8_t)TAO::Operation::OP::CLAIM << hashTx << nContract << hashRegister;
 
+<<<<<<< HEAD
             /* Add the fee */
             AddFee(tx);
             
@@ -204,6 +205,10 @@ namespace TAO
             /* Execute the operations layer. */
             if(!TAO::Ledger::mempool.Accept(tx))
                 throw APIException(-32, "Failed to accept.");
+=======
+            /* Finalize the transaction. */
+            BuildAndAccept(tx, users->GetKey(tx.nSequence, strPIN, nSession));
+>>>>>>> viz
 
             /* Build a JSON response object. */
             ret["txid"]  = tx.GetHash().ToString();

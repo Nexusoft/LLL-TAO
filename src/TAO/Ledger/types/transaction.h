@@ -90,6 +90,10 @@ namespace TAO
             std::vector<uint8_t> vchPubKey;
             std::vector<uint8_t> vchSig;
 
+
+            //MEMORY ONLY: cache of the txid for faster access time.
+            mutable uint512_t hashThis;
+
             /* serialization macros */
             IMPLEMENT_SERIALIZE
             (
@@ -205,16 +209,6 @@ namespace TAO
              *
              **/
             bool Check() const;
-
-
-            /** Verify
-             *
-             *  Verify a transaction contracts.
-             *
-             *  @return true if transaction is valid.
-             *
-             **/
-            bool Verify(const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK) const;
 
 
             /** CheckTrust
@@ -377,10 +371,12 @@ namespace TAO
              *
              *  Gets the hash of the transaction object.
              *
+             *  @param[in] fCache Flag to set internal cache for txid.
+             *
              *  @return 512-bit unsigned integer of hash.
              *
              **/
-            uint512_t GetHash() const;
+            uint512_t GetHash(const bool fCache = false) const;
 
 
             /** ProofHash

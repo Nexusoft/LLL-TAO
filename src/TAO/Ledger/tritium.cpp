@@ -378,10 +378,6 @@ namespace TAO
                 return debug::error(FUNCTION, "channel out of range");
 
             /* Check that the time was within range. */
-            if(nVersion < 8 && GetBlockTime() > runtime::unifiedtimestamp() + runtime::maxdrift() * 60)
-                return debug::error(FUNCTION, "block timestamp too far in the future");
-
-            /* Check that the time was within range. */
             if(nVersion >= 8 && GetBlockTime() > runtime::unifiedtimestamp() + runtime::maxdrift())
                 return debug::error(FUNCTION, "block timestamp too far in the future");
 
@@ -874,7 +870,10 @@ namespace TAO
             }
 
             /* Commit the transaction to database. */
+            runtime::stopwatch swCommit;
+            swCommit.start();
             LLD::TxnCommit();
+            swCommit.stop();
 
             /* Check for best chain. */
             if(GetHash() == ChainState::hashBestChain.load())
@@ -886,7 +885,7 @@ namespace TAO
 
                 /* Log the mempool consistency checking. */
                 uint64_t nElapsed = timer.ElapsedMilliseconds();
-                debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION, "Mempool Consistency Check Complete in ", nElapsed,  " ms");
+                debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION, "Disk Flushed in ", swCommit.ElapsedMilliseconds(), " ms | Mempool Verified in ", nElapsed,  " ms");
             }
 
             return true;

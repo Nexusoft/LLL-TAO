@@ -63,7 +63,7 @@ TEST_CASE( "Trust Creation Tests", "[operation][stake]")
         REQUIRE(tx.Build());
 
         //verify the prestates and poststates
-        REQUIRE(tx.Verify());
+        
 
         //commit to disk
         REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -165,7 +165,7 @@ TEST_CASE( "Trust Creation Tests", "[operation][stake]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -315,7 +315,7 @@ TEST_CASE( "Solo Stake Operation Tests", "[operation][stake][solostake]")
         REQUIRE(tx.Build());
 
         //verify the prestates and poststates
-        REQUIRE(tx.Verify());
+        
 
         //commit to disk
         REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -444,7 +444,7 @@ TEST_CASE( "Solo Stake Operation Tests", "[operation][stake][solostake]")
         REQUIRE(tx.Build());
 
         //verify the prestates and poststates
-        REQUIRE(tx.Verify());
+        
 
         //commit to disk
         REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -509,7 +509,7 @@ TEST_CASE( "Solo Stake Operation Tests", "[operation][stake][solostake]")
         REQUIRE(tx.Build());
 
         //verify the prestates and poststates
-        REQUIRE(tx.Verify());
+        
 
         //commit to disk
         REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -686,7 +686,7 @@ TEST_CASE( "Solo Stake Operation Tests", "[operation][stake][solostake]")
         REQUIRE(tx.Build());
 
         //verify the prestates and poststates
-        REQUIRE(tx.Verify());
+        
 
         //commit to disk
         REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -748,7 +748,7 @@ TEST_CASE( "Solo Stake Operation Tests", "[operation][stake][solostake]")
         REQUIRE(tx.Build());
 
         //verify the prestates and poststates
-        REQUIRE(tx.Verify());
+        
 
         //commit to disk
         REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -810,7 +810,7 @@ TEST_CASE( "Solo Stake Operation Tests", "[operation][stake][solostake]")
         REQUIRE(tx.Build());
 
         //verify the prestates and poststates
-        REQUIRE(tx.Verify());
+        
 
         //commit to disk
         REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));

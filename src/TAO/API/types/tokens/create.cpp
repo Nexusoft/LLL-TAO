@@ -179,7 +179,7 @@ namespace TAO
 
                     if(!fValid)
                         throw APIException(-177, "Invalid decimals amount.  Decimals must be whole number value between 0 and 8");
-                    
+
                 }
 
                 /* Sanitize the supply/decimals combination for uint64 overflow */
@@ -188,7 +188,7 @@ namespace TAO
 
                 /* Multiply the supply by 10^Decimals to give the supply in the divisible units */
                 nSupply = nSupply * pow(10, nDecimals);
-                    
+
                 /* Create a token object register. */
                 TAO::Register::Object token = TAO::Register::CreateToken(hashIdentifier,
                                                                          nSupply,
@@ -204,6 +204,7 @@ namespace TAO
             if(params.find("name") != params.end() && !params["name"].is_null() && !params["name"].get<std::string>().empty())
                 tx[1] = Names::CreateName(session.GetAccount()->Genesis(), params["name"].get<std::string>(), "", hashRegister);
 
+<<<<<<< HEAD
             /* Add the fee */
             AddFee(tx);
 
@@ -218,6 +219,10 @@ namespace TAO
             /* Execute the operations layer. */
             if(!TAO::Ledger::mempool.Accept(tx))
                 throw APIException(-32, "Failed to accept");
+=======
+            /* Finalize the transaction. */
+            BuildAndAccept(tx, users->GetKey(tx.nSequence, strPIN, nSession));
+>>>>>>> viz
 
             /* Build a JSON response object. */
             ret["txid"]  = tx.GetHash().ToString();

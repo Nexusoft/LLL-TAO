@@ -90,7 +90,7 @@ TEST_CASE( "Legacy mempool and memory sequencing tests", "[legacy]")
             tx.Sign(hashPrivKey1);
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             //commit to disk
             REQUIRE(tx.Connect(TAO::Ledger::FLAGS::BLOCK));
@@ -139,7 +139,7 @@ TEST_CASE( "Legacy mempool and memory sequencing tests", "[legacy]")
             tx.Sign(hashPrivKey1);
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             //commit to disk
             REQUIRE(tx.Connect(TAO::Ledger::FLAGS::BLOCK));
@@ -211,7 +211,7 @@ TEST_CASE( "Legacy mempool and memory sequencing tests", "[legacy]")
                 REQUIRE(TAO::Ledger::mempool.Get(hash, tx));
 
                 LLD::Ledger->WriteTx(hash, tx);
-                REQUIRE(tx.Verify());
+                
                 REQUIRE(tx.Connect(TAO::Ledger::FLAGS::BLOCK));
                 REQUIRE(TAO::Ledger::mempool.Remove(tx.GetHash()));
             }
@@ -422,7 +422,7 @@ TEST_CASE( "Legacy mempool and memory sequencing tests", "[legacy]")
             LLD::Ledger->WriteTx(hash, tx);
 
             //verify states
-            REQUIRE(tx.Verify());
+            
 
             //connect states
             REQUIRE(tx.Connect(TAO::Ledger::FLAGS::BLOCK));

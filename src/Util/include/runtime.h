@@ -254,6 +254,11 @@ namespace runtime
         }
 
 
+        /** start
+         *
+         *  Start the stopwatch at current timestamp.
+         *
+         **/
         void start()
         {
             tStart = std::chrono::high_resolution_clock::now();
@@ -261,6 +266,11 @@ namespace runtime
         }
 
 
+        /** stop
+         *
+         *  Stop the stopwatch at the current timestamp.
+         *
+         **/
         void stop()
         {
             /* Can't stop twice. */
@@ -269,7 +279,7 @@ namespace runtime
 
             /* Grab the current elapsed time. */
             uint64_t nTime =
-                std::chrono::duration_cast<std::chrono::microseconds>
+                std::chrono::duration_cast<std::chrono::nanoseconds>
                 (
                     std::chrono::high_resolution_clock::now() - tStart
                 ).count();
@@ -280,6 +290,11 @@ namespace runtime
         }
 
 
+        /** reset
+         *
+         *  Reset the current stopwatch's time
+         *
+         **/
         void reset()
         {
             nElapsed = 0;
@@ -287,20 +302,47 @@ namespace runtime
         }
 
 
+        /** ElapsedMicroseconds
+         *
+         *  Get the time elapsed in microsecods
+         *
+         **/
         uint64_t ElapsedMicroseconds()
         {
-            return nElapsed;
+            return nElapsed / 1000;
         }
 
 
+        /** ElapsedSeconds
+         *
+         *  Get the time elapsed in seconds
+         *
+         **/
         uint64_t ElapsedSeconds() const
+        {
+            return nElapsed / 1000000000;
+        }
+
+
+        /** ElapsedMilliseconds
+         *
+         *  Get the time elapsed in milliseconds
+         *
+         **/
+        uint64_t ElapsedMilliseconds() const
         {
             return nElapsed / 1000000;
         }
 
-        uint64_t ElapsedMilliseconds() const
+
+        /** ElapsedNanoseconds
+         *
+         *  Get the time elapsed in nanoseconds
+         *
+         **/
+        uint64_t ElapsedNanoseconds() const
         {
-            return nElapsed / 1000;
+            return nElapsed;
         }
     };
 

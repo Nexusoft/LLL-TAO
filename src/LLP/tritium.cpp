@@ -336,7 +336,7 @@ namespace LLP
 
 
                 /* Disable AUTH for older protocol versions. */
-                if(nProtocolVersion >= MIN_TRITIUM_VERSION && !fLoggedIn.load())
+                if(nProtocolVersion >= MIN_TRITIUM_VERSION && !fLoggedIn.load() && config::fClient.load())
                 {
                     /* Generate an AUTH message to send to all peers */
                     DataStream ssMessage = LLP::TritiumNode::GetAuth(true);
@@ -2666,7 +2666,7 @@ namespace LLP
             }
 
 
-            /* Standard type for a block. */
+            /* Standard type for an address. */
             case TYPES::ADDRESS:
             {
                 /* Check for subscription. */
@@ -2905,6 +2905,7 @@ namespace LLP
                     /* Reset last time received. */
                     if(nCurrentSession == TAO::Ledger::nSyncSession.load())
                         nLastTimeReceived.store(runtime::timestamp());
+
                 }
 
                 /* Check for failure status messages. */

@@ -13,8 +13,13 @@
 *.vscode
 *.qm
 *.log
+<<<<<<< HEAD
 *.so
+=======
+*.tmp
+*.dat
+>>>>>>> viz
 nexus
-.cproject
-.project
+*.cproject
+*.project
 /.settings/

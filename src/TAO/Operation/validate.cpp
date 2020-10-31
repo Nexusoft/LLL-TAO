@@ -117,7 +117,7 @@ namespace TAO
                     condition >> nReference;
 
                     /* Check that debit is wildcard. NOTE: This rule was relaxed after version 1 */
-                    if(contract.Version() <= 1 && hashTo != TAO::Register::WILDCARD_ADDRESS)
+                    if(contract.Version() == 1 && hashTo != TAO::Register::WILDCARD_ADDRESS)
                         return debug::error(FUNCTION, "OP::VALIDATE: cannot validate without wildcard");
 
                     /* Check for condition. */

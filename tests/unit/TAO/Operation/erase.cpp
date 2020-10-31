@@ -122,7 +122,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             uint512_t hash = tx.GetHash();
 
             //verify prestates and poststates
-            REQUIRE(tx.Verify(FLAGS::MEMPOOL));
+
 
             //connect in memory
             REQUIRE(tx.Connect(FLAGS::MEMPOOL));
@@ -131,7 +131,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             REQUIRE(LLD::Ledger->WriteTx(hash, tx));
 
             //verify prestates and postates (disk)
-            REQUIRE(tx.Verify(FLAGS::BLOCK));
+
 
             //connect on disk
             REQUIRE(tx.Connect(FLAGS::BLOCK));
@@ -184,7 +184,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             uint512_t hash = tx.GetHash();
 
             //verify prestates and poststates
-            REQUIRE(tx.Verify(FLAGS::MEMPOOL));
+
 
             //connect in memory
             REQUIRE(tx.Connect(FLAGS::MEMPOOL));
@@ -193,7 +193,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             REQUIRE(LLD::Ledger->WriteTx(hash, tx));
 
             //verify prestates and postates (disk)
-            REQUIRE(tx.Verify(FLAGS::BLOCK));
+
 
             //connect on disk
             REQUIRE(tx.Connect(FLAGS::BLOCK));
@@ -260,7 +260,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             uint512_t hash = tx.GetHash();
 
             //verify prestates and poststates
-            REQUIRE(tx.Verify(FLAGS::MEMPOOL));
+
 
             //connect in memory
             REQUIRE(tx.Connect(FLAGS::MEMPOOL));
@@ -269,7 +269,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             REQUIRE(LLD::Ledger->WriteTx(hash, tx));
 
             //verify prestates and postates (disk)
-            REQUIRE(tx.Verify(FLAGS::BLOCK));
+
 
             //connect on disk
             REQUIRE(tx.Connect(FLAGS::BLOCK));
@@ -332,7 +332,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             uint512_t hash = tx.GetHash();
 
             //verify prestates and poststates
-            REQUIRE(tx.Verify(FLAGS::MEMPOOL));
+
 
             //connect in memory
             REQUIRE(tx.Connect(FLAGS::MEMPOOL));
@@ -341,7 +341,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             REQUIRE(LLD::Ledger->WriteTx(hash, tx));
 
             //verify prestates and postates (disk)
-            REQUIRE(tx.Verify(FLAGS::BLOCK));
+
 
             //connect on disk
             REQUIRE(tx.Connect(FLAGS::BLOCK));
@@ -396,7 +396,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             uint512_t hash = tx.GetHash();
 
             //verify prestates and poststates
-            REQUIRE(tx.Verify(FLAGS::MEMPOOL));
+
 
             //connect in memory
             REQUIRE(tx.Connect(FLAGS::MEMPOOL));
@@ -405,7 +405,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             REQUIRE(LLD::Ledger->WriteTx(hash, tx));
 
             //verify prestates and postates (disk)
-            REQUIRE(tx.Verify(FLAGS::BLOCK));
+
 
             //connect on disk
             REQUIRE(tx.Connect(FLAGS::BLOCK));
@@ -457,7 +457,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             uint512_t hash = tx.GetHash();
 
             //verify prestates and poststates
-            REQUIRE(tx.Verify(FLAGS::MEMPOOL));
+
 
             //connect in memory
             REQUIRE(tx.Connect(FLAGS::MEMPOOL));
@@ -466,7 +466,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             REQUIRE(LLD::Ledger->WriteTx(hash, tx));
 
             //verify prestates and postates (disk)
-            REQUIRE(tx.Verify(FLAGS::BLOCK));
+
 
             //connect on disk
             REQUIRE(tx.Connect(FLAGS::BLOCK));
@@ -524,7 +524,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             uint512_t hash = tx.GetHash();
 
             //verify prestates and poststates
-            REQUIRE(tx.Verify(FLAGS::MEMPOOL));
+
 
             //connect in memory
             REQUIRE(tx.Connect(FLAGS::MEMPOOL));
@@ -533,7 +533,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             REQUIRE(LLD::Ledger->WriteTx(hash, tx));
 
             //verify prestates and postates (disk)
-            REQUIRE(tx.Verify(FLAGS::BLOCK));
+
 
             //connect on disk
             REQUIRE(tx.Connect(FLAGS::BLOCK));
@@ -591,7 +591,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             REQUIRE(LLD::Ledger->WriteTx(hash, tx));
 
             //verify prestates and postates (disk)
-            REQUIRE(tx.Verify(FLAGS::BLOCK));
+
 
             //connect on disk
             REQUIRE(tx.Connect(FLAGS::BLOCK));
@@ -641,7 +641,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             uint512_t hash = tx.GetHash();
 
             //verify prestates and poststates
-            REQUIRE(tx.Verify(FLAGS::MEMPOOL));
+
 
             //connect in memory
             REQUIRE(tx.Connect(FLAGS::MEMPOOL));
@@ -650,7 +650,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             REQUIRE(LLD::Ledger->WriteTx(hash, tx));
 
             //verify prestates and postates (disk)
-            REQUIRE(tx.Verify(FLAGS::BLOCK));
+
 
             //connect on disk
             REQUIRE(tx.Connect(FLAGS::BLOCK, &stateBest));
@@ -707,7 +707,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             uint512_t hash = tx.GetHash();
 
             //verify prestates and poststates
-            REQUIRE(tx.Verify(FLAGS::MEMPOOL));
+
 
             //connect in memory
             REQUIRE(tx.Connect(FLAGS::MEMPOOL));
@@ -716,7 +716,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             REQUIRE(LLD::Ledger->WriteTx(hash, tx));
 
             //verify prestates and postates (disk)
-            REQUIRE(tx.Verify(FLAGS::BLOCK));
+
 
             //connect on disk
             REQUIRE(tx.Connect(FLAGS::BLOCK));
@@ -771,7 +771,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             uint512_t hash = tx.GetHash();
 
             //verify prestates and poststates
-            REQUIRE(tx.Verify(FLAGS::MEMPOOL));
+
 
             //connect in memory
             REQUIRE(tx.Connect(FLAGS::MEMPOOL));
@@ -780,7 +780,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             REQUIRE(LLD::Ledger->WriteTx(hash, tx));
 
             //verify prestates and postates (disk)
-            REQUIRE(tx.Verify(FLAGS::BLOCK));
+
 
             //connect on disk
             REQUIRE(tx.Connect(FLAGS::BLOCK));
@@ -834,7 +834,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             uint512_t hash = tx.GetHash();
 
             //verify prestates and poststates
-            REQUIRE(tx.Verify(FLAGS::MEMPOOL));
+
 
             //connect in memory
             REQUIRE(tx.Connect(FLAGS::MEMPOOL));
@@ -843,7 +843,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             REQUIRE(LLD::Ledger->WriteTx(hash, tx));
 
             //verify prestates and postates (disk)
-            REQUIRE(tx.Verify(FLAGS::BLOCK));
+
 
             //connect on disk
             REQUIRE(tx.Connect(FLAGS::BLOCK));
@@ -904,7 +904,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             uint512_t hash = tx.GetHash();
 
             //verify prestates and poststates
-            REQUIRE(tx.Verify(FLAGS::MEMPOOL));
+
 
             //connect in memory
             REQUIRE(tx.Connect(FLAGS::MEMPOOL));
@@ -913,7 +913,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             REQUIRE(LLD::Ledger->WriteTx(hash, tx));
 
             //verify prestates and postates (disk)
-            REQUIRE(tx.Verify(FLAGS::BLOCK));
+
 
             //connect on disk
             REQUIRE(tx.Connect(FLAGS::BLOCK));
@@ -966,7 +966,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             uint512_t hash = tx.GetHash();
 
             //verify prestates and poststates
-            REQUIRE(tx.Verify(FLAGS::MEMPOOL));
+
 
             //connect in memory
             REQUIRE(tx.Connect(FLAGS::MEMPOOL));
@@ -975,7 +975,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             REQUIRE(LLD::Ledger->WriteTx(hash, tx));
 
             //verify prestates and postates (disk)
-            REQUIRE(tx.Verify(FLAGS::BLOCK));
+
 
             //connect on disk
             REQUIRE(tx.Connect(FLAGS::BLOCK));
@@ -1036,7 +1036,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             uint512_t hash = tx.GetHash();
 
             //verify prestates and poststates
-            REQUIRE(tx.Verify(FLAGS::MEMPOOL));
+
 
             //connect in memory
             REQUIRE(tx.Connect(FLAGS::MEMPOOL));
@@ -1112,7 +1112,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             uint512_t hash = tx.GetHash();
 
             //verify prestates and poststates
-            REQUIRE(tx.Verify(FLAGS::MEMPOOL));
+
 
             //connect in memory
             REQUIRE(tx.Connect(FLAGS::MEMPOOL));
@@ -1132,7 +1132,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             REQUIRE(LLD::Ledger->WriteTx(hash, tx));
 
             //verify prestates and postates (disk)
-            REQUIRE(tx.Verify(FLAGS::BLOCK));
+
 
             //connect on disk
             REQUIRE(tx.Connect(FLAGS::BLOCK));
@@ -1194,7 +1194,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             uint512_t hash = tx.GetHash();
 
             //verify prestates and poststates
-            REQUIRE(tx.Verify(FLAGS::MEMPOOL));
+
 
             //connect in memory
             REQUIRE(tx.Connect(FLAGS::MEMPOOL));
@@ -1286,7 +1286,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             uint512_t hash = tx.GetHash();
 
             //verify prestates and poststates
-            REQUIRE(tx.Verify(FLAGS::MEMPOOL));
+
 
             //connect in memory
             REQUIRE(tx.Connect(FLAGS::MEMPOOL));
@@ -1299,7 +1299,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             REQUIRE(nClaimed == uint64_t(1 * NXS_COIN));
 
             //verify prestates and postates (disk)
-            REQUIRE(tx.Verify(FLAGS::BLOCK));
+
 
             //connect on disk
             REQUIRE(tx.Connect(FLAGS::BLOCK));
@@ -1337,7 +1337,6 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
 
         //connect final memory transaction
         {
-            REQUIRE(mem.Verify(FLAGS::BLOCK));
             REQUIRE(mem.Connect(FLAGS::BLOCK));
 
             //check for account
@@ -1401,7 +1400,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
         uint512_t hash = tx.GetHash();
 
         //verify prestates and poststates
-        REQUIRE(tx.Verify(FLAGS::MEMPOOL));
+
 
         //connect in memory
         REQUIRE(tx.Connect(FLAGS::MEMPOOL));
@@ -1458,7 +1457,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
         uint512_t hash = tx.GetHash();
 
         //verify prestates and poststates
-        REQUIRE(tx.Verify(FLAGS::MEMPOOL));
+
 
         //connect in memory
         REQUIRE(tx.Connect(FLAGS::MEMPOOL));
@@ -1471,7 +1470,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
         REQUIRE(LLD::Ledger->WriteTx(hash, tx));
 
         //verify prestates and postates (disk)
-        REQUIRE(tx.Verify(FLAGS::BLOCK));
+
 
         //connect on disk
         REQUIRE(tx.Connect(FLAGS::BLOCK));
@@ -1541,7 +1540,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
         uint512_t hash = tx.GetHash();
 
         //verify prestates and poststates
-        REQUIRE(tx.Verify(FLAGS::MEMPOOL));
+
 
         //connect in memory
         REQUIRE(tx.Connect(FLAGS::MEMPOOL));
@@ -1614,7 +1613,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
         uint512_t hash = tx.GetHash();
 
         //verify prestates and poststates
-        REQUIRE(tx.Verify(FLAGS::MEMPOOL));
+
 
         //connect in memory
         REQUIRE(tx.Connect(FLAGS::MEMPOOL));
@@ -1627,7 +1626,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
         REQUIRE(LLD::Ledger->WriteTx(hash, tx));
 
         //verify prestates and postates (disk)
-        REQUIRE(tx.Verify(FLAGS::BLOCK));
+
 
         //connect on disk
         REQUIRE(tx.Connect(FLAGS::BLOCK));
@@ -1679,7 +1678,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
         uint512_t hash = tx.GetHash();
 
         //verify prestates and poststates
-        REQUIRE(tx.Verify(FLAGS::MEMPOOL));
+
 
         //connect in memory
         REQUIRE(tx.Connect(FLAGS::MEMPOOL));
@@ -1735,7 +1734,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
         uint512_t hash = tx.GetHash();
 
         //verify prestates and poststates
-        REQUIRE(tx.Verify(FLAGS::MEMPOOL));
+
 
         //connect in memory
         REQUIRE(tx.Connect(FLAGS::MEMPOOL));
@@ -1792,7 +1791,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
         uint512_t hash = tx.GetHash();
 
         //verify prestates and poststates
-        REQUIRE(tx.Verify(FLAGS::MEMPOOL));
+
 
         //connect in memory
         REQUIRE(tx.Connect(FLAGS::MEMPOOL));
@@ -1811,7 +1810,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
         REQUIRE(LLD::Ledger->WriteTx(hash, tx));
 
         //verify prestates and postates (disk)
-        REQUIRE(tx.Verify(FLAGS::BLOCK));
+
 
         //connect on disk
         REQUIRE(tx.Connect(FLAGS::BLOCK));
@@ -1867,7 +1866,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
         uint512_t hash = tx.GetHash();
 
         //verify prestates and poststates
-        REQUIRE(tx.Verify(FLAGS::MEMPOOL));
+
 
         //connect in memory
         REQUIRE(tx.Connect(FLAGS::MEMPOOL));
@@ -1947,7 +1946,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
         uint512_t hash = tx.GetHash();
 
         //verify prestates and poststates
-        REQUIRE(tx.Verify(FLAGS::MEMPOOL));
+
 
         //connect in memory
         REQUIRE(tx.Connect(FLAGS::MEMPOOL));
@@ -1964,7 +1963,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
         REQUIRE(LLD::Ledger->WriteTx(hash, tx));
 
         //verify prestates and postates (disk)
-        REQUIRE(tx.Verify(FLAGS::BLOCK));
+
 
         //connect on disk
         REQUIRE(tx.Connect(FLAGS::BLOCK));
@@ -2021,7 +2020,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
         uint512_t hash = tx.GetHash();
 
         //verify prestates and poststates
-        REQUIRE(tx.Verify(FLAGS::MEMPOOL));
+
 
         //connect in memory
         REQUIRE(tx.Connect(FLAGS::MEMPOOL));

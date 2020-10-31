@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #define NEXUS_LLC_INCLUDE_RANDOM_H
 
 #include <limits>
+
 #include <LLC/types/uint1024.h>
 
 namespace LLC

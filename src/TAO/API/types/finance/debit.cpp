@@ -297,6 +297,7 @@ namespace TAO
                 }
             }
 
+<<<<<<< HEAD
             /* Add the fee. If the sending account is a NXS account then we take the fee from that, otherwise we will leave it 
             to the AddFee method to take the fee from the default NXS account */
             if(accountFrom.get<uint256_t>("token") == 0)
@@ -316,6 +317,11 @@ namespace TAO
             if(!TAO::Ledger::mempool.Accept(tx))
                 throw APIException(-32, "Failed to accept");
 
+=======
+            /* Finalize the transaction. */
+            BuildAndAccept(tx, users->GetKey(tx.nSequence, strPIN, nSession));
+            
+>>>>>>> viz
             /* If this has a legacy transaction and not in client mode  then we need to make sure it shows in the legacy wallet */
             if(fHasLegacy && !config::fClient.load())
             {

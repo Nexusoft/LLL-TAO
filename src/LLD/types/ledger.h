@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <LLD/templates/sector.h>
 #include <LLD/cache/binary_lru.h>
 #include <LLD/keychain/hashmap.h>
+#include <LLD/config/hashmap.h>
 
 #include <TAO/Operation/types/contract.h>
 
@@ -72,7 +73,7 @@ namespace LLD
      *  The database class for the Ledger Layer.
      *
      **/
-    class LedgerDB : public SectorDatabase<BinaryHashMap, BinaryLRU>
+    class LedgerDB : public Templates::SectorDatabase<BinaryHashMap, BinaryLRU, Config::Hashmap>
     {
 
         /** Mutex to lock internall when accessing memory mode. **/
@@ -80,11 +81,11 @@ namespace LLD
 
 
         /** Ledger transaction to track current open transaction. **/
-        LedgerTransaction* pMemory;
+        static thread_local std::unique_ptr<LedgerTransaction> pMemory;
 
 
         /** Miner transaction to track current states for miner verification. **/
-        LedgerTransaction* pMiner;
+        static thread_local std::unique_ptr<LedgerTransaction> pMiner;
 
 
         /** Ledger transaction to keep open all commited data. **/
@@ -95,8 +96,7 @@ namespace LLD
 
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        LedgerDB(const uint8_t nFlagsIn = FLAGS::CREATE | FLAGS::WRITE,
-            const uint32_t nBucketsIn = 77773, const uint32_t nCacheIn = 1024 * 1024);
+        LedgerDB(const Config::Sector& sector, const Config::Hashmap& keychain);
 
 
         /** Default Destructor **/

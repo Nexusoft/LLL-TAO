@@ -125,7 +125,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -160,7 +160,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -193,9 +193,6 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
 
             //generate the prestates and poststates
             REQUIRE_FALSE(tx.Build());
-
-            //verify the prestates and poststates
-            REQUIRE_FALSE(tx.Verify());
 
             //add to wallet
             REQUIRE_THROWS(Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::stateGenesis, true));
@@ -237,7 +234,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -284,7 +281,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+
 
             //commit to disk
             REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -543,7 +540,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -588,7 +585,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+
 
             //commit to disk
             REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));

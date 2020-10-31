@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <LLD/templates/sector.h>
 #include <LLD/cache/binary_lru.h>
 #include <LLD/keychain/hashmap.h>
+#include <LLD/config/hashmap.h>
 
 #include <TAO/Ledger/include/enum.h>
 
@@ -50,18 +51,18 @@ namespace LLD
      *  Database class for storing local wallet transactions.
      *
      **/
-    class ContractDB : public SectorDatabase<BinaryHashMap, BinaryLRU>
+    class ContractDB : public Templates::SectorDatabase<BinaryHashMap, BinaryLRU, Config::Hashmap>
     {
         /** Internal mutex for MEMPOOL mode. **/
         std::mutex MEMORY_MUTEX;
 
 
         /** Register transaction to track current open transaction. **/
-        ContractTransaction* pMemory;
+        static thread_local std::unique_ptr<ContractTransaction> pMemory;
 
 
         /** Miner transaction to track current states for miner verification. **/
-        ContractTransaction* pMiner;
+        static thread_local std::unique_ptr<ContractTransaction> pMiner;
 
 
         /** Register transaction to keep open all commited data. **/
@@ -71,8 +72,7 @@ namespace LLD
     public:
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        ContractDB(const uint8_t nFlagsIn = FLAGS::CREATE | FLAGS::WRITE,
-            const uint32_t nBucketsIn = 77773, const uint32_t nCacheIn = 1024 * 1024);
+        ContractDB(const Config::Sector& sector, const Config::Hashmap& keychain);
 
 
         /** Default Destructor **/

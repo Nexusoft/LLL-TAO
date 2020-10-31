@@ -240,17 +240,17 @@ namespace Legacy
     std::string LegacyBlock::ToString() const
     {
         return debug::safe_printstr("Legacy Block("
-            VALUE("hash")     " = ", GetHash().SubString(), " ",
-            VALUE("nVersion") " = ", nVersion, ", ",
-            VALUE("hashPrevBlock") " = ", hashPrevBlock.SubString(), ", ",
-            VALUE("hashMerkleRoot") " = ", hashMerkleRoot.SubString(), ", ",
-            VALUE("nChannel") " = ", nChannel, ", ",
-            VALUE("nHeight") " = ", nHeight, ", ",
-            VALUE("nBits") " = ", nBits, ", ",
-            VALUE("nNonce") " = ", nNonce, ", ",
-            VALUE("nTime") " = ", nTime, ", ",
-            VALUE("vchBlockSig") " = ", HexStr(vchBlockSig.begin(), vchBlockSig.end()), ", ",
-            VALUE("vtx.size()") " = ", vtx.size(), ")"
+            STRONG("hash")     " = ", GetHash().SubString(), " ",
+            STRONG("nVersion") " = ", nVersion, ", ",
+            STRONG("hashPrevBlock") " = ", hashPrevBlock.SubString(), ", ",
+            STRONG("hashMerkleRoot") " = ", hashMerkleRoot.SubString(), ", ",
+            STRONG("nChannel") " = ", nChannel, ", ",
+            STRONG("nHeight") " = ", nHeight, ", ",
+            STRONG("nBits") " = ", nBits, ", ",
+            STRONG("nNonce") " = ", nNonce, ", ",
+            STRONG("nTime") " = ", nTime, ", ",
+            STRONG("vchBlockSig") " = ", HexStr(vchBlockSig.begin(), vchBlockSig.end()), ", ",
+            STRONG("vtx.size()") " = ", vtx.size(), ")"
         );
     }
 

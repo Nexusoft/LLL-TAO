@@ -18,6 +18,8 @@ ________________________________________________________________________________
 
 #include <LLD/types/address.h>
 #include <LLD/include/version.h>
+#include <LLD/include/enum.h>
+#include <LLD/config/hashmap.h>
 
 #include <LLP/include/manager.h>
 #include <LLP/include/hosts.h>
@@ -40,7 +42,24 @@ namespace LLP
     , pDatabase(nullptr)
     , nPort(nPortIn)
     {
-        pDatabase = new LLD::AddressDB(nPortIn, LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+        /* Create the AddressDB configuration object. */
+        LLD::Config::Base BASE =
+            LLD::Config::Base(std::string("_ADDR/") + std::to_string(nPort), LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+
+        /* Create the AddressDB sector configuration object. */
+        LLD::Config::Sector SECTOR             = LLD::Config::Sector(BASE);
+        SECTOR.MAX_SECTOR_FILE_STREAMS         = 4;
+        SECTOR.MAX_SECTOR_BUFFER_SIZE          = 0; //0 bytes, since we are in force mode this won't be used at all
+        SECTOR.MAX_SECTOR_CACHE_SIZE           = 1024; //1 KB of cache by default
+
+        /* Create the AddressDB keychain configuration object. */
+        LLD::Config::Hashmap KEYCHAIN         = LLD::Config::Hashmap(BASE);
+        KEYCHAIN.HASHMAP_TOTAL_BUCKETS        = 77773;
+        KEYCHAIN.MAX_HASHMAPS            = 4; //TODO: make sure this doesn't break anything :D
+        KEYCHAIN.MIN_LINEAR_PROBES            = 1;
+
+        /* Create the database instance. */
+        pDatabase = new LLD::AddressDB(SECTOR, KEYCHAIN);
         if(!pDatabase)
             throw debug::exception(FUNCTION, "Failed to allocate memory for AddressManager");
     }

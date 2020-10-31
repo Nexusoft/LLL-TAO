@@ -368,17 +368,22 @@ namespace LLP
         /* The map of trust addresses to track. */
         std::map<uint64_t, TrustAddress> mapTrustAddress;
 
+
         /* The map of banned addresses to ignore. */
         std::map<uint64_t, uint32_t> mapBanned;
+
 
         /* The map of DNS related addresses. */
         std::map<uint64_t, std::string> mapDNS;
 
+
         /* The mutex used for thread locking. */
         mutable std::mutex MUTEX;
 
+
         /* The pointer to the address database. */
         LLD::AddressDB *pDatabase;
+
 
         /* The global port number for the manager (associated with server port). */
         uint16_t nPort;

@@ -11,7 +11,7 @@
 ____________________________________________________________________________________________*/
 
 #include <LLD/cache/binary_lfu.h>
-#include <LLD/hash/xxh3.h>
+#include <LLD/hash/xxhash.h>
 
 #include <Util/include/mutex.h>
 #include <Util/include/debug.h>

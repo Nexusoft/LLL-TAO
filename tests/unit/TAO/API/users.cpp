@@ -135,7 +135,7 @@ TEST_CASE( "Test Users API", "[API/users]")
         REQUIRE(LLD::Ledger->WriteTx(txid, tx));
         REQUIRE(LLD::Ledger->WriteLast(hashGenesis, txid));
 
-        REQUIRE(tx.Verify());
+        
         
         for(uint32_t nContract = 0; nContract < tx.Size(); nContract++)
         {

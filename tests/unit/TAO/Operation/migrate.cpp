@@ -105,7 +105,7 @@ TEST_CASE( "Migrate Operation Test - Genesis coinstake", "[operation]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -477,7 +477,7 @@ TEST_CASE( "Migrate Operation Test - Genesis coinstake", "[operation]")
         else
         {
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -551,7 +551,7 @@ TEST_CASE( "Migrate Operation Test - Genesis coinstake", "[operation]")
                 REQUIRE(tx.Build());
 
                 //verify the prestates and poststates
-                REQUIRE(tx.Verify());
+                
 
                 //commit to disk
                 REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -863,7 +863,7 @@ TEST_CASE( "Migrate Operation Test - Genesis coinstake", "[operation]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             //execute the operation (this should fail as duplicate migration)
             REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -949,7 +949,7 @@ TEST_CASE( "Migrate Operation Test - Trust coinstake", "[operation]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -1448,7 +1448,7 @@ TEST_CASE( "Migrate Operation Test - Trust coinstake", "[operation]")
         else
         {
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -1540,7 +1540,7 @@ TEST_CASE( "Migrate Operation Test - Invalid OP::MIGRATE tests", "[operation]")
                 REQUIRE(tx.Build());
 
                 //verify the prestates and poststates
-                REQUIRE(tx.Verify());
+                
 
                 //commit to disk
                 REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -2006,7 +2006,7 @@ TEST_CASE( "Migrate Operation Test - Invalid OP::MIGRATE tests", "[operation]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             //execute the operation (this should fail as debit and credit value mismatch)
             REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -2102,7 +2102,7 @@ TEST_CASE( "Migrate Operation Test - Invalid OP::MIGRATE tests", "[operation]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             //execute the operation (this should fail as debit and credit trust score mismatch)
             REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -2198,7 +2198,7 @@ TEST_CASE( "Migrate Operation Test - Invalid OP::MIGRATE tests", "[operation]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             //execute the operation (this should fail as debit and credit stake hash mismatch)
             REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -2300,7 +2300,7 @@ TEST_CASE( "Migrate Operation Test - Invalid OP::MIGRATE tests", "[operation]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             //execute the operation (this should fail as debit and credit trust key mismatch)
             REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));

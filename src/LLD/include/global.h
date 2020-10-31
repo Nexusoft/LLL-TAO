@@ -25,7 +25,7 @@ ________________________________________________________________________________
 
 namespace LLD
 {
-
+    //for tritium data objects
     extern ContractDB*   Contract;
     extern RegisterDB*   Register;
     extern LedgerDB*     Ledger;
@@ -35,6 +35,9 @@ namespace LLD
     //for legacy objects
     extern TrustDB*      Trust;
     extern LegacyDB*     Legacy;
+
+    //for global ACID transaction
+    extern std::recursive_mutex ACID_MUTEX;
 
 
     /** Initialize

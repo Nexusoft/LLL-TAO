@@ -49,6 +49,7 @@ ________________________________________________________________________________
 #include <algorithm>
 #include <thread>
 #include <utility>
+#include <random>
 
 namespace Legacy
 {
@@ -2140,7 +2141,8 @@ namespace Legacy
             vCoins.push_back(item.first);
 
         /* Randomly order the transactions as potential inputs */
-        std::random_shuffle(vCoins.begin(), vCoins.end(), LLC::GetRandInt);
+        uint64_t nSeed = std::chrono::system_clock::now().time_since_epoch().count();
+        std::shuffle(vCoins.begin(), vCoins.end(), std::default_random_engine(nSeed));
 
         /* Add Each Input to Transaction. */
         std::vector<const WalletTx*> vInputs;
@@ -2297,7 +2299,8 @@ namespace Legacy
             vCoins.push_back(item.first);
 
         /* Randomly order the transactions as potential inputs */
-        std::random_shuffle(vCoins.begin(), vCoins.end(), LLC::GetRandInt);
+        uint64_t nSeed = std::chrono::system_clock::now().time_since_epoch().count();
+        std::shuffle(vCoins.begin(), vCoins.end(), std::default_random_engine(nSeed));
 
         /* Loop through all transactions, finding and adding available unspent balance to the list of outputs until reach nTargetValue */
         for(const uint512_t& hash : vCoins)

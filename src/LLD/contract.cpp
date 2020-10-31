@@ -19,16 +19,19 @@ ________________________________________________________________________________
 
 namespace LLD
 {
-    /** The Database Constructor.  **/
-    ContractDB::ContractDB(const uint8_t nFlagsIn, const uint32_t nBucketsIn, const uint32_t nCacheIn)
-    : SectorDatabase(std::string("_CONTRACT")
-    , nFlagsIn
-    , nBucketsIn
-    , nCacheIn)
 
+    /* Register transaction to track current open transaction. */
+    thread_local std::unique_ptr<ContractTransaction> ContractDB::pMemory;
+
+
+    /* Miner transaction to track current states for miner verification. */
+    thread_local std::unique_ptr<ContractTransaction> ContractDB::pMiner;
+
+
+    /** The Database Constructor.  **/
+    ContractDB::ContractDB(const Config::Sector& sector, const Config::Hashmap& keychain)
+    : SectorDatabase(sector, keychain)
     , MEMORY_MUTEX()
-    , pMemory(nullptr)
-    , pMiner(nullptr)
     , pCommit(new ContractTransaction())
     {
     }
@@ -37,14 +40,6 @@ namespace LLD
     /* Default Destructor */
     ContractDB::~ContractDB()
     {
-        /* Free transaction memory. */
-        if(pMemory)
-            delete pMemory;
-
-        /* Free miner memory. */
-        if(pMiner)
-            delete pMiner;
-
         /* Free commited memory. */
         if(pCommit)
             delete pCommit;
@@ -58,8 +53,6 @@ namespace LLD
         /* Memory mode for pre-database commits. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
-            LOCK(MEMORY_MUTEX);
-
             /* Check for pending transactions. */
             if(pMemory)
             {
@@ -71,14 +64,15 @@ namespace LLD
             }
 
             /* Write proof to commited memory. */
-            pCommit->mapContracts[pair] = hashCaller;
+            {
+                LOCK(MEMORY_MUTEX);
+                pCommit->mapContracts[pair] = hashCaller;
+            }
 
             return true;
         }
         else if(nFlags == TAO::Ledger::FLAGS::MINER)
         {
-            LOCK(MEMORY_MUTEX);
-
             /* Check for pending transactions. */
             if(pMiner)
                 pMiner->mapContracts[pair] = hashCaller;
@@ -87,8 +81,6 @@ namespace LLD
         }
         else if(nFlags == TAO::Ledger::FLAGS::BLOCK || nFlags == TAO::Ledger::FLAGS::ERASE)
         {
-            LOCK(MEMORY_MUTEX);
-
             /* Erase memory proof if they exist. */
             if(pMemory)
             {
@@ -96,7 +88,10 @@ namespace LLD
                 pMemory->mapContracts.erase(pair);
             }
             else
-               pCommit->mapContracts.erase(pair);
+            {
+                LOCK(MEMORY_MUTEX);
+                pCommit->mapContracts.erase(pair);
+            }
 
             /* Check for erase to short circuit out. */
             if(nFlags == TAO::Ledger::FLAGS::ERASE)
@@ -113,8 +108,6 @@ namespace LLD
         /* Check for memory transaction. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
-            LOCK(MEMORY_MUTEX);
-
             /* Check for available states. */
             if(pMemory)
             {
@@ -126,7 +119,10 @@ namespace LLD
             }
 
             /* Erase proof from mempool. */
-            pCommit->mapContracts.erase(pair);
+            {
+                LOCK(MEMORY_MUTEX);
+                pCommit->mapContracts.erase(pair);
+            }
 
             return true;
         }
@@ -162,8 +158,6 @@ namespace LLD
         /* Memory mode for pre-database commits. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
-            LOCK(MEMORY_MUTEX);
-
             /* Check for a memory transaction first */
             if(pMemory && pMemory->mapContracts.count(pair))
             {
@@ -173,19 +167,21 @@ namespace LLD
                 return true;
             }
 
-            /* Check for state in memory map. */
-            if(pCommit->mapContracts.count(pair))
             {
-                /* Get the state from commited memory. */
-                hashCaller = pCommit->mapContracts[pair];
+                LOCK(MEMORY_MUTEX);
 
-                return true;
+                /* Check for state in memory map. */
+                if(pCommit->mapContracts.count(pair))
+                {
+                    /* Get the state from commited memory. */
+                    hashCaller = pCommit->mapContracts[pair];
+
+                    return true;
+                }
             }
         }
         else if(nFlags == TAO::Ledger::FLAGS::MINER)
         {
-            LOCK(MEMORY_MUTEX);
-
             /* Check for a memory transaction first */
             if(pMiner && pMiner->mapContracts.count(pair))
             {
@@ -206,20 +202,20 @@ namespace LLD
         /* Memory mode for pre-database commits. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
-            LOCK(MEMORY_MUTEX);
-
             /* Set the state in the memory map. */
             if(pMemory && pMemory->mapContracts.count(pairContract))
                 return true;
 
-            /* Check commited memory. */
-            if(pCommit->mapContracts.count(pairContract))
-                return true;
+            {
+                LOCK(MEMORY_MUTEX);
+
+                /* Check commited memory. */
+                if(pCommit->mapContracts.count(pairContract))
+                    return true;
+            }
         }
         else if(nFlags == TAO::Ledger::FLAGS::MINER)
         {
-            LOCK(MEMORY_MUTEX);
-
             /* Check pending transaction memory. */
             if(pMiner && pMiner->mapContracts.count(pairContract))
                 return true;
@@ -231,49 +227,33 @@ namespace LLD
     /* Begin a memory transaction following ACID properties. */
     void ContractDB::MemoryBegin(const uint8_t nFlags)
     {
-        LOCK(MEMORY_MUTEX);
-
         /* Check for miner. */
         if(nFlags == TAO::Ledger::FLAGS::MINER)
         {
             /* Set the pre-commit memory mode. */
-            if(pMiner)
-                delete pMiner;
-
-            pMiner = new ContractTransaction();
+            pMiner = std::unique_ptr<ContractTransaction>(new ContractTransaction());
 
             return;
         }
 
         /* Set the pre-commit memory mode. */
-        if(pMemory)
-            delete pMemory;
-
-        pMemory = new ContractTransaction();
+        pMemory = std::unique_ptr<ContractTransaction>(new ContractTransaction());
     }
 
 
     /* Abort a memory transaction following ACID properties. */
     void ContractDB::MemoryRelease(const uint8_t nFlags)
     {
-        LOCK(MEMORY_MUTEX);
-
         /* Check for miner. */
         if(nFlags == TAO::Ledger::FLAGS::MINER)
         {
             /* Set the pre-commit memory mode. */
-            if(pMiner)
-                delete pMiner;
-
             pMiner = nullptr;
 
             return;
         }
 
         /* Set the pre-commit memory mode. */
-        if(pMemory)
-            delete pMemory;
-
         pMemory = nullptr;
     }
 
@@ -295,7 +275,6 @@ namespace LLD
                 pCommit->mapContracts.erase(erase);
 
             /* Free the memory. */
-            delete pMemory;
             pMemory = nullptr;
         }
     }

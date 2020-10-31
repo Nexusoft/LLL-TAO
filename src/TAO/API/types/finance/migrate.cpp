@@ -202,6 +202,7 @@ namespace TAO
                        and create a new one.  NOTE we add a maximum of 99 to leave room for the fee  */
                     if(nContracts +(fCreateName ? 1 : 2) >= 99)
                     {
+<<<<<<< HEAD
                         /* Add the fee */
                         AddFee(tx);
 
@@ -216,6 +217,10 @@ namespace TAO
                         /* Execute the operations layer. */
                         if(!TAO::Ledger::mempool.Accept(tx))
                             throw APIException(-32, "Failed to accept");
+=======
+                        /* Finalize the transaction. */
+                        BuildAndAccept(tx, users->GetKey(tx.nSequence, strPIN, nSession));
+>>>>>>> viz
 
                         /* Create the next transaction and reset the counter */
                         tx = TAO::Ledger::Transaction();
@@ -250,6 +255,7 @@ namespace TAO
             /* If there are accounts to create then submit the transaction */
             if(nContracts > 0)
             {
+<<<<<<< HEAD
                 /* Add the fee */
                 AddFee(tx);
 
@@ -264,6 +270,10 @@ namespace TAO
                 /* Execute the operations layer. */
                 if(!TAO::Ledger::mempool.Accept(tx))
                     throw APIException(-32, "Failed to accept");
+=======
+                /* Finalize the transaction. */
+                BuildAndAccept(tx, users->GetKey(tx.nSequence, strPIN, nSession));
+>>>>>>> viz
             }
 
             /* Once the accounts have been created transfer the balance from the legacy account to the new ones */

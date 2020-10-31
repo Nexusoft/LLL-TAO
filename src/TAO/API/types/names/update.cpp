@@ -108,6 +108,7 @@ namespace TAO
             /* Create the transaction object script. */
             tx[0] << uint8_t(TAO::Operation::OP::WRITE) << hashRegister << ssOperationStream.Bytes();
 
+<<<<<<< HEAD
             /* Add the fee */
             AddFee(tx);
 
@@ -122,6 +123,10 @@ namespace TAO
             /* Execute the operations layer. */
             if(!TAO::Ledger::mempool.Accept(tx))
                 throw APIException(-32, "Failed to accept");
+=======
+            /* Finalize the transaction. */
+            BuildAndAccept(tx, users->GetKey(tx.nSequence, strPIN, nSession));
+>>>>>>> viz
 
             /* Build a JSON response object. */
             ret["txid"]  = tx.GetHash().ToString();

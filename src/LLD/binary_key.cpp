@@ -7,7 +7,7 @@
 ____________________________________________________________________________________________*/
 
 #include <LLD/cache/binary_key.h>
-#include <LLD/hash/xxh3.h>
+#include <LLD/hash/xxhash.h>
 
 #include <Util/include/mutex.h>
 

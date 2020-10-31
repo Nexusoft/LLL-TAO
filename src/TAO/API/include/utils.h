@@ -92,14 +92,14 @@ namespace TAO
          *  @return A vector of register addresses owned by the sig chain
          *
          **/
-        bool ListAccounts(const uint256_t& hashGenesis, std::vector<TAO::Register::Address>& vAccounts, 
+        bool ListAccounts(const uint256_t& hashGenesis, std::vector<TAO::Register::Address>& vAccounts,
                           bool fTokens, bool fTrust);
 
 
         /** AddFee
          *
          *  Calculates the required fee for the transaction and adds the OP::FEE contract to the transaction if necessary.
-         *  If a specified fee account is not specified, the method will lookup the "default" NXS account and use this account 
+         *  If a specified fee account is not specified, the method will lookup the "default" NXS account and use this account
          *  to pay the fees.  An exception will be thrownIf there are insufficient funds to pay the fee. .
          *
          *  @param[in] tx The transaction to add the fee to
@@ -119,7 +119,7 @@ namespace TAO
          *
          *  @return A string representation of the register type
          *
-         **/  
+         **/
         std::string RegisterType(uint8_t nType);
 
 
@@ -142,7 +142,7 @@ namespace TAO
          *  @param[in] hashGenesis The genesis hash for the sig chain owner.
          *  @param[in] hashToken The token to find the pending for .
          *  @param[in] hashAccount Optional account/token register to filter on
-         * 
+         *
          *  @return The sum of all pending debits
          *
          **/
@@ -157,22 +157,22 @@ namespace TAO
          *  @param[in] hashToken The token to find the pending for.
          *  @param[in] fOutgoing Flag indicating to include outgoing debits, i.e. debits in the mempool that we have made.
          *  @param[in] hashAccount Optional account/token register to filter on
-         * 
+         *
          *  @return The sum of all pending debits
          *
          **/
-        uint64_t GetUnconfirmed(const uint256_t& hashGenesis, 
-                                const uint256_t& hashToken, 
-                                bool fOutgoing, 
+        uint64_t GetUnconfirmed(const uint256_t& hashGenesis,
+                                const uint256_t& hashToken,
+                                bool fOutgoing,
                                 const uint256_t& hashAccount = 0);
 
 
         /** GetImmature
          *
-         *  Get the sum of all immature coinbase transactions 
+         *  Get the sum of all immature coinbase transactions
          *
          *  @param[in] hashGenesis The genesis hash for the sig chain owner.
-         * 
+         *
          *  @return The sum of all immature coinbase transactions
          *
          **/
@@ -194,7 +194,7 @@ namespace TAO
 
         /** ListPartial
          *
-         *  Lists all object registers partially owned by way of tokens that the sig chain owns 
+         *  Lists all object registers partially owned by way of tokens that the sig chain owns
          *
          *  @param[in] hashGenesis The genesis hash of the signature chain to scan
          *  @param[out] vObjects The list of object register addresses from sigchain.
@@ -216,7 +216,11 @@ namespace TAO
          *  @return A vector of register addresses owned by the token
          *
          **/
+<<<<<<< HEAD
         bool ListTokenizedObjects(const uint256_t hashGenesis, const TAO::Register::Address& hashToken, 
+=======
+        bool ListTokenizedObjects(const TAO::Register::Address& hashToken,
+>>>>>>> viz
                                   std::vector<TAO::Register::Address>& vObjects);
 
 
@@ -233,16 +237,16 @@ namespace TAO
 
         /** GetRegisters
          *
-         *  Reads a batch of states registers from the Register DB 
+         *  Reads a batch of states registers from the Register DB
          *
          *  @param[in] vAddresses The list of register addresses to read
-         *  @param[out] vStates The list of states paired to the register address.  
+         *  @param[out] vStates The list of states paired to the register address.
          *              The list will be sorted by the create timestamp of the register, oldest first
          *
          *  @return True if successful
          *
          **/
-        bool GetRegisters(const std::vector<TAO::Register::Address>& vAddresses, 
+        bool GetRegisters(const std::vector<TAO::Register::Address>& vAddresses,
                           std::vector<std::pair<TAO::Register::Address, TAO::Register::State>>& vStates);
 
 
@@ -253,7 +257,7 @@ namespace TAO
         *  @param[in] contract The contract to void
         *  @param[in] the ID of the contract in the transaction
         *  @param[out] voidContract The void contract to be created
-        * 
+        *
         *  @return True if a void contract was created.
         *
         **/
@@ -267,13 +271,14 @@ namespace TAO
         *  @param[in] hashGenesis The genesis hash of the sig chain to search
         *  @param[in] object  The object register to get the tx count for
         *  @param[in] hashRegister The address of the register to get the tx count for
-        * 
+        *
         *  @return The number of transactions in the sig chain relating to the register
         *
         **/
         uint32_t GetTxCount(const uint256_t& hashGenesis, const TAO::Register::Object& object, const TAO::Register::Address& hashRegister);
 
 
+<<<<<<< HEAD
         /** DownloadSigChain
         *
         *  Used for client mode, this method will download the signature chain transactions and events for a given genesis  
@@ -300,6 +305,19 @@ namespace TAO
         *
         **/
         bool GetAccountByToken(const uint256_t& hashGenesis, const uint256_t& hashToken, TAO::Register::Address& hashAccount);
+=======
+        /** BuildAndAccept
+         *
+         *  Utility method that builds and accepts a transaction into the mempool under the same ACID memory lock.
+         *
+         *  @param[out] tx The transaction to build and accept
+         *  @param[in] hashSecret The one time secret key for signing.
+         *
+         *  This method relies on APIExceptions for failures.
+         *
+         **/
+        void BuildAndAccept(TAO::Ledger::Transaction &tx, const uint512_t& hashSecret);
+>>>>>>> viz
 
     }
 }

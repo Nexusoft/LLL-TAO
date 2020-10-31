@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <LLD/templates/sector.h>
 #include <LLD/cache/binary_lru.h>
 #include <LLD/keychain/hashmap.h>
+#include <LLD/config/hashmap.h>
 
 #include <TAO/Register/types/state.h>
 
@@ -52,19 +53,19 @@ namespace LLD
      *  The database class for the Register Layer.
      *
      **/
-    class RegisterDB : public SectorDatabase<BinaryHashMap, BinaryLRU>
+    class RegisterDB : public Templates::SectorDatabase<BinaryHashMap, BinaryLRU, Config::Hashmap>
     {
-        
+
         /** Memory mutex to lock when accessing internal memory states. **/
         std::mutex MEMORY_MUTEX;
 
 
         /** Register transaction to track current open transaction. **/
-        RegisterTransaction* pMemory;
+        static thread_local std::unique_ptr<RegisterTransaction> pMemory;
 
 
         /** Miner transaction to track current states for miner verification. **/
-        RegisterTransaction* pMiner;
+        static thread_local std::unique_ptr<RegisterTransaction> pMiner;
 
 
         /** Register transaction to keep open all commited data. **/
@@ -75,8 +76,7 @@ namespace LLD
 
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        RegisterDB(const uint8_t nFlagsIn = FLAGS::CREATE | FLAGS::WRITE,
-            const uint32_t nBucketsIn = 77773, const uint32_t nCacheIn = 1024 * 1024);
+        RegisterDB(const Config::Sector& sector, const Config::Hashmap& keychain);
 
 
         /** Default Destructor **/

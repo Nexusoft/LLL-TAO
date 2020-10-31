@@ -122,7 +122,7 @@ namespace TAO
                     throw APIException(-216, "recipients field must be an array.");
 
                 /* Get the recipients json array */
-                json::json jsonRecipients = params["recipients"];                    
+                json::json jsonRecipients = params["recipients"];
 
                 /* Check that there are recipient objects in the array */
                 if(jsonRecipients.size() == 0)
@@ -241,8 +241,13 @@ namespace TAO
                 tx[nContract] << (uint8_t)TAO::Operation::OP::DEBIT << hashFrom << hashTo << nAmount << nReference;
 
                 /* Add expiration condition unless sending to self */
+<<<<<<< HEAD
                 if(!fSendToSelf)
                     AddExpires( jsonRecipient, session.GetAccount()->Genesis(), tx[nContract], fTokenizedDebit);
+=======
+                if(recipient.hashOwner != object.hashOwner)
+                    AddExpires(jsonRecipient, user->Genesis(), tx[nContract], false);
+>>>>>>> viz
 
                 /* Increment the contract ID */
                 nContract++;
@@ -251,6 +256,7 @@ namespace TAO
                 nCurrentBalance -= nAmount;
             }
 
+<<<<<<< HEAD
             /* Add the fee. */
             AddFee(tx);
 
@@ -265,6 +271,10 @@ namespace TAO
             /* Execute the operations layer. */
             if(!TAO::Ledger::mempool.Accept(tx))
                 throw APIException(-32, "Failed to accept");
+=======
+            /* Finalize the transaction. */
+            BuildAndAccept(tx, users->GetKey(tx.nSequence, strPIN, nSession));
+>>>>>>> viz
 
             /* Build a JSON response object. */
             ret["txid"] = tx.GetHash().ToString();

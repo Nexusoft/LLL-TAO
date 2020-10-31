@@ -307,9 +307,8 @@ namespace TAO
             if(params.find("name") != params.end() && !params["name"].is_null() && !params["name"].get<std::string>().empty())
                 tx[1] = Names::CreateName(session.GetAccount()->Genesis(), params["name"].get<std::string>(), "", hashRegister);
 
-            /* Add the fee */
-            AddFee(tx);
 
+<<<<<<< HEAD
             /* Execute the operations layer. */
             if(!tx.Build())
                 throw APIException(-30, "Operations failed to execute");
@@ -321,6 +320,10 @@ namespace TAO
             /* Execute the operations layer. */
             if(!TAO::Ledger::mempool.Accept(tx))
                 throw APIException(-32, "Failed to accept");
+=======
+            /* Finalize the transaction. */
+            BuildAndAccept(tx, users->GetKey(tx.nSequence, strPIN, nSession));
+>>>>>>> viz
 
             /* Build a JSON response object. */
             ret["txid"]  = tx.GetHash().ToString();

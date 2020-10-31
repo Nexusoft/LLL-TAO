@@ -36,7 +36,7 @@ ________________________________________________________________________________
 
 /* Set up defs properly before including windows.h */
 #ifndef _WIN32_WINNT
-#define _WIN32_WINNT 0x0600    //minimum Windows Vista version for winsock2, etc.
+#define _WIN32_WINNT 0x0600    //minimum Windoze Vista version for winsock2, etc.
 #endif
 
 #ifndef WIN32_LEAN_AND_MEAN
@@ -52,15 +52,15 @@ ________________________________________________________________________________
 
 namespace filesystem
 {
-    /* Removes a directory from the specified path. */
-    bool remove_directories(const std::string& path)
+    /* Removes a directory from the specified strPath. */
+    bool remove_directories(const std::string& strPath)
     {
-        if(!exists(path))
+        if(!exists(strPath))
             return false;
 
     #ifdef WIN32
-        /* Windows cannot do -rf type directory removal, have to delete all directory content manually first */
-        std::string strFiles(path);
+        /* Windoze cannot do -rf type directory removal, have to delete all directory content manually first */
+        std::string strFiles(strPath);
         strFiles.append("\\*");
 
         WIN32_FIND_DATA fileData;
@@ -73,28 +73,28 @@ namespace filesystem
             if(GetLastError() == ERROR_FILE_NOT_FOUND)
                 fHasFile = false;
             else
-                return debug::error(FUNCTION, "Unable to remove directory: ", path, "\nReason: Invalid file handle");
+                return debug::error(FUNCTION, "Unable to remove directory: ", strPath, "\nReason: Invalid file handle");
         }
 
         while(fHasFile)
         {
             std::string fileName(fileData.cFileName);
 
-            /* Don't process . or .. in the Windows file listing */
+            /* Don't process . or .. in the Windoze file listing */
             if(!(fileName == "." || fileName == ".."))
             {
                 if(fileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
                 {
                 /* If content includes another directory, recursively remove both it and its contents */
-                    if(!remove_directories(path + "\\" + fileName))
+                    if(!remove_directories(strPath + "\\" + fileName))
                         return false;
                 }
                 else
                 {
-                    std::string filePath(path + "\\" + fileName);
+                    std::string filePath(strPath + "\\" + fileName);
 
                     if(!DeleteFile(filePath.c_str()))
-                        return debug::error(FUNCTION, "Unable to remove directory: ", path,
+                        return debug::error(FUNCTION, "Unable to remove directory: ", strPath,
                                                       "\nReason: Unable to delete file", fileData.cFileName);
                 }
             }
@@ -104,21 +104,21 @@ namespace filesystem
                 if(GetLastError() == ERROR_NO_MORE_FILES)
                     fHasFile = false;
                 else
-                    return debug::error(FUNCTION, "Unable to remove directory: ", path, "\nReason: Error reading next file");
+                    return debug::error(FUNCTION, "Unable to remove directory: ", strPath, "\nReason: Error reading next file");
             }
         }
 
         FindClose(hFind);
 
-        debug::log(2, FUNCTION, "Removing directory ", path);
-        if(!RemoveDirectory(path.c_str()))
-            return debug::error(FUNCTION, "Unable to remove directory: ", path);
+        debug::log(2, FUNCTION, "Removing directory ", strPath);
+        if(!RemoveDirectory(strPath.c_str()))
+            return debug::error(FUNCTION, "Unable to remove directory: ", strPath);
 
         return true;
 
     #elif defined(MAC_OSX)
-        debug::log(2, FUNCTION, "Removing directory ", path);
-        if(system(debug::safe_printstr("sudo rm -rf '", path, "'").c_str()) == 0) //OSX requires sudo and special chars for path
+        debug::log(2, FUNCTION, "Removing directory ", strPath);
+        if(system(debug::safe_printstr("sudo rm -rf '", strPath, "'").c_str()) == 0) //OSX requires sudo and special chars for strPath
             return true;
 
     #elif defined(IPHONE)
@@ -126,8 +126,8 @@ namespace filesystem
     #elif defined(ANDROID)
         return false;  
     #else
-        debug::log(2, FUNCTION, "Removing directory ", path);
-        if(system(debug::safe_printstr("rm -rf '", path, "'").c_str()) == 0)
+        debug::log(2, FUNCTION, "Removing directory ", strPath);
+        if(system(debug::safe_printstr("rm -rf '", strPath, "'").c_str()) == 0)
             return true;
 
     #endif
@@ -136,60 +136,60 @@ namespace filesystem
     }
 
 
-    /* Removes a file or folder from the specified path. */
-    bool remove(const std::string& path)
+    /* Removes a file or folder from the specified strPath. */
+    bool remove(const std::string& strPath)
     {
-        if(!exists(path))
+        if(!exists(strPath))
             return false;
 
-        if(std::remove(path.c_str()) != 0)
+        if(std::remove(strPath.c_str()) != 0)
             return false;
 
         return true;
     }
 
 
-    /*  Renames a file or folder from the specified old path to a new path. */
-    bool rename(const std::string &pathOld, const std::string &pathNew)
+    /*  Renames a file or folder from the specified old strPath to a new strPath. */
+    bool rename(const std::string& strPathOld, const std::string& strPathNew)
     {
-        if(!exists(pathOld))
+        if(!exists(strPathOld))
             return false;
 
-        if(std::rename(pathOld.c_str(), pathNew.c_str()) != 0)
+        if(std::rename(strPathOld.c_str(), strPathNew.c_str()) != 0)
             return false;
 
         return true;
     }
 
 
-    /* Determines if the file or folder from the specified path exists. */
-    bool exists(const std::string &path)
+    /* Determines if the file or folder from the specified strPath exists. */
+    bool exists(const std::string& strPath)
     {
         struct stat statbuf;
 
-        return stat(path.c_str(), &statbuf) == 0;
+        return stat(strPath.c_str(), &statbuf) == 0;
     }
 
 
     /* Copy a file. */
-    bool copy_file(const std::string &pathSource, const std::string &pathDest)
+    bool copy_file(const std::string& strPathSource, const std::string& strPathDest)
     {
         try
         {
             /* Make sure destination is a file, not a directory. */
-            if(exists(pathDest) && is_directory(pathDest))
+            if(exists(strPathDest) && is_directory(strPathDest))
                 return false;
 
             /* If destination file exists, remove it (ie, we overwrite the file) */
-            if(exists(pathDest))
-                filesystem::remove(pathDest);
+            if(exists(strPathDest))
+                filesystem::remove(strPathDest);
 
             /* Get the input stream of source file. */
-            std::ifstream sourceFile(pathSource, std::ios::binary);
+            std::ifstream sourceFile(strPathSource, std::ios::binary);
             sourceFile.exceptions(std::ios::badbit);
 
             /* Get the output stream of destination file. */
-            std::ofstream destFile(pathDest, std::ios::binary);
+            std::ofstream destFile(strPathDest, std::ios::binary);
             destFile.exceptions(std::ios::badbit);
 
             /* Copy the bytes. */
@@ -202,7 +202,7 @@ namespace filesystem
 #ifndef WIN32
             /* Set destination file permissions (read/write by owner only for data files) */
             mode_t m = S_IRUSR | S_IWUSR;
-            int file_des = open(pathDest.c_str(), O_RDWR);
+            int file_des = open(strPathDest.c_str(), O_RDWR);
 
             if(file_des < 0)
                 return false;
@@ -219,12 +219,12 @@ namespace filesystem
         return true;
     }
 
-    /* Determines if the specified path is a folder. */
-    bool is_directory(const std::string &path)
+    /* Determines if the specified strPath is a folder. */
+    bool is_directory(const std::string& strPath)
     {
         struct stat statbuf;
 
-        if(stat(path.c_str(), &statbuf) != 0)
+        if(stat(strPath.c_str(), &statbuf) != 0)
             return false;
 
         if(S_ISDIR(statbuf.st_mode))
@@ -234,20 +234,20 @@ namespace filesystem
     }
 
 
-    /*  Recursively create directories along the path if they don't exist. */
-    bool create_directories(const std::string &path)
+    /*  Recursively create directories along the strPath if they don't exist. */
+    bool create_directories(const std::string& strPath)
     {
-        /* Start loop at 1. Allows for root (Linux) or relative path (Windows) separator at 0 */
-        for(uint32_t i = 1; i < path.length(); i++)
+        /* Start loop at 1. Allows for root (Linux) or relative strPath (Windoze) separator at 0 */
+        for(uint32_t i = 1; i < strPath.length(); i++)
         {
             bool isSeparator = false;
-            const char& currentChar = path.at(i);
+            const char& currentChar = strPath.at(i);
 
         #ifdef WIN32
-            /* For Windows, support both / and \ directory separators.
+            /* For Windoze, support both / and \ directory separators.
              * Ignore separator after drive designation, as in C:\
              */
-            if((currentChar == '/' || currentChar == '\\')  && path.at(i-1) != ':')
+            if((currentChar == '/' || currentChar == '\\')  && strPath.at(i-1) != ':')
                 isSeparator = true;
         #else
             if(currentChar == '/')
@@ -256,7 +256,7 @@ namespace filesystem
 
             if(isSeparator)
             {
-                std::string createPath(path, 0, i);
+                std::string createPath(strPath, 0, i);
                 if(!create_directory(createPath))
                     return false;
             }
@@ -266,88 +266,91 @@ namespace filesystem
     }
 
 
-    /* Create a single directory at the path if it doesn't already exist. */
-    bool create_directory(const std::string &path)
+    /* Create a single directory at the strPath if it doesn't already exist. */
+    bool create_directory(const std::string& strPath)
     {
-        if(exists(path)) //if the directory exists, don't attempt to create it
+        if(exists(strPath)) //if the directory exists, don't attempt to create it
             return true;
 
         /* Set directory with read/write/search permissions for owner/group/other */
     #ifdef WIN32
-        int status = _mkdir(path.c_str());
+        int status = _mkdir(strPath.c_str());
     #else
         mode_t m = S_IRWXU | S_IRWXG | S_IRWXO;
-        int status = mkdir(path.c_str(), m);
+        int status = mkdir(strPath.c_str(), m);
     #endif
 
         /* Handle failures. */
         if(status < 0)
         {
-            return debug::error(FUNCTION, "Failed to create directory: ", path, "\nReason: ", strerror(errno));
+            return debug::error(FUNCTION, "Failed to create directory: ", strPath, "\nReason: ", strerror(errno));
         }
 
         return true;
     }
 
 
-    /* Obtain the system complete path from a given relative path. */
-    std::string system_complete(const std::string &path)
+    /* Obtain the system complete strPath from a given relative strPath. */
+    std::string system_complete(const std::string& strPath)
     {
         char buffer[MAX_PATH] = {0};
 
-        std::string fullPath;
+        /* Cache our current full path. */
+        std::string strFullPath;
 
     #ifdef WIN32
 
-        /* Use Windows API for path generation. */
-        if(!PathIsRelativeA(path.c_str()))
+        /* Use Windoze API for strPath generation. */
+        if(!PathIsRelativeA(strPath.c_str()))
         {
             /* Path is absolute */
-            fullPath = path;
+            strFullPath = strPath;
         }
         else
         {
             /* Path is relative. */
             char *pTemp = nullptr;
-            GetFullPathNameA(path.c_str(), MAX_PATH, buffer, &pTemp);
-            fullPath = std::string(buffer);
+            GetFullPathNameA(strPath.c_str(), MAX_PATH, buffer, &pTemp);
+            strFullPath = std::string(buffer);
         }
 
-        if(fullPath.at(fullPath.length()-1) != '\\')
-            fullPath += "\\";
+        /* Check for Windoze specific directory rules. */
+        if(strFullPath.at(strFullPath.length()-1) != '\\')
+            strFullPath += "\\";
 
     #else
 
-        /* Non-Windows. If begins with / it is an absolute path, otherwise a relative path */
-        if(path.at(0) == '/')
-            fullPath = path;
+        /* Non-Windoze. If begins with / it is an absolute strPath, otherwise a relative strPath */
+        if(strPath.at(0) == '/')
+            strFullPath = strPath;
         else
         {
             std::string currentDir(getcwd(buffer, MAX_PATH));
-            fullPath = currentDir + "/" + path;
+            strFullPath = currentDir + "/" + strPath;
         }
 
-        if(fullPath.at(fullPath.length()-1) != '/')
-            fullPath += "/";
+        /* Unix style path contains forward slashes */
+        if(strFullPath.at(strFullPath.length()-1) != '/')
+            strFullPath += "/";
 
     #endif
 
-        return fullPath;
+        return strFullPath;
     }
 
 
-    /* Returns the full pathname of the PID file */
+    /* Returns the full strPathname of the PID file */
     std::string GetPidFile()
     {
-        std::string pathPidFile(config::GetArg("-pid", "Nexus.pid"));
-        return config::GetDataDir() + "/" +pathPidFile;
+        std::string strPathPidFile(config::GetArg("-pid", "Nexus.pid"));
+        return config::GetDataDir() + "/" +strPathPidFile;
     }
 
 
     /* Creates a PID file on disk for the provided PID */
-    void CreatePidFile(const std::string &path, pid_t pid)
+    void CreatePidFile(const std::string& strPath, pid_t pid)
     {
-        FILE* file = fopen(path.c_str(), "w");
+        FILE* file = fopen(strPath.c_str(), "w");
         if(file)
         {
         #ifndef WIN32

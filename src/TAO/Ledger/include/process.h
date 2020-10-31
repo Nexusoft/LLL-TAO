@@ -61,6 +61,12 @@ namespace TAO
         /** Current sync node. **/
         extern std::atomic<uint64_t> nSyncSession;
 
+
+        /** Total number of bytes processed. **/
+        extern std::atomic<uint64_t> nBytesProcessed;
+
+
+
         /** Process Block Function
          *
          *  Processes a block incoming over the network.

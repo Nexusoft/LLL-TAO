@@ -41,6 +41,10 @@ namespace TAO
         std::atomic<uint64_t> nSyncSession(0);
 
 
+        /* Total amount of bytes processed. */
+        std::atomic<uint64_t> nBytesProcessed;
+
+
         /* The current incomplete chain tails. */
         std::set<uint1024_t> setIncomplete;
 
@@ -189,11 +193,13 @@ namespace TAO
                         " height=", block.nHeight,
                         " trust=", TAO::Ledger::ChainState::nBestChainTrust.load(),
                         " [", (config::fClient ? 5000000 : 1000000) / nElapsed, " blocks/s]",
+                        "[", nBytesProcessed.load() / nElapsed, " Kb/s]"
                         "[", std::setw(2), std::setfill('0'), nHours, ":",
                               std::setw(2), std::setfill('0'), nMinutes, ":",
                               std::setw(2), std::setfill('0'), nSeconds, " remaining]");
 
                     nSynchronizationTimer = runtime::timestamp(true);
+                    nBytesProcessed       = 0;
                 }
 
                 /* Process orphan if found. */

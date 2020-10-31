@@ -106,7 +106,7 @@ namespace TAO
 
             /* The decimals for this token type */
             uint8_t nDecimals = GetDecimals(account);
-            
+
             /* Check for recipient parameter. */
             if(params.find("recipient_username") != params.end() && !params["recipient_username"].get<std::string>().empty())
                 hashRecipient = TAO::Ledger::SignatureChain::Genesis(params["recipient_username"].get<std::string>().c_str());
@@ -133,11 +133,20 @@ namespace TAO
                     }
                 }
 
+<<<<<<< HEAD
             }
             
             /* Check that the recipient genesis hash exists */
             if(!LLD::Ledger->HasGenesis(hashRecipient))
             { 
+=======
+                /* Now check again after asking the peer for the genesis */
+                if(!LLD::Ledger->HasGenesis(hashRecipient))
+                    throw APIException(-230, "Recipient user does not exist");
+            }
+            else if(!LLD::Ledger->HasGenesis(hashRecipient))
+            {
+>>>>>>> viz
                 throw APIException(-230, "Recipient user does not exist");
             }
 
@@ -172,11 +181,11 @@ namespace TAO
                     invoice[it.key()] = it.value();
             }
 
-            
+
             /* Parse the invoice items details */
             if(params.find("items") == params.end() || !params["items"].is_array())
                 throw APIException(-232, "Missing items");
-            
+
             /* Check items is not empty */
             json::json items = params["items"];
             if(items.empty())
@@ -255,8 +264,8 @@ namespace TAO
 
             /* Calculate the amount to pay in token units */
             uint64_t nTotal = dTotal * pow(10, nDecimals);
-        
-        
+
+
             /* Lock the signature chain. */
             LOCK(session.CREATE_MUTEX);
 
@@ -296,7 +305,7 @@ namespace TAO
 
             /* Add the transfer contract */
             tx[nContract] << uint8_t(TAO::Operation::OP::CONDITION) << (uint8_t)TAO::Operation::OP::TRANSFER << hashRegister << hashRecipient << uint8_t(TAO::Operation::TRANSFER::CLAIM);
-            
+
             /* Add the payment conditions.  The condition is essentially that the claim must include a conditional debit for the
                invoice total being made to the payment account */
             TAO::Operation::Stream compare;
@@ -320,6 +329,7 @@ namespace TAO
             tx[nContract] <= uint8_t(TAO::Operation::OP::CONTRACT::GENESIS);
             tx[nContract] <= uint8_t(TAO::Operation::OP::UNGROUP);
 
+<<<<<<< HEAD
             /* Add the fee */
             AddFee(tx);
 
@@ -334,6 +344,10 @@ namespace TAO
             /* Execute the operations layer. */
             if(!TAO::Ledger::mempool.Accept(tx))
                 throw APIException(-32, "Failed to accept");
+=======
+            /* Finalize the transaction. */
+            BuildAndAccept(tx, users->GetKey(tx.nSequence, strPIN, nSession));
+>>>>>>> viz
 
             /* Build a JSON response object. */
             ret["txid"]  = tx.GetHash().ToString();

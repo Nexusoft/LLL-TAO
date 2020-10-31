@@ -564,7 +564,7 @@ TEST_CASE( "Test Assets API - claim item", "[supply/claim/item]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
 
@@ -586,7 +586,7 @@ TEST_CASE( "Test Assets API - claim item", "[supply/claim/item]")
             REQUIRE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            
 
             //write transaction
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));

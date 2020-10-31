@@ -226,8 +226,8 @@ namespace LLP
             if(IsNull())
                 return false;
 
-            /* Make sure Packet length is within bounds. (Max 2 MB Packet Size) */
-            if(LENGTH > (1024 * 1024 * 2))
+            /* Make sure Packet length is within bounds. (Max 20 MB Packet Size) */
+            if(LENGTH > (1024 * 1024 * 20))
                 return debug::error("Tritium Packet (", MESSAGE, ", ", LENGTH, " bytes) : Message too Large");
 
             return true;

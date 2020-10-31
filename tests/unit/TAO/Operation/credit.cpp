@@ -61,7 +61,7 @@ TEST_CASE( "Credit Primitive Tests", "[operation]")
             REQUIRE(tx.Build());
 
             /* verify prestates and poststates */
-            REQUIRE(tx.Verify());
+
 
             /* commit to disk */
             REQUIRE(TAO::Operation::Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -85,7 +85,7 @@ TEST_CASE( "Credit Primitive Tests", "[operation]")
             REQUIRE(tx.Build());
 
             /* verify prestates and poststates */
-            REQUIRE(tx.Verify());
+
 
             /* commit to disk */
             REQUIRE(TAO::Operation::Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -109,7 +109,7 @@ TEST_CASE( "Credit Primitive Tests", "[operation]")
             REQUIRE(tx.Build());
 
             /* verify prestates and poststates */
-            REQUIRE(tx.Verify());
+
 
             /* commit to disk */
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -133,7 +133,7 @@ TEST_CASE( "Credit Primitive Tests", "[operation]")
             REQUIRE(tx.Build());
 
             /* verify prestates and poststates */
-            REQUIRE(tx.Verify());
+
 
             /* commit to disk */
             REQUIRE(TAO::Operation::Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -168,8 +168,6 @@ TEST_CASE( "Credit Primitive Tests", "[operation]")
             REQUIRE(tx2.Build());
 
             /* verify prestates and poststates */
-            REQUIRE(tx.Verify());
-            REQUIRE(tx2.Verify());
 
             /* write transaction */
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
@@ -197,7 +195,6 @@ TEST_CASE( "Credit Primitive Tests", "[operation]")
             REQUIRE(tx2.Build());
 
             /* verify prestates and poststates, write tx, commit to disk */
-            REQUIRE(tx2.Verify());
             REQUIRE(LLD::Ledger->WriteTx(tx2.GetHash(), tx2));
             REQUIRE(TAO::Operation::Execute(tx2[0], TAO::Ledger::FLAGS::BLOCK));
 
@@ -229,8 +226,6 @@ TEST_CASE( "Credit Primitive Tests", "[operation]")
             REQUIRE(tx2.Build());
 
             /* verify prestates and poststates, write tx, commit to disk */
-            REQUIRE(tx.Verify());
-            REQUIRE(tx2.Verify());
 
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
             REQUIRE(LLD::Ledger->WriteTx(tx2.GetHash(), tx2));
@@ -258,7 +253,6 @@ TEST_CASE( "Credit Primitive Tests", "[operation]")
             REQUIRE(tx2.Build());
 
             /* verify prestates and poststates, write tx, commit to disk */
-            REQUIRE(tx2.Verify());
             REQUIRE(LLD::Ledger->WriteTx(tx2.GetHash(), tx2));
             REQUIRE_FALSE(TAO::Operation::Execute(tx2[0], TAO::Ledger::FLAGS::BLOCK));
 
@@ -278,7 +272,6 @@ TEST_CASE( "Credit Primitive Tests", "[operation]")
             REQUIRE(tx2.Build());
 
             /* verify prestates and poststates, write tx, commit to disk */
-            REQUIRE(tx2.Verify());
             REQUIRE(LLD::Ledger->WriteTx(tx2.GetHash(), tx2));
             REQUIRE_FALSE(TAO::Operation::Execute(tx2[0], TAO::Ledger::FLAGS::BLOCK));
 

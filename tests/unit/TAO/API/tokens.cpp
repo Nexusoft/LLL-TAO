@@ -715,7 +715,7 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens/debit/account]")
         REQUIRE(tx.Build());
 
         //verify the prestates and poststates
-        REQUIRE(tx.Verify());
+        
 
         //commit to disk
         REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -746,7 +746,7 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens/debit/account]")
         REQUIRE(tx.Build());
 
         //verify the prestates and poststates
-        REQUIRE(tx.Verify());
+        
 
         //commit to disk
         REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -841,7 +841,7 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens/debit/account]")
         REQUIRE(tx.Build());
 
         //verify the prestates and poststates
-        REQUIRE(tx.Verify());
+        
 
         //write transaction
         REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
@@ -868,7 +868,7 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens/debit/account]")
         REQUIRE(tx.Build());
 
         //verify the prestates and poststates
-        REQUIRE(tx.Verify());
+        
 
         //write transaction
         REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
@@ -1189,7 +1189,7 @@ TEST_CASE( "Test Tokens API - credit account", "[tokens/credit/account]")
         REQUIRE(tx.Build());
 
         //verify the prestates and poststates
-        REQUIRE(tx.Verify());
+        
 
         //commit to disk
         REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -1223,7 +1223,7 @@ TEST_CASE( "Test Tokens API - credit account", "[tokens/credit/account]")
         REQUIRE(tx.Build());
 
         //verify the prestates and poststates
-        REQUIRE(tx.Verify());
+        
 
         //commit to disk
         REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -1248,7 +1248,7 @@ TEST_CASE( "Test Tokens API - credit account", "[tokens/credit/account]")
         REQUIRE(tx.Build());
 
         //verify the prestates and poststates
-        REQUIRE(tx.Verify());
+        
 
         //write transaction
         REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));

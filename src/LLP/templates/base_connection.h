@@ -345,6 +345,16 @@ namespace LLP
 
     };
 
+
+    /* Total incoming packets. */
+    template <class PacketType>
+    std::atomic<uint64_t> BaseConnection<PacketType>::REQUESTS;
+
+
+    /* Total outgoing packets. */
+    template <class PacketType>
+    std::atomic<uint64_t> BaseConnection<PacketType>::PACKETS;
+
 }
 
 #endif

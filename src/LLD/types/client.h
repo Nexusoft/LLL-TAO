@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <LLD/templates/sector.h>
 #include <LLD/cache/binary_lru.h>
 #include <LLD/keychain/hashmap.h>
+#include <LLD/config/hashmap.h>
 
 #include <TAO/Ledger/include/enum.h>
 
@@ -45,13 +46,12 @@ namespace LLD
    *  Database class for storing local wallet transactions.
    *
    **/
-    class ClientDB : public SectorDatabase<BinaryHashMap, BinaryLRU>
+    class ClientDB : public Templates::SectorDatabase<BinaryHashMap, BinaryLRU, Config::Hashmap>
     {
     public:
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        ClientDB(const uint8_t nFlagsIn = FLAGS::CREATE | FLAGS::WRITE,
-            const uint32_t nBucketsIn = 77773, const uint32_t nCacheIn = 1024 * 1024);
+        ClientDB(const Config::Sector& sector, const Config::Hashmap& keychain);
 
 
         /** Default Destructor **/
