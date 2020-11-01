@@ -586,6 +586,8 @@ This will retrieve account values and staking metrics for the trust account belo
 
 `expires`: Timestamp when the stake change request expires, if assigned. Zero indicates does not expire. 
 
+`session`: For multi-user API mode (configured with multiuser=1), returns the session Id. Does not appear in single-user mode.
+
  
 
 ***

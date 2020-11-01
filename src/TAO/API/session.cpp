@@ -79,7 +79,7 @@ namespace TAO
             /* Free up values in encrypted memory */
             if(!pSigChain.IsNull())
                 pSigChain.free();
-            
+
             if(!pActivePIN.IsNull())
                 pActivePIN.free();
 
@@ -185,7 +185,7 @@ namespace TAO
         }
 
 
-        
+
 
 
         /* Determine if the Users are locked. */
@@ -228,8 +228,8 @@ namespace TAO
         bool Session::CanStake() const
         {
             LOCK(MUTEX);
-            
-            if(!config::fMultiuser.load() &&(!pActivePIN.IsNull() && pActivePIN->CanStake()))
+
+            if(!pActivePIN.IsNull() && pActivePIN->CanStake())
                 return true;
 
             return false;
@@ -239,7 +239,7 @@ namespace TAO
         bool Session::CanProcessNotifications() const
         {
             LOCK(MUTEX);
-            
+
             if(!pActivePIN.IsNull() && pActivePIN->ProcessNotifications())
                 return true;
 
@@ -326,17 +326,17 @@ namespace TAO
             (
                 /* Use std remove_if function to return the iterator to erase. This allows us to pass in a lambda function,
                 which itself can check to see if a match exists */
-                std::remove_if(vP2PRequests.begin(), vP2PRequests.end(), 
+                std::remove_if(vP2PRequests.begin(), vP2PRequests.end(),
                 [&](const LLP::P2P::ConnectionRequest& request)
                 {
                     return (request.strAppID == strAppID && request.hashPeer == hashPeer);
-                }), 
+                }),
                 vP2PRequests.end()
             );
         }
 
 
-        /* Returns a vector of all connection requests. NOTE: This will copy the internal vector to protect against 
+        /* Returns a vector of all connection requests. NOTE: This will copy the internal vector to protect against
            direct manipulation by calling code */
         const std::vector<LLP::P2P::ConnectionRequest> Session::GetP2PRequests(bool fIncoming) const
         {
@@ -359,14 +359,14 @@ namespace TAO
 
 
         /*  Increments the number of incorrect authentication attempts made in this session */
-        void Session::IncrementAuthAttempts() 
+        void Session::IncrementAuthAttempts()
         {
             /* Lock mutex so two threads can't increment at the same time */
             LOCK(MUTEX);
 
             nAuthAttempts++;
         }
-        
+
 
     }
 }

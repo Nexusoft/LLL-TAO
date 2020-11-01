@@ -25,10 +25,14 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/stake_change.h>
 
 #include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/stake_manager.h>
 #include <TAO/Ledger/types/stake_minter.h>
 
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/types/object.h>
+
+#include <Util/include/config.h>
+
 
 /* Global TAO namespace. */
 namespace TAO
@@ -52,7 +56,8 @@ namespace TAO
                 throw APIException(-10, "Invalid session ID");
 
             /* Retrieve the trust register address, which is based on the users genesis */
-            TAO::Register::Address hashRegister = TAO::Register::Address(std::string("trust"), user->Genesis(), TAO::Register::Address::TRUST);
+            TAO::Register::Address hashRegister =
+                TAO::Register::Address(std::string("trust"), user->Genesis(), TAO::Register::Address::TRUST);
 
             /* Get trust account. Any trust account that has completed Genesis will be indexed. */
             TAO::Register::Object trust;
@@ -86,7 +91,9 @@ namespace TAO
 
             ret["trust"] = nTrustScore;
 
-            TAO::Ledger::StakeMinter& stakeMinter = TAO::Ledger::StakeMinter::GetInstance();
+            /* Check whether or not a stake minter is running for the current session */
+            const TAO::Ledger::StakeManager& stakeManager = TAO::Ledger::StakeManager::GetInstance();
+            bool fStaking = stakeManager.IsStaking(session.ID());
 
             /* Indexed trust account has genesis */
             bool fTrustIndexed = LLD::Register->HasTrust(user->Genesis());
@@ -94,33 +101,39 @@ namespace TAO
             ret["new"] = (bool)(!fTrustIndexed);
 
             /* Return whether stake minter is started and actively running. */
-            ret["staking"] = (bool)(stakeMinter.IsStarted() && trust.hashOwner == user->Genesis());
+            ret["staking"] = (bool)(fStaking && trust.hashOwner == user->Genesis());
 
             /* Flag indicating whether pooled staking is enabled */
-            ret["pooled"] = config::fPoolStaking.load();
+            ret["pooled"] = stakeManager.IsPoolStaking();
 
             /* Need the stake minter running for accessing current staking metrics.
              * Verifying current user ownership of trust account is a sanity check.
              */
-            if(stakeMinter.IsStarted() && trust.hashOwner == user->Genesis())
+            if(fStaking && trust.hashOwner == user->Genesis())
             {
-                /* The trust account is on hold when it does not have genesis, and is waiting to reach minimum age to stake */
-                bool fOnHold = (!fTrustIndexed && stakeMinter.IsWaitPeriod());
+                /* Find the stake minter for current session */
+                TAO::Ledger::StakeMinter* pStakeMinter = stakeManager.FindStakeMinter(session.ID());
 
-                /* When trust account is on hold pending minimum age, also return the time remaining in hold period. */
-                ret["onhold"] = (bool)(fOnHold);
-                if(fOnHold)
-                    ret["holdtime"] = (uint64_t)stakeMinter.GetWaitTime();
+                if(pStakeMinter) //this should never be nullptr if fStaking true, but check just in case
+                {
+                    /* The trust account is on hold when it does not have genesis, and is waiting to reach minimum age to stake */
+                    bool fOnHold = (!fTrustIndexed && pStakeMinter->IsWaitPeriod());
 
-                /* If stake minter is running, get current stake rate it is using. */
-                ret["stakerate"] = stakeMinter.GetStakeRatePercent();
+                    /* When trust account is on hold pending minimum age, also return the time remaining in hold period. */
+                    ret["onhold"] = (bool)(fOnHold);
+                    if(fOnHold)
+                        ret["holdtime"] = (uint64_t)pStakeMinter->GetWaitTime();
 
-                /* Other staking metrics also are available with running minter */
-                ret["trustweight"] = stakeMinter.GetTrustWeightPercent();
-                ret["blockweight"] = stakeMinter.GetBlockWeightPercent();
+                    /* If stake minter is running, get current stake rate it is using. */
+                    ret["stakerate"] = pStakeMinter->GetStakeRatePercent();
 
-                /* Raw trust weight and block weight total to 100, so can use the total as a % directly */
-                ret["stakeweight"] = stakeMinter.GetTrustWeight() + stakeMinter.GetBlockWeight();
+                    /* Other staking metrics also are available with running minter */
+                    ret["trustweight"] = pStakeMinter->GetTrustWeightPercent();
+                    ret["blockweight"] = pStakeMinter->GetBlockWeightPercent();
+
+                    /* Raw trust weight and block weight total to 100, so can use the total as a % directly */
+                    ret["stakeweight"] = pStakeMinter->GetTrustWeight() + pStakeMinter->GetBlockWeight();
+                }
             }
             else
             {
@@ -144,6 +157,9 @@ namespace TAO
             }
             else
                 ret["change"] = false;
+
+            if(config::fMultiuser.load())
+                ret["session"] = session.ID().ToString();
 
             /* If the caller has requested to filter on a fieldname then filter out the json response to only include that field */
             FilterResponse(params, ret);

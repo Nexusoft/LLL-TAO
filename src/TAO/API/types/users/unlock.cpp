@@ -19,7 +19,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/sigchain.h>
-#include <TAO/Ledger/types/stake_minter.h>
+#include <TAO/Ledger/types/stake_manager.h>
 #include <TAO/Ledger/types/transaction.h>
 
 #include <Util/include/allocators.h>
@@ -88,10 +88,6 @@ namespace TAO
 
                 if(strMint == "1" || strMint == "true")
                 {
-                    /* Can't unlock for staking in multiuser mode */
-                    if(config::fMultiuser.load())
-                        throw APIException(-289, "Cannot unlock for staking in multiuser mode");
-
                      /* Check if already unlocked. */
                     if(!session.GetActivePIN().IsNull() && session.GetActivePIN()->CanStake())
                         throw APIException(-195, "Account already unlocked for staking");
@@ -178,13 +174,14 @@ namespace TAO
             /* update the unlocked actions */
             session.UpdatePIN(strPin, nUnlockedActions);
 
-            /* After unlock complete, attempt to start stake minter if unlocked for staking */
+            /* After unlock complete, start the stake minter if unlocked for staking */
             if(session.CanStake())
             {
-                TAO::Ledger::StakeMinter& stakeMinter = TAO::Ledger::StakeMinter::GetInstance();
+                TAO::Ledger::StakeManager& stakeManager = TAO::Ledger::StakeManager::GetInstance();
+                uint256_t nSession = session.ID(); // can't use session.ID() in call to Start()
 
-                if(!stakeMinter.IsStarted())
-                    stakeMinter.Start();
+                if(!stakeManager.IsStaking(nSession))
+                    stakeManager.Start(nSession);
             }
 
             /* populate unlocked status */

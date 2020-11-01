@@ -25,7 +25,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/sigchain.h>
-#include <TAO/Ledger/types/stake_minter.h>
+#include <TAO/Ledger/types/stake_manager.h>
 #include <TAO/Ledger/types/transaction.h>
 
 #include <Util/include/hex.h>
@@ -203,7 +203,7 @@ namespace TAO
                 }
                 else
                     nSession.SetHex(params["session"].get<std::string>());
-                
+
                 /* Check that the session ID is valid */
                 if(fThrow && !GetSessionManager().Has(nSession))
                     throw APIException(-10, "Invalid session ID");
@@ -233,13 +233,13 @@ namespace TAO
                 {
                     if(session->second.GetAccount()->Genesis() == hashGenesis)
                         return GetSessionManager().Get(session->first, fLogActivity);
-                    
+
                     /* increment iterator */
                     ++session;
                 }
             }
 
-            throw APIException(-11, "User not logged in"); 
+            throw APIException(-11, "User not logged in");
         }
 
 
@@ -340,8 +340,8 @@ namespace TAO
             return TAO::Ledger::CreateTransaction(user, pin, tx);
         }
 
-        /* Checks that the session/password/pin parameters have been provided (where necessary) and then verifies that the 
-        *  password and pin are correct.  
+        /* Checks that the session/password/pin parameters have been provided (where necessary) and then verifies that the
+        *  password and pin are correct.
         *  If authentication fails then the AuthAttempts counter in the callers session is incremented */
         bool Users::Authenticate(const json::json& params)
         {
@@ -382,13 +382,13 @@ namespace TAO
                 if(session.GetAuthAttempts() >= config::GetArg("-authattempts", 3))
                 {
                     debug::log(0, FUNCTION, "Too many invalid password / pin attempts. Logging out user session:", session.ID().ToString() );
-                    
-                    /* Log the user out.  NOTE this also closes down the stake minter, removes this session from the notifications 
+
+                    /* Log the user out.  NOTE this also closes down the stake minter, removes this session from the notifications
                        processor, terminates any P2P connections, and removes the session from the session manager */
                     TerminateSession(session.ID());
 
                     throw APIException(-290, "Invalid credentials.  User logged out due to too many password / pin attempts");
-                    
+
                 }
 
                 return false;
@@ -450,10 +450,11 @@ namespace TAO
             if(NOTIFICATIONS_PROCESSOR)
                 NOTIFICATIONS_PROCESSOR->Remove(nSession);
 
-            /* If this is session 0 and stake minter is running when logout, stop it */
-            TAO::Ledger::StakeMinter& stakeMinter = TAO::Ledger::StakeMinter::GetInstance();
-            if(nSession == 0 && stakeMinter.IsStarted())
-                stakeMinter.Stop();
+            /* If stake minter is running when session terminated, stop it */
+            TAO::Ledger::StakeManager& stakeManager = TAO::Ledger::StakeManager::GetInstance();
+
+            if(stakeManager.IsStaking(nSession))
+                stakeManager.Stop(nSession);
 
             {
                 /* Lock the signature chain in case another process attempts to create a transaction . */

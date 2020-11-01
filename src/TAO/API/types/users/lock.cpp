@@ -13,7 +13,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/users.h>
 #include <TAO/API/include/sessionmanager.h>
-#include <TAO/Ledger/types/stake_minter.h>
+#include <TAO/Ledger/types/stake_manager.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -121,9 +121,10 @@ namespace TAO
             if(session.GetActivePIN().IsNull() || (!(nUnlockedActions & TAO::Ledger::PinUnlock::UnlockActions::STAKING)))
             {
                 /* If stake minter is running, stop it */
-                TAO::Ledger::StakeMinter& stakeMinter = TAO::Ledger::StakeMinter::GetInstance();
-                if(stakeMinter.IsStarted())
-                    stakeMinter.Stop();
+                TAO::Ledger::StakeManager& stakeManager = TAO::Ledger::StakeManager::GetInstance();
+
+                if(stakeManager.IsStaking(session.ID()))
+                    stakeManager.Stop(session.ID());
             }
 
             /* populate unlocked status */

@@ -31,7 +31,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/sigchain.h>
-#include <TAO/Ledger/types/tritium_minter.h>
+#include <TAO/Ledger/types/stake_manager.h>
 
 #include <Util/include/allocators.h>
 
@@ -115,7 +115,7 @@ namespace TAO
 
                 /* Download the users signature chain transactions. */
                 TAO::API::DownloadSigChain(hashGenesis, 30000, true);
-                
+
             }
 
             /* Check for duplicates in ledger db. */
@@ -185,7 +185,7 @@ namespace TAO
                     /* increment iterator */
                     ++session;
                 }
-                    
+
 
             }
 
@@ -256,7 +256,7 @@ namespace TAO
                             throw APIException(-297, "Cannot log in while synchronizing");
 
                         /* Download the users signature chain transactions. */
-                        TAO::API::DownloadSigChain(hashGenesis, 30000, true);                        
+                        TAO::API::DownloadSigChain(hashGenesis, 30000, true);
                     }
 
                     /* See if the sig chain exists */
@@ -316,7 +316,7 @@ namespace TAO
                     {
                         throw APIException(-139, "Invalid credentials");
                     }
-                                            
+
 
                     /* The unlock actions to apply for autologin.  NOTE we do NOT unlock for transactions */
                     uint8_t nUnlockActions = TAO::Ledger::PinUnlock::UnlockActions::MINING
@@ -326,7 +326,7 @@ namespace TAO
                     /* Set account to unlocked. */
                     session.UpdatePIN(config::GetArg("-pin", "").c_str(), nUnlockActions);
 
-                    
+
                     /* Display that login was successful. */
                     debug::log(0, "Auto-Login Successful");
 
@@ -348,8 +348,15 @@ namespace TAO
                     if(NOTIFICATIONS_PROCESSOR)
                         NOTIFICATIONS_PROCESSOR->Add(session.ID());
 
-                    /* Start the stake minter if successful login. */
-                    TAO::Ledger::TritiumMinter::GetInstance().Start();
+                    /* Start the stake minter if able staking */
+                    if(session.CanStake())
+                    {
+                        TAO::Ledger::StakeManager& stakeManager = TAO::Ledger::StakeManager::GetInstance();
+                        uint256_t nSession = session.ID();
+
+                        if(!stakeManager.IsStaking(nSession))
+                            stakeManager.Start(nSession);
+                    }
                 }
             }
             catch(const APIException& e)

@@ -176,7 +176,7 @@ in encrypted memory.
 
 # `unlock/user`
 
-This will unlock your signature chain and cache the PIN in encrypted memory to be used for all subsequent API calls. This method is only available when using single-user API mode (multiuser=0).    
+This will unlock your signature chain and cache the PIN in encrypted memory to be used for all subsequent API calls.    
 
 The `pin` field is mandatory for unlock. The mining/staking/transactions/notifications parameters are optional and, if supplied, allow the signature chain to be used for either mining,staking, creating transactions, or processing notifications (or all three ) when in single-user API mode.
 
@@ -194,7 +194,9 @@ The `pin` field is mandatory for unlock. The mining/staking/transactions/notific
 
 `pin` : The PIN for this signature chain.
 
-`mining` : This boolean value determines whether the logged in users signature chain can be used for mining.
+`session` : When using multi-user API mode the session parameter must be supplied to identify which user to unlock.
+
+`mining` : This boolean value determines whether the logged in users signature chain can be used for mining. Can only unlock mining when using single-user API mode (multiuser=0).
 
 `notifications` : This boolean value determines whether the logged in users signature chain can be used for processing notifications.
 
