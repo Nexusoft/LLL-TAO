@@ -54,15 +54,19 @@ namespace TAO
          *
          *  Gets a list of transactions from memory pool for current block.
          *
+         *  For pooled staking, AddTransactions will save additional space should it reach maximum block size
+         *  to allow for the possibility of multiple coinstake producers.
+         *
          *  @param[out] block The block to add the transactions to.
+         *  @param[in] fPooledStake Set true if adding transactions for a pooled stake block
          *
          **/
-        void AddTransactions(TAO::Ledger::TritiumBlock& block);
+        void AddTransactions(TAO::Ledger::TritiumBlock& block, bool fPooledStake = false);
 
 
         /** AddBlockData
          *
-         *  Populate block header data for a new block.
+         *  Populate block header data for a new block. Does not populate hashMerkleRoot for stake blocks (channel 0).
          *
          *  @param[in] stateBest the current best state of the chain at the time of block creation
          *  @param[in] nChannel The channel creating the block.
@@ -91,7 +95,7 @@ namespace TAO
          *
          **/
         bool CreateBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin,
-                         const uint32_t nChannel, TAO::Ledger::TritiumBlock& block, const uint64_t nExtraNonce = 0,
+                         const uint32_t nChannel, TAO::Ledger::TritiumBlock &block, const uint64_t nExtraNonce = 0,
                          Legacy::Coinbase *pCoinbaseRecipients = nullptr);
 
 
@@ -99,18 +103,15 @@ namespace TAO
          *
          *  Create a new Proof of Stake (channel 0) block object from the chain.
          *
-         *  For Proof of Stake, the create block process sets up all the block basics, adds transaction, and creates
-         *  the producer. It does not complete the producer operations, though. The stake minter must determine
-         *  operation data and complete producer setup, then also calculate the block hashMerkleRoot from completed data.
+         *  For Proof of Stake, the create block process sets up the block basics and adds transactions.
+         *  It does not create the producer. The stake minter must determine coinstake operation data and perform
+         *  producer setup, then also calculate the block hashMerkleRoot from completed data.
          *
-         *  @param[in] user The signature chain to generate this block
-         *  @param[in] pin The pin number to generate with.
          *  @param[out] block The block object being created.
-         *  @param[in] fGenesis Set true if staking for Genesis, false if staking for Trust
+         *  @param[in] fPooled Set true if creating a block for pooled staking
          *
          **/
-        bool CreateStakeBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin,
-                              TAO::Ledger::TritiumBlock& block, const bool fGenesis = false);
+        bool CreateStakeBlock(TAO::Ledger::TritiumBlock &block, bool fPooled = false);
 
 
         /** CreateGenesis

@@ -1559,7 +1559,7 @@ namespace TAO
                 if(!LLD::Ledger->ReadTx(vtx.back().second, tx))
                     return debug::error(FUNCTION, "transaction is not on disk");
 
-                return Block::StakeHash(tx.IsGenesis(), tx.hashGenesis);
+                return Block::StakeHash(tx.hashGenesis);
             }
 
             /* pre-version 7 should have Legacy coinstake stored as vtx[0] */

@@ -1,3 +1,4 @@
+
 /*__________________________________________________________________________________________
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
@@ -155,7 +156,7 @@ namespace TAO
 
 
         /* Gets a list of transactions from memory pool for current block. */
-        void AddTransactions(TAO::Ledger::TritiumBlock& block)
+        void AddTransactions(TAO::Ledger::TritiumBlock& block, bool fPooledStake)
         {
             /* Clear the transactions. */
             block.vtx.clear();
@@ -169,12 +170,15 @@ namespace TAO
 
             debug::log(3, "BEGIN-------------------------------------");
 
+            /* Space in block to allow for producer(s), pooled stake blocks may contain up to POOL_MAX_TX producers) */
+            const uint64_t nSpace = fPooledStake ? (POOL_MAX_TX * 256) : 256;
+
             /* Loop through the list of transactions. */
             std::set<uint512_t> setDependents;
             for(const auto& hash : vMempool)
             {
                 /* Check the Size limits of the Current Block. */
-                if(::GetSerializeSize(block, SER_NETWORK, LLP::PROTOCOL_VERSION) + 256 >= MAX_BLOCK_SIZE)
+                if(::GetSerializeSize(block, SER_NETWORK, LLP::PROTOCOL_VERSION) + nSpace >= MAX_BLOCK_SIZE)
                     break;
 
                 /* Get the transaction from the memory pool. */
@@ -266,7 +270,7 @@ namespace TAO
             for(const auto& hash : vMempool)
             {
                 /* Check the Size limits of the Current Block. */
-                if(::GetSerializeSize(block, SER_NETWORK, LLP::PROTOCOL_VERSION) + 256 >= MAX_BLOCK_SIZE)
+                if(::GetSerializeSize(block, SER_NETWORK, LLP::PROTOCOL_VERSION) + nSpace >= MAX_BLOCK_SIZE)
                     break;
 
                 /* Get the transaction from the memory pool. */
@@ -717,56 +721,69 @@ namespace TAO
 
 
         /* Create a new Proof of Stake (channel 0) block object from the chain. */
-        bool CreateStakeBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin,
-                              TAO::Ledger::TritiumBlock& block, const bool fGenesis)
+        bool CreateStakeBlock(TAO::Ledger::TritiumBlock& block, const bool fPooled)
         {
-            /* Lock this user's sigchain. */
-            LOCK(TAO::API::users->GetSession(user->Genesis()).CREATE_MUTEX);
-
             /* Proof of stake has channel-id of 0. */
             const uint32_t nChannel = 0;
 
             /* Set the block to null. */
             block.SetNull();
 
-            /* Modulate the Block Versions if they correspond to their proper time stamp */
-            /* Normally, if condition is true and block version is current version unless an activation is pending */
-            uint32_t nCurrent = CurrentBlockVersion();
-            if(BlockVersionActive(runtime::unifiedtimestamp(), nCurrent)) // --> New Block Version Activation Switch
-                block.nVersion = nCurrent;
-            else
-                block.nVersion = nCurrent - 1;
-
-            /* Cache the best chain before processing. */
+            /* Get the current best chain. */
             const TAO::Ledger::BlockState stateBest = ChainState::stateBest.load();
 
-            /* Add the transactions to the block. */
-            /* Solo Genesis has no transactions, but pool Genesis does to calculate proofs (pool Genesis won't hash this block) */
-            /* Must add transactions first, before creating producer, so producer is sequenced last if user has tx in block */
-            if(!fGenesis || config::fPoolStaking.load())
-                AddTransactions(block);
+            /* Retrieve currently cached block */
+            TAO::Ledger::TritiumBlock blockCached = blockCache[nChannel].load();
 
-            /* Create the producer transaction. */
-            TAO::Ledger::Transaction txProducer;
-            if(!CreateTransaction(user, pin, txProducer))
-                return debug::error(FUNCTION, "failed to create producer transactions");
-
-            /* Update the producer timestamp */
-            UpdateProducerTimestamp(txProducer);
-
-            /* Add block producer to block */
-            if(block.nVersion < 9)
-                block.producer = txProducer;
+            /* Handle if the block is cached (if stateBest changes, cache is invalid).
+             * Cached block allows multisession staking to create block once, then reuse it for all sessions.
+             * All multisession stake minters should be using copies of the same block.
+             */
+            if(stateBest.GetHash() == blockCached.hashPrevBlock)
+            {
+                /* Use the cached block. */
+                block = blockCached;
+            }
             else
             {
-                block.vProducer.clear();
-                block.vProducer.push_back(txProducer);
+                /* Modulate the Block Versions if they correspond to their proper time stamp */
+                /* Normally, if condition is true and block version is current version unless an activation is pending */
+                uint32_t nCurrent = CurrentBlockVersion();
+                if(BlockVersionActive(runtime::unifiedtimestamp(), nCurrent)) // --> New Block Version Activation Switch
+                    block.nVersion = nCurrent;
+                else
+                    block.nVersion = nCurrent - 1;
+
+                /* Add transactions to the new block */
+                AddTransactions(block);
+
+                /* Populate the block metadata */
+                AddBlockData(stateBest, nChannel, block);
+
+                /* Store the cached block. */
+                blockCache[nChannel].store(block);
             }
 
-            /* NOTE: The remainder of Coinstake producer not configured here. Stake minter must handle it. */
+// this moves to minter
+            // /* Create the producer transaction. */
+            // TAO::Ledger::Transaction txProducer;
+            // if(!CreateTransaction(user, pin, txProducer))
+            //     return debug::error(FUNCTION, "failed to create producer transactions");
 
-            /* Populate the block metadata */
-            AddBlockData(stateBest, nChannel, block);
+            // /* Update the producer timestamp */
+            // UpdateProducerTimestamp(txProducer);
+
+            // /* Add block producer to block */
+            // if(block.nVersion < 9)
+            //     block.producer = txProducer;
+            // else
+            // {
+            //     block.vProducer.clear();
+            //     block.vProducer.push_back(txProducer);
+            // }
+
+
+            /* REMINDER: The Coinstake producer is not created here. Stake minter must handle it. */
 
             return true;
         }

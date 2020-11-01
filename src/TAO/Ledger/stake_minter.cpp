@@ -12,8 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/Ledger/types/stake_minter.h>
-#include <TAO/Ledger/types/tritium_minter.h>
-#include <TAO/Ledger/types/tritium_pool_minter.h>
 
 #include <LLC/hash/SK.h>
 #include <LLC/include/eckey.h>
@@ -50,55 +48,13 @@ namespace TAO
     namespace Ledger
     {
 
-        /* Initialize static variables */
-        std::atomic<bool> StakeMinter::fStarted(false);
-        std::atomic<bool> StakeMinter::fStop(false);
-
-
-        /* Retrieves the stake minter instance to use for staking. */
-        StakeMinter& StakeMinter::GetInstance()
-        {
-            static bool fPool = false;
-
-            /* When set to pool stake, use the pool stake minter */
-            if(config::fPoolStaking.load())
-            {
-                if(!fPool) //checks if previously set for solo
-                {
-                    /* Switch to pool staking */
-                    StakeMinter& oldStakeMinter = TritiumMinter::GetInstance();
-                    if(oldStakeMinter.IsStarted())
-                        oldStakeMinter.Stop();
-
-                }
-
-                fPool = true;
-                return TritiumPoolMinter::GetInstance();
-            }
-
-            /* Otherwise, use the solo stake minter */
-            else
-            {
-                if(fPool) //checks if previously set for pool
-                {
-                    /* Switch to pool staking */
-                    StakeMinter& oldStakeMinter = TritiumPoolMinter::GetInstance();
-                    if(oldStakeMinter.IsStarted())
-                        oldStakeMinter.Stop();
-
-                }
-
-                fPool = false;
-                return TritiumMinter::GetInstance();
-            }
-        }
+        /** Initialize mutex for coordinating stake minters on different threads. */
+        std::mutex STAKING_MUTEX;
 
 
         /** Constructor **/
-        StakeMinter::StakeMinter()
-        : hashLastBlock(0)
-        , nSleepTime(1000)
-        , fWait(false)
+        StakeMinter::StakeMinter(uint256_t& sessionId)
+        : fWait(false)
         , nWaitTime(0)
         , nTrustWeight(0.0)
         , nBlockWeight(0.0)
@@ -107,18 +63,17 @@ namespace TAO
         , stateLast()
         , fStakeChange(false)
         , stakeChange()
+        , hashLastBlock(0)
         , block()
         , fGenesis(false)
+        , fRestart(false)
         , nTrust(0)
         , nBlockAge(0)
+        , session(TAO::API::GetSessionManager().Get(sessionId, false))
+        , nSession(sessionId)
+        , nLogTime(0)
+        , nWaitReason(0)
         {
-        }
-
-
-        /* Tests whether or not the stake minter is currently running. */
-        bool StakeMinter::IsStarted() const
-        {
-            return StakeMinter::fStarted.load();
         }
 
 
@@ -187,19 +142,21 @@ namespace TAO
         /* Verify user account unlocked for minting. */
         bool StakeMinter::CheckUser()
         {
-            TAO::API::Session& session = TAO::API::GetSessionManager().Get(0, false);
-
             /* Check whether unlocked account available. */
             if(session.Locked())
             {
-                debug::log(0, FUNCTION, "No unlocked account available for staking");
+                debug::log(0, FUNCTION, (config::fMultiuser.load() ? (nSession.SubString() + " ") : ""),
+                           "No account available for staking");
+
                 return false;
             }
 
             /* Check that the account is unlocked for staking */
             if(!session.CanStake())
             {
-                debug::log(0, FUNCTION, "Account has not been unlocked for staking");
+                debug::log(0, FUNCTION, (config::fMultiuser.load() ? (nSession.SubString() + " ") : ""),
+                           "Account has not been unlocked for staking");
+
                 return false;
             }
 
@@ -208,12 +165,11 @@ namespace TAO
 
 
         /*  Retrieves the most recent stake transaction for a user account. */
-        bool StakeMinter::FindTrustAccount(const uint256_t& hashGenesis)
+        bool StakeMinter::FindTrustAccount()
         {
             bool fIndexed;
-
             /* Retrieve the trust account for the user's hashGenesis */
-            if(!TAO::Ledger::FindTrustAccount(hashGenesis, account, fIndexed))
+            if(!TAO::Ledger::FindTrustAccount(session.GetAccount()->Genesis(), account, fIndexed))
                 return false;
 
             fGenesis = !fIndexed;
@@ -222,12 +178,14 @@ namespace TAO
             {
                 /* Check that there is no stake. */
                 if(account.get<uint64_t>("stake") != 0)
-                    return debug::error(FUNCTION, "Cannot create Genesis with already existing stake");
+                    return debug::error(FUNCTION, (config::fMultiuser.load() ? (nSession.SubString() + " ") : ""),
+                                        "Cannot create Genesis with already existing stake");
 
                 /* Check that there is no trust. Preset trust is allowed for testing on testnet when -trustboost is used. */
                 if(account.get<uint64_t>("trust") !=
                 ((config::fTestNet.load() && config::GetBoolArg("-trustboost")) ? TAO::Ledger::ONE_YEAR : 0))
-                    return debug::error(FUNCTION, "Cannot create Genesis with already existing trust");
+                    return debug::error(FUNCTION, (config::fMultiuser.load() ? (nSession.SubString() + " ") : ""),
+                                        "Cannot create Genesis with already existing trust");
             }
 
             return true;
@@ -235,8 +193,10 @@ namespace TAO
 
 
         /** Retrieves the most recent stake transaction for a user account. */
-        bool StakeMinter::FindLastStake(const uint256_t& hashGenesis, uint512_t& hashLast)
+        bool StakeMinter::FindLastStake(uint512_t& hashLast)
         {
+            const uint256_t hashGenesis = session.GetAccount()->Genesis();
+
             if(LLD::Ledger->ReadStake(hashGenesis, hashLast))
                 return true;
 
@@ -255,8 +215,10 @@ namespace TAO
 
 
         /* Identifies any pending stake change request and populates the appropriate instance data. */
-        bool StakeMinter::FindStakeChange(const uint256_t& hashGenesis, const uint512_t hashLast)
+        bool StakeMinter::FindStakeChange(const uint512_t& hashLast)
         {
+            const uint256_t hashGenesis = session.GetAccount()->Genesis();
+
             /* Check for pending stake change request */
             bool fRemove = false;
             TAO::Ledger::StakeChange request;
@@ -281,7 +243,8 @@ namespace TAO
                 {
                     /* Attempts to read/deserialize old format for StakeChange will throw an end of stream exception. */
                     fRemove = true;
-                    debug::log(0, FUNCTION, "Obsolete format for stake change request...removing");
+                    debug::log(0, FUNCTION, (config::fMultiuser.load() ? (nSession.SubString() + " ") : ""),
+                               "Obsolete format for stake change request...removing");
                 }
                 else
                     throw; //rethrow exception if not end of stream
@@ -292,28 +255,32 @@ namespace TAO
             if(!fRemove && request.nVersion != 1)
             {
                 fRemove = true;
-                debug::log(0, FUNCTION, "Stake change request is unsupported version...removing");
+                debug::log(0, FUNCTION, (config::fMultiuser.load() ? (nSession.SubString() + " ") : ""),
+                           "Stake change request is unsupported version...removing");
             }
 
             /* Verify current hashGenesis matches requesting value */
             if(!fRemove && hashGenesis != request.hashGenesis)
             {
                 fRemove = true;
-                debug::log(0, FUNCTION, "Stake change request hashGenesis mismatch...removing");
+                debug::log(0, FUNCTION, (config::fMultiuser.load() ? (nSession.SubString() + " ") : ""),
+                           "Stake change request hashGenesis mismatch...removing");
             }
 
             /* Verify that no blocks have been staked since the change was requested */
             if(!fRemove && request.hashLast != hashLast)
             {
                 fRemove = true;
-                debug::log(0, FUNCTION, "Stake change request is stale...removing");
+                debug::log(0, FUNCTION, (config::fMultiuser.load() ? (nSession.SubString() + " ") : ""),
+                           "Stake change request is stale...removing");
             }
 
             /* Check for expired stake change request */
             if(!fRemove && request.nExpires != 0 && request.nExpires < runtime::unifiedtimestamp())
             {
                 fRemove = true;
-                debug::log(0, FUNCTION, "Stake change request has expired...removing");
+                debug::log(0, FUNCTION, (config::fMultiuser.load() ? (nSession.SubString() + " ") : ""),
+                           "Stake change request has expired...removing");
             }
 
             /* Validate the change request crypto signature */
@@ -323,17 +290,21 @@ namespace TAO
                 TAO::Register::Address hashCrypto = TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
                 TAO::Register::Object crypto;
                 if(!LLD::Register->ReadState(hashCrypto, crypto))
-                    return debug::error(FUNCTION, "Missing crypto register");
+                    return debug::error(FUNCTION, (config::fMultiuser.load() ? (nSession.SubString() + " ") : ""),
+                                        "Missing crypto register");
 
                 /* Parse the object. */
                 if(!crypto.Parse())
-                    return debug::error(FUNCTION, "Failed to parse crypto register");
+                    return debug::error(FUNCTION, (config::fMultiuser.load() ? (nSession.SubString() + " ") : ""),
+                                        "Failed to parse crypto register");
 
                 if(crypto.Standard() != TAO::Register::OBJECTS::CRYPTO)
-                    return debug::error(FUNCTION, "Invalid crypto register");
+                    return debug::error(FUNCTION, (config::fMultiuser.load() ? (nSession.SubString() + " ") : ""),
+                                        "Invalid crypto register");
 
                 /* Verify the signature on the stake change request */
                 uint256_t hashPublic = crypto.get<uint256_t>("auth");
+
                 if(hashPublic != 0) //no auth key disables check
                 {
                     /* Get hash of public key and set to same type as crypto register hash for verification */
@@ -344,7 +315,8 @@ namespace TAO
                     if(hashCheck != hashPublic)
                     {
                         LLD::Local->EraseStakeChange(hashGenesis);
-                        return debug::error(FUNCTION, "Invalid public key on stake change request...removing");
+                        return debug::error(FUNCTION, (config::fMultiuser.load() ? (nSession.SubString() + " ") : ""),
+                                            "Invalid public key on stake change request...removing");
                     }
 
                     /* Switch based on signature type. */
@@ -361,7 +333,8 @@ namespace TAO
                             if(!key.Verify(request.GetHash().GetBytes(), request.vchSig))
                             {
                                 LLD::Local->EraseStakeChange(hashGenesis);
-                                return debug::error(FUNCTION, "Invalid signature on stake change request...removing");
+                                return debug::error(FUNCTION, (config::fMultiuser.load() ? (nSession.SubString() + " ") : ""),
+                                                    "Invalid signature on stake change request...removing");
                             }
 
                             break;
@@ -378,7 +351,8 @@ namespace TAO
                             if(!key.Verify(request.GetHash().GetBytes(), request.vchSig))
                             {
                                 LLD::Local->EraseStakeChange(hashGenesis);
-                                return debug::error(FUNCTION, "Invalid signature on stake change request...removing");
+                                return debug::error(FUNCTION, (config::fMultiuser.load() ? (nSession.SubString() + " ") : ""),
+                                                    "Invalid signature on stake change request...removing");
                             }
 
                             break;
@@ -387,7 +361,8 @@ namespace TAO
                         default:
                         {
                             LLD::Local->EraseStakeChange(hashGenesis);
-                            return debug::error(FUNCTION, "Invalid signature type on stake change request...removing");
+                            return debug::error(FUNCTION, (config::fMultiuser.load() ? (nSession.SubString() + " ") : ""),
+                                                "Invalid signature type on stake change request...removing");
                         }
                     }
                 }
@@ -398,12 +373,16 @@ namespace TAO
             {
                 if(request.nAmount < 0 && (0 - request.nAmount) > nStake)
                 {
-                    debug::log(0, FUNCTION, "Cannot unstake more than current stake, using current stake amount.");
+                    debug::log(0, FUNCTION, (config::fMultiuser.load() ? (nSession.SubString() + " ") : ""),
+                               "Cannot unstake more than current stake, using current stake amount.");
+
                     request.nAmount = 0 - nStake;
                 }
                 else if(request.nAmount > 0 && request.nAmount > nBalance)
                 {
-                    debug::log(0, FUNCTION, "Cannot add more than current balance to stake, using current balance.");
+                    debug::log(0, FUNCTION, (config::fMultiuser.load() ? (nSession.SubString() + " ") : ""),
+                               "Cannot add more than current balance to stake, using current balance.");
+
                     request.nAmount = nBalance;
                 }
                 else if(request.nAmount == 0)
@@ -419,7 +398,8 @@ namespace TAO
                 stakeChange.SetNull();
 
                 if (!LLD::Local->EraseStakeChange(hashGenesis))
-                    debug::error(FUNCTION, "Failed to remove stake change request");
+                    debug::error(FUNCTION, (config::fMultiuser.load() ? (nSession.SubString() + " ") : ""),
+                                 "Failed to remove stake change request");
 
                 return true;
             }
@@ -432,34 +412,9 @@ namespace TAO
         }
 
 
-        /* Creates a new legacy block that the stake minter will attempt to mine via the Proof of Stake process. */
-        bool StakeMinter::CreateCandidateBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user,
-                                               const SecureString& strPIN)
-        {
-            /* Reset any prior value of trust score, block age, and stake update amount */
-            nTrust = 0;
-            nBlockAge = 0;
-
-            /* Create the block to work on */
-            block = TritiumBlock();
-
-            /* Create the base Tritium block. */
-            if(!TAO::Ledger::CreateStakeBlock(user, strPIN, block, fGenesis))
-                return debug::error(FUNCTION, "Unable to create candidate block");
-
-            /* Add a coinstake producer to the new candidate block */
-            if(!CreateCoinstake(user, strPIN))
-                return false;
-
-            return true;
-        }
-
-
         /* Calculates the Trust Weight and Block Weight values for the current trust account and candidate block. */
         bool StakeMinter::CalculateWeights()
         {
-            static uint32_t nCounter = 0; //Prevents log spam during wait period
-
             /* Use local variables for calculations, then set instance variables at the end */
             cv::softdouble nTrustWeightCurrent = cv::softdouble(0.0);
             cv::softdouble nBlockWeightCurrent = cv::softdouble(0.0);
@@ -488,27 +443,29 @@ namespace TAO
                     fWait.store(true);
                     nWaitTime.store(nCoinAgeMin - nAge);
 
-                    /* Increase sleep time to wait for coin age (can't sleep too long or will hang until wakes up on shutdown) */
-                    nSleepTime = 5000;
+                    const uint64_t nCurrentTime = runtime::timestamp();
 
-                    /* Update log every 60 iterations (5 minutes) */
-                    if((nCounter % 60) == 0)
-                        debug::log(0, FUNCTION, "Stake balance is immature. ",
-                            (nWaitTime.load() / 60), " minutes remaining until staking available.");
+                    /* Update log every 5 minutes */
+                    if((nCurrentTime - nLogTime) >= 300)
+                    {
+                        debug::log(0, FUNCTION, (config::fMultiuser.load() ? (nSession.SubString() + " ") : ""),
+                                   "Stake balance is immature. ", (nWaitTime.load() / 60),
+                                   " minutes remaining until staking available.");
 
-                    ++nCounter;
+                        nLogTime = nCurrentTime;
+                        nWaitReason = 3;
+                    }
 
                     return false;
                 }
-                else if(nSleepTime == 5000)
+                else if(nWaitReason == 3)
                 {
                     /* Reset wait period setting */
                     fWait.store(false);
                     nWaitTime.store(0);
 
-                    /* Reset sleep time after coin age meets requirement. */
-                    nSleepTime = 1000;
-                    nCounter = 0;
+                    nLogTime = 0;
+                    nWaitReason = 0;
                 }
 
                 nTrustWeightCurrent = GenesisWeight(nAge);
@@ -525,11 +482,19 @@ namespace TAO
         }
 
 
-        /* Verify whether or not a signature chain has met the interval requirement */
-        bool StakeMinter::CheckInterval(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user)
+        /* Assigns the last block hash (best chain) for the current minting round. */
+        void StakeMinter::SetLastBlock(const uint1024_t& hashBlock)
         {
-            static uint32_t nCounter = 0; //Prevents log spam during wait period
-            static const uint32_t nMinInterval = MinStakeInterval(block);
+            hashLastBlock = hashBlock;
+
+            return;
+        }
+
+
+        /* Verify whether or not a signature chain has met the interval requirement */
+        bool StakeMinter::CheckInterval()
+        {
+            const uint32_t nMinInterval = MinStakeInterval(block); //cannot be static, value can change with version activation
 
             /* Check the block interval for trust transactions. */
             if(!fGenesis)
@@ -538,67 +503,68 @@ namespace TAO
 
                 if(nInterval <= nMinInterval)
                 {
-                    /* Below minimum interval for generating stake blocks. Increase sleep time until can continue normally. */
-                    nSleepTime = 5000; //5 second wait is reset below (can't sleep too long or will hang until wakes up on shutdown)
+                    const uint64_t nCurrentTime = runtime::timestamp();
 
-                    /* Update log every 100 iterations */
-                    if((nCounter % 100) == 0)
-                        debug::log(0, FUNCTION, "Too soon after last stake block. ",
-                                   (nMinInterval - nInterval + 1), " blocks remaining until staking available.");
+                    /* Update log every 5 minutes */
+                    if((nCurrentTime - nLogTime) >= 300)
+                    {
+                        debug::log(0, FUNCTION, (config::fMultiuser.load() ? (nSession.SubString() + " ") : ""),
+                                   "Too soon after last stake block. ", (nMinInterval - nInterval + 1),
+                                   " blocks remaining until staking available.");
 
-                    ++nCounter;
+                        nLogTime = nCurrentTime;
+                        nWaitReason = 4;
+                    }
 
                     return false;
                 }
-                else if(nSleepTime == 5000)
+                else if(nWaitReason == 4)
                 {
-                    /* Reset sleep time after interval requirement met */
-                    nSleepTime = 1000;
+                    /* Reset log time */
+                    nLogTime = 0;
+                    nWaitReason = 0;
                 }
             }
 
-            nCounter = 0;
             return true;
         }
 
 
         /* Verify no transactions for same signature chain in the mempool */
-        bool StakeMinter::CheckMempool(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user)
+        bool StakeMinter::CheckMempool()
         {
-            static uint32_t nCounter = 0; //Prevents log spam during wait period
-
             /* Check there are no mempool transactions for this sig chain. */
-            if(fGenesis && mempool.Has(user->Genesis()))
+            if(fGenesis && mempool.Has(session.GetAccount()->Genesis()))
             {
-                /* 5 second wait is reset below (can't sleep too long or will hang until wakes up on shutdown) */
-                nSleepTime = 5000;
+                const uint64_t nCurrentTime = runtime::timestamp();
 
-                /* Update log every 10 iterations (50 seconds, which is average block time) */
-                if((nCounter % 10) == 0)
-                    debug::log(0, FUNCTION, "Skipping stake genesis for current block as mempool transactions would be orphaned.");
+                /* Update log every 5 minutes -- use this here in case this is checked more than once for single block */
+                if((nCurrentTime - nLogTime) >= 300)
+                {
+                    debug::log(0, FUNCTION, (config::fMultiuser.load() ? (nSession.SubString() + " ") : ""),
+                               " Skipping stake genesis for current block as mempool transactions would be orphaned.");
 
-                ++nCounter;
+                    nLogTime = nCurrentTime;
+                    nWaitReason = 5;
+                }
 
                 return false;
             }
-            else if(nSleepTime == 5000)
+            else if(nWaitReason == 5)
             {
-                /* Reset sleep time after mempool clear */
-                nSleepTime = 1000;
+                /* Reset log time */
+                nLogTime = 0;
+                nWaitReason = 0;
             }
 
-            nCounter = 0;
             return true;
 
         }
 
 
         /* Attempt to solve the hashing algorithm at the current staking difficulty for the candidate block */
-        bool StakeMinter::HashBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN,
-                                    const cv::softdouble nRequired)
+        void StakeMinter::HashBlock(const cv::softdouble& nRequired)
         {
-            uint64_t nTimeStart = 0;
-
             /* Calculate the target value based on difficulty. */
             LLC::CBigNum bnTarget;
             bnTarget.SetCompact(block.nBits);
@@ -607,14 +573,16 @@ namespace TAO
             /* Search for the proof of stake hash solution until it mines a block, minter is stopped,
              * or network generates a new block (minter must start over with new candidate)
              */
-            while(!StakeMinter::fStop.load() && !config::fShutdown.load()
-                && hashLastBlock == TAO::Ledger::ChainState::hashBestChain.load())
+            while(hashLastBlock == TAO::Ledger::ChainState::hashBestChain.load())
             {
                 /* Check that the producer(s) won't orphan any new transaction from the same hashGenesis. */
                 if(CheckStale())
                 {
-                    debug::log(2, FUNCTION, "Stake block producer is stale, rebuilding...");
-                    break; //Start over with a new block
+                    fRestart = true;
+                    debug::log(2, FUNCTION, (config::fMultiuser.load() ? (nSession.SubString() + " ") : ""),
+                               "Stake block producer is stale, rebuilding...");
+
+                    break; //This stake minter must wait until the next setup phase to hash
                 }
 
                 /* Update the block time for threshold accuracy. */
@@ -628,21 +596,7 @@ namespace TAO
                 else
                     nBlockTime = nTimeCurrent - block.vProducer.back().nTimestamp;
 
-                /* Start the check interval on first loop iteration */
-                if(nTimeStart == 0)
-                    nTimeStart = nTimeCurrent;
-
-                /* After 4 second interval, check whether need to break for block updates. */
-                else if((nTimeCurrent - nTimeStart) >= 4)
-                {
-                    if(CheckBreak())
-                        return false;
-
-                    /* Start a new interval */
-                    nTimeStart = nTimeCurrent;
-                }
-
-                /* If just starting on block, wait */
+                /* If just starting on block and haven't reached at least one second block time, wait a moment */
                 if(nBlockTime == 0)
                 {
                     runtime::sleep(1);
@@ -656,25 +610,29 @@ namespace TAO
                  */
                 cv::softdouble nThreshold = GetCurrentThreshold(nBlockTime, block.nNonce);
 
-                /* If threshhold not larger than required, wait and keep trying the same nonce value until threshold increases */
+                /* If threshhold not larger than required, stop hashing and return control */
                 if(nThreshold < nRequired)
-                {
-                    runtime::sleep(10);
-                    continue;
-                }
+                    break;
 
                 /* Every 1000 attempts, log progress. */
                 if(block.nNonce % 1000 == 0)
-                    debug::log(3, FUNCTION, "Threshold ", nThreshold, " exceeds required ",
-                        nRequired,", mining Proof of Stake with nonce ", block.nNonce);
+                    debug::log(3, FUNCTION, (config::fMultiuser.load() ? (nSession.SubString() + " ") : ""),
+                               "Threshold ", nThreshold, " exceeds required ", nRequired,
+                               ", mining Proof of Stake with nonce ", block.nNonce);
 
                 /* Handle if block is found. */
-                uint1024_t hashProof = block.StakeHash();
-                if(hashProof <= nHashTarget)
+                const uint1024_t stakeHash = block.StakeHash();
+                if(stakeHash <= nHashTarget)
                 {
-                    debug::log(0, FUNCTION, "Found new stake hash ", hashProof.SubString());
+                    debug::log(0, FUNCTION, (config::fMultiuser.load() ? (nSession.SubString() + " ") : ""),
+                               "Found new stake hash ", stakeHash.SubString());
 
-                    ProcessBlock(user, strPIN);
+                    if(!ProcessBlock())
+                    {
+                        /* If block that has a process error or is not accepted, restart with setup phase */
+                        fRestart = true;
+                    }
+
                     break;
                 }
 
@@ -682,11 +640,11 @@ namespace TAO
                 ++block.nNonce;
             }
 
-            return true;
+            return;
         }
 
 
-        bool StakeMinter::ProcessBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN)
+        bool StakeMinter::ProcessBlock()
         {
             /* Calculate coinstake reward for producer.
              * Reward is based on final block time for block. Block time is updated with each iteration so we
@@ -705,10 +663,11 @@ namespace TAO
 
             /* Execute operation pre- and post-state. */
             if(!txProducer.Build())
-                return debug::error(FUNCTION, "Coinstake transaction failed to build");
+                return debug::error(FUNCTION, (config::fMultiuser.load() ? (nSession.SubString() + " ") : ""),
+                                    "Coinstake transaction failed to build");
 
             /* Coinstake producer now complete. Sign the transaction. */
-            txProducer.Sign(user->Generate(txProducer.nSequence, strPIN));
+            txProducer.Sign(session.GetAccount()->Generate(txProducer.nSequence, session.GetActivePIN()->PIN()));
 
             if(block.nVersion < 9)
                 block.producer = txProducer;
@@ -737,7 +696,7 @@ namespace TAO
             block.hashMerkleRoot = block.BuildMerkleTree(vHashes);
 
             /* Sign the block. */
-            if(!SignBlock(user, strPIN))
+            if(!SignBlock())
                 return false;
 
             /* Print the newly found block. */
@@ -748,18 +707,25 @@ namespace TAO
             {
                 std::string strTimestamp = std::string(convert::DateTimeStrFormat(runtime::unifiedtimestamp()));
 
-                debug::log(1, FUNCTION, "Nexus Stake Minter: New nPoS channel block found at unified time ", strTimestamp);
+                debug::log(1, FUNCTION, (config::fMultiuser.load() ? (nSession.SubString() + " ") : ""),
+                           "Stake Minter: New nPoS channel block found at unified time ", strTimestamp);
+
                 debug::log(1, " blockHash: ", block.GetHash().SubString(30), " block height: ", block.nHeight);
             }
 
+            /* Lock the staking mutex (only one staking thread at a time may process a block). */
+            LOCK2(TAO::Ledger::STAKING_MUTEX);
+
             if(block.hashPrevBlock != TAO::Ledger::ChainState::hashBestChain.load())
             {
-                debug::log(0, FUNCTION, "Generated block is stale");
+                debug::log(0, FUNCTION, (config::fMultiuser.load() ? (nSession.SubString() + " ") : ""),
+                           "Generated block is stale");
+
                 return false;
             }
 
             /* Lock the sigchain that is being mined. */
-            LOCK(TAO::API::GetSessionManager().Get(0).CREATE_MUTEX);
+            LOCK(session.CREATE_MUTEX);
 
             /* Process the block and relay to network if it gets accepted into main chain.
              * This method will call TritiumBlock::Check() TritiumBlock::Accept() and BlockState::Index()
@@ -771,7 +737,8 @@ namespace TAO
 
             /* Check the statues. */
             if(!(nStatus & PROCESS::ACCEPTED))
-                return debug::error(FUNCTION, "generated block not accepted");
+                return debug::error(FUNCTION, (config::fMultiuser.load() ? (nSession.SubString() + " ") : ""),
+                                    "Generated block not accepted");
 
             /* After successfully generated genesis for trust account, reset to genereate trust for continued staking */
             if(fGenesis)
@@ -782,7 +749,7 @@ namespace TAO
 
 
         /* Sign a candidate block after it is successfully mined. */
-        bool StakeMinter::SignBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN)
+        bool StakeMinter::SignBlock()
         {
             /* Sign the submitted block */
             TAO::Ledger::Transaction txProducer;
@@ -792,7 +759,7 @@ namespace TAO
             else
                 txProducer = block.vProducer.back();
 
-            std::vector<uint8_t> vBytes = user->Generate(txProducer.nSequence, strPIN).GetBytes();
+            std::vector<uint8_t> vBytes = session.GetAccount()->Generate(txProducer.nSequence, session.GetActivePIN()->PIN()).GetBytes();
             uint8_t nKeyType = txProducer.nKeyType;
 
             LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
@@ -808,12 +775,14 @@ namespace TAO
 
                     /* Set the secret parameter. */
                     if(!key.SetSecret(vchSecret))
-                        return debug::error(FUNCTION, "StakeMinter: Unable to set key for signing Tritium Block ",
+                        return debug::error(FUNCTION, (config::fMultiuser.load() ? (nSession.SubString() + " ") : ""),
+                                            "StakeMinter: Unable to set key for signing Tritium Block ",
                                             block.GetHash().SubString());
 
                     /* Generate the signature. */
                     if(!block.GenerateSignature(key))
-                        return debug::error(FUNCTION, "StakeMinter: Unable to sign Tritium Block ",
+                        return debug::error(FUNCTION, (config::fMultiuser.load() ? (nSession.SubString() + " ") : ""),
+                                            "StakeMinter: Unable to sign Tritium Block ",
                                             block.GetHash().SubString());
 
                     break;
@@ -827,19 +796,22 @@ namespace TAO
 
                     /* Set the secret parameter. */
                     if(!key.SetSecret(vchSecret, true))
-                        return debug::error(FUNCTION, "StakeMinter: Unable to set key for signing Tritium Block ",
+                        return debug::error(FUNCTION, (config::fMultiuser.load() ? (nSession.SubString() + " ") : ""),
+                                            "StakeMinter: Unable to set key for signing Tritium Block ",
                                             block.GetHash().SubString());
 
                     /* Generate the signature. */
                     if(!block.GenerateSignature(key))
-                        return debug::error(FUNCTION, "StakeMinter: Unable to sign Tritium Block ",
+                        return debug::error(FUNCTION, (config::fMultiuser.load() ? (nSession.SubString() + " ") : ""),
+                                            "StakeMinter: Unable to sign Tritium Block ",
                                             block.GetHash().SubString());
 
                     break;
                 }
 
                 default:
-                    return debug::error(FUNCTION, "TritiumMinter: Unknown signature type");
+                    return debug::error(FUNCTION, (config::fMultiuser.load() ? (nSession.SubString() + " ") : ""),
+                                        "StakeMinter: Unknown signature type");
             }
 
             return true;

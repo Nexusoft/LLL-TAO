@@ -237,7 +237,7 @@ namespace TAO
         const uint64_t POOL_MAX_TX_BASE_TESTNET = 3;
 
         /* Hard maximum for number of coinstakes in a pool block */
-        const uint64_t POOL_MAX_TX = 200;
+        const uint64_t POOL_MAX_TX = 100;
 
         /* Minimum trust account balance to participate in the stake pool */
         const uint64_t POOL_MIN_STAKE_BALANCE = 1 * NXS_COIN;
