@@ -573,15 +573,17 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Ledger_stake.o \
 		build/Ledger_stakepool.o \
 		build/Ledger_stake_change.o \
+		build/Ledger_stake_manager.o \
 		build/Ledger_stake_minter.o \
+		build/Ledger_stake_minter_pooled.o \
+		build/Ledger_stake_minter_solo.o \
+		build/Ledger_stake_thread.o \
 		build/Ledger_state.o \
 		build/Ledger_supply.o \
 		build/Ledger_syncblock.o \
 		build/Ledger_timelocks.o \
 		build/Ledger_transaction.o \
 		build/Ledger_tritium.o \
-		build/Ledger_tritium_minter.o \
-		build/Ledger_tritium_pool_minter.o \
 		build/Util_args.o \
 		build/Util_base58.o \
 		build/Util_base64.o \
