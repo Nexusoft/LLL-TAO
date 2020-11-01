@@ -20,7 +20,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/stake.h>
-#include <TAO/Ledger/types/stake_minter.h>
+#include <TAO/Ledger/types/stake_manager.h>
 
 #include <TAO/Operation/include/enum.h>
 
@@ -41,7 +41,7 @@ namespace TAO
 
         /** Default Constructor. **/
         Stakepool::Stakepool()
-        : MUTEX( )
+        : POOL_MUTEX( )
         , mapPool( )
         , mapPending()
         , mapGenesis()
@@ -208,7 +208,7 @@ namespace TAO
         /* Accepts a transaction with validation rules. */
         bool Stakepool::Accept(const TAO::Ledger::Transaction& tx, LLP::TritiumNode* pnode)
         {
-            RLOCK(MUTEX);
+            RLOCK(POOL_MUTEX);
 
             /* Get the transaction hash. */
             uint512_t hashTx = tx.GetHash();
@@ -257,8 +257,8 @@ namespace TAO
                 return false;
             }
 
-            /* Stake pool will only save tx when pooled staking is enabled and started */
-            if(config::fPoolStaking.load() && StakeMinter::GetInstance().IsStarted())
+            /* Stake pool will only store tx when pooled staking is enabled and one or more stake minters are running */
+            if(config::fPoolStaking.load() && TAO::Ledger::StakeManager::GetInstance().GetActiveCount() > 0)
             {
                 /* When current pool proofs are stale, save tx as pending */
                 if(hashLastBlock != TAO::Ledger::ChainState::hashBestChain.load())
@@ -276,12 +276,6 @@ namespace TAO
 
                     mapGenesis[tx.hashGenesis] = hashTx;
 
-                    /* The coinstake produced by local node is in pool so it can be relayed, but should not be in Select results.
-                     * Save the hash so we can filter in Select.
-                     */
-                    if(!pnode)
-                        hashLocal = tx.GetHash();
-
                     debug::log(3, FUNCTION, "Pooled stake tx ", hashTx.SubString(), " ACCEPTED");
                 }
 
@@ -290,7 +284,7 @@ namespace TAO
                     debug::log(3, FUNCTION, "Pooled stake tx ", hashTx.SubString(), " RELAYED");
             }
 
-            /* Pooled staking not enabled or stake minter not running. tx not processed into pool, but is relayed as appropriate */
+            /* Pooled staking not enabled or no stake minters running. tx not stored in pool, will be relayed as appropriate */
             else
                 debug::log(3, FUNCTION, "Pooled stake tx ", hashTx.SubString(), " RELAYED");
 
@@ -301,7 +295,7 @@ namespace TAO
         /* Gets a transaction from stakepool */
         bool Stakepool::Get(const uint512_t& hashTx, TAO::Ledger::Transaction &tx) const
         {
-            RLOCK(MUTEX);
+            RLOCK(POOL_MUTEX);
 
             /* Check in ledger memory. */
             if(mapPool.count(hashTx))
@@ -318,7 +312,7 @@ namespace TAO
         /* Check if a transaction exists in the stake pool */
         bool Stakepool::Has(const uint512_t& hashTx) const
         {
-            RLOCK(MUTEX);
+            RLOCK(POOL_MUTEX);
 
             /* Check if pool map contains the requested hashTx */
             if(mapPool.count(hashTx))
@@ -331,7 +325,7 @@ namespace TAO
         /*  Checks whether a particular pool entry is a trust transaction. */
         bool Stakepool::IsTrust(const uint512_t& hashTx) const
         {
-            RLOCK(MUTEX);
+            RLOCK(POOL_MUTEX);
 
             /* Find the transaction in pool. */
             if(mapPool.count(hashTx))
@@ -344,7 +338,7 @@ namespace TAO
         /* Remove a transaction from pool. */
         bool Stakepool::Remove(const uint512_t& hashTx)
         {
-            RLOCK(MUTEX);
+            RLOCK(POOL_MUTEX);
 
             /* Find the transaction in pool. */
             if(mapPool.count(hashTx))
@@ -364,7 +358,7 @@ namespace TAO
         /* Clears all transactions and metadata from the stake pool  */
         void Stakepool::Clear()
         {
-            RLOCK(MUTEX);
+            RLOCK(POOL_MUTEX);
 
             /* Clear all map data */
             mapPool.clear();
@@ -377,14 +371,28 @@ namespace TAO
             nTimeBegin = 0;
             nTimeEnd = 0;
 
+            /* Reset max size setting */
+            nSizeMax = 0;
+
             return;
+        }
+
+
+        /* Checks whether or not the pool has been cleared. */
+        bool Stakepool::IsCleared() const
+        {
+            RLOCK(POOL_MUTEX);
+
+            /* Don't check mapPending, as cleared pool could receive pending transactions before pool setup takes place. */
+            return ((mapPool.size() == 0) && (mapGenesis.size() == 0)
+                    && (hashLastBlock == 0) && (hashProof == 0) && (nTimeBegin == 0) && (nTimeEnd == 0));
         }
 
 
         /* List coinstake transactions in stake pool. */
         bool Stakepool::List(std::vector<uint512_t> &vHashes, const uint32_t nCount)
         {
-            RLOCK(MUTEX);
+            RLOCK(POOL_MUTEX);
 
             /* Loop through all the transactions. */
             for(const auto& item : mapPool)
@@ -402,9 +410,9 @@ namespace TAO
 
         /* Select a list of coinstake transactions to use from the stake pool. */
         bool Stakepool::Select(std::vector<uint512_t> &vHashes, uint64_t &nStakeTotal, uint64_t &nFeeTotal,
-                               const uint64_t& nStake, const uint32_t& nCount)
+                               const uint64_t& nStake, const uint512_t& hashProducer, const uint32_t& nCount)
         {
-            RLOCK(MUTEX);
+            RLOCK(POOL_MUTEX);
 
             const uint64_t nTimespan = config::fTestNet.load() ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET
                                                                : TAO::Ledger::TRUST_KEY_TIMESPAN;
@@ -420,7 +428,7 @@ namespace TAO
                 for(const auto& item : mapPool)
                 {
                     /* Skip the coinstake created by the local node */
-                    if(item.first == hashLocal)
+                    if(item.first == hashProducer)
                         continue;
 
                     bool fTrust = IsTrust(item.first);
@@ -450,7 +458,7 @@ namespace TAO
             for(const auto& item : mapPool)
             {
                 /* Skip the coinstake created by the local node */
-                if(item.first == hashLocal)
+                if(item.first == hashProducer)
                     continue;
 
                 vAvailable.push_back(item.first);
@@ -522,7 +530,7 @@ namespace TAO
         void Stakepool::SetProofs(const uint1024_t& hashLastBlock, const uint256_t& hashProof,
                                   const uint64_t& nTimeBegin, const uint64_t& nTimeEnd)
         {
-            RLOCK(MUTEX);
+            RLOCK(POOL_MUTEX);
 
             /* Assign stake pool values */
             this->hashLastBlock = hashLastBlock;
@@ -554,9 +562,29 @@ namespace TAO
         }
 
 
+        /* Check whether proofs have been set in the stake pool for the current mining round. */
+        bool Stakepool::HasProofs() const
+        {
+            RLOCK(POOL_MUTEX);
+
+            return ((hashLastBlock != 0) || (hashProof != 0) || (nTimeBegin != 0) || (nTimeEnd != 0));
+        }
+
+
+        /* Retrieve the hash of the current best block for the mining round configured in the pool */
+        const uint1024_t& Stakepool::GetHashLastBlock() const
+        {
+            RLOCK(POOL_MUTEX);
+
+            return hashLastBlock;
+        }
+
+
         /* Retrieve the current setting for maximum number of transactions to accept into the pool. */
         uint32_t Stakepool::GetMaxSize() const
         {
+            RLOCK(POOL_MUTEX);
+
             return nSizeMax;
         }
 
@@ -564,6 +592,8 @@ namespace TAO
         /* Assigns the maximum number of transactions to accept into the pool. */
         void Stakepool::SetMaxSize(const uint32_t nSizeMax)
         {
+            RLOCK(POOL_MUTEX);
+
             this->nSizeMax = nSizeMax;
         }
 
@@ -571,7 +601,7 @@ namespace TAO
         /* Gets the size of the stake pool. */
         uint32_t Stakepool::Size()
         {
-            RLOCK(MUTEX);
+            RLOCK(POOL_MUTEX);
 
             return static_cast<uint32_t>(mapPool.size());
         }

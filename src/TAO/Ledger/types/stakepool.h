@@ -45,8 +45,8 @@ namespace TAO
         {
         public:
 
-            /* Mutex to local access to the mempool */
-            mutable std::recursive_mutex MUTEX;
+            /* Mutex to coordinate access to stakepool data */
+            mutable std::recursive_mutex POOL_MUTEX;
 
         private:
 
@@ -71,10 +71,6 @@ namespace TAO
              *  If the global hash best chain changes and no longer matches this value, proof values are stale.
              **/
             uint1024_t hashLastBlock;
-
-
-            /** The coinstake produced by the local node. This transaction will not be included in Select results. **/
-            uint512_t hashLocal;
 
 
             /** Proof in use by the pooled stake minter for the current mining round. **/
@@ -200,6 +196,16 @@ namespace TAO
             void Clear();
 
 
+            /** IsCleared
+             *
+             *  Checks whether or not the pool has been cleared.
+             *
+             *  @return true if pool is clear (via call to Clear()), false otherwise
+             *
+             **/
+            bool IsCleared() const;
+
+
             /** List
              *
              *  List coinstake transactions in stake pool.
@@ -233,13 +239,14 @@ namespace TAO
              *  @param[out] nStakeTotal Net stake balance of selected coinstakes available to use.
              *  @param[out] nFeeTotal Net fees paid by the coinstakes in the results.
              *  @param[in] nStake Stake balance of local account.
+             *  @param[in] hashProducer tx hash of producer from current session, Select() will not select this coinstake
              *  @param[in] nCount The number of transactions to select.
              *
              *  @return true if list is not empty.
              *
              **/
             bool Select(std::vector<uint512_t> &vHashes, uint64_t &nStakeTotal, uint64_t &nFeeTotal, const uint64_t& nStake,
-                        const uint32_t& nCount = std::numeric_limits<uint32_t>::max());
+                        const uint512_t& hashProducer, const uint32_t& nCount = std::numeric_limits<uint32_t>::max());
 
 
             /** SetProofs
@@ -255,6 +262,29 @@ namespace TAO
              **/
             void SetProofs(const uint1024_t& hashLastBlock, const uint256_t& hashProof,
                            const uint64_t& nTimeBegin, const uint64_t& nTimeEnd);
+
+
+            /** HasProofs
+             *
+             *  Check whether proofs have been set in the stake pool for the current mining round.
+             *
+             *  Clear() at the beginning of each mining round removes prior settings.
+             *  SetProofs() then sets them for the current mining round.
+             *
+             *  @return true if proofs are set.
+             *
+             **/
+            bool HasProofs() const;
+
+
+            /** GetHashLastBlock
+             *
+             *  Retrieve the hash of the current best block for the mining round configured in the pool.
+             *
+             *  @return hash of current best block, set by SetProofs()
+             *
+             **/
+            const uint1024_t& GetHashLastBlock() const;
 
 
             /** GetMaxSize
