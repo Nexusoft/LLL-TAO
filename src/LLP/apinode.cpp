@@ -146,11 +146,14 @@ namespace LLP
                 std::string::size_type pos = METHOD.find("?");
                 if(pos != METHOD.npos)
                 {
-                    /* Parse the form from the end of method. */
+                    /* Parse the querystring */
+                    std::string strQuerystring = METHOD.substr(pos + 1);
+                    
+                    /* Parse the method. */
                     METHOD = METHOD.substr(0, pos);
 
                     /* parse the querystring */
-                    params = QuerystringToJSON(encoding::urldecode(METHOD.substr(pos + 1)), METHOD);
+                    params = QuerystringToJSON(encoding::urldecode(strQuerystring), METHOD);
                 }
             }
             else if(INCOMING.strType == "OPTIONS")
