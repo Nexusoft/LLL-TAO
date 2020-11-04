@@ -399,6 +399,9 @@ namespace TAO
             else if(blockCached.vProducer.size() > 0)
                 txCached = blockCached.vProducer.back(); //outside of stake pool, only one producer
 
+            /* Cache the best chain before processing. */
+            const TAO::Ledger::BlockState stateBest = ChainState::stateBest.load();
+
             /* Handle if the block is cached (if stateBest or user change, cache is invalid). */
             if((ChainState::stateBest.load().GetHash() == blockCached.hashPrevBlock) && (hashGenesis == txCached.hashGenesis))
             {
@@ -420,7 +423,7 @@ namespace TAO
                     TAO::Ledger::Transaction txNew;
                     txProducer = txNew; //Resets any producer data retrieved from cache
 
-                    if(!CreateTransaction(user, pin, txProducer))
+                    if(!CreateProducer(user, pin, txProducer, stateBest, block.nVersion, nChannel, nExtraNonce, pCoinbaseRecipients))
                         return debug::error(FUNCTION, "Failed to create producer transactions.");
 
                     /* Update block producer to store back into cache */
@@ -434,85 +437,6 @@ namespace TAO
 
                     /* Store new block cache. */
                     blockCache[nChannel].store(block);
-                }
-
-                /* Use the extra nonce if block is coinbase. */
-                if(nChannel == 1 || nChannel == 2)
-                {
-                    /* Output type 0 is mining/minting reward */
-                    uint64_t nBlockReward = GetCoinbaseReward(ChainState::stateBest.load(), nChannel, 0);
-
-                    /* Create coinbase transaction. */
-                    txProducer[0].Clear();
-                    txProducer[0] << uint8_t(TAO::Operation::OP::COINBASE);
-
-                    /* Add the spendable genesis. */
-                    txProducer[0] << user->Genesis();
-
-                    /* The total to be credited. */
-                    uint64_t nCredit = nBlockReward;
-
-                    /* If there are coinbase recipients, set the reward to the coinbase wallet reward. */
-                    if(pCoinbaseRecipients && !pCoinbaseRecipients->IsNull())
-                        nCredit = pCoinbaseRecipients->WalletReward();
-
-                    /* Check to make sure credit is non-zero. */
-                    if(nCredit == 0)
-                        return debug::error(FUNCTION, "Empty block producer reward.");
-
-                    txProducer[0] << nCredit;
-
-                    /* The extra nonce to coinbase. */
-                    txProducer[0] << nExtraNonce;
-
-                    /* Add coinbase recipient amounts to block producer transaction if any. */
-                    if(pCoinbaseRecipients && !pCoinbaseRecipients->IsNull())
-                    {
-                        /* Ensure wallet reward and recipient amounts add up to correct block reward. */
-                        if(!pCoinbaseRecipients->IsValid())
-                            return debug::error(FUNCTION, "Coinbase recipients contain invalid amounts.");
-
-                        /* Get the map of outputs for this coinbase. */
-                        std::map<std::string, uint64_t> mapOutputs = pCoinbaseRecipients->Outputs();
-                        uint32_t nTx = 1;
-
-                        for(const auto& entry : mapOutputs)
-                        {
-                            /* Build the recipient address from a hex string. */
-                            uint256_t hashGenesis = uint256_t(entry.first);
-
-                            /* Ensure the address is valid. */
-                            if(!LLD::Ledger->HasGenesis(hashGenesis))
-                                return debug::error(FUNCTION, "Invaild recipient address: ", entry.first, " (", nTx, ")");
-
-                            /* Set coinbase operation. */
-                            txProducer[nTx].Clear();
-                            txProducer[nTx] << uint8_t(TAO::Operation::OP::COINBASE);
-
-                            /* Set sigchain recipient. */
-                            txProducer[nTx] << hashGenesis;
-
-                            /* Set coinbase amount for associated recipent. */
-                            txProducer[nTx] << entry.second;
-
-                            /* The extra nonce to coinbase. */
-                            txProducer[nTx] << nExtraNonce;
-
-                            ++nTx;
-                        }
-                    }
-                }
-                else if(nChannel == 3)
-                {
-                    /* Create an authorize producer. */
-                    txProducer[0].Clear();
-                    txProducer[0] << uint8_t(TAO::Operation::OP::AUTHORIZE);
-
-                    /* Get the sigchain txid. */
-                    txProducer[0] << txProducer.hashPrevTx;
-
-                    /* Set the genesis operation. */
-                    txProducer[0] << txProducer.hashGenesis;
                 }
 
                 /* Update the producer timestamp */
@@ -543,149 +467,11 @@ namespace TAO
             }
             else //block not cached, set up new block
             {
-                /* Cache the best chain before processing. */
-                const TAO::Ledger::BlockState stateBest = ChainState::stateBest.load();
-
                 /* Must add transactions first, before creating producer, so producer is sequenced last if user has tx in block */
                 AddTransactions(block);
 
-                /* Setup the producer transaction. */
-                if(!CreateTransaction(user, pin, txProducer))
+                if(!CreateProducer(user, pin, txProducer, stateBest, block.nVersion, nChannel, nExtraNonce, pCoinbaseRecipients))
                     return debug::error(FUNCTION, "Failed to create producer transactions.");
-
-                /* Create the Coinbase Transaction if the Channel specifies. */
-                if(nChannel == 1 || nChannel == 2)
-                {
-                    /* Output type 0 is mining/minting reward */
-                    uint64_t nBlockReward = GetCoinbaseReward(stateBest, nChannel, 0);
-
-                    /* Create coinbase transaction. */
-                    txProducer[0] << uint8_t(TAO::Operation::OP::COINBASE);
-
-                    /* Add the spendable genesis. */
-                    txProducer[0] << user->Genesis();
-
-                    /* The total to be credited. */
-                    uint64_t nCredit = nBlockReward;
-
-                    /* If there are coinbase recipients, set the reward to the coinbase wallet reward. */
-                    if(pCoinbaseRecipients && !pCoinbaseRecipients->IsNull())
-                        nCredit = pCoinbaseRecipients->WalletReward();
-
-                    /* Check to make sure credit is non-zero. */
-                    if(nCredit == 0)
-                        return debug::error(FUNCTION, "Empty block producer reward.");
-
-                    txProducer[0] << nCredit;
-
-                    /* The extra nonce to coinbase. */
-                    txProducer[0] << nExtraNonce;
-
-                    /* Add coinbase recipient amounts to block producer transaction if any. */
-                    if(pCoinbaseRecipients && !pCoinbaseRecipients->IsNull())
-                    {
-                        /* Ensure wallet reward and recipient amounts add up to correct block reward. */
-                        if(!pCoinbaseRecipients->IsValid())
-                            return debug::error(FUNCTION, "Coinbase recipients contain invalid amounts.");
-
-                        /* Get the map of outputs for this coinbase. */
-                        std::map<std::string, uint64_t> mapOutputs = pCoinbaseRecipients->Outputs();
-                        uint32_t nTx = 1;
-
-                        for(const auto& entry : mapOutputs)
-                        {
-                            /* Build the recipient address from a hex string. */
-                            uint256_t hashGenesis = uint256_t(entry.first);
-
-                            /* Ensure the address is valid. */
-                            if(!LLD::Ledger->HasGenesis(hashGenesis))
-                                return debug::error(FUNCTION, "Invaild recipient address: ", entry.first, " (", nTx, ")");
-
-                            /* Set coinbase operation. */
-                            txProducer[nTx] << uint8_t(TAO::Operation::OP::COINBASE);
-
-                            /* Set sigchain recipient. */
-                            txProducer[nTx] << hashGenesis;
-
-                            /* Set coinbase amount for associated recipent. */
-                            txProducer[nTx] << entry.second;
-
-                            /* The extra nonce to coinbase. */
-                            txProducer[nTx] << nExtraNonce;
-
-                            ++nTx;
-                        }
-                    }
-
-                    /* Get the last state block for channel. */
-                    TAO::Ledger::BlockState statePrev = stateBest;
-                    if(GetLastState(statePrev, nChannel))
-                    {
-                        /* Check for interval. */
-                        if(statePrev.nChannelHeight %
-                            (config::fTestNet.load() ? AMBASSADOR_PAYOUT_THRESHOLD_TESTNET : AMBASSADOR_PAYOUT_THRESHOLD) == 0)
-                        {
-                            /* Get the total in reserves. */
-                            int64_t nBalance = statePrev.nReleasedReserve[1] - (33 * NXS_COIN); //leave 33 coins in the reserve
-                            if(nBalance > 0)
-                            {
-                                /* Loop through the embassy sigchains. */
-                                for(auto it = Ambassador(block.nVersion).begin(); it != Ambassador(block.nVersion).end(); ++it)
-                                {
-                                    /* Make sure to push to end. */
-                                    uint32_t nContract = txProducer.Size();
-
-                                    /* Create coinbase transaction. */
-                                    txProducer[nContract] << uint8_t(TAO::Operation::OP::COINBASE);
-                                    txProducer[nContract] << it->first;
-
-                                    /* The total to be credited. */
-                                    uint64_t nCredit = (nBalance * it->second.second) / 1000;
-                                    txProducer[nContract] << nCredit;
-                                    txProducer[nContract] << uint64_t(0);
-                                }
-                            }
-                        }
-
-
-                        /* Check for interval. */
-                        if(statePrev.nChannelHeight %
-                            (config::fTestNet.load() ? DEVELOPER_PAYOUT_THRESHOLD_TESTNET : DEVELOPER_PAYOUT_THRESHOLD) == 0)
-                        {
-                            /* Get the total in reserves. */
-                            int64_t nBalance = statePrev.nReleasedReserve[2] - (3 * NXS_COIN); //leave 3 coins in the reserve
-                            if(nBalance > 0)
-                            {
-                                /* Loop through the embassy sigchains. */
-                                for(auto it = Developer(block.nVersion).begin(); it != Developer(block.nVersion).end(); ++it)
-                                {
-                                    /* Make sure to push to end. */
-                                    uint32_t nContract = txProducer.Size();
-
-                                    /* Create coinbase transaction. */
-                                    txProducer[nContract] << uint8_t(TAO::Operation::OP::COINBASE);
-                                    txProducer[nContract] << it->first;
-
-                                    /* The total to be credited. */
-                                    uint64_t nCredit = (nBalance * it->second.second) / 1000;
-                                    txProducer[nContract] << nCredit;
-                                    txProducer[nContract] << uint64_t(0);
-                                }
-                            }
-                        }
-                    }
-                }
-                else if(nChannel == 3)
-                {
-                    /* Create an authorize producer. */
-                    txProducer[0] << uint8_t(TAO::Operation::OP::AUTHORIZE);
-
-                    /* Get the sigchain txid. */
-                    txProducer[0] << txProducer.hashPrevTx;
-
-                    /* Set the genesis operation. */
-                    txProducer[0] << txProducer.hashGenesis;
-                }
 
                 /* Update the producer timestamp */
                 UpdateProducerTimestamp(txProducer);
@@ -711,6 +497,156 @@ namespace TAO
 
             /* Update the time for the newly created block. */
             block.UpdateTime();
+
+            return true;
+        }
+
+        /* Create a producer transaction object from signature chain. */
+        bool CreateProducer(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin,
+                               TAO::Ledger::Transaction& txProducer,
+                               const TAO::Ledger::BlockState& stateBest,
+                               const uint32_t nBlockVersion,
+                               const uint32_t nChannel,
+                               const uint64_t nExtraNonce,
+                               Legacy::Coinbase *pCoinbaseRecipients)
+        {
+            /* Setup the producer transaction. */
+            if(!CreateTransaction(user, pin, txProducer))
+                return debug::error(FUNCTION, "Failed to create producer transactions.");
+
+            /* Create the Coinbase Transaction if the Channel specifies. */
+            if(nChannel == 1 || nChannel == 2)
+            {
+                /* Output type 0 is mining/minting reward */
+                uint64_t nBlockReward = GetCoinbaseReward(stateBest, nChannel, 0);
+
+                /* Create coinbase transaction. */
+                txProducer[0] << uint8_t(TAO::Operation::OP::COINBASE);
+
+                /* Add the spendable genesis. */
+                txProducer[0] << user->Genesis();
+
+                /* The total to be credited. */
+                uint64_t nCredit = nBlockReward;
+
+                /* If there are coinbase recipients, set the reward to the coinbase wallet reward. */
+                if(pCoinbaseRecipients && !pCoinbaseRecipients->IsNull())
+                    nCredit = pCoinbaseRecipients->WalletReward();
+
+                /* Check to make sure credit is non-zero. */
+                if(nCredit == 0)
+                    return debug::error(FUNCTION, "Empty block producer reward.");
+
+                txProducer[0] << nCredit;
+
+                /* The extra nonce to coinbase. */
+                txProducer[0] << nExtraNonce;
+
+                /* Add coinbase recipient amounts to block producer transaction if any. */
+                if(pCoinbaseRecipients && !pCoinbaseRecipients->IsNull())
+                {
+                    /* Ensure wallet reward and recipient amounts add up to correct block reward. */
+                    if(!pCoinbaseRecipients->IsValid())
+                        return debug::error(FUNCTION, "Coinbase recipients contain invalid amounts.");
+
+                    /* Get the map of outputs for this coinbase. */
+                    std::map<std::string, uint64_t> mapOutputs = pCoinbaseRecipients->Outputs();
+                    uint32_t nTx = 1;
+
+                    for(const auto& entry : mapOutputs)
+                    {
+                        /* Build the recipient address from a hex string. */
+                        uint256_t hashGenesis = uint256_t(entry.first);
+
+                        /* Ensure the address is valid. */
+                        if(!LLD::Ledger->HasGenesis(hashGenesis))
+                            return debug::error(FUNCTION, "Invaild recipient address: ", entry.first, " (", nTx, ")");
+
+                        /* Set coinbase operation. */
+                        txProducer[nTx] << uint8_t(TAO::Operation::OP::COINBASE);
+
+                        /* Set sigchain recipient. */
+                        txProducer[nTx] << hashGenesis;
+
+                        /* Set coinbase amount for associated recipent. */
+                        txProducer[nTx] << entry.second;
+
+                        /* The extra nonce to coinbase. */
+                        txProducer[nTx] << nExtraNonce;
+
+                        ++nTx;
+                    }
+                }
+
+                /* Get the last state block for channel. */
+                TAO::Ledger::BlockState statePrev = stateBest;
+                if(GetLastState(statePrev, nChannel))
+                {
+                    /* Check for interval. */
+                    if(statePrev.nChannelHeight %
+                        (config::fTestNet.load() ? AMBASSADOR_PAYOUT_THRESHOLD_TESTNET : AMBASSADOR_PAYOUT_THRESHOLD) == 0)
+                    {
+                        /* Get the total in reserves. */
+                        int64_t nBalance = statePrev.nReleasedReserve[1] - (33 * NXS_COIN); //leave 33 coins in the reserve
+                        if(nBalance > 0)
+                        {
+                            /* Loop through the embassy sigchains. */
+                            for(auto it = Ambassador(nBlockVersion).begin(); it != Ambassador(nBlockVersion).end(); ++it)
+                            {
+                                /* Make sure to push to end. */
+                                uint32_t nContract = txProducer.Size();
+
+                                /* Create coinbase transaction. */
+                                txProducer[nContract] << uint8_t(TAO::Operation::OP::COINBASE);
+                                txProducer[nContract] << it->first;
+
+                                /* The total to be credited. */
+                                uint64_t nCredit = (nBalance * it->second.second) / 1000;
+                                txProducer[nContract] << nCredit;
+                                txProducer[nContract] << uint64_t(0);
+                            }
+                        }
+                    }
+
+
+                    /* Check for interval. */
+                    if(statePrev.nChannelHeight %
+                        (config::fTestNet.load() ? DEVELOPER_PAYOUT_THRESHOLD_TESTNET : DEVELOPER_PAYOUT_THRESHOLD) == 0)
+                    {
+                        /* Get the total in reserves. */
+                        int64_t nBalance = statePrev.nReleasedReserve[2] - (3 * NXS_COIN); //leave 3 coins in the reserve
+                        if(nBalance > 0)
+                        {
+                            /* Loop through the embassy sigchains. */
+                            for(auto it = Developer(nBlockVersion).begin(); it != Developer(nBlockVersion).end(); ++it)
+                            {
+                                /* Make sure to push to end. */
+                                uint32_t nContract = txProducer.Size();
+
+                                /* Create coinbase transaction. */
+                                txProducer[nContract] << uint8_t(TAO::Operation::OP::COINBASE);
+                                txProducer[nContract] << it->first;
+
+                                /* The total to be credited. */
+                                uint64_t nCredit = (nBalance * it->second.second) / 1000;
+                                txProducer[nContract] << nCredit;
+                                txProducer[nContract] << uint64_t(0);
+                            }
+                        }
+                    }
+                }
+            }
+            else if(nChannel == 3)
+            {
+                /* Create an authorize producer. */
+                txProducer[0] << uint8_t(TAO::Operation::OP::AUTHORIZE);
+
+                /* Get the sigchain txid. */
+                txProducer[0] << txProducer.hashPrevTx;
+
+                /* Set the genesis operation. */
+                txProducer[0] << txProducer.hashGenesis;
+            }
 
             return true;
         }
