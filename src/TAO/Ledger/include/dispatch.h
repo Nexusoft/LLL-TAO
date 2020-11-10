@@ -29,6 +29,12 @@ namespace TAO
     /* Ledger Layer namespace. */
     namespace Ledger
     {
+        
+        /** Function prototype for methods wanting to be notified of new blocks being added to the chain **/
+        typedef std::function<void(const uint1024_t&)> BlockDispatchFunction;
+
+        /** Function prototype for methods wanting to be notified of transactions **/
+        typedef std::function<void(const uint512_t&, bool)> TransactionDispatchFunction;
 
         class Dispatch
         {
@@ -36,16 +42,12 @@ namespace TAO
             std::mutex DISPATCH_MUTEX;
 
 
-            /** Queue to handle dispatch requests. **/
-            std::queue<uint1024_t> queueDispatch;
+            /** List of subscribers to Block events  **/
+            std::vector<BlockDispatchFunction> vBlockDispatch;
 
+            /** List of subscribers to transaction events  **/
+            std::vector<TransactionDispatchFunction> vTransactionDispatch;
 
-            /** Thread for running dispatch. **/
-            std::thread DISPATCH_THREAD;
-
-
-            /** Condition variable to wake up the relay thread. **/
-            std::condition_variable CONDITION;
 
         public:
 
@@ -61,22 +63,47 @@ namespace TAO
             static Dispatch& GetInstance();
 
 
-            /** PushRelay
+            /** SubscribeBlock
              *
-             *  Dispatch a new block hash to relay thread.
+             *  Adds a subscripton for new blocks.
              *
-             *  @param[in] hashBlock The block hash to dispatch.
-             *
-             **/
-            void PushRelay(const uint1024_t& hashBlock);
-
-
-            /** Relay Thread
-             *
-             *  Handle relays of all events for LLP when processing block.
+             *  @param[in] notify The function to call for new block notifications.
              *
              **/
-            void Relay();
+            void SubscribeBlock(const BlockDispatchFunction& notify);
+
+
+            /** SubscribeTransaction
+             *
+             *  Adds a subscripton for new transactions.
+             *
+             *  @param[in] notify The function to call for new transaction notifications.
+             *
+             **/
+            void SubscribeTransaction(const TransactionDispatchFunction& notify);
+
+
+            /** DispatchBlock
+             *
+             *  Notify all subscribers of a new block .
+             *
+             *  @param[in] hashBlock The block hash of the new block.
+             * 
+             **/
+            void DispatchBlock(const uint1024_t& hashBlock);
+
+
+            /** DispatchTransaction
+             *
+             *  Notify all subscribers of a new transaction .
+             *
+             *  @param[in] hashTx The hash of the new transaction.
+             *  @param[in] fConnect Flag indicating whether the transaction is being connected or disconnected from the chain.
+             *
+             **/
+            void DispatchTransaction(const uint512_t& hashTx, bool fConnect);
+
+
         };
 
     }

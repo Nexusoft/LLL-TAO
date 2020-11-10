@@ -34,13 +34,13 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/checkpoints.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/difficulty.h>
+#include <TAO/Ledger/include/dispatch.h>
 #include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/include/prime.h>
 #include <TAO/Ledger/include/stake_change.h>
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/include/retarget.h>
-#include <TAO/Ledger/include/dispatch.h>
 
 #include <TAO/Ledger/types/genesis.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -1039,7 +1039,7 @@ namespace TAO
                 ChainState::nBestHeight        = nHeight;
 
                 /* Write the best chain pointer. */
-                if(!LLD::Ledger->WriteBestChain(ChainState::hashBestChain.load()))
+                if(!LLD::Ledger->WriteBestChain(hash))
                     return debug::error(FUNCTION, "failed to write best chain");
 
                 /* Reset contract meters. */
@@ -1049,19 +1049,8 @@ namespace TAO
                 /* Broadcast the block to nodes if not synchronizing. */
                 if(!ChainState::Synchronizing())
                 {
-                   #ifndef IPHONE
-                    /* Block notify. */
-                    std::string strCmd = config::GetArg("-blocknotify", "");
-                    if(!strCmd.empty())
-                    {
-                        ReplaceAll(strCmd, "%s", ChainState::hashBestChain.load().GetHex());
-                        int32_t nRet = std::system(strCmd.c_str());
-                        debug::log(0, FUNCTION, "Block Notify Executed with code ", nRet);
-                    }
-                    #endif
-
-                    /* Dispatch block to dispatch thread. */
-                    Dispatch::GetInstance().PushRelay(ChainState::hashBestChain.load());
+                    /* Notify subscribers of new block. */
+                    Dispatch::GetInstance().DispatchBlock(hash);
                 }
                 else
                     debug::log(3, FUNCTION, "Skipping relay until chain is done synchronizing");
