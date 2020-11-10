@@ -319,7 +319,7 @@ namespace LLP
         /* Flag indicating that this is a list API call, in which case we need to parse the params differently */
         bool fIsList = strMethod.find("list/") != strMethod.npos;
 
-        std::vector<std::string> strListKeywords = {"genesis", "username", "name", "verbose", "page", "limit", "sort", "order", "where"};
+        std::vector<std::string> strListKeywords = {"genesis", "username", "verbose", "page", "limit", "sort", "order", "where"};
 
         /* Parse out the form entries by char '&' */
         std::vector<std::string> vParams;
