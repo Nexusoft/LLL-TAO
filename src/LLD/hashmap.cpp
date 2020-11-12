@@ -119,10 +119,10 @@ namespace LLD
             std::vector<uint8_t> vBuffer(nTotalBuckets * INDEX_FILTER_SIZE, 0);
 
             /* Loop through each bucket and account for the number of active keys. */
-            for(uint32_t nFile = 0; nFile < CONFIG.MAX_FILES_PER_INDEX; ++nFile)
+            for(uint32_t nIndexIterator = 0; nIndexIterator < CONFIG.MAX_FILES_PER_INDEX; ++nIndexIterator)
             {
                 /* Read the new disk index .*/
-                std::fstream* pindex = get_index_stream(nFile);
+                std::fstream* pindex = get_index_stream(nIndexIterator);
                 if(!pindex)
                     continue;
 
@@ -446,6 +446,8 @@ namespace LLD
         std::fstream* pstream = nullptr;
         if(pFileStreams->Get(pairIndex, pstream) && !pstream)
         {
+            debug::log(0, "Removing Stream ", VARIABLE(nFile), " | ", VARIABLE(nHashmap));
+
             /* Delete stream from the cache. */
             pFileStreams->Remove(pairIndex);
             pstream = nullptr;
@@ -577,7 +579,7 @@ namespace LLD
             return debug::error(FUNCTION, "buffer overflow protection ", nBufferPos, "/", vBuffer.size()); //TODO" remove on production
 
         /* Find our new file position from current bucket and offset. */
-        const uint64_t nFilePos = (INDEX_FILTER_SIZE * (nBucket + nOffset -
+        const uint64_t nFilePos = (INDEX_FILTER_SIZE * (nBucket + nOffset - (nFile == 0 ? 0 : 1) -
             ((nFile * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_INDEX)));
 
         /* Grab our file stream. */
@@ -617,10 +619,10 @@ namespace LLD
         {
             /* Calculate the file and boundaries we are on with current bucket. */
             const uint32_t nFile = (nIterator * CONFIG.MAX_FILES_PER_INDEX) / CONFIG.HASHMAP_TOTAL_BUCKETS;
-            const uint32_t nEnd  = ((nFile + 1) * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_INDEX;
+            const uint32_t nEnd  = (((nFile + 1) * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_INDEX) + 1;
 
             /* Find our new file position from current bucket and offset. */
-            const uint64_t nFilePos      = (INDEX_FILTER_SIZE * (nIterator -
+            const uint64_t nFilePos      = (INDEX_FILTER_SIZE * (nIterator - (nFile == 0 ? 0 : 1) -
                 ((nFile * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_INDEX)));
 
             /* Grab our file stream. */
@@ -634,13 +636,13 @@ namespace LLD
 
             /* Find the range (in bytes) we want to read for this index range. */
             const uint32_t nMaxBuckets = std::min(nRemaining, (nEnd - nIterator));
-            const uint64_t nReadSize = nMaxBuckets * INDEX_FILTER_SIZE;
+            const uint64_t nReadSize   = nMaxBuckets * INDEX_FILTER_SIZE;
 
             /* Read our index data into the buffer. */
             if(!pindex->read((char*)&vBuffer[nBufferPos], nReadSize))
             {
                 debug::warning(FUNCTION, VARIABLE(nFilePos), " | ", VARIABLE(nFile), " | ", VARIABLE(nMaxBuckets), " | ", VARIABLE(nBufferPos), " | ", VARIABLE(nReadSize));
-                return debug::error(FUNCTION, "BASE INDEX: ", pindex->eof() ? "EOF" : pindex->bad() ? "BAD" : pindex->fail() ? "FAIL" : "UNKNOWN",
+                return debug::error(FUNCTION, "INDEX: ", pindex->eof() ? "EOF" : pindex->bad() ? "BAD" : pindex->fail() ? "FAIL" : "UNKNOWN",
                     " only ", pindex->gcount(), "/", vBuffer.size(), " bytes read"
                 );
             }
@@ -674,11 +676,11 @@ namespace LLD
             const uint64_t nOffset = (nProbe * INDEX_FILTER_SIZE);
 
             /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
-            const uint16_t nBucketIterator = std::min(uint16_t(CONFIG.MAX_HASHMAPS - 1), uint16_t(nHashmap));
-            for(int32_t nFile = nBucketIterator; nFile >= 0; --nFile)
+            const uint16_t nBeginHashmap = std::min(uint16_t(CONFIG.MAX_HASHMAPS - 1), uint16_t(nHashmap));
+            for(int32_t nHashmapIterator = nBeginHashmap; nHashmapIterator >= 0; --nHashmapIterator)
             {
                 /* Check for an available hashmap slot. */
-                if(check_hashmap_available(nFile, vBuffer, nOffset + primary_bloom_size() + 2))
+                if(check_hashmap_available(nHashmapIterator, vBuffer, nOffset + primary_bloom_size() + 2))
                 {
                     /* Serialize the key into the end of the vector. */
                     DataStream ssKey(SER_LLD, DATABASE_VERSION);
@@ -687,15 +689,17 @@ namespace LLD
 
                     /* Update the primary and secondary bloom filters. */
                     set_primary_bloom  (key.vKey, vBuffer, nOffset + 2);
-                    set_secondary_bloom(key.vKey, vBuffer, nFile, nOffset + primary_bloom_size() + 2);
+                    set_secondary_bloom(key.vKey, vBuffer, nHashmapIterator, nOffset + primary_bloom_size() + 2);
+
+                    /* Calculate the file and boundaries we are on with current bucket. */
+                    const uint32_t nFile = ((nBucket + nProbe) * CONFIG.MAX_FILES_PER_HASHMAP) / CONFIG.HASHMAP_TOTAL_BUCKETS;
+                    const uint32_t nEnd  = (((nFile) * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_HASHMAP);
 
                     /* Write our new hashmap entry into the file's bucket. */
-                    const uint64_t nFilePos = ((nBucket + nProbe) * CONFIG.HASHMAP_KEY_ALLOCATION);
+                    const uint64_t nFilePos = (CONFIG.HASHMAP_KEY_ALLOCATION * (nBucket + nProbe - nEnd - (nFile == 0 ? 0 : 1)));
                     {
-                        //LOCK(CONFIG.FILE(nFile)); NOTE: there is a deadlock here
-
                         /* Grab the current file stream from LRU cache. */
-                        std::fstream* pstream = get_file_stream(nFile, nBucket);
+                        std::fstream* pstream = get_file_stream(nHashmapIterator, nBucket);
                         if(!pstream)
                             continue;
 
@@ -716,7 +720,7 @@ namespace LLD
 
                     /* Set our return values. */
                     nBucket += nProbe;
-                    nHashmap = uint16_t(nFile);
+                    nHashmap = uint16_t(nHashmapIterator);
 
                     /* Debug Output of Sector Key Information. */
                     if(config::nVerbose >= 4)
@@ -726,7 +730,7 @@ namespace LLD
                             " | Pos ", nFilePos,
                             " | Probe ", nProbe,
                             " | Location: ", nFilePos,
-                            " | File: ", nFile,
+                            " | File: ", nHashmapIterator,
                             " | Sector File: ", key.nSectorFile,
                             " | Sector Size: ", key.nSectorSize,
                             " | Sector Start: ", key.nSectorStart, "\n", ANSI_COLOR_RESET,
@@ -768,20 +772,22 @@ namespace LLD
                 continue;
 
             /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
-            const uint16_t nBucketIterator = std::min(uint16_t(CONFIG.MAX_HASHMAPS - 1), uint16_t(nHashmap - 1));
-            for(int32_t nFile = nBucketIterator; nFile >= 0; --nFile)
+            const uint16_t nBeginHashmap = std::min(uint16_t(CONFIG.MAX_HASHMAPS - 1), uint16_t(nHashmap - 1));
+            for(int32_t nHashmapIterator = nBeginHashmap; nHashmapIterator >= 0; --nHashmapIterator)
             {
                 /* Check the secondary bloom filter. */
-                if(!check_secondary_bloom(key.vKey, vBuffer, nFile, nOffset + primary_bloom_size() + 2))
+                if(!check_secondary_bloom(key.vKey, vBuffer, nHashmapIterator, nOffset + primary_bloom_size() + 2))
                     continue;
 
-                /* Read our bucket level data from the hashmap. */
-                const uint64_t nFilePos = (nBucket + nProbe) * CONFIG.HASHMAP_KEY_ALLOCATION;
-                {
-                    //LOCK(CONFIG.FILE(nFile)); NOTE: there is a deadlock here
+                /* Calculate the file and boundaries we are on with current bucket. */
+                const uint32_t nFile = ((nBucket + nProbe) * CONFIG.MAX_FILES_PER_HASHMAP) / CONFIG.HASHMAP_TOTAL_BUCKETS;
+                const uint32_t nEnd  = (((nFile) * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_HASHMAP);
 
+                /* Read our bucket level data from the hashmap. */
+                const uint64_t nFilePos = (CONFIG.HASHMAP_KEY_ALLOCATION * (nBucket + nProbe - nEnd - (nFile == 0 ? 0 : 1)));
+                {
                     /* Find the file stream for LRU cache. */
-                    std::fstream* pstream = get_file_stream(nFile, nBucket);
+                    std::fstream* pstream = get_file_stream(nHashmapIterator, nBucket);
                     if(!pstream)
                         continue;
 
@@ -792,8 +798,13 @@ namespace LLD
                     /* Read the bucket binary data from file stream */
                     if(!pstream->read((char*) &vBucket[0], vBucket.size()))
                     {
+                        /* Calculate the number of bukcets per index file. */
+                        const uint32_t nTotalBuckets = (CONFIG.HASHMAP_TOTAL_BUCKETS / CONFIG.MAX_FILES_PER_HASHMAP) + 1;
+                        debug::log(0, VARIABLE(nHashmapIterator), " | ", VARIABLE(nBucket), " | ", VARIABLE(nTotalBuckets), " | ", VARIABLE(nFilePos));
                         debug::log(0, "FILE STREAM: ", pstream->eof() ? "EOF" : pstream->bad() ? "BAD" : pstream->fail() ? "FAIL" : "UNKNOWN");
-                        return debug::error(FUNCTION, "STREAM: only ", pstream->gcount(), "/", vBucket.size(), " bytes read at cursor ", nFilePos + (nProbe * CONFIG.HASHMAP_KEY_ALLOCATION));
+                        return debug::error(FUNCTION, "STREAM: only ", pstream->gcount(), "/", vBucket.size(),
+                            " bytes read at cursor ", nFilePos, "/", nTotalBuckets * CONFIG.HASHMAP_KEY_ALLOCATION);
+
                     }
                 }
 
@@ -806,7 +817,7 @@ namespace LLD
 
                     /* Set our return values. */
                     nBucket += nProbe;
-                    nHashmap = uint16_t(nFile);
+                    nHashmap = uint16_t(nHashmapIterator);
 
                     /* Debug Output of Sector Key Information. */
                     if(config::nVerbose >= 4)

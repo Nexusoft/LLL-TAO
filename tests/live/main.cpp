@@ -123,6 +123,55 @@ const uint256_t hashSeed = 55;
 #include <LLD/cache/template_lru.h>
 
 
+/* Read an index entry at given bucket crossing file boundaries. */
+bool read_index(const uint32_t nBucket, const uint32_t nTotal, const LLD::Config::Hashmap& CONFIG)
+{
+    const uint32_t INDEX_FILTER_SIZE = 10;
+
+    /* Check we are flushing within range of the hashmap indexes. */
+    if(nBucket >= CONFIG.HASHMAP_TOTAL_BUCKETS)
+        return debug::error(FUNCTION, "out of range ", VARIABLE(nBucket));
+
+    /* Keep track of how many buckets and bytes we have remaining in this read cycle. */
+    uint32_t nRemaining = nTotal;
+    uint32_t nIterator  = nBucket;
+
+    /* Adjust our buffer size to fit the total buckets. */
+    do
+    {
+        /* Calculate the file and boundaries we are on with current bucket. */
+        const uint32_t nFile = (nIterator * CONFIG.MAX_FILES_PER_INDEX) / CONFIG.HASHMAP_TOTAL_BUCKETS;
+        const uint32_t nEnd  = (((nFile + 1) * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_INDEX) + 1;
+
+        /* Find our new file position from current bucket and offset. */
+        const uint64_t nFilePos      = (INDEX_FILTER_SIZE * (nIterator - (nFile == 0 ? 0 : 1) -
+            ((nFile * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_INDEX)));
+
+        /* Find the range (in bytes) we want to read for this index range. */
+        const uint32_t nMaxBuckets = std::min(nRemaining, (nEnd - nIterator));
+        if(nMaxBuckets == 5)
+            debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_GREEN, "+1 extension ---------------------");
+
+        debug::log(0, VARIABLE(nIterator),   " | ",
+                      VARIABLE(nRemaining),  " | ",
+                      VARIABLE(nMaxBuckets), " | ",
+                      VARIABLE(nFilePos),    " | ",
+                      VARIABLE(nFile),       " | ",
+                      VARIABLE(nEnd),        " | ",
+                      VARIABLE(nBucket),     " | ",
+                      VARIABLE(nTotal),      " | "
+                  );
+
+        /* Track our current binary position, remaining buckets to read, and current bucket iterator. */
+        nRemaining -= nMaxBuckets;
+        nIterator  += nMaxBuckets;
+    }
+    while(nRemaining > 0); //continue reading into the buffer, with one loop per file adjusting to each boundary
+
+    return true;
+}
+
+
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
@@ -153,7 +202,8 @@ int main(int argc, char** argv)
 
     //build our hashmap configuration
     LLD::Config::Hashmap CONFIG     = LLD::Config::Hashmap(BASE);
-    CONFIG.HASHMAP_TOTAL_BUCKETS    = 17;
+    CONFIG.HASHMAP_TOTAL_BUCKETS    = 29;
+    CONFIG.MAX_FILES_PER_HASHMAP    = 8;
     CONFIG.MAX_HASHMAPS             = 2;
     CONFIG.MIN_LINEAR_PROBES        = 1;
     CONFIG.MAX_LINEAR_PROBES        = 77;
@@ -163,6 +213,30 @@ int main(int argc, char** argv)
     CONFIG.SECONDARY_BLOOM_BITS     = 13;
     CONFIG.SECONDARY_BLOOM_HASHES   = 7;
     CONFIG.QUICK_INIT               = false;
+
+    for(uint32_t nBucket = 0; nBucket < CONFIG.HASHMAP_TOTAL_BUCKETS; ++nBucket)
+    {
+        /* Calculate the number of bukcets per index file. */
+        const uint32_t nTotalBuckets = (CONFIG.HASHMAP_TOTAL_BUCKETS / CONFIG.MAX_FILES_PER_HASHMAP) + 1;
+        const uint32_t nMaxSize = nTotalBuckets * CONFIG.HASHMAP_KEY_ALLOCATION;
+
+        /* Find the index of our stream based on configuration. */
+        /* Calculate the file and boundaries we are on with current bucket. */
+        const uint32_t nFile = (nBucket * CONFIG.MAX_FILES_PER_HASHMAP) / CONFIG.HASHMAP_TOTAL_BUCKETS;
+        const uint32_t nEnd  = (((nFile) * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_HASHMAP);
+
+        const uint64_t nFilePos      = (CONFIG.HASHMAP_KEY_ALLOCATION * (nBucket - nEnd - (nFile == 0 ? 0 : 1)));
+
+        //const uint64_t nFilePos = ((nBucket) * CONFIG.HASHMAP_KEY_ALLOCATION);
+        if(nFilePos == 0)
+            debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "------------------------", ANSI_COLOR_RESET);
+
+        debug::log(0, VARIABLE(nBucket), " | ",
+                      VARIABLE(nFile),   " | ",
+                      VARIABLE(nEnd),    " | ",
+                      VARIABLE(nFilePos),"/", nMaxSize
+                  );
+    }
 
 
     TestDB* bloom = new TestDB(SECTOR, CONFIG);
