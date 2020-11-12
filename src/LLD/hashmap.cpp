@@ -619,7 +619,7 @@ namespace LLD
         {
             /* Calculate the file and boundaries we are on with current bucket. */
             const uint32_t nFile = (nIterator * CONFIG.MAX_FILES_PER_INDEX) / CONFIG.HASHMAP_TOTAL_BUCKETS;
-            const uint32_t nEnd  = (((nFile + 1) * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_INDEX) + 1;
+            const uint32_t nBoundary  = (((nFile + 1) * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_INDEX) + 1;
 
             /* Find our new file position from current bucket and offset. */
             const uint64_t nFilePos      = (INDEX_FILTER_SIZE * (nIterator - (nFile == 0 ? 0 : 1) -
@@ -635,7 +635,7 @@ namespace LLD
                 pindex->seekg(nFilePos, std::ios::beg);
 
             /* Find the range (in bytes) we want to read for this index range. */
-            const uint32_t nMaxBuckets = std::min(nRemaining, (nEnd - nIterator));
+            const uint32_t nMaxBuckets = std::min(nRemaining, (nBoundary - nIterator));
             const uint64_t nReadSize   = nMaxBuckets * INDEX_FILTER_SIZE;
 
             /* Read our index data into the buffer. */
@@ -693,10 +693,10 @@ namespace LLD
 
                     /* Calculate the file and boundaries we are on with current bucket. */
                     const uint32_t nFile = ((nBucket + nProbe) * CONFIG.MAX_FILES_PER_HASHMAP) / CONFIG.HASHMAP_TOTAL_BUCKETS;
-                    const uint32_t nEnd  = (((nFile) * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_HASHMAP);
+                    const uint32_t nBoundary  = (((nFile) * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_HASHMAP);
 
                     /* Write our new hashmap entry into the file's bucket. */
-                    const uint64_t nFilePos = (CONFIG.HASHMAP_KEY_ALLOCATION * (nBucket + nProbe - nEnd - (nFile == 0 ? 0 : 1)));
+                    const uint64_t nFilePos = (CONFIG.HASHMAP_KEY_ALLOCATION * (nBucket + nProbe - nBoundary - (nFile == 0 ? 0 : 1)));
                     {
                         /* Grab the current file stream from LRU cache. */
                         std::fstream* pstream = get_file_stream(nHashmapIterator, nBucket);
@@ -781,10 +781,10 @@ namespace LLD
 
                 /* Calculate the file and boundaries we are on with current bucket. */
                 const uint32_t nFile = ((nBucket + nProbe) * CONFIG.MAX_FILES_PER_HASHMAP) / CONFIG.HASHMAP_TOTAL_BUCKETS;
-                const uint32_t nEnd  = (((nFile) * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_HASHMAP);
+                const uint32_t nBoundary  = (((nFile) * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_HASHMAP);
 
                 /* Read our bucket level data from the hashmap. */
-                const uint64_t nFilePos = (CONFIG.HASHMAP_KEY_ALLOCATION * (nBucket + nProbe - nEnd - (nFile == 0 ? 0 : 1)));
+                const uint64_t nFilePos = (CONFIG.HASHMAP_KEY_ALLOCATION * (nBucket + nProbe - nBoundary - (nFile == 0 ? 0 : 1)));
                 {
                     /* Find the file stream for LRU cache. */
                     std::fstream* pstream = get_file_stream(nHashmapIterator, nBucket);
