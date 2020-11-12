@@ -210,11 +210,11 @@ namespace LLD
                     return false;
 
                 /* We make a copy here to prevent return by reference related bugs */
-                uint16_t nFileRet   = nAdjustedHashmap;
-                uint32_t nBucketRet = nAdjustedBucket;
+                uint16_t nHashmapRet   = nAdjustedHashmap;
+                uint32_t nBucketRet    = nAdjustedBucket;
 
                 /* Check our hashmaps for given key. */
-                if(find_and_read(key, vIndex, nFileRet, nBucketRet, nTotalBuckets))
+                if(find_and_read(key, vIndex, nHashmapRet, nBucketRet, nTotalBuckets))
                     return true;
 
                 /* Check that our cached bucket and total are different (signifying useful work was completed). */
@@ -228,11 +228,11 @@ namespace LLD
         }
 
         /* We make a copy here to prevent return by reference related bugs */
-        uint16_t nFileRet   = nHashmap;
-        uint32_t nBucketRet = nBucket;
+        uint16_t nHashmapRet   = nHashmap;
+        uint32_t nBucketRet    = nBucket;
 
         /* Check our hashmaps for given key. */
-        if(find_and_read(key, vBase, nFileRet, nBucketRet, CONFIG.MIN_LINEAR_PROBES))
+        if(find_and_read(key, vBase, nHashmapRet, nBucketRet, CONFIG.MIN_LINEAR_PROBES))
             return true;
 
         return false;//debug::error(FUNCTION, "doesn't exist from hashmap ", nHashmap);
@@ -259,7 +259,7 @@ namespace LLD
         uint16_t nHashmap = get_current_file(vBase, 0);
 
         /* Loop through our potential linear probe cycles. */
-        while(nHashmap <= CONFIG.MAX_HASHMAPS + CONFIG.MAX_LINEAR_PROBE_CYCLES)
+        while(nHashmap < CONFIG.MAX_HASHMAPS + CONFIG.MAX_LINEAR_PROBE_CYCLES)
         {
             /* Check if we are in a probe expansion cycle. */
             if(nHashmap >= CONFIG.MAX_HASHMAPS)
@@ -274,11 +274,11 @@ namespace LLD
                     return false;
 
                 /* We make a copy here to prevent return by reference related bugs */
-                uint16_t nFileRet   = nHashmap;
-                uint32_t nBucketRet = nAdjustedBucket;
+                uint16_t nHashmapRet   = nHashmap;
+                uint32_t nBucketRet    = nAdjustedBucket;
 
                 /* Attempt to find and write key into keychain */
-                if(find_and_write(key, vIndex, nFileRet, nBucketRet, nTotalBuckets))
+                if(find_and_write(key, vIndex, nHashmapRet, nBucketRet, nTotalBuckets))
                 {
                     /* If we found a slot, signify expansion cycle is complete with a +1 value for searching. */
                     set_current_file(nHashmap, vBase); //we set to current fibanacci zone so we can keep writing to it for next key
@@ -305,15 +305,15 @@ namespace LLD
             else
             {
                 /* We make a copy here to prevent return by reference related bugs */
-                uint16_t nFileRet   = nHashmap;
-                uint32_t nBucketRet = nBucket;
+                uint16_t nHashmapRet   = nHashmap;
+                uint32_t nBucketRet    = nBucket;
 
                 /* Handle our key writing without probing adjacent buckets. */
-                if(find_and_write(key, vBase, nFileRet, nBucketRet, CONFIG.MIN_LINEAR_PROBES))
+                if(find_and_write(key, vBase, nHashmapRet, nBucketRet, CONFIG.MIN_LINEAR_PROBES))
                 {
                     /* Check if file needs to be incremented. */
-                    if(nFileRet >= nHashmap)
-                        set_current_file(nFileRet + 1, vBase);
+                    if(nHashmapRet >= nHashmap)
+                        set_current_file(nHashmapRet + 1, vBase);
 
                     /* Flush our index file to disk. */
                     if(!flush_index(vBase, nBucket))
@@ -374,15 +374,15 @@ namespace LLD
                     return false;
 
                 /* We make a copy here to prevent return by reference related bugs */
-                uint16_t nFileRet   = nAdjustedHashmap;
-                uint32_t nBucketRet = nAdjustedBucket;
+                uint16_t nHashmapRet   = nAdjustedHashmap;
+                uint32_t nBucketRet    = nAdjustedBucket;
 
                 /* Check our hashmaps for given key. */
-                if(find_and_read(key, vIndex, nFileRet, nBucketRet, nTotalBuckets))
+                if(find_and_read(key, vIndex, nHashmapRet, nBucketRet, nTotalBuckets))
                 {
                     /* Remove this key from indexing file. */
                     const uint32_t nOffset = (INDEX_FILTER_SIZE * (nBucketRet - nAdjustedBucket));
-                    set_hashmap_available(nFileRet, vIndex, nOffset + primary_bloom_size() + 2);
+                    set_hashmap_available(nHashmapRet, vIndex, nOffset + primary_bloom_size() + 2);
 
                     /* Flush our probing index file to disk (fibanacci expansion) */
                     if(!flush_index(vIndex, nAdjustedBucket, nBucketRet - nAdjustedBucket))
@@ -394,14 +394,14 @@ namespace LLD
         }
 
         /* We make a copy here to prevent return by reference related bugs */
-        uint16_t nFileRet   = nHashmap;
-        uint32_t nBucketRet = nBucket;
+        uint16_t nHashmapRet   = nHashmap;
+        uint32_t nBucketRet    = nBucket;
 
         /* Check our hashmaps for given key. */
-        if(find_and_read(key, vBase, nFileRet, nBucketRet, CONFIG.MIN_LINEAR_PROBES))
+        if(find_and_read(key, vBase, nHashmapRet, nBucketRet, CONFIG.MIN_LINEAR_PROBES))
         {
             /* Remove this key from indexing file. */
-            set_hashmap_available(nFileRet, vBase, primary_bloom_size() + 2);
+            set_hashmap_available(nHashmapRet, vBase, primary_bloom_size() + 2);
 
             /* Flush our probing index file to disk (fibanacci expansion) */
             if(!flush_index(vBase, nBucket))
@@ -600,6 +600,7 @@ namespace LLD
 
         return true;
     }
+
 
     /* Read an index entry at given bucket crossing file boundaries. */
     bool BinaryHashMap::read_index(std::vector<uint8_t> &vBuffer, const uint32_t nBucket, const uint32_t nTotal)

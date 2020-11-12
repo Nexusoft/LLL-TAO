@@ -216,6 +216,7 @@ int main(int argc, char** argv)
 
     for(uint32_t nBucket = 0; nBucket < CONFIG.HASHMAP_TOTAL_BUCKETS; ++nBucket)
     {
+
         /* Calculate the number of bukcets per index file. */
         const uint32_t nTotalBuckets = (CONFIG.HASHMAP_TOTAL_BUCKETS / CONFIG.MAX_FILES_PER_HASHMAP) + 1;
         const uint32_t nMaxSize = nTotalBuckets * CONFIG.HASHMAP_KEY_ALLOCATION;
