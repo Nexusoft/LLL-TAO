@@ -114,8 +114,9 @@ namespace LLD
             /* Deserialize the values into memory index. */
             uint64_t nTotalKeys = 0;
 
-            /* Generate empty space for new file. */
-            std::vector<uint8_t> vBuffer((CONFIG.HASHMAP_TOTAL_BUCKETS * INDEX_FILTER_SIZE) / CONFIG.MAX_FILES_PER_INDEX, 0);
+            /* Calculate the number of bukcets per index file. */
+            const uint32_t nTotalBuckets = (CONFIG.HASHMAP_TOTAL_BUCKETS / CONFIG.MAX_FILES_PER_INDEX) + 1;
+            std::vector<uint8_t> vBuffer(nTotalBuckets * INDEX_FILTER_SIZE, 0);
 
             /* Loop through each bucket and account for the number of active keys. */
             for(uint32_t nFile = 0; nFile < CONFIG.MAX_FILES_PER_INDEX; ++nFile)
@@ -129,8 +130,8 @@ namespace LLD
                 if(!pindex->read((char*)&vBuffer[0], vBuffer.size()))
                     continue;
 
-                //TODO: we should probably keep a const value of buckets per index so we don't have to calculate it all the time
-                for(uint32_t nBucket = 0; nBucket < CONFIG.HASHMAP_TOTAL_BUCKETS / CONFIG.MAX_FILES_PER_INDEX; ++nBucket)
+                /* Check these slots for available keys. */
+                for(uint32_t nBucket = 0; nBucket < nTotalBuckets; ++nBucket)
                 {
                     /* Get the binary offset within the current probe. */
                     uint64_t nOffset = nBucket * INDEX_FILTER_SIZE;
@@ -460,6 +461,9 @@ namespace LLD
             /* Create a new file if it doesn't exist yet. */
             if(!filesystem::exists(strHashmap))
             {
+                /* Calculate the number of bukcets per index file. */
+                const uint32_t nTotalBuckets = (CONFIG.HASHMAP_TOTAL_BUCKETS / CONFIG.MAX_FILES_PER_HASHMAP) + 1;
+
                 /* Blank vector to write empty space in new disk file. */
                 std::vector<uint8_t> vSpace(CONFIG.HASHMAP_KEY_ALLOCATION, 0);
 
@@ -469,7 +473,7 @@ namespace LLD
                     return nullptr;
 
                 /* Write the new hashmap in smaller chunks to not overwhelm the buffers. */
-                for(uint32_t n = 0; n < CONFIG.HASHMAP_TOTAL_BUCKETS; ++n)
+                for(uint32_t n = 0; n < nTotalBuckets; ++n)
                     stream.write((char*)&vSpace[0], vSpace.size());
                 stream.close();
 
@@ -520,7 +524,7 @@ namespace LLD
             if(!filesystem::exists(strHashmap))
             {
                 /* Calculate the number of bukcets per index file. */
-                const uint32_t nTotalBuckets = CONFIG.HASHMAP_TOTAL_BUCKETS / CONFIG.MAX_FILES_PER_INDEX;
+                const uint32_t nTotalBuckets = (CONFIG.HASHMAP_TOTAL_BUCKETS / CONFIG.MAX_FILES_PER_INDEX) + 1;
 
                 /* Blank vector to write empty space in new disk file. */
                 std::vector<uint8_t> vSpace(INDEX_FILTER_SIZE * nTotalBuckets, 0);

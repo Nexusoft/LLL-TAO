@@ -153,7 +153,7 @@ int main(int argc, char** argv)
 
     //build our hashmap configuration
     LLD::Config::Hashmap CONFIG     = LLD::Config::Hashmap(BASE);
-    CONFIG.HASHMAP_TOTAL_BUCKETS    = 20;
+    CONFIG.HASHMAP_TOTAL_BUCKETS    = 29;
     CONFIG.MAX_HASHMAPS             = 2;
     CONFIG.MIN_LINEAR_PROBES        = 1;
     CONFIG.MAX_LINEAR_PROBES        = 77;
