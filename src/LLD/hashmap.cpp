@@ -259,7 +259,7 @@ namespace LLD
         uint16_t nHashmap = get_current_file(vBase, 0);
 
         /* Loop through our potential linear probe cycles. */
-        while(nHashmap <= CONFIG.MAX_HASHMAPS + 64)
+        while(nHashmap <= CONFIG.MAX_HASHMAPS + CONFIG.MAX_LINEAR_PROBE_CYCLES)
         {
             /* Check if we are in a probe expansion cycle. */
             if(nHashmap >= CONFIG.MAX_HASHMAPS)
