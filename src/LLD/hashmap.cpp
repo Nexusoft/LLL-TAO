@@ -235,7 +235,7 @@ namespace LLD
         if(find_and_read(key, vBase, nHashmapRet, nBucketRet, CONFIG.MIN_LINEAR_PROBES))
             return true;
 
-        return false;//debug::error(FUNCTION, "doesn't exist from hashmap ", nHashmap);
+        return false;
     }
 
 
@@ -669,8 +669,11 @@ namespace LLD
         /* Loop through the adjacent linear hashmap slots in a linear ordering resptive to the buffer object. */
         for(uint32_t nProbe = 0; nProbe < nProbes; ++nProbe)
         {
+            /* Calculate our adjusted bucket. */
+            const uint32_t nAdjustedBucket = (nBucket + nProbe);
+
             /* Check our ranges here and break early if exhausting hashmap buckets. */
-            if(nProbe + nBucket >= CONFIG.HASHMAP_TOTAL_BUCKETS) //TODO: remove debug::error when moving to production
+            if(nAdjustedBucket >= CONFIG.HASHMAP_TOTAL_BUCKETS) //TODO: remove debug::error when moving to production
                 return debug::error(FUNCTION, "out of buckets ", nProbe + nBucket, "/", CONFIG.HASHMAP_TOTAL_BUCKETS);
 
             /* Get the binary offset within the current probe. */
@@ -693,14 +696,14 @@ namespace LLD
                     set_secondary_bloom(key.vKey, vBuffer, nHashmapIterator, nOffset + primary_bloom_size() + 2);
 
                     /* Calculate the file and boundaries we are on with current bucket. */
-                    const uint32_t nFile = ((nBucket + nProbe) * CONFIG.MAX_FILES_PER_HASHMAP) / CONFIG.HASHMAP_TOTAL_BUCKETS;
-                    const uint32_t nBoundary  = (((nFile) * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_HASHMAP);
+                    const uint32_t nFile = (nAdjustedBucket * CONFIG.MAX_FILES_PER_HASHMAP) / CONFIG.HASHMAP_TOTAL_BUCKETS;
+                    const uint32_t nBoundary  = ((nFile * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_HASHMAP);
 
                     /* Write our new hashmap entry into the file's bucket. */
-                    const uint64_t nFilePos = (CONFIG.HASHMAP_KEY_ALLOCATION * (nBucket + nProbe - nBoundary - (nFile == 0 ? 0 : 1)));
+                    const uint64_t nFilePos = (CONFIG.HASHMAP_KEY_ALLOCATION * (nAdjustedBucket - nBoundary - (nFile == 0 ? 0 : 1)));
                     {
                         /* Grab the current file stream from LRU cache. */
-                        std::fstream* pstream = get_file_stream(nHashmapIterator, nBucket);
+                        std::fstream* pstream = get_file_stream(nHashmapIterator, nAdjustedBucket);
                         if(!pstream)
                             continue;
 
@@ -720,7 +723,7 @@ namespace LLD
                     }
 
                     /* Set our return values. */
-                    nBucket += nProbe;
+                    nBucket  = nAdjustedBucket;
                     nHashmap = uint16_t(nHashmapIterator);
 
                     /* Debug Output of Sector Key Information. */
@@ -757,8 +760,11 @@ namespace LLD
         std::vector<uint8_t> vBucket(CONFIG.HASHMAP_KEY_ALLOCATION, 0); //we can re-use this buffer
         for(uint32_t nProbe = 0; nProbe < nProbes; ++nProbe)
         {
+            /* Calculate our adjusted bucket. */
+            const uint32_t nAdjustedBucket = (nBucket + nProbe);
+
             /* Check our ranges here and break early if exhausting hashmap buckets. */
-            if(nProbe + nBucket >= CONFIG.HASHMAP_TOTAL_BUCKETS) //TODO: remove debug::error when moving to production
+            if(nAdjustedBucket >= CONFIG.HASHMAP_TOTAL_BUCKETS) //TODO: remove debug::error when moving to production
                 return debug::error(FUNCTION, "out of buckets ", nProbe + nBucket, "/", CONFIG.HASHMAP_TOTAL_BUCKETS);
 
             /* Get the binary offset within the current probe. */
@@ -777,14 +783,14 @@ namespace LLD
                     continue;
 
                 /* Calculate the file and boundaries we are on with current bucket. */
-                const uint32_t nFile = ((nBucket + nProbe) * CONFIG.MAX_FILES_PER_HASHMAP) / CONFIG.HASHMAP_TOTAL_BUCKETS;
-                const uint32_t nBoundary  = (((nFile) * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_HASHMAP);
+                const uint32_t nFile = (nAdjustedBucket * CONFIG.MAX_FILES_PER_HASHMAP) / CONFIG.HASHMAP_TOTAL_BUCKETS;
+                const uint32_t nBoundary  = ((nFile * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_HASHMAP);
 
                 /* Write our new hashmap entry into the file's bucket. */
-                const uint64_t nFilePos = (CONFIG.HASHMAP_KEY_ALLOCATION * (nBucket + nProbe - nBoundary - (nFile == 0 ? 0 : 1)));
+                const uint64_t nFilePos = (CONFIG.HASHMAP_KEY_ALLOCATION * (nAdjustedBucket - nBoundary - (nFile == 0 ? 0 : 1)));
                 {
                     /* Find the file stream for LRU cache. */
-                    std::fstream* pstream = get_file_stream(nHashmapIterator, nBucket);
+                    std::fstream* pstream = get_file_stream(nHashmapIterator, nAdjustedBucket);
                     if(!pstream)
                         continue;
 
@@ -808,16 +814,16 @@ namespace LLD
                     if(std::equal(vBucket.begin() + 13, vBucket.begin() + 13 + vKeyCompressed.size(), vKeyCompressed.begin()))
                     {
                         /* Seek if we are not at position. */
-                        if(pstream->tellp() != nFilePos)
-                            pstream->seekp(nFilePos, std::ios::beg);
+                        //if(pstream->tellp() != nFilePos)
+                        //    pstream->seekp(nFilePos, std::ios::beg);
 
                         /* Flush the key file to disk. */
-                        const std::vector<uint8_t> vBlank(CONFIG.HASHMAP_KEY_ALLOCATION, 0);
-                        if(!pstream->write((char*)&vBlank[0], vBlank.size()))
-                            return debug::error(FUNCTION, "KEYCHAIN: only ", pstream->gcount(), "/", vBlank.size(), " bytes written");
+                        //const std::vector<uint8_t> vBlank(CONFIG.HASHMAP_KEY_ALLOCATION, 0);
+                        //if(!pstream->write((char*)&vBlank[0], vBlank.size()))
+                        //    return debug::error(FUNCTION, "KEYCHAIN: only ", pstream->gcount(), "/", vBlank.size(), " bytes written");
 
                         /* Set our return values. */
-                        nBucket += nProbe;
+                        nBucket  = nAdjustedBucket;
                         nHashmap = uint16_t(nHashmapIterator);
 
                         /* Debug Output of Sector Key Information. */
@@ -828,10 +834,11 @@ namespace LLD
                                 " | Probe ", nProbe,
                                 " | Location: ", nFilePos,
                                 " | File: ", nHashmapIterator,
+                                ANSI_COLOR_RESET, "\n",
                                 HexStr(vKeyCompressed.begin(), vKeyCompressed.end(), true));
 
                         /* Flush the buffers to disk. */
-                        pstream->flush();
+                        //pstream->flush();
 
                         return true;
                     }
@@ -858,8 +865,11 @@ namespace LLD
         std::vector<uint8_t> vBucket(CONFIG.HASHMAP_KEY_ALLOCATION, 0); //we can re-use this buffer
         for(uint32_t nProbe = 0; nProbe < nProbes; ++nProbe)
         {
+            /* Calculate our adjusted bucket. */
+            const uint32_t nAdjustedBucket = (nBucket + nProbe);
+
             /* Check our ranges here and break early if exhausting hashmap buckets. */
-            if(nProbe + nBucket >= CONFIG.HASHMAP_TOTAL_BUCKETS) //TODO: remove debug::error when moving to production
+            if(nAdjustedBucket >= CONFIG.HASHMAP_TOTAL_BUCKETS) //TODO: remove debug::error when moving to production
                 return debug::error(FUNCTION, "out of buckets ", nProbe + nBucket, "/", CONFIG.HASHMAP_TOTAL_BUCKETS);
 
             /* Get the binary offset within the current probe. */
@@ -878,14 +888,14 @@ namespace LLD
                     continue;
 
                 /* Calculate the file and boundaries we are on with current bucket. */
-                const uint32_t nFile = ((nBucket + nProbe) * CONFIG.MAX_FILES_PER_HASHMAP) / CONFIG.HASHMAP_TOTAL_BUCKETS;
-                const uint32_t nBoundary  = (((nFile) * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_HASHMAP);
+                const uint32_t nFile = (nAdjustedBucket * CONFIG.MAX_FILES_PER_HASHMAP) / CONFIG.HASHMAP_TOTAL_BUCKETS;
+                const uint32_t nBoundary  = ((nFile * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_HASHMAP);
 
                 /* Read our bucket level data from the hashmap. */
-                const uint64_t nFilePos = (CONFIG.HASHMAP_KEY_ALLOCATION * (nBucket + nProbe - nBoundary - (nFile == 0 ? 0 : 1)));
+                const uint64_t nFilePos = (CONFIG.HASHMAP_KEY_ALLOCATION * (nAdjustedBucket - nBoundary - (nFile == 0 ? 0 : 1)));
                 {
                     /* Find the file stream for LRU cache. */
-                    std::fstream* pstream = get_file_stream(nHashmapIterator, nBucket);
+                    std::fstream* pstream = get_file_stream(nHashmapIterator, nAdjustedBucket);
                     if(!pstream)
                         continue;
 
@@ -914,7 +924,7 @@ namespace LLD
                     ssKey >> key;
 
                     /* Set our return values. */
-                    nBucket += nProbe;
+                    nBucket  = nAdjustedBucket;
                     nHashmap = uint16_t(nHashmapIterator);
 
                     /* Debug Output of Sector Key Information. */

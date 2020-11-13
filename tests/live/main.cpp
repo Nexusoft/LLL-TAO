@@ -144,7 +144,7 @@ bool read_index(const uint32_t nBucket, const uint32_t nTotal, const LLD::Config
         const uint32_t nEnd  = (((nFile + 1) * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_INDEX) + 1;
 
         /* Find our new file position from current bucket and offset. */
-        const uint64_t nFilePos      = (INDEX_FILTER_SIZE * (nIterator - (nFile == 0 ? 0 : 1) -
+        const uint64_t nFilePos      = (INDEX_FILTER_SIZE * (nIterator - //(nFile == 0 ? 0 : 1) -
             ((nFile * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_INDEX)));
 
         /* Find the range (in bytes) we want to read for this index range. */
@@ -182,74 +182,82 @@ int main(int argc, char** argv)
     config::nVerbose.store(4);
     config::mapArgs["-datadir"] = "/database";
 
-    if(config::GetBoolArg("-reset", false))
+    for(uint32_t nTotalBuckets = 0; nTotalBuckets < config::GetArg("-buckets", 1); ++nTotalBuckets)
     {
-        std::string strPath = config::mapArgs["-datadir"] + "/testdb";
+        debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "Starting round ", nTotalBuckets, "----------------", ANSI_COLOR_RESET);
+        runtime::sleep(1000);
 
-        debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "Deleting data directory ", strPath, ANSI_COLOR_RESET);
-        filesystem::remove_directories(strPath);
-    }
+        if(config::GetBoolArg("-reset", false))
+        {
+            std::string strPath = config::mapArgs["-datadir"] + "/testdb" + debug::safe_printstr(nTotalBuckets);
 
-    //build our base configuration
-    LLD::Config::Base BASE =
-        LLD::Config::Base("testdb", LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+            debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "Deleting data directory ", strPath, ANSI_COLOR_RESET);
+            filesystem::remove_directories(strPath);
+        }
 
-    //build our sector configuration
-    LLD::Config::Sector SECTOR      = LLD::Config::Sector(BASE);
-    SECTOR.MAX_SECTOR_FILE_STREAMS  = 16;
-    SECTOR.MAX_SECTOR_BUFFER_SIZE   = 1024 * 1024 * 4; //4 MB write buffer
-    SECTOR.MAX_SECTOR_CACHE_SIZE    = 256; //1 MB of cache available
+        //build our base configuration
+        LLD::Config::Base BASE =
+            LLD::Config::Base("testdb" + debug::safe_printstr(nTotalBuckets), LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
 
-    //build our hashmap configuration
-    LLD::Config::Hashmap CONFIG     = LLD::Config::Hashmap(BASE);
-    CONFIG.HASHMAP_TOTAL_BUCKETS    = 29;
-    CONFIG.MAX_FILES_PER_HASHMAP    = 8;
-    CONFIG.MAX_HASHMAPS             = 2;
-    CONFIG.MIN_LINEAR_PROBES        = 1;
-    CONFIG.MAX_LINEAR_PROBES        = 77;
-    CONFIG.MAX_HASHMAP_FILE_STREAMS = 64;
-    CONFIG.PRIMARY_BLOOM_HASHES     = 9;
-    CONFIG.PRIMARY_BLOOM_ACCURACY   = 144;
-    CONFIG.SECONDARY_BLOOM_BITS     = 13;
-    CONFIG.SECONDARY_BLOOM_HASHES   = 7;
-    CONFIG.QUICK_INIT               = false;
+        //build our sector configuration
+        LLD::Config::Sector SECTOR      = LLD::Config::Sector(BASE);
+        SECTOR.MAX_SECTOR_FILE_STREAMS  = 16;
+        SECTOR.MAX_SECTOR_BUFFER_SIZE   = 1024 * 1024 * 4; //4 MB write buffer
+        SECTOR.MAX_SECTOR_CACHE_SIZE    = 256; //1 MB of cache available
 
-    for(uint32_t nBucket = 0; nBucket < CONFIG.HASHMAP_TOTAL_BUCKETS; ++nBucket)
-    {
-
-        /* Calculate the number of bukcets per index file. */
-        const uint32_t nTotalBuckets = (CONFIG.HASHMAP_TOTAL_BUCKETS / CONFIG.MAX_FILES_PER_HASHMAP) + 1;
-        const uint32_t nMaxSize = nTotalBuckets * CONFIG.HASHMAP_KEY_ALLOCATION;
-
-        /* Find the index of our stream based on configuration. */
-        /* Calculate the file and boundaries we are on with current bucket. */
-        const uint32_t nFile = (nBucket * CONFIG.MAX_FILES_PER_HASHMAP) / CONFIG.HASHMAP_TOTAL_BUCKETS;
-        const uint32_t nEnd  = (((nFile) * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_HASHMAP);
-
-        const uint64_t nFilePos      = (CONFIG.HASHMAP_KEY_ALLOCATION * (nBucket - nEnd - (nFile == 0 ? 0 : 1)));
-
-        //const uint64_t nFilePos = ((nBucket) * CONFIG.HASHMAP_KEY_ALLOCATION);
-        if(nFilePos == 0)
-            debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "------------------------", ANSI_COLOR_RESET);
-
-        debug::log(0, VARIABLE(nBucket), " | ",
-                      VARIABLE(nFile),   " | ",
-                      VARIABLE(nEnd),    " | ",
-                      VARIABLE(nFilePos),"/", nMaxSize
-                  );
-    }
+        //build our hashmap configuration
+        LLD::Config::Hashmap CONFIG     = LLD::Config::Hashmap(BASE);
+        CONFIG.HASHMAP_TOTAL_BUCKETS    = 30 + nTotalBuckets;
+        CONFIG.MAX_FILES_PER_HASHMAP    = 8;
+        CONFIG.MAX_FILES_PER_INDEX      = 4;
+        CONFIG.MAX_HASHMAPS             = 2;
+        CONFIG.MIN_LINEAR_PROBES        = 1;
+        CONFIG.MAX_LINEAR_PROBES        = 77;
+        CONFIG.MAX_HASHMAP_FILE_STREAMS = 64;
+        CONFIG.PRIMARY_BLOOM_HASHES     = 9;
+        CONFIG.PRIMARY_BLOOM_ACCURACY   = 144;
+        CONFIG.SECONDARY_BLOOM_BITS     = 13;
+        CONFIG.SECONDARY_BLOOM_HASHES   = 7;
+        CONFIG.QUICK_INIT               = false;
 
 
-    TestDB* bloom = new TestDB(SECTOR, CONFIG);
-    for(int n = 0; n < config::GetArg("-tests", 1); ++n)
-    {
-        debug::log(0, "Generating Keys +++++++");
+        for(uint32_t nBucket = 0; nBucket < CONFIG.HASHMAP_TOTAL_BUCKETS; ++nBucket)
+        {
+            read_index(nBucket, 1, CONFIG);
 
+            continue;
+
+            /* Calculate the number of bukcets per index file. */
+            const uint32_t nTotalBuckets = (CONFIG.HASHMAP_TOTAL_BUCKETS / CONFIG.MAX_FILES_PER_HASHMAP) + 1;
+            const uint32_t nMaxSize = nTotalBuckets * CONFIG.HASHMAP_KEY_ALLOCATION;
+
+            /* Find the index of our stream based on configuration. */
+            /* Calculate the file and boundaries we are on with current bucket. */
+            const uint32_t nFile = (nBucket * CONFIG.MAX_FILES_PER_HASHMAP) / CONFIG.HASHMAP_TOTAL_BUCKETS;
+            const uint32_t nEnd  = (((nFile) * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_HASHMAP);
+
+            const uint64_t nFilePos      = (CONFIG.HASHMAP_KEY_ALLOCATION * (nBucket - nEnd - (nFile == 0 ? 0 : 1)));
+
+            //const uint64_t nFilePos = ((nBucket) * CONFIG.HASHMAP_KEY_ALLOCATION);
+            if(nFilePos == 0)
+                debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "------------------------", ANSI_COLOR_RESET);
+
+            debug::log(0, VARIABLE(nBucket), " | ",
+                          VARIABLE(nFile),   " | ",
+                          VARIABLE(nEnd),    " | ",
+                          VARIABLE(nFilePos),"/", nMaxSize
+                      );
+        }
+
+        return 0;
+
+        TestDB* bloom = new TestDB(SECTOR, CONFIG);
+
+        //fill up database almost full
+        {
             std::vector<uint1024_t> vKeys;
-            for(int i = 0; i < config::GetArg("-total", 10000); ++i)
+            for(int i = 0; i < CONFIG.HASHMAP_TOTAL_BUCKETS - 5; ++i)
                 vKeys.push_back(LLC::GetRand1024());
-
-            debug::log(0, "------- Writing Tests...");
 
             runtime::stopwatch swTimer;
             swTimer.start();
@@ -265,42 +273,71 @@ int main(int argc, char** argv)
             swTimer.stop();
 
             uint64_t nElapsed = swTimer.ElapsedMicroseconds();
-            debug::log(0, vKeys.size() / 1000, "k records written in ", nElapsed, " (", (1000000.0 * vKeys.size()) / nElapsed, " writes/s)");
+            debug::log(0, "INITIAL:: ", vKeys.size() / 1000, "k records written in ", nElapsed, " (", (1000000.0 * vKeys.size()) / nElapsed, " writes/s)");
 
-            uint1024_t hashKey = 0;
+        }
 
-            swTimer.reset();
-            swTimer.start();
+        for(int n = 0; n < config::GetArg("-tests", 1); ++n)
+        {
+            debug::log(0, "Generating Keys +++++++");
 
-            debug::log(0, "------- Reading Tests...");
+                std::vector<uint1024_t> vKeys;
+                for(int i = 0; i < config::GetArg("-total", 10000); ++i)
+                    vKeys.push_back(LLC::GetRand1024());
 
-            nTotal = 0;
-            for(const auto& nBucket : vKeys)
-            {
-                ++nTotal;
+                debug::log(0, "------- Writing Tests...");
 
-                debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, nTotal, ":: +++++++++++++++++++++++++++++++++", ANSI_COLOR_RESET);
-                if(!bloom->ReadKey(nBucket, hashKey))
-                    return debug::error("Failed to read ", nBucket.SubString(), " total ", nTotal);
-            }
-            swTimer.stop();
+                runtime::stopwatch swTimer;
+                swTimer.start();
 
-            nElapsed = swTimer.ElapsedMicroseconds();
-            debug::log(0, vKeys.size() / 1000, "k records read in ", nElapsed, " (", (1000000.0 * vKeys.size()) / nElapsed, " read/s)");
+                uint32_t nTotal = 0;
+                for(const auto& nBucket : vKeys)
+                {
+                    ++nTotal;
+
+                    debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, nTotal, ":: +++++++++++++++++++++++++++++++++", ANSI_COLOR_RESET);
+                    bloom->WriteKey(nBucket, nBucket);
+                }
+                swTimer.stop();
+
+                uint64_t nElapsed = swTimer.ElapsedMicroseconds();
+                debug::log(0, vKeys.size() / 1000, "k records written in ", nElapsed, " (", (1000000.0 * vKeys.size()) / nElapsed, " writes/s)");
+
+                uint1024_t hashKey = 0;
+
+                swTimer.reset();
+                swTimer.start();
+
+                debug::log(0, "------- Reading Tests...");
+
+                nTotal = 0;
+                for(const auto& nBucket : vKeys)
+                {
+                    ++nTotal;
+
+                    debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, nTotal, ":: +++++++++++++++++++++++++++++++++", ANSI_COLOR_RESET);
+                    if(!bloom->ReadKey(nBucket, hashKey))
+                        return debug::error("Failed to read ", nBucket.SubString(), " total ", nTotal);
+                }
+                swTimer.stop();
+
+                nElapsed = swTimer.ElapsedMicroseconds();
+                debug::log(0, vKeys.size() / 1000, "k records read in ", nElapsed, " (", (1000000.0 * vKeys.size()) / nElapsed, " read/s)");
 
 
-            //test erase
-            debug::log(0, "------- Erase Tests...");
+                //test erase
+                debug::log(0, "------- Erase Tests...");
 
-            if(!bloom->EraseKey(vKeys[0]))
-                return debug::error("failed to erase ", vKeys[0].SubString());
+                if(!bloom->EraseKey(vKeys[0]))
+                    return debug::error("failed to erase ", vKeys[0].SubString());
 
-            if(bloom->ReadKey(vKeys[0], hashKey))
-                return debug::error("Failed to erase ", vKeys[0].SubString());
+                if(bloom->ReadKey(vKeys[0], hashKey))
+                    return debug::error("Failed to erase ", vKeys[0].SubString());
 
+        }
+
+        delete bloom;
     }
-
-    delete bloom;
 
     return 0;
 }
