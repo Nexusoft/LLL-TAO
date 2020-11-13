@@ -41,7 +41,7 @@ namespace LLD
     class BinaryHashMap : public Keychain
     {
     protected:
-        
+
         /** Internal Hashmap Config Object. **/
         const Config::Hashmap CONFIG;
 
@@ -226,6 +226,23 @@ namespace LLD
          *
          **/
         bool find_and_write(const SectorKey& key, std::vector<uint8_t> &vBuffer,
+            uint16_t &nHashmap, uint32_t &nBucket, const uint32_t nProbes = 1);
+
+
+        /** find_and_erase
+         *
+         *  Finds an available hashmap slot within the probing range and erase it from disk.
+         *
+         *  @param[in] vKey The key in binary unserialized form
+         *  @param[in] vBuffer The current index buffer to check and pass back by reference
+         *  @param[out] nHashmap The file to start searching from.
+         *  @param[out] nBucket The bucket we are writing for.
+         *  @param[in] nProbes The total adjacent buckets to probe for.
+         *
+         *  @return true if the key was written
+         *
+         **/
+        bool find_and_erase(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vBuffer,
             uint16_t &nHashmap, uint32_t &nBucket, const uint32_t nProbes = 1);
 
 

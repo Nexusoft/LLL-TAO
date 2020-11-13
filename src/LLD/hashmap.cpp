@@ -340,10 +340,6 @@ namespace LLD
     {
         LOCK(CONFIG.KEYCHAIN(vKey));
 
-        /* This is a dummy value as a paceholder for find_and_read */
-        SectorKey key;
-        key.vKey = vKey;
-
         /* Get the assigned bucket for the hashmap. */
         const uint32_t nBucket = get_bucket(vKey);
 
@@ -362,7 +358,7 @@ namespace LLD
             for(uint32_t nCycle = 0; nCycle < (nHashmap - CONFIG.MAX_HASHMAPS); ++nCycle)
             {
                 /* Create an adjusted iterator to search through expansion cycles. */
-                uint16_t nAdjustedHashmap = (CONFIG.MAX_HASHMAPS + nCycle + 1); //we need +1 here to derive correct fibanacci zone
+                const uint16_t nAdjustedHashmap = (CONFIG.MAX_HASHMAPS + nCycle + 1); //we need +1 here to derive correct fibanacci zone
 
                 /* Create our return values from fibanacci_index. */
                 uint32_t nAdjustedBucket  = 0;
@@ -378,7 +374,7 @@ namespace LLD
                 uint32_t nBucketRet    = nAdjustedBucket;
 
                 /* Check our hashmaps for given key. */
-                if(find_and_read(key, vIndex, nHashmapRet, nBucketRet, nTotalBuckets))
+                if(find_and_erase(vKey, vIndex, nHashmapRet, nBucketRet, nTotalBuckets))
                 {
                     /* Remove this key from indexing file. */
                     const uint32_t nOffset = (INDEX_FILTER_SIZE * (nBucketRet - nAdjustedBucket));
@@ -398,7 +394,7 @@ namespace LLD
         uint32_t nBucketRet    = nBucket;
 
         /* Check our hashmaps for given key. */
-        if(find_and_read(key, vBase, nHashmapRet, nBucketRet, CONFIG.MIN_LINEAR_PROBES))
+        if(find_and_erase(vKey, vBase, nHashmapRet, nBucketRet, CONFIG.MIN_LINEAR_PROBES))
         {
             /* Remove this key from indexing file. */
             set_hashmap_available(nHashmapRet, vBase, primary_bloom_size() + 2);
@@ -582,6 +578,8 @@ namespace LLD
         const uint64_t nFilePos = (INDEX_FILTER_SIZE * (nBucket + nOffset - (nFile == 0 ? 0 : 1) -
             ((nFile * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_INDEX)));
 
+        debug::log(0, FUNCTION, VARIABLE(nBucket), " | ", VARIABLE(nOffset), " | ", VARIABLE(nFilePos), " | ", VARIABLE(nFile));
+
         /* Grab our file stream. */
         std::fstream* pindex = get_index_stream(nFile);
         if(!pindex)
@@ -625,6 +623,8 @@ namespace LLD
             /* Find our new file position from current bucket and offset. */
             const uint64_t nFilePos      = (INDEX_FILTER_SIZE * (nIterator - (nFile == 0 ? 0 : 1) -
                 ((nFile * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_INDEX)));
+
+            debug::log(0, FUNCTION, VARIABLE(nIterator), " | ", VARIABLE(nFilePos), " | ", VARIABLE(nFile), " | ", VARIABLE(nTotal));
 
             /* Grab our file stream. */
             std::fstream* pindex = get_index_stream(nFile);
@@ -738,6 +738,103 @@ namespace LLD
                             HexStr(vKeyCompressed.begin(), vKeyCompressed.end(), true));
 
                     return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+
+    /* Finds an available hashmap slot within the probing range and writes it to disk. */
+    bool BinaryHashMap::find_and_erase(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vBuffer,
+        uint16_t &nHashmap, uint32_t &nBucket, const uint32_t nProbes)
+    {
+        /* Compress any keys larger than max size. */
+        const std::vector<uint8_t> vKeyCompressed = compress_key(vKey);
+
+        /* Loop through the adjacent linear hashmap slots. */
+        std::vector<uint8_t> vBucket(CONFIG.HASHMAP_KEY_ALLOCATION, 0); //we can re-use this buffer
+        for(uint32_t nProbe = 0; nProbe < nProbes; ++nProbe)
+        {
+            /* Check our ranges here and break early if exhausting hashmap buckets. */
+            if(nProbe + nBucket >= CONFIG.HASHMAP_TOTAL_BUCKETS) //TODO: remove debug::error when moving to production
+                return debug::error(FUNCTION, "out of buckets ", nProbe + nBucket, "/", CONFIG.HASHMAP_TOTAL_BUCKETS);
+
+            /* Get the binary offset within the current probe. */
+            const uint64_t nOffset = (nProbe * INDEX_FILTER_SIZE);
+
+            /* Check the primary bloom filter. */
+            if(!check_primary_bloom(vKey, vBuffer, nOffset + 2))
+                continue;
+
+            /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
+            const uint16_t nBeginHashmap = std::min(uint16_t(CONFIG.MAX_HASHMAPS - 1), uint16_t(nHashmap - 1));
+            for(int32_t nHashmapIterator = nBeginHashmap; nHashmapIterator >= 0; --nHashmapIterator)
+            {
+                /* Check the secondary bloom filter. */
+                if(!check_secondary_bloom(vKey, vBuffer, nHashmapIterator, nOffset + primary_bloom_size() + 2))
+                    continue;
+
+                /* Calculate the file and boundaries we are on with current bucket. */
+                const uint32_t nFile = ((nBucket + nProbe) * CONFIG.MAX_FILES_PER_HASHMAP) / CONFIG.HASHMAP_TOTAL_BUCKETS;
+                const uint32_t nBoundary  = (((nFile) * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_HASHMAP);
+
+                /* Write our new hashmap entry into the file's bucket. */
+                const uint64_t nFilePos = (CONFIG.HASHMAP_KEY_ALLOCATION * (nBucket + nProbe - nBoundary - (nFile == 0 ? 0 : 1)));
+                {
+                    /* Find the file stream for LRU cache. */
+                    std::fstream* pstream = get_file_stream(nHashmapIterator, nBucket);
+                    if(!pstream)
+                        continue;
+
+                    /* Seek here if our cursor is not at the correct position, but take advantage of linear access when possible */
+                    if(pstream->tellg() != nFilePos)
+                        pstream->seekg(nFilePos, std::ios::beg);
+
+                    /* Read the bucket binary data from file stream */
+                    if(!pstream->read((char*) &vBucket[0], vBucket.size()))
+                    {
+                        /* Calculate the number of bukcets per index file. */
+                        const uint32_t nTotalBuckets = (CONFIG.HASHMAP_TOTAL_BUCKETS / CONFIG.MAX_FILES_PER_HASHMAP) + 1;
+                        debug::log(0, VARIABLE(nHashmapIterator), " | ", VARIABLE(nBucket), " | ", VARIABLE(nTotalBuckets), " | ", VARIABLE(nFilePos));
+                        debug::log(0, "FILE STREAM: ", pstream->eof() ? "EOF" : pstream->bad() ? "BAD" : pstream->fail() ? "FAIL" : "UNKNOWN");
+                        return debug::error(FUNCTION, "STREAM: only ", pstream->gcount(), "/", vBucket.size(),
+                            " bytes read at cursor ", nFilePos, "/", nTotalBuckets * CONFIG.HASHMAP_KEY_ALLOCATION);
+
+                    }
+
+                    /* Check if this bucket has the key */
+                    if(std::equal(vBucket.begin() + 13, vBucket.begin() + 13 + vKeyCompressed.size(), vKeyCompressed.begin()))
+                    {
+                        /* Seek if we are not at position. */
+                        if(pstream->tellp() != nFilePos)
+                            pstream->seekp(nFilePos, std::ios::beg);
+
+                        /* Flush the key file to disk. */
+                        const std::vector<uint8_t> vBlank(CONFIG.HASHMAP_KEY_ALLOCATION, 0);
+                        if(!pstream->write((char*)&vBlank[0], vBlank.size()))
+                            return debug::error(FUNCTION, "KEYCHAIN: only ", pstream->gcount(), "/", vBlank.size(), " bytes written");
+
+                        /* Set our return values. */
+                        nBucket += nProbe;
+                        nHashmap = uint16_t(nHashmapIterator);
+
+                        /* Debug Output of Sector Key Information. */
+                        if(config::nVerbose >= 4)
+                            debug::log(4, FUNCTION, ANSI_COLOR_BRIGHT_CYAN, "State: Empty",
+                                " | Bucket ", nBucket,
+                                " | Pos ", nFilePos,
+                                " | Probe ", nProbe,
+                                " | Location: ", nFilePos,
+                                " | File: ", nHashmapIterator,
+                                HexStr(vKeyCompressed.begin(), vKeyCompressed.end(), true));
+
+                        /* Flush the buffers to disk. */
+                        pstream->flush();
+
+                        return true;
+                    }
                 }
             }
         }
