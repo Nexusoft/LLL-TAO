@@ -24,6 +24,7 @@ ________________________________________________________________________________
 #include <iomanip>
 #include <bitset>
 
+
 namespace LLD
 {
     /* The Database Constructor. To determine file location and the Bytes per Record. */
@@ -259,7 +260,7 @@ namespace LLD
         uint16_t nHashmap = get_current_file(vBase, 0);
 
         /* Loop through our potential linear probe cycles. */
-        while(nHashmap < CONFIG.MAX_HASHMAPS + CONFIG.MAX_LINEAR_PROBE_CYCLES)
+        while(nHashmap < CONFIG.MAX_HASHMAPS + 1024)//TODO: calculate correct value: CONFIG.MAX_LINEAR_PROBE_CYCLES)
         {
             /* Check if we are in a probe expansion cycle. */
             if(nHashmap >= CONFIG.MAX_HASHMAPS)
@@ -331,7 +332,7 @@ namespace LLD
         if(!flush_index(vBase, nBucket))
             return debug::error(FUNCTION, "probe(s) exhausted: failed to flush index");
 
-        return debug::error(FUNCTION, "probe(s) exhausted: ", nHashmap, " at end of linear search space");
+        return debug::error(FUNCTION, "probe(s) exhausted: ", nHashmap, " at end of linear search space ", VARIABLE(CONFIG.MAX_LINEAR_PROBE_CYCLES));
     }
 
 
@@ -440,7 +441,7 @@ namespace LLD
 
         /* Find the file stream for LRU cache. */
         std::fstream* pstream = nullptr;
-        if(pFileStreams->Get(pairIndex, pstream) && !pstream)
+        if(pFileStreams->Get(pairIndex, pstream) && !pstream) //TODO: !pstream->good() for production
         {
             debug::log(0, "Removing Stream ", VARIABLE(nFile), " | ", VARIABLE(nHashmap));
 
@@ -505,7 +506,7 @@ namespace LLD
     {
         /* Find the file stream for LRU cache. */
         std::fstream* pindex = nullptr;
-        if(pIndexStreams->Get(nFile, pindex) && !pindex)
+        if(pIndexStreams->Get(nFile, pindex) && !pindex) //TODO: !pindex->good() for production
         {
             /* Delete stream from the cache. */
             pIndexStreams->Remove(nFile);
@@ -562,12 +563,19 @@ namespace LLD
     /* Flush the current buffer to disk. */
     bool BinaryHashMap::flush_index(const std::vector<uint8_t>& vBuffer, const uint32_t nBucket, const uint32_t nOffset)
     {
+        /* Calculate our adjusted bucket. */
+        const uint32_t nAdjustedBucket = (nBucket + nOffset);
+
         /* Check we are flushing within range of the hashmap indexes. */
         if(nBucket >= CONFIG.HASHMAP_TOTAL_BUCKETS)
             return debug::error(FUNCTION, "out of range ", VARIABLE(nBucket));
 
         /* Calculate the current file designated by the bucket. */
-        const uint32_t nFile = ((nBucket + nOffset) * CONFIG.MAX_FILES_PER_INDEX) / CONFIG.HASHMAP_TOTAL_BUCKETS;
+        const uint32_t nFile = (nAdjustedBucket * CONFIG.MAX_FILES_PER_INDEX) / CONFIG.HASHMAP_TOTAL_BUCKETS;
+
+        /* Used to check projected file based on boundary iterator to determine if the count needs a -1 offset. */
+        const uint32_t nBegin = (nFile * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_INDEX;
+        const uint32_t nCheck = (nBegin * CONFIG.MAX_FILES_PER_INDEX) / CONFIG.HASHMAP_TOTAL_BUCKETS;
 
         /* Grab our binary offset. */
         const uint64_t nBufferPos = (nOffset * INDEX_FILTER_SIZE);
@@ -575,10 +583,8 @@ namespace LLD
             return debug::error(FUNCTION, "buffer overflow protection ", nBufferPos, "/", vBuffer.size()); //TODO" remove on production
 
         /* Find our new file position from current bucket and offset. */
-        const uint64_t nFilePos = (INDEX_FILTER_SIZE * (nBucket + nOffset - (nFile == 0 ? 0 : 1) -
+        const uint64_t nFilePos = (INDEX_FILTER_SIZE * (nAdjustedBucket - ((nCheck != nFile) ? 1 : 0) -
             ((nFile * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_INDEX)));
-
-        debug::log(0, FUNCTION, VARIABLE(nBucket), " | ", VARIABLE(nOffset), " | ", VARIABLE(nFilePos), " | ", VARIABLE(nFile));
 
         /* Grab our file stream. */
         std::fstream* pindex = get_index_stream(nFile);
@@ -618,10 +624,14 @@ namespace LLD
         {
             /* Calculate the file and boundaries we are on with current bucket. */
             const uint32_t nFile = (nIterator * CONFIG.MAX_FILES_PER_INDEX) / CONFIG.HASHMAP_TOTAL_BUCKETS;
-            const uint32_t nBoundary  = (((nFile + 1) * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_INDEX) + 1;
+            const uint32_t nBoundary  = (((nFile + 1) * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_INDEX);
+
+            /* Used to check projected file based on boundary iterator to determine if the count needs a -1 offset. */
+            const uint32_t nBegin = (nFile * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_INDEX;
+            const uint32_t nCheck = (nBegin * CONFIG.MAX_FILES_PER_INDEX) / CONFIG.HASHMAP_TOTAL_BUCKETS;
 
             /* Find our new file position from current bucket and offset. */
-            const uint64_t nFilePos      = (INDEX_FILTER_SIZE * (nIterator - (nFile == 0 ? 0 : 1) -
+            const uint64_t nFilePos      = (INDEX_FILTER_SIZE * (nIterator - ((nCheck != nFile) ? 1 : 0) -
                 ((nFile * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_INDEX)));
 
             debug::log(0, FUNCTION, VARIABLE(nIterator), " | ", VARIABLE(nFilePos), " | ", VARIABLE(nFile), " | ", VARIABLE(nTotal));
@@ -636,7 +646,8 @@ namespace LLD
                 pindex->seekg(nFilePos, std::ios::beg);
 
             /* Find the range (in bytes) we want to read for this index range. */
-            const uint32_t nMaxBuckets = std::min(nRemaining, (nBoundary - nIterator));
+            //const uint32_t nMaxBuckets = std::min(nRemaining, (nBoundary - nIterator));
+            const uint32_t nMaxBuckets = std::min(nRemaining, std::max(1u, (nBoundary - nIterator)));
             const uint64_t nReadSize   = nMaxBuckets * INDEX_FILTER_SIZE;
 
             /* Read our index data into the buffer. */
@@ -684,6 +695,7 @@ namespace LLD
             for(int32_t nHashmapIterator = nBeginHashmap; nHashmapIterator >= 0; --nHashmapIterator)
             {
                 /* Check for an available hashmap slot. */
+                debug::log(0, VARIABLE(nAdjustedBucket), " | ", VARIABLE(nProbe), " | ", VARIABLE(nBucket));
                 if(check_hashmap_available(nHashmapIterator, vBuffer, nOffset + primary_bloom_size() + 2))
                 {
                     /* Serialize the key into the end of the vector. */
@@ -699,8 +711,11 @@ namespace LLD
                     const uint32_t nFile = (nAdjustedBucket * CONFIG.MAX_FILES_PER_HASHMAP) / CONFIG.HASHMAP_TOTAL_BUCKETS;
                     const uint32_t nBoundary  = ((nFile * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_HASHMAP);
 
+                    /* Used to check projected file based on boundary iterator to determine if the count needs a -1 offset. */
+                    const uint32_t nCheck = (nBoundary * CONFIG.MAX_FILES_PER_HASHMAP) / CONFIG.HASHMAP_TOTAL_BUCKETS;
+
                     /* Write our new hashmap entry into the file's bucket. */
-                    const uint64_t nFilePos = (CONFIG.HASHMAP_KEY_ALLOCATION * (nAdjustedBucket - nBoundary - (nFile == 0 ? 0 : 1)));
+                    const uint64_t nFilePos = (CONFIG.HASHMAP_KEY_ALLOCATION * (nAdjustedBucket - nBoundary - ((nCheck != nFile) ? 1 : 0)));
                     {
                         /* Grab the current file stream from LRU cache. */
                         std::fstream* pstream = get_file_stream(nHashmapIterator, nAdjustedBucket);
@@ -786,8 +801,11 @@ namespace LLD
                 const uint32_t nFile = (nAdjustedBucket * CONFIG.MAX_FILES_PER_HASHMAP) / CONFIG.HASHMAP_TOTAL_BUCKETS;
                 const uint32_t nBoundary  = ((nFile * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_HASHMAP);
 
+                /* Used to check projected file based on boundary iterator to determine if the count needs a -1 offset. */
+                const uint32_t nCheck = (nBoundary * CONFIG.MAX_FILES_PER_HASHMAP) / CONFIG.HASHMAP_TOTAL_BUCKETS;
+
                 /* Write our new hashmap entry into the file's bucket. */
-                const uint64_t nFilePos = (CONFIG.HASHMAP_KEY_ALLOCATION * (nAdjustedBucket - nBoundary - (nFile == 0 ? 0 : 1)));
+                const uint64_t nFilePos = (CONFIG.HASHMAP_KEY_ALLOCATION * (nAdjustedBucket - nBoundary - ((nCheck != nFile) ? 1 : 0)));
                 {
                     /* Find the file stream for LRU cache. */
                     std::fstream* pstream = get_file_stream(nHashmapIterator, nAdjustedBucket);
@@ -814,13 +832,13 @@ namespace LLD
                     if(std::equal(vBucket.begin() + 13, vBucket.begin() + 13 + vKeyCompressed.size(), vKeyCompressed.begin()))
                     {
                         /* Seek if we are not at position. */
-                        //if(pstream->tellp() != nFilePos)
-                        //    pstream->seekp(nFilePos, std::ios::beg);
+                        if(pstream->tellp() != nFilePos)
+                            pstream->seekp(nFilePos, std::ios::beg);
 
                         /* Flush the key file to disk. */
-                        //const std::vector<uint8_t> vBlank(CONFIG.HASHMAP_KEY_ALLOCATION, 0);
-                        //if(!pstream->write((char*)&vBlank[0], vBlank.size()))
-                        //    return debug::error(FUNCTION, "KEYCHAIN: only ", pstream->gcount(), "/", vBlank.size(), " bytes written");
+                        const std::vector<uint8_t> vBlank(CONFIG.HASHMAP_KEY_ALLOCATION, 0);
+                        if(!pstream->write((char*)&vBlank[0], vBlank.size()))
+                            return debug::error(FUNCTION, "KEYCHAIN: only ", pstream->gcount(), "/", vBlank.size(), " bytes written");
 
                         /* Set our return values. */
                         nBucket  = nAdjustedBucket;
@@ -838,7 +856,7 @@ namespace LLD
                                 HexStr(vKeyCompressed.begin(), vKeyCompressed.end(), true));
 
                         /* Flush the buffers to disk. */
-                        //pstream->flush();
+                        pstream->flush();
 
                         return true;
                     }
@@ -884,6 +902,7 @@ namespace LLD
             for(int32_t nHashmapIterator = nBeginHashmap; nHashmapIterator >= 0; --nHashmapIterator)
             {
                 /* Check the secondary bloom filter. */
+                debug::log(0, VARIABLE(nAdjustedBucket), " | ", VARIABLE(nProbe), " | ", VARIABLE(nBucket));
                 if(!check_secondary_bloom(key.vKey, vBuffer, nHashmapIterator, nOffset + primary_bloom_size() + 2))
                     continue;
 
@@ -891,8 +910,11 @@ namespace LLD
                 const uint32_t nFile = (nAdjustedBucket * CONFIG.MAX_FILES_PER_HASHMAP) / CONFIG.HASHMAP_TOTAL_BUCKETS;
                 const uint32_t nBoundary  = ((nFile * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_HASHMAP);
 
+                /* Used to check projected file based on boundary iterator to determine if the count needs a -1 offset. */
+                const uint32_t nCheck = (nBoundary * CONFIG.MAX_FILES_PER_HASHMAP) / CONFIG.HASHMAP_TOTAL_BUCKETS;
+
                 /* Read our bucket level data from the hashmap. */
-                const uint64_t nFilePos = (CONFIG.HASHMAP_KEY_ALLOCATION * (nAdjustedBucket - nBoundary - (nFile == 0 ? 0 : 1)));
+                const uint64_t nFilePos = (CONFIG.HASHMAP_KEY_ALLOCATION * (nAdjustedBucket - nBoundary - ((nCheck != nFile) ? 1 : 0)));
                 {
                     /* Find the file stream for LRU cache. */
                     std::fstream* pstream = get_file_stream(nHashmapIterator, nAdjustedBucket);
@@ -1275,7 +1297,7 @@ namespace LLD
                 " | overflow=", nOverflow,
                 " | bucket=", nBucket + 1, "/", CONFIG.HASHMAP_TOTAL_BUCKETS,
                 " | adjusted=", nAdjustedBucket + 1, "/", CONFIG.HASHMAP_TOTAL_BUCKETS,
-                " | file=", nHashmap
+                " | iterator=", nHashmap
             );
         }
         else
@@ -1290,7 +1312,7 @@ namespace LLD
                 " | end=", nEndProbeExpansion,
                 " | bucket=", nBucket + 1, "/", CONFIG.HASHMAP_TOTAL_BUCKETS,
                 " | adjusted=", nAdjustedBucket + 1, "/", CONFIG.HASHMAP_TOTAL_BUCKETS,
-                " | file=", nHashmap
+                " | iterator=", nHashmap
             );
         }
 
@@ -1299,17 +1321,28 @@ namespace LLD
         {
             /* Make sure we haven't expanded to a range beyond our probing configuration. */
             if(nBeginProbeExpansion > CONFIG.MAX_LINEAR_PROBES)
+            {
+                debug::warning(FUNCTION, VARIABLE(nBeginProbeExpansion), " adjusted");
+
                 nBeginProbeExpansion = CONFIG.MAX_LINEAR_PROBES;
+            }
+
 
             /* Adjust the end of the probing range to set as our maximum value probe from the origin (eg. nBucket). */
             nEndProbeExpansion = CONFIG.MAX_LINEAR_PROBES;
+
+            debug::warning(FUNCTION, VARIABLE(nEndProbeExpansion), " adjusted");
         } //this will default to a total of 0 buckets if outside of range, and then be cleaned up with the cache check in Put()
 
 
         /* Find our total number of buckets to probe this cycle and check our range. */
         nTotalBuckets = (nEndProbeExpansion - nBeginProbeExpansion);
-        if(nAdjustedBucket + nTotalBuckets >= CONFIG.HASHMAP_TOTAL_BUCKETS)
+        if(nAdjustedBucket + nTotalBuckets > CONFIG.HASHMAP_TOTAL_BUCKETS)
+        {
             nTotalBuckets = (CONFIG.HASHMAP_TOTAL_BUCKETS - std::min(uint32_t(CONFIG.HASHMAP_TOTAL_BUCKETS), nAdjustedBucket));
+            debug::warning(FUNCTION, VARIABLE(nTotalBuckets), " adjusted");
+        }
+
 
         /* Read our index information. */
         if(!read_index(vIndex, nAdjustedBucket, nTotalBuckets))
