@@ -202,137 +202,143 @@ int main(int argc, char** argv)
     LLP::Initialize();
 
     config::nVerbose.store(4);
-    config::mapArgs["-datadir"] = "/database";
+    config::mapArgs["-datadir"] = "/database/db5";
 
-    for(uint32_t nDivisor = 0; nDivisor < config::GetArg("-divisors", 1); ++nDivisor)
+    std::string strIndex = config::mapArgs["-datadir"] + "/db.dat";
+
+    uint32_t DATABASE_ID = 0;
+    if(config::GetBoolArg("-reset", false))
     {
-        debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "Starting round ----------------", ANSI_COLOR_RESET,
-                    VARIABLE(nDivisor));
-
-        for(uint32_t nTotalBuckets = 0; nTotalBuckets < config::GetArg("-buckets", 1); ++nTotalBuckets)
-        {
-            if(config::GetBoolArg("-reset", false))
-            {
-                std::string strPath = config::mapArgs["-datadir"] + "/testdb" + debug::safe_printstr(nDivisor, "-", nTotalBuckets);
-
-                debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "Deleting data directory ", strPath, ANSI_COLOR_RESET);
-                filesystem::remove_directories(strPath);
-            }
-
-            //build our base configuration
-            LLD::Config::Base BASE =
-                LLD::Config::Base("testdb" + debug::safe_printstr(nDivisor, "-", nTotalBuckets), LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
-
-            //build our sector configuration
-            LLD::Config::Sector SECTOR      = LLD::Config::Sector(BASE);
-            SECTOR.MAX_SECTOR_FILE_STREAMS  = 16;
-            SECTOR.MAX_SECTOR_BUFFER_SIZE   = 1024 * 1024 * 4; //4 MB write buffer
-            SECTOR.MAX_SECTOR_CACHE_SIZE    = 256; //1 MB of cache available
-
-            //build our hashmap configuration
-            LLD::Config::Hashmap CONFIG     = LLD::Config::Hashmap(BASE);
-            CONFIG.HASHMAP_TOTAL_BUCKETS    = config::GetArg("-offset", 0) + 29 + nTotalBuckets;
-            CONFIG.MAX_FILES_PER_HASHMAP    = 4 + nDivisor;
-            CONFIG.MAX_FILES_PER_INDEX      = 4 + nDivisor;
-            CONFIG.MAX_HASHMAPS             = 2;
-            CONFIG.MIN_LINEAR_PROBES        = 1;
-            CONFIG.MAX_LINEAR_PROBES        = CONFIG.HASHMAP_TOTAL_BUCKETS;
-            CONFIG.MAX_HASHMAP_FILE_STREAMS = 64;
-            CONFIG.PRIMARY_BLOOM_HASHES     = 9;
-            CONFIG.PRIMARY_BLOOM_ACCURACY   = 144;
-            CONFIG.SECONDARY_BLOOM_BITS     = 13;
-            CONFIG.SECONDARY_BLOOM_HASHES   = 7;
-            CONFIG.QUICK_INIT               = false;
-
-            TestDB* bloom = new TestDB(SECTOR, CONFIG);
-
-            //fill up database almost full
-            if(config::GetBoolArg("-fill", false) && config::GetBoolArg("-reset", false))
-            {
-                std::vector<uint1024_t> vKeys;
-                for(int i = 0; i < ((CONFIG.HASHMAP_TOTAL_BUCKETS - 5) * CONFIG.MAX_HASHMAPS); ++i)
-                    vKeys.push_back(LLC::GetRand1024());
-
-                runtime::stopwatch swTimer;
-                swTimer.start();
-
-                uint32_t nTotal = 0;
-                for(const auto& nBucket : vKeys)
-                {
-                    ++nTotal;
-
-                    debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, nTotal, ":: +++++++++++++++++++++++++++++++++", ANSI_COLOR_RESET);
-                    bloom->WriteKey(nBucket, nBucket);
-                }
-                swTimer.stop();
-
-                uint64_t nElapsed = swTimer.ElapsedMicroseconds();
-                debug::log(0, "INITIAL:: ", vKeys.size() / 1000, "k records written in ", nElapsed, " (", (1000000.0 * vKeys.size()) / nElapsed, " writes/s)");
-
-            }
-
-            for(int n = 0; n < config::GetArg("-tests", 1); ++n)
-            {
-                debug::log(0, "Generating Keys +++++++");
-
-                    std::vector<uint1024_t> vKeys;
-                    for(int i = 0; i < config::GetArg("-total", 1); ++i)
-                        vKeys.push_back(LLC::GetRand1024());
-
-                    debug::log(0, "------- Writing Tests...");
-
-                    runtime::stopwatch swTimer;
-                    swTimer.start();
-
-                    uint32_t nTotal = 0;
-                    for(const auto& nBucket : vKeys)
-                    {
-                        ++nTotal;
-
-                        debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, nTotal, ":: +++++++++++++++++++++++++++++++++", ANSI_COLOR_RESET);
-                        bloom->WriteKey(nBucket, nBucket);
-                    }
-                    swTimer.stop();
-
-                    uint64_t nElapsed = swTimer.ElapsedMicroseconds();
-                    debug::log(0, vKeys.size() / 1000, "k records written in ", nElapsed, " (", (1000000.0 * vKeys.size()) / nElapsed, " writes/s)");
-
-                    uint1024_t hashKey = 0;
-
-                    swTimer.reset();
-                    swTimer.start();
-
-                    debug::log(0, "------- Reading Tests...");
-
-                    nTotal = 0;
-                    for(const auto& nBucket : vKeys)
-                    {
-                        ++nTotal;
-
-                        debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, nTotal, ":: +++++++++++++++++++++++++++++++++", ANSI_COLOR_RESET);
-                        if(!bloom->ReadKey(nBucket, hashKey))
-                            return debug::error("Failed to read ", nBucket.SubString(), " total ", nTotal);
-                    }
-                    swTimer.stop();
-
-                    nElapsed = swTimer.ElapsedMicroseconds();
-                    debug::log(0, vKeys.size() / 1000, "k records read in ", nElapsed, " (", (1000000.0 * vKeys.size()) / nElapsed, " read/s)");
-
-
-                    //test erase
-                    debug::log(0, "------- Erase Tests...");
-
-                    if(!bloom->EraseKey(vKeys[0]))
-                        return debug::error("failed to erase ", vKeys[0].SubString());
-
-                    if(bloom->ReadKey(vKeys[0], hashKey))
-                        return debug::error("Failed to erase ", vKeys[0].SubString());
-
-            }
-
-            delete bloom;
-        }
+        debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "Deleting data directory ", strIndex, ANSI_COLOR_RESET);
+        filesystem::remove_directories(strIndex);
     }
+
+    if(!filesystem::exists(strIndex))
+    {
+        std::ofstream stream(strIndex, std::ios::out | std::ios::binary | std::ios::app);
+
+        DataStream ssData(SER_LLD, LLD::DATABASE_VERSION);
+        ssData << DATABASE_ID;
+
+        const std::vector<uint8_t> vBytes = ssData.Bytes();
+        stream.write((char*)&vBytes[0], vBytes.size());
+        stream.close();
+    }
+    else
+    {
+        std::ifstream stream(strIndex, std::ios::in | std::ios::out | std::ios::binary);
+
+        std::vector<uint8_t> vBytes(4, 0);
+        stream.read((char*)&vBytes[0], vBytes.size());
+        stream.close();
+
+
+        DataStream ssData(vBytes, SER_LLD, LLD::DATABASE_VERSION);
+        ssData >> DATABASE_ID;
+
+        DATABASE_ID++;
+
+        debug::warning(VARIABLE(DATABASE_ID), " Initialized");
+    }
+
+    //build our base configuration
+    LLD::Config::Base BASE =
+        LLD::Config::Base("db_" + debug::safe_printstr(DATABASE_ID), LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+
+    //build our sector configuration
+    LLD::Config::Sector SECTOR      = LLD::Config::Sector(BASE);
+    SECTOR.MAX_SECTOR_FILE_STREAMS  = 16;
+    SECTOR.MAX_SECTOR_BUFFER_SIZE   = 1024 * 1024 * 4; //4 MB write buffer
+    SECTOR.MAX_SECTOR_CACHE_SIZE    = 256; //1 MB of cache available
+
+    //build our hashmap configuration
+    LLD::Config::Hashmap CONFIG     = LLD::Config::Hashmap(BASE);
+    CONFIG.HASHMAP_TOTAL_BUCKETS    = 1000000;
+    CONFIG.MAX_FILES_PER_HASHMAP    = 512;
+    CONFIG.MAX_FILES_PER_INDEX      = 512;
+    CONFIG.MAX_HASHMAPS             = 32;
+    CONFIG.MIN_LINEAR_PROBES        = 1;
+    CONFIG.MAX_LINEAR_PROBES        = 1024;
+    CONFIG.MAX_HASHMAP_FILE_STREAMS = 512;
+    CONFIG.PRIMARY_BLOOM_HASHES     = 9;
+    CONFIG.PRIMARY_BLOOM_ACCURACY   = 144;
+    CONFIG.SECONDARY_BLOOM_BITS     = 13;
+    CONFIG.SECONDARY_BLOOM_HASHES   = 7;
+    CONFIG.QUICK_INIT               = true;
+
+    TestDB* bloom = new TestDB(SECTOR, CONFIG);
+
+    for(int n = 0; n < config::GetArg("-tests", 1); ++n)
+    {
+        debug::log(0, "Generating Keys +++++++");
+
+        std::vector<uint1024_t> vKeys;
+        for(int i = 0; i < config::GetArg("-total", 1); ++i)
+            vKeys.push_back(LLC::GetRand1024());
+
+        debug::log(0, "------- Writing Tests...");
+
+        runtime::stopwatch swTimer;
+        swTimer.start();
+
+        uint32_t nTotal = 0;
+        for(const auto& nBucket : vKeys)
+        {
+            ++nTotal;
+
+            debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, nTotal, ":: +++++++++++++++++++++++++++++++++", ANSI_COLOR_RESET);
+            bloom->WriteKey(nBucket, nBucket);
+        }
+        swTimer.stop();
+
+        uint64_t nElapsed = swTimer.ElapsedMicroseconds();
+        debug::log(0, vKeys.size() / 1000, "k records written in ", nElapsed, " (", (1000000.0 * vKeys.size()) / nElapsed, " writes/s)");
+
+        uint1024_t hashKey = 0;
+
+        swTimer.reset();
+        swTimer.start();
+
+        debug::log(0, "------- Reading Tests...");
+
+        nTotal = 0;
+        for(const auto& nBucket : vKeys)
+        {
+            ++nTotal;
+
+            debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, nTotal, ":: +++++++++++++++++++++++++++++++++", ANSI_COLOR_RESET);
+            if(!bloom->ReadKey(nBucket, hashKey))
+                return debug::error("Failed to read ", nBucket.SubString(), " total ", nTotal);
+        }
+        swTimer.stop();
+
+        nElapsed = swTimer.ElapsedMicroseconds();
+        debug::log(0, vKeys.size() / 1000, "k records read in ", nElapsed, " (", (1000000.0 * vKeys.size()) / nElapsed, " read/s)");
+
+
+        //test erase
+        debug::log(0, "------- Erase Tests...");
+
+        if(!bloom->EraseKey(vKeys[0]))
+            return debug::error("failed to erase ", vKeys[0].SubString());
+
+        if(bloom->ReadKey(vKeys[0], hashKey))
+            return debug::error("Failed to erase ", vKeys[0].SubString());
+
+    }
+
+    delete bloom;
+
+    DATABASE_ID ++;
+
+    DataStream ssData(SER_LLD, LLD::DATABASE_VERSION);
+    ssData << DATABASE_ID;
+
+    const std::vector<uint8_t> vBytes = ssData.Bytes();
+
+    std::ofstream stream(strIndex, std::ios::out | std::ios::binary | std::ios::in);
+    stream.write((char*)&vBytes[0], vBytes.size());
+    stream.close();
 
 
 

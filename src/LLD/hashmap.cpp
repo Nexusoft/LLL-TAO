@@ -260,7 +260,7 @@ namespace LLD
         uint16_t nHashmap = get_current_file(vBase, 0);
 
         /* Loop through our potential linear probe cycles. */
-        while(nHashmap < CONFIG.MAX_HASHMAPS + 1024)//TODO: calculate correct value: CONFIG.MAX_LINEAR_PROBE_CYCLES)
+        while(nHashmap < CONFIG.MAX_HASHMAPS + CONFIG.MAX_LINEAR_PROBE_CYCLES)
         {
             /* Check if we are in a probe expansion cycle. */
             if(nHashmap >= CONFIG.MAX_HASHMAPS)
@@ -297,7 +297,7 @@ namespace LLD
 
                 /* Check that our cached bucket is different (signifying useful work was completed). */
                 if(nBucketCache == nAdjustedBucket && nTotalCache == nTotalBuckets)
-                    return debug::error(FUNCTION, "probe(s) exhausted: ", nBucketCache, " | ", nTotalCache, " at end of fibanacci search space");
+                    return debug::error(FUNCTION, "probe(s) exhausted: ", VARIABLE(nBucketCache), " | ", VARIABLE(nTotalCache), " at end of fibanacci search space");
 
                 /* Update our cached values if it passed. */
                 nBucketCache = nAdjustedBucket;
@@ -332,7 +332,7 @@ namespace LLD
         if(!flush_index(vBase, nBucket))
             return debug::error(FUNCTION, "probe(s) exhausted: failed to flush index");
 
-        return debug::error(FUNCTION, "probe(s) exhausted: ", nHashmap, " at end of linear search space ", VARIABLE(CONFIG.MAX_LINEAR_PROBE_CYCLES));
+        return debug::error(FUNCTION, "probe(s) exhausted: ", VARIABLE(nHashmap), " at end of linear search space ", VARIABLE(CONFIG.MAX_LINEAR_PROBE_CYCLES));
     }
 
 

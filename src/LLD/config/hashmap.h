@@ -304,6 +304,9 @@ namespace LLD::Config
                 ++MAX_LINEAR_PROBE_CYCLES;
             }
 
+            /* Give one last increment to ensure full fibanacci ranges. */
+            ++MAX_LINEAR_PROBE_CYCLES;
+
             /* Calculate our primary bloom filter number of bits. */
             PRIMARY_BLOOM_BITS = (PRIMARY_BLOOM_ACCURACY / 100.0) * MAX_HASHMAPS * PRIMARY_BLOOM_HASHES;
 
