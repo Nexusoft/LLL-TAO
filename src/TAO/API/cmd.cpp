@@ -118,8 +118,11 @@ namespace TAO
             /* Flag indicating that this is a list API call, in which case we need to parse the params differently */
             bool fIsList = endpoint.find("/list/") != endpoint.npos;
 
-            std::vector<std::string> strListKeywords = {"genesis", "username", "verbose", "page", "limit", "sort", "order", "where"};
-
+            /* list of keywords that are acceptale parameters for a /list/xxx method.  Parameters not in this list will be converted
+               a `where` array */
+                
+            std::vector<std::string> vKeywords = {"genesis", "username", "verbose", "page", "limit", "sort", "order", "where"};
+            
             /* Build the JSON request object. */
             json::json parameters;
 
@@ -167,7 +170,7 @@ namespace TAO
                 prev = arg.substr(0, pos);
 
                 /* If this is a list command, check to see if this is a where clause (not a keyword parameter supported by list)*/
-                if(fIsList && std::find(strListKeywords.begin(), strListKeywords.end(), prev) == strListKeywords.end())
+                if(fIsList && std::find(vKeywords.begin(), vKeywords.end(), prev) == vKeywords.end())
                 {
                     fWhere = true;
 

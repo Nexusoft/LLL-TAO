@@ -319,7 +319,9 @@ namespace LLP
         /* Flag indicating that this is a list API call, in which case we need to parse the params differently */
         bool fIsList = strMethod.find("list/") != strMethod.npos;
 
-        std::vector<std::string> strListKeywords = {"genesis", "username", "verbose", "page", "limit", "sort", "order", "where"};
+        /* list of keywords that are acceptale parameters for a /list/xxx method.  Parameters not in this list will be converted
+           into a `where` array */
+        std::vector<std::string> vKeywords = {"genesis", "username", "verbose", "page", "limit", "sort", "order", "where"};
 
         /* Parse out the form entries by char '&' */
         std::vector<std::string> vParams;
@@ -342,7 +344,7 @@ namespace LLP
             std::string key = strParam.substr(0, pos2);
 
             /* If this is a list command, check to see if this is a where clause (not a keyword parameter supported by list)*/
-            if(fIsList && std::find(strListKeywords.begin(), strListKeywords.end(), key) == strListKeywords.end())
+            if(fIsList && std::find(vKeywords.begin(), vKeywords.end(), key) == vKeywords.end())
             {
                 /* add the where clause */
                 json::json jsonClause;
