@@ -539,7 +539,7 @@ namespace LLD
 
                 /* Debug output signifying new hashmap. */
                 debug::log(0, FUNCTION, "Created Index"
-                    " | file=", nFile, "/", CONFIG.MAX_FILES_PER_INDEX,
+                    " | file=", nFile + 1, "/", CONFIG.MAX_FILES_PER_INDEX,
                     " | size=", (INDEX_FILTER_SIZE * nTotalBuckets) / 1024.0, " Kb"
                 );
             }

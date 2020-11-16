@@ -204,7 +204,9 @@ int main(int argc, char** argv)
     //config::nVerbose.store(4);
     config::mapArgs["-datadir"] = "/database";
 
-    std::string strIndex = config::mapArgs["-datadir"] + "/load1/";
+    const std::string strDB = "load1";
+
+    std::string strIndex = config::mapArgs["-datadir"] + "/" + strDB + "/";
 
     if(config::GetBoolArg("-reset", false))
     {
@@ -215,7 +217,7 @@ int main(int argc, char** argv)
 
     //build our base configuration
     LLD::Config::Base BASE =
-        LLD::Config::Base("load1", LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+        LLD::Config::Base(strDB, LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
 
     //build our sector configuration
     LLD::Config::Sector SECTOR      = LLD::Config::Sector(BASE);
@@ -225,14 +227,14 @@ int main(int argc, char** argv)
 
     //build our hashmap configuration
     LLD::Config::Hashmap CONFIG     = LLD::Config::Hashmap(BASE);
-    CONFIG.HASHMAP_TOTAL_BUCKETS    = 30000000;
-    CONFIG.MAX_FILES_PER_HASHMAP    = 2;
-    CONFIG.MAX_FILES_PER_INDEX      = 48;
+    CONFIG.HASHMAP_TOTAL_BUCKETS    = 1000000;
+    CONFIG.MAX_FILES_PER_HASHMAP    = 1;
+    CONFIG.MAX_FILES_PER_INDEX      = 10;
     CONFIG.MAX_HASHMAPS             = 256;
     CONFIG.MIN_LINEAR_PROBES        = 1;
     CONFIG.MAX_LINEAR_PROBES        = 1024;
-    CONFIG.MAX_HASHMAP_FILE_STREAMS = 4032;
-    CONFIG.MAX_INDEX_FILE_STREAMS   = 48;
+    CONFIG.MAX_HASHMAP_FILE_STREAMS = 256;
+    CONFIG.MAX_INDEX_FILE_STREAMS   = 10;
     CONFIG.PRIMARY_BLOOM_HASHES     = 7;
     CONFIG.PRIMARY_BLOOM_ACCURACY   = 144;
     CONFIG.SECONDARY_BLOOM_BITS     = 13;
