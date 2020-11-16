@@ -320,13 +320,13 @@ namespace LLD::Config
             check_limits<uint32_t>(PARAMS(HASHMAP_TOTAL_BUCKETS));
 
             /* Check for maximum ranges. */
-            check_ranges<uint16_t>(PARAMS(MAX_FILES_PER_HASHMAP),    999); //we only provide 3 digits in the filenames, so 999 is max
-            check_ranges<uint16_t>(PARAMS(MAX_HASHMAP_FILE_STREAMS), 999);
-            check_ranges<uint16_t>(PARAMS(MAX_FILES_PER_INDEX),      999); //we only provide 3 digits in the filenames, so 999 is max
-            check_ranges<uint16_t>(PARAMS(MAX_INDEX_FILE_STREAMS),   999);
-            check_ranges<uint32_t>(PARAMS(PRIMARY_BLOOM_ACCURACY),  1000); //this is a maximum of 10 bits per key
-            check_ranges<uint16_t>(PARAMS(PRIMARY_BLOOM_HASHES),     128); //128 k-hashes should be enough
-            check_ranges<uint16_t>(PARAMS(SECONDARY_BLOOM_HASHES),   128); //128 k-hashes is really excessive, but alas you can go that far
+            check_ranges<uint16_t>(PARAMS(MAX_FILES_PER_HASHMAP),     999); //we only provide 3 digits in the filenames, so 999 is max
+            check_ranges<uint16_t>(PARAMS(MAX_HASHMAP_FILE_STREAMS), 9999);
+            check_ranges<uint16_t>(PARAMS(MAX_FILES_PER_INDEX),       999); //we only provide 3 digits in the filenames, so 999 is max
+            check_ranges<uint16_t>(PARAMS(MAX_INDEX_FILE_STREAMS),    999);
+            check_ranges<uint32_t>(PARAMS(PRIMARY_BLOOM_ACCURACY),   1000); //this is a maximum of 10 bits per key
+            check_ranges<uint16_t>(PARAMS(PRIMARY_BLOOM_HASHES),      128); //128 k-hashes should be enough
+            check_ranges<uint16_t>(PARAMS(SECONDARY_BLOOM_HASHES),    128); //128 k-hashes is really excessive, but alas you can go that far
 
             /* Give a warning if quick init is not enabled. */
             if(!QUICK_INIT)
