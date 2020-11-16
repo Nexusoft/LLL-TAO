@@ -4329,4 +4329,168 @@ namespace LLP
             debug::log(0, FUNCTION, "No Sync Nodes Available");
         }
     }
+
+
+    /* Handle relays of all events for LLP when processing block. */
+    void TritiumNode::RelayBlock(const uint1024_t& hashBlock)
+    {
+        /* Start a stopwatch. */
+        runtime::stopwatch swTimer;
+        swTimer.start();
+
+        /* Read the block from disk. */
+        TAO::Ledger::BlockState block;
+        if(!LLD::Ledger->ReadBlock(hashBlock, block))
+        {
+            /* Debug output. */
+            debug::log(0, FUNCTION, "Relay ",
+                ANSI_COLOR_BRIGHT_RED, "FAILED ", ANSI_COLOR_RESET,
+                " for ", hashBlock.SubString(), ": block not on disk"
+            );
+
+            return;
+        }
+
+        /* Relay the block and bestchain. */
+        LLP::TRITIUM_SERVER->Relay
+        (
+            LLP::Tritium::ACTION::NOTIFY,
+
+            /* Relay BLOCK notification. */
+            uint8_t(LLP::Tritium::TYPES::BLOCK),
+            hashBlock,
+
+            /* Relay BESTCHAIN notification. */
+            uint8_t(LLP::Tritium::TYPES::BESTCHAIN),
+            hashBlock,
+
+            /* Relay BESTHEIGHT notification. */
+            uint8_t(LLP::Tritium::TYPES::BESTHEIGHT),
+            block.nHeight
+        );
+
+        /* Keep track of the total items. */
+        uint32_t nTotalEvents = 0;
+
+        /* Let's process all the transactios now. */
+        DataStream ssRelay(SER_NETWORK, LLP::PROTOCOL_VERSION);
+        for(const auto& proof : block.vtx)
+        {
+            /* Only work on tritium transactions for now. */
+            if(proof.first == TAO::Ledger::TRANSACTION::TRITIUM)
+            {
+                /* Get the transaction hash. */
+                const uint512_t& hash = proof.second;
+
+                /* Make sure the transaction is on disk. */
+                TAO::Ledger::Transaction tx;
+                if(!LLD::Ledger->ReadTx(hash, tx))
+                    continue;
+
+                /* Check all the tx contracts. */
+                for(uint32_t n = 0; n < tx.Size(); ++n)
+                {
+                    const TAO::Operation::Contract& contract = tx[n];
+
+                    /* Check the contract's primitive. */
+                    uint8_t nOP = 0;
+                    contract >> nOP;
+                    switch(nOP)
+                    {
+                        case TAO::Operation::OP::TRANSFER:
+                        case TAO::Operation::OP::DEBIT:
+                        {
+                            /* Seek to recipient. */
+                            uint256_t hashTo;
+                            contract.Seek(32,  TAO::Operation::Contract::OPERATIONS);
+                            contract >> hashTo;
+
+                            /* Read the owner of register. (check this for MEMPOOL, too) */
+                            TAO::Register::State state;
+                            if(!LLD::Register->ReadState(hashTo, state))
+                                continue;
+
+                            /* Fire off our event for client mode peers. For debits to assets and transfers to tokens the 
+                                event will be a notification to the token itself, otherwise this will be notification to 
+                                the register owner */
+                            if((nOP == TAO::Operation::OP::DEBIT && hashTo.GetType() == TAO::Register::Address::OBJECT)
+                                || (nOP == TAO::Operation::OP::TRANSFER && hashTo.GetType() == TAO::Register::Address::TOKEN))
+                            {
+                                ssRelay << uint8_t(TYPES::NOTIFICATION) << hashTo << hash;
+                            }
+                            else
+                                ssRelay << uint8_t(TYPES::NOTIFICATION) << state.hashOwner << hash;
+
+                            ++nTotalEvents;
+
+                            debug::log(0, FUNCTION, (nOP == TAO::Operation::OP::TRANSFER ? "TRANSFER: " : "DEBIT: "),
+                                hash.SubString(), " for genesis ", state.hashOwner.SubString());
+
+                            break;
+                        }
+
+                        case TAO::Operation::OP::COINBASE:
+                        {
+                            /* Get the genesis. */
+                            uint256_t hashGenesis;
+                            contract >> hashGenesis;
+
+                            /* Commit to disk. */
+                            if(tx[n].Caller() != hashGenesis)
+                            {
+                                /* Fire off our event. */
+                                ssRelay << uint8_t(TYPES::SIGCHAIN) << hashGenesis << hash;
+                                ++nTotalEvents;
+
+                                debug::log(0, FUNCTION, "COINBASE: ", hash.SubString(), " for genesis ", hashGenesis.SubString());
+                            }
+
+                            break;
+                        }
+                    }
+                }
+
+                /* Notify the sender as well. */
+                ssRelay << uint8_t(TYPES::SIGCHAIN) << tx.hashGenesis << hash;
+                ++nTotalEvents;
+            }
+            else if(proof.first == TAO::Ledger::TRANSACTION::LEGACY)
+            {
+                /* Get the transaction hash. */
+                const uint512_t& hash = proof.second;
+
+                /* Make sure the transaction isn't on disk. */
+                Legacy::Transaction tx;
+                if(!LLD::Legacy->ReadTx(hash, tx))
+                    continue;
+
+                /* Check the outputs for send to register. */
+                for(const auto& out : tx.vout)
+                {
+                    /* Check outputs for possible events. */
+                    uint256_t hashTo;
+                    if(Legacy::ExtractRegister(out.scriptPubKey, hashTo))
+                    {
+                        /* Read the owner of register. (check this for MEMPOOL, too) */
+                        TAO::Register::State state;
+                        if(!LLD::Register->ReadState(hashTo, state))
+                            continue;
+
+                        /* Fire off our event. */
+                        ssRelay << uint8_t(SPECIFIER::LEGACY) << uint8_t(TYPES::SIGCHAIN) << state.hashOwner << hash;
+                        ++nTotalEvents;
+
+                        debug::log(0, FUNCTION, "LEGACY: ", hash.SubString(), " for genesis ", state.hashOwner.SubString());
+                    }
+                }
+            }
+        }
+
+        /* Relay all of our SIGCHAIN events. */
+        LLP::TRITIUM_SERVER->_Relay(LLP::Tritium::ACTION::NOTIFY, ssRelay);
+
+        /* Report status once complete. */
+        debug::log(0, FUNCTION, "Relay for ", hashBlock.SubString(), " completed in ", swTimer.ElapsedMilliseconds(), " ms [", (nTotalEvents * 1000000) / (swTimer.ElapsedMicroseconds() + 1), " events/s]");
+            
+    }
 }

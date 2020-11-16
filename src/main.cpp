@@ -27,9 +27,11 @@ ________________________________________________________________________________
 #include <TAO/API/include/cmd.h>
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/dispatch.h>
 #include <TAO/Ledger/types/stake_minter.h>
 #include <TAO/Ledger/include/timelocks.h>
 
+#include <Util/include/block_notify.h>
 #include <Util/include/convert.h>
 #include <Util/include/filesystem.h>
 #include <Util/include/signals.h>
@@ -147,6 +149,9 @@ int main(int argc, char** argv)
         /* Initialize ChainState. */
         TAO::Ledger::ChainState::Initialize();
 
+        /* Register the user-configurable blocknotify function with the Ledger Dispatcher so that it is notififed whenever there is a new block*/
+        TAO::Ledger::Dispatch::GetInstance().SubscribeBlock(BlockNotify);
+        
 
         /* We don't need the wallet in client mode. */
         if(!config::fClient.load())
@@ -208,6 +213,9 @@ int main(int argc, char** argv)
 
         /* Initialize the Tritium Server. */
         LLP::TRITIUM_SERVER = LLP::CreateTAOServer<LLP::TritiumNode>(nPort, nSSLPort);
+
+        /* Register the tritium server with the ledger dispatcher so that it is notififed whenever there is a new block*/
+        TAO::Ledger::Dispatch::GetInstance().SubscribeBlock(LLP::TritiumNode::RelayBlock);
 
 
         /* Get the port for the P2P server. */
