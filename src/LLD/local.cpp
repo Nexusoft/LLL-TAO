@@ -20,7 +20,7 @@ namespace LLD
 
     /** The Database Constructor. To determine file location and the Bytes per Record. **/
     LocalDB::LocalDB(const Config::Sector& sector, const Config::Hashmap& keychain)
-    : SectorDatabase(sector, keychain)
+    : StaticDatabase(sector, keychain)
     {
     }
 

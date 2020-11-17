@@ -39,7 +39,7 @@ ________________________________________________________________________________
 
 namespace LLD::Templates
 {
-    /** SectorDatabase
+    /** StaticDatabase
      *
      *  Base Template Class for a Sector Database.
      *  Processes main Lower Level Disk Communications.
@@ -68,7 +68,7 @@ namespace LLD::Templates
      *
      **/
     template<class KeychainType, class CacheType, class ConfigType>
-    class SectorDatabase
+    class StaticDatabase
     {
         /* The mutex for the condition. */
         std::mutex CONDITION_MUTEX;
@@ -146,11 +146,11 @@ namespace LLD::Templates
 
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        SectorDatabase(const LLD::Config::Sector& sectorIn, const ConfigType& keychainIn);
+        StaticDatabase(const LLD::Config::Sector& sectorIn, const ConfigType& keychainIn);
 
 
         /** Default Destructor **/
-        virtual ~SectorDatabase();
+        virtual ~StaticDatabase();
 
 
         /** Initialize

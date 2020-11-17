@@ -32,7 +32,7 @@ namespace LLD::Templates
 
     /* The Database Constructor. To determine file location and the Bytes per Record. */
     template<class KeychainType, class CacheType, class ConfigType>
-    SectorDatabase<KeychainType, CacheType, ConfigType>::SectorDatabase(const LLD::Config::Sector& sectorIn, const ConfigType& keychainIn)
+    StaticDatabase<KeychainType, CacheType, ConfigType>::StaticDatabase(const LLD::Config::Sector& sectorIn, const ConfigType& keychainIn)
     : CONDITION_MUTEX   ( )
     , CONDITION         ( )
     , SECTOR_MUTEX      ( )
@@ -65,14 +65,14 @@ namespace LLD::Templates
                 runtime.ElapsedMicroseconds(), " micro-seconds" ANSI_COLOR_RESET);
         }
 
-        CacheWriterThread = std::thread(std::bind(&SectorDatabase::CacheWriter, this));
-        MeterThread       = std::thread(std::bind(&SectorDatabase::Meter, this));
+        CacheWriterThread = std::thread(std::bind(&StaticDatabase::CacheWriter, this));
+        MeterThread       = std::thread(std::bind(&StaticDatabase::Meter, this));
     }
 
 
     /* Default Destructor */
     template<class KeychainType, class CacheType, class ConfigType>
-    SectorDatabase<KeychainType, CacheType, ConfigType>::~SectorDatabase()
+    StaticDatabase<KeychainType, CacheType, ConfigType>::~StaticDatabase()
     {
         fDestruct = true;
         CONDITION.notify_all();
@@ -99,7 +99,7 @@ namespace LLD::Templates
 
     /*  Initialize Sector Database. */
     template<class KeychainType, class CacheType, class ConfigType>
-    void SectorDatabase<KeychainType, CacheType, ConfigType>::Initialize()
+    void StaticDatabase<KeychainType, CacheType, ConfigType>::Initialize()
     {
         /* Create directories if they don't exist yet. */
         if(CONFIG.FLAGS & FLAGS::CREATE && !filesystem::exists(CONFIG.DIRECTORY + "datachain/") && filesystem::create_directories(CONFIG.DIRECTORY + "datachain/"))
@@ -143,7 +143,7 @@ namespace LLD::Templates
 
     /*  Get a record from cache or from disk */
     template<class KeychainType, class CacheType, class ConfigType>
-    bool SectorDatabase<KeychainType, CacheType, ConfigType>::Get(const std::vector<uint8_t>& vKey, std::vector<uint8_t>& vData)
+    bool StaticDatabase<KeychainType, CacheType, ConfigType>::Get(const std::vector<uint8_t>& vKey, std::vector<uint8_t>& vData)
     {
         /* Iterate if meters are enabled. */
         nBytesRead += static_cast<uint32_t>(vKey.size() + vData.size());
@@ -214,7 +214,7 @@ namespace LLD::Templates
     /*  Get a record from from disk if the sector key
      *  is already read from the keychain. */
     template<class KeychainType, class CacheType, class ConfigType>
-    bool SectorDatabase<KeychainType, CacheType, ConfigType>::Get(const SectorKey& cKey, std::vector<uint8_t>& vData)
+    bool StaticDatabase<KeychainType, CacheType, ConfigType>::Get(const SectorKey& cKey, std::vector<uint8_t>& vData)
     {
         {
             //LOCK(SECTOR_MUTEX);
@@ -271,7 +271,7 @@ namespace LLD::Templates
 
     /*  Update a record on disk. */
     template<class KeychainType, class CacheType, class ConfigType>
-    bool SectorDatabase<KeychainType, CacheType, ConfigType>::Update(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vData)
+    bool StaticDatabase<KeychainType, CacheType, ConfigType>::Update(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vData)
     {
         /* Check the keychain for key. */
         SectorKey key;
@@ -336,7 +336,7 @@ namespace LLD::Templates
 
     /*  Force a write to disk immediately bypassing write buffers. */
     template<class KeychainType, class CacheType, class ConfigType>
-    bool SectorDatabase<KeychainType, CacheType, ConfigType>::Force(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vData)
+    bool StaticDatabase<KeychainType, CacheType, ConfigType>::Force(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vData)
     {
         if(CONFIG.FLAGS & FLAGS::APPEND || !Update(vKey, vData))
         {
@@ -427,7 +427,7 @@ namespace LLD::Templates
 
     /*  Write a record into the cache and disk buffer for flushing to disk. */
     template<class KeychainType, class CacheType, class ConfigType>
-    bool SectorDatabase<KeychainType, CacheType, ConfigType>::Put(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vData)
+    bool StaticDatabase<KeychainType, CacheType, ConfigType>::Put(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vData)
     {
         /* Handle force write mode. */
         if(CONFIG.FLAGS & FLAGS::FORCE)
@@ -457,7 +457,7 @@ namespace LLD::Templates
 
     /*  Update a record on disk. */
     template<class KeychainType, class CacheType, class ConfigType>
-    bool SectorDatabase<KeychainType, CacheType, ConfigType>::Delete(const std::vector<uint8_t>& vKey)
+    bool StaticDatabase<KeychainType, CacheType, ConfigType>::Delete(const std::vector<uint8_t>& vKey)
     {
         /* Check the keychain for key. */
         SectorKey key;
@@ -518,7 +518,7 @@ namespace LLD::Templates
 
     /*  Flushes periodically data from the cache buffer to disk. */
     template<class KeychainType, class CacheType, class ConfigType>
-    void SectorDatabase<KeychainType, CacheType, ConfigType>::CacheWriter()
+    void StaticDatabase<KeychainType, CacheType, ConfigType>::CacheWriter()
     {
         /* Wait for initialization. */
         while(!fInitialized)
@@ -607,7 +607,7 @@ namespace LLD::Templates
 
     /*  LLD Meter Thread. Tracks the Reads/Writes per second. */
     template<class KeychainType, class CacheType, class ConfigType>
-    void SectorDatabase<KeychainType, CacheType, ConfigType>::Meter()
+    void StaticDatabase<KeychainType, CacheType, ConfigType>::Meter()
     {
         if(!config::GetBoolArg("-lldmeters", false))
             return;
@@ -646,7 +646,7 @@ namespace LLD::Templates
 
     /*  Start a database transaction. */
     template<class KeychainType, class CacheType, class ConfigType>
-    void SectorDatabase<KeychainType, CacheType, ConfigType>::TxnBegin()
+    void StaticDatabase<KeychainType, CacheType, ConfigType>::TxnBegin()
     {
         LOCK(TRANSACTION_MUTEX);
 
@@ -661,7 +661,7 @@ namespace LLD::Templates
 
     /*  Write the transaction commitment message. */
     template<class KeychainType, class CacheType, class ConfigType>
-    bool SectorDatabase<KeychainType, CacheType, ConfigType>::TxnCheckpoint()
+    bool StaticDatabase<KeychainType, CacheType, ConfigType>::TxnCheckpoint()
     {
         LOCK(TRANSACTION_MUTEX);
 
@@ -688,7 +688,7 @@ namespace LLD::Templates
 
     /*  Release the transaction checkpoint. */
     template<class KeychainType, class CacheType, class ConfigType>
-    void SectorDatabase<KeychainType, CacheType, ConfigType>::TxnRelease()
+    void StaticDatabase<KeychainType, CacheType, ConfigType>::TxnRelease()
     {
         LOCK(TRANSACTION_MUTEX);
 
@@ -707,7 +707,7 @@ namespace LLD::Templates
 
     /*  Commit data from transaction object. */
     template<class KeychainType, class CacheType, class ConfigType>
-    bool SectorDatabase<KeychainType, CacheType, ConfigType>::TxnCommit()
+    bool StaticDatabase<KeychainType, CacheType, ConfigType>::TxnCommit()
     {
         LOCK(TRANSACTION_MUTEX);
 
@@ -765,7 +765,7 @@ namespace LLD::Templates
 
     /*  Recover a transaction from the journal. */
     template<class KeychainType, class CacheType, class ConfigType>
-    bool SectorDatabase<KeychainType, CacheType, ConfigType>::TxnRecovery()
+    bool StaticDatabase<KeychainType, CacheType, ConfigType>::TxnRecovery()
     {
         /* Create an append only stream. */
         std::ifstream stream(debug::safe_printstr(CONFIG.DIRECTORY, "journal.dat"), std::ios::in | std::ios::out | std::ios::binary);
@@ -873,9 +873,9 @@ namespace LLD::Templates
 
 
     /* Explicity instantiate all template instances needed for compiler. */
-    template class SectorDatabase<BinaryHashMap, BinaryLRU, Config::Hashmap>;
-    //template class SectorDatabase<ShardHashMap,   BinaryLRU>;
-    //template class SectorDatabase<BinaryHashMap,  BinaryLFU>;
-    //template class SectorDatabase<BinaryHashTree, BinaryLRU>;
+    template class StaticDatabase<BinaryHashMap, BinaryLRU, Config::Hashmap>;
+    //template class StaticDatabase<ShardHashMap,   BinaryLRU>;
+    //template class StaticDatabase<BinaryHashMap,  BinaryLFU>;
+    //template class StaticDatabase<BinaryHashTree, BinaryLRU>;
 
 }

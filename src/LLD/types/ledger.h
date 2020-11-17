@@ -73,7 +73,7 @@ namespace LLD
      *  The database class for the Ledger Layer.
      *
      **/
-    class LedgerDB : public Templates::SectorDatabase<BinaryHashMap, BinaryLRU, Config::Hashmap>
+    class LedgerDB : public Templates::StaticDatabase<BinaryHashMap, BinaryLRU, Config::Hashmap>
     {
 
         /** Mutex to lock internall when accessing memory mode. **/

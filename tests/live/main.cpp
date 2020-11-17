@@ -69,11 +69,11 @@ ________________________________________________________________________________
 #include <LLD/config/hashmap.h>
 #include <LLD/config/sector.h>
 
-class TestDB : public LLD::Templates::SectorDatabase<LLD::BinaryHashMap, LLD::BinaryLRU, LLD::Config::Hashmap>
+class TestDB : public LLD::Templates::StaticDatabase<LLD::BinaryHashMap, LLD::BinaryLRU, LLD::Config::Hashmap>
 {
 public:
     TestDB(const LLD::Config::Sector& sector, const LLD::Config::Hashmap& keychain)
-    : SectorDatabase(sector, keychain)
+    : StaticDatabase(sector, keychain)
     {
     }
 
