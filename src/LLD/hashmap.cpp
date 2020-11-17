@@ -228,6 +228,8 @@ namespace LLD
             }
         }
 
+        //TODO: we need to adjust for MIN_LINEAR_PROBES reverse probing and check the root bucket before probing other buckets
+
         /* We make a copy here to prevent return by reference related bugs */
         uint16_t nHashmapRet   = nHashmap;
         uint32_t nBucketRet    = nBucket;
