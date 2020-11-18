@@ -131,7 +131,7 @@ namespace LLP
         /** The sleep time of address manager. **/
         uint32_t nSleepTime;
 
-        
+
         /** Max number of incoming connections this server can make. **/
         uint32_t nMaxIncoming;
 
@@ -142,7 +142,7 @@ namespace LLP
 
     public:
 
-    
+
 
         /** Name
          *
@@ -163,7 +163,7 @@ namespace LLP
         /** GetPort
          *
          *  Returns the port number for this Server.
-         * 
+         *
          *  @param[in] fSSL.  Flag indicating whether to return the SSL port or not
          *
          **/
@@ -250,7 +250,27 @@ namespace LLP
             {
                 /* Add the address to the address manager if it exists. */
                 if(pAddressManager)
-                    pAddressManager->AddAddress(addrConnect, ConnectState::FAILED);
+                {
+                    /* We want to add failures up to a specified limit. */
+                    if(pAddressManager->Has(addrConnect))
+                    {
+                        /* Grab our trust address if valid. */
+                        const TrustAddress& addrInfo = pAddressManager->Get(addrConnect);
+
+                        /* Kill address if we haven't found any valid connections. */
+                        const uint32_t nLimit = config::GetArg("-prunefailed", 0);
+                        if(nLimit > 0 && addrInfo.nFailed > nLimit  && addrInfo.nConnected == 0)
+                        {
+                            /* Remove from database */
+                            pAddressManager->RemoveAddress(addrConnect);
+                            debug::log(3, FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "CLEAN: ", ANSI_COLOR_RESET, "address has reached failure limit: ", addrInfo.nFailed);
+                        }
+                        else
+                            pAddressManager->AddAddress(addrConnect, ConnectState::FAILED);
+                    }
+
+                }
+
 
                 return false;
             }
@@ -499,11 +519,11 @@ namespace LLP
          *  UPnP Thread. If UPnP is enabled then this thread will set up the required port forwarding.
          *
          *  @param[in] nPort The port to forward
-         * 
+         *
          **/
         void UPnP(uint16_t nPort);
 
-        
+
         /** get_listening_socket
          *
          *  Gets the listening socket handle

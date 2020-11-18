@@ -370,24 +370,31 @@ namespace LLP
 
             case EVENTS::DISCONNECT:
             {
+                /* Track whether to mark as failure or dropped. */
+                uint8_t nState = 0;
+
                 /* Debut output. */
                 std::string strReason;
                 switch(LENGTH)
                 {
                     case DISCONNECT::TIMEOUT:
                         strReason = "Timeout";
+                        nState    = ConnectState::DROPPED;
                         break;
 
                     case DISCONNECT::ERRORS:
                         strReason = "Errors";
+                        nState    = ConnectState::FAILED;
                         break;
 
                     case DISCONNECT::POLL_ERROR:
                         strReason = "Poll Error";
+                        nState    = ConnectState::FAILED;
                         break;
 
                     case DISCONNECT::POLL_EMPTY:
                         strReason = "Unavailable";
+                        nState    = ConnectState::FAILED;
                         break;
 
                     case DISCONNECT::DDOS:
@@ -396,18 +403,22 @@ namespace LLP
 
                     case DISCONNECT::FORCE:
                         strReason = "Force";
+                        nState    = ConnectState::DROPPED;
                         break;
 
                     case DISCONNECT::PEER:
                         strReason = "Peer Hangup";
+                        nState    = ConnectState::DROPPED;
                         break;
 
                     case DISCONNECT::BUFFER:
                         strReason = "Flood Control";
+                        nState    = ConnectState::DROPPED;
                         break;
 
                     case DISCONNECT::TIMEOUT_WRITE:
                         strReason = "Flood Control Timeout";
+                        nState    = ConnectState::DROPPED;
                         break;
 
                     default:
@@ -420,8 +431,24 @@ namespace LLP
                     " Disconnected (", strReason, ")");
 
                 /* Update address status. */
-                if(TRITIUM_SERVER->GetAddressManager())
-                    TRITIUM_SERVER->GetAddressManager()->AddAddress(GetAddress(), ConnectState::DROPPED);
+                const BaseAddress& addr = GetAddress();
+                if(TRITIUM_SERVER->GetAddressManager() && TRITIUM_SERVER->GetAddressManager()->Has(addr))
+                {
+                    /* Grab our trust address if valid. */
+                    const TrustAddress& addrInfo = TRITIUM_SERVER->GetAddressManager()->Get(addr);
+
+                    /* Kill address if we haven't found any valid connections. */
+                    const uint32_t nLimit = config::GetArg("-prunefailed", 0);
+                    if(nLimit > 0 && addrInfo.nFailed > nLimit && addrInfo.nConnected == addrInfo.nFailed)
+                    {
+                        /* Remove from database */
+                        TRITIUM_SERVER->GetAddressManager()->RemoveAddress(addr);
+                        debug::log(3, FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "CLEAN: ", ANSI_COLOR_RESET, "address has reached failure limit: ", addrInfo.nFailed);
+                    }
+                    else
+                        TRITIUM_SERVER->GetAddressManager()->AddAddress(addr, nState);
+                }
+
 
                 /* Handle if sync node is disconnected. */
                 if(nCurrentSession == TAO::Ledger::nSyncSession.load())
@@ -510,7 +537,14 @@ namespace LLP
 
                 /* Client mode only wants connections to correct version. */
                 if(config::fClient.load() && nProtocolVersion < MIN_TRITIUM_VERSION)
+                {
+                    /* Remove address from address manager. */
+                    if(TRITIUM_SERVER->GetAddressManager())
+                        TRITIUM_SERVER->GetAddressManager()->RemoveAddress(GetAddress());
+
                     return debug::drop(NODE, "-client mode requires version ", MIN_TRITIUM_VERSION);
+                }
+
 
                 /* Respond with version message if incoming connection. */
                 if(Incoming())
@@ -691,7 +725,7 @@ namespace LLP
                     SubscribeNotification(hashGenesis);
 
                     /* Subscribe to notifications for any tokens we own, or any tokens that we have accounts for */
-                    
+
                     /* Get the list of accounts and tokens owned by this sig chain */
                     std::vector<TAO::Register::Address> vAddresses;
                     TAO::API::ListAccounts(hashGenesis, vAddresses, true, false);
@@ -711,7 +745,7 @@ namespace LLP
 
                             /* Parse the object register. */
                             if(!account.Parse())
-                                return debug::drop(NODE, "Object failed to parse"); 
+                                return debug::drop(NODE, "Object failed to parse");
 
                             /* Get the token */
                             uint256_t hashToken = account.get<uint256_t>("token");
@@ -2566,9 +2600,13 @@ namespace LLP
                             BaseAddress addr;
                             ssPacket >> addr;
 
-                            /* Add addresses to manager.. */
-                            if(TRITIUM_SERVER->GetAddressManager())
-                                TRITIUM_SERVER->GetAddressManager()->AddAddress(addr);
+                            /* We don't want to relay new addresses for client mode just yet. */
+                            if(!config::fClient.load())
+                            {
+                                /* Add addresses to manager.. */
+                                if(TRITIUM_SERVER->GetAddressManager())
+                                    TRITIUM_SERVER->GetAddressManager()->AddAddress(addr);
+                            }
 
                             /* Debug output. */
                             debug::log(0, NODE, "ACTION::NOTIFY: ADDRESS ", addr.ToStringIP());
@@ -3450,8 +3488,8 @@ namespace LLP
                             LOCK(P2P_REQUESTS_MUTEX);
                             if(mapP2PRequests.count(hashFrom) == 0 || mapP2PRequests[hashFrom] < request.nTimestamp - 5)
                             {
-                                /* Check that the source and destination genesis exists before relaying.  NOTE: We skip this 
-                                   in client mode as we will only have local scope and not know about all genesis hashes 
+                                /* Check that the source and destination genesis exists before relaying.  NOTE: We skip this
+                                   in client mode as we will only have local scope and not know about all genesis hashes
                                    on the network.  Therefore relaying is limited to full nodes only */
                                 if(!config::fClient)
                                 {
@@ -3467,7 +3505,7 @@ namespace LLP
                                 /* Verify the signature before relaying.  Again we don't do this in client mode as we only have
                                    local scope and won't be able to access the crypto object register of the hashFrom */
                                 if(!config::fClient)
-                                { 
+                                {
                                     /* Build the byte stream from the request data in order to verify the signature */
                                     DataStream ssCheck(SER_NETWORK, PROTOCOL_VERSION);
                                     ssCheck << hashFrom << request;
@@ -3475,7 +3513,7 @@ namespace LLP
                                     /* Verify the signature */
                                     if(!TAO::Ledger::SignatureChain::Verify(hashFrom, "network", ssCheck.Bytes(), vchPubKey, vchSig))
                                         return debug::error(NODE, "ACTION::REQUEST::P2P: invalid transaction signature");
-                                     
+
                                     /* Reset the packet data pointer */
                                     ssPacket.Reset();
 
@@ -3586,22 +3624,22 @@ namespace LLP
             uint32_t nAvailable = Available();
             if(INCOMING.Header() && nAvailable > 0 && !INCOMING.IsNull() && INCOMING.DATA.size() < INCOMING.LENGTH)
             {
-                /* The maximum number of bytes to read is th number of bytes specified in the message length, 
+                /* The maximum number of bytes to read is th number of bytes specified in the message length,
                    minus any already read on previous reads*/
                 uint32_t nMaxRead = (uint32_t)(INCOMING.LENGTH - INCOMING.DATA.size());
-                
+
                 /* Vector to receve the read bytes. This should be the smaller of the number of bytes currently available or the
                    maximum amount to read */
                 std::vector<uint8_t> DATA(std::min(nAvailable, nMaxRead), 0);
 
                 /* Read up to the buffer size. */
-                int32_t nRead = Read(DATA, DATA.size()); 
-                
-                /* If something was read, insert it into the packet data.  NOTE: that due to SSL packet framing we could end up 
+                int32_t nRead = Read(DATA, DATA.size());
+
+                /* If something was read, insert it into the packet data.  NOTE: that due to SSL packet framing we could end up
                    reading less bytes than appear available.  Therefore we only copy the number of bytes actually read */
                 if(nRead > 0)
                     INCOMING.DATA.insert(INCOMING.DATA.end(), DATA.begin(), DATA.begin() + nRead);
-                    
+
                 /* If the packet is now considered complete, fire the packet complete event */
                 if(INCOMING.Complete())
                     Event(EVENTS::PACKET, static_cast<uint32_t>(DATA.size()));
@@ -4410,8 +4448,8 @@ namespace LLP
                             if(!LLD::Register->ReadState(hashTo, state))
                                 continue;
 
-                            /* Fire off our event for client mode peers. For debits to assets and transfers to tokens the 
-                                event will be a notification to the token itself, otherwise this will be notification to 
+                            /* Fire off our event for client mode peers. For debits to assets and transfers to tokens the
+                                event will be a notification to the token itself, otherwise this will be notification to
                                 the register owner */
                             if((nOP == TAO::Operation::OP::DEBIT && hashTo.GetType() == TAO::Register::Address::OBJECT)
                                 || (nOP == TAO::Operation::OP::TRANSFER && hashTo.GetType() == TAO::Register::Address::TOKEN))
@@ -4491,6 +4529,6 @@ namespace LLP
 
         /* Report status once complete. */
         debug::log(0, FUNCTION, "Relay for ", hashBlock.SubString(), " completed in ", swTimer.ElapsedMilliseconds(), " ms [", (nTotalEvents * 1000000) / (swTimer.ElapsedMicroseconds() + 1), " events/s]");
-            
+
     }
 }
