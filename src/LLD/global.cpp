@@ -153,7 +153,7 @@ namespace LLD
             KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = 77773;
             KEYCHAIN.MAX_HASHMAPS             = 4; //TODO: make sure this doesn't break anything :D
             KEYCHAIN.MAX_HASHMAP_FILE_STREAMS = 4;
-            KEYCHAIN.MIN_LINEAR_PROBES        = 2;
+            KEYCHAIN.MIN_LINEAR_PROBES        = 1;
 
             /* Create the TrustDB database instance. */
             Trust = new TrustDB(SECTOR, KEYCHAIN);
@@ -177,7 +177,7 @@ namespace LLD
             KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = 77773;
             KEYCHAIN.MAX_HASHMAPS             = 4; //TODO: make sure this doesn't break anything :D
             KEYCHAIN.MAX_HASHMAP_FILE_STREAMS = 4;
-            KEYCHAIN.MIN_LINEAR_PROBES        = 2;
+            KEYCHAIN.MIN_LINEAR_PROBES        = 1;
 
             /* Create the LocalDB database instance. */
             Local = new LocalDB(SECTOR, KEYCHAIN);
@@ -202,7 +202,7 @@ namespace LLD
             KEYCHAIN.HASHMAP_TOTAL_BUCKETS    = 77773;
             KEYCHAIN.MAX_HASHMAPS             = 8;
             KEYCHAIN.MAX_HASHMAP_FILE_STREAMS = 4;
-            KEYCHAIN.MIN_LINEAR_PROBES        = 2;
+            KEYCHAIN.MIN_LINEAR_PROBES        = 1;
 
             /* Create new client database if enabled. */
             Client    = new ClientDB(SECTOR, KEYCHAIN);
