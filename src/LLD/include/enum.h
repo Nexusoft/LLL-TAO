@@ -27,11 +27,12 @@ namespace LLD
     {
         enum
         {
-            APPEND        = (1 << 1),
-            READONLY      = (1 << 2),
-            CREATE        = (1 << 3),
-            WRITE         = (1 << 4),
-            FORCE         = (1 << 5)
+            APPEND        = (1 << 1), //tell LLD to append on writes making writing faster
+            READONLY      = (1 << 2), //tell LLD that no writes are allowed on this instance
+            CREATE        = (1 << 3), //create associated directories if they don't exist
+            WRITE         = (1 << 4), //tell LLD to write to buffer before flushing to disk, makes LLD faster on writes
+            FORCE         = (1 << 5), //tell LLD to force write to disk for every key using no buffering
+            KEYSTORE      = (1 << 6), //tell LLD datachain to store the keys along with data
         };
     };
 

@@ -161,7 +161,7 @@ namespace LLD
                 "Loaded in ",
 
                  nElapsed, " ms | ",
-                vBuffer.size(), " bytes | ",
+                vBuffer.size() * CONFIG.MAX_FILES_PER_INDEX, " bytes | ",
                 nTotalKeys, "/", nMaxKeys, " keys [",
                 ANSI_COLOR_CYAN, (nTotalKeys * 100.0) / nMaxKeys, " %", ANSI_COLOR_RESET, "] | ",
                 std::min(CONFIG.MAX_HASHMAPS, nTotalHashmaps), " hashmaps"

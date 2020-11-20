@@ -204,7 +204,7 @@ int main(int argc, char** argv)
     //config::nVerbose.store(4);
     config::mapArgs["-datadir"] = "/database";
 
-    const std::string strDB = "load1";
+    const std::string strDB = "load3";
 
     std::string strIndex = config::mapArgs["-datadir"] + "/" + strDB + "/";
 
@@ -217,35 +217,35 @@ int main(int argc, char** argv)
 
     //build our base configuration
     LLD::Config::Base BASE =
-        LLD::Config::Base(strDB, LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+        LLD::Config::Base(strDB, LLD::FLAGS::CREATE | LLD::FLAGS::FORCE | LLD::FLAGS::APPEND);
 
     //build our sector configuration
     LLD::Config::Sector SECTOR      = LLD::Config::Sector(BASE);
     SECTOR.MAX_SECTOR_FILE_STREAMS  = 16;
     SECTOR.MAX_SECTOR_BUFFER_SIZE   = 1024 * 1024 * 4; //4 MB write buffer
-    SECTOR.MAX_SECTOR_CACHE_SIZE    = 256; //1 MB of cache available
+    SECTOR.MAX_SECTOR_CACHE_SIZE    = 256; //4 MB of cache available
 
     //build our hashmap configuration
     LLD::Config::Hashmap CONFIG     = LLD::Config::Hashmap(BASE);
-    CONFIG.HASHMAP_TOTAL_BUCKETS    = 1000000;
-    CONFIG.MAX_FILES_PER_HASHMAP    = 1;
-    CONFIG.MAX_FILES_PER_INDEX      = 10;
-    CONFIG.MAX_HASHMAPS             = 256;
+    CONFIG.HASHMAP_TOTAL_BUCKETS    = 8000000;
+    CONFIG.MAX_FILES_PER_HASHMAP    = 2;
+    CONFIG.MAX_FILES_PER_INDEX      = 8;
+    CONFIG.MAX_HASHMAPS             = 64;
     CONFIG.MIN_LINEAR_PROBES        = 1;
     CONFIG.MAX_LINEAR_PROBES        = 1024;
-    CONFIG.MAX_HASHMAP_FILE_STREAMS = 256;
-    CONFIG.MAX_INDEX_FILE_STREAMS   = 10;
+    CONFIG.MAX_HASHMAP_FILE_STREAMS = 128;
+    CONFIG.MAX_INDEX_FILE_STREAMS   = 8;
     CONFIG.PRIMARY_BLOOM_HASHES     = 7;
-    CONFIG.PRIMARY_BLOOM_ACCURACY   = 144;
+    CONFIG.PRIMARY_BLOOM_ACCURACY   = 300;
     CONFIG.SECONDARY_BLOOM_BITS     = 13;
     CONFIG.SECONDARY_BLOOM_HASHES   = 7;
     CONFIG.QUICK_INIT               = !config::GetBoolArg("-audit", false);
 
     TestDB* bloom = new TestDB(SECTOR, CONFIG);
 
-    runtime::stopwatch swElapsed;
+    runtime::stopwatch swElapsed, swReaders;
 
-    uint32_t nTotalWritten = 0;
+    uint32_t nTotalWritten = 0, nTotalRead = 0;;
     for(int n = 0; n < config::GetArg("-tests", 1); ++n)
     {
         debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "Generating Keys for test: ", n, "/", config::GetArg("-tests", 1), ANSI_COLOR_RESET);
@@ -274,42 +274,56 @@ int main(int argc, char** argv)
         swTimer.stop();
 
         uint64_t nElapsed = swTimer.ElapsedMicroseconds();
-        debug::log(0, vKeys.size() / 1000, "k records written in ", nElapsed, " (", (1000000.0 * vKeys.size()) / nElapsed, " writes/s)");
+        debug::log(0, vKeys.size() / 1000, "k records written in ", nElapsed, " (", std::fixed, (1000000.0 * vKeys.size()) / nElapsed, " writes/s)");
 
         uint1024_t hashKey = 0;
 
         swTimer.reset();
         swTimer.start();
 
+        swReaders.start();
 
         nTotal = 0;
         for(const auto& nBucket : vKeys)
         {
             ++nTotal;
+            ++nTotalRead;
 
             if(!bloom->ReadKey(nBucket, hashKey))
                 return debug::error("Failed to read ", nBucket.SubString(), " total ", nTotal);
         }
         swTimer.stop();
+        swReaders.stop();
 
         nElapsed = swTimer.ElapsedMicroseconds();
-        debug::log(0, vKeys.size() / 1000, "k records read in ", nElapsed, " (", (1000000.0 * vKeys.size()) / nElapsed, " read/s)");
+        debug::log(0, vKeys.size() / 1000, "k records read in ", nElapsed, " (", std::fixed, (1000000.0 * vKeys.size()) / nElapsed, " read/s)");
 
-        if(!bloom->EraseKey(vKeys[0]))
-            return debug::error("failed to erase ", vKeys[0].SubString());
+        //if(!bloom->EraseKey(vKeys[0]))
+        //    return debug::error("failed to erase ", vKeys[0].SubString());
 
-        if(bloom->ReadKey(vKeys[0], hashKey))
-            return debug::error("Failed to erase ", vKeys[0].SubString());
+        //if(bloom->ReadKey(vKeys[0], hashKey))
+        //    return debug::error("Failed to erase ", vKeys[0].SubString());
 
     }
 
 
-    uint64_t nElapsed = swElapsed.ElapsedMilliseconds();
-    uint64_t nMinutes = nElapsed / 60000;
-    uint64_t nSeconds = (nElapsed / 1000) - (nMinutes * 60);
+    {
+        uint64_t nElapsed = swElapsed.ElapsedMilliseconds();
+        uint64_t nMinutes = nElapsed / 60000;
+        uint64_t nSeconds = (nElapsed / 1000) - (nMinutes * 60);
 
-    debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "Completed Writing ", nTotalWritten, " Keys in ",
-        nMinutes, " minutes ", nSeconds, " seconds (", (1000.0 * nTotalWritten) / nElapsed, " writes/s)");
+        debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "Completed Writing ", nTotalWritten, " Keys in ",
+            nMinutes, " minutes ", nSeconds, " seconds (", std::fixed, (1000.0 * nTotalWritten) / nElapsed, " writes/s)");
+    }
+
+    {
+        uint64_t nElapsed = swReaders.ElapsedMilliseconds();
+        uint64_t nMinutes = nElapsed / 60000;
+        uint64_t nSeconds = (nElapsed / 1000) - (nMinutes * 60);
+
+        debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "Completed Reading ", nTotalRead, " Keys in ",
+            nMinutes, " minutes ", nSeconds, " seconds (", std::fixed, (1000.0 * nTotalRead) / nElapsed, " reads/s)");
+    }
 
     delete bloom;
 

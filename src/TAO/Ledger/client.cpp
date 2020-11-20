@@ -38,6 +38,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/include/retarget.h>
+#include <TAO/Ledger/include/process.h>
 
 #include <TAO/Ledger/types/genesis.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -648,6 +649,9 @@ namespace TAO
             /* Write the best chain pointer. */
             if(!LLD::Ledger->WriteBestChain(ChainState::hashBestChain.load()))
                 return debug::error(FUNCTION, "failed to write best chain");
+
+            /* Update how many bytes we just processed. */
+            nBytesProcessed += ::GetSerializeSize(*this, SER_LLD, nVersion);
 
             return true;
         }
