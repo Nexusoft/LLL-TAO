@@ -366,6 +366,27 @@ namespace TAO
             void SeekToPrimitive() const;
 
 
+            /** IsCondition
+             *
+             *  Checks to see whether the contract operation starts with an OP::CONDITION byte
+             * 
+             *  @return true if the operation has a condition
+             *
+             **/
+            bool IsCondition() const;
+
+
+            /** IsValidate
+             *
+             *  Checks to see whether the contract operation starts with an OP::VALIDATE byte
+             * 
+             *  @return true if the operation is a validate
+             *
+             **/
+            bool IsValidate() const;
+
+
+
             /** Operator Overload <<
              *
              *  Serializes data into ssOperation

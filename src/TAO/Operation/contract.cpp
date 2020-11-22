@@ -668,5 +668,41 @@ namespace TAO
 
             return 0;
         }
+
+        /* Checks to see whether the contract operation starts with an OP::CONDITION byte */
+        bool Contract::IsCondition() const
+        {
+            /* Sanity checks. */
+            if(ssOperation.size() == 0)
+                throw debug::exception(FUNCTION, "cannot get primitive when empty");
+
+            /* Reset the operations stream to the beginning */
+            ssOperation.seek(0, STREAM::BEGIN);
+
+            /* Get the operation code.*/
+            uint8_t nOP = ssOperation.get(0);
+
+            /* Check the op code*/
+            return nOP == OP::CONDITION;
+            
+        }
+
+
+        /* Checks to see whether the contract operation starts with an OP::VALIDATE byte */
+        bool Contract::IsValidate() const
+        {
+            /* Sanity checks. */
+            if(ssOperation.size() == 0)
+                throw debug::exception(FUNCTION, "cannot get primitive when empty");
+
+            /* Reset the operations stream to the beginning */
+            ssOperation.seek(0, STREAM::BEGIN);
+
+            /* Get the operation code.*/
+            uint8_t nOP = ssOperation.get(0);
+
+            /* Check the op code*/
+            return nOP == OP::VALIDATE;
+        }
     }
 }
