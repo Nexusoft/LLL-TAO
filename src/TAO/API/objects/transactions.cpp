@@ -290,7 +290,7 @@ namespace TAO
                         if(fHasContractsFilter)
                         {
                             /* Skip this top level record if not all of the filters were matched */
-                            if(!MatchesWhere(contractJSON, vWhere.at("contracts")))
+                            if(!MatchesWhere(contractJSON, vWhere.at("contracts"), vIgnore))
                                 continue;
                         }
                         
@@ -314,7 +314,7 @@ namespace TAO
                 if(fHasFilter)
                 {
                     /* Skip this top level record if not all of the filters were matched */
-                    if(!MatchesWhere(jsonTx, vWhere[""]))
+                    if(!MatchesWhere(jsonTx, vWhere[""], vIgnore))
                         continue;
                 }
 
