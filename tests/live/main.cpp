@@ -215,6 +215,7 @@ class mstream
         BAD  = (1 << 1),
         FAIL = (1 << 2),
         END  = (1 << 3),
+        FULL = (1 << 4),
     };
 
 
@@ -520,11 +521,15 @@ public:
     mstream& flush()
     {
         /* Sync to filesystem. */
-        MMAP.sync(ERROR);
+        if(FLAGS & std::ios::out && STATUS & STATE::FULL)
+            MMAP.sync(ERROR);
 
         /* Check for errors syncing. */
         if(ERROR)
             STATUS &= STATE::FAIL;
+
+        /* Let the object know we completed flush. */
+        STATUS &= ~STATE::FULL;
 
         return *this;
     }
@@ -563,6 +568,12 @@ public:
         if(ERROR)
             STATUS |= STATE::FAIL;
 
+        /* Let the object know we are ready to flush. */
+        STATUS |= STATE::FULL;
+
+        /* Increment our write position. */
+        PUT += nSize;
+
         return *this;
     }
 
@@ -600,7 +611,29 @@ public:
         if(ERROR)
             STATUS |= STATE::FAIL;
 
+        /* Increment our write position. */
+        GET += nSize;
+
         return *this;
+    }
+
+
+    /** close
+     *
+     *  Closes the mstream mmap handle and flushes to disk.
+     *
+     **/
+    void close()
+    {
+        /* Sync to filesystem. */
+        if(FLAGS & std::ios::out && STATUS & STATE::FULL)
+            MMAP.sync(ERROR);
+
+        /* Let the object know we completed flush. */
+        STATUS &= ~STATE::FULL;
+
+        /* Unmap the file now. */
+        MMAP.unmap();
     }
 };
 
@@ -672,13 +705,11 @@ int main(int argc, char** argv)
         else
         {
             swMap.start();
-            mstream stream2(strKeys, std::ios::in | std::ios::out);
+            mstream stream2(strKeys, std::ios::in);
             if(!stream2.read((char*)&vKeys[0], vKeys.size() * sizeof(vKeys[0])))
                 return debug::error("Failed to write data for mmap");
 
-            if(!stream2)
-                return debug::error("failbit set");
-
+            stream2.close();
             swMap.stop();
 
             debug::log(0, "MMap completed in ", swMap.ElapsedMicroseconds());
