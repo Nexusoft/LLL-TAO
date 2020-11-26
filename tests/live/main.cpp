@@ -235,6 +235,10 @@ class mstream
     uint64_t PUT;
 
 
+    /** Total bytes recently read. **/
+    uint64_t COUNT;
+
+
     /** Current status of stream object. **/
     uint8_t STATUS;
 
@@ -362,6 +366,17 @@ public:
     uint64_t tellp() const
     {
         return PUT;
+    }
+
+
+    /** gcount
+     *
+     *  Tell us how many bytes we have just read.
+     *
+     **/
+    uint64_t gcount() const
+    {
+        return COUNT;
     }
 
 
@@ -612,7 +627,8 @@ public:
             STATUS |= STATE::FAIL;
 
         /* Increment our write position. */
-        GET += nSize;
+        GET  += nSize;
+        COUNT = nSize;
 
         return *this;
     }
