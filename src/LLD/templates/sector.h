@@ -123,7 +123,7 @@ namespace LLD::Templates
 
 
         /* Disk Buffer Vector. */
-        std::vector< std::pair< std::vector<uint8_t>, std::vector<uint8_t> > > vDiskBuffer;
+        std::map< std::vector<uint8_t>, std::vector<uint8_t> > mapDiskBuffer;
 
 
         /* Disk Buffer Memory Size. */

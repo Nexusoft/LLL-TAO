@@ -48,7 +48,7 @@ namespace LLD::Templates
     , nCurrentFileSize  (0)
     , CacheWriterThread ( )
     , MeterThread       ( )
-    , vDiskBuffer       ( )
+    , mapDiskBuffer     ( )
     , nBufferBytes      (0)
     , nBytesRead        (0)
     , nBytesWrote       (0)
@@ -151,6 +151,14 @@ namespace LLD::Templates
         /* Check the cache pool for key first. */
         if(cachePool->Get(vKey, vData))
             return true;
+
+        /* Check disk buffer. */
+        if(mapDiskBuffer.count(vKey))
+        {
+            /* Grab the data off the buffer. */
+            vData = mapDiskBuffer[vKey];
+            return true;
+        }
 
         /* Get the key from the keychain. */
         SectorKey cKey;
@@ -444,7 +452,7 @@ namespace LLD::Templates
         {
             LOCK(BUFFER_MUTEX);
 
-            vDiskBuffer.push_back(std::make_pair(vKey, vData));
+            mapDiskBuffer.insert(std::make_pair(vKey, vData));
             nBufferBytes += static_cast<uint32_t>(vKey.size() + vData.size());
         }
 
@@ -555,15 +563,6 @@ namespace LLD::Templates
             if(nBufferBytes.load() == 0)
                 continue;
 
-            /* Swap the buffer object to get ready for writes. */
-            std::vector< std::pair<std::vector<uint8_t>, std::vector<uint8_t>> > vIndexes;
-            {
-                LOCK(BUFFER_MUTEX);
-
-                vIndexes.swap(vDiskBuffer);
-                nBufferBytes = 0;
-            }
-
             /* Create a new file if the sector file size is over file size limits. */
             if(nCurrentFileSize > CONFIG.MAX_SECTOR_FILE_SIZE)
             {
@@ -579,13 +578,17 @@ namespace LLD::Templates
             }
 
             /* Iterate through buffer to queue disk writes. */
-            for(const auto& vObj : vIndexes)
             {
-                /* Force write data. */
-                Force(vObj.first, vObj.second);
+                LOCK(BUFFER_MUTEX);
+                for(const auto& vObj : mapDiskBuffer)
+                {
+                    /* Force write data. */
+                    Force(vObj.first, vObj.second);
 
-                /* Set no longer reserved in cache pool. */
-                cachePool->Reserve(vObj.first, false);
+                    nBufferBytes -= (vObj.first.size() + vObj.second.size());
+                }
+
+                mapDiskBuffer.clear();
             }
 
             /* Notify the condition. */

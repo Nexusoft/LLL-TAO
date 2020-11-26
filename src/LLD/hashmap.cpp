@@ -479,7 +479,7 @@ namespace LLD
                 stream.close();
 
                 /* Debug output signifying new hashmap. */
-                debug::log(0, FUNCTION, "Created Hashmap",
+                debug::log(1, FUNCTION, "Created Hashmap",
                     " | file=",   nFile + 1, "/", CONFIG.MAX_FILES_PER_HASHMAP,
                     " | hashmap=", nHashmap + 1, "/", CONFIG.MAX_HASHMAPS,
                     " | size=", (nTotalBuckets * CONFIG.HASHMAP_KEY_ALLOCATION) / 1024.0, " Kb"
@@ -540,7 +540,7 @@ namespace LLD
                 stream.close();
 
                 /* Debug output signifying new hashmap. */
-                debug::log(0, FUNCTION, "Created Index"
+                debug::log(1, FUNCTION, "Created Index"
                     " | file=", nFile + 1, "/", CONFIG.MAX_FILES_PER_INDEX,
                     " | size=", (INDEX_FILTER_SIZE * nTotalBuckets) / 1024.0, " Kb"
                 );
@@ -566,18 +566,18 @@ namespace LLD
     bool BinaryHashMap::flush_index(const std::vector<uint8_t>& vBuffer, const uint32_t nBucket, const uint32_t nOffset)
     {
         /* Calculate our adjusted bucket. */
-        const uint32_t nAdjustedBucket = (nBucket + nOffset);
+        const uint64_t nAdjustedBucket = (nBucket + nOffset);
 
         /* Check we are flushing within range of the hashmap indexes. */
         if(nBucket >= CONFIG.HASHMAP_TOTAL_BUCKETS)
             return debug::error(FUNCTION, "out of range ", VARIABLE(nBucket));
 
         /* Calculate the current file designated by the bucket. */
-        const uint32_t nFile = (nAdjustedBucket * CONFIG.MAX_FILES_PER_INDEX) / CONFIG.HASHMAP_TOTAL_BUCKETS;
+        const uint64_t nFile = (nAdjustedBucket * CONFIG.MAX_FILES_PER_INDEX) / CONFIG.HASHMAP_TOTAL_BUCKETS;
 
         /* Used to check projected file based on boundary iterator to determine if the count needs a -1 offset. */
-        const uint32_t nBegin = (nFile * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_INDEX;
-        const uint32_t nCheck = (nBegin * CONFIG.MAX_FILES_PER_INDEX) / CONFIG.HASHMAP_TOTAL_BUCKETS;
+        const uint64_t nBegin = (nFile * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_INDEX;
+        const uint64_t nCheck = (nBegin * CONFIG.MAX_FILES_PER_INDEX) / CONFIG.HASHMAP_TOTAL_BUCKETS;
 
         /* Grab our binary offset. */
         const uint64_t nBufferPos = (nOffset * INDEX_FILTER_SIZE);
@@ -616,8 +616,8 @@ namespace LLD
             return debug::error(FUNCTION, "out of range ", VARIABLE(nBucket));
 
         /* Keep track of how many buckets and bytes we have remaining in this read cycle. */
-        uint32_t nRemaining = nTotal;
-        uint32_t nIterator  = nBucket;
+        uint64_t nRemaining = nTotal;
+        uint64_t nIterator  = nBucket;
         uint64_t nBufferPos = 0;
 
         /* Adjust our buffer size to fit the total buckets. */
@@ -625,12 +625,12 @@ namespace LLD
         do
         {
             /* Calculate the file and boundaries we are on with current bucket. */
-            const uint32_t nFile = (nIterator * CONFIG.MAX_FILES_PER_INDEX) / CONFIG.HASHMAP_TOTAL_BUCKETS;
-            const uint32_t nBoundary  = (((nFile + 1) * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_INDEX);
+            const uint64_t nFile = (nIterator * CONFIG.MAX_FILES_PER_INDEX) / CONFIG.HASHMAP_TOTAL_BUCKETS;
+            const uint64_t nBoundary  = (((nFile + 1) * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_INDEX);
 
             /* Used to check projected file based on boundary iterator to determine if the count needs a -1 offset. */
-            const uint32_t nBegin = (nFile * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_INDEX;
-            const uint32_t nCheck = (nBegin * CONFIG.MAX_FILES_PER_INDEX) / CONFIG.HASHMAP_TOTAL_BUCKETS;
+            const uint64_t nBegin = (nFile * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_INDEX;
+            const uint64_t nCheck = (nBegin * CONFIG.MAX_FILES_PER_INDEX) / CONFIG.HASHMAP_TOTAL_BUCKETS;
 
             /* Find our new file position from current bucket and offset. */
             const uint64_t nFilePos      = (INDEX_FILTER_SIZE * (nIterator - ((nCheck != nFile) ? 1 : 0) -
@@ -646,7 +646,7 @@ namespace LLD
                 pindex->seekg(nFilePos, std::ios::beg);
 
             /* Find the range (in bytes) we want to read for this index range. */
-            const uint32_t nMaxBuckets = std::min(nRemaining, std::max(1u, (nBoundary - nIterator))); //need 1u otherwise we could loop indefinately
+            const uint64_t nMaxBuckets = std::min(nRemaining, std::max(uint64_t(1), (nBoundary - nIterator))); //need 1u otherwise we could loop indefinately
             const uint64_t nReadSize   = nMaxBuckets * INDEX_FILTER_SIZE;
 
             /* Read our index data into the buffer. */
@@ -706,11 +706,11 @@ namespace LLD
                     set_secondary_bloom(key.vKey, vBuffer, nHashmapIterator, nOffset + primary_bloom_size() + 2);
 
                     /* Calculate the file and boundaries we are on with current bucket. */
-                    const uint32_t nFile = (nAdjustedBucket * CONFIG.MAX_FILES_PER_HASHMAP) / CONFIG.HASHMAP_TOTAL_BUCKETS;
-                    const uint32_t nBoundary  = ((nFile * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_HASHMAP);
+                    const uint64_t nFile = (nAdjustedBucket * CONFIG.MAX_FILES_PER_HASHMAP) / CONFIG.HASHMAP_TOTAL_BUCKETS;
+                    const uint64_t nBoundary  = ((nFile * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_HASHMAP);
 
                     /* Used to check projected file based on boundary iterator to determine if the count needs a -1 offset. */
-                    const uint32_t nCheck = (nBoundary * CONFIG.MAX_FILES_PER_HASHMAP) / CONFIG.HASHMAP_TOTAL_BUCKETS;
+                    const uint64_t nCheck = (nBoundary * CONFIG.MAX_FILES_PER_HASHMAP) / CONFIG.HASHMAP_TOTAL_BUCKETS;
 
                     /* Write our new hashmap entry into the file's bucket. */
                     const uint64_t nFilePos = (CONFIG.HASHMAP_KEY_ALLOCATION * (nAdjustedBucket - nBoundary - ((nCheck != nFile) ? 1 : 0)));
@@ -771,7 +771,7 @@ namespace LLD
         for(uint32_t nProbe = 0; nProbe < nProbes; ++nProbe)
         {
             /* Calculate our adjusted bucket. */
-            const uint32_t nAdjustedBucket = (nBucket + nProbe);
+            const uint64_t nAdjustedBucket = (nBucket + nProbe);
 
             /* Check our ranges here and break early if exhausting hashmap buckets. */
             if(nAdjustedBucket >= CONFIG.HASHMAP_TOTAL_BUCKETS) //TODO: remove debug::error when moving to production
@@ -793,11 +793,11 @@ namespace LLD
                     continue;
 
                 /* Calculate the file and boundaries we are on with current bucket. */
-                const uint32_t nFile = (nAdjustedBucket * CONFIG.MAX_FILES_PER_HASHMAP) / CONFIG.HASHMAP_TOTAL_BUCKETS;
-                const uint32_t nBoundary  = ((nFile * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_HASHMAP);
+                const uint64_t nFile = (nAdjustedBucket * CONFIG.MAX_FILES_PER_HASHMAP) / CONFIG.HASHMAP_TOTAL_BUCKETS;
+                const uint64_t nBoundary  = ((nFile * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_HASHMAP);
 
                 /* Used to check projected file based on boundary iterator to determine if the count needs a -1 offset. */
-                const uint32_t nCheck = (nBoundary * CONFIG.MAX_FILES_PER_HASHMAP) / CONFIG.HASHMAP_TOTAL_BUCKETS;
+                const uint64_t nCheck = (nBoundary * CONFIG.MAX_FILES_PER_HASHMAP) / CONFIG.HASHMAP_TOTAL_BUCKETS;
 
                 /* Write our new hashmap entry into the file's bucket. */
                 const uint64_t nFilePos = (CONFIG.HASHMAP_KEY_ALLOCATION * (nAdjustedBucket - nBoundary - ((nCheck != nFile) ? 1 : 0)));
@@ -901,11 +901,11 @@ namespace LLD
                     continue;
 
                 /* Calculate the file and boundaries we are on with current bucket. */
-                const uint32_t nFile = (nAdjustedBucket * CONFIG.MAX_FILES_PER_HASHMAP) / CONFIG.HASHMAP_TOTAL_BUCKETS;
-                const uint32_t nBoundary  = ((nFile * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_HASHMAP);
+                const uint64_t nFile = (nAdjustedBucket * CONFIG.MAX_FILES_PER_HASHMAP) / CONFIG.HASHMAP_TOTAL_BUCKETS;
+                const uint64_t nBoundary  = ((nFile * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_HASHMAP);
 
                 /* Used to check projected file based on boundary iterator to determine if the count needs a -1 offset. */
-                const uint32_t nCheck = (nBoundary * CONFIG.MAX_FILES_PER_HASHMAP) / CONFIG.HASHMAP_TOTAL_BUCKETS;
+                const uint64_t nCheck = (nBoundary * CONFIG.MAX_FILES_PER_HASHMAP) / CONFIG.HASHMAP_TOTAL_BUCKETS;
 
                 /* Read our bucket level data from the hashmap. */
                 const uint64_t nFilePos = (CONFIG.HASHMAP_KEY_ALLOCATION * (nAdjustedBucket - nBoundary - ((nCheck != nFile) ? 1 : 0)));

@@ -35,6 +35,7 @@ else
 	CXXFLAGS+= -m64
 endif
 
+LIBS := -l leveldb 
 
 #Define default LIB and INCLUDE path variables
 ifndef OPENSSL_LIB_PATH
