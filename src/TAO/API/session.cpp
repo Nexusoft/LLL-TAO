@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/API/include/session.h>
+#include <TAO/API/types/session.h>
 #include <TAO/API/include/utils.h>
 
 #include <TAO/Ledger/types/sigchain.h>

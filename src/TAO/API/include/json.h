@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 #include <Util/include/json.h>
+#include <TAO/API/types/clause.h>
 
 namespace Legacy { class Transaction; }
 
@@ -36,22 +37,7 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
-        /* Simple class to encapsulate a filter clause */
-        class Clause
-        {
-        public:
-
-            /* The field to filter on */
-            std::string strField;
-
-            /* The operation code */
-            uint8_t nOP;
-
-            /* The value to filter on */
-            std::string strValue;
-
-        };
-
+        
         /** BlockToJSON
          *
          *  Converts the block to formatted JSON
