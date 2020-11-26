@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #define NEXUS_TAO_API_INCLUDE_DEX_H
 
 #include <TAO/API/types/base.h>
+#include <TAO/Operation/types/contract.h>
 
 /* Global TAO namespace. */
 namespace TAO
