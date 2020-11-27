@@ -346,10 +346,6 @@ class mstream
     };
 
 
-    /** Error code driven by mmap mio wrapper. **/
-    std::error_code ERROR;
-
-
     /** MMAP object from mio wrapper. **/
     mmap_context CTX;
 
@@ -381,8 +377,7 @@ public:
 
     /** Construct with correct flags and path to file. **/
     mstream(const std::string& strPath, const uint8_t nFlags)
-    : ERROR  ( )
-    , CTX    ( )
+    : CTX    ( )
     , GET    (0)
     , PUT    (0)
     , STATUS (0)
@@ -398,8 +393,7 @@ public:
 
     /** Move Constructor. **/
     mstream(mstream&& stream)
-    : ERROR  (std::move(stream.ERROR))
-    , CTX    (std::move(stream.CTX))
+    : CTX    (std::move(stream.CTX))
     , GET    (std::move(stream.GET))
     , PUT    (std::move(stream.PUT))
     , STATUS (std::move(stream.STATUS))
@@ -415,7 +409,6 @@ public:
     /** Move Assignment. **/
     mstream& operator=(mstream&& stream)
     {
-        ERROR  = std::move(stream.ERROR);
         CTX    = std::move(stream.CTX);
         GET    = std::move(stream.GET);
         PUT    = std::move(stream.PUT);
