@@ -195,142 +195,6 @@ bool read_index(const uint32_t nBucket, const uint32_t nTotal, const LLD::Config
 
 #include <leveldb/c.h>
 
-#include <Util/mio/mmap.hpp>
-
-
-#ifdef _WIN32
-typedef HANDLE file_t;
-#else
-typedef int file_t;
-#endif
-
-#ifdef _WIN32
-# ifndef WIN32_LEAN_AND_MEAN
-#  define WIN32_LEAN_AND_MEAN
-# endif // WIN32_LEAN_AND_MEAN
-# include <windows.h>
-#else // ifdef _WIN32
-# define INVALID_HANDLE_VALUE -1
-#endif // ifdef _WIN32
-
-
-#ifdef _WIN32
-/** Returns the 4 upper bytes of a 8-byte integer. */
-inline DWORD int64_high(int64_t n) noexcept
-{
-    return n >> 32;
-}
-
-/** Returns the 4 lower bytes of a 8-byte integer. */
-inline DWORD int64_low(int64_t n) noexcept
-{
-    return n & 0xffffffff;
-}
-#endif
-
-
-/**
- * Determines the operating system's page allocation granularity.
- *
- * On the first call to this function, it invokes the operating system specific syscall
- * to determine the page size, caches the value, and returns it. Any subsequent call to
- * this function serves the cached value, so no further syscalls are made.
- */
-inline size_t page_size()
-{
-    static const size_t nPageSize = []
-    {
-#ifdef _WIN32
-        SYSTEM_INFO SystemInfo;
-        GetSystemInfo(&SystemInfo);
-        return SystemInfo.dwAllocationGranularity;
-#else
-        return sysconf(_SC_PAGE_SIZE);
-#endif
-    }();
-    return nPageSize;
-}
-
-/** make_offset_page_aligned
- *
- * Alligns `nOffset` to the operating's system page size such that it subtracts the
- * difference until the nearest page boundary before `offset`, or does nothing if
- * `nOffset` is already page aligned.
- *
- *  @param[in] nOffset The offset value to align.
- *
- *  @return the aligned offset value
- */
-size_t make_offset_page_aligned(const size_t nOffset) noexcept
-{
-    const size_t nPageSize = page_size();
-
-    // Use integer division to round down to the nearest page alignment.
-    return nOffset / nPageSize * nPageSize;
-}
-
-
-/** query_file_size
- *
- *  Get the filesize from the OS level API.
- *
- *  @param[in] hFile The file handle to query for.
- *
- *  @return the size of file.
- *
- **/
-int64_t query_file_size(const file_t hFile)
-{
-#ifdef _WIN32
-
-    /* Query filesize with Windoze API. */
-    LARGE_INTEGER nSize;
-    if(::GetFileSizeEx(hFile, &nSize) == 0)
-        return INVALID_HANDLE_VALUE;
-
-	return static_cast<int64_t>(nSize.QuadPart);
-
-#else // POSIX
-
-    /* Query filesize with POSIX API. */
-    struct stat sbuf;
-    if(::fstat(hFile, &sbuf) == -1)
-        return INVALID_HANDLE_VALUE;
-
-    return sbuf.st_size;
-#endif
-}
-
-
-file_t open_file(const std::string& strPath)
-{
-    /* Check that the file exists. */
-    if(!filesystem::exists(strPath))
-        return INVALID_HANDLE_VALUE;
-
-#ifdef _WIN32
-
-    /* Create file with windoze API. */
-    const file_t hFile = ::CreateFileA(strPath.c_str(),
-            GENERIC_READ | GENERIC_WRITE,
-            FILE_SHARE_READ | FILE_SHARE_WRITE,
-            0,
-            OPEN_EXISTING,
-            FILE_ATTRIBUTE_NORMAL,
-            0);
-#else // POSIX
-
-    /* Create file with POSIX API. */
-    const file_t hFile = ::open(strPath.c_str(), O_RDWR);
-#endif
-
-    /* Check for failures. */
-    if(hFile == INVALID_HANDLE_VALUE)
-        return INVALID_HANDLE_VALUE;
-
-    return hFile;
-}
-
 
 /** mmap_context
  *
@@ -576,7 +440,7 @@ public:
         FLAGS = nFlags;
 
         /* Attempt to open the file. */
-        file_t hFile = open_file(strPath);
+        file_t hFile = filesystem::open_file(strPath);
         if(hFile == INVALID_HANDLE_VALUE)
         {
             STATUS |= STATE::BAD;
@@ -584,7 +448,7 @@ public:
         }
 
         /* Get the filesize for mapping. */
-        int64_t nFileSize = query_file_size(hFile);
+        int64_t nFileSize = filesystem::query_file_size(hFile);
         if(nFileSize == INVALID_HANDLE_VALUE)
         {
             STATUS |= STATE::FAIL;
@@ -1032,7 +896,7 @@ private:
     bool memory_map(const file_t hFile, const uint64_t nOffset, const uint64_t nLength)
     {
         /* Find our page alignment boundaries. */
-        const int64_t nAlignedOffset = make_offset_page_aligned(nOffset);
+        const int64_t nAlignedOffset = filesystem::make_offset_page_aligned(nOffset);
         const int64_t nMappingSize   = nOffset - nAlignedOffset + nLength;
 
     #ifdef _WIN32
@@ -1237,7 +1101,7 @@ int main(int argc, char** argv)
             swMap.stop();
 
             stream2.seekp((vKeys.size() - 1) * sizeof(vKeys[0]));
-            if(!stream2.write((char*)&vKeys[1], sizeof(vKeys[1])))
+            if(!stream2.write((char*)&vKeys[2], sizeof(vKeys[2])))
                 return debug::error("Failed to write a new mapping");
 
             stream2.flush();

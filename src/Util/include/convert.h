@@ -23,8 +23,24 @@ ________________________________________________________________________________
 #include <Util/include/json.h>
 
 
+#ifdef _WIN32
+/** Returns the 4 upper bytes of a 8-byte integer. */
+inline DWORD int64_high(int64_t n) noexcept
+{
+    return n >> 32;
+}
+
+/** Returns the 4 lower bytes of a 8-byte integer. */
+inline DWORD int64_low(int64_t n) noexcept
+{
+    return n & 0xffffffff;
+}
+#endif
+
+
 namespace convert
 {
+
     /** i64tostr
      *
      *  Converts a 64-bit signed integer into a string.

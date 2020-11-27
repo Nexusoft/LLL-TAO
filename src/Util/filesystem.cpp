@@ -52,6 +52,88 @@ ________________________________________________________________________________
 
 namespace filesystem
 {
+
+    /* Open a file handle by current path. */
+    file_t open_file(const std::string& strPath)
+    {
+        /* Check that the file exists. */
+        if(!exists(strPath))
+            return INVALID_HANDLE_VALUE;
+
+    #ifdef _WIN32
+
+        /* Create file with windoze API. */
+        const file_t hFile = ::CreateFileA(strPath.c_str(),
+                GENERIC_READ | GENERIC_WRITE,
+                FILE_SHARE_READ | FILE_SHARE_WRITE,
+                0,
+                OPEN_EXISTING,
+                FILE_ATTRIBUTE_NORMAL,
+                0);
+    #else // POSIX
+
+        /* Create file with POSIX API. */
+        const file_t hFile = ::open(strPath.c_str(), O_RDWR);
+    #endif
+
+        /* Check for failures. */
+        if(hFile == INVALID_HANDLE_VALUE)
+            return INVALID_HANDLE_VALUE;
+
+        return hFile;
+    }
+
+
+    /*  Determines the operating system's page allocation granularity.  */
+    size_t page_size()
+    {
+        static const size_t nPageSize = []
+        {
+    #ifdef _WIN32
+            SYSTEM_INFO SystemInfo;
+            GetSystemInfo(&SystemInfo);
+            return SystemInfo.dwAllocationGranularity;
+    #else
+            return sysconf(_SC_PAGE_SIZE);
+    #endif
+        }();
+        return nPageSize;
+    }
+
+    /* Alligns `nOffset` to the operating's system page size */
+    size_t make_offset_page_aligned(const size_t nOffset) noexcept
+    {
+        const size_t nPageSize = page_size();
+
+        // Use integer division to round down to the nearest page alignment.
+        return nOffset / nPageSize * nPageSize;
+    }
+
+
+    /* Get the filesize from the OS level API.*/
+    int64_t query_file_size(const file_t hFile)
+    {
+    #ifdef _WIN32
+
+        /* Query filesize with Windoze API. */
+        LARGE_INTEGER nSize;
+        if(::GetFileSizeEx(hFile, &nSize) == 0)
+            return INVALID_HANDLE_VALUE;
+
+    	return static_cast<int64_t>(nSize.QuadPart);
+
+    #else // POSIX
+
+        /* Query filesize with POSIX API. */
+        struct stat sbuf;
+        if(::fstat(hFile, &sbuf) == -1)
+            return INVALID_HANDLE_VALUE;
+
+        return sbuf.st_size;
+    #endif
+    }
+
+
     /* Removes a directory from the specified strPath. */
     bool remove_directories(const std::string& strPath)
     {
