@@ -121,10 +121,15 @@ namespace memory
 
 
         /** Current input flags to set behavior. */
-        const uint8_t FLAGS;
+        uint8_t FLAGS;
 
     public:
 
+        /** Don't allow empty constructors. **/
+        mstream() = delete;
+
+
+        /** Construct with correct flags and path to file. **/
         mstream(const std::string& strPath, const uint8_t nFlags)
         : ERROR  ( )
         , MMAP   (mio::make_mmap_sink(strPath, 0, mio::map_entire_file, ERROR))
@@ -135,9 +140,46 @@ namespace memory
         {
         }
 
+
+        /** Copy Constructor deleted because mmap_sink is move-only. **/
+        mstream(const mstream& stream) = delete;
+
+
+        /** Move Constructor. **/
+        mstream(mstream&& stream)
+        : ERROR  (std::move(stream.ERROR))
+        , MMAP   (std::move(stream.MMAP))
+        , GET    (std::move(stream.GET))
+        , PUT    (std::move(stream.PUT))
+        , STATUS (std::move(stream.STATUS))
+        , FLAGS  (std::move(stream.FLAGS))
+        {
+        }
+
+
+        /** Copy Assignment deleted because mmap_sink is move-only. **/
+        mstream& operator=(const mstream& stream) = delete;
+
+
+        /** Move Assignment. **/
+        mstream& operator=(mstream&& stream)
+        {
+            ERROR  = std::move(stream.ERROR);
+            MMAP   = std::move(stream.MMAP);
+            GET    = std::move(stream.GET);
+            PUT    = std::move(stream.PUT);
+            STATUS = std::move(stream.STATUS);
+            FLAGS  = std::move(stream.FLAGS);
+
+            return *this;
+        }
+
+
+        /** Default destructor. **/
         ~mstream()
         {
-            MMAP.sync(ERROR);
+            /* Close on destruct. */
+            close();
         }
 
 
@@ -297,7 +339,7 @@ namespace memory
          *  @return reference of stream
          *
          **/
-        mstream& seekg(const uint64_t nPos, const std::ios_base::seekdir nFlag)
+        mstream& seekg(const uint64_t nPos, const uint8_t nFlag)
         {
             /* Check our stream flags. */
             if(!(FLAGS & std::ios::in))
@@ -369,7 +411,7 @@ namespace memory
          *  @return reference of stream
          *
          **/
-        mstream& seekp(const uint64_t nPos, const std::ios_base::seekdir nFlag)
+        mstream& seekp(const uint64_t nPos, const uint8_t nFlag)
         {
             /* Check our stream flags. */
             if(!(FLAGS & std::ios::out))
@@ -454,7 +496,7 @@ namespace memory
             }
 
             /* Copy the input buffer into memory map. */
-            std::copy((uint8_t*)pBuffer, (uint8_t*)pBuffer + nSize, (uint8_t*)&MMAP[PUT]);
+            std::copy((uint8_t*)pBuffer, (uint8_t*)pBuffer + nSize, (uint8_t*)MMAP.begin() + PUT);
 
             /* Check for errors. */
             if(ERROR)
@@ -492,12 +534,14 @@ namespace memory
             /* Check if we will write to the end of file. */
             if(GET + nSize > MMAP.size())
             {
+                debug::log(0, "Exceeding size ", MMAP.size(), " < ", GET + nSize);
+
                 STATUS |= (STATE::END);
                 return *this;
             }
 
             /* Copy the memory mapped buffer into return buffer. */
-            std::copy((uint8_t*)&MMAP[GET], (uint8_t*)&MMAP[GET] + nSize, (uint8_t*)pBuffer);
+            std::copy((uint8_t*)MMAP.begin() + GET, (uint8_t*)MMAP.begin() + GET + nSize, (uint8_t*)pBuffer);
 
             /* Check for errors. */
             if(ERROR)
@@ -519,7 +563,7 @@ namespace memory
         void close()
         {
             /* Sync to filesystem. */
-            if(FLAGS & std::ios::out && STATUS & STATE::FULL)
+            if(FLAGS & std::ios::out && (STATUS & STATE::FULL))
                 MMAP.sync(ERROR);
 
             /* Let the object know we completed flush. */

@@ -23,7 +23,13 @@ ________________________________________________________________________________
 
 #include <cstdint>
 #include <string>
+
+#ifdef NO_MMAP
 #include <fstream>
+#else
+#include <Util/include/memory.h>
+#endif
+
 #include <vector>
 #include <mutex>
 
@@ -51,11 +57,19 @@ namespace LLD
 
 
         /** Keychain stream object. **/
+        #ifdef NO_MMAP
         TemplateLRU<std::pair<uint16_t, uint16_t>, std::fstream*>* pFileStreams;
+        #else
+        TemplateLRU<std::pair<uint16_t, uint16_t>, memory::mstream*>* pFileStreams;
+        #endif
 
 
         /** Keychain index stream. **/
+        #ifdef NO_MMAP
         TemplateLRU<uint16_t, std::fstream*>* pIndexStreams;
+        #else
+        TemplateLRU<uint16_t, memory::mstream*>* pIndexStreams;
+        #endif
 
 
     public:
@@ -169,7 +183,11 @@ namespace LLD
          *  @return the file stream from the cache.
          *
          **/
+        #ifdef NO_MMAP
         std::fstream* get_file_stream(const uint32_t nHashmap, const uint32_t nBucket);
+        #else
+        memory::mstream* get_file_stream(const uint32_t nHashmap, const uint32_t nBucket);
+        #endif
 
 
         /** get_index_stream
@@ -181,7 +199,11 @@ namespace LLD
          *  @return the stream object selected.
          *
          **/
+        #ifdef NO_MMAP
         std::fstream* get_index_stream(const uint32_t nFile);
+        #else
+        memory::mstream* get_index_stream(const uint32_t nFile);
+        #endif
 
 
         /** flush_index

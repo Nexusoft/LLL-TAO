@@ -195,6 +195,971 @@ bool read_index(const uint32_t nBucket, const uint32_t nTotal, const LLD::Config
 
 #include <leveldb/c.h>
 
+#include <Util/mio/mmap.hpp>
+
+
+#ifdef _WIN32
+typedef HANDLE file_t;
+#else
+typedef int file_t;
+#endif
+
+#ifdef _WIN32
+# ifndef WIN32_LEAN_AND_MEAN
+#  define WIN32_LEAN_AND_MEAN
+# endif // WIN32_LEAN_AND_MEAN
+# include <windows.h>
+#else // ifdef _WIN32
+# define INVALID_HANDLE_VALUE -1
+#endif // ifdef _WIN32
+
+
+#ifdef _WIN32
+/** Returns the 4 upper bytes of a 8-byte integer. */
+inline DWORD int64_high(int64_t n) noexcept
+{
+    return n >> 32;
+}
+
+/** Returns the 4 lower bytes of a 8-byte integer. */
+inline DWORD int64_low(int64_t n) noexcept
+{
+    return n & 0xffffffff;
+}
+#endif
+
+
+/**
+ * Determines the operating system's page allocation granularity.
+ *
+ * On the first call to this function, it invokes the operating system specific syscall
+ * to determine the page size, caches the value, and returns it. Any subsequent call to
+ * this function serves the cached value, so no further syscalls are made.
+ */
+inline size_t page_size()
+{
+    static const size_t nPageSize = []
+    {
+#ifdef _WIN32
+        SYSTEM_INFO SystemInfo;
+        GetSystemInfo(&SystemInfo);
+        return SystemInfo.dwAllocationGranularity;
+#else
+        return sysconf(_SC_PAGE_SIZE);
+#endif
+    }();
+    return nPageSize;
+}
+
+/** make_offset_page_aligned
+ *
+ * Alligns `nOffset` to the operating's system page size such that it subtracts the
+ * difference until the nearest page boundary before `offset`, or does nothing if
+ * `nOffset` is already page aligned.
+ *
+ *  @param[in] nOffset The offset value to align.
+ *
+ *  @return the aligned offset value
+ */
+size_t make_offset_page_aligned(const size_t nOffset) noexcept
+{
+    const size_t nPageSize = page_size();
+
+    // Use integer division to round down to the nearest page alignment.
+    return nOffset / nPageSize * nPageSize;
+}
+
+
+/** query_file_size
+ *
+ *  Get the filesize from the OS level API.
+ *
+ *  @param[in] hFile The file handle to query for.
+ *
+ *  @return the size of file.
+ *
+ **/
+int64_t query_file_size(const file_t hFile)
+{
+#ifdef _WIN32
+
+    /* Query filesize with Windoze API. */
+    LARGE_INTEGER nSize;
+    if(::GetFileSizeEx(hFile, &nSize) == 0)
+        return INVALID_HANDLE_VALUE;
+
+	return static_cast<int64_t>(nSize.QuadPart);
+
+#else // POSIX
+
+    /* Query filesize with POSIX API. */
+    struct stat sbuf;
+    if(::fstat(hFile, &sbuf) == -1)
+        return INVALID_HANDLE_VALUE;
+
+    return sbuf.st_size;
+#endif
+}
+
+
+file_t open_file(const std::string& strPath)
+{
+    /* Check that the file exists. */
+    if(!filesystem::exists(strPath))
+        return INVALID_HANDLE_VALUE;
+
+#ifdef _WIN32
+
+    /* Create file with windoze API. */
+    const file_t hFile = ::CreateFileA(strPath.c_str(),
+            GENERIC_READ | GENERIC_WRITE,
+            FILE_SHARE_READ | FILE_SHARE_WRITE,
+            0,
+            OPEN_EXISTING,
+            FILE_ATTRIBUTE_NORMAL,
+            0);
+#else // POSIX
+
+    /* Create file with POSIX API. */
+    const file_t hFile = ::open(strPath.c_str(), O_RDWR);
+#endif
+
+    /* Check for failures. */
+    if(hFile == INVALID_HANDLE_VALUE)
+        return INVALID_HANDLE_VALUE;
+
+    return hFile;
+}
+
+
+/** mmap_context
+ *
+ *  Context to hold information pertaining to an active memory mapping.
+ *
+ **/
+struct mmap_context
+{
+
+    /** Beginning of the mapped address space. **/
+    char* data;
+
+
+    /** Length of the requested file mapping. **/
+    uint64_t nLength;
+
+
+    /** Length of the actual mapping based on page boundaries. **/
+    uint64_t nMappedSize;
+
+
+    /** The file handle to reference memory mapping file descriptor. **/
+    file_t hFile;
+
+
+    /** The file mapping handle to reference memory mapping file descriptor. **/
+    file_t hMapping;
+
+
+    /** Default Constructor. **/
+    mmap_context()
+    : data        (nullptr)
+    , nLength     (0)
+    , nMappedSize (0)
+    , hFile       (INVALID_HANDLE_VALUE)
+    {
+    }
+
+    /** IsNull
+     *
+     *  Checks if the context is in a null state.
+     *
+     **/
+    bool IsNull() const
+    {
+        return data == nullptr && nLength == 0;
+    }
+
+
+    /** size
+     *
+     *  Get the current size of the context.
+     *
+     **/
+    size_t size() const
+    {
+        return nLength;
+    }
+
+
+    /** mapped_length
+     *
+     *  Get the current size of the mapped memory which is adjusted for page boundaries.
+     *
+     **/
+    size_t mapped_length() const
+    {
+        return nMappedSize;
+    }
+
+
+    /** offset
+     *
+     *  Find offset relative to file's start, where the mapping was requested.
+     *
+     **/
+    size_t offset() const
+    {
+        return nMappedSize - nLength;
+    }
+
+
+    /** begin
+     *
+     *  The memory address of the start of this mmap.
+     *
+     **/
+    char* begin()
+    {
+        return data;
+    }
+
+
+    /** begin
+     *
+     *  The memory address of the start of this mmap.
+     *
+     **/
+    const char* begin() const
+    {
+        return data;
+    }
+
+
+    /** get_mapping_start
+     *
+     *  Get the mapping beginning address location.
+     *
+     **/
+    char* get_mapping_start()
+    {
+        return data ? (data - offset()) : nullptr;
+    }
+
+
+    /** get_mapping_start
+     *
+     *  Get the mapping beginning address location.
+     *
+     **/
+    const char* get_mapping_start() const
+    {
+        return data ? (data - offset()) : nullptr;
+    }
+};
+
+
+
+
+
+/** @Class mstream
+ *
+ *  RAII wrapper around mio::mmap library.
+ *
+ *  Allows reading and writing on memory mapped files with an interface that closely resembles std::fstream.
+ *  Keeps track of reading and writing iterators and seeks over the memory map rather than through a buffer
+ *  and a disk seek. Allows interchangable swap ins and outs for regular buffered io or mmapped io.
+ *
+ **/
+class mstream
+{
+    /** Internal enumeration flags for mimicking fstream flags. **/
+    enum STATE
+    {
+        BAD  = (1 << 1),
+        FAIL = (1 << 2),
+        END  = (1 << 3),
+        FULL = (1 << 4),
+    };
+
+
+    /** Error code driven by mmap mio wrapper. **/
+    std::error_code ERROR;
+
+
+    /** MMAP object from mio wrapper. **/
+    mmap_context CTX;
+
+
+    /** Binary position of reading pointer. **/
+    uint64_t GET;
+
+
+    /** Binary position of writing pointer. **/
+    uint64_t PUT;
+
+
+    /** Total bytes recently read. **/
+    uint64_t COUNT;
+
+
+    /** Current status of stream object. **/
+    uint8_t STATUS;
+
+
+    /** Current input flags to set behavior. */
+    uint8_t FLAGS;
+
+public:
+
+    /** Don't allow empty constructors. **/
+    mstream() = delete;
+
+
+    /** Construct with correct flags and path to file. **/
+    mstream(const std::string& strPath, const uint8_t nFlags)
+    : ERROR  ( )
+    , CTX    ( )
+    , GET    (0)
+    , PUT    (0)
+    , STATUS (0)
+    , FLAGS  (nFlags)
+    {
+        open(strPath, nFlags);
+    }
+
+
+    /** Copy Constructor deleted because mmap_sink is move-only. **/
+    mstream(const mstream& stream) = delete;
+
+
+    /** Move Constructor. **/
+    mstream(mstream&& stream)
+    : ERROR  (std::move(stream.ERROR))
+    , CTX    (std::move(stream.CTX))
+    , GET    (std::move(stream.GET))
+    , PUT    (std::move(stream.PUT))
+    , STATUS (std::move(stream.STATUS))
+    , FLAGS  (std::move(stream.FLAGS))
+    {
+    }
+
+
+    /** Copy Assignment deleted because mmap_sink is move-only. **/
+    mstream& operator=(const mstream& stream) = delete;
+
+
+    /** Move Assignment. **/
+    mstream& operator=(mstream&& stream)
+    {
+        ERROR  = std::move(stream.ERROR);
+        CTX    = std::move(stream.CTX);
+        GET    = std::move(stream.GET);
+        PUT    = std::move(stream.PUT);
+        STATUS = std::move(stream.STATUS);
+        FLAGS  = std::move(stream.FLAGS);
+
+        return *this;
+    }
+
+
+    /** Default destructor. **/
+    ~mstream()
+    {
+        /* Close on destruct. */
+        close();
+    }
+
+
+    void open(const std::string& strPath, const uint8_t nFlags)
+    {
+        /* Set the appropriate flags. */
+        FLAGS = nFlags;
+
+        /* Attempt to open the file. */
+        file_t hFile = open_file(strPath);
+        if(hFile == INVALID_HANDLE_VALUE)
+        {
+            STATUS |= STATE::BAD;
+            return;
+        }
+
+        /* Get the filesize for mapping. */
+        int64_t nFileSize = query_file_size(hFile);
+        if(nFileSize == INVALID_HANDLE_VALUE)
+        {
+            STATUS |= STATE::FAIL;
+            return;
+        }
+
+
+        /* Attempt to map the file. */
+        if(!memory_map(hFile, 0, nFileSize))
+        {
+            STATUS |= STATE::FAIL;
+            return;
+        }
+    }
+
+
+    /** is_open
+     *
+     *  Checks if the mmap is currently open for reading.
+     *
+     **/
+    bool is_open() const
+    {
+        return CTX.hFile != INVALID_HANDLE_VALUE;
+    }
+
+
+    /** good
+     *
+     *  Checks if the mmap is in an operable state.
+     *
+     **/
+    bool good() const
+    {
+        /* Check our status bits first. */
+        if(STATUS & STATE::BAD || STATUS & STATE::FAIL || STATUS & STATE::END)
+            return false;
+
+        return is_open();
+    }
+
+
+    /** bad
+     *
+     *  Checks if the mmap has failed or reached end of file.
+     *
+     **/
+    bool bad() const
+    {
+        /* Check our failbits first. */
+        if(STATUS & STATE::BAD || STATUS & STATE::FAIL)
+            return true;
+
+        /* Check the reverse of good(). */
+        return false;
+    }
+
+
+    /** fail
+     *
+     *  Checks if the mmap has failed at any point.
+     *
+     **/
+    bool fail() const
+    {
+        /* Check our failbits first. */
+        if(STATUS & STATE::FAIL)
+            return true;
+
+        return false;
+    }
+
+
+    /** eof
+     *
+     *  Checks if the end of file has been found.
+     *
+     **/
+    bool eof() const
+    {
+        /* Check if our end of file flag has been set. */
+        if(STATUS & STATE::END)
+            return true;
+
+        return false;
+    }
+
+
+    /** ! operator
+     *
+     *  Check that the current mmap is in good condition.
+     *
+     **/
+    bool operator!(void) const
+    {
+        return !good();
+    }
+
+
+    /** tellg
+     *
+     *  Gives current reading position for the memory map
+     *
+     **/
+    uint64_t tellg() const
+    {
+        return GET;
+    }
+
+
+    /** tellp
+     *
+     *  Gives current writing position for the memory map
+     *
+     **/
+    uint64_t tellp() const
+    {
+        return PUT;
+    }
+
+
+    /** gcount
+     *
+     *  Tell us how many bytes we have just read.
+     *
+     **/
+    uint64_t gcount() const
+    {
+        return COUNT;
+    }
+
+
+    /** seekg
+     *
+     *  Sets the current reading position for memory map.
+     *
+     *  @param[in] nPos The binary position in bytes to seek to
+     *
+     *  @return reference of stream
+     *
+     **/
+    mstream& seekg(const uint64_t nPos)
+    {
+        /* Check our stream flags. */
+        if(!(FLAGS & std::ios::in))
+        {
+            STATUS |= (STATE::BAD);
+            return *this;
+        }
+
+        /* Unset the eof bit. */
+        STATUS &= ~(STATE::END);
+        GET = nPos;
+
+        /* Check we aren't out of bounds. */
+        if(GET > CTX.size())
+            STATUS |= (STATE::END);
+
+        return *this;
+    }
+
+
+    /** seekg
+     *
+     *  Sets the current reading position for memory map.
+     *
+     *  @param[in] nPos The binary position in bytes to seek to
+     *  @param[in] nFlag The flag to adjust seeking behavior.
+     *
+     *  @return reference of stream
+     *
+     **/
+    mstream& seekg(const uint64_t nPos, const uint8_t nFlag)
+    {
+        /* Check our stream flags. */
+        if(!(FLAGS & std::ios::in))
+        {
+            STATUS |= (STATE::BAD);
+            return *this;
+        }
+
+        /* Unset the eof bit. */
+        STATUS &= ~(STATE::END);
+
+        /* Handle a seek from different flags. */
+        switch(nFlag)
+        {
+            case std::ios::beg:
+            {
+                GET = nPos;
+                break;
+            }
+
+            case std::ios::end:
+            {
+                GET = (CTX.size() - nPos);
+                break;
+            }
+
+            case std::ios::cur:
+            {
+                GET += nPos;
+                break;
+            }
+        }
+
+        /* Check we aren't out of bounds. */
+        if(GET > CTX.size())
+            STATUS |= (STATE::END);
+
+        return *this;
+    }
+
+
+    /** seekp
+     *
+     *  Sets the current writing position for memory map.
+     *
+     *  @param[in] nPos The binary position in bytes to seek to
+     *
+     *  @return reference of stream
+     *
+     **/
+    mstream& seekp(const uint64_t nPos)
+    {
+        /* Check our stream flags. */
+        if(!(FLAGS & std::ios::out))
+        {
+            STATUS |= (STATE::BAD);
+            return *this;
+        }
+
+        /* Unset the eof bit. */
+        STATUS &= ~(STATE::END);
+        PUT = nPos;
+
+        /* Check we aren't out of bounds. */
+        if(PUT > CTX.size())
+            STATUS |= (STATE::END);
+
+        return *this;
+    }
+
+
+    /** seekp
+     *
+     *  Sets the current writing position for memory map.
+     *
+     *  @param[in] nPos The binary position in bytes to seek to
+     *  @param[in] nFlag The flag to adjust seeking behavior.
+     *
+     *  @return reference of stream
+     *
+     **/
+    mstream& seekp(const uint64_t nPos, const uint8_t nFlag)
+    {
+        /* Check our stream flags. */
+        if(!(FLAGS & std::ios::out))
+        {
+            STATUS |= (STATE::BAD);
+            return *this;
+        }
+
+        /* Unset the eof bit. */
+        STATUS &= ~(STATE::END);
+
+        /* Handle a seek from different flags. */
+        switch(nFlag)
+        {
+            case std::ios::beg:
+            {
+                PUT = nPos;
+                break;
+            }
+
+            case std::ios::end:
+            {
+                PUT = (CTX.size() - nPos);
+                break;
+            }
+
+            case std::ios::cur:
+            {
+                PUT += nPos;
+                break;
+            }
+        }
+
+        /* Check we aren't out of bounds. */
+        if(PUT > CTX.size())
+        {
+            STATUS |= (STATE::END);
+        }
+
+        return *this;
+    }
+
+
+
+
+    /** flush
+     *
+     *  Flushes buffers to disk from memorymap.
+     *
+     *  @return reference of stream
+     *
+     **/
+    mstream& flush()
+    {
+        /* Check that we are properly mapped. */
+        if(!is_open())
+        {
+            STATUS |= STATE::FAIL;
+            return *this;
+        }
+
+        /* Sync to filesystem. */
+        if(FLAGS & std::ios::out && STATUS & STATE::FULL)
+            sync();
+
+        /* Let the object know we completed flush. */
+        STATUS &= ~STATE::FULL;
+
+        return *this;
+    }
+
+
+    /** write
+     *
+     *  Writes a series of bytes into memory mapped file
+     *
+     *  @param[in] pBuffer The starting address of buffer to write.
+     *  @param[in] nSize The size to write to memory map.
+     *
+     *  @return reference of stream
+     *
+     **/
+    mstream& write(const char* pBuffer, const uint64_t nSize)
+    {
+        /* Check that we are properly mapped. */
+        if(!is_open())
+        {
+            STATUS |= STATE::FAIL;
+            return *this;
+        }
+
+        /* Check our stream flags. */
+        if(!(FLAGS & std::ios::out))
+        {
+            STATUS |= (STATE::BAD);
+            return *this;
+        }
+
+        /* Check if we will write to the end of file. */
+        if(PUT + nSize > CTX.size())
+        {
+            STATUS |= (STATE::END);
+            return *this;
+        }
+
+        /* Copy the input buffer into memory map. */
+        std::copy((uint8_t*)pBuffer, (uint8_t*)pBuffer + nSize, (uint8_t*)CTX.begin() + PUT);
+
+        /* Let the object know we are ready to flush. */
+        STATUS |= STATE::FULL;
+
+        /* Increment our write position. */
+        PUT += nSize;
+
+        return *this;
+    }
+
+
+    /** read
+     *
+     *  Reads a series of bytes from memory mapped file
+     *
+     *  @param[in] pBuffer The starting address of buffer to read.
+     *  @param[in] nSize The size to read from memory map.
+     *
+     *  @return reference of stream
+     *
+     **/
+    mstream& read(char* pBuffer, const uint64_t nSize)
+    {
+        /* Check that we are properly mapped. */
+        if(!is_open())
+        {
+            STATUS |= STATE::FAIL;
+            return *this;
+        }
+
+        /* Check our stream flags. */
+        if(!(FLAGS & std::ios::in))
+        {
+            STATUS |= (STATE::BAD);
+            return *this;
+        }
+
+        /* Check if we will write to the end of file. */
+        if(GET + nSize > CTX.size())
+        {
+            STATUS |= (STATE::END);
+            return *this;
+        }
+
+        /* Copy the memory mapped buffer into return buffer. */
+        std::copy((uint8_t*)CTX.begin() + GET, (uint8_t*)CTX.begin() + GET + nSize, (uint8_t*)pBuffer);
+
+        /* Increment our write position. */
+        GET  += nSize;
+        COUNT = nSize;
+
+        return *this;
+    }
+
+
+    /** close
+     *
+     *  Closes the mstream mmap handle and flushes to disk.
+     *
+     **/
+    void close()
+    {
+        /* Sync to filesystem. */
+        if(FLAGS & std::ios::out && (STATUS & STATE::FULL))
+            sync();
+
+        /* Let the object know we completed flush. */
+        STATUS &= ~STATE::FULL;
+
+        /* Unmap the file now. */
+        unmap();
+    }
+
+
+private:
+
+
+    /** memory_map
+     *
+     *  Map a given file to a virtual memory location for use in reading and writing.
+     *
+     **/
+    bool memory_map(const file_t hFile, const uint64_t nOffset, const uint64_t nLength)
+    {
+        /* Find our page alignment boundaries. */
+        const int64_t nAlignedOffset = make_offset_page_aligned(nOffset);
+        const int64_t nMappingSize   = nOffset - nAlignedOffset + nLength;
+
+    #ifdef _WIN32
+
+        /* Create the file mapping. */
+        const int64_t nMaxFilesize = nOffset + nLength;
+        const file_t hFile = ::CreateFileMapping(
+                hFile,
+                0,
+                PAGE_READWRITE,
+                int64_high(nMaxFilesize),
+                int64_low(nMaxFilesize),
+                0);
+
+        /* Check for file handle failures. */
+        if(hFile == INVALID_HANDLE_VALUE)
+            return debug::error(FUNCTION, "failed to establish memory mapping");
+
+        /* Get the mapping information. */
+        char* pBegin = static_cast<char*>(::MapViewOfFile(
+                hFile,
+                FILE_MAP_WRITE,
+                int64_high(nAlignedOffset),
+                int64_low(nAlignedOffset),
+                nMappingSize));
+
+        /* Check for mapping failures. */
+        if(pBegin == nullptr)
+            return debug::error(FUNCTION, "failed to establish page view");
+    #else // POSIX
+
+        /* Establish a new mapping. */
+        char* pBegin = static_cast<char*>(::mmap(
+                0, // Don't give hint as to where to map.
+                nMappingSize,
+                PROT_READ | PROT_WRITE,
+                MAP_SHARED | MAP_LOCKED,
+                hFile,
+                nAlignedOffset));
+
+        /* Check for mapping failures. */
+        if(pBegin == MAP_FAILED)
+            return debug::error(FUNCTION, "failed to create memory mapping");
+    #endif
+
+        /* Populate the context to return. */
+        CTX.data        = pBegin + nOffset - nAlignedOffset;
+        CTX.nLength     = nLength;
+        CTX.nMappedSize = nMappingSize;
+        CTX.hFile       = hFile;
+
+        return true;
+    }
+
+
+    void unmap()
+    {
+        if(!is_open()) { return; }
+        // TODO do we care about errors here?
+    #ifdef _WIN32
+        //if(is_mapped()) TODO: this needs to check the mapping handle fd
+        {
+            ::UnmapViewOfFile(CTX.get_mapping_start());
+            //::CloseHandle(CTX.hFile); TODO: we need to capture separate windoze related handle to close mmap
+        }
+    #else // POSIX
+        if(CTX.data) { ::munmap(const_cast<char*>(CTX.get_mapping_start()), CTX.mapped_length()); }
+    #endif
+
+        /* Close our file handles. */
+    #ifdef _WIN32
+            ::CloseHandle(CTX.hFile);
+    #else // POSIX
+            ::close(CTX.hFile);
+    #endif
+
+        // Reset fields to their default values.
+        CTX.data        = nullptr;
+        CTX.nMappedSize = 0;
+        CTX.nLength     = 0;
+        CTX.hFile       = INVALID_HANDLE_VALUE;
+        //TODO: windoze extra handle
+    }
+
+
+    /** sync
+     *
+     *  Tell the OS to update the modified pages to disk.
+     *
+     **/
+    void sync()
+    {
+        /* Check for invalid file handles. */
+        if(!is_open())
+        {
+            STATUS |= STATE::FAIL;
+            return;
+        }
+
+        /* Check that there is data to write. */
+        if(!(STATUS & STATE::FULL))
+            return;
+
+        /* Only sync if not there's data mapped. */
+        if(CTX.data)
+        {
+    #ifdef _WIN32
+            if(::FlushViewOfFile(CTX.get_mapping_start(), CTX.mapped_length()) == 0
+               || ::FlushFileBuffers(CTX.hFile) == 0)
+    #else // POSIX
+            if(::msync(CTX.get_mapping_start(), CTX.mapped_length(), MS_SYNC) != 0)
+    #endif
+            {
+                STATUS |= STATE::FAIL;
+                return;
+            }
+        }
+    #ifdef _WIN32
+        if(::FlushFileBuffers(CTX.hFile) == 0)
+        {
+            STATUS |= STATE::FAIL;
+            return;
+        }
+    #endif
+    }
+};
+
 
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
@@ -263,12 +1228,25 @@ int main(int argc, char** argv)
         else
         {
             swMap.start();
-            memory::mstream stream2(strKeys, std::ios::in);
+
+            //file_t hFile = open_file(strKeys, )
+            mstream stream2(strKeys, std::ios::in | std::ios::out);
             if(!stream2.read((char*)&vKeys[0], vKeys.size() * sizeof(vKeys[0])))
-                return debug::error("Failed to write data for mmap");
+                return debug::error("Failed to read data for mmap");
+
+            swMap.stop();
+
+            stream2.seekp((vKeys.size() - 1) * sizeof(vKeys[0]));
+            if(!stream2.write((char*)&vKeys[1], sizeof(vKeys[1])))
+                return debug::error("Failed to write a new mapping");
+
+            stream2.flush();
+
+            stream2.seekg(0, std::ios::beg);
+            if(!stream2.read((char*)&vKeys[0], vKeys.size() * sizeof(vKeys[0])))
+                return debug::error("Failed to read data for mmap");
 
             stream2.close();
-            swMap.stop();
 
             debug::log(0, "MMap completed in ", swMap.ElapsedMicroseconds());
         }
@@ -280,7 +1258,6 @@ int main(int argc, char** argv)
     }
 
     return 0;
-
 
     leveldb_t *db;
     leveldb_options_t *options;
@@ -526,8 +1503,8 @@ int main(int argc, char** argv)
             ++nTotal;
             ++nTotalRead;
 
-            if(!bloom->ReadKey(nBucket, hashKey))
-                return debug::error("Failed to read ", nBucket.SubString(), " total ", nTotal);
+            bloom->ReadKey(nBucket, hashKey);
+                //return debug::error("Failed to read ", nBucket.SubString(), " total ", nTotal);
         }
         swTimer.stop();
         swReaders.stop();
@@ -550,10 +1527,10 @@ int main(int argc, char** argv)
 
         runtime::stopwatch swClose;
         swClose.start();
-        swElapsed.start();
+        //swElapsed.start();
         delete bloom;
         swClose.stop();
-        swElapsed.stop();
+        //swElapsed.stop();
 
         debug::log(0, "[LLD] Closed in ", swClose.ElapsedMilliseconds(), " ms");
     }
@@ -652,10 +1629,10 @@ int main(int argc, char** argv)
 
         runtime::stopwatch swClose;
         swClose.start();
-        swElapsed1.start();
+        //swElapsed1.start();
         leveldb_close(db);
         swClose.stop();
-        swElapsed1.stop();
+        //swElapsed1.stop();
 
         debug::log(0, "[LEVELDB] Closed in ", swClose.ElapsedMilliseconds(), " ms");
     }

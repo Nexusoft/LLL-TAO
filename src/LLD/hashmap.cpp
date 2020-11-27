@@ -31,8 +31,14 @@ namespace LLD
     BinaryHashMap::BinaryHashMap(const Config::Hashmap& configIn)
     : CONFIG                (configIn)
     , INDEX_FILTER_SIZE     (primary_bloom_size() + secondary_bloom_size() + 2)
+
+    #ifdef NO_MMAP
     , pFileStreams          (new TemplateLRU<std::pair<uint16_t, uint16_t>, std::fstream*>(CONFIG.MAX_HASHMAP_FILE_STREAMS))
     , pIndexStreams         (new TemplateLRU<uint16_t, std::fstream*>(CONFIG.MAX_INDEX_FILE_STREAMS))
+    #else
+    , pFileStreams          (new TemplateLRU<std::pair<uint16_t, uint16_t>, memory::mstream*>(CONFIG.MAX_HASHMAP_FILE_STREAMS))
+    , pIndexStreams         (new TemplateLRU<uint16_t, memory::mstream*>(CONFIG.MAX_INDEX_FILE_STREAMS))
+    #endif
     {
         Initialize();
     }
@@ -123,7 +129,11 @@ namespace LLD
             for(uint32_t nIndexIterator = 0; nIndexIterator < CONFIG.MAX_FILES_PER_INDEX; ++nIndexIterator)
             {
                 /* Read the new disk index .*/
+                #ifdef NO_MMAP
                 std::fstream* pindex = get_index_stream(nIndexIterator);
+                #else
+                memory::mstream* pindex = get_index_stream(nIndexIterator);
+                #endif
                 if(!pindex)
                     continue;
 
@@ -433,7 +443,11 @@ namespace LLD
 
 
     /* Find a file stream from the local LRU cache. */
+    #ifdef NO_MMAP
     std::fstream* BinaryHashMap::get_file_stream(const uint32_t nHashmap, const uint32_t nBucket)
+    #else
+    memory::mstream* BinaryHashMap::get_file_stream(const uint32_t nHashmap, const uint32_t nBucket)
+    #endif
     {
         /* Find the index of our stream based on configuration. */
         const uint32_t nFile = (nBucket * CONFIG.MAX_FILES_PER_HASHMAP) / CONFIG.HASHMAP_TOTAL_BUCKETS;
@@ -442,7 +456,11 @@ namespace LLD
         const std::pair<uint16_t, uint16_t> pairIndex = std::make_pair(nFile, nHashmap);
 
         /* Find the file stream for LRU cache. */
+        #ifdef NO_MMAP
         std::fstream* pstream = nullptr;
+        #else
+        memory::mstream* pstream = nullptr;
+        #endif
         if(pFileStreams->Get(pairIndex, pstream) && !pstream) //TODO: !pstream->good() for production
         {
             debug::log(0, "Removing Stream ", VARIABLE(nFile), " | ", VARIABLE(nHashmap));
@@ -487,7 +505,11 @@ namespace LLD
             }
 
             /* Set the new stream pointer. */
+            #ifdef NO_MMAP
             pstream = new std::fstream(strHashmap, std::ios::in | std::ios::out | std::ios::binary);
+            #else
+            pstream = new memory::mstream(strHashmap, std::ios::in | std::ios::out | std::ios::binary);
+            #endif
             if(!pstream->is_open())
             {
                 delete pstream;
@@ -504,10 +526,18 @@ namespace LLD
 
 
     /* Get a corresponding index stream from the LRU, if it doesn't exist create the file with std::ofstream. */
+    #ifdef NO_MMAP
     std::fstream* BinaryHashMap::get_index_stream(const uint32_t nFile)
+    #else
+    memory::mstream* BinaryHashMap::get_index_stream(const uint32_t nFile)
+    #endif
     {
         /* Find the file stream for LRU cache. */
+        #ifdef NO_MMAP
         std::fstream* pindex = nullptr;
+        #else
+        memory::mstream* pindex = nullptr;
+        #endif
         if(pIndexStreams->Get(nFile, pindex) && !pindex) //TODO: !pindex->good() for production
         {
             /* Delete stream from the cache. */
@@ -519,10 +549,10 @@ namespace LLD
         if(pindex == nullptr)
         {
             /* Build the filesystem path */
-            std::string strHashmap = debug::safe_printstr(CONFIG.DIRECTORY, "keychain/_index.", std::setfill('0'), std::setw(5), nFile);
+            std::string strIndex = debug::safe_printstr(CONFIG.DIRECTORY, "keychain/_index.", std::setfill('0'), std::setw(5), nFile);
 
             /* Create a new file if it doesn't exist yet. */
-            if(!filesystem::exists(strHashmap))
+            if(!filesystem::exists(strIndex))
             {
                 /* Calculate the number of bukcets per index file. */
                 const uint32_t nTotalBuckets = (CONFIG.HASHMAP_TOTAL_BUCKETS / CONFIG.MAX_FILES_PER_INDEX) + 1;
@@ -531,7 +561,7 @@ namespace LLD
                 std::vector<uint8_t> vSpace(INDEX_FILTER_SIZE * nTotalBuckets, 0);
 
                 /* Write the blank data to the new file handle. */
-                std::ofstream stream(strHashmap, std::ios::out | std::ios::binary | std::ios::app);
+                std::ofstream stream(strIndex, std::ios::out | std::ios::binary | std::ios::app);
                 if(!stream)
                     return nullptr;
 
@@ -547,7 +577,11 @@ namespace LLD
             }
 
             /* Set the new stream pointer. */
-            pindex = new std::fstream(strHashmap, std::ios::in | std::ios::out | std::ios::binary);
+            #ifdef NO_MMAP
+            pindex = new std::fstream(strIndex, std::ios::in | std::ios::out | std::ios::binary);
+            #else
+            pindex = new memory::mstream(strIndex, std::ios::in | std::ios::out | std::ios::binary);
+            #endif
             if(!pindex->is_open())
             {
                 delete pindex;
@@ -589,7 +623,11 @@ namespace LLD
             ((nFile * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_INDEX)));
 
         /* Grab our file stream. */
+        #ifdef NO_MMAP
         std::fstream* pindex = get_index_stream(nFile);
+        #else
+        memory::mstream* pindex = get_index_stream(nFile);
+        #endif
         if(!pindex)
             return debug::error(FUNCTION, "INDEX: failed to open stream: ", VARIABLE(nFile));
 
@@ -602,7 +640,9 @@ namespace LLD
             return debug::error(FUNCTION, "INDEX: only ", pindex->gcount(), "/", vBuffer.size(), " bytes written");
 
         /* Flush the buffers to disk. */
+        #ifdef NO_MMAP
         pindex->flush();
+        #endif
 
         return true;
     }
@@ -637,7 +677,11 @@ namespace LLD
                 ((nFile * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_INDEX)));
 
             /* Grab our file stream. */
+            #ifdef NO_MMAP
             std::fstream* pindex = get_index_stream(nFile);
+            #else
+            memory::mstream* pindex = get_index_stream(nFile);
+            #endif
             if(!pindex)
                 return debug::error(FUNCTION, "INDEX: failed to open index stream");
 
@@ -716,7 +760,11 @@ namespace LLD
                     const uint64_t nFilePos = (CONFIG.HASHMAP_KEY_ALLOCATION * (nAdjustedBucket - nBoundary - ((nCheck != nFile) ? 1 : 0)));
                     {
                         /* Grab the current file stream from LRU cache. */
+                        #ifdef NO_MMAP
                         std::fstream* pstream = get_file_stream(nHashmapIterator, nAdjustedBucket);
+                        #else
+                        memory::mstream* pstream = get_file_stream(nHashmapIterator, nAdjustedBucket);
+                        #endif
                         if(!pstream)
                             continue;
 
@@ -729,7 +777,9 @@ namespace LLD
                             return debug::error(FUNCTION, "KEYCHAIN: only ", pstream->gcount(), "/", ssKey.size(), " bytes written");
 
                         /* Flush the buffers to disk. */
+                        #ifdef NO_MMAP
                         pstream->flush();
+                        #endif
                     }
 
                     /* Set our return values. */
@@ -803,7 +853,11 @@ namespace LLD
                 const uint64_t nFilePos = (CONFIG.HASHMAP_KEY_ALLOCATION * (nAdjustedBucket - nBoundary - ((nCheck != nFile) ? 1 : 0)));
                 {
                     /* Find the file stream for LRU cache. */
+                    #ifdef NO_MMAP
                     std::fstream* pstream = get_file_stream(nHashmapIterator, nAdjustedBucket);
+                    #else
+                    memory::mstream* pstream = get_file_stream(nHashmapIterator, nAdjustedBucket);
+                    #endif
                     if(!pstream)
                         continue;
 
@@ -851,7 +905,9 @@ namespace LLD
                                 HexStr(vKeyCompressed.begin(), vKeyCompressed.end(), true));
 
                         /* Flush the buffers to disk. */
+                        #ifdef NO_MMAP
                         pstream->flush();
+                        #endif
 
                         return true;
                     }
@@ -911,7 +967,11 @@ namespace LLD
                 const uint64_t nFilePos = (CONFIG.HASHMAP_KEY_ALLOCATION * (nAdjustedBucket - nBoundary - ((nCheck != nFile) ? 1 : 0)));
                 {
                     /* Find the file stream for LRU cache. */
+                    #ifdef NO_MMAP
                     std::fstream* pstream = get_file_stream(nHashmapIterator, nAdjustedBucket);
+                    #else
+                    memory::mstream* pstream = get_file_stream(nHashmapIterator, nAdjustedBucket);
+                    #endif
                     if(!pstream)
                         continue;
 
