@@ -165,8 +165,8 @@ namespace LLD::Templates
         if(pSectorKeys->Get(vKey, cKey))
         {
             {
-                //LOCK(SECTOR_MUTEX);
-                LOCK(CONFIG.SECTOR(cKey));
+                LOCK(SECTOR_MUTEX);
+                //LOCK(CONFIG.SECTOR(cKey));
 
                 /* Find the file stream for LRU cache. */
                 std::fstream* pstream;
@@ -225,8 +225,8 @@ namespace LLD::Templates
     bool StaticDatabase<KeychainType, CacheType, ConfigType>::Get(const SectorKey& cKey, std::vector<uint8_t>& vData)
     {
         {
-            //LOCK(SECTOR_MUTEX);
-            LOCK(CONFIG.SECTOR(cKey));
+            LOCK(SECTOR_MUTEX);
+            //LOCK(CONFIG.SECTOR(cKey));
 
             nBytesRead += static_cast<uint32_t>(cKey.vKey.size() + vData.size());
 
@@ -297,8 +297,8 @@ namespace LLD::Templates
         cachePool->Put(key, vKey, vData, false);
 
         {
-            //LOCK(SECTOR_MUTEX);
-            LOCK(CONFIG.SECTOR(key));
+            LOCK(SECTOR_MUTEX);
+            //LOCK(CONFIG.SECTOR(key));
 
             /* Find the file stream for LRU cache. */
             std::fstream* pstream;
@@ -357,6 +357,7 @@ namespace LLD::Templates
                             nCurrentFileSize, static_cast<uint32_t>(nSize));
 
             {
+                LOCK(SECTOR_MUTEX);
 
                 /* Create new file if above current file size. */
                 if(nCurrentFileSize > CONFIG.MAX_SECTOR_FILE_SIZE)
@@ -377,8 +378,10 @@ namespace LLD::Templates
                     stream.close();
                 }
 
-                //LOCK(SECTOR_MUTEX);
-                LOCK(CONFIG.SECTOR(key));
+
+
+
+                //LOCK(CONFIG.SECTOR(key));
 
                 /* Find the file stream for LRU cache. */
                 std::fstream* pstream;
@@ -452,7 +455,7 @@ namespace LLD::Templates
         {
             LOCK(BUFFER_MUTEX);
 
-            mapDiskBuffer.insert(std::make_pair(vKey, vData));
+            mapDiskBuffer.emplace(std::make_pair(std::move(vKey), std::move(vData)));
             nBufferBytes += static_cast<uint32_t>(vKey.size() + vData.size());
         }
 
@@ -559,6 +562,9 @@ namespace LLD::Templates
                 }
             );
 
+            /* Run a courtesy flush and sync whether data has been added. */
+            pSectorKeys->Flush();
+
             /* Check for buffered bytes. */
             if(nBufferBytes.load() == 0)
                 continue;
@@ -577,25 +583,98 @@ namespace LLD::Templates
                 stream.close();
             }
 
-            /* Iterate through buffer to queue disk writes. */
+            uint32_t nRecords = 0;
+            do
             {
-                LOCK(BUFFER_MUTEX);
-                for(const auto& vObj : mapDiskBuffer)
-                {
-                    /* Force write data. */
-                    Force(vObj.first, vObj.second);
+                /* Iterate through buffer to queue disk writes. */
+                BUFFER_MUTEX.lock(); //we can't scope lock because of initializing references here
+                const std::vector<uint8_t>& vKey   = mapDiskBuffer.begin()->first;
+                const std::vector<uint8_t>& vData  = mapDiskBuffer[vKey];
+                BUFFER_MUTEX.unlock();
 
-                    nBufferBytes -= (vObj.first.size() + vObj.second.size());
+                /* Get current size */
+                uint64_t nSize = vData.size() + GetSizeOfCompactSize(vData.size());
+
+                /* Create a new Sector Key. */
+                SectorKey key(STATE::READY, vKey, static_cast<uint16_t>(nCurrentFile),
+                                nCurrentFileSize, static_cast<uint32_t>(nSize));
+
+                /* Write the data into the memory cache. */
+                cachePool->Put(key, vKey, vData, false);
+
+                {
+                    LOCK(SECTOR_MUTEX);
+                    //LOCK(CONFIG.SECTOR(key));
+
+                    /* Find the file stream for LRU cache. */
+                    std::fstream* pstream;
+                    if(!fileCache->Get(nCurrentFile, pstream) || !pstream)
+                    {
+                        /* Set the new stream pointer. */
+                        pstream = new std::fstream(debug::safe_printstr(CONFIG.DIRECTORY, "datachain/_block.", std::setfill('0'), std::setw(5), nCurrentFile), std::ios::in | std::ios::out | std::ios::binary | std::ios::app);
+                        if(!pstream->is_open())
+                        {
+                            delete pstream;
+                            continue;
+                        }
+
+                        /* If file not found add to LRU cache. */
+                        fileCache->Put(nCurrentFile, pstream);
+                    }
+
+                    /* If it is a New Sector, Assign a Binary Position. */
+                    //pstream->seekp(0, std::ios::end);
+
+                    /* Write the size of record. */
+                    WriteCompactSize(*pstream, vData.size());
+
+                    /* Write the data record. */
+                    if(!pstream->write((char*)&vData[0], vData.size()))
+                    {
+                        debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes written");
+                        continue;
+                    }
+
+                    /* Increment the current filesize */
+                    nCurrentFileSize = pstream->tellp();
+
+                    /* Records flushed indicator. */
+                    ++nRecordsFlushed;
+                    nBytesWrote += static_cast<uint32_t>(nSize);
+
+                    /* Verboe output. */
+                    if(config::nVerbose >= 5)
+                        debug::log(5, FUNCTION, "Current File: ", key.nSectorFile,
+                            " | Current File Size: ", key.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
+
+                    pstream->flush();
                 }
 
-                mapDiskBuffer.clear();
+                /* Assign the Key to Keychain. */
+                if(!pSectorKeys->Put(key))
+                {
+                    debug::error(FUNCTION, "failed to write key to keychain");
+                    continue;
+                }
+
+                {
+                    LOCK(BUFFER_MUTEX);
+
+                    /* Erase the new record and adjust sizes. */
+                    mapDiskBuffer.erase(vKey);
+                    nRecords = mapDiskBuffer.size();
+
+                    /* Adjust current buffer size. */
+                    nBufferBytes -= (vKey.size() + vData.size());
+                }
             }
+            while(nRecords > 0);
 
             /* Notify the condition. */
             CONDITION.notify_all();
 
             /* Verbose logging. */
-            debug::log(3, FUNCTION, "Flushed ", nRecordsFlushed.load(),
+            debug::log(0, FUNCTION, "Flushed ", nRecordsFlushed.load(),
                 " Records of ", nBytesWrote.load(), " Bytes");
 
             /* Reset counters if not in meter mode. */

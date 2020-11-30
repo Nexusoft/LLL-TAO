@@ -17,6 +17,11 @@ ifeq (${STATIC}, 1)
 	endif
 endif
 
+#memory mapping
+ifdef USE_STREAMS
+	DEFS+= -DNO_MMAP
+endif
+
 #Configure for 32/64 Bit and ARM
 ifndef 32BIT
 	override 32BIT= 0
@@ -35,7 +40,7 @@ else
 	CXXFLAGS+= -m64
 endif
 
-LIBS := -l leveldb 
+LIBS := -l leveldb
 
 #Define default LIB and INCLUDE path variables
 ifndef OPENSSL_LIB_PATH

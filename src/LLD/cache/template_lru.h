@@ -151,6 +151,29 @@ namespace LLD
         }
 
 
+        typename std::map<KeyType, TemplateNode<KeyType, DataType>* >::iterator begin()
+        {
+            return cache.begin();
+        }
+
+
+        typename std::map<KeyType, TemplateNode<KeyType, DataType>* >::iterator end()
+        {
+            return cache.end();
+        }
+
+
+        void lock()
+        {
+            MUTEX.lock();
+        }
+
+        void unlock()
+        {
+            MUTEX.unlock();
+        }
+
+
         /** Total Elements Constructor
          *
          * @param[in] nElements The maximum size of this Cache Pool

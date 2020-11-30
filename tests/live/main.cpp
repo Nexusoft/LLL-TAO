@@ -199,6 +199,15 @@ bool read_index(const uint32_t nBucket, const uint32_t nTotal, const LLD::Config
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
+    rlimit rlim;
+
+    int nRet = getrlimit(RLIMIT_AS, &rlim);
+    debug::log(0, VARIABLE(nRet), " | ", VARIABLE(rlim.rlim_cur), " | ", VARIABLE(rlim.rlim_max));
+
+
+    nRet = getrlimit(RLIMIT_MEMLOCK, &rlim);
+    debug::log(0, VARIABLE(nRet), " | ", VARIABLE(rlim.rlim_cur), " | ", VARIABLE(rlim.rlim_max));
+
     config::ParseParameters(argc, argv);
 
     LLP::Initialize();
@@ -206,7 +215,7 @@ int main(int argc, char** argv)
     //config::nVerbose.store(4);
     config::mapArgs["-datadir"] = "/database";
 
-    const std::string strDB = "load9";
+    const std::string strDB = "LLD";
 
     std::string strIndex = config::mapArgs["-datadir"] + "/" + strDB + "/";
 
@@ -221,7 +230,7 @@ int main(int argc, char** argv)
 
     bool fNew = false;
 
-    std::string strKeys = config::mapArgs["-datadir"] + "/keys7";
+    std::string strKeys = config::mapArgs["-datadir"] + "/keys";
     if(!filesystem::exists(strKeys))
     {
         /* Create 10k new keys. */
@@ -295,6 +304,7 @@ int main(int argc, char** argv)
     }
 
 
+    #if 0
     leveldb_t *db;
     leveldb_options_t *options;
     leveldb_readoptions_t *roptions;
@@ -307,7 +317,7 @@ int main(int argc, char** argv)
     options = leveldb_options_create();
     leveldb_options_set_create_if_missing(options, 1);
 
-    db = leveldb_open(options, "/database/leveldb1", &err);
+    db = leveldb_open(options, "/database/leveldb", &err);
 
     if (err != NULL) {
         return debug::error("Failed to open LEVELDB instance");
@@ -315,6 +325,7 @@ int main(int argc, char** argv)
 
     /* reset error var */
     leveldb_free(err); err = NULL;
+    #endif
 
 
 
@@ -330,13 +341,13 @@ int main(int argc, char** argv)
 
     //build our hashmap configuration
     LLD::Config::Hashmap CONFIG     = LLD::Config::Hashmap(BASE);
-    CONFIG.HASHMAP_TOTAL_BUCKETS    = 10000000;
+    CONFIG.HASHMAP_TOTAL_BUCKETS    = 20000000;
     CONFIG.MAX_FILES_PER_HASHMAP    = 4;
     CONFIG.MAX_FILES_PER_INDEX      = 10;
     CONFIG.MAX_HASHMAPS             = 50;
     CONFIG.MIN_LINEAR_PROBES        = 1;
     CONFIG.MAX_LINEAR_PROBES        = 1024;
-    CONFIG.MAX_HASHMAP_FILE_STREAMS = 200;
+    CONFIG.MAX_HASHMAP_FILE_STREAMS = 100;
     CONFIG.MAX_INDEX_FILE_STREAMS   = 10;
     CONFIG.PRIMARY_BLOOM_HASHES     = 7;
     CONFIG.PRIMARY_BLOOM_ACCURACY   = 300;
@@ -411,6 +422,7 @@ int main(int argc, char** argv)
 
 
 
+    #if 0
     {
         debug::log(0, ANSI_COLOR_BRIGHT_RED, "[LEVELDB] BASE LEVEL TEST:", ANSI_COLOR_RESET);
 
@@ -427,7 +439,6 @@ int main(int argc, char** argv)
             for(const auto& nBucket : vFirst)
             {
                 ++nTotalWritten1;
-
                 ++nTotal;
 
                 /******************************************/
@@ -493,6 +504,7 @@ int main(int argc, char** argv)
         //if(bloom->ReadKey(vKeys[0], hashKey))
         //    return debug::error("Failed to erase ", vKeys[0].SubString());
     }
+    #endif
 
 
     for(int n = 0; n < config::GetArg("-tests", 1); ++n)
@@ -563,15 +575,17 @@ int main(int argc, char** argv)
 
         runtime::stopwatch swClose;
         swClose.start();
-        //swElapsed.start();
+        swElapsed.start();
         delete bloom;
         swClose.stop();
-        //swElapsed.stop();
+        swElapsed.stop();
 
         debug::log(0, "[LLD] Closed in ", swClose.ElapsedMilliseconds(), " ms");
     }
 
 
+
+    #if 0
     for(int n = 0; n < config::GetArg("-tests", 1); ++n)
     {
         debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "Generating Keys for test: ", n, "/", config::GetArg("-tests", 1), ANSI_COLOR_RESET);
@@ -665,13 +679,15 @@ int main(int argc, char** argv)
 
         runtime::stopwatch swClose;
         swClose.start();
-        //swElapsed1.start();
+        swElapsed1.start();
         leveldb_close(db);
         swClose.stop();
-        //swElapsed1.stop();
+        swElapsed1.stop();
 
         debug::log(0, "[LEVELDB] Closed in ", swClose.ElapsedMilliseconds(), " ms");
     }
+
+    #endif
 
 
     {

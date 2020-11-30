@@ -805,7 +805,7 @@ namespace memory
                     0, // Don't give hint as to where to map.
                     nMappingSize,
                     PROT_READ | PROT_WRITE,
-                    MAP_SHARED | MAP_LOCKED,
+                    MAP_SHARED,
                     hFile,
                     nAlignedOffset));
 
@@ -879,7 +879,7 @@ namespace memory
                 if(::FlushViewOfFile(CTX.get_mapping_start(), CTX.mapped_length()) == 0
                    || ::FlushFileBuffers(CTX.hFile) == 0)
         #else // POSIX
-                if(::msync(CTX.get_mapping_start(), CTX.mapped_length(), MS_SYNC) != 0)
+                if(::msync(CTX.get_mapping_start(), CTX.mapped_length(), MS_ASYNC) != 0)
         #endif
                 {
                     STATUS |= STATE::FAIL;
