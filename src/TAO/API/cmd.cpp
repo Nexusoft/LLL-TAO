@@ -118,8 +118,11 @@ namespace TAO
             /* Flag indicating that this is a list API call, in which case we need to parse the params differently */
             bool fIsList = endpoint.find("/list/") != endpoint.npos;
 
-            std::vector<std::string> strListKeywords = {"genesis", "username", "verbose", "page", "limit", "sort", "order", "where"};
-
+            /* list of keywords that are acceptale parameters for a /list/xxx method.  Parameters not in this list will be converted
+               a `where` array */
+                
+            std::vector<std::string> vKeywords = {"genesis", "username", "verbose", "page", "limit", "sort", "order", "where"};
+            
             /* Build the JSON request object. */
             json::json parameters;
 
@@ -152,13 +155,14 @@ namespace TAO
                         strValue.append(" " + arg);
                         jsonClause["value"] = strValue;
                     }
-                    else
-                    {
-                        /* Append this data to the previously stored parameter. */
-                        std::string value = parameters[prev];
-                        value.append(" " + arg);
-                        parameters[prev] = value;
-                    }
+                    
+                    /* Append this data to the previously stored parameter. */
+                    std::string value = parameters[prev];
+                    value.append(" " + arg);
+                    parameters[prev] = value;
+                    
+                    /* Reset the Where flag */
+                    fWhere = false;
 
                     continue;
                 }
@@ -167,7 +171,7 @@ namespace TAO
                 prev = arg.substr(0, pos);
 
                 /* If this is a list command, check to see if this is a where clause (not a keyword parameter supported by list)*/
-                if(fIsList && std::find(strListKeywords.begin(), strListKeywords.end(), prev) == strListKeywords.end())
+                if(fIsList && std::find(vKeywords.begin(), vKeywords.end(), prev) == vKeywords.end())
                 {
                     fWhere = true;
 
@@ -194,16 +198,14 @@ namespace TAO
                     /* Add it to the where params*/
                     parameters["where"].push_back(jsonClause);
                 }
-                else
-                {
-                    fWhere = false;
+    
 
-                    // if the paramter is a JSON list or array then we need to parse it
-                    if(arg.compare(pos + 1,1,"{") == 0 || arg.compare(pos + 1,1,"[") == 0)
-                        parameters[prev]=json::json::parse(arg.substr(pos + 1));
-                    else
-                        parameters[prev] = arg.substr(pos + 1);
-                }
+                // if the paramter is a JSON list or array then we need to parse it
+                if(arg.compare(pos + 1,1,"{") == 0 || arg.compare(pos + 1,1,"[") == 0)
+                    parameters[prev]=json::json::parse(arg.substr(pos + 1));
+                else
+                    parameters[prev] = arg.substr(pos + 1);
+
             }
 
 

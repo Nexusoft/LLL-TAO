@@ -492,6 +492,9 @@ namespace LLP
                     debug::log(3, FUNCTION, "SSL Accept failed ",  addr.ToString(), " (", nError, " ", ERR_reason_error_string(nError), ")");
                 else
                     debug::log(3, FUNCTION, "SSL Accept failed ",  addr.ToString());
+
+                /* Attempt to close the socket our side to clean up resources */
+                closesocket(fd);
                 
                 return false;
             }

@@ -126,11 +126,12 @@ namespace TAO
         /* Flag to tell if initial blocks are downloading. */
         double ChainState::PercentSynchronized()
         {
-            uint32_t nChainAge = (static_cast<uint32_t>(runtime::unifiedtimestamp()) - 60 * 60) - (config::fTestNet.load() ?
-                NEXUS_TESTNET_TIMELOCK : (config::fClient.load() ? NEXUS_TRITIUM_TIMELOCK : NEXUS_NETWORK_TIMELOCK));
+            /* Keep our base timestamp to show correct syncing progress based on previous progress rather than entire process. */
+            const static uint32_t nBase = stateBest.load().GetBlockTime();
 
-            uint32_t nSyncAge  = static_cast<uint32_t>(stateBest.load().GetBlockTime() - static_cast<uint64_t>(config::fTestNet.load() ?
-                NEXUS_TESTNET_TIMELOCK : (config::fClient.load() ? NEXUS_TRITIUM_TIMELOCK : NEXUS_NETWORK_TIMELOCK)));
+            /* Find our relative ages based on the base timestamp that's created on node startup. */
+            uint32_t nChainAge = (static_cast<uint32_t>(runtime::unifiedtimestamp()) - (60 * 20) - nBase);
+            uint32_t nSyncAge  = static_cast<uint32_t>(stateBest.load().GetBlockTime() - nBase);
 
             return (100.0 * nSyncAge) / nChainAge;
         }

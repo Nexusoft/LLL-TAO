@@ -32,6 +32,13 @@ namespace LLD
     }
 
 
+    /* Erases the Trust Address from the database. */
+    bool AddressDB::EraseTrustAddress(uint64_t nKey)
+    {
+        return Erase(std::make_pair(std::string("addr"), nKey));
+    }
+
+
     /*  Writes the Trust Address to the database. */
     bool AddressDB::WriteTrustAddress(uint64_t nKey, const LLP::TrustAddress &addr)
     {

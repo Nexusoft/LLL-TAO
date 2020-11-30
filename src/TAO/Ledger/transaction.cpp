@@ -40,6 +40,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/developer.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/dispatch.h>
 #include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/include/stake.h>
 #include <TAO/Ledger/include/stake_change.h>
@@ -1054,6 +1055,9 @@ namespace TAO
             if(nFlags == FLAGS::BLOCK && !LLD::Ledger->WriteLast(hashGenesis, hash))
                 return debug::error(FUNCTION, "failed to write last hash");
 
+            /* Notify subscribers of new transaction. */
+            Dispatch::GetInstance().DispatchTransaction(hash, true);
+
             return true;
         }
 
@@ -1116,6 +1120,9 @@ namespace TAO
                 if(!TAO::Register::Rollback(*contract, nFlags))
                     return false;
             }
+
+            /* Notify subscribers of transaction disconnect. */
+            Dispatch::GetInstance().DispatchTransaction(GetHash(), false);
 
             return true;
         }

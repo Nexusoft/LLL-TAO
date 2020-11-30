@@ -486,12 +486,20 @@ namespace LLP
     /*  Helper function that removes the given address from the map. */
     void AddressManager::remove_address(const BaseAddress &addr)
     {
-        uint64_t hash = addr.GetHash();
-        auto it = mapTrustAddress.find(hash);
+        /* Check for address in memory. */
+        uint64_t nHash = addr.GetHash();
+        auto it = mapTrustAddress.find(nHash);
 
         /* Erase from the map if the address was found. */
         if(it != mapTrustAddress.end())
-            mapTrustAddress.erase(hash);
+        {
+            /* Clear from memory. */
+            mapTrustAddress.erase(nHash);
+
+            /* Clear from disk. */
+            if(pDatabase)
+                pDatabase->EraseTrustAddress(nHash);
+        }
     }
 
 

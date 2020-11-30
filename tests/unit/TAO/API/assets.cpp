@@ -28,7 +28,7 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/create.h>
 
-#include <TAO/API/types/names.h>
+#include <TAO/API/names/types/names.h>
 
 #include <Util/include/convert.h>
 #include <Util/include/base64.h>

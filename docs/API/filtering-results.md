@@ -21,7 +21,8 @@ Allows the results to be returned by page (zero based). E.g. passing in page=1 w
 
 ## `where`
 
-Takes the returned JSON and filters it based on a certain set of criteria.
+
+Takes the returned JSON data and filters it based on a certain set of criteria.
 
 
 ### Parameters:

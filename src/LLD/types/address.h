@@ -43,6 +43,18 @@ namespace LLD
         virtual ~AddressDB();
 
 
+        /** EraseTrustAddress
+         *
+         *  Erases the Trust Address from the database.
+         *
+         *  @param[in] nKey The key for the data location.
+         *
+         *  @return True if the write is successful, false otherwise.
+         *
+         **/
+        bool EraseTrustAddress(uint64_t nKey);
+
+
         /** WriteTrustAddress
          *
          *  Writes the Trust Address to the database.
