@@ -56,7 +56,6 @@ namespace LLD::Config
         , MAX_SECTOR_CACHE_SIZE   (1024 * 1024)       //1 MB of cache default
         , MAX_SECTOR_FILE_SIZE    (1024 * 1024 * 512) //512 MB max per sector file
         , MAX_SECTOR_BUFFER_SIZE  (1024 * 1024 * 4)   //4 MB max disk buffer
-        , SECTOR_LOCKS            (1024)
         , FILESYSTEM_LOCKS        (MAX_SECTOR_FILE_STREAMS)
         {
         }
@@ -69,7 +68,6 @@ namespace LLD::Config
         , MAX_SECTOR_CACHE_SIZE   (map.MAX_SECTOR_CACHE_SIZE)
         , MAX_SECTOR_FILE_SIZE    (map.MAX_SECTOR_FILE_SIZE)
         , MAX_SECTOR_BUFFER_SIZE  (map.MAX_SECTOR_BUFFER_SIZE)
-        , SECTOR_LOCKS            (map.SECTOR_LOCKS.size())
         , FILESYSTEM_LOCKS        (map.FILESYSTEM_LOCKS.size())
         {
         }
@@ -82,7 +80,6 @@ namespace LLD::Config
         , MAX_SECTOR_CACHE_SIZE   (std::move(map.MAX_SECTOR_CACHE_SIZE))
         , MAX_SECTOR_FILE_SIZE    (std::move(map.MAX_SECTOR_FILE_SIZE))
         , MAX_SECTOR_BUFFER_SIZE  (std::move(map.MAX_SECTOR_BUFFER_SIZE))
-        , SECTOR_LOCKS            (map.SECTOR_LOCKS.size())
         , FILESYSTEM_LOCKS        (map.FILESYSTEM_LOCKS.size())
         {
         }
@@ -130,23 +127,6 @@ namespace LLD::Config
         }
 
 
-        /** SectorLock
-         *
-         *  Grabs a lock from the set of sector locks by sector position.
-         *
-         *  @param[in] key The sector location to lock for.
-         *
-         *  @return a reference of the lock object.
-         *
-         **/
-        std::mutex& SECTOR(const SectorKey& key) const
-        {
-            /* Calculate the lock that will be obtained by the given key. */
-            uint64_t nLock = ((key.nSectorFile + 1) * (key.nSectorStart + 1)) % SECTOR_LOCKS.size();
-            return SECTOR_LOCKS[nLock];
-        }
-
-
         /** File
          *
          *  Grabs a lock from the set of sector locks by file handle.
@@ -159,8 +139,7 @@ namespace LLD::Config
         std::mutex& FILE(const uint32_t nFile) const
         {
             /* Calculate the lock that will be obtained by the given key. */
-            uint64_t nLock = XXH3_64bits((uint8_t*)&nFile, 4) % FILESYSTEM_LOCKS.size();
-            return FILESYSTEM_LOCKS[nLock];
+            return FILESYSTEM_LOCKS[nFile];
         }
 
     private:

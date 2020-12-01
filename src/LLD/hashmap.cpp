@@ -162,19 +162,24 @@ namespace LLD
             /* Loop through each bucket and account for the number of active keys. */
             for(uint32_t nIndexIterator = 0; nIndexIterator < CONFIG.MAX_FILES_PER_INDEX; ++nIndexIterator)
             {
-                /* Read the new disk index .*/
-                #ifdef NO_MMAP
-                std::fstream* pindex = get_index_stream(nIndexIterator);
-                debug::log(0, "using fstream!");
-                #else
-                memory::mstream* pindex = get_index_stream(nIndexIterator);
-                #endif
-                if(!pindex)
-                    continue;
+                {
+                    //LOCK(CONFIG.INDEX(nIndexIterator));
 
-                /* Read our index data into our buffer. */
-                if(!pindex->read((char*)&vBuffer[0], vBuffer.size()))
-                    continue;
+                    /* Read the new disk index .*/
+                    #ifdef NO_MMAP
+                    std::fstream* pindex = get_index_stream(nIndexIterator);
+                    debug::log(0, "using fstream!");
+                    #else
+                    memory::mstream* pindex = get_index_stream(nIndexIterator);
+                    #endif
+                    if(!pindex)
+                        continue;
+
+                    /* Read our index data into our buffer. */
+                    if(!pindex->read((char*)&vBuffer[0], vBuffer.size()))
+                        continue;
+                }
+
 
                 /* Check these slots for available keys. */
                 for(uint32_t nBucket = 0; nBucket < nTotalBuckets; ++nBucket)
@@ -218,8 +223,6 @@ namespace LLD
     /* Read a key index from the disk hashmaps. */
     bool BinaryHashMap::Get(const std::vector<uint8_t>& vKey, SectorKey &key)
     {
-        LOCK(CONFIG.KEYCHAIN(vKey));
-
         /* Assign our key to return reference for usage in find_and_read. */
         key.vKey = vKey;
 
@@ -290,8 +293,6 @@ namespace LLD
     /* Write a key to the disk hashmaps. */
     bool BinaryHashMap::Put(const SectorKey& key)
     {
-        LOCK(CONFIG.KEYCHAIN(key.vKey));
-
         /* Get the assigned bucket for the hashmap. */
         const uint32_t nBucket       = get_bucket(key.vKey);
 
@@ -386,8 +387,6 @@ namespace LLD
     /*  Erase a key from the disk hashmaps. */
     bool BinaryHashMap::Erase(const std::vector<uint8_t>& vKey)
     {
-        LOCK(CONFIG.KEYCHAIN(vKey));
-
         /* Get the assigned bucket for the hashmap. */
         const uint32_t nBucket = get_bucket(vKey);
 
@@ -657,27 +656,29 @@ namespace LLD
         const uint64_t nFilePos = (INDEX_FILTER_SIZE * (nAdjustedBucket - ((nCheck != nFile) ? 1 : 0) -
             ((nFile * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_INDEX)));
 
-        /* Grab our file stream. */
-        #ifdef NO_MMAP
-        std::fstream* pindex = get_index_stream(nFile);
-        #else
-        memory::mstream* pindex = get_index_stream(nFile);
-        #endif
-        if(!pindex)
-            return debug::error(FUNCTION, "INDEX: failed to open stream: ", VARIABLE(nFile));
+        {
+            LOCK(CONFIG.INDEX(nFile));
 
-        /* Seek to position if we are not already there. */
-        if(pindex->tellp() != nFilePos)
-            pindex->seekp(nFilePos, std::ios::beg);
+            /* Grab our file stream. */
+            #ifdef NO_MMAP
+            std::fstream* pindex = get_index_stream(nFile);
+            #else
+            memory::mstream* pindex = get_index_stream(nFile);
+            #endif
+            if(!pindex)
+                return debug::error(FUNCTION, "INDEX: failed to open stream: ", VARIABLE(nFile));
 
-        /* Write updated filters to the index position. */
-        if(!pindex->write((char*)&vBuffer[nBufferPos], INDEX_FILTER_SIZE))
-            return debug::error(FUNCTION, "INDEX: only ", pindex->gcount(), "/", vBuffer.size(), " bytes written");
+            /* Seek to position if we are not already there. */
+            if(pindex->tellp() != nFilePos)
+                pindex->seekp(nFilePos, std::ios::beg);
 
-        /* Flush the buffers to disk. */
-        #ifdef NO_MMAP
-        pindex->flush();
-        #endif
+            /* Write updated filters to the index position. */
+            if(!pindex->write((char*)&vBuffer[nBufferPos], INDEX_FILTER_SIZE))
+                return debug::error(FUNCTION, "INDEX: only ", pindex->gcount(), "/", vBuffer.size(), " bytes written");
+
+            /* Flush the buffers to disk. */
+            pindex->flush();
+        }
 
         return true;
     }
@@ -711,30 +712,34 @@ namespace LLD
             const uint64_t nFilePos      = (INDEX_FILTER_SIZE * (nIterator - ((nCheck != nFile) ? 1 : 0) -
                 ((nFile * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_INDEX)));
 
-            /* Grab our file stream. */
-            #ifdef NO_MMAP
-            std::fstream* pindex = get_index_stream(nFile);
-            #else
-            memory::mstream* pindex = get_index_stream(nFile);
-            #endif
-            if(!pindex)
-                return debug::error(FUNCTION, "INDEX: failed to open index stream");
-
-            /* Seek to position if we are not already there. */
-            if(pindex->tellg() != nFilePos)
-                pindex->seekg(nFilePos, std::ios::beg);
-
             /* Find the range (in bytes) we want to read for this index range. */
             const uint64_t nMaxBuckets = std::min(nRemaining, std::max(uint64_t(1), (nBoundary - nIterator))); //need 1u otherwise we could loop indefinately
             const uint64_t nReadSize   = nMaxBuckets * INDEX_FILTER_SIZE;
 
-            /* Read our index data into the buffer. */
-            if(!pindex->read((char*)&vBuffer[nBufferPos], nReadSize))
             {
-                debug::warning(FUNCTION, VARIABLE(nFilePos), " | ", VARIABLE(nFile), " | ", VARIABLE(nMaxBuckets), " | ", VARIABLE(nBufferPos), " | ", VARIABLE(nReadSize));
-                return debug::error(FUNCTION, "INDEX: ", pindex->eof() ? "EOF" : pindex->bad() ? "BAD" : pindex->fail() ? "FAIL" : "UNKNOWN",
-                    " only ", pindex->gcount(), "/", vBuffer.size(), " bytes read"
-                );
+                LOCK(CONFIG.INDEX(nFile));
+
+                /* Grab our file stream. */
+                #ifdef NO_MMAP
+                std::fstream* pindex = get_index_stream(nFile);
+                #else
+                memory::mstream* pindex = get_index_stream(nFile);
+                #endif
+                if(!pindex)
+                    return debug::error(FUNCTION, "INDEX: failed to open index stream");
+
+                /* Seek to position if we are not already there. */
+                if(pindex->tellg() != nFilePos)
+                    pindex->seekg(nFilePos, std::ios::beg);
+
+                /* Read our index data into the buffer. */
+                if(!pindex->read((char*)&vBuffer[nBufferPos], nReadSize))
+                {
+                    debug::warning(FUNCTION, VARIABLE(nFilePos), " | ", VARIABLE(nFile), " | ", VARIABLE(nMaxBuckets), " | ", VARIABLE(nBufferPos), " | ", VARIABLE(nReadSize));
+                    return debug::error(FUNCTION, "INDEX: ", pindex->eof() ? "EOF" : pindex->bad() ? "BAD" : pindex->fail() ? "FAIL" : "UNKNOWN",
+                        " only ", pindex->gcount(), "/", vBuffer.size(), " bytes read"
+                    );
+                }
             }
 
             /* Track our current binary position, remaining buckets to read, and current bucket iterator. */
@@ -794,6 +799,8 @@ namespace LLD
                     /* Write our new hashmap entry into the file's bucket. */
                     const uint64_t nFilePos = (CONFIG.HASHMAP_KEY_ALLOCATION * (nAdjustedBucket - nBoundary - ((nCheck != nFile) ? 1 : 0)));
                     {
+                        LOCK(CONFIG.HASHMAP(nHashmapIterator, nFile));
+
                         /* Grab the current file stream from LRU cache. */
                         #ifdef NO_MMAP
                         std::fstream* pstream = get_file_stream(nHashmapIterator, nAdjustedBucket);
@@ -812,9 +819,7 @@ namespace LLD
                             return debug::error(FUNCTION, "KEYCHAIN: only ", pstream->gcount(), "/", ssKey.size(), " bytes written");
 
                         /* Flush the buffers to disk. */
-                        #ifdef NO_MMAP
                         pstream->flush();
-                        #endif
                     }
 
                     /* Set our return values. */
@@ -887,6 +892,8 @@ namespace LLD
                 /* Write our new hashmap entry into the file's bucket. */
                 const uint64_t nFilePos = (CONFIG.HASHMAP_KEY_ALLOCATION * (nAdjustedBucket - nBoundary - ((nCheck != nFile) ? 1 : 0)));
                 {
+                    LOCK(CONFIG.HASHMAP(nHashmapIterator, nFile));
+
                     /* Find the file stream for LRU cache. */
                     #ifdef NO_MMAP
                     std::fstream* pstream = get_file_stream(nHashmapIterator, nAdjustedBucket);
@@ -1001,6 +1008,8 @@ namespace LLD
                 /* Read our bucket level data from the hashmap. */
                 const uint64_t nFilePos = (CONFIG.HASHMAP_KEY_ALLOCATION * (nAdjustedBucket - nBoundary - ((nCheck != nFile) ? 1 : 0)));
                 {
+                    LOCK(CONFIG.HASHMAP(nHashmapIterator, nFile));
+
                     /* Find the file stream for LRU cache. */
                     #ifdef NO_MMAP
                     std::fstream* pstream = get_file_stream(nHashmapIterator, nAdjustedBucket);

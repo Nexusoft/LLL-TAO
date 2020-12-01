@@ -115,8 +115,8 @@ namespace LLD::Config
         , HASHMAP_TOTAL_BUCKETS    (77773)
         , HASHMAP_KEY_ALLOCATION   (16 + 13) //constant: 16 bytes for key checksum, 13 bytes for ckey class
         , QUICK_INIT               (true)    //default: this only really gives us total keys output and makes startup a lot slower
-        , KEYCHAIN_LOCKS           (1024)
-        , FILESYSTEM_LOCKS         (MAX_HASHMAP_FILE_STREAMS)
+        , INDEX_LOCKS              (MAX_INDEX_FILE_STREAMS)
+        , HASHMAP_LOCKS            (MAX_HASHMAP_FILE_STREAMS)
         {
         }
 
@@ -140,10 +140,9 @@ namespace LLD::Config
         , HASHMAP_TOTAL_BUCKETS    (map.HASHMAP_TOTAL_BUCKETS)
         , HASHMAP_KEY_ALLOCATION   (map.HASHMAP_KEY_ALLOCATION)
         , QUICK_INIT               (map.QUICK_INIT)
-        , KEYCHAIN_LOCKS           (map.KEYCHAIN_LOCKS.size())
-        , FILESYSTEM_LOCKS         (map.FILESYSTEM_LOCKS.size())
+        , INDEX_LOCKS              (map.INDEX_LOCKS.size())
+        , HASHMAP_LOCKS            (map.HASHMAP_LOCKS.size())
         {
-
             auto_config();
         }
 
@@ -167,8 +166,8 @@ namespace LLD::Config
         , HASHMAP_TOTAL_BUCKETS    (std::move(map.HASHMAP_TOTAL_BUCKETS))
         , HASHMAP_KEY_ALLOCATION   (std::move(map.HASHMAP_KEY_ALLOCATION))
         , QUICK_INIT               (std::move(map.QUICK_INIT))
-        , KEYCHAIN_LOCKS           (map.KEYCHAIN_LOCKS.size())
-        , FILESYSTEM_LOCKS         (map.FILESYSTEM_LOCKS.size())
+        , INDEX_LOCKS              (map.INDEX_LOCKS.size())
+        , HASHMAP_LOCKS            (map.HASHMAP_LOCKS.size())
         {
             /* Refresh our configuration values. */
             auto_config();
@@ -252,11 +251,11 @@ namespace LLD::Config
          *  @return a reference of the lock object.
          *
          **/
-        std::mutex& KEYCHAIN(const std::vector<uint8_t>& vKey) const
+        std::mutex& INDEX(const uint32_t nFile) const
         {
             /* Calculate the lock that will be obtained by the given key. */
-            uint64_t nLock = XXH3_64bits((uint8_t*)&vKey[0], vKey.size()) % KEYCHAIN_LOCKS.size();
-            return KEYCHAIN_LOCKS[nLock];
+            uint64_t nLock = XXH3_64bits_withSeed((uint8_t*)&nFile, 4, 0) % INDEX_LOCKS.size();
+            return INDEX_LOCKS[nLock];
         }
 
 
@@ -269,11 +268,11 @@ namespace LLD::Config
          *  @return a reference of the lock object.
          *
          **/
-        std::mutex& FILE(const uint32_t nFile) const
+        std::mutex& HASHMAP(const uint32_t nHashmap, const uint32_t nFile) const
         {
             /* Calculate the lock that will be obtained by the given key. */
-            uint64_t nLock = XXH3_64bits((uint8_t*)&nFile, 4) % FILESYSTEM_LOCKS.size();
-            return FILESYSTEM_LOCKS[nLock];
+            uint64_t nLock = XXH3_64bits_withSeed((uint8_t*)&nHashmap, 4, nFile) % HASHMAP_LOCKS.size();
+            return HASHMAP_LOCKS[nLock];
         }
 
     private:
@@ -335,11 +334,11 @@ namespace LLD::Config
 
 
         /** The keychain level locking hashmap. **/
-        mutable std::vector<std::mutex> KEYCHAIN_LOCKS;
+        mutable std::vector<std::mutex> INDEX_LOCKS;
 
 
         /** The keychain level locking hashmap. **/
-        mutable std::vector<std::mutex> FILESYSTEM_LOCKS;
+        mutable std::vector<std::mutex> HASHMAP_LOCKS;
 
     };
 }

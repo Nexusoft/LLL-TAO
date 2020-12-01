@@ -331,7 +331,7 @@ int main(int argc, char** argv)
 
     //build our base configuration
     LLD::Config::Base BASE =
-        LLD::Config::Base(strDB, LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+        LLD::Config::Base(strDB, LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
 
     //build our sector configuration
     LLD::Config::Sector SECTOR      = LLD::Config::Sector(BASE);
@@ -401,7 +401,7 @@ int main(int argc, char** argv)
         swTimer.reset();
         swTimer.start();
 
-        swReaders.start();
+        //swReaders.start();
 
         nTotal = 0;
         for(const auto& nBucket : vFirst)
@@ -413,7 +413,8 @@ int main(int argc, char** argv)
                 return debug::error("Failed to read ", nBucket.SubString(), " total ", nTotal);
         }
         swTimer.stop();
-        swReaders.stop();
+        //swReaders.stop();
+        nTotal = 0;
 
         uint64_t nElapsed = swTimer.ElapsedMicroseconds();
         debug::log(0, "[LLD] ", vFirst.size() / 1000, "k records read in ", nElapsed,
@@ -575,10 +576,10 @@ int main(int argc, char** argv)
 
         runtime::stopwatch swClose;
         swClose.start();
-        swElapsed.start();
+        //swElapsed.start();
         delete bloom;
         swClose.stop();
-        swElapsed.stop();
+        //swElapsed.stop();
 
         debug::log(0, "[LLD] Closed in ", swClose.ElapsedMilliseconds(), " ms");
     }
