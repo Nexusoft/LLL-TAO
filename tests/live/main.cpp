@@ -331,7 +331,7 @@ int main(int argc, char** argv)
 
     //build our base configuration
     LLD::Config::Base BASE =
-        LLD::Config::Base(strDB, LLD::FLAGS::CREATE | LLD::FLAGS::FORCE | LLD::FLAGS::APPEND);
+        LLD::Config::Base(strDB, LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
 
     //build our sector configuration
     LLD::Config::Sector SECTOR      = LLD::Config::Sector(BASE);

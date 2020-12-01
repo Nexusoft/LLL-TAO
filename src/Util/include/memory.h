@@ -809,6 +809,9 @@ namespace memory
                     hFile,
                     nAlignedOffset));
 
+            /* Let the OS know we will be accessing in random ordering. */
+            posix_madvise(pBegin + nOffset - nAlignedOffset, nMappingSize, POSIX_MADV_RANDOM);
+
             /* Check for mapping failures. */
             if(pBegin == MAP_FAILED)
                 return debug::error(FUNCTION, "failed to create memory mapping: ", std::strerror(errno));
