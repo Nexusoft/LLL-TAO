@@ -152,18 +152,25 @@ namespace LLD::Templates
         if(cachePool->Get(vKey, vData))
             return true;
 
-        /* Check disk buffer. */
-        if(mapDiskBuffer.count(vKey))
         {
-            /* Grab the data off the buffer. */
-            vData = mapDiskBuffer[vKey];
-            return true;
+            LOCK(BUFFER_MUTEX);
+
+            /* Check disk buffer. */
+            if(mapDiskBuffer.count(vKey))
+            {
+                /* Grab the data off the buffer. */
+                vData = mapDiskBuffer[vKey];
+                return true;
+            }
         }
 
         /* Get the key from the keychain. */
         SectorKey key;
         if(pSectorKeys->Get(vKey, key))
         {
+            /* Add to cache */
+            cachePool->Put(key, vKey, vData);
+
             {
                 LOCK(CONFIG.FILE(key.nSectorFile));
 
@@ -202,9 +209,6 @@ namespace LLD::Templates
                 }
 
             }
-
-            /* Add to cache */
-            cachePool->Put(key, vKey, vData);
 
             /* Verbose Debug Logging. */
             if(config::nVerbose >= 5)
@@ -565,6 +569,8 @@ namespace LLD::Templates
             {
                 debug::log(0, FUNCTION, "allocating new sector file ", nCurrentFile + 1);
 
+                LOCK(CONFIG.FILE(nCurrentFile));
+
                 /* Iterate the current file and reset current file sie. */
                 ++nCurrentFile;
                 nCurrentFileSize = 0;
@@ -598,10 +604,10 @@ namespace LLD::Templates
 
                     /* Find the file stream for LRU cache. */
                     std::fstream* pstream;
-                    if(!fileCache->Get(nCurrentFile, pstream) || !pstream)
+                    if(!fileCache->Get(key.nSectorFile, pstream) || !pstream)
                     {
                         /* Set the new stream pointer. */
-                        pstream = new std::fstream(debug::safe_printstr(CONFIG.DIRECTORY, "datachain/_block.", std::setfill('0'), std::setw(5), nCurrentFile), std::ios::in | std::ios::out | std::ios::binary);
+                        pstream = new std::fstream(debug::safe_printstr(CONFIG.DIRECTORY, "datachain/_block.", std::setfill('0'), std::setw(5), key.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
                         if(!pstream->is_open())
                         {
                             delete pstream;
@@ -609,7 +615,7 @@ namespace LLD::Templates
                         }
 
                         /* If file not found add to LRU cache. */
-                        fileCache->Put(nCurrentFile, pstream);
+                        fileCache->Put(key.nSectorFile, pstream);
                     }
 
                     /* If it is a New Sector, Assign a Binary Position. */
@@ -625,6 +631,9 @@ namespace LLD::Templates
                         continue;
                     }
 
+                    /* Flush the buffered data to disk. */
+                    pstream->flush();
+
                     /* Increment the current filesize */
                     nCurrentFileSize = pstream->tellp();
 
@@ -636,8 +645,6 @@ namespace LLD::Templates
                     if(config::nVerbose >= 5)
                         debug::log(5, FUNCTION, "Current File: ", key.nSectorFile,
                             " | Current File Size: ", key.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
-
-                    pstream->flush();
                 }
 
                 /* Assign the Key to Keychain. */
@@ -650,12 +657,12 @@ namespace LLD::Templates
                 {
                     LOCK(BUFFER_MUTEX);
 
+                    /* Adjust current buffer size. */
+                    nBufferBytes -= (vKey.size() + vData.size());
+
                     /* Erase the new record and adjust sizes. */
                     mapDiskBuffer.erase(vKey);
                     nRecords = mapDiskBuffer.size();
-
-                    /* Adjust current buffer size. */
-                    nBufferBytes -= (vKey.size() + vData.size());
                 }
             }
             while(nRecords > 0);
