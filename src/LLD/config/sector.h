@@ -56,7 +56,7 @@ namespace LLD::Config
         , MAX_SECTOR_CACHE_SIZE   (1024 * 1024)       //1 MB of cache default
         , MAX_SECTOR_FILE_SIZE    (1024 * 1024 * 512) //512 MB max per sector file
         , MAX_SECTOR_BUFFER_SIZE  (1024 * 1024 * 4)   //4 MB max disk buffer
-        , FILESYSTEM_LOCKS        (MAX_SECTOR_FILE_STREAMS)
+        , FILESYSTEM_LOCKS        ( )
         {
         }
 
@@ -68,8 +68,10 @@ namespace LLD::Config
         , MAX_SECTOR_CACHE_SIZE   (map.MAX_SECTOR_CACHE_SIZE)
         , MAX_SECTOR_FILE_SIZE    (map.MAX_SECTOR_FILE_SIZE)
         , MAX_SECTOR_BUFFER_SIZE  (map.MAX_SECTOR_BUFFER_SIZE)
-        , FILESYSTEM_LOCKS        (map.FILESYSTEM_LOCKS.size())
+        , FILESYSTEM_LOCKS        ( )
         {
+            /* Refresh our configuration values. */
+            auto_config();
         }
 
 
@@ -80,8 +82,10 @@ namespace LLD::Config
         , MAX_SECTOR_CACHE_SIZE   (std::move(map.MAX_SECTOR_CACHE_SIZE))
         , MAX_SECTOR_FILE_SIZE    (std::move(map.MAX_SECTOR_FILE_SIZE))
         , MAX_SECTOR_BUFFER_SIZE  (std::move(map.MAX_SECTOR_BUFFER_SIZE))
-        , FILESYSTEM_LOCKS        (map.FILESYSTEM_LOCKS.size())
+        , FILESYSTEM_LOCKS        ( )
         {
+            /* Refresh our configuration values. */
+            auto_config();
         }
 
 
@@ -98,6 +102,9 @@ namespace LLD::Config
             MAX_SECTOR_CACHE_SIZE   = map.MAX_SECTOR_CACHE_SIZE;
             MAX_SECTOR_FILE_SIZE    = map.MAX_SECTOR_FILE_SIZE;
             MAX_SECTOR_BUFFER_SIZE  = map.MAX_SECTOR_BUFFER_SIZE;
+
+            /* Refresh our configuration values. */
+            auto_config();
 
             return *this;
         }
@@ -116,6 +123,9 @@ namespace LLD::Config
             MAX_SECTOR_CACHE_SIZE   = std::move(map.MAX_SECTOR_CACHE_SIZE);
             MAX_SECTOR_FILE_SIZE    = std::move(map.MAX_SECTOR_FILE_SIZE);
             MAX_SECTOR_BUFFER_SIZE  = std::move(map.MAX_SECTOR_BUFFER_SIZE);
+
+            /* Refresh our configuration values. */
+            auto_config();
 
             return *this;
         }
@@ -139,18 +149,39 @@ namespace LLD::Config
         std::mutex& FILE(const uint32_t nFile) const
         {
             /* Calculate the lock that will be obtained by the given key. */
-            return FILESYSTEM_LOCKS[nFile];
+            uint64_t nLock = XXH3_64bits_withSeed((uint8_t*)&nFile, 4, 0) % FILESYSTEM_LOCKS.size();
+            return FILESYSTEM_LOCKS[nLock];
         }
 
     private:
 
+        /** auto_config
+         *
+         *  Updates the automatic configuration values for the static database object.
+         *
+         *  We can guarentee that when this config is either moved or copied, that it is in the
+         *  constructor of the LLD, and thus in its final form before being consumed. This allows us
+         *  to auto-configure some dynamic states that require previous static configurations.
+         *
+         **/
+        void auto_config()
+        {
+            /* Check our maximum limits. */
+            check_limits<uint32_t>(PARAMS(MAX_SECTOR_CACHE_SIZE)); //we are limiting our cache to 4.3 GB for now
+            check_limits<uint32_t>(PARAMS(MAX_SECTOR_FILE_SIZE));  //files shouldn't be larger than 4.3 GB
+            check_limits<uint32_t>(PARAMS(MAX_SECTOR_BUFFER_SIZE)); //we don't need more than 4.3 GB of write buffer
 
-        /** The sector level locking hashmap. **/
-        mutable std::vector<std::mutex> SECTOR_LOCKS;
+            /* Check our maximum ranges. */
+            check_ranges<uint32_t>(PARAMS(MAX_SECTOR_FILE_STREAMS), 9999); //TODO: we should check ulimit here
+
+            /* We want to ensure our mutex lists are initialized here. */
+            FILESYSTEM_LOCKS        = std::vector<std::mutex>(MAX_SECTOR_FILE_STREAMS);
+        }
 
 
         /** The keychain level locking hashmap. **/
         mutable std::vector<std::mutex> FILESYSTEM_LOCKS;
+
     };
 }
 

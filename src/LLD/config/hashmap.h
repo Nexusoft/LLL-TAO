@@ -140,8 +140,8 @@ namespace LLD::Config
         , HASHMAP_TOTAL_BUCKETS    (map.HASHMAP_TOTAL_BUCKETS)
         , HASHMAP_KEY_ALLOCATION   (map.HASHMAP_KEY_ALLOCATION)
         , QUICK_INIT               (map.QUICK_INIT)
-        , INDEX_LOCKS              (map.INDEX_LOCKS.size())
-        , HASHMAP_LOCKS            (map.HASHMAP_LOCKS.size())
+        , INDEX_LOCKS              ( )
+        , HASHMAP_LOCKS            ( )
         {
             auto_config();
         }
@@ -166,8 +166,8 @@ namespace LLD::Config
         , HASHMAP_TOTAL_BUCKETS    (std::move(map.HASHMAP_TOTAL_BUCKETS))
         , HASHMAP_KEY_ALLOCATION   (std::move(map.HASHMAP_KEY_ALLOCATION))
         , QUICK_INIT               (std::move(map.QUICK_INIT))
-        , INDEX_LOCKS              (map.INDEX_LOCKS.size())
-        , HASHMAP_LOCKS            (map.HASHMAP_LOCKS.size())
+        , INDEX_LOCKS              ( )
+        , HASHMAP_LOCKS            ( )
         {
             /* Refresh our configuration values. */
             auto_config();
@@ -197,6 +197,10 @@ namespace LLD::Config
             SECONDARY_BLOOM_HASHES   = map.SECONDARY_BLOOM_HASHES;
             SECONDARY_BLOOM_BITS     = map.SECONDARY_BLOOM_BITS;
             HASHMAP_TOTAL_BUCKETS    = map.HASHMAP_TOTAL_BUCKETS;
+
+            /* We want to ensure our mutex lists are initialized here. */
+            INDEX_LOCKS              = std::vector<std::mutex>(MAX_INDEX_FILE_STREAMS);
+            HASHMAP_LOCKS            = std::vector<std::mutex>(MAX_HASHMAP_FILE_STREAMS);
 
             /* Refresh our configuration values. */
             auto_config();
@@ -229,6 +233,10 @@ namespace LLD::Config
             SECONDARY_BLOOM_BITS     = std::move(map.SECONDARY_BLOOM_BITS);
             HASHMAP_TOTAL_BUCKETS    = std::move(map.HASHMAP_TOTAL_BUCKETS);
 
+            /* We want to ensure our mutex lists are initialized here. */
+            INDEX_LOCKS              = std::vector<std::mutex>(MAX_INDEX_FILE_STREAMS);
+            HASHMAP_LOCKS            = std::vector<std::mutex>(MAX_HASHMAP_FILE_STREAMS);
+
             /* Refresh our configuration values. */
             auto_config();
 
@@ -255,7 +263,7 @@ namespace LLD::Config
         {
             /* Calculate the lock that will be obtained by the given key. */
             uint64_t nLock = XXH3_64bits_withSeed((uint8_t*)&nFile, 4, 0) % INDEX_LOCKS.size();
-            return INDEX_LOCKS[nLock];
+            return INDEX_LOCKS[nLock]; //we need to use modulus here in case MAX_INDEX_FILE_STREAMS is smaller than total files
         }
 
 
@@ -326,6 +334,10 @@ namespace LLD::Config
             check_ranges<uint32_t>(PARAMS(PRIMARY_BLOOM_ACCURACY),   1000); //this is a maximum of 10 bits per key
             check_ranges<uint16_t>(PARAMS(PRIMARY_BLOOM_HASHES),      128); //128 k-hashes should be enough
             check_ranges<uint16_t>(PARAMS(SECONDARY_BLOOM_HASHES),    128); //128 k-hashes is really excessive, but alas you can go that far
+
+            /* We want to ensure our mutex lists are initialized here. */
+            INDEX_LOCKS          = std::vector<std::mutex>(MAX_INDEX_FILE_STREAMS);
+            HASHMAP_LOCKS        = std::vector<std::mutex>(MAX_HASHMAP_FILE_STREAMS);
 
             /* Give a warning if quick init is not enabled. */
             if(!QUICK_INIT)

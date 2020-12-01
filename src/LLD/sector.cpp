@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLD/templates/sector.h>
+#include <LLD/templates/static.h>
 
 #include <LLD/cache/binary_lfu.h>
 #include <LLD/cache/binary_lru.h>
