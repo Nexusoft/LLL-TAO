@@ -152,28 +152,34 @@ namespace LLD::Templates
         if(cachePool->Get(vKey, vData))
             return true;
 
-        /* Check disk buffer. */
-        if(mapDiskBuffer.count(vKey))
         {
-            /* Grab the data off the buffer. */
-            vData = mapDiskBuffer[vKey];
-            return true;
+            LOCK(BUFFER_MUTEX);
+
+            /* Check disk buffer. */
+            if(mapDiskBuffer.count(vKey))
+            {
+                /* Grab the data off the buffer. */
+                vData = mapDiskBuffer[vKey];
+                return true;
+            }
         }
 
         /* Get the key from the keychain. */
-        SectorKey cKey;
-        if(pSectorKeys->Get(vKey, cKey))
+        SectorKey key;
+        if(pSectorKeys->Get(vKey, key))
         {
+            /* Add to cache */
+            cachePool->Put(key, vKey, vData);
+
             {
-                LOCK(SECTOR_MUTEX);
-                //LOCK(CONFIG.SECTOR(cKey));
+                LOCK(CONFIG.FILE(key.nSectorFile));
 
                 /* Find the file stream for LRU cache. */
                 std::fstream* pstream;
-                if(!fileCache->Get(cKey.nSectorFile, pstream))
+                if(!fileCache->Get(key.nSectorFile, pstream))
                 {
                     /* Set the new stream pointer. */
-                    pstream = new std::fstream(debug::safe_printstr(CONFIG.DIRECTORY, "datachain/_block.", std::setfill('0'), std::setw(5), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
+                    pstream = new std::fstream(debug::safe_printstr(CONFIG.DIRECTORY, "datachain/_block.", std::setfill('0'), std::setw(5), key.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
                     if(!pstream->is_open())
                     {
                         delete pstream;
@@ -181,36 +187,33 @@ namespace LLD::Templates
                     }
 
                     /* If file not found add to LRU cache. */
-                    fileCache->Put(cKey.nSectorFile, pstream);
+                    fileCache->Put(key.nSectorFile, pstream);
                 }
 
                 /* Get compact size from record. */
-                uint64_t nSize = GetSizeOfCompactSize(cKey.nSectorSize);
+                uint64_t nSize = GetSizeOfCompactSize(key.nSectorSize);
 
                 /* Seek to the Sector Position on Disk. */
-                pstream->seekg(cKey.nSectorStart + nSize, std::ios::beg);
+                pstream->seekg(key.nSectorStart + nSize, std::ios::beg);
 
                 /* Resize for proper record length. */
-                vData.resize(cKey.nSectorSize - nSize);
+                vData.resize(key.nSectorSize - nSize);
 
                 /* Read the State and Size of Sector Header. */
                 if(!pstream->read((char*) &vData[0], vData.size()))
                 {
                     debug::log(0, "SECTOR STREAM: ", pstream->eof() ? "EOF" : pstream->bad() ? "BAD" : pstream->fail() ? "FAIL" : "UNKNOWN");
-                    debug::log(0, "Current File: ", cKey.nSectorFile, " | Current File Size: ", cKey.nSectorStart);
+                    debug::log(0, "Current File: ", key.nSectorFile, " | Current File Size: ", key.nSectorStart);
 
                     return debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes read");
                 }
 
             }
 
-            /* Add to cache */
-            cachePool->Put(cKey, vKey, vData);
-
             /* Verbose Debug Logging. */
             if(config::nVerbose >= 5)
-                debug::log(5, FUNCTION, "Current File: ", cKey.nSectorFile,
-                    " | Current File Size: ", cKey.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
+                debug::log(5, FUNCTION, "Current File: ", key.nSectorFile,
+                    " | Current File Size: ", key.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
 
             return true;
         }
@@ -222,24 +225,29 @@ namespace LLD::Templates
     /*  Get a record from from disk if the sector key
      *  is already read from the keychain. */
     template<class KeychainType, class CacheType, class ConfigType>
-    bool StaticDatabase<KeychainType, CacheType, ConfigType>::Get(const SectorKey& cKey, std::vector<uint8_t>& vData)
+    bool StaticDatabase<KeychainType, CacheType, ConfigType>::Get(const SectorKey& key, std::vector<uint8_t>& vData)
     {
+        nBytesRead += static_cast<uint32_t>(key.vKey.size() + vData.size());
+
+        /* Check the cache pool for key first. */
+        if(cachePool->Get(key.vKey, vData))
+            return true;
+
+        /* Get compact size from record. */
+        const uint64_t nSize = GetSizeOfCompactSize(key.nSectorSize);
+
+        /* Resize for proper record length. */
+        vData.resize(key.nSectorSize - nSize);
+
         {
-            LOCK(SECTOR_MUTEX);
-            //LOCK(CONFIG.SECTOR(cKey));
-
-            nBytesRead += static_cast<uint32_t>(cKey.vKey.size() + vData.size());
-
-            /* Check the cache pool for key first. */
-            if(cachePool->Get(cKey.vKey, vData))
-                return true;
+            LOCK(CONFIG.FILE(key.nSectorFile));
 
             /* Find the file stream for LRU cache. */
             std::fstream *pstream;
-            if(!fileCache->Get(cKey.nSectorFile, pstream))
+            if(!fileCache->Get(key.nSectorFile, pstream))
             {
                 /* Set the new stream pointer. */
-                pstream = new std::fstream(debug::safe_printstr(CONFIG.DIRECTORY, "datachain/_block.", std::setfill('0'), std::setw(5), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
+                pstream = new std::fstream(debug::safe_printstr(CONFIG.DIRECTORY, "datachain/_block.", std::setfill('0'), std::setw(5), key.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
                 if(!pstream->is_open())
                 {
                     delete pstream;
@@ -247,17 +255,11 @@ namespace LLD::Templates
                 }
 
                 /* If file not found add to LRU cache. */
-                fileCache->Put(cKey.nSectorFile, pstream);
+                fileCache->Put(key.nSectorFile, pstream);
             }
 
-            /* Get compact size from record. */
-            uint64_t nSize = GetSizeOfCompactSize(cKey.nSectorSize);
-
             /* Seek to the Sector Position on Disk. */
-            pstream->seekg(cKey.nSectorStart + nSize, std::ios::beg);
-
-            /* Resize for proper record length. */
-            vData.resize(cKey.nSectorSize - nSize);
+            pstream->seekg(key.nSectorStart + nSize, std::ios::beg);
 
             /* Read the State and Size of Sector Header. */
             if(!pstream->read((char*) &vData[0], vData.size()))
@@ -265,13 +267,12 @@ namespace LLD::Templates
                 debug::log(0, "SECTOR STREAM: ", pstream->eof() ? "EOF" : pstream->bad() ? "BAD" : pstream->fail() ? "FAIL" : "UNKNOWN");
                 return debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes read");
             }
-
-
-            /* Verboe output. */
-            if(config::nVerbose >= 5)
-                debug::log(5, FUNCTION, "Current File: ", cKey.nSectorFile,
-                    " | Current File Size: ", cKey.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
         }
+
+        /* Verboe output. */
+        if(config::nVerbose >= 5)
+            debug::log(5, FUNCTION, "Current File: ", key.nSectorFile,
+                " | Current File Size: ", key.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
 
         return true;
     }
@@ -297,8 +298,7 @@ namespace LLD::Templates
         cachePool->Put(key, vKey, vData, false);
 
         {
-            LOCK(SECTOR_MUTEX);
-            //LOCK(CONFIG.SECTOR(key));
+            LOCK(CONFIG.FILE(key.nSectorFile));
 
             /* Find the file stream for LRU cache. */
             std::fstream* pstream;
@@ -328,15 +328,16 @@ namespace LLD::Templates
 
             pstream->flush();
 
-            /* Records flushed indicator. */
-            ++nRecordsFlushed;
-            nBytesWrote += static_cast<uint32_t>(vData.size());
-
-            /* Verbose output. */
-            if(config::nVerbose >= 5)
-                debug::log(5, FUNCTION, "Current File: ", key.nSectorFile,
-                    " | Current File Size: ", key.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
         }
+
+        /* Records flushed indicator. */
+        ++nRecordsFlushed;
+        nBytesWrote += static_cast<uint32_t>(vData.size());
+
+        /* Verbose output. */
+        if(config::nVerbose >= 5)
+            debug::log(5, FUNCTION, "Current File: ", key.nSectorFile,
+                " | Current File Size: ", key.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
 
         return true;
     }
@@ -348,7 +349,6 @@ namespace LLD::Templates
     {
         if(CONFIG.FLAGS & FLAGS::APPEND || !Update(vKey, vData))
         {
-
             /* Get current size */
             uint64_t nSize = vData.size() + GetSizeOfCompactSize(vData.size());
 
@@ -356,32 +356,27 @@ namespace LLD::Templates
             SectorKey key(STATE::READY, vKey, static_cast<uint16_t>(nCurrentFile),
                             nCurrentFileSize, static_cast<uint32_t>(nSize));
 
+            /* Create new file if above current file size. */
+            if(nCurrentFileSize > CONFIG.MAX_SECTOR_FILE_SIZE)
             {
-                LOCK(SECTOR_MUTEX);
+                debug::log(4, FUNCTION, "allocating new sector file ", nCurrentFile + 1);
 
-                /* Create new file if above current file size. */
-                if(nCurrentFileSize > CONFIG.MAX_SECTOR_FILE_SIZE)
-                {
-                    debug::log(4, FUNCTION, "allocating new sector file ", nCurrentFile + 1);
+                //++nCurrentFile;
+                nCurrentFileSize = 0;
 
-                    //++nCurrentFile;
-                    nCurrentFileSize = 0;
+                key.nSectorFile  = ++nCurrentFile;
+                key.nSectorStart = 0;
 
-                    key.nSectorFile  = ++nCurrentFile;
-                    key.nSectorStart = 0;
+                std::ofstream stream
+                (
+                    debug::safe_printstr(CONFIG.DIRECTORY, "datachain/_block.", std::setfill('0'), std::setw(5), nCurrentFile),
+                    std::ios::out | std::ios::binary | std::ios::trunc
+                );
+                stream.close();
+            }
 
-                    std::ofstream stream
-                    (
-                        debug::safe_printstr(CONFIG.DIRECTORY, "datachain/_block.", std::setfill('0'), std::setw(5), nCurrentFile),
-                        std::ios::out | std::ios::binary | std::ios::trunc
-                    );
-                    stream.close();
-                }
-
-
-
-
-                //LOCK(CONFIG.SECTOR(key));
+            {
+                LOCK(CONFIG.FILE(nCurrentFile));
 
                 /* Find the file stream for LRU cache. */
                 std::fstream* pstream;
@@ -484,7 +479,7 @@ namespace LLD::Templates
             return true;
 
         {
-            LOCK(SECTOR_MUTEX);
+            LOCK(CONFIG.FILE(key.nSectorFile));
 
             /* Find the file stream for LRU cache. */
             std::fstream* pstream;
@@ -574,6 +569,8 @@ namespace LLD::Templates
             {
                 debug::log(0, FUNCTION, "allocating new sector file ", nCurrentFile + 1);
 
+                LOCK(CONFIG.FILE(nCurrentFile));
+
                 /* Iterate the current file and reset current file sie. */
                 ++nCurrentFile;
                 nCurrentFileSize = 0;
@@ -603,15 +600,14 @@ namespace LLD::Templates
                 cachePool->Put(key, vKey, vData, false);
 
                 {
-                    LOCK(SECTOR_MUTEX);
-                    //LOCK(CONFIG.SECTOR(key));
+                    LOCK(CONFIG.FILE(key.nSectorFile));
 
                     /* Find the file stream for LRU cache. */
                     std::fstream* pstream;
-                    if(!fileCache->Get(nCurrentFile, pstream) || !pstream)
+                    if(!fileCache->Get(key.nSectorFile, pstream) || !pstream)
                     {
                         /* Set the new stream pointer. */
-                        pstream = new std::fstream(debug::safe_printstr(CONFIG.DIRECTORY, "datachain/_block.", std::setfill('0'), std::setw(5), nCurrentFile), std::ios::in | std::ios::out | std::ios::binary | std::ios::app);
+                        pstream = new std::fstream(debug::safe_printstr(CONFIG.DIRECTORY, "datachain/_block.", std::setfill('0'), std::setw(5), key.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
                         if(!pstream->is_open())
                         {
                             delete pstream;
@@ -619,11 +615,11 @@ namespace LLD::Templates
                         }
 
                         /* If file not found add to LRU cache. */
-                        fileCache->Put(nCurrentFile, pstream);
+                        fileCache->Put(key.nSectorFile, pstream);
                     }
 
                     /* If it is a New Sector, Assign a Binary Position. */
-                    //pstream->seekp(0, std::ios::end);
+                    pstream->seekp(0, std::ios::end);
 
                     /* Write the size of record. */
                     WriteCompactSize(*pstream, vData.size());
@@ -634,6 +630,9 @@ namespace LLD::Templates
                         debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes written");
                         continue;
                     }
+
+                    /* Flush the buffered data to disk. */
+                    pstream->flush();
 
                     /* Increment the current filesize */
                     nCurrentFileSize = pstream->tellp();
@@ -646,8 +645,6 @@ namespace LLD::Templates
                     if(config::nVerbose >= 5)
                         debug::log(5, FUNCTION, "Current File: ", key.nSectorFile,
                             " | Current File Size: ", key.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
-
-                    pstream->flush();
                 }
 
                 /* Assign the Key to Keychain. */
@@ -660,12 +657,12 @@ namespace LLD::Templates
                 {
                     LOCK(BUFFER_MUTEX);
 
+                    /* Adjust current buffer size. */
+                    nBufferBytes -= (vKey.size() + vData.size());
+
                     /* Erase the new record and adjust sizes. */
                     mapDiskBuffer.erase(vKey);
                     nRecords = mapDiskBuffer.size();
-
-                    /* Adjust current buffer size. */
-                    nBufferBytes -= (vKey.size() + vData.size());
                 }
             }
             while(nRecords > 0);
@@ -810,8 +807,8 @@ namespace LLD::Templates
         /* Commit keychain entries. */
         for(const auto& item : pTransaction->setKeychain)
         {
-            SectorKey cKey(STATE::READY, item, 0, 0, 0);
-            if(!pSectorKeys->Put(cKey))
+            SectorKey key(STATE::READY, item, 0, 0, 0);
+            if(!pSectorKeys->Put(key))
                 return debug::error(FUNCTION, "failed to commit to keychain");
         }
 
@@ -820,20 +817,20 @@ namespace LLD::Templates
         for(const auto& item : pTransaction->mapIndex)
         {
             /* Get the key. */
-            SectorKey cKey;
+            SectorKey key;
             if(mapIndex.count(item.second))
-                cKey = mapIndex[item.second];
+                key = mapIndex[item.second];
             else
             {
-                if(!pSectorKeys->Get(item.second, cKey))
+                if(!pSectorKeys->Get(item.second, key))
                     return debug::error(FUNCTION, "failed to read indexing entry");
 
-                mapIndex[item.second] = cKey;
+                mapIndex[item.second] = key;
             }
 
             /* Write the new sector key. */
-            cKey.SetKey(item.first);
-            if(!pSectorKeys->Put(cKey))
+            key.SetKey(item.first);
+            if(!pSectorKeys->Put(key))
                 return debug::error(FUNCTION, "failed to write indexing entry");
         }
 
