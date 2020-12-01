@@ -155,13 +155,14 @@ namespace TAO
                         strValue.append(" " + arg);
                         jsonClause["value"] = strValue;
                     }
-                    else
-                    {
-                        /* Append this data to the previously stored parameter. */
-                        std::string value = parameters[prev];
-                        value.append(" " + arg);
-                        parameters[prev] = value;
-                    }
+                    
+                    /* Append this data to the previously stored parameter. */
+                    std::string value = parameters[prev];
+                    value.append(" " + arg);
+                    parameters[prev] = value;
+                    
+                    /* Reset the Where flag */
+                    fWhere = false;
 
                     continue;
                 }
@@ -197,16 +198,14 @@ namespace TAO
                     /* Add it to the where params*/
                     parameters["where"].push_back(jsonClause);
                 }
-                else
-                {
-                    fWhere = false;
+    
 
-                    // if the paramter is a JSON list or array then we need to parse it
-                    if(arg.compare(pos + 1,1,"{") == 0 || arg.compare(pos + 1,1,"[") == 0)
-                        parameters[prev]=json::json::parse(arg.substr(pos + 1));
-                    else
-                        parameters[prev] = arg.substr(pos + 1);
-                }
+                // if the paramter is a JSON list or array then we need to parse it
+                if(arg.compare(pos + 1,1,"{") == 0 || arg.compare(pos + 1,1,"[") == 0)
+                    parameters[prev]=json::json::parse(arg.substr(pos + 1));
+                else
+                    parameters[prev] = arg.substr(pos + 1);
+
             }
 
 

@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/API/include/sessionmanager.h>
+#include <TAO/API/types/sessionmanager.h>
 
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/utils.h>

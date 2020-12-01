@@ -20,7 +20,7 @@ ________________________________________________________________________________
 #include <LLP/templates/events.h>
 
 #include <TAO/API/include/global.h>
-#include <TAO/API/include/sessionmanager.h>
+#include <TAO/API/types/sessionmanager.h>
 
 #include <Util/include/runtime.h>
 #include <Util/include/args.h>

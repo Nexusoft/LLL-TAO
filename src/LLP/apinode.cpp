@@ -369,8 +369,10 @@ namespace LLP
                 /* Add it to the where params*/
                 params["where"].push_back(jsonClause);
             }
-            else
-                params[key] =  strParam.substr(pos2 + 1);
+            
+            /* Add the parameter as a JSON parameter regardless of whether it is has been added as where clause as it might be a
+               keyword required by a list method such as name or address */
+            params[key] =  strParam.substr(pos2 + 1);
         }
 
         return params;
