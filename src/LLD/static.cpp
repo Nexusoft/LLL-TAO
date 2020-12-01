@@ -32,7 +32,7 @@ namespace LLD::Templates
 
     /* The Database Constructor. To determine file location and the Bytes per Record. */
     template<class KeychainType, class CacheType, class ConfigType>
-    StaticDatabase<KeychainType, CacheType, ConfigType>::StaticDatabase(const LLD::Config::Sector& sectorIn, const ConfigType& keychainIn)
+    StaticDatabase<KeychainType, CacheType, ConfigType>::StaticDatabase(const LLD::Config::Static& sectorIn, const ConfigType& keychainIn)
     : CONDITION_MUTEX   ( )
     , CONDITION         ( )
     , SECTOR_MUTEX      ( )
@@ -557,9 +557,6 @@ namespace LLD::Templates
                 }
             );
 
-            /* Run a courtesy flush and sync whether data has been added. */
-            pSectorKeys->Flush();
-
             /* Check for buffered bytes. */
             if(nBufferBytes.load() == 0)
                 continue;
@@ -631,9 +628,6 @@ namespace LLD::Templates
                         continue;
                     }
 
-                    /* Flush the buffered data to disk. */
-                    pstream->flush();
-
                     /* Increment the current filesize */
                     nCurrentFileSize = pstream->tellp();
 
@@ -641,11 +635,14 @@ namespace LLD::Templates
                     ++nRecordsFlushed;
                     nBytesWrote += static_cast<uint32_t>(nSize);
 
-                    /* Verboe output. */
-                    if(config::nVerbose >= 5)
-                        debug::log(5, FUNCTION, "Current File: ", key.nSectorFile,
-                            " | Current File Size: ", key.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
+                    /* Flush the buffered data to disk. */
+                    pstream->flush();
                 }
+
+                /* Verboe output. */
+                if(config::nVerbose >= 5)
+                    debug::log(5, FUNCTION, "Current File: ", key.nSectorFile,
+                        " | Current File Size: ", key.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
 
                 /* Assign the Key to Keychain. */
                 if(!pSectorKeys->Put(key))

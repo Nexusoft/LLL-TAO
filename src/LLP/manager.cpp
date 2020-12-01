@@ -47,7 +47,7 @@ namespace LLP
             LLD::Config::Base(std::string("_ADDR/") + std::to_string(nPort), LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
 
         /* Create the AddressDB sector configuration object. */
-        LLD::Config::Sector SECTOR             = LLD::Config::Sector(BASE);
+        LLD::Config::Static SECTOR             = LLD::Config::Static(BASE);
         SECTOR.MAX_SECTOR_FILE_STREAMS         = 4;
         SECTOR.MAX_SECTOR_BUFFER_SIZE          = 0; //0 bytes, since we are in force mode this won't be used at all
         SECTOR.MAX_SECTOR_CACHE_SIZE           = 1024; //1 KB of cache by default

@@ -67,12 +67,12 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/locator.h>
 
 #include <LLD/config/hashmap.h>
-#include <LLD/config/sector.h>
+#include <LLD/config/static.h>
 
 class TestDB : public LLD::Templates::StaticDatabase<LLD::BinaryHashMap, LLD::BinaryLRU, LLD::Config::Hashmap>
 {
 public:
-    TestDB(const LLD::Config::Sector& sector, const LLD::Config::Hashmap& keychain)
+    TestDB(const LLD::Config::Static& sector, const LLD::Config::Hashmap& keychain)
     : StaticDatabase(sector, keychain)
     {
     }
@@ -194,6 +194,13 @@ bool read_index(const uint32_t nBucket, const uint32_t nTotal, const LLD::Config
 }
 
 #include <leveldb/c.h>
+
+TestDB* bloom;
+
+void BatchWrite()
+{
+
+}
 
 
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
@@ -334,7 +341,7 @@ int main(int argc, char** argv)
         LLD::Config::Base(strDB, LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
 
     //build our sector configuration
-    LLD::Config::Sector SECTOR      = LLD::Config::Sector(BASE);
+    LLD::Config::Static SECTOR      = LLD::Config::Static(BASE);
     SECTOR.MAX_SECTOR_FILE_STREAMS  = 16;
     SECTOR.MAX_SECTOR_BUFFER_SIZE   = 1024 * 1024 * 4; //4 MB write buffer
     SECTOR.MAX_SECTOR_CACHE_SIZE    = 256; //4 MB of cache available
@@ -355,7 +362,7 @@ int main(int argc, char** argv)
     CONFIG.SECONDARY_BLOOM_HASHES   = 7;
     CONFIG.QUICK_INIT               = !config::GetBoolArg("-audit", false);
 
-    TestDB* bloom = new TestDB(SECTOR, CONFIG);
+    bloom = new TestDB(SECTOR, CONFIG);
 
     runtime::stopwatch swElapsed, swReaders;
 

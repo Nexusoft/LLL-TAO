@@ -20,7 +20,7 @@ namespace LLD
 {
 
     /** The Database Constructor. To determine file location and the Bytes per Record. **/
-    TrustDB::TrustDB(const Config::Sector& sector, const Config::Hashmap& keychain)
+    TrustDB::TrustDB(const Config::Static& sector, const Config::Hashmap& keychain)
     : StaticDatabase(sector, keychain)
     {
     }

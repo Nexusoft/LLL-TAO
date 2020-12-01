@@ -101,40 +101,6 @@ namespace LLD
     }
 
 
-    void BinaryHashMap::Flush()
-    {
-        /* Check for hashmap related mstreams. */
-        if(pFileStreams)
-        {
-            /* Lock the filestreams LRU while flushing. */
-            pFileStreams->lock();
-
-            /* Flush all the mstreams to disk. */
-            for(auto it = pFileStreams->begin(); it != pFileStreams->end(); ++it)
-                if(!it->second->Data->flush())
-                    debug::error(FUNCTION, "failed to flush: ", std::strerror(errno));
-
-            /* Unlock the filestreams LRU. */
-            pFileStreams->unlock();
-        }
-
-        /* Check for index related mstreams. */
-        if(pIndexStreams)
-        {
-            /* Lock the index streams LRU while flushing. */
-            pIndexStreams->lock();
-
-            /* Flush all the mstreams to disk. */
-            for(auto it = pIndexStreams->begin(); it != pIndexStreams->end(); ++it)
-                if(!it->second->Data->flush())
-                    debug::error(FUNCTION, "failed to flush: ", std::strerror(errno));
-
-            /* Unlock the index streams LRU. */
-            pIndexStreams->unlock();
-        }
-    }
-
-
     /* Read a key index from the disk hashmaps. */
     void BinaryHashMap::Initialize()
     {
@@ -947,9 +913,7 @@ namespace LLD
                                 HexStr(vKeyCompressed.begin(), vKeyCompressed.end(), true));
 
                         /* Flush the buffers to disk. */
-                        #ifdef NO_MMAP
                         pstream->flush();
-                        #endif
 
                         return true;
                     }

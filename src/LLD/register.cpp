@@ -33,7 +33,7 @@ namespace LLD
 
 
     /* The Database Constructor. To determine file location and the Bytes per Record. */
-    RegisterDB::RegisterDB(const Config::Sector& sector, const Config::Hashmap& keychain)
+    RegisterDB::RegisterDB(const Config::Static& sector, const Config::Hashmap& keychain)
     : StaticDatabase(sector, keychain)
     , MEMORY_MUTEX()
     , pCommit(new RegisterTransaction())

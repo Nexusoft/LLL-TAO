@@ -29,7 +29,7 @@ namespace LLD
 
 
     /** The Database Constructor.  **/
-    ContractDB::ContractDB(const Config::Sector& sector, const Config::Hashmap& keychain)
+    ContractDB::ContractDB(const Config::Static& sector, const Config::Hashmap& keychain)
     : StaticDatabase(sector, keychain)
     , MEMORY_MUTEX()
     , pCommit(new ContractTransaction())

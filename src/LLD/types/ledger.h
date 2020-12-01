@@ -96,7 +96,7 @@ namespace LLD
 
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        LedgerDB(const Config::Sector& sector, const Config::Hashmap& keychain);
+        LedgerDB(const Config::Static& sector, const Config::Hashmap& keychain);
 
 
         /** Default Destructor **/

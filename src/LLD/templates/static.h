@@ -19,7 +19,7 @@ ________________________________________________________________________________
 #include <LLD/include/enum.h>
 #include <LLD/include/version.h>
 
-#include <LLD/config/sector.h>
+#include <LLD/config/static.h>
 
 #include <LLD/templates/key.h>
 #include <LLD/templates/transaction.h>
@@ -86,7 +86,7 @@ namespace LLD::Templates
 
 
         /* Configuration Object. */
-        const LLD::Config::Sector CONFIG;
+        const LLD::Config::Static CONFIG;
 
 
         /* timer for Runtime Calculations. */
@@ -146,7 +146,7 @@ namespace LLD::Templates
 
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        StaticDatabase(const LLD::Config::Sector& sectorIn, const ConfigType& keychainIn);
+        StaticDatabase(const LLD::Config::Static& sectorIn, const ConfigType& keychainIn);
 
 
         /** Default Destructor **/

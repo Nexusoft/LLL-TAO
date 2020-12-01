@@ -337,7 +337,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLD_shard_hashmap.o \
 		build/LLD_hashtree.o \
 		build/LLD_key.o \
-		build/LLD_sector.o \
+		build/LLD_static.o \
 		build/LLD_transaction.o \
 		build/LLD_xxhash.o \
 		build/LLP_base_address.o \

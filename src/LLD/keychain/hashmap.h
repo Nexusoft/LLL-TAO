@@ -103,9 +103,6 @@ namespace LLD
         virtual ~BinaryHashMap();
 
 
-        void Flush();
-
-
         /** Initialize
          *
          *  Initialize the binary hash map keychain.

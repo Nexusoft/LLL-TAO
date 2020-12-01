@@ -25,7 +25,7 @@ ________________________________________________________________________________
 namespace LLD::Config
 {
     /** Structure to contain the configuration variables for the sector database object. **/
-    class Sector : public Base
+    class Static : public Base
     {
     public:
 
@@ -46,11 +46,11 @@ namespace LLD::Config
 
 
         /** No empty constructor. **/
-        Sector() = delete;
+        Static() = delete;
 
 
         /** Required Constructor. **/
-        Sector(const Base& base)
+        Static(const Base& base)
         : Base                    (base)
         , MAX_SECTOR_FILE_STREAMS (8)
         , MAX_SECTOR_CACHE_SIZE   (1024 * 1024)       //1 MB of cache default
@@ -62,7 +62,7 @@ namespace LLD::Config
 
 
         /** Copy Constructor. **/
-        Sector(const Sector& map)
+        Static(const Static& map)
         : Base                    (map)
         , MAX_SECTOR_FILE_STREAMS (map.MAX_SECTOR_FILE_STREAMS)
         , MAX_SECTOR_CACHE_SIZE   (map.MAX_SECTOR_CACHE_SIZE)
@@ -76,7 +76,7 @@ namespace LLD::Config
 
 
         /** Move Constructor. **/
-        Sector(Sector&& map)
+        Static(Static&& map)
         : Base                    (std::move(map))
         , MAX_SECTOR_FILE_STREAMS (std::move(map.MAX_SECTOR_FILE_STREAMS))
         , MAX_SECTOR_CACHE_SIZE   (std::move(map.MAX_SECTOR_CACHE_SIZE))
@@ -90,14 +90,14 @@ namespace LLD::Config
 
 
         /** Copy Assignment **/
-        Sector& operator=(const Sector& map)
+        Static& operator=(const Static& map)
         {
             /* Database configuration. */
             DIRECTORY               = map.DIRECTORY;
             NAME                    = map.NAME;
             FLAGS                   = map.FLAGS;
 
-            /* Sector configuration.  */
+            /* Static configuration.  */
             MAX_SECTOR_FILE_STREAMS = map.MAX_SECTOR_FILE_STREAMS;
             MAX_SECTOR_CACHE_SIZE   = map.MAX_SECTOR_CACHE_SIZE;
             MAX_SECTOR_FILE_SIZE    = map.MAX_SECTOR_FILE_SIZE;
@@ -111,14 +111,14 @@ namespace LLD::Config
 
 
         /** Move Assignment **/
-        Sector& operator=(Sector&& map)
+        Static& operator=(Static&& map)
         {
             /* Database configuration. */
             DIRECTORY               = std::move(map.DIRECTORY);
             NAME                    = std::move(map.NAME);
             FLAGS                   = std::move(map.FLAGS);
 
-            /* Sector configuration.  */
+            /* Static configuration.  */
             MAX_SECTOR_FILE_STREAMS = std::move(map.MAX_SECTOR_FILE_STREAMS);
             MAX_SECTOR_CACHE_SIZE   = std::move(map.MAX_SECTOR_CACHE_SIZE);
             MAX_SECTOR_FILE_SIZE    = std::move(map.MAX_SECTOR_FILE_SIZE);
@@ -132,7 +132,7 @@ namespace LLD::Config
 
 
         /** Destructor. **/
-        ~Sector()
+        ~Static()
         {
         }
 

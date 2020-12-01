@@ -13,7 +13,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
-#include <LLD/config/sector.h>
+#include <LLD/config/static.h>
 #include <LLD/config/hashmap.h>
 
 #include <TAO/Ledger/include/enum.h> //for internal flags
@@ -47,7 +47,7 @@ namespace LLD
                 Config::Base("_CONTRACT", FLAGS::CREATE | FLAGS::FORCE);
 
             /* Create the ContractDB sector configuration object. */
-            Config::Sector SECTOR             = Config::Sector(BASE);
+            Config::Static SECTOR             = Config::Static(BASE);
             SECTOR.MAX_SECTOR_FILE_STREAMS    = 16;
             SECTOR.MAX_SECTOR_BUFFER_SIZE     = 0; //0 bytes, since we are in force mode this won't be used at all
             SECTOR.MAX_SECTOR_CACHE_SIZE      = 1024 * 1024; //1 MB of cache available
@@ -71,7 +71,7 @@ namespace LLD
                 Config::Base("_REGISTER", FLAGS::CREATE | FLAGS::FORCE);
 
             /* Create the RegisterDB sector configuration object. */
-            Config::Sector SECTOR             = Config::Sector(BASE);
+            Config::Static SECTOR             = Config::Static(BASE);
             SECTOR.MAX_SECTOR_FILE_STREAMS    = 16;
             SECTOR.MAX_SECTOR_BUFFER_SIZE     = 0; //0 bytes, since we are in force mode this won't be used at all
             SECTOR.MAX_SECTOR_CACHE_SIZE      = config::GetArg("-registercache", 2) * 1024 * 1024; //2 MB of cache by default
@@ -95,7 +95,7 @@ namespace LLD
                 Config::Base("_LEDGER", FLAGS::CREATE | FLAGS::FORCE);
 
             /* Create the LedgerDB sector configuration object. */
-            Config::Sector SECTOR             = Config::Sector(BASE);
+            Config::Static SECTOR             = Config::Static(BASE);
             SECTOR.MAX_SECTOR_FILE_STREAMS    = 16;
             SECTOR.MAX_SECTOR_BUFFER_SIZE     = 0; //0 bytes, since we are in force mode this won't be used at all
             SECTOR.MAX_SECTOR_CACHE_SIZE      = config::GetArg("-ledgercache", 2) * 1024 * 1024; //2 MB of cache by default
@@ -119,7 +119,7 @@ namespace LLD
                 Config::Base("_LEGACY", FLAGS::CREATE | FLAGS::FORCE);
 
             /* Create the LegacyDB sector configuration object. */
-            Config::Sector SECTOR             = Config::Sector(BASE);
+            Config::Static SECTOR             = Config::Static(BASE);
             SECTOR.MAX_SECTOR_FILE_STREAMS    = 16;
             SECTOR.MAX_SECTOR_BUFFER_SIZE     = 0; //0 bytes, since we are in force mode this won't be used at all
             SECTOR.MAX_SECTOR_CACHE_SIZE      = config::GetArg("-legacycache", 1) * 1024 * 1024; //1 MB of cache by default
@@ -143,7 +143,7 @@ namespace LLD
                 Config::Base("_TRUST", FLAGS::CREATE | FLAGS::FORCE);
 
             /* Create the TrustDB sector configuration object. */
-            Config::Sector SECTOR             = Config::Sector(BASE);
+            Config::Static SECTOR             = Config::Static(BASE);
             SECTOR.MAX_SECTOR_FILE_STREAMS    = 4;
             SECTOR.MAX_SECTOR_BUFFER_SIZE     = 0; //0 bytes, since we are in force mode this won't be used at all
             SECTOR.MAX_SECTOR_CACHE_SIZE      = 1024 * 1024; //1 MB of cache by default
@@ -167,7 +167,7 @@ namespace LLD
                 Config::Base("_LOCAL", FLAGS::CREATE | FLAGS::FORCE);
 
             /* Create the LocalDB sector configuration object. */
-            Config::Sector SECTOR             = Config::Sector(BASE);
+            Config::Static SECTOR             = Config::Static(BASE);
             SECTOR.MAX_SECTOR_FILE_STREAMS    = 4;
             SECTOR.MAX_SECTOR_BUFFER_SIZE     = 0; //0 bytes, since we are in force mode this won't be used at all
             SECTOR.MAX_SECTOR_CACHE_SIZE      = 1024 * 1024; //1 MB of cache by default
@@ -192,7 +192,7 @@ namespace LLD
                 Config::Base("_CLIENT", FLAGS::CREATE | FLAGS::FORCE);
 
             /* Create the ClientDB sector configuration object. */
-            Config::Sector SECTOR             = Config::Sector(BASE);
+            Config::Static SECTOR             = Config::Static(BASE);
             SECTOR.MAX_SECTOR_FILE_STREAMS    = 4;
             SECTOR.MAX_SECTOR_BUFFER_SIZE     = 0; //0 bytes, since we are in force mode this won't be used at all
             SECTOR.MAX_SECTOR_CACHE_SIZE      = 1024 * 1024; //1 MB of cache by default

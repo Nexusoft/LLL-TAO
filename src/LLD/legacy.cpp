@@ -21,7 +21,7 @@ namespace LLD
 {
 
     /** The Database Constructor. To determine file location and the Bytes per Record. **/
-    LegacyDB::LegacyDB(const Config::Sector& sector, const Config::Hashmap& keychain)
+    LegacyDB::LegacyDB(const Config::Static& sector, const Config::Hashmap& keychain)
     : StaticDatabase(sector, keychain)
     {
     }
