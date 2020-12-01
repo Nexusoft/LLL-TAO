@@ -31,8 +31,7 @@ namespace memory
 
     /** compare
      *
-     *  Compares two byte arrays and determines their signed equivalence byte for
-     *   byte.
+     *  Compares two byte arrays and determines their equivalence byte for byte.
      *
      *  @param[in] a The first byte array to compare.
      *  @param[in] b The second byte array to compare.
@@ -41,7 +40,7 @@ namespace memory
      *  @return Returns the signed difference of the first different byte value.
      *
      **/
-    int32_t compare(const uint8_t *a, const uint8_t *b, const uint64_t size);
+    int32_t compare(const uint8_t *a, const uint8_t *b, const uint64_t nSize);
 
 
     /** copy

@@ -18,15 +18,12 @@ namespace memory
     /**  Compares two byte arrays and determines their signed equivalence byte for
      *   byte.
      **/
-    int32_t compare(const uint8_t *a, const uint8_t *b, const uint64_t size)
+    int32_t compare(const uint8_t *a, const uint8_t *b, const uint64_t nSize)
     {
-        for(uint64_t i = 0; i < size; ++i)
+        for(uint64_t i = 0; i < nSize; ++i)
         {
-            const uint8_t &ai = a[i];
-            const uint8_t &bi = b[i];
-
-            if(ai != bi)
-                return ai - bi;
+            if(a[i] != b[i])
+                return a[i] - b[i];
         }
         return 0;
     }
