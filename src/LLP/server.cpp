@@ -962,11 +962,17 @@ namespace LLP
 
         /* Close the listening sockets */
         if(!fSSLRequired)
-            closesocket(get_listening_socket(true, false));
+        {
+            closesocket(hListenSocket.first);
+            hListenSocket.first = 0;
+        }
 
         /* Close the ssl socket if running */
         if(fSSL)
-            closesocket(get_listening_socket(true, true));
+        {
+            closesocket(hSSLListenSocket.first);
+            hSSLListenSocket.first = 0;
+        }
 
     }
 
