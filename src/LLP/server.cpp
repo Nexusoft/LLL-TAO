@@ -79,6 +79,7 @@ namespace LLP
     , nSleepTime      (config.nManagerInterval)
     , nMaxIncoming    (config.nMaxIncoming)
     , nMaxConnections (config.nMaxConnections)
+    , fRemote         (config.fRemote)
     {
         for(uint16_t nIndex = 0; nIndex < MAX_THREADS; ++nIndex)
         {
@@ -99,32 +100,18 @@ namespace LLP
         /* Initialize the listeners. */
         if(config.fListen)
         {
-            /* If SSL is required then don't listen on the standard port */
-            if(!fSSLRequired)
-            {
-                /* Bind the Listener. */
-                if(!BindListenPort(hListenSocket.first, PORT, true, config.fRemote))
-                {
-                    ::Shutdown();
-                    return;
-                }
+            /* Open the required listening sockets */
+            OpenListening();
 
-                
+            /* Bind the listening threads */
+            if(!fSSLRequired)   
                 LISTEN_THREAD = std::thread(std::bind(&Server::ListeningThread, this, true, false));  //IPv4 Listener
-            }
 
             if(fSSL)
-            {
-                if(!BindListenPort(hSSLListenSocket.first, SSL_PORT, true, config.fRemote))
-                {
-                    ::Shutdown();
-                    return;
-                }
                 SSL_LISTEN_THREAD = std::thread(std::bind(&Server::ListeningThread, this, true, true));  //IPv4 SSL Listener
-            }
 
             /* Initialize the UPnP thread if remote connections are allowed. */
-            if(config.fRemote && config::GetBoolArg(std::string("-upnp"), true))
+            if(fRemote && config::GetBoolArg(std::string("-upnp"), true))
             {
                 if(!fSSLRequired)
                     UPNP_THREAD = std::thread(std::bind(&Server::UPnP, this, PORT));
@@ -566,12 +553,15 @@ namespace LLP
         /* Setup poll objects. */
         pollfd fds[1];
         fds[0].events = POLLIN;
-        fds[0].fd = get_listening_socket(fIPv4, fSSL);
 
         /* Main listener loop. */
         while(!config::fShutdown.load())
         {
-            if (get_listening_socket(fIPv4, fSSL) != INVALID_SOCKET)
+            /* Set the listing socket descriptor on the pollfd.  We do this inside the loop in case the listening socket is 
+               explicitly closed and reopened whilst the app is running (used for mobile) */
+            fds[0].fd = get_listening_socket(fIPv4, fSSL);
+
+            if (fds[0].fd != INVALID_SOCKET)
             {
                 /* Poll the sockets. */
                 fds[0].revents = 0;
@@ -673,6 +663,13 @@ namespace LLP
                     /* Verbose output. */
                     debug::log(3, FUNCTION, "Accepted Connection ", addr.ToString(), " on port ", fSSL ? SSL_PORT : PORT);
                 }
+            }
+            else
+            {
+                /* If the listening socket is invalid then it is likely that it has been explicitly stopped.  In which case we can 
+                   sleep for an extended period to wait for it to be explicitly restarted */
+                runtime::sleep(1000); 
+                continue;
             }
         }
 
@@ -954,6 +951,57 @@ namespace LLP
             hListen = (fIPv4 ? hListenSocket.first : hListenSocket.second);
 
         return hListen;
+    }
+
+
+    /* Closes the listening sockets. */
+    template <class ProtocolType>
+    void Server<ProtocolType>::CloseListening()
+    {
+        debug::log(0, "Closing ", ProtocolType::Name(), " listening sockets");
+
+        /* Close the listening sockets */
+        if(!fSSLRequired)
+        {
+            closesocket(hListenSocket.first);
+            hListenSocket.first = 0;
+        }
+
+        /* Close the ssl socket if running */
+        if(fSSL)
+        {
+            closesocket(hSSLListenSocket.first);
+            hSSLListenSocket.first = 0;
+        }
+
+    }
+
+
+    /* Restarts the listening sockets */
+    template <class ProtocolType>
+    void Server<ProtocolType>::OpenListening()
+    {
+        debug::log(0, "Opening ", ProtocolType::Name(), " listening sockets");
+
+        /* If SSL is required then don't listen on the standard port */
+        if(!fSSLRequired)
+        {
+            /* Bind the Listener. */
+            if(!BindListenPort(hListenSocket.first, PORT, true, fRemote))
+            {
+                ::Shutdown();
+                return;
+            }
+        }
+
+        if(fSSL)
+        {
+            if(!BindListenPort(hSSLListenSocket.first, SSL_PORT, true, fRemote))
+            {
+                ::Shutdown();
+                return;
+            }
+        } 
     }
 
 

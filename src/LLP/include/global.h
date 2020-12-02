@@ -54,6 +54,21 @@ namespace LLP
      **/
     void Shutdown();
 
+    /** CloseListening
+     *
+     *  Closes the listening sockets on all running servers.
+     *
+     **/
+    void CloseListening();
+
+
+    /** OpenListening
+     *
+     *  Restarts the listening sockets on all running servers.
+     *
+     **/
+    void OpenListening();
+
 
     /** CreateMiningServer
      *

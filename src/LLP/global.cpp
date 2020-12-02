@@ -67,6 +67,50 @@ namespace LLP
         NetworkShutdown();
     }
 
+    /* Closes the listening sockets on all running servers. */
+    void CloseListening()
+    {
+        if(TIME_SERVER)
+            TIME_SERVER->CloseListening();
+
+        if(TRITIUM_SERVER)
+            TRITIUM_SERVER->CloseListening();
+
+        if(API_SERVER)
+            API_SERVER->CloseListening();
+
+        if(RPC_SERVER)
+            RPC_SERVER->CloseListening();
+
+        if(MINING_SERVER)
+            MINING_SERVER.load()->CloseListening();
+
+        if(P2P_SERVER)
+            P2P_SERVER->CloseListening();
+    }
+
+    /* Restarts the listening sockets on all running servers. */
+    void OpenListening()
+    {
+        if(TIME_SERVER)
+            TIME_SERVER->OpenListening();
+
+        if(TRITIUM_SERVER)
+            TRITIUM_SERVER->OpenListening();
+
+        if(API_SERVER)
+            API_SERVER->OpenListening();
+
+        if(RPC_SERVER)
+            RPC_SERVER->OpenListening();
+
+        if(MINING_SERVER)
+            MINING_SERVER.load()->OpenListening();
+
+        if(P2P_SERVER)
+            P2P_SERVER->OpenListening();
+    }
+
 
     /*  Creates and returns the mining server. */
     Server<Miner>* CreateMiningServer()

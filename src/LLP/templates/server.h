@@ -139,6 +139,9 @@ namespace LLP
         /** Maximum number connections in total that this server can handle.  Must be greater than nMaxIncoming **/
         uint32_t nMaxConnections;
 
+        /** Flag indicating that the server should listen for remote connections **/
+        bool fRemote;
+
 
     public:
 
@@ -455,6 +458,22 @@ namespace LLP
          *
          **/
         bool SSLRequired();
+
+
+        /** CloseListening
+         *
+         *  Closes the listening sockets.
+         *
+         **/
+        void CloseListening();
+
+
+        /** OpenListening
+         *
+         *  Restarts the listening sockets.
+         *
+         **/
+        void OpenListening();
 
 
     private:
