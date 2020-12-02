@@ -232,6 +232,8 @@ void BatchWrite(runtime::stopwatch &swElapsed, runtime::stopwatch &swReaders)
         swElapsed.stop();
         swTimer.stop();
 
+        //runtime::sleep(10);
+
         uint64_t nElapsed = swTimer.ElapsedMicroseconds();
         debug::log(0,  "[LLD] ", vKeys.size() / 1000, "k records written in ", nElapsed,
             ANSI_COLOR_BRIGHT_YELLOW, " (", std::fixed, (1000000.0 * vKeys.size()) / nElapsed, " writes/s)", ANSI_COLOR_RESET);
@@ -258,6 +260,8 @@ void BatchWrite(runtime::stopwatch &swElapsed, runtime::stopwatch &swReaders)
         }
         swTimer.stop();
         swReaders.stop();
+
+        //runtime::sleep(10);
 
         nElapsed = swTimer.ElapsedMicroseconds();
         debug::log(0, "[LLD] ", vKeys.size() / 1000, "k records read in ", nElapsed,
@@ -407,7 +411,7 @@ int main(int argc, char** argv)
 
     //build our base configuration
     LLD::Config::Base BASE =
-        LLD::Config::Base(strDB, LLD::FLAGS::CREATE | LLD::FLAGS::FORCE | LLD::FLAGS::APPEND);
+        LLD::Config::Base(strDB, LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
 
     //build our sector configuration
     LLD::Config::Static SECTOR      = LLD::Config::Static(BASE);
@@ -417,14 +421,14 @@ int main(int argc, char** argv)
 
     //build our hashmap configuration
     LLD::Config::Hashmap CONFIG     = LLD::Config::Hashmap(BASE);
-    CONFIG.HASHMAP_TOTAL_BUCKETS    = 40000000;
-    CONFIG.MAX_FILES_PER_HASHMAP    = 2;
-    CONFIG.MAX_FILES_PER_INDEX      = 50;
-    CONFIG.MAX_HASHMAPS             = 50;
+    CONFIG.HASHMAP_TOTAL_BUCKETS    = 4000000;
+    CONFIG.MAX_FILES_PER_HASHMAP    = 4;
+    CONFIG.MAX_FILES_PER_INDEX      = 4;
+    CONFIG.MAX_HASHMAPS             = 500;
     CONFIG.MIN_LINEAR_PROBES        = 1;
     CONFIG.MAX_LINEAR_PROBES        = 1024;
-    CONFIG.MAX_HASHMAP_FILE_STREAMS = 50;
-    CONFIG.MAX_INDEX_FILE_STREAMS   = 50;
+    CONFIG.MAX_HASHMAP_FILE_STREAMS = 500;
+    CONFIG.MAX_INDEX_FILE_STREAMS   = 4;
     CONFIG.PRIMARY_BLOOM_HASHES     = 9;
     CONFIG.PRIMARY_BLOOM_ACCURACY   = 144;
     CONFIG.SECONDARY_BLOOM_BITS     = 16;
@@ -509,11 +513,18 @@ int main(int argc, char** argv)
     runtime::stopwatch t4Read;
     std::thread t4(BatchWrite, std::ref(t4Elap), std::ref(t4Read));
 
+
+    runtime::stopwatch t5Elap;
+    runtime::stopwatch t5Read;
+    //std::thread t5(BatchWrite, std::ref(t5Elap), std::ref(t5Read));
+
+
     debug::log(0, "Waiting for threads");
     t1.join();
     t2.join();
     t3.join();
     t4.join();
+    //t5.join();
 
     {
         /******************************************/
@@ -531,7 +542,13 @@ int main(int argc, char** argv)
 
 
     {
-        uint64_t nElapsed = t1Elap.ElapsedMicroseconds() + t2Elap.ElapsedMicroseconds();
+        uint64_t nElapsed =
+            t1Elap.ElapsedMicroseconds() +
+            t2Elap.ElapsedMicroseconds() +
+            t3Elap.ElapsedMicroseconds() +
+            t4Elap.ElapsedMicroseconds() +
+            t5Elap.ElapsedMicroseconds();
+
         uint64_t nMinutes = nElapsed / 60000000;
         uint64_t nSeconds = (nElapsed / 1000000) - (nMinutes * 60);
 
@@ -540,7 +557,13 @@ int main(int argc, char** argv)
     }
 
     {
-        uint64_t nElapsed = t1Read.ElapsedMicroseconds() + t2Read.ElapsedMicroseconds();
+        uint64_t nElapsed =
+            t1Read.ElapsedMicroseconds() +
+            t2Read.ElapsedMicroseconds() +
+            t3Read.ElapsedMicroseconds() +
+            t4Read.ElapsedMicroseconds() +
+            t5Read.ElapsedMicroseconds();
+
         uint64_t nMinutes = nElapsed / 60000000;
         uint64_t nSeconds = (nElapsed / 1000000) - (nMinutes * 60);
 

@@ -376,7 +376,7 @@ namespace LLD::Templates
             }
 
             {
-                LOCK(CONFIG.FILE(nCurrentFile.load()));
+                LOCK(CONFIG.FILE(key.nSectorFile));
 
                 /* Find the file stream for LRU cache. */
                 std::fstream* pstream;
@@ -391,11 +391,11 @@ namespace LLD::Templates
                     }
 
                     /* If file not found add to LRU cache. */
-                    fileCache->Put(nCurrentFile.load(), pstream);
+                    fileCache->Put(key.nSectorFile, pstream);
                 }
 
                 /* If it is a New Sector, Assign a Binary Position. */
-                pstream->seekp(nCurrentFileSize.load(), std::ios::beg);
+                pstream->seekp(key.nSectorStart, std::ios::beg);
 
                 /* Write the size of record. */
                 WriteCompactSize(*pstream, vData.size());
