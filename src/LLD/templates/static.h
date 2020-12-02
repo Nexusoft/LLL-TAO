@@ -110,8 +110,8 @@ namespace LLD::Templates
 
 
         /* The current File Position. */
-        mutable uint32_t nCurrentFile;
-        mutable uint32_t nCurrentFileSize;
+        mutable std::atomic<uint32_t> nCurrentFile;
+        mutable std::atomic<uint32_t> nCurrentFileSize;
 
 
         /* Cache Writer Thread. */

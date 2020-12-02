@@ -353,11 +353,11 @@ namespace LLD::Templates
             uint64_t nSize = vData.size() + GetSizeOfCompactSize(vData.size());
 
             /* Create a new Sector Key. */
-            SectorKey key(STATE::READY, vKey, static_cast<uint16_t>(nCurrentFile),
-                            nCurrentFileSize, static_cast<uint32_t>(nSize));
+            SectorKey key(STATE::READY, vKey, static_cast<uint16_t>(nCurrentFile.load()),
+                            nCurrentFileSize.load(), static_cast<uint32_t>(nSize));
 
             /* Create new file if above current file size. */
-            if(nCurrentFileSize > CONFIG.MAX_SECTOR_FILE_SIZE)
+            if(nCurrentFileSize.load() > CONFIG.MAX_SECTOR_FILE_SIZE)
             {
                 debug::log(4, FUNCTION, "allocating new sector file ", nCurrentFile + 1);
 
@@ -376,11 +376,11 @@ namespace LLD::Templates
             }
 
             {
-                LOCK(CONFIG.FILE(nCurrentFile));
+                LOCK(CONFIG.FILE(nCurrentFile.load()));
 
                 /* Find the file stream for LRU cache. */
                 std::fstream* pstream;
-                if(!fileCache->Get(nCurrentFile, pstream))
+                if(!fileCache->Get(nCurrentFile.load(), pstream))
                 {
                     /* Set the new stream pointer. */
                     pstream = new std::fstream(debug::safe_printstr(CONFIG.DIRECTORY, "datachain/_block.", std::setfill('0'), std::setw(5), nCurrentFile), std::ios::in | std::ios::out | std::ios::binary);
@@ -391,11 +391,11 @@ namespace LLD::Templates
                     }
 
                     /* If file not found add to LRU cache. */
-                    fileCache->Put(nCurrentFile, pstream);
+                    fileCache->Put(nCurrentFile.load(), pstream);
                 }
 
                 /* If it is a New Sector, Assign a Binary Position. */
-                pstream->seekp(nCurrentFileSize, std::ios::beg);
+                pstream->seekp(nCurrentFileSize.load(), std::ios::beg);
 
                 /* Write the size of record. */
                 WriteCompactSize(*pstream, vData.size());
@@ -562,11 +562,11 @@ namespace LLD::Templates
                 continue;
 
             /* Create a new file if the sector file size is over file size limits. */
-            if(nCurrentFileSize > CONFIG.MAX_SECTOR_FILE_SIZE)
+            if(nCurrentFileSize.load() > CONFIG.MAX_SECTOR_FILE_SIZE)
             {
-                debug::log(0, FUNCTION, "allocating new sector file ", nCurrentFile + 1);
+                debug::log(0, FUNCTION, "allocating new sector file ", nCurrentFile.load() + 1);
 
-                LOCK(CONFIG.FILE(nCurrentFile));
+                LOCK(CONFIG.FILE(nCurrentFile.load()));
 
                 /* Iterate the current file and reset current file sie. */
                 ++nCurrentFile;
@@ -590,8 +590,8 @@ namespace LLD::Templates
                 uint64_t nSize = vData.size() + GetSizeOfCompactSize(vData.size());
 
                 /* Create a new Sector Key. */
-                SectorKey key(STATE::READY, vKey, static_cast<uint16_t>(nCurrentFile),
-                                nCurrentFileSize, static_cast<uint32_t>(nSize));
+                SectorKey key(STATE::READY, vKey, static_cast<uint16_t>(nCurrentFile.load()),
+                                nCurrentFileSize.load(), static_cast<uint32_t>(nSize));
 
                 /* Write the data into the memory cache. */
                 cachePool->Put(key, vKey, vData, false);

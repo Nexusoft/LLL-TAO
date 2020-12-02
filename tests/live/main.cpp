@@ -197,9 +197,78 @@ bool read_index(const uint32_t nBucket, const uint32_t nTotal, const LLD::Config
 
 TestDB* bloom;
 
-void BatchWrite()
-{
+std::atomic<uint32_t> nTotalWritten;
+std::atomic<uint32_t> nTotalRead;
 
+void BatchWrite(runtime::stopwatch &swElapsed, runtime::stopwatch &swReaders)
+{
+    for(int n = 0; n < config::GetArg("-tests", 1); ++n)
+    {
+        debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "Generating Keys for test: ", n, "/", config::GetArg("-tests", 1), ANSI_COLOR_RESET);
+
+        std::vector<uint1024_t> vKeys;
+        for(int i = 0; i < config::GetArg("-total", 1); ++i)
+            vKeys.push_back(LLC::GetRand1024());
+
+
+        runtime::stopwatch swTimer;
+        swTimer.start();
+        swElapsed.start();
+
+        uint32_t nTotal = 0;
+        for(const auto& nBucket : vKeys)
+        {
+            ++nTotalWritten;
+
+            ++nTotal;
+            if(!bloom->WriteKey(nBucket, nBucket))
+            {
+                debug::error(FUNCTION, "failed to write ", VARIABLE(nTotal));
+                return;
+            }
+        }
+
+
+        swElapsed.stop();
+        swTimer.stop();
+
+        uint64_t nElapsed = swTimer.ElapsedMicroseconds();
+        debug::log(0,  "[LLD] ", vKeys.size() / 1000, "k records written in ", nElapsed,
+            ANSI_COLOR_BRIGHT_YELLOW, " (", std::fixed, (1000000.0 * vKeys.size()) / nElapsed, " writes/s)", ANSI_COLOR_RESET);
+
+        uint1024_t hashKey = 0;
+
+        swTimer.reset();
+        swTimer.start();
+
+        swReaders.start();
+
+        nTotal = 0;
+        for(const auto& nBucket : vKeys)
+        {
+            ++nTotal;
+            ++nTotalRead;
+
+            if(!bloom->ReadKey(nBucket, hashKey))
+            {
+                debug::error("Failed to read ", nBucket.SubString(), " total ", nTotal);
+                return;
+            }
+                //return
+        }
+        swTimer.stop();
+        swReaders.stop();
+
+        nElapsed = swTimer.ElapsedMicroseconds();
+        debug::log(0, "[LLD] ", vKeys.size() / 1000, "k records read in ", nElapsed,
+            ANSI_COLOR_BRIGHT_YELLOW, " (", std::fixed, (1000000.0 * vKeys.size()) / nElapsed, " read/s)", ANSI_COLOR_RESET);
+
+        //if(!bloom->EraseKey(vKeys[0]))
+        //    return debug::error("failed to erase ", vKeys[0].SubString());
+
+        //if(bloom->ReadKey(vKeys[0], hashKey))
+        //    return debug::error("Failed to erase ", vKeys[0].SubString());
+    }
 }
 
 
@@ -338,7 +407,7 @@ int main(int argc, char** argv)
 
     //build our base configuration
     LLD::Config::Base BASE =
-        LLD::Config::Base(strDB, LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
+        LLD::Config::Base(strDB, LLD::FLAGS::CREATE | LLD::FLAGS::FORCE | LLD::FLAGS::APPEND);
 
     //build our sector configuration
     LLD::Config::Static SECTOR      = LLD::Config::Static(BASE);
@@ -348,31 +417,24 @@ int main(int argc, char** argv)
 
     //build our hashmap configuration
     LLD::Config::Hashmap CONFIG     = LLD::Config::Hashmap(BASE);
-    CONFIG.HASHMAP_TOTAL_BUCKETS    = 20000000;
-    CONFIG.MAX_FILES_PER_HASHMAP    = 4;
-    CONFIG.MAX_FILES_PER_INDEX      = 10;
+    CONFIG.HASHMAP_TOTAL_BUCKETS    = 40000000;
+    CONFIG.MAX_FILES_PER_HASHMAP    = 2;
+    CONFIG.MAX_FILES_PER_INDEX      = 50;
     CONFIG.MAX_HASHMAPS             = 50;
     CONFIG.MIN_LINEAR_PROBES        = 1;
     CONFIG.MAX_LINEAR_PROBES        = 1024;
-    CONFIG.MAX_HASHMAP_FILE_STREAMS = 100;
-    CONFIG.MAX_INDEX_FILE_STREAMS   = 10;
-    CONFIG.PRIMARY_BLOOM_HASHES     = 7;
-    CONFIG.PRIMARY_BLOOM_ACCURACY   = 300;
-    CONFIG.SECONDARY_BLOOM_BITS     = 13;
-    CONFIG.SECONDARY_BLOOM_HASHES   = 7;
+    CONFIG.MAX_HASHMAP_FILE_STREAMS = 50;
+    CONFIG.MAX_INDEX_FILE_STREAMS   = 50;
+    CONFIG.PRIMARY_BLOOM_HASHES     = 9;
+    CONFIG.PRIMARY_BLOOM_ACCURACY   = 144;
+    CONFIG.SECONDARY_BLOOM_BITS     = 16;
+    CONFIG.SECONDARY_BLOOM_HASHES   = 9;
     CONFIG.QUICK_INIT               = !config::GetBoolArg("-audit", false);
 
     bloom = new TestDB(SECTOR, CONFIG);
 
+
     runtime::stopwatch swElapsed, swReaders;
-
-    runtime::stopwatch swElapsed1, swReaders1;
-
-    uint32_t nTotalWritten = 0, nTotalRead = 0;;
-
-    uint32_t nTotalWritten1 = 0, nTotalRead1 = 0;;
-
-
     {
         debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "[LLD] BASE LEVEL TEST:", ANSI_COLOR_RESET);
 
@@ -430,152 +492,28 @@ int main(int argc, char** argv)
 
 
 
-    #if 0
-    {
-        debug::log(0, ANSI_COLOR_BRIGHT_RED, "[LEVELDB] BASE LEVEL TEST:", ANSI_COLOR_RESET);
+    runtime::stopwatch t1Elap;
+    runtime::stopwatch t1Read;
+    std::thread t1(BatchWrite, std::ref(t1Elap), std::ref(t1Read));
 
-        runtime::stopwatch swTimer;
-        swTimer.start();
-        swElapsed1.start();
+    runtime::stopwatch t2Elap;
+    runtime::stopwatch t2Read;
+    std::thread t2(BatchWrite, std::ref(t2Elap), std::ref(t2Read));
 
-        woptions = leveldb_writeoptions_create();
-
-        uint32_t nTotal = 0;
-        if(fNew)
-        {
-
-            for(const auto& nBucket : vFirst)
-            {
-                ++nTotalWritten1;
-                ++nTotal;
-
-                /******************************************/
-                /* WRITE */
-                std::string strData = nBucket.ToString();
-                leveldb_put(db, woptions, strData.c_str(), strData.size(), strData.c_str(), strData.size(), &err);
-
-                if (err != NULL) {
-                  return debug::error("[LEVELDB] Write Failed for ", nBucket.ToString());
-                }
-            }
-
-            leveldb_free(err); err = NULL;
-
-            swElapsed1.stop();
-            swTimer.stop();
-
-            uint64_t nElapsed = swTimer.ElapsedMicroseconds();
-            debug::log(0, "[LEVELDB] ", vFirst.size() / 1000, "k records written in ", nElapsed,
-                ANSI_COLOR_BRIGHT_RED, " (", std::fixed, (1000000.0 * vFirst.size()) / nElapsed, " writes/s)", ANSI_COLOR_RESET);
-
-        }
-
-        uint1024_t hashKey = 0;
-
-        swTimer.reset();
-        swTimer.start();
-
-        swReaders1.start();
+    runtime::stopwatch t3Elap;
+    runtime::stopwatch t3Read;
+    std::thread t3(BatchWrite, std::ref(t3Elap), std::ref(t3Read));
 
 
-        roptions = leveldb_readoptions_create();
+    runtime::stopwatch t4Elap;
+    runtime::stopwatch t4Read;
+    std::thread t4(BatchWrite, std::ref(t4Elap), std::ref(t4Read));
 
-        nTotal = 0;
-        for(const auto& nBucket : vFirst)
-        {
-            ++nTotal;
-            ++nTotalRead1;
-            /******************************************/
-            /* READ */
-
-            size_t read_len;
-            std::string strKey = nBucket.ToString();
-            char* strRead;
-            strRead = leveldb_get(db, roptions, strKey.c_str(), strKey.size(), &read_len, &err);
-
-            if (err != NULL) {
-             return debug::error("[LEVELDB] Read Failed at ", nBucket.ToString(), " value ", strRead);
-            }
-
-            leveldb_free(err); err = NULL;
-        }
-        swTimer.stop();
-        swReaders1.stop();
-
-        uint64_t nElapsed = swTimer.ElapsedMicroseconds();
-        debug::log(0, "[LEVELDB] ", vFirst.size() / 1000, "k records read in ", nElapsed,
-            ANSI_COLOR_BRIGHT_RED, " (", std::fixed, (1000000.0 * vFirst.size()) / nElapsed, " read/s)", ANSI_COLOR_RESET);
-
-        //if(!bloom->EraseKey(vKeys[0]))
-        //    return debug::error("failed to erase ", vKeys[0].SubString());
-
-        //if(bloom->ReadKey(vKeys[0], hashKey))
-        //    return debug::error("Failed to erase ", vKeys[0].SubString());
-    }
-    #endif
-
-
-    for(int n = 0; n < config::GetArg("-tests", 1); ++n)
-    {
-        debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "Generating Keys for test: ", n, "/", config::GetArg("-tests", 1), ANSI_COLOR_RESET);
-
-        std::vector<uint1024_t> vKeys;
-        for(int i = 0; i < config::GetArg("-total", 1); ++i)
-            vKeys.push_back(LLC::GetRand1024());
-
-
-        runtime::stopwatch swTimer;
-        swTimer.start();
-        swElapsed.start();
-
-        uint32_t nTotal = 0;
-        for(const auto& nBucket : vKeys)
-        {
-            ++nTotalWritten;
-
-            ++nTotal;
-            if(!bloom->WriteKey(nBucket, nBucket))
-                return debug::error(FUNCTION, "failed to write ", VARIABLE(nTotal));
-        }
-
-
-        swElapsed.stop();
-        swTimer.stop();
-
-        uint64_t nElapsed = swTimer.ElapsedMicroseconds();
-        debug::log(0,  "[LLD] ", vKeys.size() / 1000, "k records written in ", nElapsed,
-            ANSI_COLOR_BRIGHT_YELLOW, " (", std::fixed, (1000000.0 * vKeys.size()) / nElapsed, " writes/s)", ANSI_COLOR_RESET);
-
-        uint1024_t hashKey = 0;
-
-        swTimer.reset();
-        swTimer.start();
-
-        swReaders.start();
-
-        nTotal = 0;
-        for(const auto& nBucket : vKeys)
-        {
-            ++nTotal;
-            ++nTotalRead;
-
-            bloom->ReadKey(nBucket, hashKey);
-                //return debug::error("Failed to read ", nBucket.SubString(), " total ", nTotal);
-        }
-        swTimer.stop();
-        swReaders.stop();
-
-        nElapsed = swTimer.ElapsedMicroseconds();
-        debug::log(0, "[LLD] ", vKeys.size() / 1000, "k records read in ", nElapsed,
-            ANSI_COLOR_BRIGHT_YELLOW, " (", std::fixed, (1000000.0 * vKeys.size()) / nElapsed, " read/s)", ANSI_COLOR_RESET);
-
-        //if(!bloom->EraseKey(vKeys[0]))
-        //    return debug::error("failed to erase ", vKeys[0].SubString());
-
-        //if(bloom->ReadKey(vKeys[0], hashKey))
-        //    return debug::error("Failed to erase ", vKeys[0].SubString());
-    }
-
+    debug::log(0, "Waiting for threads");
+    t1.join();
+    t2.join();
+    t3.join();
+    t4.join();
 
     {
         /******************************************/
@@ -592,152 +530,23 @@ int main(int argc, char** argv)
     }
 
 
-
-    #if 0
-    for(int n = 0; n < config::GetArg("-tests", 1); ++n)
     {
-        debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "Generating Keys for test: ", n, "/", config::GetArg("-tests", 1), ANSI_COLOR_RESET);
-
-        std::vector<uint1024_t> vKeys;
-        for(int i = 0; i < config::GetArg("-total", 1); ++i)
-            vKeys.push_back(LLC::GetRand1024());
-
-        {
-            runtime::stopwatch swTimer;
-            swTimer.start();
-            swElapsed1.start();
-
-            woptions = leveldb_writeoptions_create();
-
-            uint32_t nTotal = 0;
-            for(const auto& nBucket : vKeys)
-            {
-                ++nTotalWritten1;
-
-                ++nTotal;
-
-                /******************************************/
-                /* WRITE */
-                std::string strData = nBucket.ToString();
-                leveldb_put(db, woptions, strData.c_str(), strData.size(), strData.c_str(), strData.size(), &err);
-
-                if (err != NULL) {
-                  return debug::error("[LEVELDB] Write Failed for ", nBucket.ToString());
-                }
-            }
-
-            leveldb_free(err); err = NULL;
-
-
-            swElapsed1.stop();
-            swTimer.stop();
-
-            uint64_t nElapsed = swTimer.ElapsedMicroseconds();
-            debug::log(0, "[LEVELDB] ", vKeys.size() / 1000, "k records written in ", nElapsed,
-                ANSI_COLOR_BRIGHT_RED, " (", std::fixed, (1000000.0 * vKeys.size()) / nElapsed, " writes/s)", ANSI_COLOR_RESET);
-
-            uint1024_t hashKey = 0;
-
-            swTimer.reset();
-            swTimer.start();
-
-            swReaders1.start();
-
-
-            roptions = leveldb_readoptions_create();
-
-            nTotal = 0;
-            for(const auto& nBucket : vKeys)
-            {
-                ++nTotal;
-                ++nTotalRead1;
-                /******************************************/
-                /* READ */
-
-                size_t read_len;
-                std::string strKey = nBucket.ToString();
-                char* strRead;
-                strRead = leveldb_get(db, roptions, strKey.c_str(), strKey.size(), &read_len, &err);
-
-                if (err != NULL) {
-                 return debug::error("[LEVELDB] Read Failed at ", nBucket.ToString(), " value ", strRead);
-                }
-
-                leveldb_free(err); err = NULL;
-            }
-            swTimer.stop();
-            swReaders1.stop();
-
-            nElapsed = swTimer.ElapsedMicroseconds();
-            debug::log(0, "[LEVELDB] ", vKeys.size() / 1000, "k records read in ", nElapsed,
-                ANSI_COLOR_BRIGHT_RED, " (", std::fixed, (1000000.0 * vKeys.size()) / nElapsed, " read/s)", ANSI_COLOR_RESET);
-
-            //if(!bloom->EraseKey(vKeys[0]))
-            //    return debug::error("failed to erase ", vKeys[0].SubString());
-
-            //if(bloom->ReadKey(vKeys[0], hashKey))
-            //    return debug::error("Failed to erase ", vKeys[0].SubString());
-        }
-
-    }
-
-    {
-        /******************************************/
-        /* CLOSE */
-
-        runtime::stopwatch swClose;
-        swClose.start();
-        swElapsed1.start();
-        leveldb_close(db);
-        swClose.stop();
-        swElapsed1.stop();
-
-        debug::log(0, "[LEVELDB] Closed in ", swClose.ElapsedMilliseconds(), " ms");
-    }
-
-    #endif
-
-
-    {
-        uint64_t nElapsed = swElapsed1.ElapsedMicroseconds();
+        uint64_t nElapsed = t1Elap.ElapsedMicroseconds() + t2Elap.ElapsedMicroseconds();
         uint64_t nMinutes = nElapsed / 60000000;
         uint64_t nSeconds = (nElapsed / 1000000) - (nMinutes * 60);
 
-        debug::log(0, ANSI_COLOR_BRIGHT_RED, "[LEVELDB] Completed Writing ", nTotalWritten1, " Keys in ",
-            nMinutes, " minutes ", nSeconds, " seconds (", std::fixed, (1000000.0 * nTotalWritten1) / nElapsed, " writes/s)");
-    }
-
-    {
-        uint64_t nElapsed = swReaders1.ElapsedMicroseconds();
-        uint64_t nMinutes = nElapsed / 60000000;
-        uint64_t nSeconds = (nElapsed / 1000000) - (nMinutes * 60);
-
-        debug::log(0, ANSI_COLOR_BRIGHT_RED, "[LEVELDB] Completed Reading ", nTotalRead1, " Keys in ",
-            nMinutes, " minutes ", nSeconds, " seconds (", std::fixed, (1000000.0 * nTotalRead1) / nElapsed, " reads/s)");
-    }
-
-
-    {
-        uint64_t nElapsed = swElapsed.ElapsedMicroseconds();
-        uint64_t nMinutes = nElapsed / 60000000;
-        uint64_t nSeconds = (nElapsed / 1000000) - (nMinutes * 60);
-
-        debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "[LLD] Completed Writing ", nTotalWritten, " Keys in ",
+        debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "[LLD] Completed ", nTotalWritten, " Keys in ",
             nMinutes, " minutes ", nSeconds, " seconds (", std::fixed, (1000000.0 * nTotalWritten) / nElapsed, " writes/s)");
     }
 
     {
-        uint64_t nElapsed = swReaders.ElapsedMicroseconds();
+        uint64_t nElapsed = t1Read.ElapsedMicroseconds() + t2Read.ElapsedMicroseconds();
         uint64_t nMinutes = nElapsed / 60000000;
         uint64_t nSeconds = (nElapsed / 1000000) - (nMinutes * 60);
 
-        debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "[LLD] Completed Reading ", nTotalRead, " Keys in ",
+        debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "[LLD] Completed ", nTotalRead, " Keys in ",
             nMinutes, " minutes ", nSeconds, " seconds (", std::fixed, (1000000.0 * nTotalRead) / nElapsed, " reads/s)");
     }
-
-
-
-
 
 
 
