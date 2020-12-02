@@ -718,6 +718,22 @@ namespace LLP
 
                 if(config::fClient.load())
                 {
+                    /* Before subscribing to sig chain transactions and notifications we first ask the node to send us any that we
+                       might not alraedy have.  This could happen if we get disconnected from peers whilst logged in and new events
+                       or transactions occur */
+
+                    /* Get the last txid in sigchain. */
+                    uint512_t hashLast;
+                    LLD::Ledger->ReadLast(hashGenesis, hashLast); //NOTE: we don't care if it fails here, because zero means begin
+
+                    /* Request the sig chain. */
+                    PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::SIGCHAIN), hashGenesis, hashLast);
+
+                    /* Request notifications/events. */
+                    PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashGenesis);
+                    PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::SPECIFIER::LEGACY), uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashGenesis);
+                    
+                    
                     /* Subscribe to sig chain transactions */
                     Subscribe(SUBSCRIPTION::SIGCHAIN);
 
@@ -735,7 +751,13 @@ namespace LLP
                     {
                         /* For tokens just subscribe to it */
                         if(hashAddress.IsToken())
+                        {
+                            /* Request existing notifications/events. */
+                            PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashAddress);
+
+                            /* Subscribe to new notifications */
                             SubscribeNotification(hashAddress);
+                        }
                         else if(hashAddress.IsAccount())
                         {
                            /* Get the token account object. */
@@ -752,7 +774,13 @@ namespace LLP
 
                             /* If it is not a NXS account, and we have not already subscribed to it, subscribe to it */
                             if(hashToken != 0 && std::find(vNotifications.begin(), vNotifications.end(), hashAddress) == vNotifications.end())
+                            {
+                                /* Request existing notifications/events. */
+                                PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashAddress);
+
+                                /* Subscribe to new notifications */
                                 SubscribeNotification(hashAddress);
+                            }
                         }
                     }
                 }
