@@ -140,7 +140,7 @@ The Invoices API provides users and application developers the ability to issue 
 
 The Invoices API can be found in the following repo path:
 
-[LLL-TAO/docs/API/INVOICES.MD](API/INVOICS.MD)
+[LLL-TAO/docs/API/INVOICES.MD](API/INVOICES.MD)
 
 
 ## Crypto API
