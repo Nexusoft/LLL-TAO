@@ -669,7 +669,7 @@ namespace LLD
         if(nSequence > 0)
         {
             TAO::Ledger::Transaction tx;
-            if(ReadEvent(hashAddress, nSequence, tx))
+            if(ReadEvent(hashAddress, nSequence -1, tx))
             {
                 hashLast = tx.GetHash();
                 return true;
