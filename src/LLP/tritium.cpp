@@ -213,6 +213,12 @@ namespace LLP
         {
             case EVENTS::CONNECT:
             {
+                if(config::fClient.load() && !fOUTGOING)
+                {
+                    debug::drop(NODE, "Incoming connections disabled in -client mode");
+                    break;
+                }
+
                 debug::log(1, NODE, fOUTGOING ? "Outgoing" : "Incoming", " Connection Established");
 
                 /* Set the laset ping time. */
