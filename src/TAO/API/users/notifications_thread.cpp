@@ -192,8 +192,11 @@ namespace TAO
                         /* Immediately retry processing if a contract failed peer validation, as it will now be suppressed */
                         fRetry = true;
 
-                        /* Increment the retry counter, so that we only retry 100 times */
+                        /* Increment the retry counter, so that we only retry 10 times */
                         nRetries++;
+
+                        /* Sleep to yield CPU cycles */
+                        runtime::sleep(10);
 
                         break;
                     }
@@ -202,7 +205,7 @@ namespace TAO
                     }
                 }
             }
-            while(fRetry && nRetries < 100);
+            while(fRetry && nRetries < 10);
 
         }
 
