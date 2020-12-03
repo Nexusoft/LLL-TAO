@@ -200,6 +200,30 @@ namespace LLD
     }
 
 
+    /* Reads the last event (highest sequence number) for the sig chain / register */
+    bool LegacyDB::ReadLastEvent(const uint256_t& hashAddress, uint512_t& hashLast)
+    {
+        /* Get the last known event sequence for this address  */
+        uint32_t nSequence = 0;
+        ReadSequence(hashAddress, nSequence); // this can fail if no events exist yet, so dont check return value 
+
+        /* Read the transaction ID of the last event */
+        if(nSequence > 0)
+        {
+            Legacy::Transaction tx;
+            if(ReadEvent(hashAddress, nSequence, tx))
+            {
+                hashLast = tx.GetHash();
+                return true;
+            }
+            else
+                return false;
+        }
+
+        return true;
+    }
+
+
     /* Writes the key of a trust key to record that it has been converted from Legacy to Tritium. */
     bool LegacyDB::WriteTrustConversion(const uint576_t& hashTrust)
     {

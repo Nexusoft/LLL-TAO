@@ -729,9 +729,17 @@ namespace LLP
                     /* Request the sig chain. */
                     PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::SIGCHAIN), hashGenesis, hashLast);
 
+                    /* Get the last event txid */
+                    LLD::Ledger->ReadLastEvent(hashGenesis, hashLast);
+
                     /* Request notifications/events. */
-                    PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashGenesis);
-                    PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::SPECIFIER::LEGACY), uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashGenesis);
+                    PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashGenesis, hashLast);
+
+                    /* Get the last legacy event txid*/
+                    LLD::Legacy->ReadLastEvent(hashGenesis, hashLast);
+
+                    /* Request notifications/events. */
+                    PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::SPECIFIER::LEGACY), uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashGenesis, hashLast);
                     
                     
                     /* Subscribe to sig chain transactions */
@@ -752,8 +760,11 @@ namespace LLP
                         /* For tokens just subscribe to it */
                         if(hashAddress.IsToken())
                         {
+                            /* Get the last event txid */
+                            LLD::Ledger->ReadLastEvent(hashAddress, hashLast);
+
                             /* Request existing notifications/events. */
-                            PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashAddress);
+                            PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashAddress, hashLast);
 
                             /* Subscribe to new notifications */
                             SubscribeNotification(hashAddress);
@@ -775,8 +786,11 @@ namespace LLP
                             /* If it is not a NXS account, and we have not already subscribed to it, subscribe to it */
                             if(hashToken != 0 && std::find(vNotifications.begin(), vNotifications.end(), hashAddress) == vNotifications.end())
                             {
+                                /* Get the last event txid */
+                                LLD::Ledger->ReadLastEvent(hashAddress, hashLast);
+
                                 /* Request existing notifications/events. */
-                                PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashAddress);
+                                PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashAddress, hashLast);
 
                                 /* Subscribe to new notifications */
                                 SubscribeNotification(hashAddress);
@@ -1619,7 +1633,7 @@ namespace LLP
                             uint256_t hashSigchain;
                             ssPacket >> hashSigchain;
 
-                            /* Get the index of block. */
+                            /* Get the txid to list from */
                             uint512_t hashStart;
                             ssPacket >> hashStart;
 
@@ -1682,6 +1696,10 @@ namespace LLP
                             uint256_t hashSigchain;
                             ssPacket >> hashSigchain;
 
+                            /* Get the txid to list from */
+                            uint512_t hashStart;
+                            ssPacket >> hashStart;
+
                             /* Get the last event */
                             debug::log(1, "ACTION::LIST: ", fLegacy ? "LEGACY " : "", "NOTIFICATION for ", hashSigchain.SubString());
 
@@ -1696,6 +1714,10 @@ namespace LLP
                                 Legacy::Transaction tx;
                                 while(LLD::Legacy->ReadEvent(hashSigchain, --nSequence, tx))
                                 {
+                                    /* Check to see if we have reached the requested start point */
+                                    if(hashStart == tx.GetHash())
+                                        break;
+
                                     /* Build a markle transaction. */
                                     Legacy::MerkleTx merkle = Legacy::MerkleTx(tx);
                                     merkle.BuildMerkleBranch();
@@ -1718,6 +1740,10 @@ namespace LLP
                                 TAO::Ledger::Transaction tx;
                                 while(LLD::Ledger->ReadEvent(hashSigchain, --nSequence, tx))
                                 {
+                                    /* Check to see if we have reached the requested start point */
+                                    if(hashStart == tx.GetHash())
+                                        break;
+
                                     /* Build a markle transaction. */
                                     TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
                                     merkle.BuildMerkleBranch();

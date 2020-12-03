@@ -658,6 +658,30 @@ namespace LLD
     }
 
 
+    /* Reads the last event (highest sequence number) for the sig chain / register */
+    bool LedgerDB::ReadLastEvent(const uint256_t& hashAddress, uint512_t& hashLast)
+    {
+        /* Get the last known event sequence for this address  */
+        uint32_t nSequence = 0;
+        ReadSequence(hashAddress, nSequence); // this can fail if no events exist yet, so dont check return value 
+
+        /* Read the transaction ID of the last event */
+        if(nSequence > 0)
+        {
+            TAO::Ledger::Transaction tx;
+            if(ReadEvent(hashAddress, nSequence, tx))
+            {
+                hashLast = tx.GetHash();
+                return true;
+            }
+            else
+                return false;
+        }
+
+        return true;
+    }
+
+
     /* Writes the last txid of sigchain to disk indexed by genesis. */
     bool LedgerDB::WriteLast(const uint256_t& hashGenesis, const uint512_t& hashLast)
     {

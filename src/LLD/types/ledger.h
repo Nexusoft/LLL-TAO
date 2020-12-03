@@ -482,6 +482,19 @@ namespace LLD
         bool ReadEvent(const uint256_t& hashAddress, const uint32_t nSequence, TAO::Ledger::Transaction &tx);
 
 
+        /** ReadLastEvent
+         *
+         *  Reads the last event (highest sequence number) for the sig chain / register
+         *
+         *  @param[in] hashAddress The event address to read.
+         *  @param[out] hashLast The last hash (txid) to read.
+         *
+         *  @return True if the write was successful.
+         *
+         **/
+        bool ReadLastEvent(const uint256_t& hashAddress, uint512_t& hashLast);
+
+
         /** WriteLast
          *
          *  Writes the last txid of sigchain to disk indexed by genesis.
@@ -512,7 +525,7 @@ namespace LLD
          *  Reads the last txid of sigchain to disk indexed by genesis.
          *
          *  @param[in] hashGenesis The genesis hash to read.
-         *  @param[in] hashLast The last hash (txid) to read.
+         *  @param[out] hashLast The last hash (txid) to read.
          *  @param[in] nFlags Determines if mempool transactions should be included (MEMPOOL) or only those in a block (BLOCK)
          *
          *  @return True if the last was successfully read, false otherwise.
