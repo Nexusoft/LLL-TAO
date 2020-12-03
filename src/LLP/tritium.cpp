@@ -342,7 +342,7 @@ namespace LLP
 
 
                 /* Disable AUTH for older protocol versions. */
-                if(nProtocolVersion >= MIN_TRITIUM_VERSION && !fLoggedIn.load())
+                if(nProtocolVersion >= MIN_TRITIUM_VERSION && !fLoggedIn.load() && fOUTGOING)
                 {
                     /* Generate an AUTH message to send to all peers */
                     DataStream ssMessage = LLP::TritiumNode::GetAuth(true);
