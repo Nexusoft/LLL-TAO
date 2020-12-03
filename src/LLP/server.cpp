@@ -464,11 +464,15 @@ namespace LLP
         /* Set the port. */
         pAddressManager->SetPort(PORT);
 
+        /* Timer to print the address manager debug info */
+        runtime::timer TIMER;
+        TIMER.Start();
+
         /* Loop connections. */
         while(!config::fShutdown.load())
         {
             /* Sleep between connection attempts. */
-            runtime::sleep(5000);
+            runtime::sleep(10);
 
             /* Pick a weighted random priority from a sorted list of addresses. */
             if(GetConnectionCount(FLAGS::INCOMING) < nMaxIncoming
@@ -478,7 +482,7 @@ namespace LLP
                 /* Check for invalid address */
                 if(!addr.IsValid())
                 {
-                    runtime::sleep(nSleepTime);
+                    //runtime::sleep(nSleepTime);
                     debug::log(3, FUNCTION, ProtocolType::Name(), " Invalid address, removing address", addr.ToString());
                     pAddressManager->Ban(addr);
                     continue;
@@ -511,7 +515,12 @@ namespace LLP
                 }
             }
 
-            debug::log(3, FUNCTION, ProtocolType::Name(), " ", pAddressManager->ToString());
+            /* Print the debug info every 10s */
+            if(TIMER.Elapsed() >= 10)
+            {
+                debug::log(3, FUNCTION, ProtocolType::Name(), " ", pAddressManager->ToString());
+                TIMER.Reset();
+            }
         }
     }
 

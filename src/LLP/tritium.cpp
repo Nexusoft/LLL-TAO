@@ -213,6 +213,12 @@ namespace LLP
         {
             case EVENTS::CONNECT:
             {
+                if(config::fClient.load() && !fOUTGOING)
+                {
+                    debug::drop(NODE, "Incoming connections disabled in -client mode");
+                    break;
+                }
+
                 debug::log(1, NODE, fOUTGOING ? "Outgoing" : "Incoming", " Connection Established");
 
                 /* Set the laset ping time. */
@@ -336,7 +342,7 @@ namespace LLP
 
 
                 /* Disable AUTH for older protocol versions. */
-                if(nProtocolVersion >= MIN_TRITIUM_VERSION && !fLoggedIn.load())
+                if(nProtocolVersion >= MIN_TRITIUM_VERSION && !fLoggedIn.load() && fOUTGOING)
                 {
                     /* Generate an AUTH message to send to all peers */
                     DataStream ssMessage = LLP::TritiumNode::GetAuth(true);
@@ -636,6 +642,10 @@ namespace LLP
                 if(nProtocolVersion < MIN_TRITIUM_VERSION)
                     return true;
 
+                /* Check for client mode since this method should never be called except by a client. */
+                if(config::fClient.load())
+                    return debug::drop(NODE, "ACTION::AUTH disabled in -client mode");
+
                 /* Disable AUTH messages when synchronizing. */
                 if(TAO::Ledger::ChainState::Synchronizing())
                     return true;
@@ -718,6 +728,30 @@ namespace LLP
 
                 if(config::fClient.load())
                 {
+                    /* Before subscribing to sig chain transactions and notifications we first ask the node to send us any that we
+                       might not alraedy have.  This could happen if we get disconnected from peers whilst logged in and new events
+                       or transactions occur */
+
+                    /* Get the last txid in sigchain. */
+                    uint512_t hashLast;
+                    LLD::Ledger->ReadLast(hashGenesis, hashLast); //NOTE: we don't care if it fails here, because zero means begin
+
+                    /* Request the sig chain. */
+                    PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::SIGCHAIN), hashGenesis, hashLast);
+
+                    /* Get the last event txid */
+                    LLD::Ledger->ReadLastEvent(hashGenesis, hashLast);
+
+                    /* Request notifications/events. */
+                    PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashGenesis, hashLast);
+
+                    /* Get the last legacy event txid*/
+                    LLD::Legacy->ReadLastEvent(hashGenesis, hashLast);
+
+                    /* Request notifications/events. */
+                    PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::SPECIFIER::LEGACY), uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashGenesis, hashLast);
+                    
+                    
                     /* Subscribe to sig chain transactions */
                     Subscribe(SUBSCRIPTION::SIGCHAIN);
 
@@ -735,7 +769,16 @@ namespace LLP
                     {
                         /* For tokens just subscribe to it */
                         if(hashAddress.IsToken())
+                        {
+                            /* Get the last event txid */
+                            LLD::Ledger->ReadLastEvent(hashAddress, hashLast);
+
+                            /* Request existing notifications/events. */
+                            PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashAddress, hashLast);
+
+                            /* Subscribe to new notifications */
                             SubscribeNotification(hashAddress);
+                        }
                         else if(hashAddress.IsAccount())
                         {
                            /* Get the token account object. */
@@ -752,7 +795,16 @@ namespace LLP
 
                             /* If it is not a NXS account, and we have not already subscribed to it, subscribe to it */
                             if(hashToken != 0 && std::find(vNotifications.begin(), vNotifications.end(), hashAddress) == vNotifications.end())
+                            {
+                                /* Get the last event txid */
+                                LLD::Ledger->ReadLastEvent(hashAddress, hashLast);
+
+                                /* Request existing notifications/events. */
+                                PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashAddress, hashLast);
+
+                                /* Subscribe to new notifications */
                                 SubscribeNotification(hashAddress);
+                            }
                         }
                     }
                 }
@@ -1591,7 +1643,7 @@ namespace LLP
                             uint256_t hashSigchain;
                             ssPacket >> hashSigchain;
 
-                            /* Get the index of block. */
+                            /* Get the txid to list from */
                             uint512_t hashStart;
                             ssPacket >> hashStart;
 
@@ -1654,6 +1706,10 @@ namespace LLP
                             uint256_t hashSigchain;
                             ssPacket >> hashSigchain;
 
+                            /* Get the txid to list from */
+                            uint512_t hashStart;
+                            ssPacket >> hashStart;
+
                             /* Get the last event */
                             debug::log(1, "ACTION::LIST: ", fLegacy ? "LEGACY " : "", "NOTIFICATION for ", hashSigchain.SubString());
 
@@ -1668,6 +1724,10 @@ namespace LLP
                                 Legacy::Transaction tx;
                                 while(LLD::Legacy->ReadEvent(hashSigchain, --nSequence, tx))
                                 {
+                                    /* Check to see if we have reached the requested start point */
+                                    if(hashStart == tx.GetHash())
+                                        break;
+
                                     /* Build a markle transaction. */
                                     Legacy::MerkleTx merkle = Legacy::MerkleTx(tx);
                                     merkle.BuildMerkleBranch();
@@ -1690,6 +1750,10 @@ namespace LLP
                                 TAO::Ledger::Transaction tx;
                                 while(LLD::Ledger->ReadEvent(hashSigchain, --nSequence, tx))
                                 {
+                                    /* Check to see if we have reached the requested start point */
+                                    if(hashStart == tx.GetHash())
+                                        break;
+
                                     /* Build a markle transaction. */
                                     TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
                                     merkle.BuildMerkleBranch();
