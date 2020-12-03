@@ -642,6 +642,10 @@ namespace LLP
                 if(nProtocolVersion < MIN_TRITIUM_VERSION)
                     return true;
 
+                /* Check for client mode since this method should never be called except by a client. */
+                if(config::fClient.load())
+                    return debug::drop(NODE, "ACTION::AUTH disabled in -client mode");
+
                 /* Disable AUTH messages when synchronizing. */
                 if(TAO::Ledger::ChainState::Synchronizing())
                     return true;
