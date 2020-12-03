@@ -464,6 +464,10 @@ namespace LLP
         /* Set the port. */
         pAddressManager->SetPort(PORT);
 
+        /* Timer to print the address manager debug info */
+        runtime::timer TIMER;
+        TIMER.Start();
+
         /* Loop connections. */
         while(!config::fShutdown.load())
         {
@@ -511,7 +515,12 @@ namespace LLP
                 }
             }
 
-            debug::log(3, FUNCTION, ProtocolType::Name(), " ", pAddressManager->ToString());
+            /* Print the debug info every 10s */
+            if(TIMER.Elapsed() >= 10)
+            {
+                debug::log(3, FUNCTION, ProtocolType::Name(), " ", pAddressManager->ToString());
+                TIMER.Reset();
+            }
         }
     }
 
