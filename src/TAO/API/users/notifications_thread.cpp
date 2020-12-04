@@ -183,6 +183,10 @@ namespace TAO
                     case -256: // Cannot process notifications whilst synchronizing
                     {
                         debug::log(2, FUNCTION, ex.what());
+
+                        /* Ensure we don't retry */
+                        fRetry = false;
+
                         break;
                     }
                     case -257: // Contract failed peer validation
