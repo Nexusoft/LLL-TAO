@@ -12,8 +12,8 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_UTIL_INCLUDE_VERSION_H
-#define NEXUS_UTIL_INCLUDE_VERSION_H
+#ifndef NEXUS_COMMON_INCLUDE_VERSION_H
+#define NEXUS_COMMON_INCLUDE_VERSION_H
 
 #include <string>
 #include <cstdint>
@@ -26,7 +26,7 @@ namespace version
 	 * incompatible changes are introduced to the public API. It MAY include
 	 * minor and patch level changes. Patch and minor version MUST be reset
 	 * to 0 when major version is incremented. */
-	extern const uint32_t CLIENT_MAJOR;
+	const std::uint32_t CLIENT_MAJOR{6};
 
 
 	/* Minor version Y (x.Y.z | x > 0) MUST be incremented if new, backwards
@@ -35,22 +35,22 @@ namespace version
 	 * It MAY be incremented if substantial new functionality or improvements
 	 * are introduced within the private code. It MAY include patch level
 	 * changes. Patch version MUST be reset to 0 when minor version is incremented. */
-	extern const uint32_t CLIENT_MINOR;
+	const std::uint32_t CLIENT_MINOR{0};
 
 
 	/* Patch version Z (x.y.Z | x > 0) MUST be incremented if only backwards
 	 * compatible bug fixes are introduced. A bug fix is defined as an internal
 	 * change that fixes incorrect behavior. */
-	extern const uint32_t CLIENT_PATCH;
+	const std::uint32_t CLIENT_PATCH{0};
 
 
     /* The version of the actual wallet client. */
-    extern const uint32_t CLIENT_VERSION;
+    const std::uint32_t CLIENT_VERSION{10000 * CLIENT_MAJOR + 100 * CLIENT_MINOR + CLIENT_PATCH};
 
 
 	/** These external variables are the display only variables. They are used to track the updates of Nexus independent of Database and Protocol Upgrades. **/
 	extern const std::string CLIENT_VERSION_BUILD_STRING;
-	extern const std::string CLIENT_DATE;
+	const std::string CLIENT_DATE{__DATE__ " " __TIME__};
 
 
 }

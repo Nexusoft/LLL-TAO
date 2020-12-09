@@ -11,29 +11,13 @@
 
 ____________________________________________________________________________________________*/
 
-#include <Util/include/version.h>
+#include <Common/include/version.h>
 #include <Util/include/debug.h>
 
 namespace version
 {
-
-    /* Major version X (X.y.z | X > 0). */
-    const uint32_t CLIENT_MAJOR = 6;
-
-
-    /* Minor version Y (x.Y.z | x > 0). */
-    const uint32_t CLIENT_MINOR = 0;
-
-
-    /* Patch version Z (x.y.Z | x > 0). */
-    const uint32_t CLIENT_PATCH = 0;
-
-    /* The version of the actual wallet client. */
-    const uint32_t CLIENT_VERSION = 10000 * CLIENT_MAJOR + 100 * CLIENT_MINOR + CLIENT_PATCH;
-
     /* Client Version Outputs. */
-    const std::string CLIENT_NAME("Tritium");
-    const std::string CLIENT_DATE(__DATE__ " " __TIME__);
+    const std::string CLIENT_NAME{"Tritium"};
 
     /* The version number */
     const std::string CLIENT_VERSION_STRING = debug::safe_printstr(CLIENT_MAJOR, ".", CLIENT_MINOR, ".", CLIENT_PATCH);
@@ -41,30 +25,30 @@ namespace version
 
     /* The interface used Qt, CLI, or Tritium) */
     #if defined QT_GUI
-        const std::string CLIENT_INTERFACE("Qt");
+        const std::string CLIENT_INTERFACE{"Qt"};
     #elif defined TRITIUM_GUI
-        const std::string CLIENT_INTERFACE("GUI");
+        const std::string CLIENT_INTERFACE{"GUI"};
     #else
-        const std::string CLIENT_INTERFACE("CLI");
+        const std::string CLIENT_INTERFACE{"CLI"};
     #endif
 
 
     /* The database type used (Berkeley DB, or Lower Level Database) */
     #if defined USE_LLD
-        const std::string CLIENT_DATABASE("[LLD]");
+        const std::string CLIENT_DATABASE{"[LLD]"};
     #else
-        const std::string CLIENT_DATABASE("[BDB]");
+        const std::string CLIENT_DATABASE{"[BDB]"};
     #endif
 
 
     /* The Architecture (32-Bit, ARM 64, or 64-Bit) */
     #if defined x86
-        const std::string BUILD_ARCH = "[x86]";
+        const std::string BUILD_ARCH{"[x86]"};
     #elif defined aarch64
-        const std::string BUILD_ARCH = "[ARM aarch64]";
+        const std::string BUILD_ARCH{"[ARM aarch64]"};
     #else
-        const std::string BUILD_ARCH = "[x64]";
+        const std::string BUILD_ARCH{"[x64]"};
     #endif
 
-    const std::string CLIENT_VERSION_BUILD_STRING(CLIENT_VERSION_STRING + "-pre " + CLIENT_NAME  + " " + CLIENT_INTERFACE + " " + CLIENT_DATABASE + BUILD_ARCH);
+    const std::string CLIENT_VERSION_BUILD_STRING{CLIENT_VERSION_STRING + "-pre " + CLIENT_NAME  + " " + CLIENT_INTERFACE + " " + CLIENT_DATABASE + BUILD_ARCH};
 }

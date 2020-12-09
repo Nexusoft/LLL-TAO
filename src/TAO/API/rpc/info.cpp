@@ -28,7 +28,7 @@ ________________________________________________________________________________
 
 #include <LLP/templates/data.h>
 
-#include <Util/include/version.h>
+#include <Common/include/version.h>
 
 #include <Legacy/wallet/wallet.h>
 #include <Legacy/wallet/walletdb.h>
