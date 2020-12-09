@@ -17,6 +17,7 @@ ________________________________________________________________________________
 
 #include <map>
 #include <functional>
+#include <thread>
 
 #include <Util/include/mutex.h>
 
