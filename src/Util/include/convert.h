@@ -25,36 +25,6 @@ ________________________________________________________________________________
 
 namespace convert
 {
-    /** i64tostr
-     *
-     *  Converts a 64-bit signed integer into a string.
-     *
-     *  @param[in] n The 64-bit signed integer
-     *
-     *  @return the 64-bit integer string
-     *
-     **/
-    inline std::string i64tostr(int64_t n)
-    {
-        return debug::safe_printstr(n);
-    }
-
-
-    /** itostr
-     *
-     *  Converts a 32-bit signed integer into a string.
-     *
-     *  @param[in] n The 32-bit signed integer
-     *
-     *  @return the integer string
-     *
-     **/
-    inline std::string i32tostr(int n)
-    {
-        return debug::safe_printstr(n);
-    }
-
-
     /** atoi64
      *
      *  The ASCII to integer wrapper function
@@ -137,22 +107,6 @@ namespace convert
         return (int64_t)(d > 0 ? d + 0.5 : d - 0.5);
     }
 
-
-    /** abs64
-     *
-     *  Returns the absolute value of the signed 64-bit integer
-     *
-     *  @param[in] n the input value
-     *
-     *  @return the 64-bit absolute value
-     *
-     **/
-    inline int64_t abs64(int64_t n)
-    {
-        return (n >= 0 ? n : -n);
-    }
-
-
     /** DateTimeStrFormat
      *
      *  Converts a 64-bit time value into a formatted date/time string.
@@ -191,22 +145,6 @@ namespace convert
     {
         return DateTimeStrFormat(strTimestampFormat.c_str(), nTime);
     }
-
-
-    /** skipspaces
-     *
-     *  Increments a container iterator while there are spaces to skip
-     *
-     *  @param[in] it the container iterator to increment
-     *
-     **/
-    template<typename T>
-    void skipspaces(T& it)
-    {
-        while(isspace(*it))
-            ++it;
-    }
-
 
     /** IsSwitchChar
      *
@@ -339,22 +277,6 @@ namespace convert
     inline uint64_t bytes2uint64(std::vector<uint8_t> BYTES, int nOffset = 0)
     {
         return (bytes2uint(BYTES, nOffset) | ((uint64_t)bytes2uint(BYTES, nOffset + 4) << 32));
-    }
-
-
-    /** string2bytes
-     *
-     *  Converts a Standard String into a Byte Vector.
-     *
-     *  @param[in] STRING The standard string
-     *
-     *  @return the converted byte vector
-     *
-     **/
-    inline std::vector<uint8_t> string2bytes(std::string STRING)
-    {
-        std::vector<uint8_t> BYTES(STRING.begin(), STRING.end());
-        return BYTES;
     }
 
 
