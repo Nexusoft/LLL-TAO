@@ -26,54 +26,7 @@ ________________________________________________________________________________
 #include <openssl/rand.h>
 
 namespace memory
-{
-
-    /** compare
-     *
-     *  Compares two byte arrays and determines their signed equivalence byte for
-     *   byte.
-     *
-     *  @param[in] a The first byte array to compare.
-     *  @param[in] b The second byte array to compare.
-     *  @param[in] size The number of bytes to compare.
-     *
-     *  @return Returns the signed difference of the first different byte value.
-     *
-     **/
-    int32_t compare(const uint8_t *a, const uint8_t *b, const uint64_t size);
-
-
-    /** copy
-     *
-     *  Copies from two sets of iteratos and checks the sizes for potential buffer
-     *  overflows.
-     *
-     *  @param[in] src_begin The source beginning iterator
-     *  @param[in] src_end The source ending iterator
-     *  @param[in] dst_begin The destination beginning iterator
-     *  @param[in] dst_end The destination ending iterator
-     *
-     **/
-    template<typename Type>
-    void copy(const Type* src_begin, const Type* src_end , const Type* dst_begin, const Type* dst_end)
-    {
-        /* Check the source iterators. */
-        if(src_end < src_begin)
-            throw std::domain_error("src end iterator less than src begin");
-
-        /* Check the destination iterators. */
-        if(dst_end < dst_begin)
-            throw std::domain_error("dst end iterator less than dst begin");
-
-        /* Check the sizes. */
-        if(src_end - src_begin != dst_end - dst_begin)
-            throw std::domain_error("src size mismatch with dst size");
-
-        /* Copy the data. */
-        std::copy((Type*)src_begin, (Type*)src_end, (Type*)dst_begin);
-    }
-
-
+{ 
     /** atomic
      *
      *  Protects an object inside with a mutex.

@@ -591,7 +591,6 @@ OBJS+=  build/Common_base_uint.o \
 		build/Util_encoding.o \
         build/Util_hex.o \
 		build/Util_filesystem.o \
-		build/Util_memory.o \
 		build/Util_random.o \
 		build/Util_signals.o \
 		build/Util_softfloat.o \

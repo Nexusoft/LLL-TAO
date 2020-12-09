@@ -20,7 +20,7 @@ ________________________________________________________________________________
 
 #include <Util/include/debug.h>
 #include <Util/include/hex.h>
-#include <Util/include/memory.h>
+#include <Common/include/memory.h>
 
 #include <algorithm>
 #include <cstring>
