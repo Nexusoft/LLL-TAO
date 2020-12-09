@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_TYPES_TRITIUM_H
 #define NEXUS_LLP_TYPES_TRITIUM_H
 
-#include <LLC/include/random.h>
+#include <Common/include/random.h>
 
 #include <LLP/include/network.h>
 #include <LLP/include/version.h>
@@ -518,7 +518,7 @@ namespace LLP
         static void BlockingMessage(const uint32_t nTimeout, memory::atomic_ptr<LLP::TritiumNode>& pNode, const uint16_t nMsg, Args&&... args)
         {
             /* Create our trigger nonce. */
-            uint64_t nNonce = LLC::GetRand();
+            uint64_t nNonce = Common::GetRand();
             pNode->PushMessage(LLP::Tritium::TYPES::TRIGGER, nNonce);
 
             /* Request the inventory message. */

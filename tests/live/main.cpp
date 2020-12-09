@@ -11,9 +11,9 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLC/types/uint1024.h>
+#include <Common/types/uint1024.h>
 #include <LLC/hash/SK.h>
-#include <LLC/include/random.h>
+#include <Common/include/random.h>
 
 #include <LLD/include/global.h>
 #include <LLD/cache/binary_lru.h>

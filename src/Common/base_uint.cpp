@@ -10,7 +10,7 @@
             "ad vocem populi" - To the Voice of the People
 
 ____________________________________________________________________________________________*/
-#include <LLC/types/base_uint.h>
+#include <Common/types/base_uint.h>
 #include <limits>
 #include <stdexcept>
 

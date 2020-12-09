@@ -17,7 +17,7 @@ ________________________________________________________________________________
 
 #include <Legacy/types/transaction.h>
 
-#include <LLC/types/uint1024.h>
+#include <Common/types/uint1024.h>
 
 #include <TAO/Ledger/types/state.h>
 

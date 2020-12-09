@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_REGISTER_INCLUDE_CALCULATE_H
 #define NEXUS_TAO_REGISTER_INCLUDE_CALCULATE_H
 
-#include <LLC/types/uint1024.h>
+#include <Common/types/uint1024.h>
 
 #include <map>
 

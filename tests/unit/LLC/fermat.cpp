@@ -11,9 +11,9 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLC/types/uint1024.h>
+#include <Common/types/uint1024.h>
 #include <LLC/types/bignum.h>
-#include <LLC/include/random.h>
+#include <Common/include/random.h>
 #include <LLC/prime/fermat.h>
 #include <openssl/bn.h>
 #include <unit/catch2/catch.hpp>
@@ -64,7 +64,7 @@ TEST_CASE("Fermat Tests", "[LLC]")
 
     for(uint32_t i = 0; i < 1000; ++i)
     {
-        bn1 = LLC::GetRand1024();
+        bn1 = Common::GetRand1024();
         bn1 |= 1; //make odd
 
         uint32_t mask = 0x80000000;

@@ -17,7 +17,7 @@ ________________________________________________________________________________
 
 #include <vector>
 
-#include <LLC/types/uint1024.h>
+#include <Common/types/uint1024.h>
 #include <LLC/types/typedef.h>
 
 typedef struct ec_key_st EC_KEY;

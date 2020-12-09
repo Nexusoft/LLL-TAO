@@ -18,7 +18,7 @@ ________________________________________________________________________________
 
 #include <LLC/types/bignum.h>
 #include <TAO/Register/types/address.h>
-#include <LLC/types/uint1024.h>
+#include <Common/types/uint1024.h>
 
 #include <LLD/include/global.h>
 

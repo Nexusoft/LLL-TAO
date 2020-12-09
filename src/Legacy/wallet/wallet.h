@@ -27,7 +27,7 @@ ________________________________________________________________________________
 #include <utility>
 
 #include <LLC/include/eckey.h>
-#include <LLC/types/uint1024.h>
+#include <Common/types/uint1024.h>
 
 #include <Legacy/types/legacy.h>
 #include <Legacy/wallet/addressbook.h>

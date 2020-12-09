@@ -1882,7 +1882,7 @@ namespace TAO
                     debug::log(1, FUNCTION, "CLIENT MODE: Validating transaction");
 
                     /* Create our trigger nonce. */
-                    uint64_t nNonce = LLC::GetRand();
+                    uint64_t nNonce = Common::GetRand();
                     pNode->PushMessage(LLP::Tritium::TYPES::TRIGGER, nNonce);
 
                     /* Request the transaction validation */

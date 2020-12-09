@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_OPERATION_INCLUDE_MIGRATE_H
 #define NEXUS_TAO_OPERATION_INCLUDE_MIGRATE_H
 
-#include <LLC/types/uint1024.h>
+#include <Common/types/uint1024.h>
 
 /* Global TAO namespace. */
 namespace TAO

@@ -11,13 +11,14 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLC/types/uint1024.h>
+#include <Common/types/uint1024.h>
 #include <LLC/types/bignum.h>
-#include <LLC/include/random.h>
+#include <Common/include/random.h>
 #include <unit/catch2/catch.hpp>
 
 
 using namespace LLC;
+using namespace Common;
 
 TEST_CASE( "Base Uint Get Uint Tests", "[LLC]")
 {

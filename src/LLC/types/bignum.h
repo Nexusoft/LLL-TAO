@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLC_TYPES_BIGNUM_H
 #define NEXUS_LLC_TYPES_BIGNUM_H
 
-#include <LLC/types/uint1024.h>
+#include <Common/types/uint1024.h>
 #include <LLP/include/version.h> /* for serialization version */
 #include <stdexcept>
 #include <vector>

@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLD_INCLUDE_REGISTER_H
 #define NEXUS_LLD_INCLUDE_REGISTER_H
 
-#include <LLC/types/uint1024.h>
+#include <Common/types/uint1024.h>
 
 #include <LLD/templates/sector.h>
 #include <LLD/cache/binary_lru.h>

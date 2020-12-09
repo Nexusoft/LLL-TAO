@@ -9,7 +9,7 @@
 
 #include <Util/include/memory.h>
 
-#include <LLC/include/random.h>
+#include <Common/include/random.h>
 
 #include <openssl/rand.h>
 
@@ -46,7 +46,7 @@ TEST_CASE( "Validation Script Benchmarks", "[operation]")
 
     TAO::Ledger::Transaction tx;
     tx.nTimestamp  = 989798;
-    tx.hashGenesis = LLC::GetRand256();
+    tx.hashGenesis = Common::GetRand256();
     tx[0] << (uint8_t)OP::DEBIT << hashFrom << hashTo << nAmount << uint64_t(0);
 
     const Contract& caller = tx[0];

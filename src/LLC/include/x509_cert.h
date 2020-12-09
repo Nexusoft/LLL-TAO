@@ -17,7 +17,7 @@ ________________________________________________________________________________
 
 #include <Util/include/runtime.h>
 
-#include <LLC/types/uint1024.h>
+#include <Common/types/uint1024.h>
 
 #include <cstdint>
 #include <string>

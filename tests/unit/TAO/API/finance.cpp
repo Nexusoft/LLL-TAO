@@ -13,7 +13,7 @@ ________________________________________________________________________________
 
 #include "util.h"
 
-#include <LLC/include/random.h>
+#include <Common/include/random.h>
 
 #include <unit/catch2/catch.hpp>
 
@@ -28,7 +28,7 @@ TEST_CASE( "Test Finance API - create acccount", "[finance/create/account]")
     json::json result;
     json::json error;
 
-    std::string strAccount = "ACCOUNT" +std::to_string(LLC::GetRand());
+    std::string strAccount = "ACCOUNT" +std::to_string(Common::GetRand());
 
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
@@ -92,7 +92,7 @@ TEST_CASE( "Test Finance API - get acccount", "[finance/get/account]")
     json::json result;
     json::json error;
 
-    std::string strAccount = "ACCOUNT" +std::to_string(LLC::GetRand());
+    std::string strAccount = "ACCOUNT" +std::to_string(Common::GetRand());
     TAO::Register::Address hashAccount;
 
     /* Ensure user is created and logged in for testing */
@@ -213,7 +213,7 @@ TEST_CASE( "Test Finance API - list acccounts", "[finance/list/accounts]")
     json::json result;
     json::json error;
 
-    std::string strAccount = "ACCOUNT" +std::to_string(LLC::GetRand());
+    std::string strAccount = "ACCOUNT" +std::to_string(Common::GetRand());
     TAO::Register::Address hashAccount;
 
     /* Ensure user is created and logged in for testing */
@@ -276,7 +276,7 @@ TEST_CASE( "Test Finance API - get stakeinfo", "[finance/get/stakeinfo]")
     json::json result;
     json::json error;
 
-    std::string strAccount = "ACCOUNT" +std::to_string(LLC::GetRand());
+    std::string strAccount = "ACCOUNT" +std::to_string(Common::GetRand());
     TAO::Register::Address hashAccount ;
 
     /* Ensure user is created and logged in for testing */

@@ -18,7 +18,7 @@ ________________________________________________________________________________
 #include <stdexcept>
 #include <vector>
 
-#include <LLC/types/uint1024.h>
+#include <Common/types/uint1024.h>
 #include <LLC/types/typedef.h>
 
 #include <LLC/falcon/falcon.h>

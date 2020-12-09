@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLC/include/random.h>
+#include <Common/include/random.h>
 #include <TAO/Register/types/basevm.h>
 
 #include <TAO/Register/types/address.h>
@@ -91,7 +91,7 @@ TEST_CASE( "Base VM allocation tests", "[register]")
 
     {
         TAO::Register::Value value;
-        uint256_t data = LLC::GetRand256();
+        uint256_t data = Common::GetRand256();
 
         registers.allocate(data, value);
         REQUIRE(registers.available() == 2016);
@@ -107,7 +107,7 @@ TEST_CASE( "Base VM allocation tests", "[register]")
 
     {
         TAO::Register::Value value;
-        uint512_t data = LLC::GetRand512();
+        uint512_t data = Common::GetRand512();
 
         registers.allocate(data, value);
         REQUIRE(registers.available() == 1984);
@@ -123,7 +123,7 @@ TEST_CASE( "Base VM allocation tests", "[register]")
 
     {
         TAO::Register::Value value;
-        uint1024_t data = LLC::GetRand1024();
+        uint1024_t data = Common::GetRand1024();
 
         registers.allocate(data, value);
         REQUIRE(registers.available() == 1920);

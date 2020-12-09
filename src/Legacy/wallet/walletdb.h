@@ -25,7 +25,7 @@ ________________________________________________________________________________
 #include <vector>
 
 #include <LLC/include/eckey.h>
-#include <LLC/types/uint1024.h>
+#include <Common/types/uint1024.h>
 
 #include <Legacy/wallet/cryptokeystore.h> //for CryptedKeyMap typedef
 #include <Legacy/wallet/db.h>

@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/stake.h>
 
 #include <LLC/hash/SK.h>
-#include <LLC/types/uint1024.h>
+#include <Common/types/uint1024.h>
 
 #include <LLD/include/global.h>
 

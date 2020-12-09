@@ -329,11 +329,11 @@ else
 	OBJS = build/main.o
 endif
 
-OBJS+=  build/LLC_base_uint.o \
+OBJS+=  build/Common_base_uint.o \
+		build/Common_random.o \
 		build/LLC_bignum.o \
 		build/LLC_eckey.o \
 		build/LLC_flkey.o \
-		build/LLC_random.o \
 		build/LLC_SK_Keccak-compact64.o \
 		build/LLC_SK_KeccakDuplex.o \
 		build/LLC_SK_KeccakHash.o \
@@ -704,6 +704,9 @@ CXXFLAGS+= $(CXXWARNINGS)
 all: release/nexus.exe
 
 build/%.o: ./src/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/Common_%.o: ./src/Common/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/LLC_%.o: ./src/LLC/%.cpp $(HEADERS)
@@ -1196,6 +1199,13 @@ endif
 #############################
 ### C / CPP Build objects ###
 #############################
+
+build/Common_%.o: src/Common/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
 
 build/%.o: src/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<

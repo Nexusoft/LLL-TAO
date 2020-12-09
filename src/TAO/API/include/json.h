@@ -13,7 +13,7 @@ ________________________________________________________________________________
 
 #pragma once
 
-#include <LLC/types/uint1024.h>
+#include <Common/types/uint1024.h>
 #include <Util/include/json.h>
 #include <TAO/API/types/clause.h>
 

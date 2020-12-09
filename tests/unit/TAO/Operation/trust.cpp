@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLC/include/random.h>
+#include <Common/include/random.h>
 
 #include <LLD/include/global.h>
 
@@ -35,7 +35,7 @@ TEST_CASE( "Trust Creation Tests", "[operation][stake]")
     using namespace TAO::Operation;
 
     /* Generate random genesis */
-    uint256_t hashGenesis = LLC::GetRand256();
+    uint256_t hashGenesis = Common::GetRand256();
 
     /* Generate trust address deterministically */
     uint256_t hashTrust = TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
@@ -50,7 +50,7 @@ TEST_CASE( "Trust Creation Tests", "[operation][stake]")
         tx.nTimestamp  = runtime::timestamp();
 
         /* generate random address */
-        uint256_t hashRandom = LLC::GetRand256();
+        uint256_t hashRandom = Common::GetRand256();
 
         //create object
         Object trust = CreateTrust();
@@ -199,7 +199,7 @@ TEST_CASE( "Solo Stake Operation Tests", "[operation][stake][solostake]")
     using namespace TAO::Operation;
 
     /* Generate random genesis */
-    uint256_t hashGenesis = LLC::GetRand256();
+    uint256_t hashGenesis = Common::GetRand256();
 
     /* Generate trust address deterministically */
     uint256_t hashTrust = TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
@@ -283,7 +283,7 @@ TEST_CASE( "Solo Stake Operation Tests", "[operation][stake][solostake]")
         tx.nSequence   = 1;
         tx.nTimestamp  = runtime::timestamp();
 
-        hashLastTrust = LLC::GetRand512();
+        hashLastTrust = Common::GetRand512();
 
         //payload: Trust op, last trust, new trust score, stake change, reward
         tx[0] << uint8_t(OP::TRUST) << hashLastTrust << uint64_t(555) << uint64_t(0) << uint64_t(6);
@@ -867,7 +867,7 @@ TEST_CASE( "Pooled Stake Operation Tests", "[operation][stake][poolstake]")
     using namespace TAO::Operation;
 
     /* Generate random genesis */
-    uint256_t hashGenesis  = LLC::GetRand256();
+    uint256_t hashGenesis  = Common::GetRand256();
 
     /* Generate trust address deterministically */
     uint256_t hashTrust = TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
@@ -875,7 +875,7 @@ TEST_CASE( "Pooled Stake Operation Tests", "[operation][stake][poolstake]")
     uint512_t hashLastTrust;
 
     //Unit tests don't test proof validation, so just need to assign values
-    uint256_t hashProof = LLC::GetRand256();
+    uint256_t hashProof = Common::GetRand256();
     uint64_t nTimeBegin = runtime::timestamp();
     uint64_t nTimeEnd = nTimeBegin + 60;
 
@@ -956,7 +956,7 @@ TEST_CASE( "Pooled Stake Operation Tests", "[operation][stake][poolstake]")
         tx.nSequence   = 1;
         tx.nTimestamp  = runtime::timestamp();
 
-        hashLastTrust = LLC::GetRand512();
+        hashLastTrust = Common::GetRand512();
 
         //payload: Trust op, last trust, proof, time start, time end, new trust score, stake change, reward
         tx[0] << uint8_t(OP::TRUSTPOOL) << hashLastTrust << hashProof << nTimeBegin << nTimeEnd

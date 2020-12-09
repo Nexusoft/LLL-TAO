@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_REGISTER_INCLUDE_VERIFY_H
 #define NEXUS_TAO_REGISTER_INCLUDE_VERIFY_H
 
-#include <LLC/types/uint1024.h>
+#include <Common/types/uint1024.h>
 
 #include <TAO/Ledger/include/enum.h>
 

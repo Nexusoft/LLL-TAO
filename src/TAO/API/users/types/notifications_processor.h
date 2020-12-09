@@ -15,7 +15,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/users/types/notifications_thread.h>
 
-#include <LLC/types/uint1024.h>
+#include <Common/types/uint1024.h>
 
 #include <Util/include/mutex.h>
 

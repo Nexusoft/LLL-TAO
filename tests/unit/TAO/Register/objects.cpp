@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLC/include/random.h>
+#include <Common/include/random.h>
 
 #include <openssl/rand.h>
 
@@ -178,8 +178,8 @@ TEST_CASE( "Object Register Tests", "[register]")
 
     {
         uint256_t hash256   = TAO::Register::Address(TAO::Register::Address::OBJECT);
-        uint512_t hash512   = LLC::GetRand512();
-        uint1024_t hash1024 = LLC::GetRand1024();
+        uint512_t hash512   = Common::GetRand512();
+        uint1024_t hash1024 = Common::GetRand1024();
 
         std::vector<uint8_t> vBytes(15);
         RAND_bytes((uint8_t*)&vBytes[0], vBytes.size());

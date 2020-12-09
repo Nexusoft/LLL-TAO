@@ -22,7 +22,7 @@ ________________________________________________________________________________
 
 #include <LLC/hash/macro.h>
 #include <LLC/hash/SK.h>
-#include <LLC/types/uint1024.h>
+#include <Common/types/uint1024.h>
 
 #include <TAO/Ledger/types/state.h>
 

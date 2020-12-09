@@ -17,7 +17,7 @@ ________________________________________________________________________________
 
 #include <map>
 
-#include <LLC/types/uint1024.h>
+#include <Common/types/uint1024.h>
 
 /* Global TAO namespace. */
 namespace TAO

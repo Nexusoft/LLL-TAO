@@ -12,16 +12,21 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_LLC_TYPES_UINT1024_H
-#define NEXUS_LLC_TYPES_UINT1024_H
+#ifndef NEXUS_COMMON_TYPES_UINT1024_H
+#define NEXUS_COMMON_TYPES_UINT1024_H
 
-#include <LLC/types/base_uint.h>
+#include <Common/types/base_uint.h>
 
-typedef base_uint<128>  uint128_t;
-typedef base_uint<256>  uint256_t;
-typedef base_uint<512>  uint512_t;
-typedef base_uint<576>  uint576_t;
-typedef base_uint<1024> uint1024_t;
-typedef base_uint<1056> uint1056_t;
+namespace
+{
+
+    using uint128_t = base_uint<128>;
+    using uint256_t = base_uint<256>;
+    using uint512_t = base_uint<512>;
+    using uint576_t = base_uint<576>;
+    using uint1024_t = base_uint<1024>;
+    using uint1056_t = base_uint<1056>;
+
+}
 
 #endif

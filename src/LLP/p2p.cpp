@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLC/include/random.h>
+#include <Common/include/random.h>
 
 #include <LLD/include/global.h>
 
@@ -219,7 +219,7 @@ namespace LLP
                 if(nLastPing + 15 < runtime::unifiedtimestamp())
                 {
                     /* Create a random nonce. */
-                    uint64_t nNonce = LLC::GetRand();
+                    uint64_t nNonce = Common::GetRand();
                     nLastPing = runtime::unifiedtimestamp();
 
                     /* Keep track of latency for this ping. */

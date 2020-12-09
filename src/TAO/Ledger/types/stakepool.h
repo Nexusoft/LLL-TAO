@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEDGER_TYPES_STAKEPOOL_H
 #define NEXUS_TAO_LEDGER_TYPES_STAKEPOOL_H
 
-#include <LLC/types/uint1024.h>
+#include <Common/types/uint1024.h>
 
 #include <LLP/types/tritium.h>
 

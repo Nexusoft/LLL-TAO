@@ -138,7 +138,7 @@ namespace TAO
                 request.nPort = LLP::P2P_SERVER->GetPort(false);
 
             /* Generate a new random session ID */
-            request.nSession = LLC::GetRand();
+            request.nSession = Common::GetRand();
 
             /* Add the request to our outgoing list */
             session.AddP2PRequest(request, false);

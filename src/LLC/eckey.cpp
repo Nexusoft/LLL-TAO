@@ -19,7 +19,7 @@ ________________________________________________________________________________
 
 #include <LLC/include/key_error.h>
 #include <LLC/include/eckey.h>
-#include <LLC/include/random.h>
+#include <Common/include/random.h>
 #include <LLC/hash/SK.h> 
 
 #include <Util/include/debug.h>

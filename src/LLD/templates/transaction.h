@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLD_TEMPLATES_TRANSACTION_H
 #define NEXUS_LLD_TEMPLATES_TRANSACTION_H
 
-#include <LLC/types/uint1024.h>
+#include <Common/types/uint1024.h>
 
 #include <Util/templates/datastream.h>
 

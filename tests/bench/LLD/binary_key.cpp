@@ -1,6 +1,6 @@
 #include <Util/include/runtime.h>
 
-#include <LLC/include/random.h>
+#include <Common/include/random.h>
 
 #include <LLD/cache/binary_key.h>
 
@@ -17,7 +17,7 @@ TEST_CASE( "Binary Key LRU Benchmarks", "[LLD]")
 
     //benchmarks
     LLD::KeyLRU* cache = new LLD::KeyLRU();
-    uint256_t hash = LLC::GetRand256();
+    uint256_t hash = Common::GetRand256();
     {
         runtime::timer timer;
         timer.Start();

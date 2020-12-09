@@ -1,6 +1,6 @@
 #include <Util/include/runtime.h>
 
-#include <LLC/include/random.h>
+#include <Common/include/random.h>
 
 #include <LLD/cache/template_lru.h>
 
@@ -18,7 +18,7 @@ TEST_CASE( "Template LRU Benchmarks", "[LLD]")
     //benchmarks
     LLD::TemplateLRU<uint256_t, std::string>* cache = new LLD::TemplateLRU<uint256_t, std::string>(1024);
 
-    uint256_t hash = LLC::GetRand256();
+    uint256_t hash = Common::GetRand256();
     {
         runtime::timer timer;
         timer.Start();

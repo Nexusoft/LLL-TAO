@@ -10,7 +10,7 @@
 
 #include <Util/include/memory.h>
 
-#include <LLC/include/random.h>
+#include <Common/include/random.h>
 
 #include <openssl/rand.h>
 
@@ -42,7 +42,7 @@ TEST_CASE( "Conditions Tests", "[condition]" )
 
     TAO::Ledger::Transaction tx;
     tx.nTimestamp  = 989798;
-    tx.hashGenesis = LLC::GetRand256();
+    tx.hashGenesis = Common::GetRand256();
     tx[0] << (uint8_t)OP::DEBIT << hashFrom << hashTo << nAmount;
 
     const Contract& caller = tx[0];
@@ -55,7 +55,7 @@ TEST_CASE( "Conditions Tests", "[condition]" )
     TAO::Register::Address hash2 = TAO::Register::Address(TAO::Register::Address::RAW);
 
     TAO::Register::State state;
-    state.hashOwner = LLC::GetRand256();
+    state.hashOwner = Common::GetRand256();
     state.nType     = 2;
     state << hash2;
 

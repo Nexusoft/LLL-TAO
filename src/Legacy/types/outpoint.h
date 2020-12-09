@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_TYPES_OUTPOINT_H
 #define NEXUS_LEGACY_TYPES_OUTPOINT_H
 
-#include <LLC/types/uint1024.h>
+#include <Common/types/uint1024.h>
 #include <Util/templates/serialize.h>
 #include <Util/templates/flatdata.h>
 

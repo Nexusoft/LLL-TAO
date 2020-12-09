@@ -11,9 +11,9 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLC/types/uint1024.h>
+#include <Common/types/uint1024.h>
 #include <LLC/types/bignum.h>
-#include <LLC/include/random.h>
+#include <Common/include/random.h>
 #include <TAO/Ledger/include/prime.h>
 #include <unit/catch2/catch.hpp>
 #include <openssl/bn.h>

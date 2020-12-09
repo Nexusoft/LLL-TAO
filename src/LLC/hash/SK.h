@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLC_HASH_SK_H
 #define NEXUS_LLC_HASH_SK_H
 
-#include <LLC/types/uint1024.h>
+#include <Common/types/uint1024.h>
 #include <LLC/hash/SK/skein.h>
 #include <LLC/hash/SK/KeccakHash.h>
 

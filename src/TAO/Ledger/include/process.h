@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEDGER_INCLUDE_PROCESS_H
 #define NEXUS_TAO_LEDGER_INCLUDE_PROCESS_H
 
-#include <LLC/types/uint1024.h>
+#include <Common/types/uint1024.h>
 
 #include <TAO/Ledger/types/block.h>
 

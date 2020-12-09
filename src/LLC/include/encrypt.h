@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #pragma once
 
 #include <vector>
-#include <LLC/types/base_uint.h>
+#include <Common/types/base_uint.h>
 
 namespace LLC
 {

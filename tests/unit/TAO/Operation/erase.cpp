@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLC/include/random.h>
+#include <Common/include/random.h>
 
 #include <LLD/include/global.h>
 
@@ -73,14 +73,14 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
 
     uint512_t hashPrivKey1[2] =
     {
-        LLC::GetRand512(),
-        LLC::GetRand512()
+        Common::GetRand512(),
+        Common::GetRand512()
     };
 
     uint512_t hashPrivKey2[2] =
     {
-        LLC::GetRand512(),
-        LLC::GetRand512()
+        Common::GetRand512(),
+        Common::GetRand512()
     };
 
     uint512_t hashPrevTx[2]
@@ -91,8 +91,8 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
 
 
     uint256_t hash256   = TAO::Register::Address(TAO::Register::Address::OBJECT);
-    uint512_t hash512   = LLC::GetRand512();
-    uint1024_t hash1024 = LLC::GetRand1024();
+    uint512_t hash512   = Common::GetRand512();
+    uint1024_t hash1024 = Common::GetRand1024();
 
     std::vector<uint8_t> vBytes(15);
     RAND_bytes((uint8_t*)&vBytes[0], vBytes.size());
@@ -156,7 +156,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
         {
             //set private keys
             hashPrivKey1[0] = hashPrivKey2[0];
-            hashPrivKey2[0] = LLC::GetRand512();
+            hashPrivKey2[0] = Common::GetRand512();
 
             //create the transaction object
             TAO::Ledger::Transaction tx;
@@ -223,7 +223,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
         {
             //set private keys
             hashPrivKey1[0] = hashPrivKey2[0];
-            hashPrivKey2[0] = LLC::GetRand512();
+            hashPrivKey2[0] = Common::GetRand512();
 
             //create the transaction object
             TAO::Ledger::Transaction tx;
@@ -307,7 +307,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
         {
             //set private keys
             hashPrivKey1[0] = hashPrivKey2[0];
-            hashPrivKey2[0] = LLC::GetRand512();
+            hashPrivKey2[0] = Common::GetRand512();
 
             //create the transaction object
             TAO::Ledger::Transaction tx;
@@ -368,7 +368,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
         {
             //set private keys
             hashPrivKey1[0] = hashPrivKey2[0];
-            hashPrivKey2[0] = LLC::GetRand512();
+            hashPrivKey2[0] = Common::GetRand512();
 
             //create the transaction object
             TAO::Ledger::Transaction tx;
@@ -496,7 +496,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
         {
             //set private keys
             hashPrivKey1[1] = hashPrivKey2[1];
-            hashPrivKey2[1] = LLC::GetRand512();
+            hashPrivKey2[1] = Common::GetRand512();
 
             //create the transaction object
             TAO::Ledger::Transaction tx;
@@ -563,7 +563,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
         {
             //set private keys
             hashPrivKey1[1] = hashPrivKey2[1];
-            hashPrivKey2[1] = LLC::GetRand512();
+            hashPrivKey2[1] = Common::GetRand512();
 
             //create the transaction object
             TAO::Ledger::Transaction tx;
@@ -616,7 +616,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
         {
             //set private keys
             hashPrivKey1[1] = hashPrivKey2[1];
-            hashPrivKey2[1] = LLC::GetRand512();
+            hashPrivKey2[1] = Common::GetRand512();
 
             //create the transaction object
             TAO::Ledger::Transaction tx;
@@ -682,7 +682,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
         {
             //set private keys
             hashPrivKey1[0] = hashPrivKey2[0];
-            hashPrivKey2[0] = LLC::GetRand512();
+            hashPrivKey2[0] = Common::GetRand512();
 
             //create the transaction object
             TAO::Ledger::Transaction tx;
@@ -746,7 +746,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
         {
             //set private keys
             hashPrivKey1[0] = hashPrivKey2[0];
-            hashPrivKey2[0] = LLC::GetRand512();
+            hashPrivKey2[0] = Common::GetRand512();
 
             //create the transaction object
             TAO::Ledger::Transaction tx;
@@ -809,7 +809,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
         {
             //set private keys
             hashPrivKey1[0] = hashPrivKey2[0];
-            hashPrivKey2[0] = LLC::GetRand512();
+            hashPrivKey2[0] = Common::GetRand512();
 
             //create the transaction object
             TAO::Ledger::Transaction tx;
@@ -879,7 +879,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
         {
             //set private keys
             hashPrivKey1[1] = hashPrivKey2[1];
-            hashPrivKey2[1] = LLC::GetRand512();
+            hashPrivKey2[1] = Common::GetRand512();
 
             //create the transaction object
             TAO::Ledger::Transaction tx;
@@ -941,7 +941,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
         {
             //set private keys
             hashPrivKey1[1] = hashPrivKey2[1];
-            hashPrivKey2[1] = LLC::GetRand512();
+            hashPrivKey2[1] = Common::GetRand512();
 
             //create the transaction object
             TAO::Ledger::Transaction tx;
@@ -1011,7 +1011,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
         {
             //set private keys
             hashPrivKey1[0] = hashPrivKey2[0];
-            hashPrivKey2[0] = LLC::GetRand512();
+            hashPrivKey2[0] = Common::GetRand512();
 
             //create the transaction object
             TAO::Ledger::Transaction tx;
@@ -1087,7 +1087,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
         {
             //set private keys
             hashPrivKey1[1] = hashPrivKey2[1];
-            hashPrivKey2[1] = LLC::GetRand512();
+            hashPrivKey2[1] = Common::GetRand512();
 
             //create the transaction object
             TAO::Ledger::Transaction tx;
@@ -1169,7 +1169,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
         {
             //set private keys
             hashPrivKey1[1] = hashPrivKey2[1];
-            hashPrivKey2[1] = LLC::GetRand512();
+            hashPrivKey2[1] = Common::GetRand512();
 
             //create the transaction object
             TAO::Ledger::Transaction tx;
@@ -1364,7 +1364,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
     {
         //set private keys
         hashPrivKey1[0] = hashPrivKey2[0];
-        hashPrivKey2[0] = LLC::GetRand512();
+        hashPrivKey2[0] = Common::GetRand512();
 
         //create the transaction object
         TAO::Ledger::Transaction tx;
@@ -1507,7 +1507,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
     {
         //set private keys
         hashPrivKey1[0] = hashPrivKey2[0];
-        hashPrivKey2[0] = LLC::GetRand512();
+        hashPrivKey2[0] = Common::GetRand512();
 
         //create the transaction object
         TAO::Ledger::Transaction tx;
@@ -1654,7 +1654,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
     {
         //set private keys
         hashPrivKey1[0] = hashPrivKey2[0];
-        hashPrivKey2[0] = LLC::GetRand512();
+        hashPrivKey2[0] = Common::GetRand512();
 
         //create the transaction object
         TAO::Ledger::Transaction tx;
@@ -1842,7 +1842,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
     {
         //set private keys
         hashPrivKey1[1] = hashPrivKey2[1];
-        hashPrivKey2[1] = LLC::GetRand512();
+        hashPrivKey2[1] = Common::GetRand512();
 
         //create the transaction object
         TAO::Ledger::Transaction tx;
@@ -1996,7 +1996,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
     {
         //set private keys
         hashPrivKey1[0] = hashPrivKey2[0];
-        hashPrivKey2[0] = LLC::GetRand512();
+        hashPrivKey2[0] = Common::GetRand512();
 
         //create the transaction object
         TAO::Ledger::Transaction tx;

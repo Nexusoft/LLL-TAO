@@ -25,7 +25,7 @@ ________________________________________________________________________________
 #include <atomic>
 #include <vector>
 
-#include <LLC/include/random.h>
+#include <Common/include/random.h>
 
 /* Global TAO namespace. */
 namespace TAO

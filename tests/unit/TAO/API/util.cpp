@@ -1,6 +1,6 @@
 #include <LLP/types/apinode.h>
 
-#include <LLC/include/random.h>
+#include <Common/include/random.h>
 
 #include <LLD/include/global.h>
 
@@ -12,8 +12,8 @@
 
 
 /* Generate a random string for the username */
-std::string USERNAME1 = "USERNAME" +std::to_string(LLC::GetRand());
-std::string USERNAME2 = "USERNAME" +std::to_string(LLC::GetRand());
+std::string USERNAME1 = "USERNAME" +std::to_string(Common::GetRand());
+std::string USERNAME2 = "USERNAME" +std::to_string(Common::GetRand());
 uint256_t GENESIS1 = 0;
 uint256_t GENESIS2 = 0;
 std::string PASSWORD = "password";

@@ -12,13 +12,13 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_LLC_INCLUDE_RANDOM_H
-#define NEXUS_LLC_INCLUDE_RANDOM_H
+#ifndef NEXUS_COMMON_INCLUDE_RANDOM_H
+#define NEXUS_COMMON_INCLUDE_RANDOM_H
 
 #include <limits>
-#include <LLC/types/uint1024.h>
+#include <Common/types/uint1024.h>
 
-namespace LLC
+namespace Common
 {
 
     /** GetPerformanceCounter
@@ -48,14 +48,6 @@ namespace LLC
     /** GetRandInt
      *
      *  Generate Random Number.
-     *
-     **/
-    int GetRandInt(int nMax);
-
-
-    /** GetRandInt
-     *
-     *  Generate Random Number. *
      *
      **/
     int GetRandInt(int nMax);

@@ -16,7 +16,7 @@ ________________________________________________________________________________
 #define NEXUS_TAO_LEDGER_TYPES_SIGNATURE_CHAIN_H
 
 
-#include <LLC/types/uint1024.h>
+#include <Common/types/uint1024.h>
 
 #include <LLD/cache/template_lru.h>
 

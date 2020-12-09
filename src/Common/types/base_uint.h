@@ -12,8 +12,8 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_LLC_TYPES_BASE_UINT_H
-#define NEXUS_LLC_TYPES_BASE_UINT_H
+#ifndef NEXUS_COMMON_TYPES_BASE_UINT_H
+#define NEXUS_COMMON_TYPES_BASE_UINT_H
 
 #include <string>
 #include <vector>
@@ -27,7 +27,6 @@ namespace TAO
     namespace Register { class Address; }
     namespace Ledger   { class Genesis; }
 }
-
 
 /** base_uint
  *
@@ -761,23 +760,23 @@ const base_uint<BITS> operator/(const base_uint<BITS> &lhs, uint64_t n)
 template<uint32_t BITS>
 uint32_t operator%(const base_uint<BITS> &lhs, uint16_t n)
 {
-	uint32_t x=0;
+    uint32_t x=0;
     uint32_t y=0;
     uint32_t z=0;
 
-	for(int8_t i = (BITS>>5)-1; i>=0; --i)
-	{
-		x = lhs.get(i);
-		y = (y << 16) | (x >> 16);
-		z = y / n;
-		y -= z * n;
-		x <<= 16;
-		y = (y << 16) | (x >> 16);
-		z = y / n;
-		y -= z * n;
-	}
+    for(int8_t i = (BITS>>5)-1; i>=0; --i)
+    {
+        x = lhs.get(i);
+        y = (y << 16) | (x >> 16);
+        z = y / n;
+        y -= z * n;
+        x <<= 16;
+        y = (y << 16) | (x >> 16);
+        z = y / n;
+        y -= z * n;
+    }
 
-	return y;
+    return y;
 }
 
 

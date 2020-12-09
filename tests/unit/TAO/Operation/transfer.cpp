@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLC/include/random.h>
+#include <Common/include/random.h>
 
 #include <LLD/include/global.h>
 
@@ -38,7 +38,7 @@ TEST_CASE( "Transfer Primitive Tests", "[operation]")
         //create object
         uint256_t hashToken = TAO::Register::Address(TAO::Register::Address::TOKEN);
         uint256_t hashAsset  = TAO::Register::Address(TAO::Register::Address::OBJECT);
-        uint256_t hashGenesis  = LLC::GetRand256();
+        uint256_t hashGenesis  = Common::GetRand256();
 
         // Create token first
         {

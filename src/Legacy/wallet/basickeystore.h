@@ -20,7 +20,7 @@ ________________________________________________________________________________
 #include <utility>
 
 #include <LLC/include/eckey.h>
-#include <LLC/types/uint1024.h>
+#include <Common/types/uint1024.h>
 
 #include <Legacy/types/address.h>
 #include <Legacy/types/script.h>

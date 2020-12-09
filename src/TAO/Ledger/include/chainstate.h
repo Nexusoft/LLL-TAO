@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEDGER_INCLUDE_CHAINSTATE_H
 #define NEXUS_TAO_LEDGER_INCLUDE_CHAINSTATE_H
 
-#include <LLC/types/uint1024.h>
+#include <Common/types/uint1024.h>
 
 #include <TAO/Ledger/types/state.h>
 

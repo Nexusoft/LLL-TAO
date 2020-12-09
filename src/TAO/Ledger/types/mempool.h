@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEDGER_TYPES_MEMPOOL_H
 #define NEXUS_TAO_LEDGER_TYPES_MEMPOOL_H
 
-#include <LLC/types/uint1024.h>
+#include <Common/types/uint1024.h>
 
 #include <TAO/Register/include/enum.h>
 

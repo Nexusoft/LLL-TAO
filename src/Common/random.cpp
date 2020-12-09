@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLC/include/random.h>
+#include <Common/include/random.h>
 
 #include <openssl/rand.h>
 
@@ -39,7 +39,7 @@ ________________________________________________________________________________
 #include <sys/time.h>
 #endif
 
-namespace LLC
+namespace Common
 {
 
     int64_t GetPerformanceCounter()
