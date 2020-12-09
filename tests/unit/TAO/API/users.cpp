@@ -13,7 +13,7 @@ ________________________________________________________________________________
 
 #include "util.h"
 
-#include <Common/include/random.h>
+#include <Util/include/random.h>
 
 #include <LLD/include/global.h>
 
@@ -24,7 +24,7 @@ ________________________________________________________________________________
 
 /* Dont use the global USERNAME / SESSION for these tests as we can't be sure that it hasn't already been created by 
     one of the other API tests, due to the unknown order that the tests are run in */
-std::string strUsername = "USER" +std::to_string(Common::GetRand());
+std::string strUsername = "USER" +std::to_string(Util::GetRand());
 std::string strSession = "";
 std::string strRecovery = "this is the recovery seed that i want to use";
 

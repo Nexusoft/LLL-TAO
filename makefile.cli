@@ -330,7 +330,6 @@ else
 endif
 
 OBJS+=  build/Common_base_uint.o \
-		build/Common_random.o \
 		build/LLC_bignum.o \
 		build/LLC_eckey.o \
 		build/LLC_flkey.o \
@@ -592,6 +591,7 @@ OBJS+=  build/Common_base_uint.o \
         build/Util_hex.o \
 		build/Util_filesystem.o \
 		build/Util_memory.o \
+		build/Util_random.o \
 		build/Util_signals.o \
 		build/Util_softfloat.o \
         build/Util_string.o \

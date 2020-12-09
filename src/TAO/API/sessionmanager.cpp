@@ -88,7 +88,7 @@ namespace TAO
                 throw APIException(-140, "User already logged in");
 
             /* Generate a new session ID, or use ID 0 if in single user mode */
-            uint256_t nSession = config::fMultiuser.load() ? Common::GetRand256() : 0;
+            uint256_t nSession = config::fMultiuser.load() ? Util::GetRand256() : 0;
 
             /* Initialize the session instance */
             mapSessions[nSession].Initialize(strUsername, strPassword, strPin, nSession);

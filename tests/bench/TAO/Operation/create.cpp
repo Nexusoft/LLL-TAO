@@ -1,4 +1,4 @@
-#include <Common/include/random.h>
+#include <Util/include/random.h>
 
 #include <LLD/include/global.h>
 
@@ -26,8 +26,8 @@ TEST_CASE( "OP::CREATE  Benchmarks", "[operation]")
         for(int i = 0; i < 10000; ++i)
         {
             TAO::Ledger::Transaction tx;
-            tx.hashGenesis = Common::GetRand256();
-            tx[0] << uint8_t(OP::CREATE) << Common::GetRand256() << uint8_t(TAO::Register::REGISTER::READONLY) << vData;
+            tx.hashGenesis = Util::GetRand256();
+            tx[0] << uint8_t(OP::CREATE) << Util::GetRand256() << uint8_t(TAO::Register::REGISTER::READONLY) << vData;
 
             REQUIRE(tx.Build());
 

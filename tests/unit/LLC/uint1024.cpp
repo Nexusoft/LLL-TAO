@@ -13,7 +13,7 @@ ________________________________________________________________________________
 
 #include <Common/types/uint1024.h>
 #include <LLC/types/bignum.h>
-#include <Common/include/random.h>
+#include <Util/include/random.h>
 #include <unit/catch2/catch.hpp>
 
 

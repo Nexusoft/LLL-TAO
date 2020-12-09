@@ -13,7 +13,7 @@ ________________________________________________________________________________
 
 #include "util.h"
 
-#include <Common/include/random.h>
+#include <Util/include/random.h>
 
 #include <unit/catch2/catch.hpp>
 
@@ -36,14 +36,14 @@ ________________________________________________________________________________
 #include <Util/include/base64.h>
 
 /* Declare names / hashes in global scope so that we can reuse them for the update/get */
-std::string strName = "NAME" +std::to_string(Common::GetRand());
+std::string strName = "NAME" +std::to_string(Util::GetRand());
 TAO::Register::Address hashName;
 uint512_t hashNameTransfer = 0;
-std::string strNamespace = "namespace" +std::to_string(Common::GetRand());
+std::string strNamespace = "namespace" +std::to_string(Util::GetRand());
 TAO::Register::Address hashNamespace;
 uint512_t hashNamespaceTransfer = 0;
 
-std::string strGlobalName = "globalname" +std::to_string(Common::GetRand());
+std::string strGlobalName = "globalname" +std::to_string(Util::GetRand());
 
 TAO::Register::Address hashRegisterAddress(TAO::Register::Address::OBJECT);
 
@@ -291,7 +291,7 @@ TEST_CASE( "Test Names API - transfer namespace", "[names/transfer/namespace]")
         params.clear();
         params["session"] = SESSION1;
         params["pin"] = PIN;
-        params["destination"] = Common::GetRand256().GetHex();
+        params["destination"] = Util::GetRand256().GetHex();
 
         /* Invoke the API */
         ret = APICall("names/transfer/namespace", params);
@@ -431,7 +431,7 @@ TEST_CASE( "Test Names API - claim namespace", "[names/claim/namespace]")
         params.clear();
         params["session"] = SESSION2;
         params["pin"] = PIN;
-        params["txid"] = Common::GetRand512().GetHex();
+        params["txid"] = Util::GetRand512().GetHex();
 
         /* Invoke the API */
         ret = APICall("names/claim/namespace", params);
@@ -452,7 +452,7 @@ TEST_CASE( "Test Names API - claim namespace", "[names/claim/namespace]")
             tx.nTimestamp  = runtime::timestamp();
 
             //create object
-            strNamespace = "namespace" +std::to_string(Common::GetRand());
+            strNamespace = "namespace" +std::to_string(Util::GetRand());
             hashNamespace = TAO::Register::Address(strNamespace, TAO::Register::Address::NAMESPACE);
             TAO::Register::Object namespaceObject = TAO::Register::CreateNamespace(strNamespace);
 
@@ -1118,7 +1118,7 @@ TEST_CASE( "Test Names API - transfer name", "[names/transfer/name]")
         params.clear();
         params["session"] = SESSION1;
         params["pin"] = PIN;
-        params["destination"] = Common::GetRand256().GetHex();
+        params["destination"] = Util::GetRand256().GetHex();
 
         /* Invoke the API */
         ret = APICall("names/transfer/name", params);
@@ -1276,7 +1276,7 @@ TEST_CASE( "Test Names API - claim name", "[names/claim/name]")
         params.clear();
         params["session"] = SESSION2;
         params["pin"] = PIN;
-        params["txid"] = Common::GetRand512().GetHex();
+        params["txid"] = Util::GetRand512().GetHex();
 
         /* Invoke the API */
         ret = APICall("names/claim/name", params);
@@ -1297,7 +1297,7 @@ TEST_CASE( "Test Names API - claim name", "[names/claim/name]")
             tx.nTimestamp  = runtime::timestamp();
 
             //create object
-            strNamespace = "namespace" +std::to_string(Common::GetRand());
+            strNamespace = "namespace" +std::to_string(Util::GetRand());
             hashNamespace = TAO::Register::Address(strNamespace, TAO::Register::Address::NAMESPACE);
             TAO::Register::Object namespaceObject = TAO::Register::CreateNamespace(strNamespace);
 

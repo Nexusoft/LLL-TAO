@@ -13,7 +13,7 @@ ________________________________________________________________________________
 
 #pragma once
 
-#include <Common/include/random.h>
+#include <Util/include/random.h>
 
 #include <LLP/include/network.h>
 #include <LLP/include/version.h>
@@ -391,7 +391,7 @@ namespace LLP
         static void BlockingMessage(const uint32_t nTimeout, memory::atomic_ptr<LLP::P2PNode>& pNode, const uint16_t nMsg, Args&&... args)
         {
             /* Create our trigger nonce. */
-            uint64_t nNonce = Common::GetRand();
+            uint64_t nNonce = Util::GetRand();
             pNode->PushMessage(LLP::P2P::TYPES::TRIGGER, nNonce);
 
             /* Request the inventory message. */

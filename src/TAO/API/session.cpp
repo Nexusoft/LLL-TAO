@@ -16,7 +16,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/sigchain.h>
 
-#include <Common/include/random.h>
+#include <Util/include/random.h>
 
 /* Global TAO namespace. */
 namespace TAO

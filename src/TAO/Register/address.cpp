@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <Common/include/random.h>
+#include <Util/include/random.h>
 #include <LLC/hash/SK.h>
 
 #include <TAO/Register/types/address.h>
@@ -68,7 +68,7 @@ namespace TAO
 
         /* Default constructor. */
         Address::Address(const uint8_t nType)
-        : uint256_t(Common::GetRand256())
+        : uint256_t(Util::GetRand256())
         {
             /* Set type. */
             SetType(nType);

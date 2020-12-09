@@ -13,7 +13,7 @@ ________________________________________________________________________________
 
 #include <Common/types/uint1024.h>
 #include <LLC/hash/SK.h>
-#include <Common/include/random.h>
+#include <Util/include/random.h>
 
 #include <LLD/include/global.h>
 #include <LLD/cache/binary_lru.h>

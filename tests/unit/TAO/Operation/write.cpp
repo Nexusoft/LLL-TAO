@@ -1,5 +1,5 @@
 
-#include <Common/include/random.h>
+#include <Util/include/random.h>
 
 #include <LLD/include/global.h>
 
@@ -22,7 +22,7 @@ TEST_CASE( "Write Primitive Tests", "[operation]")
     //test object register writes
     {
 
-        uint256_t hashGenesis = Common::GetRand256();
+        uint256_t hashGenesis = Util::GetRand256();
 
         TAO::Register::Object object;
         object.hashOwner = hashGenesis;

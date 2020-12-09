@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <Common/include/random.h>
+#include <Util/include/random.h>
 #include <LLD/include/global.h>
 
 #include <Legacy/include/create.h>
@@ -82,10 +82,10 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
     //create a trust register from inputs spent on coinbase
     {
         uint256_t hashAccount    = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
-        uint256_t hashGenesis  = TAO::Ledger::Genesis(Common::GetRand256(), true);
+        uint256_t hashGenesis  = TAO::Ledger::Genesis(Util::GetRand256(), true);
 
         uint512_t hashCoinbaseTx = 0;
-        uint512_t hashLastTrust = Common::GetRand512();
+        uint512_t hashLastTrust = Util::GetRand512();
         {
             //create the transaction object
             TAO::Ledger::Transaction tx;
@@ -334,7 +334,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
 
             //get best
             TAO::Ledger::BlockState state = TAO::Ledger::ChainState::stateBest.load();
-            state.hashNextBlock = Common::GetRand1024();
+            state.hashNextBlock = Util::GetRand1024();
 
             REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
 
@@ -360,7 +360,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
         //set best
         TAO::Ledger::BlockState state = TAO::Ledger::ChainState::stateBest.load();
         ++state.nHeight;
-        state.hashNextBlock = Common::GetRand1024();
+        state.hashNextBlock = Util::GetRand1024();
 
         TAO::Ledger::ChainState::stateBest.store(state);
         TAO::Ledger::ChainState::nBestHeight.store(state.nHeight);
@@ -414,7 +414,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
 
         //set best
         ++state.nHeight;
-        state.hashNextBlock = Common::GetRand1024();
+        state.hashNextBlock = Util::GetRand1024();
 
         TAO::Ledger::ChainState::stateBest.store(state);
         TAO::Ledger::ChainState::nBestHeight.store(state.nHeight);
@@ -467,7 +467,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
 
         //set best
         ++state.nHeight;
-        state.hashNextBlock = Common::GetRand1024();
+        state.hashNextBlock = Util::GetRand1024();
 
         TAO::Ledger::ChainState::stateBest.store(state);
         TAO::Ledger::ChainState::nBestHeight.store(state.nHeight);

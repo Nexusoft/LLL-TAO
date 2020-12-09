@@ -13,7 +13,7 @@ ________________________________________________________________________________
 
 #include "util.h"
 
-#include <Common/include/random.h>
+#include <Util/include/random.h>
 
 #include <unit/catch2/catch.hpp>
 
@@ -36,7 +36,7 @@ ________________________________________________________________________________
 #include <Util/include/base64.h>
 
 /* Declare item names / hashes in global scope so that we can reuse them for the update/get */
-std::string strItem = "ITEM" +std::to_string(Common::GetRand());
+std::string strItem = "ITEM" +std::to_string(Util::GetRand());
 TAO::Register::Address hashItem ;
 uint512_t hashItemTransfer = 0;
 
@@ -389,7 +389,7 @@ TEST_CASE( "Test Assets API - transfer item", "[supply/transfer/item]")
         params.clear();
         params["session"] = SESSION1;
         params["pin"] = PIN;
-        params["destination"] = Common::GetRand256().GetHex();
+        params["destination"] = Util::GetRand256().GetHex();
 
         /* Invoke the API */
         ret = APICall("supply/transfer/item", params);
@@ -529,7 +529,7 @@ TEST_CASE( "Test Assets API - claim item", "[supply/claim/item]")
         params.clear();
         params["session"] = SESSION2;
         params["pin"] = PIN;
-        params["txid"] = Common::GetRand512().GetHex();
+        params["txid"] = Util::GetRand512().GetHex();
 
         /* Invoke the API */
         ret = APICall("supply/claim/item", params);

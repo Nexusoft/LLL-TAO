@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <Common/include/random.h>
+#include <Util/include/random.h>
 
 #include <LLD/include/global.h>
 
@@ -64,8 +64,8 @@ TEST_CASE( "Legacy mempool and memory sequencing tests", "[legacy]")
         uint256_t hashGenesis     = TAO::Ledger::SignatureChain::Genesis("testuser");
         uint512_t hashCoinbaseTx  = 0;
 
-        uint512_t hashPrivKey1    = Common::GetRand512();
-        uint512_t hashPrivKey2    = Common::GetRand512();
+        uint512_t hashPrivKey1    = Util::GetRand512();
+        uint512_t hashPrivKey2    = Util::GetRand512();
 
         uint512_t hashPrevTx;
 
@@ -114,7 +114,7 @@ TEST_CASE( "Legacy mempool and memory sequencing tests", "[legacy]")
 
             //set private keys
             hashPrivKey1 = hashPrivKey2;
-            hashPrivKey2 = Common::GetRand512();
+            hashPrivKey2 = Util::GetRand512();
 
             //create the transaction object
             TAO::Ledger::Transaction tx;
@@ -161,7 +161,7 @@ TEST_CASE( "Legacy mempool and memory sequencing tests", "[legacy]")
 
             //set private keys
             hashPrivKey1 = hashPrivKey2;
-            hashPrivKey2 = Common::GetRand512();
+            hashPrivKey2 = Util::GetRand512();
 
             //create the transaction object
             TAO::Ledger::Transaction tx;
@@ -241,7 +241,7 @@ TEST_CASE( "Legacy mempool and memory sequencing tests", "[legacy]")
         {
             //set private keys
             hashPrivKey1 = hashPrivKey2;
-            hashPrivKey2 = Common::GetRand512();
+            hashPrivKey2 = Util::GetRand512();
 
             //create the transaction object
             TAO::Ledger::Transaction tx;
@@ -321,7 +321,7 @@ TEST_CASE( "Legacy mempool and memory sequencing tests", "[legacy]")
         {
             //set private keys
             hashPrivKey1 = hashPrivKey2;
-            hashPrivKey2 = Common::GetRand512();
+            hashPrivKey2 = Util::GetRand512();
 
             //create the transaction object
             TAO::Ledger::Transaction tx;

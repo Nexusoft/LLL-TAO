@@ -1,5 +1,5 @@
 
-#include <Common/include/random.h>
+#include <Util/include/random.h>
 
 #include <LLD/include/global.h>
 
@@ -29,7 +29,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]")
         {
             TAO::Ledger::Transaction tx;
             tx.nTimestamp  = 989798;
-            tx.hashGenesis = Common::GetRand256();
+            tx.hashGenesis = Util::GetRand256();
 
             TAO::Register::Object object;
             object << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
@@ -68,7 +68,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]")
     //test trust register
     {
         /* random genesis */
-        uint256_t hashGenesis = Common::GetRand256();
+        uint256_t hashGenesis = Util::GetRand256();
 
         //object register address
         TAO::Register::Address hashTrust = TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
@@ -123,7 +123,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]")
         {
             TAO::Ledger::Transaction tx;
             tx.nTimestamp  = 989798;
-            tx.hashGenesis = Common::GetRand256();
+            tx.hashGenesis = Util::GetRand256();
 
             TAO::Register::Object object;
             object  << std::string("balance")    << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << uint64_t(5555)
@@ -164,7 +164,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]")
         {
             TAO::Ledger::Transaction tx;
             tx.nTimestamp  = 989798;
-            tx.hashGenesis = Common::GetRand256();
+            tx.hashGenesis = Util::GetRand256();
 
             TAO::Register::Object object;
             object  << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(5555)
@@ -187,7 +187,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]")
         {
             TAO::Ledger::Transaction tx;
             tx.nTimestamp  = 989798;
-            tx.hashGenesis = Common::GetRand256();
+            tx.hashGenesis = Util::GetRand256();
 
             TAO::Register::Object object;
             object << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(55)
@@ -208,7 +208,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]")
         {
             TAO::Ledger::Transaction tx;
             tx.nTimestamp  = 989798;
-            tx.hashGenesis = Common::GetRand256();
+            tx.hashGenesis = Util::GetRand256();
 
             TAO::Register::Object object;
             object << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
@@ -231,7 +231,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]")
         {
             TAO::Ledger::Transaction tx;
             tx.nTimestamp  = 989798;
-            tx.hashGenesis = Common::GetRand256();
+            tx.hashGenesis = Util::GetRand256();
 
             TAO::Register::Object object;
             object << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(55)
@@ -254,7 +254,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]")
         {
             TAO::Ledger::Transaction tx;
             tx.nTimestamp  = 989798;
-            tx.hashGenesis = Common::GetRand256();
+            tx.hashGenesis = Util::GetRand256();
 
             TAO::Register::Object object;
             object << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(55)
@@ -277,7 +277,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]")
         {
             TAO::Ledger::Transaction tx;
             tx.nTimestamp  = 989798;
-            tx.hashGenesis = Common::GetRand256();
+            tx.hashGenesis = Util::GetRand256();
 
             TAO::Register::Object object;
             object << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
@@ -300,7 +300,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]")
         {
             TAO::Ledger::Transaction tx;
             tx.nTimestamp  = 989798;
-            tx.hashGenesis = Common::GetRand256();
+            tx.hashGenesis = Util::GetRand256();
 
             TAO::Register::Object object;
             object << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
@@ -323,7 +323,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]")
         {
             TAO::Ledger::Transaction tx;
             tx.nTimestamp  = 989798;
-            tx.hashGenesis = Common::GetRand256();
+            tx.hashGenesis = Util::GetRand256();
 
             TAO::Register::Object object;
             object  << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
@@ -346,7 +346,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]")
         {
             TAO::Ledger::Transaction tx;
             tx.nTimestamp  = 989798;
-            tx.hashGenesis = Common::GetRand256();
+            tx.hashGenesis = Util::GetRand256();
 
             TAO::Register::Object object;
             object  << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(5555)

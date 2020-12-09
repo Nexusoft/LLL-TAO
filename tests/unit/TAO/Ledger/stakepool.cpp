@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <Common/include/random.h>
+#include <Util/include/random.h>
 
 #include <LLD/include/global.h>
 
@@ -34,8 +34,8 @@ TEST_CASE( "Stake Pool Tests", "[stakepool][stake]")
 
     /* Generate random genesis */
     uint256_t hashGenesis = TAO::Ledger::SignatureChain::Genesis("teststakepool");
-    uint512_t hashPrivKey1  = Common::GetRand512();
-    uint512_t hashPrivKey2  = Common::GetRand512();
+    uint512_t hashPrivKey1  = Util::GetRand512();
+    uint512_t hashPrivKey2  = Util::GetRand512();
 
     /* Generate trust addresses */
     uint256_t hashTrust = TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
@@ -43,7 +43,7 @@ TEST_CASE( "Stake Pool Tests", "[stakepool][stake]")
     uint512_t hashPrevTx;
 
     //Unit tests don't test proof validation, so just need to assign values
-    uint256_t hashProof = Common::GetRand256();
+    uint256_t hashProof = Util::GetRand256();
     uint64_t nTimeBegin = runtime::timestamp();
     uint64_t nTimeEnd = nTimeBegin + 60;
 

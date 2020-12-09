@@ -1,4 +1,4 @@
-#include <Common/include/random.h>
+#include <Util/include/random.h>
 
 #include <LLD/include/global.h>
 
@@ -24,7 +24,7 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
     using namespace TAO::Register;
     using namespace TAO::Operation;
 
-    SecureString strUsername = Common::GetRand256().ToString().c_str();
+    SecureString strUsername = Util::GetRand256().ToString().c_str();
     SecureString strPassword = "password";
     SecureString strPin = "1234";
 
@@ -150,7 +150,7 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
         tx.nTimestamp = nTimestamp + TAO::Ledger::TX_FEE_INTERVAL + 1;
 
         /* Generate Random name */
-        std::string strName = Common::GetRand256().ToString();
+        std::string strName = Util::GetRand256().ToString();
 
         /* create name so that a fee is required */
         TAO::Register::Address hashAddress = TAO::Register::Address(strName, hashGenesis, TAO::Register::Address::NAME);
@@ -173,7 +173,7 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
         tx.nTimestamp = nTimestamp + TAO::Ledger::TX_FEE_INTERVAL + 1;
 
         /* Generate Random name */
-        std::string strName = Common::GetRand256().ToString();
+        std::string strName = Util::GetRand256().ToString();
 
         /* create name so that a fee is required */
         TAO::Register::Address hashAddress = TAO::Register::Address(strName, hashGenesis, TAO::Register::Address::NAME);
@@ -195,7 +195,7 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
         tx.nTimestamp = nTimestamp + TAO::Ledger::TX_FEE_INTERVAL + 1;
 
         /* Generate Random name */
-        std::string strNamespace = Common::GetRand256().ToString();
+        std::string strNamespace = Util::GetRand256().ToString();
 
         /* create name so that a fee is required */
         TAO::Register::Address hashAddress = TAO::Register::Address(strNamespace, TAO::Register::Address::NAMESPACE);
@@ -360,7 +360,7 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
         tx[0] << uint8_t(OP::CREATE) << hashAddress << uint8_t(REGISTER::OBJECT) << asset.GetState();
 
         /* Add a name so that a further fee is required */
-        std::string strName = Common::GetRand256().ToString();
+        std::string strName = Util::GetRand256().ToString();
         hashAddress = TAO::Register::Address(strName, hashGenesis, TAO::Register::Address::NAME);
         Object name = CreateName("", strName, hashAddress);
         /* Add the operations payload */

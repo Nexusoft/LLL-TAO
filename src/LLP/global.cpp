@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <Common/include/random.h>
+#include <Util/include/random.h>
 
 #include <LLP/include/global.h>
 #include <LLP/include/network.h>
@@ -28,7 +28,7 @@ namespace LLP
 
 
     /* Current session identifier. */
-    const uint64_t SESSION_ID = Common::GetRand();
+    const uint64_t SESSION_ID = Util::GetRand();
 
 
     /*  Initialize the LLP. */

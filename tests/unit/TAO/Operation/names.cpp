@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <Common/include/random.h>
+#include <Util/include/random.h>
 
 #include <LLD/include/global.h>
 
@@ -36,7 +36,7 @@ TEST_CASE( "Names / Namespaces Tests", "[operation]")
     /* Test creating a name  */
     {
         uint256_t hashAddress   = TAO::Register::Address(TAO::Register::Address::NAME);
-        uint256_t hashGenesis   = Common::GetRand256();
+        uint256_t hashGenesis   = Util::GetRand256();
 
         uint256_t hashNameAddress = 0;
         std::string strName = "somename";
@@ -101,7 +101,7 @@ TEST_CASE( "Names / Namespaces Tests", "[operation]")
             tx.nTimestamp  = runtime::timestamp();
 
             /* Generate an address for a random sig chain genesis */
-            hashNameAddress = TAO::Register::Address(strName, Common::GetRand256(), TAO::Register::Address::NAME);
+            hashNameAddress = TAO::Register::Address(strName, Util::GetRand256(), TAO::Register::Address::NAME);
 
             //create name object
             Object name = CreateName("", strName, hashAddress);
@@ -232,7 +232,7 @@ TEST_CASE( "Names / Namespaces Tests", "[operation]")
         {
             //create the transaction object
             TAO::Ledger::Transaction tx;
-            tx.hashGenesis = Common::GetRand256(); // use random genesis here so that it is not the namespace owner
+            tx.hashGenesis = Util::GetRand256(); // use random genesis here so that it is not the namespace owner
             tx.nSequence   = 0;
             tx.nTimestamp  = runtime::timestamp();
 

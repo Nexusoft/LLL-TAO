@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <Common/include/random.h>
+#include <Util/include/random.h>
 
 #include <LLD/include/global.h>
 
@@ -38,7 +38,7 @@ TEST_CASE( "Contract::Bind", "[operation]" )
 
     Transaction tx;
 
-    tx.hashGenesis = Common::GetRand256();
+    tx.hashGenesis = Util::GetRand256();
     tx.nTimestamp = runtime::timestamp();
 
     // check for expected output

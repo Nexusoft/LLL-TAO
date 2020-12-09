@@ -12,7 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <LLC/hash/SK.h>
-#include <Common/include/random.h>
+#include <Util/include/random.h>
 
 #include <LLD/include/global.h>
 
@@ -355,7 +355,7 @@ namespace Legacy
     {
         bool fCompressed = true;
 
-        Common::RandAddSeedPerfmon();
+        Util::RandAddSeedPerfmon();
         LLC::ECKey key;
         key.MakeNewKey(fCompressed);
 
@@ -447,13 +447,13 @@ namespace Legacy
         uint32_t nNewMasterKeyId = 0;
 
         CKeyingMaterial vMasterKey;
-        Common::RandAddSeedPerfmon();
+        Util::RandAddSeedPerfmon();
 
         /* Fill keying material (unencrypted key value) and new master key salt with random data using OpenSSL RAND_bytes */
         vMasterKey.resize(WALLET_CRYPTO_KEY_SIZE);
         RAND_bytes(&vMasterKey[0], WALLET_CRYPTO_KEY_SIZE);
 
-        Common::RandAddSeedPerfmon();
+        Util::RandAddSeedPerfmon();
         kMasterKey.vchSalt.resize(WALLET_CRYPTO_SALT_SIZE);
         RAND_bytes(&kMasterKey.vchSalt[0], WALLET_CRYPTO_SALT_SIZE);
 
@@ -1433,7 +1433,7 @@ namespace Legacy
             return;
 
         /* Set a random time until resend is processed */
-        snNextTime = runtime::unifiedtimestamp() + Common::GetRand(5 * 60); //5 minutes
+        snNextTime = runtime::unifiedtimestamp() + Util::GetRand(5 * 60); //5 minutes
 
         /* On first iteration, just return. All it does is set snNextTime */
         if(fFirst)
@@ -2029,7 +2029,7 @@ namespace Legacy
                     }
 
                     /* Insert change output at random position: */
-                    auto position = wtxNew.vout.begin() + Common::GetRandInt(wtxNew.vout.size());
+                    auto position = wtxNew.vout.begin() + Util::GetRandInt(wtxNew.vout.size());
                     wtxNew.vout.insert(position, TxOut(nChange, scriptChange));
                 }
 
@@ -2140,7 +2140,7 @@ namespace Legacy
             vCoins.push_back(item.first);
 
         /* Randomly order the transactions as potential inputs */
-        std::random_shuffle(vCoins.begin(), vCoins.end(), Common::GetRandInt);
+        std::random_shuffle(vCoins.begin(), vCoins.end(), Util::GetRandInt);
 
         /* Add Each Input to Transaction. */
         std::vector<const WalletTx*> vInputs;
@@ -2297,7 +2297,7 @@ namespace Legacy
             vCoins.push_back(item.first);
 
         /* Randomly order the transactions as potential inputs */
-        std::random_shuffle(vCoins.begin(), vCoins.end(), Common::GetRandInt);
+        std::random_shuffle(vCoins.begin(), vCoins.end(), Util::GetRandInt);
 
         /* Loop through all transactions, finding and adding available unspent balance to the list of outputs until reach nTargetValue */
         for(const uint512_t& hash : vCoins)

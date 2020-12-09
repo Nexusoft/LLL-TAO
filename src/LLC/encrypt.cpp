@@ -12,7 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <LLC/include/encrypt.h>
-#include <Common/include/random.h>
+#include <Util/include/random.h>
 #include <LLC/aes/aes.h>
 
 #include <Util/include/debug.h>
@@ -35,7 +35,7 @@ namespace LLC
             return debug::error(FUNCTION, "Plain text is empty");
 
         /* Generate a random 128 bit Initialisation Vector */
-        std::vector<uint8_t> vchIV = Common::GetRand128().GetBytes();
+        std::vector<uint8_t> vchIV = Util::GetRand128().GetBytes();
         
         /* Number of bytes to pad so that the ciphertext is a multiple of AES_BLOCKLEN */
         uint8_t nPadBytes = AES_BLOCKLEN - (vchPlainText.size() % AES_BLOCKLEN);

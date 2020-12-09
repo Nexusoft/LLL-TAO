@@ -18,7 +18,7 @@ ________________________________________________________________________________
 #include <limits>
 #include <Common/types/uint1024.h>
 
-namespace Common
+namespace Util
 {
 
     /** GetPerformanceCounter

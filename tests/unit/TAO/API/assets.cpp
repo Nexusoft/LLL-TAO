@@ -13,7 +13,7 @@ ________________________________________________________________________________
 
 #include "util.h"
 
-#include <Common/include/random.h>
+#include <Util/include/random.h>
 
 #include <unit/catch2/catch.hpp>
 
@@ -34,11 +34,11 @@ ________________________________________________________________________________
 #include <Util/include/base64.h>
 
 /* Declare asset names / hashes in global scope so that we can reuse them for the update/get */
-std::string strBasicAsset = "ASSET" +std::to_string(Common::GetRand());
+std::string strBasicAsset = "ASSET" +std::to_string(Util::GetRand());
 TAO::Register::Address hashBasicAsset;
-std::string strRawAsset = "ASSET" +std::to_string(Common::GetRand());
+std::string strRawAsset = "ASSET" +std::to_string(Util::GetRand());
 TAO::Register::Address hashRawAsset;
-std::string strJSONAsset = "ASSET" +std::to_string(Common::GetRand());
+std::string strJSONAsset = "ASSET" +std::to_string(Util::GetRand());
 TAO::Register::Address hashJSONAsset;
 
 uint512_t hashTransfer;
@@ -580,7 +580,7 @@ TEST_CASE( "Test Assets API - get asset", "[assets/get/asset]")
         params.clear();
         params["session"] = SESSION1;
         params["pin"] = PIN;
-        params["address"] = Common::GetRand256().GetHex();
+        params["address"] = Util::GetRand256().GetHex();
 
         /* Invoke the API */
         ret = APICall("assets/get/asset", params);
@@ -836,7 +836,7 @@ TEST_CASE( "Test Assets API - transfer asset", "[assets/transfer/asset]")
         params.clear();
         params["session"] = SESSION1;
         params["pin"] = PIN;
-        params["destination"] = Common::GetRand256().GetHex();
+        params["destination"] = Util::GetRand256().GetHex();
 
         /* Invoke the API */
         ret = APICall("assets/transfer/asset", params);
@@ -976,7 +976,7 @@ TEST_CASE( "Test Assets API - claim asset", "[assets/claim/asset]")
         params.clear();
         params["session"] = SESSION2;
         params["pin"] = PIN;
-        params["txid"] = Common::GetRand512().GetHex();
+        params["txid"] = Util::GetRand512().GetHex();
 
         /* Invoke the API */
         ret = APICall("assets/claim/asset", params);

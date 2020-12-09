@@ -14,7 +14,7 @@ ________________________________________________________________________________
 
 #include <LLC/hash/macro.h>
 #include <LLC/hash/SK.h>
-#include <Common/include/random.h>
+#include <Util/include/random.h>
 
 #include <LLD/types/address.h>
 #include <LLD/include/version.h>
@@ -272,7 +272,7 @@ namespace LLP
         std::vector<TrustAddress> vAddresses;
         uint64_t nSelect = 0;
         uint64_t nTimestamp = runtime::unifiedtimestamp();
-        uint64_t nRand = Common::GetRand(nTimestamp);
+        uint64_t nRand = Util::GetRand(nTimestamp);
         uint32_t nHash = LLC::SK32(BEGIN(nRand), END(nRand));
 
 

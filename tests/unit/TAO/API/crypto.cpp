@@ -13,7 +13,7 @@ ________________________________________________________________________________
 
 #include "util.h"
 
-#include <Common/include/random.h>
+#include <Util/include/random.h>
 
 #include <unit/catch2/catch.hpp>
 
@@ -270,7 +270,7 @@ TEST_CASE( "Test Crypto API - get key", "[crypto/get/key]")
         /* Build the parameters to pass to the API */
         params.clear();
         params["pin"] = CRYPTO_PIN;
-        params["genesis"] = Common::GetRand256().ToString();
+        params["genesis"] = Util::GetRand256().ToString();
 
         /* Invoke the API */
         ret = APICall("crypto/get/key", params);

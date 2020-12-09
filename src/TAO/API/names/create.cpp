@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <Common/include/random.h>
+#include <Util/include/random.h>
 #include <LLC/hash/SK.h>
 
 #include <TAO/API/include/global.h>

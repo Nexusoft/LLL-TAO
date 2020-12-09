@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <Common/include/random.h>
+#include <Util/include/random.h>
 
 #include <LLD/include/global.h>
 
@@ -58,7 +58,7 @@ TEST_CASE( "Migrate Operation Test - Genesis coinstake", "[operation]")
     using namespace TAO::Operation;
 
     /* Generate random genesis */
-    uint256_t hashGenesis  = Common::GetRand256();
+    uint256_t hashGenesis  = Util::GetRand256();
 
     /* Generate trust address deterministically */
     TAO::Register::Address hashRegister = TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
@@ -75,7 +75,7 @@ TEST_CASE( "Migrate Operation Test - Genesis coinstake", "[operation]")
     //set best
     TAO::Ledger::BlockState state = TAO::Ledger::ChainState::stateBest.load();
     ++state.nHeight;
-    state.hashNextBlock = Common::GetRand1024();
+    state.hashNextBlock = Util::GetRand1024();
 
     TAO::Ledger::ChainState::stateBest.store(state);
     TAO::Ledger::ChainState::nBestHeight.store(state.nHeight);
@@ -162,7 +162,7 @@ TEST_CASE( "Migrate Operation Test - Genesis coinstake", "[operation]")
         ++state.nHeight;
         state.nChannel = 1;
         state.nTime = runtime::timestamp() - (86400 * 4); //set 4 days ago for coinstake reward calculation in next section
-        state.hashNextBlock = Common::GetRand1024();
+        state.hashNextBlock = Util::GetRand1024();
         state.vtx.clear();
         state.vtx.push_back(std::make_pair(uint8_t(TAO::Ledger::TRANSACTION::LEGACY), tx.GetHash()));
 
@@ -177,7 +177,7 @@ TEST_CASE( "Migrate Operation Test - Genesis coinstake", "[operation]")
         //set best +10 so coinbase is mature
         state = TAO::Ledger::ChainState::stateBest.load();
         state.nHeight += 10;
-        state.hashNextBlock = Common::GetRand1024();
+        state.hashNextBlock = Util::GetRand1024();
         state.vtx.clear();
 
         TAO::Ledger::ChainState::stateBest.store(state);
@@ -249,7 +249,7 @@ TEST_CASE( "Migrate Operation Test - Genesis coinstake", "[operation]")
         ++state.nHeight;
         state.nTime = tx.nTime + 10; //block must be after tx
         state.nChannel = 0;
-        state.hashNextBlock = Common::GetRand1024();
+        state.hashNextBlock = Util::GetRand1024();
         state.vtx.clear();
         state.vtx.push_back(std::make_pair(uint8_t(TAO::Ledger::TRANSACTION::LEGACY), tx.GetHash()));
 
@@ -295,7 +295,7 @@ TEST_CASE( "Migrate Operation Test - Genesis coinstake", "[operation]")
 
         //Set best +10 so coinstake is mature
         state.nHeight += 10;
-        state.hashNextBlock = Common::GetRand1024();
+        state.hashNextBlock = Util::GetRand1024();
         state.vtx.clear();
 
         TAO::Ledger::ChainState::stateBest.store(state);
@@ -515,13 +515,13 @@ TEST_CASE( "Migrate Operation Test - Genesis coinstake", "[operation]")
     if(nCurrent == 1 || (nCurrent == 2 && !TAO::Ledger::TransactionVersionActive(runtime::timestamp(), nCurrent)))
     {
         //Switch user
-        hashGenesis  = Common::GetRand256();
+        hashGenesis  = Util::GetRand256();
         hashRegister = TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
 
         //set best
         state = TAO::Ledger::ChainState::stateBest.load();
         ++state.nHeight;
-        state.hashNextBlock = Common::GetRand1024();
+        state.hashNextBlock = Util::GetRand1024();
 
         TAO::Ledger::ChainState::stateBest.store(state);
         TAO::Ledger::ChainState::nBestHeight.store(state.nHeight);
@@ -608,7 +608,7 @@ TEST_CASE( "Migrate Operation Test - Genesis coinstake", "[operation]")
             ++state.nHeight;
             state.nChannel = 1;
             state.nTime = runtime::timestamp() - (86400 * 3); //set 3 days ago for coinstake reward calculation in next section
-            state.hashNextBlock = Common::GetRand1024();
+            state.hashNextBlock = Util::GetRand1024();
             state.vtx.clear();
             state.vtx.push_back(std::make_pair(uint8_t(TAO::Ledger::TRANSACTION::LEGACY), tx.GetHash()));
 
@@ -623,7 +623,7 @@ TEST_CASE( "Migrate Operation Test - Genesis coinstake", "[operation]")
             //set best +10 so coinbase is mature
             state = TAO::Ledger::ChainState::stateBest.load();
             state.nHeight += 10;
-            state.hashNextBlock = Common::GetRand1024();
+            state.hashNextBlock = Util::GetRand1024();
             state.vtx.clear();
 
             TAO::Ledger::ChainState::stateBest.store(state);
@@ -692,7 +692,7 @@ TEST_CASE( "Migrate Operation Test - Genesis coinstake", "[operation]")
             ++state.nHeight;
             state.nTime = tx.nTime + 10; //block must be after tx
             state.nChannel = 0;
-            state.hashNextBlock = Common::GetRand1024();
+            state.hashNextBlock = Util::GetRand1024();
             state.vtx.clear();
             state.vtx.push_back(std::make_pair(uint8_t(TAO::Ledger::TRANSACTION::LEGACY), tx.GetHash()));
 
@@ -737,7 +737,7 @@ TEST_CASE( "Migrate Operation Test - Genesis coinstake", "[operation]")
 
             //Set best +10 so coinstake is mature
             state.nHeight += 10;
-            state.hashNextBlock = Common::GetRand1024();
+            state.hashNextBlock = Util::GetRand1024();
             state.vtx.clear();
 
             TAO::Ledger::ChainState::stateBest.store(state);
@@ -903,7 +903,7 @@ TEST_CASE( "Migrate Operation Test - Trust coinstake", "[operation]")
     using namespace TAO::Operation;
 
     /* Generate random genesis */
-    uint256_t hashGenesis  = Common::GetRand256();
+    uint256_t hashGenesis  = Util::GetRand256();
 
     /* Generate trust address deterministically */
     TAO::Register::Address hashRegister = TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
@@ -921,7 +921,7 @@ TEST_CASE( "Migrate Operation Test - Trust coinstake", "[operation]")
     //set best
     TAO::Ledger::BlockState state = TAO::Ledger::ChainState::stateBest.load();
     ++state.nHeight;
-    state.hashNextBlock = Common::GetRand1024();
+    state.hashNextBlock = Util::GetRand1024();
 
     TAO::Ledger::ChainState::stateBest.store(state);
     TAO::Ledger::ChainState::nBestHeight.store(state.nHeight);
@@ -1009,7 +1009,7 @@ TEST_CASE( "Migrate Operation Test - Trust coinstake", "[operation]")
         //store block with coinbase as its vtx[0]
         ++state.nHeight;
         state.nChannel = 1;
-        state.hashNextBlock = Common::GetRand1024();
+        state.hashNextBlock = Util::GetRand1024();
         state.vtx.clear();
         state.vtx.push_back(std::make_pair(uint8_t(TAO::Ledger::TRANSACTION::LEGACY), tx.GetHash()));
 
@@ -1024,7 +1024,7 @@ TEST_CASE( "Migrate Operation Test - Trust coinstake", "[operation]")
         //set best +10 so coinbase is mature
         state = TAO::Ledger::ChainState::stateBest.load();
         state.nHeight += 10;
-        state.hashNextBlock = Common::GetRand1024();
+        state.hashNextBlock = Util::GetRand1024();
         state.vtx.clear();
 
         TAO::Ledger::ChainState::stateBest.store(state);
@@ -1098,7 +1098,7 @@ TEST_CASE( "Migrate Operation Test - Trust coinstake", "[operation]")
         //store coinstake in block as its vtx[0]
         ++state.nHeight;
         state.nChannel = 0;
-        state.hashNextBlock = Common::GetRand1024();
+        state.hashNextBlock = Util::GetRand1024();
         state.vtx.clear();
         state.vtx.push_back(std::make_pair(uint8_t(TAO::Ledger::TRANSACTION::LEGACY), tx.GetHash()));
 
@@ -1144,7 +1144,7 @@ TEST_CASE( "Migrate Operation Test - Trust coinstake", "[operation]")
 
         //Set best +10 so coinstake is mature
         state.nHeight += 10;
-        state.hashNextBlock = Common::GetRand1024();
+        state.hashNextBlock = Util::GetRand1024();
         state.vtx.clear();
 
         TAO::Ledger::ChainState::stateBest.store(state);
@@ -1166,7 +1166,7 @@ TEST_CASE( "Migrate Operation Test - Trust coinstake", "[operation]")
 
     //Set best with updated timestamp (for trust score calculation)
     ++state.nHeight;
-    state.hashNextBlock = Common::GetRand1024();
+    state.hashNextBlock = Util::GetRand1024();
     state.nTime = runtime::timestamp() - 30;
     state.vtx.clear();
 
@@ -1241,7 +1241,7 @@ TEST_CASE( "Migrate Operation Test - Trust coinstake", "[operation]")
         //store coinstake in block as its vtx[0]
         ++state.nHeight;
         state.nChannel = 0;
-        state.hashNextBlock = Common::GetRand1024();
+        state.hashNextBlock = Util::GetRand1024();
         state.vtx.clear();
         state.vtx.push_back(std::make_pair(uint8_t(TAO::Ledger::TRANSACTION::LEGACY), tx.GetHash()));
 
@@ -1283,7 +1283,7 @@ TEST_CASE( "Migrate Operation Test - Trust coinstake", "[operation]")
 
         //Set best +10 so coinstake is mature
         state.nHeight += 10;
-        state.hashNextBlock = Common::GetRand1024();
+        state.hashNextBlock = Util::GetRand1024();
         state.vtx.clear();
 
         TAO::Ledger::ChainState::stateBest.store(state);
@@ -1493,7 +1493,7 @@ TEST_CASE( "Migrate Operation Test - Invalid OP::MIGRATE tests", "[operation]")
     {
 
         /* Generate random genesis */
-        uint256_t hashGenesis  = Common::GetRand256();
+        uint256_t hashGenesis  = Util::GetRand256();
 
         /* Generate trust address deterministically */
         TAO::Register::Address hashRegister = TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
@@ -1512,7 +1512,7 @@ TEST_CASE( "Migrate Operation Test - Invalid OP::MIGRATE tests", "[operation]")
         //set best
         TAO::Ledger::BlockState state = TAO::Ledger::ChainState::stateBest.load();
         ++state.nHeight;
-        state.hashNextBlock = Common::GetRand1024();
+        state.hashNextBlock = Util::GetRand1024();
 
         TAO::Ledger::ChainState::stateBest.store(state);
         TAO::Ledger::ChainState::nBestHeight.store(state.nHeight);
@@ -1600,7 +1600,7 @@ TEST_CASE( "Migrate Operation Test - Invalid OP::MIGRATE tests", "[operation]")
             //store block with coinbase as its vtx[0]
             ++state.nHeight;
             state.nChannel = 1;
-            state.hashNextBlock = Common::GetRand1024();
+            state.hashNextBlock = Util::GetRand1024();
             state.vtx.clear();
             state.vtx.push_back(std::make_pair(uint8_t(TAO::Ledger::TRANSACTION::LEGACY), tx.GetHash()));
 
@@ -1615,7 +1615,7 @@ TEST_CASE( "Migrate Operation Test - Invalid OP::MIGRATE tests", "[operation]")
             //set best +10 so coinbase is mature
             state = TAO::Ledger::ChainState::stateBest.load();
             state.nHeight += 10;
-            state.hashNextBlock = Common::GetRand1024();
+            state.hashNextBlock = Util::GetRand1024();
             state.vtx.clear();
 
             TAO::Ledger::ChainState::stateBest.store(state);
@@ -1690,7 +1690,7 @@ TEST_CASE( "Migrate Operation Test - Invalid OP::MIGRATE tests", "[operation]")
             //store coinstake in block as its vtx[0]
             ++state.nHeight;
             state.nChannel = 0;
-            state.hashNextBlock = Common::GetRand1024();
+            state.hashNextBlock = Util::GetRand1024();
             state.vtx.clear();
             state.vtx.push_back(std::make_pair(uint8_t(TAO::Ledger::TRANSACTION::LEGACY), tx.GetHash()));
 
@@ -1736,7 +1736,7 @@ TEST_CASE( "Migrate Operation Test - Invalid OP::MIGRATE tests", "[operation]")
 
             //Set best +10 so coinstake is mature
             state.nHeight += 10;
-            state.hashNextBlock = Common::GetRand1024();
+            state.hashNextBlock = Util::GetRand1024();
             state.vtx.clear();
 
             TAO::Ledger::ChainState::stateBest.store(state);
@@ -1758,7 +1758,7 @@ TEST_CASE( "Migrate Operation Test - Invalid OP::MIGRATE tests", "[operation]")
 
         //Set best with updated timestamp (for trust score calculation)
         ++state.nHeight;
-        state.hashNextBlock = Common::GetRand1024();
+        state.hashNextBlock = Util::GetRand1024();
         state.nTime = runtime::timestamp() - 30;
         state.vtx.clear();
 
@@ -1833,7 +1833,7 @@ TEST_CASE( "Migrate Operation Test - Invalid OP::MIGRATE tests", "[operation]")
             //store coinstake in block as its vtx[0]
             ++state.nHeight;
             state.nChannel = 0;
-            state.hashNextBlock = Common::GetRand1024();
+            state.hashNextBlock = Util::GetRand1024();
             state.vtx.clear();
             state.vtx.push_back(std::make_pair(uint8_t(TAO::Ledger::TRANSACTION::LEGACY), tx.GetHash()));
 
@@ -1875,7 +1875,7 @@ TEST_CASE( "Migrate Operation Test - Invalid OP::MIGRATE tests", "[operation]")
 
             //Set best +10 so coinstake is mature
             state.nHeight += 10;
-            state.hashNextBlock = Common::GetRand1024();
+            state.hashNextBlock = Util::GetRand1024();
             state.vtx.clear();
 
             TAO::Ledger::ChainState::stateBest.store(state);

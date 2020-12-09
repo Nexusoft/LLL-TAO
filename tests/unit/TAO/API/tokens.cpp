@@ -13,7 +13,7 @@ ________________________________________________________________________________
 
 #include "util.h"
 
-#include <Common/include/random.h>
+#include <Util/include/random.h>
 
 #include <unit/catch2/catch.hpp>
 
@@ -38,7 +38,7 @@ TEST_CASE( "Test Tokens API - create token", "[tokens/create/token]")
     json::json error;
 
     /* Generate random token name */
-    std::string strToken = "TOKEN" + std::to_string(Common::GetRand());
+    std::string strToken = "TOKEN" + std::to_string(Util::GetRand());
 
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
@@ -121,7 +121,7 @@ TEST_CASE( "Test Tokens API - debit token", "[tokens/debit/token]")
     json::json error;
 
     /* Generate random token name */
-    std::string strToken = "TOKEN" +std::to_string(Common::GetRand());
+    std::string strToken = "TOKEN" +std::to_string(Util::GetRand());
 
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
@@ -319,7 +319,7 @@ TEST_CASE( "Test Tokens API - credit token", "[tokens/credit/token]")
     json::json error;
 
     /* Generate random token name */
-    std::string strToken = "TOKEN" +std::to_string(Common::GetRand());
+    std::string strToken = "TOKEN" +std::to_string(Util::GetRand());
 
     std::string strTXID;
 
@@ -385,7 +385,7 @@ TEST_CASE( "Test Tokens API - credit token", "[tokens/credit/token]")
         params.clear();
         params["pin"] = PIN;
         params["session"] = SESSION1;
-        params["txid"] = Common::GetRand256().GetHex();
+        params["txid"] = Util::GetRand256().GetHex();
 
         /* Invoke the API */
         ret = APICall("tokens/credit/token", params);
@@ -421,7 +421,7 @@ TEST_CASE( "Test Tokens API - get token", "[tokens/get/token]")
     json::json error;
 
     /* Generate random token name */
-    std::string strToken = "TOKEN" +std::to_string(Common::GetRand());
+    std::string strToken = "TOKEN" +std::to_string(Util::GetRand());
     std::string strTokenAddress;
     std::string strTXID;
 
@@ -559,7 +559,7 @@ TEST_CASE( "Test Tokens API - create account", "[tokens/create/account]")
     json::json error;
 
     /* Generate random token name */
-    std::string strToken = "TOKEN" +std::to_string(Common::GetRand());
+    std::string strToken = "TOKEN" +std::to_string(Util::GetRand());
     std::string strTokenAddress;
 
     /* Ensure user is created and logged in for testing */
@@ -684,9 +684,9 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens/debit/account]")
     json::json error;
 
     /* Generate random token name */
-    std::string strToken = "TOKEN" +std::to_string(Common::GetRand());
+    std::string strToken = "TOKEN" +std::to_string(Util::GetRand());
     TAO::Register::Address hashToken = TAO::Register::Address(TAO::Register::Address::TOKEN);
-    std::string strAccount = "ACCOUNT" +std::to_string(Common::GetRand());
+    std::string strAccount = "ACCOUNT" +std::to_string(Util::GetRand());
     TAO::Register::Address hashAccount = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
 
     uint512_t hashDebitTx;
@@ -1158,9 +1158,9 @@ TEST_CASE( "Test Tokens API - credit account", "[tokens/credit/account]")
     json::json error;
 
     /* Generate random token name */
-    std::string strToken = "TOKEN" + std::to_string(Common::GetRand());
+    std::string strToken = "TOKEN" + std::to_string(Util::GetRand());
     TAO::Register::Address hashToken = TAO::Register::Address(TAO::Register::Address::TOKEN);
-    std::string strAccount = "ACCOUNT" + std::to_string(Common::GetRand());
+    std::string strAccount = "ACCOUNT" + std::to_string(Util::GetRand());
     TAO::Register::Address hashAccount = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
 
     std::string strTXID;
@@ -1282,7 +1282,7 @@ TEST_CASE( "Test Tokens API - credit account", "[tokens/credit/account]")
         params.clear();
         params["pin"] = PIN;
         params["session"] = SESSION1;
-        params["txid"] = Common::GetRand256().GetHex();
+        params["txid"] = Util::GetRand256().GetHex();
 
         /* Invoke the API */
         ret = APICall("tokens/credit/account", params);
@@ -1320,9 +1320,9 @@ TEST_CASE( "Test Tokens API - get account", "[tokens/get/account]")
     json::json error;
 
     /* Generate random token name */
-    std::string strToken = "TOKEN" +std::to_string(Common::GetRand());
+    std::string strToken = "TOKEN" +std::to_string(Util::GetRand());
     TAO::Register::Address hashToken = TAO::Register::Address(TAO::Register::Address::TOKEN);
-    std::string strAccount = "ACCOUNT" +std::to_string(Common::GetRand());
+    std::string strAccount = "ACCOUNT" +std::to_string(Util::GetRand());
     TAO::Register::Address hashAccount = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
 
     std::string strTXID;

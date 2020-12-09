@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <Common/include/random.h>
+#include <Util/include/random.h>
 
 #include <LLD/include/global.h>
 
@@ -33,10 +33,10 @@ TEST_CASE("Claim Primitive Tests", "[operation]")
 {
     //create object
     uint256_t hashAsset  = TAO::Register::Address(TAO::Register::Address::OBJECT);
-    uint256_t hashGenesis  = Common::GetRand256();
+    uint256_t hashGenesis  = Util::GetRand256();
     hashGenesis.SetType(TAO::Ledger::GENESIS::TESTNET);
 
-    uint256_t hashGenesis2  = Common::GetRand256();
+    uint256_t hashGenesis2  = Util::GetRand256();
     hashGenesis2.SetType(TAO::Ledger::GENESIS::TESTNET);
 
     // create an asset

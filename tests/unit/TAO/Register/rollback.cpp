@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <Common/include/random.h>
+#include <Util/include/random.h>
 
 #include <LLD/include/global.h>
 
@@ -42,7 +42,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
     {
         //create the transaction object
         TAO::Ledger::Transaction tx;
-        tx.hashGenesis = TAO::Ledger::Genesis(Common::GetRand256(), true);
+        tx.hashGenesis = TAO::Ledger::Genesis(Util::GetRand256(), true);
         tx.nSequence   = 0;
         tx.nTimestamp  = runtime::timestamp();
 
@@ -77,7 +77,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
     {
         //create object
         uint256_t hashRegister = TAO::Register::Address(TAO::Register::Address::RAW);
-        uint256_t hashGenesis  = TAO::Ledger::Genesis(Common::GetRand256(), true);
+        uint256_t hashGenesis  = TAO::Ledger::Genesis(Util::GetRand256(), true);
 
         {
 
@@ -190,7 +190,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
     {
         //create object
         uint256_t hashRegister = TAO::Register::Address(TAO::Register::Address::RAW);
-        uint256_t hashGenesis  = TAO::Ledger::Genesis(Common::GetRand256(), true);
+        uint256_t hashGenesis  = TAO::Ledger::Genesis(Util::GetRand256(), true);
 
         {
 
@@ -264,7 +264,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
     {
         //create object
         uint256_t hashRegister = TAO::Register::Address(TAO::Register::Address::RAW);
-        uint256_t hashGenesis  = TAO::Ledger::Genesis(Common::GetRand256(), true);
+        uint256_t hashGenesis  = TAO::Ledger::Genesis(Util::GetRand256(), true);
 
         {
 
@@ -340,8 +340,8 @@ TEST_CASE( "Register Rollback Tests", "[register]")
     {
         //create object
         uint256_t hashRegister = TAO::Register::Address(TAO::Register::Address::RAW);
-        uint256_t hashGenesis  = TAO::Ledger::Genesis(Common::GetRand256(), true);
-        uint256_t hashGenesis2 = TAO::Ledger::Genesis(Common::GetRand256(), true);
+        uint256_t hashGenesis  = TAO::Ledger::Genesis(Util::GetRand256(), true);
+        uint256_t hashGenesis2 = TAO::Ledger::Genesis(Util::GetRand256(), true);
 
         {
 
@@ -615,7 +615,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
         //create object
         uint256_t hashRegister = TAO::Register::Address(TAO::Register::Address::TOKEN);
         uint256_t hashAccount  = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
-        uint256_t hashGenesis  = TAO::Ledger::Genesis(Common::GetRand256(), true);
+        uint256_t hashGenesis  = TAO::Ledger::Genesis(Util::GetRand256(), true);
 
         {
             //create the transaction object
@@ -723,8 +723,8 @@ TEST_CASE( "Register Rollback Tests", "[register]")
             //create object
             uint256_t hashRegister = TAO::Register::Address(TAO::Register::Address::TOKEN);
             uint256_t hashAccount  = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
-            uint256_t hashGenesis  = TAO::Ledger::Genesis(Common::GetRand256(), true);
-            uint256_t hashGenesis2 = TAO::Ledger::Genesis(Common::GetRand256(), true);
+            uint256_t hashGenesis  = TAO::Ledger::Genesis(Util::GetRand256(), true);
+            uint256_t hashGenesis2 = TAO::Ledger::Genesis(Util::GetRand256(), true);
 
             {
                 //create the transaction object
@@ -1032,11 +1032,11 @@ TEST_CASE( "Register Rollback Tests - Stake operations", "[register]")
 
     {
         //create new user and get trust account address
-        uint256_t hashGenesis  = TAO::Ledger::Genesis(Common::GetRand256(), true);
+        uint256_t hashGenesis  = TAO::Ledger::Genesis(Util::GetRand256(), true);
         uint256_t hashTrust = TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
 
         uint512_t hashCoinbaseTx = 0;
-        uint512_t hashLastTrust = Common::GetRand512();
+        uint512_t hashLastTrust = Util::GetRand512();
 
         //Create coinbase tx to mint some NXS
         {
