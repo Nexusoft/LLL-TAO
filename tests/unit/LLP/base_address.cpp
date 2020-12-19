@@ -17,41 +17,49 @@ ________________________________________________________________________________
 
 #include <vector>
 #include <string>
-#include <iostream>
 
 namespace
 {
-
-enum class TestIpVersion { v4, v6 };
 
 struct TestIpInput 
 {
     std::string str;
     std::vector<std::uint8_t> bin;
-    TestIpVersion ver;
 };
 
 const std::vector<std::uint16_t> portInput = {{0, 1, std::numeric_limits<std::uint16_t>::max()}};
 const std::vector<TestIpInput> ipInputV4 = 
 {
-    {"0.0.0.0", {0, 0, 0, 0}, TestIpVersion::v4},
-    {"192.168.0.1", {192, 168, 0, 1}, TestIpVersion::v4},
-    {"255.255.255.255", {255, 255, 255, 255}, TestIpVersion::v4}
+    {"0.0.0.0", {0, 0, 0, 0}},
+    {"192.168.0.1", {192, 168, 0, 1}},
+    {"255.255.255.255", {255, 255, 255, 255}}
 };
 const std::vector<TestIpInput> ipInputV6 = 
 {
-    {"::", {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, TestIpVersion::v6},
-    {"::192.168.0.1", {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 192, 168, 0, 1}, TestIpVersion::v6},
-    {"fd00::55AA", {0xfd, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x55, 0xaa}, TestIpVersion::v6},
+    {"::", {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+    {"::192.168.0.1", {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 192, 168, 0, 1}},
+    {"fd00::55AA", {0xfd, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x55, 0xaa}},
     {"60:61:62:63:64:65:66:67",
-     {0x00, 0x60, 0x00, 0x61, 0x00, 0x62, 0x00, 0x63, 0x00, 0x64, 0x00, 0x65, 0x00, 0x66, 0x00, 0x67},
-     TestIpVersion::v6},
+     {0x00, 0x60, 0x00, 0x61, 0x00, 0x62, 0x00, 0x63, 0x00, 0x64, 0x00, 0x65, 0x00, 0x66, 0x00, 0x67}},
     {"feff:FFFF:Ffff:fFff:ffFf:fffF:ffff:ffff",
-     {0xFe, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},
-     TestIpVersion::v6}
+     {0xFe, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}}
 };
-const std::vector<TestIpInput> ipInputInvalidV4 = {{"0.0", {0, 0}, TestIpVersion::v4}};
+const std::vector<TestIpInput> ipInputInvalidV4 = {{"0.0", {0, 0}}};
 
+const std::vector<TestIpInput> ipMulticastInputV4 = 
+{
+    {"224.0.0.0", {224, 0, 0, 0}},
+    {"232.128.128.128", {232, 128, 128, 128}},
+    {"239.255.255.255", {239, 255, 255, 255}},
+};
+
+const std::vector<TestIpInput> ipMulticastInputV6 = 
+{
+    {"ff02::", {0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}
+};
+
+const TestIpInput ipInputLocalV4 = {"127.0.0.1", {127, 0, 0, 1}};
+const TestIpInput ipInputLocalV6 = {"::1", {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}};
 
 TEST_CASE( "LLP::BaseAddress", "[base_address]")
 {
@@ -293,9 +301,44 @@ TEST_CASE( "LLP::BaseAddress", "[base_address]")
         }
     }
 
+    SECTION( "IsMulticast" ) 
+    {
+        for (auto const& ip : ipMulticastInputV4)
+        {
+            LLP::BaseAddress address{ip.str};
 
-    
+            REQUIRE(address.IsMulticast() == true);              
+        }
 
+        for (auto const& ip : ipInputV4)
+        {
+            LLP::BaseAddress address{ip.str};
+
+            REQUIRE(address.IsMulticast() == false);              
+        }
+    }
+
+    SECTION( "IsLocal" ) 
+    {
+        LLP::BaseAddress address{ipInputLocalV4.str};
+        REQUIRE(address.IsLocal() == true);              
+
+        LLP::BaseAddress addressV6{ipInputLocalV6.str};
+        REQUIRE(address.IsLocal() == true);    
+
+        for (auto const& ip : ipInputV4)
+        {
+            // fails because isLocal() delivers true for "0.0.0.0"
+            LLP::BaseAddress addressV4{ip.str};
+            REQUIRE(addressV4.IsLocal() == false);    
+        }       
+
+        for (auto const& ip : ipInputV6)
+        {
+            LLP::BaseAddress addressV6{ip.str};
+            REQUIRE(addressV6.IsLocal() == false);    
+        }      
+    }
     
 }
 
