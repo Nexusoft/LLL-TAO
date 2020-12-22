@@ -155,26 +155,14 @@ namespace TAO
                    If this is the case, then the caller must supply both an account to receive their payment, and the
                    token account that proves their entitlement to the split of the debit payment. */
 
-                /* Check to see whether this is a simple debit to an account or token */
-                if(objectTo.Base() == TAO::Register::OBJECTS::ACCOUNT || objectTo.Base() == TAO::Register::OBJECTS::TOKEN)
+                /* Check to see whether this is a simple debit to a token */
+                if(objectTo.Base() == TAO::Register::OBJECTS::TOKEN)
                 {
                     /* Check that the debit was made to an account that we own */
                     if(objectTo.hashOwner == session.GetAccount()->Genesis())
                     {
-                        /* If the user requested a particular object type then check it is that type */
-                        std::string strType = params.find("type") != params.end() ? params["type"].get<std::string>() : "";
-                        if((strType == "token" && nStandard == TAO::Register::OBJECTS::ACCOUNT))
-                            continue;
-
-                        else if(strType == "account" && nStandard == TAO::Register::OBJECTS::TOKEN)
-                            continue;
-
-                        if(objectTo.get<uint256_t>("token") == 0)
-                                throw APIException(-120, "Debit transaction is for a NXS account.  Please use the Finance API for crediting NXS accounts.");
-
                         /* if we passed these checks then insert the credit contract into the tx */
                         tx[++nCurrent] << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract) << hashTo <<  hashFrom << nAmount;
-
                     }
                     else
                         continue;

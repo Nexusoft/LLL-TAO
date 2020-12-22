@@ -149,19 +149,11 @@ namespace TAO
             else
                 throw APIException(-33, "Missing name or address");
 
-            /* the type to list transactions for - should be "token" or "account" */
-            std::string strType = params.find("type") != params.end() ? params["type"].get<std::string>() : "";
-
             /* Get the account object. */
             TAO::Register::Object object;
             if(!LLD::Register->ReadState(hashAccount, object, TAO::Ledger::FLAGS::MEMPOOL))
             {
-                if(strType == "account")
-                    throw APIException(-13, "Account not found");
-                else if(strType == "token")
-                    throw APIException(-125, "Token not found");
-                else
-                    throw APIException(-104, "Object not found");
+                throw APIException(-125, "Token not found");
             }
 
             /* Parse the object register. */
@@ -172,28 +164,11 @@ namespace TAO
             uint8_t nStandard = object.Standard();
 
             /* Check the object standard. */
-            if(nStandard == TAO::Register::OBJECTS::TOKEN
-            || nStandard == TAO::Register::OBJECTS::ACCOUNT
-            || nStandard == TAO::Register::OBJECTS::TRUST)
-            {
-                /* If the user requested a particular object type then check it is that type */
-                if(strType == "token" && (nStandard == TAO::Register::OBJECTS::ACCOUNT || nStandard == TAO::Register::OBJECTS::TRUST))
-                    throw APIException(-123, "Object is not a token");
-                else if(strType == "account" && nStandard == TAO::Register::OBJECTS::TOKEN)
-                    throw APIException(-65, "Object is not an account");
-
-                /* Check the account is not a NXS account */
-                if(strType == "account" && object.get<uint256_t>("token") == 0)
-                    throw APIException(-166, "Account is a NXS account.  Please use the finance API for accessing NXS accounts.");
-
-            }
-            else
+            if(nStandard != TAO::Register::OBJECTS::TOKEN)
             {
                 throw APIException(-124, "Unknown token / account.");
             }
-
             
-
             return Objects::ListTransactions(params, fHelp);
         }
 

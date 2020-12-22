@@ -1451,10 +1451,12 @@ namespace TAO
                 std::string strFieldname =  params["fieldname"].get<std::string>();
 
                 /* Iterate through the response keys */
-                for(auto it = response.begin(); it != response.end(); ++it)
+                for(auto it = response.cbegin(); it != response.cend(); )
                     /* If this key is not the one that was requested then erase it */
                     if(it.key() != strFieldname)
-                        response.erase(it);
+                        it = response.erase(it);
+                    else
+                        ++it;
             }
         }
 

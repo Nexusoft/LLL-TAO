@@ -12,6 +12,8 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/tokens/types/tokens.h>
+#include <TAO/API/finance/types/finance.h>
+#include <TAO/API/include/global.h>
 #include <TAO/API/include/utils.h>
 
 /* Global TAO namespace. */
@@ -25,14 +27,22 @@ namespace TAO
         /* Standard initialization function. */
         void Tokens::Initialize()
         {
-            mapFunctions["create"] = Function(std::bind(&Tokens::Create, this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["credit"] = Function(std::bind(&Tokens::Credit, this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["debit"]  = Function(std::bind(&Tokens::Debit,  this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["get"]    = Function(std::bind(&Tokens::Get,    this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["list/accounts"]   = Function(std::bind(&Tokens::ListAccounts, this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["list"]  = Function(std::bind(&Tokens::ListTransactions, this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["burn"]  = Function(std::bind(&Tokens::Burn,  this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["create/token"] = Function(std::bind(&Tokens::Create, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["credit/token"] = Function(std::bind(&Tokens::Credit, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["debit/token"]  = Function(std::bind(&Tokens::Debit,  this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["get/token"]    = Function(std::bind(&Tokens::Get,    this, std::placeholders::_1, std::placeholders::_2));
+//mapFunctions["list/accounts"]   = Function(std::bind(&Tokens::ListAccounts, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["list/token/transactions"]  = Function(std::bind(&Tokens::ListTransactions, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["burn/token"]  = Function(std::bind(&Tokens::Burn,  this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/token/accounts"]   = Function(std::bind(&Tokens::ListTokenAccounts, this, std::placeholders::_1, std::placeholders::_2));
+        
+            /* Temporary reroute of the account methods to the finance API equivalents */
+            mapFunctions["create/account"] = Function(std::bind(&Finance::Create, TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["credit/account"] = Function(std::bind(&Finance::Credit, TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["debit/account"]  = Function(std::bind(&Finance::Debit,  TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["get/account"]    = Function(std::bind(&Finance::Get,    TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["list/accounts"]   = Function(std::bind(&Finance::List, TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["list/account/transactions"]  = Function(std::bind(&Finance::ListTransactions, TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
         }
 
         /* Allows derived API's to handle custom/dynamic URL's where the strMethod does not
@@ -47,43 +57,43 @@ namespace TAO
             std::string strMethodRewritten = strMethod;
             /* route the /token and /account endpoints to the generic ones e.g. create/token to create?type=token */
 
-            /* Edge case for list/accounts */
-            if(strMethod.find("list/accounts") != std::string::npos )
-            {
-                /* set the method name */
-                strMethodRewritten = "list/accounts";
+            // /* Edge case for list/accounts */
+            // if(strMethod.find("list/accounts") != std::string::npos )
+            // {
+            //     /* set the method name */
+            //     strMethodRewritten = "list/accounts";
 
-                return strMethodRewritten;
-            }
+            //     return strMethodRewritten;
+            // }
             
 
-            /* Edge case for list/account/transactions and list/token/transactions */
-            if(strMethod.find("/transactions") != std::string::npos )
-            {
-                /* set the method name */
-                strMethodRewritten = "list";
+            // /* Edge case for list/account/transactions and list/token/transactions */
+            // if(strMethod.find("/transactions") != std::string::npos )
+            // {
+            //     /* set the method name */
+            //     strMethodRewritten = "list";
 
-                /* Check to see whether there is a name after the /transactions/ name, i.e. tokens/list/transactions/mytoken */
-                std::size_t nPos = strMethod.find("/transactions/");
+            //     /* Check to see whether there is a name after the /transactions/ name, i.e. tokens/list/transactions/mytoken */
+            //     std::size_t nPos = strMethod.find("/transactions/");
 
-                if(nPos != std::string::npos)
-                {
-                    /* Get the name or address that comes after the /transactions/ part */
-                    std::string strNameOrAddress = strMethod.substr(nPos +14);
+            //     if(nPos != std::string::npos)
+            //     {
+            //         /* Get the name or address that comes after the /transactions/ part */
+            //         std::string strNameOrAddress = strMethod.substr(nPos +14);
 
-                    /* Determine whether the name/address is a valid register address and set the name or address parameter accordingly */
-                    if(IsRegisterAddress(strNameOrAddress))
-                        jsonParams["address"] = strNameOrAddress;
-                    else
-                        jsonParams["name"] = strNameOrAddress;
+            //         /* Determine whether the name/address is a valid register address and set the name or address parameter accordingly */
+            //         if(IsRegisterAddress(strNameOrAddress))
+            //             jsonParams["address"] = strNameOrAddress;
+            //         else
+            //             jsonParams["name"] = strNameOrAddress;
 
-                }
+            //     }
 
-                /* Set the type parameter to token or account*/
-                jsonParams["type"] = strMethod.find("token") != std::string::npos ? "token" : "account";
+            //     /* Set the type parameter to token or account*/
+            //     jsonParams["type"] = strMethod.find("token") != std::string::npos ? "token" : "account";
 
-                return strMethodRewritten;
-            }
+            //     return strMethodRewritten;
+            // }
 
 
             /* Edge case for list/token/accounts  */
