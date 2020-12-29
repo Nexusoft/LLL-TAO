@@ -121,7 +121,7 @@ namespace TAO
             /* list of keywords that are acceptale parameters for a /list/xxx method.  Parameters not in this list will be converted
                a `where` array */
                 
-            std::vector<std::string> vKeywords = {"genesis", "username", "verbose", "page", "limit", "sort", "order", "where"};
+            std::vector<std::string> vKeywords = {"genesis", "username", "verbose", "page", "limit", "offset", "sort", "order", "where"};
             
             /* Build the JSON request object. */
             json::json parameters;

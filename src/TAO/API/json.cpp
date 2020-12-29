@@ -1484,10 +1484,8 @@ namespace TAO
                 /* Check to see whether the limit includes an offset comma separated */
                 if(IsAllDigit(strLimit))
                 {
-                    /* No offset so set the limit and calculate the offset from the limit + page */
+                    /* No offset included in the limit */
                     nLimit = std::stoul(strLimit);
-
-                    nOffset = nLimit * nPage;
                 }
                 else if(strLimit.find(","))
                 {
@@ -1505,11 +1503,10 @@ namespace TAO
                     /* Invalid limit */
                 }
             }
-            else
-            {
-                /* No limit or offset specified so calculate offset from page */
+            
+            /* If no offset explicitly included calculate it from the limit + page */
+            if(nOffset == 0 && nPage > 0)
                 nOffset = nLimit * nPage; 
-            }
 
 
             /* Get sort order*/
