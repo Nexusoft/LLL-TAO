@@ -1069,11 +1069,11 @@ all: iphone.a
 buildall: 
 	mkdir -p build/obj
 	echo MAKING DEVICE
-	make -f makefile.cli STATIC=1 NO_WALLET=1 IPHONE=1 SIMULATOR=0
+	make -f makefile.cli NO_ANSI=1 STATIC=1 NO_WALLET=1 IPHONE=1 SIMULATOR=0
 	echo CLEANING
 	make -f makefile.cli IPHONE=1 SIMULATOR=0 clean
 	echo MAKING SIM
-	make -f makefile.cli STATIC=1 NO_WALLET=1 IPHONE=1 SIMULATOR=1
+	make -f makefile.cli NO_ANSI=1 STATIC=1 NO_WALLET=1 IPHONE=1 SIMULATOR=1
 	mkdir build/tempdir
 	echo MOVING HEADERS
 	find ./src -name '*.h' -print | cpio -pvdumB ./build/tempdir
@@ -1167,11 +1167,11 @@ all: android.so
 buildall: 
 	mkdir -p build/Nexus.androidframework
 	@echo Making x86_64
-	make -f makefile.cli STATIC=0 NO_WALLET=1 ANDROID=1 ANDROID_ARCH="x86_64"
+	make -f makefile.cli NO_ANSI=1 STATIC=0 NO_WALLET=1 ANDROID=1 ANDROID_ARCH="x86_64"
 	@echo Cleaning
 	make -f makefile.cli ANDROID=1 clean
 	@echo Making aarch64
-	make -f makefile.cli STATIC=0 NO_WALLET=1 ANDROID=1 ANDROID_ARCH="aarch64"
+	make -f makefile.cli NO_ANSI=1 STATIC=0 NO_WALLET=1 ANDROID=1 ANDROID_ARCH="aarch64"
 	mkdir build/tempdir
 	find ./src -name '*.h' -print | cpio -pvdumB ./build/tempdir
 	cp ./src/LLD/hash/xxhash.c ./build/tempdir/src/LLD/hash/xxhash.c
